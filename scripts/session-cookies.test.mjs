@@ -17,6 +17,7 @@
 
 import assert from "node:assert/strict";
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -33,9 +34,14 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents: ['export * from "./src/main/browser/session-cookies";'].join(
-			"\n",
-		),
+		contents: [
+			'export * from "./src/main/browser/session-cookies";',
+			// The quit hold is bundled too: the defect it guards against is in an error
+			// path of an Electron event handler, and this is the only way to drive that
+			// path without booting the app (which would take the operator's focus and
+			// log to their real log directory).
+			'export * from "./src/main/browser/session-cookie-quit-hold";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -53,6 +59,8 @@ const {
 	SessionCookieVault,
 	createDebuggerCookieJar,
 	createSafeStorageCipher,
+	createSessionCookieQuitHold,
+	removeDurable,
 	restoreParams,
 	sessionCookiePaths,
 	storedCookieFor,
@@ -964,4 +972,218 @@ test("a partition key with only a top-level site is not representable", () => {
 		}).ok,
 		false,
 	);
+});
+
+/* --- The app's shutdown path, and the failures that used to be silent. --- */
+
+test("a rejected browser-host stop still quits, instead of cancelling the first quit silently", async () => {
+	const calls = [];
+	const lines = [];
+	const holder = createSessionCookieQuitHold({
+		isPending: () => true,
+		stop: () => {
+			calls.push("stop");
+			return Promise.reject(new Error("the renderer died mid-stop"));
+		},
+		quit: () => calls.push("quit"),
+		log: (message) => lines.push(message),
+	});
+
+	const held = await holder({ preventDefault: () => calls.push("preventDefault") });
+
+	// The defect this pins: `await stopBrowserHost()` with no try/finally, so a
+	// rejection skipped the `app.quit()` below it. Measured in Electron 44.3.0, an
+	// unhandled main-process rejection fires `unhandledRejection` and NOT
+	// `uncaughtException`, so the app did not crash — it stayed alive with no
+	// window, and because the hold was spent the NEXT quit exited without the
+	// snapshot the hold exists for. The quit must be asked for either way.
+	assert.equal(held, true, "the quit was held for the stop");
+	assert.deepEqual(
+		calls,
+		["preventDefault", "stop", "quit"],
+		"the quit is asked for even though the stop rejected",
+	);
+	assert.match(lines.join("\n"), /failed while the quit was held/);
+});
+
+test("the hold engages once per quit, and only while a host stop is owed", async () => {
+	const calls = [];
+	let second = null;
+	let pending = true;
+	const holder = createSessionCookieQuitHold({
+		isPending: () => pending,
+		stop: async () => {
+			calls.push("stop");
+		},
+		quit: () => {
+			calls.push("quit");
+			// `app.quit()` re-emits `will-quit` inside the handler that held the first
+			// one, so this is the re-entrant call the flag exists to refuse: a second
+			// hold here would mean the app never exits.
+			second = holder({
+				preventDefault: () => calls.push("re-preventDefault"),
+			});
+		},
+		log: (message) => calls.push(`log:${message}`),
+	});
+
+	const first = await holder({
+		preventDefault: () => calls.push("preventDefault"),
+	});
+	const secondHeld = await second;
+	assert.equal(first, true);
+	assert.equal(
+		secondHeld,
+		false,
+		"the re-quit must not be held again, or the app never exits",
+	);
+	assert.deepEqual(calls, ["preventDefault", "stop", "quit"]);
+
+	// Nothing to wait for: no hold, no cancelled quit, and the stop is not called.
+	pending = false;
+	const idleCalls = [];
+	const idle = createSessionCookieQuitHold({
+		isPending: () => false,
+		stop: async () => idleCalls.push("stop"),
+		quit: () => idleCalls.push("quit"),
+		log: () => {},
+	});
+	assert.equal(
+		await idle({ preventDefault: () => idleCalls.push("preventDefault") }),
+		false,
+	);
+	assert.deepEqual(idleCalls, [], "an idle quit is left alone");
+});
+
+test("removeDurable treats an absent file as done and anything else as a failure", () => {
+	const paths = dirFor("remove-durable");
+	mkdirSync(dirname(paths.snapshotPath), { recursive: true });
+
+	// The ordinary "nothing to discard" path is the done state, not an error.
+	assert.doesNotThrow(() => removeDurable(paths.snapshotPath));
+	writeFileSync(paths.snapshotPath, Buffer.from("cipher:value"));
+	assert.doesNotThrow(() => removeDurable(paths.snapshotPath));
+	assert.equal(existsSync(paths.snapshotPath), false);
+
+	// A directory is not unlinkable: the invalidation did NOT happen, and swallowing
+	// it is what let a clear report a discard it never performed.
+	const notAFile = join(root, "remove-durable", "browser", "a-directory");
+	mkdirSync(notAFile, { recursive: true });
+	assert.throws(
+		() => removeDurable(notAFile),
+		"a failed removal must not be reported as done",
+	);
+});
+
+test("a clear that cannot discard the snapshot fails loudly instead of logging a discard", async () => {
+	const paths = dirFor("clear-failure");
+	const { lines, log } = collector();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
+	assert.equal(existsSync(paths.snapshotPath), true);
+
+	// The reviewer's repro: unlink fails (a POSIX unlink needs write permission on
+	// the DIRECTORY, so the file's own mode is not what is being tested here).
+	const dir = dirname(paths.snapshotPath);
+	const mode = statSync(dir).mode & 0o777;
+	chmodSync(dir, 0o500);
+	try {
+		let cleared = false;
+		const failure = await makeVault(fakeJar([]), fakeCipher(), paths, log, {
+			clearSessionData: async () => {
+				cleared = true;
+			},
+		})
+			.clearBrowsingData("cookies")
+			.then(
+				() => null,
+				(error) => error,
+			);
+		assert.ok(
+			failure instanceof Error,
+			"a clear that cannot invalidate the snapshot must not resolve",
+		);
+		assert.equal(
+			cleared,
+			false,
+			"the jar is not cleared while the snapshot survives, or a restart would replay it",
+		);
+		assert.equal(existsSync(paths.snapshotPath), true);
+		assert.doesNotMatch(
+			lines.join("\n"),
+			/discarded the stored session cookies/,
+		);
+	} finally {
+		chmodSync(dir, mode);
+	}
+});
+
+test("a run whose channel never opened reports the channel, not a crash it never had", async () => {
+	const paths = dirFor("channel-unavailable");
+	const { log } = collector();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
+
+	const channelDown = {
+		prepare: async () => {
+			throw new Error("the renderer never came up");
+		},
+		readAllCookies: async () => {
+			throw new Error("no channel");
+		},
+		writeCookie: async () => {
+			throw new Error("no channel");
+		},
+	};
+	const broken = await makeVault(channelDown, fakeCipher(), paths, log).restore();
+	assert.equal(broken.outcome, "channel-unavailable");
+	assert.equal(broken.restored, 0);
+	assert.equal(
+		existsSync(paths.markerPath),
+		true,
+		"the marker stays: this run still browses, so a crash of it must stay detectable",
+	);
+	assert.equal(existsSync(paths.snapshotPath), true);
+
+	// The next start discards, as it must, and names the real cause rather than
+	// reporting a crash that never happened.
+	const fresh = collector();
+	const next = await makeVault(
+		fakeJar([]),
+		fakeCipher(),
+		paths,
+		fresh.log,
+	).restore();
+	assert.equal(next.outcome, "unclean-previous-run");
+	assert.match(
+		fresh.lines.join("\n"),
+		/could not open the cookie-jar channel \(Error: the renderer never came up\)/,
+	);
+	assert.doesNotMatch(fresh.lines.join("\n"), /did not shut down cleanly/);
+});
+
+test("a jar that stops answering degrades to no persistence instead of stalling startup", async () => {
+	const paths = dirFor("jar-hang");
+	const { lines, log } = collector();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
+
+	// The hang this feature already found on the quit path: a call into the channel
+	// that never settles rather than rejecting. Startup awaits the restore and the
+	// quit awaits the snapshot, so an unbounded call would hold both.
+	const neverSettles = new Promise(() => {});
+	const hung = {
+		prepare: () => neverSettles,
+		readAllCookies: () => neverSettles,
+		writeCookie: () => neverSettles,
+	};
+	const started = Date.now();
+	const report = await makeVault(hung, fakeCipher(), paths, log, {
+		jarDeadlineMs: 50,
+	}).restore();
+
+	assert.equal(report.outcome, "channel-unavailable");
+	assert.equal(report.restored, 0);
+	assert.ok(
+		Date.now() - started < 5_000,
+		"the restore came back on its own bound rather than hanging",
+	);
+	assert.match(lines.join("\n"), /did not respond within 50ms/);
 });

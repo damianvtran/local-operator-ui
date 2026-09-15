@@ -18,6 +18,11 @@
  * No window is ever created: the only surface is an unattached WebContentsView,
  * which is never laid out, shown or focused. Every path is taken from the
  * environment, and nothing here touches the operator's own profile.
+ *
+ * The top-level page embeds a genuine third-party FRAME from a different site
+ * (`127.0.0.1` inside a page on `localhost`): a `Partitioned` cookie set there is
+ * the only way this runtime produces a key with `hasCrossSiteAncestor: true`, and
+ * the frame reports what it itself could see. See `FRAME` below.
  */
 const { app, session, webContents, WebContentsView } = require("electron");
 const fs = require("node:fs");
@@ -42,7 +47,57 @@ document.cookie = "persistent_a=pa; Path=/; Max-Age=3600";
 document.cookie = "high_priority=hp; Path=/";
 </script></body></html>`;
 
-function batteryServer() {
+/**
+ * The third-party frame's page, served from a DIFFERENT site than the top-level
+ * page (`127.0.0.1` inside `localhost`).
+ *
+ * WHY IT IS HERE: a `Partitioned` cookie is only given
+ * `hasCrossSiteAncestor: true` when it is set from a frame whose site differs from
+ * the top-level site, and that is the one shape CHIPS exists for. With a top-level
+ * page setting every cookie itself, every partition key in the battery comes out
+ * `false` — which is exactly the gap this frame closes, because the guarantee for
+ * `true` must rest on the committed battery rather than on one reviewer's probe.
+ *
+ * It also reports what IT can see, because the isolation argument rests on what a
+ * third-party frame does and does not receive. The frame fetches its own
+ * `/frame-view?seen=...` with credentials, so the scenario records both the
+ * frame's own `document.cookie` and the `Cookie:` header the browser actually
+ * sent on that request — the difference between "the frame saw none of the
+ * top-level page's cookies" and "the frame sees no cookies at all", which are not
+ * the same statement and were once written as if they were.
+ */
+const FRAME = `<!doctype html><html><body><script>
+document.cookie = "chips_3p=c3p; Path=/; SameSite=None; Secure; Partitioned";
+document.cookie = "plain_3p=p3p; Path=/; SameSite=None; Secure";
+fetch("/frame-view?seen=" + encodeURIComponent(document.cookie), { credentials: "include" });
+</script></body></html>`;
+
+/** The frame's own origin, recording its report for the scenario to read. */
+function frameServer() {
+	let seen = null;
+	const server = http.createServer((req, res) => {
+		if ((req.url ?? "").startsWith("/frame-view")) {
+			seen = {
+				cookieHeader: req.headers.cookie ?? "",
+				frameView:
+					new URL(req.url, "http://127.0.0.1").searchParams.get("seen") ??
+					"",
+			};
+			res.writeHead(204);
+			res.end();
+			return;
+		}
+		res.writeHead(200, { "content-type": "text/html" });
+		res.end(FRAME);
+	});
+	return { server, seen: () => seen };
+}
+
+function batteryServer(frameUrl) {
+	const page = PAGE.replace(
+		"</body>",
+		`<iframe src="${frameUrl}"></iframe></body>`,
+	);
 	return http.createServer((_req, res) => {
 		res.writeHead(200, {
 			"content-type": "text/html",
@@ -51,18 +106,37 @@ function batteryServer() {
 				"srv_chips=sc; Path=/; Secure; SameSite=None; Partitioned; HttpOnly",
 			],
 		});
-		res.end(PAGE);
+		res.end(page);
 	});
 }
 
 async function main() {
 	const mod = await import(pathToFileURL(process.env.SC_BUNDLE).href);
 	const s = session.fromPartition(PARTITION);
-	const server = batteryServer();
+	// The frame's origin first: its URL has to be in the top-level page's markup.
+	const frame = frameServer();
+	const framePort = await new Promise((resolve) =>
+		frame.server.listen(0, "127.0.0.1", () =>
+			resolve(frame.server.address().port),
+		),
+	);
+	const frameOrigin = `http://127.0.0.1:${framePort}`;
+	const server = batteryServer(`${frameOrigin}/`);
 	const port = await new Promise((resolve) =>
 		server.listen(0, "127.0.0.1", () => resolve(server.address().port)),
 	);
 	const origin = `http://localhost:${port}`;
+
+	/** Wait for the frame's own report: its cookie is a subresource's, so it lands
+	 * after the top-level load the scenario awaits. */
+	const frameReportWithin = async (ms) => {
+		const deadline = Date.now() + ms;
+		while (Date.now() < deadline) {
+			if (frame.seen()) return frame.seen();
+			await new Promise((resolve) => setTimeout(resolve, 25));
+		}
+		return null;
+	};
 
 	const view = new WebContentsView({
 		webPreferences: {
@@ -93,6 +167,9 @@ async function main() {
 
 	if (mode === "snapshot") {
 		await view.webContents.loadURL(origin);
+		// The third-party frame's cookie is a subresource's, so wait for its own
+		// report rather than reading the jar the moment the top-level page settles.
+		result.thirdPartyFrame = await frameReportWithin(5000);
 		// One cookie the page cannot set: a non-default eviction priority. It also
 		// covers a jar entry written through the same channel the restore uses.
 		await jar.writeCookie({
@@ -164,6 +241,7 @@ async function main() {
 	fs.writeFileSync(outFile, `${JSON.stringify(result, null, 1)}\n`);
 	console.log(`scenario ${mode}: wrote ${outFile}`);
 	server.close();
+	frame.server.close();
 	if (view.webContents.debugger.isAttached())
 		view.webContents.debugger.detach();
 	if (!view.webContents.isDestroyed()) view.webContents.close();

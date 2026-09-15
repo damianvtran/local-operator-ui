@@ -13,6 +13,7 @@ import {
 import { dirname, join } from "node:path";
 import { PRIVATE_DIR_MODE, PRIVATE_FILE_MODE } from "./atomic-json";
 import type { ClearWhat } from "./profile";
+import { CDP_DEADLINE_MS, deadline } from "./vendor/driver/deadline";
 
 /**
  * Session-only cookie persistence across an app restart.
@@ -65,7 +66,27 @@ import type { ClearWhat } from "./profile";
  *     be derived from the cookie's recorded source scheme/port and not guessed
  *     (`restoreParams`);
  *   - `Storage.setCookies` (the batch setter) silently stored nothing in this
- *     build, so the per-cookie `Network.setCookie` is the only usable path.
+ *     build, so the per-cookie `Network.setCookie` is the only usable path;
+ *   - a third-party frame is NOT a cookie-free surface: a frame on `127.0.0.1`
+ *     inside a page on `localhost` set and read its own cookies, and its own
+ *     subresource request carried them. What it does not receive is the TOP-LEVEL
+ *     page's cookies. So "the frame did not see the partitioned cookie" would
+ *     pass for the wrong reason, which is why the isolation claim is compared at
+ *     the jar level (`partitionKeyForWrite`) and against a real jar in
+ *     `session-cookie-electron.test.mjs` rather than inside a frame.
+ *
+ * WHAT THE AT-REST GUARANTEE ACTUALLY IS, stated so it is not read as more than
+ * it is: ciphertext in a 0600 file inside a 0700 directory, with every failure
+ * path refusing rather than falling back to plaintext. It is NOT authenticated
+ * encryption. `safeStorage`'s macOS path wraps the payload with no integrity
+ * check — measured in the pinned runtime: a bit-flip inside the snapshot does
+ * not make `decryptString` throw, it returns a string whose head is still the
+ * plaintext prefix — so the refusal on a damaged file comes from `JSON.parse`
+ * and the shape check in `readSnapshot`, not from a MAC. A targeted rewrite that
+ * stays parseable would be restored as a valid-but-altered snapshot; that needs
+ * write access to a 0600 file in a directory the attacker would already own,
+ * which is why no MAC is added here. "Corrupt ciphertext fails closed" is true
+ * of corruption and is NOT a claim that tampering is detected.
  *
  * WHAT IS DELIBERATELY NOT DONE HERE: the snapshot never reaches the renderer,
  * the agent RPC surface, the app's JSON config or any log line — only the
@@ -117,7 +138,13 @@ export interface JarCookie {
 	sourcePort?: number | null;
 	partitionKey?: CookiePartitionKeyLike | null;
 	/** Set instead of `partitionKey` when the key is opaque (a scheme-only
-	 * partition). No CDP parameter can express one, so such a cookie is refused. */
+	 * partition). No CDP parameter can express one, so such a cookie is refused.
+	 *
+	 * TESTS ONLY, in production terms: `createDebuggerCookieJar` returns CDP's
+	 * cookies verbatim and no CDP shape carries an opaque key, so this flag is
+	 * never set by a real jar. The refusal that protects production is the
+	 * missing/incomplete `partitionKey` branch in `partitionKeyForWrite`; this one
+	 * exists so the shape is refused rather than miswritten if it ever arrives. */
 	partitionKeyOpaque?: boolean;
 }
 
@@ -189,6 +216,10 @@ export interface SessionCookieVaultOptions {
 	clearSessionData: (what: ClearWhat) => Promise<void>;
 	log: (message: string) => void;
 	now?: () => number;
+	/** Per-call bound on one jar interaction, defaulting to the CDP layer's own
+	 * per-command deadline. Injectable so a test can prove the bound without
+	 * waiting out the real one. */
+	jarDeadlineMs?: number;
 }
 
 export interface RestoreReport {
@@ -206,7 +237,8 @@ export interface RestoreReport {
 		| "unclean-previous-run"
 		| "cipher-unavailable"
 		| "unreadable"
-		| "disabled";
+		| "disabled"
+		| "channel-unavailable";
 }
 
 export interface SnapshotReport {
@@ -491,12 +523,21 @@ export function writeFileDurable(path: string, data: Buffer): void {
 }
 
 /** Remove a file durably: the unlink is the invalidation, so it must be on disk
- * before the caller reports success. */
+ * before the caller reports success.
+ *
+ * Only ENOENT is tolerated, because absent is the done state. Every other error
+ * means the file is STILL THERE, so it is thrown rather than swallowed: catching
+ * everything here made a clear that could not unlink the snapshot resolve and
+ * log "discarded the stored session cookies" while the ciphertext stayed on
+ * disk (measured, with the snapshot's directory made unwritable) — the wrong
+ * thing to tell a user about credential material. Callers that can carry on
+ * without a removal handle it at their own call site, where the consequence is
+ * known (`restore` and `snapshot` below). */
 export function removeDurable(path: string): void {
 	try {
 		unlinkSync(path);
-	} catch {
-		// Absent is the done state.
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 	}
 	fsyncDir(dirname(path));
 }
@@ -561,11 +602,38 @@ export class SessionCookieVault {
 			if (marker) {
 				// A previous run did not shut down cleanly, so its browsing may have
 				// changed cookies the snapshot still shows as present. Discard it.
+				//
+				// The marker says WHICH kind of unclean run it was, because the two are
+				// not the same event: a run that could not open the jar channel had no
+				// persistence at all, and reporting it as a crash sends a reader after
+				// a crash that never happened.
 				this.log(
-					"session cookies: the previous run did not shut down cleanly, so the stored session cookies were discarded",
+					marker.channelUnavailable
+						? `session cookies: the previous run could not open the cookie-jar channel (${marker.channelUnavailable}), so the stored session cookies were discarded`
+						: "session cookies: the previous run did not shut down cleanly, so the stored session cookies were discarded",
 				);
-				removeDurable(this.options.snapshotPath);
-				removeDurable(this.options.markerPath);
+				try {
+					removeDurable(this.options.snapshotPath);
+				} catch (error) {
+					// The removal IS the invalidation: carrying on would find the file again
+					// at the `existsSync` below and replay exactly the snapshot this branch
+					// refuses. Stop here, restore nothing, and say so.
+					this.log(
+						`session cookies: the stored session cookies could not be discarded (${String(error)}); not restoring anything`,
+					);
+					report.outcome = "unclean-previous-run";
+					return report;
+				}
+				try {
+					removeDurable(this.options.markerPath);
+				} catch (error) {
+					// Harmless, and the marker is overwritten below anyway: until it is, a
+					// marker that could not be removed only means "discard again", which is
+					// the conservative direction.
+					this.log(
+						`session cookies: the previous run's shutdown marker could not be removed (${String(error)})`,
+					);
+				}
 				report.outcome = "unclean-previous-run";
 			}
 			try {
@@ -582,7 +650,16 @@ export class SessionCookieVault {
 				this.log(
 					`session cookies: ${this.disabledReason}; not restoring anything`,
 				);
-				removeDurable(this.options.snapshotPath);
+				try {
+					removeDurable(this.options.snapshotPath);
+				} catch (discardError) {
+					// Left in place for a later run to fail closed on. This run cannot tell a
+					// crash from a clean exit without a marker, so it has no basis for
+					// invalidating anything; the next run that CAN write a marker decides.
+					this.log(
+						`session cookies: the stored session cookies could not be discarded (${String(discardError)})`,
+					);
+				}
 				report.outcome = "disabled";
 				return report;
 			}
@@ -592,12 +669,21 @@ export class SessionCookieVault {
 			// rather than on the quit path. A channel that cannot be opened is reported
 			// and not fatal: the run simply has no persistence.
 			try {
-				await this.options.jar.prepare?.();
+				const prepare = this.options.jar.prepare;
+				if (prepare) {
+					await this.boundedJar(
+						() => prepare.call(this.options.jar),
+						"opening the cookie-jar channel",
+					);
+				}
 				this.channelReady = true;
 			} catch (error) {
+				const reason = String(error);
 				this.log(
-					`session cookies: the cookie-jar channel could not be opened (${String(error)}); session cookies will not be restored or saved this run`,
+					`session cookies: the cookie-jar channel could not be opened (${reason}); session cookies will not be restored or saved this run, and the marker this run leaves means the stored snapshot will be discarded at the next start`,
 				);
+				this.noteChannelUnavailable(reason, generation);
+				report.outcome = "channel-unavailable";
 				return report;
 			}
 
@@ -623,11 +709,22 @@ export class SessionCookieVault {
 			} catch (error) {
 				// Corrupt ciphertext, or a key that no longer decrypts it (an app
 				// re-signed with a different identity does exactly this). Fail closed
-				// and remove the file rather than retrying it every launch.
+				// and remove the file rather than retrying it every launch. The refusal
+				// itself is `JSON.parse` plus the shape check in `readSnapshot`, since
+				// `safeStorage` does not authenticate what it encrypted (see the module
+				// header).
 				this.log(
 					`session cookies: the stored snapshot could not be read (${String(error)}); discarding it`,
 				);
-				removeDurable(this.options.snapshotPath);
+				try {
+					removeDurable(this.options.snapshotPath);
+				} catch (discardError) {
+					// Nothing can be restored from it either way, so this is reporting rather
+					// than recovery: the next start reads it, refuses it, and tries again.
+					this.log(
+						`session cookies: the unreadable snapshot could not be discarded (${String(discardError)})`,
+					);
+				}
 				report.outcome = "unreadable";
 				return report;
 			}
@@ -639,7 +736,10 @@ export class SessionCookieVault {
 			// cookie is a cookie the site has since replaced with a persistent one.
 			const existing = new Set<string>();
 			try {
-				for (const cookie of await this.options.jar.readAllCookies()) {
+				for (const cookie of await this.boundedJar(
+					() => this.options.jar.readAllCookies(),
+					"reading the cookie jar before restoring",
+				)) {
 					if (!isSessionCookie(cookie)) {
 						existing.add(
 							cookieIdentity({
@@ -690,7 +790,10 @@ export class SessionCookieVault {
 					});
 				}
 				try {
-					await this.options.jar.writeCookie(params);
+					await this.boundedJar(
+						() => this.options.jar.writeCookie(params),
+						`writing ${cookie.name} back`,
+					);
 					report.restored += 1;
 				} catch (error) {
 					report.failed.push({ name: cookie.name, reason: String(error) });
@@ -700,7 +803,10 @@ export class SessionCookieVault {
 			// Read back what actually landed, so "restored" is a measured claim
 			// rather than a count of calls that did not throw.
 			try {
-				const after = await this.options.jar.readAllCookies();
+				const after = await this.boundedJar(
+					() => this.options.jar.readAllCookies(),
+					"reading back the restored cookies",
+				);
 				const byIdentity = new Map(
 					after.map((cookie) => [
 						cookieIdentity({
@@ -789,7 +895,10 @@ export class SessionCookieVault {
 			let jar: JarCookie[];
 			try {
 				await this.options.flushStore?.();
-				jar = await this.options.jar.readAllCookies();
+				jar = await this.boundedJar(
+					() => this.options.jar.readAllCookies(),
+					"reading the cookie jar for the snapshot",
+				);
 			} catch (error) {
 				report.reason = String(error);
 				this.log(
@@ -827,7 +936,18 @@ export class SessionCookieVault {
 				);
 				return report;
 			}
-			removeDurable(this.options.markerPath);
+			// The one call that may not be swallowed: a marker that stays behind makes the
+			// next start discard a snapshot that is perfectly good, so this is reported
+			// rather than claimed as a clean save.
+			try {
+				removeDurable(this.options.markerPath);
+			} catch (error) {
+				this.log(
+					`session cookies: the snapshot was written but the clean-shutdown marker could not be removed (${String(error)}); the next start will discard it`,
+				);
+				report.reason = String(error);
+				return report;
+			}
 			report.written = true;
 			report.saved = cookies.length;
 			this.log(
@@ -850,6 +970,14 @@ export class SessionCookieVault {
 	async clearBrowsingData(what: ClearWhat): Promise<void> {
 		return this.run(async () => {
 			if (what !== "cache") {
+				// The removal is the invalidation, and it has to be durable BEFORE the clear
+				// reports success — so a removal that failed must not be reported as a
+				// discard. `removeDurable` throws on anything but ENOENT and the error
+				// propagates out of this call: the user's clear fails loudly (and the jar is
+				// NOT cleared, since clearing it while the snapshot survived would let the
+				// next start replay what they asked to be gone) instead of resolving on a
+				// lie. Measured before this fix: with the snapshot's directory unwritable
+				// the call resolved and logged a discard while the ciphertext stayed.
 				removeDurable(this.options.snapshotPath);
 				this.log(
 					"session cookies: discarded the stored session cookies as part of clearing browsing data",
@@ -863,12 +991,66 @@ export class SessionCookieVault {
 		return this.options.now?.() ?? Date.now();
 	}
 
-	private readMarker(): { generation?: string } | null {
+	/** Bound one call into the jar channel.
+	 *
+	 * The channel is a CDP attachment to a renderer, and the hang this feature
+	 * already found on the quit path was exactly that primitive never answering a
+	 * command. Startup awaits the restore and the quit awaits the snapshot, so an
+	 * unbounded call into it holds both: every jar interaction therefore goes
+	 * through the same per-call deadline the CDP layer uses, and a channel that
+	 * stops answering degrades to "no persistence this run" — which the design
+	 * already handles — instead of stalling the app. */
+	private boundedJar<T>(op: () => T | Promise<T>, what: string): Promise<T> {
+		return deadline(
+			Promise.resolve().then(op),
+			this.options.jarDeadlineMs ?? CDP_DEADLINE_MS,
+			what,
+		);
+	}
+
+	/** Record in the marker that this run could not open the jar channel.
+	 *
+	 * The marker itself has to STAY: this run still browses, so a crash of it must
+	 * remain detectable and its stored snapshot must not be replayed. What it must
+	 * not do is read as a crash — measured: with the marker written before the
+	 * warm-up and left behind, one transient channel failure made the next start
+	 * log "the previous run did not shut down cleanly" and discard a snapshot that
+	 * was fine. Rewriting the marker with the reason is best effort; failing to
+	 * rewrite it leaves exactly the state we were already in. */
+	private noteChannelUnavailable(reason: string, generation: string): void {
+		try {
+			writeFileDurable(
+				this.options.markerPath,
+				Buffer.from(
+					`${JSON.stringify(
+						{
+							generation,
+							pid: process.pid,
+							startedAt: this.now(),
+							channelUnavailable: reason,
+						},
+						null,
+						2,
+					)}\n`,
+				),
+			);
+		} catch (error) {
+			this.log(
+				`session cookies: could not record why the cookie-jar channel was unavailable (${String(error)})`,
+			);
+		}
+	}
+
+	private readMarker(): {
+		generation?: string;
+		channelUnavailable?: string;
+	} | null {
 		try {
 			const parsed = JSON.parse(
 				readFileSync(this.options.markerPath, "utf8"),
 			) as {
 				generation?: string;
+				channelUnavailable?: string;
 			};
 			return parsed && typeof parsed === "object" ? parsed : null;
 		} catch {
