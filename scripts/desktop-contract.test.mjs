@@ -640,6 +640,20 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			`/v1/desktop/analytics?days=7&session_id=${sessionId}`,
 			"GET",
 		],
+		/*
+		 * The two diagnostics reads, and the reason they are here rather than in a
+		 * test of their own: the map is one switch, and an op that reaches the
+		 * wrong PATH is the failure mode this table exists to catch — a panel
+		 * asking `/v1/desktop/sessions/{id}/report` of a backend that serves it at
+		 * another path shows a 404 as "unavailable", which reads as a broken
+		 * backend rather than a wrong URL.
+		 */
+		[{ op: "info.get" }, "/v1/desktop/info", "GET"],
+		[
+			{ op: "sessions.report", sessionId, recentLimit: 25 },
+			`/v1/desktop/sessions/${sessionId}/report?recent_limit=25`,
+			"GET",
+		],
 		[
 			{ op: "skills.list", sessionId, name: "fixture" },
 			`/v1/desktop/skills?session_id=${sessionId}&name=fixture`,

@@ -1,0 +1,28 @@
+{
+  "oldBase": "97467e5a937c76865b1cc539243684381e455f98",
+  "oldHead": "bcc27879ef53776429da0ca66c95a88c3f4a871b",
+  "newBase": "8d019993eb8b54913d89fa5288aafbaf88f293d3",
+  "candidateHead": "03a553f2e743e5a901e0613f8e5337eee7c6729d",
+  "nonconflictingFileCount": 821,
+  "differentNonconflictingBlobs": [],
+  "bothTouched": [
+    "docs/evidence/manifest.json",
+    "package.json",
+    "scripts/capture-evidence.mjs",
+    "scripts/contrast-contract.mjs"
+  ],
+  "nonidenticalAddedDeletedLineSets": [
+    "docs/evidence/manifest.json",
+    "package.json"
+  ],
+  "method": "Conflict-only rebase candidate preserved; final publication merges the original published feature lineage as an additional parent with an identical candidate tree, so the PR push fast-forwards and no published history is deleted.",
+  "sourceProof": "821 nonconflicting files have byte-identical git blobs. Added/deleted line multisets are identical except package.json and manifest.json. Package retains main 0.22.3 and every upstream test, adding only panel-chart-motion.test.mjs. Manifest is a path-keyed supplementary union with the complete upstream record retained. capture-evidence.mjs and contrast-contract.mjs additive patches are byte-identical.",
+  "paintBoundary": "Upstream shared CSS adds the pulse-visible keyframe/token and the utility merge registration; no captured panel uses that new animation. Theme palettes, chart/panel primitives and all branch-authored src files are byte-identical. Optional post-convergence screenshot attempt was blocked by two browser-extension 20-second screenshot timeouts; no new pixel-equivalence claim is made. The 96 captures retain their actual pre-convergence origin.",
+  "counts": {
+    "total": 2279,
+    "outsideSupplementary": 1928,
+    "supplementary": 351,
+    "captureListSurfaces": 228
+  },
+  "archiveRef": "refs/heads/evidence/panels-before-convergence-20260914"
+}
