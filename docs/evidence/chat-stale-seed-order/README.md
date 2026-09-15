@@ -58,12 +58,16 @@ overlays when a reviewer flips between them.
 Storybook built from this tree, through the repo's own capturer:
 
 ```
-pnpm exec storybook dev -p 6106 --no-open --quiet
-node scripts/capture-evidence.mjs http://localhost:6106 \
+pnpm exec storybook dev -p 6111 --no-open --quiet
+node scripts/capture-evidence.mjs http://localhost:6111 \
   --only=chat-stale-seed-order --themes=localOperatorDark,localOperatorLight \
   --allow-backend
 ```
 
 Captured on a **clean tree**, which is what `manifest.json`'s
 `dirtyWorkingTree: false` records: the story, its `STORIES` entry, the fixture
-and the reducer are all committed at the head the frames were taken from.
+and the reducer are all committed at the head the frames were taken from. The
+first pass on this branch shipped that flag as `false` for a capture that was
+actually dirty — the field was flipped by an amend rather than by a re-capture —
+and round 2 of the agent review caught it. All eight frames were re-taken on the
+clean tree for that reason, and the round-2 note in `manifest.json` records it.
