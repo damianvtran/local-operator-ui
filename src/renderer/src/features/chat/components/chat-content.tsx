@@ -371,6 +371,19 @@ const defaultCanvasState = {
 	mentionedFiles: [],
 };
 
+/**
+ * The run pane's own contract floor, in pixels: the design's 320/420/640 range
+ * (`docs/run-sidebar.md` § 8) starts at 320.
+ *
+ * ONE home for that number, because it is the floor of two different things: the
+ * width the divider lets the user DRAG the pane's preference down to, and the
+ * width flex may SHRINK the rendered pane down to when the row cannot host the
+ * preference. Two literals here would drift the moment either moves, and the
+ * second one is the whole of the fix below: a preference pinned as a floor is not
+ * a floor, it is a promise the row cannot keep.
+ */
+const RUN_PANEL_MIN_PX = 320;
+
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
 		activeTab,
@@ -603,6 +616,46 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * exist yet.
 		 */
 		const browserAttentionCount = useConversationApprovals(sessionId ?? null);
+		/*
+		 * The run pane's RENDERED width, which is not always its preference.
+		 *
+		 * The wrapper below takes the preference as its `width` and NO floor, so flex
+		 * shrinks it into the space the row actually has — the same rule the canvas
+		 * dock follows one slot up, where a floor pinned at the dock's preferred width
+		 * is what made the grid's fourth column unreachable. The pane's width-DERIVED
+		 * layout (`tallyBudget`, and the section grammar the record measures at
+		 * 320/420/640) has to be budgeted against the box it is drawn in: handed the
+		 * preference, a shrunk pane sheds for a width it does not have and truncates at
+		 * the width it does, which is the class of failure `tallyBudget`'s own docblock
+		 * exists to prevent.
+		 *
+		 * Measured rather than derived: the pane's available width is what the ROW
+		 * leaves it, and that depends on the rail, the chat list and the column's own
+		 * 220px floor — three inputs this component does not compute. A `ResizeObserver`
+		 * on the wrapper reports the box as it really is, including a drag of the
+		 * divider, and a sub-pixel change is ignored so the pane cannot re-render in a
+		 * loop against its own measurement.
+		 */
+		const runPanelRef = useRef<HTMLDivElement | null>(null);
+		const [renderedRunPanelWidth, setRenderedRunPanelWidth] = useState(
+			effectiveRunPanelWidth,
+		);
+		useEffect(() => {
+			if (!isRunPanelOpen) return;
+			const element = runPanelRef.current;
+			if (!element) return;
+			const measure = () => {
+				const width = element.getBoundingClientRect().width;
+				if (width <= 0) return;
+				setRenderedRunPanelWidth((current) =>
+					Math.abs(current - width) < 1 ? current : width,
+				);
+			};
+			measure();
+			const observer = new ResizeObserver(measure);
+			observer.observe(element);
+			return () => observer.disconnect();
+		}, [isRunPanelOpen]);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -1066,7 +1119,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * construction (`setRunPanelOpen`/`setCanvasOpen` each clear the other), so
 				 * only one of these two blocks can ever be mounted and neither needs a
 				 * guard against the other. It reuses the canvas's own three pieces — the
-				 * divider, the pinned-width wrapper with the `border-l` seam, and a root
+				 * divider, the shrinkable wrapper with the `border-l` seam, and a root
 				 * element — because the pane mechanics are the slot's rather than either
 				 * occupant's. The divider takes its own label: two separators named
 				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
@@ -1082,18 +1135,43 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						<ResizableDivider
 							sidebarWidth={effectiveRunPanelWidth}
 							onSidebarWidthChange={setRunPanelWidth}
-							minWidth={320}
+							minWidth={RUN_PANEL_MIN_PX}
 							maxWidth={640}
 							side="left"
 							onDoubleClick={restoreDefaultRunPanelWidth}
 							label="Resize run details"
 						/>
 						<div
+							ref={runPanelRef}
 							style={{
-								minWidth: effectiveRunPanelWidth,
+								/*
+								 * The preference is the `width`, and there is NO floor: `minWidth: 0`
+								 * is what lets the flex item shrink below its own content minimum at
+								 * all, which is the whole of the fix below. Pinning the preference as
+								 * the floor is what put the pane's right edge - its close control and
+								 * its scrollbar - past the window at any window the row could not
+								 * host 420 in: measured 116px past at 1024x673 with the rail
+								 * expanded and 340px at the app's 800x600 floor, with the row's
+								 * `overflow-hidden` hiding the difference and no gesture that
+								 * reaches it. The canvas dock one slot up dropped its own pinned
+								 * floor for exactly this reason.
+								 *
+								 * A floor at the pane's own 320px contract minimum was measured too
+								 * and is NOT enough: it still leaves 16px of the pane past the
+								 * window at 1024x673 with the rail expanded (the close control's
+								 * right edge, off-screen) and 68px at 800x600 with the rail
+								 * collapsed, because the row's other floors - a 220px column and a
+								 * 240px chat list, under a 48px or 220px rail - do not leave 320.
+								 * With no floor the pane takes exactly the space the row has left,
+								 * and the budgets below follow that measured width, so a narrow
+								 * pane sheds and elides inside its own box instead of being cut by
+								 * the window. `RUN_PANEL_MIN_PX` stays the DIVIDER's floor: the
+								 * width the user may drag the preference down to.
+								 */
+								minWidth: 0,
 								width: effectiveRunPanelWidth,
 							}}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
 						>
 							<RunPanel
 								details={runDetails}
@@ -1104,15 +1182,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
 								/*
-								 * The pane's own width, in pixels, and the SAME value the
-								 * wrapper's `width`/`minWidth` take above — not a second
-								 * reading of the preference. The pane owns its width; the
-								 * sections whose tallies are budgeted against it (`§ 8`)
-								 * receive it rather than measuring themselves, so a section
-								 * can never disagree with the pane it is drawn in at the
-								 * window floor.
+								 * The pane's own width, in pixels: the box it is actually drawn in
+								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
+								 * preference the wrapper asks for. The two differ whenever the row
+								 * cannot host the preference — a narrow window, or a wide rail — and
+								 * only the measured one is a width this pane has. The pane owns its
+								 * width; the sections whose tallies are budgeted against it (`§ 8`)
+								 * receive it rather than measuring themselves, so a section can
+								 * never disagree with the pane it is drawn in at the window floor.
 								 */
-								paneWidth={effectiveRunPanelWidth}
+								paneWidth={renderedRunPanelWidth}
 								readerChildId={readerChildId}
 								onReaderChildChange={setReaderChildId}
 								onClose={() => setRunPanelOpen(false)}
