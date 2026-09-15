@@ -210,6 +210,19 @@ export function resolveWindowLaunchPlan(
 	input: {
 		env?: Record<string, string | undefined>;
 		argv?: readonly string[];
+		/**
+		 * `app.isPackaged`. False for `electron .` in a checkout, for a `/tmp` copy
+		 * of one, and for the npm CLI (`npx local-operator-ui` runs Electron on
+		 * `out/main/index.js`, which Electron does not consider an app bundle) —
+		 * true for the installed `.app` a person double-clicks. Optional so a
+		 * caller that cannot say stays on the historical `normal`; only an
+		 * explicit `false` takes part in the assumption below.
+		 */
+		packaged?: boolean;
+		/** `process.stdin.isTTY`. See `isDrivenLaunch`. */
+		stdinIsTTY?: boolean | undefined;
+		/** `process.stdout.isTTY`. See `isDrivenLaunch`. */
+		stdoutIsTTY?: boolean | undefined;
 	} = {},
 ): WindowLaunchPlan {
 	const env = input.env ?? {};
@@ -265,13 +278,50 @@ export function resolveWindowLaunchPlan(
 	 * by naming a mode, and printed on stdout — while the false negative is the
 	 * focus grab this block exists to stop. The asymmetry is the point.
 	 */
-	const agentFlag =
-		!modeFlag.found && modeRaw === undefined
-			? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
-			: undefined;
+	const unnamed = !modeFlag.found && modeRaw === undefined;
+	const agentFlag = unnamed
+		? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
+		: undefined;
+	/*
+	 * The second way a launch says it is a run without naming a mode, and the one
+	 * the switches could not see.
+	 *
+	 * `AGENT_LAUNCH_FLAGS` catches the rigs that pass a scratch profile or a
+	 * devtools port. It does not catch the other half of what agents actually do
+	 * on this machine: boot the app straight out of a checkout with NO switch at
+	 * all — `node out/main/index.js` from a QA matrix copied into `/tmp`, a rig
+	 * that forgot the flag it was told to pass, the npm CLI started with
+	 * `--open-session`. Measured on this machine while writing this: every launch
+	 * in one afternoon's shared app log ran `normal`, including a burst of ten
+	 * boots in seven minutes from a flagless harness, so the assumption above was
+	 * firing for nobody.
+	 *
+	 * What those launches DO look like, and what a person's launch does not, is a
+	 * process with no terminal on either stream: a tool spawns the app with pipes,
+	 * so `isTTY` is undefined on both, while a person's terminal launch has both
+	 * (and a person who redirects the log still has stdin on the terminal).
+	 * Pairing that with `packaged === false` keeps the shipped app out of it
+	 * entirely — the `.app` a person double-clicks is packaged and can never be
+	 * assumed headless by this rule, whatever its streams look like — and a
+	 * non-terminal launcher of the unpackaged CLI keeps the escape hatch every
+	 * launch has: name `--window-mode=normal`, which the startup line then prints.
+	 *
+	 * The asymmetry is the one the module argues throughout: a run hidden by this
+	 * rule announces itself on stdout and is one flag from being visible again,
+	 * while the focus grab it prevents is the interruption the whole default
+	 * exists to stop.
+	 */
+	const driven =
+		unnamed &&
+		agentFlag === undefined &&
+		input.packaged === false &&
+		input.stdinIsTTY !== true &&
+		input.stdoutIsTTY !== true;
 	const assumed = agentFlag
 		? `${agentFlag} marks an agent-driven launch, and no window mode was named`
-		: null;
+		: driven
+			? "the launch is not a packaged app and has no terminal on either stream, so it is a driven run rather than the operator using the app"
+			: null;
 	if (modeFlag.found && modeFlag.value === undefined) {
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
