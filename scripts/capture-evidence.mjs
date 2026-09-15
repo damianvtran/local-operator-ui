@@ -1245,6 +1245,7 @@ export const STORIES = [
 	["common-connectivity-banner--unclaimed", 1024, 300],
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
+	["common-connectivity-banner--unattachable", 1024, 300],
 ];
 
 /**
