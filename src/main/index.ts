@@ -24,7 +24,11 @@ import {
 import {
 	BackendInstaller,
 	BackendServiceManager,
+	CONSOLE_RESOLUTION_WORST_MS,
+	INTERPRETER_RESOLUTION_WORST_MS,
 	LocalOperatorStartupMode,
+	OWNED_STOP_WORST_MS,
+	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
@@ -461,6 +465,27 @@ function createWindow(): BrowserWindow {
 // Initialize backend service manager and installer
 const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
+
+/**
+ * Report a start failure unless a shutdown is already in flight.
+ *
+ * `dialog.showErrorBox` is a native modal and parks the main thread, and the
+ * quit path cannot proceed past a parked thread: the owned cleanup never
+ * finishes, the quit's failsafe is a timer on that same thread and so never
+ * fires, and the app sits windowless until something kills it (QA round 4,
+ * Q-20: a SIGTERM during the first start left the app alive 50 s later). When
+ * a shutdown is in flight the failure is logged instead, where the post-mortem
+ * reads it. */
+const reportBackendFailure = (message: string, fileType: LogFileType): void => {
+	if (backendService.isShuttingDown()) {
+		logger.error(
+			`Backend Error (not shown; the app is shutting down): ${message}`,
+			fileType,
+		);
+		return;
+	}
+	dialog.showErrorBox("Backend Error", message);
+};
 
 /*
  * How this process wants its window to behave. Resolved at load, from
@@ -1037,9 +1062,9 @@ app
 							"Failed to start backend after installation, quitting app",
 							LogFileType.INSTALLER,
 						);
-						dialog.showErrorBox(
-							"Backend Error",
+						reportBackendFailure(
 							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+							LogFileType.INSTALLER,
 						);
 						app.quit();
 						return;
@@ -1052,9 +1077,9 @@ app
 							"Failed to start backend with existing installation, quitting app",
 							LogFileType.BACKEND,
 						);
-						dialog.showErrorBox(
-							"Backend Error",
+						reportBackendFailure(
 							"Failed to start the Local Operator backend service. Please restart the application.",
+							LogFileType.BACKEND,
 						);
 						app.quit();
 						return;
@@ -1266,10 +1291,93 @@ app.on("window-all-closed", () => {
 	app.quit();
 });
 
-/** Holds the first quit once, for the browser host's stop and the session-cookie
- * snapshot it writes. Module scope so the re-quit does not hold itself again; the
- * decision itself lives in `createSessionCookieQuitHold`, which is testable
- * without booting the app. */
+// Electron does not await async listeners. Prevent the first quit, await the
+// same owned cleanup the updater uses, then retry without replacing any hooks.
+/*
+ * ...and never leave the user without a way out.
+ *
+ * Derived from the work the retry waits on, not asserted: `stop(false)` waits
+ * for the start promise to settle, and that promise can be inside console
+ * discovery, interpreter resolution and the owned stop's own escalation, with
+ * the readiness poll's last interval on top. Round 2's version of this constant
+ * named only the probe budget and the stop escalation, which omitted the
+ * `where` execs and the discovery window entirely - so the "60000 ms" it
+ * claimed could be reached mid-cleanup and report a failure that had not
+ * happened (review round 3, F12). Each term is the exported bound it comes
+ * from; changing any of them moves this one.
+ *
+ * What it does NOT cover, stated because a bound that only holds while the
+ * thread is free is not a bound: it is a timer, so it cannot fire while the
+ * main thread is parked. The one way this path parked it - a failure modal
+ * raised while a quit was in flight - is removed (`reportBackendFailure`, QA
+ * round 4 Q-20); any future blocking call on the quit path re-opens the hole.
+ */
+const QUIT_FAILSAFE_MARGIN_MS = 5_000;
+const QUIT_CLEANUP_FAILSAFE_MS =
+	CONSOLE_RESOLUTION_WORST_MS +
+	INTERPRETER_RESOLUTION_WORST_MS +
+	OWNED_STOP_WORST_MS +
+	READINESS_POLL_INTERVAL_MS +
+	QUIT_FAILSAFE_MARGIN_MS;
+let backendQuitPending = false;
+app.on("will-quit", (event) => {
+	if (backendService.isOwnedCleanupComplete()) return;
+	event.preventDefault();
+	if (backendQuitPending) return;
+	backendQuitPending = true;
+	const failsafe = setTimeout(() => {
+		logger.error(
+			`Owned backend cleanup did not finish within ${QUIT_CLEANUP_FAILSAFE_MS} ms; exiting with failure`,
+			LogFileType.BACKEND,
+		);
+		app.exit(1);
+	}, QUIT_CLEANUP_FAILSAFE_MS);
+	// It must not be a reason for the process to stay alive by itself: the cleanup
+	// it is watching is what holds the loop.
+	failsafe.unref();
+	void backendService
+		.stop(false)
+		.then(() => {
+			clearTimeout(failsafe);
+			app.quit();
+		})
+		.catch((error) => {
+			clearTimeout(failsafe);
+			logger.error(
+				"Owned backend cleanup failed; exiting with failure",
+				LogFileType.BACKEND,
+				error,
+			);
+			app.exit(1);
+		});
+});
+
+// Handle before-quit event to ensure proper cleanup
+/*
+ * The session-cookie hold: one quit spent on the browser host's stop, so the
+ * snapshot that stop writes is on disk before the app goes away.
+ *
+ * The stop reads the cookie jar over CDP, so it is asynchronous and its duration
+ * is the host's to inflate; a quit that exited mid-snapshot would leave the next
+ * launch with nothing to restore, and with a marker the next start rejects.
+ * Module scope so the re-quit does not hold itself again, and the decision itself
+ * lives in `createSessionCookieQuitHold`, which is testable without booting the
+ * app. The hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget the
+ * app quits anyway, leaves the marker behind and says so.
+ *
+ * WHY THIS HOLDS `before-quit` AND NOT `will-quit`, where it was authored: the
+ * `will-quit` listener above also owns the backend's owned cleanup, and that
+ * handler has to reach its `event.preventDefault()` in the SYNCHRONOUS part of
+ * the listener - Electron reads the cancelled flag when the synchronous part
+ * returns, so a preventDefault that lands after an `await` cancels nothing, and
+ * `scripts/owned-serve-lifecycle.test.mjs` pins that (two synchronous emits, both
+ * counted as prevented). Awaiting this hold inside that listener would defer its
+ * gate by a microtask and silently drop the owned cleanup. Holding here instead
+ * keeps that gate synchronous AND serialises the two shutdown obligations rather
+ * than racing them: the stop settles first, the re-quit it asks for then reaches
+ * the owned cleanup, and only the pass with both behind it exits. The hold module
+ * is unchanged and says nothing about which event it is asked from.
+ */
 const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
 	isPending: browserHostStopPending,
 	stop: stopBrowserHost,
@@ -1277,241 +1385,19 @@ const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
 	log: (message) => logger.warn(message, LogFileType.BACKEND),
 });
 
-// Stop backend service when app is quitting
-app.on("will-quit", async (event) => {
+app.on("before-quit", async (event) => {
 	/*
-	 * Hold the quit once, for the browser host's stop.
+	 * Hold the first quit for the browser host's stop, then let the ordinary pass
+	 * through: one hold per quit, and the second pass runs the body below.
 	 *
-	 * That stop is what writes the session-cookie snapshot, and it is asynchronous:
-	 * it reads the cookie jar over CDP. Every other step of this shutdown is safe
-	 * to lose, and this one is the feature itself — a quit that exited mid-snapshot
-	 * would leave the next launch with nothing to restore (and, worse, with a
-	 * snapshot the marker has already rejected). `before-quit` starts the stop but
-	 * cannot await it, so the first will-quit is held for the stop alone and the
-	 * app is asked to quit again once it has settled: one hold per quit, and the
-	 * second pass is the ordinary one. A stop that FAILS still re-quits — see the
-	 * hold's own module for why that is the difference between a shutdown and an
-	 * app that refuses to close without saying so.
+	 * `before-quit` starts the stop and cannot await it, so the wait lives here;
+	 * the `will-quit` listener owns the owned cleanup and runs once this has
+	 * settled. A stop that FAILS still re-quits - see the hold's own module for why
+	 * that is the difference between a shutdown and an app that refuses to close
+	 * without saying so.
 	 */
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
-	// Check if backend manager is disabled
-	const isBackendManagerDisabled =
-		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
-
-	// Only stop the backend service if we started it ourselves
-	if (!isBackendManagerDisabled && !backendService.isUsingExternalBackend()) {
-		event.preventDefault();
-		try {
-			logger.info(
-				"App is quitting, stopping the Local Operator backend service...",
-				LogFileType.BACKEND,
-			);
-
-			// Use false for isRestart to indicate this is a final shutdown, not a restart
-			await backendService.stop(false);
-			logger.info(
-				"Local Operator backend service successfully stopped",
-				LogFileType.BACKEND,
-			);
-
-			// Add an additional targeted cleanup as a failsafe
-			logger.info(
-				"Performing additional cleanup to ensure complete termination",
-				LogFileType.BACKEND,
-			);
-
-			// Use more robust cleanup approach
-			if (process.platform === "win32") {
-				// On Windows, use taskkill to find and kill python and local-operator processes
-				try {
-					// Use taskkill to find and kill python processes that might be running the backend
-					require("node:child_process").execSync(
-						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-						{ stdio: "ignore" },
-					);
-
-					// Also try to kill any local-operator.exe processes directly
-					require("node:child_process").execSync(
-						"taskkill /f /im local-operator.exe /t",
-						{ stdio: "ignore" },
-					);
-				} catch (err) {
-					// Ignore errors, this is a best-effort cleanup
-					logger.error(
-						"Error during Windows process cleanup (may be normal):",
-						LogFileType.BACKEND,
-						err,
-					);
-				}
-			} else {
-				// On Unix systems, look for processes with "local-operator serve" in the command line
-				try {
-					// First try graceful termination
-					require("node:child_process").execSync(
-						'pkill -f "local-operator serve"',
-						{ stdio: "ignore" },
-					);
-
-					// Wait a moment for graceful termination
-					await new Promise((resolve) => setTimeout(resolve, 1000));
-
-					// Then force kill any remaining processes
-					require("node:child_process").execSync(
-						'pkill -9 -f "local-operator serve"',
-						{ stdio: "ignore" },
-					);
-				} catch (err) {
-					// Ignore errors, this is a best-effort cleanup
-					logger.error(
-						"Error during Unix process cleanup (may be normal):",
-						LogFileType.BACKEND,
-						err,
-					);
-				}
-			}
-
-			// Verify all processes are terminated
-			let allProcessesTerminated = true;
-			try {
-				if (process.platform === "win32") {
-					// Use tasklist instead of wmic as it's more reliable on newer Windows versions
-					const { stdout: pythonOutput } =
-						require("node:child_process").execSync(
-							`tasklist /fi "imagename eq python.exe" /fo csv`,
-							{ encoding: "utf8" },
-						);
-					// If we find any python processes, check if they're related to local-operator
-					const hasPythonProcesses = pythonOutput
-						?.trim()
-						.includes("python.exe");
-
-					// Also check for local-operator.exe
-					const { stdout: localOperatorOutput } =
-						require("node:child_process").execSync(
-							`tasklist /fi "imagename eq local-operator.exe" /fo csv`,
-							{ encoding: "utf8" },
-						);
-					const hasLocalOperatorProcesses = localOperatorOutput
-						?.trim()
-						.includes("local-operator.exe");
-
-					allProcessesTerminated =
-						!hasPythonProcesses && !hasLocalOperatorProcesses;
-				} else {
-					const { stdout } = require("node:child_process").execSync(
-						`pgrep -f "local-operator serve" || echo ""`,
-						{ encoding: "utf8" },
-					);
-					// If we find any process IDs, they're not all terminated
-					allProcessesTerminated = !stdout?.trim();
-				}
-			} catch (err) {
-				// If there's an error checking, assume processes are terminated
-				logger.error(
-					"Error checking for remaining processes:",
-					LogFileType.BACKEND,
-					err,
-				);
-				allProcessesTerminated = true;
-			}
-
-			if (!allProcessesTerminated) {
-				logger.error(
-					"Some backend processes may still be running, attempting final cleanup",
-					LogFileType.BACKEND,
-				);
-
-				// Final attempt at cleanup
-				try {
-					if (process.platform === "win32") {
-						require("node:child_process").execSync(
-							"taskkill /f /im python.exe /t",
-							{ stdio: "ignore" },
-						);
-					} else {
-						require("node:child_process").execSync("pkill -9 -f python", {
-							stdio: "ignore",
-						});
-					}
-				} catch (finalErr) {
-					// Ignore errors in final cleanup
-					logger.error(
-						"Error during final cleanup (may be normal):",
-						LogFileType.BACKEND,
-						finalErr,
-					);
-				}
-			}
-		} catch (error) {
-			logger.error(
-				"Error stopping the Local Operator backend service:",
-				LogFileType.BACKEND,
-				error,
-			);
-
-			// If the normal stop failed, try the targeted approach
-			logger.info(
-				"Trying alternative termination approach",
-				LogFileType.BACKEND,
-			);
-
-			if (process.platform === "win32") {
-				// On Windows, use taskkill to find and kill python and local-operator processes
-				try {
-					// Use taskkill to find and kill python processes that might be running the backend
-					require("node:child_process").execSync(
-						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-						{ stdio: "ignore" },
-					);
-
-					// Also try to kill any local-operator.exe processes directly
-					require("node:child_process").execSync(
-						"taskkill /f /im local-operator.exe /t",
-						{ stdio: "ignore" },
-					);
-				} catch (_err) {
-					// Ignore errors, this is a best-effort cleanup
-				}
-			} else {
-				// On Unix systems, look for processes with "local-operator serve" in the command line
-				try {
-					require("node:child_process").execSync(
-						'pkill -f "local-operator serve"',
-						{ stdio: "ignore" },
-					);
-
-					// Give processes a moment to terminate gracefully before force killing
-					require("node:child_process").execSync(
-						'sleep 1 && pkill -9 -f "local-operator serve"',
-						{ stdio: "ignore" },
-					);
-				} catch (_err) {
-					// Ignore errors, this is a best-effort cleanup
-				}
-			}
-		} finally {
-			// Ensure app quits even if there was an error stopping the service
-			// Use a longer timeout to ensure the process has time to fully terminate
-			logger.info("Exiting application...", LogFileType.BACKEND);
-			setTimeout(() => {
-				logger.info("Forcing app exit", LogFileType.BACKEND);
-				app.exit(0);
-			}, 2000); // Increased timeout to 2 seconds for more reliable termination
-		}
-	} else if (
-		!isBackendManagerDisabled &&
-		backendService.isUsingExternalBackend()
-	) {
-		logger.info(
-			"Using external backend, skipping termination on app quit",
-			LogFileType.BACKEND,
-		);
-	}
-});
-
-// Handle before-quit event to ensure proper cleanup
-app.on("before-quit", () => {
 	logger.info("App is about to quit", LogFileType.BACKEND);
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
@@ -1534,171 +1420,30 @@ app.on("before-quit", () => {
 	void stopBrowserHost();
 });
 
-// Add a failsafe to ensure child processes are terminated when the app exits
+// The exit event is synchronous: only the current captured handle is eligible.
 process.on("exit", () => {
-	logger.info(
-		"Process exit event detected, ensuring the Local Operator backend service is terminated",
-		LogFileType.BACKEND,
-	);
-	// This is a synchronous event, so we can't use async/await here
 	try {
-		// Force kill any remaining child processes, but ONLY if we started our own backend
-		// and not if we're using an external backend
-		if (
-			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
-			!backendService.isUsingExternalBackend()
-		) {
-			logger.info(
-				"Forcing termination of the Local Operator backend service",
-				LogFileType.BACKEND,
-			);
-
-			// Use a more targeted approach to avoid affecting other services
-			// We'll only try to find and terminate processes that look like our backend
-			logger.info(
-				"Performing final cleanup of any remaining backend processes",
-				LogFileType.BACKEND,
-			);
-
-			if (process.platform === "win32") {
-				// On Windows, use taskkill to find and kill python and local-operator processes
-				try {
-					// Use taskkill to find and kill python processes that might be running the backend
-					require("node:child_process").spawnSync("cmd.exe", [
-						"/c",
-						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-					]);
-
-					// Also try to kill any local-operator.exe processes directly
-					require("node:child_process").spawnSync("cmd.exe", [
-						"/c",
-						"taskkill /f /im local-operator.exe /t",
-					]);
-				} catch (_err) {
-					// Ignore errors, this is a best-effort cleanup
-				}
-			} else {
-				// On Unix systems, look for processes with "local-operator serve" in the command line
-				try {
-					require("node:child_process").spawnSync("bash", [
-						"-c",
-						`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
-					]);
-
-					// Give processes a moment to terminate gracefully before force killing
-					require("node:child_process").spawnSync("bash", [
-						"-c",
-						`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
-					]);
-				} catch (_err) {
-					// Ignore errors, this is a best-effort cleanup
-				}
-			}
-		} else if (
-			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
-			backendService.isUsingExternalBackend()
-		) {
-			logger.info(
-				"Using external backend, skipping force termination",
-				LogFileType.BACKEND,
-			);
-		}
+		backendService.emergencyStopOwned();
 	} catch (error) {
-		logger.error("Error in exit handler", LogFileType.BACKEND, error);
+		logger.error(
+			"Owned backend emergency cleanup failed",
+			LogFileType.BACKEND,
+			error,
+		);
 	}
-
 	posthogClient.shutdown();
 });
 
-// Handle uncaught exceptions to ensure backend is terminated
 process.on("uncaughtException", (error) => {
 	logger.error("Uncaught exception", LogFileType.BACKEND, error);
-
-	// Only attempt to stop the backend service if we started it ourselves
-	if (
-		backendService &&
-		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
-		!backendService.isUsingExternalBackend()
-	) {
-		logger.info(
-			"Attempting to stop our backend service due to uncaught exception",
-			LogFileType.BACKEND,
-		);
-
-		// First try the normal stop method
-		backendService
-			.stop()
-			.catch((stopError) => {
-				logger.error(
-					"Error stopping the Local Operator backend service:",
-					LogFileType.BACKEND,
-					stopError,
-				);
-
-				// If normal stop fails, try the more targeted approach
-				logger.info(
-					"Trying alternative termination approach",
-					LogFileType.BACKEND,
-				);
-
-				if (process.platform === "win32") {
-					// On Windows, use taskkill to find and kill python and local-operator processes
-					try {
-						// Use taskkill to find and kill python processes that might be running the backend
-						require("node:child_process").spawnSync("cmd.exe", [
-							"/c",
-							'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-						]);
-
-						// Also try to kill any local-operator.exe processes directly
-						require("node:child_process").spawnSync("cmd.exe", [
-							"/c",
-							"taskkill /f /im local-operator.exe /t",
-						]);
-					} catch (_err) {
-						// Ignore errors, this is a best-effort cleanup
-					}
-				} else {
-					// On Unix systems, look for processes with "local-operator serve" in the command line
-					try {
-						require("node:child_process").spawnSync("bash", [
-							"-c",
-							`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
-						]);
-
-						// Give processes a moment to terminate gracefully before force killing
-						require("node:child_process").spawnSync("bash", [
-							"-c",
-							`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
-						]);
-					} catch (_err) {
-						// Ignore errors, this is a best-effort cleanup
-					}
-				}
-			})
-			.finally(() => {
-				// Force exit after a timeout
-				setTimeout(() => {
-					logger.info(
-						"Forcing app exit after uncaught exception",
-						LogFileType.BACKEND,
-					);
-					process.exit(1);
-				}, 1000);
-			});
-	} else if (
-		backendService &&
-		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
-		backendService.isUsingExternalBackend()
-	) {
-		logger.info(
-			"Using external backend, skipping termination on uncaught exception",
-			LogFileType.BACKEND,
-		);
-		// Just exit without stopping the external backend
-		process.exit(1);
-	} else {
-		// If no backend service or disabled, just exit
-		process.exit(1);
-	}
+	void backendService
+		.stop(false)
+		.catch((stopError) => {
+			logger.error(
+				"Owned backend cleanup failed",
+				LogFileType.BACKEND,
+				stopError,
+			);
+		})
+		.finally(() => process.exit(1));
 });

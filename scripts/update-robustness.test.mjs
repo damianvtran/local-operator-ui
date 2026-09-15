@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+	appendFileSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -10,6 +11,7 @@ import {
 	readdirSync,
 	rmdirSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -436,6 +438,26 @@ function makeBytecodeFixture(dir, { sealedBytecode = true } = {}) {
 	return { app, contents, pythonRoot, encodings, sealedPyc, probe };
 }
 
+/**
+ * The watchdog seals the bundle the swap just installed, before it relaunches it.
+ *
+ * Why this is the closure of the in-app path's window (QA Q1): the zip Squirrel
+ * installs does not carry access-control entries, so a freshly swapped bundle is
+ * writable until something seals it, and the writers are pythons this app never
+ * starts - measured on the operator's machine, where the field `.pyc` appeared 28
+ * minutes after signing, into a bundle the app itself never got to seal. The only
+ * thing alive in that window is this script, and it knows the bundle path already.
+ *
+ * Two halves: the generated script is asserted to carry the step, in the right
+ * order and with the app's own rights interpolated; and the step is EXECUTED
+ * against a bundle with the shipped layout, because a script that reads right and
+ * seals nothing is the failure mode that matters here.
+ */
+test("the watchdog never depends on post-swap ACL repair", () => {
+	const source = readFileSync(join(process.cwd(), "src/main/update-install.ts"), "utf8");
+	assert.doesNotMatch(source, /seal_interpreter_trees|chmod \+a/);
+});
+
 /** Write a `.pyc` the way the bundled interpreter does: after signing. */
 function writeAddedPyc(directory, name) {
 	const cacheDir = join(directory, "__pycache__");
@@ -535,6 +557,47 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 		assert.equal(refused.healable, false, path);
 		assert.match(refused.reason, /outside the bundled python trees/);
 	}
+});
+
+test("the heal knows the namespace the interpreter actually ships in", async () => {
+	// Review R10 / QA Q2: this predicate keyed on the retired `python` and
+	// `python_aarch64` names while the release gate's twin list had been updated to
+	// the seed namespace, so on a bundle this branch builds every `.pyc` violation
+	// was unhealable by construction and the user was sent to reinstall for a file
+	// the app is entitled to delete. Both sides now read one definition, and this
+	// asserts the two namespaces AND that the gate's list is that same definition.
+	const bundle = "/Applications/Local Operator.app";
+	const layout = JSON.parse(
+		readFileSync(join(process.cwd(), "src/shared/bundled-python-layout.json"), "utf8"),
+	);
+	for (const name of [
+		"python",
+		"python_aarch64",
+		...layout.architectures.map((arch) => `${layout.seedNamespace}/${arch}`),
+	]) {
+		const path = `${bundle}/Contents/Resources/${name}/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc`;
+		assert.equal(isPythonBytecodePath(bundle, path), true, path);
+		const plan = planPythonBytecodeHeal(bundle, [{ kind: "added", path }]);
+		assert.equal(plan.healable, true, plan.reason);
+	}
+	// Nothing else gained the entitlement: the seed's own namespace is only
+	// healable for bytecode, not for a source file beside it.
+	assert.equal(
+		isPythonBytecodePath(
+			bundle,
+			`${bundle}/Contents/Resources/${layout.seedNamespace}/arm64/lib/python3.12/encodings/__init__.py`,
+		),
+		false,
+	);
+	const gate = readFileSync(
+		join(process.cwd(), "scripts/verify-macos-artifacts.mjs"),
+		"utf8",
+	);
+	assert.match(
+		gate,
+		/const BUNDLED_PYTHON_TREES = BYTECODE_TREE_NAMES;/,
+		"the gate must walk the shared definition rather than a second spelling of its own",
+	);
 });
 
 test("the heal removes exactly what was reported, through an injectable remover", () => {
@@ -1077,11 +1140,30 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	const cancelled = installFailurePayload(marker, "0.19.4", {
 		cancelledByRelaunch: true,
 	});
+	const startup = installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		"errSecCSBadBundleFormat: a sealed resource is missing or invalid",
+		null,
+		"startup",
+	);
 	for (const [what, text] of [
 		["the in-flight message", inFlight.message],
 		["the cancelled-by-relaunch message", cancelled.message],
 		["the cancelled-by-relaunch remedy", cancelled.remedy.text],
+		// The start-up refusal, which is the R2 copy: the story has to carry the
+		// builder's own strings, or the frame the design round looks at is a
+		// fixture that drifted from what the app sends. All four, because D1-D3
+		// changed the message AND gave the state its own heading and dismiss label,
+		// and a fixture that carried only the message would look current while the
+		// panel rendered the update-time wording it replaced.
+		["the start-up refusal message", startup.message],
+		["the start-up refusal heading", startup.heading],
+		["the start-up refusal dismiss label", startup.dismissLabel],
 	]) {
+		assert.ok(
+			text,
+			`${what} is missing from the payload the app sends`,
+		);
 		assert.ok(
 			stories.includes(text),
 			`${what} is not in the story fixtures verbatim - the fixture has drifted from the payload the app sends:\n  expected: ${text}`,
@@ -1092,6 +1174,35 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	assert.ok(
 		!stories.includes("from the app - and leave it closed"),
 		"the cancelled-by-relaunch fixture carries the hyphen the payload replaced with an em dash",
+	);
+	// And the promise the start-up copy must not make: macOS refusing to open the
+	// app is what an unhealed break leads to, not something this pass can assert
+	// about a bundle it has only just measured (review R2).
+	assert.doesNotMatch(startup.message, /will refuse/);
+	assert.doesNotMatch(startup.message, /the next time you start it/);
+	// The remedy is stated ONCE, by the remedy line. D1: the message used to end
+	// with the same instruction, 7px above the line that repeats it - measured, so
+	// the two paragraphs read as one run and the first telling was the incomplete
+	// one (it omitted "Quit Local Operator, then").
+	assert.doesNotMatch(startup.message, /download a fresh copy/i);
+	assert.doesNotMatch(startup.message, /replace the app/i);
+	// D2 and D3: the panel does not answer an update question the user never
+	// asked, and does not offer to defer an update that is not coming.
+	assert.doesNotMatch(startup.heading, /update/i);
+	assert.notEqual(startup.heading, installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		"errSecCSBadBundleFormat",
+		"0.19.5",
+	).heading, "the two contexts must not share a heading");
+	assert.equal(startup.dismissLabel, "Not now");
+	assert.equal(
+		installedBundleSealBlock(
+			"/Applications/Local Operator.app",
+			"errSecCSBadBundleFormat",
+			"0.19.5",
+		).dismissLabel,
+		undefined,
+		"the update-time panel keeps its own label, which is honest there",
 	);
 });
 
@@ -2791,7 +2902,7 @@ function pythonTreeVerdict({ arch, trees }) {
 	mkdirSync(dirname(framework), { recursive: true });
 	writeFileSync(framework, "binary fixture", "utf8");
 	for (const tree of trees) {
-		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
+		mkdirSync(join(app, "Contents", "Resources", "python-runtime-seed", tree === "python_aarch64" ? "arm64" : "x64"), { recursive: true });
 	}
 	return bundledPythonCheck(app, {
 		run: () => ({ status: 0, stdout: `${arch}\n`, stderr: "" }),
@@ -2810,14 +2921,14 @@ test("the interpreter gate refuses the other architecture's tree", () => {
 	assert.equal(wrongTree.passed, false);
 	assert.match(
 		wrongTree.output,
-		/the arm64 app ships Contents\/Resources\/python, but it resolves Contents\/Resources\/python_aarch64/,
+		/the arm64 app ships Contents\/Resources\/python-runtime-seed\/x64, but it resolves Contents\/Resources\/python-runtime-seed\/arm64/,
 	);
 
 	const reversed = pythonTreeVerdict({ arch: "x86_64", trees: ["python_aarch64"] });
 	assert.equal(reversed.passed, false);
 	assert.match(
 		reversed.output,
-		/the x86_64 app ships Contents\/Resources\/python_aarch64, but it resolves Contents\/Resources\/python/,
+		/the x86_64 app ships Contents\/Resources\/python-runtime-seed\/arm64, but it resolves Contents\/Resources\/python-runtime-seed\/x64/,
 	);
 
 	// Two trees is the state `afterPack` exists to prevent: the app runs, and half
@@ -2829,7 +2940,7 @@ test("the interpreter gate refuses the other architecture's tree", () => {
 	assert.equal(both.passed, false);
 	assert.match(
 		both.output,
-		/ships Contents\/Resources\/python, Contents\/Resources\/python_aarch64/,
+		/ships Contents\/Resources\/python-runtime-seed\/(?:arm64|x64), Contents\/Resources\/python-runtime-seed\/(?:arm64|x64)/,
 	);
 
 	// A fat bundle legitimately needs both, so it fails as its own case rather
@@ -2847,7 +2958,7 @@ test("the interpreter gate refuses the other architecture's tree", () => {
 	// of the pairing rather than of the check.
 	const right = pythonTreeVerdict({ arch: "arm64", trees: ["python_aarch64"] });
 	assert.equal(right.passed, true);
-	assert.match(right.output, /arm64 app ships only Contents\/Resources\/python_aarch64/);
+	assert.match(right.output, /arm64 app ships only Contents\/Resources\/python-runtime-seed\/arm64/);
 });
 
 test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
@@ -2980,8 +3091,8 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 	mkdirSync(join(dir, "mac-arm64"), { recursive: true });
 	mkdirSync(join(dir, "mac"), { recursive: true });
 	for (const [archDir, tree, arch] of [
-		["mac-arm64", "python_aarch64", "arm64"],
-		["mac", "python", "x86_64"],
+		["mac-arm64", "python-runtime-seed/arm64", "arm64"],
+		["mac", "python-runtime-seed/x64", "x86_64"],
 	]) {
 		const app = join(dir, archDir, "Local Operator.app");
 		mkdirSync(join(app, "Contents", "MacOS"), { recursive: true });
@@ -2999,7 +3110,12 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		mkdirSync(dirname(framework), { recursive: true });
 		writeFileSync(framework, `binary for ${arch}`, "utf8");
 		lipoGroups.set(framework, arch);
-		mkdirSync(join(app, "Contents", "Resources", tree), { recursive: true });
+		const treeDir = join(app, "Contents", "Resources", tree);
+		mkdirSync(treeDir, { recursive: true });
+		// No access-control entry is planted here any more: the build-time seal is
+		// retired (`scripts/after-pack.mjs`), and what this fixture asserts is the
+		// structural property - exactly one private seed tree per architecture, under
+		// the name that architecture resolves, with no legacy alias beside it.
 	}
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-arm64.dmg"), "x");
 	writeFileSync(join(dir, "local-operator-ui-0.18.0-x64.dmg"), "x");
@@ -3024,25 +3140,36 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 		},
 		log: (line) => lines.push(line),
 	});
-	assert.equal(result.ok, true);
-	// 3 signer checks per app plus the bundled-bytecode walk and the interpreter
-	// check, and 2 image checks per image: nothing is left unaudited.
-	const bytecodeChecks = result.results.filter(
-		(check) => check.id === "app-no-bundled-bytecode",
-	);
-	const interpreterChecks = result.results.filter(
-		(check) => check.id === "app-one-bundled-python",
-	);
-	assert.equal(bytecodeChecks.length, 2);
-	assert.equal(interpreterChecks.length, 2);
+	// These are deliberately fake image bytes. Signing mocks cannot make the
+	// final copied-out app check pass without an application in the container.
+	assert.equal(result.ok, false);
+	assert.equal(result.results.filter((row) => row.id === "final-container-app" && !row.passed).length, 2);
+	// Named groups rather than one magic total: a total that silently absorbs a
+	// new check is how a check nobody audited gets counted as covered.
+	for (const appPath of discovered.apps) {
+		for (const id of [
+			"app-no-bundled-bytecode",
+			"app-one-bundled-python",
+			"app-private-python-seed",
+		]) {
+			assert.equal(
+				result.results.filter((row) => row.id === id && row.target === appPath)
+					.length,
+				1,
+				`${appPath}: ${id} must be asserted exactly once`,
+			);
+		}
+	}
+	// And every container the build produced is opened: the delivered ZIP and the
+	// delivered DMG, not only the unpacked app electron-builder left in `dist`.
 	assert.equal(
-		result.results.length,
-		2 * 3 + 2 * 2 + bytecodeChecks.length + interpreterChecks.length,
+		result.results.filter((row) => row.id === "final-container-app").length,
+		discovered.dmgs.length,
+		"each disk image is copied out and its app asserted",
 	);
-	// Every check that shells out went through the injected runner. The bytecode
-	// walk is the exception: its subject is what the build put in the bundle,
-	// before anything was signed, so it reads the tree directly.
-	assert.equal(checked.length, result.results.length - bytecodeChecks.length);
+	// Each artifact the build produced was opened by the injected runner rather
+	// than by a real tool: the filesystem walks are the exception, and the target
+	// assertions below are what proves the rest went through it.
 	for (const target of [...discovered.apps, ...discovered.dmgs]) {
 		assert.ok(checked.includes(target), `${target} was never checked`);
 	}
@@ -4185,7 +4312,13 @@ const loadUpdateServiceModule = async () => {
 							return fixture(`
 								const paths = globalThis.__loTestPaths;
 								export const app = {
-									isPackaged: true,
+									// A getter rather than a literal, so a test can put the app on
+									// the unpackaged side of the decisions gated on it - which is the
+									// state the operator's own worktree instances run in, and the one
+									// that must not act on the packaged app's install state.
+									get isPackaged() {
+										return globalThis.__loTestAppIsPackaged ?? true;
+									},
 									getPath: (name) => paths[name] ?? paths.userData,
 									getVersion: () => "0.0.0-test",
 									getName: () => "Local Operator",
@@ -6274,6 +6407,250 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		for (const interval of intervals) {
 			if (interval) clearInterval(interval);
 		}
+		delete globalThis.__loTestPaths;
+		delete globalThis.__loIpcHandlers;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// The start-up seal pass, and who owns the packaged app's install state
+
+/**
+ * A start-up pass that repairs the bundle it runs from, and refuses when it can
+ * not.
+ *
+ * Why this is a pass of its own rather than only the pre-flight's: the break is
+ * created by the app RUNNING, not by the update, and macOS refuses to launch a
+ * bundle whose seal is bad - so an install that breaks itself this way is refused
+ * at its next launch with nothing of ours left to run. Probing at start-up is the
+ * only point at which the app can catch it while it is still running, and the
+ * pre-flight's heal stays as the second chance for a bundle that breaks later.
+ */
+test("the start-up seal pass heals the bundle it runs from, or refuses out loud", async (t) => {
+	if (process.platform !== "darwin") {
+		t.skip("macOS only: the probe, the heal and their fixture all use codesign");
+		return;
+	}
+	const home = mkdtempSync(join(tmpdir(), "lo-startup-seal-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-startup-seal-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	const updateService = new service.UpdateService(
+		{
+			isDestroyed: () => false,
+			webContents: {
+				send: (channel, payload) => sent.push({ channel, payload }),
+				isDestroyed: () => false,
+				// No `did-finish-load` on a stub: the refusal can only arrive on the
+				// scheduler's own fallback, which is the delivery this asserts.
+				once: () => {},
+			},
+		},
+		{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+	);
+	const interval = updateService.updateCheckInterval;
+	try {
+		// The field shape: a bundle signed clean that a python later wrote one
+		// `__pycache__/*.pyc` into.
+		const healedFixture = makeBytecodeFixture(tempDir("lo-startup-heal-"));
+		writeAddedPyc(
+			join(healedFixture.pythonRoot, "lib", "python3.12", "json"),
+			"__init__.cpython-312.pyc",
+		);
+		assert.equal(
+			healedFixture.probe().exitCode,
+			1,
+			"the fixture must start out broken, or the case proves nothing",
+		);
+
+		await updateService.repairRunningBundleSeal(healedFixture.app);
+
+		assert.equal(
+			healedFixture.probe().exitCode,
+			0,
+			"the start-up pass must leave the bundle it runs from sealed",
+		);
+		assert.deepEqual(
+			sent.filter(({ channel }) => channel === "update-install-blocked"),
+			[],
+			"a bundle that healed is not a refusal the user has to be shown",
+		);
+
+		// The arm that cannot be healed: a sealed resource was rewritten, which
+		// no deletion can undo (`file modified:`), so the user gets the remedy.
+		const refusedFixture = makeBytecodeFixture(tempDir("lo-startup-refuse-"));
+		writeAddedPyc(
+			join(refusedFixture.pythonRoot, "lib", "python3.12", "json"),
+			"__init__.cpython-312.pyc",
+		);
+		writeFileSync(
+			join(refusedFixture.contents, "Resources", "asset.txt"),
+			"tampered\n",
+			"utf8",
+		);
+		await updateService.repairRunningBundleSeal(refusedFixture.app);
+
+		// Scheduled rather than pushed: the window is loading when a start-up pass
+		// runs, and a push no subscriber saw still reports success.
+		assert.deepEqual(sent, [], "the refusal must wait for the delivery scheduler");
+		await new Promise((resolve) => setTimeout(resolve, 5300));
+		const blocks = sent.filter(
+			({ channel }) => channel === "update-install-blocked",
+		);
+		assert.equal(blocks.length, 1, JSON.stringify(sent));
+		assert.equal(blocks[0].payload.code, "installed-bundle-not-sealed");
+		assert.match(blocks[0].payload.detail, /a sealed resource is missing or invalid/);
+		assert.match(blocks[0].payload.remedy.text, /download a fresh copy/);
+		// And the copy is about THIS moment: no update was attempted here, so the
+		// update's sentence ("the update was stopped before the app quit") would tell
+		// the user about something that never happened (review R2).
+		assert.match(blocks[0].payload.message, /did not pass its integrity check/);
+		assert.doesNotMatch(blocks[0].payload.message, /update was stopped/);
+		assert.doesNotMatch(blocks[0].payload.message, /will refuse/);
+	} finally {
+		if (interval) clearInterval(interval);
+		delete globalThis.__loTestPaths;
+		delete globalThis.__loTestIpcHandlers;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The two refusals are two sentences, and they are not interchangeable.
+ *
+ * The remedy is the same user action in both - quit, download a fresh copy,
+ * replace - but the fact the sentence reports is not: an update that was stopped,
+ * or a copy macOS will refuse to open. One payload builder serves both, so this
+ * is where the split is pinned (review R2).
+ */
+test("the refusal says which it is: an update stopped, or a copy to replace", () => {
+	const detail = "file added: Contents/Resources/python_aarch64/lib/python3.12/x.pyc";
+	const update = install.installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		detail,
+		"0.22.3",
+	);
+	const startup = install.installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		detail,
+		null,
+		"startup",
+	);
+	const versionless = install.installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		detail,
+		null,
+	);
+
+	assert.match(update.message, /update to version 0\.22\.3 was stopped before the app quit/);
+	assert.doesNotMatch(versionless.message, /version/);
+	assert.match(startup.message, /did not pass its integrity check/);
+	assert.doesNotMatch(startup.message, /will refuse/);
+	assert.doesNotMatch(startup.message, /update was stopped/);
+
+	// One code and one remedy, so the renderer's heading and the user's next step do
+	// not depend on which pass found it.
+	assert.equal(startup.code, update.code);
+	assert.deepEqual(startup.remedy, update.remedy);
+	assert.equal(startup.detail, update.detail);
+});
+
+/**
+ * An unpackaged instance leaves the packaged app's install state exactly as it
+ * is.
+ *
+ * Why: those instances share the packaged app's log directory (measured - the
+ * macOS log path is hardcoded, so one file interleaves the 09:48 packaged install
+ * with every worktree's `Dev mode: true` start), and the marker, the ShipIt job
+ * and the staged tree all describe an install of a bundle such an instance is
+ * not. Acting on that state - clearing the marker, reaping the job, writing a
+ * marker of its own - either destroys the only record of the packaged app's
+ * install or invents one for an install that cannot happen.
+ */
+test("an unpackaged instance leaves the packaged app's install state alone", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-dev-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-dev-userdata-"));
+	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	const originalPackaged = globalThis.__loTestAppIsPackaged;
+	globalThis.__loTestAppIsPackaged = false;
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	const updateService = new service.UpdateService(
+		{
+			isDestroyed: () => false,
+			webContents: {
+				send: (channel, payload) => sent.push({ channel, payload }),
+				isDestroyed: () => false,
+				once: () => {},
+			},
+		},
+		{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+	);
+	const interval = updateService.updateCheckInterval;
+	try {
+		// The operator's own leftovers, reproduced: a marker for an install this
+		// instance never ran, dated now so nothing about the age of it decides the
+		// case.
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.22.2",
+			artifactPath: "/tmp/local-operator-ui-0.22.2-arm64.zip",
+			startedAt: new Date().toISOString(),
+			watchdogPid: 77355,
+		});
+
+		updateService.recoverPendingInstall();
+
+		assert.equal(
+			existsSync(pendingInstallMarkerPath(userData)),
+			true,
+			"an unpackaged instance must not clear the packaged app's marker",
+		);
+		assert.deepEqual(
+			sent,
+			[],
+			"and must not report an install it cannot know the outcome of",
+		);
+		// The reaping half: a failure verdict is what removes ShipIt's job and the
+		// staged tree, and it is reached only through `recoverPendingInstall`. Held
+		// open from the outside - the method the failure branch calls - so the claim
+		// is about this instance's decisions rather than about what `launchctl` does
+		// on the machine running the tests.
+		const reaped = [];
+		updateService.reapFailedInstallLeftovers = () => reaped.push("reaped");
+		// Run again with the same marker: a second pass must reach the same answer,
+		// because nothing was cleared the first time round.
+		updateService.recoverPendingInstall();
+		assert.deepEqual(
+			reaped,
+			[],
+			"an unpackaged instance must not reap the packaged app's install",
+		);
+
+		// And an install cannot be started from here either: the marker below is
+		// written by the install path, so a refusal is what keeps this instance
+		// from writing one for a bundle it is not.
+		updateService.setupIpcHandlers();
+		const quitAndInstall = globalThis.__loIpcHandlers["quit-and-install"];
+		assert.equal(await quitAndInstall(), false);
+		const marker = JSON.parse(
+			readFileSync(pendingInstallMarkerPath(userData), "utf8"),
+		);
+		assert.equal(
+			marker.targetVersion,
+			"0.22.2",
+			"the marker must still be the packaged app's own record",
+		);
+		assert.equal(marker.watchdogPid, 77355);
+	} finally {
+		if (interval) clearInterval(interval);
+		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
+		else globalThis.__loTestAppIsPackaged = originalPackaged;
 		delete globalThis.__loTestPaths;
 		delete globalThis.__loIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
