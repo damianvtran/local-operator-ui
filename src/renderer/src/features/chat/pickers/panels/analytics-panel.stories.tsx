@@ -282,6 +282,35 @@ export const PopulatedHover: Story = {
 };
 
 /**
+ * The same panel with a NEAR-ZERO day under the pointer.
+ *
+ * Review round 1 (D7) left this case unverified: every hover frame pointed at
+ * Sep 7, the shortest NON-zero bar, which at 834k of the peak's 1.9M is a tall
+ * bar by any measure. What that cannot answer is whether a fill step is findable
+ * on a bar of a few pixels, where the step has almost no area to read — and
+ * `obsidian` and `monokai` are the two palettes where the answer is not obvious.
+ *
+ * So the first day here carries 60k against the same 1.9M peak, about 3 percent
+ * — a bar a few pixels tall — and the FIRST bar is what the rig's hover selector
+ * lands on, so the same entry that produces `populated-hover` produces this one.
+ * The ZERO day (Sep 9) is deliberately not the target: a zero bucket renders no
+ * rectangle at all, so the rig's own "a selector that matched nothing THROWS"
+ * rule would reject the frame rather than photograph an unreadable one.
+ */
+export const PopulatedHoverShallow: Story = {
+	args: {
+		...base,
+		data: {
+			...populated,
+			daily: daily([["2026-09-07", 20_000, 200_000], ...DAILY.slice(1)]),
+		},
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/**
  * An empty ANSWER — the one state where sections 2-4 are not rendered at all.
  *
  * A chart with no data invents an axis, so the whole body is one sentence
@@ -386,7 +415,17 @@ export const ThirtyDays: Story = {
 	},
 };
 
-/** This session only: the aggregate narrows, the daily chart says it does not. */
+/**
+ * This session only: the aggregate narrows, the daily chart says it does not.
+ *
+ * The scoped aggregate is the ONE provider's own, spread rather than restated
+ * (review round 1, D5): the previous fixture narrowed `calls`, `ok_calls` and
+ * the cost and left the TOKEN fields at their all-sessions values, so the
+ * `Tokens` and `Cache hit rate` tiles showed the wide scope's numbers beside a
+ * scoped `Requests` and `Cost` — and beside a table reading the narrow ones,
+ * which is how the designer found it. The panel is not at fault: all four tiles
+ * read `data.aggregate`, and all four move together once the fixture narrows it.
+ */
 export const ThisSessionOnly: Story = {
 	args: {
 		...base,
@@ -394,11 +433,7 @@ export const ThisSessionOnly: Story = {
 		data: {
 			...populated,
 			aggregate: aggregate({
-				...populated.aggregate,
-				calls: 52,
-				ok_calls: 52,
-				cost_micro: 8_120_000,
-				cost_known_calls: 52,
+				...provider(52, 900_000, 8_120_000, 0.72),
 				by_provider: { anthropic: provider(52, 900_000, 8_120_000, 0.72) },
 				by_session: { a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.72) },
 			}),

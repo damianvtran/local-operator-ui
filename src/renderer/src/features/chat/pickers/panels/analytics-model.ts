@@ -130,6 +130,33 @@ export const totalTokens = (aggregate: DesktopUsageAggregate): number =>
 	aggregate.context_tokens + aggregate.output_tokens;
 
 /**
+ * ONE name for one measure, used by the tile and by both tables' column.
+ *
+ * Review round 1 (D3) caught the tile saying `Cache read` above a column saying
+ * `Cache hit` with nothing in the frame to say they are the same number from the
+ * same function. The name is the backend's own (`cache_hit_rate`, the property
+ * the terminal prints), which is also the one that cannot be misread as
+ * read/(read+written) — the reading the tile's note used to imply (D5b).
+ *
+ * A constant rather than two literals because the two surfaces have to agree by
+ * construction: a rename that missed one of them is the defect the review round
+ * found, and a single export cannot drift.
+ */
+export const CACHE_HIT_LABEL = "Cache hit rate";
+
+/**
+ * What that number is, and what `—` means, in one sentence.
+ *
+ * Rendered as a visible line under both tables AND folded into each table's own
+ * accessible name, because the `title` attribute this replaced (review round 1,
+ * D4) is reachable by neither a keyboard nor a touch reader and appears in no
+ * captured frame — so neither the denominator nor the difference between `0%`
+ * and `—` was ever stated anywhere a reader could find it.
+ */
+export const CACHE_HIT_MEANING =
+	"Cache reads as a share of read context tokens; — means no call reported a context total.";
+
+/**
  * `cache_read_tokens / context_tokens`, or `null` when there is no denominator.
  *
  * The ONE definition of the cache hit rate on this side, read by the "Cache
