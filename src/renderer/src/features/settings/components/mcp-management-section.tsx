@@ -61,8 +61,14 @@ import type { DesktopMcpState } from "../../../../../shared/desktop-control-cont
 import { foreignMcpConfigOrigin } from "../../../../../shared/mcp-foreign-config-origin";
 import { McpAuthDialog } from "../../chat/components/run-details/mcp-auth-dialog";
 import {
+	type McpFailure,
+	type McpFailurePhase,
+	mcpFailure,
+} from "../../chat/components/run-details/mcp-failure";
+import {
 	type McpServerRow,
 	deriveMcpServers,
+	mcpGrantInFlight,
 } from "../../chat/components/run-details/run-detail-model";
 import { useMcpRemedy } from "../../chat/components/run-details/use-mcp-remedy";
 import { parseMcpIntent } from "../../chat/pickers/mcp-command";
@@ -143,6 +149,29 @@ type MCPAction =
  * the last token alone explains, including the operator's own `reauth hubspot`,
  * so the note never appears on the case this rule exists for.
  */
+/**
+ * The phase each control on this surface sends, for the failure copy.
+ *
+ * One row per verb, so a refusal cannot be described with another verb's sentence:
+ * "the server could not be removed" and "the server could not be reconnected" are
+ * different facts about a row, and the wire says neither.
+ */
+const MCP_ACTION_PHASE: Record<MCPAction, McpFailurePhase> = {
+	// A read: its own failures are already reported as the list's, not as an action.
+	list: "status",
+	add: "add",
+	remove: "remove",
+	reload: "reload",
+	connect: "reconnect",
+	probe: "probe",
+	disconnect: "disconnect",
+	login: "grant",
+	logout: "disconnect",
+	reauth: "grant",
+	status: "status",
+	cancel: "cancel",
+};
+
 export type McpTarget =
 	| { kind: "matched"; name: string; unresolved: string | null }
 	| { kind: "miss"; asked: string }
@@ -193,7 +222,15 @@ const AddServerForm: FC<{
 	const [args, setArgs] = useState("");
 	const [url, setUrl] = useState("");
 	const [scope, setScope] = useState<"global" | "project">("global");
-	const [error, setError] = useState<string | null>(null);
+	/**
+	 * The failed add, already classified.
+	 *
+	 * An add is a control on this surface like any other, so its refusal is the
+	 * same shape of fact: `mcp.control` answers every one of them with the same
+	 * 409, and a form that printed it verbatim told the user about "server
+	 * ownership" instead of about the file it could not write.
+	 */
+	const [error, setError] = useState<McpFailure | null>(null);
 	const [saving, setSaving] = useState(false);
 
 	const submit = async () => {
@@ -226,11 +263,10 @@ const AddServerForm: FC<{
 			setUrl("");
 			onAdded();
 		} catch (cause) {
-			setError(
-				cause instanceof Error
-					? cause.message
-					: "The server could not be added.",
-			);
+			// No running-grant read here: an add is refused by the config's own
+			// ownership rules rather than by the one-grant lock, and claiming the lock
+			// would be a cause this surface did not establish.
+			setError(mcpFailure("add", cause, false));
 		} finally {
 			setSaving(false);
 		}
@@ -331,7 +367,16 @@ const AddServerForm: FC<{
 					This project
 				</Button>
 			</fieldset>
-			{error && <Alert variant="danger">{error}</Alert>}
+			{error && (
+				<Alert variant="danger">
+					<p>{error.message}</p>
+					{error.detail ? (
+						<p className="font-mono text-mono-sm" title={error.detail}>
+							{error.detail}
+						</p>
+					) : null}
+				</Alert>
+			)}
 			<div>
 				<Button
 					type="submit"
@@ -379,7 +424,16 @@ export const McpManagementSection: FC<{
 	);
 	const readSessionId = sessionId ?? borrowed?.session_id;
 	const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-	const [actionError, setActionError] = useState<string | null>(null);
+	/**
+	 * The last failed control on this surface, already CLASSIFIED.
+	 *
+	 * A string would be the backend's own sentence, which is the thing this
+	 * section's reader cannot act on: `mcp.control` collapses every refusal into
+	 * one 409 and answers an unbound session with one 503 (UX review round 2, U1).
+	 * `mcp-failure.ts` turns either into a sentence in the user's terms, and the
+	 * row it is about is on this same screen, under this alert.
+	 */
+	const [actionError, setActionError] = useState<McpFailure | null>(null);
 	const [showAdd, setShowAdd] = useState(false);
 	const [authTarget, setAuthTarget] = useState<{
 		row: McpServerRow;
@@ -486,14 +540,23 @@ export const McpManagementSection: FC<{
 				});
 				refresh();
 			} catch (cause) {
+				// The phase is the VERB this section sent, because a refusal names
+				// nothing and the sentence has to say what the user was trying to do.
+				// `grantRunning` comes from the same shared document the hook reads, so
+				// the one known cause of a refusal is available here too.
+				const cached = queryClient.getQueryData<DesktopMcpState>(
+					mcpKeys.list(readSessionId),
+				);
 				setActionError(
-					cause instanceof Error
-						? cause.message
-						: "The MCP change could not be completed.",
+					mcpFailure(
+						MCP_ACTION_PHASE[action],
+						cause,
+						mcpGrantInFlight(cached?.operations),
+					),
 				);
 			}
 		},
-		[readSessionId, refresh],
+		[queryClient, readSessionId, refresh],
 	);
 
 	if (!enabled) {
@@ -544,7 +607,16 @@ export const McpManagementSection: FC<{
 			sectionRef={sectionRef}
 		>
 			<div className="flex flex-col gap-4">
-				{actionError && <Alert variant="danger">{actionError}</Alert>}
+				{actionError && (
+					<Alert variant="danger">
+						<p>{actionError.message}</p>
+						{actionError.detail ? (
+							<p className="font-mono text-mono-sm" title={actionError.detail}>
+								{actionError.detail}
+							</p>
+						) : null}
+					</Alert>
+				)}
 				{/*
 				 * Which conversation this list is. The sentence NAMES it, and that is a
 				 * requirement rather than a nicety: the statuses below are that

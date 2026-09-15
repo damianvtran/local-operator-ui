@@ -42,8 +42,14 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { McpAuthDialog } from "./mcp-auth-dialog";
 import {
+	MCP_SETTINGS_ACTION_LABEL,
+	mcpServerSettingsRoute,
+} from "./mcp-failure";
+import {
+	MCP_CONTROL_WORD,
 	type McpServerRow,
 	mcpServersAreCold,
 	mcpTally,
@@ -84,19 +90,6 @@ const MCP_INK: Record<string, string> = {
 
 /** The mark for every word this build has not been taught. */
 const MCP_UNKNOWN_ICON = CircleHelp;
-
-/**
- * The app's own control words for the remedies this surface can carry out.
- *
- * The same words the Settings section uses, because one state must not acquire
- * two spellings (`§ 7.2` amended): the confirmation is the shared modal and the
- * controls speak the shared vocabulary.
- */
-const MCP_CONTROL_WORD = {
-	grant: "Grant account access",
-	key: "Enter API key",
-	reconnect: "Reconnect",
-} as const;
 
 /**
  * What the row's action line says while a grant is in the backend's hands.
@@ -256,7 +249,32 @@ const McpActionLine = ({
 		 */
 		return row.keyNames.length > 0 ? keyControl : words(MCP_CREDENTIALS_WORD);
 	}
-	if (refusal === "refused") return words(MCP_REFUSED_WORD);
+	/*
+	 * An unexplained refusal was the end of the road here: the sentence replaced
+	 * the row's control and nothing else was offered, so a refusal that is not
+	 * about OAuth at all — a config this app must not write, a server that needs
+	 * reloading — left the reader with a diagnosis and no move (UX review round 2,
+	 * U1). The sentence stays, because it is true and it is in the app's own words;
+	 * beside it is the route to the row that owns everything this surface does not
+	 * (`Reload`, `Remove` with its scope, the server's own `Sign in`).
+	 */
+	if (refusal === "refused")
+		return (
+			<span className={cn("flex min-w-0 flex-wrap items-baseline gap-2")}>
+				{words(MCP_REFUSED_WORD)}
+				<Button
+					asChild
+					variant="link"
+					size="sm"
+					className="self-start"
+					data-mcp-failure-action="settings"
+				>
+					<Link to={mcpServerSettingsRoute(row.name)}>
+						{MCP_SETTINGS_ACTION_LABEL}
+					</Link>
+				</Button>
+			</span>
+		);
 
 	if (!row.remedy) return null;
 	if (row.remedy.kind === "words") return words(row.remedy.label);
@@ -349,7 +367,14 @@ const McpRow = ({
 					</span>
 				)}
 			</span>
-			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+			{/*
+			 * The column's own gap is the section's 4px tier, and it is here because of
+			 * the measurement in design review round 3 (D2): with no gap the name, the
+			 * remedy and the diagnosis sat on one ~6px pitch against the section's own
+			 * 24px rhythm, so the CLI incantation read as the second sentence of the
+			 * remedy line rather than as the annotation under it.
+			 */}
+			<div className={cn("flex min-w-0 flex-1 flex-col gap-1")}>
 				{/*
 				 * `min-w-0` on the row so the NAME absorbs the pressure: `§ 8` makes
 				 * it the only segment allowed to shrink, and the fixed three (word,
@@ -377,7 +402,21 @@ const McpRow = ({
 					 * the section refuses, and the cold line says it once instead.
 					 */}
 					{!cold && (
-						<span className={cn("shrink-0 text-meta", inkFor(row.status))}>
+						/*
+						 * The state word takes the NAME's type step and a medium weight, and
+						 * that is D2's other half judged as ranking rather than as hue: the word
+						 * that says why the row is red was the DARKEST text on it (5.4:1 against
+						 * the remedy's 8.8:1 and the diagnosis's 7.5:1), so a problem row read as
+						 * a disabled one. The role is unchanged — `danger` is the app's failure
+						 * ink and `branding.md` § 2 owns it — and the step that fixed the ranking
+						 * is the type scale's, because the alternative is inventing a colour.
+						 */
+						<span
+							className={cn(
+								"shrink-0 text-body-sm font-medium",
+								inkFor(row.status),
+							)}
+						>
 							{row.status}
 						</span>
 					)}
@@ -440,9 +479,16 @@ const McpRow = ({
 					onPress={onPress}
 				/>
 				{row.errorText ? (
+					/*
+					 * The diagnosis is the QUIETEST line in the row (`ink-dim`), one step
+					 * below the remedy's own sentence and two below the action: it is the
+					 * machine's verbatim reason, not an instruction, and D2 measured it as the
+					 * second-brightest text in the panel — above the state word it was
+					 * supposedly qualifying.
+					 */
 					<span
 						className={cn(
-							"line-clamp-2 font-mono text-ink-muted text-mono-sm leading-4",
+							"line-clamp-2 font-mono text-ink-dim text-mono-sm leading-4",
 						)}
 						title={row.errorText}
 					>
