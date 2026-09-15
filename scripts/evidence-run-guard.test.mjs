@@ -174,6 +174,14 @@ test(
 			 * beside it.
 			 */
 			"capture-evidence.mjs",
+			/*
+			 * Both CLIs now resolve their own entry point through this module
+			 * (`scripts/entry-point.mjs`), which is the same edge as any other: without it
+			 * in the relocated set the copy fails to IMPORT - loudly, and before it reads
+			 * anything - which is how this fixture found it. Nothing about the module is
+			 * stubbed here either, for the same reason as above.
+			 */
+			"entry-point.mjs",
 		]) {
 			copyFileSync(join(dirname(guard), name), join(scripts, name));
 		}

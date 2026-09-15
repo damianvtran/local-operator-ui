@@ -36,7 +36,7 @@
  * that a version was ever reachable by a user.
  */
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 /** A release tag this repository publishes: `v<major>.<minor>.<patch>`. */
 const TAG_RE = /^v(\d+)\.(\d+)\.(\d+)$/;
@@ -203,9 +203,6 @@ function main() {
 	}
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	main();
 }
