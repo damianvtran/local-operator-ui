@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -28,7 +29,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText} from "./src/renderer/src/shared/hooks/use-message-input";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -98,8 +99,11 @@ const {
 	LEADING_SLASH_CODE,
 	LEADING_SLASH_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
+	restoreSubmittedAttachments,
 	restoreSubmittedText,
+	useConversationInputStore,
 	withholdsRetryHint,
 } = module;
 function reset() {
@@ -1129,6 +1133,190 @@ test("a refusal hands the composer the same text on both arms", async () => {
 	// user is owed.
 	for (const draft of [named, created])
 		assert.equal(draft.admissionAttempted, false);
+});
+
+/*
+ * R17: a refusal owes the composer its FILES as well as its words.
+ *
+ * The cases above pin the text half of the retained payload. The attachments
+ * live in the same row but a DIFFERENT store: the composer reads its chips from
+ * `inputByConversation[conversationId]`, they were staged under the identity the
+ * flip replaced, and so on this arm the chip row is empty and the row is the only
+ * survivor. With no route back, pressing Send on the restored text went out with
+ * the wording and WITHOUT the file, silently - and the resend retired the row
+ * that recorded what was owed, so nothing on screen or in the store disagreed
+ * with the user's belief that they had sent their file. Silent and partial is the
+ * worst shape a failure can take, which is why this one is fixed here rather than
+ * recorded as pre-existing (the retention/restore path is this branch's).
+ *
+ * Asserted at the seam that ships, not at the store alone: the store's own answer
+ * (`refusedBeforeAdmissionAttachments`), the shipped box rule applied to the
+ * identity the send MINTED, and then the list the very next Send would carry -
+ * which is the chip row, and is what "sends exactly what it shows" means.
+ */
+test("a restored draft still carries an attachment, not just the text", async () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "555555555555",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft();
+	const text = "/usage\ncreated-session arm line two";
+	const attachments = ["/tmp/notes.txt", "/tmp/screenshot.png"];
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments }),
+		/./,
+	);
+	const draft = store.getState().drafts[key];
+	// The store kept the file list, as it kept the text - the same row, the same
+	// pre-request write, and a refusal that admitted nothing.
+	assert.deepEqual(draft.submittedAttachments, attachments);
+	assert.deepEqual(refusedBeforeAdmissionAttachments(draft), attachments);
+
+	// The composer that mounts after the flip reads its chips under the id this
+	// send minted, and has never seen these files: empty chip row, no way to learn.
+	const postFlipIdentity = panelIdentityFor(
+		store.getState().activeDraftKey,
+		draft.sessionId,
+	);
+	assert.equal(postFlipIdentity, "555555555555");
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[postFlipIdentity],
+		undefined,
+	);
+
+	// The shipped rule is what puts them back, through the composer's own
+	// empty-slot rule (the box it mounts with is empty, and so is its chip row).
+	const restored = restoreSubmittedAttachments(
+		[],
+		refusedBeforeAdmissionAttachments(draft),
+	);
+	assert.deepEqual(restored, attachments);
+	for (const path of restored)
+		useConversationInputStore
+			.getState()
+			.addAttachment(postFlipIdentity, { id: `id-${path}`, path });
+
+	// THE REGRESSION: the payload the NEXT Send carries. Before the fix this read
+	// `[]` - the message went out with the wording and without the file - and this
+	// is the assertion that failed on the pre-fix tree.
+	assert.deepEqual(
+		useConversationInputStore
+			.getState()
+			.inputByConversation[postFlipIdentity].attachments.map((a) => a.path),
+		attachments,
+	);
+
+	// And the rule is the same one the text uses: a composer that already holds
+	// the user's own file keeps it and adopts nothing, because overwriting chips
+	// the user just picked is loss - the state the named arm is in by construction.
+	assert.deepEqual(
+		restoreSubmittedAttachments(
+			[{ id: "mine", path: "/tmp/mine.txt" }],
+			refusedBeforeAdmissionAttachments(draft),
+		),
+		[],
+	);
+});
+
+/*
+ * R18: the composer's own adoption, exercised - the thing that actually restores
+ * the payload, which the cases above never touch.
+ *
+ * Both rules are asserted directly above, and both stay green if the effect that
+ * CONSUMES them is deleted or has its caret rule broken: the branch's central
+ * claim would then rest on the manual frames alone (round 7, R18). `MessageInput`
+ * cannot be rendered in isolation - a message list, a dispatcher and the
+ * canonical store - so the composer boundary is read off the shipped source, the
+ * instrument `composer-readings.test.mjs` argues for the same reason. Comments
+ * are stripped first, so a sentence explaining a rule cannot satisfy the test for
+ * having implemented it.
+ *
+ * Three claims, each of which has a failure behind it: the adoption is a LAYOUT
+ * effect (as a passive one the remounted box painted empty for a frame, R20); it
+ * consumes BOTH halves through the shipped rules and writes the chips to the
+ * composer's own identity; and it leaves the caret at the END of the restored
+ * text, which is what makes the next Send re-attempt the message instead of
+ * running the leading command (`slash-submit.ts` reads the token at the caret).
+ */
+test("the composer adopts a refused payload through the shipped rules, at the end of the text", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const start = rendered.indexOf("const consideredRefusedTextRef");
+	assert.ok(
+		start > 0,
+		"the composer no longer keeps a record of the refused payload it has answered for, so the text is never adopted on the remount and U14's fix is gone",
+	);
+	const adoption = rendered.slice(start, start + 1400);
+	assert.ok(
+		/useLayoutEffect\(\(\) => \{/.test(adoption),
+		"the refusal adoption is a passive effect again, so the remounted composer paints an empty box with the refusal's copy above it for one frame (R20)",
+	);
+	assert.ok(
+		/restoreSubmittedText\(newMessage, refusedText\)/.test(adoption),
+		"the adoption no longer restores the refused TEXT through the shipped box rule",
+	);
+	assert.ok(
+		/restoreSubmittedAttachments\(\s*attachments,\s*refusedAttachments,?\s*\)/.test(
+			adoption,
+		),
+		"the adoption no longer restores the refused ATTACHMENTS, so a restored draft sends its text without the user's file (R17)",
+	);
+	assert.ok(
+		/addAttachment\(\s*conversationId,\s*\{\s*id: uuidv4\(\),\s*path,?\s*\}\s*\)/.test(
+			adoption,
+		),
+		"the restored chips are not written to the composer's own conversation, so the file list the next Send reads is still empty",
+	);
+	assert.ok(
+		/pendingCaret\.current = restored\.length/.test(adoption),
+		"the restored caret is no longer the END of the text, so a restored draft whose first line is a command RUNS it on the next Send instead of re-attempting the message",
+	);
+	assert.ok(
+		/setNewMessage\(restored\)/.test(adoption),
+		"the adopted text is computed and never written to the box",
+	);
+});
+
+/*
+ * U16: the refusal screen must not contradict itself about whether a session
+ * exists.
+ *
+ * A refused first message is created BEFORE it is refused (`sessions.create` 200,
+ * then the message 422), so on that screen the composer's own footer states that
+ * the working directory is fixed BECAUSE the session has started - one line
+ * below a header announcing that the session has not started. The head now
+ * describes the conversation that exists, by the identity this header already
+ * falls back to for a live chat. Asserted on the source because the rung IS the
+ * fix: the instruction must be reachable only while no session exists.
+ */
+test("the header stops announcing that the session has not started once one exists", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const rung = rendered.match(
+		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*: draft\?\.sessionId\s*\?\s*([\s\S]{0,160}?)\s*:\s*"The session starts when you send your first message\."/,
+	);
+	assert.ok(
+		rung,
+		"the header description no longer separates the session that exists from the one that does not, so the refusal screen announces that no session has started while its own footer says one has (U16)",
+	);
+	assert.match(
+		rung[1],
+		/canonical\.frontend\?\.cwd \|\| cwd/,
+		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
+	);
 });
 
 /*

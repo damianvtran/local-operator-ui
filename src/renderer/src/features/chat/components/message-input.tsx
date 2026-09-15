@@ -7,6 +7,7 @@ import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
 	SEND_HELD,
 	type SendOutcome,
+	restoreSubmittedAttachments,
 	restoreSubmittedText,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
@@ -138,6 +139,18 @@ export type ComposerSendError = {
 	 * row is the surviving copy, and this is how it reaches the box.
 	 */
 	refusedText?: string;
+	/**
+	 * The attachments that same refusal owes the box, from the row that survives
+	 * the composer the send unmounted (`refusedBeforeAdmissionAttachments`).
+	 *
+	 * Handed over with the text rather than restored from the composer's own
+	 * store because they are one payload: the chips live in
+	 * `inputByConversation[conversationId]` under the PRE-FLIP identity, so after
+	 * the flip the composer that mounts has an empty chip row and no way to learn
+	 * what the refused send carried. Restoring the text without them is a send
+	 * that silently loses the user's file (round 7, R17).
+	 */
+	refusedAttachments?: string[];
 	/** Retire the alert after the held text has been restored into the box. */
 	onRestoreHeld?: () => void;
 	/** Drop the claim AND the draft. The message is finished with. */
@@ -754,6 +767,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * renders. Only an EMPTY box is written, so anything typed while the send was
 		 * in flight is never overwritten.
 		 *
+		 * THE CHIPS COME BACK WITH THE TEXT, on that same rule and for the same
+		 * reason (`refusedBeforeAdmissionAttachments`). The user's files are staged in
+		 * the conversation-input store under the PRE-FLIP identity, so the composer
+		 * that mounts here has an empty chip row while the store's row still holds the
+		 * list - and a resend of the adopted text therefore went out with the wording
+		 * and WITHOUT the file, silently, and retired the row that recorded it (round
+		 * 7, R17). Adopting the paths is what makes the restored draft send exactly
+		 * what it shows: the chip row and the payload the next Send carries are the
+		 * same list, and images are re-encoded from those paths by the send itself.
+		 * The chip write rides the SAME branch as the text write - the pair is adopted
+		 * only where the refused payload becomes the box's own content, so a user who
+		 * typed something of their own during the flight is not handed back files they
+		 * did not ask for either.
+		 *
 		 * The caret goes to the END of the restored text, which is where the user's
 		 * was when they pressed Send - and it is not cosmetic here. The planner reads
 		 * the token AT THE CARET (`slash-submit.ts`), so a newly mounted composer left
@@ -763,27 +790,57 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * text reads as prose, exactly as it did on the arm that never re-mounted, and
 		 * the popup the box had opened at position 0 closes with it.
 		 *
+		 * A LAYOUT effect, because the adoption belongs to this commit's paint rather
+		 * than to the one after it: as a passive effect the remounted composer painted
+		 * an EMPTY box - with the refusal's copy already above it - for one frame
+		 * before the text landed (round 7, R20). The caret write it feeds is a layout
+		 * effect for the same reason.
+		 *
 		 * Guarded on the payload already being handed over, once per distinct payload
 		 * and never twice for the same one: without that, emptying the box on purpose
 		 * would re-fill it on the next render, and a dismissal - which keeps the
-		 * payload and clears only the sentence - would do the same.
+		 * payload and clears only the sentence - would do the same. The marker is
+		 * therefore named for what it is: it records that this composer has CONSIDERED
+		 * this payload, which on the arm where the box already holds the user's own
+		 * text happens without the write landing. A marker claiming the write instead
+		 * would have to move below the early return, and that placement is the re-fill
+		 * above (round 7, R22).
 		 */
 		const refusedText = sendError?.refusedText;
-		const adoptedRefusedTextRef = useRef<string | undefined>(undefined);
-		useEffect(() => {
+		const refusedAttachments = sendError?.refusedAttachments;
+		const consideredRefusedTextRef = useRef<string | undefined>(undefined);
+		useLayoutEffect(() => {
 			if (
 				refusedText === undefined ||
-				adoptedRefusedTextRef.current === refusedText
+				consideredRefusedTextRef.current === refusedText
 			)
 				return;
-			adoptedRefusedTextRef.current = refusedText;
+			consideredRefusedTextRef.current = refusedText;
 			const restored = restoreSubmittedText(newMessage, refusedText);
 			// The user's own text is what the box holds, so it keeps the caret too.
 			if (restored === newMessage) return;
+			// A composer with no conversation has no chip row to write to (that path
+			// reads no attachments at all), so the files can only come back under the
+			// identity they belong to.
+			if (conversationId) {
+				for (const path of restoreSubmittedAttachments(
+					attachments,
+					refusedAttachments,
+				))
+					addAttachment(conversationId, { id: uuidv4(), path });
+			}
 			pendingCaret.current = restored.length;
 			setCaret(restored.length);
 			setNewMessage(restored);
-		}, [refusedText, newMessage, setNewMessage]);
+		}, [
+			refusedText,
+			refusedAttachments,
+			newMessage,
+			attachments,
+			conversationId,
+			addAttachment,
+			setNewMessage,
+		]);
 
 		/*
 		 * What Enter should do with this draft, decided by the pure planner — the ONLY
