@@ -227,6 +227,49 @@ test("a mistyped mode beside an agent switch still reports rather than assumes",
 	assert.match(resolved.problems[0], /headles/);
 });
 
+test("an empty or blank mode value names nothing, so a rig launch is still headless", () => {
+	// `env LOCAL_OPERATOR_UI_WINDOW_MODE="$MODE" …` with `MODE` unset, and a
+	// harness env block with an empty default, are both ordinary — and both
+	// spelled a value that names nothing. Reading that as "somebody chose
+	// normal" is the focus grab this change removes, through a spelling no
+	// reader would recognise as a choice.
+	for (const empty of ["", "   ", "\t"]) {
+		const resolved = plan({
+			env: { [WINDOW_MODE_ENV]: empty },
+			argv: ["--user-data-dir=/tmp/rig"],
+		});
+		assert.equal(resolved.mode, "headless", JSON.stringify(empty));
+		assert.equal(resolved.show, "never", JSON.stringify(empty));
+		assert.match(resolved.assumed ?? "", /user-data-dir/);
+		// Reported, but with no claim about `normal` that this path does not honour.
+		assert.equal(resolved.problems.length, 1, JSON.stringify(empty));
+		assert.match(resolved.problems[0], /names no mode/);
+		assert.doesNotMatch(resolved.problems[0], /using normal/);
+	}
+});
+
+test("an empty mode value with no rig switch is still the operator's window, and says why", () => {
+	// The other half: nothing about an empty value makes a launch a rig. It is
+	// still the operator's app, and the report is the only thing that changed.
+	const resolved = plan({ env: { [WINDOW_MODE_ENV]: "" } });
+	assert.equal(resolved.mode, "normal");
+	assert.equal(resolved.assumed, null);
+	assert.equal(resolved.problems.length, 1);
+	assert.match(resolved.problems[0], /names no mode/);
+});
+
+test("the flag given an empty value is a caller asking to be told, not a default", () => {
+	// Reaching for `--window-mode` and handing it nothing is the same mistake as
+	// reaching for it and handing it no value at all, so it keeps the report and
+	// the historical fallback rather than being read as silence.
+	const resolved = plan({
+		argv: ["--window-mode=", "--user-data-dir=/tmp/rig"],
+	});
+	assert.equal(resolved.mode, "normal");
+	assert.equal(resolved.assumed, null);
+	assert.equal(resolved.problems.length, 1);
+});
+
 test("silence with no agent switch is still the operator's focused window", () => {
 	// The shipped behaviour, asserted again next to the assumption so a future
 	// edit cannot widen "is a rig" into "is any launch with arguments".
