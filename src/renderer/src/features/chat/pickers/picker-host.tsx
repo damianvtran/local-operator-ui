@@ -1051,6 +1051,17 @@ export const PickerHost: FC<PickerHostProps> = ({
 									? () => setSuppressOpenFocusRing(false)
 									: undefined
 							}
+							/*
+							 * `data-panel-body` is the scroll target's own name, for the
+							 * same reason `[data-detail-section]` exists one surface over:
+							 * a frame whose claim is a panel's END has to scroll the real
+							 * scroller (the position is browser state no story can set),
+							 * and the alternative is a rig selecting on a Tailwind class
+							 * it does not own. The panel body is capped at `min(76vh,
+							 * 760px)`, so a taller viewport adds margin rather than
+							 * reaching the rows below this fold.
+							 */
+							data-panel-body=""
 							className={cn(
 								"overflow-y-auto px-5 pt-3",
 								shell === "panel"
