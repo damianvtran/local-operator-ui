@@ -92,10 +92,15 @@ function shell(script, env, cwd) {
 	);
 }
 
+// `repository_dispatch` is the automated publication: `auto-release.yml` creates
+// the Release with GITHUB_TOKEN, which starts no run by itself, so the publish
+// workflow is dispatched explicitly. It is in this list because a trigger that is
+// not simulated here is a trigger whose jobs the graph tests below do not cover.
 for (const [event, prerelease] of [
 	["workflow_dispatch", false],
 	["release", false],
 	["release", true],
+	["repository_dispatch", false],
 ]) {
 	test(`${event} prerelease=${prerelease}: every required job reaches upload`, () => {
 		const result = graph(event, prerelease);
@@ -313,7 +318,7 @@ test("payload checkouts use validated source, helper checkouts use workflow SHA"
 		"workflow",
 	);
 });
-for (const event of ["release", "workflow_dispatch"]) {
+for (const event of ["release", "workflow_dispatch", "repository_dispatch"]) {
 	for (const published of ["true", "false"]) {
 		test(`npm publish guard event=${event}, published=${published}`, () => {
 			assert.equal(
@@ -321,7 +326,12 @@ for (const event of ["release", "workflow_dispatch"]) {
 					github: { event_name: event },
 					steps: { check_version: { outputs: { published } } },
 				}),
-				event === "release" && published === "false",
+				// The npm channel ships on every publication and on no repair. It
+				// used to be keyed on the `release` event, which was the same set
+				// of runs only while that event was the only way in: under the
+				// automated publication it would have shipped installers while
+				// silently skipping npm.
+				event !== "workflow_dispatch" && published === "false",
 			);
 		});
 	}
