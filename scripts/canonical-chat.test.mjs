@@ -28,7 +28,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText} from "./src/renderer/src/shared/hooks/use-message-input";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -98,6 +98,8 @@ const {
 	LEADING_SLASH_CODE,
 	LEADING_SLASH_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	refusedBeforeAdmissionText,
+	restoreSubmittedText,
 	withholdsRetryHint,
 } = module;
 function reset() {
@@ -905,6 +907,135 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), false);
 	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
 	assert.equal(withholdsRetryHint(undefined), false);
+});
+
+/*
+ * U14 / Q7: the SAME refusal on the arm a "New chat" uses, where the session is
+ * created INSIDE the send.
+ *
+ * This is not the case above with a different id. `admitChatDraft` creates the
+ * session itself, patches the row with the id it got one request before
+ * admission, and the page keys the panel on `panelIdentityFor(draftKey, id)` -
+ * whose precedence is `id ?? draftKey` - so the identity the panel renders under
+ * flips from the draft key to the new session id MID-SEND. The composer that sent
+ * the draft is unmounted by that flip and takes its own refusal restore with it;
+ * the composer that replaces it is seeded from per-conversation text state that
+ * has never held this text.
+ *
+ * Live, that left the box EMPTY behind "Discard unsent message", with the copy
+ * still instructing the user to move text that was on no surface at all: not the
+ * box, not after a reload of the created session, and not in a New chat either
+ * (UX round 3 U14, QA round 3 Q7).
+ *
+ * So the assertion is not "the draft is retained" - it was, and that is exactly
+ * what made the loss look cosmetic. It is that the store hands the composer the
+ * text AGAIN, through the one derivation the page reads, and that the composer's
+ * own box rule then puts it back.
+ */
+test("a leading-slash refusal on the created-session arm still hands the text back", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	// A staged draft with NO session and no target: the "New chat" arm, the one
+	// that has to create its session in the same call that sends the text.
+	const key = store.getState().stageDraft();
+	const text = "/usage\ncreated-session arm line two";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text }),
+		(error) => {
+			assert.ok(error instanceof DesktopControlError);
+			assert.equal(error.code, LEADING_SLASH_CODE);
+			assert.equal(error.message, LEADING_SLASH_MESSAGE);
+			return true;
+		},
+	);
+	const state = store.getState();
+	const draft = state.drafts[key];
+	// The session was created inside the send, and the request that carried the
+	// text is the one that was refused.
+	assert.deepEqual(
+		[...new Set(calls.map((request) => request.op))],
+		["sessions.create", "sessions.message"],
+	);
+	// Retention, unchanged from the other arm. On its own this is what the
+	// pre-fix tree asserted, and it stayed green while the text was unreachable.
+	assert.equal(draft.sessionId, "222222222222");
+	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
+	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.admissionAttempted, false);
+	assert.equal(draft.submittedText, text);
+	// The flip itself, and why the composer's own restore cannot be the only
+	// answer: the panel is now keyed on the id this very send minted ...
+	assert.equal(
+		panelIdentityFor(state.activeDraftKey, draft.sessionId),
+		"222222222222",
+	);
+	// ... while the composer still reads the row the refusal was written to, which
+	// is the copy that outlives the composer that sent it.
+	assert.equal(draftIdentityFor(state.activeDraftKey, draft.sessionId), key);
+	// The restore source, and the box rule applied to it, so "reachable" is
+	// asserted rather than assumed: the user's two lines go back into an empty
+	// composer, which is what `restoreSubmittedText` does with an empty box.
+	assert.equal(refusedBeforeAdmissionText(draft), text);
+	assert.equal(restoreSubmittedText("", refusedBeforeAdmissionText(draft)), text);
+});
+
+/*
+ * The two arms, side by side, on the one thing the user experiences: what the
+ * composer is given to put back. The named-session arm never re-keys, so its
+ * local restore has always worked; the created-session arm has to be handed the
+ * same text by the store. One rule, one field, both arms.
+ */
+test("a refusal hands the composer the same text on both arms", async () => {
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "333333333333",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	// The arm that names its session: `send:<id>` exists before the send and the
+	// panel never moves, so nothing here depends on the fix.
+	const namedKey = draftIdentityFor(null, "444444444444");
+	await assert.rejects(
+		admitChatDraft(
+			namedKey,
+			{ ...input, text: "/usage\nnamed-session arm line two" },
+			"444444444444",
+		),
+		/./,
+	);
+	const named = store.getState().drafts[namedKey];
+	// The arm that creates one mid-send.
+	const createdKey = store.getState().stageDraft();
+	await assert.rejects(
+		admitChatDraft(createdKey, {
+			...input,
+			text: "/usage\ncreated arm line two",
+		}),
+		/./,
+	);
+	const created = store.getState().drafts[createdKey];
+	assert.equal(refusedBeforeAdmissionText(named), "/usage\nnamed-session arm line two");
+	assert.equal(refusedBeforeAdmissionText(created), "/usage\ncreated arm line two");
+	// Same refusal shape on both: the arms differ in identity, not in what the
+	// user is owed.
+	for (const draft of [named, created])
+		assert.equal(draft.admissionAttempted, false);
 });
 
 /*

@@ -360,6 +360,64 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 }
 
 /**
+ * The text a refused send owes the composer, for the refusals that admitted
+ * nothing.
+ *
+ * `isRefusedBeforeAdmission` answers this question about the ERROR; this answers
+ * it about the RECORD the store kept of it, and the composer needs the second
+ * answer rather than the first: what it renders is the row, and the row outlives
+ * the component that issued the send.
+ *
+ * WHY THE ISSUING COMPONENT CANNOT ANSWER IT. The other consumer of a refusal is
+ * `use-message-input`'s restore, which writes the submitted text back into local
+ * composer state, and that suffices on the arm that names a session: there the
+ * draft's identity (`send:<id>`), the panel it is rendered in
+ * (`panelIdentityFor`) and the composer's own text key all exist before the send
+ * and are unchanged by it. It does NOT suffice on the arm a "New chat" uses. The
+ * session is created INSIDE the same call, `admitChatDraft` patches the row with
+ * its id one request before admission, and `panelIdentityFor`'s precedence is
+ * `id ?? draftKey` - so the identity that keys the panel flips from the draft key
+ * to the new session id MID-SEND. React answers a key change with an unmount, so
+ * the restore's `setInputValue` lands on a composer that is gone, and the
+ * composer that replaces it is seeded from its own per-conversation text state,
+ * which is empty for a conversation id that did not exist when the send began.
+ * The STORE loses nothing (`submittedText` is written before the request and the
+ * row, with `activeDraftKey`, survives a reload), but no route put it back in the
+ * box: the user was told to "move it below your text, or send it on its own" for
+ * text no longer on screen, with only "Discard unsent message" to act on. That is
+ * real loss of a two-line message, reported live (UX round 3 U14, QA round 3 Q7).
+ *
+ * So the retention record is the source and the composer adopts it, which is one
+ * definition of "this refusal owes the box this text" for BOTH arms rather than a
+ * restore that only works while the component that made it stays mounted. The box
+ * rule is `restoreSubmittedText`'s: only an EMPTY box is written, so text the user
+ * typed while the send was in flight is never overwritten.
+ *
+ * `admissionAttempted` is the whole discriminator, and it is this store's own
+ * un-latch rather than a second guess about the failure: a request that reached
+ * the message and was refused before admission carries `admissionAttempted: false`
+ * (see the catch in `admitChatDraft`), i.e. the text provably did not land. When
+ * it is TRUE the message may already be on the owner with its echo deliberately
+ * painted in the transcript, so the box must stay empty - that is the
+ * `heldText`/Restore path, a different answer to a different fact.
+ *
+ * `error` is deliberately NOT a term. Dismissing the alert (`onDismiss`) clears
+ * the copy and the code and keeps the payload: that is the user acknowledging the
+ * SENTENCE, not abandoning the message they typed, and a dismissal that silently
+ * made the text unreachable again would be this defect one keystroke later.
+ * Discard, a successful send and `releaseClaim` are what end the record.
+ */
+// The rule this text is put back THROUGH lives one layer up, in the composer
+// hook (`@shared/hooks/use-message-input`'s `restoreSubmittedText`): the store
+// owns which payload a refusal owes the box, and the composer owns the box.
+export function refusedBeforeAdmissionText(
+	draft: ChatDraft | undefined,
+): string | undefined {
+	if (!draft || draft.pending || draft.admissionAttempted) return undefined;
+	return draft.submittedText;
+}
+
+/**
  * Whether a send addressed to `sessionId` is inside the guard read's window.
  *
  * Extracted and exported for the same reason `draftIdentityFor` and

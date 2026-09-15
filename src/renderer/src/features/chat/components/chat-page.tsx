@@ -23,6 +23,7 @@ import {
 	isRefusedBeforeAdmission,
 	isSessionUnvalidated,
 	panelIdentityFor,
+	refusedBeforeAdmissionText,
 	useCanonicalSessionsStore,
 	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
@@ -1100,13 +1101,27 @@ function SessionPanel({
 		draft?.admissionAttempted && !draft.pending
 			? draft.submittedText
 			: undefined;
+	/*
+	 * The text a PRE-ADMISSION refusal owes the box.
+	 *
+	 * Its own field rather than `heldText`, because the two are opposite answers
+	 * to opposite facts: `heldText` means the message may already be on the owner
+	 * and the box must stay empty, this one means it provably never left the
+	 * renderer and belongs back in the box. The composer puts this one back
+	 * (`refusedBeforeAdmissionText` carries the why); what matters here is that the
+	 * page cannot supply it from local state, because the refusal outlives the
+	 * composer that sent it - on the created-session arm the panel is remounted
+	 * under the id that very send minted, and the row is the only surviving copy
+	 * (UX round 3 U14, QA round 3 Q7).
+	 */
+	const refusedText = refusedBeforeAdmissionText(draft);
 	const releaseHeld = () => {
 		if (draftIdentity)
 			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
 		clearError();
 	};
 	const composerSendError =
-		activeError || heldText !== undefined
+		activeError || heldText !== undefined || refusedText !== undefined
 			? {
 					message: activeError ?? undefined,
 					// The "what to do" half of the error contract travels with the
@@ -1159,6 +1174,19 @@ function SessionPanel({
 					 * unchanged" from an instruction into a control.
 					 */
 					heldText,
+					/*
+					 * The payload a PRE-ADMISSION refusal owes the box, on the same grounds as
+					 * `heldText` above: the composer cannot reconstruct text it never kept, and
+					 * on the created-session arm it is not even the same composer any more.
+					 * The box rule that consumes it (`restoreSubmittedText`) only writes an
+					 * EMPTY box, so the user's own typing still wins.
+					 *
+					 * Carried independently of `message`, which is why the payload also exists
+					 * when `refusedText` is the only term: dismissing the alert clears the copy
+					 * and the code, and a dismissal must not be what makes a two-line message
+					 * unreachable again - the record ends when the draft does.
+					 */
+					refusedText,
 					onRestoreHeld:
 						heldText !== undefined ? () => clearError() : undefined,
 					/*
