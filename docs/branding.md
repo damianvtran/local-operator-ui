@@ -498,3 +498,91 @@ idiom" - and they disagreed. The cause was structural: the canonical component
 was buried in `features/chat/components/trace/`, so no other feature could
 import it even when its author wanted to. A shared idiom has to live in the
 shared layer or it is not one.
+
+### A view that is not the newest one
+
+Five states where the app is showing something other than the owner's current
+answer, and each has one idiom because inventing a second at the call site is
+how a system ends up with two ways to say the same thing.
+
+**One register for the status slot.** Everything that says "the pane is not
+authoritative yet" is `text-meta text-ink-dim`: the stale caption below and the
+skeleton's label. The exception is `Reconnecting`, which stays
+`text-body-sm text-ink-dim` because during the retry window it is the pane's
+ONLY statement — there are no rows under it to carry the register — so it takes
+the reading step rather than the caption step. Three type steps in one slot read
+as three severities for one condition, which is what this rule removes.
+
+**A caption, not a treatment.** A stale paint — rows read back from this
+window's own memory while the snapshot is still in flight — stays at full
+`ink`. No dimming, no scrim, and **no opacity**, which is banned as a state
+signal here for the reason § 6 gives: it is unreadable on some grounds and
+invisible on others. What says "this may be behind" is one sentence,
+`text-meta text-ink-dim`, sentence case, no spinner, no icon tile, no border,
+no shadow. It is present from the first painted frame and removed in the same
+commit as the reconciled rows, so the two never disagree.
+
+That sentence lives OUTSIDE the scrolling content, as the pane column's first
+child above the transcript's scroll box. Placed inside it — as it first was —
+it is the oldest thing in a bottom-anchored `flex-col-reverse` scroller, so on
+the transcripts a cache exists for (only a conversation taller than the pane is
+ever cached) it renders thousands of pixels above the fold: measured at
+1280x600 on a 36-row stale transcript, its rect sat at top -2028 in a 560px
+pane. The state was then indistinguishable from a live one, which is the one
+thing this caption exists to prevent.
+
+**A loading state is not an empty state.** "There are no messages" is a claim
+about the conversation, and making it before the transcript resolves is how the
+app once flashed "no messages yet" at a populated chat. While a conversation is
+being fetched and nothing has been painted, the pane shows a skeleton: three
+`aria-hidden` bars on `elevated` and an `<output>` (same register as the caption
+above) reading `Loading conversation…`. Never a skeleton **over** painted rows,
+and never the empty state — the skeleton is the honest shape of not knowing.
+
+The bars are drawn on `elevated`, not `sunken`. The bars ARE the entire
+substance of this state, and `sunken` against `canvas` is ΔE00 1.23 in
+obsidian, 1.66 in dune, 1.82 in iceberg and 1.89 in brand-dark — at or below
+the § 3 aim of 2 on four of twelve themes, where the loading state is a black
+pane with one sentence. `check-themes` cannot catch it: it floors grounds at
+1.03:1, which those steps pass. `elevated` measures 6.44 dark / 4.35 light
+against `canvas`, and it is a ground role the palette already owns.
+
+**An arrival must not move anything.** The unseen mark used to be
+`font-semibold` on a row whose title is `flex-1 truncate`, so the marking event
+rewrote the visible string and re-truncated text under the reader's cursor. It
+now lands in the reserved status slot as an **ink step on the existing glyph**:
+the glyph takes `text-success`. A glyph carrying its own meaning — `danger` for a
+failed turn, `warning` for a parked approval — keeps it, since an unread arrival
+must not erase information the user needs. The unread semantic therefore travels
+in the accessible NAME beside the ink: the status slot's screen-reader name gains
+`, unread` exactly when an unseen `complete` takes its `text-success` step, which
+is the case the ink itself carries and the one a reader cannot hear otherwise.
+It is that narrow on purpose — the status slot's own test pins that an
+acknowledged row renders identically to an unacknowledged one for every other
+code, so a name that changed for a `danger` or `warning` row would be a second,
+untrue statement about a turn the user still needs to see. Every OTHER code
+re-inks, including `complete`:
+a session that finished while you were elsewhere is the case the mark was built
+for, and a green check does not distinguish read from unread. A running turn
+keeps its motion, which is a fact about the turn rather than a colour. Layout
+never changes, which is the whole point: the mark is a state, not a redraw.
+
+**A conversation this machine does not have.** One sentence, its meaning, and
+the way out: `This conversation is no longer on this machine.` / `It was
+deleted, or it belongs to a machine this app is not connected to.` / `Start a
+new chat`. Nothing about that pane may contradict it — no "Start of
+conversation" over a transcript that is simply this window's own memory, no
+footer timestamp under a conversation that is gone, and the composer says
+`This conversation is gone` rather than `Agent is busy`, which was a false
+statement about a session that does not exist. A disabled composer STEPS COLOUR
+(`disabled:text-ink-disabled`, § 6) rather than fading, because otherwise the
+only signal is `cursor: not-allowed` after the user has already typed.
+
+**A burst is one banner, and its click is the catalogue.** When several
+completions land in one tick the backend caps the per-tick banners and publishes
+one digest frame naming the count. The app raises that one banner and the click
+lands on the CATALOGUE, not on a member: a digest names several conversations,
+so any single destination is the wrong answer to "which one did I click".
+Rendered from the frame's own `burst_count`, never from its title — the strings
+are the backend's, and routing on them would send a re-worded digest somewhere
+arbitrary.

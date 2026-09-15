@@ -113,7 +113,16 @@ export type DesktopFeature =
 	 * routes — a bumped shared key would gate the working panels behind an
 	 * update they do not need.
 	 */
-	| "diagnostics";
+	| "diagnostics"
+	/**
+	 * The machine-wide feed: `GET /v1/desktop/events` and `POST
+	 * /v1/desktop/presence`, with their frame and lease shapes. The consumer gate
+	 * is BOTH directions: when the backend does not advertise it the renderer
+	 * keeps the 5 s catalogue poll and the per-session notification path
+	 * verbatim, and when this app is old enough not to open the feed nothing on
+	 * the backend changes either. Neither skew can double-toast.
+	 */
+	| "desktop_feed";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.
