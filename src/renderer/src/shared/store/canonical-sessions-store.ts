@@ -153,6 +153,118 @@ export const SESSION_UNVALIDATED_MESSAGE =
 	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
 
 /**
+ * A send refused because its text STARTS WITH A SLASH.
+ *
+ * The backend's own policy: `local_operator/server/routes/desktop_sessions.py`
+ * refuses any message whose text `lstrip().startswith("/")`, because a leading
+ * slash means "command" and a command travels on a different endpoint. A
+ * multi-line draft the planner correctly classified as PROSE (`/usage` on line
+ * one, the message on line two, caret at the end) therefore reaches the messages
+ * endpoint carrying that first line and is refused there — and no amount of
+ * resending can make it work: the same bytes meet the same rule forever (UX
+ * round 2, U13).
+ *
+ * A code rather than a match on the refusal's copy, for the same reason the two
+ * above are: the sentence is the transport's shared 422 string ("...invalid
+ * fields."), used by refusals this does not describe, and prose is expected to
+ * be reworded. The condition that identifies THIS refusal is the payload the
+ * store sent, which the store holds.
+ */
+export const LEADING_SLASH_CODE = "leading_slash_message";
+
+/**
+ * What a send refused for its leading slash says, in the composer's own row.
+ *
+ * The refusal's own copy is the transport's sentence about a malformed request,
+ * which names a cause the user cannot act on, and the composer's generic retry
+ * hint ("Send it again") points at the one action that can never succeed here.
+ * What is true is that the user's draft is still in the composer and has two
+ * fixes, both in front of them — so the sentence names them (branding section 8:
+ * what happened, what it means, what to do).
+ */
+export const LEADING_SLASH_MESSAGE =
+	"A message can't start with / — that is a command. Move it below your text, or send it on its own.";
+
+/**
+ * Whether a refused send is the leading-slash policy refusal.
+ *
+ * Keyed on the PAYLOAD the store sent rather than on the refusal's copy: the 422
+ * carries the transport's shared sentence, and matching prose would silently
+ * stop matching when it is reworded. `trimStart` mirrors the backend's `lstrip`.
+ * Restricted to 422 because that is the only status the policy raises — a
+ * leading-slash draft that failed for some OTHER reason (a lost response, a dead
+ * owner) has admitted nothing and may well succeed on a resend, so it must keep
+ * the generic hint.
+ *
+ * A 422 that ALREADY carries a code yields to it, and this is not a nicety: the
+ * leading-slash policy has no code on the wire (its `detail` is a plain string;
+ * see `LEADING_SLASH_CODE`), so a coded 422 is by construction a DIFFERENT,
+ * specific refusal the transport has already classified - an unknown command, an
+ * invalid cwd. Letting this general rule overwrite that swapped a precise
+ * diagnosis for a vague one that described a request we had not sent (round 5,
+ * R13). The two conditions are complementary: the stage gate at the call site
+ * says the message request failed, and this says the policy is the reason.
+ *
+ * The caller must still establish that the failing request WAS the message
+ * request - `sessions.create` shares that try and its 422 never carried this
+ * text anywhere. See the `inFlight` gate in `admitChatDraft`.
+ */
+export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 422 &&
+		error.code === undefined &&
+		text.trimStart().startsWith("/")
+	);
+}
+
+/**
+ * A send refused because an attachment it was carrying could not be read.
+ *
+ * The refusal itself is the renderer's own (`unreadableAttachmentRefusal`), and
+ * the sentence carries its own remedy, so what this code is FOR is the two
+ * decisions that must not be made from the copy: the composer withholds its
+ * generic "Send it again" hint for it (see `withholdsRetryHint`), and a code is
+ * how that survives a rewording.
+ *
+ * A code rather than a fact about the message for one more reason, and it is a
+ * defect this round measured (design round 4, D13): `chat-page` reads
+ * `activeError = sendError || draft.error` and
+ * `activeErrorCode = sendErrorCode ?? draft.errorCode`, so a refusal that leaves
+ * the code UNSET here inherits whatever code the draft was last left holding -
+ * an earlier leading-slash refusal, say - and the same sentence then renders
+ * with the hint in one session and without it in another. Setting the code at
+ * the refusal makes the alert's hint a function of the refusal instead of a
+ * function of the conversation's history.
+ */
+export const UNREADABLE_ATTACHMENT_CODE = "attachment_read_failed";
+
+/**
+ * Whether a refusal's remedy is anything OTHER than "send it again".
+ *
+ * The composer's generic retry hint is the alert's "what to do" half, and it is
+ * only ever rendered where it is true. Three refusals cannot be answered by
+ * resending the same bytes: the read window refuses every send for as long as
+ * its own notice is on screen, the leading-slash policy refuses this text
+ * forever, and an attachment that cannot be read is still unreadable on the
+ * next attempt - the same chip is still attached, so the retry is refused for
+ * the same reason until the chip is replaced or removed (UX round 3, U9; UX
+ * round 2, U13; design round 4, D13). Each carries its own statement of what to
+ * do instead, and the composer withholds the hint for all three.
+ *
+ * One function rather than two call-site comparisons, so the composer reads the
+ * rule instead of listing the codes, and so `scripts/canonical-chat.test.mjs`
+ * can execute it against the store that raises them.
+ */
+export function withholdsRetryHint(code: string | undefined): boolean {
+	return (
+		code === SESSION_UNVALIDATED_CODE ||
+		code === LEADING_SLASH_CODE ||
+		code === UNREADABLE_ATTACHMENT_CODE
+	);
+}
+
+/**
  * The one place a composer value becomes a send PAYLOAD.
  *
  * The unchanged-payload guard compares byte-for-byte, because a retry of a
@@ -306,6 +418,114 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 }
 
 /**
+ * Whether this row is one whose refusal owes the composer a payload BACK.
+ *
+ * ONE discriminator for BOTH halves of that payload - the text and the
+ * attachments (round 7, R17). They are written together, before the request
+ * (`admitChatDraft` stores `submittedText`, `submittedAttachments` and
+ * `submittedImages` in one update), so a second copy of this rule is how one
+ * half comes to be restored while the other is dropped in silence.
+ */
+function owesRefusedPayload(draft: ChatDraft | undefined): draft is ChatDraft {
+	if (!draft) return false;
+	return !draft.pending && !draft.admissionAttempted;
+}
+
+/**
+ * The text a refused send owes the composer, for the refusals that admitted
+ * nothing.
+ *
+ * `isRefusedBeforeAdmission` answers this question about the ERROR; this answers
+ * it about the RECORD the store kept of it, and the composer needs the second
+ * answer rather than the first: what it renders is the row, and the row outlives
+ * the component that issued the send.
+ *
+ * WHY THE ISSUING COMPONENT CANNOT ANSWER IT. The other consumer of a refusal is
+ * `use-message-input`'s restore, which writes the submitted text back into local
+ * composer state, and that suffices on the arm that names a session: there the
+ * draft's identity (`send:<id>`), the panel it is rendered in
+ * (`panelIdentityFor`) and the composer's own text key all exist before the send
+ * and are unchanged by it. It does NOT suffice on the arm a "New chat" uses. The
+ * session is created INSIDE the same call, `admitChatDraft` patches the row with
+ * its id one request before admission, and `panelIdentityFor`'s precedence is
+ * `id ?? draftKey` - so the identity that keys the panel flips from the draft key
+ * to the new session id MID-SEND. React answers a key change with an unmount, so
+ * the restore's `setInputValue` lands on a composer that is gone, and the
+ * composer that replaces it is seeded from its own per-conversation text state,
+ * which is empty for a conversation id that did not exist when the send began.
+ * The STORE loses nothing (`submittedText` is written before the request and the
+ * row, with `activeDraftKey`, survives a reload), but no route put it back in the
+ * box: the user was told to "move it below your text, or send it on its own" for
+ * text no longer on screen, with only "Discard unsent message" to act on. That is
+ * real loss of a two-line message, reported live (UX round 3 U14, QA round 3 Q7).
+ *
+ * So the retention record is the source and the composer adopts it, which is one
+ * definition of "this refusal owes the box this text" for BOTH arms rather than a
+ * restore that only works while the component that made it stays mounted. The box
+ * rule is `restoreSubmittedText`'s: only an EMPTY box is written, so text the user
+ * typed while the send was in flight is never overwritten.
+ *
+ * `admissionAttempted` is the whole discriminator, and it is this store's own
+ * un-latch rather than a second guess about the failure: a request that reached
+ * the message and was refused before admission carries `admissionAttempted: false`
+ * (see the catch in `admitChatDraft`), i.e. the text provably did not land. When
+ * it is TRUE the message may already be on the owner with its echo deliberately
+ * painted in the transcript, so the box must stay empty - that is the
+ * `heldText`/Restore path, a different answer to a different fact.
+ *
+ * `error` is deliberately NOT a term. Dismissing the alert (`onDismiss`) clears
+ * the copy and the code and keeps the payload: that is the user acknowledging the
+ * SENTENCE, not abandoning the message they typed, and a dismissal that silently
+ * made the text unreachable again would be this defect one keystroke later.
+ * Discard, a successful send and `releaseClaim` are what end the record.
+ *
+ * WHAT IT DOES NOT ANSWER (round 7, R23). It reports the row's LAST refused
+ * payload, not "the text this refusal owes". The read window's refusal is raised
+ * before the draft is touched at all (`admitChatDraft`'s first gate), so on that
+ * arm this returns `undefined` - or an older payload from a send that failed
+ * earlier and was never abandoned - while a refusal is on screen. Nothing
+ * misbehaves today (both of those arms leave the box non-empty, and a repeat of
+ * the same payload short-circuits the effect), which is exactly why the limit is
+ * written down here rather than left for the next reader to assume past.
+ */
+// The rule this text is put back THROUGH lives one layer up, in the composer
+// hook (`@shared/hooks/use-message-input`'s `restoreSubmittedText`): the store
+// owns which payload a refusal owes the box, and the composer owns the box.
+export function refusedBeforeAdmissionText(
+	draft: ChatDraft | undefined,
+): string | undefined {
+	if (!owesRefusedPayload(draft)) return undefined;
+	return draft.submittedText;
+}
+
+/**
+ * The attachments that same refusal owes the composer, on the same rule.
+ *
+ * WHY THEY NEED A ROUTE OF THEIR OWN. `submittedAttachments` is the user's file
+ * list, written before the request like the text - and the composer reads its
+ * chips from `inputByConversation[conversationId]`, which on the created-session
+ * arm were staged under the PRE-FLIP identity. So the chip row is empty after
+ * the flip and this field is the only survivor: pressing Send on the restored
+ * text sent the message WITHOUT the file, said nothing, and `finishDraft` then
+ * retired the row and the record with it. Silent and partial is the worst shape
+ * a failure can take, and it is the failure the composer's own comment promises
+ * cannot happen (`message-input.tsx`: "replies and attachments included" is true
+ * only while the composer that sent them survives) - round 7, R17.
+ *
+ * PATHS, not the encoded `submittedImages` beside them: the send re-encodes
+ * images from the composer's attachment paths (`encodeImageAttachments`), so a
+ * re-adopted path restores the exact payload the refused send carried - pasted
+ * images included, whose "path" is their own data URL. Re-adopting the encoded
+ * set as well would give one file two representations that can disagree.
+ */
+export function refusedBeforeAdmissionAttachments(
+	draft: ChatDraft | undefined,
+): string[] | undefined {
+	if (!owesRefusedPayload(draft)) return undefined;
+	return draft.submittedAttachments;
+}
+
+/**
  * Whether a send addressed to `sessionId` is inside the guard read's window.
  *
  * Extracted and exported for the same reason `draftIdentityFor` and
@@ -444,8 +664,32 @@ export async function admitChatDraft(
 	// `draft` is the pre-send snapshot, so reading `draft.sessionId` there would
 	// miss a session this very call created and leave its echo unretractable.
 	let id = sessionId ?? draft.sessionId;
+	/*
+	 * WHICH REQUEST THE FAILURE CAME FROM, and the reason this is recorded rather
+	 * than inferred at the catch.
+	 *
+	 * The classification below asks one question - "was the user's message
+	 * refused for its leading slash?" - and only `sessions.message` can answer
+	 * it. `sessions.create` shares this try because a send to a NEW conversation
+	 * has to create one first, but its 422 is about the CREATE fields (`cwd`,
+	 * `target`), and the draft text it would be classified against never left the
+	 * renderer: the request ops were `['sessions.create']`. Classifying that
+	 * failure by the draft's shape told a user whose directory was invalid to
+	 * "move it below your text" - the app confidently naming the wrong cause,
+	 * which is the exact class of defect U13 exists to remove, so reintroducing
+	 * it on the display path we had just repaired would be worse than never
+	 * having repaired it (round 5, R13).
+	 *
+	 * Reaching the message request is therefore the PRECONDITION of the slash
+	 * classification, not the draft's shape - and this variable is the only thing
+	 * that can satisfy it. It is set immediately before the request it names, so
+	 * a failure raised anywhere earlier (including a create that "succeeded"
+	 * without returning an id) stays on the create side by default.
+	 */
+	let inFlight: "sessions.create" | "sessions.message" | null = null;
 	try {
 		if (!id) {
+			inFlight = "sessions.create";
 			id =
 				(await store.createSession(
 					input.cwd,
@@ -503,6 +747,7 @@ export async function admitChatDraft(
 			})),
 			onEchoPainted,
 		);
+		inFlight = "sessions.message";
 		await desktopResult({
 			op: "sessions.message",
 			sessionId: id,
@@ -546,6 +791,10 @@ export async function admitChatDraft(
 		// actionable one (it sits on the text that failed and carries the
 		// remedies), so the send takes the message over and clears the other.
 		useCanonicalSessionsStore.setState({ error: null });
+		// Gated on the request that actually failed: a create-stage 422 is about the
+		// create fields and must keep its own diagnosis (round 5, R13).
+		const leadingSlash =
+			inFlight === "sessions.message" && isLeadingSlashRefusal(error, text);
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
@@ -582,15 +831,35 @@ export async function admitChatDraft(
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
 			...(refusedBeforeAdmission ? { admissionAttempted: false } : {}),
-			errorCode:
-				error instanceof Error &&
-				"code" in error &&
-				typeof error.code === "string"
+			/*
+			 * A leading-slash refusal has no code of its own on the wire (the 422's
+			 * `detail` is a plain string), so it is classified from the payload we
+			 * sent, and it carries the product's own sentence rather than the
+			 * transport's. Every other refusal states itself as before.
+			 */
+			errorCode: leadingSlash
+				? LEADING_SLASH_CODE
+				: error instanceof Error &&
+						"code" in error &&
+						typeof error.code === "string"
 					? error.code
 					: undefined,
-			error: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
+			error: leadingSlash
+				? LEADING_SLASH_MESSAGE
+				: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
 		});
-		throw error;
+		// The caller's catch takes precedence over the persisted draft error in
+		// the composer. Carry the same classified sentence across that boundary,
+		// preserving 422 so its pre-admission retention path still restores text.
+		// Keeping the original as cause also preserves the transport diagnosis.
+		throw leadingSlash
+			? new DesktopControlError(
+					422,
+					LEADING_SLASH_MESSAGE,
+					error,
+					LEADING_SLASH_CODE,
+				)
+			: error;
 	}
 }
 type CanonicalSessionsState = {
