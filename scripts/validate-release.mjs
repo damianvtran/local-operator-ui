@@ -8,6 +8,23 @@
  * These pins are independent of the event: upload must detect a moved tag or
  * a deleted/recreated release even when it runs after a normal release event.
  * Output: GITHUB_OUTPUT lines source_sha, release_tag, release_id, prerelease
+ *
+ * THE RELEASE ID HAS TWO SPELLINGS, and the pin below reads both because the
+ * producers disagree about which one they hold. The REST object validated here
+ * spells one release twice: `id` is the NUMERIC database id (`389357596`) and
+ * `node_id` is the GraphQL global id (`RE_kwDOOCmy184XNSAc`). A `release` event's
+ * `github.event.release.id` is the numeric one; `gh release view --json id` is
+ * the NODE one, which is not what its own name suggests, and that is the whole
+ * of v0.24.2's lost first automatic release -- the dispatch carried
+ * `RE_kwDOOCmy184XNSAc`, this validator compared it against `389357596`, and
+ * every later job was skipped while the tag and the Release already existed.
+ *
+ * The invariant, stated so the next reader does not have to rediscover which
+ * spelling is which: a dispatched identifier must identify the SAME release
+ * this validator pins, and the two spellings of one release are accepted or
+ * refused together. Only the numeric spelling is ever PASSED ON -- that is what
+ * `upload-release.mjs` and `release-state.mjs` require of their own pins, so
+ * tolerance for the node id belongs at this input and nowhere downstream.
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -38,6 +55,25 @@ function validateInputs(tag, expectedSha, isManual, token) {
 			`EXPECTED_SOURCE_SHA must be a full 40-char hex SHA or empty for release event, got: ${expectedSha}`,
 		);
 	}
+}
+
+/**
+ * Does `expectedReleaseId` name the release the API returned?
+ *
+ * Both spellings of one release are the same answer (see the header); a value
+ * naming neither is a different release, or a transposed digit, and is refused.
+ * An absent pin is not this function's business: whether one is required is
+ * settled by `validateInputs` and by each caller's own pins.
+ */
+function matchReleaseId(release, expectedReleaseId) {
+	const expected = String(expectedReleaseId ?? "").trim();
+	if (!expected) return { matches: true, spelling: "" };
+	const nodeId = typeof release.node_id === "string" ? release.node_id : "";
+	if (expected === String(release.id))
+		return { matches: true, spelling: "numeric id" };
+	if (nodeId && expected === nodeId)
+		return { matches: true, spelling: "node id" };
+	return { matches: false, nodeId };
 }
 
 function createApi(repo, token) {
@@ -103,11 +139,19 @@ function validateRelease(
 		fail(`Release ${tag} is a draft or not published`);
 	if (!Number.isSafeInteger(release.id) || release.id <= 0)
 		fail("Missing valid release ID");
-	if (expectedReleaseId && String(release.id) !== String(expectedReleaseId)) {
+	const pin = matchReleaseId(release, expectedReleaseId);
+	if (!pin.matches) {
+		// Both spellings are named in the refusal, because the reader of this line
+		// is looking at a payload whose spelling is the thing that is wrong.
+		const nodeDetail = pin.nodeId ? ` (node id ${pin.nodeId})` : "";
 		fail(
-			`Release ID ${release.id} does not match expected release ID ${expectedReleaseId}`,
+			`Release ID ${release.id} does not match expected release ID ${expectedReleaseId}${nodeDetail}`,
 		);
 	}
+	if (pin.spelling === "node id")
+		console.log(
+			`Expected release ID ${expectedReleaseId} is the node id of release ${release.id}: the same release, in the other spelling`,
+		);
 	console.log(
 		`Release ${tag} (id ${release.id}) state: published, prerelease: ${release.prerelease}`,
 	);
@@ -138,6 +182,8 @@ function validateRelease(
 	return {
 		source_sha: tagSha,
 		release_tag: tag,
+		// Always the numeric id, whatever spelling the pin arrived in: every
+		// consumer downstream of this output requires that one (see the header).
 		release_id: release.id,
 		prerelease: release.prerelease,
 	};
