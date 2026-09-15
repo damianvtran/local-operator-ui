@@ -103,18 +103,27 @@ const FRAME_CLASS = [
 	 * the `<Bar>` for the reason this whole array exists: a presentation attribute
 	 * cannot take a `var()`, and a CSS rule BEATS a presentation attribute — so a
 	 * hover colour passed as `activeBar={{ fill: ... }}` would be silently
-	 * overridden by the plain-rectangle rule above it. `fill` is an inherited SVG
-	 * property, so colouring the wrapper recharts puts around the active rectangle
-	 * (`util/ActiveShapeUtils.js` renders `<Layer className="recharts-active-bar">`
-	 * around the `<path>`) reaches the path itself.
+	 * overridden by the plain-rectangle rule above it.
 	 *
-	 * ORDER IS LOAD-BEARING: both selectors are one class inside the same
-	 * descendant variant, so they carry identical specificity and the later rule
-	 * wins. `accent-hover` is the contract's own "colour a thing takes under the
-	 * pointer" role (branding § 6) — a lightness step, with no lift, scale or
-	 * translate, which is the only hover vocabulary this app has.
+	 * WHY THIS RULE WINS IS THE NESTING, not the source order (review round 1,
+	 * F2). recharts wraps every rectangle in `<Layer
+	 * className="recharts-bar-rectangle">` (`cartesian/Bar.js:94-96`) and, when a
+	 * mark is active, renders the active shape inside its own `<Layer
+	 * className="recharts-active-bar">` (`util/BarUtils.js:54` sets
+	 * `activeClassName`, `util/ActiveShapeUtils.js:93-97` renders it) — so the
+	 * active `<g>` is a DESCENDANT of the plain one. `fill` is an inherited SVG
+	 * property, so the path takes its value from its nearest ancestor, which is the
+	 * active wrapper. That is the mechanism a reorder of this array cannot change,
+	 * and the reason the two rules do not need to be ordered at all.
+	 *
+	 * `chart-bar-hover` is a first-class palette role — the mark under the pointer —
+	 * added in review round 1 (D1) because no existing role could express "more
+	 * prominent" on a ground whose accent is already the palette's brightest value
+	 * (`obsidian`), and because the button-hover role this used to borrow moves
+	 * TOWARD the ground there. Branding § 5 is the rule it follows: hover is a
+	 * colour step, and nothing lifts, scales or translates.
 	 */
-	"[&_.recharts-active-bar]:fill-accent-hover",
+	"[&_.recharts-active-bar]:fill-chart-bar-hover",
 	"[&_.recharts-line-curve]:stroke-accent",
 	"[&_.recharts-active-dot_circle]:fill-accent",
 	"[&_.recharts-tooltip-cursor]:stroke-hairline",
