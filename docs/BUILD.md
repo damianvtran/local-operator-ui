@@ -89,7 +89,7 @@ The project includes GitHub Actions workflows for automated building, testing an
 
 - `.github/workflows/ci.yml`: Runs lint, type checks, the release-contract scripts and the desktop test suite on pushes to `main` and `dev-*`
 - `.github/workflows/version-bump-guard.yml`: Rejects a `package.json` version bump outside a `chore(release):` PR, on every pull request (any base branch)
-- `.github/workflows/publish.yml`: Builds and publishes distributables for all platforms when a Release is published
+- `.github/workflows/publish.yml`: Builds and publishes distributables for all platforms when a Release is published, and does the whole release from there — nothing else on the pipeline is started or finished by hand
 
 `ci.yml` has no `pull_request` trigger: it runs when a commit lands on `main` or on
 a `dev-*` branch, not when a pull request is opened. A feature branch therefore
@@ -105,21 +105,31 @@ workflow rejects a PR that changes the version line unless its title starts with
 version bumps inside feature PRs" for the full doctrine, which supersedes the
 step-by-step list that used to live here.
 
-Once the window's PRs have merged, the owner tags and publishes with a single
-command:
+Once the window's PRs have merged, the owner bumps, tags and publishes. The notes
+are written by hand from the committed template — copy it out of the repository,
+edit it, and pass the file:
 
 ```bash
+cp .github/RELEASE_TEMPLATE.md /tmp/vX.Y.Z.md
+$EDITOR /tmp/vX.Y.Z.md
 gh release create vX.Y.Z --target <bump-merge-sha> \
-  --prerelease --title 'X.Y.Z: <theme>' --notes-file <notes-file>
+  --prerelease --title 'X.Y.Z: <theme>' --notes-file /tmp/vX.Y.Z.md
 ```
 
-Publishing the Release is what triggers `.github/workflows/publish.yml`, which
-builds and attaches the installers for every platform and then promotes the
-Release. Merely pushing a tag publishes nothing, and `--prerelease` is the hold
-that keeps an asset-less Release out of `/releases/latest` while the build runs.
-The workflow can also be started by hand from the Actions tab
-(`workflow_dispatch`), which repairs assets but deliberately never promotes a
-Release — a repair must not mutate release metadata.
+Never `gh release create --generate-notes`, and never the web UI's "Generate release
+notes": `.github/RELEASE_TEMPLATE.md` states the shape, and `publish.yml` refuses a
+Release whose body is empty or is GitHub's generated draft. Publishing the Release is
+what triggers `.github/workflows/publish.yml`, which builds and attaches the
+installers for every platform and then promotes the Release. Merely pushing a tag
+publishes nothing, and `--prerelease` is the hold that keeps an asset-less Release
+out of `/releases/latest` while the build runs. From that point the published
+Release drives everything: the workflow validates the tag, publishes to npm, builds
+and attaches every platform's artifacts, dispatches the signed-update verification
+and promotes the Release, with no manual step on the pipeline. The workflow can also
+be started by hand from the Actions tab (`workflow_dispatch`), which repairs assets
+but deliberately never promotes a Release — a repair must not mutate release
+metadata, and it is not held to the writeup rule either, since an old Release's body
+is whatever it shipped with.
 
 ## Configuration
 

@@ -18,17 +18,20 @@
  * "the guard passed" and "the derivation derived nothing" — the "green pipeline
  * that did nothing" failure these scripts exist to remove. `release-push-guard.mjs`
  * carried this defect first and it was fixed there alone; the eight scripts beside
- * it in the same workflow steps (`derive-release.mjs` is the very next command in
- * that `run:` block) kept it. So entry-point detection lives here, once, and every
- * release script resolves its own path through it.
+ * it in the same workflow steps (`derive-release.mjs` was the very next command in
+ * that `run:` block) kept it. Both of those files are gone with the automatic
+ * release path, and the table in `scripts/entry-point.test.mjs` is what kept the
+ * defect from coming back one script at a time while they were here: entry-point
+ * detection lives in this module, once, and every release script resolves its own
+ * path through it.
  *
  * WHAT THIS DOES NOT FIX. Resolving the entry point is the half that can be fixed
  * in the script. The other half is the consumer treating an empty or malformed
- * result as an answer, which lives in the workflow's shell: `auto-release.yml` and
- * `signed-update-candidate.yml` each assert the shape of what they parse before
- * they act on it, and the gates whose consumer reads nothing but an exit status
- * are run through `scripts/require-report.sh`, which refuses to read a silent
- * success as a pass. `scripts/entry-point.test.mjs` drives both halves.
+ * result as an answer, which lives in the workflow's shell:
+ * `signed-update-candidate.yml` asserts the shape of what it parses before it acts
+ * on it, and the gates whose consumer reads nothing but an exit status are run
+ * through `scripts/require-report.sh`, which refuses to read a silent success as a
+ * pass. `scripts/entry-point.test.mjs` drives both halves.
  *
  * WHY THE COMPARISON IS BY FILE IDENTITY. The question is "is this the same FILE",
  * so it is not asked as a question about names. `realpathSync` closes the two

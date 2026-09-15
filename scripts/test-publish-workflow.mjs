@@ -92,15 +92,32 @@ function shell(script, env, cwd) {
 	);
 }
 
-// `repository_dispatch` is the automated publication: `auto-release.yml` creates
-// the Release with GITHUB_TOKEN, which starts no run by itself, so the publish
-// workflow is dispatched explicitly. It is in this list because a trigger that is
-// not simulated here is a trigger whose jobs the graph tests below do not cover.
+// The trigger set itself is asserted, not inferred from the matrix below. The
+// matrix walks the events it is TOLD about, so a trigger silently disappearing
+// from `on:` (or being added back) would shrink this list and every case in it
+// would still pass - a release path nothing covers, reported as green.
+test("the only way in is a published Release, or a repair dispatch", () => {
+	// Two, and only two. `release: published` is the release path, and it works
+	// because a PERSON creates the Release: GitHub's anti-recursion rule means a
+	// Release published by `GITHUB_TOKEN` starts no run at all, which is why the
+	// tag and the Release are cut by hand (`gh release create`, see
+	// `.github/RELEASE_TEMPLATE.md`) rather than by a workflow. `workflow_dispatch`
+	// is the repair path, which attaches assets and never promotes.
+	assert.deepEqual(Object.keys(workflow.on).sort(), [
+		"release",
+		"workflow_dispatch",
+	]);
+});
+
+// Every trigger above is simulated here as well: a trigger whose jobs the graph
+// tests below do not cover is a trigger whose job wiring nothing checks. There is
+// no `repository_dispatch` case because there is no longer such a trigger - the
+// automated release that produced one is deleted, and a person's Release reaches
+// this workflow through the `release` event directly.
 for (const [event, prerelease] of [
 	["workflow_dispatch", false],
 	["release", false],
 	["release", true],
-	["repository_dispatch", false],
 ]) {
 	test(`${event} prerelease=${prerelease}: every required job reaches upload`, () => {
 		const result = graph(event, prerelease);
@@ -234,12 +251,19 @@ for (const [job, mode] of windowJobs) {
 		assert.ok(!("permissions" in jobs[job]));
 	});
 }
+// A refused writeup (the window job failing) has to stop everything that can
+// ship something, and `npm-publish` is the one that does not look like shipping:
+// it is a sibling of the window job rather than a descendant of it, and Actions
+// only gates a job on its own `needs`, never on a sibling's failure. With the
+// edge absent, a Release whose notes were refused published to npm while every
+// installer was skipped. This case is the assertion that keeps the edge there.
 for (const [label, forced] of [
 	["cannot be held", { "open-release-window": "failure" }],
 ]) {
-	test(`a release that ${label} stops every build instead of shipping assets`, () => {
+	test(`a release that ${label} stops every build and the npm publish`, () => {
 		const result = graph("release", false, forced);
 		for (const job of [
+			"npm-publish",
 			"build-macos",
 			"build-windows",
 			"build-linux",
@@ -251,7 +275,12 @@ for (const [label, forced] of [
 }
 test("the window opens before every build and closes only after attach", () => {
 	assert.deepEqual(needsOf("open-release-window"), ["validate-release"]);
-	for (const job of ["build-macos", "build-windows", "build-linux"]) {
+	for (const job of [
+		"npm-publish",
+		"build-macos",
+		"build-windows",
+		"build-linux",
+	]) {
 		assert.ok(needsOf(job).includes("open-release-window"), job);
 		assert.match(
 			jobs[job].if,
@@ -283,6 +312,11 @@ test("window scoping is the event variable, never a job that a repair skips", ()
 			graph(event, event === "release")["finalize-release"],
 			"success",
 		);
+	// The window is a dependency of `npm-publish` too, so the dispatch path is the
+	// case worth pinning: a repair must still REACH the npm job (the window job
+	// returns success there, having only refused to mutate), and the registry write
+	// stays skipped by that job's own event guard rather than by this edge.
+	assert.equal(graph("workflow_dispatch", false)["npm-publish"], "success");
 });
 test("a failed promotion is terminal and cannot cascade", () => {
 	// The promotion is the last job and nothing needs it, so a failed PATCH (the
@@ -350,7 +384,7 @@ test("payload checkouts use validated source, helper checkouts use workflow SHA"
 		"workflow",
 	);
 });
-for (const event of ["release", "workflow_dispatch", "repository_dispatch"]) {
+for (const event of ["release", "workflow_dispatch"]) {
 	for (const published of ["true", "false"]) {
 		test(`npm publish guard event=${event}, published=${published}`, () => {
 			assert.equal(

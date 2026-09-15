@@ -7,22 +7,31 @@
  * EXPECTED_RELEASE_ID (required by upload), IS_MANUAL_DISPATCH, GH_TOKEN
  * These pins are independent of the event: upload must detect a moved tag or
  * a deleted/recreated release even when it runs after a normal release event.
- * Output: GITHUB_OUTPUT lines source_sha, release_tag, release_id, prerelease
+ * Output: GITHUB_OUTPUT lines source_sha, release_tag, release_id, prerelease.
+ *
+ * The returned object also carries the Release's `body`, which is NOT one of those
+ * outputs (`emitOutputs` writes its four fields by name): `release-state.mjs`
+ * refuses a release whose writeup is GitHub's generated draft rather than prose
+ * from `.github/RELEASE_TEMPLATE.md`, and reading the body here means that verdict
+ * is made against the same response this validation pinned, not a second read that
+ * could describe a different body.
  *
  * THE RELEASE ID HAS TWO SPELLINGS, and the pin below reads both because the
  * producers disagree about which one they hold. The REST object validated here
  * spells one release twice: `id` is the NUMERIC database id (`389357596`) and
  * `node_id` is the GraphQL global id (`RE_kwDOOCmy184XNSAc`). A `release` event's
- * `github.event.release.id` is the numeric one; `gh release view --json id` is
- * the NODE one, which is not what its own name suggests, and that is the whole
- * of v0.24.2's lost first automatic release -- the dispatch carried
- * `RE_kwDOOCmy184XNSAc`, this validator compared it against `389357596`, and
- * every later job was skipped while the tag and the Release already existed.
+ * `github.event.release.id` is the numeric one, while `gh release view --json id`
+ * is the NODE one -- which is not what its own name suggests, and which a hand-run
+ * repair quoting that command will supply. That same mismatch is what cost
+ * v0.24.2's first automatic release its run: the dispatch that carried the node id
+ * (and is deleted with `.github/workflows/auto-release.yml`) compared it against
+ * the numeric id here, so every later job was skipped against a tag and a Release
+ * that already existed.
  *
  * The invariant, stated so the next reader does not have to rediscover which
- * spelling is which: a dispatched identifier must identify the SAME release
- * this validator pins, and the two spellings of one release are accepted or
- * refused together. Only the numeric spelling is ever PASSED ON -- that is what
+ * spelling is which: a supplied identifier must identify the SAME release this
+ * validator pins, and the two spellings of one release are accepted or refused
+ * together. Only the numeric spelling is ever PASSED ON -- that is what
  * `upload-release.mjs` and `release-state.mjs` require of their own pins, so
  * tolerance for the node id belongs at this input and nowhere downstream.
  */
@@ -186,6 +195,9 @@ function validateRelease(
 		// consumer downstream of this output requires that one (see the header).
 		release_id: release.id,
 		prerelease: release.prerelease,
+		// Read from the response above rather than fetched again: the writeup gate in
+		// `release-state.mjs` must judge the body this validation saw.
+		body: release.body,
 	};
 }
 

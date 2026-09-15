@@ -588,7 +588,7 @@ test("CLI: an unset PR title is refused rather than guessed", () => {
 const require = createRequire(import.meta.url);
 // Resolved through electron-builder's own tree, which is where the only `js-yaml`
 // this install can see lives (pnpm's layout exposes a package's dependencies to it
-// alone), exactly as `test-auto-release-workflow.mjs` resolves it.
+// alone), exactly as `test-publish-workflow.mjs` resolves it.
 const builderRequire = createRequire(
 	require.resolve("electron-builder/package.json"),
 );
