@@ -202,21 +202,45 @@ test("the startup line cannot describe the wrong behaviour", () => {
 	// "focused" for a headless plan would be worse than no line at all.
 	const headless = describeWindowLaunch(
 		plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+		"darwin",
 	);
 	assert.match(headless, /never shown/);
 	assert.match(headless, /1380x900/);
 	assert.match(headless, /throttling off/);
-	// The two properties a rig cannot see for itself: no tile, and a life tied
-	// to the launcher. Both are named rather than left to be inferred.
 	assert.match(headless, /no Dock tile/);
-	assert.match(headless, /quits when its launcher goes/);
+	/*
+	 * And nothing about the launcher. `headless` can be opted out of the watch or
+	 * already detached, so a mode line claiming "quits when its launcher goes"
+	 * would contradict the policy line printed straight after it in exactly the
+	 * cases where a run does NOT leave by itself — the first line being the one a
+	 * rig greps. The lifetime sentence belongs to `resolveLauncherWatchPlan`'s
+	 * `reason`, which knows the answer.
+	 */
+	assert.doesNotMatch(headless, /launcher/i);
 	const inactive = describeWindowLaunch(
 		plan({ env: { [WINDOW_MODE_ENV]: "inactive" } }),
+		"darwin",
 	);
 	assert.match(inactive, /without activating/);
 	assert.doesNotMatch(inactive, /no Dock tile/);
-	assert.doesNotMatch(inactive, /quits when its launcher goes/);
-	assert.match(describeWindowLaunch(plan()), /shown and focused/);
+	assert.doesNotMatch(inactive, /launcher/i);
+	assert.match(describeWindowLaunch(plan(), "darwin"), /shown and focused/);
+	// The Dock is a macOS object, so the claim is mac-only: a Linux or Windows
+	// rig naming a Dock tile would be describing something that platform has not.
+	assert.doesNotMatch(
+		describeWindowLaunch(
+			plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+			"linux",
+		),
+		/no Dock tile/,
+	);
+	assert.match(
+		describeWindowLaunch(
+			plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+			"darwin",
+		),
+		/hideDock|no Dock tile/,
+	);
 });
 
 test("only a headless run with a launcher watches that launcher", () => {

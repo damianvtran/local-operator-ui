@@ -40,6 +40,7 @@ import {
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
+import type { LauncherWatch } from "./launcher-watch";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -121,10 +122,67 @@ if (windowLaunch.mode !== "normal") {
 	console.log(`[window-mode] ${describeWindowLaunch(windowLaunch)}`);
 }
 
+/*
+ * Ending a headless run, and the one outcome it may not have: still being here.
+ *
+ * Every path that ends a headless run goes through these two functions, because
+ * the same defect appeared on each of them separately — a window close, a
+ * launcher that went away, a signal — and each time the app was left running
+ * with no window and no user. The graceful path is always tried first
+ * (`app.quit()`, which is what the shipped app takes), and the deadline is the
+ * guarantee underneath it.
+ *
+ * What the deadline does NOT cover, stated because it decides what a harness
+ * author may rely on: the escalation is `app.exit(0)`, whose `process.on("exit")`
+ * handler runs `backendService.emergencyStopOwned()`, which can only `SIGKILL` a
+ * child that was SPAWNED AND REGISTERED as the owned backend. A boot still
+ * installing its managed runtime has no such field yet, and a deadline that
+ * lands in that window can leave that work behind. The owned backend this repo
+ * actually runs (the `serve` child) is registered long before a harness drives
+ * the window, which is why 10 s is chosen deliberately over the app's own
+ * `QUIT_CLEANUP_FAILSAFE_MS` (~34 s): a launcher-gone run is a run nobody is
+ * watching, and the cost of waiting is another instance of exactly the kind this
+ * module exists to remove. An escalated exit is still status 0 — it is a run
+ * ending because its way of being watched went away, not a failure — so a
+ * harness must not read the status as the signal; the `[window-mode]` line is
+ * what says which path ended it.
+ */
+let headlessExitDeadline: NodeJS.Timeout | null = null;
+function armHeadlessExitDeadline(why: string): void {
+	if (headlessExitDeadline) return;
+	const deadline = setTimeout(() => {
+		const line = `${why} and the quit had not finished within ${LAUNCHER_EXIT_DEADLINE_MS} ms; exiting`;
+		logger.error(`[window-mode] ${line}`, LogFileType.BACKEND);
+		console.log(`[window-mode] ${line}`);
+		app.exit(0);
+	}, LAUNCHER_EXIT_DEADLINE_MS);
+	// Never a reason for the process to stay alive by itself.
+	deadline.unref();
+	headlessExitDeadline = deadline;
+}
+
+/**
+ * End this headless run. `why` is the plain sentence a person reads on stdout;
+ * `detail` is the technical reading that goes to the backend log with it, so the
+ * console line stays about the outcome (`pid 1` is trivia to whoever ran
+ * `pnpm dev:headless`) while a post-mortem still gets the observation.
+ */
+function endHeadlessRun(why: string, detail?: string): void {
+	logger.info(
+		`[window-mode] ${why}; quitting${detail ? ` (${detail})` : ""}`,
+		LogFileType.BACKEND,
+	);
+	console.log(`[window-mode] ${why}; quitting`);
+	armHeadlessExitDeadline(why);
+	app.quit();
+}
+
+/** The launcher watch, held so `before-quit` can stop it. */
+let launcherWatch: LauncherWatch | null = null;
+
 // Set application name
 app.setName("Local Operator");
-const image = nativeImage.createFromPath(icon);
-/*
+const image = nativeImage.createFromPath(icon); /*
  * The Dock tile on macOS, which a headless run must not have.
  *
  * A `headless` run is an app nobody is using: the window is never shown, so the
@@ -653,37 +711,29 @@ app
 			console.log(`[window-mode] ${launcher.reason}`);
 		}
 		if (launcher.watch && launcher.launcherPid !== null) {
-			startLauncherWatch({
+			launcherWatch = startLauncherWatch({
 				launcherPid: launcher.launcherPid,
 				intervalMs: LAUNCHER_POLL_INTERVAL_MS,
 				isAlive: isProcessAlive,
 				parentPid: () => process.ppid,
-				onLauncherGone: (detail) => {
-					/*
-					 * The graceful path first: `app.quit()` is what Cmd+Q takes, so the owned
-					 * backend is stopped by `will-quit` and the browser host is released by
-					 * `before-quit`, rather than being left to the synchronous emergency stop
-					 * that `process.on("exit")` runs. The deadline is the guarantee underneath
-					 * it — an abandoned instance is the failure this whole watch exists for, so
-					 * the one outcome it may not have is "still here".
-					 */
-					logger.info(
-						`[window-mode] launcher ${detail}; quitting`,
-						LogFileType.BACKEND,
-					);
-					console.log(`[window-mode] launcher ${detail}; quitting`);
-					const deadline = setTimeout(() => {
-						logger.error(
-							`[window-mode] launcher ${detail} and the quit had not finished within ${LAUNCHER_EXIT_DEADLINE_MS} ms; exiting`,
-							LogFileType.BACKEND,
-						);
-						app.exit(0);
-					}, LAUNCHER_EXIT_DEADLINE_MS);
-					// Never a reason for the process to stay alive by itself.
-					deadline.unref();
-					app.quit();
-				},
+				onLauncherGone: ({ message, detail }) =>
+					endHeadlessRun(message, detail),
 			});
+		}
+		if (windowLaunch.mode === "headless") {
+			/*
+			 * A signal is the case the graceful path does NOT reach on its own.
+			 * Chromium's SIGTERM shutdown closes the window and then leaves the
+			 * process up (macOS keeps a windowless app), and an app-initiated quit
+			 * emits no `window-all-closed` at all — measured, SIGTERM to a booted
+			 * headless app left it alive at 45 s and 70 s, with the quit never
+			 * completing and the `will-quit` failsafe never reached. Handling the
+			 * signal here turns it into the same bounded exit every other path gets
+			 * and is also what makes Ctrl-C in a terminal end `pnpm dev:headless`.
+			 */
+			for (const signal of ["SIGTERM", "SIGINT"] as const) {
+				process.on(signal, () => endHeadlessRun(`received ${signal}`));
+			}
 		}
 
 		// Default open or close DevTools by F12 in development
@@ -1326,12 +1376,14 @@ app
 app.on("window-all-closed", () => {
 	/*
 	 * A headless run has one window, no user, and no way back: if its window has
-	 * closed the run is over. Without this, a signal or a driver that closes the
-	 * window leaves the process alive with nothing in it — off macOS that is
-	 * already `app.quit()` below, and on macOS the `darwin` branch deliberately
-	 * keeps a windowless app in the Dock, which is exactly the leftover this is
-	 * here to prevent. Measured: SIGTERM to a headless app closes its window,
-	 * and the process then survived 20 s and indefinitely beyond it.
+	 * closed the run is over. This is the WINDOW path and not the signal one —
+	 * measured, a driver closing the window over CDP reaches this branch and the
+	 * app is gone in about a second, while an app-initiated quit (a signal) does
+	 * not emit `window-all-closed` at all, which is why the signal path handles
+	 * itself above rather than leaning on this. Without either, a closed window
+	 * left the process running with nothing in it: off macOS that is already
+	 * `app.quit()` below, and the `darwin` branch deliberately keeps a windowless
+	 * app in the Dock.
 	 */
 	if (windowLaunch.mode === "headless") {
 		logger.info(
@@ -1452,6 +1504,23 @@ app.on("will-quit", (event) => {
 // Handle before-quit event to ensure proper cleanup
 app.on("before-quit", () => {
 	logger.info("App is about to quit", LogFileType.BACKEND);
+	/*
+	 * The bounded exit for EVERY way a headless run can be asked to quit, not
+	 * only the two that arm it themselves (the launcher going, a signal). This is
+	 * here rather than in the two call sites because a quit that wedges is a
+	 * property of the quit path, not of whoever asked for it: measured on this
+	 * head, `app.quit()` from a signal never reached `will-quit` and never
+	 * completed, so a run whose launcher went would have sat there had the
+	 * deadline been armed only in the watch's callback. Arming it here also makes
+	 * the window-close path (a driver closing the window over CDP) bounded.
+	 *
+	 * The watch is stopped with it: a poll that lands mid-shutdown must not stack
+	 * a second quit on the one already under way.
+	 */
+	if (windowLaunch.mode === "headless") {
+		launcherWatch?.stop();
+		armHeadlessExitDeadline("the app is quitting");
+	}
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
 	/*
