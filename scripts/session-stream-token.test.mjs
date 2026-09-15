@@ -239,6 +239,25 @@ const bundle = await build({
 										if (done) done(null, { stdout: "", stderr: "" });
 										return { on() {}, kill() {} };
 									}
+									/**
+									 * Imported by managed-python (through venv-paths, which the manager
+									 * constructs from). Nothing on that path executes anything - the runtime
+									 * copy and the prepared venv are the installer's job - so this is
+									 * recorded and REJECTED rather than stubbed green: a future change that
+									 * starts a real command from import or construction fails here instead
+									 * of spawning on the operator's machine.
+									 */
+									export function execFile(command, args, options, callback) {
+										const done = typeof options === "function" ? options : callback;
+										globalThis.__backendTestState.execs.push(
+											"execFile:" + command + " " + (args ?? []).join(" "),
+										);
+										const error = new Error(
+											"this fixture runs no command: " + command,
+										);
+										if (done) done(error, "", "");
+										return { on() {}, kill() {} };
+									}
 								`,
 							"backend-logger-fixture": `
 									export const LogFileType = {

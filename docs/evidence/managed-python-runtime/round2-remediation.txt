@@ -1,0 +1,153 @@
+# Round-2 findings: the output of what answered each one
+
+Head before this round `69f2af44d`. Every command is shown with its output.
+
+## N4 - the first `reapSupersededGenerations` call can no longer delete the selected generation
+
+Where the retention rule is stated, and where it used to be violated:
+
+```
+$ grep -n "reapSupersededGenerations" -r src/ scripts/
+src/main/backend/managed-python.ts: inside prepareManagedPython, before the copy   -> keep = the published selection
+src/main/backend/managed-python.ts: after the new generation is published          -> keep = the new {runtime, venv}
+scripts/managed-python.test.mjs:   the reaper's own case                           -> keep = the selected generation
+
+$ grep -rn "reapSupersededGenerations" src/main/backend/ | grep -v "^.*://"
+(no other call site: the only two in `src/` are the two above, and `keep` is now a
+required parameter, so a third one cannot be keep-less without failing `pnpm check-types`)
+```
+
+What changed: the `missing` verdict now carries `published` (the record the pointer names),
+each of its eight return sites goes through one `missing(detail)` builder, and the first
+call site passes `{ runtime: published?.runtime, venv: published?.venv }`. The parameter is
+mandatory rather than defaulted, because a keep-less call's only survivor is the NEWEST
+generation in the root, which is not necessarily the selected one.
+
+The regression test, run against the keep-less call (the pre-fix behaviour) and then against
+the fix. Same test, same fixture, one line of source between them:
+
+```
+$ # call site reverted to `reapSupersededGenerations(options, {})`
+$ node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+✖ a selected runtime older than an unselected generation survives the repair, and is reused (1547.243833ms)
+ℹ tests 21
+ℹ pass 20
+ℹ fail 1
+ℹ failing tests:
+test at scripts/managed-python.test.mjs:512:1
+✖ a selected runtime older than an unselected generation survives the repair, and is reused (1547.243833ms)
+  AssertionError [ERR_ASSERTION]: the selected generation survives whatever its mtime says next to an unselected one
+
+$ # call site restored to the published selection
+$ node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+✔ a selected runtime older than an unselected generation survives the repair, and is reused (1408.79325ms)
+ℹ tests 21
+ℹ pass 21
+ℹ fail 0
+```
+
+The fixture is the one the round-1 test could not reach: two generations, the SELECTED one
+aged to ten minutes and the unselected one to one minute, then the environment removed (the
+verdict is `missing` while the runtime is intact). It asserts the verdict names the published
+runtime, that the generation is still on disk after the repair, that the repair REUSED it
+(`rebuilt.runtime === first.runtime`, so no 47 MB `ditto` and no second `verifyMachO` pass),
+and that the install callback still ran twice.
+
+## N5 - the duplicate key is gone, and something now sees the next one
+
+```
+$ node -p "require('./package.json').scripts['check-themes']"
+node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs
+
+$ grep -c '"check-themes"' package.json
+1
+
+$ git diff origin/main..HEAD -- package.json | grep -cE '^[+-]\s*"version"'
+0
+
+$ node -e "const j=require('./package.json'); console.log(j.scripts['test:desktop'].split(' ').filter(s=>s.startsWith('scripts/')).length)"
+55
+```
+
+The new guard, run against the pre-fix bytes and then against the fixed file:
+
+```
+$ git show HEAD:package.json > package.json      # the round-1 bytes, as merged
+$ node scripts/run-desktop-tests.mjs scripts/check-runtime-deps.test.mjs
+✖ the repository's own manifest declares no key twice (2.089875ms)
+ℹ pass 6
+ℹ fail 1
+
+$ # the file as it is now
+$ node scripts/run-desktop-tests.mjs scripts/check-runtime-deps.test.mjs
+✔ the duplicate-key scanner fires on a duplicate, and not on siblings that share a name (0.514208ms)
+✔ the repository's own manifest declares no key twice (2.0765ms)
+ℹ tests 7
+ℹ pass 7
+ℹ fail 0
+```
+
+Why a scanner: a duplicate key is not an error to JSON - the last one silently wins - so
+`JSON.parse`, `require()` and every consumer of the file see a valid object, and `pnpm lint`
+does not read `package.json` at all. The detector is pinned in both directions (it fires on
+`{"a": 1, "a": 2}`, and not on two sibling objects that both hold `x`), and the manifest
+assertion is shown to be non-vacuous by the tampered-bytes case that runs the same scanner
+over the same file with one key duplicated.
+
+## N6 - the readiness docstring and the failure classification
+
+`managed-python.ts`, the `managedSelectionReady` paragraph, used to say Mach-O verification
+"still runs against the seed, the staged copy and every candidate generation". It runs
+against the seed and the staged copy; a reused generation is accepted on its identity alone,
+which is sufficient because it is byte-identical to a staged copy that was verified. The
+sentence now says that, and names the false claim it replaced.
+
+The classification, with the same test both ways:
+
+```
+$ # the third cause bucket, before the fix
+$ node scripts/run-desktop-tests.mjs scripts/python-bytecode-cache.test.mjs
+✖ the setup failure dialog says what happened before what was recorded (0.747541ms)
+ℹ pass 28
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: nothing was installed, so the copy must not say it was
+
+$ # after the fix
+$ node scripts/run-desktop-tests.mjs scripts/python-bytecode-cache.test.mjs
+✔ the setup failure dialog says what happened before what was recorded (0.799125ms)
+ℹ tests 29
+ℹ pass 29
+ℹ fail 0
+```
+
+`Backend preparation did not complete. <...>` is what `prepareManagedPython` throws when the
+install callback returns false - a pip or network failure, where nothing was installed. The
+`did not complete` alternation made it match the smoke bucket, so the user read "The backend
+was installed but did not start correctly" about an install that never happened. The
+alternation is gone from that bucket and the failure falls through to the generic cause,
+which is true of it; the app's own sentence still follows under `The app recorded:`. No new
+user-visible string was introduced - the correction chooses between sentences that already
+existed - and the test pins both halves, so a real smoke failure still reads as one.
+
+## Gates on this head
+
+```
+$ pnpm lint          -> LINT_EXIT=0      (34 warnings, unchanged: none in the files above)
+$ pnpm check-types   -> TYPES_EXIT=0
+$ pnpm check-themes  -> THEMES_EXIT=0    (themes.generated.css up to date; 2303 contrast assertions)
+$ pnpm test:desktop  -> tests 1110 | pass 1109 | fail 1 | skipped 0
+```
+
+The one failure is the `submit-latency` flake this branch does not own: `M1/M2/M3: the warm
+removes the engage from the send...`, which `sync-170.txt` re-confirms at the current base in
+a clean `git archive` tree. The three tests added this round pass here, and the four container
+tests (including the negative direction) pass here.
+
+## Deliberately deferred: CI runs no macOS desktop job
+
+Recorded rather than fixed, because it is a repository-shape change and not this diff: the
+`Desktop Tests` job is `ubuntu-latest` only, and this PR's provisioning, container and repair
+coverage is macOS-only by construction, so on CI those paths execute only through the nine
+guards that skip - and the QA rounds are where they actually run. The durable fix is a macOS
+runner for that job; the cost is a macOS runner on every pull request, and the scope is a
+workflow change that would touch every other job's assumptions about the runner.

@@ -1,0 +1,49 @@
+Checking app: dist/mac/Local Operator.app
+Checking app: dist/mac-arm64/Local Operator.app
+Checking disk image: dist/local-operator-ui-0.22.3-arm64.dmg
+Checking disk image: dist/local-operator-ui-0.22.3-x64.dmg
+FAIL app-codesign: codesign --verify --deep --strict on the app -> dist/mac/Local Operator.app: code object is not signed at all | In architecture: x86_64
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> dist/mac/Local Operator.app: rejected | source=no usable signature
+FAIL app-stapler: stapler validate on the app -> Processing: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac/Local Operator.app
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+FAIL app-one-bundled-python: the bundled python interpreter tree this architecture needs -> the x86_64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/x64
+FAIL app-private-python-seed: complete private Python seed with no legacy aliases -> Expected one architecture-specific private seed
+FAIL app-codesign: codesign --verify --deep --strict on the app -> dist/mac-arm64/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> dist/mac-arm64/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-stapler: stapler validate on the app -> Processing: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac-arm64/Local Operator.app | Local Operator.app does not have a ticket stapled to it.
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+PASS app-one-bundled-python: the bundled python interpreter tree this architecture needs
+PASS app-private-python-seed: complete private Python seed with no legacy aliases
+FAIL dmg-spctl: spctl -a -vvv -t open on the disk image -> dist/local-operator-ui-0.22.3-arm64.dmg: rejected | source=no usable signature
+FAIL dmg-stapler: stapler validate on the disk image -> Processing: /Users/damian/local-operator-ui-worktrees/update-seal/dist/local-operator-ui-0.22.3-arm64.dmg | local-operator-ui-0.22.3-arm64.dmg does not have a ticket stapled to it.
+FAIL app-codesign: codesign --verify --deep --strict on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-05vmHM/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-05vmHM/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-stapler: stapler validate on the app -> Processing: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-05vmHM/extracted/Local Operator.app | Local Operator.app does not have a ticket stapled to it.
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+PASS app-one-bundled-python: the bundled python interpreter tree this architecture needs
+PASS app-private-python-seed: complete private Python seed with no legacy aliases
+FAIL dmg-spctl: spctl -a -vvv -t open on the disk image -> dist/local-operator-ui-0.22.3-x64.dmg: rejected | source=no usable signature
+FAIL dmg-stapler: stapler validate on the disk image -> Processing: /Users/damian/local-operator-ui-worktrees/update-seal/dist/local-operator-ui-0.22.3-x64.dmg | local-operator-ui-0.22.3-x64.dmg does not have a ticket stapled to it.
+FAIL app-codesign: codesign --verify --deep --strict on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-HD8D5y/extracted/Local Operator.app: code object is not signed at all | In architecture: x86_64
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-HD8D5y/extracted/Local Operator.app: rejected | source=no usable signature
+FAIL app-stapler: stapler validate on the app -> Processing: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-HD8D5y/extracted/Local Operator.app
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+FAIL app-one-bundled-python: the bundled python interpreter tree this architecture needs -> the x86_64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/x64
+FAIL app-private-python-seed: complete private Python seed with no legacy aliases -> Expected one architecture-specific private seed
+FAIL app-codesign: codesign --verify --deep --strict on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-uD2AgD/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-uD2AgD/extracted/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-stapler: stapler validate on the app -> Processing: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-uD2AgD/extracted/Local Operator.app | Local Operator.app does not have a ticket stapled to it.
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+PASS app-one-bundled-python: the bundled python interpreter tree this architecture needs
+PASS app-private-python-seed: complete private Python seed with no legacy aliases
+FAIL app-codesign: codesign --verify --deep --strict on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-Cal5PF/extracted/Local Operator.app: code object is not signed at all | In architecture: x86_64
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-Cal5PF/extracted/Local Operator.app: rejected | source=no usable signature
+FAIL app-stapler: stapler validate on the app -> Processing: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-Cal5PF/extracted/Local Operator.app
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+FAIL app-one-bundled-python: the bundled python interpreter tree this architecture needs -> the x86_64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/x64
+FAIL app-private-python-seed: complete private Python seed with no legacy aliases -> Expected one architecture-specific private seed
+PASS final-artifact-metadata: release metadata describes exact delivered bytes
+
+28 of 41 artifact checks failed. The release must not be published until every check above passes.
+The app does not ship the bundled interpreter its architecture needs: the x86_64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/x64. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.
+GATE_EXIT=1
