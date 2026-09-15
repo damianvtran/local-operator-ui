@@ -35,6 +35,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const VENDOR_DIR = join(ROOT, "src", "main", "browser", "vendor");
@@ -321,7 +322,7 @@ async function main() {
 	);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isEntryPoint(import.meta.url)) {
 	main().catch((error) => {
 		console.error(`sync-vendored failed: ${error.message}`);
 		process.exitCode = 1;

@@ -30,6 +30,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const DEFAULT_MANIFEST = resolve(repoRoot, "package.json");
@@ -156,10 +157,9 @@ function main(argv) {
 }
 
 // Only the CLI exits; importing this module for the allowlist or for the check
-// function must not.
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+// function must not. Through `scripts/entry-point.mjs` because the lexical form of
+// this comparison loaded the file, ran nothing and exited 0 under a symlinked
+// spelling — and `ci.yml`'s Runtime Dependencies job reads that status as a pass.
+if (isEntryPoint(import.meta.url)) {
 	process.exit(main(process.argv.slice(2)));
 }

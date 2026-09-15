@@ -142,7 +142,11 @@ jobs:
           # The workflow's own reviewed commit, as everywhere else that checks out
           # tooling rather than a payload.
           ref: ${{ github.workflow_sha }}
+          # `scripts/entry-point.mjs` is here for the same reason as in
+          # `publish.yml`: `validate-release.mjs` resolves its own entry point through
+          # it, so a list without it fails this job at import time.
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/validate-release.mjs
             scripts/release-candidate.mjs
             scripts/release-baseline.mjs
@@ -171,6 +175,18 @@ jobs:
             # return first.
             [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
             node scripts/release-candidate.mjs --release-tag "$RELEASE_TAG" > candidate.json
+            # The refusal the two `auto-release.yml` consumers of a derived document
+            # also make: `jq -r` on an EMPTY file prints nothing and exits 0, so a
+            # candidate that was never resolved writes a `candidate.json` this step
+            # then reads as an answer - an empty `source_sha` in `$GITHUB_OUTPUT`,
+            # which is what `actions/checkout` falls back to the event ref for. The
+            # jobs downstream refuse a candidate that is not a 40-character SHA, so
+            # nothing is built from it; this refuses where the emptiness is produced
+            # and names it, rather than leaving a `Candidate commit | |` row behind.
+            if ! jq -e '(.source_sha | type) == "string" and (.incumbent_tag | type) == "string"' candidate.json > /dev/null 2>&1; then
+              echo "::error title=Candidate produced no answer::candidate.json is empty or malformed, so no candidate commit was ever resolved. Refusing to carry an empty pin into the signing jobs."
+              exit 1
+            fi
             {
               jq -r '"source_sha=\(.source_sha)", "incumbent_tag=\(.incumbent_tag)"' candidate.json
               echo "origin=release $RELEASE_TAG"
@@ -360,9 +376,15 @@ jobs:
           # what keep that asset present, so the arch set stays a property of this
           # workflow rather than of whichever tree is checked out.
           pnpm exec electron-builder --mac --arm64 --x64 --publish never -c.forceCodeSigning=true
-          pnpm notarize-dmg
-          pnpm verify-macos-artifacts
-          node scripts/check-packaged-closure.mjs --dist dist
+          # The three gates below are wrapped in `scripts/require-report.sh` for the
+          # same reason as their twins in `publish.yml`: this block reads an exit
+          # status, so a gate that exited 0 having printed nothing - which is what
+          # reaching a script through an unresolvable path spelling produced - was a
+          # pass. The helper refuses an empty success instead of reading it as one,
+          # and `pnpm --silent` keeps pnpm's own banner out of the stream it measures.
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+          bash scripts/require-report.sh "macOS artifact verification" pnpm --silent verify-macos-artifacts
+          bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
           git diff --exit-code package.json
       # `*.blockmap` is what makes an update a delta rather than a full-file
       # download, and publish.yml's macOS upload carries it for that reason: the
