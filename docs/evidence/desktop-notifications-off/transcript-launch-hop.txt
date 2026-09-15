@@ -12,9 +12,13 @@ working directory over the launch with dotenv `override: true`, and
 WHAT WAS RUN. The app, headless, with `harness/hop-probe.cjs` loaded into its
 main process by `NODE_OPTIONS=--require` (Electron honours it for the main
 process). The probe records what the launch handed the process, what the same key
-is after the fold, and the environment of every child the app spawns. Nothing is
-replaced or stubbed: the app really spawns the backend, which really answers
-(`GET /health 200` below), and it is killed by exact pid afterwards.
+is after the fold, and the environment of every child the app starts through
+`child_process.spawn`/`spawnSync` - which is every child that matters here,
+except one: `loadShellEnvironment` reaches its `source "$HOME/.zshrc" && env`
+child through `promisify(exec)`, i.e. `execFile`, and a patched `cp.spawn` never
+sees that (measured; see "HOW TO READ IT"). Nothing is replaced or stubbed: the
+app really spawns the backend, which really answers (`GET /health 200` below),
+and it is killed by exact pid afterwards.
 
 Both trees carried the same `.env` line, deliberately in the EMPTY shape - the
 shape `.env.template` uses for every optional value, and the one a stale export
@@ -92,15 +96,27 @@ HOW TO READ IT.
     its working directory. In both trees the fold wins - `""` - which is the
     defect, live, on a real launch, and it is why reading the source is not
     enough.
-  - `spawn python3 dir="-c"` is the BACKEND. `dir="-c"` is the shape
-    `owned-serve-launch.ts` builds (`["-c", <supervisor>, "serve", "--port", N]`),
-    and the app's log shows it serving. In the BEFORE tree it is handed `""`
-    (which `notify.py` reads as ENABLED - case 1b of `transcript.txt` measures
-    that); in the AFTER tree it is handed `"1"`, the launch's own value.
-  - `spawn bash dir="-c"` is the `source "$HOME/.zshrc" && env` child that becomes
-    `shellEnv`, the base of the environment the backend is spawned with. It
-    follows the same value on both sides, which is what makes the two rows one
-    hop rather than two measurements.
+  - `spawn python3 dir="-c"` is `runBounded`'s bounded IDENTITY PROBE - the
+    `python3 -c <PROBE_SCRIPT>` that proves which interpreter this is before
+    anything is launched (`owned-serve-launch.ts::probeOnce`). It is handed the
+    same `backendSpawnEnv()` object the launch itself is, which is why its row
+    agrees with the next one.
+  - `spawn bash dir="-c"` is THE BACKEND. The POSIX plan is
+    `bash -c 'exec "$@"' owned-serve <interpreter> -c <entry> serve --port N`
+    (`owned-serve-launch.ts::planFor`), and that is the spawn in
+    `backend-service.ts::startOwned` whose `env` is `launch.env`. So this row is
+    the value the backend itself is handed: `""` in the BEFORE tree, which
+    `notify.py` reads as ENABLED (case 1b of `transcript.txt` measures that), and
+    `"1"` in the AFTER tree, the launch's own value. The first revision of this
+    file had these two rows the other way round and called the backend row the
+    shell-environment probe (review round 2, MINOR-1); the conclusion is
+    unchanged and in fact stronger, because the row that carries the value is the
+    serve launch itself rather than a child beside it.
+  - the `source "$HOME/.zshrc" && env` child that becomes `shellEnv` does NOT
+    appear here at all, and that is the instrument's reach rather than the run's:
+    `loadShellEnvironment` starts it with `promisify(exec)`, and the probe wraps
+    `child_process.spawn`/`spawnSync` only. Two child rows per process is the
+    whole of what this file can see.
   - the later `launch ... ""` block is a SECOND Electron process the app starts
     itself, inheriting the folded environment. It is in both trees, is not this
     change's path, and is left visible rather than filtered.

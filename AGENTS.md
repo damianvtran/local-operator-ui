@@ -289,14 +289,28 @@ still green. The value the launch was given now wins, so a stale `.env` cannot
 defeat an agent-driven run — and an empty value that reaches the launch at all
 still silences the backend, because empty is not a choice.
 
-**What this pin does not cover.** The consumer is `local_operator/tui/notify.py`,
-which lives in a SEPARATELY INSTALLED backend package that this repo does not pin
-(`src/main/update-install.ts` installs it with `pip install --upgrade
-local-operator`). Nothing here reads that file, so if upstream ever renames
-`_ENV_DISABLE`, every switch this repo sets becomes a variable nobody reads: the
-incident returns with all of these tests green. The pin guards the local
-spelling, not the contract; a cheap pin would need the installed backend's
-version or the name itself asserted against this repo's, and none exists today.
+**What this pin does not cover — two folds and one rename.** The consumer is
+`local_operator/tui/notify.py`, which lives in a SEPARATELY INSTALLED backend
+package that this repo does not pin (`src/main/update-install.ts` installs it with
+`pip install --upgrade local-operator`). Nothing here reads that file, so if
+upstream ever renames `_ENV_DISABLE`, every switch this repo sets becomes a
+variable nobody reads: the incident returns with all of these tests green. The pin
+guards the local spelling, not the contract; a cheap pin would need the installed
+backend's own NAME asserted against this repo's — a version assertion would not
+close it, because the contract is the name rather than the number — and nothing
+here can reach that name today.
+
+The same package folds a `.env` of its OWN, one hop past the app: `env.py:18-19`
+runs `load_dotenv(Path(__file__).parent.parent / ".env", override=True)` at
+import time — `…/site-packages/.env` for a wheel, uv or pipx install, the source
+checkout root for an editable one — inside the backend process the app has just
+handed `1` to. Reproduced against the shipped consumer with the package root in
+scratch: inherited `1` → `''` → `notifications_enabled()` True. It is latent on
+this machine (neither of those paths exists, and the backend's own `.env.template`
+does not carry the key), and it is the same class as the fold this PR fixes, one
+layer further in: what the app-side resolution guarantees is that a `.env` in the
+APP's working directory cannot replace the launch, not that nothing downstream of
+the app ever can.
 
 `docs/evidence/desktop-notifications-off/` carries the before/after proof, stood
 on a shim `osascript` so neither case can touch the real one, and the measurement
