@@ -798,16 +798,14 @@ export const STORIES = [
 	 *     provenance - which is why they were deleted rather than retained with a
 	 *     disclosure.
 	 *
-	 * The replacement frames were to be captured with the Local Operator browser
-	 * extension against an isolated live backend, which is the method the
-	 * operator's rules require for page interaction and screenshots. That capture
-	 * is BLOCKED: the extension's worker stopped answering this session and no
-	 * frame could be taken without substituting a script, which the same rules
-	 * forbid. The whole visual surface of this remediation is therefore
-	 * unphotographed, and it is recorded as blocked on PR #173 rather than
-	 * papered over with a picture of the code that was replaced. When the browser
-	 * tool is reachable the set belongs under `docs/evidence/chat-cwd-move-live/`
-	 * as a declared supplementary set, with its own `source` and `why`.
+	 * The replacement frames ARE captured, and they are deliberately NOT here:
+	 * `docs/evidence/chat-cwd-move-live/` is a declared supplementary set of
+	 * thirteen browser-tool frames (localOperatorLight and localOperatorDark) with
+	 * its own README, `source` and `why`. The method is the operator's own rule -
+	 * page interaction and screenshots go through the Local Operator browser tool,
+	 * never a scripted or downloaded engine - so the capture can neither be
+	 * produced nor reproduced by this file, and adding the stories back to STORIES
+	 * below would re-commit the very thing the withdrawal was about.
 	 *
 	 * The picker states are GONE rather than merely unphotographed, and that is a
 	 * product change: `/move` no longer mounts a dialog that hosts the chip (it
