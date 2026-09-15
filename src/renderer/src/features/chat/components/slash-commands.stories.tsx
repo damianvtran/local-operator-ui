@@ -337,6 +337,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	commands: COMMANDS,
 	commandNames: new Set(),
 	promptCommands: new Set(),
+	armedOnlyCommands: new Set(),
 	nameListCommands: new Set(),
 	argumentWords: [],
 	enabled: true,

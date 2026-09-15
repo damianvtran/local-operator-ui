@@ -98,6 +98,22 @@ export type SlashCommandMeta = {
 const MAX_VISIBLE_ROWS = 6;
 
 /**
+ * The destinations whose command is ARMED EXPLICITLY, never inferred.
+ *
+ * `/goal` is the one command whose WORD used to arm it by appearing in a draft:
+ * Enter over `I approve spend /goal` moved the sentence to the front, staged it
+ * and sent nothing, so the request never ran and the words had moved (the
+ * operator's report). A word sitting in a sentence names no gesture, so the only
+ * arming is the explicit PICK of the command's own row in the popup, and Enter
+ * over a draft that merely contains the word sends that draft as written.
+ *
+ * Keyed off the DESTINATION, which is what the catalogue says the command IS: a
+ * rename or a new alias of `/goal` then carries the arming with it instead of
+ * silently dropping the command out of the set.
+ */
+const ARMED_ONLY_DESTINATIONS = new Set(["session.goal"]);
+
+/**
  * The popup's row pitch, in px: `py-2` (16) plus the `text-body-sm` line box
  * (20). Named because the row region's max-height is a whole multiple of it, so
  * the list never RESTS on a half-row slice — a 2px thumb already says "more
@@ -208,6 +224,8 @@ export type SlashCompletionState = {
 	/** Registry-derived vocabularies the submit planner needs. */
 	commandNames: ReadonlySet<string>;
 	promptCommands: ReadonlySet<string>;
+	/** Words the planner must not hoist and only a PICK may arm. */
+	armedOnlyCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -349,6 +367,21 @@ export function useSlashCompletion({
 		const names = new Set<string>();
 		for (const command of registry) {
 			if (!command.consumes_prompt) continue;
+			names.add(command.name.toLowerCase());
+			for (const alias of command.aliases) names.add(alias.toLowerCase());
+		}
+		return names;
+	}, [registry]);
+	/*
+	 * Derived like the two sets above, and from the registry rather than from a
+	 * name written here: the arming vocabulary moves with the catalogue, so a
+	 * backend that renamed the command or gave it another alias cannot leave the
+	 * planner hoisting a word the pick no longer arms.
+	 */
+	const armedOnlyCommands = useMemo(() => {
+		const names = new Set<string>();
+		for (const command of registry) {
+			if (!ARMED_ONLY_DESTINATIONS.has(command.destination)) continue;
 			names.add(command.name.toLowerCase());
 			for (const alias of command.aliases) names.add(alias.toLowerCase());
 		}
@@ -575,6 +608,7 @@ export function useSlashCompletion({
 		commands: registry,
 		commandNames,
 		promptCommands,
+		armedOnlyCommands,
 		nameListCommands: vocabulary.nameList,
 		argumentWords: vocabulary.words,
 		enabled,

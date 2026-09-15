@@ -28,6 +28,9 @@ const bundle = await build({
 			   DERIVED the way the component derives it rather than asserted. */
 			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			'export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank";',
+			/* The arming route's own write, so the pick case below asserts the line a
+			   pick STAGES and not only the fact that it arms. */
+			'export { planSlashArming } from "./src/renderer/src/features/chat/components/slash-submit";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -45,6 +48,8 @@ const {
 	enterFooter,
 	matchChoices,
 	phaseLabel,
+	pickArmsCommand,
+	planSlashArming,
 	pointerPickRuns,
 	rowId,
 	slashKeyIntent,
@@ -708,4 +713,71 @@ test("a destination with no row here answers by kind, not by id", () => {
 		);
 		assert.equal(pickRuns(id), true, id);
 	}
+});
+
+/*
+ * The arming route, which is the one pick rule that does not COMPLETE: the row is
+ * hoisted to the front of the draft and STAGED so the next Enter runs it. The
+ * vocabulary is the composer's (`ARMED_ONLY_DESTINATIONS` in `slash-commands.tsx`
+ * derives the words from the registry's destinations), so the cases below hand it
+ * in rather than restating it, and both halves are exercised as shipped code: the
+ * ROW gate here, the DRAFT write from the planner.
+ */
+const ARMED_ONLY = new Set(["goal"]);
+/* The words a registry with goal, team and model in it would derive. */
+const WORDS = new Set(["goal", "team", "model"]);
+
+/** A command row, keyed by the name OR ALIAS that matched (`rowId`'s `label`). */
+const armedRow = (label) => ({ kind: "command", label });
+
+/** The draft as `completionFor` leaves it: the picked word written IN PLACE. */
+const PICKED = "I approve spend /goal ";
+
+test("a pick of the armed row hoists and stages; other rows are unchanged", () => {
+	assert.equal(pickArmsCommand(armedRow("goal"), ARMED_ONLY), true);
+	// An ALIAS arms too: the row carries whichever of the two matched, and the set
+	// holds the primaries and the aliases together, exactly as `commandNames` does.
+	assert.equal(
+		pickArmsCommand(armedRow("goals"), new Set(["goal", "goals"])),
+		true,
+	);
+	/*
+	 * `/team` is the other `consumes_prompt` command and keeps the completion
+	 * path this change left alone: an assembled `/team ops <message>` line is one
+	 * the user asked to read before it ran, and nothing about the goal report
+	 * moves it.
+	 */
+	assert.equal(pickArmsCommand(armedRow("team"), ARMED_ONLY), false);
+	assert.equal(pickArmsCommand(armedRow("model"), ARMED_ONLY), false);
+	// An argument row never arms: an arming gesture NAMES a command.
+	assert.equal(pickArmsCommand(argumentRow("gpt-5"), ARMED_ONLY), false);
+	// The comparison is the vocabulary's case handling, not the row's spelling.
+	assert.equal(pickArmsCommand(armedRow("Goal"), ARMED_ONLY), true);
+
+	/*
+	 * And the route's own write, which is the half a user sees: the picked word is
+	 * hoisted to the front with the surviving draft behind it, staged in the box
+	 * for the next Enter. The completion is what the pick has always written
+	 * (`... /goal `, in place, caret after it).
+	 */
+	assert.deepEqual(
+		planSlashArming({
+			draft: PICKED,
+			caret: PICKED.length,
+			commandNames: WORDS,
+			armedOnlyCommands: ARMED_ONLY,
+		}),
+		{ kind: "armed", text: "/goal I approve spend", caret: 21 },
+	);
+	// Nothing to arm: a bare `/goal ` pick stays the plain completion it has
+	// always been, and the next Enter reaches the bare form's own READ.
+	assert.deepEqual(
+		planSlashArming({
+			draft: "/goal ",
+			caret: 6,
+			commandNames: WORDS,
+			armedOnlyCommands: ARMED_ONLY,
+		}),
+		{ kind: "none" },
+	);
 });
