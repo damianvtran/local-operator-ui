@@ -31,6 +31,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFramePaints } from "./check-evidence.mjs";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence", "chat-usage", "real-data");
@@ -198,15 +199,18 @@ const main = async () => {
 
 	dataDir = join(tmpdir(), `lo-usage-real-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
-	chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-sandbox",
-		"--disable-gpu",
-		"--hide-scrollbars",
-		`--user-data-dir=${dataDir}`,
-		"--remote-debugging-port=0",
-		"about:blank",
-	]);
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
 		const t = setTimeout(
