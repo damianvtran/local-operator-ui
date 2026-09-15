@@ -138,7 +138,14 @@ function mergeCheckout() {
 	repo.write("main-only.mjs", DIRTY);
 	repo.git("add", "-A");
 	repo.git("commit", "-qm", "main lands dirt of its own");
-	repo.git("merge", "--no-ff", "-q", "-m", "Merge feature into main", "feature");
+	repo.git(
+		"merge",
+		"--no-ff",
+		"-q",
+		"-m",
+		"Merge feature into main",
+		"feature",
+	);
 	return { ...repo, frozenBase };
 }
 
@@ -421,7 +428,10 @@ test("a change mixing a checkable file with an uncheckable one is judged on the 
 		repo.write("evidence.html", "<p>a harness biome cannot parse</p>\n");
 		const clean = gate(repo.dir, "--since", "main");
 		assert.equal(clean.status, 0, `${clean.out}${clean.err}`);
-		assert.match(clean.out, /1 of those 2 file\(s\) under scripts\/ are lint-clean/);
+		assert.match(
+			clean.out,
+			/1 of those 2 file\(s\) under scripts\/ are lint-clean/,
+		);
 		assert.match(clean.out, /did not process the other 1/);
 
 		// And when the checkable file is the offender, the fix command names it and

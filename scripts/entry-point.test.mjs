@@ -155,6 +155,7 @@ function cases(root) {
 	// it rather than report success over an artifact set that is not there.
 	const emptyDist = join(root, "empty-dist");
 	mkdirSync(emptyDist, { recursive: true });
+	const scriptsScope = scriptsScopeRepo(root);
 	return [
 		{
 			// The only case that MUTATES its working directory: each spelling gets its
@@ -285,13 +286,46 @@ function cases(root) {
 			// cannot produce it.
 			script: "check-scripts-lint.mjs",
 			args: [],
-			cwd: featRepo,
+			cwd: scriptsScope,
 			env: {},
 			status: 0,
 			stdout: /check-scripts-lint: no file under scripts\/ changed since main/,
 			stderr: /^$/,
 		},
 	];
+}
+
+/**
+ * The one case in this table that needs a git checkout rather than a directory.
+ *
+ * `check-scripts-lint.mjs` resolves the repository root with `git rev-parse
+ * --show-toplevel` and compares against a base branch, so a plain folder cannot
+ * drive it at all. Here `main` IS `HEAD`, which is what makes the case free: the
+ * gate's whole verdict path runs - base resolution, merge base, changed-file scan
+ * over a tree that has one committed file under `scripts/` - and it answers in its
+ * own words, so the assertion is that this script cannot be a silent zero rather
+ * than that biome happened to agree about something.
+ */
+function scriptsScopeRepo(root) {
+	const dir = join(root, "scripts-scope");
+	mkdirSync(join(dir, "scripts"), { recursive: true });
+	writeFileSync(join(dir, "package.json"), packageJson("0.24.1"));
+	writeFileSync(join(dir, "scripts", "clean.mjs"), "export const value = 1;\n");
+	const git = (...args) =>
+		execFileSync("git", args, {
+			cwd: dir,
+			encoding: "utf8",
+			env: caseEnv(join(root, "unused")),
+		});
+	git("init", "--quiet", "-b", "main");
+	git("add", "-A");
+	git(
+		"commit",
+		"--quiet",
+		"-m",
+		"a checkout the scope gate can read a base from",
+	);
+	return dir;
 }
 
 /** A directory holding one `package.json`, made fresh for a single invocation. */
