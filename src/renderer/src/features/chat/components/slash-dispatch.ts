@@ -44,7 +44,11 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
-import type { PickerContext } from "../pickers/destination-pickers";
+import type { DraftPickerDestination } from "../draft-selection";
+import type {
+	DraftPickerSession,
+	PickerContext,
+} from "../pickers/destination-pickers";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
@@ -67,6 +71,17 @@ type SlashDispatchOptions = {
 	 * `invoker` below for why that happens and what it broke.
 	 */
 	focusComposer?: () => void;
+	/**
+	 * The DRAFT pane's own selection, when this composer sits on a pane with no
+	 * session yet.
+	 *
+	 * Present only where the backend can select for a draft. It is what the two
+	 * chips that CAN open on a draft open: `/model` and `/effort` are commands that
+	 * need a session to address, so a draft's pick cannot travel the command path
+	 * at all — it travels this one, into the SAME pickers, reading and writing the
+	 * pane's selection instead of a session's.
+	 */
+	draftPicker?: DraftPickerSession;
 };
 
 /**
@@ -86,6 +101,37 @@ type SlashDispatchOptions = {
  * admission and not the keypress is what retires a draft.
  */
 export type SlashDispatchOutcome = "not-a-command" | "consumed" | "retained";
+
+/**
+ * The catalogue row for a destination, or a stand-in where the catalogue has none.
+ *
+ * A draft's pickers are opened by a CHIP, so no `SlashCommandMeta` arrives with
+ * the request. None is needed: no adapter reads `spec`, and `PickerOutlet` routes
+ * on `action.destination`. The catalogue's own row is preferred where it exists,
+ * so this is the same object typing the command would have built; the stand-in
+ * keeps the chip from depending on a command surface the pane is not allowed to
+ * need — the copy and the availability of a draft's picker come from
+ * `draft_selection`, not from the registry.
+ */
+function draftPickerSpec(
+	destination: DraftPickerDestination,
+	commands: SlashCommandMeta[] | undefined,
+): SlashCommandMeta {
+	const known = commands?.find(
+		(command) => command.destination === destination,
+	);
+	if (known) return known;
+	return {
+		name: destination === "session.model" ? "model" : "effort",
+		description: "",
+		aliases: [],
+		arguments: "optional",
+		echo: true,
+		consumes_prompt: false,
+		destination,
+		execution: "native",
+	};
+}
 
 function systemMessage(text: string, status?: Message["status"]): Message {
 	return {
@@ -141,6 +187,7 @@ export function useSlashDispatch({
 	canonical,
 	rebind,
 	focusComposer,
+	draftPicker,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -434,5 +481,66 @@ export function useSlashDispatch({
 		[dispatch, note],
 	);
 
-	return { dispatch, dispatchFromControl, picker, closePicker, note };
+	/**
+	 * Open a reading's picker for a NEW conversation pane.
+	 *
+	 * A draft's chips cannot travel the command path: `/model` and `/effort` are
+	 * owner commands, and `dispatch` refuses every picker destination without a
+	 * session (the `!sessionId` branch above), which is correct — there is no owner
+	 * to address. This opens the SAME two adapters with the pane's own selection
+	 * attached instead, so the app still has exactly one model list, one effort
+	 * list and one picker implementation.
+	 *
+	 * The invoking chip is recorded exactly as the command path records it, so
+	 * Escape returns focus to the control that opened the dialog (round 1, U4): a
+	 * chip is a control for a keyboard user too.
+	 */
+	const openDraftPicker = useCallback(
+		(destination: DraftPickerDestination) => {
+			if (!draftPicker) return;
+			invoker.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+			setPicker({
+				action: {
+					kind: "native_action",
+					destination,
+					// Empty, not a session: this pick addresses the pane's draft, and the
+					// adapters' draft branches never read this field.
+					session_id: "",
+					args: "",
+					fields: [],
+					data: {},
+				},
+				spec: draftPickerSpec(destination, commandsQuery.data),
+				sessionId: "",
+				canonical,
+				commands: commandsQuery.data ?? [],
+				onClose: closePicker,
+				note,
+				dispatch: (line) => void dispatch(line),
+				rebind,
+				draft: draftPicker,
+			});
+		},
+		[
+			canonical,
+			closePicker,
+			commandsQuery.data,
+			dispatch,
+			draftPicker,
+			note,
+			rebind,
+		],
+	);
+
+	return {
+		dispatch,
+		dispatchFromControl,
+		picker,
+		closePicker,
+		openDraftPicker,
+		note,
+	};
 }

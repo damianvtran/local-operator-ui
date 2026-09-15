@@ -1169,7 +1169,7 @@ test("the picker is wired to the shared predicate, not to a copy of the read", (
 	);
 	assert.match(
 		picker,
-		/import \{ [^}]*specUnresolved[^}]* \} from "\.\.\/session-status\/session-model"/,
+		/import \{[\s\S]*?specUnresolved[\s\S]*?\} from "\.\.\/session-status\/session-model"/,
 		"and import it rather than reimplement it",
 	);
 	// The honest branch and the fixed-effort branch must BOTH remain reachable:

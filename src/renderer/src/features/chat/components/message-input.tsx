@@ -56,6 +56,10 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
@@ -314,11 +318,24 @@ type MessageInputProps = {
 		pendingModel?: CanonicalModel | null;
 		/**
 		 * This pane is a NEW conversation's draft: there is no session yet, so the
-		 * readings come from `sessions.preview` and render inert. See
-		 * `SessionStatusStripProps["draft"]` for why the state is passed in rather
-		 * than inferred from a missing dispatcher.
+		 * readings come from `sessions.preview` and render inert unless the backend
+		 * can select for a draft. See `SessionStatusStripProps["draft"]` for why the
+		 * state is passed in rather than inferred from a missing dispatcher.
 		 */
 		draft?: boolean;
+		/**
+		 * Open a model or effort picker for this DRAFT pane's own selection.
+		 *
+		 * Absent unless the backend advertises the capability, which is what leaves
+		 * the two readings inert with their existing copy on a backend that cannot
+		 * honour a pick. See `SessionStatusStripProps["onOpenDraftPicker"]`.
+		 */
+		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		/**
+		 * Where a draft's resolution IS, while it has no reading yet; see
+		 * `SessionStatusStripProps["draftResolution"]`.
+		 */
+		draftResolution?: DraftResolution;
 	};
 	/**
 	 * Run the command the composer's planner pulled out of the draft, and report
@@ -2113,6 +2130,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									onCommand={sessionStatus.onCommand}
 									effortEntities={sessionStatus.effortEntities}
 									draft={sessionStatus.draft}
+									onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
+									draftResolution={sessionStatus.draftResolution}
 									pendingModel={sessionStatus.pendingModel}
 								/>
 							</ErrorBoundary>
