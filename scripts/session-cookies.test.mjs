@@ -1262,15 +1262,43 @@ test("a stop that never settles is released at the budget instead of holding the
 
 	assert.equal(held, true);
 	assert.deepEqual(calls, ["preventDefault", "quit"]);
+	/*
+	 * `budgetMs - 1`, not `budgetMs`: the release is a `setTimeout(budgetMs)` and
+	 * the runtime fires it a fraction of a millisecond EARLY, so a hold that is
+	 * working lands on a true elapsed just under the budget - measured as
+	 * `performance.now()` 119.674 ms against 120 ms, and 599.296 ms against
+	 * 600 ms at the sibling site - which whole-millisecond `Date.now()` readings
+	 * then report as `budgetMs - 1`.
+	 *
+	 * It is NOT the two readings' truncation, which cannot shorten a reading at
+	 * all: for a true elapsed of `budgetMs` or more, `floor(t0 + e) - floor(t0)`
+	 * is `budgetMs` or more, so a short reading means the timer really did fire
+	 * ahead of its deadline. Asserting the exact boundary fails on that early fire
+	 * rather than on the behaviour - this line has been failing intermittently on
+	 * `main` at 119 ms against a 120 ms budget (and at 599 ms against 600 ms at
+	 * the sibling site) since the budget was introduced, and been absorbed as a
+	 * re-run.
+	 */
 	assert.ok(
-		elapsed >= budgetMs,
+		elapsed >= budgetMs - 1,
 		`the budget is what released the quit, not luck: ${elapsed} ms`,
 	);
-	// Generous, but decisive: the only bound this code has without the budget is
-	// the CDP layer's 15 s per-call ceiling, so an assertion of "under 15 s" would
-	// pass with the budget removed entirely.
+	/*
+	 * The half that makes the assertion above a claim rather than a tolerance.
+	 *
+	 * It was 2000 ms, chosen against the only bound this code has without the
+	 * budget - the CDP layer's 15 s per-call ceiling - which means a regression
+	 * that released the quit after 1.5 s would have passed this test while the
+	 * budget it exists to pin was gone. `budgetMs + 400` still clears that
+	 * ceiling by more than an order of magnitude, and the margin is measured
+	 * rather than guessed: over 300 runs at this site the timer's overshoot ran to
+	 * 34 ms with a median near 2 ms, and this PR's QA sweep of the same site saw
+	 * 22 ms (142 ms against a 120 ms budget), so the allowance is 12-18x the worst
+	 * overshoot this suite actually sees while catching the 4x slip the old bound
+	 * would have let through.
+	 */
 	assert.ok(
-		elapsed < 2_000,
+		elapsed < budgetMs + 400,
 		`the quit waited ${elapsed} ms on a stop that never settles`,
 	);
 	// The consequence is stated, not silent: the user's session cookies are this
@@ -1394,8 +1422,16 @@ test("a second quit is bounded by the first hold's deadline, not by one of its o
 
 	assert.equal(await first, true);
 	assert.equal(secondHeld, true);
+	/*
+	 * The same one-millisecond correction as the budget test above, and for the
+	 * same reason: 599 ms against a 600 ms budget is what this line reports when
+	 * the `setTimeout` lands a fraction early, and it did so on `main` (CI run
+	 * 34962627923) as well as here. The upper bound below is the half that
+	 * carries the test's claim - it is what separates this shared deadline
+	 * (~600 ms) from a per-quit budget (~1000 ms).
+	 */
 	assert.ok(
-		elapsed >= budgetMs,
+		elapsed >= budgetMs - 1,
 		`the budget is what released the second quit, not luck: ${elapsed} ms`,
 	);
 	assert.ok(
