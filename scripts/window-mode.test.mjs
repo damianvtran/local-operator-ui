@@ -33,6 +33,7 @@ const bundle = await build({
 const {
 	DEFAULT_WINDOW_HEIGHT,
 	DEFAULT_WINDOW_WIDTH,
+	WINDOW_INTENT_KEY,
 	WINDOW_MAX_EDGE,
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
@@ -41,7 +42,10 @@ const {
 	describeWindowLaunch,
 	parseWindowMode,
 	parseWindowSize,
+	readWindowIntent,
+	resolveSecondLaunchShow,
 	resolveWindowLaunchPlan,
+	windowIntentPayload,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -64,7 +68,8 @@ const raise = await import(
 		).outputFiles[0].text,
 	).toString("base64")}`
 );
-const { presentWindow, raiseWindow } = raise;
+const { applySecondLaunch, presentWindow, raiseWindow, readSecondLaunchRequest } =
+	raise;
 
 const plan = (input) => resolveWindowLaunchPlan(input);
 
@@ -122,6 +127,29 @@ test("the argument wins over the environment, in both spellings", () => {
 	assert.equal(
 		plan({ env, argv: ["--window-mode", "headless"] }).mode,
 		"headless",
+	);
+});
+
+test("an appended flag overrides the value the command line already carried", () => {
+	/*
+	 * `pnpm app:headless` names `--window-mode=headless` on its own command line,
+	 * and `pnpm app:headless -- --window-mode=inactive` APPENDS to it. Last-wins is
+	 * what keeps that an override rather than a silently ignored request — the same
+	 * rule `shared/open-session.ts` states for its own flag.
+	 */
+	assert.equal(
+		plan({ argv: ["--window-mode=headless", "--window-mode=inactive"] }).mode,
+		"inactive",
+	);
+	assert.equal(
+		plan({ argv: ["--window-mode=headless", "--window-mode", "normal"] }).mode,
+		"normal",
+	);
+	// The size flag follows the same rule.
+	assert.equal(
+		plan({ argv: ["--window-size=1380x900", "--window-size=1024x768"] })
+			.width,
+		1024,
 	);
 });
 
@@ -358,22 +386,10 @@ test("the raise policy is the only thing that decides how a window comes forward
 	// Exhaustive over the three modes and both operations, with a fake window
 	// that records the calls, because these two functions are the whole of the
 	// policy: everything else in the app asks them.
-	const fakeWindow = ({ minimized = false } = {}) => {
-		const calls = [];
-		return {
-			calls,
-			show: () => calls.push("show"),
-			showInactive: () => calls.push("showInactive"),
-			focus: () => calls.push("focus"),
-			isMinimized: () => minimized,
-			restore: () => calls.push("restore"),
-		};
-	};
-
 	const presented = [];
 	for (const show of ["focus", "inactive", "never"]) {
 		const window = fakeWindow();
-		presentWindow(window, show);
+		presentWindow(window, show, { trigger: "initial-present" });
 		presented.push([show, window.calls]);
 	}
 	assert.deepEqual(presented, [
@@ -386,7 +402,7 @@ test("the raise policy is the only thing that decides how a window comes forward
 	const raised = [];
 	for (const show of ["focus", "inactive", "never"]) {
 		const window = fakeWindow();
-		raiseWindow(window, show);
+		raiseWindow(window, show, { trigger: "second-instance" });
 		raised.push([show, window.calls]);
 	}
 	assert.deepEqual(raised, [
@@ -399,13 +415,322 @@ test("the raise policy is the only thing that decides how a window comes forward
 	// `headless`, where there is nothing to bring forward.
 	for (const show of ["focus", "inactive", "never"]) {
 		const window = fakeWindow({ minimized: true });
-		raiseWindow(window, show);
+		raiseWindow(window, show, { trigger: "second-instance" });
 		assert.equal(
 			window.calls.includes("restore"),
 			show !== "never",
 			`restore-before-raise in ${show}`,
 		);
 	}
+});
+
+/**
+ * The RAISE TRIGGERS, as a list, so a name cannot be added to the union without
+ * a line to go with it.
+ */
+const RAISE_TRIGGERS = [
+	"initial-present",
+	"second-instance",
+	"banner-click",
+	"viewer-focus",
+	"open-conversation",
+];
+
+/** A window that records what a raise did to it. */
+const fakeWindow = ({ minimized = false } = {}) => {
+	const calls = [];
+	return {
+		calls,
+		show: () => calls.push("show"),
+		showInactive: () => calls.push("showInactive"),
+		focus: () => calls.push("focus"),
+		isMinimized: () => minimized,
+		restore: () => calls.push("restore"),
+	};
+};
+
+/**
+ * A session id the open-session parser accepts: twelve hex characters is the
+ * shape a launch may name, and anything else counts as absent.
+ */
+const LAUNCHED_SESSION = "a1b2c3d4e5f6";
+
+test("a raise names its trigger and what it did, and a mode that raises nothing says nothing", () => {
+	// Why this is asserted rather than left to the comments: `window-raise.ts`
+	// logged nothing at all before this change, which is exactly why the
+	// operator's report ("the app steals my focus whenever a chat completes")
+	// could not be answered on the machine where it happened. Four call sites
+	// raise a window from four different causes, and the line has to say which.
+	const lines = [];
+	for (const trigger of RAISE_TRIGGERS) {
+		raiseWindow(fakeWindow(), "focus", {
+			trigger,
+			report: (line) => lines.push(line),
+		});
+	}
+	assert.deepEqual(
+		lines,
+		RAISE_TRIGGERS.map(
+			(trigger) => `trigger=${trigger} requested=focus applied=show+focus`,
+		),
+	);
+
+	// `applied` is read off the calls, not derived from `requested`: that is what
+	// lets the operator match a line against the focus they just lost.
+	const inactive = [];
+	raiseWindow(fakeWindow(), "inactive", {
+		trigger: "second-instance",
+		report: (line) => inactive.push(line),
+	});
+	assert.deepEqual(inactive, [
+		"trigger=second-instance requested=inactive applied=showInactive",
+	]);
+
+	const minimized = [];
+	raiseWindow(fakeWindow({ minimized: true }), "focus", {
+		trigger: "banner-click",
+		report: (line) => minimized.push(line),
+	});
+	assert.deepEqual(minimized, [
+		"trigger=banner-click requested=focus applied=restore+show+focus",
+	]);
+
+	const presented = [];
+	presentWindow(fakeWindow(), "inactive", {
+		trigger: "initial-present",
+		report: (line) => presented.push(line),
+	});
+	assert.deepEqual(presented, [
+		"trigger=initial-present requested=inactive applied=showInactive",
+	]);
+
+	// SILENT WHEN NOTHING IS RAISED. A headless run's whole value is that it
+	// leaves no trace, its logs included, and the two functions are the only
+	// place that rule can be enforced for both of them.
+	const silent = [];
+	const report = (line) => silent.push(line);
+	raiseWindow(fakeWindow(), "never", { trigger: "second-instance", report });
+	presentWindow(fakeWindow(), "never", { trigger: "initial-present", report });
+	assert.deepEqual(silent, []);
+
+	// A reporter is optional; a raise with none is silent rather than a crash.
+	raiseWindow(fakeWindow(), "focus", { trigger: "viewer-focus" });
+	presentWindow(fakeWindow(), "focus", { trigger: "initial-present" });
+});
+
+test("a second launch's intent travels on the request that lost the lock, and the fallback is focus", () => {
+	/*
+	 * The defect this pins: `second-instance` is delivered to the process that
+	 * WON the lock, and the losing process's environment is not part of what it
+	 * receives. The documented agent launches put the mode in exactly that
+	 * environment (`pnpm app:headless` is
+	 * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless electron .`), so before this the
+	 * winner answered with its OWN plan — `show()` + `focus()` for the ordinary
+	 * app — and an agent's deliberately invisible run yanked the operator's
+	 * window to the front. Measured before the change: frontmost went from the
+	 * operator's app to the agent's, on every sample.
+	 */
+	assert.deepEqual(windowIntentPayload("headless"), {
+		[WINDOW_INTENT_KEY]: "headless",
+	});
+	assert.equal(readWindowIntent(windowIntentPayload("headless")), "headless");
+	assert.equal(
+		resolveSecondLaunchShow({
+			argv: ["electron", "."],
+			additionalData: windowIntentPayload("headless"),
+		}),
+		"never",
+	);
+	assert.equal(
+		resolveSecondLaunchShow({
+			argv: ["electron", "."],
+			additionalData: windowIntentPayload("inactive"),
+		}),
+		"inactive",
+	);
+
+	// The command line is the fallback, for a launch that reaches the window
+	// server through a path which drops the environment (`open --args`).
+	assert.equal(
+		resolveSecondLaunchShow({ argv: ["electron", ".", "--window-mode=headless"] }),
+		"never",
+	);
+	assert.equal(
+		resolveSecondLaunchShow({
+			argv: ["electron", ".", "--window-mode", "inactive"],
+		}),
+		"inactive",
+	);
+
+	// UNDECLARED KEEPS TODAY'S BEHAVIOUR: this is a person double-clicking the
+	// app while it runs, and it must still come to the front.
+	assert.equal(resolveSecondLaunchShow({ argv: ["electron", "."] }), "focus");
+	assert.equal(resolveSecondLaunchShow({}), "focus");
+
+	// Anything this build does not model is ABSENT rather than guessed at: an
+	// older release on either side of the boundary attaches nothing, and a
+	// payload is data from another process, so it degrades to the undeclared
+	// behaviour instead of throwing or being believed.
+	for (const unrecognised of [
+		undefined,
+		null,
+		"headless",
+		42,
+		{},
+		{ [WINDOW_INTENT_KEY]: "hedless" },
+		{ [WINDOW_INTENT_KEY]: 7 },
+		{ [WINDOW_INTENT_KEY]: "" },
+	]) {
+		assert.equal(readWindowIntent(unrecognised), null, String(unrecognised));
+		assert.equal(
+			resolveSecondLaunchShow({
+				argv: ["electron", "."],
+				additionalData: unrecognised,
+			}),
+			"focus",
+			String(unrecognised),
+		);
+	}
+});
+
+test("a second launch raises the window only as far as it asked", () => {
+	// The three cases the operator's report needs, end to end through the policy:
+	// a headless request raises NOTHING, an inactive request orders the window
+	// without activating the app, and an undeclared request is the person's own
+	// second launch, unchanged.
+	const raised = [];
+	for (const argv of [
+		["electron", ".", "--window-mode=headless"],
+		["electron", ".", "--window-mode=inactive"],
+		["electron", "."],
+	]) {
+		const window = fakeWindow();
+		raiseWindow(window, resolveSecondLaunchShow({ argv }), {
+			trigger: "second-instance",
+		});
+		raised.push([argv.at(-1), window.calls]);
+	}
+	assert.deepEqual(raised, [
+		["--window-mode=headless", []],
+		["--window-mode=inactive", ["showInactive"]],
+		[".", ["show", "focus"]],
+	]);
+
+	// And the same three through the channel the documented scripts actually use,
+	// where the command line carries no mode at all.
+	for (const [mode, expected] of [
+		["headless", []],
+		["inactive", ["showInactive"]],
+		["normal", ["show", "focus"]],
+	]) {
+		const window = fakeWindow();
+		raiseWindow(
+			window,
+			resolveSecondLaunchShow({
+				argv: ["electron", "."],
+				additionalData: windowIntentPayload(mode),
+			}),
+			{ trigger: "second-instance" },
+		);
+		assert.deepEqual(window.calls, expected, `carried ${mode}`);
+	}
+});
+
+test("a headless-declared second launch still names the conversation", () => {
+	/*
+	 * The delivery and the raise are different promises, and this is the test that
+	 * keeps a click from becoming a silent no-op: the window's CONTENT moves to
+	 * the conversation the launch named while the window itself stays where the
+	 * mode says. Both halves are asserted here because a fix that answered the
+	 * raise by dropping the conversation would pass every test about focus.
+	 */
+	const request = readSecondLaunchRequest({
+		commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
+		additionalData: windowIntentPayload("headless"),
+	});
+	assert.deepEqual(request, { session: LAUNCHED_SESSION, show: "never" });
+
+	const window = fakeWindow();
+	const applied = [];
+	applySecondLaunch(request, {
+		window,
+		// `index.ts` owns delivery, so this mirrors what its window path does:
+		// send the conversation, then come forward only as far as `show` allows.
+		openConversation: (sessionId, show) => {
+			applied.push([sessionId, show]);
+			raiseWindow(window, show, { trigger: "open-conversation" });
+		},
+		queue: () => {
+			throw new Error("a deliverable conversation must not be queued");
+		},
+	});
+	assert.deepEqual(applied, [[LAUNCHED_SESSION, "never"]]);
+	assert.deepEqual(
+		window.calls,
+		[],
+		"a headless request must not raise the window on the delivery path either",
+	);
+
+	// The control for that pair, so the assertion above cannot pass because the
+	// delivery path never raises anything in any mode.
+	const focused = fakeWindow();
+	applySecondLaunch(
+		readSecondLaunchRequest({
+			commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
+		}),
+		{
+			window: focused,
+			openConversation: (sessionId, show) => {
+				raiseWindow(focused, show, { trigger: "open-conversation" });
+			},
+			queue: () => {},
+		},
+	);
+	assert.deepEqual(focused.calls, ["show", "focus"]);
+});
+
+test("a second launch with no conversation raises by its own mode, and a parked one keeps it", () => {
+	const cases = [
+		[undefined, ["show", "focus"]],
+		[windowIntentPayload("headless"), []],
+		[windowIntentPayload("inactive"), ["showInactive"]],
+	];
+	for (const [additionalData, expected] of cases) {
+		const window = fakeWindow();
+		applySecondLaunch(
+			readSecondLaunchRequest({
+				commandLine: ["electron", "."],
+				additionalData,
+			}),
+			{ window, openConversation: () => {}, queue: () => {} },
+		);
+		assert.deepEqual(window.calls, expected, `intent ${JSON.stringify(additionalData)}`);
+	}
+
+	// A launch that arrives before there is a window to send to is PARKED with its
+	// mode rather than dropped: by the time the queue flushes, the argv and the
+	// payload it arrived with are gone, and re-deriving them is how a headless
+	// request becomes a raise.
+	const parked = [];
+	applySecondLaunch(
+		readSecondLaunchRequest({
+			commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
+			additionalData: windowIntentPayload("headless"),
+		}),
+		{
+			window: null,
+			openConversation: null,
+			queue: (sessionId, show) => parked.push([sessionId, show]),
+		},
+	);
+	assert.deepEqual(parked, [[LAUNCHED_SESSION, "never"]]);
+
+	// With no window and no conversation there is nothing to do at all — and
+	// specifically no error, which is what a second launch during startup is.
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		{ window: null, openConversation: null, queue: () => {} },
+	);
 });
 
 test("no file but window-raise.ts raises or focuses a window", () => {

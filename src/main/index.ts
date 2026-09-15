@@ -33,7 +33,6 @@ import {
 	OPEN_CATALOGUE_FLAG,
 	OPEN_SESSION_FLAG,
 	readLaunchTarget,
-	readOpenSessionArgv,
 } from "../shared/open-session";
 import {
 	BackendInstaller,
@@ -71,10 +70,18 @@ import { ViewerRecordPublisher } from "./viewer-record";
 import {
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
+	type WindowShow,
 	describeWindowLaunch,
 	resolveWindowLaunchPlan,
+	windowIntentPayload,
 } from "./window-mode";
-import { presentWindow, raiseWindow } from "./window-raise";
+import {
+	type RaiseReport,
+	applySecondLaunch,
+	presentWindow,
+	raiseWindow,
+	readSecondLaunchRequest,
+} from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -410,7 +417,10 @@ function createWindow(
 		 * call site for why "loaded" is not "showing the right conversation".
 		 */
 		if (!heldForConversation.has(mainWindow.id)) {
-			presentWindow(mainWindow, windowLaunch.show);
+			presentWindow(mainWindow, windowLaunch.show, {
+				trigger: "initial-present",
+				report: reportRaise,
+			});
 		}
 
 		if (windowLaunch.mode === "normal") return;
@@ -615,6 +625,18 @@ if (windowLaunch.mode !== "normal") {
 }
 
 /*
+ * One line per raise, into the app's own log file, naming the trigger and what
+ * the raise did (see `window-raise.ts`). The operator's report — "the app steals
+ * my focus whenever a chat completes" — was unanswerable in production because
+ * nothing recorded who had just raised the window; this is what makes the next
+ * one attributable. `never` raises nothing and logs nothing, so a headless run
+ * still leaves no trace.
+ */
+const reportRaise: RaiseReport = (line) => {
+	logger.info(`[window-raise] ${line}`, LogFileType.BACKEND);
+};
+
+/*
  * The renderer dev driver's opt-in, resolved here for the same reason the
  * window mode is: it is a fact about the LAUNCH, decided once, and a rig reads
  * it on stdout. Nothing is registered or exposed unless this says armed, so a
@@ -747,8 +769,13 @@ function rendererArgumentFlags(
  * starting — before `whenReady` has produced a window to send to — so the id is
  * parked here rather than dropped. Dropping it is precisely the class of silent
  * no-op the click path is being fixed for.
+ *
+ * The SHOW travels with it. The raise that follows the delivery is the
+ * requester's to decide (`window-raise.ts`), and a queued launch's decision
+ * cannot be re-derived later: by the time the queue flushes, the argv and the
+ * payload it arrived with are gone.
  */
-let queuedSession: string | null = null;
+let queuedLaunch: { session: string; show: WindowShow } | null = null;
 
 /**
  * This app's viewer record and control endpoint, created inside `whenReady`.
@@ -766,8 +793,9 @@ let viewerEndpoint: ViewerEndpoint | null = null;
  * Open a conversation in a window, creating one if there is none. Assigned once
  * `whenReady` has the window-creation path in scope; `null` before that.
  */
-let openConversationInWindow: ((sessionId: string | null) => void) | null =
-	null;
+let openConversationInWindow:
+	| ((sessionId: string | null, show: WindowShow) => void)
+	| null = null;
 
 /**
  * Attach the browser host to a freshly created window. Assigned once
@@ -837,7 +865,18 @@ function releaseHeldWindow(windowId: number): boolean {
 	clearTimeout(held.timer);
 	heldForConversation.delete(windowId);
 	const window = BrowserWindow.fromId(windowId);
-	if (window && !window.isDestroyed()) presentWindow(window, windowLaunch.show);
+	if (window && !window.isDestroyed()) {
+		/*
+		 * The trigger is the window's OWN first present, deferred until its
+		 * conversation was on screen, rather than the requester that created it:
+		 * what is being reported is that this window came forward now, and the
+		 * requester's own raise (if it made one) is reported by its own site.
+		 */
+		presentWindow(window, windowLaunch.show, {
+			trigger: "initial-present",
+			report: reportRaise,
+		});
+	}
 	return true;
 }
 
@@ -887,37 +926,59 @@ const actualSizeFromEvent = () => {
 };
 
 // --- Single Instance Lock ---
-const gotTheLock = app.requestSingleInstanceLock();
+/*
+ * THE WINDOW INTENT RIDES THE REQUEST THAT LOSES. `second-instance` hands the
+ * winner the loser's argv and this payload; the loser's ENVIRONMENT never
+ * crosses, and the documented agent launches put the mode there
+ * (`pnpm app:headless` is `LOCAL_OPERATOR_UI_WINDOW_MODE=headless electron .`) —
+ * so without this, an agent's deliberately invisible run was answered as an
+ * ordinary launch and raised the operator's window (the defect this change
+ * fixes, measured). `--window-mode` on the losing launch's command line is read
+ * as well, for the launchers that drop the environment (`open --args`), and
+ * `window-raise.ts` settles which of the two wins.
+ *
+ * `windowLaunch` is resolved above, at module load, which is what makes the
+ * resolved MODE available here rather than a re-read of a mutated `process.env`.
+ */
+const gotTheLock = app.requestSingleInstanceLock(
+	windowIntentPayload(windowLaunch.mode),
+);
 
 if (!gotTheLock) {
 	logger.warn("Another instance is already running. Quitting this instance.");
 	app.quit();
 } else {
-	app.on("second-instance", (_event, commandLine) => {
-		// A second launch means "recreate, then navigate" (m2), not "raise whatever
-		// is there": the same queue the banner click uses, so the two cannot
-		// disagree about what a request to open a conversation does.
-		const requested = readOpenSessionArgv(commandLine);
-		if (requested) {
-			if (openConversationInWindow) openConversationInWindow(requested);
-			// Parked, not dropped: a second instance can arrive while the first is
-			// still starting, and a discarded id is a click that silently did
-			// nothing — the defect this path exists to remove.
-			else queuedSession = requested;
-			return;
-		}
-		// Someone tried to run a second instance, we should focus our window.
-		if (mainWindow) {
-			// A headless or inactive run exists precisely because the operator
-			// is doing something else, so a second launch must not be what
-			// finally pulls focus away from them; `raiseWindow` decides.
-			raiseWindow(mainWindow, windowLaunch.show);
+	app.on(
+		"second-instance",
+		(_event, commandLine, _workingDirectory, additionalData) => {
+			/*
+			 * A second launch means "recreate, then navigate" (m2), not "raise whatever
+			 * is there": the same queue the banner click uses, so the two cannot
+			 * disagree about what a request to open a conversation does — and the same
+			 * window-raise policy, applied to the REQUESTING launch's intent rather
+			 * than to this process's own plan. See `window-raise.ts` for why that
+			 * distinction is the whole fix.
+			 */
+			applySecondLaunch(
+				readSecondLaunchRequest({ commandLine, additionalData }),
+				{
+					window: mainWindow,
+					openConversation: openConversationInWindow,
+					// Parked, not dropped: a second instance can arrive while the first is
+					// still starting, and a discarded id is a click that silently did
+					// nothing — the defect this path exists to remove.
+					queue: (session, show) => {
+						queuedLaunch = { session, show };
+					},
+					report: reportRaise,
+				},
+			);
 
 			// Backend-owned OAuth completes on the backend's loopback callback;
 			// the legacy radient:// deep link is no longer consumed here.
 			void commandLine;
-		}
-	});
+		},
+	);
 }
 
 app
@@ -997,6 +1058,9 @@ app
 					releaseHeldWindowFor(sessionId);
 				},
 			},
+			// A clicked banner comes forward through this same raise policy, and its
+			// line is what tells that trigger apart from the other four.
+			reportRaise,
 		);
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
@@ -1104,7 +1168,10 @@ app
 				focusWindow: async () => {
 					const window = mainWindow;
 					if (window && !window.isDestroyed()) {
-						raiseWindow(window, windowLaunch.show);
+						raiseWindow(window, windowLaunch.show, {
+							trigger: "viewer-focus",
+							report: reportRaise,
+						});
 						return "raised the window";
 					}
 					// No window to focus. Recreate one — the same "recreate then
@@ -1907,15 +1974,26 @@ app
 		 * ordinary launch does, and the renderer's rule for that case is "restore
 		 * the last conversation" — so `null` travels to `createWindow` as the
 		 * catalogue intent rather than as an absent value.
+		 *
+		 * `show` is the requester's, defaulting to THIS process's launch plan: a
+		 * second launch may only come forward as far as IT asked, while the banner
+		 * and viewer paths are requests from inside this process, where the launch
+		 * plan already is the caller's intent.
 		 */
-		function openSessionInWindow(sessionId: string | null): void {
+		function openSessionInWindow(
+			sessionId: string | null,
+			show: WindowShow = windowLaunch.show,
+		): void {
 			const window = mainWindow;
 			if (window && !window.isDestroyed()) {
 				// Send before raising: naming the conversation first means whatever
 				// comes forward is already correct, rather than showing the old one
 				// for as long as the switch takes (B3).
 				window.webContents.send("desktop-open-conversation", { sessionId });
-				raiseWindow(window, windowLaunch.show);
+				raiseWindow(window, show, {
+					trigger: "open-conversation",
+					report: reportRaise,
+				});
 				return;
 			}
 			setupMainWindowWithUpdateService(sessionId, sessionId === null);
@@ -1941,10 +2019,10 @@ app
 		 */
 		setupMainWindowWithUpdateService(launchSession, launchCatalogue);
 		// A second launch that arrived before there was a window to send to.
-		if (queuedSession) {
-			const queued = queuedSession;
-			queuedSession = null;
-			openSessionInWindow(queued);
+		if (queuedLaunch) {
+			const queued = queuedLaunch;
+			queuedLaunch = null;
+			openSessionInWindow(queued.session, queued.show);
 		}
 
 		app.on("activate", () => {
