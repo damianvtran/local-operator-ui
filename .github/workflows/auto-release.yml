@@ -73,7 +73,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Derive, and refuse to derive from this workflow's own commit
+      - name: Derive, or report a push that carries nothing to release
         id: derive
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -82,22 +82,28 @@ jobs:
           FORCED_BUMP: ${{ inputs.bump }}
         run: |
           set -euo pipefail
-          # The bump commit this workflow pushes carries this exact subject. The
-          # push is made with GITHUB_TOKEN, which starts no run by itself — but a
-          # repository that ever switches to an App or PAT credential would start
-          # one, and this guard is what stops that from looping.
-          subject="$(git log -1 --format=%s)"
-          case "$subject" in
-            'chore(release): bump version to '*)
-              echo "release=false" >> "$GITHUB_OUTPUT"
-              {
-                echo '### No release'
-                echo
-                echo "This push is the release commit itself (\`$subject\`), so there is nothing to release."
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-              ;;
-          esac
+          # The loop guard is a script for the same reason the derivation is: it
+          # is logic, and logic in a `run:` block cannot be tested. It asks what
+          # this push CONTAINS, not how its head is spelled — a push whose diff
+          # against its own first parent is nothing but `package.json`'s version
+          # line IS the release commit, and so is a push with nothing unreleased
+          # behind it. The push is made with GITHUB_TOKEN, which starts no run by
+          # itself; this guard is what stops a loop if the credential is ever
+          # changed to an App or a PAT, which would start one — and it has to
+          # recognise the bump in the shape this repository lands it in (a merge
+          # whose second parent is the bump, as `8f80697c8` is), not in one subject
+          # shape. Measured on that release: `git diff --name-only 8f80697c8^ 8f80697c8`
+          # is `package.json`, one line.
+          node scripts/release-push-guard.mjs --json > push-guard.json
+          if [ "$(jq -r .skip push-guard.json)" = true ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            {
+              echo '### No release'
+              echo
+              jq -r .message push-guard.json
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           forced=()
           if [ -n "${FORCED_BUMP:-}" ] && [ "$FORCED_BUMP" != auto ]; then
             forced=(--force-bump "$FORCED_BUMP")

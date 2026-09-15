@@ -119,6 +119,12 @@ jobs:
       # nothing runs is indistinguishable from no guard, which is why the last of
       # those is executed here as well as in its own PR-triggered workflow.
       #
+      # `release-push-guard.test.mjs` is the loop guard's contract, and it belongs
+      # in this list for the same reason: the guard that stops the release workflow
+      # from releasing its own bump was asserted TEXTUALLY for one round and was
+      # wrong for every release this repository ever cut (its bumps land as merge
+      # commits). It is executed over each of those shapes here.
+      #
       # The second line is the automatic release: the derivation the workflow
       # applies (a pure function, driven by fixtures and by a real scratch
       # repository), the anchors it derives a version and an incumbent from, and
@@ -129,7 +135,7 @@ jobs:
         run: |
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
-          node --test scripts/derive-release.test.mjs scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/test-auto-release-workflow.mjs
+          node --test scripts/derive-release.test.mjs scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/test-auto-release-workflow.mjs scripts/release-push-guard.test.mjs
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,

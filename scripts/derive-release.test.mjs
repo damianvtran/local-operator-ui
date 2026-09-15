@@ -21,6 +21,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	DerivationError,
+	assertRefExists,
 	assertVersionSurface,
 	bumpVersion,
 	classifyCommit,
@@ -29,9 +31,11 @@ import {
 	parseLog,
 	readCommits,
 	readLandings,
+	releaseBases,
 	releaseLineOf,
 	renderNotes,
 } from "./derive-release.mjs";
+import { selectIncumbentAnchor } from "./release-baseline.mjs";
 
 const subject = (text) => ({ subject: text, body: "" });
 
@@ -420,4 +424,289 @@ test("a real repository's window is read as the workflow reads it", () => {
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+/* ---- the range a release describes --------------------------------------- */
+
+/** The notes the run would publish. `main()` renders them after the derivation,
+ * from the same landings, so a test that asserts on them goes through the same
+ * renderer rather than asserting on `deriveRelease`'s return value. */
+const notesFor = (result, landings, windowBase) =>
+	renderNotes({
+		version: result.version,
+		previousTag: windowBase,
+		windowBase,
+		bump: result.bump,
+		repository: "damianvtran/local-operator-ui",
+		landings,
+		breaking: result.breaking,
+		unlistedTypes: result.unlistedTypes,
+		unclassified: result.unclassified,
+		forcedBump: result.forced,
+	});
+
+/**
+ * A release list in the state every publish passes through, and the state a range
+ * bounded by "the newest release a user could be running" gets wrong.
+ *
+ * `v0.25.0` was created as a pre-release by the workflow's own `gh release create`
+ * and stays one until `publish.yml` promotes it at the end of a 25-50 minute
+ * pipeline. That is the whole length of every release, not an edge case.
+ */
+const archZip = (version) => [
+	{ name: `local-operator-ui-${version}-arm64.zip` },
+	{ name: "latest-mac.yml" },
+];
+const release = (
+	version,
+	{ prerelease = false, assets = null } = {},
+) => ({
+	tag_name: `v${version}`,
+	prerelease,
+	draft: false,
+	published_at: "2026-09-15T10:00:00Z",
+	assets: assets ?? archZip(version),
+});
+const GOOD = [release("0.24.0"), release("0.23.5")];
+const IN_FLIGHT = [release("0.25.0", { prerelease: true, assets: [] }), ...GOOD];
+
+/** A scratch repository in the state a publish window leaves behind: the released
+ * base, a feature that landed before the release, the workflow's bump commit tagged
+ * as a pre-release, and a later merge that arrived while the pipeline was running.
+ * Returns the subjects the derivation reads, so the assertions are about commits
+ * rather than about strings. */
+function publishWindow({ later }) {
+	const dir = mkdtempSync(join(tmpdir(), "derive-window-"));
+	const git = (...args) =>
+		execFileSync("git", args, {
+			cwd: dir,
+			encoding: "utf8",
+			env: {
+				...process.env,
+				GIT_AUTHOR_NAME: "t",
+				GIT_AUTHOR_EMAIL: "t@example.com",
+				GIT_COMMITTER_NAME: "t",
+				GIT_COMMITTER_EMAIL: "t@example.com",
+			},
+		});
+	const version = (value) =>
+		writeFileSync(
+			join(dir, "package.json"),
+			`{\n\t"name": "local-operator-ui",\n\t"version": "${value}",\n\t"private": true\n}\n`,
+		);
+	const merge = (number, branch, subject) => {
+		git("checkout", "--quiet", "-b", branch, "main");
+		writeFileSync(join(dir, `${branch.replaceAll("/", "-")}.txt`), "x\n");
+		git("add", "-A");
+		git("commit", "--quiet", "-m", subject);
+		git("checkout", "--quiet", "main");
+		git(
+			"merge",
+			"--quiet",
+			"--no-ff",
+			"-m",
+			`Merge pull request #${number} from t/${branch}`,
+			branch,
+		);
+	};
+	git("init", "--quiet", "-b", "main");
+	version("0.24.0");
+	writeFileSync(join(dir, "README.md"), "text\n");
+	git("add", "-A");
+	git("commit", "--quiet", "-m", "chore: the released state");
+	git("tag", "v0.24.0");
+	merge(205, "feat/first", "feat(panels): the feature that shipped as v0.25.0");
+	// The workflow's bump, committed to `main` and tagged as the pre-release.
+	version("0.25.0");
+	git("add", "package.json");
+	git("commit", "--quiet", "-m", "chore(release): bump version to 0.25.0");
+	git("tag", "v0.25.0");
+	merge(206, "docs/second", later);
+	return { dir, git };
+}
+
+test("a merge that lands inside a publish window is measured against the tag, not the release", () => {
+	const { dir, git } = publishWindow({ later: "docs(readme): a note" });
+	const before = process.cwd();
+	process.chdir(dir);
+	try {
+		const bases = releaseBases({ releases: IN_FLIGHT });
+		assert.equal(bases.windowBase, "v0.25.0");
+		assert.equal(bases.versionBase, "0.25.0");
+		// The bound this replaced: the newest release a USER could run is a release
+		// behind for the whole publish, so a range anchored there still holds the
+		// release-in-flight's own commits.
+		assert.equal(selectIncumbentAnchor(IN_FLIGHT).tag, "v0.24.0");
+
+		const commits = readCommits(bases.windowBase, "HEAD");
+		assert.deepEqual(commits.map((commit) => commit.subject), [
+			"docs(readme): a note",
+		]);
+		const result = deriveRelease({
+			windowBase: bases.windowBase,
+			versionBase: bases.versionBase,
+			commits,
+			landings: readLandings(bases.windowBase, "HEAD"),
+		});
+		// A docs-only merge inside the window releases NOTHING.
+		assert.equal(result.release, false);
+		assert.equal(result.version, null);
+		assert.match(result.reason, /1 docs/);
+		// Anchored at v0.24.0 — the bound that was wrong — the same push derived
+		// v0.26.0 from a feature that had already shipped: the over-called minor
+		// AGENTS.md calls the worse direction, with notes that re-listed the previous
+		// release. That is the defect this bound exists to prevent, and it is asserted
+		// rather than described. The version base is the part that makes it a duplicate
+		// of a released number: it stayed at the newest tag (0.25.0) while the window
+		// base lagged one release behind, which is the mixed state the old code
+		// produced in the middle of every publish.
+		const oldBase = selectIncumbentAnchor(IN_FLIGHT).tag;
+		const oldLandings = readLandings(oldBase, "HEAD");
+		const old = deriveRelease({
+			windowBase: oldBase,
+			versionBase: "0.25.0",
+			commits: readCommits(oldBase, "HEAD"),
+			landings: oldLandings,
+		});
+		assert.equal(old.bump, "minor");
+		assert.equal(old.version, "0.26.0");
+		assert.match(notesFor(old, oldLandings, oldBase), /#205/);
+	} finally {
+		process.chdir(before);
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("two merges in one publish window: the second is the release, and the notes do not re-list the first", () => {
+	const { dir } = publishWindow({
+		later: "feat(composer): the second feature",
+	});
+	const before = process.cwd();
+	process.chdir(dir);
+	try {
+		const bases = releaseBases({ releases: IN_FLIGHT });
+		const commits = readCommits(bases.windowBase, "HEAD");
+		assert.deepEqual(commits.map((commit) => commit.subject), [
+			"feat(composer): the second feature",
+		]);
+		const landings = readLandings(bases.windowBase, "HEAD");
+		const result = deriveRelease({
+			windowBase: bases.windowBase,
+			versionBase: bases.versionBase,
+			commits,
+			landings,
+		});
+		assert.equal(result.bump, "minor");
+		assert.equal(result.version, "0.26.0");
+		const notes = notesFor(result, landings, bases.windowBase);
+		// The released window's PR is NOT in this release's notes, and neither is the
+		// bump commit that tagged it: both are behind the tag the range starts at.
+		assert.match(notes, /#206/);
+		assert.doesNotMatch(notes, /#205/);
+		assert.doesNotMatch(notes, /bump version to 0\.25\.0/);
+		assert.match(notes, /compare\/v0\.25\.0\.\.\.v0\.26\.0/);
+	} finally {
+		process.chdir(before);
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the ordinary case: one merge since the newest release derives its own bump", () => {
+	const dir = mkdtempSync(join(tmpdir(), "derive-normal-"));
+	const git = (...args) =>
+		execFileSync("git", args, {
+			cwd: dir,
+			encoding: "utf8",
+			env: {
+				...process.env,
+				GIT_AUTHOR_NAME: "t",
+				GIT_AUTHOR_EMAIL: "t@example.com",
+				GIT_COMMITTER_NAME: "t",
+				GIT_COMMITTER_EMAIL: "t@example.com",
+			},
+		});
+	const before = process.cwd();
+	try {
+		git("init", "--quiet", "-b", "main");
+		process.chdir(dir);
+		writeFileSync(
+			join(dir, "package.json"),
+			'{\n\t"name": "local-operator-ui",\n\t"version": "0.24.0"\n}\n',
+		);
+		git("add", "-A");
+		git("commit", "--quiet", "-m", "chore: the released state");
+		git("tag", "v0.24.0");
+		git("checkout", "--quiet", "-b", "fix/thing");
+		writeFileSync(join(dir, "file.txt"), "one\n");
+		git("add", "-A");
+		git("commit", "--quiet", "-m", "fix(mcp): a refusal in the user's words");
+		git("checkout", "--quiet", "main");
+		git(
+			"merge",
+			"--quiet",
+			"--no-ff",
+			"-m",
+			"Merge pull request #207 from t/fix/thing",
+			"fix/thing",
+		);
+		const bases = releaseBases({ releases: GOOD });
+		assert.equal(bases.windowBase, "v0.24.0");
+		assert.equal(bases.versionBase, "0.24.0");
+		assert.equal(bases.resolved, true);
+		const landings = readLandings(bases.windowBase, "HEAD");
+		const result = deriveRelease({
+			windowBase: bases.windowBase,
+			versionBase: bases.versionBase,
+			commits: readCommits(bases.windowBase, "HEAD"),
+			landings,
+		});
+		assert.equal(result.bump, "patch");
+		assert.equal(result.version, "0.24.1");
+		assert.match(notesFor(result, landings, bases.windowBase), /#207/);
+	} finally {
+		process.chdir(before);
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("an explicit --base replays a past window and is not the derived bound", () => {
+	const bases = releaseBases({
+		releases: IN_FLIGHT,
+		base: "v0.23.5",
+		versionBase: "0.23.5",
+	});
+	assert.equal(bases.windowBase, "v0.23.5");
+	assert.equal(bases.versionBase, "0.23.5");
+	assert.equal(bases.resolved, false);
+});
+
+test("a git revert's own subject classifies, and the release bump's undo does not", () => {
+	// `git revert` writes `Revert "…"`, which the reference mapping's `revert:`
+	// never matched: a window whose only landing was a revert read as a window with
+	// nothing in it.
+	const revert = classifyCommit(subject('Revert "fix: resolve a Tab boundary"'));
+	assert.equal(revert.bump, "patch");
+	assert.equal(revert.conventional, true);
+	// ... except the one revert that is bookkeeping rather than a change.
+	const bump = classifyCommit(
+		subject('Revert "chore(release): bump version to 0.25.0"'),
+	);
+	assert.equal(bump.bump, null);
+	assert.equal(bump.revertedReleaseBump, true);
+	assert.equal(bump.conventional, true);
+	// A hand-written lowercase `revert:` still means what it always did.
+	assert.equal(classifyCommit(subject("revert: undo the glyph sizes")).bump, "patch");
+});
+
+test("an unresolvable --base is a named refusal, not a git error", () => {
+	assert.throws(
+		() => assertRefExists("v9.9.9", "--base"),
+		(error) => {
+			assert.ok(error instanceof DerivationError);
+			assert.match(error.message, /`v9\.9\.9` \(--base\) is not a tag or commit/);
+			assert.match(error.message, /A release tag looks like `v0\.24\.0`/);
+			return true;
+		},
+	);
+	assert.equal(assertRefExists("HEAD", "--ref"), undefined);
 });

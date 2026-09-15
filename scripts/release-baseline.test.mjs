@@ -25,7 +25,7 @@ import {
 	compareVersions,
 	normaliseReleases,
 	selectVersionAnchor,
-	selectWindowAnchor,
+	selectIncumbentAnchor,
 	tagVersion,
 } from "./release-baseline.mjs";
 
@@ -83,59 +83,62 @@ test("drafts and unpublished releases are not releases", () => {
 	);
 });
 
-test("the window anchor is the newest release a user could be running", () => {
+test("the incumbent anchor is the newest release a user could be running", () => {
 	// As published: v0.24.0 is the newest complete release.
-	assert.equal(selectWindowAnchor(RELEASES).tag, "v0.24.0");
+	assert.equal(selectIncumbentAnchor(RELEASES).tag, "v0.24.0");
 	// At publish time the candidate is excluded, which is the normal case.
 	assert.equal(
-		selectWindowAnchor(RELEASES, { exclude: "v0.24.0" }).tag,
+		selectIncumbentAnchor(RELEASES, { exclude: "v0.24.0" }).tag,
 		"v0.23.5",
 	);
 	// A repair of an old release derives the incumbent ITS users upgrade from.
 	assert.equal(
-		selectWindowAnchor(RELEASES, { below: "0.23.4" }).tag,
+		selectIncumbentAnchor(RELEASES, { below: "0.23.4" }).tag,
 		"v0.23.3",
 	);
 });
 
-test("a tag no user could reach is not a window anchor", () => {
+test("a tag no user could reach is not an incumbent anchor", () => {
 	// v0.23.2 is the trap: it is the second newest tag in the list and no user
-	// ever had it, so a window derived from it would describe a release that
-	// shipped nothing, and the incumbent for the update exercise would not exist.
+	// ever had it, so an incumbent taken from it would be an install that never
+	// existed and the update exercise would have nothing to upgrade from. (The
+	// derivation RANGE is bounded by the version anchor instead: see the module
+	// note in `release-baseline.mjs`, and the two cases in
+	// `derive-release.test.mjs` that pin it across a publish window.)
 	assert.equal(
-		selectWindowAnchor(RELEASES, { exclude: "v0.24.0", below: "0.23.4" }).tag,
+		selectIncumbentAnchor(RELEASES, { exclude: "v0.24.0", below: "0.23.4" }).tag,
 		"v0.23.3",
 	);
 	const withPrereleaseNewest = [
 		release("0.24.1", { prerelease: true }),
 		...RELEASES,
 	];
-	assert.equal(selectWindowAnchor(withPrereleaseNewest).tag, "v0.24.0");
+	assert.equal(selectIncumbentAnchor(withPrereleaseNewest).tag, "v0.24.0");
 });
 
-test("a Release with no architecture-matched archive is not a window anchor", () => {
+test("a Release with no architecture-matched archive is not an incumbent anchor", () => {
 	const metadataOnly = [
 		release("0.25.0", { assets: [{ name: "latest-mac.yml" }] }),
 		release("0.24.0"),
 	];
-	assert.equal(selectWindowAnchor(metadataOnly).tag, "v0.24.0");
+	assert.equal(selectIncumbentAnchor(metadataOnly).tag, "v0.24.0");
 });
 
 test("the version anchor is the newest tag of any kind, so no number is reused", () => {
 	// The case this anchor exists for: the newest tag is one no user could run,
-	// and the next version still has to be above it. Deriving from the window
+	// and the next version still has to be above it. Deriving from the incumbent
 	// anchor alone here would produce v0.23.3 — a tag that already exists.
 	const held = [
 		release("0.23.3", { prerelease: true, assets: [] }),
 		release("0.23.2"),
 	];
-	assert.equal(selectWindowAnchor(held).tag, "v0.23.2");
+	assert.equal(selectIncumbentAnchor(held).tag, "v0.23.2");
 	assert.equal(selectVersionAnchor(held).tag, "v0.23.3");
 });
 
 test("no anchor at all is a refusal, not a default", () => {
 	assert.equal(
-		selectWindowAnchor([release("0.1.0", { prerelease: true, assets: [] })]),
+		selectIncumbentAnchor([release("0.1.0", { prerelease: true, assets: [] })]),
 		null,
 	);
 	assert.equal(selectVersionAnchor([]), null);

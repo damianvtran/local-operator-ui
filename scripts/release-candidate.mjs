@@ -26,10 +26,14 @@
 import { pathToFileURL } from "node:url";
 import {
 	fetchReleases,
-	selectWindowAnchor,
+	selectIncumbentAnchor,
 	tagVersion,
 } from "./release-baseline.mjs";
-import { createApi, resolveTagSha } from "./validate-release.mjs";
+import {
+	ValidationError,
+	createApi,
+	resolveTagSha,
+} from "./validate-release.mjs";
 
 /** Thrown when the inputs cannot be established, which must fail rather than be
  * approximated: the harness reports BLOCKED for a missing capability, and an
@@ -43,7 +47,7 @@ export function verificationInputs({ releaseTag, sourceSha, releases }) {
 		throw new CandidateError(`Not a vX.Y.Z release tag: ${releaseTag}`);
 	if (!/^[0-9a-f]{40}$/.test(sourceSha ?? ""))
 		throw new CandidateError(`Not a full commit SHA: ${sourceSha}`);
-	const incumbent = selectWindowAnchor(releases, {
+	const incumbent = selectIncumbentAnchor(releases, {
 		below: version,
 		exclude: releaseTag,
 	});
@@ -70,7 +74,20 @@ function main() {
 		const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 		if (!token)
 			throw new CandidateError("GH_TOKEN is required to resolve the tag");
-		const sourceSha = resolveTagSha(createApi(repository, token), releaseTag);
+		// A tag this repository does not have is the caller's input being wrong, not
+		// a tool failure: `resolveTagSha` reports it as a `ValidationError` whose text
+		// is already this project's own copy ("GitHub metadata lookup failed"), so it
+		// is re-raised as a named refusal rather than printed as a stack trace.
+		let sourceSha;
+		try {
+			sourceSha = resolveTagSha(createApi(repository, token), releaseTag);
+		} catch (error) {
+			if (error instanceof ValidationError)
+				throw new CandidateError(
+					`Could not resolve the release tag ${releaseTag}: ${error.message}`,
+				);
+			throw error;
+		}
 		const result = verificationInputs({
 			releaseTag,
 			sourceSha,
