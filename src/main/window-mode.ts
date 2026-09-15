@@ -302,11 +302,17 @@ export function resolveWindowLaunchPlan(
  * agent-driver run uses — and only when there is a launcher to outlive, so:
  *
  * - a human's `normal` app is never affected, even launched from a terminal;
- * - a run that detached on purpose (`ppid 1` at startup, so it has no launcher
- *   to watch) is left alone rather than guessed at, with
- *   `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE` as the explicit way to say so;
+ * - a run with no launcher at startup is left alone rather than guessed at,
+ *   with `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE` as the explicit way to say so;
  * - the smoke-test path exits before any of this runs, so its marker line and
  *   exit code are unchanged.
+ *
+ * The `ppid 1` case, precisely, because the mechanism is easy to name wrongly:
+ * neither `detached: true` nor `setsid(2)` reparents a child — only the parent's
+ * exit does. So a harness that spawns with `detached: true` still shows up here
+ * with a real launcher pid and IS watched; what `ppid 1` at startup means is
+ * that the run was already orphaned before it could look, which is why it is the
+ * one case this module refuses to guess about.
  */
 export interface LauncherWatchPlan {
 	/** True when this run must not outlive the process that launched it. */
@@ -369,28 +375,33 @@ export function resolveLauncherWatchPlan(input: {
  * process's stdout, so this is how a run says out loud that it is headless
  * rather than looking identical to one that popped a window.
  *
+ * It describes the MODE and nothing that depends on a later resolution. The
+ * lifetime policy is deliberately not here: it depends on `LauncherWatchPlan`
+ * (a `headless` run can be opted out or already detached), and a mode line that
+ * claimed "quits when its launcher goes" would contradict the policy line
+ * printed immediately after it in exactly the two cases where a run does not
+ * leave by itself. Callers print the plan's own `reason` for that.
+ *
  * It reports the WINDOW size and deliberately not a content size: the CSS
  * viewport is the window minus whatever chrome the platform draws, so it has
  * to be read from the page (`innerWidth`/`innerHeight`, or the frame's own
  * pixels) rather than derived here from a constant that is only true on one
- * platform.
+ * platform. For the same reason the Dock claim is mac-only: `hideDock` is an
+ * `app.dock` call, so a Linux or Windows rig naming a Dock tile would be
+ * describing something that platform does not have.
  */
-export function describeWindowLaunch(plan: WindowLaunchPlan): string {
+export function describeWindowLaunch(
+	plan: WindowLaunchPlan,
+	platform: string = process.platform,
+): string {
 	const behaviour =
 		plan.show === "never"
 			? "window created and never shown"
 			: plan.show === "inactive"
 				? "window shown without activating the app"
 				: "window shown and focused";
-	/*
-	 * The two properties a rig cannot see for itself are named here: a run that
-	 * takes no Dock tile, and a run that is expected to leave with its launcher.
-	 * A reviewer reading a harness's stdout should not have to know `headless`
-	 * implies either of them.
-	 */
 	const extras = [
-		plan.hideDock ? "no Dock tile" : null,
-		plan.mode === "headless" ? "quits when its launcher goes" : null,
+		plan.hideDock && platform === "darwin" ? "no Dock tile" : null,
 	].filter((part): part is string => part !== null);
 	const suffix = extras.length === 0 ? "" : `, ${extras.join(", ")}`;
 	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}`;

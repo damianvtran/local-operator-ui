@@ -120,10 +120,14 @@ export function registerDesktopIPC(
 		authorize(event);
 		return guarded(input);
 	});
-	// `/exit`: the window closes through the ordinary close path, so the
-	// renderer's `beforeunload` guard and macOS keep-alive behaviour apply
-	// unchanged. Nothing here touches the backend: a closed window detaches
-	// its viewer and every session's owner keeps running.
+	// `/exit`: the window closes through the ordinary close path, so macOS
+	// keep-alive behaviour applies unchanged in the shipped app. Nothing here
+	// touches the backend: a closed window detaches its viewer and every
+	// session's owner keeps running. One exception, and it is the other way
+	// round from "keep alive": in a `headless` run there is exactly one window,
+	// no user and nothing to reopen, so closing it ends the run (and with it the
+	// backend this app owns) — see `window-all-closed` in `index.ts`. There is no
+	// `beforeunload` handler in this renderer to consult either way.
 	ipcMain.handle("desktop-close-window", (event) => {
 		authorize(event);
 		const owner = window();
