@@ -44,7 +44,7 @@ import {
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
-import { backendConfig } from "./backend/config";
+import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
@@ -55,6 +55,12 @@ import {
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
+import {
+	describeDevDriverArming,
+	devDriverArgument,
+	resolveDevDriverArming,
+} from "./dev-driver";
+import { registerDevDriverIPC } from "./dev-driver-ipc";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -350,8 +356,19 @@ function createWindow(
 			 * no single conversation to name, and "no flag at all" already means
 			 * "restore what you had open" — so it needs a flag of its own rather than
 			 * sharing that absence.
+			 *
+			 * AND the renderer dev driver's arming entry, which is the other thing this
+			 * app puts in a renderer's argv — usually absent, because it is present only
+			 * in a launch that opted in. See `devDriverWebPreferences` above and
+			 * `src/main/dev-driver.ts` for what arms a run and what the entry is read by.
+			 *
+			 * WHY ONE SPREAD AND NOT TWO: both sources write `additionalArguments`, so a
+			 * second spread REPLACES the first's array rather than adding to it — and
+			 * either one alone still produces a well-formed window, so the loss would be
+			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
+			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...launchArgumentFlags(initialSession, openCatalogue),
+			...rendererArgumentFlags(initialSession, openCatalogue),
 		},
 	});
 
@@ -566,9 +583,17 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
  * so every launch path is covered by one switch: `pnpm dev`, `pnpm start`,
  * `npx electron .` in a rig, and `npx local-operator-ui` (which spawns
  * Electron with this process's environment, so it inherits the value).
+ *
+ * Read from `launchEnv` — the environment this process was LAUNCHED with — and
+ * not from `process.env`, because `./backend/config` has already folded a
+ * `.env` from the working directory into `process.env` with dotenv
+ * `override: true` by the time this runs (see the comment on `launchEnv`). A
+ * window mode is a fact about the launch: a file in the checkout must not be
+ * able to turn a deliberately `headless` run into one that raises a window and
+ * takes the operator's focus.
  */
 const windowLaunch = resolveWindowLaunchPlan({
-	env: process.env,
+	env: launchEnv,
 	argv: process.argv,
 });
 for (const problem of windowLaunch.problems) {
@@ -588,6 +613,43 @@ for (const problem of windowLaunch.problems) {
 if (windowLaunch.mode !== "normal") {
 	console.log(`[window-mode] ${describeWindowLaunch(windowLaunch)}`);
 }
+
+/*
+ * The renderer dev driver's opt-in, resolved here for the same reason the
+ * window mode is: it is a fact about the LAUNCH, decided once, and a rig reads
+ * it on stdout. Nothing is registered or exposed unless this says armed, so a
+ * launch that did not ask for the driver has no `dev-driver-*` channel and no
+ * bridge in the renderer at all — which is what
+ * `node scripts/renderer-driver.mjs --gate-check` measures on a real boot
+ * rather than trusting this comment. `src/main/dev-driver.ts` holds the rules
+ * and `docs/agent-driver.md` is the contract for anyone using it.
+ *
+ * From `launchEnv`, for the reason given at the window mode above and measured
+ * on real boots by `--gate-check`'s `.env` cases: the opt-in is a control
+ * surface on a trusted process, so a `.env` in the working directory must not be
+ * able to arm it, and an explicit `=0` at the shell must not be overridden by
+ * one.
+ */
+const devDriverArming = resolveDevDriverArming({
+	env: launchEnv,
+	windowMode: windowLaunch.mode,
+});
+const devDriverLine = describeDevDriverArming(devDriverArming);
+if (devDriverLine) console.log(devDriverLine);
+
+/*
+ * The renderer's half of that decision, as `webPreferences` for whichever window
+ * is created. Empty in an unarmed launch, so a normal run's window options are
+ * the options they would have had: the preload reads this entry out of its own
+ * `argv` and exposes `window.__loDevDriver` only when it is there, while main
+ * independently registers the `dev-driver-*` channels only when armed. Spelled as
+ * a spread rather than as `additionalArguments: []` so that "unarmed adds no
+ * option at all" is literally true of the object, not merely equivalent.
+ */
+const devDriverWebPreferences =
+	devDriverArming.armed && devDriverArming.outDir
+		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
+		: {};
 
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
@@ -648,6 +710,34 @@ function launchArgumentFlags(
 	}
 	if (openCatalogue) return { additionalArguments: [OPEN_CATALOGUE_FLAG] };
 	return {};
+}
+
+/**
+ * Everything this app puts in a renderer process's argv, in one value.
+ *
+ * WHY IT EXISTS. There are two sources now — the conversation or catalogue a
+ * window was created for (`launchArgumentFlags`) and the dev driver's arming
+ * entry (`devDriverWebPreferences`) — and both express themselves through the
+ * SAME `webPreferences.additionalArguments` slot. Spreading them as two separate
+ * entries at the call site does not union them: the second spread overwrites the
+ * first's array, so an armed run that also names a session would carry one flag
+ * and silently drop the other, with a well-formed window either way. This is the
+ * one place that decides, so the two can never disagree about who wins.
+ *
+ * Empty means `{}` and not `additionalArguments: []`, for the reason
+ * `launchArgumentFlags` gives: "this launch adds no option at all" has to be
+ * true of the object, not merely equivalent to it.
+ */
+function rendererArgumentFlags(
+	initialSession: string | null,
+	openCatalogue: boolean,
+): { additionalArguments?: string[] } {
+	const flags = [
+		...(launchArgumentFlags(initialSession, openCatalogue)
+			.additionalArguments ?? []),
+		...(devDriverWebPreferences.additionalArguments ?? []),
+	];
+	return flags.length > 0 ? { additionalArguments: flags } : {};
 }
 
 /**
@@ -1076,6 +1166,34 @@ app
 			desktopNotifier,
 			(sessionId) => viewerRecord?.releaseSession(sessionId),
 		);
+
+		/*
+		 * The renderer dev driver's channels, present ONLY in an armed launch.
+		 *
+		 * Placed next to `registerDesktopIPC` because it is the same kind of
+		 * thing — a main-owned surface the window may call — and registered
+		 * BEFORE the first window is created, so the window cannot invoke a
+		 * `dev-driver-*` channel before its handler exists and get Electron's
+		 * "No handler registered" for a driver that is in fact armed. (The
+		 * preload learns the frames directory from its own synchronous `argv`
+		 * entry rather than from an IPC handshake — see the note on
+		 * `DEV_DRIVER_ARG` in `src/main/dev-driver.ts` for why — so what the
+		 * ordering protects is the capture call a scene makes later, not a
+		 * handshake.) It reuses the same single trusted-renderer URL: a second
+		 * spelling of "the trusted document" is how one of the two drifts.
+		 */
+		if (devDriverArming.armed && devDriverArming.outDir) {
+			registerDevDriverIPC({
+				window: () => mainWindow,
+				expectedUrl: rendererUrl,
+				outDir: devDriverArming.outDir,
+				identity: {
+					windowMode: windowLaunch.mode,
+					appVersion: app.getVersion(),
+					platform: process.platform,
+				},
+			});
+		}
 
 		// Add IPC handlers for opening files and URLs
 		ipcMain.handle("open-file", async (_, filePath) => {

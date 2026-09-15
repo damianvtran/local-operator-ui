@@ -7,6 +7,7 @@ import type {
 	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
+import type { DevDriverBridge } from "./dev-driver";
 
 // Matching same type in `src/main/index.ts`
 type ReadFileResponse =
@@ -16,6 +17,14 @@ type ReadFileResponse =
 declare global {
 	interface Window {
 		electron: ElectronAPI;
+		/**
+		 * The renderer dev driver, present ONLY in an armed launch.
+		 *
+		 * Optional on purpose: it is absent in every normal run, and typing it as
+		 * always-present would invite renderer code to call it without asking.
+		 * `docs/agent-driver.md` says what arming requires.
+		 */
+		__loDevDriver?: DevDriverBridge;
 		api: {
 			desktop: DesktopAPI;
 			/**
