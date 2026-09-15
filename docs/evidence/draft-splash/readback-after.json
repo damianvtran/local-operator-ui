@@ -1,0 +1,5147 @@
+{
+  "label": "after",
+  "capturedAt": "2026-09-14T17:13:51.898Z",
+  "capturedAtHead": "ae6f4f82fefe4ce723e32c0d9990f0ccdff7e7a0",
+  "capturedAtSrcTree": "e7b37af2676702f1cab08ea4baddf5112033d161",
+  "dirtySource": false,
+  "instrument": "scripts/draft-splash-capture.mjs - private headless Chrome over raw CDP driving scripts/draft-splash-evidence.html (the shipped ChatPage) against an isolated local-operator serve through the dev desktop proxy",
+  "url": "http://localhost:5210/draft-splash-evidence.html",
+  "theme": "localOperatorDark",
+  "chipList": "DEFAULT_MESSAGE_SUGGESTIONS (chat-content.tsx)",
+  "expected": {
+    "1380x872": {
+      "greeting": 1,
+      "skeleton": 0,
+      "chips": 7
+    },
+    "900x572": {
+      "greeting": 1,
+      "skeleton": 0,
+      "chips": 7
+    },
+    "830x572": {
+      "greeting": 1,
+      "skeleton": 0,
+      "chips": 7
+    },
+    "800x572": {
+      "greeting": 0,
+      "skeleton": 0,
+      "chips": 0
+    }
+  },
+  "sizes": [
+    {
+      "viewport": "1380x872",
+      "expected": {
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7
+      },
+      "draft": {
+        "href": "http://localhost:5210/draft-splash-evidence.html",
+        "viewport": "1380x872",
+        "theme": "localOperatorDark",
+        "harnessError": null,
+        "store": {
+          "activeDraftKey": "draft:e726c384-02cb-4361-bcdd-ae8561757dda",
+          "activeSessionId": null
+        },
+        "bandNow": {
+          "at": 0,
+          "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Remove downloads that are more than a year old",
+            "Do a buy/hold/sell and fundamentals analysis of Apple",
+            "Do a technical analysis on NVDA over the last year",
+            "Go to my documents folder",
+            "Put together a competitive analysis report on the agentic AI space",
+            "What's the latest news?",
+            "Organize my desktop"
+          ],
+          "bandHeight": 768,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 1100,
+              "h": 768
+            },
+            "greeting": {
+              "x": 688.7,
+              "y": 338.8,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 380,
+              "y": 524.8,
+              "w": 900,
+              "h": 104.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 388.8,
+              "w": 1052,
+              "h": 240.5
+            }
+          },
+          "stack": {
+            "top": 524.8,
+            "bottom": 629.3,
+            "height": 104.5,
+            "clientHeight": 105,
+            "scrollHeight": 105,
+            "scrollable": false,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 524.8,
+                "bottom": 554.3,
+                "chips": 2
+              },
+              {
+                "top": 562.3,
+                "bottom": 591.8,
+                "chips": 2
+              },
+              {
+                "top": 599.8,
+                "bottom": 629.3,
+                "chips": 3
+              }
+            ],
+            "rowCount": 3,
+            "visibleRows": 3,
+            "lastVisibleRowBottom": 629.3,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 104.5,
+            "room": 347.3
+          },
+          "transcriptPainted": false
+        },
+        "loadingClaims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        },
+        "draftStreamView": {
+          "hydrated": false,
+          "awaitingHydration": false,
+          "status": "connecting",
+          "failed": false
+        },
+        "framesRead": 8,
+        "frames": [
+          {
+            "at": 7,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 8,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 167,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 216,
+            "text": "What can I help you with today? Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 418,
+            "text": "What can I help you with today? Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 440,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 1214,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 2213,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          }
+        ]
+      },
+      "loadingClaimsAtDraft": {
+        "placeholders": 0,
+        "outsideBand": 0,
+        "shimmerBars": 0,
+        "captionVisible": false
+      },
+      "afterSend": {
+        "bandNow": {
+          "at": 0,
+          "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 136,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 736.3,
+              "w": 1100,
+              "h": 135.7
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 744.3,
+              "w": 1052,
+              "h": 111.7
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "frames": [
+          {
+            "at": 7,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 8,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 167,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 216,
+            "text": "What can I help you with today? Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 418,
+            "text": "What can I help you with today? Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 440,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 1214,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 2213,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 3214,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 3322,
+            "text": "What can I help you with today? mock Working directory: ~ Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 3364,
+            "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Remove downloads that are more than a year old",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Do a technical analysis on NVDA over the last year",
+              "Go to my documents folder",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What's the latest news?",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.8,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.8,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.8,
+                "w": 1052,
+                "h": 240.5
+              }
+            },
+            "stack": {
+              "top": 524.8,
+              "bottom": 629.3,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.8,
+                  "bottom": 554.3,
+                  "chips": 2
+                },
+                {
+                  "top": 562.3,
+                  "bottom": 591.8,
+                  "chips": 2
+                },
+                {
+                  "top": 599.8,
+                  "bottom": 629.3,
+                  "chips": 3
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.3,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.3
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 3473,
+            "text": "Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736,
+                "w": 1100,
+                "h": 136
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744,
+                "w": 1052,
+                "h": 112
+              }
+            },
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 3687,
+            "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my documents folder",
+              "What's the latest news?",
+              "Train a classifier on the MPG dataset",
+              "Look up trending stocks and put together an investment report",
+              "Make me a GDPR compliant privacy policy",
+              "Download some recent papers on cancer research",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.9,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.6,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.9,
+                "w": 1052,
+                "h": 240.2
+              }
+            },
+            "stack": {
+              "top": 524.6,
+              "bottom": 629.1,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.6,
+                  "bottom": 554.1,
+                  "chips": 3
+                },
+                {
+                  "top": 562.1,
+                  "bottom": 591.6,
+                  "chips": 2
+                },
+                {
+                  "top": 599.6,
+                  "bottom": 629.1,
+                  "chips": 2
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.1,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.4
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 4472,
+            "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my documents folder",
+              "What's the latest news?",
+              "Train a classifier on the MPG dataset",
+              "Look up trending stocks and put together an investment report",
+              "Make me a GDPR compliant privacy policy",
+              "Download some recent papers on cancer research",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.9,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.6,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.9,
+                "w": 1052,
+                "h": 240.2
+              }
+            },
+            "stack": {
+              "top": 524.6,
+              "bottom": 629.1,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.6,
+                  "bottom": 554.1,
+                  "chips": 3
+                },
+                {
+                  "top": 562.1,
+                  "bottom": 591.6,
+                  "chips": 2
+                },
+                {
+                  "top": 599.6,
+                  "bottom": 629.1,
+                  "chips": 2
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.1,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.4
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 5486,
+            "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my documents folder",
+              "What's the latest news?",
+              "Train a classifier on the MPG dataset",
+              "Look up trending stocks and put together an investment report",
+              "Make me a GDPR compliant privacy policy",
+              "Download some recent papers on cancer research",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.9,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.6,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.9,
+                "w": 1052,
+                "h": 240.2
+              }
+            },
+            "stack": {
+              "top": 524.6,
+              "bottom": 629.1,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.6,
+                  "bottom": 554.1,
+                  "chips": 3
+                },
+                {
+                  "top": 562.1,
+                  "bottom": 591.6,
+                  "chips": 2
+                },
+                {
+                  "top": 599.6,
+                  "bottom": 629.1,
+                  "chips": 2
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.1,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.4
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 5668,
+            "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my documents folder",
+              "What's the latest news?",
+              "Train a classifier on the MPG dataset",
+              "Look up trending stocks and put together an investment report",
+              "Make me a GDPR compliant privacy policy",
+              "Download some recent papers on cancer research",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.9,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.6,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.9,
+                "w": 1052,
+                "h": 240.2
+              }
+            },
+            "stack": {
+              "top": 524.6,
+              "bottom": 629.1,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.6,
+                  "bottom": 554.1,
+                  "chips": 3
+                },
+                {
+                  "top": 562.1,
+                  "bottom": 591.6,
+                  "chips": 2
+                },
+                {
+                  "top": 599.6,
+                  "bottom": 629.1,
+                  "chips": 2
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.1,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.4
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 5686,
+            "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my documents folder",
+              "What's the latest news?",
+              "Train a classifier on the MPG dataset",
+              "Look up trending stocks and put together an investment report",
+              "Make me a GDPR compliant privacy policy",
+              "Download some recent papers on cancer research",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.9,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.6,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.9,
+                "w": 1052,
+                "h": 240.2
+              }
+            },
+            "stack": {
+              "top": 524.6,
+              "bottom": 629.1,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.6,
+                  "bottom": 554.1,
+                  "chips": 3
+                },
+                {
+                  "top": 562.1,
+                  "bottom": 591.6,
+                  "chips": 2
+                },
+                {
+                  "top": 599.6,
+                  "bottom": 629.1,
+                  "chips": 2
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.1,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.4
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 5714,
+            "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my documents folder",
+              "What's the latest news?",
+              "Train a classifier on the MPG dataset",
+              "Look up trending stocks and put together an investment report",
+              "Make me a GDPR compliant privacy policy",
+              "Download some recent papers on cancer research",
+              "Organize my desktop"
+            ],
+            "bandHeight": 768,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 1100,
+                "h": 768
+              },
+              "greeting": {
+                "x": 688.7,
+                "y": 338.9,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 380,
+                "y": 524.6,
+                "w": 900,
+                "h": 104.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 388.9,
+                "w": 1052,
+                "h": 240.2
+              }
+            },
+            "stack": {
+              "top": 524.6,
+              "bottom": 629.1,
+              "height": 104.5,
+              "clientHeight": 105,
+              "scrollHeight": 105,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 524.6,
+                  "bottom": 554.1,
+                  "chips": 3
+                },
+                {
+                  "top": 562.1,
+                  "bottom": 591.6,
+                  "chips": 2
+                },
+                {
+                  "top": 599.6,
+                  "bottom": 629.1,
+                  "chips": 2
+                }
+              ],
+              "rowCount": 3,
+              "visibleRows": 3,
+              "lastVisibleRowBottom": 629.1,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 104.5,
+              "room": 347.4
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 5729,
+            "text": "mock Working directory: /Users/damian Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 5743,
+            "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 5756,
+            "text": "mock 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 5777,
+            "text": "mock <0.1%/128k 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 5803,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 5823,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 6132,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 6262,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 6305,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 6751,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 6776,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          },
+          {
+            "at": 7768,
+            "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 136,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 736.3,
+                "w": 1100,
+                "h": 135.7
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 744.3,
+                "w": 1052,
+                "h": 111.7
+              }
+            },
+            "stack": null,
+            "transcriptPainted": true
+          }
+        ]
+      },
+      "flip": {
+        "framesWithEchoPainted": 12,
+        "tracedFrames": 30,
+        "firstPaintedBand": {
+          "at": 0,
+          "text": "mock $— 0s Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 136,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 736.3,
+              "w": 1100,
+              "h": 135.7
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 744.3,
+              "w": 1052,
+              "h": 111.7
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "bandAtSendClick": {
+          "at": 0,
+          "text": "What can I help you with today? mock Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Remove downloads that are more than a year old Do a buy/hold/sell and fundamentals analysis of Apple Do a technical analysis on NVDA over the last year Go to my documents folder Put together a competitive analysis report on the agentic AI space What's the latest news? Organize my desktop",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Remove downloads that are more than a year old",
+            "Do a buy/hold/sell and fundamentals analysis of Apple",
+            "Do a technical analysis on NVDA over the last year",
+            "Go to my documents folder",
+            "Put together a competitive analysis report on the agentic AI space",
+            "What's the latest news?",
+            "Organize my desktop"
+          ],
+          "bandHeight": 768,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 1100,
+              "h": 768
+            },
+            "greeting": {
+              "x": 688.7,
+              "y": 338.8,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 380,
+              "y": 524.8,
+              "w": 900,
+              "h": 104.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 388.8,
+              "w": 1052,
+              "h": 240.5
+            }
+          },
+          "stack": {
+            "top": 524.8,
+            "bottom": 629.3,
+            "height": 104.5,
+            "clientHeight": 105,
+            "scrollHeight": 105,
+            "scrollable": false,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 524.8,
+                "bottom": 554.3,
+                "chips": 2
+              },
+              {
+                "top": 562.3,
+                "bottom": 591.8,
+                "chips": 2
+              },
+              {
+                "top": 599.8,
+                "bottom": 629.3,
+                "chips": 3
+              }
+            ],
+            "rowCount": 3,
+            "visibleRows": 3,
+            "lastVisibleRowBottom": 629.3,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 104.5,
+            "room": 347.3
+          },
+          "transcriptPainted": false
+        },
+        "bandAtFlipShot": {
+          "at": 0,
+          "text": "What can I help you with today? mock unknown Working directory: ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Organize my documents folder What's the latest news? Train a classifier on the MPG dataset Look up trending stocks and put together an investment report Make me a GDPR compliant privacy policy Download some recent papers on cancer research Organize my desktop",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Organize my documents folder",
+            "What's the latest news?",
+            "Train a classifier on the MPG dataset",
+            "Look up trending stocks and put together an investment report",
+            "Make me a GDPR compliant privacy policy",
+            "Download some recent papers on cancer research",
+            "Organize my desktop"
+          ],
+          "bandHeight": 768,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 1100,
+              "h": 768
+            },
+            "greeting": {
+              "x": 688.7,
+              "y": 338.9,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 380,
+              "y": 524.6,
+              "w": 900,
+              "h": 104.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 388.9,
+              "w": 1052,
+              "h": 240.2
+            }
+          },
+          "stack": {
+            "top": 524.6,
+            "bottom": 629.1,
+            "height": 104.5,
+            "clientHeight": 105,
+            "scrollHeight": 105,
+            "scrollable": false,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 524.6,
+                "bottom": 554.1,
+                "chips": 3
+              },
+              {
+                "top": 562.1,
+                "bottom": 591.6,
+                "chips": 2
+              },
+              {
+                "top": 599.6,
+                "bottom": 629.1,
+                "chips": 2
+              }
+            ],
+            "rowCount": 3,
+            "visibleRows": 3,
+            "lastVisibleRowBottom": 629.1,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 104.5,
+            "room": 347.4
+          },
+          "transcriptPainted": false
+        },
+        "bandStates": [
+          {
+            "at": 7,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 8,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 167,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 216,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 418,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 440,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 1214,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2213,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3214,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3322,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3364,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3473,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3687,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 4472,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 5486,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 5668,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 5686,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 5714,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 5729,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5743,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5756,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5777,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5803,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5823,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 6132,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 6262,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 6305,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 6751,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 6776,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 7768,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          }
+        ]
+      }
+    },
+    {
+      "viewport": "900x572",
+      "expected": {
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7
+      },
+      "draft": {
+        "href": "http://localhost:5210/draft-splash-evidence.html",
+        "viewport": "900x572",
+        "theme": "localOperatorDark",
+        "harnessError": null,
+        "store": {
+          "activeDraftKey": "draft:615d8a4c-576f-41a9-9b78-36688499508f",
+          "activeSessionId": null
+        },
+        "bandNow": {
+          "at": 0,
+          "text": "What can I help you with today? mock ~ Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Put together a competitive analysis report on the agentic AI space",
+            "Create a presentation outline on climate change",
+            "Find me a royalty free gif of a cute cat",
+            "Make me a space invaders game",
+            "Fetch the MNIST dataset and train a good classifier",
+            "Make me a research report on the latest trends in AI",
+            "Remove downloads that are more than a year old"
+          ],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 620,
+              "h": 468
+            },
+            "greeting": {
+              "x": 448.7,
+              "y": 135.3,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 304,
+              "y": 353.3,
+              "w": 572,
+              "h": 179.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 185.3,
+              "w": 572,
+              "h": 347.5
+            }
+          },
+          "stack": {
+            "top": 353.3,
+            "bottom": 532.8,
+            "height": 179.5,
+            "clientHeight": 180,
+            "scrollHeight": 217,
+            "scrollable": true,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 353.3,
+                "bottom": 382.8,
+                "chips": 1
+              },
+              {
+                "top": 390.8,
+                "bottom": 420.3,
+                "chips": 1
+              },
+              {
+                "top": 428.3,
+                "bottom": 457.8,
+                "chips": 2
+              },
+              {
+                "top": 465.8,
+                "bottom": 495.3,
+                "chips": 1
+              },
+              {
+                "top": 503.3,
+                "bottom": 532.8,
+                "chips": 1
+              },
+              {
+                "top": 540.8,
+                "bottom": 570.3,
+                "chips": 1
+              }
+            ],
+            "rowCount": 6,
+            "visibleRows": 5,
+            "lastVisibleRowBottom": 532.8,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 217,
+            "room": 218.8
+          },
+          "transcriptPainted": false
+        },
+        "loadingClaims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        },
+        "draftStreamView": {
+          "hydrated": false,
+          "awaitingHydration": false,
+          "status": "connecting",
+          "failed": false
+        },
+        "framesRead": 9,
+        "frames": [
+          {
+            "at": 1,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 1,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 101,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 142,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 156,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 325,
+            "text": "What can I help you with today? ~ Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Put together a competitive analysis report on the agentic AI space",
+              "Create a presentation outline on climate change",
+              "Find me a royalty free gif of a cute cat",
+              "Make me a space invaders game",
+              "Fetch the MNIST dataset and train a good classifier",
+              "Make me a research report on the latest trends in AI",
+              "Remove downloads that are more than a year old"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 620,
+                "h": 468
+              },
+              "greeting": {
+                "x": 448.7,
+                "y": 132.5,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 318.5,
+                "w": 572,
+                "h": 217
+              },
+              "composer": {
+                "x": 304,
+                "y": 182.5,
+                "w": 572,
+                "h": 353
+              }
+            },
+            "stack": {
+              "top": 318.5,
+              "bottom": 535.5,
+              "height": 217,
+              "clientHeight": 217,
+              "scrollHeight": 217,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 318.5,
+                  "bottom": 348,
+                  "chips": 1
+                },
+                {
+                  "top": 356,
+                  "bottom": 385.5,
+                  "chips": 1
+                },
+                {
+                  "top": 393.5,
+                  "bottom": 423,
+                  "chips": 2
+                },
+                {
+                  "top": 431,
+                  "bottom": 460.5,
+                  "chips": 1
+                },
+                {
+                  "top": 468.5,
+                  "bottom": 498,
+                  "chips": 1
+                },
+                {
+                  "top": 506,
+                  "bottom": 535.5,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 6,
+              "lastVisibleRowBottom": 535.5,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 253.5
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 371,
+            "text": "What can I help you with today? mock ~ Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Put together a competitive analysis report on the agentic AI space",
+              "Create a presentation outline on climate change",
+              "Find me a royalty free gif of a cute cat",
+              "Make me a space invaders game",
+              "Fetch the MNIST dataset and train a good classifier",
+              "Make me a research report on the latest trends in AI",
+              "Remove downloads that are more than a year old"
+            ],
+            "bandHeight": 491,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 620,
+                "h": 491
+              },
+              "greeting": {
+                "x": 448.7,
+                "y": 128,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 346,
+                "w": 572,
+                "h": 217
+              },
+              "composer": {
+                "x": 304,
+                "y": 178,
+                "w": 572,
+                "h": 385
+              }
+            },
+            "stack": {
+              "top": 346,
+              "bottom": 563,
+              "height": 217,
+              "clientHeight": 217,
+              "scrollHeight": 217,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 346,
+                  "bottom": 375.5,
+                  "chips": 1
+                },
+                {
+                  "top": 383.5,
+                  "bottom": 413,
+                  "chips": 1
+                },
+                {
+                  "top": 421,
+                  "bottom": 450.5,
+                  "chips": 2
+                },
+                {
+                  "top": 458.5,
+                  "bottom": 488,
+                  "chips": 1
+                },
+                {
+                  "top": 496,
+                  "bottom": 525.5,
+                  "chips": 1
+                },
+                {
+                  "top": 533.5,
+                  "bottom": 563,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 6,
+              "lastVisibleRowBottom": 563,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 226
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 386,
+            "text": "What can I help you with today? mock ~ Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Put together a competitive analysis report on the agentic AI space",
+              "Create a presentation outline on climate change",
+              "Find me a royalty free gif of a cute cat",
+              "Make me a space invaders game",
+              "Fetch the MNIST dataset and train a good classifier",
+              "Make me a research report on the latest trends in AI",
+              "Remove downloads that are more than a year old"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 620,
+                "h": 468
+              },
+              "greeting": {
+                "x": 448.7,
+                "y": 135.3,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 353.3,
+                "w": 572,
+                "h": 179.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 185.3,
+                "w": 572,
+                "h": 347.5
+              }
+            },
+            "stack": {
+              "top": 353.3,
+              "bottom": 532.8,
+              "height": 179.5,
+              "clientHeight": 180,
+              "scrollHeight": 217,
+              "scrollable": true,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 353.3,
+                  "bottom": 382.8,
+                  "chips": 1
+                },
+                {
+                  "top": 390.8,
+                  "bottom": 420.3,
+                  "chips": 1
+                },
+                {
+                  "top": 428.3,
+                  "bottom": 457.8,
+                  "chips": 2
+                },
+                {
+                  "top": 465.8,
+                  "bottom": 495.3,
+                  "chips": 1
+                },
+                {
+                  "top": 503.3,
+                  "bottom": 532.8,
+                  "chips": 1
+                },
+                {
+                  "top": 540.8,
+                  "bottom": 570.3,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 5,
+              "lastVisibleRowBottom": 532.8,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 218.8
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 1323,
+            "text": "What can I help you with today? mock ~ Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Put together a competitive analysis report on the agentic AI space",
+              "Create a presentation outline on climate change",
+              "Find me a royalty free gif of a cute cat",
+              "Make me a space invaders game",
+              "Fetch the MNIST dataset and train a good classifier",
+              "Make me a research report on the latest trends in AI",
+              "Remove downloads that are more than a year old"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 620,
+                "h": 468
+              },
+              "greeting": {
+                "x": 448.7,
+                "y": 135.3,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 353.3,
+                "w": 572,
+                "h": 179.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 185.3,
+                "w": 572,
+                "h": 347.5
+              }
+            },
+            "stack": {
+              "top": 353.3,
+              "bottom": 532.8,
+              "height": 179.5,
+              "clientHeight": 180,
+              "scrollHeight": 217,
+              "scrollable": true,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 353.3,
+                  "bottom": 382.8,
+                  "chips": 1
+                },
+                {
+                  "top": 390.8,
+                  "bottom": 420.3,
+                  "chips": 1
+                },
+                {
+                  "top": 428.3,
+                  "bottom": 457.8,
+                  "chips": 2
+                },
+                {
+                  "top": 465.8,
+                  "bottom": 495.3,
+                  "chips": 1
+                },
+                {
+                  "top": 503.3,
+                  "bottom": 532.8,
+                  "chips": 1
+                },
+                {
+                  "top": 540.8,
+                  "bottom": 570.3,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 5,
+              "lastVisibleRowBottom": 532.8,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 218.8
+            },
+            "transcriptPainted": false
+          }
+        ]
+      },
+      "loadingClaimsAtDraft": {
+        "placeholders": 0,
+        "outsideBand": 0,
+        "shimmerBars": 0,
+        "captionVisible": false
+      },
+      "afterSend": {
+        "bandNow": {
+          "at": 0,
+          "text": "mock $— 0s ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 168,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 404.3,
+              "w": 620,
+              "h": 167.7
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 412.3,
+              "w": 572,
+              "h": 143.7
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "frames": []
+      },
+      "flip": {
+        "framesWithEchoPainted": 15,
+        "tracedFrames": 34,
+        "firstPaintedBand": {
+          "at": 0,
+          "text": "mock 0s ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 168,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 404.3,
+              "w": 620,
+              "h": 167.7
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 412.3,
+              "w": 572,
+              "h": 143.7
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "bandAtSendClick": {
+          "at": 0,
+          "text": "What can I help you with today? mock ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Put together a competitive analysis report on the agentic AI space",
+            "Create a presentation outline on climate change",
+            "Find me a royalty free gif of a cute cat",
+            "Make me a space invaders game",
+            "Fetch the MNIST dataset and train a good classifier",
+            "Make me a research report on the latest trends in AI",
+            "Remove downloads that are more than a year old"
+          ],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 620,
+              "h": 468
+            },
+            "greeting": {
+              "x": 448.7,
+              "y": 135.3,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 304,
+              "y": 353.3,
+              "w": 572,
+              "h": 179.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 185.3,
+              "w": 572,
+              "h": 347.5
+            }
+          },
+          "stack": {
+            "top": 353.3,
+            "bottom": 532.8,
+            "height": 179.5,
+            "clientHeight": 180,
+            "scrollHeight": 217,
+            "scrollable": true,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 353.3,
+                "bottom": 382.8,
+                "chips": 1
+              },
+              {
+                "top": 390.8,
+                "bottom": 420.3,
+                "chips": 1
+              },
+              {
+                "top": 428.3,
+                "bottom": 457.8,
+                "chips": 2
+              },
+              {
+                "top": 465.8,
+                "bottom": 495.3,
+                "chips": 1
+              },
+              {
+                "top": 503.3,
+                "bottom": 532.8,
+                "chips": 1
+              },
+              {
+                "top": 540.8,
+                "bottom": 570.3,
+                "chips": 1
+              }
+            ],
+            "rowCount": 6,
+            "visibleRows": 5,
+            "lastVisibleRowBottom": 532.8,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 217,
+            "room": 218.8
+          },
+          "transcriptPainted": false
+        },
+        "bandAtFlipShot": {
+          "at": 0,
+          "text": "What can I help you with today? mock ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Put together a competitive analysis report on the agentic AI space Create a presentation outline on climate change Find me a royalty free gif of a cute cat Make me a space invaders game Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI Remove downloads that are more than a year old",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Put together a competitive analysis report on the agentic AI space",
+            "Create a presentation outline on climate change",
+            "Find me a royalty free gif of a cute cat",
+            "Make me a space invaders game",
+            "Fetch the MNIST dataset and train a good classifier",
+            "Make me a research report on the latest trends in AI",
+            "Remove downloads that are more than a year old"
+          ],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 620,
+              "h": 468
+            },
+            "greeting": {
+              "x": 448.7,
+              "y": 135.3,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 304,
+              "y": 353.3,
+              "w": 572,
+              "h": 179.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 185.3,
+              "w": 572,
+              "h": 347.5
+            }
+          },
+          "stack": {
+            "top": 353.3,
+            "bottom": 532.8,
+            "height": 179.5,
+            "clientHeight": 180,
+            "scrollHeight": 217,
+            "scrollable": true,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 353.3,
+                "bottom": 382.8,
+                "chips": 1
+              },
+              {
+                "top": 390.8,
+                "bottom": 420.3,
+                "chips": 1
+              },
+              {
+                "top": 428.3,
+                "bottom": 457.8,
+                "chips": 2
+              },
+              {
+                "top": 465.8,
+                "bottom": 495.3,
+                "chips": 1
+              },
+              {
+                "top": 503.3,
+                "bottom": 532.8,
+                "chips": 1
+              },
+              {
+                "top": 540.8,
+                "bottom": 570.3,
+                "chips": 1
+              }
+            ],
+            "rowCount": 6,
+            "visibleRows": 5,
+            "lastVisibleRowBottom": 532.8,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 217,
+            "room": 218.8
+          },
+          "transcriptPainted": false
+        },
+        "bandStates": [
+          {
+            "at": 1,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 1,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 101,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 142,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 156,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 325,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 371,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 386,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 1323,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2323,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2341,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2363,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2457,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 2464,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 2536,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3462,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 4202,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 4239,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 4404,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 4468,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 4604,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4621,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4636,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4655,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4685,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4718,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4738,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4752,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4772,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4945,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5037,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5284,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5713,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 5751,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          }
+        ]
+      }
+    },
+    {
+      "viewport": "830x572",
+      "expected": {
+        "greeting": 1,
+        "skeleton": 0,
+        "chips": 7
+      },
+      "draft": {
+        "href": "http://localhost:5210/draft-splash-evidence.html",
+        "viewport": "830x572",
+        "theme": "localOperatorDark",
+        "harnessError": null,
+        "store": {
+          "activeDraftKey": "draft:19958364-6301-40e1-8ee4-cbb950274964",
+          "activeSessionId": null
+        },
+        "bandNow": {
+          "at": 0,
+          "text": "What can I help you with today? mock ~ Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Go to my documents folder",
+            "Make me a GDPR compliant privacy policy",
+            "Put together a competitive analysis report on the agentic AI space",
+            "What stocks are trending right now?",
+            "Find me a royalty free gif of a cute cat",
+            "Look up interest rate trends and make a projection for the next 5 years",
+            "Train a classifier on the MPG dataset"
+          ],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 550,
+              "h": 468
+            },
+            "greeting": {
+              "x": 413.7,
+              "y": 135.3,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 304,
+              "y": 353.3,
+              "w": 502,
+              "h": 179.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 185.3,
+              "w": 502,
+              "h": 347.5
+            }
+          },
+          "stack": {
+            "top": 353.3,
+            "bottom": 532.8,
+            "height": 179.5,
+            "clientHeight": 180,
+            "scrollHeight": 217,
+            "scrollable": true,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 353.3,
+                "bottom": 382.8,
+                "chips": 2
+              },
+              {
+                "top": 390.8,
+                "bottom": 420.3,
+                "chips": 1
+              },
+              {
+                "top": 428.3,
+                "bottom": 457.8,
+                "chips": 1
+              },
+              {
+                "top": 465.8,
+                "bottom": 495.3,
+                "chips": 1
+              },
+              {
+                "top": 503.3,
+                "bottom": 532.8,
+                "chips": 1
+              },
+              {
+                "top": 540.8,
+                "bottom": 570.3,
+                "chips": 1
+              }
+            ],
+            "rowCount": 6,
+            "visibleRows": 5,
+            "lastVisibleRowBottom": 532.8,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 217,
+            "room": 218.8
+          },
+          "transcriptPainted": false
+        },
+        "loadingClaims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        },
+        "draftStreamView": {
+          "hydrated": false,
+          "awaitingHydration": false,
+          "status": "connecting",
+          "failed": false
+        },
+        "framesRead": 9,
+        "frames": [
+          {
+            "at": 1,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 1,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 26,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 66,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 77,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 344,
+            "text": "What can I help you with today? ~ Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Go to my documents folder",
+              "Make me a GDPR compliant privacy policy",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What stocks are trending right now?",
+              "Find me a royalty free gif of a cute cat",
+              "Look up interest rate trends and make a projection for the next 5 years",
+              "Train a classifier on the MPG dataset"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 550,
+                "h": 468
+              },
+              "greeting": {
+                "x": 413.7,
+                "y": 132.5,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 318.5,
+                "w": 502,
+                "h": 217
+              },
+              "composer": {
+                "x": 304,
+                "y": 182.5,
+                "w": 502,
+                "h": 353
+              }
+            },
+            "stack": {
+              "top": 318.5,
+              "bottom": 535.5,
+              "height": 217,
+              "clientHeight": 217,
+              "scrollHeight": 217,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 318.5,
+                  "bottom": 348,
+                  "chips": 2
+                },
+                {
+                  "top": 356,
+                  "bottom": 385.5,
+                  "chips": 1
+                },
+                {
+                  "top": 393.5,
+                  "bottom": 423,
+                  "chips": 1
+                },
+                {
+                  "top": 431,
+                  "bottom": 460.5,
+                  "chips": 1
+                },
+                {
+                  "top": 468.5,
+                  "bottom": 498,
+                  "chips": 1
+                },
+                {
+                  "top": 506,
+                  "bottom": 535.5,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 6,
+              "lastVisibleRowBottom": 535.5,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 253.5
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 394,
+            "text": "What can I help you with today? mock ~ Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Go to my documents folder",
+              "Make me a GDPR compliant privacy policy",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What stocks are trending right now?",
+              "Find me a royalty free gif of a cute cat",
+              "Look up interest rate trends and make a projection for the next 5 years",
+              "Train a classifier on the MPG dataset"
+            ],
+            "bandHeight": 491,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 550,
+                "h": 491
+              },
+              "greeting": {
+                "x": 413.7,
+                "y": 128,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 346,
+                "w": 502,
+                "h": 217
+              },
+              "composer": {
+                "x": 304,
+                "y": 178,
+                "w": 502,
+                "h": 385
+              }
+            },
+            "stack": {
+              "top": 346,
+              "bottom": 563,
+              "height": 217,
+              "clientHeight": 217,
+              "scrollHeight": 217,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 346,
+                  "bottom": 375.5,
+                  "chips": 2
+                },
+                {
+                  "top": 383.5,
+                  "bottom": 413,
+                  "chips": 1
+                },
+                {
+                  "top": 421,
+                  "bottom": 450.5,
+                  "chips": 1
+                },
+                {
+                  "top": 458.5,
+                  "bottom": 488,
+                  "chips": 1
+                },
+                {
+                  "top": 496,
+                  "bottom": 525.5,
+                  "chips": 1
+                },
+                {
+                  "top": 533.5,
+                  "bottom": 563,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 6,
+              "lastVisibleRowBottom": 563,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 226
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 412,
+            "text": "What can I help you with today? mock ~ Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Go to my documents folder",
+              "Make me a GDPR compliant privacy policy",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What stocks are trending right now?",
+              "Find me a royalty free gif of a cute cat",
+              "Look up interest rate trends and make a projection for the next 5 years",
+              "Train a classifier on the MPG dataset"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 550,
+                "h": 468
+              },
+              "greeting": {
+                "x": 413.7,
+                "y": 135.3,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 353.3,
+                "w": 502,
+                "h": 179.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 185.3,
+                "w": 502,
+                "h": 347.5
+              }
+            },
+            "stack": {
+              "top": 353.3,
+              "bottom": 532.8,
+              "height": 179.5,
+              "clientHeight": 180,
+              "scrollHeight": 217,
+              "scrollable": true,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 353.3,
+                  "bottom": 382.8,
+                  "chips": 2
+                },
+                {
+                  "top": 390.8,
+                  "bottom": 420.3,
+                  "chips": 1
+                },
+                {
+                  "top": 428.3,
+                  "bottom": 457.8,
+                  "chips": 1
+                },
+                {
+                  "top": 465.8,
+                  "bottom": 495.3,
+                  "chips": 1
+                },
+                {
+                  "top": 503.3,
+                  "bottom": 532.8,
+                  "chips": 1
+                },
+                {
+                  "top": 540.8,
+                  "bottom": 570.3,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 5,
+              "lastVisibleRowBottom": 532.8,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 218.8
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 1343,
+            "text": "What can I help you with today? mock ~ Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Go to my documents folder",
+              "Make me a GDPR compliant privacy policy",
+              "Put together a competitive analysis report on the agentic AI space",
+              "What stocks are trending right now?",
+              "Find me a royalty free gif of a cute cat",
+              "Look up interest rate trends and make a projection for the next 5 years",
+              "Train a classifier on the MPG dataset"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 550,
+                "h": 468
+              },
+              "greeting": {
+                "x": 413.7,
+                "y": 135.3,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 353.3,
+                "w": 502,
+                "h": 179.5
+              },
+              "composer": {
+                "x": 304,
+                "y": 185.3,
+                "w": 502,
+                "h": 347.5
+              }
+            },
+            "stack": {
+              "top": 353.3,
+              "bottom": 532.8,
+              "height": 179.5,
+              "clientHeight": 180,
+              "scrollHeight": 217,
+              "scrollable": true,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 353.3,
+                  "bottom": 382.8,
+                  "chips": 2
+                },
+                {
+                  "top": 390.8,
+                  "bottom": 420.3,
+                  "chips": 1
+                },
+                {
+                  "top": 428.3,
+                  "bottom": 457.8,
+                  "chips": 1
+                },
+                {
+                  "top": 465.8,
+                  "bottom": 495.3,
+                  "chips": 1
+                },
+                {
+                  "top": 503.3,
+                  "bottom": 532.8,
+                  "chips": 1
+                },
+                {
+                  "top": 540.8,
+                  "bottom": 570.3,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 5,
+              "lastVisibleRowBottom": 532.8,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 218.8
+            },
+            "transcriptPainted": false
+          }
+        ]
+      },
+      "loadingClaimsAtDraft": {
+        "placeholders": 0,
+        "outsideBand": 0,
+        "shimmerBars": 0,
+        "captionVisible": false
+      },
+      "afterSend": {
+        "bandNow": {
+          "at": 0,
+          "text": "mock $— 0s ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 168,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 404.3,
+              "w": 550,
+              "h": 167.7
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 412.3,
+              "w": 502,
+              "h": 143.7
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "frames": []
+      },
+      "flip": {
+        "framesWithEchoPainted": 11,
+        "tracedFrames": 28,
+        "firstPaintedBand": {
+          "at": 0,
+          "text": "mock $— 0s ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 168,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 404.3,
+              "w": 550,
+              "h": 167.7
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 412.3,
+              "w": 502,
+              "h": 143.7
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "bandAtSendClick": {
+          "at": 0,
+          "text": "What can I help you with today? mock ~ Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Go to my documents folder",
+            "Make me a GDPR compliant privacy policy",
+            "Put together a competitive analysis report on the agentic AI space",
+            "What stocks are trending right now?",
+            "Find me a royalty free gif of a cute cat",
+            "Look up interest rate trends and make a projection for the next 5 years",
+            "Train a classifier on the MPG dataset"
+          ],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 550,
+              "h": 468
+            },
+            "greeting": {
+              "x": 413.7,
+              "y": 135.3,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 304,
+              "y": 353.3,
+              "w": 502,
+              "h": 179.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 185.3,
+              "w": 502,
+              "h": 347.5
+            }
+          },
+          "stack": {
+            "top": 353.3,
+            "bottom": 532.8,
+            "height": 179.5,
+            "clientHeight": 180,
+            "scrollHeight": 217,
+            "scrollable": true,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 353.3,
+                "bottom": 382.8,
+                "chips": 2
+              },
+              {
+                "top": 390.8,
+                "bottom": 420.3,
+                "chips": 1
+              },
+              {
+                "top": 428.3,
+                "bottom": 457.8,
+                "chips": 1
+              },
+              {
+                "top": 465.8,
+                "bottom": 495.3,
+                "chips": 1
+              },
+              {
+                "top": 503.3,
+                "bottom": 532.8,
+                "chips": 1
+              },
+              {
+                "top": 540.8,
+                "bottom": 570.3,
+                "chips": 1
+              }
+            ],
+            "rowCount": 6,
+            "visibleRows": 5,
+            "lastVisibleRowBottom": 532.8,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 217,
+            "room": 218.8
+          },
+          "transcriptPainted": false
+        },
+        "bandAtFlipShot": {
+          "at": 0,
+          "text": "What can I help you with today? mock ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder. Go to my documents folder Make me a GDPR compliant privacy policy Put together a competitive analysis report on the agentic AI space What stocks are trending right now? Find me a royalty free gif of a cute cat Look up interest rate trends and make a projection for the next 5 years Train a classifier on the MPG dataset",
+          "greeting": 1,
+          "skeleton": 0,
+          "chips": 7,
+          "chipLabels": [
+            "Go to my documents folder",
+            "Make me a GDPR compliant privacy policy",
+            "Put together a competitive analysis report on the agentic AI space",
+            "What stocks are trending right now?",
+            "Find me a royalty free gif of a cute cat",
+            "Look up interest rate trends and make a projection for the next 5 years",
+            "Train a classifier on the MPG dataset"
+          ],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 550,
+              "h": 468
+            },
+            "greeting": {
+              "x": 413.7,
+              "y": 135.3,
+              "w": 282.6,
+              "h": 26
+            },
+            "skeleton": null,
+            "chipRow": {
+              "x": 304,
+              "y": 353.3,
+              "w": 502,
+              "h": 179.5
+            },
+            "composer": {
+              "x": 304,
+              "y": 185.3,
+              "w": 502,
+              "h": 347.5
+            }
+          },
+          "stack": {
+            "top": 353.3,
+            "bottom": 532.8,
+            "height": 179.5,
+            "clientHeight": 180,
+            "scrollHeight": 217,
+            "scrollable": true,
+            "topEdgeInside": true,
+            "rows": [
+              {
+                "top": 353.3,
+                "bottom": 382.8,
+                "chips": 2
+              },
+              {
+                "top": 390.8,
+                "bottom": 420.3,
+                "chips": 1
+              },
+              {
+                "top": 428.3,
+                "bottom": 457.8,
+                "chips": 1
+              },
+              {
+                "top": 465.8,
+                "bottom": 495.3,
+                "chips": 1
+              },
+              {
+                "top": 503.3,
+                "bottom": 532.8,
+                "chips": 1
+              },
+              {
+                "top": 540.8,
+                "bottom": 570.3,
+                "chips": 1
+              }
+            ],
+            "rowCount": 6,
+            "visibleRows": 5,
+            "lastVisibleRowBottom": 532.8,
+            "lastVisibleRowInside": true,
+            "boundaryInGap": true,
+            "contentHeight": 217,
+            "room": 218.8
+          },
+          "transcriptPainted": false
+        },
+        "bandStates": [
+          {
+            "at": 1,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 1,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 26,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 66,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 77,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 344,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 394,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 412,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 1343,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2108,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2126,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 2152,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 2161,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3161,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3562,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3602,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3698,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3735,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 3748,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3763,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3781,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3801,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3963,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4012,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4076,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4372,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4554,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4771,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          }
+        ]
+      }
+    },
+    {
+      "viewport": "800x572",
+      "expected": {
+        "greeting": 0,
+        "skeleton": 0,
+        "chips": 0
+      },
+      "draft": {
+        "href": "http://localhost:5210/draft-splash-evidence.html",
+        "viewport": "800x572",
+        "theme": "localOperatorDark",
+        "harnessError": null,
+        "store": {
+          "activeDraftKey": "draft:1fa3cf46-0aa7-4a34-b6fd-ace77f0fa05d",
+          "activeSessionId": null
+        },
+        "bandNow": {
+          "at": 0,
+          "text": "mock ~",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 520,
+              "h": 468
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 278.3,
+              "w": 472,
+              "h": 117.5
+            }
+          },
+          "stack": null,
+          "transcriptPainted": false
+        },
+        "loadingClaims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        },
+        "draftStreamView": {
+          "hydrated": false,
+          "awaitingHydration": false,
+          "status": "connecting",
+          "failed": false
+        },
+        "framesRead": 7,
+        "frames": [
+          {
+            "at": 1,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 1,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 26,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 52,
+            "text": "<no band in the document>",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 0,
+            "boxes": {},
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 353,
+            "text": "What can I help you with today? ~ Organize my desktop What's the latest news? Do a buy/hold/sell and fundamentals analysis of Apple Train a classifier on the MPG dataset Make me a GDPR compliant privacy policy Look up trending stocks and put together an investment report Create a presentation outline on climate change",
+            "greeting": 1,
+            "skeleton": 0,
+            "chips": 7,
+            "chipLabels": [
+              "Organize my desktop",
+              "What's the latest news?",
+              "Do a buy/hold/sell and fundamentals analysis of Apple",
+              "Train a classifier on the MPG dataset",
+              "Make me a GDPR compliant privacy policy",
+              "Look up trending stocks and put together an investment report",
+              "Create a presentation outline on climate change"
+            ],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 520,
+                "h": 468
+              },
+              "greeting": {
+                "x": 398.7,
+                "y": 132.5,
+                "w": 282.6,
+                "h": 26
+              },
+              "skeleton": null,
+              "chipRow": {
+                "x": 304,
+                "y": 318.5,
+                "w": 472,
+                "h": 217
+              },
+              "composer": {
+                "x": 304,
+                "y": 182.5,
+                "w": 472,
+                "h": 353
+              }
+            },
+            "stack": {
+              "top": 318.5,
+              "bottom": 535.5,
+              "height": 217,
+              "clientHeight": 217,
+              "scrollHeight": 217,
+              "scrollable": false,
+              "topEdgeInside": true,
+              "rows": [
+                {
+                  "top": 318.5,
+                  "bottom": 348,
+                  "chips": 2
+                },
+                {
+                  "top": 356,
+                  "bottom": 385.5,
+                  "chips": 1
+                },
+                {
+                  "top": 393.5,
+                  "bottom": 423,
+                  "chips": 1
+                },
+                {
+                  "top": 431,
+                  "bottom": 460.5,
+                  "chips": 1
+                },
+                {
+                  "top": 468.5,
+                  "bottom": 498,
+                  "chips": 1
+                },
+                {
+                  "top": 506,
+                  "bottom": 535.5,
+                  "chips": 1
+                }
+              ],
+              "rowCount": 6,
+              "visibleRows": 6,
+              "lastVisibleRowBottom": 535.5,
+              "lastVisibleRowInside": true,
+              "boundaryInGap": true,
+              "contentHeight": 217,
+              "room": 253.5
+            },
+            "transcriptPainted": false
+          },
+          {
+            "at": 370,
+            "text": "mock ~",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 520,
+                "h": 468
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 278.3,
+                "w": 472,
+                "h": 117.5
+              }
+            },
+            "stack": null,
+            "transcriptPainted": false
+          },
+          {
+            "at": 1351,
+            "text": "mock ~",
+            "greeting": 0,
+            "skeleton": 0,
+            "chips": 0,
+            "chipLabels": [],
+            "bandHeight": 468,
+            "boxes": {
+              "band": {
+                "x": 280,
+                "y": 104,
+                "w": 520,
+                "h": 468
+              },
+              "greeting": null,
+              "skeleton": null,
+              "chipRow": null,
+              "composer": {
+                "x": 304,
+                "y": 278.3,
+                "w": 472,
+                "h": 117.5
+              }
+            },
+            "stack": null,
+            "transcriptPainted": false
+          }
+        ]
+      },
+      "loadingClaimsAtDraft": {
+        "placeholders": 0,
+        "outsideBand": 0,
+        "shimmerBars": 0,
+        "captionVisible": false
+      },
+      "afterSend": {
+        "bandNow": {
+          "at": 0,
+          "text": "mock $— 0s ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 130,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 442,
+              "w": 520,
+              "h": 130
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 444,
+              "w": 472,
+              "h": 124
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "frames": []
+      },
+      "flip": {
+        "framesWithEchoPainted": 11,
+        "tracedFrames": 25,
+        "firstPaintedBand": {
+          "at": 0,
+          "text": "mock $— 0s ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 130,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 442,
+              "w": 520,
+              "h": 130
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 444,
+              "w": 472,
+              "h": 124
+            }
+          },
+          "stack": null,
+          "transcriptPainted": true
+        },
+        "bandAtSendClick": {
+          "at": 0,
+          "text": "mock ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 520,
+              "h": 468
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 278,
+              "w": 472,
+              "h": 118
+            }
+          },
+          "stack": null,
+          "transcriptPainted": false
+        },
+        "bandAtFlipShot": {
+          "at": 0,
+          "text": "mock ~ Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder.",
+          "greeting": 0,
+          "skeleton": 0,
+          "chips": 0,
+          "chipLabels": [],
+          "bandHeight": 468,
+          "boxes": {
+            "band": {
+              "x": 280,
+              "y": 104,
+              "w": 520,
+              "h": 468
+            },
+            "greeting": null,
+            "skeleton": null,
+            "chipRow": null,
+            "composer": {
+              "x": 304,
+              "y": 278,
+              "w": 472,
+              "h": 118
+            }
+          },
+          "stack": null,
+          "transcriptPainted": false
+        },
+        "bandStates": [
+          {
+            "at": 1,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 1,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 26,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 52,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 353,
+            "echo": false,
+            "greeting": true,
+            "skeleton": false,
+            "chips": true
+          },
+          {
+            "at": 370,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 1351,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 2170,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 2194,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 2205,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3203,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3569,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3649,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3737,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3760,
+            "echo": false,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3775,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3791,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3804,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 3821,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4219,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4320,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4455,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4556,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4725,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          },
+          {
+            "at": 4785,
+            "echo": true,
+            "greeting": false,
+            "skeleton": false,
+            "chips": false
+          }
+        ]
+      }
+    }
+  ],
+  "frames": [
+    "docs/evidence/draft-splash/after-draft-1380x872-frame1.png",
+    "docs/evidence/draft-splash/after-draft-1380x872-frame2.png",
+    "docs/evidence/draft-splash/after-draft-band-1380x872.png",
+    "docs/evidence/draft-splash/after-send-after-flip.png",
+    "docs/evidence/draft-splash/after-send-first-painted.png",
+    "docs/evidence/draft-splash/after-send-settled-1380x872-frame1.png",
+    "docs/evidence/draft-splash/after-send-settled-frame2.png",
+    "docs/evidence/draft-splash/after-draft-900x572-frame1.png",
+    "docs/evidence/draft-splash/after-draft-900x572-frame2.png",
+    "docs/evidence/draft-splash/after-draft-band-900x572.png",
+    "docs/evidence/draft-splash/after-send-settled-900x572-frame1.png",
+    "docs/evidence/draft-splash/after-draft-830x572-frame1.png",
+    "docs/evidence/draft-splash/after-draft-830x572-frame2.png",
+    "docs/evidence/draft-splash/after-draft-band-830x572.png",
+    "docs/evidence/draft-splash/after-send-settled-830x572-frame1.png",
+    "docs/evidence/draft-splash/after-draft-800x572-frame1.png",
+    "docs/evidence/draft-splash/after-draft-800x572-frame2.png",
+    "docs/evidence/draft-splash/after-draft-band-800x572.png",
+    "docs/evidence/draft-splash/after-send-settled-800x572-frame1.png"
+  ]
+}

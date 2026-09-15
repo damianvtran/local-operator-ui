@@ -19,8 +19,9 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * - `speaks` (below): the pane is ALREADY saying something - it is reconnecting,
  *   or it has published a failure. That statement IS the pane's content, so
  *   nothing else may be painted beside it.
- * - `hydrated`: has the durable history been READ? This is the READER's question,
- *   and it is deliberately not `status`.
+ * - `awaitingHydration`: is an authoritative page for THIS session still OWED?
+ *   This is the READER's question, it is deliberately not `status`, and it is
+ *   the SAME composed fact the composer band reads - one question, two readers.
  * - `recordCount`: is there anything to scroll? Records rather than rendered
  *   rows, because a record that renders to no row is still nothing to scroll.
  * - `admittedSend` (added with the wait line): has this pane admitted a send the
@@ -37,22 +38,23 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  *   and is waiting on the turn, which outranks the placeholder (see
  *   `transcriptPaneHoldsPlaceholder`). The scroller grows for the line, which is
  *   what makes it paintable at all.
- * - `!speaks && !admittedSend && !hydrated` -> the placeholder: nothing has told
- *   the reader what this conversation holds, and the pane has nothing of its own
- *   to say.
- * - `!speaks && !admittedSend && hydrated` -> nothing at all: the pane collapses,
- *   and the band may claim the conversation is empty because the read proved it.
+ * - `!speaks && !admittedSend && awaitingHydration` -> the placeholder: nothing
+ *   has told the reader what this conversation holds yet, and the pane has
+ *   nothing of its own to say.
+ * - `!speaks && !admittedSend && !awaitingHydration` -> nothing at all: the pane
+ *   collapses, and the band may claim the conversation is empty because the read
+ *   proved it (or because nothing here owes a read in the first place).
  *
  * A pane WITH rows paints them and holds nothing. A statement may stand above
  * them, which is not a contradiction: rows are the conversation's own content
  * and the notice is a claim about the transport that failed to extend it.
  *
- * WHY THE READER'S QUESTION AND NOT THE TRANSPORT'S. `hydrated` means the
- * durable history has been read; `status` says where the stream is. On this path
- * the two disagree in BOTH directions, and each direction was a defect the
- * pre-merge resolution check found (Finding 1):
+ * WHY THE READER'S QUESTION AND NOT THE TRANSPORT'S. `awaitingHydration` asks
+ * whether this session is still owed a page; `status` says where the stream is.
+ * On this path the two disagree in BOTH directions, and each direction was a
+ * defect the pre-merge resolution check found (Finding 1):
  *
- * - `status === "connecting"` with `hydrated === true`: `Retry` after a stream
+ * - `status === "connecting"` with no page owed: `Retry` after a stream
  *   failure re-arms the stream (`use-canonical-session.ts` sets
  *   `failure: null, status: "connecting"` and leaves `hydrated` alone) in front
  *   of a conversation a completed read has already proven EMPTY. Holding there
@@ -61,10 +63,26 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  *   loading claims splitting one column, and the composer dropped to the
  *   empty-chat position when the snapshot landed. That is the 468px -> 736px
  *   move this work exists to remove.
- * - `status === "live"` with `hydrated === false`: a cold session's snapshot
+ * - `status === "live"` with a page still owed: a cold session's snapshot
  *   carries `cursor_missing`, so it goes `live` without hydrating. Not holding
  *   there left the pane collapsed and the band at natural height with no
  *   greeting, i.e. no loading claim anywhere until the history read landed.
+ *
+ * WHY THE OWED QUESTION AND NOT `hydrated`, WHICH IS THE THIRD DIRECTION. A pane
+ * with NO session answers "not hydrated" forever, so `hydrated` cannot be read
+ * as "still loading" for one. A New chat is a staged DRAFT: `chat-page.tsx`
+ * calls `useCanonicalSessionStream(undefined, false)`, the hook's effect returns
+ * before subscribing (`if (!sessionId || !enabled) return`), and no page can ever
+ * be applied to it. Keyed on `hydrated` this rule held `Loading conversation…`
+ * and its shimmer rows over a band that was already offering the greeting and
+ * its chips - the same two-contradictory-claims class as Finding 1, and the one
+ * the operator read as "the stuck loader is still not fixed". Only the session
+ * can answer whether a page is owed, so the question is composed ONCE on the
+ * canonical session handle (`awaitingHydration`: there is a stream for this
+ * session, and no page has been applied to it) and BOTH readers read that value
+ * rather than each deriving their own wording of it. `hydrated` keeps its own
+ * meaning - "has a page been applied" - and a reader of it must keep reading it
+ * that way.
  *
  * WHY THE STATEMENT TERM EXISTS, and why it is a term in THIS rule rather than a
  * guard at the render site. Two states reach the pane with nothing read and
@@ -136,8 +154,8 @@ export type TranscriptPaneView = {
 	status: CanonicalTranscriptStatus;
 	/** The published failure, if any: the notice's copy and its control. */
 	failure: SessionFailureNotice | null;
-	/** Has the durable history been read for this conversation? */
-	hydrated: boolean;
+	/** Is an authoritative page for this session still owed? */
+	awaitingHydration: boolean;
 	/** How many records the transcript holds, painted or not. */
 	recordCount: number;
 	/**
@@ -171,25 +189,25 @@ export type TranscriptPaneView = {
 /**
  * Does the pane paint the loading placeholder?
  *
- * The one row-less state where nothing else is being claimed: the reader has not
- * been told what the conversation holds, and the pane has no statement of its
- * own. See the matrix at the head of this file for the other three.
+ * The one row-less state where nothing else is being claimed: a page is still
+ * owed for this session, and the pane has no statement of its own. See the
+ * matrix at the head of this file for the other three.
  *
  * ITS THIRD EXCLUSION IS THE ADMITTED SEND, and it is a ruling rather than a
  * convenience: a row-less pane makes ONE claim, and while a send is admitted the
  * claim that matters is the wait line ("the app is waiting for the agent"), not
- * the placeholder ("the conversation's history is still being read"). Both are
- * true, and the placeholder is the weaker one - the reader who just pressed
- * Enter is waiting on the turn, and the history of a session they created
- * seconds ago is nothing they are waiting for. Keeping both would also put two
- * loading claims in one column, which is the shape `#150` exists to remove.
+ * the placeholder ("a page for this session is still owed"). Both are true, and
+ * the placeholder is the weaker one - the reader who just pressed Enter is
+ * waiting on the turn, and the history of a session they created seconds ago is
+ * nothing they are waiting for. Keeping both would also put two loading claims
+ * in one column, which is the shape `#150` exists to remove.
  */
 export function transcriptPaneHoldsPlaceholder(
 	view: TranscriptPaneView,
 ): boolean {
 	return (
 		view.recordCount === 0 &&
-		!view.hydrated &&
+		view.awaitingHydration &&
 		!view.admittedSend &&
 		!canonicalTranscriptSpeaks(view)
 	);
@@ -206,7 +224,8 @@ export function transcriptPaneHoldsPlaceholder(
  * the term exists to remove (QA round 1's Q1, and again in the live app once
  * this matrix was introduced). That is the single row where the band is allowed
  * to take the free height for the greeting, because it is the single row where
- * the read has proved the conversation empty and nothing is on its way.
+ * nothing is owed - either the read has proved the conversation empty, or there
+ * is no session here to owe a read - and nothing is on its way.
  */
 export function transcriptPaneCollapses(view: TranscriptPaneView): boolean {
 	return (
