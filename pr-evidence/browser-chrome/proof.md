@@ -1,8 +1,8 @@
 ### the app's own renderer is on the debugging port and the host published its state file
 
 ```
-[PASS] renderer file:///Users/damian/local-operator-ui-worktrees/browser-chrome/out/renderer/index.html
-state file /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/config/run/ui-browser/host.json mode 600
+[PASS] renderer file:///private/tmp/lo177r4-proof/out/renderer/index.html#/chat
+state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-91469/config/run/ui-browser/host.json mode 600
 ```
 
 ### the browser is reachable from the app's own navigation
@@ -72,6 +72,16 @@ state file /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/confi
   },
   "hidden": [
     {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": "Not connected to a Local Operator server. If one is still ru"
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2200 w-full",
+      "text": ""
+    },
+    {
       "tag": "p",
       "cls": "text-body-sm",
       "text": "This app is not paired with the running Local Operator serve"
@@ -106,28 +116,23 @@ state file /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/confi
 ### the tab strip is the topmost element at its own centre once the app's own banners are suppressed for the frames, so a frame can contain it
 
 ```
-[PASS] strip {"x":220,"y":0,"width":1160,"height":43}, hidden over it: [{"tag":"p","cls":"text-body-sm","text":"This app is not paired with the running Local Operator serve"},{"tag":"div","cls":"flex w-full items-center justify-between gap-4","text":"Retry"},{"tag":"div","cls":"flex min-w-0 flex-col gap-1","text":""},{"tag":"div","cls":"flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [","text":""},{"tag":"div","cls":"fixed inset-x-0 top-0 z-2100 w-full","text":""}], elementFromPoint(800, 21) -> flex min-w-0 grow items-stretch
+[PASS] strip {"x":220,"y":0,"width":1160,"height":43}, hidden over it: [{"tag":"div","cls":"flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [","text":"Not connected to a Local Operator server. If one is still ru"},{"tag":"div","cls":"fixed inset-x-0 top-0 z-2200 w-full","text":""},{"tag":"p","cls":"text-body-sm","text":"This app is not paired with the running Local Operator serve"},{"tag":"div","cls":"flex w-full items-center justify-between gap-4","text":"Retry"},{"tag":"div","cls":"flex min-w-0 flex-col gap-1","text":""},{"tag":"div","cls":"flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [","text":""},{"tag":"div","cls":"fixed inset-x-0 top-0 z-2100 w-full","text":""}], elementFromPoint(800, 21) -> flex min-w-0 grow items-stretch
 ```
 
 ### the toast over the browser surface
 
 ```
 {
-  "toastPresent": true,
-  "text": "List agents request failed: 503",
-  "toast": {
-    "x": 1000,
-    "y": 800,
-    "right": 1356,
-    "bottom": 844
-  },
+  "toastPresent": false,
+  "text": null,
+  "toast": null,
   "content": {
     "x": 220,
     "y": 84,
     "right": 1380,
     "bottom": 868
   },
-  "overlapsContent": true,
+  "overlapsContent": null,
   "paused": false
 }
 ```
@@ -141,7 +146,7 @@ state file /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/confi
 ### a toast overlaps the content area and is deliberately NOT registered: the page stays up, and the overlap is recorded rather than hidden
 
 ```
-[PASS] toast "List agents request failed: 503" overlaps the content rect: true; paused: false
+[PASS] no toast was raised within 20s in this run, so the trade is not exercised here; the dialog, sheet and band cases below are
 ```
 
 ### a control in the chrome band does not hide the view (the band is outside the rectangle)
@@ -171,13 +176,13 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### a URL typed into the address bar navigates the active tab
 
 ```
-[PASS] typed http://127.0.0.1:51974/slow and pressed Enter
+[PASS] typed http://127.0.0.1:52056/slow and pressed Enter
 ```
 
 ### while loading, reload becomes stop and the field says both what the tab shows (nothing yet) and what was asked for
 
 ```
-[PASS] {"stop":true,"reload":false,"spinnerInField":true,"value":"","placeholder":"http://127.0.0.1:51974/slow","addressFields":[{"value":"","placeholder":"http://127.0.0.1:51974/slow"}],"title":"New tab"}
+[PASS] {"stop":true,"reload":false,"spinnerInField":true,"value":"","placeholder":"http://127.0.0.1:52056/slow","addressFields":[{"value":"","placeholder":"http://127.0.0.1:52056/slow"}],"title":"New tab"}
 ```
 
 ### page capture loading-page
@@ -189,7 +194,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the strip's title comes from the DOCUMENT, and the address bar shows the live URL
 
 ```
-[PASS] title "Slow page", url http://127.0.0.1:51974/slow
+[PASS] title "Slow page", url http://127.0.0.1:52056/slow
 ```
 
 ### the blank document a tab starts on is a history entry, so back is available after one navigation
@@ -207,7 +212,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the back control navigates the tab back through its own history
 
 ```
-[PASS] url http://127.0.0.1:51974/slow, canGoForward true
+[PASS] url http://127.0.0.1:52056/slow, canGoForward true
 ```
 
 ### a navigation that cannot connect leaves the tab on the URL it asked for, rather than reporting success
@@ -248,7 +253,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### an agent's navigation to an unapproved origin fails early with origin_not_allowed
 
 ```
-[PASS] {"code":"origin_not_allowed","message":"the user has not approved http://127.0.0.1:51974 for agent access","data":{"origin":"http://127.0.0.1:51974","authority":"127.0.0.1:51974","reason":"unapproved"}}
+[PASS] {"code":"origin_not_allowed","message":"the user has not approved http://127.0.0.1:52056 for agent access","data":{"origin":"http://127.0.0.1:52056","authority":"127.0.0.1:52056","reason":"unapproved"}}
 ```
 
 ### the user's typed navigation to that SAME origin works, because the user typing it is the consent
@@ -263,7 +268,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 [PASS] {
   "panel": false,
   "suppressedBy": "",
-  "url": "http://127.0.0.1:51974/index.html"
+  "url": "http://127.0.0.1:52056/index.html"
 }
 ```
 
@@ -282,13 +287,13 @@ withheld, deliberately and by design: the active tab is the user's, a user tab h
 ### an agent's request_access raises a pending entry and returns immediately
 
 ```
-[PASS] {"origin":"http://127.0.0.1:51974","state":"pending","entry_id":"e86cda7da8a944dba2a68a16e8c2dcda","authority":"127.0.0.1:51974","expires_at":1789459608595,"broad":{"scope":"host","key":"127.0.0.1"}}
+[PASS] {"origin":"http://127.0.0.1:52056","state":"pending","entry_id":"9127b87f420f4ea0a720a9482819f1cc","authority":"127.0.0.1:52056","expires_at":1789466142867,"broad":{"scope":"host","key":"127.0.0.1"}}
 ```
 
 ### the projection carries the origin and the broad option, and the requester only as a session id
 
 ```
-[PASS] {"entryId":"e86cda7da8a944dba2a68a16e8c2dcda","origin":"http://127.0.0.1:51974","authority":"127.0.0.1:51974","broad":{"scope":"host","key":"127.0.0.1"},"expiresAt":1789459608595,"requesterSessionId":"proof"}
+[PASS] {"entryId":"9127b87f420f4ea0a720a9482819f1cc","origin":"http://127.0.0.1:52056","authority":"127.0.0.1:52056","broad":{"scope":"host","key":"127.0.0.1"},"expiresAt":1789466142867,"requesterSessionId":"proof"}
 ```
 
 ### the consent bar renders in the chrome band, names the origin, and offers the five scopes
@@ -296,7 +301,7 @@ withheld, deliberately and by design: the active tab is the user's, a user tab h
 ```
 [PASS] {
   "present": true,
-  "text": "The agent in conversation proof wants to open 127.0.0.1:51974. This browser keeps sign-ins across conversations and app restarts, so an agent you approve here can use those signed-in accounts on the sites you allow it. You can open this site yourself either way — this only controls what the agent may reach. Allow once Allow until the app quits Always allow this site Allow all of 127.0.0.1 Don't allow Allow once one navigation, for that conversation, up to ten minutes Allow until the app quits this site, for this run only, and for every conversation Always allow this site kept until you revoke it, and shared with every conversation Allow all of 127.0.0.1 every site under 127.0.0.1, kept until you revoke it, shared with every conversation Don't allow the agent stops asking about this site until you revoke the denial in Sites",
+  "text": "The agent in conversation proof wants to open 127.0.0.1:52056. This browser keeps sign-ins across conversations and app restarts, so an agent you approve here can use those signed-in accounts on the sites you allow it. You can open this site yourself either way — this only controls what the agent may reach. Allow once Allow until the app quits Always allow this site Allow all of 127.0.0.1 Don't allow Allow once one navigation, for that conversation, up to ten minutes Allow until the app quits this site, for this run only, and for every conversation Always allow this site kept until you revoke it, and shared with every conversation Allow all of 127.0.0.1 every site under 127.0.0.1, kept until you revoke it, shared with every conversation Don't allow the agent stops asking about this site until you revoke the denial in Sites",
   "actions": [
     "Allow once",
     "Allow until the app quits",
@@ -374,6 +379,16 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
   },
   "hidden": [
     {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": "Not connected to a Local Operator server. If one is still ru"
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2200 w-full",
+      "text": ""
+    },
+    {
       "tag": "p",
       "cls": "text-body-sm",
       "text": "This app is not paired with the running Local Operator serve"
@@ -432,13 +447,13 @@ capture refused: (none) — a user tab holds no handle (design 6.3), so its page
 ### approving writes a durable exact-origin grant, visible in the approvals list
 
 ```
-[PASS] [{"origin":"http://127.0.0.1:51974","scope":"origin","grantedAt":1789459011079}]
+[PASS] [{"origin":"http://127.0.0.1:52056","scope":"origin","grantedAt":1789465545071}]
 ```
 
 ### the requesting session's await_access now reports allowed
 
 ```
-[PASS] {"origin":"http://127.0.0.1:51974","state":"allowed"}
+[PASS] {"origin":"http://127.0.0.1:52056","state":"allowed"}
 ```
 
 ### page capture approved-page
@@ -450,7 +465,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the agent's open now succeeds on the approved origin and returns a handle
 
 ```
-[PASS] "ui:2:a1df68b580d86782e8c9db3063329ccb"
+[PASS] "ui:2:777f49ef7b00bf9416d13d672ec5e98d"
 ```
 
 ### the strip holds a user tab and an agent tab, and the agent's open did NOT steal the active tab
@@ -472,6 +487,63 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 }
 ```
 
+### strip exposure before 09-strip-user-and-agent
+
+```
+{
+  "strip": {
+    "x": 220,
+    "y": 0,
+    "width": 1160,
+    "height": 43
+  },
+  "probe": {
+    "x": 800,
+    "y": 21
+  },
+  "hidden": [
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": "Not connected to a Local Operator server. If one is still ru"
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2200 w-full",
+      "text": ""
+    },
+    {
+      "tag": "p",
+      "cls": "text-body-sm",
+      "text": "This app is not paired with the running Local Operator serve"
+    },
+    {
+      "tag": "div",
+      "cls": "flex w-full items-center justify-between gap-4",
+      "text": "Retry"
+    },
+    {
+      "tag": "div",
+      "cls": "flex min-w-0 flex-col gap-1",
+      "text": ""
+    },
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": ""
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2100 w-full",
+      "text": ""
+    }
+  ],
+  "leftInPlace": [],
+  "topmost": true,
+  "hit": "[object SVGAnimatedString]"
+}
+```
+
 ### the user can drive a tab the AGENT created (takeover), and the agent's handle keeps working on it
 
 ```
@@ -481,13 +553,13 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the agent's goto still drives that tab after the user took over, and settles on what it reached
 
 ```
-[PASS] "http://127.0.0.1:51974/second"
+[PASS] "http://127.0.0.1:52056/second"
 ```
 
 ### the populated frame carries the page layer (the composite has a page image, not a hole)
 
 ```
-[PASS] page layer: /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/out/agent-populated-page.png
+[PASS] page layer: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-91469/out/agent-populated-page.png
 ```
 
 ### page layer withheld for 15-surface-error-agent-tab
@@ -499,13 +571,13 @@ the app suppresses the native view, so there is no page layer to composite: data
 ### a failed load reports the failure to the agent and does not leave the tab stuck loading
 
 ```
-[PASS] agent goto -> {"code":"nav_failed","message":"ERR_EMPTY_RESPONSE","data":{"error_code":-324}}; tab url http://127.0.0.1:51974/broken (the last page it COMMITTED, which is the live url); loading false
+[PASS] agent goto -> {"code":"nav_failed","message":"ERR_EMPTY_RESPONSE","data":{"error_code":-324}}; tab url http://127.0.0.1:52056/broken (the last page it COMMITTED, which is the live url); loading false
 ```
 
 ### the strip frame carries both owners, the failed agent tab marked, with the user's own tab active
 
 ```
-[PASS] strip [{"id":1,"owner":"user","active":true,"failed":false,"restored":false,"title":"Proof page one"},{"id":2,"owner":"agent","active":false,"failed":true,"restored":false,"title":"127.0.0.1:51974/broken"}]
+[PASS] strip [{"id":1,"owner":"user","active":true,"failed":false,"restored":false,"title":"Proof page one"},{"id":2,"owner":"agent","active":false,"failed":true,"restored":false,"title":"127.0.0.1:52056/broken"}]
 ```
 
 ### what this frame's content region is (and is not)
@@ -517,7 +589,7 @@ the subject is the STRIP: it is above the content rect, where no native view pai
 ### the agent tab's recovery is photographed WITH its page: the load succeeds, the panel is gone and the page layer is in the frame
 
 ```
-[PASS] page layer: /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/out/agent-recovered-page.png; navFailure null
+[PASS] page layer: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-91469/out/agent-recovered-page.png; navFailure null
 ```
 
 ### the deny action is offered and answers the prompt
@@ -529,7 +601,7 @@ the subject is the STRIP: it is above the content rect, where no native view pai
 ### a denial is recorded as a durable row so the Sites list can show it
 
 ```
-[PASS] [{"origin":"http://127.0.0.1:51974","scope":"origin","grantedAt":1789459011079},{"origin":"http://127.0.0.1:1","scope":"deny","grantedAt":1789459024635}]
+[PASS] [{"origin":"http://127.0.0.1:52056","scope":"origin","grantedAt":1789465545071},{"origin":"http://127.0.0.1:1","scope":"deny","grantedAt":1789465559631}]
 ```
 
 ### the Sites sheet answers 'which sites can an agent act on as me' in one click, with the revocation affordances
@@ -592,7 +664,7 @@ the subject is the STRIP: it is above the content rect, where no native view pai
 ### the app's own process never became the frontmost application (probe P12, sampled once a second)
 
 ```
-[PASS] app pid 34109; 32 samples; frontmost was ghostty|838; the app was frontmost in 0 of them
+[PASS] app pid 91518; 52 samples; frontmost was ghostty|838; the app was frontmost in 0 of them
 ```
 
 ### frontmost application, sampled through the run
@@ -601,7 +673,7 @@ the subject is the STRIP: it is above the content rect, where no native view pai
 before: ghostty|838
 after: ghostty|838
 samples: ghostty|838
-the app's pid (34109) was frontmost in 0 of 32 samples
+the app's pid (91518) was frontmost in 0 of 52 samples
 ```
 
 ### tabs at quit
@@ -611,7 +683,7 @@ the app's pid (34109) was frontmost in 0 of 32 samples
   {
     "tabId": 1,
     "title": "Proof page one",
-    "url": "http://127.0.0.1:51974/index.html",
+    "url": "http://127.0.0.1:52056/index.html",
     "owner": "user",
     "active": false,
     "restored": false,
@@ -621,7 +693,7 @@ the app's pid (34109) was frontmost in 0 of 32 samples
   {
     "tabId": 2,
     "title": "Proof page two",
-    "url": "http://127.0.0.1:51974/second",
+    "url": "http://127.0.0.1:52056/second",
     "owner": "agent",
     "active": true,
     "restored": false,
@@ -634,7 +706,7 @@ the app's pid (34109) was frontmost in 0 of 32 samples
 ### stopping the host writes the tab list, 0600, with no nonce anywhere in it - and writes EVERY tab the strip held, which is what a SIGTERM stop used to lose
 
 ```
-[PASS] /Users/damian/workspace/lo177/tmp/lo-browser-chrome-proof-34080/userdata/browser/session.json mode 600: 2 row(s) written for 2 navigated tab(s) of 2 in the strip
+[PASS] /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-91469/userdata/browser/session.json mode 600: 2 row(s) written for 2 navigated tab(s) of 2 in the strip
 {
   "version": 1,
   "tabs": [
@@ -645,7 +717,7 @@ the app's pid (34109) was frontmost in 0 of 32 samples
         {
           "url": "about:blank",
           "title": "about:blank",
-          "pageState": "eAIAACEAAABwAgAAGAAAAAAAAAAQAAAAAAAAABAAAAAAAAAACAAAAAAAAACQAAAABgAAAIgAAAAAAAAAAAAAAAAAAACoAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAABgAAAKgAAAAAAAAA8Ze744BbBgDyl7vjgFsGABgBAAAAAAAAMAEAAAAAAAAAAAAAAAAAACg
+          "pageState": "eAIAACEAAABwAgAAGAAAAAAAAAAQAAAAAAAAABAAAAAAAAAACAAAAAAAAACQAAAABgAAAIgAAAAAAAAAAAAAAAAAAACoAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAABgAAAKgAAAAAAAAAre4EaIJbBgCu7gRoglsGABgBAAAAAAAAMAEAAAAAAAAAAAAAAAAAACg
 ```
 
 ### both tabs are back, in the same order, and both are the USER's
@@ -655,7 +727,7 @@ the app's pid (34109) was frontmost in 0 of 32 samples
   {
     "tabId": 1,
     "title": "Proof page one",
-    "url": "http://127.0.0.1:51974/index.html",
+    "url": "http://127.0.0.1:52056/index.html",
     "owner": "user",
     "active": false,
     "restored": true,
@@ -665,7 +737,7 @@ the app's pid (34109) was frontmost in 0 of 32 samples
   {
     "tabId": 2,
     "title": "Proof page two",
-    "url": "http://127.0.0.1:51974/second",
+    "url": "http://127.0.0.1:52056/second",
     "owner": "user",
     "active": true,
     "restored": true,
@@ -678,8 +750,8 @@ the app's pid (34109) was frontmost in 0 of 32 samples
 ### the restored tabs are FRESH navigations to the same URLs (no POST replay, no revived process)
 
 ```
-[PASS] http://127.0.0.1:51974/index.html
-http://127.0.0.1:51974/second
+[PASS] http://127.0.0.1:52056/index.html
+http://127.0.0.1:52056/second
 ```
 
 ### a restored tab does NOT satisfy an agent's stale handle: it gets tab_closed, the ordinary recovery
@@ -697,7 +769,7 @@ http://127.0.0.1:51974/second
 ### the agent's designed recovery still works: open re-creates a tab and hands out a new handle
 
 ```
-[PASS] new handle ui:3:0773b37… (old ui:2:a1df68b…)
+[PASS] new handle ui:3:f3097a3… (old ui:2:777f49e…)
 ```
 
 ### strip exposure after the restart
@@ -715,6 +787,16 @@ http://127.0.0.1:51974/second
     "y": 21
   },
   "hidden": [
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": "Not connected to a Local Operator server. If one is still ru"
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2200 w-full",
+      "text": ""
+    },
     {
       "tag": "p",
       "cls": "text-body-sm",
@@ -743,12 +825,138 @@ http://127.0.0.1:51974/second
   ],
   "leftInPlace": [],
   "topmost": true,
-  "hit": "browser-tab-agent-marker"
+  "hit": "min-w-0 grow truncate"
 }
 ```
 
 ### the strip is exposed in the frames taken after the restart too, so the restored tabs and their `Restored` marker are photographed
 
 ```
-[PASS] strip {"x":220,"y":0,"width":1160,"height":43}, topmost true (browser-tab-agent-marker)
+[PASS] strip {"x":220,"y":0,"width":1160,"height":43}, topmost true (min-w-0 grow truncate)
+```
+
+### strip exposure before 17-surface-no-tab-selected
+
+```
+{
+  "strip": {
+    "x": 220,
+    "y": 0,
+    "width": 1160,
+    "height": 43
+  },
+  "probe": {
+    "x": 800,
+    "y": 21
+  },
+  "hidden": [
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": "Not connected to a Local Operator server. If one is still ru"
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2200 w-full",
+      "text": ""
+    },
+    {
+      "tag": "p",
+      "cls": "text-body-sm",
+      "text": "This app is not paired with the running Local Operator serve"
+    },
+    {
+      "tag": "div",
+      "cls": "flex w-full items-center justify-between gap-4",
+      "text": "Retry"
+    },
+    {
+      "tag": "div",
+      "cls": "flex min-w-0 flex-col gap-1",
+      "text": ""
+    },
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": ""
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2100 w-full",
+      "text": ""
+    }
+  ],
+  "leftInPlace": [],
+  "topmost": true,
+  "hit": "flex min-w-0 grow items-stretch"
+}
+```
+
+### with no tab selected the page area names the state and offers the action under the same `New tab` label the strip's own control carries (D17, D19)
+
+```
+[PASS] 2 close(s): activeTabId null, 1 tab(s) left (agent); page area "No tab is selected. Pick a tab above, or open a new one. New tab"; buttons ["New tab"]
+```
+
+### strip exposure before 18-surface-no-tabs-open
+
+```
+{
+  "strip": {
+    "x": 220,
+    "y": 0,
+    "width": 1160,
+    "height": 40
+  },
+  "probe": {
+    "x": 800,
+    "y": 20
+  },
+  "hidden": [
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": "Not connected to a Local Operator server. If one is still ru"
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2200 w-full",
+      "text": ""
+    },
+    {
+      "tag": "p",
+      "cls": "text-body-sm",
+      "text": "This app is not paired with the running Local Operator serve"
+    },
+    {
+      "tag": "div",
+      "cls": "flex w-full items-center justify-between gap-4",
+      "text": "Retry"
+    },
+    {
+      "tag": "div",
+      "cls": "flex min-w-0 flex-col gap-1",
+      "text": ""
+    },
+    {
+      "tag": "div",
+      "cls": "flex w-full gap-3 border p-3 text-body-sm border-warning-border bg-warning-wash text-ink [",
+      "text": ""
+    },
+    {
+      "tag": "div",
+      "cls": "fixed inset-x-0 top-0 z-2100 w-full",
+      "text": ""
+    }
+  ],
+  "leftInPlace": [],
+  "topmost": true,
+  "hit": "flex min-w-0 grow items-stretch"
+}
+```
+
+### with no tabs open the page area names that state too, under the SAME label
+
+```
+[PASS] 0 tab(s) left; page area "No tabs are open. New tab"; buttons ["New tab"]
 ```
