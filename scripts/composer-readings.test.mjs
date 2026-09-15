@@ -203,7 +203,7 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 		!model.classes.includes("hover:bg-accent-wash"),
 		"an inert reading must not light up under the pointer",
 	);
-	assert.match(model.label, /The first message will use it\./);
+	assert.match(model.label, /This conversation will use it\./);
 	assert.doesNotMatch(model.label, /Choose a different model/);
 
 	// Effort is shown because the spec carries a ladder, in the same inert form.
@@ -442,7 +442,7 @@ test("the draft keeps its fact-plus-reason copy wherever a chip cannot open", ()
 	const html = renderStrip({ frontend: DRAFT, draft: true });
 	assert.match(
 		html,
-		/<button type="button" aria-disabled="true" aria-label="Model: openrouter\/openai\/gpt-5\. The first message will use it\. Change it once the conversation starts\."/,
+		/<button type="button" aria-disabled="true" aria-label="Model: openrouter\/openai\/gpt-5\. This conversation will use it\. Change it once the conversation starts\."/,
 	);
 	assert.match(
 		html,

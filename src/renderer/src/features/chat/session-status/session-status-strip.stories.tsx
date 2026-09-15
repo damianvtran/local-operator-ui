@@ -880,10 +880,13 @@ export const Draft: Story = {
  * What to look for:
  *
  * - The model chip is no longer `aria-disabled`, carries the hover step a
- *   control has, and says "Click to choose a different model. It applies to the
- *   first message."; the sentence the old draft copy used ("The first message
- *   will use it. Change it once the conversation starts.") is gone, because it is
- *   no longer true.
+ *   control has, and says "Click to choose a different model. It applies to this
+ *   conversation." — the first-message clause went with the wording design
+ *   round 4 (D10) replaced. The chip's INERT branch, the sentence it falls back
+ *   to when it cannot be opened, carried that clause longest: design round 5
+ *   (D17) corrected its subject too, so it now reads "This conversation will use
+ *   it. Change it once the conversation starts." rather than framing the model
+ *   as a fact about the first message alone.
  * - The effort chip says "Change it. It applies to this conversation." — the
  *   control's own sentence, one step before a session's, carrying the scope clause
  *   UX U2 asked for and design round 4 (D10) corrected: the pick becomes the

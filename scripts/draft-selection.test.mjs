@@ -72,6 +72,7 @@ const bundle = await build({
 			export {
 				bandReadings,
 				effortLadder,
+				effortLevel,
 				effortState,
 				modelSelector,
 				specUnresolved,
@@ -117,6 +118,7 @@ const {
 	draftPreviewQuery,
 	effortCarry,
 	effortLadder,
+	effortLevel,
 	effortState,
 	errorText,
 	fetchDraftPreview,
@@ -433,22 +435,39 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	 * asks whether it IS offered before recording it: the candidate is replaced by
 	 * the carried selection only where the new model's own resolved ladder
 	 * contains the level, and BOTH branches name in the confirmation which level
-	 * the first message will actually run. The rung is read from the pane's own
-	 * pick, not from a row or a default.
+	 * the conversation will actually run - `Its effort is now <level>`, which
+	 * claims no direction (design round 5, D21).
 	 */
 	assert.match(picker, /model_id: modelId,\s*reasoning_effort: null/);
-	assert.match(picker, /draft\.target\.model\?\.reasoning_effort/);
+	/*
+	 * Review round 5, M1. The QUESTION is the dialog's LIVE selection -
+	 * `draftPick.selection`, which the hook advances on every pick - and not
+	 * `draft.target.model`, the snapshot the dialog opened on and never moves.
+	 * Read from the snapshot, a second pick in the SAME open dialog carried a rung
+	 * the first pick had already dropped. This assertion previously pinned the
+	 * snapshot in its old form, which is why the defect survived it; the
+	 * behavioural half is the M1 test in section 7, driven through the shipped
+	 * hook.
+	 */
+	assert.match(
+		picker,
+		/const carried = carriedRung\(draftPick\.selection\);/,
+		"the rung question is read from the pane's own live pick, not a frozen prop",
+	);
 	assert.match(resolve, /effortCarry\(reading\.carry, \{/);
 	assert.match(resolve, /ladder: effortLadder\(offered\)/);
 	/*
 	 * The level the clearing sentence names is the NEW model's resolved one, read
-	 * off the same resolution - and `null` when the resolution reports none, which
-	 * is the non-reasoning target QA round 4 (Q-R4-1) filed. What cannot be read at
-	 * all is `checked: false`, and the PICK is refused rather than recording a
-	 * rung-less selection (review round 4, F1) - driven end to end in the tests at
-	 * the bottom of this file, not pinned as source text.
+	 * off the same resolution through `effortLevel` - the two fields that carry a
+	 * LEVEL - so a category word (`auto`, `reasoning`, `unknown`) can never land in
+	 * a level slot; and `null` when the resolution reports none, which is the
+	 * non-reasoning target QA round 4 (Q-R4-1) filed. What cannot be read at all
+	 * is `checked: false` - the ladder's shape, not just its presence, since
+	 * review round 5's F4 (`specUnresolved` beside it) - and the PICK is refused
+	 * rather than recording a rung-less selection (review round 4, F1), driven end
+	 * to end in the tests at the bottom of this file, not pinned as source text.
 	 */
-	assert.match(resolve, /level: effortState\(offered\)\?\.label \?\? null/);
+	assert.match(resolve, /level: effortLevel\(offered\)/);
 	assert.match(resolve, /if \(!decision\.checked\)/);
 	// Candidate behaviour is exercised below through the actual hook/adapter.
 	// A regex here previously required the very null branch that broke effort-first
@@ -503,7 +522,16 @@ test("a model that does not offer it clears the rung AND names the level that wi
 	assert.equal(carry.rung, null);
 	const sentence = carry.confirmation("openrouter/meta/llama-4");
 	assert.match(sentence, /This conversation will run openrouter\/meta\/llama-4\./);
-	assert.match(sentence, /effort falls to low/, "the level that will actually run");
+	/*
+	 * Design round 5 (D21): the sentence names the level in force and claims no
+	 * DIRECTION, which the copy cannot know - a `low` carried onto a model whose
+	 * no-rung level is `high` printed "falls to high".
+	 */
+	assert.match(
+		sentence,
+		/Its effort is now low/,
+		"the level that will actually run",
+	);
 	assert.match(sentence, /high is not one of that model's levels/, "the level dropped");
 });
 
@@ -543,9 +571,15 @@ test("a ladder that was never reported is a check that could not be made, not an
 	const carry = effortCarry("high", { ladder: [], ladderKnown: false, level: "low" });
 	assert.equal(carry.checked, false);
 	assert.equal(carry.rung, null);
+	/*
+	 * Design round 5 (D19): the refusal carries its OWN sentence - what happened,
+	 * what it means, and the act - and it is `refusal` rather than a
+	 * `confirmation` the caller could never print. It names no model, because the
+	 * resolution that would produce one is the step this refusal replaces.
+	 */
 	assert.match(
-		carry.confirmation("openrouter/openai/gpt-5"),
-		/effort level was not carried, because that model's levels could not be read/,
+		carry.refusal,
+		/^Nothing was changed, because that model's effort levels could not be read\. Try again\.$/,
 	);
 });
 
@@ -677,7 +711,7 @@ const effortEnd = pickerSource.indexOf("export const ThemePicker:");
 assert.ok(hookStart >= 0 && hookEnd > hookStart);
 assert.ok(effortStart >= 0 && effortEnd > effortStart);
 const pickerCode = await transform(
-	`${pickerSource.slice(hookStart, hookEnd)}\n${pickerSource.slice(effortStart, effortEnd)}\nexport { useDraftPick };`,
+	`${pickerSource.slice(hookStart, hookEnd)}\n${pickerSource.slice(effortStart, effortEnd)}\nexport { carriedRung, useDraftPick };`,
 	{ loader: "tsx", jsx: "automatic", format: "cjs" },
 );
 let activePicker;
@@ -689,6 +723,7 @@ const pickerDependencies = {
 	bandReadings,
 	effortCarry,
 	effortLadder,
+	effortLevel,
 	effortState,
 	modelSelector,
 	specUnresolved,
@@ -735,7 +770,7 @@ new Function(
 	pickerModule,
 	...Object.values(pickerDependencies),
 );
-const { EffortPicker: ExecutedEffortPicker, useDraftPick: executedDraftPick } =
+const { EffortPicker: ExecutedEffortPicker, carriedRung, useDraftPick: executedDraftPick } =
 	pickerModule.exports;
 
 function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
@@ -782,6 +817,20 @@ function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
 					...model,
 					reasoning_efforts: undefined,
 					reasoning_default_effort: undefined,
+				});
+			/*
+			 * The COLD shape `specUnresolved` exists for: every metadata field PRESENT
+			 * and empty - an empty NAME beside an empty ladder - which `Array.isArray`
+			 * alone reads as a known empty ladder (review round 5, F4's residual slot).
+			 */
+			if (rungs === "cold")
+				return frame({
+					...model,
+					display_name: "",
+					reasoning: false,
+					reasoning_effort: undefined,
+					reasoning_default_effort: undefined,
+					reasoning_efforts: [],
 				});
 			if (!Array.isArray(rungs)) return frame(model);
 			return frame({
@@ -982,7 +1031,6 @@ const MODEL_READING = {
 			) ?? "?"
 		}.`,
 	carry: "high",
-	carryUnchecked: "The model was not changed.",
 	refused: "The model was not changed.",
 };
 
@@ -1029,7 +1077,7 @@ test("a model that does not offer the rung clears it, states the level, and cost
 		picker.requests[1],
 		"the probe's key is the pick's own key",
 	);
-	assert.match(settled.result.text, /effort falls to low/);
+	assert.match(settled.result.text, /Its effort is now low/);
 	assert.match(settled.result.text, /because high is not one of that model's levels/);
 });
 
@@ -1054,8 +1102,10 @@ test("F1: a probe that cannot answer REFUSES the pick instead of dropping the ru
 	 * Two refusal paths, and this is the transport's: a probe that THROWS is
 	 * refused by the same `catch` every other failure goes through, so the sentence
 	 * carries the transport's own words. The other is a resolution that answered
-	 * without a ladder, which refuses on `checked` (the test below) and adds the
-	 * sentence this reading supplies. Both record NOTHING, which is the finding.
+	 * without a ladder, which refuses on `checked` (the tests below) and states its
+	 * own sentence - `decision.refusal`, since design round 5 (D19) moved the
+	 * refusal out of this reading, where it was a second string that never printed.
+	 * Both record NOTHING, which is the finding.
 	 */
 	assert.match(settled.result.text, /The model was not changed\./);
 	assert.deepEqual(
@@ -1073,7 +1123,28 @@ test("F4: an unreported ladder is refused, not read as an empty one", async () =
 	const settled = picker.hook();
 	assert.deepEqual(picker.selections, []);
 	assert.equal(settled.result.tone, "error");
-	assert.match(settled.result.text, /could not be checked/);
+	assert.match(settled.result.text, /effort levels could not be read/);
+});
+
+test("F4: a PRESENT-but-unresolved ladder is refused, not read as an empty one", async () => {
+	/*
+	 * Review round 5's reproduction of F4's residual slot. `Array.isArray` alone
+	 * separates an ABSENT key from an empty ladder; it cannot separate "nobody has
+	 * read this ladder" from "this model has no rungs", and the shape that slips
+	 * through it is the cold snapshot - every field present and empty, no display
+	 * name. There the old decision was `checked: true` and the clearing sentence
+	 * printed the chip's category word in a level slot: "Its effort falls to
+	 * unknown". It is refused now.
+	 */
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/openai/gpt-6-astra"] = "cold";
+	const hook = picker.hook();
+	await hook.pick(NEW_MODEL, MODEL_READING);
+	const settled = picker.hook();
+	assert.deepEqual(picker.selections, [], "nothing is recorded");
+	assert.equal(settled.result.tone, "error");
+	assert.match(settled.result.text, /effort levels could not be read/);
+	assert.doesNotMatch(settled.result.text, /unknown/);
 });
 
 test("F2: the busy window covers the probe, so a second click cannot commit behind it", async () => {
@@ -1088,6 +1159,102 @@ test("F2: the busy window covers the probe, so a second click cannot commit behi
 	);
 	await pending;
 	assert.equal(picker.hook().busy, false, "and it clears when the pick settles");
+});
+
+test("M1: the carry question is the DIALOG's live selection, not the snapshot it opened on", async () => {
+	/*
+	 * Review round 5, M1. `draft.target` is the snapshot the dialog MOUNTED with and
+	 * does not move when the pane does - the hook's own comment says so, and the
+	 * remembered `picked` exists precisely because of it. The call site read its
+	 * carry QUESTION from that snapshot, so a second pick in the SAME open dialog
+	 * asked to carry a rung the first pick had already dropped, and the back end
+	 * resolved the new model at a level the pane was not showing.
+	 *
+	 * The question is executable only at the call site's own expression, and this
+	 * repository deliberately has no DOM harness to render `ModelPicker`'s list. So
+	 * the question lives in `carriedRung` - in the executed slice above, because it
+	 * sits beside the hook - and this test drives the SHIPPED hook through the
+	 * two-pick sequence with it, while the call site that must use it is pinned as
+	 * source text, the way this file's other call-site facts are. Both halves fail
+	 * on the old code: the function did not exist, and the call site read the frozen
+	 * prop at `destination-pickers.tsx:598-601`.
+	 */
+	const llama = {
+		provider: "openrouter",
+		model_id: "meta/llama-4",
+		reasoning_effort: null,
+	};
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/meta/llama-4"] = ["low", "medium"];
+	picker.ladders["openrouter/openai/gpt-6-astra"] = ["low", "medium", "high"];
+	const opened = picker.hook();
+	assert.equal(
+		carriedRung(opened.selection),
+		"high",
+		"the pane opened holding a rung",
+	);
+	await opened.pick(llama, {
+		...MODEL_READING,
+		carry: carriedRung(opened.selection),
+	});
+	assert.deepEqual(
+		picker.selections,
+		[llama],
+		"the first pick clears the rung, because that model does not offer it",
+	);
+	/*
+	 * The question has MOVED and the snapshot is the thing that has not. This
+	 * comparison IS the defect, and it is what a second pick used to be answered
+	 * from.
+	 */
+	const held = picker.hook();
+	assert.equal(carriedRung(held.selection), "", "the pane holds no rung now");
+	assert.equal(
+		carriedRung(picker.draft.target.model),
+		"high",
+		"the snapshot the dialog opened on still answers with the rung it dropped",
+	);
+	await held.pick(NEW_MODEL, {
+		...MODEL_READING,
+		carry: carriedRung(held.selection),
+	});
+	assert.deepEqual(
+		picker.selections[1],
+		NEW_MODEL,
+		"the second pick records no rung, rather than reinstating one the pane dropped",
+	);
+	assert.equal(
+		picker.requests.length,
+		3,
+		"only the first pick pays for a probe: an empty question issues none",
+	);
+	/*
+	 * And the call-site EXPRESSION itself, EXECUTED rather than pattern-matched.
+	 *
+	 * A regex could not carry this test: the old line matched no pattern this file
+	 * pinned - the assertion that stood here pinned it as DESIRED, which is how the
+	 * defect survived two rounds. So the slice is lifted out of the shipped file
+	 * and evaluated with the same live hook bound to `draftPick`, and the question
+	 * the picker actually asks is the one compared. On the old line `draft` is
+	 * bound to the frozen target, this returns the rung the pane dropped, and the
+	 * test fails with that value in the diff.
+	 */
+	const callSite = pickerSource.slice(
+		pickerSource.indexOf("const carried ="),
+		pickerSource.indexOf("await draftPick.pick("),
+	);
+	assert.ok(callSite.length > 0, "the pick's carry question is still a local");
+	const question = new Function(
+		"carriedRung",
+		"draft",
+		"draftPick",
+		`${callSite}\nreturn carried;`,
+	)(carriedRung, picker.draft, held);
+	assert.equal(
+		question,
+		"",
+		"the question the picker asks is the live pane's, not the snapshot's",
+	);
 });
 
 test("a model pick on a pane with no rung is unchanged, and passes no carry question", async () => {

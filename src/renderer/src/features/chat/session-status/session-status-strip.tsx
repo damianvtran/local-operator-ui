@@ -473,7 +473,21 @@ function modelReason(draft: boolean, openable: boolean): string {
 			? "Click to choose a different model. It applies to this conversation."
 			: "Click to choose a different model";
 	if (draft)
-		return "The first message will use it. Change it once the conversation starts.";
+		/*
+		 * The inert branch, corrected to the scope the system implements (review
+		 * round 5, D17).
+		 *
+		 * This is the one sentence on the chip that survived design round 4's D10
+		 * rewrite, and it was the residue of the frame D10 removed: with the
+		 * control unavailable, the reader is told the model is a fact about the
+		 * first message, while the SAME chip's openable sentence says the pick
+		 * rides `sessions.create` and the back end pins the conversation to it.
+		 * One chip stating two scopes depending on whether it can be clicked is
+		 * the inconsistency, not the wording. It is also true as written - the
+		 * first message does use the model - which is why only the subject of the
+		 * sentence moves.
+		 */
+		return "This conversation will use it. Change it once the conversation starts.";
 	return COMMANDS_OFF;
 }
 
@@ -493,7 +507,11 @@ function modelReason(draft: boolean, openable: boolean): string {
  * the pane is — the control's nature is what the copy describes, and an openable
  * chip on a draft changes exactly the same fact the session's does, one step
  * earlier in the conversation. On a draft it carries the scope clause for the
- * reason `modelReason` gives: this control changes the FIRST MESSAGE only.
+ * reason `modelReason` gives, and that reason is the CONVERSATION, not the first
+ * message: the pick rides `sessions.create` and the back end pins the session to
+ * it. This comment said "the FIRST MESSAGE only" one line above the sentence
+ * that says the opposite (review round 5, N1; the same stale claim design round
+ * 4 corrected in `modelReason`'s copy of it).
  */
 function effortReason(
 	draft: boolean,
@@ -872,20 +890,27 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			)}
 			{/*
 			 * R19: a draft shows the effort reading only where the spec carries a
-			 * ladder.
+			 * KNOWN level.
 			 *
-			 * The preview resolves without the account-metadata step a cold open runs
+			 * The rule is on the SHAPE, not on what the preview happens to answer
+			 * today, and this comment used to state the opposite. It argued that the
+			 * preview resolves without the account-metadata step a cold open runs
 			 * (`desktop_sessions.py`, the `sessions.preview` route), so its spec
-			 * arrives with an EMPTY ladder; `effortState` then takes its
-			 * `metadataAbsent` branch and labels the chip `unknown` - a value-shaped
-			 * word that branch scopes to a session with a live owner, whose escape
-			 * hatch (`/effort <level>`) a session-less draft does not have. The first
-			 * turn then publishes the resolved ladder and the reading becomes `auto`,
-			 * moving the model chip and the ring beside it 21.6px as the turn starts
-			 * (UX round 1, U1). Absence is this strip's own honest rule for "no level
-			 * to show here", and it is why the check is on the DRAFT flag rather than
-			 * on the label: the same empty ladder on a live session is a fact about
-			 * the model and stays.
+			 * always arrives with an EMPTY ladder. That premise is retired: the
+			 * installed 0.54.48 preview answers WITH the ladder and the display name
+			 * (measured against the release itself, review round 5, N2), so a draft
+			 * that meets an unresolved spec is meeting a damaged or older answer
+			 * rather than the normal one - and the rule stays for that case, because
+			 * the consequence is unchanged: such a spec takes `effortState`'s
+			 * `metadataAbsent` branch and the chip labels it `unknown`, a value-shaped
+			 * word for a level nobody has. That branch is scoped to a session with a
+			 * live owner, whose escape hatch (`/effort <level>`) a session-less draft
+			 * does not have. The first turn then publishes the resolved ladder and the
+			 * reading becomes `auto`, moving the model chip and the ring beside it
+			 * 21.6px as the turn starts (UX round 1, U1). Absence is this strip's own
+			 * honest rule for "no level to show here", and it is why the check is on
+			 * the DRAFT flag rather than on the label: the same empty ladder on a live
+			 * session is a fact about the model and stays.
 			 *
 			 * `levelKnown`, not `adjustable` and not `knownLadder`. `adjustable` is
 			 * wrong because the `unknown` branch is deliberately adjustable (a live
