@@ -18,8 +18,16 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/components/slash-submit";',
+			/*
+			 * The pick's own WRITE, so the arming is exercised from the draft a user
+			 * types to the line the next Enter submits (review F7): a suite that
+			 * hand-built `"I approve spend /goal "` could not see the multi-line draft
+			 * whose staged line did not run (review F1 / QA Q4).
+			 */
+			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -27,9 +35,10 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { planSlashArming, planSlashSubmission } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { armedOnlyVocabulary, completionFor, planSlashArming, planSlashSubmission } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 /** The registry-derived vocabularies the composer hands the planner. */
 const COMMAND_NAMES = new Set([
@@ -363,4 +372,191 @@ test("no branch consumes typed text without an outcome", () => {
 			assert.ok(result.text.length < draft.length);
 		}
 	}
+});
+
+/*
+ * THE SEAM THE BLOCKER SAT ON, exercised end to end rather than from a
+ * hand-built string: the pick's WRITE (`completionFor`, which is what typing
+ * then picking produces) feeds the arming plan, and the arming plan's line is
+ * handed back to the Enter planner. Review F1 / QA Q4 found that a multi-line
+ * draft staged a line whose next Enter was `send` — the goal never set, the
+ * literal `/goal …` reaching the model as prompt text — and review F7 found the
+ * suites could not see it because both hand-built the string the pick writes.
+ */
+const picked = (draft, caret) => {
+	const completion = completionFor(
+		draft,
+		caret,
+		{ kind: "command", label: "goal" },
+		COMMAND_NAMES,
+		[],
+		false,
+	);
+	assert.ok(completion, `the pick writes for ${JSON.stringify(draft)}`);
+	const armed = planSlashArming({
+		draft: completion.text,
+		caret: completion.caret,
+		...ARMS,
+	});
+	assert.equal(armed.kind, "armed", JSON.stringify(armed));
+	return { armed, next: plan(armed.text, armed.caret) };
+};
+
+test("an armed line runs on the next Enter, whatever shape the draft had", () => {
+	/*
+	 * THE INVARIANT: the staged line is the WHOLE DRAFT and it is ONE LINE. A
+	 * command owns its word plus the rest of ITS OWN LINE (`slashTokenSpan`), so
+	 * a staged line that still carried a surviving newline would leave the rest of
+	 * the draft outside the command's span and the next Enter would answer `send`.
+	 * These are the shapes this file's own header recommends — the message before
+	 * the slash, or on another line — and each is asserted through the real pick
+	 * write, the real stage, and the real Enter planner.
+	 */
+	const single = picked("I approve spend /goal", 21);
+	assert.deepEqual(single.armed.text, "/goal I approve spend");
+	assert.deepEqual(single.next, {
+		kind: "whole",
+		command: { name: "goal", args: "I approve spend" },
+	});
+
+	// Two lines, command on its own at the end: the sentence keeps its order and
+	// the goal text is the whole sentence.
+	const two = picked(
+		"Please fix the flaky test\nand run /goal",
+		"Please fix the flaky test\nand run /goal".length,
+	);
+	assert.deepEqual(two.armed.text, "/goal Please fix the flaky test and run");
+	assert.deepEqual(two.next, {
+		kind: "whole",
+		command: { name: "goal", args: "Please fix the flaky test and run" },
+	});
+
+	// Three lines, caret at the end: the F1/Q4 draft verbatim.
+	const threeDraft = "Please fix the flaky test and\nthen run the release.\n/goal";
+	const three = picked(threeDraft, threeDraft.length);
+	assert.deepEqual(
+		three.armed.text,
+		"/goal Please fix the flaky test and then run the release.",
+	);
+	assert.deepEqual(three.next, {
+		kind: "whole",
+		command: {
+			name: "goal",
+			args: "Please fix the flaky test and then run the release.",
+		},
+	});
+
+	// Caret mid-line, with text after the command on its own line: the line's tail
+	// is part of the command's own line, so it stays with the command and the
+	// earlier lines are the argument — the shape the reassembly has always had.
+	// Caret on the word, text after it on the same line: the state the popup is
+	// open in when the user has not finished the sentence.
+	const mid = picked(
+		"Please fix the flaky test\nand run /goal and report",
+		"Please fix the flaky test\nand run /goal".length,
+	);
+	assert.deepEqual(
+		mid.armed.text,
+		"/goal and report Please fix the flaky test and run",
+	);
+	assert.deepEqual(mid.next, {
+		kind: "whole",
+		command: { name: "goal", args: "and report Please fix the flaky test and run" },
+	});
+
+	// Every staged line is a single line, and the caret is at its end: the two
+	// facts the next Enter's plan depends on, asserted rather than inferred.
+	for (const { armed } of [single, two, three, mid]) {
+		assert.equal(armed.text.includes("\n"), false, JSON.stringify(armed.text));
+		assert.equal(armed.caret, armed.text.length);
+	}
+});
+
+test("the staged line reads as a person would type it (no doubled space)", () => {
+	/*
+	 * `completionFor` writes `/<label> ` IN PLACE of the word, so a draft with
+	 * text after the token keeps its own separating space and the staged line used
+	 * to carry two (reviewer Q2). The staged line is what the user reads before
+	 * Enter and what the note quotes verbatim, so it is collapsed.
+	 */
+	const armed = picked("I approve spend /goal and then report", 21);
+	assert.deepEqual(armed.armed.text, "/goal and then report I approve spend");
+	assert.equal(armed.armed.text.includes("  "), false);
+	assert.deepEqual(armed.next, {
+		kind: "whole",
+		command: { name: "goal", args: "and then report I approve spend" },
+	});
+});
+
+test("a line-initial `/goal <text>` command line above prose is prose (stated change)", () => {
+	/*
+	 * A DELIBERATE, STATED BEHAVIOUR CHANGE (QA Q1). The base reassembled this
+	 * draft — `/goal ship it\nand then tell me` became the single staged line
+	 * `/goal ship it and then tell me` — because a `/goal` token on a line was
+	 * enough to hoist it. The rule the operator asked for is that a word sitting
+	 * in a draft names no gesture, and the rule is line-scoped: the command here
+	 * owns its own line only while nothing survives its word, and prose sits
+	 * outside it. So the draft goes as written, in its own order, and the command
+	 * word is prose rather than a demoted command.
+	 *
+	 * It is in the PR body's before/after table and here, so it is a stated change
+	 * rather than a silent one. What is NOT changed: the same line with nothing
+	 * below it is still a whole-draft command, at every caret past the slash.
+	 */
+	assert.deepEqual(plan("/goal ship it\nand then tell me", 30), { kind: "send" });
+	assert.deepEqual(plan("/goal ship it\nand then tell me", 6), { kind: "send" });
+	assert.equal(plan("/goal ship it", 13).kind, "whole");
+});
+
+test("the arming vocabulary is the registry's, and its absence takes the pick path", () => {
+	/*
+	 * Review F4 / QA Q3. The derivation was a `useMemo` inside the component, so
+	 * every suite handed in its own `new Set(["goal"])` and nothing held it. It is
+	 * a pure exported function now, and what it derives from is the DESTINATION the
+	 * catalogue advertises — which is also the thing the picker registry routes.
+	 */
+	const catalogue = [
+		{ name: "goal", aliases: [], destination: "session.goal" },
+		{ name: "loop", aliases: [], destination: "session.loop" },
+		{ name: "objective", aliases: ["obj"], destination: "session.goal" },
+	];
+	assert.deepEqual([...armedOnlyVocabulary(catalogue)].sort(), [
+		"goal",
+		"obj",
+		"objective",
+	]);
+
+	/*
+	 * THE HAZARD, stated rather than left implicit: a catalogue that does NOT
+	 * advertise the armed destination derives no words, and the row then stops
+	 * arming — the planner falls back to the implicit hoist this change removes.
+	 * That is why the vocabulary is pinned against the destination
+	 * `picker-registry.tsx` routes (`slash-contract.test.mjs`), and why the pick
+	 * and the planner read one set: the window this can bite in is a UI shipped
+	 * ahead of a core without the destination row.
+	 */
+	const withoutGoal = armedOnlyVocabulary([
+		{ name: "goal", aliases: [], destination: "session.other" },
+	]);
+	assert.equal(withoutGoal.size, 0);
+	const arms = {
+		commandNames: COMMAND_NAMES,
+		armedOnlyCommands: withoutGoal,
+	};
+	assert.deepEqual(
+		planSlashArming({ draft: "I approve spend /goal ", caret: 22, ...arms }),
+		{ kind: "none" },
+	);
+	assert.equal(
+		planSlashSubmission({
+			draft: "I approve spend /goal",
+			caret: 21,
+			commandNames: COMMAND_NAMES,
+			promptCommands: PROMPT_COMMANDS,
+			nameListCommands: NAME_LIST_COMMANDS,
+			enabled: true,
+			...arms,
+		}).kind,
+		"reassemble",
+	);
 });
