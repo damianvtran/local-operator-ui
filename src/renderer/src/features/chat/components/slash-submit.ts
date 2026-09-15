@@ -196,9 +196,24 @@ export type SlashSubmissionArgs = {
 /** The name/argument separator: the first whitespace character of a token. */
 const WHITESPACE = /\s/;
 
-/** The lower-cased command word of a token's text, `/team ops` → `team`. */
+/**
+ * The lower-cased command word of a token's text, `/team ops` → `team`.
+ *
+ * The split is `invocationOf`'s, and that is the whole point of this being a
+ * function rather than an expression at its two call sites: it used to be
+ * `commandText.slice(1).split(" ")[0]`, which read the name half of a token
+ * whose name and argument are separated by anything else as ONE long word. So
+ * for `prose\t/goal\tand more` the question asked was "is `goal\tand` a command?"
+ * — answered no, which routed the draft into the `unrecognised` branch and
+ * dispatched `/goal and more` over a draft the footer had just told the user
+ * would be sent as prose (review F1: 126 of 261 fall-through states, every one of
+ * them a PASTE shape — a TSV tab, an NBSP or a thin space lifted off a web page).
+ * `\s` is the class `slash-token.ts` ends its word on and the class the
+ * dispatcher posts, and two answers to "what is this token's word" have to be
+ * the same answer.
+ */
 function wordOf(commandText: string): string {
-	return commandText.slice(1).split(" ")[0].toLowerCase();
+	return invocationOf(commandText).name.toLowerCase();
 }
 
 /**
@@ -306,7 +321,12 @@ export function planSlashSubmission({
 	if (armedOnlyCommands.has(word)) return { kind: "send" };
 
 	if (promptCommands.has(word)) {
-		const typedArgument = commandText.slice(1).split(" ").slice(1).join(" ");
+		// The typed argument is the SAME split the command posts (`invocationOf`
+		// above), for the reason `wordOf` states: a literal-space split read
+		// `/team\tops` as one word with no argument, so a name-aware row took the
+		// `list-open` branch on a name the user had already typed. It is also the
+		// trimmed form, which is what the emptiness test below means.
+		const typedArgument = command.args;
 		// A name-list command with no name typed yet: `_apply_command` has
 		// already completed the word to `/team ` and opened the roster list;
 		// leaving it open is the whole interaction, and reassembly happens when
