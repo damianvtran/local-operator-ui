@@ -290,6 +290,9 @@ let daemon1;
 let daemon2;
 let fakeOld;
 let stranger;
+let zombieParent;
+let zombieRoot;
+let zombieRunDir;
 
 try {
 	console.log(
@@ -595,6 +598,76 @@ try {
 	);
 	await remoteManager.stop(false);
 
+	// ------------------------------- the daemon this app SPAWNS is not a stranger
+	line(
+		"\n\n# ===== the daemon this app STARTS is registered with the state machine =====",
+	);
+	/*
+	 * The first review round's MAJOR finding, driven end to end on the path every
+	 * user without a global `lop` takes: the ordinary fixed-port spawn returned
+	 * `true` without ever calling `daemonState.attach()`, so the snapshot described
+	 * an app with NO daemon - `owned: false`, url/pid/version null - and Settings
+	 * printed "Unknown (update required)" for a backend the app had started
+	 * seconds ago.
+	 *
+	 * An EMPTY config root (no record at all, so discovery has nothing to adopt)
+	 * and a free configured port are the whole setup. The child is real: this is
+	 * `local-operator serve` on a loopback port inside a throwaway HOME.
+	 */
+	const ownedRoot = mkdtempSync(join(tmpdir(), "lop-ui-daemon-owned-"));
+	const probe = createServer();
+	servers.push(probe);
+	await new Promise((r) => probe.listen(0, "127.0.0.1", r));
+	const ownedPort = probe.address().port;
+	await new Promise((r) => probe.close(r));
+	globalThis.__evidenceConfiguredUrl = `http://127.0.0.1:${ownedPort}`;
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = ownedRoot;
+	const ownedModule = await bundleManagerModule(6);
+	const ownedManager = new ownedModule.BackendServiceManager();
+	const ownedStarted = await ownedManager.start();
+	const ownedStatus = ownedManager.getStatusSnapshot();
+	say(
+		`manager.start() with an empty config root and VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:${ownedPort}`,
+		`-> ${ownedStarted}`,
+	);
+	line(JSON.stringify(ownedStatus, null, 2));
+	assert.equal(ownedStarted, true);
+	assert.equal(
+		ownedStatus.owned,
+		true,
+		"the daemon this app spawned must be reported as owned",
+	);
+	assert.equal(ownedStatus.state, "attached");
+	assert.equal(ownedStatus.pid, ownedManager.getOwnedPid());
+	assert.ok(ownedStatus.version, "the row needs a version, not 'Unknown'");
+	assert.equal(ownedStatus.url, `http://127.0.0.1:${ownedPort}`);
+	assert.ok(
+		ownedStatus.instanceId,
+		"an instance id, so a later probe can prove it is the same process",
+	);
+	line(
+		`\nthe Settings row would print: ${ownedStatus.version} \u00b7 ${new URL(ownedStatus.url).host}`,
+	);
+	line(
+		`owned_pid ${ownedManager.getOwnedPid()} === snapshot pid ${ownedStatus.pid}: ${ownedManager.getOwnedPid() === ownedStatus.pid}`,
+	);
+	/*
+	 * And the child it started is still OURS to stop: kill only this handle, by
+	 * pid, and leave nothing of this run behind.
+	 */
+	const ownedPid = ownedManager.getOwnedPid();
+	await ownedManager.stop(false);
+	let stopped = discovery.pidLiveness(ownedPid);
+	for (let i = 0; i < 50 && stopped === "alive"; i++) {
+		await new Promise((r) => setTimeout(r, 200));
+		stopped = discovery.pidLiveness(ownedPid);
+	}
+	line(
+		`\n(app's own daemon pid ${ownedPid} after stop(): ${stopped}, killed by handle, not by pattern)`,
+	);
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = ROOT;
+	rmSync(ownedRoot, { recursive: true, force: true });
+
 	// ------------------------------------------------------------- negatives
 	line("\n\n# ===== negative cases =====");
 
@@ -637,6 +710,18 @@ try {
 		`reaped: ${JSON.stringify(discovery.reapStaleRecords(withDead.reapable))}`,
 	);
 	line(`record gone now: ${!existsSync(deadFile)}`);
+	/*
+	 * WHERE it went, which is the whole point: the backend's own reaper MOVES a
+	 * proven-dead record into `<run dir>/reaped/<pid>.json` so the attention
+	 * classifier can still answer "why did this run die". A reaper that unlinked
+	 * instead turned a diagnosable death into the no-evidence case that mechanism
+	 * exists to prevent, and this app reaps the same files.
+	 */
+	const sidecar = join(RUN_DIR, "reaped", `${deadPid}.json`);
+	line(`kept as evidence at reaped/${deadPid}.json: ${existsSync(sidecar)}`);
+	line(
+		`its bytes: ${existsSync(sidecar) ? readFileSync(sidecar, "utf8").slice(0, 120) : "(none)"}`,
+	);
 
 	// (b) a stale heartbeat on a LIVE pid
 	const wedgedFile = join(RUN_DIR, `${process.pid}.json`);
@@ -673,7 +758,130 @@ try {
 		`offered for reaping: ${withWedged.reapable.includes(wedgedFile)} (a live process keeps its record)`,
 	);
 	line(`picked instead: ${withWedged.picked?.address}`);
+	/*
+	 * And it is reported as its OWN fact, not merely as "blocked": a surface told
+	 * only `blocksSpawn` rendered a daemon that is running as an outage, which is
+	 * the remaining way this app told a user their server was offline while a
+	 * process was still there.
+	 */
+	line(`reported as wedged records: ${JSON.stringify(withWedged.wedged)}`);
+	line(
+		`blocks spawn (a live process is not spawned over): ${withWedged.blocksSpawn}`,
+	);
 	rmSync(wedgedFile, { force: true });
+
+	// (b2) a ZOMBIE pid: exited, never reaped, and signal 0 still says "alive"
+	/*
+	 * `registry.py::pid_alive(check_zombie=True)` counts a zombie dead, and
+	 * `scan` spends that probe on exactly the records whose heartbeat has gone
+	 * quiet. A reader using signal 0 alone called such a record `wedged`, and a
+	 * wedged record blocks spawning - so a corpse whose parent never reaped it
+	 * meant the app could neither attach nor start its own daemon, forever.
+	 *
+	 * The zombie is real rather than simulated: a Python parent forks a child that
+	 * exits immediately and then does NOT wait for it, which is the only way to
+	 * keep an unreaped pid alive to be probed. Its record gets a config root of its
+	 * own, so `blocksSpawn` here is a fact about the corpse and nothing else - the
+	 * live daemon 2 elsewhere in this run leaves its own (correctly blocking)
+	 * record behind.
+	 */
+	zombieRoot = mkdtempSync(join(tmpdir(), "lop-ui-daemon-zombie-"));
+	zombieRunDir = join(zombieRoot, "run", "serve");
+	mkdirSync(zombieRunDir, { recursive: true });
+	zombieParent = spawn(
+		"python3",
+		[
+			"-c",
+			"import os, sys, time\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nprint(pid, flush=True)\ntime.sleep(120)\n",
+		],
+		{ stdio: ["ignore", "pipe", "pipe"] },
+	);
+	children.push(zombieParent);
+	let zombiePidRaw = "";
+	const zombiePid = await new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error("the zombie's parent never printed a pid")),
+			30_000,
+		);
+		zombieParent.stdout.setEncoding("utf8");
+		zombieParent.stdout.on("data", (chunk) => {
+			zombiePidRaw += chunk;
+			const match = zombiePidRaw.match(/\d+/);
+			if (match) {
+				clearTimeout(timer);
+				resolve(Number(match[0]));
+			}
+		});
+	});
+	assert.equal(
+		discovery.pidLiveness(zombiePid),
+		"alive",
+		"signal 0 cannot tell a zombie from a live process",
+	);
+	assert.equal(discovery.isZombie(zombiePid), true);
+	assert.equal(discovery.pidLiveness(zombiePid, { checkZombie: true }), "dead");
+	const zombieFile = join(zombieRunDir, `${zombiePid}.json`);
+	writeFileSync(
+		zombieFile,
+		JSON.stringify({
+			pid: zombiePid,
+			host: "127.0.0.1",
+			port: 65532,
+			instance_id: "instance-of-a-zombie",
+			version: "0.54.46",
+			source_ref: "",
+			prefix: "/tmp/zombie",
+			install_kind: "uv-tool",
+			desktop: false,
+			claim_key: "",
+			started_at: Date.now() / 1000 - 600,
+			heartbeat_at: Date.now() / 1000 - 600,
+		}),
+	);
+	say(
+		`the zombie's record alone in a config root, with a 600s-old heartbeat`,
+		"",
+	);
+	const withZombie = await discovery.discoverDaemons({
+		env: { LOCAL_OPERATOR_CONFIG_DIR: zombieRoot },
+		log: () => {},
+	});
+	line(
+		JSON.stringify(
+			withZombie.rejected.filter((r) => r.subject === zombieFile),
+			null,
+			2,
+		),
+	);
+	assert.equal(
+		withZombie.rejected.find((r) => r.subject === zombieFile)?.reason,
+		"pid-dead",
+		"a zombie is dead, not wedged",
+	);
+	/*
+	 * The claim that matters: with a corpse in the record directory, the app may
+	 * still start its own daemon. Before the zombie probe, this record classified
+	 * `wedged`, and a wedged record forbids spawning - so the app could neither
+	 * attach to the daemon it described nor start one, for as long as the zombie's
+	 * parent declined to reap it.
+	 */
+	assert.equal(
+		withZombie.blocksSpawn,
+		false,
+		"a corpse must not keep the app from starting its own daemon",
+	);
+	line(
+		`blocks spawn: ${withZombie.blocksSpawn} (it does NOT, so the app can start its own daemon)`,
+	);
+	line(
+		`moved aside by the reap: ${JSON.stringify(discovery.reapStaleRecords(withZombie.reapable))}`,
+	);
+	assert.ok(
+		existsSync(join(zombieRunDir, "reaped", `${zombiePid}.json`)),
+		"and the corpse's record is kept as evidence, not deleted",
+	);
+	await stopChild(zombieParent);
+	rmSync(zombieRoot, { recursive: true, force: true });
 
 	// (c) an unrelated listener on the port the env var names
 	stranger = createServer((_req, res) => {

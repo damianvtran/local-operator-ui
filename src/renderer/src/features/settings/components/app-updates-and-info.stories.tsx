@@ -16,12 +16,21 @@ import { AppUpdatesSection } from "./app-updates-section";
  *
  * Each story stubs the bridge and restores the previous value on unmount, so
  * stories do not leak into one another.
+ *
+ * The value is `version · host:port` because a machine can be serving several
+ * daemons and a bare number cannot say which one it came from - the residual of
+ * the reported defect on a host where three were running. `replaced` and the
+ * null-version state are here because both are reachable and neither was
+ * photographed before: a snapshot with no `version` in it is what the row used
+ * to render as "Unknown (update required)", an instruction to update a backend
+ * whose record simply omitted the field.
  */
 
 const snapshot = (
 	overrides: Partial<DaemonStatusSnapshot>,
 ): DaemonStatusSnapshot => ({
 	state: "attached",
+	reconnecting: false,
 	owned: false,
 	url: "http://127.0.0.1:7341",
 	instanceId: "i".repeat(43),
@@ -136,9 +145,84 @@ export const NoBridge: Story = {
 	decorators: [withBridge(null)],
 };
 
-/** The daemon main is attached to, named with the install that serves it. */
+/** The daemon main is attached to, named with the address serving it. */
 export const AttachedToDiscoveredDaemon: Story = {
 	decorators: [withBridge(snapshot({}))],
+};
+
+/**
+ * The daemon THIS APP started, which no frame covered before.
+ *
+ * The first review round's MAJOR finding: the ordinary fixed-port spawn never
+ * registered the child with the state machine, so a backend the app had started
+ * seconds ago rendered as `owned: false` with no version - the row printed
+ * "Unknown (update required)" for it. The row cannot show `owned` itself; what
+ * it shows is a version and an address where there used to be an instruction to
+ * update, and `scripts/daemon-discovery-evidence.mjs` is what proves a real
+ * spawn reaches this snapshot.
+ */
+export const OwnedDaemon: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				owned: true,
+				detail:
+					"Connected to the daemon on http://127.0.0.1:1111 (pid 61643, v0.54.47).",
+			}),
+		),
+	],
+};
+
+/** A successor for a daemon this app owned: reachable, and its version shows. */
+export const ReplacedDaemon: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "replaced",
+				owned: true,
+				url: "http://127.0.0.1:55001",
+				pid: 999,
+				detail:
+					"Started a replacement daemon on http://127.0.0.1:55001 (pid 999).",
+			}),
+		),
+	],
+};
+
+/** A daemon that exists but is not attachable: not a version, not an absence. */
+export const WedgedDaemon: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "wedged",
+				url: null,
+				instanceId: null,
+				pid: 4242,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				detail:
+					"A Local Operator daemon is running (pid 4242), but it stopped publishing its heartbeat, so this app did not attach to it. Waiting without starting a second one.",
+			}),
+		),
+	],
+};
+
+/**
+ * A live connection whose daemon reports no version: the string that used to
+ * assert an unestablished remedy.
+ */
+export const AttachedWithoutVersion: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				version: null,
+				detail:
+					"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, vunknown).",
+			}),
+		),
+	],
 };
 
 /** One or two missed probes: still a connection, so the version still shows. */
@@ -160,6 +244,7 @@ export const DetachedDaemon: Story = {
 		withBridge(
 			snapshot({
 				state: "detached",
+				reconnecting: true,
 				url: null,
 				instanceId: null,
 				pid: null,
@@ -191,4 +276,17 @@ export const BeforeFirstProbe: Story = {
 			}),
 		),
 	],
+};
+
+/**
+ * The same frame with the pointer on the value.
+ *
+ * The story adds nothing to the snapshot: what it exists for is the hover
+ * GROUND, which no story can force (`:hover` is browser state). The rig moves a
+ * real pointer at `[data-backend-version]` for this id, which is how the frame
+ * that shows the value's tooltip - where the daemon's own detail sentence lives -
+ * gets taken at all.
+ */
+export const ValueHover: Story = {
+	decorators: [withBridge(snapshot({}))],
 };

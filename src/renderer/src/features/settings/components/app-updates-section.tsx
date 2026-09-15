@@ -7,8 +7,42 @@ import { apiConfig } from "@shared/config";
 import { Download, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
+import type { DaemonStatusSnapshot } from "../../../../../shared/backend-status";
 import { AppUpdates } from "./app-updates";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
+
+/**
+ * What the "Server version" row prints, and what it says about it.
+ *
+ * Three fields rather than one string, because one string could not carry the
+ * two things the row has to answer: WHICH daemon this number describes (the
+ * address of the daemon main is attached to, since a machine can have several),
+ * and what main actually observed (its `detail`, verbatim, as the value's
+ * tooltip). `degraded` also has to be visible in the row itself - two of three
+ * probes have failed, and the number alone looked identical to a healthy
+ * connection.
+ */
+type ServerVersionReading = {
+	value: string;
+	detail: string | null;
+	degraded: boolean;
+};
+
+/**
+ * `host:port` for a daemon URL, for the value's attribution.
+ *
+ * The address rather than the install kind, because it is what a user can check
+ * against `lop serve` (or `lsof`) to confirm the row describes the daemon their
+ * TUI is using. Null when there is no daemon to name.
+ */
+const daemonAddress = (url: string | null): string | null => {
+	if (!url) return null;
+	try {
+		return new URL(url).host;
+	} catch {
+		return null;
+	}
+};
 
 /**
  * Update controls plus the version numbers a bug report needs.
@@ -19,7 +53,11 @@ import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
  */
 export const AppUpdatesSection: FC = () => {
 	const [appVersion, setAppVersion] = useState<string>("Loading...");
-	const [serverVersion, setServerVersion] = useState<string>("Loading...");
+	const [serverVersion, setServerVersion] = useState<ServerVersionReading>({
+		value: "Loading...",
+		detail: null,
+		degraded: false,
+	});
 	const [platformInfo, setPlatformInfo] = useState({
 		platform: "Loading...",
 		arch: "...",
@@ -32,18 +70,57 @@ export const AppUpdatesSection: FC = () => {
 		// Both fetches outlive a fast navigation away from settings; the flag
 		// stops them setting state on an unmounted component.
 		let isMounted = true;
-		const showDaemonVersion = (snapshot: {
-			state: string;
-			version: string | null;
-		}) => {
+		const showDaemonVersion = (snapshot: DaemonStatusSnapshot) => {
 			if (!isMounted) return;
-			setServerVersion(
-				snapshot.state === "connecting"
-					? "Loading..."
-					: snapshot.state === "detached"
-						? "Unavailable"
-						: snapshot.version || "Unknown (update required)",
-			);
+			const address = daemonAddress(snapshot.url);
+			/*
+			 * The value per state, and never a stale number:
+			 *
+			 * - `connecting` is the pre-first-probe state, and the only one that says
+			 *   "Loading...";
+			 * - `detached` is "we have no daemon" - not "the server is offline",
+			 *   which is the sentence this change removes, and not "Unavailable",
+			 *   which is reserved for the no-bridge branch below where this host
+			 *   cannot ask anyone;
+			 * - `wedged` is a daemon that exists and that this app deliberately did
+			 *   not attach to, so it is neither a version nor an absence;
+			 * - a live connection shows the version, attributed to the daemon serving
+			 *   it, and "Version unknown" when that daemon reports no version at all.
+			 *   The old string here was "Unknown (update required)", which asserted a
+			 *   remedy nothing had established (a serve record may simply omit the
+			 *   version); recommending an update is the update control's job, not this
+			 *   row's.
+			 */
+			if (snapshot.state === "connecting") {
+				setServerVersion({
+					value: "Loading...",
+					detail: null,
+					degraded: false,
+				});
+				return;
+			}
+			if (snapshot.state === "detached") {
+				setServerVersion({
+					value: "Not connected",
+					detail: snapshot.detail || null,
+					degraded: false,
+				});
+				return;
+			}
+			if (snapshot.state === "wedged") {
+				setServerVersion({
+					value: "Not attached",
+					detail: snapshot.detail || null,
+					degraded: false,
+				});
+				return;
+			}
+			const version = snapshot.version || "Version unknown";
+			setServerVersion({
+				value: address ? `${version} \u00b7 ${address}` : version,
+				detail: snapshot.detail || null,
+				degraded: snapshot.state === "degraded",
+			});
 		};
 		// Settings can stay open while discovery finishes or the selected daemon
 		// exits. A mount-only read would keep showing a version that is no longer serving.
@@ -94,12 +171,20 @@ export const AppUpdatesSection: FC = () => {
 				);
 				const version = HealthApi.getServerVersion(healthResponse);
 				if (isMounted) {
-					setServerVersion(version);
+					setServerVersion({
+						value: version,
+						detail: null,
+						degraded: false,
+					});
 				}
 			} catch (err) {
 				console.error("Error fetching server version:", err);
 				if (isMounted) {
-					setServerVersion("Unavailable");
+					setServerVersion({
+						value: "Unavailable",
+						detail: null,
+						degraded: false,
+					});
 				}
 			}
 		};
@@ -120,6 +205,21 @@ export const AppUpdatesSection: FC = () => {
 		label: string,
 		value: string,
 		tooltipText: string,
+		options: {
+			valueTooltip?: string | null;
+			valueClassName?: string;
+			/**
+			 * Marks the value as the rig's hover target.
+			 *
+			 * `:hover` is browser state, so no story can force it: the evidence rig
+			 * moves a real pointer at a SELECTOR instead (`{ hover }` in
+			 * `scripts/capture-evidence.mjs`). A wrapper class would be a selector that
+			 * silently stops matching the next time this row gains a span, and a rig whose
+			 * selector matched nothing throws; this is the hook that keeps the frame
+			 * honest instead of lucky.
+			 */
+			valueHoverTarget?: boolean;
+		} = {},
 	) => (
 		<InfoItem
 			label={
@@ -130,7 +230,21 @@ export const AppUpdatesSection: FC = () => {
 					</span>
 				</Tooltip>
 			}
-			value={value}
+			valueClassName={options.valueClassName}
+			value={
+				options.valueTooltip ? (
+					<Tooltip content={options.valueTooltip}>
+						<span
+							data-backend-version={options.valueHoverTarget ? "" : undefined}
+							className="cursor-help"
+						>
+							{value}
+						</span>
+					</Tooltip>
+				) : (
+					value
+				)
+			}
 		/>
 	);
 
@@ -149,9 +263,21 @@ export const AppUpdatesSection: FC = () => {
 						"The version of the Local Operator user interface application.",
 					)}
 					{renderInfoItem(
-						"Server version",
-						serverVersion,
-						"The version of the Local Operator API server backend.",
+						// The suffix, not a hue: `degraded` means two of three probes failed
+						// on a connection that is still there, and the row has to say so
+						// without blanking the number.
+						serverVersion.degraded
+							? "Server version (reconnecting)"
+							: "Server version",
+						serverVersion.value,
+						"The version of the Local Operator API server backend, and the address of the daemon it was read from.",
+						{
+							valueTooltip: serverVersion.detail,
+							valueHoverTarget: true,
+							valueClassName: serverVersion.degraded
+								? "text-ink-muted"
+								: undefined,
+						},
 					)}
 					{renderInfoItem(
 						"Platform",

@@ -30,12 +30,28 @@
  * sink for the same reason.
  */
 
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 /** Record namespace under the config root (`session/runtime/types.py`). */
 export const SERVE_RUN_DIRNAME = "run/serve";
+
+/**
+ * The sidecar a proven-dead record is MOVED into, never deleted
+ * (`session/runtime/registry.py::REAPED_DIRNAME`).
+ *
+ * The backend keeps a dead daemon's record here so the attention classifier can
+ * still answer "why did this run die"; a reaper that unlinked instead would
+ * turn a diagnosable death into the no-evidence case that mechanism exists to
+ * prevent. This module reaps the same files, so it reaps them the same way.
+ */
+export const REAPED_DIRNAME = "reaped";
+
+/** Sidecar bounds, mirroring `registry.py::REAPED_MAX_FILES`/`_MAX_AGE_S`. */
+export const REAPED_MAX_FILES = 200;
+export const REAPED_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /** The override `local_operator/paths.py::config_dir` treats as authoritative. */
 export const CONFIG_DIR_ENV = "LOCAL_OPERATOR_CONFIG_DIR";
@@ -63,6 +79,19 @@ export const PROBE_TIMEOUT_MS = 2_000;
  * record format are reachable anyway.
  */
 export const OWNED_RECORD_WINDOW_MS = 4_000;
+
+/**
+ * How long the FIXED-PORT registration path waits for the child's record.
+ *
+ * Shorter than the ephemeral window on purpose: that path has nothing else to
+ * go on, while here the child has already answered `/health` on the configured
+ * address - and a record is published with the listener, so the file is either
+ * already there or this install does not publish one at all. The wait exists
+ * only to close the write race, not to give a cold start time to boot: an
+ * install predating the record format pays one window at startup, not four
+ * seconds of one.
+ */
+export const OWNED_REGISTRATION_WINDOW_MS = 1_500;
 
 /**
  * A `started_at` this far ahead of us is clock skew, not a daemon that booted
@@ -116,6 +145,12 @@ export type RecordProblem = "unreadable" | "unparseable" | "malformed";
 
 /** `live` is a daemon worth talking to; the other two are not. */
 export type RecordHealth = "live" | "wedged" | "stale";
+
+/** One record that is alive but not attachable, named for the caller's report. */
+export interface WedgedRecord {
+	file: string;
+	pid: number;
+}
 
 /** Result of the signal-0 check, mirroring `registry.py::pid_alive`. */
 export type PidLiveness = "alive" | "dead";
@@ -171,6 +206,14 @@ export interface DiscoveryResult {
 	picked: DiscoveredDaemon | null;
 	/** Record files whose pid is gone: the caller may reap them. */
 	reapable: string[];
+	/**
+	 * Records whose process is alive but whose heartbeat stopped: the daemon is
+	 * there, it is not attachable, and this is why no candidate exists and no
+	 * spawn is allowed. Reported rather than merged into `blocksSpawn`, because
+	 * "something may be running" and "a daemon IS running, unresponsive" need
+	 * different sentences.
+	 */
+	wedged: WedgedRecord[];
 	/**
 	 * True when the record directory held no parsable record at all. The caller
 	 * uses this (and only this) to allow the one-release legacy fixed-port
@@ -302,14 +345,79 @@ export function readServeRecords(dir: string): {
  *
  * `ESRCH` is the only answer that means gone. `EPERM` means alive but not
  * ours, which for "is this daemon there" is alive.
+ *
+ * `checkZombie` spends the extra probe `registry.py` spends on the records
+ * whose heartbeat has already gone quiet: signal 0 succeeds against a process
+ * that has exited but has not been reaped, so a zombie counts as alive here and
+ * - for a record that blocks spawning - keeps the app from ever starting its
+ * own daemon while reporting it as "alive but wedged". Callers pass it exactly
+ * where the answer changes what they do, never on the per-tick watchdog path
+ * (the probe is a `ps` fork on macOS, microseconds versus milliseconds).
  */
-export function pidLiveness(pid: number): PidLiveness {
+export function pidLiveness(
+	pid: number,
+	options: { checkZombie?: boolean } = {},
+): PidLiveness {
 	try {
 		process.kill(pid, 0);
-		return "alive";
 	} catch (error) {
 		return (error as NodeJS.ErrnoException).code === "ESRCH" ? "dead" : "alive";
 	}
+	// `linux` has `/proc`, so the state is a read; POSIX otherwise needs a `ps`
+	// fork. Windows is not asked at all: it has no zombie state, and a liveness
+	// question there is a handle question, not a process-table one.
+	if (options.checkZombie && process.platform !== "win32")
+		return isZombie(pid) ? "dead" : "alive";
+	return "alive";
+}
+
+/**
+ * Whether this pid is exited-but-unreaped, mirroring `procstate.is_zombie`.
+ *
+ * Fails CLOSED ("not a zombie", i.e. treat as alive) on any doubt: calling a
+ * live daemon dead would admit a second one over a running server, which is the
+ * failure this whole module exists to prevent.
+ */
+export function isZombie(pid: number): boolean {
+	if (pid <= 0) return false;
+	if (process.platform === "win32") return false;
+	try {
+		// Linux: no subprocess needed. `comm` may contain spaces and parentheses,
+		// so the state field is what follows the LAST ')'.
+		if (process.platform === "linux") {
+			const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
+			return stat
+				.slice(stat.lastIndexOf(")") + 1)
+				.trimStart()
+				.startsWith("Z");
+		}
+		const state = execFileSync("/bin/ps", ["-o", "state=", "-p", String(pid)], {
+			encoding: "utf8",
+			timeout: 1_000,
+		});
+		return state.trim().toUpperCase().startsWith("Z");
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * A record's pid liveness, spending the zombie probe exactly where
+ * `registry.py::scan` spends it: on a record whose heartbeat has gone quiet.
+ *
+ * This is the one place the two rules must agree. `scan` classifies such a
+ * record `stale` (dead pid, aged heartbeat) and MOVES it aside; a reader that
+ * used signal 0 alone would call the same record `wedged`, refuse to attach to
+ * a corpse, and - because a wedged record blocks spawning - leave the app with
+ * no daemon at all and no way to start one.
+ */
+export function recordPidLiveness(
+	record: ServeRecord,
+	now: number,
+): PidLiveness {
+	return pidLiveness(record.pid, {
+		checkZombie: now - record.heartbeat_at * 1000 > HEARTBEAT_TIMEOUT_MS,
+	});
 }
 
 /**
@@ -320,11 +428,15 @@ export function pidLiveness(pid: number): PidLiveness {
  * is `wedged` - a daemon to report as degraded, never to reap and never to
  * start over. Reaping a live process's record is how a running daemon becomes
  * invisible.
+ *
+ * The liveness default is `recordPidLiveness`, so the zombie probe is spent
+ * exactly where `registry.py::scan` spends it (quiet heartbeat only) and a
+ * zombie is classified the same way on both sides.
  */
 export function classifyRecord(
 	record: ServeRecord,
 	now: number,
-	liveness: PidLiveness = pidLiveness(record.pid),
+	liveness: PidLiveness = recordPidLiveness(record, now),
 ): RecordHealth {
 	const age = now - record.heartbeat_at * 1000;
 	if (liveness === "dead") {
@@ -501,6 +613,7 @@ export async function discoverDaemons(
 	const { files, problem } = readServeRecords(dir);
 	const rejected: DiscoveryRejection[] = [];
 	const reapable: string[] = [];
+	const wedged: WedgedRecord[] = [];
 	const candidates: DiscoveredDaemon[] = [];
 	const configuredUrl = options.configuredUrl ?? null;
 	const configuredAddress = normaliseAddress(configuredUrl);
@@ -543,12 +656,16 @@ export async function discoverDaemons(
 		}
 		if (health === "wedged") {
 			// Live pid, stopped heartbeat: report it, never attach to it, never
-			// reap it (the process still owns that file).
+			// reap it (the process still owns that file). It is also the reason no
+			// candidate exists AND no spawn is allowed, so it is named to the caller
+			// as its own fact rather than left inside `blocksSpawn`: a surface told
+			// only "blocked" renders a daemon that is running as an outage.
 			rejected.push({
 				subject: entry.file,
 				reason: "wedged",
 				detail: `pid ${record.pid} is alive but its heartbeat is ${Math.round((now() - record.heartbeat_at * 1000) / 1000)}s old`,
 			});
+			wedged.push({ file: entry.file, pid: record.pid });
 			continue;
 		}
 		const address = recordAddress(record);
@@ -632,13 +749,17 @@ export async function discoverDaemons(
 		rejected,
 		picked: ranked[0] ?? null,
 		reapable,
+		wedged,
 		noRecordsAtAll: files.length === 0,
 		// A dead PID is positive evidence; timeout, malformed JSON or a stopped
 		// heartbeat is not. Do not spawn over a busy or temporarily unreadable daemon.
+		// The liveness question is asked the way `registry.py::scan` asks it, so a
+		// zombie record is dead here too and cannot block spawning forever.
 		blocksSpawn:
 			problem === "unreadable" ||
 			files.some(
-				(entry) => !entry.record || pidLiveness(entry.record.pid) !== "dead",
+				(entry) =>
+					!entry.record || recordPidLiveness(entry.record, now()) !== "dead",
 			),
 	};
 	for (const rejection of rejected) {
@@ -716,14 +837,24 @@ export async function probeUnidentified(
 }
 
 /**
- * Reap records whose process is gone.
+ * Reap records whose process is gone - by MOVING them aside, as the backend's
+ * own reaper does, and never by deleting them.
  *
- * Guarded three ways, because this is the one place this module deletes
+ * Guarded three ways, because this is the one place this module writes
  * anything: the pid must be dead, the heartbeat must be aged past the timeout,
- * and the file must be byte-identical to what was read (re-read immediately
- * before unlinking). A daemon that republished in the meantime - including one
- * whose pid the OS reused - keeps its record; the cost of not reaping is one
- * stale file, the cost of reaping wrongly is a daemon nobody can find.
+ * and the file must still parse as the record it was classified from. A daemon
+ * that republished in the meantime - including one whose pid the OS reused -
+ * keeps its record: the guard is that a RE-READ record which re-classifies as
+ * live is left alone. The cost of not reaping is one stale file, the cost of
+ * reaping wrongly is a daemon nobody can find.
+ *
+ * `registry.py::_reap_dead_record` keeps the same evidence in
+ * `<run dir>/reaped/<pid>.json`, keyed by pid and replaced rather than
+ * uniquified, so a death the backend would have left diagnosable stays
+ * diagnosable when this app is the one that noticed. The delete is the
+ * fallback for a sidecar that cannot be written (a full disk, a read-only
+ * root), matching the backend: losing the evidence beats failing discovery on
+ * exactly the machine under stress.
  */
 export function reapStaleRecords(reapable: string[]): string[] {
 	const reaped: string[] = [];
@@ -734,21 +865,91 @@ export function reapStaleRecords(reapable: string[]): string[] {
 				file,
 			);
 			if (!entry.record) continue;
-			if (pidLiveness(entry.record.pid) === "alive") continue;
 			if (
 				Date.now() - entry.record.heartbeat_at * 1000 <=
 				HEARTBEAT_TIMEOUT_MS
 			) {
 				continue;
 			}
-			fs.unlinkSync(file);
-			reaped.push(file);
+			const liveness = recordPidLiveness(entry.record, Date.now());
+			if (liveness === "alive") continue;
+			if (moveRecordAside(file, entry.record.pid)) reaped.push(file);
 		} catch {
 			// Racing the owning process is normal; a record that vanished under
 			// us is already reaped.
 		}
 	}
 	return reaped;
+}
+
+/**
+ * Move one proven-dead record into the sidecar, falling back to the delete.
+ *
+ * @returns true when the record no longer occupies the discovery namespace,
+ * which is the only thing the caller needs to know.
+ */
+function moveRecordAside(file: string, pid: number): boolean {
+	const sidecar = join(dirname(file), REAPED_DIRNAME);
+	try {
+		fs.mkdirSync(sidecar, { recursive: true, mode: 0o700 });
+		fs.renameSync(file, join(sidecar, `${pid}.json`));
+		pruneReaped(sidecar);
+		return true;
+	} catch {
+		try {
+			fs.unlinkSync(file);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+}
+
+/**
+ * Keep the sidecar bounded: by AGE first, then by COUNT (the backend's order,
+ * so a burst of deaths cannot evict today's evidence in favour of yesterday's).
+ *
+ * Best-effort throughout: this runs inside a discovery sweep, and housekeeping
+ * must never be the reason a listing fails.
+ */
+function pruneReaped(sidecar: string): void {
+	try {
+		const entries: Array<{ mtime: number; file: string }> = [];
+		for (const name of fs.readdirSync(sidecar)) {
+			if (!name.endsWith(".json")) continue;
+			const file = join(sidecar, name);
+			try {
+				entries.push({ mtime: fs.statSync(file).mtimeMs, file });
+			} catch {
+				// Already gone: nothing to bound.
+			}
+		}
+		const cutoff = Date.now() - REAPED_MAX_AGE_MS;
+		const fresh = entries.filter((entry) => {
+			if (entry.mtime < cutoff) {
+				unlinkQuietly(entry.file);
+				return false;
+			}
+			return true;
+		});
+		fresh.sort((a, b) => a.mtime - b.mtime);
+		for (const entry of fresh.slice(
+			0,
+			Math.max(0, fresh.length - REAPED_MAX_FILES),
+		)) {
+			unlinkQuietly(entry.file);
+		}
+	} catch {
+		// Housekeeping is best-effort.
+	}
+}
+
+function unlinkQuietly(file: string): void {
+	try {
+		fs.unlinkSync(file);
+	} catch {
+		// Already gone.
+	}
 }
 
 /** An origin a claim may declare: a plain `http(s)` origin, nothing else. */

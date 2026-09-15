@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { BackendUpdateInfo } from "../main/update-service";
 import {
+	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
@@ -208,10 +209,16 @@ const api = {
 	 *
 	 * `getStatus` is the pull, `onStatusChange` the push; both carry the same
 	 * snapshot, so a window that opens between transitions is never stale.
+	 *
+	 * `reconnect` is the third verb, and it is the difference between a control
+	 * that retries and one that only re-reads: main owns the re-discovery timer,
+	 * so only main can be asked to try NOW.
 	 */
 	backend: {
 		getStatus: (): Promise<DaemonStatusSnapshot> =>
 			ipcRenderer.invoke(BACKEND_STATUS_CHANNEL),
+		reconnect: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_RECONNECT_CHANNEL),
 		onStatusChange: (callback: (snapshot: DaemonStatusSnapshot) => void) => {
 			const handler = (_event: unknown, snapshot: DaemonStatusSnapshot) =>
 				callback(snapshot);
