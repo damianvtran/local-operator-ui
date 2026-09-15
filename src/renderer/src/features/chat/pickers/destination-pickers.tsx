@@ -49,7 +49,6 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import { formatPricePair } from "../components/slash-argument-rows";
-
 import type { SlashCommandMeta } from "../components/slash-commands";
 import type { SlashCommandInvocation } from "../components/slash-submit";
 import {
