@@ -53,6 +53,14 @@
  * says nothing is not the app's to overrule. An empty value that reaches the
  * LAUNCH — which is what `dev:headless` produces through `dev`'s own export —
  * silences the backend, which is what that command asks for.
+ *
+ * IT IS NOT THE LAST FOLD ON THIS PATH, and the guard here is the APP's: the
+ * backend package folds a `.env` of its own at import (`local_operator/env.py`
+ * runs `load_dotenv(<package root>/.env, override=True)` — `…/site-packages/.env`
+ * for a wheel or uv install, the source checkout root for an editable one), which
+ * can replace this key inside the backend process after everything here has done
+ * its job. `AGENTS.md`'s "What this pin does not cover" carries that exposure,
+ * the reproduction, and the rename risk beside it.
  */
 
 /**

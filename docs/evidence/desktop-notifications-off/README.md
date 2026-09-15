@@ -130,15 +130,18 @@ the environment it was launched with — is measured on the app itself, in
 (`NODE_OPTIONS=--require`, which Electron honours). Both trees carried the same
 `.env` line in the EMPTY shape and the launch value `pnpm app:headless` sets:
 
-| tree | `launch` | the app's own env after the `.env` fold | the backend child is handed |
+| tree | `launch` | the app's own env after the `.env` fold | the serve launch is handed |
 | --- | --- | --- | --- |
 | `f69a59971` | `1` | `""` | **`""`** — armed, `notify.py`-speaking |
 | this head | `1` | `""` | **`"1"`** — silenced |
 
 The fold wins in both trees, which is the defect; what changed is where the value
-the backend gets is decided. In both runs the child is a real backend (its own
-log shows `GET /health 200`), spawned with a scratch HOME, config dir, log dir
-and `--user-data-dir` on a scratch port, and killed by exact pid afterwards.
+the backend gets is decided. "The serve launch" is the `bash -c 'exec "$@"' …
+serve --port N` row of the transcript, i.e. the backend itself; the `python3 -c`
+row beside it is the identity probe, handed the same object. In both runs the
+child is a real backend (its own log shows `GET /health 200`), spawned with a
+scratch HOME, config dir, log dir and `--user-data-dir` on a scratch port, and
+killed by exact pid afterwards.
 
 Two other measurements of the same path are recorded here because they came from
 the two independent rounds on this PR and neither is reproducible from this
@@ -182,15 +185,40 @@ differently and stay green.
 
 ## What this pin does not cover
 
-The consumer is `local_operator/tui/notify.py`, in a **separately installed**
-backend package that this repository does not pin — `src/main/update-install.ts`
-installs it with `pip install --upgrade local-operator`. Nothing here reads that
-file, so if upstream ever renames `_ENV_DISABLE`, every switch this repository
-sets becomes a variable nobody reads and the incident returns with all of these
-tests green. That is the honest edge of this change: it guards the local
-spelling, not the contract. A cheap pin would have to assert the installed
-backend's own name or version against this repo's constant, and none exists
-today.
+Two folds and one rename sit outside this repository, and each of them can put
+the banners back with every test here green.
+
+**The rename, which is the one nothing can catch.** The consumer is
+`local_operator/tui/notify.py`, in a **separately installed** backend package that
+this repository does not pin — `src/main/update-install.ts` installs it with
+`pip install --upgrade local-operator`. Nothing here reads that file, so if
+upstream ever renames `_ENV_DISABLE`, every switch this repository sets becomes a
+variable nobody reads and the incident returns with all of these tests green.
+That is the honest edge of this change: it guards the local spelling, not the
+contract. A cheap pin would have to assert the installed backend's own **name**,
+which is the part that matters — a version assertion would not close it, because
+the contract is the name rather than the number — and nothing in this repository
+can reach that name today.
+
+**The consumer's OWN `.env` fold, one hop past the app.** `local_operator/env.py`
+folds a `.env` at the python package root with `override: true` when it is
+imported:
+
+```python
+dotenv_path = Path(__file__).parent.parent / ".env"   # env.py:18
+load_dotenv(dotenv_path, override=True)               # env.py:19
+```
+
+which is `…/site-packages/.env` for a wheel, uv or pipx install, and the SOURCE
+CHECKOUT ROOT for an editable one — inside the backend process the app has just
+handed `1` to. Reproduced against the shipped consumer with the package root in
+scratch: inherited `1` → `''` after the import → `notifications_enabled() ==
+True`. It is latent rather than live on the machine this was written on
+(`…/site-packages/.env` and `~/local-operator/.env` both absent, and neither the
+backend's own `AGENTS.md` nor its `.env.template` mentions the key), but it is the
+same class as the fold this PR fixes, one layer further in: what this change
+makes true is that a `.env` in the APP's working directory cannot replace the
+launch, not that nothing downstream of the app ever can.
 
 ## Deliberately not changed
 

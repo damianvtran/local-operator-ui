@@ -171,9 +171,18 @@ function guarded(file, name, index, site, why, binding) {
 	return { file, name, index, guarded: true, site, why, binding };
 }
 
-/** A site that boots Electron or an app, with the reason it carries no switch. */
-function exempt(file, name, index, why, site) {
-	return { file, name, index, guarded: false, why, site };
+/**
+ * A site that boots Electron or an app, with the reason it carries no switch.
+ *
+ * `noEnv` is for the exemption whose reason is a NEGATIVE claim about the call —
+ * "it deliberately passes no `env`" — and it asserts exactly that. An exemption
+ * is a decision, and a decision nothing checks is the shape this whole file
+ * exists to remove: adding an `env` to the published launcher's spawn would leave
+ * the sentence false with the suite green, and that launcher is what `npx
+ * local-operator-ui` and the published tarball run.
+ */
+function exempt(file, name, index, why, site, noEnv) {
+	return { file, name, index, guarded: false, why, site, noEnv };
 }
 
 const APP_SPAWN_SITES = [
@@ -236,6 +245,8 @@ const APP_SPAWN_SITES = [
 		"spawn",
 		1,
 		"the PUBLISHED launcher, and a person's own app on their own screen: it deliberately passes no `env`, so the caller's environment is inherited and `pnpm app:headless`'s switch or an export of the operator's own reaches it",
+		undefined,
+		true,
 	),
 ];
 
@@ -325,6 +336,15 @@ test("every Electron spawn site in scripts/ and bin/ is named, and the guarded o
 				site.text,
 				row.site,
 				`${where} must pass the environment its child needs (${row.why})`,
+			);
+		}
+		if (row.noEnv) {
+			// The negative half of an exemption: this row is exempt BECAUSE it
+			// inherits the caller's environment, so it must go on not overriding it.
+			assert.doesNotMatch(
+				site.text,
+				/env\s*:/,
+				`${where} claims to pass no environment (${row.why}), and now it passes one - either drop the override or drop the exemption`,
 			);
 		}
 		if (!row.guarded) continue;

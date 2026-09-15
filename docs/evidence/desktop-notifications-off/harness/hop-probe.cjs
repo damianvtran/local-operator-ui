@@ -17,9 +17,16 @@
  *              fold a `.env` from and whether that file is there at all;
  *   folded@N   the same key N ms later, i.e. after the fold - the value the app
  *              itself now believes, and the one that used to be handed on;
- *   spawn      the environment of EVERY child the app spawns, which is where
- *              the backend's launch appears (`python3 -c ... serve --port N`)
- *              beside the shell-environment probe (`bash -c ...`).
+ *   spawn      the environment of every child the app starts through
+ *              `child_process.spawn`/`spawnSync`. In a real run with the backend
+ *              manager enabled that is two children: `python3 -c` is
+ *              `runBounded`'s bounded identity probe, and `bash -c 'exec "$@"'
+ *              … serve --port N` is the BACKEND itself (see
+ *              `transcript-launch-hop.txt`). The `source "$HOME/.zshrc" && env`
+ *              child that becomes `shellEnv` is NOT among them: the app starts
+ *              it with `promisify(exec)`, and a patched `cp.spawn` never sees an
+ *              `exec`/`execFile` child. That is this instrument's reach, stated
+ *              rather than discovered by a reader of the log.
  *
  * It records and calls through: nothing is replaced, the app runs normally and
  * the backend it starts is a real one. The runs in `transcript-launch-hop.txt`

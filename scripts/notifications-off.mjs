@@ -74,8 +74,16 @@
  * (`src/main/update-install.ts` -> `pip install --upgrade local-operator`). A
  * rename upstream turns every switch set here into a variable nobody reads, and
  * every test in this repo stays green while the banners come back. A pin would
- * have to assert the installed backend's own name or version against this
- * constant; nothing in this repo can do that today.
+ * have to assert the installed backend's own NAME against this constant - the
+ * name IS the contract, so a version assertion would not close it - and nothing
+ * in this repo can reach that name today.
+ *
+ * And the same package folds a `.env` of its OWN, one hop past everything here:
+ * `local_operator/env.py` runs `load_dotenv(<package root>/.env, override=True)`
+ * at import time (`.../site-packages/.env` for a wheel or uv install, the source
+ * checkout root for an editable one), in the very process these children become.
+ * That file can put the banners back after every guard in this repo has done its
+ * job; `AGENTS.md` states the exposure and the reproduction.
  */
 export const NOTIFICATIONS_ENV = "LOCAL_OPERATOR_NO_NOTIFICATIONS";
 
