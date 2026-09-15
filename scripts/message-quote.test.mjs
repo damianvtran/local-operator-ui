@@ -21,7 +21,10 @@ import { build } from "esbuild";
  *    the markup and `parseReplies` takes it back out, so a staged quote really
  *    is what the next send carries and the sent turn really does render a quote
  *    block instead of raw tags. Asserted against the SHIPPED functions rather
- *    than against a copy of the format, because a copy is what drifts.
+ *    than against a copy of the format, because a copy is what drifts. The
+ *    shapes exercised are the ones that OCCUR - multi-paragraph quotes, a drag
+ *    across a line break, and prose that merely MENTIONS the markup - because a
+ *    guard built from the one input shape that works is not a guard.
  *
  * The store bundle below reuses `canonical-chat.test.mjs`'s fixture plugin: the
  * store's only outside contact is the desktop transport and the echo registry,
@@ -119,24 +122,50 @@ const assistantRow = (text, extra = {}) => ({
 
 /* ---- which rows offer Quote -------------------------------------------- */
 
+/**
+ * `isQuotable` as the rows call it: the record, and the BODY it would stage.
+ *
+ * The body is the row's text with the reply markup taken out, which is the same
+ * string for every row that does not carry a reply - so it defaults to the text
+ * and the tests that are about the body pass one explicitly.
+ */
+const offers = (record, body = record.text) => isQuotable(record, body);
+
 test("a user turn with words offers a quote", () => {
-	assert.equal(isQuotable(userRow("Why did the second row fail?")), true);
+	assert.equal(offers(userRow("Why did the second row fail?")), true);
 });
 
 test("a settled assistant answer offers a quote", () => {
-	assert.equal(isQuotable(assistantRow("Because the schema moved.")), true);
+	assert.equal(offers(assistantRow("Because the schema moved.")), true);
 });
 
 test("a streaming assistant row does not: a prefix is not a claim", () => {
 	assert.equal(
-		isQuotable(assistantRow("Because the sch", { streaming: true })),
+		offers(assistantRow("Because the sch", { streaming: true })),
 		false,
 	);
 });
 
 test("a row with no text at all does not, on either kind", () => {
-	assert.equal(isQuotable(userRow("   \n  ")), false);
-	assert.equal(isQuotable(assistantRow("")), false);
+	assert.equal(offers(userRow("   \n  ")), false);
+	assert.equal(offers(assistantRow("")), false);
+});
+
+test("a turn whose whole text is reply markup offers nothing to quote", () => {
+	// A user who types the tag literally. Its RAW text is non-empty, so a rule
+	// that read `record.text` mounted a control whose press was a silent no-op -
+	// `quoteText` answers null for an empty body. The rule reads the body.
+	const row = userRow("<reply-to>x</reply-to>");
+	const { remainingContent } = parseReplies(row.text);
+	assert.equal(row.text.trim().length > 0, true);
+	assert.equal(remainingContent, "");
+	// The same record read the way the call site used to read it: the raw text
+	// still says "there are words here", which is why the control mounted.
+	assert.equal(isQuotable(row, row.text), true);
+	// Read the body the toolkit would actually stage, the control is gone -
+	// and pressing it would have done nothing anyway.
+	assert.equal(isQuotable(row, remainingContent), false);
+	assert.equal(quoteText(remainingContent, null), null);
 });
 
 test("ledger and receipt rows do not, whatever they carry", () => {
@@ -150,7 +179,7 @@ test("ledger and receipt rows do not, whatever they carry", () => {
 	];
 	for (const record of others) {
 		assert.equal(
-			isQuotable(record),
+			offers(record),
 			false,
 			`${record.kind} must not offer Quote`,
 		);
@@ -253,7 +282,6 @@ test("a selection reaching into another turn is not this turn's quote", () => {
 
 test("a selection of the toolkit's own label is not a quote", () => {
 	const turn = node("div");
-	const prose = node("p", turn);
 	const toolkit = node("div", turn);
 	toolkit.attr = true;
 	const button = node("button", toolkit);
@@ -262,6 +290,41 @@ test("a selection of the toolkit's own label is not a quote", () => {
 		endContainer: button,
 		commonAncestorContainer: button,
 		text: "Quote",
+	});
+	assert.equal(selectionTextIn(turn), null);
+});
+
+test("a drag that starts in the prose and ends on the strip is not this turn's quote", () => {
+	// The case the attribute exists for: the reader drags over the whole row.
+	// The TURN is the common ancestor of that range, so a test of the common
+	// ancestor asks the one node that cannot be inside the toolkit and lets the
+	// strip's text through as this turn's words - which is what the shipped
+	// implementation did until the endpoints were tested.
+	const turn = node("div");
+	const prose = node("p", turn);
+	const toolkit = node("div", turn);
+	toolkit.attr = true;
+	const button = node("button", toolkit);
+	select({
+		startContainer: prose,
+		endContainer: button,
+		commonAncestorContainer: turn,
+		text: "the second clause Quote",
+	});
+	assert.equal(selectionTextIn(turn), null);
+});
+
+test("the same drag from the strip back into the prose is excluded too", () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	const toolkit = node("div", turn);
+	toolkit.attr = true;
+	const button = node("button", toolkit);
+	select({
+		startContainer: button,
+		endContainer: prose,
+		commonAncestorContainer: turn,
+		text: "Quote the second clause",
 	});
 	assert.equal(selectionTextIn(turn), null);
 });
@@ -293,6 +356,139 @@ test("a staged quote survives buildSendPayload and comes back out of parseReplie
 		[quoted],
 	);
 	assert.equal(remainingContent, "Why did it fail?");
+});
+
+/*
+ * THE CASE THE SINGLE-LINE ROUND TRIP ABOVE CANNOT SEE.
+ *
+ * `quoteText` does not truncate, so a quote is normally several paragraphs and
+ * the scan has to cross a newline to find the closing tag. Every quote in this
+ * file used to be one line, which is the one shape that worked while the scan
+ * was not dotall - so the suite was green on a path that failed for the common
+ * case. Each test below is a shape that goes through the shipped functions.
+ */
+
+const PARAGRAPH =
+	"Because that row's `tenant_id` was null, and the new column is `not null`.\n\nThe other four hundred rows were fine.";
+
+test("a multi-paragraph quote survives the round trip", () => {
+	const staged = quoteText(PARAGRAPH, null);
+	assert.equal(staged, PARAGRAPH);
+	const payload = buildSendPayload("Why did it fail there?", [
+		{ text: staged },
+	]);
+	assert.equal(
+		payload,
+		`<reply-to>${PARAGRAPH}</reply-to>\nWhy did it fail there?`,
+	);
+	const { replies, remainingContent } = parseReplies(payload);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		[PARAGRAPH],
+	);
+	assert.equal(remainingContent, "Why did it fail there?");
+});
+
+test("a selection dragged across two visual lines survives the same way", () => {
+	// `selection.toString()` carries the newline between the lines, so the
+	// second route into the same broken scan is a plain drag across a line break.
+	const selected = "the second row was null\nand the new column is not null";
+	const staged = quoteText("the whole answer\nover two paragraphs", selected);
+	assert.equal(staged, selected);
+	const { replies, remainingContent } = parseReplies(
+		buildSendPayload("and then?", [{ text: staged }]),
+	);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		[selected],
+	);
+	assert.equal(remainingContent, "and then?");
+});
+
+test("stacked multi-line quotes each come back whole, in order", () => {
+	const first = "one\n\ntwo";
+	const second = "three\n\nfour";
+	const { replies, remainingContent } = parseReplies(
+		buildSendPayload("both, please", [{ text: first }, { text: second }]),
+	);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		[first, second],
+	);
+	assert.equal(remainingContent, "both, please");
+});
+
+test("whitespace and blank lines around the join belong to neither side", () => {
+	const staged = quoteText("  a quoted line\n\nand its second paragraph  ", null);
+	assert.equal(staged, "a quoted line\n\nand its second paragraph");
+	const { replies, remainingContent } = parseReplies(
+		buildSendPayload("  spaced words  ", [{ text: staged }]),
+	);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		[staged],
+	);
+	assert.equal(remainingContent, "spaced words");
+});
+
+/*
+ * WHERE THE MARKUP IS, WHICH IS THE OTHER HALF OF THE SAME CONTRACT.
+ *
+ * `buildSendPayload` is the only writer of this markup and it always PREFIXES
+ * it, so a scan that matches the tag anywhere is reading prose as transport.
+ */
+
+test("an answer that only MENTIONS the markup keeps its words", () => {
+	// The rendering lie this rules out: an assistant discussing the wire format
+	// had the recited tags deleted from its body and re-painted as a quote.
+	const body =
+		"The composer prefixes `<reply-to>...</reply-to>` onto the payload.\nThat is why the row splits it out.";
+	const { replies, remainingContent } = parseReplies(body);
+	assert.deepEqual(replies, []);
+	assert.equal(remainingContent, body);
+});
+
+test("an ECHOED prompt is still split, because an echo is a leading run", () => {
+	const { replies, remainingContent } = parseReplies(
+		"<reply-to>earlier words</reply-to>\nWhat did you mean?",
+	);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		["earlier words"],
+	);
+	assert.equal(remainingContent, "What did you mean?");
+});
+
+test("a quote that itself mentions the opening tag is not cut short", () => {
+	const body = "the tag <reply-to> opens the block";
+	const { replies, remainingContent } = parseReplies(
+		buildSendPayload("noted", [{ text: body }]),
+	);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		[body],
+	);
+	assert.equal(remainingContent, "noted");
+});
+
+test("a literal closing tag inside a quote is the format's limit, pinned", () => {
+	// Not papered over and not fixable here: the tag is not escapable, so a body
+	// containing `</reply-to>` closes the block early and its tail becomes the
+	// speaker's words. `buildSendPayload` would have to escape, which is a wire
+	// format change on both writers and on the legacy path as well as this one.
+	const payload = buildSendPayload("noted", [
+		{ text: "write </reply-to> to close the block" },
+	]);
+	assert.equal(
+		payload,
+		"<reply-to>write </reply-to> to close the block</reply-to>\nnoted",
+	);
+	const { replies, remainingContent } = parseReplies(payload);
+	assert.deepEqual(
+		replies.map((reply) => reply.text),
+		["write "],
+	);
+	assert.equal(remainingContent, "to close the block</reply-to>\nnoted");
 });
 
 test("several staged quotes stack, and each is recoverable", () => {
