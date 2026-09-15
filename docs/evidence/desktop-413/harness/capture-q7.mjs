@@ -28,6 +28,11 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+/* The one thing this rig shares with `scripts/`: the switch that keeps its own
+   Chrome out of the operator's keychain. See `scripts/chrome-keychain.mjs` for
+   the measurements - a scratch `HOME` has no login keychain, and Chrome then
+   asks the operator to authorize creating one. */
+import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 
 const OUT = process.argv[2];
 const ORIGIN = process.env.DESKTOP_413_ORIGIN ?? "http://localhost:5199";
@@ -99,15 +104,18 @@ const main = async () => {
 	dataDir = join(tmpdir(), `lo-q7-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 
-	chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-sandbox",
-		"--disable-gpu",
-		"--hide-scrollbars",
-		`--user-data-dir=${dataDir}`,
-		"--remote-debugging-port=0",
-		"about:blank",
-	]);
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
 		const timer = setTimeout(
