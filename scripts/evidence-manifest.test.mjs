@@ -8,6 +8,7 @@ import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import {
 	citationAncestryFailures,
 	frames as frameFiles,
+	partialCaptureFailures,
 	provenanceFailures,
 	stampFailures,
 } from "./check-evidence.mjs";
@@ -384,6 +385,130 @@ test("a pass that added no frames does not claim to have added them", () => {
 		addedAt: "2026-09-13T00:00:00.000Z",
 		addedAtHead: GOOD.head,
 	});
+});
+
+/*
+ * ---- the pass's own tally, from the diff its commits wrote ------------------
+ */
+
+/**
+ * A fake `git` for `partialCaptureFailures`, which runs exactly one command.
+ *
+ * The fixtures above never reach this check: they carry no `partialCapture`, so
+ * it returns early. These do, which is the point - the field's guard belongs in
+ * this half rather than behind `main()`'s ImageMagick loop, because that loop is
+ * what left the field unguarded in the suite CI runs (round 5, R5-2; the fast
+ * half was 15/15 green with the field mutated to 179).
+ */
+const fakeDiff = (paths) => (args) =>
+	args[0] === "diff" && args[1] === "--name-only" ? paths.join("\n") : null;
+
+const MOVED_FRAMES = [
+	"docs/evidence/chat-run-panel/mcp-key-saving/dracula.webp",
+	"docs/evidence/chat-run-panel/mcp-key-saving/dune.webp",
+	"docs/evidence/chat-run-panel/mcp-key-error/dune.webp",
+];
+
+const HONEST_PASS = {
+	refreshedAtHead: GOOD.head,
+	refreshedFrames: 3,
+	refreshedStories: [
+		"chat-run-panel--mcp-key-saving",
+		"chat-run-panel--mcp-key-error",
+	],
+};
+
+test("a tally that accounts for the pass's own diff passes", () => {
+	assert.deepEqual(
+		partialCaptureFailures(
+			{ ...GOOD, partialCapture: HONEST_PASS },
+			fakeDiff(MOVED_FRAMES),
+		),
+		[],
+	);
+});
+
+test("a tally below the pass's own diff fails, and says by how much", () => {
+	// The round-4 incident exactly: `refreshedFrames` carried a previous run's
+	// total, so the block claimed fewer frames than the pass's commit rewrote.
+	const out = partialCaptureFailures(
+		{ ...GOOD, partialCapture: { ...HONEST_PASS, refreshedFrames: 2 } },
+		fakeDiff(MOVED_FRAMES),
+	);
+	assert.equal(out.length, 1);
+	assert.match(
+		out[0],
+		/claims 2 refreshed frames, but 3 committed frames differ/,
+	);
+});
+
+test("a story list that lost a directory the pass rewrote fails", () => {
+	/*
+	 * The other half of R5-2, and the round-4 incident's own shape: the field
+	 * named 17 of the 21 directories the pass rewrote. `refreshedStories` is what
+	 * a reader follows to the frames, so a list that lost one describes a run that
+	 * did not happen - and until this check, nothing anywhere asked.
+	 */
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedStories: ["chat-run-panel--mcp-key-saving"],
+			},
+		},
+		fakeDiff(MOVED_FRAMES),
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /refreshedStories misses 1 story directory/);
+	assert.match(out[0], /chat-run-panel--mcp-key-error/);
+});
+
+test("a width-suffixed directory is the story it belongs to", () => {
+	// A story swept at several widths writes `<leaf>@<width>`, one directory per
+	// width, under the story's own id - so the claim is the story, not the width.
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedStories: ["chat-older-history-slot--app-minimum-width"],
+			},
+		},
+		fakeDiff([
+			"docs/evidence/chat-older-history-slot/app-minimum-width@900/dracula.webp",
+		]),
+	);
+	assert.deepEqual(out, []);
+});
+
+test("frames inside a declared set are not demanded of the pass's tally", () => {
+	// A set is declared precisely because a sweep CANNOT produce its frames, so
+	// the denominator excludes every declared directory - the same exclusion
+	// `frames` is measured with, and the reason the shipped field passes on the
+	// over-claim side rather than on a coincidence.
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedFrames: 0,
+				refreshedStories: [],
+			},
+		},
+		fakeDiff(["docs/evidence/live/one/dracula.webp"]),
+	);
+	assert.deepEqual(out, []);
+});
+
+test("a repository git cannot read is not a failure", () => {
+	// A shallow checkout cannot answer for the pass's commits. Skipping is the
+	// only honest verdict there, and it is the direction the citation checks take:
+	// absence of evidence is not evidence of a stale tally.
+	assert.deepEqual(
+		partialCaptureFailures({ ...GOOD, partialCapture: HONEST_PASS }, () => null),
+		[],
+	);
 });
 
 /* ---- the shipped manifest, against the tree it ships in ------------------ */

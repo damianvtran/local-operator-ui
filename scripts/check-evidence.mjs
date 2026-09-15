@@ -239,6 +239,136 @@ const shaReaders = (git) => ({
 });
 
 /**
+ * The story id a committed frame's DIRECTORY names.
+ *
+ * `capture-evidence.mjs` writes `docs/evidence/<surface>/<leaf>/<theme>.webp`
+ * and records the story behind it as `<surface>--<leaf>`, which is the form
+ * `refreshedStories` is written in, so comparing the two means undoing the
+ * capturer's own naming. A story swept at several WIDTHS writes one directory
+ * per width (`<leaf>@<width>`, the suffix stripped here); an entry that names
+ * its own `dir` writes a second state of one story under a name the story's id
+ * only prefixes (`chat-tool-rows--expanded-overflow-narrow` writes
+ * `expanded-overflow-narrow-end`), which `claimedStory` covers.
+ */
+const frameStoryId = (file) => {
+	const segments = relative(ROOT, file).split("/").slice(2, -1);
+	if (segments.length < 2) return null;
+	const [surface, ...leaf] = segments;
+	return `${surface}--${leaf.join("/").replace(/@\d+$/, "")}`;
+};
+
+/**
+ * Whether a `refreshedStories` entry names the directory `surface`/`leaf` is,
+ * or the one the capturer's `dir` override extends it into.
+ */
+const claimedStory = (id, surface, leaf) => {
+	const cut = id.indexOf("--");
+	if (cut === -1 || id.slice(0, cut) !== surface) return false;
+	const name = id.slice(cut + 2);
+	return name === leaf || leaf.startsWith(`${name}-`);
+};
+
+/**
+ * `partialCapture` must not UNDERSTATE the pass it describes, in the half CI
+ * runs.
+ *
+ * The requirement is `main()`'s and was written there first: the capturer once
+ * wrote the current run's totals rather than accumulating them, so a pass
+ * narrowed into twelve per-story runs recorded `2 frames, 1 story` while 26
+ * frames moved, and the gate stayed green because every count in it is about
+ * what is ON DISK while this block is about what a RUN did. `refreshedFrames`
+ * must therefore account for at least the `.webp` the pass's commits rewrote,
+ * one-sided by design: a re-capture that reproduces identical bytes leaves no
+ * trace in the diff, so the claim may legitimately EXCEED it.
+ *
+ * It lives here, beside `frames`, because it was in the wrong half for a whole
+ * round (round 5, R5-2; round 4 said the same of the number itself): its only
+ * comparison was `main()`'s, behind that function's ImageMagick loop, and no
+ * CI workflow runs `main()` - so mutating `refreshedFrames` to 179 or 228 left
+ * `scripts/evidence-manifest.test.mjs` 15/15 green. Nothing here needs an
+ * image: it is one `git diff --name-only` over the evidence path plus a walk
+ * that excludes the declared sets, and `stampFailures` calls it, which is what
+ * binds it to the SHIPPED manifest from the fast suite.
+ *
+ * `refreshedStories` is asked the same question, and it had no guard anywhere.
+ * A pass rewrites whole story directories, so a list that lost one is a list
+ * that no longer describes the run it is cited beside - the round-4 incident's
+ * own shape, where the field named 17 of the 21 directories the pass rewrote
+ * plus one whose frames had not moved at all.
+ *
+ * Frames inside a `supplementary` set are excluded from both terms: a set is
+ * declared precisely because a sweep CANNOT produce its frames, so demanding
+ * this field claim them would demand it claim frames no run wrote. Skipped when
+ * git cannot answer (a shallow clone, a tree with no `.git`), so this adds no
+ * new dependency on a repository - and it measures `HEAD` rather than the
+ * working tree, so an author with a capture in flight is not reported as a
+ * defect the moment they run the fast suite.
+ */
+export const partialCaptureFailures = (manifest, git = gitOut) => {
+	const out = [];
+	const pc = manifest?.partialCapture;
+	if (!pc || typeof pc !== "object" || typeof pc.refreshedAtHead !== "string")
+		return out;
+	/*
+	 * The denominator spans the whole PASS, not the last commit of it.
+	 *
+	 * `refreshedAtHead^..` measures one commit, and the capturer sums a pass
+	 * across commits (it carries the total forward while the old head is an
+	 * ancestor), so a two-commit pass checked against its second commit alone
+	 * would compare a round's total against a fraction of the round's diff and
+	 * the earlier commit's frames would go unclaimed. `passStart` is the first
+	 * commit of the pass when the capturer recorded one, and the recorded head
+	 * otherwise, so a single-commit pass measures exactly as it always did.
+	 */
+	const passStart = pc.refreshedFromHead ?? pc.refreshedAtHead;
+	const changed = git([
+		"diff",
+		"--name-only",
+		`${passStart}^`,
+		"HEAD",
+		"--",
+		relative(ROOT, EVIDENCE),
+	]);
+	if (changed === null) return out;
+	const declared = (manifest.supplementary ?? [])
+		.filter((set) => typeof set.path === "string" && set.path.length > 0)
+		.map((set) => relative(ROOT, join(EVIDENCE, set.path)));
+	const moved = changed
+		.split("\n")
+		.filter(
+			(line) =>
+				line.endsWith(".webp") &&
+				!declared.some((dir) => line.startsWith(`${dir}/`)),
+		);
+	const claimed = pc.refreshedFrames ?? 0;
+	if (moved.length > claimed) {
+		out.push(
+			`manifest.json: partialCapture claims ${claimed} refreshed frames, but ${moved.length} committed frames differ at ${pc.refreshedAtHead.slice(0, 9)} - a narrowed run overwrote the pass's total instead of accumulating it`,
+		);
+	}
+	const stories = new Set(
+		Array.isArray(pc.refreshedStories) ? pc.refreshedStories : [],
+	);
+	const unclaimed = [];
+	for (const line of moved) {
+		const id = frameStoryId(join(ROOT, line));
+		if (id === null) continue;
+		const cut = id.indexOf("--");
+		const surface = id.slice(0, cut);
+		const leaf = id.slice(cut + 2);
+		if ([...stories].some((entry) => claimedStory(entry, surface, leaf)))
+			continue;
+		if (!unclaimed.includes(id)) unclaimed.push(id);
+	}
+	if (unclaimed.length > 0) {
+		out.push(
+			`manifest.json: partialCapture.refreshedStories misses ${unclaimed.length} story director${unclaimed.length === 1 ? "y" : "ies"} the pass's commit rewrote (${unclaimed.join(", ")}) - a narrowed run overwrote the pass's list instead of accumulating it`,
+		);
+	}
+	return out;
+};
+
+/**
  * The manifest's provenance verdict, in two halves.
  *
  * ## Why this exists
@@ -426,6 +556,15 @@ export const stampFailures = (manifest, git = gitOut) => {
 				`manifest.json: \`frames\` is ${manifest.frames} but ${swept} frames are on disk outside every declared supplementary set - re-derive the swept count from \`docs/evidence\` rather than carrying the previous pass's value forward`,
 			);
 	}
+
+	/*
+	 * And the pass's own tally, on the same terms (round 5, R5-2): the two fields
+	 * above are asked about the TREE, `refreshedFrames`/`refreshedStories` about
+	 * what the pass's commits WROTE, and until now only `main()` asked the second
+	 * question - so the field could be mutated below its own denominator and the
+	 * fast suite stayed green. `partialCaptureFailures` states the arithmetic.
+	 */
+	out.push(...partialCaptureFailures(manifest, git));
 
 	return out;
 };
@@ -721,76 +860,15 @@ export const main = (lockFd) => {
 		/*
 		 * `partialCapture` must not UNDERSTATE the pass it describes.
 		 *
-		 * Until this check existed, nothing here asserted anything about that
-		 * block, and the field understated a round twice: the capturer wrote the
-		 * current run's totals rather than accumulating, so a pass narrowed into
-		 * twelve per-story runs recorded `2 frames, 1 story` while 26 frames
-		 * moved. The gate stayed green both times, because the counts above are
-		 * about what is ON DISK and this field is about what a RUN did.
-		 *
-		 * The check is against the frames that actually MOVED at this head, read
-		 * from git rather than from the block itself: `refreshedFrames` must
-		 * account for at least the changed `.webp` files, because a pass cannot
-		 * have rewritten a frame it does not claim to have captured. It is
-		 * one-sided - a re-capture producing identical bytes leaves no trace in
-		 * the diff, so the claim may legitimately EXCEED the diff - and it is
-		 * skipped when git cannot answer, so THIS check adds no new dependency on
-		 * a repository. It does not make the whole gate pass without one: the
-		 * provenance checks above already fail on a tree with no `.git`, because
-		 * a manifest that names commits nothing can resolve is exactly what they
-		 * exist to catch.
-		 *
-		 * Frames inside a `supplementary` set are excluded from the denominator.
-		 * Those sets are declared precisely because a sweep CANNOT produce them
-		 * - a live-app capture, an older source tree, a state the app does not
-		 * ship - so they arrive by a route that is not a capture run, and
-		 * counting them would demand that this field claim frames no run wrote.
-		 * The incident this check exists for is unaffected: it moved 25 frames,
-		 * none of them in a declared set.
+		 * The arithmetic lives in `partialCaptureFailures` because this half of
+		 * the gate runs behind the ImageMagick loop below and no CI workflow runs
+		 * it, so a field guarded only here is a field with no guard (round 5,
+		 * R5-2; round 4 said the same of the number itself). `stampFailures` -
+		 * and through it `scripts/evidence-manifest.test.mjs` - calls the same
+		 * function, so the denominator, the set exclusion and the two messages
+		 * cannot drift between the halves.
 		 */
-		const pc = manifest.partialCapture;
-		if (pc && typeof pc === "object" && pc.refreshedAtHead) {
-			// `addedFrames` is a SUBSET of `refreshedFrames` in the capturer's own
-			// tally (`captured` counts every frame written, new or overwritten),
-			// so summing the two here would double-count a new surface.
-			const claimed = pc.refreshedFrames ?? 0;
-			/*
-			 * The denominator spans the whole PASS, not the last commit of it.
-			 *
-			 * `refreshedAtHead^..` measures one commit, and the capturer now sums
-			 * a pass across commits (it carries the total forward while the old
-			 * head is an ancestor), so a two-commit pass checked against its
-			 * second commit alone would compare a round's total against a
-			 * fraction of the round's diff - the two would agree and the earlier
-			 * commit's frames would go unclaimed. `passStart` is the first commit
-			 * of the pass when the capturer recorded one, and the recorded head
-			 * otherwise, so a single-commit pass measures exactly as before.
-			 */
-			const passStart = pc.refreshedFromHead ?? pc.refreshedAtHead;
-			const changed = gitOut([
-				"diff",
-				"--name-only",
-				`${passStart}^`,
-				"--",
-				relative(ROOT, EVIDENCE),
-			]);
-			if (changed !== null) {
-				const moved = changed
-					.split("\n")
-					.filter(
-						(line) =>
-							line.endsWith(".webp") &&
-							!extra.some((set) =>
-								line.startsWith(`${relative(ROOT, join(EVIDENCE, set.path))}/`),
-							),
-					).length;
-				if (moved > claimed) {
-					failures.push(
-						`manifest.json: partialCapture claims ${claimed} refreshed frames, but ${moved} committed frames differ at ${pc.refreshedAtHead.slice(0, 9)} - a narrowed run overwrote the pass's total instead of accumulating it`,
-					);
-				}
-			}
-		}
+		failures.push(...partialCaptureFailures(manifest));
 	}
 
 	for (const line of failures) console.log(`FAIL  ${line}`);
