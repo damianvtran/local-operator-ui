@@ -59,6 +59,13 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	/*
+	 * A session's code memory (the `sessions.variables.*` ops). A backend that
+	 * predates the surface simply does not advertise the key, so
+	 * `desktopFeatureEnabled` answers false and the panel offers "Update the
+	 * backend" rather than firing a call it knows will 404.
+	 */
+	| "session_variables"
 	// Content search over past conversations. Its own feature rather than part
 	// of `session_catalogue`: a client renders the catalogue perfectly well
 	// against a backend without the search route, so gating the list on the

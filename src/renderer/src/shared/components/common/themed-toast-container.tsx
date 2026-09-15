@@ -17,7 +17,7 @@
 
 import type { FC } from "react";
 import type { CSSProperties } from "react";
-import { Toaster, toast } from "sonner";
+import { Toaster, type ToasterProps, toast } from "sonner";
 
 /**
  * Inline values are the only thing sonner's unlayered stylesheet cannot beat.
@@ -52,8 +52,13 @@ const TOAST_THEME: CSSProperties = {
  *
  * A wrapper around sonner's Toaster that applies theme-aware styling and includes a close button.
  */
-export const ThemedToastContainer: FC = () => (
+// Undefined preserves Sonner's production lifetime. Evidence stories can hold
+// their one real refusal without replaying mutations or altering error cooldowns.
+export const ThemedToastContainer: FC<Pick<ToasterProps, "duration">> = ({
+	duration,
+}) => (
 	<Toaster
+		duration={duration}
 		position="bottom-right"
 		toastOptions={{
 			style: TOAST_THEME,
