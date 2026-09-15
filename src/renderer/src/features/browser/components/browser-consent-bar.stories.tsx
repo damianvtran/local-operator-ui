@@ -1,8 +1,9 @@
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC, ReactNode } from "react";
+import type { ComponentProps, FC, ReactNode } from "react";
 import { useEffect } from "react";
-import type { PendingConsentView } from "../hooks/use-browser-chrome";
+import type { ApprovalRequestInput } from "../model/approval-queue-model";
+import { approvalRows } from "../model/approval-queue-model";
 import { BrowserConsentBar } from "./browser-consent-bar";
 
 /**
@@ -17,19 +18,40 @@ import { BrowserConsentBar } from "./browser-consent-bar";
  * same session store the hand-over dialog reads, rather than passed as strings,
  * so what the frame shows is what the component computes.
  *
+ * THE ROWS ARE BUILT BY THE REAL MODEL, not hand-written. `approvalRows` is what
+ * the route runs, so the ordinals and the "expires in N minutes" readings in these
+ * frames are the ones the product computes from the same inputs — a hand-written
+ * row could show a number the model would never produce, which is the class of
+ * evidence defect this file exists to avoid.
+ *
  * Seeding happens in an effect rather than at module scope: a store written at
  * import time would leak into every later story in the same Storybook session,
  * and these frames are compared against each other.
  */
 
-const PENDING: PendingConsentView = {
-	entryId: "specimen-1",
-	origin: "https://login.example.com",
-	authority: "login.example.com",
-	broad: { scope: "domain", key: "example.com" },
-	expiresAt: Date.now() + 600_000,
-	requesterSessionId: "session-1f4c",
-};
+const NOW = Date.now();
+
+function request(
+	entryId: string,
+	authority: string,
+	minutesLeft: number,
+	requesterSessionId: string | null = null,
+	broad: ApprovalRequestInput["broad"] = {
+		scope: "domain",
+		key: authority.split(".").slice(-2).join("."),
+	},
+): ApprovalRequestInput {
+	return {
+		entryId,
+		origin: `https://${authority}`,
+		authority,
+		broad,
+		expiresAt: NOW + Math.round(minutesLeft * 60_000),
+		requesterSessionId,
+	};
+}
+
+const LIVE = request("specimen-1", "login.example.com", 9, "session-1f4c");
 
 const WithSessions: FC<{
 	titles: Record<string, string>;
@@ -46,6 +68,31 @@ const WithSessions: FC<{
 	return <div className="bg-canvas p-6">{children}</div>;
 };
 
+/** The tray's own props are the band's states; every story here renders the band
+ * exactly as the route mounts it, so the framing (ground, edge, `aria-live`) is in
+ * the frame rather than implied. */
+const bar = (
+	rows: ApprovalRequestInput[],
+	options: {
+		busy?: boolean;
+		selectedEntryId?: string | null;
+		resolved?: ComponentProps<typeof BrowserConsentBar>["resolved"];
+		dockOpen?: boolean;
+	} = {},
+) => ({
+	rows: approvalRows(rows, NOW),
+	resolved: options.resolved ?? [],
+	selectedEntryId:
+		options.selectedEntryId === undefined ? null : options.selectedEntryId,
+	onSelect: () => {},
+	busy: options.busy ?? false,
+	onDecide: () => {},
+	dockOpen: options.dockOpen ?? false,
+	onToggleDock: () => {},
+	headerLabel: (count: number) =>
+		count === 1 ? "1 approval waiting" : `${count} approvals waiting`,
+});
+
 const meta = {
 	title: "Browser/Consent bar",
 	component: BrowserConsentBar,
@@ -56,9 +103,11 @@ type Story = StoryObj<typeof meta>;
 /**
  * The ordinary case: one request, the broad option offered because the host
  * computed its domain key, and every choice's own lifetime stated beneath it.
+ * One pending request is also the case with NO header row: there is nothing to
+ * disambiguate, so the band is the card.
  */
 export const Pending: Story = {
-	args: { pending: PENDING, waitingBehind: 0, busy: false, onDecide: () => {} },
+	args: bar([LIVE]),
 	render: (args) => (
 		<div className="bg-canvas p-6">
 			<BrowserConsentBar {...args} />
@@ -67,18 +116,21 @@ export const Pending: Story = {
 };
 
 /**
- * The attribution case D2 is about, at its hardest: a request that is NOT the
- * oldest in the queue, and one the user arrived at from a notification. The band
- * names the conversation that asked and says how many others are waiting, so a
- * click on a banner cannot leave the user answering the wrong agent's request.
+ * The attribution case D2 is about, at its hardest, now with a queue behind it:
+ * a request that is NOT the oldest, a requester the session list knows, and two
+ * others waiting. The header row carries the count and one numbered chip per live
+ * request, and the card answers for the SELECTED one — which is what stops a click
+ * on request 2 from being read as an answer to request 1.
  */
 export const AttributedAndQueued: Story = {
-	args: {
-		pending: PENDING,
-		waitingBehind: 2,
-		busy: false,
-		onDecide: () => {},
-	},
+	args: bar(
+		[
+			request("specimen-a", "docs.example.org", 8, "session-9a11"),
+			LIVE,
+			request("specimen-c", "shop.example.net", 4, "session-9a11"),
+		],
+		{ selectedEntryId: "specimen-1" },
+	),
 	render: (args) => (
 		<WithSessions titles={{ "session-1f4c": "Quarterly research" }}>
 			<BrowserConsentBar {...args} />
@@ -93,12 +145,9 @@ export const AttributedAndQueued: Story = {
  * to be a generic agent.
  */
 export const UnnamedRequesterNoDomain: Story = {
-	args: {
-		pending: { ...PENDING, broad: null },
-		waitingBehind: 0,
-		busy: false,
-		onDecide: () => {},
-	},
+	args: bar([
+		request("specimen-1", "login.example.com", 9, "session-1f4c", null),
+	]),
 	render: (args) => <BrowserConsentBar {...args} />,
 };
 
@@ -111,12 +160,7 @@ export const UnnamedRequesterNoDomain: Story = {
  * row against row across the frames.
  */
 export const AnAgent: Story = {
-	args: {
-		pending: { ...PENDING, requesterSessionId: null },
-		waitingBehind: 0,
-		busy: false,
-		onDecide: () => {},
-	},
+	args: bar([request("specimen-1", "login.example.com", 9, null)]),
 	render: (args) => (
 		<div className="bg-canvas p-6">
 			<BrowserConsentBar {...args} />
@@ -129,7 +173,61 @@ export const AnAgent: Story = {
  * click must not be able to race.
  */
 export const Busy: Story = {
-	args: { pending: PENDING, waitingBehind: 0, busy: true, onDecide: () => {} },
+	args: bar([LIVE], { busy: true }),
+	render: (args) => (
+		<div className="bg-canvas p-6">
+			<BrowserConsentBar {...args} />
+		</div>
+	),
+};
+
+/**
+ * Three waiting, with the SECOND selected — the state the operator's numbered
+ * callout exists for. The chips are the "numbered badge callout" of his first
+ * ask, and the selected one is the request the card below answers.
+ */
+export const ThreeWaiting: Story = {
+	args: bar(
+		[
+			request("specimen-a", "docs.example.org", 9, "session-1f4c"),
+			request("specimen-b", "shop.example.net", 6, "session-1f4c"),
+			request("specimen-c", "news.example.io", 2, "session-1f4c"),
+		],
+		{ selectedEntryId: "specimen-b" },
+	),
+	render: (args) => (
+		<WithSessions titles={{ "session-1f4c": "Quarterly research" }}>
+			<BrowserConsentBar {...args} />
+		</WithSessions>
+	),
+};
+
+/**
+ * The two ways a request leaves without an answer (spec 3.4), from the renderer's
+ * own memory of the last projection: one whose ten minutes ran out, and one the
+ * agent withdrew. Both are non-interactive, both are the answer to "why did the
+ * count change", and NEITHER is a denial — no durable record is written and the
+ * agent may ask again.
+ */
+export const ExpiredAndWithdrawn: Story = {
+	args: bar([], {
+		resolved: [
+			{
+				key: "gone-1",
+				kind: "expired",
+				origin: "https://login.example.com",
+				authority: "login.example.com",
+				at: NOW,
+			},
+			{
+				key: "gone-2",
+				kind: "withdrawn",
+				origin: "https://shop.example.net",
+				authority: "shop.example.net",
+				at: NOW,
+			},
+		],
+	}),
 	render: (args) => (
 		<div className="bg-canvas p-6">
 			<BrowserConsentBar {...args} />
