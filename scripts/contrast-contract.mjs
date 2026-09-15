@@ -613,6 +613,40 @@ const PERCEPTIBLE = [
 		maxWeightChange: 2.0,
 		against: "surface",
 	},
+	{
+		/*
+		 * The empty-chat suggestion chip's hover ground step.
+		 *
+		 * Nothing else in this file measures this pair, and that is the whole
+		 * reason the row exists: the chip becomes borderless, so every assertion
+		 * the chip used to be adjacent to (a control's edge against its ground)
+		 * stops applying — and what is left of the chip's appearance in the hover
+		 * state is whether one ground is perceivably above the other at all.
+		 *
+		 * `elevated` on `canvas` is measured worst-case at ΔE00 4.21 (iceberg),
+		 * clear of § 3's aim of 2. The floor is set at 2 rather than at the
+		 * measured 4.21 because the assertion is "a human can tell these apart",
+		 * not "this palette is the one we shipped" — a re-authored palette that
+		 * collapsed the step toward 2 would still be a hover state, and one that
+		 * collapsed it to 0 would be the picker-host D1 defect (a fill on its own
+		 * ground) reproduced on the composer.
+		 *
+		 * `pairedWith: "canvas"` is the chip's OTHER state stated as a role rather
+		 * than as an absence: at rest the chip draws no fill at all, so the colour
+		 * behind it IS the ground it sits on. The loop below then measures the
+		 * pair as ratio(elevated, canvas) against ratio(canvas, canvas) = 1.0, i.e.
+		 * it asserts that the hover step stays a step — a fill that lifted the
+		 * chip's own weight more than 2x is a control declaring itself, which is
+		 * exactly what this change removes.
+		 */
+		name: "suggestion chip hover ground step",
+		role: "elevated",
+		on: ["canvas"],
+		minDeltaE: 2.0,
+		pairedWith: "canvas",
+		maxWeightChange: 2.0,
+		against: "canvas",
+	},
 ];
 
 /**
@@ -793,6 +827,36 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
 		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
+	},
+	{
+		/*
+		 * The empty-chat suggestion chip.
+		 *
+		 * This control deliberately has NO row in `CONTROLS`, and the reason is
+		 * worth writing down so the next reader does not add one and conclude the
+		 * wrong thing from its failure. The assertion loop computes
+		 * `fill ? p[c.fill] : ground` and requires `max(fillEdge, borderEdge) >= 3:1`.
+		 * At rest the chip has no fill and no border, so the fill collapses to the
+		 * ground and the edge ratio to 1:1; hovered, the fill is `elevated`, whose
+		 * ratio to `canvas` is ~1.1:1 — a ground step, deliberately far below the
+		 * 3:1 that belongs to a BOUNDARY. Every existing hovered row that uses
+		 * `elevated` carries `borderControl` at the same time (`ask option button
+		 * (hover)`); this control has no border, and that is the point rather than
+		 * the omission.
+		 *
+		 * So the gate this control needs is a call-site pin plus a perceivability
+		 * row (`suggestion chip hover ground step` above), which is what this file
+		 * provides for exactly this class of edit.
+		 *
+		 * The pin spans the variant AND the class list on purpose, because the
+		 * class list alone would stay green through the edit that undoes the
+		 * change: restoring `variant="outline"` puts `border border-control` back
+		 * (`button.tsx`) without touching one character of the className.
+		 */
+		what: "the empty-chat suggestion chip is borderless",
+		file: "src/renderer/src/features/chat/components/measured-suggestion-stack.tsx",
+		must: 'variant="ghost"\n\t\t\t\t\t\tsize="sm"\n\t\t\t\t\t\tclassName="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"',
+		why: "reverting to `variant=\"outline\"` re-introduces seven 3:1 boundaries as the loudest thing on a screen with nothing to compete with them, and `hairline` is the tempting wrong answer here: it is the decorative role and measures 1.25:1 at its worst, which is a boundary nobody can see rather than a quiet one",
 	},
 ];
 
