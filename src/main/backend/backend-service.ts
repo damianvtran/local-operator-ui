@@ -55,13 +55,16 @@ import {
 	HEALTH_PATH,
 	OWNED_RECORD_WINDOW_MS,
 	OWNED_REGISTRATION_WINDOW_MS,
+	type UnreachableCause,
 	type WedgedRecord,
 	claimDesktopPlane,
+	classifyUnreachable,
 	discoverDaemons,
 	normaliseAddress,
 	parseRecord,
 	pidLiveness,
 	probeIdentity,
+	probeUnidentified,
 	readIdentity,
 	reapStaleRecords,
 	recordAddress,
@@ -105,6 +108,25 @@ export const OWNED_STOP_WORST_MS =
  * reason as the bounds above: the quit path's failsafe adds it up rather than
  * naming a number. */
 export const READINESS_POLL_INTERVAL_MS = 1_000;
+
+/**
+ * Where the app keeps the bearer for the daemon it spawns, inside its userData
+ * directory. 0600, written by `mintDesktopToken` on every managed start and read
+ * by `persistedDesktopToken` on every launch, so the daemon a previous run left
+ * serving is attachable.
+ */
+const DESKTOP_TOKEN_FILENAME = "desktop-token";
+
+/**
+ * What the spawn gate found at the address this app is configured for.
+ *
+ * `null` (no occupancy) is deliberately absent from this union: the gate's
+ * caller tests for it, so "provably free" cannot be mistaken for a variant
+ * somebody forgot to handle.
+ */
+type OriginOccupancy =
+	| { kind: "daemon"; pid: number | null; version: string; detail: string }
+	| { kind: "silent"; cause: UnreachableCause; detail: string };
 
 const execPromise = promisify(exec);
 
@@ -193,6 +215,15 @@ export class BackendServiceManager {
 	private nextRecoveryAt = 0;
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
+	/**
+	 * Why the last `/health` read did not return 200, for the callers that must
+	 * tell a refusal from an expired budget: `null` when it was not a transport
+	 * failure at all (the address answered, with a status this path does not
+	 * accept).
+	 */
+	private lastHealthFailure: UnreachableCause | null = null;
+
+	/** The one probe loop's interval handle. */
 	private healthCheckInterval: NodeJS.Timeout | null = null;
 	/** The only process this manager may terminate. Null means it owns nothing,
 	 * which is a reason to report "nothing to stop" - never to go looking. */
@@ -223,6 +254,29 @@ export class BackendServiceManager {
 	private shellEnv: Record<string, string | undefined> = {};
 	// External/dev backends may be explicitly paired through main's environment.
 	// Managed starts always rotate this; it is never exposed by preload or logs.
+	/**
+	 * The credential this app holds for its OWN daemon.
+	 *
+	 * Read from disk at construction, and REPLACED by a freshly minted, persisted
+	 * one on every managed start. Those are two halves of one rule:
+	 *
+	 *   - the read is what makes a daemon the previous run left running
+	 *     attachable. The app deliberately leaves its daemon serving when it
+	 *     attached to an external backend, and a daemon it spawned is
+	 *     env-governed from the spawn (its record publishes `claim_key: ""`), so
+	 *     the ONLY credential that can ever open it is the token its spawner held.
+	 *     A launch that starts with no token there declines the daemon it owns and
+	 *     starts a second one onto its port - measured on the operator's machine as
+	 *     the 07:47 -> 09:17 sequence, ending in `[Errno 48] Address already in
+	 *     use`;
+	 *   - the write is why the token still changes when the app REPLACES a daemon
+	 *     in place: the relay's cache key is this value (see `getStreamRelay`), and
+	 *     a token that survived a restart would leave a subscription pointed at a
+	 *     daemon this app had already stopped.
+	 *
+	 * The environment still wins, because an explicitly paired app is a deliberate
+	 * configuration and not a cache to be second-guessed.
+	 */
 	private desktopToken: string | null =
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
 
@@ -468,7 +522,12 @@ export class BackendServiceManager {
 	}
 
 	requestDesktop(input: unknown): Promise<DesktopResponse> {
-		return requestDesktop(input, this.backendUrl, this.desktopToken);
+		return requestDesktop(input, this.backendUrl, this.desktopToken).then(
+			(response) => {
+				this.noteTransportAnswer();
+				return response;
+			},
+		);
 	}
 
 	requestDesktopMedia(
@@ -480,7 +539,29 @@ export class BackendServiceManager {
 			bytes,
 			this.backendUrl,
 			this.desktopToken,
-		);
+		).then((response) => {
+			this.noteTransportAnswer();
+			return response;
+		});
+	}
+
+	/**
+	 * Tell the state machine that this app's own request reached the daemon.
+	 *
+	 * WHY this counts EVERY answer, including a gated route's `401`/`403`: the
+	 * capability rules elsewhere in this file say a refusal is not a LIVENESS
+	 * signal, and that is about not calling it "connected". Turned around, a
+	 * refusal is the strongest liveness evidence this app has - a process read the
+	 * request and wrote a status line - which is exactly what a probe that ran out
+	 * of its 2 s budget failed to establish. Without this, one long agent turn was
+	 * enough to detach the connection and disable every read the daemon was still
+	 * answering.
+	 *
+	 * Only a state that actually moves pushes a snapshot: this runs on every
+	 * desktop call, and one IPC wake-up per request would be worse than the bug.
+	 */
+	private noteTransportAnswer(): void {
+		if (this.daemonState.recordTransportSuccess()) this.notifyStatus();
 	}
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
@@ -534,6 +615,20 @@ export class BackendServiceManager {
 
 		// Load shell environment variables
 		this.loadShellEnvironment();
+
+		/*
+		 * The credential for this app's OWN daemon, read before anything asks
+		 * whether there is one to attach to.
+		 *
+		 * ORDER IS THE WHOLE POINT. `src/main/index.ts` calls
+		 * `checkExistingBackend()` first and `start()` only when discovery finds
+		 * nothing, so a token minted inside `startOwned()` does not exist yet when
+		 * the app decides whether it can attach to the daemon the previous run left
+		 * running - which is how a daemon that was serving got declined and a second
+		 * one was spawned onto its port. Loading it here means the first adoption
+		 * pass already holds the credential.
+		 */
+		this.desktopToken = this.desktopToken || this.persistedDesktopToken();
 
 		// Log initialization status
 		logger.info(
@@ -1520,8 +1615,53 @@ export class BackendServiceManager {
 			return false;
 		}
 
-		// No external backend, start our own
-		this.desktopToken = randomBytes(32).toString("hex");
+		/*
+		 * NEVER SPAWN ONTO A PORT A LOCAL OPERATOR DAEMON IS ANSWERING.
+		 *
+		 * WHY this runs before every spawn attempt rather than only at discovery.
+		 * Discovery's verdict answers "is there a daemon I may attach to"; this
+		 * answers "would a child of mine be able to bind that port". They came apart
+		 * on the operator's machine: discovery had no record to work with (`0
+		 * record(s)`) so it reported nothing to attach to, the app spawned onto a
+		 * port where a Local Operator daemon was already serving, and the child died
+		 * with `[Errno 48] Address already in use` - every ~10 s, each an orphan,
+		 * while `/health` and `/v1/desktop/sessions` kept answering 200 to the app's
+		 * own reads in between. The spawner was the only process that could have
+		 * known, and it was asking too late.
+		 *
+		 * Three answers stop the spawn, and the distinction between them is what the
+		 * app can honestly act on:
+		 *
+		 *   - a daemon identifies itself at that address, and no record this app can
+		 *     read gives it a credential: the app takes the capability path instead
+		 *     (recorded as `unattachable`, never as "offline");
+		 *   - the address did not answer in time: something may well be listening, and
+		 *     a busy daemon missing a 2 s budget is exactly the condition this file's
+		 *     probe rules exist for, so the port is not treated as free;
+		 *   - nothing answered and the socket was REFUSED: that is the one answer
+		 *     that proves the port free, and it is the ordinary first run.
+		 *
+		 * A listener that answers without identifying as a daemon does not stop the
+		 * spawn: this app cannot tell a reverse proxy or a development fixture from a
+		 * port it may use, refusing would leave it with no backend and no path to one,
+		 * and the cost of being wrong there - one child that cannot bind, reported by
+		 * the readiness loop - is smaller than the cost of never starting one. The
+		 * observation still goes to the log, so the case is diagnosable.
+		 *
+		 * Retried on the next recovery tick, so a port that frees up is spawned onto
+		 * without an app restart.
+		 */
+		const occupancy = await this.configuredOriginOccupancy();
+		if (occupancy) {
+			this.observeOriginOccupancy(occupancy);
+			this.startHealthCheck();
+			return false;
+		}
+
+		// No external backend, start our own. The token is minted and persisted
+		// here, and the START is where it rotates: see the field's own note for why
+		// a launch reads it back before rotating it.
+		this.desktopToken = this.mintDesktopToken();
 		// The generation THIS start creates, retained so a failure below cleans up
 		// its own child: by then `this.ownedServe` may name a successor.
 		let captured: OwnedServe | null = null;
@@ -2103,10 +2243,141 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 
+			// An answer of ANY status proves the transport reached the daemon, so the
+			// failure cause is cleared here and set only by the catch below.
+			this.lastHealthFailure = null;
 			return response.ok;
-		} catch (_error) {
+		} catch (error) {
+			/*
+			 * Remember WHY this failed, not just that it did. The caller above reports
+			 * an unattached daemon from this boolean alone, and a refused socket is
+			 * evidence of absence while an expired budget is not - so the cause has to
+			 * survive the fold into a boolean rather than being re-guessed upstream.
+			 */
+			this.lastHealthFailure = classifyUnreachable(error);
 			return false;
 		}
+	}
+
+	/**
+	 * What is answering the address this app is configured to serve on, if
+	 * anything that stops it starting a daemon there.
+	 *
+	 * `null` means "start it": either the socket was refused (the one answer that
+	 * proves a port free), or something answered that is not a Local Operator
+	 * daemon. The second arm is deliberate and narrow - see the spawn gate in
+	 * `startOwned()` - and the observation is logged either way.
+	 */
+	private async configuredOriginOccupancy(): Promise<OriginOccupancy | null> {
+		const probe = await probeUnidentified(this.backendUrl, {
+			timeoutMs: PROBE_TIMEOUT_MS,
+		});
+		switch (probe.reason) {
+			case "identity-mismatch":
+				return {
+					kind: "daemon",
+					pid: probe.identity?.pid ?? null,
+					version: probe.identity?.version ?? "",
+					detail: probe.detail,
+				};
+			case "not-a-daemon":
+				logger.info(
+					`${this.backendUrl}${HEALTH_PATH} answered and is not a Local Operator daemon (${probe.detail}); starting a daemon anyway, as this app always has.`,
+					LogFileType.BACKEND,
+				);
+				return null;
+			case "unreachable":
+				return probe.cause === "refused"
+					? null
+					: {
+							kind: "silent",
+							cause: probe.cause ?? "other",
+							detail: probe.detail,
+						};
+			default:
+				// Any other verdict is still an ANSWER, so the address is not free.
+				return {
+					kind: "silent",
+					cause: "other",
+					detail: probe.detail,
+				};
+		}
+	}
+
+	/**
+	 * Publish what the spawn gate saw, in the vocabulary the copy already uses.
+	 *
+	 * Two outcomes reach here and each gets the state that names it: a Local
+	 * Operator daemon this app may not drive is `unattachable` (state `wedged` - a
+	 * server IS running and this app did not attach to it, no banner claiming it is
+	 * offline), and an address that did not answer in time is `unanswered` -
+	 * `degraded`, usable, no banner, and still counted, because a budget that
+	 * expired is not evidence of absence either way.
+	 */
+	private observeOriginOccupancy(occupancy: OriginOccupancy): void {
+		const daemonLine = occupancy.kind === "daemon";
+		const what = daemonLine
+			? `A Local Operator daemon is running at ${this.backendUrl}${occupancy.pid ? ` (pid ${occupancy.pid}${occupancy.version ? `, v${occupancy.version}` : ""})` : ""} and no serve record this app can read describes that address, so this app holds no credential for it`
+			: `${this.backendUrl} did not prove itself free (${occupancy.detail})`;
+		const detail = `${what}. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and will attach to or start a daemon as soon as the address is free or admits it.`;
+		this.daemonState.observe(
+			occupancy.kind === "silent"
+				? { kind: "unanswered", cause: occupancy.cause, detail }
+				: { kind: "unattachable", detail },
+		);
+		logger.info(`Not spawning a daemon: ${detail}`, LogFileType.BACKEND);
+		this.notifyStatus();
+	}
+
+	/**
+	 * The token governing the daemon this app spawned in a PREVIOUS run, read from
+	 * the 0600 file beside the app's other per-user state, or null.
+	 *
+	 * Read-only on purpose: a launch that has not spawned anything yet must not
+	 * create a credential, or "this app holds no token" (a first run, and the
+	 * honest reason to decline a daemon it cannot open) would become unreachable.
+	 */
+	private persistedDesktopToken(): string | null {
+		try {
+			const stored = fs.readFileSync(this.desktopTokenFile(), "utf8").trim();
+			return stored || null;
+		} catch {
+			// Absent or unreadable: this is a first run as far as re-attaching goes.
+			return null;
+		}
+	}
+
+	/**
+	 * Mint the token for a daemon this app is about to spawn, and persist it so the
+	 * next launch can re-attach to that daemon instead of starting a second one.
+	 *
+	 * A token that cannot be written still governs this run's child - failing to
+	 * start over a cache file would be the worse trade - and the log line names
+	 * the cost, which is the stranded daemon next launch.
+	 */
+	private mintDesktopToken(): string {
+		const token = randomBytes(32).toString("hex");
+		try {
+			const file = this.desktopTokenFile();
+			fs.mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+			fs.writeFileSync(file, token, { mode: 0o600 });
+		} catch (error) {
+			logger.warn(
+				"Could not persist the desktop token; a daemon spawned now will not be re-attachable after a restart.",
+				LogFileType.BACKEND,
+				error,
+			);
+		}
+		return token;
+	}
+
+	private desktopTokenPath: string | null = null;
+
+	private desktopTokenFile(): string {
+		if (this.desktopTokenPath === null) {
+			this.desktopTokenPath = join(this.appDataPath, DESKTOP_TOKEN_FILENAME);
+		}
+		return this.desktopTokenPath;
 	}
 
 	/**
@@ -2129,12 +2400,30 @@ export class BackendServiceManager {
 			// deprecated pre-record path): a 200 is the most that can be known,
 			// and it is reported as what it is.
 			const ok = await this.checkHealth();
-			return ok
-				? { kind: "identified" }
-				: {
-						kind: "failed",
-						detail: `No answer from ${this.backendUrl}${HEALTH_PATH}`,
-					};
+			if (ok) return { kind: "identified" };
+			/*
+			 * `checkHealth` cannot tell a refusal from an expired budget, so the cause it
+			 * captured decides which of the three facts this observation is:
+			 *
+			 *   - nothing captured: the address ANSWERED, with a status this path does not
+			 *     accept. A process is there and says it is not ready, which is an owned
+			 *     child this app must replace, so it counts like a refusal;
+			 *   - a refused socket: nothing is accepting on that port, which is evidence
+			 *     of absence and may detach on the ordinary three misses;
+			 *   - anything else (a budget that expired, an unknown throw): the address may
+			 *     well be listening and busy, so it is counted as `unanswered` and needs
+			 *     `UNANSWERED_BEFORE_DETACHED` of them.
+			 */
+			const failure = this.lastHealthFailure;
+			return {
+				kind:
+					failure === null || failure === "refused" ? "failed" : "unanswered",
+				cause: failure ?? "other",
+				detail:
+					failure === null
+						? `${this.backendUrl}${HEALTH_PATH} answered a status this app does not accept`
+						: `No answer from ${this.backendUrl}${HEALTH_PATH}`,
+			};
 		}
 		const probe = await probeIdentity(this.backendUrl, expected, {
 			timeoutMs: PROBE_TIMEOUT_MS,
@@ -2159,10 +2448,24 @@ export class BackendServiceManager {
 					detail: `${this.backendUrl} answered but is not a Local Operator daemon (${probe.detail})`,
 				};
 			case "unreachable":
-				return {
-					kind: "failed",
-					detail: `${this.backendUrl} did not answer (${probe.detail})`,
-				};
+				/*
+				 * THE fix for the operator's report, and the reason the cause is carried
+				 * this far. A refused socket means nothing is accepting on the port - the
+				 * daemon is gone, and three of those may detach. A budget that expired with
+				 * no answer means the opposite: something is listening and was busy. One
+				 * long agent turn was enough to produce three of those while every session
+				 * read succeeded, and the app reported its server offline for it.
+				 */
+				return probe.cause === "refused"
+					? {
+							kind: "failed",
+							detail: `${this.backendUrl} refused the connection (${probe.detail})`,
+						}
+					: {
+							kind: "unanswered",
+							cause: probe.cause,
+							detail: `${this.backendUrl} did not answer (${probe.detail})`,
+						};
 		}
 	}
 
