@@ -78,11 +78,7 @@ import {
 	slashRunAllowed,
 } from "./slash-contract";
 import { commandSuggestions, matchChoices } from "./slash-rank";
-import {
-	ARMED_ONLY_DESTINATIONS,
-	type ArmingCatalogueRow,
-	armedOnlyVocabulary,
-} from "./slash-submit";
+import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
 import {
 	caretPhase,
 	replaceSpan,
@@ -92,13 +88,14 @@ import {
 } from "./slash-token";
 
 /*
- * Re-exported, not redeclared: the planner owns the words and the destination
+ * Imported, not redeclared: the planner owns the words and the destination
  * set (`slash-submit.ts`), and its test suite executes them. A component file
- * cannot be bundled by that harness, so a second copy here would be a second
- * answer to "which words arm by pick" — the drift this change is closing.
+ * cannot be bundled by that harness, so a second DEFINITION here would be a
+ * second answer to "which words arm by pick" — the drift this change is closing.
+ * They are not re-exported either: the planner's own module is the one route to
+ * them, and a second public path with no caller is only a place for the next
+ * reader to look (review N1).
  */
-export { ARMED_ONLY_DESTINATIONS, armedOnlyVocabulary };
-export type { ArmingCatalogueRow };
 
 export type SlashCommandMeta = {
 	name: string;
@@ -227,11 +224,18 @@ export type SlashCompletionState = {
 	/** Words the planner must not hoist and only a PICK may arm. */
 	armedOnlyCommands: ReadonlySet<string>;
 	/**
-	 * Whether text survives the caret's word: the draft a pick of an armed row
+	 * Whether text survives the caret's LINE: the draft a pick of an armed row
 	 * would HOIST (stage with the surviving text as its argument). Read off the
 	 * draft by `useSlashCompletion`, which has the text and the caret.
 	 */
 	hoists: boolean;
+	/**
+	 * Whether this pane can address a session — the dispatcher's question, read
+	 * from the caller. The arming lines decline to promise a run where it is
+	 * false, because that promise is one keystroke ahead of the refusal
+	 * (design D3 / UX U1).
+	 */
+	paneHasSession: boolean;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -338,6 +342,16 @@ export type SlashCompletionArgs = {
 	sessionId?: string;
 	/** The session's active profile, for the roster lists' current marker. */
 	activeProfile?: { team?: unknown; agent?: unknown };
+	/**
+	 * Whether the pane this composer sits on can address a SESSION — the
+	 * dispatcher's own question, passed down from the page that builds it.
+	 *
+	 * It is not `sessionId` above. That one is the id the entity LISTS query with,
+	 * and on a real New-chat pane it holds the PANE's identity while no command can
+	 * run there at all; this one is the answer the popup's arming line and the
+	 * staged note both have to give (UX U1 / design D3).
+	 */
+	paneHasSession?: boolean;
 };
 
 export function useSlashCompletion({
@@ -345,6 +359,7 @@ export function useSlashCompletion({
 	selectionStart,
 	sessionId,
 	activeProfile,
+	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
@@ -612,6 +627,7 @@ export function useSlashCompletion({
 		active: state.active,
 		matches,
 		listId,
+		paneHasSession,
 		activeDescendantId:
 			state.open && visible && matches[state.active]
 				? `${listId}-${rowId(matches[state.active])}`
@@ -707,6 +723,15 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			activeRow?.kind === "command"
 				? pickArmsCommand(activeRow, state.armedOnlyCommands)
 				: false,
+		// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
+		// instead of running, which is what their two lines have to say (UX U2/U3).
+		takesDraft:
+			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
+		// The armed row's destination, so the promise this line makes about the
+		// next Enter is the note's own sentence rather than a second one (design D4).
+		destination:
+			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
+		paneHasSession: state.paneHasSession,
 		hoists: state.hoists,
 		chosenByHand: state.chosenByHand,
 		unambiguous: activeArgument
@@ -750,6 +775,8 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			activeRow?.kind === "command"
 				? pickArmsCommand(activeRow, state.armedOnlyCommands)
 				: false,
+		takesDraft:
+			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
 		hoists: state.hoists,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
@@ -1000,7 +1027,16 @@ export function handleSlashKeyDown(
 	});
 	switch (intent.kind) {
 		case "move":
-			state.setActive(intent.index);
+			/*
+			 * A key that MOVED the marker is the choice; one that clamped back onto
+			 * the row it was already on is not. Latching the gate on the second kind
+			 * armed the goal row after an Up on the first row — the marker had not
+			 * moved, nothing on screen had changed, and Enter then hoisted and staged
+			 * the sentence (review F2). Moving without latching is what the pointer's
+			 * own hover does, so the no-op takes that route.
+			 */
+			if (intent.moved) state.setActive(intent.index);
+			else state.setActiveHover(intent.index);
 			return true;
 		case "apply": {
 			const row = state.matches[intent.index];

@@ -83,7 +83,12 @@ import {
 	useSlashCompletion,
 } from "./slash-commands";
 import { completionFor } from "./slash-completion";
-import { pickArmsCommand, pointerPickRuns, stagedNote } from "./slash-contract";
+import {
+	pickArmsCommand,
+	pointerPickRuns,
+	stagedNote,
+	stagedSentence,
+} from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
@@ -346,6 +351,25 @@ type MessageInputProps = {
 	 */
 	unavailable?: boolean;
 	/**
+	 * Whether this pane can address a SESSION — the dispatcher's own question.
+	 *
+	 * The page builds one dispatcher per pane and hands it the canonical session id
+	 * it may address (`chat-page.tsx`), so this is that answer, stated once beside
+	 * the dispatcher instead of re-derived here. The composer needs it because two
+	 * of its sentences are about what the NEXT Enter can do — the popup's arming
+	 * line and the staged note — and a pane that cannot address a session answers
+	 * both with the dispatcher's refusal clause rather than a promise.
+	 *
+	 * Optional, and absent means NO session to address: the only callers that leave
+	 * it out are the story fixtures, and the honest reading of "nobody said" is the
+	 * one that does not promise a run. It is deliberately NOT derived from
+	 * `sessionStatus` (present on a draft pane, from the preview) or from
+	 * `conversationId` (on a draft pane that is the PANE's identity, a non-empty
+	 * string) — that derivation is exactly how the note came to promise a goal on
+	 * the pane whose next Enter is refused (UX U1).
+	 */
+	paneHasSession?: boolean;
+	/**
 	 * The session's own readings — model, effort, context, spend — and the way
 	 * to open each one's picker.
 	 *
@@ -591,6 +615,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
+			paneHasSession: propPaneHasSession,
 			runDetails,
 		},
 		ref,
@@ -828,10 +853,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * key that could only fail.
 		 */
 		const slashSessionId = sessionStatus ? conversationId : undefined;
+		/*
+		 * The pane's own answer, and the one the two arming sentences read: a draft
+		 * pane supplies `sessionStatus` (from the preview) and holds a non-empty
+		 * `conversationId` (the pane's identity), so "is this composer holding a
+		 * session id" is TRUE on the very pane whose next Enter the dispatcher
+		 * refuses (UX U1). The popup's line and the note are the surfaces on screen
+		 * before and after that Enter, so both take the caller's answer.
+		 */
+		const paneHasSession = propPaneHasSession ?? false;
 		const slash = useSlashCompletion({
 			inputValue: newMessage,
 			selectionStart: caret,
 			sessionId: slashSessionId,
+			paneHasSession,
 			activeProfile: {
 				team: sessionStatus?.frontend?.active_team,
 				agent: sessionStatus?.frontend?.active_agent,
@@ -1112,7 +1147,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					stage(
 						plan.text,
 						plan.caret,
-						`Staged ${plan.text.trim()}. Enter again runs it.`,
+						// The same sentence shape the arming's note uses, from the same helper:
+						// the quote is the user's own text, so its trailing stop is not doubled
+						// by the template (QA round 2, Q2-2).
+						`Staged ${stagedSentence(plan.text.trim())} Enter again runs it.`,
 					);
 					return;
 				}
@@ -1192,7 +1230,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							stagedNote(
 								armed.text.trim(),
 								row.command.destination,
-								Boolean(slashSessionId),
+								paneHasSession,
 							),
 						);
 						return;
@@ -1244,8 +1282,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				applyPlan,
 				stage,
 				// The staged note's promise is conditioned on whether this pane can run
-				// anything yet (UX U5), so the callback reads the session with the rest.
-				slashSessionId,
+				// anything yet (UX U5), so the callback reads the dispatcher's own answer
+				// with the rest.
+				paneHasSession,
 			],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
