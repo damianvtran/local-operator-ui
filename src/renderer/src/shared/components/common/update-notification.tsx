@@ -1,3 +1,4 @@
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
 import { withPathBreaks } from "@shared/lib/path-breaks";
@@ -170,18 +171,28 @@ export const UpdateContainer = ({
 }: HTMLAttributes<HTMLDivElement> & {
 	tone?: "notice" | "failed";
 	role?: "status" | "alert";
-}) => (
-	<div
-		role={role ?? (tone === "failed" ? "alert" : "status")}
-		className={cn(
-			"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
-			"rounded-lg bg-elevated p-4 shadow-overlay",
-			"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
-			className,
-		)}
-		{...props}
-	/>
-);
+}) => {
+	/*
+	 * This card is `fixed top-4 right-4`, so it paints over the top-right of the
+	 * content area — which over the browser route is the native view, and a native
+	 * view paints above all DOM (design 11.3). Registering here rather than at each
+	 * caller is the same funnel argument as `BaseDialog`'s: mounting this wrapper IS
+	 * being visible, so a caller cannot forget.
+	 */
+	useSuppressBrowserView(true, "update-notice");
+	return (
+		<div
+			role={role ?? (tone === "failed" ? "alert" : "status")}
+			className={cn(
+				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
+				"rounded-lg bg-elevated p-4 shadow-overlay",
+				"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
+				className,
+			)}
+			{...props}
+		/>
+	);
+};
 
 /**
  * A panel heading, with the marker that says this one failed.

@@ -216,6 +216,33 @@ export const STORIES = [
 	["chat-composer-states--busy", 900, 160],
 	["chat-composer-states--conversation-gone", 900, 160],
 
+	/* The browser feature's own surfaces, added with the round that remediated its
+	   review. This is the ONE part of the visible browser a browser tool can
+	   reach: the chrome band is ordinary DOM, while the native page view under it
+	   is not (U1). So these frames are the evidence for the consent band's copy
+	   and attribution (D2/D3) and for the panel a refused navigation now shows
+	   (D1) — and the sizes are tight to their content, because a band is short and
+	   a frame that is 99% ground crosses `check-evidence`'s uniformity ceiling. */
+	["browser-consent-bar--pending", 1280, 300],
+	["browser-consent-bar--attributed-and-queued", 1280, 300],
+	["browser-consent-bar--unnamed-requester-no-domain", 1280, 280],
+	["browser-consent-bar--an-agent", 1280, 300],
+	["browser-consent-bar--busy", 1280, 300],
+	["browser-load-failure--connection-refused", 1280, 420],
+	["browser-load-failure--name-not-resolved", 1280, 420],
+	["browser-load-failure--unmapped-code", 1280, 420],
+	/*
+	 * 1180 rather than 900 for the populated sheet, and the number is the fix for a
+	 * measured defect (review round 2, D8): the sheet is `h-full` of the VIEWPORT
+	 * with its own scroller, so at 900 the panel ended at a boundary rule with the
+	 * "Browsing data" section cut off inside it, while the empty frame showed that
+	 * section in full. A frame that claims to show the populated sheet has to
+	 * contain it. The capture floors the viewport at this number and grows it to the
+	 * content, so declaring it is what makes the whole panel photographable.
+	 */
+	["browser-sites-sheet--populated", 1280, 1180],
+	["browser-sites-sheet--empty", 1280, 760],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
