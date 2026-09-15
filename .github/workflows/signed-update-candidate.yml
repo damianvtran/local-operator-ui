@@ -38,6 +38,20 @@ jobs:
     # wedged step cannot hold a runner for the 360-minute default.
     timeout-minutes: 5
     steps:
+      # Before the checkout rather than after it: `actions/checkout` falls back to
+      # the event ref when its `ref` input is empty or whitespace (both are
+      # trimmed), so an unset input would check out `main` and this job would then
+      # record main's head under a heading that says it is the pinned candidate.
+      # Refusing the input first means the summary can only ever name a commit the
+      # dispatch actually named.
+      - name: Refuse a missing or unpinned candidate SHA
+        env:
+          EXPECTED: ${{ inputs.expected_source_sha }}
+        run: |
+          # The same shape rule as the guard before the keychain. `build` goes on
+          # to prove this equals the checked-out HEAD; here it is enough that the
+          # value cannot be absent.
+          [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.expected_source_sha }}
@@ -77,20 +91,33 @@ jobs:
     # cannot run, and CSC_KEY_PASSWORD / APPLE_ID / APPLE_ID_PASSWORD /
     # APPLE_TEAM_ID are never placed in a live environment - until that reviewer
     # approves the deployment. That makes the approval, rather than the right to
-    # dispatch, the thing that releases the key, and it holds however the
-    # dispatch was made and whoever made it. The `provenance` job above is what
-    # the approver reads to decide.
+    # dispatch, the thing that releases the key. The `provenance` job above is
+    # what the approver reads to decide.
     #
-    # This file cannot confer that protection: referencing an environment that
-    # does not exist creates it unprotected, and this repository has none today,
-    # so an admin must add the required reviewer to an environment named exactly
-    # `signed-update-candidate` before the first dispatch. Until that rule
-    # exists, this job is the ref guard and nothing more.
+    # This is a standing precondition, not a one-time setup: it holds only while
+    # `signed-update-candidate` carries its required reviewer, so confirm that is
+    # still the case before dispatching. As configured, that environment has one
+    # required reviewer (`damianvtran`), a custom branch policy of `main`, and
+    # `can_admins_bypass: true`. The branch policy is a second control and it
+    # fails closed - a deployment ref outside it is refused rather than run
+    # unprotected - and a dispatch from `main` is the case this workflow exists
+    # for. `can_admins_bypass: true` means an admin can force the deployment
+    # without approving it, which no workflow file can turn off.
+    #
+    # The failure mode to keep in mind is the quiet one: referencing an
+    # environment that does not exist creates it *unprotected* and the job simply
+    # runs, so a misspelled environment name is a way past the gate rather than a
+    # red job.
     #
     # Not covered: the environment does not read the tree, so an approver can
-    # still approve unreviewed code by mistake; it does not stop another workflow
-    # in this repository from reaching these repository-level secrets; and it
-    # does not apply to `exact-update`, which is built to hold no secret at all.
+    # still approve unreviewed code by mistake; the approval is same-identity -
+    # one required reviewer with self-review permitted (`prevent_self_review` is
+    # off), on a repository where every agent dispatches as that one account - so
+    # it is a deliberate second action by one principal rather than review by a
+    # second person, and it can be taken through the pending-deployments API; it
+    # does not stop another workflow in this repository from reaching these
+    # repository-level secrets; and it does not apply to `exact-update`, which is
+    # built to hold no secret at all.
     environment: signed-update-candidate
     steps:
       - uses: actions/checkout@v4
@@ -183,14 +210,15 @@ jobs:
 
   exact-update:
     needs: build
-    # The guard is repeated here rather than left to `needs:` alone: a later
-    # `always()` or `continue-on-error:` added above to preserve the proof
-    # artifact would otherwise be enough to run candidate code on a dispatch this
-    # workflow does not serve. Writing an `if` on a job also drops the implicit
-    # `success()` check, so the build result is asserted explicitly rather than
-    # assumed. A fresh hosted VM: no signing keychain, Apple/API secrets, live
-    # installation or user sessions. The harness refuses self-hosted and local
-    # execution.
+    # The guard is repeated here rather than left to `needs:` alone: `always()` -
+    # the obvious thing to reach for when the proof artifact should upload after a
+    # failed build - is a status-check function, and including one of those in an
+    # `if` replaces the default `success()` check that a plain condition keeps. So
+    # `always()` would be enough to run candidate code on a dispatch this workflow
+    # does not serve, and the build result is asserted here explicitly to keep the
+    # guard meaning what it reads as even then. A fresh hosted VM: no signing
+    # keychain, Apple/API secrets, live installation or user sessions. The harness
+    # refuses self-hosted and local execution.
     if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
     runs-on: macos-latest
     # 35 min: downloads a ~350 MB incumbent, installs it into VM-local state with
@@ -231,12 +259,15 @@ jobs:
           INCUMBENT_TAG: ${{ inputs.incumbent_tag }}
         run: |
           # Exit 2 is BLOCKED - a capability this VM lacks, the verdict the
-          # harness prefers over a surrogate result - and exit 1 is FAIL, the
-          # candidate failing a check about what was assembled. Both fail the job,
-          # so the run list alone cannot tell a missing facility from a broken
-          # candidate; name the verdict in the summary before the non-zero exit
-          # carries it. `--evidence` is passed explicitly so the uploaded path
-          # does not depend on the harness's own default.
+          # harness prefers over a surrogate result. Exit 1 is the harness's own
+          # FAIL, a candidate failing a check about what was assembled, but it is
+          # also what node exits with when the harness is not there at all, which
+          # is exactly what a dispatch against a SHA predating it hits; the two
+          # are not distinguishable from the exit code. Both fail the job, so the
+          # label below names the outcome without asserting a cause it cannot
+          # know, and the step log is what separates them. `--evidence` is passed
+          # explicitly so the uploaded path does not depend on the harness's own
+          # default.
           status=0
           node scripts/verify-signed-update.mjs \
             --candidate-dir candidate \
@@ -245,7 +276,7 @@ jobs:
           case "$status" in
             0) verdict='PASS' ;;
             2) verdict='BLOCKED - a capability this runner lacks; not a candidate failure' ;;
-            *) verdict="FAIL - the candidate failed a check (exit $status)" ;;
+            *) verdict="FAIL - the exercise did not complete (exit $status); the log says whether a candidate check failed or the harness never started" ;;
           esac
           {
             echo "### Signed update exercise: $verdict"
