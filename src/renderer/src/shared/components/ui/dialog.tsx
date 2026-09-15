@@ -54,41 +54,56 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 > & {
 	/** Show the corner close button. */
 	showClose?: boolean;
+	/**
+	 * The scrim's own classes.
+	 *
+	 * The default scrim is `z-50`, which dims the app but NOT the connection
+	 * banner (`z-2200`, `fixed inset-x-0 top-0`): a dialog that clears the banner
+	 * has to clear its scrim too, or the banner paints between the two and shows
+	 * as an undimmed strip with its sentence sliced by the panel (UX round 2, U7).
+	 * Only a surface that has already decided it owns the screen needs this.
+	 */
+	overlayClassName?: string;
 };
 
 export const DialogContent = forwardRef<
 	ElementRef<typeof DialogPrimitive.Content>,
 	DialogContentProps
->(({ className, children, showClose = true, ...props }, ref) => (
-	<DialogPortal>
-		<DialogOverlay />
-		<DialogPrimitive.Content
-			ref={ref}
-			className={cn(
-				"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
-				"flex w-full max-w-lg flex-col gap-4",
-				"rounded-lg border border-hairline bg-elevated p-6 shadow-overlay",
-				// No entrance animation; see the note at the top of `tooltip.tsx`.
-				className,
-			)}
-			{...props}
-		>
-			{children}
-			{showClose ? (
-				<DialogPrimitive.Close asChild>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className="absolute top-4 right-4"
-						aria-label="Close"
-					>
-						<X aria-hidden="true" />
-					</Button>
-				</DialogPrimitive.Close>
-			) : null}
-		</DialogPrimitive.Content>
-	</DialogPortal>
-));
+>(
+	(
+		{ className, children, showClose = true, overlayClassName, ...props },
+		ref,
+	) => (
+		<DialogPortal>
+			<DialogOverlay className={overlayClassName} />
+			<DialogPrimitive.Content
+				ref={ref}
+				className={cn(
+					"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
+					"flex w-full max-w-lg flex-col gap-4",
+					"rounded-lg border border-hairline bg-elevated p-6 shadow-overlay",
+					// No entrance animation; see the note at the top of `tooltip.tsx`.
+					className,
+				)}
+				{...props}
+			>
+				{children}
+				{showClose ? (
+					<DialogPrimitive.Close asChild>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="absolute top-4 right-4"
+							aria-label="Close"
+						>
+							<X aria-hidden="true" />
+						</Button>
+					</DialogPrimitive.Close>
+				) : null}
+			</DialogPrimitive.Content>
+		</DialogPortal>
+	),
+);
 DialogContent.displayName = "DialogContent";
 
 export const DialogHeader = ({
