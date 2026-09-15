@@ -321,7 +321,23 @@ function installPreloadStubs() {
 	window_.api.updater ??= {
 		checkForUpdates: async () => ({ updateInfo: {}, cancellationToken: null }),
 		checkForBackendUpdates: async () => null,
-		checkForAllUpdates: async () => {},
+		/*
+		 * A verdict-shaped answer, mirroring the shipped `UpdateCheckVerdict`
+		 * (`src/main/update-check-verdict.ts`) - the real bridge resolves that value
+		 * and the banner reads `result.affirmation` off it, so a fake that returns
+		 * `void` misdescribes the contract this file exists to reproduce.
+		 *
+		 * Both channels are `unavailable` on purpose: this page scripts an owner it
+		 * never asks a version question of, and "we could not find out" is the
+		 * truthful reading of that - where `current` on both channels would EARN the
+		 * shipped affirmation and put an update toast on a frame that exists to
+		 * photograph the session switch instead.
+		 */
+		checkForAllUpdates: async () => ({
+			app: "unavailable",
+			server: "unavailable",
+			affirmation: null,
+		}),
 		updateBackend: async () => false,
 		downloadUpdate: async () => [],
 		quitAndInstall: () => {},
