@@ -454,7 +454,7 @@ Failed to authorize right 'system.keychain.create.loginkc' by client
 '/Applications/Google Chrome.app'` — Chrome trying to CREATE one, which is the
 alert. Two such denials two minutes apart (`17:29:36`, `17:31:42`), with the
 same log showing five Chrome processes reaching the Security framework in
-`17:27:40`–`17:29:35`, is why it kept coming back.
+`17:27:40`–`17:29:36`, is why it kept coming back.
 
 `scripts/chrome-keychain.mjs` exports `withMockKeychain`, which puts
 `--use-mock-keychain` on a rig's Chrome argv so OSCrypt uses a constant mock key

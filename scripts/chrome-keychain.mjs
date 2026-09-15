@@ -44,7 +44,7 @@
  *     That authorization is the alert on screen.
  *   - Two such denials two minutes apart (17:29:36 and 17:31:42, from two
  *     sessions' rigs), inside a window the same log shows five Chrome processes
- *     reaching the Security framework in (17:27:40-17:29:35), is why it "kept
+ *     reaching the Security framework in (17:27:40-17:29:36), is why it "kept
  *     popping up" rather than appearing once.
  *
  * THE SWITCH. `--use-mock-keychain` makes Chromium's `KeychainPassword` return
