@@ -150,7 +150,6 @@ export const CommandPalette: FC = () => {
 	 * Measured from the elements themselves: the content's height against the
 	 * scroller's box, so the end spacer below cannot feed back into the answer.
 	 */
-	const listContentRef = useRef<HTMLDivElement | null>(null);
 	const listObserver = useRef<ResizeObserver | null>(null);
 	const [listOverflows, setListOverflows] = useState(false);
 	const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
@@ -425,7 +424,6 @@ export const CommandPalette: FC = () => {
 	 */
 	const observeList = useCallback((node: HTMLDivElement | null) => {
 		listObserver.current?.disconnect();
-		listContentRef.current = node;
 		if (!node?.parentElement) return;
 		const list = node.parentElement;
 		const measure = () => {
@@ -484,17 +482,18 @@ export const CommandPalette: FC = () => {
 			const count = matches.length;
 			if (event.key === "ArrowDown") {
 				/*
-				 * A MODIFIED arrow is not the list's: Shift+Arrow is the caret
-				 * extending a selection and Alt+Arrow is the OS's (word-jump on this
-				 * platform, history elsewhere). The comment below has always said so;
-				 * the branch did not check, which is how the modifier arrived with the
-				 * caret frozen (UX round 2, U3).
+				 * A MODIFIED arrow is not the list's. Shift+Arrow is the caret
+				 * extending a selection, Alt+Arrow is the OS's, and on Windows and
+				 * Linux Ctrl+Arrow is the caret's word-jump — all three reached the
+				 * list and none of them belongs to it (UX round 2, U3; round 3's
+				 * review caught that the first guard was macOS-only). `meta+Arrow`
+				 * is left to the list, because Cmd+Arrow has no caret meaning here.
 				 */
-				if (event.shiftKey || event.altKey) return;
+				if (event.shiftKey || event.altKey || event.ctrlKey) return;
 				event.preventDefault();
 				if (count > 0) setSelectedIndex((current) => (current + 1) % count);
 			} else if (event.key === "ArrowUp") {
-				if (event.shiftKey || event.altKey) return;
+				if (event.shiftKey || event.altKey || event.ctrlKey) return;
 				event.preventDefault();
 				if (count > 0) {
 					setSelectedIndex((current) => (current - 1 + count) % count);
@@ -774,13 +773,16 @@ export const CommandPalette: FC = () => {
 							so chats are matched by name.
 						</p>
 					)}
-					{hasTerms && !chats.overLong && chats.unavailable && (
-						<p className="px-4 pt-2 text-ink-dim text-meta">
-							{chats.unreachable
-								? "Conversation search is unavailable while the backend is unreachable, so chats are matched by name."
-								: "Chats are matched by name. Update Local Operator to search inside conversations."}
-						</p>
-					)}
+					{hasTerms &&
+						!chats.overLong &&
+						chats.unavailable &&
+						!chats.pending && (
+							<p className="px-4 pt-2 text-ink-dim text-meta">
+								{chats.unreachable
+									? "Conversation search is unavailable while the backend is unreachable, so chats are matched by name."
+									: "Chats are matched by name. Update Local Operator to search inside conversations."}
+							</p>
+						)}
 
 					{/*
 					 * The legend bar. What it teaches swaps with the state, because the
