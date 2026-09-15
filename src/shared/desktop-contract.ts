@@ -458,6 +458,35 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			images: z.array(sessionImage).max(8).optional(),
 		})
 		.strict(),
+	/*
+	 * Point a LIVE session at another working directory (the desktop's `/move`).
+	 *
+	 * Its own op rather than an argument to `sessions.command`, and the reason is
+	 * where the work happens: the move is executed in the SERVER process against
+	 * the session's viewer (`POST
+	 * /v1/desktop/sessions/{id}/working-directory`), while the command endpoint
+	 * answers a `NativeAction | OwnerCommandResult` - the union's other member is
+	 * the RUNTIME's own slash answer, and a move produces neither. `/move`
+	 * therefore stays a presentation request in the backend's command catalogue
+	 * (`desktop_destination="session.move"`): a bare `/move` opens the picker,
+	 * and the argument form and the chip both call this op instead. The shape is
+	 * `sessions.warm`'s: a lifecycle operation on the session's runtime, with its
+	 * own receipt.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`): a
+	 * path is not prose, and claiming image-sized room for a 4 KB field would
+	 * spend the message budget on nothing. `cwd` carries the same bound as
+	 * `sessions.create`/`sessions.preview` because it reaches the same route
+	 * model, which refuses anything else.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.move"),
+			sessionId,
+			requestId,
+			cwd: z.string().min(1).max(4096),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.answer"),
@@ -1676,6 +1705,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// still leaves the durable unseen mark intact.
 					can_notify: request.canNotify,
 				},
+			};
+		case "sessions.move":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/working-directory`,
+				method: "POST",
+				// `request_id` is the receipt key the route journals on, and it is what
+				// makes a retried move replay the first answer rather than retire the
+				// runtime a second time. `cwd` is sent as typed: resolving `~` and a
+				// relative path is the backend's job, because the base for a relative
+				// path is the SESSION's directory, which the renderer does not own.
+				body: { request_id: request.requestId, cwd: request.cwd },
 			};
 		case "sessions.warm":
 			return {

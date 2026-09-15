@@ -326,6 +326,13 @@ export function subscribeDesktopStream(
 	if (args.epoch) query.set("epoch", args.epoch);
 	if (args.afterSeq !== undefined)
 		query.set("after_seq", String(args.afterSeq));
+	/*
+	 * The additive `frontend_replace=1` negotiation, the same one main's relay
+	 * sends (remediation contract § C): this renderer's reducer consumes the
+	 * `frontend.replace` frame, so every subscription THIS build opens says so.
+	 * The proxy forwards it; an older backend ignores it.
+	 */
+	query.set("frontend_replace", "1");
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {
 		onEvent({ kind: "data", data: message.data });
