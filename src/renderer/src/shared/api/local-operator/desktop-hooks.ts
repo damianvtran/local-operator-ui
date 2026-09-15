@@ -141,6 +141,19 @@ export type DesktopFeature =
 	 */
 	| "session_move"
 	/**
+	 * `sessions.interrupt`: stopping the session's CURRENT TURN and its children
+	 * without ending the session (`POST /v1/desktop/sessions/{id}/interrupt`).
+	 *
+	 * A NEW key, never a bump of `lifecycle`, and the reason is a skew the bump
+	 * would get wrong in the direction that costs a user their session: a backend
+	 * that can stop a session but cannot interrupt a turn must keep `/stop`
+	 * working, and must NOT be told it can interrupt, because the composer's Stop
+	 * control promises THIS TURN rather than a lifetime. Absent here means the
+	 * control is not rendered at all - see `sessionInterruptEnabled` - rather than
+	 * falling back to something that ends the session.
+	 */
+	| "session_interrupt"
+	/**
 	 * `frontend.replace`: the desktop-only replacement frame that carries an
 	 * accepted move's directory to an already-mounted viewer.
 	 *

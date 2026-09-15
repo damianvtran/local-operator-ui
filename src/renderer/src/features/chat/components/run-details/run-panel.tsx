@@ -356,7 +356,24 @@ export const RunPanel = ({
 			const onDocument =
 				target === document.body || target === document.documentElement;
 			const mine = fromTrigger || inPane;
-			if (!mine && !onDocument) return;
+			/*
+			 * ESCAPE IS THE PANE'S FROM ANYWHERE WHILE IT IS OPEN (QA round 1's
+			 * Q2). The contract lists this pane ABOVE the composer's turn
+			 * interrupt, and the two disagreed about the case that matters: with
+			 * the pane open and focus in the composer, the press used to
+			 * interrupt the turn and leave the pane open - one press acting on
+			 * the lower rung and the higher one silently doing nothing.
+			 *
+			 * Scoped to Escape and to an UNCLAIMED press. A layer inside this
+			 * pane (a tooltip, a select) still wins, because it preventDefaults
+			 * from the capture phase and this flag is false for it; and the
+			 * single-letter keys above stay scoped to the pane, the trigger and
+			 * `<body>`, because those are the pane's own controls and stealing
+			 * them from a focused field is what its docblock refuses.
+			 */
+			const escapeFromAnywhere =
+				event.key === "Escape" && !event.defaultPrevented;
+			if (!mine && !onDocument && !escapeFromAnywhere) return;
 			/*
 			 * `defaultPrevented` is how a layer INSIDE the pane claims the press first —
 			 * Radix's `DismissableLayer` preventDefaults BEFORE it dismisses, from a

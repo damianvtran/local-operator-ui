@@ -6,6 +6,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
+import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { noteConsentAttention } from "@shared/browser-consent-attention";
@@ -72,10 +73,9 @@ const App: FC = () => {
 		onLowCreditsDialogClose,
 	} = useLowCreditsDialog();
 	const {
-		toggleCommandPalette,
 		isCommandPaletteOpen,
-		isCreateAgentDialogOpen, // Get dialog state from store
-		closeCreateAgentDialog, // Get close action from store
+		isCreateAgentDialogOpen,
+		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
 	/*
@@ -109,24 +109,16 @@ const App: FC = () => {
 		closeCreateAgentDialog();
 	};
 
-	useEffect(() => {
-		const handleToggleCommandPalette = () => {
-			toggleCommandPalette();
-		};
-
-		// Listen for the IPC message from the main process
-		const unsubscribe = window.electron.ipcRenderer.on(
-			"toggle-command-palette",
-			handleToggleCommandPalette,
-		);
-
-		// Clean up the listener when the component unmounts
-		return () => {
-			if (unsubscribe) {
-				unsubscribe();
-			}
-		};
-	}, [toggleCommandPalette]);
+	/*
+	 * The palette's keyboard doors (Cmd/Ctrl+K here, Cmd/Ctrl+P over IPC).
+	 *
+	 * Mounted here rather than inside `CommandPalette`, which returns null while
+	 * it is closed: the listeners have to exist for the gesture that opens it.
+	 * Both live in that hook so the two halves cannot drift — main's Cmd/Ctrl+P
+	 * hook keeps sending whichever subscription the renderer has, so a dropped
+	 * one is a chord that does nothing and says nothing.
+	 */
+	useCommandPaletteShortcut();
 
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
