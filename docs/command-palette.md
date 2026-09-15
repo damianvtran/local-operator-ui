@@ -25,11 +25,14 @@ every route, and it prints the chord so the rail teaches it without being asked.
 
 **The chord is printed two ways, and that is one decision, not an
 inconsistency.** The panel's footer draws its keys as the app's key cap
-(`bg-sunken`); the rail draws `⌘+K` as plain monospace at one ink step above the
-row's label. A cap is `sunken`, and the rail IS `sunken`, so a cap there would
-have no ground of its own and would read as a boxless glyph; the panel sits on
-`elevated`, where a cap does have one. Two grounds, two treatments — recorded
-here rather than "fixed" in either direction (design round 1, D6).
+(`bg-sunken`); the rail draws `⌘+K` as plain monospace at the row's own ink
+(`ink-muted` — it was `ink-dim`, which measured as fine print: 5.76:1 on the rail
+against the label's 8.94:1). A cap is `sunken`, and the rail IS `sunken`, so a cap
+there would have no ground of its own and would read as a boxless glyph; the panel
+sits on `elevated`, where a cap does have one. Two grounds, two treatments —
+recorded here rather than "fixed" in either direction (design round 1, D6; the
+ink step is a change, not a hierarchy: the chord and the row's label share the
+role).
 
 ## What the palette says about itself
 
@@ -49,10 +52,11 @@ Four strings carry a decision, and each is easy to "tidy" into being wrong:
   matches" — and it sits beside the movement keys it qualifies, with the escape
   affordance taking the right edge. Two unrelated statements in one right-aligned
   slot read as one sentence (design round 1, D5).
-- **The list fades at the fold.** The scroll container carries a `sticky` inset,
-  so whatever the height cap lands on reads as continued rather than as a
-  rendering fault; a cut that orphaned a group heading is the frame that prompted
-  it (design round 1, D1).
+- **The list fades at the fold, and only when there is a fold.** The scroll
+  container's inset is an overlay, not a spacer in the flow, and it is rendered
+  only when rows were actually dropped (`clipped`) — a list that fits its content
+  is as tall as its content, and a cut line has a cue rather than a hard edge
+  (design rounds 1 and 2, D1 and D7).
 
 ## What a query means
 

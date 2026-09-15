@@ -21,12 +21,35 @@ import { test } from "node:test";
 
 const read = (path) => readFileSync(path, "utf8");
 
-const MAIN = read("src/main/index.ts");
-const HOOK = read(
+/*
+ * Comments are stripped before matching, and the RECEIVER is named.
+ *
+ * Both matter, and the review round that asked for this named why: a raw-text
+ * match for the channel also matched `window.api.ipcRenderer.on(...)` — a
+ * receiver whose whitelist (`preload/index.ts`, `validChannels`) cannot carry
+ * this channel and whose `on` returns nothing — so a one-token swap would have
+ * re-killed `Cmd/Ctrl+P` with every suite green. And a commented-out
+ * subscription satisfied the subscription and teardown patterns both.
+ */
+const code = (path) =>
+	read(path)
+		.split("\n")
+		.filter((line) => {
+			const trimmed = line.trim();
+			return !(
+				trimmed.startsWith("//") ||
+				trimmed.startsWith("*") ||
+				trimmed.startsWith("/*")
+			);
+		})
+		.join("\n");
+
+const MAIN = code("src/main/index.ts");
+const HOOK = code(
 	"src/renderer/src/features/command-palette/use-command-palette-shortcut.ts",
 );
-const APP = read("src/renderer/src/app.tsx");
-const SHORTCUT = read(
+const APP = code("src/renderer/src/app.tsx");
+const SHORTCUT = code(
 	"src/renderer/src/features/command-palette/palette-shortcut.ts",
 );
 
@@ -64,8 +87,18 @@ test("main does NOT bind Cmd/Ctrl+K, which the renderer owns", () => {
 test("something in the renderer subscribes to the channel main sends on", () => {
 	assert.match(
 		HOOK,
-		/ipcRenderer\.on\(\s*"toggle-command-palette"/,
-		"the hook must subscribe to the exact channel name main sends on",
+		/window\.electron\.ipcRenderer\.on\(\s*"toggle-command-palette"/,
+		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on",
+	);
+	/*
+	 * Not `window.api`: that bridge's `validChannels` whitelist does not include
+	 * this channel, so its `on` registers nothing and returns undefined — the
+	 * subscription would be a line that does nothing and says nothing.
+	 */
+	assert.doesNotMatch(
+		HOOK,
+		/window\.api\.ipcRenderer\.on[\s\S]{0,80}toggle-command-palette/,
+		"`toggle-command-palette` is not on the api bridge's whitelist",
 	);
 	/*
 	 * And it must be mounted by the shell, not merely defined: a subscription
