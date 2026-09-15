@@ -6,6 +6,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import type { SlashCommandInvocation } from "../components/slash-submit";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -53,8 +54,9 @@ import {
  *
  * ## Why the clicks go through slash dispatch
  *
- * Each control calls `onCommand("/model")`, `onCommand("/effort")`,
- * `onCommand("/context")` — the SAME string the user could type. The picker
+ * Each control dispatches `/model`, `/effort` or `/context` — the SAME command
+ * the user could type, in the shape the dispatcher takes (a name and its args).
+ * The picker
  * is then reached by the one path that already exists (composer -> dispatch ->
  * owner command -> `native_action` -> `picker-registry`), so the chip cannot
  * drift from the command: there is no second way to open a picker, and a
@@ -108,8 +110,11 @@ export type SessionStatusStripProps = {
 	 * Run a slash command exactly as typing it would. Absent on a surface with
 	 * no dispatcher (an older backend with commands disabled), which renders
 	 * every reading as a plain label rather than a control that cannot succeed.
+	 *
+	 * The argument is a `SlashCommandInvocation`, not a line: the dispatcher no
+	 * longer parses text (see `slash-dispatch.ts`).
 	 */
-	onCommand?: (line: string) => void;
+	onCommand?: (invocation: SlashCommandInvocation) => void;
 	/**
 	 * The effort rungs `/effort` will accept, or `undefined` while unknown.
 	 *
@@ -650,13 +655,13 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * one thing that makes the draft's offer honest (R5 of the wire contract).
 	 */
 	const openModel = sessionDispatch
-		? () => sessionDispatch("/model")
+		? () => sessionDispatch({ name: "model", args: "" })
 		: draftOpen
 			? () => draftOpen("session.model")
 			: undefined;
 	const openEffort =
 		effort?.adjustable && sessionDispatch
-			? () => sessionDispatch("/effort")
+			? () => sessionDispatch({ name: "effort", args: "" })
 			: effort?.adjustable && effort.knownLadder && draftOpen
 				? () => draftOpen("session.effort")
 				: undefined;
@@ -989,7 +994,11 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						}
 					/>
 				}
-				onOpen={sessionDispatch ? () => sessionDispatch("/context") : undefined}
+				onOpen={
+					sessionDispatch
+						? () => sessionDispatch({ name: "context", args: "" })
+						: undefined
+				}
 			>
 				<ContextWheel reading={reading} />
 				{/*

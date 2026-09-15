@@ -998,6 +998,56 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/* `/`-completion: the composer's slash popup, in both of its phases.
+	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
+	   popup from wire-shaped fixtures — the rows the backend's
+	   `command-entities` route sends, shaped by the production `argumentRows`
+	   and ranked by the production `matchCommands`, so a frame here is evidence
+	   about a shape that really arrives rather than a hand-written list.
+
+	   Sized to the popup plus the composer box it anchors to, at the width the
+	   popup actually spans (the composer's, not the window's), because the
+	   numbers column's shed order is measured against THAT width: the narrow
+	   entry is a 330px composer, which is what the `@container/slash` query
+	   answers. A frame taken at 1280 would photograph a layout no composer has
+	   and hide the one rule this set exists to show. */
+	["chat-slash-completion--command-phase", 768, 460],
+	/* Two rows: `/tea` matches the primary and its alias, in registry order. */
+	["chat-slash-completion--command-phase-narrowed", 768, 220],
+	/* One row, found by SUBSEQUENCE — `/lgt` finds `logout` where the old
+	   prefix filter found nothing. */
+	["chat-slash-completion--command-phase-fuzzy", 768, 200],
+	/* Six teams, one marked current: the roster the word-completion opens. */
+	["chat-slash-completion--argument-phase-teams", 768, 340],
+	/* And the same list narrowed by the ARGUMENT, not by the command word. */
+	["chat-slash-completion--argument-phase-narrowed", 768, 200],
+	/* The price/window column: `free`, `usage-based`, a three-significant-
+	   figure pair, and a row nobody quoted (blank, never `free`). */
+	["chat-slash-completion--argument-phase-models", 908, 320],
+	/* The cold-owner empty list — "not reported yet", which is a different
+	   fact from "this model has none". */
+	["chat-slash-completion--argument-phase-empty", 768, 300],
+	/* The shed order under pressure: numbers dropped, name kept. */
+	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
+	/* A command typed into a sentence, the list above the prose. */
+	["chat-slash-completion--inline-mid-draft", 768, 340],
+	/* The state a name pick produces: list closed, caret after the space. */
+	["chat-slash-completion--name-list-completed", 768, 260],
+	/* A long list: the popup keeps its own scroll at its row cap. */
+	["chat-slash-completion--command-phase-scrolled", 768, 460],
+	/* The SIXTH inline source and the only renderer-local one: `/theme` lists the
+	   `@shared/themes` table its dialog reads. Added with the round-1 disclosure
+	   (R4) so the inline set has evidence for every source it claims. */
+	["chat-slash-completion--argument-phase-themes", 768, 340],
+	/* A query that matches nothing while the list HAS rows — its own sentence,
+	   not "not reported yet". */
+	["chat-slash-completion--argument-phase-no-match", 768, 200],
+	/* Loading and failure, the two transient states that had no frame (D5). */
+	["chat-slash-completion--argument-phase-loading-and-error", 768, 300],
+	/* The truncation HALF of the shed order at ~520px: numbers shown, name
+	   giving. The 330px frame shows numbers dropped and the 908px frame shows
+	   nothing squeezed, so this is the width where the question lives (D5). */
+	["chat-slash-completion--argument-phase-truncating-name", 768, 680],
 	/*
 	 * The five read-only diagnostic panels (`/analytics`, `/session`, `/info`,
 	 * `/context`, `/failovers`).
@@ -1265,6 +1315,32 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * JSON-RPC-ish: send {id, method, params}, receive {id, result|error} plus
  * unsolicited events. Only the three domains this script needs are used.
  */
+/**
+ * Whether a document that finished preparing is a story that DREW.
+ *
+ * Two numbers, both measured, and the reason this is a predicate rather than an
+ * inline comparison: the inline version read `n - 2 >= 8`, and 8 sat above the
+ * smallest thing this set legitimately paints. `chat-slash-completion--
+ * argument-phase-no-match` renders a three-line popup over the composer
+ * stand-in - 7 elements of its own inside a 9-element story root, once the
+ * decorator's 2 (theme wrapper + toast container, counted in the page code
+ * below) are subtracted. A story that draws NOTHING measures 0 after the same
+ * subtraction, and that is the failure this floor exists to reject; how much a
+ * drawn story paints is the paint guard's question (`assertFramePaints`), not
+ * this one. At 8 the poll reported a fully rendered story as "never finished
+ * preparing" for its full sixty seconds, so the frame could not be captured at
+ * all - a defect that reads as a Storybook hang and sends its reader to the
+ * story's source instead of to this line.
+ *
+ * Exported, and injected into the page verbatim through its own source text, so
+ * the predicate the browser runs and the one `capture-evidence.test.mjs` pins
+ * are the same function rather than two copies of one threshold. Its body must
+ * therefore stay self-contained - no identifier that only exists in this
+ * module - because the page evaluates it where none of them are defined; the
+ * test that evaluates the source text in a bare scope is what holds that.
+ */
+export const storyDrew = (counted) => counted - 2 >= 7;
+
 class Cdp {
 	constructor(ws) {
 		this.ws = ws;
@@ -1798,6 +1874,15 @@ const main = async () => {
 			// as real source - and the result was committed and would have
 			// thrown on the first story.
 			let prepared = false;
+			/*
+			 * The last probe's own numbers, kept so a timeout can say WHICH gate
+			 * held. Without them the failure reads as "Storybook never finished
+			 * preparing" whichever of the four it was, and the reader's next move
+			 * is a browser session - which is exactly how a one-element floor
+			 * error survived a diagnosis as "the story never reaches a rendered
+			 * state" while the story was rendering all along.
+			 */
+			let probe = null;
 			for (let i = 0; i < 300 && !prepared; i++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -1807,14 +1892,15 @@ const main = async () => {
 								".sb-preparing-story, .sb-preparing-docs, .sb-nopreview, .sb-loader",
 							),
 						].some((el) => el.getBoundingClientRect().height > 0);
-						if (loading) return false;
 						/* A story that needs a moment after mount - data from a
 						   stubbed query, then an interaction on the element it
 						   produced - sets this on mount and clears it when the
 						   frame is worth taking. Stories that never set it are
 						   unaffected, so this costs nothing for the other 37
 						   surfaces. */
-						if (document.documentElement.dataset.capturePending) return false;
+						const pending = Boolean(
+							document.documentElement.dataset.capturePending,
+						);
 						/* Webfonts must have resolved before the shutter.
 
 						   Chrome paints a fallback box for a glyph whose face is
@@ -1832,7 +1918,7 @@ const main = async () => {
 						   is what flips it. No backticks in this comment: the
 						   whole block is a template literal handed to
 						   Runtime.evaluate, and one would end it here. */
-						if (document.fonts.status !== "loaded") return false;
+						const fonts = document.fonts.status;
 						/* Count the STORY's elements, wherever they live.
 						   A plain body count passes on Storybook's own chrome,
 						   which is how a frame of pure ground - the right colour
@@ -1862,10 +1948,10 @@ const main = async () => {
 						   The body sweep's baseline is zero, but the story root's
 						   is not: the preview decorator always renders a theme
 						   wrapper and a toast container, so two elements are
-						   present before a story draws anything. The threshold
-						   below is set against that, and it is the number to
-						   change if the decorator gains furniture. */
-						const DECORATOR_ELEMENTS = 2;
+						   present before a story draws anything. That is the 2 the
+						   floor in storyDrew subtracts, and both of its numbers
+						   are there rather than here so the gate this poll applies
+						   is the one the test pins. */
 						const INERT = ["SCRIPT", "STYLE", "LINK", "TEMPLATE", "NOSCRIPT"];
 						let n = root ? root.querySelectorAll("*").length : 0;
 						if (docsRoot) n += docsRoot.querySelectorAll("*").length;
@@ -1875,15 +1961,24 @@ const main = async () => {
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;
 						}
-						return n - DECORATOR_ELEMENTS >= 8;
+						return {
+							drawn: !loading && !pending && fonts === "loaded" && (${storyDrew})(n),
+							counted: n,
+							loading,
+							pending,
+							fonts,
+						};
 					})()`,
 				});
-				prepared = result.value === true;
+				probe = result.value ?? probe;
+				prepared = probe?.drawn === true;
 				if (!prepared) await sleep(200);
 			}
 			if (!prepared) {
 				throw new Error(
-					`${story} @ ${theme}: Storybook never finished preparing the story (60s)`,
+					`${story} @ ${theme}: Storybook never finished preparing the story (60s). ` +
+						`Last probe: ${JSON.stringify(probe)}. ` +
+						"`counted` is the story's own elements with the decorator's two excluded, and `drawn` false with `loading`/`pending`/`fonts` clear means the element floor in `storyDrew` rejected it",
 				);
 			}
 			/*

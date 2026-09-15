@@ -53,6 +53,8 @@ import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -160,7 +162,7 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -181,6 +183,20 @@ type ChatContentProps = {
 		 */
 		draftResolution?: DraftResolution;
 	};
+	/**
+	 * The command dispatcher the composer splices an inline command into, with
+	 * its outcome handed back. Forwarded verbatim; see
+	 * `MessageInputProps.onSlashCommand` for why the outcome matters.
+	 */
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
+	/**
+	 * The dispatcher's own note surface, borrowed by the composer so a staged
+	 * reassembly and an unanswerable name list can say what happened. Forwarded
+	 * verbatim; see `MessageInputProps.onSlashNote`.
+	 */
+	onSlashNote?: (text: string) => void;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -367,6 +383,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onChangeCwd,
 		sendError,
 		sessionStatus,
+		onSlashCommand,
+		onSlashNote,
 		canonical,
 		runDetails,
 		mcpServers = [],
@@ -857,6 +875,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onChangeCwd={onChangeCwd}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
+								onSlashCommand={onSlashCommand}
+								onSlashNote={onSlashNote}
 								/*
 								 * The SAME derived model the header trigger and the pane read, handed
 								 * to the composer so its status row states the plan's size without a

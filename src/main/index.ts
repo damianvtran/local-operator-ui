@@ -48,9 +48,11 @@ import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
+	browserHostStopPending,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -1959,7 +1961,61 @@ app.on("will-quit", (event) => {
 });
 
 // Handle before-quit event to ensure proper cleanup
-app.on("before-quit", () => {
+/*
+ * The session-cookie hold: the quit waits on the browser host's stop, so the
+ * snapshot that stop writes is on disk before the app goes away.
+ *
+ * The stop reads the cookie jar over CDP, so it is asynchronous and its duration
+ * is the host's to inflate; a quit that exited mid-snapshot would leave the next
+ * launch with nothing to restore, and with a marker the next start rejects.
+ * EVERY quit while that stop is owed is held, including a second one the user
+ * makes while the first is still waiting — the quit that releases them is the
+ * hold's own, issued once the stop has settled or the budget has expired, and it
+ * is the only pass that may proceed. Module scope so the mark distinguishing
+ * those two survives between quits, and the decision itself lives in
+ * `createSessionCookieQuitHold`, which is testable without booting the app. The
+ * hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget it releases
+ * the quit, leaves the marker behind for the next start to reject, and says so in
+ * the log — "quitting anyway" is that line, not an exit, and in a frozen teardown
+ * the process can outlive it (the pre-existing stall QA's SIGSTOPped run hit 42 s
+ * later, in a build without this hold's involvement).
+ *
+ * WHY THIS HOLDS `before-quit` AND NOT `will-quit`, where it was authored: the
+ * `will-quit` listener above also owns the backend's owned cleanup, and that
+ * handler has to reach its `event.preventDefault()` in the SYNCHRONOUS part of
+ * the listener - Electron reads the cancelled flag when the synchronous part
+ * returns, so a preventDefault that lands after an `await` cancels nothing, and
+ * `scripts/owned-serve-lifecycle.test.mjs` pins that (two synchronous emits, both
+ * counted as prevented). Awaiting this hold inside that listener would defer its
+ * gate by a microtask and silently drop the owned cleanup. Holding here instead
+ * keeps that gate synchronous AND serialises the two shutdown obligations rather
+ * than racing them: the stop settles first, the re-quit it asks for then reaches
+ * the owned cleanup, and only the pass with both behind it exits. The hold module
+ * is unchanged and says nothing about which event it is asked from.
+ */
+const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
+	isPending: browserHostStopPending,
+	stop: stopBrowserHost,
+	quit: () => app.quit(),
+	log: (message) => logger.warn(message, LogFileType.BACKEND),
+});
+
+app.on("before-quit", async (event) => {
+	/*
+	 * Hold the quit for the browser host's stop, then let the ordinary pass
+	 * through: the stop settles or the budget expires, the hold asks for the quit
+	 * that reaches the body below. A second quit arriving while that stop is still
+	 * running is held against the same stop — see the hold's own module for why a
+	 * spent flag could not do that and exited with the snapshot still running.
+	 *
+	 * `before-quit` starts the stop and cannot await it, so the wait lives here;
+	 * the `will-quit` listener owns the owned cleanup and runs once this has
+	 * settled. A stop that FAILS still re-quits - see the hold's own module for why
+	 * that is the difference between a shutdown and an app that refuses to close
+	 * without saying so.
+	 */
+	if (await holdQuitForSessionCookieSnapshot(event)) return;
+
 	logger.info("App is about to quit", LogFileType.BACKEND);
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
