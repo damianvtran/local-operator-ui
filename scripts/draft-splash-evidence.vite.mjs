@@ -51,6 +51,21 @@ export default defineConfig({
 		port,
 		strictPort: true,
 		/*
+		 * BOUND TO THE IPv4 LOOPBACK ADDRESS, and the address a shutter uses is
+		 * `127.0.0.1` rather than the friendlier `localhost`.
+		 *
+		 * WHY: Vite's default host is the string `localhost`, which node binds
+		 * through the resolver - and on this machine that resolves to the IPv6
+		 * loopback, so the server listens on `[::1]` only. A browser cannot reach
+		 * it when it resolves `localhost` to `127.0.0.1`, which is what the paired
+		 * browser did: `net::ERR_CONNECTION_REFUSED` on a page the same machine
+		 * could fetch with curl (measured in this pass, and the first capture
+		 * attempt of it). Binding the literal address removes the resolver from the
+		 * instrument: the address the harness prints is the address it is
+		 * reachable at, for every client.
+		 */
+		host: "127.0.0.1",
+		/*
 		 * The evidence README and any capture notes live under this root but are
 		 * not part of the page. Without this, editing one triggers a full reload
 		 * in the browser being driven - which lands mid-capture and photographs a
