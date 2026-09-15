@@ -403,8 +403,9 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
 	 * the previous version answered it only where the pass's commits were
 	 * present: its single comparison stood down on `changed === null`, which is
 	 * every CI checkout - `actions/checkout`'s default clone is one commit deep
-	 * (`.github/workflows/ci.yml:148`), so `db4add883^` in this manifest resolves
-	 * to nothing there and the field was unguarded in the half CI runs (round 6,
+	 * (`.github/workflows/ci.yml:148`), so the pass's parent commit - which this
+	 * block cites as `partialCapture.refreshedFromHead` - resolves to nothing there,
+	 * and the field was unguarded in the half CI runs (round 6,
 	 * R6-1; round 5, R5-2 one layer up). `ls-tree` needs no ancestor of `HEAD`,
 	 * so the question is answerable in a one-deep clone.
 	 *
