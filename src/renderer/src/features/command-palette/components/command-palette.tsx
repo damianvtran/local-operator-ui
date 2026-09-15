@@ -137,6 +137,22 @@ export const CommandPalette: FC = () => {
 
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
 	const [selectedIndex, setSelectedIndex] = useState(0);
+	/*
+	 * Whether the LIST overflows its viewport — a different question from whether
+	 * the RESULT was capped, and the reason the fold's fade is measured rather
+	 * than inferred.
+	 *
+	 * The gate was `outcome.clipped` (`rendered < total`, the result cap) at first,
+	 * and the two coincide only when the cap binds: the browse layout admits up to
+	 * forty-eight rows against a nine-row viewport, so the common overflowing list
+	 * reported `clipped: false` and rendered no fade at all — while
+	 * `docs/command-palette.md` claims the fade as a contract (design round 3).
+	 * Measured from the elements themselves: the content's height against the
+	 * scroller's box, so the end spacer below cannot feed back into the answer.
+	 */
+	const listRef = useRef<HTMLDivElement | null>(null);
+	const listContentRef = useRef<HTMLDivElement | null>(null);
+	const [listOverflows, setListOverflows] = useState(false);
 	const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
 
 	/*
@@ -389,6 +405,25 @@ export const CommandPalette: FC = () => {
 	}, [deferredQuery, isCommandPaletteOpen]);
 
 	/*
+	 * Keep the fold's answer current: re-measure whenever the list's content or
+	 * its box changes, which is every query, every scrollbar-heavy theme change,
+	 * and every window resize. A ResizeObserver on both elements is what makes
+	 * this a measurement rather than a guess about which dependency to list.
+	 */
+	useEffect(() => {
+		const list = listRef.current;
+		const content = listContentRef.current;
+		if (!list || !content) return;
+		const measure = () =>
+			setListOverflows(content.offsetHeight > list.clientHeight + 1);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(list);
+		observer.observe(content);
+		return () => observer.disconnect();
+	}, []);
+
+	/*
 	 * Keep the index inside the list. The list can shrink without the query
 	 * changing — a chat is deleted, a chat-only action disappears when the route
 	 * changes — and an index past the end selects nothing at all.
@@ -628,13 +663,14 @@ export const CommandPalette: FC = () => {
 					 */}
 					{hasResults ? (
 						<div className="relative">
-							{outcome.clipped && (
+							{listOverflows && (
 								<div
 									aria-hidden="true"
 									className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-elevated to-transparent"
 								/>
 							)}
 							<div
+								ref={listRef}
 								// biome-ignore lint/a11y/useSemanticElements: `select`/`option` is a native popup control, not a listbox whose rows are browsed by aria-activedescendant while focus stays in a text field.
 								role="listbox"
 								id={LIST_ID}
@@ -644,33 +680,39 @@ export const CommandPalette: FC = () => {
 								tabIndex={-1}
 								className="max-h-96 overflow-y-auto p-2"
 							>
-								{outcome.sections.map((section, sectionIndex) => (
-									<Fragment key={section.group}>
-										<div
-											role="presentation"
-											className={cn(
-												"px-2 pb-1 text-ink-dim text-meta",
-												sectionIndex === 0 ? "pt-1" : "pt-3",
-											)}
-										>
-											{PALETTE_GROUP_TITLES[section.group]}
-										</div>
-										{section.items.map((match) => (
-											<PaletteRow
-												key={match.item.id}
-												match={match}
-												isActive={match.item.id === activeItem?.id}
-												onHover={() => setSelectedIndex(matches.indexOf(match))}
-												onRun={() => runItem(match.item)}
-											/>
-										))}
-									</Fragment>
-								))}
+								{/* The measured half: everything the scrollbar actually scrolls. */}
+								<div ref={listContentRef}>
+									{outcome.sections.map((section, sectionIndex) => (
+										<Fragment key={section.group}>
+											<div
+												role="presentation"
+												className={cn(
+													"px-2 pb-1 text-ink-dim text-meta",
+													sectionIndex === 0 ? "pt-1" : "pt-3",
+												)}
+											>
+												{PALETTE_GROUP_TITLES[section.group]}
+											</div>
+											{section.items.map((match) => (
+												<PaletteRow
+													key={match.item.id}
+													match={match}
+													isActive={match.item.id === activeItem?.id}
+													onHover={() =>
+														setSelectedIndex(matches.indexOf(match))
+													}
+													onRun={() => runItem(match.item)}
+												/>
+											))}
+										</Fragment>
+									))}
+								</div>
 								{/*
-								 * The end spacer: room to scroll the last row clear of the fade, and
-								 * only when the list actually overflows.
+								 * The end spacer: room to scroll the last row clear of the fade.
+								 * Only when the list overflows, and OUTSIDE the measured wrapper,
+								 * so its own height cannot feed back into that answer.
 								 */}
-								{outcome.clipped && <div aria-hidden="true" className="h-6" />}
+								{listOverflows && <div aria-hidden="true" className="h-6" />}
 							</div>
 						</div>
 					) : (
