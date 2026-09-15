@@ -271,7 +271,15 @@ const CONTROLS = [
 		 * tab whose own fill changes with the active state.
 		 */
 		name: "browser agent marker chip",
-		on: ["surface", "elevated"],
+		/*
+		 * The grounds the chip is DRAWN on. The tab-strip grammar moved them: the chip
+		 * renders inside the tab button, whose only fills are the page's `canvas` (the
+		 * active tab) and the strip's `sunken` (an inactive one). `surface`/`elevated`
+		 * were the fills a tab used to have and no longer occur beneath this chip
+		 * (review round 2, F4: round 1's correction was not carried to the siblings of
+		 * the row it was made on).
+		 */
+		on: ["canvas", "sunken"],
 		fill: "accentWash",
 		border: "accent",
 		ink: "ink",
@@ -286,6 +294,28 @@ const CONTROLS = [
 		 * drawn on a tab whose fill moves with the active state. Measured, not
 		 * reasoned — this row failed with `warningBorder` before the change.
 		 */
+		name: "browser shared marker pill",
+		/*
+		 * `Shared` and `Restored` gained a `border-control` edge when design round 2's D11
+		 * harmonised the five state markers into one pill shape. By this file's first
+		 * rule a component with its own edge owns a row, and neither had one (review round
+		 * 2, F4) — the same coverage gap as the grounds above, one class down. `fill` is
+		 * null because the pill paints no ground of its own: the strip's shows through,
+		 * which is why the row asserts the edge against both grounds it can sit on.
+		 */
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
+	},
+	{
+		name: "browser restored marker pill",
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkDim",
+	},
+	{
 		name: "browser waiting marker chip",
 		/*
 		 * The grounds the chip is DRAWN on, which the tab-strip grammar moved (review
@@ -314,7 +344,9 @@ const CONTROLS = [
 		 * across the twelve themes); this row is what keeps that true.
 		 */
 		name: "browser failed marker chip",
-		on: ["surface", "elevated"],
+		// The same grammar change as the other two chips: inside the tab button, on
+		// `canvas` (active) or the strip's `sunken` (inactive).
+		on: ["canvas", "sunken"],
 		fill: "dangerWash",
 		border: "borderControl",
 		ink: "ink",
