@@ -15,10 +15,10 @@
  *
  *   1. `attached` - a real `lop serve` with a seeded conversation. Cell: the
  *      conversation list loads and nothing claims the server is away.
- *   2. `unattachable` - a Local Operator daemon answering the configured
- *      address that this app holds no credential for, with no serve record
- *      describing it. Cells: the honest copy (which the base tree does not say
- *      at all) and the app not starting a second daemon over it.
+ *   2. `absent` - the configured address answers nothing. Cell: the honest copy
+ *      (which the base tree does not say at all). The `unattachable` state the
+ *      spawn gate produces is NOT photographable in this stub environment; the
+ *      scene's own comment says why and what covers it instead.
  *   3. `flap` - the same daemon, attached, whose `/health` then exceeds one
  *      probe's budget while its session reads keep answering. Cell: the
  *      conversation list holds. This is the operator's own condition, modelled.
@@ -524,14 +524,30 @@ async function sceneUnattachable() {
 	const server = stubDaemon(port, state);
 	// Its own config root with NO record: the address answers, and nothing
 	// describes it - the 09:17 shape.
-	const configDir = join(ROOT, "config-unattachable");
+	const configDir = join(ROOT, "config-absent");
 	mkdirSync(configDir, { recursive: true });
+	/*
+	 * What this scene can photograph here, and what it cannot.
+	 *
+	 * With the backend manager ENABLED the app reaches the spawn gate, which is
+	 * the path the `unattachable` state is produced by - and in this stub
+	 * environment it also leaves the renderer in its error boundary (`Cannot read
+	 * properties of undefined (reading hosting)`), because the stub serves no
+	 * `/v1/config`. Measured: the same error appears on the BASE tree against the
+	 * same stub, so it is pre-existing and not this branch's, but it makes the
+	 * manager-enabled scene unscreenshotable rather than evidence. The manager is
+	 * therefore off, and the frame this scene writes is the ADDRESS-WITH-NOTHING
+	 * state - "No Local Operator daemon was found and this app is configured not
+	 * to start one" - which is the copy a reader sees when the configured address
+	 * is empty. The unattachable copy itself is covered by the Storybook pair and
+	 * by the manager-level rig's cell 3.
+	 */
 	await bootApp(
-		"unattachable",
+		"absent",
 		`http://127.0.0.1:${port}`,
 		configDir,
 		46121,
-		{ manager: true },
+		{ manager: false },
 	);
 	// Let main run its discovery pass and settle the state it publishes.
 	let page = null;
@@ -541,8 +557,8 @@ async function sceneUnattachable() {
 		if (page.banner) break;
 		await wait(1_000);
 	}
-	await capture(46121, join(OUT, `${LABEL}-unattachable.png`));
-	summary.scenes.unattachable = page;
+	await capture(46121, join(OUT, `${LABEL}-absent.png`));
+	summary.scenes.absent = page;
 	server.close();
 	return page;
 }
@@ -588,7 +604,7 @@ async function sceneFlap() {
 
 const scenes = {
 	attached: sceneAttached,
-	unattachable: sceneUnattachable,
+	absent: sceneUnattachable,
 	flap: sceneFlap,
 };
 
