@@ -36,6 +36,12 @@ import {
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
+	describeDevDriverArming,
+	devDriverArgument,
+	resolveDevDriverArming,
+} from "./dev-driver";
+import { registerDevDriverIPC } from "./dev-driver-ipc";
+import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
@@ -313,6 +319,13 @@ function createWindow(): BrowserWindow {
 			// rate explicitly instead of trusting the platform. `normal`
 			// keeps Electron's own default.
 			backgroundThrottling: windowLaunch.backgroundThrottling,
+			/*
+			 * The renderer dev driver's arming entry — usually absent, because it
+			 * is present only in a launch that opted in. See
+			 * `devDriverWebPreferences` above and `src/main/dev-driver.ts` for
+			 * what arms a run and what the entry is read by.
+			 */
+			...devDriverWebPreferences,
 		},
 	});
 
@@ -489,6 +502,37 @@ if (windowLaunch.mode !== "normal") {
 	console.log(`[window-mode] ${describeWindowLaunch(windowLaunch)}`);
 }
 
+/*
+ * The renderer dev driver's opt-in, resolved here for the same reason the
+ * window mode is: it is a fact about the LAUNCH, decided once, and a rig reads
+ * it on stdout. Nothing is registered or exposed unless this says armed, so a
+ * launch that did not ask for the driver has no `dev-driver-*` channel and no
+ * bridge in the renderer at all — which is what
+ * `node scripts/renderer-driver.mjs --gate-check` measures on a real boot
+ * rather than trusting this comment. `src/main/dev-driver.ts` holds the rules
+ * and `docs/agent-driver.md` is the contract for anyone using it.
+ */
+const devDriverArming = resolveDevDriverArming({
+	env: process.env,
+	windowMode: windowLaunch.mode,
+});
+const devDriverLine = describeDevDriverArming(devDriverArming);
+if (devDriverLine) console.log(devDriverLine);
+
+/*
+ * The renderer's half of that decision, as `webPreferences` for whichever window
+ * is created. Empty in an unarmed launch, so a normal run's window options are
+ * the options they would have had: the preload reads this entry out of its own
+ * `argv` and exposes `window.__loDevDriver` only when it is there, while main
+ * independently registers the `dev-driver-*` channels only when armed. Spelled as
+ * a spread rather than as `additionalArguments: []` so that "unarmed adds no
+ * option at all" is literally true of the object, not merely equivalent.
+ */
+const devDriverWebPreferences =
+	devDriverArming.armed && devDriverArming.outDir
+		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
+		: {};
+
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
 // desktop bearer is process-scoped, so main keeps no credential store.
@@ -642,6 +686,29 @@ app
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 			desktopNotifier,
 		);
+
+		/*
+		 * The renderer dev driver's channels, present ONLY in an armed launch.
+		 *
+		 * Placed next to `registerDesktopIPC` because it is the same kind of
+		 * thing — a main-owned surface the window may call — and registered
+		 * BEFORE the first window is created, so the preload's `sendSync`
+		 * handshake cannot arrive before the listener exists. It reuses the
+		 * same single trusted-renderer URL: a second spelling of "the trusted
+		 * document" is how one of the two drifts.
+		 */
+		if (devDriverArming.armed && devDriverArming.outDir) {
+			registerDevDriverIPC({
+				window: () => mainWindow,
+				expectedUrl: rendererUrl,
+				outDir: devDriverArming.outDir,
+				identity: {
+					windowMode: windowLaunch.mode,
+					appVersion: app.getVersion(),
+					platform: process.platform,
+				},
+			});
+		}
 
 		// Add IPC handlers for opening files and URLs
 		ipcMain.handle("open-file", async (_, filePath) => {

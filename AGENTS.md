@@ -78,6 +78,7 @@ ground where it does not.
 - Dev app: `pnpm dev` (needs `.env`; copy from `.env.template`)
 - Dev app, no window: `pnpm dev:headless`
 - Built app, no window: `pnpm app:headless -- <extra electron args>`
+- Built app, driven by an agent: `pnpm app:driver` (see `docs/agent-driver.md`)
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
 - Typecheck: `pnpm check-types`
@@ -287,6 +288,16 @@ macOS `screencapture`, which works only on the frontmost window and so requires
 exactly the focus theft this section exists to remove. Storybook evidence is
 unaffected: `pnpm capture:evidence` already drives a private `--headless=new`
 Chrome.
+
+**Driving the renderer is a supported path now, not a rig per agent.**
+`scripts/renderer-driver.mjs` boots the built app headless in an isolated
+scratch profile, arms an opt-in bridge that exists only when the launch asked for
+it, and captures frames with the app's own `capturePage()`. `docs/agent-driver.md`
+is the contract: the exact commands, the verbs, what it can and cannot prove, and
+the reason it is not a substitute for the `browser` tool. Reach for it before
+writing a new rig — and read its limitations section before you present a frame
+from it as evidence for anything it cannot see (focus-dependent rendering, an
+embedded browser page, and backend-gated screens among them).
 
 ### What already opens no window, so a rebase does not re-introduce one
 
