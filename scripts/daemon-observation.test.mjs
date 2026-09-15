@@ -62,6 +62,9 @@ delete process.env.LOCAL_OPERATOR_DESKTOP_ORIGINS;
 
 const CLAIM_KEY = "c".repeat(64);
 const HOME = mkdtempSync(join(tmpdir(), "daemon-observation-"));
+/** Every manager this file builds, so teardown can dispose of one whose test
+ * failed before its own stop. */
+const managers = new Set();
 
 const bundle = await build({
 	stdin: {
@@ -142,7 +145,22 @@ const { BackendServiceManager, PROBE_INTERVAL_MS, DEGRADED_AFTER_FAILURES } =
 		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 	);
 
-after(() => {
+after(async () => {
+	/*
+	 * A TERMINAL stop (not `stop(true)`, the restart), and then once more after a
+	 * settle.
+	 *
+	 * A restart deliberately keeps observing, so a tick whose recovery was still
+	 * in flight can arm the loop again after the stop - correct in the app, where
+	 * the manager is going to keep running, and fatal to a test process, whose
+	 * only other handle is the runner. `stop(false)` sets the shutting-down flag
+	 * that a later `discoverAndAttach()` bails on, which is what closes that
+	 * window; the settle and the second stop are the net under a test that failed
+	 * before reaching its own stop at all.
+	 */
+	for (const manager of managers) await manager.stop(false).catch(() => {});
+	await new Promise((resolve) => setTimeout(resolve, 2_500));
+	for (const manager of managers) await manager.stop(false).catch(() => {});
 	rmSync(HOME, { recursive: true, force: true });
 });
 
@@ -316,6 +334,7 @@ async function adoptAtStartup(scene) {
 	globalThis.__testConfiguredUrl = scene.address;
 	const { intervals, value } = await withRecordedProbeLoop(async () => {
 		const manager = new BackendServiceManager();
+		managers.add(manager);
 		const adopted = await manager.checkExistingBackend();
 		return { manager, adopted };
 	});
@@ -338,7 +357,7 @@ test("an adopted daemon arms the probe loop (Q-1)", async () => {
 			PROBE_INTERVAL_MS,
 			"and at the probe cadence the owned path uses",
 		);
-		await manager.stop(true);
+		await manager.stop(false);
 	} finally {
 		await scene.dispose();
 	}
@@ -391,7 +410,7 @@ test("a daemon killed after startup is noticed by the tick adoption armed (Q-1)"
 			null,
 			"a daemon this app did not start is never replaced by one it starts",
 		);
-		await manager.stop(true);
+		await manager.stop(false);
 	} finally {
 		await scene.dispose();
 	}
@@ -428,7 +447,7 @@ test("the banner's Retry corrects a stale attachment instead of returning it (Q-
 			pushes.some((pushed) => pushed.state === "detached"),
 			"and the corrected state is pushed, so a renderer that called the verb renders what main observed",
 		);
-		await manager.stop(true);
+		await manager.stop(false);
 	} finally {
 		await scene.dispose();
 	}
