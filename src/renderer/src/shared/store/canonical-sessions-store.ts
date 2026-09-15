@@ -201,21 +201,49 @@ export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
 }
 
 /**
+ * A send refused because an attachment it was carrying could not be read.
+ *
+ * The refusal itself is the renderer's own (`unreadableAttachmentRefusal`), and
+ * the sentence carries its own remedy, so what this code is FOR is the two
+ * decisions that must not be made from the copy: the composer withholds its
+ * generic "Send it again" hint for it (see `withholdsRetryHint`), and a code is
+ * how that survives a rewording.
+ *
+ * A code rather than a fact about the message for one more reason, and it is a
+ * defect this round measured (design round 4, D13): `chat-page` reads
+ * `activeError = sendError || draft.error` and
+ * `activeErrorCode = sendErrorCode ?? draft.errorCode`, so a refusal that leaves
+ * the code UNSET here inherits whatever code the draft was last left holding -
+ * an earlier leading-slash refusal, say - and the same sentence then renders
+ * with the hint in one session and without it in another. Setting the code at
+ * the refusal makes the alert's hint a function of the refusal instead of a
+ * function of the conversation's history.
+ */
+export const UNREADABLE_ATTACHMENT_CODE = "attachment_read_failed";
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
- * only ever rendered where it is true. Two refusals cannot be answered by
+ * only ever rendered where it is true. Three refusals cannot be answered by
  * resending the same bytes: the read window refuses every send for as long as
- * its own notice is on screen, and the leading-slash policy refuses this text
- * forever. Each carries its own statement of what to do instead, and the
- * composer withholds the hint for both (UX round 3, U9; UX round 2, U13).
+ * its own notice is on screen, the leading-slash policy refuses this text
+ * forever, and an attachment that cannot be read is still unreadable on the
+ * next attempt - the same chip is still attached, so the retry is refused for
+ * the same reason until the chip is replaced or removed (UX round 3, U9; UX
+ * round 2, U13; design round 4, D13). Each carries its own statement of what to
+ * do instead, and the composer withholds the hint for all three.
  *
  * One function rather than two call-site comparisons, so the composer reads the
  * rule instead of listing the codes, and so `scripts/canonical-chat.test.mjs`
  * can execute it against the store that raises them.
  */
 export function withholdsRetryHint(code: string | undefined): boolean {
-	return code === SESSION_UNVALIDATED_CODE || code === LEADING_SLASH_CODE;
+	return (
+		code === SESSION_UNVALIDATED_CODE ||
+		code === LEADING_SLASH_CODE ||
+		code === UNREADABLE_ATTACHMENT_CODE
+	);
 }
 
 /**

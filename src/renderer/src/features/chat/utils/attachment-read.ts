@@ -41,17 +41,35 @@ import { getFileName } from "./get-file-name";
  * The refusal sentence for the attachments a send could not read, or null when
  * it could read all of them.
  *
- * It names the files, says what it means (they would not be in the message),
- * and gives both remedies - the same three-part shape every other refusal in
- * the renderer follows (`docs/branding.md` § 8), and the reason the files are
- * named at all: "your attachment was dropped" is only checkable against a name.
+ * It names the files, says what happened to the send, and gives both remedies -
+ * the same three-part shape every other refusal in the renderer follows
+ * (`docs/branding.md` section 8), and the reason the files are named at all:
+ * "your attachment was dropped" is only checkable against a name.
+ *
+ * WHAT IT SAYS HAPPENED, precisely, because the first version got this wrong in
+ * the one direction that matters (design round 4, D13). The sentence used to
+ * read "and this message would go out without it" - a conditional about an
+ * event that does not happen. This refusal is raised BEFORE admission, so the
+ * send was refused and nothing left the composer (that round's own wire
+ * evidence: one `POST /v1/desktop/sessions/<id>/messages`, a 422, for a whole
+ * round of sending). It states the outcome it had: the message was not sent,
+ * the draft is held, and the remedy is the sentence's own.
+ *
+ * WHAT IT DOES NOT PROMISE. The refusal repeats for as long as the unreadable
+ * chip is attached, so the composer's generic "Send it again" hint is withheld
+ * for its code (`UNREADABLE_ATTACHMENT_CODE`, `canonical-sessions-store.ts`):
+ * clicking Send again re-rendered this sentence and put no request on the wire,
+ * and copy that advises the one action the state refuses is the defect class
+ * this branch exists to remove.
  */
 export function unreadableAttachmentRefusal(
 	files: readonly string[],
 ): string | null {
 	if (files.length === 0) return null;
 	const names = files.map(getFileName);
+	// Names first in both arms: the user acts on a file, and a count in front of
+	// a list of eight is read instead of the names it is counting.
 	if (names.length === 1)
-		return `${names[0]} could not be read (it may have been moved or deleted), and this message would go out without it. Attach it again, or remove it from the draft.`;
-	return `${names.length} attachments could not be read (they may have been moved or deleted), and this message would go out without them: ${names.join(", ")}. Attach them again, or remove them from the draft.`;
+		return `${names[0]} could not be read (it may have been moved or deleted), so this message was not sent. Attach it again, or remove it from the draft.`;
+	return `${names.join(", ")} could not be read (they may have been moved or deleted), so this message was not sent. Attach them again, or remove them from the draft.`;
 }
