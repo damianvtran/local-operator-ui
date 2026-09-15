@@ -55,15 +55,18 @@ export const WINDOW_SIZE_FLAG = "--window-size";
  * `--user-data-dir` is the strong one: the operator's own app runs on the
  * default profile, while every rig, desktop test and evidence script names a
  * scratch profile so it cannot touch theirs. `--remote-debugging-port` is the
- * other half of the same fact — a run whose point is being driven over CDP is
- * not a person using the app. Either one means the window does not need to be
- * in front of anybody, which is what decides the default below.
+ * weaker of the two, and knowingly so: attaching DevTools to your own app is a
+ * normal thing for a person to do, and that launch resolves `headless` as well.
+ * `--window-mode=inactive` is the mode for watching a run like that — visible,
+ * never activated. The asymmetry is deliberate, and it is the same one the
+ * module argues elsewhere: a window hidden from a launch that says it is a run
+ * is recoverable and announces itself on stdout, while the focus grab is the
+ * interruption this whole default exists to prevent.
  */
 export const AGENT_LAUNCH_FLAGS = [
 	"--user-data-dir",
 	"--remote-debugging-port",
 ] as const;
-
 /**
  * The layout is verified at these dimensions and not below: the app rail, the
  * per-route list pane and the canvas each have their own minimum, and past
@@ -213,7 +216,21 @@ export function resolveWindowLaunchPlan(
 	const problems: string[] = [];
 
 	const modeFlag = readFlag(argv, WINDOW_MODE_FLAG);
-	const modeRaw = modeFlag.found ? modeFlag.value : env[WINDOW_MODE_ENV];
+	const modeValue = modeFlag.found ? modeFlag.value : env[WINDOW_MODE_ENV];
+	/*
+	 * A value that names NOTHING is not a named mode. `LOCAL_OPERATOR_UI_WINDOW_MODE=""`
+	 * is what a shell with an unset variable produces (`env MODE="$MODE" …`) and
+	 * what a harness env block with an empty default produces; reading it as
+	 * "somebody chose normal" puts the focus grab this change removes back
+	 * through the side door, in a spelling no reader would recognise as a
+	 * choice. A whitespace-only value is the same nothing wearing a wart, so
+	 * both are folded back to absent before anything decides. A TYPO is not the
+	 * same nothing — see the report below, which still tells the caller.
+	 */
+	const modeRaw =
+		typeof modeValue === "string" && modeValue.trim() === ""
+			? undefined
+			: modeValue;
 	const parsedMode = parseWindowMode(modeRaw);
 	/*
 	 * Nobody named a mode and this is an agent-driven launch, so the mode is
@@ -231,11 +248,21 @@ export function resolveWindowLaunchPlan(
 	 * the dock and took the operator's focus repeatedly, every one of them a
 	 * launch that had simply not named a mode.
 	 *
-	 * A named mode always wins, including a typo: `--window-mode` given with no
-	 * value, or an unparsable value, keeps the historical `normal` fallback and
-	 * its report, because a mistyped `normal` must not become a window somebody
-	 * cannot find — and a caller who reached for the flag is asking for that
-	 * error to be shown, not for a default. Only silence is read as "a rig".
+	 * A caller who reached for the flag always wins, including with a typo:
+	 * `--window-mode` with no value, `--window-mode=` with an empty one, and an
+	 * unparsable value each keep the historical `normal` fallback and a report,
+	 * because a mistyped `normal` must not become a window somebody cannot find
+	 * — and a caller who reached for the flag is asking to be TOLD, not
+	 * defaulted. Only a launch that named nothing at all — no flag, and an
+	 * environment variable that is absent, empty or blank — is read as "a rig".
+	 *
+	 * `readFlag(...).found` asks whether the switch is PRESENT, not whether it
+	 * is well-formed, so a token that is not really a switch (a value that
+	 * happens to be `--user-data-dir`, anything after a `--` separator) counts
+	 * and resolves the launch headless. That looseness is deliberate: the false
+	 * positive hides a window from a launch that says it is a run — recoverable
+	 * by naming a mode, and printed on stdout — while the false negative is the
+	 * focus grab this block exists to stop. The asymmetry is the point.
 	 */
 	const agentFlag =
 		!modeFlag.found && modeRaw === undefined
@@ -247,6 +274,15 @@ export function resolveWindowLaunchPlan(
 	if (modeFlag.found && modeFlag.value === undefined) {
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
+		);
+	} else if (modeValue !== undefined && modeRaw === undefined) {
+		/*
+		 * Empty and blank name nothing, so the report says exactly that and stops:
+		 * the assumption below still decides the mode on this path, and a message
+		 * ending "using normal" would be a lie for a rig-shaped launch.
+		 */
+		problems.push(
+			`${modeFlag.found ? WINDOW_MODE_FLAG : WINDOW_MODE_ENV} names no mode (empty value)`,
 		);
 	} else if (parsedMode === null && modeRaw !== undefined) {
 		problems.push(
