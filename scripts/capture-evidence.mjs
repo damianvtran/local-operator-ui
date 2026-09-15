@@ -1120,6 +1120,18 @@ export const STORIES = [
 		980,
 		{ hover: ".recharts-bar-rectangle .recharts-rectangle", hoverSettleMs: 900 },
 	],
+	/*
+	 * The same hover on a bar of a few pixels: review round 1 (D7) found every
+	 * hover frame pointing at the shortest NON-zero bar, which is still 834k of a
+	 * 1.9M peak, so "is the step findable on a thin bar" had no frame. The story
+	 * puts a 60k day first and the same selector lands on it.
+	 */
+	[
+		"panels-analytics--populated-hover-shallow",
+		1140,
+		980,
+		{ hover: ".recharts-bar-rectangle .recharts-rectangle", hoverSettleMs: 900 },
+	],
 	["panels-analytics--refreshing", 1140, 980],
 	["panels-analytics--thirty-days", 1140, 1020],
 	["panels-analytics--this-session-only", 1140, 980],
@@ -1127,6 +1139,25 @@ export const STORIES = [
 	["panels-analytics--partial-cost", 1140, 980],
 	["panels-analytics--no-daily-rows", 1140, 980],
 	["panels-analytics--unnamed-sessions", 1140, 980],
+	/*
+	 * The same state with the panel body parked at its END, which is the only way
+	 * the By-session table's rows are in the picture at all: review round 1 (D6)
+	 * found this story's frame byte-identical to `populated` in ten of twelve
+	 * themes, because the distinguishing rows (the hex ids) sit below a body fold
+	 * that is capped at `min(76vh, 760px)` — so a taller VIEWPORT does not reach
+	 * them, it only adds margin. The scroll position is browser state no story can
+	 * set, which is what `scrollToEnd` is for; the at-rest frame stays in its own
+	 * directory, as did `chat-tool-rows--expanded-overflow-narrow-end`.
+	 */
+	[
+		"panels-analytics--unnamed-sessions",
+		1140,
+		980,
+		{
+			dir: "unnamed-sessions-end",
+			scrollToEnd: "[data-panel-body]",
+		},
+	],
 	["panels-analytics--empty", 1140, 460],
 	["panels-analytics--loading", 1140, 460],
 	["panels-analytics--unavailable", 1140, 400],
