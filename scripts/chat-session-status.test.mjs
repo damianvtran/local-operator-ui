@@ -40,6 +40,19 @@ test("read complete rests, unread complete keeps the attention check", () => {
 	assert.match(render("complete", false), /lucide-circle /);
 	assert.doesNotMatch(render("complete", false), /lucide-check|text-success/);
 	assert.match(render("complete", undefined), /lucide-circle /);
+	/*
+	 * THE NAME IS ASSERTED ON THE MARKUP, not on the code path (review round 4,
+	 * R4-2). The suffix is the half a screen reader hears and the half the ink
+	 * cannot carry, and nothing else in this repository asserts it: deleting it
+	 * left all twelve cases here green. Rendered names, not a regex over the
+	 * source — `text-success` is already asserted above for the same reason.
+	 */
+	assert.match(render("complete", true), /sr-only">complete, unread</);
+	assert.match(render("complete", false), /sr-only">complete</);
+	assert.doesNotMatch(render("complete", false), /unread/);
+	// The narrow gating is a contract, not an accident: a code that keeps its own
+	// meaning keeps its own name, whether or not the row is unseen.
+	assert.doesNotMatch(render("danger", true), /unread/);
 });
 for (const [code, icon, ink] of [
 	["error", "circle-alert", "danger"],

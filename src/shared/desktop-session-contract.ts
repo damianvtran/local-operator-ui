@@ -139,6 +139,27 @@ export function mergeCompletionAttention(
 			incoming.revision[1] < current.revision[1])
 	)
 		return current;
+	// `supported` is OPTIONAL and its ABSENCE is not a value.
+	//
+	// Two producers reach this merge with different attention payloads. A
+	// session stream's attention comes from the live owner and carries
+	// `supported` (false = "this owner has not negotiated completion receipts");
+	// the catalogue's comes from `state_many`, which builds the state from the
+	// durable store alone and therefore never sets it. Replacing wholesale —
+	// which is what this merge is for, so a newer revision always wins — then
+	// DELETED the flag, and `useCompletionView` requires
+	// `attention.supported === true` before it will acknowledge a read. A
+	// catalogue refetch arriving after a snapshot silently disabled the read
+	// receipt for the conversation on screen, and nothing repainted the flag
+	// until the next snapshot: a completion stayed unread no matter how long
+	// the user looked at it.
+	//
+	// So an omitted flag INHERITS the last one we were actually told, and a
+	// present one is the producer's own answer and always wins — including an
+	// explicit `false`, which is the whole point of sending it.
+	if (incoming.supported === undefined && current?.supported !== undefined) {
+		return { ...incoming, supported: current.supported };
+	}
 	return incoming;
 }
 
@@ -256,6 +277,18 @@ export type PendingDesktopGate = {
  * See docs/design/descriptive-notifications.md 4.1 and 8.1 — these names are
  * the wire contract, not a local convenience.
  */
+/**
+ * The notification kinds this app can deliver over the MACHINE-WIDE FEED.
+ *
+ * Completions only, and it is narrower than `DesktopNotification["kind"]` on
+ * purpose: the feed publishes a completed or failed TURN, while a gate
+ * (`ask`/`approval`) travels the per-session bridge where it belongs to a
+ * conversation the user is already in. This is what the presence claim
+ * advertises — the backend's `delivers(kind)` reads it, and a claim that
+ * advertises nothing makes every completion someone else's to raise.
+ */
+export const FEED_NOTIFIABLE_KINDS = ["complete", "error"] as const;
+
 export type DesktopNotification = {
 	/** Payload shape version. 1 today; additive fields do not bump it. */
 	contract: number;
@@ -284,6 +317,45 @@ export type DesktopNotification = {
 	 * the bare body, which is exactly what it rendered before the flag existed.
 	 */
 	body_is_failure?: boolean;
+	/**
+	 * How many completions this frame stands for, when it is a BURST DIGEST.
+	 *
+	 * The backend caps per-tick banners and publishes one frame for the
+	 * remainder of a busy tick rather than one banner per session. Additive and
+	 * optional like `body_is_failure`: absent on a single conversation's frame,
+	 * and absent from a backend that predates the cap. A surface that ignored it
+	 * would still render the frame, but would route its click to whichever
+	 * overflow member `session_id` happens to name.
+	 */
+	burst_count?: number;
+	/**
+	 * The conversations a digest stands for, in the backend's own order.
+	 *
+	 * Present so a surface can say WHO finished (a count in a banner is only
+	 * half of "what happened") without a second request. Never trusted as a
+	 * routing target: a digest's click belongs on the catalogue, which is where
+	 * all of them are listed.
+	 */
+	session_ids?: string[];
+	/**
+	 * The members a burst digest stands for, as claimable completions.
+	 *
+	 * THE CROSS-SURFACE CONTRACT (review round 2, R2-5; backend #1116's R8). A
+	 * digest has no `completion_token` of its own — no single completion owns it —
+	 * so a surface's claim step skips it, and `session_ids` alone is not enough to
+	 * claim with: the backend's arbitration is per COMPLETION, not per session.
+	 * Without these pairs nothing ever marked a digest's members delivered, and an
+	 * individual frame for one of them could raise a second banner for a
+	 * completion this digest had already announced.
+	 *
+	 * The backend does NOT preclaim them: a member is the receiving surface's to
+	 * win, at the moment it is about to deliver, through the same
+	 * `sessions.notified` call a single frame uses. Additive and optional like
+	 * `burst_count`, so a backend that predates the fix degrades to the old
+	 * behaviour (the digest still renders, its members are simply not arbitrated)
+	 * rather than to an error.
+	 */
+	member_tokens?: { session_id: string; completion_token: string }[];
 	/** False when the privacy flag is off or the session has no stored name. */
 	title_is_session_name: boolean;
 	/**
@@ -494,6 +566,75 @@ export type DesktopSessionFrame =
 	// is a field delta of persistent state — a notification is a one-shot edge.
 	| Receipt<"notification", DesktopNotification>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
+
+/**
+ * The machine-wide feed's frame family (`GET /v1/desktop/events`).
+ *
+ * It is a SECOND envelope rather than a reuse of `DesktopSessionFrame`, because
+ * the two streams answer different questions and the differences are the ones a
+ * careless alias would hide:
+ *
+ * - A feed frame is not scoped to one session. `session_id` is present only on
+ *   the types that concern one conversation (`attention`, `notification`), and
+ *   absent on `catalogue`, `heartbeat` and `gap` — so the session frame's
+ *   `Receipt` (which requires it) cannot describe them.
+ * - `open` carries no `gap` flag: there is no replay to gap on. A feed
+ *   subscription takes a BASELINE and announces nothing that predates it,
+ *   because the notification edge's whole value is timeliness. The feed's
+ *   `gap` is therefore an overflow signal on a live connection, not a hole in
+ *   a replay.
+ * - `attention.payload` is the same `CompletionAttention` the session stream
+ *   carries, and `notification.payload` is the SAME payload the bridge composes
+ *   — verbatim, including `dedupe_key`. That is what lets main's notifier
+ *   observe either source with one code path and one local dedupe map, so a
+ *   completion that reaches the app twice produces one banner.
+ *
+ * `seq` is a receipt cursor exactly as the session stream's is: monotonic per
+ * connection, and only meaningful for dedupe — never for deciding what is
+ * newer paint state.
+ */
+export type DesktopFeedFrame =
+	| {
+			epoch: string;
+			seq: number;
+			type: "open";
+			payload: {
+				subscription_id: string;
+				/** The backend's own beat cadence, which sizes the silence watchdog. */
+				heartbeat_seconds: number;
+				/** Presence lease the heartbeat must beat inside. */
+				lease_seconds: number;
+				watch_ttl_seconds: number;
+				catalogue_revision: number;
+			};
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "attention";
+			session_id: CanonicalSessionId;
+			payload: CompletionAttention;
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "notification";
+			session_id: CanonicalSessionId;
+			payload: DesktopNotification;
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "catalogue";
+			payload: { revision: number };
+	  }
+	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	| {
+			epoch: string;
+			seq: number;
+			type: "gap";
+			payload: { reason: string; subscription_id: string };
+	  };
 export type DesktopAdmission = {
 	status: "admitted";
 	command_id: string;
