@@ -1,0 +1,24 @@
+{
+ "frame": {
+  "css": {
+   "x": 0,
+   "y": 0,
+   "width": 830,
+   "height": 572
+  },
+  "dpr": 2,
+  "device": {
+   "x": 0,
+   "y": 0,
+   "width": 1660,
+   "height": 1144
+  },
+  "scrollX": 0,
+  "scrollY": 0
+ },
+ "viewport": "830x572",
+ "active": "TEXTAREA",
+ "stack": null,
+ "chips": [],
+ "pageProbe": "{\n \"href\": \"http://localhost:15225/draft-splash-evidence.html\",\n \"viewport\": \"830x572\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:b6931bbf-131e-41b1-b842-c4a67a19e367\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"mock ~\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 168,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 404,\n \"w\": 550,\n \"h\": 168\n },\n \"greeting\": null,\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 412,\n \"w\": 502,\n \"h\": 144\n }\n },\n \"stack\": null,\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 1,\n \"outsideBand\": 1,\n \"shimmerBars\": 3,\n \"captionVisible\": true\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 78,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 87,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+}

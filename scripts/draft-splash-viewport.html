@@ -35,6 +35,34 @@
   <script type="module">
     const app = document.querySelector('#app');
     const output = document.querySelector('#readback');
+    /*
+     * CAPTURE MODE (`?capture=1`), for the browser tool rather than a driver.
+     *
+     * The tool photographs the whole window, and the operator's window is
+     * 1440x873 CSS px - one pixel taller than the app's own default window
+     * (the app's `window.innerHeight` is a size the product reads, so the
+     * frame cannot be scaled or re-flowed to make it fit without photographing
+     * a different layout). With the controls above the frame the frame's top
+     * edge sits ~262px down the viewport and its bottom 260 rows fall below the
+     * fold, so a crop of the window is not a picture of the frame.
+     *
+     * In this mode the frame is the FIRST thing in the document with no body
+     * margin, so it starts at the viewport's own origin: the crop is then the
+     * frame's exact device-pixel box (0, 0, width*dpr, height*dpr) with no
+     * scroll position or control height to guess at. The controls and the
+     * readback move below the fold, where they are still rendered (so `read`
+     * returns their text) but out of the picture. The periodic re-read keeps
+     * the published numbers drifting with the settled frame instead of
+     * freezing the load-time reading, which is what a still taken later would
+     * otherwise be paired with.
+     */
+    const CAPTURE = new URLSearchParams(location.search).get('capture') === '1';
+    if (CAPTURE) {
+      document.body.style.margin = '0';
+      for (const fieldset of document.querySelectorAll('fieldset')) document.body.appendChild(fieldset);
+      document.body.appendChild(output);
+      setInterval(read, 500);
+    }
     let selected = new URLSearchParams(location.search).get('size') || '830x572';
     function resize(size) {
       const match = /^(1380x872|900x572|830x572|800x572)$/.exec(size);
@@ -46,10 +74,33 @@
     }
     const buttons = () => [...app.contentDocument.querySelectorAll('[data-lo-suggestion-stack] button')];
     const available = () => buttons().filter(button => !button.disabled && button.getAttribute('aria-hidden') !== 'true');
+    /*
+     * The frame's own box, in VIEWPORT coordinates and device pixels, because
+     * the browser tool photographs the whole window rather than one element.
+     * It is published first so a readback truncated by the reader's budget
+     * still carries the geometry a crop needs: x/y are where the frame starts
+     * in the current viewport, so they are only meaningful for a shutter taken
+     * without scrolling in between, and the device-pixel box is what the
+     * frame's PNG is cut to. Without this the crop would be inferred from the
+     * surrounding controls' heights, which is how a frame silently loses its
+     * bottom row.
+     */
+    function frameBox() {
+      const box = app.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      return {
+        css: { x: box.x, y: box.y, width: box.width, height: box.height },
+        dpr,
+        device: { x: Math.round(box.x * dpr), y: Math.round(box.y * dpr), width: Math.round(box.width * dpr), height: Math.round(box.height * dpr) },
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      };
+    }
     function read() {
       const doc = app.contentDocument;
       const stack = doc.querySelector('[data-lo-suggestion-stack]');
       output.textContent = JSON.stringify({
+        frame: frameBox(),
         viewport: selected,
         active: doc.activeElement?.textContent || doc.activeElement?.tagName,
         stack: stack && { height: stack.getBoundingClientRect().height, scrollHeight: stack.scrollHeight, clientHeight: stack.clientHeight },

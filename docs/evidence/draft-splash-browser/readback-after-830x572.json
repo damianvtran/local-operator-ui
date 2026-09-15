@@ -1,0 +1,92 @@
+{
+ "frame": {
+  "css": {
+   "x": 0,
+   "y": 0,
+   "width": 830,
+   "height": 572
+  },
+  "dpr": 2,
+  "device": {
+   "x": 0,
+   "y": 0,
+   "width": 1660,
+   "height": 1144
+  },
+  "scrollX": 0,
+  "scrollY": 0
+ },
+ "viewport": "830x572",
+ "active": "TEXTAREA",
+ "stack": {
+  "height": 199,
+  "scrollHeight": 237,
+  "clientHeight": 199
+ },
+ "chips": [
+  {
+   "label": "Download some recent papers on cancer research",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 346,
+   "bottom": 375.5
+  },
+  {
+   "label": "Fetch the MNIST dataset and train a good classifier",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 383.5,
+   "bottom": 413
+  },
+  {
+   "label": "Download some recent papers on fusion energy",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 421,
+   "bottom": 450.5
+  },
+  {
+   "label": "Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 458.5,
+   "bottom": 507.5
+  },
+  {
+   "label": "Find me a royalty free gif of a cute cat",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 515.5,
+   "bottom": 545
+  },
+  {
+   "label": "Make me a space invaders game",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 515.5,
+   "bottom": 545
+  },
+  {
+   "label": "Organize my desktop",
+   "disabled": true,
+   "ariaHidden": "true",
+   "visibility": "hidden",
+   "focused": false,
+   "top": 553,
+   "bottom": 582.5
+  }
+ ],
+ "pageProbe": "{\n \"href\": \"http://localhost:15224/draft-splash-evidence.html\",\n \"viewport\": \"830x572\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:ebe269b4-8555-4d00-9bfd-fb0ce90a7bdc\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"What can I help you with today? mock ~ Download some recent papers on cancer research Fetch the MNIST dataset and train a good classifier Download some recent papers on fusion energy Make a presentation with a dependency graph of genetic factors for Alzheimer's disease Find me a royalty free gif of a cute cat Make me a space invaders game\",\n \"greeting\": 1,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 473,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 104,\n \"w\": 550,\n \"h\": 473\n },\n \"greeting\": {\n \"x\": 413.7,\n \"y\": 128,\n \"w\": 282.6,\n \"h\": 26\n },\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 178,\n \"w\": 502,\n \"h\": 367\n }\n },\n \"stack\": {\n \"top\": 346,\n \"bottom\": 545,\n \"height\": 199,\n \"clientHeight\": 199,\n \"scrollHeight\": 237,\n \"scrollable\": true,\n \"topEdgeInside\": true,\n \"rows\": [\n {\n \"top\": 346,\n \"bottom\": 375.5,\n \"chips\": 1\n },\n {\n \"top\": 383.5,\n \"bottom\": 413,\n \"chips\": 1\n },\n {\n \"top\": 421,\n \"bottom\": 450.5,\n \"chips\": 1\n },\n {\n \"top\": 458.5,\n \"bottom\": 507.5,\n \"chips\": 1\n },\n {\n \"top\": 515.5,\n \"bottom\": 545,\n \"chips\": 2\n },\n {\n \"top\": 553,\n \"bottom\": 582.5,\n \"chips\": 1\n }\n ],\n \"rowCount\": 6,\n \"visibleRows\": 5,\n \"lastVisibleRowBottom\": 545,\n \"lastVisibleRowInside\": true,\n \"boundaryInGap\": true,\n \"contentHeight\": 236.5,\n \"room\": 226\n },\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 0,\n \"outsideBand\": 0,\n \"shimmerBars\": 0,\n \"captionVisible\": false\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"awaitingHydration\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 108,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 134,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+}

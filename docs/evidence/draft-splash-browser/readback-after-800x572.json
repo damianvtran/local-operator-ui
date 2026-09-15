@@ -1,0 +1,92 @@
+{
+ "frame": {
+  "css": {
+   "x": 0,
+   "y": 0,
+   "width": 800,
+   "height": 572
+  },
+  "dpr": 2,
+  "device": {
+   "x": 0,
+   "y": 0,
+   "width": 1600,
+   "height": 1144
+  },
+  "scrollX": 0,
+  "scrollY": 0
+ },
+ "viewport": "800x572",
+ "active": "TEXTAREA",
+ "stack": {
+  "height": 199,
+  "scrollHeight": 274,
+  "clientHeight": 199
+ },
+ "chips": [
+  {
+   "label": "Search for quantum computing papers and download interesting ones to read later",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 346,
+   "bottom": 395
+  },
+  {
+   "label": "Organize my documents folder",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 403,
+   "bottom": 432.5
+  },
+  {
+   "label": "Do a buy/hold/sell and fundamentals analysis of Apple",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 440.5,
+   "bottom": 470
+  },
+  {
+   "label": "Fetch the MNIST dataset and train a good classifier",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 478,
+   "bottom": 507.5
+  },
+  {
+   "label": "Make me a research report on the latest trends in AI",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 515.5,
+   "bottom": 545
+  },
+  {
+   "label": "Make me a space invaders game",
+   "disabled": true,
+   "ariaHidden": "true",
+   "visibility": "hidden",
+   "focused": false,
+   "top": 553,
+   "bottom": 582.5
+  },
+  {
+   "label": "Download some recent papers on cancer research",
+   "disabled": true,
+   "ariaHidden": "true",
+   "visibility": "hidden",
+   "focused": false,
+   "top": 590.5,
+   "bottom": 620
+  }
+ ],
+ "pageProbe": "{\n \"href\": \"http://localhost:15224/draft-splash-evidence.html\",\n \"viewport\": \"800x572\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:ebe269b4-8555-4d00-9bfd-fb0ce90a7bdc\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"What can I help you with today? mock ~ Search for quantum computing papers and download interesting ones to read later Organize my documents folder Do a buy/hold/sell and fundamentals analysis of Apple Fetch the MNIST dataset and train a good classifier Make me a research report on the latest trends in AI\",\n \"greeting\": 1,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 473,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 104,\n \"w\": 520,\n \"h\": 473\n },\n \"greeting\": {\n \"x\": 398.7,\n \"y\": 128,\n \"w\": 282.6,\n \"h\": 26\n },\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 178,\n \"w\": 472,\n \"h\": 367\n }\n },\n \"stack\": {\n \"top\": 346,\n \"bottom\": 545,\n \"height\": 199,\n \"clientHeight\": 199,\n \"scrollHeight\": 274,\n \"scrollable\": true,\n \"topEdgeInside\": true,\n \"rows\": [\n {\n \"top\": 346,\n \"bottom\": 395,\n \"chips\": 1\n },\n {\n \"top\": 403,\n \"bottom\": 432.5,\n \"chips\": 1\n },\n {\n \"top\": 440.5,\n \"bottom\": 470,\n \"chips\": 1\n },\n {\n \"top\": 478,\n \"bottom\": 507.5,\n \"chips\": 1\n },\n {\n \"top\": 515.5,\n \"bottom\": 545,\n \"chips\": 1\n },\n {\n \"top\": 553,\n \"bottom\": 582.5,\n \"chips\": 1\n },\n {\n \"top\": 590.5,\n \"bottom\": 620,\n \"chips\": 1\n }\n ],\n \"rowCount\": 7,\n \"visibleRows\": 5,\n \"lastVisibleRowBottom\": 545,\n \"lastVisibleRowInside\": true,\n \"boundaryInGap\": true,\n \"contentHeight\": 274,\n \"room\": 226\n },\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 0,\n \"outsideBand\": 0,\n \"shimmerBars\": 0,\n \"captionVisible\": false\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"awaitingHydration\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 218,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 224,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+}

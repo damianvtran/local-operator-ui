@@ -1,0 +1,92 @@
+{
+ "frame": {
+ "css": {
+ "x": 0,
+ "y": 0,
+ "width": 1380,
+ "height": 872
+ },
+ "dpr": 2,
+ "device": {
+ "x": 0,
+ "y": 0,
+ "width": 2760,
+ "height": 1744
+ },
+ "scrollX": 0,
+ "scrollY": 0
+ },
+ "viewport": "1380x872",
+ "active": "TEXTAREA",
+ "stack": {
+ "height": 142,
+ "scrollHeight": 142,
+ "clientHeight": 142
+ },
+ "chips": [
+ {
+ "label": "Create a presentation outline on climate change",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 506,
+ "bottom": 535.5
+ },
+ {
+ "label": "Download some recent papers on fusion energy",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 506,
+ "bottom": 535.5
+ },
+ {
+ "label": "Do a technical analysis on NVDA over the last year",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 543.5,
+ "bottom": 573
+ },
+ {
+ "label": "Fetch the MNIST dataset and train a good classifier",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 543.5,
+ "bottom": 573
+ },
+ {
+ "label": "What are the trending stocks on WallStreetBets?",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 581,
+ "bottom": 610.5
+ },
+ {
+ "label": "Make me a research report on the latest trends in AI",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 581,
+ "bottom": 610.5
+ },
+ {
+ "label": "Look up trending stocks and put together an investment report",
+ "disabled": false,
+ "ariaHidden": null,
+ "visibility": "visible",
+ "focused": false,
+ "top": 618.5,
+ "bottom": 648
+ }
+ ],
+ "pageProbe": "{\n \"href\": \"http://localhost:15224/draft-splash-evidence.html\",\n \"viewport\": \"1380x872\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:ebe269b4-8555-4d00-9bfd-fb0ce90a7bdc\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"What can I help you with today? mock Working directory: ~ Create a presentation outline on climate change Download some recent papers on fusion energy Do a technical analysis on NVDA over the last year Fetch the MNIST dataset and train a good classifier What are the trending stocks on WallStreetBets? Make me a research report on the latest trends in AI Look up trending stocks and put together an investment report\",\n \"greeting\": 1,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 768,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 104,\n \"w\": 1100,\n \"h\": 768\n },\n \"greeting\": {\n \"x\": 688.7,\n \"y\": 320,\n \"w\": 282.6,\n \"h\": 26\n },\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 370,\n \"w\": 1052,\n \"h\": 278\n }\n },\n \"stack\": {\n \"top\": 506,\n \"bottom\": 648,\n \"height\": 142,\n \"clientHeight\": 142,\n \"scrollHeight\": 142,\n \"scrollable\": false,\n \"topEdgeInside\": true,\n \"rows\": [\n {\n \"top\": 506,\n \"bottom\": 535.5,\n \"chips\": 2\n },\n {\n \"top\": 543.5,\n \"bottom\": 573,\n \"chips\": 2\n },\n {\n \"top\": 581,\n \"bottom\": 610.5,\n \"chips\": 2\n },\n {\n \"top\": 618.5,\n \"bottom\": 648,\n \"chips\": 1\n }\n ],\n \"rowCount\": 4,\n \"visibleRows\": 4,\n \"lastVisibleRowBottom\": 648,\n \"lastVisibleRowInside\": true,\n \"boundaryInGap\": true,\n \"contentHeight\": 142,\n \"room\": 366\n },\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 0,\n \"outsideBand\": 0,\n \"shimmerBars\": 0,\n \"captionVisible\": false\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"awaitingHydration\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 430,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 499,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+}
