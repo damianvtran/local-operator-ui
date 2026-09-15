@@ -14,17 +14,87 @@ import { join } from "node:path";
 import { is } from "@electron-toolkit/utils";
 import { BrowserWindow, app, dialog as electronDialog } from "electron";
 import {
-	bundledPythonTreePaths,
-	describePythonTreeSeal,
-	sealPythonInterpreterTrees,
+	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
 } from "../python-bytecode-cache";
 import { LogFileType, logger } from "./logger";
+import {
+	type ManagedPythonOptions,
+	inspectManagedSelection,
+	managedSelectionReady,
+	prepareManagedPython,
+} from "./managed-python";
 import {
 	linuxInstallScript,
 	macosInstallScript,
 	windowsInstallScript,
 } from "./scripts";
+import { VENV_PATH_ENV, managedVenvPath } from "./venv-paths";
+/**
+ * The three failure classes a user can act on, matched on the error's own words.
+ *
+ * Ordered, and that order is the decision: a full disk is the one cause whose
+ * remedy is the user's (`free space`), and it can look like a missing file, so
+ * it is tested first.
+ */
+const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
+	[
+		/ENOSPC|No space left|not enough (?:free )?space/i,
+		"This Mac ran out of disk space while setting up the backend. Free some space and retry.",
+	],
+	[
+		/Another Local Operator instance is preparing/i,
+		"Another copy of Local Operator is setting up its backend right now. Retry in a moment.",
+	],
+	[
+		/*
+		 * The smoke arm only. `did not complete` used to be in here, and it is the
+		 * phrase `prepareManagedPython` throws when the install callback returns
+		 * false - a pip or network failure, where nothing was installed at all - so
+		 * the user read "The backend was installed but did not start correctly" about
+		 * an install that never happened (review round 2, N6). It now falls through
+		 * to the generic cause, which is true of it, and the app's own sentence still
+		 * follows under `The app recorded:`.
+		 */
+		/did not become healthy|Backend smoke|exited with/i,
+		"The backend was installed but did not start correctly.",
+	],
+	[
+		/ENOENT|no such file or directory|could not find|did not match its signed seed/i,
+		"A file the setup needed was missing, which usually means the download or the copy did not finish.",
+	],
+];
+
+/**
+ * The failure dialog's detail line: what happened, then what was recorded.
+ *
+ * Why not `error.message` directly, which is what this used to be: several of
+ * those strings name internals rather than the user's situation - "Runtime
+ * directory escaped its managed root", "Could not allocate backend smoke port",
+ * "Invalid managed Python selection" - and a raw `ENOENT: no such file or
+ * directory, lstat ...` is the line a user actually reads (design D4). The plain
+ * sentence comes first because that is the part that is actionable; the app's own
+ * message follows under a label, because a support conversation needs the handle
+ * and the log needs the cause. The support root is named rather than a file, so
+ * the line does not send anyone to an internal path that may no longer exist.
+ *
+ * Exported so the copy is pinned by a test rather than only being visible in a
+ * dialog that, on this host, cannot be rendered at all.
+ */
+export function backendSetupFailureDetail(
+	error: unknown,
+	support: string,
+): string {
+	const raw = error instanceof Error ? error.message : String(error);
+	const cause =
+		SETUP_FAILURE_CAUSES.find(([pattern]) => pattern.test(raw))?.[1] ??
+		"The backend could not be set up on this Mac.";
+	return [
+		`What happened: ${cause}`,
+		`The app recorded: ${raw}`,
+		`Where its environment lives: ${support}/managed-python`,
+	].join("\n\n");
+}
 
 /**
  * Backend Installer class
@@ -35,76 +105,35 @@ export class BackendInstaller {
 	private venvPath: string;
 	private resourcesPath: string;
 	private pythonPath: string | null = null;
+	private preparationWindow: BrowserWindow | null = null;
 
 	/**
 	 * Constructor
 	 */
 	constructor() {
-		// Set platform-specific virtual environment path
-		if (process.platform === "win32") {
-			this.venvPath = join(this.appDataPath, "local-operator-venv");
-		} else if (process.platform === "darwin") {
-			this.venvPath = join(
-				app.getPath("home"),
-				"Library",
-				"Application Support",
-				"Local Operator",
-				"local-operator-venv",
-			);
-		} else {
-			// Linux
-			this.venvPath = join(
-				app.getPath("home"),
-				".config",
-				"local-operator",
-				"local-operator-venv",
-			);
-		}
+		// The app-managed venv for THIS instance. A packaged install and an
+		// unpackaged one must not share it: the venv is created by whatever
+		// interpreter the instance resolves, so a shared one puts the installed
+		// bundle's stdlib in the dev instance's import path - see `managedVenvPath`,
+		// which carries the measurement.
+		this.venvPath = managedVenvPath({
+			platform: process.platform,
+			home: app.getPath("home"),
+			appDataPath: this.appDataPath,
+			packaged: app.isPackaged,
+		});
 
 		// Set resources path
-		this.resourcesPath =
-			process.env.NODE_ENV === "development"
-				? join(process.cwd(), "resources")
-				: join(process.resourcesPath);
+		this.resourcesPath = !app.isPackaged
+			? join(process.cwd(), "resources")
+			: join(process.resourcesPath);
 
-		// Make the bundled interpreter trees refuse bytecode writes, so CPython
-		// cannot cache inside the code-sealed bundle.
-		//
-		// The environment this class hands the install script is only half the
-		// guarantee: an interpreter started with `-E`/`-I` ignores every `PYTHON*`
-		// variable by design, and - more common than either - a python the app did
-		// not start carries no prefix at all, which is where the operator's own 163
-		// in-bundle `.pyc` came from. Sealing the tree is the half no spawner can
-		// evade - see `sealPythonInterpreterTrees`, which carries the measurements.
-		//
-		// The trees are the ones under `process.resourcesPath`, which is deliberately
-		// NOT `this.resourcesPath`: a packaged build launched with
-		// NODE_ENV=development resolves that field at the checkout's gitignored
-		// `resources/`, and the seal must never touch a tree this app does not ship -
-		// the interpreter such a run uses is not inside a code seal either, so there
-		// is nothing there to protect. `app.isPackaged` is the same decision stated
-		// from the other side: in a dev run nothing is sealed at all.
-		//
-		// Best-effort: a bundle on a volume without access-control support, or owned
-		// by another user, stays exactly as it is and the environment half still
-		// applies.
-		if (app.isPackaged) {
-			const seal = sealPythonInterpreterTrees(
-				bundledPythonTreePaths(process.resourcesPath),
-			);
-			// The wording is `describePythonTreeSeal`'s, which is where the
-			// selected-versus-applied distinction lives. A seal that could not be
-			// applied on every path is a warning rather than an info line: those
-			// paths still accept bytecode, which is the class of write that unseals
-			// the bundle and stops the next update (Q4/R8).
-			const message = describePythonTreeSeal(seal);
-			if (seal.supported && seal.failures.length > 0) {
-				logger.warn(message, LogFileType.INSTALLER);
-			} else {
-				logger.info(message, LogFileType.INSTALLER);
-			}
-		}
-
+		// No guard is written from the constructor, and on darwin `this.venvPath` is
+		// the selection venv or the `no-environment-selected` sentinel - writing a
+		// `sitecustomize.py` into the sentinel would create a directory that looks
+		// like state, which is exactly what that name exists to prevent. The guard
+		// goes in after the environment is built instead (see `installEnvironment`).
+		if (process.platform !== "darwin") this.guardVenvBytecode();
 		// Find Python executable
 		this.pythonPath = this.findPython();
 
@@ -124,6 +153,8 @@ export class BackendInstaller {
 	 * @returns Path to Python executable or null if not found
 	 */
 	private findPython(): string | null {
+		// A macOS seed is data, never an executable candidate inside the app.
+		if (process.platform === "darwin") return null;
 		const possibilities: string[] = [];
 
 		// Prioritize architecture-specific paths based on current process architecture
@@ -173,11 +204,31 @@ export class BackendInstaller {
 	}
 
 	/**
+	 * Make the app-managed venv refuse bytecode writes for every process that
+	 * uses it, whoever started it.
+	 *
+	 * Logged rather than silent in both directions: a guard that was already
+	 * there, one this call wrote, and one that could not be written (no venv yet,
+	 * or a `sitecustomize.py` the operator owns) are three different states of the
+	 * same guarantee, and the field diagnosis starts from which one this machine
+	 * is in. `ensureVenvBytecodeGuard` never replaces a file it did not write.
+	 */
+	private guardVenvBytecode(): void {
+		const guard = ensureVenvBytecodeGuard(this.venvPath);
+		logger.info(
+			`Bytecode guard in the app-managed venv: ${guard.reason}`,
+			LogFileType.INSTALLER,
+		);
+	}
+
+	/**
 	 * Check if backend is installed
 	 * @returns Promise resolving to true if the backend is installed, false otherwise
 	 */
 	async isInstalled(): Promise<boolean> {
 		try {
+			if (process.platform === "darwin")
+				return await managedSelectionReady(this.managedOptions());
 			// Check if virtual environment exists
 			if (!fs.existsSync(this.venvPath)) {
 				logger.info(
@@ -234,37 +285,121 @@ export class BackendInstaller {
 	 * Install backend
 	 * @returns Promise resolving to true if the backend was installed successfully, false otherwise
 	 */
-	async install(): Promise<boolean> {
-		try {
-			// Show installation dialog
-			const { response } = await electronDialog.showMessageBox({
-				type: "info",
-				title: "First-Time Setup Required",
-				message:
-					"Local Operator needs to set up some components to work properly. This one-time process will take just a few moments.",
-				buttons: ["Set Up Now", "Cancel"],
-				defaultId: 0,
-				cancelId: 1,
-			});
+	private managedOptions(): ManagedPythonOptions {
+		return {
+			support: join(
+				app.getPath("home"),
+				"Library",
+				"Application Support",
+				"Local Operator",
+			),
+			resources: this.resourcesPath,
+			packaged: app.isPackaged,
+			arch: process.arch,
+		};
+	}
 
-			if (response === 1) {
-				// User cancelled installation
-				logger.info(
-					"User cancelled backend installation",
-					LogFileType.INSTALLER,
+	async install(): Promise<boolean> {
+		if (process.platform !== "darwin") return this.installEnvironment();
+		// Publish only after imports and real backend health pass. A failed setup
+		// preserves the previous venv and data; retry creates a fresh generation.
+		for (;;) {
+			try {
+				// Say why, before preparing: a published environment that is gone or no
+				// longer the published bytes is now recovered from rather than refused
+				// (review R8), and the one place that diagnosis survives is this log -
+				// the user is told what to do, not which `pyvenv.cfg` disagreed.
+				const state = inspectManagedSelection(this.managedOptions());
+				if (state.kind === "missing")
+					logger.warn(
+						`Published backend environment is not usable and will be rebuilt: ${state.detail}`,
+						LogFileType.INSTALLER,
+					);
+				await prepareManagedPython(
+					this.managedOptions(),
+					async (venv, python) => {
+						this.venvPath = venv;
+						this.pythonPath = python;
+						return this.installEnvironment();
+					},
 				);
-				// Exit the app when installation is cancelled
-				setTimeout(() => {
-					app.exit(0);
-				}, 500);
-				return false;
+				return true;
+			} catch (error) {
+				logger.error(
+					"Backend preparation failed",
+					LogFileType.INSTALLER,
+					error,
+				);
+				const { response } = await electronDialog.showMessageBox({
+					type: "error",
+					title: "Backend setup could not finish",
+					message:
+						"Your existing environment and data were preserved. Retry setup to start this version of Local Operator.",
+					detail: backendSetupFailureDetail(
+						error,
+						this.managedOptions().support,
+					),
+					buttons: ["Retry setup", "Quit"],
+					defaultId: 0,
+					cancelId: 1,
+				});
+				if (response !== 0) return false;
+			} finally {
+				if (this.preparationWindow && !this.preparationWindow.isDestroyed())
+					this.preparationWindow.close();
+				this.preparationWindow = null;
+			}
+		}
+	}
+
+	private async installEnvironment(): Promise<boolean> {
+		try {
+			/*
+			 * macOS is not prompted here, and that is a deliberate, user-visible
+			 * change this branch made rather than an oversight (review R9).
+			 *
+			 * Two surfaces used to ask one question: this consent prompt, and the
+			 * progress window that opens immediately after it, which carries its own
+			 * Cancel. On macOS the install now runs inside `prepareManagedPython`'s
+			 * preparation lock, so the prompt also stood between a user and a lock,
+			 * and a modal held open there starves any other instance waiting to
+			 * prepare. The window the user actually watches owns the decision, so the
+			 * prompt is not shown and there is no consent state to cancel here; the
+			 * platforms that still show it keep the same flow they had.
+			 *
+			 * What is NOT restored: a non-blocking acknowledgement. Nothing is said
+			 * after a successful macOS setup, because the window closing and the app
+			 * starting is the acknowledgement - see the note on the completion path.
+			 */
+			if (process.platform !== "darwin") {
+				const { response } = await electronDialog.showMessageBox({
+					type: "info",
+					title: "First-Time Setup Required",
+					message:
+						"Local Operator needs to set up some components to work properly. This one-time process will take just a few moments.",
+					buttons: ["Set Up Now", "Cancel"],
+					defaultId: 0,
+					cancelId: 1,
+				});
+				if (response === 1) {
+					// User cancelled installation
+					logger.info(
+						"User cancelled backend installation",
+						LogFileType.INSTALLER,
+					);
+					// Exit the app when installation is cancelled
+					setTimeout(() => {
+						app.exit(0);
+					}, 500);
+					return false;
+				}
 			}
 
 			// Create temporary script file based on platform
 			let scriptPath: string;
 			let cmd: string;
 			let args: string[];
-			const tempDir = tmpdir();
+			const tempDir = fs.mkdtempSync(join(tmpdir(), "local-operator-install-"));
 
 			// Set platform-specific script and command
 			if (process.platform === "win32") {
@@ -317,6 +452,9 @@ export class BackendInstaller {
 					sandbox: false,
 				},
 			});
+
+			if (process.platform === "darwin")
+				this.preparationWindow = progressWindow;
 
 			// Load the installer HTML file
 			if (is.dev && process.env.ELECTRON_RENDERER_URL) {
@@ -437,6 +575,33 @@ export class BackendInstaller {
 					// Pass the resources path to the script for finding bundled Python
 					env.ELECTRON_RESOURCE_PATH = this.resourcesPath;
 
+					/*
+					 * And the environment this instance's install belongs to.
+					 *
+					 * The script cannot derive it: it runs as a subprocess with no view of
+					 * `app.isPackaged`, so left to itself it builds the packaged name for
+					 * every instance - measured by a review, which ran the shipped macOS
+					 * script under a dev instance's environment and watched it create
+					 * `.../local-operator-venv` while this app's own answer for the same
+					 * instance was `.../local-operator-venv-dev`. That is the shared
+					 * environment whose interpreter is the installed bundle's, so a dev
+					 * instance would still pip into and `rm -rf` the packaged app's
+					 * environment, and then fail this class's own `isInstalled()` check and
+					 * quit. One path decision, handed down rather than re-made.
+					 */
+					env[VENV_PATH_ENV] = this.venvPath;
+					// Hand down Electron's actual paths, not an assumed HOME, including
+					// the scripts' hardcoded support boundary during isolated native tests.
+					env.HOME = app.getPath("home");
+					env.LOCAL_OPERATOR_SUPPORT_PATH =
+						process.platform === "darwin"
+							? this.managedOptions().support
+							: this.appDataPath;
+					logger.info(
+						`Setting ${VENV_PATH_ENV} to ${this.venvPath}`,
+						LogFileType.INSTALLER,
+					);
+
 					// Log the resources path for debugging
 					logger.info(
 						`Setting ELECTRON_RESOURCE_PATH to ${this.resourcesPath}`,
@@ -531,7 +696,7 @@ export class BackendInstaller {
 			app.removeListener("before-quit", appQuitHandler);
 
 			// Close the progress window if it's still open
-			if (!progressWindow.isDestroyed()) {
+			if (process.platform !== "darwin" && !progressWindow.isDestroyed()) {
 				progressWindow.close();
 			}
 
@@ -550,6 +715,17 @@ export class BackendInstaller {
 					"Backend installation completed successfully",
 					LogFileType.INSTALLER,
 				);
+
+				// The venv exists now, so the guard can go in with it rather than
+				// waiting for the next start - on every platform. It used to be skipped
+				// on darwin, on the reasoning that this venv was built on the installed
+				// bundle and editing it was a favour to the pre-split world. That is no
+				// longer what this venv is: it is built on a runtime outside every
+				// `.app`, and the processes the app does not spawn - the operator's
+				// shell, a CLI script, launchd - can still run it and write bytecode
+				// into a tree whose identity we assert. The guard is the half that
+				// covers them (review R13, QA Q2).
+				this.guardVenvBytecode();
 
 				// Verify the installation by checking if the local-operator executable exists
 				const localOperatorPath =
@@ -572,32 +748,42 @@ export class BackendInstaller {
 					LogFileType.INSTALLER,
 				);
 
-				// Show success dialog and wait for user acknowledgment
-				const { response: successResponse } =
-					await electronDialog.showMessageBox({
-						type: "info",
-						title: "Setup Complete",
-						message:
-							"Local Operator is ready to use. Everything has been set up successfully.",
-						buttons: ["Let's Go!", "Cancel"],
-						defaultId: 0,
-						cancelId: 1,
-					});
-
-				if (successResponse === 1) {
-					// User cancelled installation
-					logger.info(
-						"User ended session after successful installation",
-						LogFileType.INSTALLER,
-					);
-					// Exit the app when installation is cancelled
-					setTimeout(() => {
-						app.exit(0);
-					}, 500);
-					return false;
+				/*
+				 * Same platform split as the consent prompt above, and the same reason:
+				 * on macOS the acknowledgement used to be a second modal, and it is
+				 * deliberately not shown any more. The setup window closing and the app
+				 * starting IS the acknowledgement there, and "Let's Go!" gated the
+				 * window behind a click that said nothing the state did not already say
+				 * (review R9). The platforms that still show it keep their flow.
+				 */
+				if (process.platform !== "darwin") {
+					const { response: successResponse } =
+						await electronDialog.showMessageBox({
+							type: "info",
+							title: "Setup Complete",
+							message:
+								"Local Operator is ready to use. Everything has been set up successfully.",
+							buttons: ["Let's Go!", "Cancel"],
+							defaultId: 0,
+							cancelId: 1,
+						});
+					if (successResponse === 1) {
+						// User cancelled installation
+						logger.info(
+							"User ended session after successful installation",
+							LogFileType.INSTALLER,
+						);
+						// Exit the app when installation is cancelled
+						setTimeout(() => {
+							app.exit(0);
+						}, 500);
+						return false;
+					}
 				}
 
-				// Add a small delay after dialog to ensure UI is ready
+				// A short settle before the app continues, so the window's last frame is
+				// painted before it closes. Kept on every platform: it is a paint delay,
+				// not a dialog's shadow.
 				await new Promise((resolve) => setTimeout(resolve, 500));
 
 				// On Windows, wait for transcript file release before continuing
