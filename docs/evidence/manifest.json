@@ -1,22 +1,22 @@
 {
-  "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
-  "headNote": "Cold-send remediation on top of the merge of main a8f6bc4b9 (#158) and 8d019993e (#175). srcTree/scriptsTree below name the resolved reviewed tree. Two cold-send supplementary sets are this branch's: 11 real browser-tool frames (chat-cold-send-browser, with a README stating exactly which precede the merge) and 2 preserved legacy full-pane frames with limited provenance. Every other set, count and citation is upstream's and is cited through upstreamComposerCapture rather than re-stamped. No whole-corpus recapture or ImageMagick walk is claimed. Merged-head compatibility re-stamp (this branch): this branch changes `scripts/` and nothing a frame photographs, and that change invalidated the `scriptsTree` stamp it ships beside, so the stamp block is re-issued here as a COMPATIBILITY RE-STAMP and NOTHING BEHIND IT WAS RE-CAPTURED OR RE-SWEPT. Every capture fact above is main's, carried through verbatim - `capturedAt`, the frame/surface/theme counts, every `set`, `partialCapture` and supplementary citation, and `dirtyWorkingTree`. `scriptsTree` is `git rev-parse HEAD:scripts` of the merged tree; it moved for the reason the gate exists. `scripts/evidence-run-guard.py` is new, `check-evidence.mjs` now admits one machine-wide sweep and forwards its descriptor to the image child, and the capturer imports only `assertFramePaints` and `frames` from `check-evidence.mjs` - exports this branch does not touch - so the changed lines decide WHO MAY SWEEP and what an unsupported host is told, and cannot reach a pixel. That also means the sentence above reading `srcTree/scriptsTree below name the resolved reviewed tree` describes the pass that wrote it and is superseded HERE FOR `scriptsTree` ALONE: `srcTree` still names that tree, and `scriptsTree` now names the merged tree this file ships in, which is the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts` and the reason a re-stamp is recorded rather than the citation re-pointed. Re-capturing was rejected because it would have rewritten the record instead of measuring it, and would have claimed a measurement this pass did not make. WHAT WAS RUN to license it: the focused shipped-manifest test in `scripts/evidence-manifest.test.mjs` (stamps and head citations; no ImageMagick, no renderer, no sweep) and the guard's own synthetic suite. WHAT WAS NOT RUN: any image decoding, any capture, any full evidence sweep. RECONCILIATION ONTO main 56800cb1e (#179) - this branch's record, placed beside upstream's. Method: a normal merge whose FIRST PARENT is this branch's published head c922bdd87, so that lineage stays an ancestor of this tree and the push is a fast-forward; no rebase, no force, no published history rewritten. Two files conflicted, docs/evidence/manifest.json and package.json, and both are resolved to the union rather than to one side: upstream's #179 stamp block, its machine-lease gate semantics and its cold-send records are kept as written, and this branch's records sit beside them (remediationRecord, the partialCapture additions, and the two panels supplementary sets). The stamp block below is RE-ISSUED for the merged tree, because a stamp block that describes somebody else's tree is the defect the gate exists for: srcTree/scriptsTree are `git rev-parse HEAD:src` / `HEAD:scripts` of this merge, `surfaces` is the merged capture script's STORIES count (246 entries, this branch's 238 plus upstream's eight cold-send entries), and `frames` is the committed WebP files minus the 32 declared supplementary sets (2336 - 372 = 1964). package.json carries upstream's 0.22.4 on the version line: this branch never touches that line, so the merge takes main's released version and no bump of this branch's own is carried. NO IMAGE WAS CAPTURED, MODIFIED OR DELETED HERE: every frame blob upstream brings is byte-identical to main's, and the 16 frames that enter this branch's range with the merge (docs/evidence/chat-message-input, 8, and docs/evidence/chat-tool-rows/admitted-*, 8) are main's own, arriving unaltered. No check was weakened; one upstream defect the merged manifest inherits is reported rather than silently repaired - see the merge comment on PR #165.",
-  "srcTree": "58dd560d8c4bd08e1ebd57837c15d814fae96eb0",
-  "scriptsTree": "d1889f51d93f299510477925292492956c027c53",
+  "head": "0b3351a4b39de5f878b5bb50b12c91d29de3bb54",
+  "headNote": "Sync merge of `origin/main` `56800cb1e` (#179, three commits on from the head the round-8 review pinned) and the re-stamp that follows it, WITHOUT RECAPTURE. `head`/`capturedAt` name the commit and time this re-derivation was taken at - the merge commit `0b3351a4b`, whose `src`/`scripts` trees this stamp commit does not move, because it touches `docs/` only - and `srcTree`/`scriptsTree` are those trees, since the gate accepts nothing else in those fields. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is the CAPTURE's and not this pass's: no frame was re-taken, nothing behind these counts was re-captured or re-swept, and the capture the older frames came from is recorded in `captureOrigin`, beside main's own record of its pass in `upstreamComposerCapture`. The sets this branch owns are declared as supplementary; the uncovered part of the delta is named in `captureOrigin.note` rather than implied. RECONCILIATION ONTO main c9a9c6196 (the release window's 0.22.5 bump, #185; #149 and #179 beneath it) - this branch's record, placed beside upstream's. main moved twice while this pass ran (56800cb1e -> 2f2ce237a -> c9a9c6196) and the PR is charged for the conflict rather than for the move. Method is history-preserving and unchanged: a normal merge whose FIRST PARENT is this branch's published head 6b2edb52e, which descends from c922bdd87, so the whole published lineage stays an ancestor of this tree and the push is a fast-forward - no rebase, no force, no published history rewritten. Two files conflicted again, docs/evidence/manifest.json and package.json, and both resolve by one rule: UPSTREAM'S ENTRIES FOR ANYTHING THIS BRANCH DOES NOT OWN, TAKEN VERBATIM (its stamp block, captureOrigin, its shared and new supplementary sets, its cold-send records, upstreamComposerCapture), THIS BRANCH'S OWN RECORDS BESIDE THEM (remediationRecord, its two `panels` sets, the partialCapture additions), AND THE FILE-WIDE TOTALS RE-DERIVED FROM THE MERGED REALITY. Re-derived here: srcTree/scriptsTree are `git rev-parse HEAD:src` / `HEAD:scripts` of this merge; `surfaces` is the merged capture script's STORIES count (249 entries); `frames` is the committed WebP files minus the 34 declared supplementary sets (2349 - 379 = 1970); `partialCapture.refreshedFrames` is 884 non-supplementary frames moved since the pass start 9c82dce4f. package.json carries upstream's version line, 0.22.5 - this branch never touches it, so the PR authors no bump and the version-bump guard has nothing to read - plus the UNION test list, which keeps both sides' coverage. NO IMAGE WAS CAPTURED, MODIFIED OR DELETED BY THIS RECONCILIATION and no check was weakened: every frame blob upstream brings is byte-identical to main's.",
+  "srcTree": "3516470350bd912a08f7567c7dab58bf8cc04b66",
+  "scriptsTree": "060ab7caba28c379127c04270c9545fb80d3c6c2",
   "dirtyWorkingTree": false,
-  "capturedAt": "2026-09-13T11:13:12.499634Z",
-  "frames": 1964,
-  "surfaces": 246,
+  "capturedAt": "2026-09-15T00:21:21.000000Z",
+  "frames": 1970,
+  "surfaces": 249,
   "themes": 12,
   "countsMean": {
-    "frames": "2336 committed WebP files: 1964 swept and 372 in 32 declared supplementary sets. File counts on disk, not a newly completed full sweep.",
-    "surfaces": "246 entries in the merged capture-evidence.mjs STORIES literal, counted the way `check-evidence.mjs` counts them: this branch's 238 plus the eight upstream cold-send entries. The declared live-app sets are not swept stories.",
+    "frames": "2349 committed WebP files: 1970 swept and 379 in 34 declared supplementary sets. File counts on the merged disk, not a newly completed full sweep.",
+    "surfaces": "249 entries in the merged capture-evidence.mjs STORIES literal, counted the way `check-evidence.mjs` counts them: this branch's 238 plus upstream's entries. The declared live-app sets are not swept stories.",
     "themes": "12 theme names in the merged capture script; per-set theme counts may be narrower."
   },
   "partialCapture": {
     "refreshedAt": "2026-09-14T18:10:25.667Z",
     "refreshedAtHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
-    "refreshedFrames": 878,
+    "refreshedFrames": 884,
     "refreshedStories": [
       "chat-ask-options--options",
       "chat-ask-options--single-option",
@@ -125,7 +125,7 @@
       "retakes": 96,
       "note": "The 96 changed-surface retakes and their content-region composition are recorded in docs/evidence/panels-remediation/README.md, capture-index.json and crop-index.json."
     },
-    "refreshedFramesNote": "`refreshedFrames` is one-sided by design and measures every non-supplementary `.webp` that moved between the pass start and this tree: `git diff --name-only 9c82dce4f^ -- docs/evidence`, filtered to `.webp` paths outside every declared supplementary set, is the expression this note describes. It is RE-DERIVED for the merged tree rather than carried forward, because the reconciliation moves this branch's range onto main and main's frames enter it: 862 non-supplementary frames had moved at c922bdd87, and 16 more arrive with the merge (docs/evidence/chat-message-input, 8, and docs/evidence/chat-tool-rows/admitted-*, 8 - all of them upstream's), so the count for this tree is 878. No frame was deleted, here or by the merge. THIS BRANCH'S OWN CONTRIBUTION IS 96 RETAKES, listed in `remediationRecord.thisPassRetakes` and itemised under `docs/evidence/panels-remediation/`; the remainder arrived with `main` and was neither captured nor modified here.",
+    "refreshedFramesNote": "`refreshedFrames` is one-sided by design and measures every non-supplementary `.webp` that moved between the pass start and this tree: `git diff --name-only 9c82dce4f^ -- docs/evidence`, filtered to `.webp` paths outside every declared supplementary set, is the expression this note describes. It is RE-DERIVED for the merged tree rather than carried forward, because the reconciliations move this branch's range onto main and main's frames enter it: 862 non-supplementary frames had moved at c922bdd87, main's cold-send and incident-row lineages account for the rest, and the count for this tree is 884. No frame was deleted, here or by any merge. THIS BRANCH'S OWN CONTRIBUTION IS 96 RETAKES, listed in `remediationRecord.thisPassRetakes` and itemised under `docs/evidence/panels-remediation/`; the remainder arrived with `main` and was neither captured nor modified here.",
     "d19Recapture": "The D19 re-capture replaced the wire-environment frame in place and is declared in docs/evidence/panels-live/wire-environment/d19-recapture.json. It is NOT one of the frames counted by `refreshedFrames`: it sits inside the declared `panels-live` supplementary set, and that denominator excludes every declared supplementary path. It is therefore not among the 878."
   },
   "supplementary": [
@@ -260,6 +260,15 @@
       "capturedAt": "2026-09-13T08:47:05.556466Z"
     },
     {
+      "path": "job-result-label-round5",
+      "frames": 5,
+      "surfaces": 3,
+      "themes": 2,
+      "source": "Local Operator browser tool, production JobResultMessages story in an isolated Vite harness. Before: canonical-transcript.tsx at 8e86608083171428c02ecd85fa357ff186dee824 plus the new fixture. After: that fixture with the explicit-label restoration committed as dce5c74fca8151e4425ee0c6794400a020172a0e before the forge-required rebase; modified working tree during capture. See job-result-label-round5/README.md for viewport, geometry and capture limitations. No CDP or private browser engine.",
+      "why": "The before/after pair pins the fallback label, glyph and truncated message regression on long job results with and without supporting detail. The expanded frame checks the surviving disclosure.",
+      "capturedAt": "2026-09-14T19:47:44.871517+00:00"
+    },
+    {
       "path": "mentioned-files-app",
       "frames": 4,
       "surfaces": 3,
@@ -322,6 +331,16 @@
         "2026-09-14T19:36:59.688417+00:00",
         "2026-09-14T19:49:41.714191+00:00"
       ]
+    },
+    {
+      "path": "session-incident-rows-before",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "Storybook via scripts/capture-evidence.mjs, from the UNMODIFIED origin/main tree (73977340a) - the same story and the same persisted payloads as chat-canonical-notices/session-incidents, taken before either renderer file was edited, at the same 1280x700 viewport.",
+      "why": "The before half of the incident-row pair, and the reproduction of the operator's report. A sweep cannot re-derive it: it needs a tree that no longer exists in the repository, and the story renders the production components, so a fixture cannot fake the shipped row. What it holds is what the defect looked like - ten rows reading `session incident` with every message behind a chevron.",
+      "capturedAt": "2026-09-13T23:36:00.000Z",
+      "capturedAtHead": "73977340a81660a6ba88ecff9c9f33f00ab77178"
     },
     {
       "path": "session-status-live",
@@ -721,6 +740,15 @@
       "first": "pnpm check-evidence at 0c3591791 -> Evidence check FAILED: 27 of 2279 frames (25 ground-coverage, 1 missing capturedAt, 1 refreshedFrames)",
       "second": "pnpm check-evidence at 00b45363a -> Evidence holds: 2279 frames are pictures of their own theme (worst dE00 18.1, docs/evidence/chat-model-picker/busy/localOperatorLight.webp), exit 0"
     }
+  },
+  "captureOrigin": {
+    "note": "Two preserved records, not one, and the fields are not interchangeable. `head`/`capturedAt` name the commit and the time the capture was taken at. `srcTree`/`scriptsTree` are the tree hashes the aggregate fields carried before they were re-derived, and they never described `head`'s trees: they are `8d019993e`'s (`git rev-parse 8d019993e:src` = 6253e4196..., `:scripts` = 2fe452ad2...), the upstream commit whose stamp block wrote them, while `0f19ae5e2:src` is 5e6095c258e8.... `dirtyWorkingTree` is the branch's own `8e8660808`-era pass recording the scratch `.storybook/main.ts` docgen override that capture needed, deliberately not a current value: a re-derivation does not make an older capture clean. No frame was recaptured for this re-derivation, and these frames are not claimed to be current. What covers this branch's delta is specific: the five in `job-result-label-round5` show the job-result and statement register this branch owns, and the six under `chat-canonical-notices/session-incidents`, `session-incidents-narrow` and `notice-lengths` show the incident and notice registers - all historical captures, none of them a frame at this head, and one row of `session-incidents` and `session-incidents-narrow` paints through upstream's receipt model there instead. The rest of this branch's delta - the tooltip/selection union in `disclosure.tsx` and the scripts the gate reads - has no frame at this head, so its evidence is the PR's test and rebase rounds rather than a picture.",
+    "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
+    "capturedAt": "2026-09-13T11:13:12.499634Z",
+    "srcTree": "6253e4196ba11cdf2855f5a8fec4fc07deacdc6e",
+    "scriptsTree": "2fe452ad280ba12139b28e41b6e33d0624136414",
+    "dirtyWorkingTree": true,
+    "recaptured": false
   },
   "upstreamComposerCapture": {
     "sourceManifest": "a8f6bc4b9:docs/evidence/manifest.json",
