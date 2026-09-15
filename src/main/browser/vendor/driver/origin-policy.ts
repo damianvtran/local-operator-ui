@@ -3,7 +3,7 @@
  * This file is the vendored copy of `extension/src/driver/origin-policy.ts` and
  * differs from it in ONE declared way: the public-suffix rules are injected
  * (configurePslRules) rather than imported from the generated `psl.gen.ts`,
- * which this host does not ship. Do not edit it by hand — `scripts/check-vendored.mjs`
+ * which the host now injects from the same pinned generated table. Do not edit it by hand — `scripts/check-vendored.mjs`
  * compares it against the manifest and will fail the build. Re-pinning is
  * `scripts/sync-vendored.mjs --from <ref>`, which re-applies this adaptation.
  */

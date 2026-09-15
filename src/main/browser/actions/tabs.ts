@@ -84,19 +84,59 @@ export async function open(
 	// Admission is decided ONCE, here, before the page is touched. A grant consumed
 	// at entry is spent; the gate below must not consult the grant map again or a
 	// TTL lapse mid-command could turn a granted navigation into a refusal.
-	const admission = url
-		? ctx.approvals.ensureTopLevelAccess(url, requester)
-		: null;
-	const approved = (candidate: URL): boolean =>
-		(url !== null && candidate.origin === url.origin) ||
-		ctx.approvals.originAllowed(candidate);
+	const admission = url ? ctx.approvals.admit(url, requester) : null;
+	const approved =
+		admission?.approved ??
+		((candidate: URL) => ctx.approvals.originAllowed(candidate));
 
 	if (handle) {
 		const record = ctx.registry.requireSurface(handle);
+		record.allocationId =
+			stringParam(params, "allocation_id") || record.allocationId;
+		if (!url) {
+			const current = safeHttpUrl(record.view.webContents.getURL());
+			if (!current)
+				throw new BrowserHostError(
+					"origin_not_allowed",
+					"the handed-over tab has no approved HTTP document",
+				);
+			const token = surfaceToken(record) ?? "";
+			// `documentEpoch`, NOT `epoch`: the receipt this consults was minted with
+			// `record.documentEpoch` (below, and in `host.ts`), while `epoch` is also
+			// bumped by in-page navigations. Passing `epoch` therefore made the two
+			// disagree after any same-document history change, the receipt missed, and
+			// a re-adopt fell into `admit()` and threw `origin_not_allowed` for a
+			// document the session could still read (review round 1, R1).
+			if (
+				!ctx.approvals.documentAllowed(
+					token,
+					current,
+					requester,
+					record.documentEpoch,
+				)
+			) {
+				const permission = ctx.approvals.admit(current, requester);
+				ctx.approvals.rememberDocument(
+					token,
+					current,
+					requester,
+					record.documentEpoch,
+					permission.approved,
+				);
+			}
+		}
 		await ctx.cdp.attach(record.view.webContents);
 		const page = url
 			? await navigateView(ctx, record.view, url, requester, approved)
 			: pageOf(record.view);
+		if (url)
+			ctx.approvals.rememberDocument(
+				surfaceToken(record) ?? "",
+				new URL(page.url),
+				requester,
+				record.documentEpoch,
+				approved,
+			);
 		ctx.registry.touch(record);
 		ctx.onChanged();
 		return openResult(record, {
@@ -112,11 +152,26 @@ export async function open(
 		sessionId: sessionIdOf(requester) || requester,
 		allocationId: stringParam(params, "allocation_id"),
 	});
+	// Publish the capability before the first await so failure/recovery sees the
+	// actual allocation, never an empty reservation hiding a live view.
+	ctx.ownership.recordAllocation(
+		params,
+		surfaceToken(record) ?? "",
+		"allocated",
+	);
 	try {
 		await ctx.cdp.attach(record.view.webContents);
 		const page = url
 			? await navigateView(ctx, record.view, url, requester, approved)
 			: pageOf(record.view);
+		if (url)
+			ctx.approvals.rememberDocument(
+				surfaceToken(record) ?? "",
+				new URL(page.url),
+				requester,
+				record.documentEpoch,
+				approved,
+			);
 		ctx.registry.touch(record);
 		ctx.onChanged();
 		return openResult(record, {
@@ -127,6 +182,7 @@ export async function open(
 		// A tab that could not be navigated must not be left behind: the agent has
 		// no handle for it (the `open` failed), so nothing could ever close it.
 		ctx.registry.destroy(record.tabId);
+		ctx.ownership.recordAllocation(params, "", "closed");
 		throw error;
 	}
 }
@@ -147,11 +203,17 @@ export async function goto(
 	const requester = requesterOf(params, requestId);
 	const record = ctx.registry.requireSurface(params.tab);
 	const url = safeHttpUrl(stringParam(params, "url"));
-	const admission = ctx.approvals.ensureTopLevelAccess(url, requester);
-	const approved = (candidate: URL): boolean =>
-		candidate.origin === url.origin || ctx.approvals.originAllowed(candidate);
+	const admission = ctx.approvals.admit(url, requester);
+	const approved = admission.approved;
 	await ctx.cdp.attach(record.view.webContents);
 	const page = await navigateView(ctx, record.view, url, requester, approved);
+	ctx.approvals.rememberDocument(
+		surfaceToken(record) ?? "",
+		new URL(page.url),
+		requester,
+		record.documentEpoch,
+		approved,
+	);
 	ctx.registry.touch(record);
 	ctx.onChanged();
 	return {
@@ -177,6 +239,7 @@ export async function close(
 	if (handle) {
 		const record = ctx.registry.requireSurface(handle);
 		const closed = surfaceToken(record) ?? handle;
+		ctx.approvals.forgetDocument(closed);
 		ctx.registry.destroy(record.tabId);
 		ctx.onChanged();
 		return { closed };
