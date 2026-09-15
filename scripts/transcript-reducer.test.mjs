@@ -2181,3 +2181,122 @@ test("a relayed row whose headline is its whole payload discloses nothing", () =
 	assert.ok(long.detail?.includes("Retry once the volume is clear."));
 });
 
+test("a page row that ties with a painted row is painted after it", () => {
+	// The tie-break the shared rule documents, and the reason extracting
+	// `withTimeOrder` is a deliberate one-case behaviour change rather than a pure
+	// refactor: the comparator `applyHistoryPage` used to carry read the painted
+	// position from `base.records` and fell back to the INCOMING page's position,
+	// so for an exact-millisecond tie it compared two different index spaces and
+	// could sort the arriving row ABOVE the row already on screen — the opposite
+	// of what that sort's own comment promised. On that comparator this sequence
+	// produced `a1,a2,b1,a3`; the rule both paths now share produces
+	// `a1,a2,a3,b1`.
+	const painted = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("a1", 1, assistant("a1", "one")),
+			messageEntry("a2", 2, assistant("a2", "two")),
+			messageEntry("a3", 3, assistant("a3", "three")),
+		]),
+	);
+	const merged = applyHistoryPage(
+		painted,
+		pageOf([messageEntry("b1", 3, assistant("b1", "tie"))]),
+	);
+	assert.deepEqual(
+		merged.records.map((record) => record.id),
+		["a1", "a2", "a3", "b1"],
+		"a painted row is not displaced by an arriving page row at its own instant",
+	);
+});
+
+test("an anchor of epoch 0 is no anchor, so a settling frame is refused or dated now", () => {
+	// `applyHistoryPage` anchors a call at the instant of the entry that named it,
+	// so an entry whose `ts` is missing or zero would anchor every call it names
+	// at EPOCH 0 — a fabricated time rather than a weak one, which `withTimeOrder`
+	// would sort to the HEAD of the conversation the moment a settling frame
+	// painted it. The guard is `epochMs`' own: a non-positive epoch is not a
+	// timestamp, so this falls back to the rule a call nothing states gets.
+	const undated = pageOf([
+		{
+			id: "a0",
+			ts: 0,
+			type: "message",
+			payload: {
+				...assistant("a0", "undated"),
+				tool_calls: [{ id: "callZ", name: "read", arguments: { path: "a" } }],
+			},
+		},
+		messageEntry("later", 1900, assistant("later", "later")),
+	]);
+	const settled = {
+		type: "tool_execution_end",
+		tool_call_id: "callZ",
+		tool_name: "read",
+		result: { output: "x" },
+	};
+
+	// The turn is over, so the row is refused: nothing claims 1970, and the
+	// conversation still ends where its own last row put it.
+	const refused = applyLiveSeed(
+		applyHistoryPage(EMPTY_TRANSCRIPT, undated),
+		{ streaming: false, generation: "1", live_events: [settled] },
+		2_000_000,
+	);
+	assert.deepEqual(
+		refused.records.map((record) => record.id),
+		["a0", "later"],
+	);
+
+	// The turn is still running, so the frame is painted after the rows already
+	// there, dated by the reader's clock rather than by the unusable anchor.
+	const inFlight = applyLiveSeed(
+		applyHistoryPage(EMPTY_TRANSCRIPT, undated),
+		{ streaming: true, generation: "1", live_events: [settled] },
+		2_000_000,
+	);
+	assert.deepEqual(
+		inFlight.records.map((record) => record.id),
+		["a0", "later", "tool:callZ"],
+	);
+	assert.equal(inFlight.records.at(-1).ts, 2_000_000);
+});
+
+test("a history_delta that states reset replaces the viewport it cannot extend", () => {
+	// Two of the three producers send the WHOLE history with `reset=True`
+	// (`HistoryDeltaEvent.reset`: "a replay-changing generation cannot be appended
+	// to the old viewport"), and merging those rows as a page painted the full
+	// transcript at the reader's arrival second AFTER everything already on
+	// screen. The genuine reconnect gap leaves `reset` false and still merges,
+	// where the arrival stamp is the gap's own time rather than hours of history
+	// mistaken for it.
+	const painted = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([messageEntry("old", 1, assistant("old", "old"))]),
+	);
+	const replaced = applyEvent(
+		painted,
+		{
+			type: "history_delta",
+			reset: true,
+			messages: [assistant("r1", "replayed")],
+		},
+		// The arrival clock is ms while the reconstructed page's `ts` is in
+		// seconds (`now / 1000`), which is the unit the page contract states.
+		5_000,
+	);
+	assert.deepEqual(
+		replaced.records.map((record) => record.id),
+		["r1"],
+		"the replayed rows stand alone rather than under what was painted",
+	);
+	const merged = applyEvent(
+		painted,
+		{ type: "history_delta", messages: [assistant("g1", "gap")] },
+		5_000,
+	);
+	assert.deepEqual(
+		merged.records.map((record) => record.id),
+		["old", "g1"],
+	);
+});

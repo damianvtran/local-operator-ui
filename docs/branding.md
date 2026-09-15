@@ -377,6 +377,19 @@ equally important**, and the interface must not present them as though they are.
   `responding`) already names every such state, and a record with no content in
   it paints nothing. This mirrors the TUI, which has one `WorkingBlock` and no
   per-message equivalent.
+- **A row may only claim a position it can justify, and a finished conversation
+  ends at its own last row.** Rows are placed by the time they carry, never by
+  the moment the reader happened to see them: a replayed or seeded row the seed
+  can attribute — one naming a call or a message — and that states no truthful
+  time of its own is not painted at the reader's arrival, and nothing is appended
+  under a conversation that has already answered. Where
+  the row is already on screen, a late frame settles it in place rather than
+  moving it. The failure this rule exists for is the one reported on 2026-09-15:
+  a finished session whose lowest rows were `wait`/`bash` ledger lines from the
+  previous morning, carrying the reader's own clock and painted under the answer.
+  Implementation and evidence: `applyLiveSeed` / `withTimeOrder` in
+  `transcript-reducer.ts`, `scripts/seed-placement.test.mjs`, and the
+  before/after pair under `docs/evidence/chat-stale-seed-order/`.
 - **Agent output shares the tool rows' edges.** Prose and the ledger are two
   registers of one turn and resolve against the same row content box, so they
   take one left rail and one right edge. Agent prose therefore carries **no
