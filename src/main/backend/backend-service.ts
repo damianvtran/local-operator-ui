@@ -35,10 +35,10 @@ import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
 import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
-	requestDesktopMedia,
+	requestDesktopMediaOutcome,
 } from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
-import { requestDesktop } from "../desktop-transport";
+import { requestDesktop, requestDesktopOutcome } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { readInstallIdentity, resolveCommandPath } from "../update-install";
 import { backendConfig } from "./config";
@@ -522,25 +522,27 @@ export class BackendServiceManager {
 	}
 
 	requestDesktop(input: unknown): Promise<DesktopResponse> {
-		return requestDesktop(input, this.backendUrl, this.desktopToken).then(
-			(response) => {
-				this.noteTransportAnswer();
-				return response;
-			},
-		);
+		return requestDesktopOutcome(
+			input,
+			this.backendUrl,
+			this.desktopToken,
+		).then(({ response, answered }) => {
+			if (answered) this.noteTransportAnswer();
+			return response;
+		});
 	}
 
 	requestDesktopMedia(
 		input: unknown,
 		bytes: Uint8Array<ArrayBuffer> | null,
 	): Promise<DesktopMediaResponse> {
-		return requestDesktopMedia(
+		return requestDesktopMediaOutcome(
 			input,
 			bytes,
 			this.backendUrl,
 			this.desktopToken,
-		).then((response) => {
-			this.noteTransportAnswer();
+		).then(({ response, answered }) => {
+			if (answered) this.noteTransportAnswer();
 			return response;
 		});
 	}
@@ -548,8 +550,16 @@ export class BackendServiceManager {
 	/**
 	 * Tell the state machine that this app's own request reached the daemon.
 	 *
-	 * WHY this counts EVERY answer, including a gated route's `401`/`403`: the
-	 * capability rules elsewhere in this file say a refusal is not a LIVENESS
+	 * `answered` is the TRANSPORT's verdict, not the promise's: every failure the
+	 * transport can produce resolves rather than throws, so `.then()` alone fires
+	 * for a refused socket, for a request this app never sent (no token, oversize,
+	 * an invalid op), and for one whose budget expired. Gating on it here is the
+	 * fix for review round 1's F-1, where an unearned stamp held the state at
+	 * `degraded` - which is not a state `checkBackendHealth` recovers from, so a
+	 * genuinely gone daemon could never be reported as gone.
+	 *
+	 * WHY this still counts EVERY answer, including a gated route's `401`/`403`:
+	 * the capability rules elsewhere in this file say a refusal is not a LIVENESS
 	 * signal, and that is about not calling it "connected". Turned around, a
 	 * refusal is the strongest liveness evidence this app has - a process read the
 	 * request and wrote a status line - which is exactly what a probe that ran out
@@ -1300,6 +1310,15 @@ export class BackendServiceManager {
 		token: string,
 	): Promise<boolean> {
 		try {
+			/*
+			 * Deliberately NOT evidence for the state machine, unlike
+			 * `requestDesktop`. This asks about a CANDIDATE address with a
+			 * candidate's credential, which may be neither the daemon this app is
+			 * attached to nor one it ever attaches to; stamping `lastTransportAt`
+			 * from a probe of someone else's port would let an unrelated listener
+			 * hold the app off `detached`. The adoption path that follows a `true`
+			 * here publishes its own state through `attachTo`.
+			 */
 			const result = await requestDesktop(
 				{ op: "sessions.list", limit: 1 },
 				address,
@@ -1629,7 +1648,7 @@ export class BackendServiceManager {
 		 * own reads in between. The spawner was the only process that could have
 		 * known, and it was asking too late.
 		 *
-		 * Three answers stop the spawn, and the distinction between them is what the
+		 * Four answers stop the spawn, and the distinction between them is what the
 		 * app can honestly act on:
 		 *
 		 *   - a daemon identifies itself at that address, and no record this app can
@@ -1638,15 +1657,27 @@ export class BackendServiceManager {
 		 *   - the address did not answer in time: something may well be listening, and
 		 *     a busy daemon missing a 2 s budget is exactly the condition this file's
 		 *     probe rules exist for, so the port is not treated as free;
+		 *   - the address ANSWERED with a status that is not 200: a daemon starting up,
+		 *     one that is unhealthy or shutting down, or a proxy fronting one. A
+		 *     status is not an identity, but it is an occupant, and this one is
+		 *     counted because the two costs are not symmetric: declining to start
+		 *     costs one recovery tick, and starting over that answer costs the
+		 *     credential (the token is minted before the spawn, so the pairing for the
+		 *     daemon actually serving there is already overwritten) plus an orphan on
+		 *     an `[Errno 48]` loop every ~10 s;
 		 *   - nothing answered and the socket was REFUSED: that is the one answer
 		 *     that proves the port free, and it is the ordinary first run.
 		 *
-		 * A listener that answers without identifying as a daemon does not stop the
-		 * spawn: this app cannot tell a reverse proxy or a development fixture from a
-		 * port it may use, refusing would leave it with no backend and no path to one,
-		 * and the cost of being wrong there - one child that cannot bind, reported by
-		 * the readiness loop - is smaller than the cost of never starting one. The
-		 * observation still goes to the log, so the case is diagnosable.
+		 * A 200 that names no daemon identity does not stop the spawn: this app cannot
+		 * tell a reverse proxy or a development fixture from a port it may use,
+		 * refusing would leave it with no backend and no path to one, and the cost of
+		 * being wrong there - one child that cannot bind, reported by the readiness
+		 * loop - is smaller than the cost of never starting one. The observation still
+		 * goes to the log, so the case is diagnosable. That licence does NOT extend to
+		 * a non-200 answer, which is the case above and was the review's F-2: a
+		 * listener answering 503 while it starts says nothing about whether the port is
+		 * free, and reading it as free is exactly how the app spawned onto a serving
+		 * daemon.
 		 *
 		 * Retried on the next recovery tick, so a port that frees up is spawned onto
 		 * without an app restart.
@@ -2264,9 +2295,12 @@ export class BackendServiceManager {
 	 * anything that stops it starting a daemon there.
 	 *
 	 * `null` means "start it": either the socket was refused (the one answer that
-	 * proves a port free), or something answered that is not a Local Operator
-	 * daemon. The second arm is deliberate and narrow - see the spawn gate in
-	 * `startOwned()` - and the observation is logged either way.
+	 * proves a port free), or something answered 200 without identifying as a Local
+	 * Operator daemon. The second arm is deliberate and narrow - see the spawn gate
+	 * in `startOwned()` - and the observation is logged either way. An answer whose
+	 * STATUS is not 200 is not in that arm: it is an occupant (review round 1,
+	 * F-2), and it returns a `silent` occupancy below rather than a licence to
+	 * spawn.
 	 */
 	private async configuredOriginOccupancy(): Promise<OriginOccupancy | null> {
 		const probe = await probeUnidentified(this.backendUrl, {
@@ -2278,6 +2312,25 @@ export class BackendServiceManager {
 					kind: "daemon",
 					pid: probe.identity?.pid ?? null,
 					version: probe.identity?.version ?? "",
+					detail: probe.detail,
+				};
+			/*
+			 * A status that is not 200 is an OCCUPANT, not a licence to spawn, and it
+			 * is handled here rather than by the `default` arm below so the decision is
+			 * the one a reader finds rather than the one the switch happens to fall
+			 * into (review round 1, F-2). It covers a Local Operator daemon starting up,
+			 * unhealthy or shutting down, and a proxy that fronts one and answers 5xx:
+			 * in every one of them the socket is bound, so a child spawned onto it dies
+			 * on `[Errno 48]` - after `mintDesktopToken()` has already overwritten the
+			 * credential for the daemon actually serving there. The answer does not
+			 * prove a daemon this app may attach to, so the gate declines to start one
+			 * and keeps probing; that is the safe direction, because the failure mode of
+			 * the other one is unrecoverable loss of the pairing token.
+			 */
+			case "unready-answer":
+				return {
+					kind: "silent",
+					cause: "other",
 					detail: probe.detail,
 				};
 			case "not-a-daemon":
@@ -2319,7 +2372,21 @@ export class BackendServiceManager {
 		const what = daemonLine
 			? `A Local Operator daemon is running at ${this.backendUrl}${occupancy.pid ? ` (pid ${occupancy.pid}${occupancy.version ? `, v${occupancy.version}` : ""})` : ""} and no serve record this app can read describes that address, so this app holds no credential for it`
 			: `${this.backendUrl} did not prove itself free (${occupancy.detail})`;
-		const detail = `${what}. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and will attach to or start a daemon as soon as the address is free or admits it.`;
+		/*
+		 * The tail is a PROMISE, so it may only name futures this app can actually
+		 * reach (review round 1, F-3). It used to end "...as soon as the address is
+		 * free or admits it", and nothing ever attempts admission against the
+		 * configured origin: candidates come only from serve records, the legacy
+		 * fixed-port fallback runs only when there are no records at all, and this
+		 * gate never claims with the persisted token. With any record present that
+		 * does not describe this address, the app re-probed, re-marked `wedged` and
+		 * neither attached nor started, indefinitely, while the sentence told the
+		 * operator to wait for an attach that configuration could not perform. What
+		 * IS reachable is written here instead, including the fact that the attach
+		 * half is not this window's to produce - which is the honest answer to "and
+		 * what do I do about it".
+		 */
+		const detail = `${what}. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and starts a daemon there as soon as the address is free; attaching to the daemon already there needs a serve record describing it, which only that daemon can publish.`;
 		this.daemonState.observe(
 			occupancy.kind === "silent"
 				? { kind: "unanswered", cause: occupancy.cause, detail }

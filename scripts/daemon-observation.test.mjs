@@ -188,6 +188,13 @@ async function daemonScene({
 	/** The bearer this daemon accepts; `claimKey: ""` is an env-governed one. */
 	acceptedBearer = CLAIM_KEY,
 	claimKey = CLAIM_KEY,
+	/**
+	 * The status `/health` answers. Not 200 models a daemon that is starting up,
+	 * unhealthy or shutting down - and, from the spawn gate's side, ANY listener
+	 * holding the socket, because a status is not an identity but it is an
+	 * occupant (review round 1, F-2).
+	 */
+	healthStatus = 200,
 }) {
 	const root = mkdtempSync(join(tmpdir(), `daemon-observation-${instanceId}-`));
 	const runDir = join(root, "run", "serve");
@@ -210,6 +217,13 @@ async function daemonScene({
 			res.end(JSON.stringify(body));
 		};
 		if (path === "/health") {
+			if (healthStatus !== 200) {
+				// No identity: the real daemon answers a status without one while it is
+				// not ready, which is exactly what makes this case invisible to an
+				// identity check.
+				json(healthStatus, { detail: "not ready" });
+				return;
+			}
 			json(200, {
 				status: 200,
 				message: "ok",
@@ -304,6 +318,18 @@ async function daemonScene({
 		address: `http://127.0.0.1:${port}`,
 		pid: child.pid,
 		seen,
+		/**
+		 * The daemon stops accepting connections while its PROCESS stays alive.
+		 *
+		 * This is the shape the transport-evidence rule exists for, and the only one
+		 * that isolates it: a refused socket on a live pid is the ordinary evidence of
+		 * absence, so the state machine is allowed to act on three of them - unless
+		 * this app's own request was answered recently. `die()` cannot test that,
+		 * because it kills the pid too and a gone pid bypasses the gate deliberately.
+		 */
+		async fallSilent() {
+			await closeServer();
+		},
 		/**
 		 * The daemon dies the way it died in the report: its process is gone and
 		 * nothing answers on its port any more. Both halves matter - the pid is
@@ -536,6 +562,114 @@ test("a daemon answering the configured origin is never spawned over (EADDRINUSE
 		await manager.stop(false);
 		await scene.dispose();
 	}
+});
+
+test("an address that answers a status other than 200 is OCCUPIED, not free (F-2)", async () => {
+const scene = await daemonScene({
+	instanceId: "instance-unready-port",
+	publishRecord: false,
+	healthStatus: 503,
+});
+globalThis.__testConfiguredUrl = scene.address;
+const manager = new BackendServiceManager();
+managers.add(manager);
+try {
+	const started = await manager.start({ quiet: true });
+	assert.equal(
+		started,
+		false,
+		"a listener that answers 503 holds the socket, so a child started there could only die with EADDRINUSE - and the token minted before the spawn would already have overwritten the credential for whatever is serving",
+	);
+	assert.equal(
+		manager.getOwnedPid(),
+		null,
+		"nothing was started over that answer",
+	);
+	const snapshot = manager.getStatusSnapshot();
+	assert.match(
+		snapshot.detail,
+		new RegExp(`did not prove itself free`),
+		"the copy states the fact it observed rather than naming a daemon it could not identify",
+	);
+	assert.match(snapshot.detail, new RegExp(scene.address));
+	/*
+	 * `degraded`, not `detached`: an address that answered is not evidence of
+	 * absence either, so this is the usable state and never the banner.
+	 */
+	assert.equal(snapshot.state, "degraded");
+} finally {
+	await manager.stop(false);
+	await scene.dispose();
+}
+});
+
+test("an unanswered desktop call is not evidence the daemon answered (F-1)", async () => {
+/*
+ * The pair, measured at the CALL SITE rather than at the state machine: three
+ * refused probes against a live pid are the ordinary evidence of absence, and
+ * whether the app may act on them is decided by whether one of its own
+ * requests was answered recently.
+ *
+ * The failing arm uses a call the transport refuses BEFORE it opens a socket
+ * (an unknown op fails the schema), which is the shape the review reproduced:
+ * `requestDesktop` RESOLVES for that, so a `.then()` alone - the old call site -
+ * counted a request the daemon never saw as "the daemon answered a request 0s
+ * ago", which held the state at `degraded`. `checkBackendHealth` only recovers
+ * from `detached`/`wedged`, so that was also the state nothing recovers from.
+ */
+const failing = await daemonScene({ instanceId: "instance-unanswered-call" });
+globalThis.__testConfiguredUrl = failing.address;
+const first = await adoptAtStartup(failing);
+try {
+	assert.equal(first.manager.getStatusSnapshot().state, "attached");
+	const refused = await first.manager.requestDesktop({});
+	assert.equal(
+		refused.status,
+		422,
+		"the fixture for this arm is a call the transport refuses locally",
+	);
+	await failing.fallSilent();
+	for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+		await first.manager.checkBackendHealth();
+	}
+	const detached = first.manager.getStatusSnapshot();
+	assert.equal(
+		detached.state,
+		"detached",
+		"a request that was never sent may not hold the connection open against three refused probes",
+	);
+	assert.doesNotMatch(
+		detached.detail,
+		/answered a request/,
+		"and the sentence must not claim a daemon answered a request it never saw",
+	);
+} finally {
+	await first.manager.stop(false);
+	await failing.dispose();
+}
+
+/* The control: the same three probes, with one ANSWERED call before them. */
+const answering = await daemonScene({ instanceId: "instance-answered-call" });
+globalThis.__testConfiguredUrl = answering.address;
+const second = await adoptAtStartup(answering);
+try {
+	const answered = await second.manager.requestDesktop({ op: "capabilities" });
+	assert.equal(answered.status, 200, "the fixture answers this one");
+	await answering.fallSilent();
+	for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+		await second.manager.checkBackendHealth();
+	}
+	const held = second.manager.getStatusSnapshot();
+	assert.equal(
+		held.state,
+		"degraded",
+		"a daemon that answered a request seconds ago is serving, whatever the probes could not read",
+	);
+	assert.match(held.detail, /answered a request/);
+} finally {
+	await second.manager.stop(false);
+	await answering.dispose();
+}
 });
 
 test("a launch re-attaches to the daemon the previous run left running, via the persisted credential", async () => {
