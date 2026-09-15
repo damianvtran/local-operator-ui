@@ -9,6 +9,10 @@ import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { noteConsentAttention } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
@@ -104,6 +108,25 @@ const App: FC = () => {
 	useSuppressBrowserView(isOnboardingActive, "onboarding");
 	useSuppressBrowserView(isLowCreditsDialogOpen, "low-credits");
 	const navigate = useNavigate(); // For onAgentCreated
+
+	/*
+	 * Whether the session catalogue is usable, which is the gate the shortcut's
+	 * own row keeps.
+	 *
+	 * `chat-sidebar.tsx` disables the New chat row on exactly this capability,
+	 * with the reason beside it: "staging a draft needs the session catalogue".
+	 * A chord that outranked that gate would stage a draft in a state where the
+	 * visible control refuses — a backend older than `session_catalogue` v2, or
+	 * none at all — and would be claiming a capability the app has just said it
+	 * does not have. `capabilities.data` is `undefined` until the answer arrives,
+	 * which is the same closed state the row reads.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const catalogueReady = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue",
+		2,
+	);
 
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
@@ -208,6 +231,13 @@ const App: FC = () => {
 	 * pair the agents page stages an entity chat with. Read through
 	 * `getState()` rather than a selector so this listener is not re-registered
 	 * by a re-render it has no use for.
+	 *
+	 * IT TAKES THE ROW'S OWN GATE, which is what makes "the two steps the row
+	 * performs" true rather than nearly true: `catalogueReady` above is the same
+	 * capability bit the row is disabled on. Without it the chord would stage a
+	 * draft in the one state where the visible control refuses — no backend, or a
+	 * backend older than `session_catalogue` v2 — and the shortcut would be
+	 * claiming a capability the app has just said it does not have.
 	 */
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -219,6 +249,7 @@ const App: FC = () => {
 			 * user has not finished would be waiting when they closed it.
 			 */
 			if (isOnboardingActive) return;
+			if (!catalogueReady) return;
 			if (!shouldStartNewChat(event)) return;
 			event.preventDefault();
 			useCanonicalSessionsStore.getState().stageDraft(undefined, true);
@@ -226,7 +257,7 @@ const App: FC = () => {
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [isOnboardingActive, navigate]);
+	}, [catalogueReady, isOnboardingActive, navigate]);
 
 	return (
 		<OnboardingProvider>

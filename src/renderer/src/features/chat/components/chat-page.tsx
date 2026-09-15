@@ -1910,8 +1910,18 @@ export function ChatPage() {
 	 * route, because `/chat` and `/chat/:agentId` hold one mounted component and
 	 * a state blob left over from the previous route is precisely what made a
 	 * deep link to a deleted chat read as two different failures.
+	 *
+	 * ONLY A CHANGE CLEARS IT, and the ref is what makes that true. The store
+	 * persists `activeDraftKey`, so on a cold start this effect can see a draft on
+	 * its FIRST pass — and the legacy-link effect above runs before it in the same
+	 * commit, so clearing there would erase the sentence that effect had just
+	 * written for a deep link this machine no longer has. A mount is not a
+	 * navigation; a key that moved is.
 	 */
+	const settledDraftKey = useRef(draftKey);
 	useEffect(() => {
+		if (settledDraftKey.current === draftKey) return;
+		settledDraftKey.current = draftKey;
 		if (!draftKey) return;
 		setRouteError(null);
 	}, [draftKey]);

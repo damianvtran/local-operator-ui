@@ -47,8 +47,9 @@ const bundle = await build({
 			} from "./src/renderer/src/features/chat/new-chat-shortcut";
 			export {
 				CANVAS_SHORTCUT_SCOPE_ATTR,
+				canvasShortcutAction,
 				pressBelongsToCanvas,
-			} from "./src/renderer/src/features/chat/components/canvas/canvas-shortcut-scope";
+			} from "./src/renderer/src/features/chat/keyboard-scopes";
 		`,
 		resolveDir: ROOT,
 	},
@@ -77,6 +78,7 @@ const bundlePath = new URL("./_new-chat-shortcut.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	CANVAS_SHORTCUT_SCOPE_ATTR,
+	canvasShortcutAction,
 	newChatShortcutCap,
 	pressBelongsToCanvas,
 	shouldStartNewChat,
@@ -114,15 +116,21 @@ const press = (overrides = {}) => ({
 	altKey: false,
 	repeat: false,
 	defaultPrevented: false,
+	isComposing: false,
 	target: TARGET_PAGE,
 	...overrides,
 });
 
-/** The chords the rule must answer, in this app's own spelling. */
+/**
+ * The chords the rule must answer, in this app's own spelling.
+ *
+ * One case per PROPERTY, which is why the `<body>` press appears once rather
+ * than twice: a neighbouring case that differs only in how the same fact was
+ * spelled inflates the count without asserting anything the first did not.
+ */
 const FIRES = [
 	["⌘N on macOS", press()],
 	["Ctrl+N on Windows and Linux", press({ metaKey: false, ctrlKey: true })],
-	["⌘N from a real element", press({ target: TARGET_PAGE })],
 	[
 		"⌘N from <body>, where focus lands when it is lost",
 		press({ target: { closest: () => null } }),
@@ -141,10 +149,8 @@ for (const [name, event] of FIRES)
 const REFUSED = [
 	["⌘⇧N", press({ shiftKey: true })],
 	["⌥⌘N", press({ altKey: true })],
-	["a bare n", press({ metaKey: false })],
-	["n typed into the composer", press({ key: "n", metaKey: false })],
+	["a bare n, which belongs to whatever text field has focus", press({ metaKey: false })],
 	["⌘O", press({ key: "o" })],
-	["⌘K", press({ key: "k" })],
 	[
 		"a HELD ⌘N, whose repeats would stage a draft each",
 		press({ repeat: true }),
@@ -152,6 +158,10 @@ const REFUSED = [
 	[
 		"a press an inner layer already claimed",
 		press({ defaultPrevented: true }),
+	],
+	[
+		"⌘N pressed mid-IME-composition, whose field this would unmount",
+		press({ isComposing: true }),
 	],
 	[
 		"⌘N inside the canvas pane, which binds the same chord to new file",
@@ -203,9 +213,10 @@ test("the cap is the platform's own spelling, in two caps the component can spli
 });
 
 /*
- * The call sites. Each pin is scoped to the expression that makes the claim, so
- * a neighbouring line cannot satisfy it: the app shell's registration, the row's
- * cap, and the canvas's guard against the chord it shares with the app.
+ * The call sites. The DECISIONS are asserted behaviourally above and here; what
+ * these pins add is that the components still ask the shipped rule rather than
+ * re-deriving it, and that nothing has grown a second copy of a rule that is
+ * shared for the express reason that two copies drift.
  */
 
 const app = readFileSync(join(ROOT, "src/renderer/src/app.tsx"), "utf8");
@@ -240,6 +251,22 @@ test("the shell binds the chord on the document and asks the rule", () => {
 		listener.includes("isOnboardingActive"),
 		"the first-run wizard owns the window until it is answered",
 	);
+	/*
+	 * The row's OWN gate, not a second idea of when a chat may be started: the
+	 * sidebar disables New chat on the catalogue capability, so a chord that
+	 * outranked it would act in the state where the visible control refuses.
+	 */
+	assert.ok(
+		listener.includes("catalogueReady"),
+		`the shell must take the gate the row is disabled on:
+${listener}`,
+	);
+	assert.ok(
+		/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_catalogue",\s*2,?\s*\)/.test(
+			app,
+		),
+		"`catalogueReady` has to be the same capability bit the sidebar reads, with the same version",
+	);
 });
 
 test("the New chat row prints the cap from the same module the binding reads", () => {
@@ -258,27 +285,90 @@ test("the New chat row prints the cap from the same module the binding reads", (
 	);
 });
 
-test("the canvas scopes its own ⌘N to presses that came from the pane", () => {
-	const nBranchAt = canvas.indexOf('event.key === "n"');
-	assert.ok(nBranchAt > 0, "the canvas's new-file chord is what this pins");
-	const branch = canvas.slice(nBranchAt, canvas.indexOf("setCreateFileDialogOpen(true)", nBranchAt));
+test("the canvas answers its own chords through the shared decision, and keeps no second copy of either rule", () => {
+	/*
+	 * The pane's chords are a function (`canvasShortcutAction`) precisely so this
+	 * file can drive them: neither committed harness can open a canvas, so a rule
+	 * written inline in the component would have no behavioural evidence at all.
+	 * What is pinned here is that the component still DISPATCHES on that function —
+	 * a revision that calls it and then opens the dialog regardless is the mutation
+	 * a presence check cannot see.
+	 */
 	assert.ok(
-		branch.includes("pressBelongsToCanvas(event.target)"),
-		`the canvas's ⌘N must be scoped, or one press from the sidebar raises its dialog AND stages a chat:\n${branch}`,
+		/canvasShortcutAction\(event\)/.test(canvas) &&
+			/action === "open-file"/.test(canvas) &&
+			/action === "new-file"/.test(canvas),
+		"the canvas must branch on the shipped decision rather than re-deriving its chords",
 	);
 	assert.ok(
 		canvas.includes("data-canvas-shortcuts"),
 		"the pane must carry the marker the scope is read from",
 	);
 	/*
-	 * `⌘O` is deliberately NOT scoped — nothing else claims it — and this states
-	 * it so a later reader does not "fix" the asymmetry: what is asserted is that
-	 * the scope test appears in the `⌘N` branch and not in the `⌘O` one.
+	 * ONE copy of the overlay roles, and it is the shared module's: the canvas's
+	 * Escape branch used to hold its own list, which is a fifth role waiting to
+	 * drift from the shared four. What is pinned is a selector being ASKED FOR —
+	 * `closest`/`querySelector` with a role list — rather than the string
+	 * `role="dialog"`, which this file also carries in prose about Escape and
+	 * which a whole-file text check would trip over.
 	 */
-	const oBranchAt = canvas.indexOf('event.key === "o"');
-	const oBranch = canvas.slice(oBranchAt, canvas.indexOf("handleOpenFile()", oBranchAt));
 	assert.ok(
-		!oBranch.includes("pressBelongsToCanvas"),
-		`the ⌘O branch takes no scope test: nothing else claims that chord, so guarding it would only take a working shortcut away:\n${oBranch}`,
+		!/\.(?:closest|querySelector)\(\s*[`'"][]\[role=/.test(canvas),
+		"the canvas must not ask for a role list of its own; ask `pressLandsOnOverlay`",
 	);
+	assert.ok(
+		canvas.includes("pressLandsOnOverlay(event.target)"),
+		"the Escape branch is what reads the shared overlay test",
+	);
+});
+
+test("the canvas's own chords, driven through the shipped decision", () => {
+	const inPane = { closest: (selector) => (selector.includes(CANVAS_SHORTCUT_SCOPE_ATTR) ? {} : null) };
+	const onPage = { closest: () => null };
+	const cases = [
+		[
+			"⌘N from inside the pane is the pane's new file",
+			{ key: "n", metaKey: true, ctrlKey: false, target: inPane },
+			"new-file",
+		],
+		[
+			"⌘N from the sidebar is NOT the pane's — it is the app's new chat",
+			{ key: "n", metaKey: true, ctrlKey: false, target: onPage },
+			null,
+		],
+		[
+			"⌘N from <body>, where focus lands when it is lost, is the app's",
+			{ key: "n", metaKey: true, ctrlKey: false, target: { closest: () => null } },
+			null,
+		],
+		[
+			"Ctrl+N from inside the pane is the pane's",
+			{ key: "n", metaKey: false, ctrlKey: true, target: inPane },
+			"new-file",
+		],
+		// No scope test, deliberately: nothing else claims `⌘O`, so guarding it
+		// would only take a working shortcut away from a focus in the sidebar.
+		[
+			"⌘O is the pane's from anywhere",
+			{ key: "o", metaKey: true, ctrlKey: false, target: onPage },
+			"open-file",
+		],
+		[
+			"⌘O from inside the pane is the pane's too",
+			{ key: "o", metaKey: true, ctrlKey: false, target: inPane },
+			"open-file",
+		],
+		[
+			"a chord the pane never claimed is nobody's",
+			{ key: "k", metaKey: true, ctrlKey: false, target: inPane },
+			null,
+		],
+		[
+			"an unmodified key is nobody's",
+			{ key: "n", metaKey: false, ctrlKey: false, target: inPane },
+			null,
+		],
+	];
+	for (const [name, event, expected] of cases)
+		assert.equal(canvasShortcutAction(event), expected, name);
 });

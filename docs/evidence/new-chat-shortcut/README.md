@@ -18,10 +18,23 @@ Two claims follow from that sentence, and they need different evidence:
 
 ## What produced these frames
 
-### The chord, in the built app (`before-cmd-n.png`, `after-cmd-n.png`)
+### The chord, in the built app
 
-```
-node scripts/renderer-driver.mjs --scene new-chat --out docs/evidence/new-chat-shortcut
+TWO RUNS, TWO CLAIMS, because the shortcut takes the New chat row's own gate —
+the session catalogue — and a driver run's backend is what that gate reads:
+
+```sh
+# the feature: a live, ISOLATED backend this run owns, and a profile that is not
+# a first-run one (a fresh profile in front of a fresh backend opens the wizard)
+env VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:5396 pnpm build
+env LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat $SCRATCH/token)" \
+  node scripts/renderer-driver.mjs --scene new-chat \
+    --backend http://127.0.0.1:5396 \
+    --backend-records $SCRATCH/config/run/serve \
+    --seed-onboarding-complete --out docs/evidence/new-chat-shortcut
+
+# the gate: the same press with no reachable backend at all
+node scripts/renderer-driver.mjs --scene new-chat --out /tmp/frames-no-backend
 ```
 
 The supported harness (`docs/agent-driver.md`): the BUILT app, launched by its
@@ -30,34 +43,54 @@ pixels from `webContents.capturePage()`. The scene presses the chord through
 Chromium's own input pipeline (`Input.dispatchKeyEvent`), not with a
 `KeyboardEvent` built inside the page — the whole claim is that the press
 reaches the listener, so a synthetic event that starts at the listener proves
-nothing.
+nothing. `--backend` points the app's own transport at the run's backend and
+reads the bearer from the environment; `--backend-records` hands the app the
+serve record that backend wrote for itself, because `discovery.ts` admits a
+daemon only when a record proves it is the one the app found; and
+`--seed-onboarding-complete` writes the profile's own onboarding flags before the
+app's scripts run, because a fresh profile in front of a fresh backend is a
+first-run user whose six-step wizard is a modal over the window.
 
-The run's own transcript, which the frames are captioned from:
+**The feature run's transcript** (`cmd-n-live-*`):
 
 | Step | Measured |
 | --- | --- |
+| isolation | `the renderer was built against the backend this run started`; `holds a connection to this run's backend (127.0.0.1:5396)`; `holds NO connection to the operator's own backend (http://localhost:1111)` |
 | before the press | `route /agent-hub`, `activeDraftKey null` |
-| `⌘N` | `route /chat` after **3 ms**, `activeDraftKey "draft:02d7ef52-…"` — a FRESH draft, the same thing the New chat row stages |
+| `⌘N` | `route /chat` after **4 ms**, `activeDraftKey "draft:9f085520-…"` — a FRESH draft, the same thing the New chat row stages |
 | `⌘⇧N` | refused: `route /agent-hub`, draft unchanged |
 | a bare `n` | refused: `route /agent-hub`, draft unchanged |
 
+**The gate run's transcript** (`cmd-n-no-backend`, and this is the shape of the
+review round's first finding): `with no backend ⌘N is inert, exactly as the New
+chat row is disabled on the same capability — route /agent-hub after 5023 ms,
+activeDraftKey null -> null`. The two frames of that pair are **byte-identical**
+(`162962` bytes each, `magick compare -metric AE` = **0**): with no catalogue the
+press changes nothing at all, which is the state the row is absent in.
+
 The draft key is read from the store's own persistence
-(`canonical-sessions-storage`), which is where `stageDraft` puts it, so this is
+(`canonical-sessions-storage`, which is where `stageDraft` puts it), so this is
 the app's state read through the app's own record rather than the harness's idea
-of it. `⌘⇧N` and a bare `n` are the two refusals that matter: the first is
+of it. (The driver writes its frames as `before-cmd-n.png` / `after-cmd-n.png`;
+the committed copies carry their mode in the name, `cmd-n-live-*` and
+`cmd-n-no-backend`, so the two runs cannot be confused for one another.)
+`⌘⇧N` and a bare `n` are the two refusals that matter: the first is
 another app's chord, and the second belongs to whatever text field has focus.
 
-**What these two frames do and do not show.** They show the ROUTE the press
-moved — Agent hub before, chat after — and nothing about the two screens
-themselves: a driver run has no backend, so both are the app's offline surface
-(`/agent-hub` renders its categories with `Failed to load agents: The backend
-could not complete this request.`, which is what a real app with no server
-shows). The assertion is the evidence for this half; the frames are how a reader
-sees the app move. Measured against this repository's own committed
-`docs/evidence/renderer-driver/chat-dark.png`, the landed frame differs by
-**1 pixel of 4,790,400**: the chord lands the app on exactly the screen the
-driver's own scene photographs, which is what "it started a new chat" means when
-no backend can hold the session.
+**What these frames show.** `cmd-n-live-after.png` is the REAL app on the draft
+the chord staged: the chat pane reading `New chat` / `The session starts when you
+send your first message.`, the composer, and — in the sidebar — the New chat row
+carrying its `⌘` and `N` caps, marked current because the draft it started is the
+one on screen. `cmd-n-live-before.png` is where it came from: Agent hub with its
+categories. Nothing in either frame is the operator's data: the backend is this
+run's own, its catalogue is empty, and the scratch profile is its own.
+
+**What they do not show.** Not the packaged app's install path, not a session
+with history (the catalogue is empty), and not the keyboard on Windows or Linux:
+the chord is pressed as `Meta+N`, which is the same physical key this harness
+sends everywhere. The `--backend` mode and its two companion options exist
+because this change needed them, and they are declared on the PR as new harness
+surface rather than smuggled in as a scene tweak.
 
 ### The cap, in the shipped sidebar (`before-*` / `after-*`)
 
@@ -128,11 +161,15 @@ re-captured through the same harness at the same viewport and cropped by the sam
 ## Before / after
 
 The pair differs by ONE thing, and the measurement says so rather than the
-caption: `magick compare -metric AE` reports **2,904 differing pixels of
-3,686,400 (0.079%)** between `before-*` and `after-*`, all inside a single
-**111x43 device-pixel box at +425+1058** — the caps. The same box at the same
-offset comes back for BOTH palettes, which is the cross-check that the caps'
-geometry is not a palette-dependent accident.
+caption. On the two COMMITTED sidebar frames — `640x1440` device pixels each, the
+crop described below — `magick compare -metric AE before-sidebar-dark.png
+after-sidebar-dark.png null:` reports **2,904 differing pixels of 921,600
+(0.315%)**, all inside a single **111x43 device-pixel box at +425+1058**. On the
+full `2560x1440` capture those same 2,904 pixels are **0.079% of 3,686,400**; the
+numerator is one number and the denominator is whichever file you are looking at,
+which is why both are given. The same box at the same offset comes back for BOTH
+palettes, which is the cross-check that the caps' geometry is not a
+palette-dependent accident.
 
 | State | Before | After |
 | --- | --- | --- |
@@ -140,14 +177,18 @@ geometry is not a palette-dependent accident.
 | Sidebar at rest, `localOperatorLight` | [`before-sidebar-light`](before-sidebar-light.png) | [`after-sidebar-light`](after-sidebar-light.png) |
 | The row block, 2x (device pixels) | [`before-row-dark`](before-row-dark.png) | [`after-row-dark`](after-row-dark.png) |
 | After the row's own action | *(no before: the marking is unchanged)* | [`after-row-staged-light`](after-row-staged-light.png) — the staged draft marks the row current, wash and all, with the caps holding their own ground on it |
-| The chord in the built app | [`before-cmd-n`](before-cmd-n.png) — Agent hub | [`after-cmd-n`](after-cmd-n.png) — the chat route, 3 ms later |
+| The chord in the built app, against a real backend | [`cmd-n-live-before`](cmd-n-live-before.png) — Agent hub | [`cmd-n-live-after`](cmd-n-live-after.png) — the chat route 6 ms later, the staged draft's pane, and the row holding its current marking |
+| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before` |
 
 ## The measurements behind the pixels
 
-Frames are `2560x1440` device pixels — the operator's browser viewport,
-`1280x720` CSS at device pixel ratio 2. The sidebar column is 280 CSS px wide
-(`ChatLayout`'s default, at its `min 240 / max 360` clamp), and each frame here is
-the sidebar plus 40 device px of the ground beside it.
+**Sizes, because two of them are quoted below.** The screenshots the browser
+tool took are `2560x1440` device pixels — the operator's browser viewport,
+`1280x720` CSS at device pixel ratio 2. The committed sidebar and row frames are
+CROPS of those: `640x1440` and `640x200` device px, which is the 280 CSS px (560
+device px) sidebar column plus 40 **CSS** px (80 device px) of the ground beside
+it. The two chord frames are a different surface with its own size — `2760x1736`,
+the driver's `1380x868` CSS viewport at DPR 2.
 
 **The caps' geometry**, read off the frames by scanning the cap fill (all values
 in CSS px, i.e. device px / 2):
@@ -191,13 +232,34 @@ by the contract's `INKS` list, which asserts `inkMuted` against `sunken` on ever
 theme.
 
 **One finding this set records rather than fixes.** The two caps in one chord are
-not the same height — 14 px for the glyph cap against 21.5 px for the text cap,
-measured above. That is `KeyboardShortcut`'s existing behaviour (`p-0.5` around a
-10 px glyph against `px-1.5 py-0.5` around a line of `text-mono-sm`), and this row
-is the first call site that pairs an ICON with a LETTER in one chord: every
-existing site pairs like with like (`Esc`, `⌘+Enter`, `Ctrl+Enter`), so the
-mismatch has never been visible. Fixing it means changing the cap heights on
-those other sites too (the inline editor's footer), which is a visual change to a
-surface this request did not ask for and which has no story or harness to
-re-capture it with — so it is reported here as a follow-up rather than smuggled
-into this change.
+not the same height — 20 px wide each (`min-w-5`), **14 px** tall for the glyph cap
+against **21.5 px** for the text cap, measured above. That is
+`KeyboardShortcut`'s existing behaviour (`p-0.5` around a 10 px glyph against
+`px-1.5 py-0.5` around a line of `text-mono-sm`), not markup this row introduces,
+and the glyph compounds it: the symbol's stroke core measures ~1 device px against
+the letter's ~2, so the modifier reads as a hairline inside a small chip beside a
+solid key.
+
+**This row is not the first place it shows**, which an earlier draft of this note
+claimed and design round 1 corrected: `Ctrl+Enter` in the inline editor
+(`inline-edit.tsx`, through the component's `keyIconMap`) already pairs a 21.5 px
+text cap with a 14 px icon cap on Windows and Linux. So the mismatch is pre-
+existing on a shipped surface, which changes the cost of fixing it — the fix would
+repair a surface that already carries the defect rather than disturb a clean one,
+but it still moves those footer caps (`⌘` and `↵`) on a surface with no story and
+no harness, so it wants its own scoped change and its own frame. Reported here as
+a follow-up rather than smuggled into this one; design round 1's disposition is the
+same (ship behind a follow-up), and its measured detail is in that round's comment
+on the PR.
+
+**The ground the row gains when a draft is staged is not one the theme gate
+asserts.** The contract enumerates four grounds and asserts every `INKS`/`CONTROLS`
+row over them; this row adds a fifth by design — `bg-accent-wash` while an
+untargeted draft is staged — and that is where the cap's step is thinnest measured
+across the twelve palettes: fill against wash ΔE00 **3.2** (iceberg) against a fill
+step of 4.40–14.94 on `surface`, with `ink-dim` on the wash at **4.49:1** in the
+same palette. Nothing is broken today (the cap's own glyph is `ink-muted` and
+clears the text floor on every ground it is drawn on, and the `+` between the caps
+is `aria-hidden`, so the 4.5:1 text floor does not bind it), but a palette could
+move it unnoticed. Recorded rather than fixed: the assertion set is the theme
+gate's, not this PR's.
