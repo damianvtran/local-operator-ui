@@ -39,6 +39,45 @@ function nextFrame(): Promise<void> {
 	});
 }
 
+/**
+ * Wait for the app's own CSS transitions to finish, and say how long that took.
+ *
+ * Why two animation frames are not enough for the verbs that change colour. A
+ * theme change is not a repaint: the rail and the sidebar rows carry
+ * `transition-colors duration-fast` (`--duration-fast: 120ms`), so a frame taken
+ * one `nextFrame()` later is a frame OF that transition. Measured, two
+ * `--scene states` runs on the same build: `chat-dark.png` came out byte-identical
+ * both times (nothing transitions when the theme is set to the one already
+ * active) while `chat-light.png` was 80963 B one run and 80225 B the next, with
+ * the whole difference inside the rail's active item and its centre pixel still
+ * holding the old palette's colour. A committed evidence frame has to be a state
+ * the app settles into, not a blend no user sees and no later run can reproduce.
+ *
+ * Only `CSSTransition` counts. The app animates other things (pulses, spinners,
+ * layout), and waiting on those would mean a scene whose timing is decided by an
+ * animation that never ends — which is why the loop also gives up after
+ * `timeoutMs` and reports it rather than spinning: a caller that gets
+ * `timedOut: true` knows the frame may be mid-flight, and says so.
+ */
+async function settleCssTransitions(
+	timeoutMs = 1000,
+): Promise<{ waitedMs: number; timedOut: boolean }> {
+	const started = performance.now();
+	for (;;) {
+		await nextFrame();
+		const waitedMs = Math.round(performance.now() - started);
+		const running = document
+			.getAnimations()
+			.filter(
+				(animation) =>
+					animation instanceof CSSTransition &&
+					animation.playState === "running",
+			);
+		if (running.length === 0) return { waitedMs, timedOut: false };
+		if (waitedMs > timeoutMs) return { waitedMs, timedOut: true };
+	}
+}
+
 /*
  * Top-level so the literal is compiled once: a regex inside a function is rebuilt
  * on every call, and lint's `useTopLevelRegex` exists for exactly this shape.
@@ -189,15 +228,25 @@ export function installDevDriver(): string[] {
 			return { route: await waitForRoute(path) };
 		},
 
-		/** The settings picker's own action, so a theme change is the change a user makes. */
+		/**
+		 * The settings picker's own action, so a theme change is the change a user makes.
+		 *
+		 * Settles the colour transition it starts before answering (see
+		 * `settleCssTransitions`), because every caller of this verb is about to
+		 * capture a frame and a frame of a 120ms transition is not the palette it
+		 * changed to.
+		 */
 		setTheme: async (payload) => {
 			const name = requireString(payload, "theme name");
 			useUiPreferencesStore.getState().setTheme(name as never);
 			await nextFrame();
 			const applied = document.documentElement.getAttribute("data-theme");
+			const settled = await settleCssTransitions();
 			return {
 				theme: useUiPreferencesStore.getState().themeName,
 				dataTheme: applied,
+				settledAfterMs: settled.waitedMs,
+				settleTimedOut: settled.timedOut,
 			};
 		},
 

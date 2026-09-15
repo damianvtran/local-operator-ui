@@ -57,6 +57,17 @@ and not understood is off *loudly*: `LOCAL_OPERATOR_UI_DEV_DRIVER=yes` prints a
 `[dev-driver] not armed: ...` line naming the accepted values rather than looking
 like a harness bug.
 
+Both are read from the environment the process was **launched** with, and that is
+a narrower thing than `process.env`. `src/main/backend/config.ts` applies a
+`.env` from the app's working directory with dotenv `override: true`, so from
+that line onward `process.env` is the launch plus that file, and the file wins;
+the launch facts (this opt-in, and `LOCAL_OPERATOR_UI_WINDOW_MODE` with it) are
+resolved from the snapshot taken before the fold. So a `.env` in the checkout
+**cannot** arm the driver, cannot choose its frames directory, and cannot
+override an explicit `LOCAL_OPERATOR_UI_DEV_DRIVER=0` — which matters because a
+`.env` is exactly where an agent reaching for "an environment variable" would put
+one, and a control surface a config file can switch on is not opt-in.
+
 Off means the process is indistinguishable from the app as it was:
 
 - main registers no `dev-driver-*` channel at all, so a call is refused by
@@ -65,12 +76,14 @@ Off means the process is indistinguishable from the app as it was:
   `window.__loDevDriver` — not a disabled object, nothing;
 - the renderer's install module returns immediately.
 
-`node scripts/renderer-driver.mjs --gate-check` measures that on two real boots
-and fails the run if any of it is untrue: the unarmed boot must paint normally,
-expose no bridge, refuse the channel, write no frame and print no banner; the
-armed boot must produce all five. `scripts/dev-driver-gate.test.mjs` pins the
-same decision in-process (it is in `pnpm test:desktop`), because the module
-imports nothing from Electron and can be bundled in a test.
+`node scripts/renderer-driver.mjs --gate-check` measures that on four real boots
+and fails the run if any of it is untrue. Three of them must be inert, in every
+respect the list above names — the plain launch, one asked to arm by a `.env` in
+its own working directory, and that same file asking while the environment says
+`=0` — and the armed launch must have the bridge, write a real PNG through it,
+and print the banner. `scripts/dev-driver-gate.test.mjs` pins the same decision
+in-process (it is in `pnpm test:desktop`), because the module imports nothing
+from Electron and can be bundled in a test.
 
 Two mistakes are recorded here because they are the two ways this gate fails:
 
@@ -93,12 +106,21 @@ Two mistakes are recorded here because they are the two ways this gate fails:
 A driver run happens on the operator's desktop, next to his real app. Every path
 that could reach his state is redirected, and the run prints all of them:
 
-- `HOME` **and** `LOCAL_OPERATOR_CONFIG_DIR` are scratch. The config dir alone is
-  not enough: caches and hardcoded home roots follow `HOME`, and this repository
-  has already written 612 rows into the operator's live analytics database from a
-  run somebody believed was sandboxed.
+- `HOME`, `LOCAL_OPERATOR_CONFIG_DIR` **and** `LOCAL_OPERATOR_LOG_DIR` are scratch.
+  The config dir alone is not enough: caches and hardcoded home roots follow
+  `HOME`, and this repository has already written 612 rows into the operator's
+  live analytics database from a run somebody believed was sandboxed. The log
+  directory is named separately because `HOME` does not move it: Electron's `home`
+  is the OS account's, so it needs the app's own override.
 - `--user-data-dir` is scratch **per launch**, so the Electron profile (the
   localStorage the UI preferences persist into) cannot see or touch the real one.
+- `LOCAL_OPERATOR_LOG_DIR` is scratch. The app's own log directory is the user's
+  real home — Electron's `home` is the OS account's home, and neither the scratch
+  `HOME` nor `--user-data-dir` redirects it — so without the app's own override
+  every run appended its lines to the operator's
+  `~/Library/Application Support/Local Operator/logs/*.log`. The harness sets the
+  override and asserts, from the `Log path: …` line the app writes at logger
+  init, that the app resolved it.
 - The app's **cwd is outside the checkout**, and the scratch cwd holds a `.env`
   with `VITE_LOCAL_OPERATOR_API_URL` pointing at a port the script picked and
   verified to be dead. `src/main/backend/config.ts` loads `.env` from
@@ -127,7 +149,7 @@ bridge; the verbs are registered by the renderer's install module.
 | `call("hello")` | Where the app is: route, theme, viewport, dpr, `visibilityState`, `hasFocus`, and the renderer's baked API base URL |
 | `call("state")` | The state the verbs write into: route, theme, panel flags, active session, session count |
 | `call("navigate", path)` | Navigates the hash router and waits for the route |
-| `call("setTheme", name)` | The settings picker's own action |
+| `call("setTheme", name)` | The settings picker's own action, waiting out the 120ms `transition-colors` it starts so a frame taken after it is the settled palette rather than a blend of the two |
 | `call("press", selector)` | Waits for the element, hit-tests its painted centre, dispatches a pointer sequence, returns what was hit |
 | `facts()` | From main: window mode, window vs content size, visible/focused/minimized, app version |
 | `capture(label)` | `webContents.capturePage()` → `<out>/<label>.png`, reporting pixels and the CSS viewport |
@@ -143,12 +165,27 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
+- **It is isolated from the operator's state, not from the network.** The run
+  reaches no backend — the scratch `.env` points the app at a port the script
+  verified dead, and the run asserts the app holds no connection to the URL the
+  renderer was built with — but the app's own telemetry still leaves the machine:
+  `us.i.posthog.com` and `us-assets.i.posthog.com` hold ESTABLISHED connections
+  during a driver run, and `capture_exceptions` is enabled in both processes.
+  There is no telemetry-disable switch in the app today, so this is a stated
+  limit rather than a redirected path: a run through this harness is not
+  "offline", and adding a first-class switch is a product decision rather than
+  something this script can do from outside.
+
 ## What it can prove
 
 - What the app actually paints, at a real viewport and device pixel ratio, of the
   built app the operator runs.
 - A visual **before/after of one screen** — the shape a visual-change review
-  needs, and the reason `--scene states` captures the same surface twice.
+  needs, and the reason `--scene states` captures the same surface twice. The
+  pair is asserted to be *two renders* (the frames on disk are compared, and
+  their hashes printed) as well as the same route and viewport, because those two
+  checks are satisfied by one frame written twice — which is exactly what shipped
+  once, with `chat-light.png` a byte copy of `chat-dark.png`.
 - That a control is real enough to be driven: the press reports the element at
   the painted point, and the scene checks the app's state moved.
 - That the run stayed out of the way: window mode, size, visibility and focus
@@ -174,10 +211,13 @@ question "what can this reach" would have no answer.
   For those, run with `--window-mode=inactive` or force focus over CDP
   (`Emulation.setFocusEmulationEnabled`) and say which you did — the same caveat
   `AGENTS.md` records for the window modes.
-- **A backend-gated screen is a loading state here.** The run has no backend, so
-  `/settings`, `/agents`, `/agent-hub` and `/schedules` sit on their spinners
-  until React Query gives up. A scene must not present one of those as a reviewed
-  screen; `--scene states` says so instead of capturing one.
+- **A backend-gated screen does not reach a reviewed state here.** The run has no
+  backend, so `/settings`, `/agents`, `/agent-hub` and `/schedules` render the
+  app's offline surface (measured at 6s) rather than a reviewed screen, and a
+  spinner is what an earlier cut of the app showed instead. A scene must not
+  present either as a reviewed screen; `--scene states` says so instead of
+  capturing one — which is also why it presses the rail's Agent hub button and
+  asserts the route moved without capturing the destination.
 - **Pressed events are synthetic.** `press` dispatches a pointer sequence from
   inside the page, which reaches the app's handlers but bypasses the browser's own
   hit testing and input pipeline. Whether a control is genuinely hit-testable is a

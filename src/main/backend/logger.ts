@@ -10,6 +10,7 @@ import fs from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import electronLog, { type ElectronLog } from "electron-log";
+import { LOG_DIR_ENV, logDirOverride } from "./log-dir";
 
 /**
  * Log file types
@@ -31,29 +32,38 @@ export class Logger {
 	private loggers: Map<LogFileType, ElectronLog>;
 
 	/**
-	 * Private constructor to enforce singleton pattern
+	 * The app's own log directory, unchanged: the platform's user-level location
+	 * for this app's data. Split out of the constructor so that the launch's
+	 * override (`LOG_DIR_ENV`, see `./log-dir`) is the ONE thing that can move it,
+	 * and so the path is composed the same way whichever branch the platform takes.
 	 */
-	private constructor() {
-		// Set up log path based on platform
+	private static defaultLogPath(): string {
 		if (process.platform === "win32") {
-			this.logPath = join(app.getPath("userData"), "logs");
-		} else if (process.platform === "darwin") {
-			this.logPath = join(
+			return join(app.getPath("userData"), "logs");
+		}
+		if (process.platform === "darwin") {
+			return join(
 				app.getPath("home"),
 				"Library",
 				"Application Support",
 				"Local Operator",
 				"logs",
 			);
-		} else {
-			// Linux
-			this.logPath = join(
-				app.getPath("home"),
-				".config",
-				"local-operator",
-				"logs",
-			);
 		}
+		// Linux
+		return join(app.getPath("home"), ".config", "local-operator", "logs");
+	}
+
+	/**
+	 * Private constructor to enforce singleton pattern
+	 */
+	private constructor() {
+		// A directory the launch asked for wins; otherwise this is the path the app
+		// has always used. An agent or QA run sets the override so that its lines do
+		// not land in the operator's own log files — see `./log-dir` for why the
+		// scratch HOME cannot do it.
+		this.logPath =
+			logDirOverride(process.env[LOG_DIR_ENV]) ?? Logger.defaultLogPath();
 
 		// Ensure log directory exists
 		if (!fs.existsSync(this.logPath)) {

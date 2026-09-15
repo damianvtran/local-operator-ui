@@ -1,11 +1,13 @@
 /**
  * The preload side of the renderer dev driver bridge.
  *
- * Called once from `src/preload/index.ts`, before the app's own namespaces are
- * exposed. It learns whether this launch armed the driver from the renderer
- * process's own `argv` — the `additionalArguments` entry main puts on the window
- * when it armed — and exposes `window.__loDevDriver` only then. When main did not
- * arm (the normal case) this function returns false and the world gets nothing at
+ * Called once from `src/preload/index.ts`, deliberately AFTER the app's own
+ * namespaces are exposed: it is a test surface, and a failure in it must not be
+ * able to take the real bridge (`window.electron`, `window.api`) down with it.
+ * It learns whether this launch armed the driver from the renderer process's
+ * own `argv` — the `additionalArguments` entry main puts on the window when it
+ * armed — and exposes `window.__loDevDriver` only then. When main did not arm
+ * (the normal case) this function returns false and the world gets nothing at
  * all: not a disabled object, not an empty namespace, no property. A page cannot
  * use what does not exist, and a test can assert its absence without knowing what
  * shape it would have had.
