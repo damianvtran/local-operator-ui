@@ -22,6 +22,10 @@
  *   3. `flap` - the same daemon, attached, whose `/health` then exceeds one
  *      probe's budget while its session reads keep answering. Cell: the
  *      conversation list holds. This is the operator's own condition, modelled.
+ *   4. `withdrawn` - the same shape one layer up: an attached backend whose
+ *      capability answer stops opening the catalogue. Cell: the list stays
+ *      mounted with the reason beside it, and the app re-asks on its own. This
+ *      is the renderer half of "all the active chats and teams disappear".
  *
  * Everything is isolated: a throwaway HOME, config dir, `--user-data-dir` and
  * ports, an allowlisted environment, and `VITE_DISABLE_BACKEND_MANAGER=true` so
@@ -54,12 +58,23 @@ const LABEL = argValue("--label", "tree");
 const ONLY = argValue("--scene", "all");
 if (!OUT) {
 	console.error(
-		"usage: attach-frame-evidence.mjs --out <dir> --label <tree> [--scene attached|unattachable|flap|all]",
+		"usage: attach-frame-evidence.mjs --out <dir> --label <tree> [--scene attached|absent|flap|withdrawn|all]",
 	);
 	process.exit(1);
 }
 const WIDTH = Number(process.env.ATTACH_FRAME_WIDTH ?? 1380);
 const HEIGHT = Number(process.env.ATTACH_FRAME_HEIGHT ?? 900);
+/**
+ * The sidebar saying the catalogue gate is closed, in either tree's words.
+ *
+ * Deliberately a fact about the SURFACE rather than one tree's copy: the before
+ * half of this pair says "Update the backend to use canonical chats" and the head
+ * says which of the two causes it observed, and both are only renderable after
+ * the renderer has re-read the capabilities answer. Neither can appear while the
+ * gate is open, which is what makes this a detector for "the withdrawal reached
+ * the window" rather than for a particular sentence.
+ */
+const GATE_CLOSED_COPY = /Update the backend|cannot use the backend/;
 mkdirSync(OUT, { recursive: true });
 
 const ROOT = mkdtempSync(join(tmpdir(), "lop-ui-frame-evidence-"));
@@ -359,6 +374,13 @@ const READ_PAGE = `(async () => {
 		snapshot: snapshot && typeof snapshot === "object"
 			? { state: snapshot.state, reachable: undefined, url: snapshot.url, pid: snapshot.pid, owned: snapshot.owned, unanswered: snapshot.unanswered, detail: snapshot.detail }
 			: snapshot,
+		/*
+		 * The sidebar's own register, read from the nav the way the banner is read
+		 * by role: this rig must report what the panel SAYS, not a selector it
+		 * invented. It is what the withdrawal scene is about - the list is either
+		 * still on screen with a sentence beside it, or gone with nothing said.
+		 */
+		sidebar: (document.querySelector("nav")?.innerText ?? "").replace(/\\s+/g, " ").trim().slice(0, 600),
 		first_lines: text.split("\\n").filter(Boolean).slice(0, 14),
 	});
 })()`;
@@ -436,6 +458,12 @@ async function bootApp(name, apiUrl, configDir, debugPort, options) {
 function stubDaemon(port, state) {
 	const server = createServer((request, response) => {
 		const path = (request.url ?? "").split("?")[0];
+		/*
+		 * Every path this stub was asked for, when the caller keeps the list: what the
+		 * app asked, and WHEN it asked it, is evidence that a recovery was the app's
+		 * own doing rather than the operator's (the withdrawal scene's whole cell).
+		 */
+		state.requests?.push({ path, at: Date.now() });
 		const json = (status, body) => {
 			response.writeHead(status, { "Content-Type": "application/json" });
 			response.end(JSON.stringify(body));
@@ -458,7 +486,19 @@ function stubDaemon(port, state) {
 			return;
 		}
 		if (path === "/v1/capabilities") {
-			json(200, { status: 200, result: { desktop_available: true } });
+			/*
+			 * `withdrawn` is the operator's reported condition: the app reaches a
+			 * backend that answers, and the answer no longer opens the desktop plane
+			 * (a daemon it holds no token for reports `desktop_available: false`). The
+			 * default response is unchanged, byte for byte, so the scenes that predate
+			 * this switch keep the frames they were committed with.
+			 */
+			json(200, {
+				status: 200,
+				result: state.withdrawn
+					? { desktop_available: false }
+					: { desktop_available: true, features: state.features },
+			});
 			return;
 		}
 		if (path === "/v1/desktop/claim") {
@@ -658,10 +698,104 @@ async function sceneFlap() {
 	server.close();
 }
 
+async function sceneWithdrawn() {
+	const port = 46140;
+	const configDir = join(ROOT, "config-withdrawn");
+	const runDir = join(configDir, "run", "serve");
+	mkdirSync(runDir, { recursive: true });
+	const state = {
+		slowHealth: false,
+		healthDelayMs: 3_500,
+		reads: [],
+		requests: [],
+		/*
+		 * The features the catalogue gate needs to OPEN. Without them the sidebar
+		 * would start shut, and a gate that was never open cannot be withdrawn - the
+		 * scene would then photograph the first-load state and say nothing about the
+		 * report.
+		 */
+		features: { session_catalogue: 2, profile_catalogue: 1, team_catalogue: 1 },
+		withdrawn: false,
+	};
+	const server = stubDaemon(port, state);
+	// A record, so the app ATTACHES to the stub rather than declining it: the
+	// withdrawal is a change in what a connected backend advertises.
+	const heartbeat = writeRecord(runDir, port, process.pid);
+	await bootApp("withdrawn", `http://127.0.0.1:${port}`, configDir, 46141);
+
+	let page = null;
+	const deadline = Date.now() + 60_000;
+	while (Date.now() < deadline) {
+		page = await readPage(46141);
+		if (page.seeded_row_visible) break;
+		await wait(1_000);
+	}
+	const before = page;
+	const askedBefore = capabilitiesAsked(state);
+	await capture(46141, join(OUT, `${LABEL}-gate-open.png`));
+
+	state.withdrawn = true;
+	const withdrawnAt = Date.now();
+	/*
+	 * THE CELL: nobody touches anything. On a tree whose capabilities query has no
+	 * re-negotiation this can only time out, which is the report's "it needs a
+	 * refresh"; on this head the poll notices by itself, and how long it took is
+	 * in the summary.
+	 */
+	let noticedOnItsOwn = true;
+	let after = before;
+	const selfDeadline = Date.now() + 75_000;
+	while (Date.now() < selfDeadline) {
+		after = await readPage(46141);
+		if (GATE_CLOSED_COPY.test(after.sidebar)) break;
+		await wait(1_000);
+	}
+	if (!GATE_CLOSED_COPY.test(after.sidebar)) noticedOnItsOwn = false;
+	await wait(2_000);
+	after = await readPage(46141);
+	await capture(46141, join(OUT, `${LABEL}-gate-withdrawn.png`));
+
+	/*
+	 * Then the gesture the report describes - the operator coming back to the
+	 * window, which is React Query's own refetch-on-focus. It is here because the
+	 * BEFORE half of this pair can only reach the withdrawn state that way (its
+	 * `staleTime` is a minute and nothing re-asks before that), and because it is
+	 * the falsification of this fix: a head that only heals when poked would show
+	 * the same frame after this as before it. The wait above has already run past
+	 * the base's `staleTime`, so the poke really does refetch there.
+	 */
+	await evaluate(46141, 'window.dispatchEvent(new Event("focus")), "poked"');
+	await wait(5_000);
+	const poked = await readPage(46141);
+	await capture(46141, join(OUT, `${LABEL}-gate-poked.png`));
+
+	summary.scenes.withdrawn = {
+		before,
+		after,
+		poked,
+		noticed_on_its_own: noticedOnItsOwn,
+		withdrawal_observed_after_ms: Date.now() - withdrawnAt,
+		// The number the poll exists for: > 1 means the app asked again with no
+		// interaction of any kind between the two frames.
+		capabilities_asked_before: askedBefore,
+		capabilities_asked_at_withdrawal: capabilitiesAsked(state),
+		capabilities_asked_at_end: capabilitiesAsked(state),
+	};
+	clearInterval(heartbeat);
+	server.close();
+}
+
+/** How many times the app asked the stub what it can do. */
+function capabilitiesAsked(state) {
+	return state.requests.filter((entry) => entry.path === "/v1/capabilities")
+		.length;
+}
+
 const scenes = {
 	attached: sceneAttached,
 	absent: sceneUnattachable,
 	flap: sceneFlap,
+	withdrawn: sceneWithdrawn,
 };
 
 try {
