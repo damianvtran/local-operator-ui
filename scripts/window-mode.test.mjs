@@ -250,12 +250,14 @@ test("an empty or blank mode value names nothing, so a rig launch is still headl
 
 test("an empty mode value with no rig switch is still the operator's window, and says why", () => {
 	// The other half: nothing about an empty value makes a launch a rig. It is
-	// still the operator's app, and the report is the only thing that changed.
+	// still the operator's app, and the report states the outcome too, because
+	// there is no assumption here to explain the silence.
 	const resolved = plan({ env: { [WINDOW_MODE_ENV]: "" } });
 	assert.equal(resolved.mode, "normal");
 	assert.equal(resolved.assumed, null);
 	assert.equal(resolved.problems.length, 1);
 	assert.match(resolved.problems[0], /names no mode/);
+	assert.match(resolved.problems[0], /using normal/);
 });
 
 test("the flag given an empty value is a caller asking to be told, not a default", () => {
