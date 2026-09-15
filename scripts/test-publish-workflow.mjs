@@ -180,6 +180,38 @@ test("the checkout guard walks imports transitively, not just the direct ones", 
 		),
 	);
 });
+
+test("every scripts checkout in this workflow carries the whole import closure", () => {
+	// One rule for every checkout in the file, rather than a closure test per job.
+	// The two window jobs are asserted one by one below; this covers the validate
+	// job and the attach job as well, and it is the general form of a defect that is
+	// not hypothetical: when all the release scripts moved their entry-point
+	// comparison into `scripts/entry-point.mjs`, EVERY handwritten list that names
+	// one of them became incomplete at once, in a file none of those scripts lives
+	// in, and would have failed at IMPORT time on a runner rather than here.
+	let checkouts = 0;
+	for (const job of Object.keys(jobs)) {
+		for (const s of steps(job)) {
+			const listed = s.with?.["sparse-checkout"];
+			if (typeof listed !== "string") continue;
+			const scripts = [
+				...listed.matchAll(/^\s*(scripts\/[\w.-]+\.mjs)\s*$/gm),
+			].map((match) => match[1]);
+			if (scripts.length === 0) continue;
+			checkouts += 1;
+			for (const module of scripts.flatMap((file) => localImports(file)))
+				assert.match(
+					listed,
+					new RegExp(`^\\s*${module.replace(/\./g, "\\.")}\\s*$`, "m"),
+					`${module} missing from ${job}'s checkout`,
+				);
+		}
+	}
+	// The count is the point of the assertion: a fifth checkout is a new list this
+	// test has just started covering, and a missing one would mean this test stopped
+	// looking at a job without saying so.
+	assert.ok(checkouts >= 4, `only ${checkouts} scripts checkouts found in publish.yml`);
+});
 for (const [job, mode] of windowJobs) {
 	test(`${job} runs ${mode} with both pins and its imports checked out`, () => {
 		const run = steps(job).find((step) => step.run);

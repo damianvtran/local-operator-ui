@@ -28,7 +28,7 @@
  * the one diff form that answers the question being asked.
  */
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 /** Thrown for conditions that must fail the job rather than pass it. */
 class GuardError extends Error {}
@@ -405,5 +405,4 @@ function main() {
 }
 
 // Importable for the test suite; only the CLI path reads the environment.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-	main();
+if (isEntryPoint(import.meta.url)) main();
