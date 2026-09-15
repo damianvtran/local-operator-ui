@@ -29,7 +29,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -103,6 +103,8 @@ const {
 	refusedBeforeAdmissionText,
 	restoreSubmittedAttachments,
 	restoreSubmittedText,
+	adoptRefusedPayload,
+	refusedSplitNotice,
 	useConversationInputStore,
 	withholdsRetryHint,
 } = module;
@@ -1228,6 +1230,191 @@ test("a restored draft still carries an attachment, not just the text", async ()
 });
 
 /*
+ * MINOR-2 of code review round 8: the composer adopts the PAIR through one
+ * decision.
+ *
+ * `owesRefusedPayload` made the store's answer one thing for both halves, but the
+ * composer still read them through two rules and gated the chip write on the TEXT
+ * rule's outcome. On the arm where the two rules disagree - the box holds text
+ * the user typed during the flight while the chip row is empty - that dropped the
+ * refusal's file with nothing said; and because the coupling was the text rule's
+ * OUTCOME rather than the rule, a later edit to `restoreSubmittedText`'s
+ * empty-slot clause would have changed which refusals restore files with no test
+ * noticing. Both are the same defect class the whole review series is about: two
+ * things that must agree, allowed to drift in silence.
+ *
+ * The payload is the REAL one - the store is driven to a refused send and
+ * `refusedBeforeAdmissionText`/`Attachments` supply both halves from the one row
+ * - and it is then put through the shipped composer-side decision in every state
+ * a composer can be in. The property is asserted over a matrix rather than as
+ * four hand-written arms: whenever exactly one owed half was adopted, `withheld`
+ * names the half that was NOT, so the composer always has a sentence to render
+ * and a restored draft can never show one half of the payload without the other
+ * in silence.
+ */
+test("the pair is adopted through one decision, and a split is never silent", async () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "666666666666",
+				binding: { agent: null, team: null },
+			};
+		return Promise.reject(
+			new DesktopControlError(422, "The request has invalid fields."),
+		);
+	};
+	const key = store.getState().stageDraft();
+	const text = "/usage\npair arm line two";
+	const attachments = ["/tmp/notes.txt", "/tmp/screenshot.png"];
+	await assert.rejects(admitChatDraft(key, { ...input, text, attachments }), /./);
+	const draft = store.getState().drafts[key];
+	const refusal = {
+		text: refusedBeforeAdmissionText(draft),
+		attachments: refusedBeforeAdmissionAttachments(draft),
+	};
+	// Both halves come from the same row the store wrote, so the decision below is
+	// driven with the payload a refusal really owes and not a fixture that could
+	// disagree with it.
+	assert.equal(refusal.text, text);
+	assert.deepEqual(refusal.attachments, attachments);
+
+	// The created-session arm: both slots are empty, so the pair lands whole and
+	// there is nothing to say.
+	const whole = adoptRefusedPayload("", [], refusal);
+	assert.equal(whole.text, text);
+	assert.deepEqual(whole.paths, attachments);
+	assert.equal(whole.withheld, null);
+	assert.equal(refusedSplitNotice(whole.withheld, refusal.attachments), null);
+
+	// THE ARM THIS FINDING IS ABOUT: the box holds text the user typed while the
+	// send was in flight. It keeps the box - and the caret - while the files come
+	// back anyway, because the chip row's rule is the text rule's, not the text
+	// rule's OUTCOME. That split is what must be said out loud.
+	const boxHeld = adoptRefusedPayload("a line I typed", [], refusal);
+	assert.equal(boxHeld.text, "a line I typed");
+	assert.deepEqual(boxHeld.paths, attachments);
+	assert.equal(boxHeld.withheld, "text");
+	const restoredNotice = refusedSplitNotice(
+		boxHeld.withheld,
+		refusal.attachments,
+	);
+	assert.match(restoredNotice, /notes\.txt, screenshot\.png/);
+	assert.match(restoredNotice, /text was left out/);
+
+	// The other split: the text comes back into an empty box while the chip row
+	// holds files the user picked themselves. Those keep the row, and the file the
+	// refusal owed is NAMED as not restored rather than dropped in silence.
+	const chipsHeld = adoptRefusedPayload(
+		"",
+		[{ id: "mine", path: "/tmp/mine.txt" }],
+		refusal,
+	);
+	assert.equal(chipsHeld.text, text);
+	assert.deepEqual(chipsHeld.paths, []);
+	assert.equal(chipsHeld.withheld, "files");
+	const withheldNotice = refusedSplitNotice(
+		chipsHeld.withheld,
+		refusal.attachments,
+	);
+	assert.match(withheldNotice, /notes\.txt, screenshot\.png/);
+	assert.match(withheldNotice, /no free slot/);
+
+	// Both slots occupied - the named-session arm's state, where the local restore
+	// already put the payload back and both halves are held by content the user put
+	// there themselves. Nothing was adopted, so nothing is owed a sentence: one
+	// here would nag on every refusal of a draft the user has already rebuilt.
+	const rebuilt = adoptRefusedPayload(
+		"a line I typed",
+		[{ id: "mine", path: "/tmp/mine.txt" }],
+		refusal,
+	);
+	assert.equal(rebuilt.text, "a line I typed");
+	assert.deepEqual(rebuilt.paths, []);
+	assert.equal(rebuilt.withheld, null);
+	assert.equal(refusedSplitNotice(rebuilt.withheld, refusal.attachments), null);
+
+	// A composer with NO chip row (one keyed to a draft that never minted a
+	// session): the text comes back, the files cannot, and that is a split like any
+	// other - the decision reports it rather than the composer claiming a write it
+	// had no row for.
+	const noRow = adoptRefusedPayload("", null, refusal);
+	assert.equal(noRow.text, text);
+	assert.deepEqual(noRow.paths, []);
+	assert.equal(noRow.withheld, "files");
+
+	// An attachment-only refusal owes no text, so its files are not "a half held
+	// beside another that was never owed". It also pins the shape the old code got
+	// wrong for a second reason: an EMPTY refused text left the box unchanged, so an
+	// early return on "the box did not change" dropped these files with nothing
+	// said.
+	const filesOnly = adoptRefusedPayload("", [], { text: "", attachments });
+	assert.deepEqual(filesOnly.paths, attachments);
+	assert.equal(filesOnly.withheld, null);
+
+	/*
+	 * THE PROPERTY, over the arms above and the states between them: exactly one
+	 * owed half adopted means `withheld` names the half that was not, and a
+	 * sentence exists wherever a split happened. `withheld === null` therefore means
+	 * every owed half landed, or none was owed - never a silent half.
+	 */
+	const boxes = ["", "a line I typed"];
+	const rows = [null, [], [{ id: "mine", path: "/tmp/mine.txt" }]];
+	const payloads = [
+		refusal,
+		{ text: refusal.text, attachments: [] },
+		{ text: "", attachments },
+	];
+	let checked = 0;
+	for (const box of boxes)
+		for (const row of rows)
+			for (const payload of payloads) {
+				const result = adoptRefusedPayload(box, row, payload);
+				const textAdopted = payload.text !== "" && result.text !== box;
+				const filesAdopted =
+					payload.attachments.length > 0 && result.paths.length > 0;
+				const bothOwed = payload.text !== "" && payload.attachments.length > 0;
+				const split = bothOwed && textAdopted !== filesAdopted;
+				const where = `box=${JSON.stringify(box)} row=${JSON.stringify(row)} payload=${JSON.stringify(payload)}`;
+				assert.equal(
+					result.withheld,
+					split ? (textAdopted ? "files" : "text") : null,
+					`a split reached the composer unnamed: ${where}`,
+				);
+				assert.equal(
+					refusedSplitNotice(result.withheld, payload.attachments) !== null,
+					split,
+					`the sentence does not match the split: ${where}`,
+				);
+				checked += 1;
+			}
+	assert.equal(checked, boxes.length * rows.length * payloads.length);
+
+	// The decision delegates to the two shipped rules instead of re-implementing
+	// them: a second copy of "only into an empty slot" is how this family of
+	// defects starts. Comments are stripped, so a sentence describing the rule
+	// cannot stand in for calling it.
+	const hookSource = readFileSync(
+		"src/renderer/src/shared/hooks/use-message-input.ts",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const decision = hookSource.slice(
+		hookSource.indexOf("export const adoptRefusedPayload"),
+		hookSource.indexOf("export const refusedSplitNotice"),
+	);
+	assert.ok(
+		/restoreSubmittedText\(box, owedText\)/.test(decision),
+		"the pair decision no longer restores the text through the shipped box rule",
+	);
+	assert.ok(
+		/restoreSubmittedAttachments\(chips, refusal\.attachments\)/.test(decision),
+		"the pair decision no longer restores the attachments through the shipped chip rule",
+	);
+});
+
+/*
  * R18: the composer's own adoption, exercised - the thing that actually restores
  * the payload, which the cases above never touch.
  *
@@ -1242,10 +1429,17 @@ test("a restored draft still carries an attachment, not just the text", async ()
  *
  * Three claims, each of which has a failure behind it: the adoption is a LAYOUT
  * effect (as a passive one the remounted box painted empty for a frame, R20); it
- * consumes BOTH halves through the shipped rules and writes the chips to the
+ * consumes BOTH halves through the ONE pair decision and writes the chips to the
  * composer's own identity; and it leaves the caret at the END of the restored
  * text, which is what makes the next Send re-attempt the message instead of
  * running the leading command (`slash-submit.ts` reads the token at the caret).
+ *
+ * The rules moved one layer down in round 8 (MINOR-2): the composer no longer
+ * calls `restoreSubmittedText`/`restoreSubmittedAttachments` itself, so the case
+ * above asserts the DECISION calls them and this one asserts the composer goes
+ * through the decision and renders its split answer. Reading the composer alone
+ * for the two rule names would now pass on a composer that had bypassed the
+ * pair decision entirely, which is exactly what the finding was about.
  */
 test("the composer adopts a refused payload through the shipped rules, at the end of the text", () => {
 	const rendered = readFileSync(
@@ -1257,20 +1451,19 @@ test("the composer adopts a refused payload through the shipped rules, at the en
 		start > 0,
 		"the composer no longer keeps a record of the refused payload it has answered for, so the text is never adopted on the remount and U14's fix is gone",
 	);
-	const adoption = rendered.slice(start, start + 1400);
+	/*
+	 * The window is sized to the adoption as it ships: the pair decision, its
+	 * arguments, the chip write, the split sentence, the caret and the box write.
+	 * The assertions below are the ones that must not fall outside it.
+	 */
+	const adoption = rendered.slice(start, start + 1800);
 	assert.ok(
 		/useLayoutEffect\(\(\) => \{/.test(adoption),
 		"the refusal adoption is a passive effect again, so the remounted composer paints an empty box with the refusal's copy above it for one frame (R20)",
 	);
 	assert.ok(
-		/restoreSubmittedText\(newMessage, refusedText\)/.test(adoption),
-		"the adoption no longer restores the refused TEXT through the shipped box rule",
-	);
-	assert.ok(
-		/restoreSubmittedAttachments\(\s*attachments,\s*refusedAttachments,?\s*\)/.test(
-			adoption,
-		),
-		"the adoption no longer restores the refused ATTACHMENTS, so a restored draft sends its text without the user's file (R17)",
+		/adoptRefusedPayload\(/.test(adoption),
+		"the adoption no longer goes through the single pair decision, so the two halves are read independently at the call site again and one can be dropped on the other's outcome (round 8, MINOR-2)",
 	);
 	assert.ok(
 		/addAttachment\(\s*conversationId,\s*\{\s*id: uuidv4\(\),\s*path,?\s*\}\s*\)/.test(
@@ -1279,11 +1472,15 @@ test("the composer adopts a refused payload through the shipped rules, at the en
 		"the restored chips are not written to the composer's own conversation, so the file list the next Send reads is still empty",
 	);
 	assert.ok(
-		/pendingCaret\.current = restored\.length/.test(adoption),
+		/setRefusedNotice\(\s*refusedSplitNotice\(/.test(adoption),
+		"the adoption's split answer is computed and never rendered, so a draft carrying one half of the refused payload reads exactly like one carrying both (round 8, MINOR-2)",
+	);
+	assert.ok(
+		/pendingCaret\.current = adoption\.text\.length/.test(adoption),
 		"the restored caret is no longer the END of the text, so a restored draft whose first line is a command RUNS it on the next Send instead of re-attempting the message",
 	);
 	assert.ok(
-		/setNewMessage\(restored\)/.test(adoption),
+		/setNewMessage\(adoption\.text\)/.test(adoption),
 		"the adopted text is computed and never written to the box",
 	);
 });

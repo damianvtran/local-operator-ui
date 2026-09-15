@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -126,7 +127,7 @@ const sharp = (await import("sharp")).default;
 const imageBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/utils/bound-image"; export * from "./src/renderer/src/features/chat/utils/message-budget";',
+			'export * from "./src/renderer/src/features/chat/utils/bound-image"; export * from "./src/renderer/src/features/chat/utils/message-budget"; export * from "./src/renderer/src/features/chat/utils/attachment-read";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -797,6 +798,93 @@ test("an over-long paste is refused in characters, the unit the schema caps", as
 		messageBudgetRefusal("x".repeat(400_000), []),
 		/^This message is 400,000 characters, more than the 200,000 one message can carry\. Split it across two messages\.$/,
 	);
+});
+
+test("the send path refuses on an unreadable attachment, before admission", () => {
+	/*
+	 * The wiring, not the sentence: `encodeImageAttachments` lives in
+	 * `chat-page.tsx`, which needs a mounted renderer (React, a router, the
+	 * canonical store) and has no harness here - the instrument
+	 * `composer-readings.test.mjs` argues for on the same grounds. What it pins is
+	 * the half that was missing: a failed read is RECORDED, and the send stops on
+	 * the record instead of proceeding without the file. Comments are stripped so
+	 * a sentence describing the rule cannot stand in for implementing it.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	// Bounded by the next top-level declaration, so the slice is the encoder and
+	// nothing else: `boundImagesForBudget` is imported at the top of the file, so
+	// searching for the name would find the import and slice to nothing.
+	const encoder = page.slice(
+		page.indexOf("async function encodeImageAttachments"),
+		page.indexOf("function SessionPanel"),
+	);
+	assert.match(
+		encoder,
+		/const unreadable: string\[\] = \[\]/,
+		"the encoder collects nothing, so an attachment it could not read is dropped exactly as silently as before (round 8, MINOR-1)",
+	);
+	assert.match(
+		encoder,
+		/else unreadable\.push\(attachment\)/,
+		"a read that failed no longer reaches the report, so the file vanishes without the sentence that names it",
+	);
+
+	// And the call site refuses on it BEFORE admission, where the composer is still
+	// editable. A refusal after `admitChatDraft` latched the draft would be answered
+	// by the unchanged-payload guard, so the user could not remove the chip and send.
+	const send = page.slice(
+		page.indexOf("const { images, unreadable }"),
+		page.indexOf("messageBudgetRefusal(content, images)"),
+	);
+	assert.match(
+		send,
+		/unreadableAttachmentRefusal\(unreadable\)/,
+		"the send no longer turns the unreadable list into a refusal, so the message goes out a file short",
+	);
+	assert.match(
+		send,
+		/setSendError\(unreadableRefusal\);[\s\S]{0,40}return false;/,
+		"the unreadable refusal is computed and the send proceeds anyway, so the file is still lost",
+	);
+});
+
+// Round 8's MINOR-1: `encodeImageAttachments` skipped an attachment whose file
+// it could not read - silently, so the message went out a file short of what the
+// composer showed while the previous round's record claimed it "will fail at send
+// time with the transport's own error". Nothing executed that claim, which is
+// why it could be wrong; this drives the shipped sentence and the reason it is
+// reached, so the copy and the behaviour are pinned together.
+//
+// The skip itself is still sound - a file that moved cannot be read - but it is
+// now reported, and the send refuses before admission, where the chip is still
+// removable. The encode loop's own arms are not reachable from here (it lives in
+// `chat-page.tsx`, which needs a mounted renderer); what is pinned is the
+// sentence those arms produce.
+test("an unreadable attachment is named rather than dropped, and a clean send is not refused", async () => {
+	const { unreadableAttachmentRefusal } = await loadImageBounding();
+
+	// The no-op arm, which is what keeps a send carrying a readable file from
+	// raising an alert at all.
+	assert.equal(unreadableAttachmentRefusal([]), null);
+
+	// One file, named the way every other surface names one - the file a person
+	// recognises, not the directory it sits in - and with both remedies.
+	assert.match(
+		unreadableAttachmentRefusal(["/tmp/shots/notes.png"]),
+		/^notes\.png could not be read \(it may have been moved or deleted\), and this message would go out without it\. Attach it again, or remove it from the draft\.$/,
+	);
+
+	// Several at once: the count AND the names, because "2 attachments could not
+	// be read" on its own is not a file the user can find or remove.
+	const many = unreadableAttachmentRefusal([
+		"/tmp/notes.png",
+		"/tmp/screens/shot.jpeg",
+	]);
+	assert.match(many, /^2 attachments could not be read/);
+	assert.match(many, /notes\.png, shot\.jpeg/);
 });
 
 test("a text-dominant overflow says to split the text even when an image is attached", async () => {

@@ -53,6 +53,7 @@ import {
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
+import { unreadableAttachmentRefusal } from "../utils/attachment-read";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
 import { canvasDocumentForPath } from "../utils/canvas-document";
 import {
@@ -120,6 +121,16 @@ const FILE_SCHEME = /^file:\/\//;
 
 async function encodeImageAttachments(attachments: string[], text: string) {
 	const images: WireImage[] = [];
+	/*
+	 * The paths this send identified as images but could NOT read.
+	 *
+	 * Returned rather than dropped, because a dropped one is a file the user
+	 * believes is in the message and is not - and on a draft restored from a
+	 * refusal that file is one they already sent once. The send refuses before
+	 * admission on a non-empty list (`unreadableAttachmentRefusal`), where the
+	 * chip is still removable (code review round 8, MINOR-1).
+	 */
+	const unreadable: string[] = [];
 	for (const attachment of attachments) {
 		const dataUrl = IMAGE_DATA_URL.exec(attachment);
 		if (dataUrl) {
@@ -131,22 +142,32 @@ async function encodeImageAttachments(attachments: string[], text: string) {
 		}
 		const ext = attachment.split(".").pop()?.toLowerCase() ?? "";
 		const mime = IMAGE_MIME_BY_EXT[ext];
+		// Two skips that are NOT this send's failure, so neither is reported here: a
+		// path that is not one of the four image types the runtime accepts is left
+		// out of the body by design, for every send; and a renderer with no
+		// `window.api.readFile` bridge cannot read any file at all, which is a fact
+		// about the context rather than about this attachment (`attachment-read.ts`
+		// states both limits where the sentence is built).
 		if (!mime || !window.api?.readFile) continue;
 		const read = await window.api.readFile(
 			attachment.replace(FILE_SCHEME, ""),
 			"base64",
 		);
 		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
+		else unreadable.push(attachment);
 	}
 	// Bound per image first, then check the TOTAL and step the whole set down
 	// until the message fits. Several individually legal screenshots that do not
 	// collectively fit is the common case, and it is not visible to a per-image
 	// rule.
-	return boundImagesForBudget(
-		images.slice(0, 8),
-		DESKTOP_MESSAGE_BUDGET_BYTES,
-		(candidate) => messageBodyBytes(text, candidate),
-	);
+	return {
+		images: await boundImagesForBudget(
+			images.slice(0, 8),
+			DESKTOP_MESSAGE_BUDGET_BYTES,
+			(candidate) => messageBodyBytes(text, candidate),
+		),
+		unreadable,
+	};
 }
 
 /** Each displayed identity owns its stream and composer. A candidate open is
@@ -710,7 +731,21 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const images = await encodeImageAttachments(attachments, content);
+			const { images, unreadable } = await encodeImageAttachments(
+				attachments,
+				content,
+			);
+			/*
+			 * An attachment the send could not read, reported before admission for the
+			 * same reason as the budget refusal below: the file is not in the message
+			 * the user thinks they are sending, and here the composer is still
+			 * editable so the chip can be re-attached or removed (round 8, MINOR-1).
+			 */
+			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			if (unreadableRefusal) {
+				setSendError(unreadableRefusal);
+				return false;
+			}
 			// Refuse BEFORE admission, where the sizes are still known and the
 			// composer is still editable. A refusal from the transport arrives after
 			// the draft has latched, so its "send it again" advice is then refused by
