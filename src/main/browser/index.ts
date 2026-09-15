@@ -26,6 +26,7 @@ import {
 	SESSION_FILENAME,
 	captureTabs,
 	readSession,
+	stopSnapshotDecision,
 } from "./session-store";
 import { permittedScheme } from "./settle";
 import {
@@ -206,12 +207,28 @@ export async function startBrowserHost(
 		);
 	};
 
+	/**
+	 * Whether this process is stopping.
+	 *
+	 * WHY IT GATES THE SESSION CAPTURE (QA round 2, Q3). The stop path captures the
+	 * session ONCE, before the views are destroyed, because `captureTabs` reads each
+	 * view's live navigation history and a destroyed view has none. After that
+	 * capture, tearing the browser down fires a `destroyed` event per view, every one
+	 * of which ends in `notifyChanged` -> `captureSession`: a capture of a strip that
+	 * no longer exists, which then overwrote the good record with `{version:1,
+	 * tabs:[]}`. That is the measured SIGTERM behaviour - the file was empty
+	 * immediately after 8 of 8 SIGTERM quits and intact after a window close - so one
+	 * quit-time capture is taken and nothing durable is written after it.
+	 */
+	let stopping = false;
+
 	const notifyChanged = (): void => {
 		stateWriter?.publishNow();
 		options.window.webContents.send("browser-state-changed");
 		// The tab list is durable state now (design 7.2): a create, a close and a
-		// navigation are what changes it, and every one of those paths ends here.
-		captureSession();
+		// navigation are what changes it, and every one of those paths ends here. A
+		// teardown is the exception: see `stopping` above.
+		if (!stopping) captureSession();
 	};
 
 	const registry = new TabRegistry(
@@ -364,12 +381,40 @@ export async function startBrowserHost(
 		profileDir,
 		agentTabs: () => registry.agentTabCount(),
 		stop: async () => {
-			// Capture BEFORE the views are destroyed: `captureTabs` reads each view's
-			// live navigation history, and a destroyed webContents has none. This is
-			// also why the flush lives here rather than in `before-quit`: stopping the
-			// host is what happens on a quit AND on a window close, so one call site
-			// covers both instead of a quit-only hook that a window close would skip.
-			captureSession();
+			/*
+			 * The quit-time capture, taken BEFORE the views are destroyed
+			 * (`captureTabs` reads each view's live navigation history and a destroyed
+			 * view has none) - and the one place a capture may be REFUSED.
+			 *
+			 * A capture taken while the process is coming down can be short for a reason
+			 * that is not the user's doing: the views may already be gone (SIGTERM, an
+			 * update restart, a renderer crash). Measured: a SIGTERM quit left
+			 * `{"version":1,"tabs":[]}` in 8 of 8 runs while a window close kept the
+			 * tabs. `stopSnapshotDecision` refuses a capture shorter than the record
+			 * already on disk, so the worst case is a tab the user had just closed
+			 * coming back rather than a session disappearing. This is also why the flush
+			 * lives here rather than in `before-quit`: stopping the host is what happens
+			 * on a quit AND on a window close, so one call site covers both instead of a
+			 * quit-only hook that a window close would skip.
+			 */
+			const durableRows = readSession(sessionStore.filePath, log).length;
+			const atStop = captureTabs(
+				registry.list(),
+				registry.activeTab?.tabId ?? null,
+			);
+			const decision = stopSnapshotDecision(atStop.length, durableRows);
+			if (decision.write) {
+				sessionStore.record(atStop);
+			} else {
+				log(
+					`[browser] not overwriting ${SESSION_FILENAME} at stop: ${decision.reason}`,
+				);
+			}
+			// From here on the browser is coming down, and nothing durable is written
+			// again: the per-view `destroyed` handlers still fire, and a capture of a
+			// strip that no longer exists is another way to lose the session (see
+			// `stopping`).
+			stopping = true;
 			sessionStore.flush();
 			registry.destroyAll();
 			await cdp.close();

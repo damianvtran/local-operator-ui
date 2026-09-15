@@ -1865,7 +1865,7 @@ test("a token that ends drops the document receipt it was granted", async () => 
 	assert.deepEqual(dropped, [freshToken], "the chrome's close dropped nothing");
 });
 
-test("allow once authorizes one requester document until navigation or revocation", async () => {
+test("allow once authorizes one requester document until the next navigation", async () => {
 	const { host, registry } = makeHost();
 	const owner = {
 		requester: "session:alice",
@@ -1889,17 +1889,84 @@ test("allow once authorizes one requester document until navigation or revocatio
 		() => host.dispatch("read", { ...owner, tab: opened.tab }, "next-document"),
 		{ code: "origin_not_allowed" },
 	);
-	await host.dispatch(
-		"request_access",
-		{ ...owner, url: "https://other.example/" },
-		"other",
-	);
+});
+
+/*
+ * THE PER-ORIGIN CONTROLS, WHICH ARE THE ONES A USER CLICKS (QA round 2, Q1).
+ *
+ * The title above used to be "...until navigation or revocation" and its last act
+ * was `host.approvals.revokeAll()`: the bulk path, not the control the Sites sheet
+ * and "Forget this site" both run. So a per-origin revoke that left an unspent
+ * once grant live passed a suite whose own title said otherwise - the negative
+ * control passing is what hid the hole (QA's finding, and round 2's B1). This test
+ * is that claim asked of the buttons: both entry points in the host, not the store
+ * directly, and the count reported back to the user is asserted too because the
+ * sheet renders it.
+ */
+test("both per-origin controls a user clicks retire an unspent once grant", async () => {
+	for (const control of ["revokeApproval", "forgetSite"]) {
+		// `forgetSite` is the two-mechanism control, so the host needs the storage half:
+		// recording it here also lets the log line's count be asserted rather than
+		// assumed.
+		const cleared = [];
+		const { host } = makeHost({
+			forgetSiteData: async (origin) => {
+				cleared.push(origin);
+			},
+		});
+		const owner = {
+			requester: "session:alice",
+			url: "https://approved.example/",
+		};
+		await host.dispatch("request_access", owner, "request");
+		host.respondToConsent(
+			host.chromeState().pendingConsent[0].entryId,
+			"once",
+		);
+		// The grant is live but unspent, which is the state a revoke has to retire:
+		// it admits the origin without ever having written a durable row.
+		assert.equal(
+			host.approvals.originAllowed(new URL(owner.url)),
+			false,
+			"a once grant leaves no durable approval behind",
+		);
+
+		const report = await host[control](owner.url);
+
+		assert.equal(
+			report.removed > 0,
+			true,
+			`${control} must report the authority it retired, because the sheet renders that number`,
+		);
+		assert.throws(
+			() =>
+				host.approvals.ensureTopLevelAccess(
+					new URL(owner.url),
+					owner.requester,
+				),
+			{ code: "origin_not_allowed" },
+			`${control} must retire the unspent once grant, not only the durable rows`,
+		);
+		assert.equal(
+			cleared.length,
+			control === "forgetSite" ? 1 : 0,
+			control === "forgetSite"
+				? "forget-site clears the stored data as well as the approval"
+				: "the plain revoke leaves stored data alone (design 9.4)",
+		);
+	}
+
+	// The BULK control is pinned here too, because it is the limb the old test
+	// exercised: removing it above must not quietly drop its coverage.
+	const { host } = makeHost();
+	const owner = { requester: "session:alice", url: "https://approved.example/" };
+	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
-	host.approvals.revokeAll();
+	assert.equal(host.revokeAllApprovals().removed > 0, true);
 	assert.throws(
 		() =>
 			host.approvals.ensureTopLevelAccess(
-				new URL("https://other.example/"),
+				new URL(owner.url),
 				owner.requester,
 			),
 		{ code: "origin_not_allowed" },
