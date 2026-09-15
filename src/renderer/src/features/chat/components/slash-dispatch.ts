@@ -49,6 +49,7 @@ import type { NativeDesktopAction } from "../../../../../shared/desktop-control-
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
 import type { DraftPickerDestination } from "../draft-selection";
 import {
+	MOVE_NOT_READY_REASON,
 	MOVE_UNAVAILABLE_REASON,
 	type MoveCommitOutcome,
 	sessionMoveEnabled,
@@ -102,6 +103,18 @@ type SlashDispatchOptions = {
 	focusCwdChip?: () => void;
 	/** Shares the composer's request latch, receipt and eval-history state. */
 	moveSession: (path: string) => Promise<MoveCommitOutcome>;
+	/**
+	 * Whether a move can be asked for on this pane AT ALL, as the chip decides it.
+	 *
+	 * `sessionMoveEnabled` answers a question about the BACKEND; the chip's gate is
+	 * that answer AND a session that is not still a draft. Both surfaces of this one
+	 * write path have to ask the same two questions, or the chip can refuse with
+	 * "its working directory can be moved as soon as it is live" while the typed form
+	 * posts a move for the same session (agent review round 2, R-3). Absent means
+	 * `true`, so a caller that has no pane readiness to report is not silently
+	 * downgraded to the read-only answer.
+	 */
+	moveReady?: boolean;
 };
 
 /**
@@ -210,6 +223,7 @@ export function useSlashDispatch({
 	draftPicker,
 	focusCwdChip,
 	moveSession,
+	moveReady,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -226,6 +240,12 @@ export function useSlashDispatch({
 	 * be a second source of truth about what a destination can do.
 	 */
 	const canMove = sessionMoveEnabled(capabilities.data);
+	/*
+	 * The pane's half of the gate: the capability says the backend can move a live
+	 * session, `moveReady` says THIS session is live enough to move. "Not ready" is
+	 * a different sentence from "cannot", and the difference is the whole of R-3.
+	 */
+	const paneReady = moveReady ?? true;
 
 	const commandsQuery = useQuery({
 		queryKey: desktopKeys.commands,
@@ -317,12 +337,19 @@ export function useSlashDispatch({
 				note(MOVE_UNAVAILABLE_REASON, true);
 				return;
 			}
+			if (!paneReady) {
+				// The chip's other refusal, for the same reason: its read-only reason is
+				// MOVE_NOT_READY_REASON while the session is being created, and a typed
+				// `/move` in that window must not do what the chip refuses (R-3).
+				note(MOVE_NOT_READY_REASON, true);
+				return;
+			}
 			note(
 				"Choose the folder in the working directory chip above, or type /move <path> to move straight there.",
 			);
 			focusCwdChip?.();
 		},
-		[canMove, focusCwdChip, note, sessionId],
+		[canMove, focusCwdChip, paneReady, note, sessionId],
 	);
 	const dispatch = useCallback(
 		async (
@@ -371,6 +398,13 @@ export function useSlashDispatch({
 				}
 				if (!canMove) {
 					note(MOVE_UNAVAILABLE_REASON, true);
+					return "consumed";
+				}
+				if (!paneReady) {
+					// The chip's own refusal for this window, asked here too: `/move <path>`
+					// used to consult the capability alone, so it posted a move for a session
+					// the chip beside it was refusing to touch (agent review round 2, R-3).
+					note(MOVE_NOT_READY_REASON, true);
 					return "consumed";
 				}
 				if (entry.runArgs) {
@@ -575,6 +609,7 @@ export function useSlashDispatch({
 			rebind,
 			closePicker,
 			canMove,
+			paneReady,
 			moveSession,
 			presentCwdChip,
 		],

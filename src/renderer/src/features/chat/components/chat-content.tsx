@@ -166,6 +166,11 @@ type ChatContentProps = {
 	 * answer to "is this session's chip settled".
 	 */
 	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight; see
+	 * `MessageInputProps.cwdPendingAccepted`.
+	 */
+	cwdPendingAccepted?: boolean;
 	/** Why the chip is read-only here, per cause; see `MessageInputProps`. */
 	cwdReadOnlyReason?: string;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
@@ -396,6 +401,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		turnTerminal,
 		cwdWritePath,
 		cwdPending,
+		cwdPendingAccepted,
 		cwdReadOnlyReason,
 		sendError,
 		sessionStatus,
@@ -890,6 +896,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								cwd={cwd}
 								cwdWritePath={cwdWritePath}
 								cwdPending={cwdPending}
+								cwdPendingAccepted={cwdPendingAccepted}
 								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}

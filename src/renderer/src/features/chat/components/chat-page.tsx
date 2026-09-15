@@ -705,6 +705,19 @@ function SessionPanel({
 		 */
 		focusCwdChip: () => input.current?.openWorkingDirectoryMenu(),
 		moveSession: live.moveTo,
+		/*
+		 * Whether a move can be asked for AT ALL on this pane, which is the chip's own
+		 * readiness rather than the backend's (agent review round 2, R-3).
+		 *
+		 * `canMove` is the chip's whole gate: a session, not a draft, and the
+		 * capability pair. The typed `/move <path>` form and the bare form used to
+		 * consult only the capability, so in the admission window - `draftKey` still
+		 * set while `draft.sessionId` is already populated - the chip was read-only
+		 * and said "its working directory can be moved as soon as it is live" while
+		 * the typed form posted a move for the same session. One predicate, both
+		 * surfaces.
+		 */
+		moveReady: !draftKey,
 
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
@@ -1705,6 +1718,12 @@ function SessionPanel({
 					 */
 					sessionId={sessionId}
 					cwdPending={canMove && live.busy}
+					/*
+					 * Whether the backend has ACCEPTED the move in flight, so the chip's second
+					 * pending sentence is the receipt's arrival rather than a clock (UX review
+					 * round 2, U3). `live.accepted` is written only by `pendingAfterReceipt`.
+					 */
+					cwdPendingAccepted={canMove && live.accepted}
 					messages={[]}
 					isLoading={false}
 					isLoadingMessages={false}

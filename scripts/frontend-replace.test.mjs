@@ -137,7 +137,11 @@ const bundle = await build({
 		},
 	],
 });
-const { useCanonicalSessionStream, useCanonicalSessionsStore } = await import(
+const {
+	useCanonicalSessionStream,
+	useCanonicalSessionsStore,
+	acceptFrontendReplace,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -544,6 +548,35 @@ test("a replacement from another epoch or another session is refused", async () 
 		mismatchedPayload.frontend?.cwd,
 		"/old",
 		"the payload's own session identity is checked too",
+	);
+});
+
+test("a replacement before any cursor is refused", () => {
+	/*
+	 * The first refusal in `acceptFrontendReplace`'s own docstring had no direct
+	 * case: it was only reached indirectly, through the pre-snapshot replay where
+	 * the bootstrap drops the frame before the predicate runs (agent review round 2,
+	 * N-2). A replacement is an instruction to REPLACE a projection, so it is only
+	 * meaningful against a cursor the subscription already served - with no cursor
+	 * there is nothing it is newer than, and the safe answer is to keep the
+	 * snapshot. The predicate is asserted directly because the hook-level route to
+	 * this branch does not exist: the first sequenced frame always sets the cursor.
+	 */
+	const frame = replaceFrame(3, { cwd: "/new" });
+	assert.equal(
+		acceptFrontendReplace(undefined, SESSION, frame),
+		false,
+		"no cursor served yet",
+	);
+	assert.equal(
+		acceptFrontendReplace(null, SESSION, frame),
+		false,
+		"and an explicitly empty one is the same answer",
+	);
+	assert.equal(
+		acceptFrontendReplace({ epoch: frame.epoch, seq: 2 }, SESSION, frame),
+		true,
+		"the control: with a cursor it is this frame's own seq that decides",
 	);
 });
 

@@ -540,6 +540,8 @@ export function useSessionMove(input: {
 	moveTo: (path: string) => Promise<MoveCommitOutcome>;
 	/** A move is in flight for THIS session. */
 	busy: boolean;
+	/** The backend has answered for it; see `pendingAfterReceipt`. */
+	accepted: boolean;
 } {
 	const { sessionId, canonical } = input;
 	const [moves, setMoves] = useState<ReadonlyMap<string, PendingMove>>(
@@ -585,11 +587,21 @@ export function useSessionMove(input: {
 			}
 			const requestId = uuidv4();
 			const committed = pendingAfterCommit(sessionId, requestId, path);
-			pendingRef.current = new Map(pendingRef.current).set(
-				sessionId,
-				committed,
-			);
-			setMoves(pendingRef.current);
+			/*
+			 * The ref is assigned INSIDE the updater that sets the state.
+			 *
+			 * The effect below mirrors every other writer (the receipt, the stream, the
+			 * deadline); this one is a synchronous read-again-at-once path, and an
+			 * ordering argument that rests on "passive effects flush before the next
+			 * task" is the kind of claim that survives review and then fails on a host
+			 * with a different scheduler. Assigning here makes the ref and the state
+			 * impossible to diverge at commit time (agent review round 2, N-1).
+			 */
+			setMoves((current) => {
+				const next = updatePendingMoves(current, sessionId, () => committed);
+				pendingRef.current = next;
+				return next;
+			});
 			const outcome = await runMoveSession({
 				sessionId,
 				cwd: path,
@@ -659,6 +671,19 @@ export function useSessionMove(input: {
 			cwd: active?.target ?? active?.path ?? streamCwd,
 			moveTo,
 			busy: Boolean(active),
+			/**
+			 * Whether the BACKEND has answered for the move in flight.
+			 *
+			 * `target` is written by the receipt and by nothing else (`pendingAfterReceipt`),
+			 * so this is the acceptance itself rather than an elapsed-time guess. The chip
+			 * needs it because its two pending sentences make different claims: "Moving
+			 * to ~/x…" is true from the commit, while "Restarting this session's runtime…"
+			 * is only true once the backend has said it accepted the move - a slow refusal
+			 * (the busy 409 is authored AFTER the runtime answers) used to claim a restart
+			 * for the moment before the refusal's own sentence replaced it (UX review round
+			 * 2, U3).
+			 */
+			accepted: active?.target != null,
 		}),
 		[active, moveTo, streamCwd],
 	);

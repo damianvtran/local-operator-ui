@@ -55,6 +55,7 @@ const bundle = await build({
 				evalLatchHolds,
 				updatePendingMoves,
 				runMoveSessionFromDispatch,
+				sessionMoveEnabled,
 			} from "./src/renderer/src/features/chat/move-session";
 			export { errors } from "desktop-api-move-fixture";
 		`,
@@ -132,6 +133,7 @@ const {
 	evalLatchHolds,
 	updatePendingMoves,
 	runMoveSessionFromDispatch,
+	sessionMoveEnabled,
 	errors: fixtureErrors,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -423,6 +425,54 @@ test("no request is issued at all without the session_move capability", () => {
 	assert.match(
 		MOVE_UNAVAILABLE_REASON,
 		/^This backend cannot move a live session\./,
+	);
+});
+
+test("the move gate is decided by BEHAVIOUR, not by the source spelling", () => {
+	/*
+	 * QA round 2, Q1. The property "no request at all without the capability" was
+	 * pinned by source patterns (`assert.match(moveSource, /desktopFeatureEnabled\(…/)`),
+	 * which cannot fail if the predicate is wired to the wrong value and cannot
+	 * observe a request that is not sent - QA's own zero-request result lived in a
+	 * comment rather than in the repository. These are the shapes a real backend
+	 * serves, including the fail-closed intermediate that is the whole reason the
+	 * contract version was bumped.
+	 */
+	const caps = (features, available = true) => ({
+		desktop_available: available,
+		features,
+	});
+	assert.equal(
+		sessionMoveEnabled(undefined),
+		false,
+		"no capabilities: fail closed",
+	);
+	assert.equal(sessionMoveEnabled(null), false);
+	assert.equal(
+		sessionMoveEnabled(caps({ session_move: 2, frontend_replace: 1 }, false)),
+		false,
+		"an unpaired backend is not a capable one",
+	);
+	assert.equal(sessionMoveEnabled(caps({})), false, "no keys at all");
+	assert.equal(
+		sessionMoveEnabled(caps({ session_move: 1, frontend_replace: 1 })),
+		false,
+		"version 1 is the PRE-fence contract: it would accept a move the chip now refuses to promise",
+	);
+	assert.equal(
+		sessionMoveEnabled(caps({ session_move: 2 })),
+		false,
+		"the replacement frame is required as well as the route, or the move is accepted and never painted",
+	);
+	assert.equal(
+		sessionMoveEnabled(caps({ frontend_replace: 1 })),
+		false,
+		"and the route is required as well as the frame",
+	);
+	assert.equal(
+		sessionMoveEnabled(caps({ session_move: 2, frontend_replace: 1 })),
+		true,
+		"the pair this renderer implements",
 	);
 });
 
