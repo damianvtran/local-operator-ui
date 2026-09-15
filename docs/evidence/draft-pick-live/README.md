@@ -21,9 +21,15 @@ claim are the ones QA drove.
 An earlier revision of this file said the states this delta's own rounds changed
 - the pending and the failed resolution rows - had "no frame anywhere". They do
 now: QA round 7 ran the live click pass with the harness browser tool on the
-pre-rebase head `f6ba4c712` (26 frames, out of tree at `/tmp/qa-ui154-r7/frames/`
-with `MATRIX.md` and `wire.log` beside them) and design round 7 judged those
-pixels as rendered and signed the rendered gate off, terminal, on that head. The
+pre-rebase head `f6ba4c712` (26 frames, out of tree at `/tmp/qa-ui154-r7/frames/`,
+with `MATRIX.md` (`/tmp/qa-ui154-r7/MATRIX.md`) and `wire.log`
+(`/tmp/qa-ui154-r7/evidence/wire.log`) in the same scratch root) and design round
+7 judged those pixels as rendered and signed the rendered gate off, terminal, on
+that head - with four of those cells fixture-rendered behind a proxy rather than
+live: the pending pair, the two capability-off frames, the D19 refusal and the
+failed row, `localhost:5204` being the only approved origin so the negative
+control could not be a second backend, and design's sign-off on those four
+covering the renderer's behaviour given that disclosed fixture answer. The
 rebase that followed moved the head without moving any product or pixel content,
 which is why the sign-off still describes this branch. The frames remain outside
 the repository by this branch's convention, and **nothing in this directory owes
@@ -160,12 +166,17 @@ negative control at rest and on click. The frames are QA's, at
 transport rather than Electron IPC, and no captured outbound provider body.
 - **The delta's own states are covered too, by later rounds, and also outside
   this directory.** QA round 7's live click pass on the pre-rebase head
-`f6ba4c712` (`/tmp/qa-ui154-r7/frames/`, 26 frames with `MATRIX.md` and
-`wire.log`) drove the pending, refused and failed resolution rows the strip
-gained beside the pick-before-send, carry, clear-and-say and capability-off
-cells, and design round 7 signed the rendered gate off on those pixels. Both
-sets are out of tree; what is missing from THIS directory is historical pixels,
-not a permission.
+`f6ba4c712` (`/tmp/qa-ui154-r7/frames/`, 26 frames with `MATRIX.md`
+(`/tmp/qa-ui154-r7/MATRIX.md`) and `wire.log`
+(`/tmp/qa-ui154-r7/evidence/wire.log`) in the same scratch root) drove the
+pending, refused and failed resolution rows the strip gained beside the
+pick-before-send, carry, clear-and-say and capability-off cells, and design
+round 7 signed the rendered gate off on those pixels - with the pending pair,
+the two capability-off frames, the D19 refusal and the failed row
+fixture-rendered behind a proxy, `localhost:5204` being the only approved
+origin, so its sign-off on them covers the renderer's behaviour given that
+disclosed fixture answer. Both sets are out of tree; what is missing from THIS
+directory is historical pixels, not a permission.
 - **Design scope:** design round 3 is terminal on its head for the live picker,
   picked, after-send and inert states, and design round 7 is the terminal
   rendered round for this delta's own states - no blocker and no major on either,
