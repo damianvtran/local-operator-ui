@@ -66,6 +66,32 @@ const raise = await import(
 );
 const { presentWindow, raiseWindow } = raise;
 
+/*
+ * The dev-driver arming decision, bundled the same way. It is here rather than
+ * in `dev-driver-gate.test.mjs` because what is being asserted is the
+ * COMPOSITION the driven shape makes reachable — a launch nobody told anything
+ * now resolves `headless`, and a `headless` plan is what turns an opt-in from a
+ * refusal into an armed bridge — so the case needs the resolver and the arming
+ * decision in one process.
+ */
+const devDriver = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/dev-driver";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { DEV_DRIVER_ENV, DEV_DRIVER_OUT_ENV, resolveDevDriverArming } = devDriver;
+
 const plan = (input) => resolveWindowLaunchPlan(input);
 
 test("no input is the shipped behaviour: a focused 1380x900 window", () => {
@@ -390,6 +416,74 @@ test("a mistyped or empty mode beside a terminal-less launch still reports rathe
 	assert.equal(blank.mode, "headless");
 	assert.match(blank.assumed ?? "", /no terminal/);
 	assert.doesNotMatch(blank.problems[0], /using normal/);
+});
+
+test("a person who detaches BOTH streams is hidden, deliberately and asserted", () => {
+	// The trade this rule makes, pinned here so it cannot drift into an untested
+	// gap: `pnpm dev < /dev/null > /tmp/dev.log 2>&1 &` is indistinguishable from
+	// the tool spawns the rule exists to stop. It is announced on the launch's own
+	// stdout line and one flag restores the window, which is why the rule is
+	// preferred over the focus grab it prevents — but a person CAN meet it.
+	const detached = plan({
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(detached.mode, "headless");
+	assert.match(detached.assumed ?? "", /no terminal/);
+});
+
+test("Windows keeps the historical normal: the shape signal was not measured there", () => {
+	// Electron takes a Windows GUI process's stdio through `AttachConsole`, not an
+	// inherited handle, so `isTTY` there is not the terminal fact it is on macOS
+	// (the platform this rule was measured on). Rather than hide a window on a
+	// signal nobody has measured, the rule does not fire on win32 and rigs there
+	// name the mode — which is what they had to do before it existed anyway.
+	for (const platform of ["win32"]) {
+		const resolved = plan({
+			packaged: false,
+			stdinIsTTY: undefined,
+			stdoutIsTTY: undefined,
+			platform,
+		});
+		assert.equal(resolved.mode, "normal", platform);
+		assert.equal(resolved.assumed, null, platform);
+	}
+	// The switch-based assumption is platform-independent and still fires there.
+	const withSwitch = plan({
+		argv: ["--user-data-dir=/tmp/rig"],
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+		platform: "win32",
+	});
+	assert.equal(withSwitch.mode, "headless");
+	assert.match(withSwitch.assumed ?? "", /user-data-dir/);
+});
+
+test("the dev driver arms on the plan a driven launch resolves", () => {
+	// The composition this change makes reachable, asserted end to end rather
+	// than in two halves: before it, a flagless rig that set the opt-in met the
+	// refusal at the arming decision because its mode was `normal`. Now the same
+	// launch resolves `headless`, and `headless` is what arms.
+	const driven = plan({
+		packaged: false,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(driven.mode, "headless");
+	const arming = resolveDevDriverArming({
+		env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames" },
+		windowMode: driven.mode,
+	});
+	assert.equal(arming.armed, true);
+	// And the same opt-in in the operator's own window is still refused, so the
+	// composition did not widen who may arm.
+	const person = resolveDevDriverArming({
+		env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames" },
+		windowMode: "normal",
+	});
+	assert.equal(person.armed, false);
 });
 
 test("the startup line says the mode was assumed, and why", () => {

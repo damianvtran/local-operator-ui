@@ -10,12 +10,15 @@
  * runs happen without the grab: `headless` creates the window and never shows
  * it, `inactive` shows it without activating the app.
  *
- * Naming no mode is not the same as naming `normal`. A launch carrying one of
- * `AGENT_LAUNCH_FLAGS` — a scratch `--user-data-dir`, a
- * `--remote-debugging-port` — has said that it is a run rather than a person
- * using the app, so it resolves to `headless` and the startup line reports the
- * assumption. A launch that says nothing at all is still the operator's own
- * app, and still `normal`.
+ * Naming no mode is not the same as naming `normal`. A launch has said that it
+ * is a run rather than a person using the app in two different ways, and each
+ * resolves to `headless` with the startup line reporting the assumption. The
+ * first is a switch only a rig passes: one of `AGENT_LAUNCH_FLAGS` — a scratch
+ * `--user-data-dir`, a `--remote-debugging-port`. The second is shape: a launch
+ * that is not a packaged app and has no terminal on either stream, which is
+ * what a tool-spawned run looks like. A launch that names no mode, passes
+ * neither switch, and is either packaged or still attached to a terminal is the
+ * operator's own app, and stays `normal`.
  *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
  * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
@@ -97,11 +100,13 @@ export interface WindowLaunchPlan {
 	 * Why the mode was ASSUMED rather than named, or null when the caller said
 	 * what it wanted and `problems` is the only thing worth reporting.
 	 *
-	 * Non-null exactly when the launch named no mode at all and one of
-	 * `AGENT_LAUNCH_FLAGS` was present, which is what makes `headless` the
-	 * default there. The reason travels with the plan so the startup line can
-	 * say the run was headless *because* of the scratch profile it named,
-	 * rather than leaving a reader to guess whether a mode was typed.
+	 * Non-null exactly when the launch named no mode at all and either one of
+	 * `AGENT_LAUNCH_FLAGS` was present or the launch had the driven shape (not
+	 * packaged, no terminal on either stream) — the two signals that make
+	 * `headless` the default there. The reason travels with the plan so the
+	 * startup line can say the run was headless *because* of the scratch profile
+	 * it named or the shape it had, rather than leaving a reader to guess whether
+	 * a mode was typed.
 	 */
 	assumed: string | null;
 	/** What `ready-to-show` does: raise and focus, raise without focusing, or nothing. */
@@ -219,6 +224,19 @@ export function resolveWindowLaunchPlan(
 		 * explicit `false` takes part in the assumption below.
 		 */
 		packaged?: boolean;
+		/**
+		 * `process.platform`, defaulting to the real one. On Windows the shape
+		 * signal below is NOT read, deliberately: a Windows GUI-subsystem process
+		 * takes its stdio through `AttachConsole` rather than an inherited handle
+		 * (electron/electron#4552), so `process.stdin.isTTY`/`stdout.isTTY` there
+		 * are not the terminal fact they are on macOS and Linux — and this rule was
+		 * measured on macOS only. Windows keeps the historical `normal` for a
+		 * flagless launch rather than being hidden by a signal nobody has
+		 * measured there; rigs on Windows name the mode, as they had to before.
+		 * Enabling it is one measured Windows boot away, which is why the branch is
+		 * written as a platform check rather than left unstated.
+		 */
+		platform?: string;
 		/** `process.stdin.isTTY`. See `isDrivenLaunch`. */
 		stdinIsTTY?: boolean | undefined;
 		/** `process.stdout.isTTY`. See `isDrivenLaunch`. */
@@ -298,8 +316,13 @@ export function resolveWindowLaunchPlan(
 	 *
 	 * What those launches DO look like, and what a person's launch does not, is a
 	 * process with no terminal on either stream: a tool spawns the app with pipes,
-	 * so `isTTY` is undefined on both, while a person's terminal launch has both
-	 * (and a person who redirects the log still has stdin on the terminal).
+	 * so `isTTY` is undefined on both, while a person's terminal launch has at
+	 * least one stream on the terminal — both, normally, and a person who
+	 * redirects only the log keeps stdin on it. A person who detaches BOTH
+	 * (`pnpm dev < /dev/null > /tmp/dev.log 2>&1 &`) is hidden by this rule, which
+	 * is a deliberate, asserted trade: that shape is indistinguishable from the
+	 * tool spawns this exists to stop, it is announced on the launch's own
+	 * stdout line, and one flag restores the window.
 	 * Pairing that with `packaged === false` keeps the shipped app out of it
 	 * entirely — the `.app` a person double-clicks is packaged and can never be
 	 * assumed headless by this rule, whatever its streams look like — and a
@@ -311,10 +334,12 @@ export function resolveWindowLaunchPlan(
 	 * while the focus grab it prevents is the interruption the whole default
 	 * exists to stop.
 	 */
+	const platform = input.platform ?? process.platform;
 	const driven =
 		unnamed &&
 		agentFlag === undefined &&
 		input.packaged === false &&
+		platform !== "win32" &&
 		input.stdinIsTTY !== true &&
 		input.stdoutIsTTY !== true;
 	const assumed = agentFlag

@@ -243,6 +243,14 @@ treated the same way; a value the app cannot parse is a *typo*, keeps its
 `normal` fallback, and is reported, because a caller who reached for the mode is
 asking to be told rather than defaulted at.
 
+The shape signal is read on **macOS and Linux only**. Windows is deliberately
+outside it: a Windows GUI-subsystem process takes its stdio through
+`AttachConsole` rather than an inherited handle, so `isTTY` there is not the
+terminal fact it is on the platform this rule was measured on, and hiding a
+window on an unmeasured signal is the worse failure. A Windows rig keeps the
+historical `normal` for a flagless launch and names its mode, exactly as it had
+to before the shape rule existed; enabling it is one measured Windows boot away.
+
 Two things follow from the assumption, and neither is only about pixels. The
 `--remote-debugging-port` half is the deliberately loose one: attaching DevTools
 to your own app is a normal thing to do, and such a launch resolves `headless`
@@ -268,22 +276,27 @@ LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=94
 # Omit the mode and it is still headless: the scratch profile says what this is.
 npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
 
-# And so is this, which passes nothing at all: no terminal on either stream, and
-# not a packaged app, is a tool-spawned run by shape alone. This is the launch
-# shape that was still stealing focus, so prefer naming the mode anyway.
-npx electron ./out/main/index.js --window-size=1380x900
+# And a launch that passes NOTHING is a run too, when it is not a packaged app
+# and has no terminal on either stream. That is a rig's shape rather than a
+# person's — a person typing the same command in a terminal still gets a window
+# — and it is the shape that was still stealing focus, so name the mode anyway.
+npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
 ```
 
 `npx local-operator-ui` spawns Electron with this process's environment, so the
-same switch covers a check of the published launcher. It is also an unpackaged
-launch, so a *piped* one (`local-operator-ui | tee run.log`, a launcher script, a
-CI job) is assumed `headless` by the shape rule above — a non-terminal launcher
-that really wants a window names `--window-mode=normal`, which wins over every
-assumption here. Any mode but `normal`
+same switch covers a check of the published launcher — **from the release that
+carries the shape rule**. An older install has no window mode in it at all: the
+one on this machine was 0.17.2, which pops a window however you pipe it, so an
+agent checking a launcher names `LOCAL_OPERATOR_UI_WINDOW_MODE=headless` until it
+is upgraded. From that release the launcher is also an unpackaged launch, so a
+*piped* one (`local-operator-ui | tee run.log`, a launcher script, a CI job) is
+assumed `headless` by the shape rule above — a non-terminal launcher that really
+wants a window names `--window-mode=normal`, which wins over every assumption
+here. Any mode but `normal`
 prints a `[window-mode] ...` line to the process's own output, so a run says out
 loud that it was headless instead of looking identical to one that popped a
 window — including when the mode was assumed, which it names along with the
-switch that implied it. A mode or size the app could not honour is printed there
+signal that implied it. A mode or size the app could not honour is printed there
 too, not only to the backend log: a typo like
 `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls back to `normal`, which is the
 difference between a headless run and an interruption, and it must be visible to

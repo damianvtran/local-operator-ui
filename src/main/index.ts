@@ -612,6 +612,7 @@ const windowLaunch = resolveWindowLaunchPlan({
 	packaged: app.isPackaged,
 	stdinIsTTY: process.stdin.isTTY,
 	stdoutIsTTY: process.stdout.isTTY,
+	platform: process.platform,
 });
 for (const problem of windowLaunch.problems) {
 	logger.warn(`[window-mode] ${problem}`, LogFileType.BACKEND);
