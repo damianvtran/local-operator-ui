@@ -150,15 +150,17 @@ jobs:
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
-          # A build step that omits one of the variables
-          # `scripts/vite-plugins/replace-backend-config.ts` refuses to build without
-          # fails with nothing but "VITE_GOOGLE_CLIENT_ID is not set" in its log, so
-          # nobody notices until somebody reads one - which is how
+          # A build step that omits one of the variables the build's vite plugins
+          # (`scripts/vite-plugins/`, as `electron.vite.config.js` wires them) refuse
+          # to build without fails with nothing but "VITE_GOOGLE_CLIENT_ID is not set"
+          # in its log, so nobody notices until somebody reads one - which is how
           # `signed-update-candidate.yml`'s build job failed on all five of the
           # dispatches it ever had, leaving the `exact-update` job it exists to feed
           # unexercised for the workflow's whole life. The check derives the variable
-          # names from the plugin rather than holding its own copy, and this step is
-          # where it runs: through `require-report.sh`, because the step below reads
+          # names from those plugins rather than holding its own copy, fails a binding
+          # whose `secrets.*` name disagrees with the rest of the tree, and fails an
+          # invocation it cannot resolve rather than dropping it; this step is where
+          # it runs: through `require-report.sh`, because the step below reads
           # its exit status and nothing else.
           bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs
 
