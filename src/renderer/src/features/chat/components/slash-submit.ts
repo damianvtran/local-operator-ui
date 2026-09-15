@@ -55,9 +55,9 @@
  * typed a request, appended `/goal`, pressed Enter, and got his own sentence
  * rearranged with a note — nothing was sent, the words had moved, and a second
  * Enter was needed. A word sitting in a sentence names no gesture, so the
- * desktop arms `/goal` only from an explicit PICK of its own row in the popup,
- * and an Enter over a draft that merely CONTAINS the word sends the draft as
- * written. WHICH words this holds for is the registry's business
+ * desktop arms `/goal` only from an explicit choice of its own row in the popup
+ * (a click, or a key press on a row the user moved the marker to by hand), and an
+ * Enter over a draft that merely CONTAINS the word sends the draft as written. WHICH words this holds for is the registry's business
  * (`armedOnlyCommands`), never a name written into this function.
  *
  * "WHICH LINE THE COMMAND OWNS", the rule this file exists to state: a command
@@ -73,6 +73,64 @@
  */
 
 import { replaceSpan, slashTokenSpan } from "./slash-token";
+
+/**
+ * The destinations whose command is armed EXPLICITLY and never inferred.
+ *
+ * `/goal` is the one command whose WORD used to arm it by merely appearing in a
+ * draft: Enter over `I approve spend /goal` moved the sentence to the front,
+ * staged it and sent nothing, so the request never ran and the words had moved
+ * (the operator's report). A word sitting in a sentence names no gesture, so the
+ * only arming is the explicit PICK of the command's own row in the popup, and
+ * Enter over a draft that merely contains the word sends that draft as written.
+ *
+ * Keyed off the DESTINATION, which is what the catalogue says the command IS: a
+ * rename or a new alias of `/goal` then carries the arming with it instead of
+ * silently dropping the command out of the set. It lives here, beside the
+ * planner that consumes the vocabulary it produces, rather than in the component
+ * that derives it — the derivation is a decision, and a decision inside a React
+ * hook cannot be executed by `scripts/slash-submit.test.mjs`.
+ */
+export const ARMED_ONLY_DESTINATIONS: ReadonlySet<string> = new Set([
+	"session.goal",
+]);
+
+/**
+ * The minimum a catalogue row must say to contribute arming words.
+ *
+ * Structural for the same reason `slash-contract.ts`'s row types are: the real
+ * type (`SlashCommandMeta`) lives in `slash-commands.tsx`, which imports this
+ * module, so naming it here would make a value-level cycle out of a type-only
+ * dependency. `commands.list`'s rows are assignable to it.
+ */
+export type ArmingCatalogueRow = {
+	name: string;
+	aliases: readonly string[];
+	destination: string;
+};
+
+/**
+ * The words (primaries AND aliases, lower-cased) whose command arms by pick.
+ *
+ * Derived from the catalogue the way `commandNames` and `promptCommands` are,
+ * so the set follows the registry: a backend that renamed the destination, or
+ * gave it another alias, moves the arming vocabulary with the row rather than
+ * leaving the planner hoisting a word the pick no longer arms. What it cannot
+ * do is invent a word for a destination the catalogue does not advertise — the
+ * row IS the fact here, which is why `slash-contract.test.mjs` pins this
+ * derivation against the destination `picker-registry.tsx` routes.
+ */
+export function armedOnlyVocabulary(
+	commands: readonly ArmingCatalogueRow[],
+): Set<string> {
+	const names = new Set<string>();
+	for (const command of commands) {
+		if (!ARMED_ONLY_DESTINATIONS.has(command.destination)) continue;
+		names.add(command.name.toLowerCase());
+		for (const alias of command.aliases) names.add(alias.toLowerCase());
+	}
+	return names;
+}
 
 /**
  * A command the dispatcher can post without asking anything about its text.
@@ -181,6 +239,18 @@ function stagedLine(
 	return { text, caret: text.length };
 }
 
+/**
+ * One line, as a person would type it: every whitespace run collapsed to a
+ * single space, trimmed at both ends.
+ *
+ * WHY the ARMED stage flattens and the reassembly does not: see the invariant on
+ * `planSlashArming` below. The reassembly's own shape is inherited by the
+ * `/team` path, which this change deliberately does not move.
+ */
+function oneLine(text: string): string {
+	return text.replace(/\s+/g, " ").trim();
+}
+
 export function planSlashSubmission({
 	draft,
 	caret,
@@ -260,11 +330,13 @@ export function planSlashSubmission({
 /**
  * What an EXPLICIT pick of a command's own row does with the draft.
  *
- * The pick is the popup's own gesture — Enter or a click on that row
- * (`slash-commands.tsx` `handleSlashPick`) — and for an armed-only command it is
- * the ONLY thing that arms the command. It writes the line the assembler writes:
- * the command first, the surviving draft behind it as its argument, left in the
- * box for the user to read before Enter runs it (the goal set, the text sent).
+ * The pick is the popup's own gesture — a CLICK on that row, or Enter/Tab on a row
+ * the user put the marker on by hand (an arrow key; `slashKeyIntent`'s gate in
+ * `slash-contract.ts` states why the pre-selected row is not a choice) — and for
+ * an armed-only command it is the ONLY thing that arms the command. It writes the
+ * line the assembler writes: the command first, the surviving draft behind it as
+ * its argument, left in the box for the user to read before Enter runs it (the
+ * goal set, the text sent).
  *
  * `none` is two cases that the caller treats identically, because the pick has
  * one write either way: the draft names no armed-only command at the caret, or
@@ -280,6 +352,20 @@ export function planSlashSubmission({
  * gesture arm the command?", which is `armed`. One plan that meant the opposite
  * of itself depending on how it was called is the class of defect this module's
  * header exists to prevent.
+ *
+ * THE INVARIANT THE NEXT ENTER DEPENDS ON, stated here because this is the only
+ * place that writes a line the planner will read back: THE STAGED LINE IS THE
+ * WHOLE DRAFT, AND IT IS ONE LINE. `slashTokenSpan` claims the caret's own LINE
+ * (`slash-token.ts`), and the staged caret is the end of the buffer, so a staged
+ * line that still carried a surviving newline would put the command's span on
+ * its first line with the rest of the draft outside it: the next Enter's planner
+ * would answer `send`, the goal would never be set, and the literal `/goal …`
+ * would reach the model as prompt text while the note the user just read said
+ * otherwise (review F1 / QA Q4, both reproduced on the multi-line shape this
+ * file's own header recommends). So the stage COLLAPSES the whitespace runs
+ * instead — the line reads as a person would type it (reviewer Q2: the
+ * completion's own doubled space), and it is the same shape `/goal ship it`
+ * already has when typed whole, which is what makes one Enter run it.
  */
 export type SlashArmingPlan =
 	/** The pick armed the command: this line is staged, the next Enter runs it. */
@@ -318,5 +404,9 @@ export function planSlashArming({
 	if (!armedOnlyCommands.has(wordOf(commandText))) return { kind: "none" };
 	const rest = replaceSpan(draft, span.start, span.end, "").text.trim();
 	if (!rest) return { kind: "none" };
-	return { kind: "armed", ...stagedLine(commandText, rest) };
+	// One line in, one line out: see the invariant on this function. Both halves
+	// are flattened because the completion writes the word IN PLACE, so the
+	// arguments it leaves behind can carry the doubled space as well as a
+	// newline from a draft of any shape.
+	return { kind: "armed", ...stagedLine(oneLine(commandText), oneLine(rest)) };
 }

@@ -338,6 +338,10 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	commandNames: new Set(),
 	promptCommands: new Set(),
 	armedOnlyCommands: new Set(),
+	// No draft to hoist in a hand-built state, so every armed row in these
+	// stories reads as the bare form. A story that wants the arming's other
+	// states passes `hoists` and `chosenByHand` with a real `armedOnlyCommands`.
+	hoists: false,
 	nameListCommands: new Set(),
 	argumentWords: [],
 	enabled: true,
