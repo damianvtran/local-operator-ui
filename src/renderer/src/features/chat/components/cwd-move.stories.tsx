@@ -35,18 +35,20 @@
  * produces is QA's independent pass - a rendered story is what keeps the copy's
  * own weight, wrapping and tone reviewable without a backend.
  *
- * Two limits, stated rather than hidden:
+ * Two limits, stated rather than hidden, and both of them restated here after
+ * round-3 review found the old pair describing mechanisms this branch removed
+ * (design review round 3, D21):
  *
- *   - `Pending` photographs the SECOND of the chip's two pending sentences,
- *     because the capture happens well past the 600 ms escalation. The first
- *     ("Moving to `~/x`…") is a 600 ms window; the state's PIXEL difference -
- *     the spinner in the glyph's box - is in this frame, so what the sweep shows
- *     is the in-flight appearance rather than a particular sentence.
- *   - No story mounts the composed composer ROW (chip beside the readings
- *     cluster). That is a limit of this file, not a claim: the chip's width is
- *     pinned by container query as of the fixed path column, so the shift the
- *     design round measured (D7) is a property of the chip's own geometry, which
- *     these frames pin by differencing two paths at the same width.
+ *   - `Pending` photographs the chip AFTER the receipt, so the tooltip carries the
+ *     second of the move's two sentences ("Restarting this session's runtime…");
+ *     `PendingMoving` is the same chip before the backend answered. The difference
+ *     between them is a PROP (`pendingAccepted`), not elapsed time: the 600 ms
+ *     escalation has been deleted (`PENDING_RESTART_AFTER_MS` exists nowhere), so
+ *     a story that wants the pre-receipt sentence has to say so rather than wait.
+ *   - No story in THIS FILE mounts the composed composer ROW (chip beside the
+ *     readings cluster) - that frame is `message-input.stories.tsx`'s
+ *     `CwdChipInRow` (design review round 2, D13). What stays here is the chip's
+ *     own geometry, which these frames pin by differencing two paths at one width.
  */
 
 import { cn } from "@shared/lib/utils";
@@ -286,7 +288,7 @@ export const Pending: Story = {
 	),
 	play: async () => {
 		await userEvent.hover(
-			await screen.findByRole("button", { name: /^Working directory:/ }),
+			await screen.findByRole("button", { name: /^Moving session:/ }),
 		);
 		// The escalated sentence, which is now the RECEIPT's arrival rather than a
 		// clock. Asserted rather than assumed: a play that silently does nothing
@@ -319,7 +321,7 @@ export const PendingMoving: Story = {
 	),
 	play: async () => {
 		await userEvent.hover(
-			await screen.findByRole("button", { name: /^Working directory:/ }),
+			await screen.findByRole("button", { name: /^Moving session:/ }),
 		);
 		await waitFor(() =>
 			expect(screen.getAllByText(/Moving to/).length).toBeGreaterThan(0),
