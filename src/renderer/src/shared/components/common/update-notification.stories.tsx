@@ -290,6 +290,11 @@ const mockUpdaterApi = () => {
 				version: string | null;
 				message: string;
 				remedy: { text: string; url?: string; command?: string };
+				// Both optional and both over the wire: the panel's heading map is keyed
+				// by `code`, and one code covers the update-time refusal and the start-up
+				// one, which are not the same news (design D2, D3).
+				heading?: string | null;
+				dismissLabel?: string | null;
 				detail?: string;
 			}) => void,
 		) => {
