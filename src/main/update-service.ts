@@ -2699,37 +2699,6 @@ export class UpdateService {
 			// release the user is working towards (review U17).
 			if (latestVersion) this.lastPublishedBackendVersion = latestVersion;
 
-			/*
-			 * A reading that cannot be parsed is the same absence as one that never
-			 * arrived (QA round 1, Q2). `999.invalid` installed against `0.54.43`
-			 * published compared as not-newer - every `NaN` comparison in
-			 * `isNewerVersion` is false - and the channel reported `current`, which
-			 * affirmed that the whole installation was up to date from a health
-			 * payload nobody could read. The `Unknown` case below keeps its own,
-			 * more specific message; this catches every other unreadable shape.
-			 */
-			const unreadable = [
-				["installed", installedVersion as string | null],
-				["published", latestVersion as string | null],
-			].filter(([, value]) => !isReadableVersion(value));
-			if (unreadable.length > 0) {
-				logger.error(
-					`Unable to read the ${unreadable
-						.map(([which]) => which)
-						.join(
-							" and ",
-						)} server version (installed: ${installedVersion}, published: ${latestVersion}); no status is reported rather than comparing an unreadable reading.`,
-					LogFileType.UPDATE_SERVICE,
-				);
-				if (!silent) {
-					this.sendToRenderer(
-						"backend-update-error",
-						"Unable to determine backend version.",
-					);
-				}
-				return { status: "unavailable", info: null };
-			}
-
 			if (!installedVersion || !latestVersion) {
 				logger.error(
 					"Unable to determine backend versions.",
@@ -2756,6 +2725,45 @@ export class UpdateService {
 					this.sendToRenderer(
 						"backend-update-error",
 						"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+					);
+				}
+				return { status: "unavailable", info: null };
+			}
+
+			/*
+			 * A reading that ARRIVED but cannot be parsed is the same absence as one that
+			 * never arrived (QA round 1, Q2): `999.invalid` installed against `0.54.43`
+			 * published compared as not-newer - every `NaN` comparison in
+			 * `isNewerVersion` is false - and the channel reported `current`, which
+			 * affirmed that the whole installation was up to date from a health payload
+			 * nobody could read.
+			 *
+			 * This gate sits AFTER the two branches above, not before them. Both of those
+			 * describe an absent reading in its own words - no value at all, and the
+			 * `"Unknown"` sentinel that an older server's health payload produces (see
+			 * `getInstalledBackendVersion`) - and `isReadableVersion("Unknown")` is
+			 * false, so a gate placed above them would answer for exactly the cases they
+			 * exist to name and leave both unreachable while claiming they kept their own
+			 * message (review round 3, R8). What is left for this gate is the ordinary
+			 * case's leftovers: a value that arrived and cannot be parsed.
+			 */
+			const unreadable = [
+				["installed", installedVersion as string | null],
+				["published", latestVersion as string | null],
+			].filter(([, value]) => !isReadableVersion(value));
+			if (unreadable.length > 0) {
+				logger.error(
+					`Unable to read the ${unreadable
+						.map(([which]) => which)
+						.join(
+							" and ",
+						)} server version (installed: ${installedVersion}, published: ${latestVersion}); no status is reported rather than comparing an unreadable reading.`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				if (!silent) {
+					this.sendToRenderer(
+						"backend-update-error",
+						"Unable to determine backend version.",
 					);
 				}
 				return { status: "unavailable", info: null };

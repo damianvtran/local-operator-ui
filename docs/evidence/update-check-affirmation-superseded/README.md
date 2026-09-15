@@ -58,14 +58,50 @@ frames are whole-viewport screenshots of the real page.
 Two things in the frames are the FIXTURE's, not the product's:
 
 - the grey control strip at the top and its `{"success":…,"server":…}` line.
-  That strip is the QA harness's own instrumentation; the line is a live DOM
-  measurement of the section (the product state), while the "waiting"/verdict
-  text beside it belongs to the harness. The product UI is everything at or
-  below the "Application updates and info" heading.
-- the offer panel's remedy wording ("The server is a uv tool install built from
-  source on this machine…"). That is this host's real install classification,
-  produced by the shipped `resolveBackendUpdatePlan` for the operator's own
-  uv-tool install; it is not the report's 0.54.43 → 0.54.44 pip wording.
+  That strip is the QA harness's own instrumentation, and it reports TWO
+  measurements of two different MOMENTS, which matters most in the dark frame:
+  the line reading `{"success":…,"server":…}` is a live DOM measurement of the
+  section - the product state - while the verdict text beside it is the harness's
+  echo of the check that produced the state. In the light frame that echo is the
+  depicted (second, manual) check's,
+  `{"app":"current","server":"available","affirmation":null}`. In the dark
+  (background-path) frame it is still the FIRST check's - the one that earned the
+  sentence,
+  `{"app":"current","server":"current","affirmation":"The application and server are up to date"}`
+  - because a `{silent:true}` check's verdict is never applied to the button.
+  That stale echo is deliberate rather than a leftover: it is the claim the
+  product has just withdrawn, printed on the same frame as the DOM line and the
+  panel that withdraw it. The product UI is everything at or below the
+  "Application updates and info" heading.
+- the offer panel, and its remedy wording ("The server is a uv tool install
+  built from source on this machine…"). The wording is this host's real install
+  classification, produced by the shipped `resolveBackendUpdatePlan` for the
+  operator's own uv-tool install; it is not the report's 0.54.43 → 0.54.44 pip
+  wording. The panel is also a DIFFERENT VARIANT of that surface rather than the
+  approved one re-worded, and the two sets must not be read as before/after of
+  one panel: the frames captured here show a **400 × 590 CSS px** panel with
+  **four** actions (`Copy command`, `Update later`, `Check for updates`,
+  `Copy details`) and a **re-check** as the primary action, against the approved
+  `../settings-app-updates-section/server-update-offered/` pair's **400 × 209
+  CSS px** with **two** (`Update later`, `Update server`) and an update primary.
+  Both are legitimate states of the same surface and this change styles neither,
+  so the difference is the variant the fixture happened to produce, not a change
+  under review.
+
+## How the two states register against each other
+
+The pair is not vertically aligned, and the misalignment is the fixture's rather
+than the product's: the harness strip above the product grows by one line
+between the two states (its ground/canvas boundary sits at y=260 device px in
+`first-check-affirmation/` and y=291 in `superseded-by-offer/`, in both
+palettes), so the whole product block sits **31 device px (~15.5 CSS px) lower**
+in the superseded frames. The product itself does not move: aligning the two
+product regions by +31 px drops the mean absolute channel difference to 0.26
+(light) / 0.34 (dark) out of 765, against 2.96-3.01 at the neighbouring offsets.
+A reader flicking between the committed frames should expect the section to
+slide by 15.5 px, because that is exactly the motion that can hide a one- or
+two-pixel change; the alternative is pinning the strip's height in the harness,
+which no re-capture here did.
 
 Each frame is 2880×1634 device pixels at a 1440×817 CSS viewport; no scrollbar
 appeared in any captured state. The harness's fixture fonts and the section's own

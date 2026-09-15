@@ -29,6 +29,13 @@ import { build } from "esbuild";
  * one has started may not repaint its verdict, and an offer must not dismiss a
  * message that is NOT an affirmation (an error toast is not a currency claim).
  *
+ * A third edge was added by review round 3 (R9), on QA round 2's O1: an offer
+ * raised WHILE a check is in flight. The offer listeners retire the sentence, but
+ * by then it is already retired, so the offer left no trace and that check's
+ * affirming verdict painted over the panel it had raised. The guard is per check
+ * window (`offerSinceCheckStartRef`), so a window with no offer still earns the
+ * sentence - both halves are asserted below.
+ *
  * HOW THIS HARNESS STANDS IN FOR A DOM, and why that is the honest shape here:
  * this repo has no jsdom and no react-test-renderer and adding one changes the
  * lockfile, so React is a cell-per-hook stand-in (the same approach as
@@ -706,6 +713,69 @@ test("Q1: unmounting mid-check cannot paint into a gone tree", async () => {
 	// The assertion is that this does not throw and that the tree is untouched;
 	// React's own warning for a late `setState` is not observable here.
 	assert.doesNotThrow(() => handle.render());
+});
+
+/**
+ * R9 (QA round 2's O1): an offer raised WHILE a check is in flight.
+ *
+ * Here the two mechanisms disagree in TIME rather than in order. The manual check
+ * retires the claim the moment it starts, so the offer that arrives mid-flight
+ * calls `dismissAffirmation()` against an already-retired claim - a no-op - and
+ * the offer is remembered nowhere. The verdict that follows then finds an
+ * affirmation to paint and puts the sentence over the panel that offer raised,
+ * which is the reported contradiction in miniature. QA measured the
+ * service-level window at 1171 ms (`/tmp/pr172-qa2/race.mjs`) and it needs a
+ * release published between the two checks' registry reads, which is narrow but
+ * reachable: `checkForAllUpdates` takes no lock and the periodic `{silent:true}`
+ * check overlaps the manual one by design.
+ *
+ * The second case is the same sequence with nothing raised in the window, and it
+ * passes before the fix too: it is here so the guard cannot be satisfied by
+ * refusing to paint the sentence at all.
+ */
+test("R9: an offer raised during a check keeps that check's verdict from affirming", async () => {
+	const handle = mount();
+	press(handle);
+	handle.render();
+	assert.equal(
+		affirmationOnScreen(handle),
+		null,
+		"a started check claims nothing yet",
+	);
+
+	// The background path's own event, delivered while the manual check is in
+	// flight and with no button involved at all.
+	updater.emit("backend-update-available", {
+		currentVersion: "0.54.43",
+		latestVersion: "0.54.44",
+		manual: false,
+	});
+	handle.render();
+
+	// The manual check now proves both channels current - the verdict QA's race
+	// produced inside the offer's window.
+	await answer(handle, CURRENT);
+	assert.equal(
+		affirmationOnScreen(handle),
+		null,
+		"the verdict must not paint over an offer raised during its check",
+	);
+});
+
+test("R9: an offer before the check does not rob a later check of the sentence", async () => {
+	const handle = mount();
+	// The guard is the check's own window, not a latch on the session: an offer
+	// that is already on screen when the next check starts does not stop that
+	// check from earning the sentence (an earlier offer standing beside a
+	// legitimately affirmed verdict is the separately recorded stale-panel case).
+	updater.emit("backend-update-available", {
+		currentVersion: "0.54.43",
+		latestVersion: "0.54.44",
+		manual: false,
+	});
+	press(handle);
+	await answer(handle, CURRENT);
+	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
 });
 
 

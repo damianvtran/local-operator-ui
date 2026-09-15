@@ -4863,6 +4863,83 @@ test("an unreadable server version reading cannot earn the affirmation", async (
 });
 
 /**
+ * Review round 3 (R8): the unreadable-reading gate must not swallow the two
+ * branches that name an ABSENT reading.
+ *
+ * The gate was first written ABOVE both of them, and `isReadableVersion("Unknown")`
+ * is false - the sentinel is in this file's own pinned reject list below - so the
+ * `"Unknown"` branch and the missing-reading branch above it could never run,
+ * while the gate's own comment claimed the `Unknown` case kept its own, more
+ * specific message. The STATUS is `unavailable` on all three paths, so the
+ * ordering is visible only in the MESSAGE: it is what tells a reader which of the
+ * three absences this check hit, and it is the surface this whole change exists to
+ * stop misdescribing.
+ */
+test("an absent server reading keeps its own message, and an unparseable one takes the gate", async () => {
+	// An older server's health answer, which carries no version at all: the
+	// `"Unknown"` sentinel path.
+	const unknown = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverAnswersVersion: false,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(unknown.verdict.server, "unavailable");
+	assert.equal(unknown.verdict.affirmation, null);
+
+	// A reading that arrived and cannot be parsed: the gate's own case.
+	const unparseable = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "999.invalid",
+		publishedVersion: "0.54.43",
+	});
+	assert.equal(unparseable.verdict.server, "unavailable");
+	assert.equal(unparseable.verdict.affirmation, null);
+
+	const errorMessages = (result) =>
+		result.sent
+			.filter(({ channel }) => channel === "backend-update-error")
+			.map(({ payload }) => payload);
+	const unknownMessage = errorMessages(unknown);
+	const gateMessage = errorMessages(unparseable);
+	assert.equal(
+		unknownMessage.length,
+		1,
+		JSON.stringify(unknown.sent.map(({ channel }) => channel)),
+	);
+	assert.equal(
+		gateMessage.length,
+		1,
+		JSON.stringify(unparseable.sent.map(({ channel }) => channel)),
+	);
+	/*
+	 * The ordering, without retyping either sentence: if the gate preempted the
+	 * sentinel branch, these would be the SAME message - the gate's - and the
+	 * sentinel's own, user-visible remedy would be unreachable. They differ, and
+	 * the sentinel's is the one that names the remedy.
+	 */
+	assert.notEqual(
+		unknownMessage[0],
+		gateMessage[0],
+		"the sentinel path and the gate must not answer with the same sentence",
+	);
+	assert.match(unknownMessage[0], /Restart the app/);
+
+	// The third absence is the mirror: a reading that IS readable and older must
+	// still reach the offer, so the gate cannot be widened into the ordinary path.
+	const older = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(older.verdict.server, "available");
+	assert.ok(
+		older.sent.some(({ channel }) => channel === "backend-update-available"),
+		JSON.stringify(older.sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
  * The other half of Q2: the fix must not reclassify anything this product
  * actually publishes. These are the comparisons the update path has always
  * made, kept as themselves so a future tightening of the grammar names the
@@ -4906,10 +4983,20 @@ test("the readable-version grammar keeps every comparison it always made", async
 		/*
 		 * The grammar itself, over the forms the product publishes.
 		 *
-		 * Every version ever published for `local-operator` on PyPI and
-		 * `local-operator-ui` on npm was checked against it when the rule was
-		 * written - 558 of 558 accepted - and a representative sample is pinned
-		 * here so a tightening fails on a nameable form rather than in production.
+		 * What this case asserts is the two pinned lists below and nothing more: a
+		 * representative sample of ACCEPTED published forms plus the REJECTED ones,
+		 * so a tightening of the rule fails on a nameable form rather than in
+		 * production. It does NOT re-check the published corpus - the sentence "a case
+		 * in the suite re-checks that set" in the PR thread was stronger than what was
+		 * committed (review round 3, R10).
+		 *
+		 * The corpus sweep was the DERIVATION, made once when the rule was written:
+		 * every version then published for `local-operator` on PyPI and
+		 * `local-operator-ui` on npm was run through it, and review round 3 re-derived
+		 * that result from both registries - 561 of 561 accepted (452 PyPI releases
+		 * plus 109 npm versions). Re-running it needs the two registries, so it is not
+		 * part of this suite; these pinned lists are the standing regression.
+		 *
 		 * The rejects are QA's own inputs plus the shapes a truncating reader can
 		 * produce.
 		 */
