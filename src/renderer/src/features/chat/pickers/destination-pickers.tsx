@@ -350,7 +350,7 @@ function useDraftPick(
 				 */
 				let carry: EffortCarry | null = null;
 				// A blank level is no question: there is nothing to check, so no probe runs.
-			if (reading.carry) {
+				if (reading.carry) {
 					const probe = await queryClient.fetchQuery(
 						draftPreviewQuery({ ...draft.target, model: next }),
 					);
@@ -464,9 +464,6 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * is mounted (disabled) in session mode because hooks cannot be conditional.
 	 */
 	const draftPick = useDraftPick(draft, note);
-	/* The same client the pick's own resolution goes through, so the U1 effort-carry
-	   probe and the recorded pick share one cache entry per selection. */
-	const queryClient = useQueryClient();
 	/*
 	 * Keyed on the hook's target rather than on the pane's own prop: the prop is the
 	 * snapshot this dialog opened on, so a pick would otherwise leave this dialog's
@@ -711,7 +708,6 @@ export const ModelPicker: FC<PickerContext> = ({
 			rowAuth,
 			draft,
 			draftPick.pick,
-			queryClient,
 		],
 	);
 
