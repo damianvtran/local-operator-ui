@@ -8,9 +8,12 @@ import { presentWindow } from "../window-raise";
 import { BrowserExtensionManager } from "./extensions";
 
 /** Extension pages share the browser profile, never the application's preload or
- * default session. A popup is opt-in from the trusted chrome; extension-created
- * windows and cross-origin navigation are denied rather than becoming a second
- * ungoverned browser. Headless mode still never presents a native window. */
+ * default session. A popup is opt-in from the trusted chrome; on that popup,
+ * window-open and cross-origin navigation are denied rather than becoming a
+ * second ungoverned browser. Scoped deliberately to the popup we open: Electron
+ * exposes no `chrome.windows` (the capability matrix's `not available` row), so
+ * there is no other extension-created window to deny. Headless mode still never
+ * presents a native window. */
 export function createBrowserExtensionManager(options: {
 	window: OwnerWindow;
 	session: Session;
@@ -72,6 +75,9 @@ export function createBrowserExtensionManager(options: {
 			popup.on("closed", () => {
 				if (popups.get(id) === popup) popups.delete(id);
 			});
+			// The popup is the only extension window that exists: with `chrome.windows`
+			// absent there is nothing else for `window.open` to reach, so this denial is
+			// the whole of the constraint rather than a hook on a general one.
 			popup.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 			const refuseForeign = (
 				event: Electron.Event,

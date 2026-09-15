@@ -218,6 +218,10 @@ function writeFixtures() {
 	writeExtension("broken-json", {
 		"manifest.json": '{ "manifest_version": 3, "name": "Broken", }',
 	});
+	// A directory that is not an extension at all: the manifest is absent, which
+	// is the inspection failure review round 1's R2 found reaching the user as
+	// Node's own `ENOENT: ... stat '<path>'`.
+	mkdirSync(join(PACK_DIR, "no-manifest"), { recursive: true });
 }
 
 // ---- the site the fixture's content script matches --------------------------
@@ -256,6 +260,7 @@ const HARNESS_SOURCE = String.raw`
    above, and one in a comment ends the string and the file stops parsing. */
 "use strict";
 const { app, BrowserWindow, dialog, session } = require("electron");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const UI = require(path.join(__dirname, "extension-ui.cjs"));
@@ -637,6 +642,65 @@ async function phaseInstall() {
       12000,
     ));
   }
+  // R2, review round 1: the directory that is not an extension at all. Before
+  // the fix the user met Node's own sentence here instead of the manager's.
+  const rowsBeforeNoManifest = manager.list().rows.length;
+  let noManifestError = null;
+  try {
+    await manager.install();
+  } catch (error) {
+    noManifestError = String(error && error.message ? error.message : error);
+  }
+  observe("noManifest.error", noManifestError);
+  observe("noManifest.rowsBefore", rowsBeforeNoManifest);
+  observe("noManifest.rows", manager.list().rows.length);
+
+  /*
+   * R1, review round 1, RECORDED RATHER THAN FIXED: the registry file is the
+   * approval record.
+   *
+   * A row written by another process running as this user — a path no chooser
+   * ever offered, the SHA-256 of that directory's own manifest, any UUID — is
+   * loaded at the next start with no dialog, into the same partition that holds
+   * the user's authenticated sessions. This is the measurement
+   * docs/browser-extensions.md ("What the registry actually trusts") is written
+   * from, and scripts/browser-extensions.test.mjs pins the same assumption.
+   * It runs against a registry of its own so the phases above are untouched,
+   * and unloads it again so the restart phase sees the session as it left it.
+   */
+  const unboundDir = REGISTRY_DIR + "-unbound";
+  // Canonical, because load() compares the row's path against the realpath of the
+  // directory it inspects: a symlink alias is refused, which is the one check
+  // below that a hand-written row does have to satisfy.
+  fs.mkdirSync(path.join(PACK, "never-approved"), { recursive: true });
+  const neverApproved = fs.realpathSync(path.join(PACK, "never-approved"));
+  fs.writeFileSync(path.join(neverApproved, "manifest.json"), JSON.stringify({ manifest_version: 3, name: "Hand-written Row", version: "1.0" }, null, 2));
+  const unboundManifest = fs.readFileSync(path.join(neverApproved, "manifest.json"));
+  fs.mkdirSync(unboundDir, { recursive: true });
+  fs.writeFileSync(path.join(unboundDir, "extensions.json"), JSON.stringify({ version: 1, rows: [{
+    key: "22222222-2222-4222-8222-222222222222",
+    path: neverApproved,
+    name: "Hand-written Row",
+    version: "1.0",
+    enabled: true,
+    id: null,
+    digest: crypto.createHash("sha256").update(unboundManifest).digest("hex"),
+    keyId: null,
+    permissions: [],
+    warnings: [],
+    popupPath: null,
+  }] }, null, 2));
+  const dialogsBeforeUnbound = dialogCalls.length;
+  const unbound = UI.createBrowserExtensionManager({ window: window, session: browserSession, dir: unboundDir, windowShow: "never" });
+  await unbound.start();
+  const unboundRow = unbound.list().rows[0] || {};
+  observe("unbound.dialogsDuringStart", dialogCalls.length - dialogsBeforeUnbound);
+  observe("unbound.row", unboundRow);
+  observe("unbound.loadedInChromium", !!(unboundRow.id && browserSession.extensions.getExtension(unboundRow.id)));
+  await unbound.remove(unboundRow.key);
+  observe("unbound.loadedAfterRemove", !!(unboundRow.id && browserSession.extensions.getExtension(unboundRow.id)));
+  fs.rmSync(neverApproved, { recursive: true, force: true });
+
   observe("dialogCalls.all", dialogCalls.slice());
   // Chromium writes its cookie and storage databases asynchronously, so a run
   // that exits immediately after setting them measures its own abrupt exit
@@ -827,6 +891,7 @@ async function main() {
 					join(PACK_DIR, "bad-manifest"),
 					join(PACK_DIR, "broken-json"),
 					join(PACK_DIR, "native-messaging"),
+					join(PACK_DIR, "no-manifest"),
 				],
 				confirm: [true, true, false, true],
 			},
@@ -865,7 +930,21 @@ async function main() {
 		const refused = a["refusal.state"] ?? {};
 		check("a refused approval loads nothing and registers nothing", (refused.rows ?? []).length === 1 && (a["refusal.loadedNames"] ?? []).length === 1, `rows=${JSON.stringify((refused.rows ?? []).map((entry) => entry.name))} loaded=${JSON.stringify(a["refusal.loadedNames"])}`);
 		check("a manifest with an unsupported version is refused with the manager's own message and leaves the registry unchanged", /valid Manifest V2 or V3/.test(String(a["badManifest.error"])) && a["badManifest.rows"] === 1, `${JSON.stringify(a["badManifest.error"])} rows=${a["badManifest.rows"]}`);
+		check("a chosen directory with no manifest reports the manager's message, not Node's ENOENT (round 1, R2)", /has no manifest\.json/.test(String(a["noManifest.error"])) && !/ENOENT/.test(String(a["noManifest.error"])) && a["noManifest.rows"] === a["noManifest.rowsBefore"], `${JSON.stringify(a["noManifest.error"])} rows ${a["noManifest.rowsBefore"]} -> ${a["noManifest.rows"]}`);
 		note("a manifest that is not JSON at all (adjacent finding, not asserted)", JSON.stringify(a["brokenJson.error"]));
+
+		/*
+		 * R1, round 1 — RECORDED, with the doc corrected to match rather than the gap
+		 * closed. This check passes while the boundary holds, so it is not a silent
+		 * acceptance: it fails if the load path ever changes without the doc
+		 * changing with it, and it is the native half of the claim in
+		 * docs/browser-extensions.md ("What the registry actually trusts"). Why the
+		 * keychain-backed binding the review proposed was not implemented is in that
+		 * section and on the PR: with HOME redirected — as this very harness runs —
+		 * `safeStorage.isEncryptionAvailable()` blocks on a Keychain prompt.
+		 */
+		const unboundRow = a["unbound.row"] ?? {};
+		check("the registry file is the approval record: a hand-written row loads with no dialog (round 1, R1 recorded)", a["unbound.dialogsDuringStart"] === 0 && unboundRow.loaded === true && a["unbound.loadedInChromium"] === true && a["unbound.loadedAfterRemove"] === false, `dialogs during start=${a["unbound.dialogsDuringStart"]} row=${JSON.stringify(unboundRow)} loadedInChromium=${a["unbound.loadedInChromium"]} after remove=${a["unbound.loadedAfterRemove"]}`);
 
 		const nativeRow = a["native.row"] ?? {};
 		check("an extension declaring nativeMessaging LOADS (the manifest is not the blocker)", nativeRow.loaded === true, JSON.stringify(nativeRow));
@@ -874,6 +953,63 @@ async function main() {
 		const actionOnlyConfirm =
 			(a["dialogCalls.all"] ?? []).find((call) => String(call.message ?? "").includes("Proof Action Only")) ?? {};
 		check("an action with no default popup is a warning shown in the approval, not a refusal", String(actionOnlyConfirm.detail ?? "").includes("no default popup") && String(actionOnlyConfirm.detail ?? "").includes("partial"), `${JSON.stringify(actionOnlyConfirm.message)} -> warning present=${String(actionOnlyConfirm.detail ?? "").includes("no default popup")}`);
+		/*
+		 * The capability matrix's cells, ASSERTED rather than only recorded.
+		 *
+		 * Every row of docs/browser-extensions.md's table cites this run, and the
+		 * `typeof` half of it was written with `observe()`, which cannot fail: an
+		 * Electron that started shipping `chrome.scripting` would leave this harness
+		 * green while the table the operator reads went wrong, with nothing to notice.
+		 * The two lists are that table's two states — `not available` and `present` —
+		 * and the assertion is undefined vs defined rather than an exact type,
+		 * because the matrix claims availability, not a signature.
+		 *
+		 * Deliberately NOT in either list: `runtime.connectNative` and
+		 * `runtime.sendNativeMessage` (permission-gated, asserted by the
+		 * native-messaging check above, which measures both sides of the gate),
+		 * `runtime.lastError` (undefined outside a callback by design), and
+		 * `chrome.storage.sync` (measured `object`, but no cell in the table is about
+		 * it — asserting it here would invent a claim the matrix does not make).
+		 */
+		const MATRIX_ABSENT = [
+			"scripting",
+			"declarativeNetRequest",
+			"declarativeNetRequestFeedback",
+			"commands",
+			"webNavigation",
+			"cookies",
+			"permissions",
+			"notifications",
+			"contextMenus",
+			"bookmarks",
+			"history",
+			"downloads",
+			"webRequest",
+			"identity",
+			"offscreen",
+		];
+		const MATRIX_PRESENT = [
+			"runtime.getManifest",
+			"runtime.getURL",
+			"runtime.sendMessage",
+			"runtime.onMessage",
+			"storage.local",
+			"alarms",
+			"tabs",
+			"i18n",
+			"action",
+		];
+		const surface = a.chromeApis ?? {};
+		const drift = [
+			...MATRIX_ABSENT.filter((name) => surface[name] !== "undefined").map(
+				(name) => `${name}=${JSON.stringify(surface[name])} but the table says not available`,
+			),
+			...MATRIX_PRESENT.filter((name) => surface[name] === "undefined").map(
+				(name) => `${name}=undefined but the table says present`,
+			),
+		];
+		check("the matrix's not-available cells are still absent and its present cells still present (round 1, R3)", drift.length === 0, drift.length === 0 ? `${MATRIX_ABSENT.length} absent and ${MATRIX_PRESENT.length} present cells asserted; the full record is in the transcript` : `drift: ${drift.join("; ")}`);
+
 		check("no window was ever made visible in the install phase", a.windowsNeverShown === 0, `visible windows at exit: ${a.windowsNeverShown}`);
 
 		// Between the phases the driver edits the approved manifest and removes a
