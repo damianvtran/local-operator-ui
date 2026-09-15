@@ -37,7 +37,7 @@
  * scene that cannot see the conversation list cannot say anything about it.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
@@ -109,6 +109,22 @@ function launch(command, args, env) {
 		cwd: REPO,
 		env,
 		stdio: ["ignore", "pipe", "pipe"],
+		/*
+		 * Own the whole tree, not just the pid we are handed.
+		 *
+		 * WHY (rig hygiene, 2026-09-15): `node_modules/.bin/electron` is a node
+		 * SHIM that spawns the real `Electron.app` as its CHILD. Killing the shim
+		 * leaves the app running, reparented to launchd, holding its devtools port
+		 * and a Dock entry - measured on this machine as leftover trees rooted at
+		 * `Electron.app/Contents/MacOS/Electron` with `ppid=1`, several accumulated
+		 * across scenes before they were reaped by hand. That is also what made a
+		 * later scene on the same port answer "port N already has a devtools
+		 * endpoint", which reads like a slow launch rather than a collision.
+		 * `detached` puts the shim in its own process group, which Electron's
+		 * children inherit, and `stop` below signals the GROUP. Same rule as
+		 * `scripts/browser-host-proof.mjs`.
+		 */
+		detached: true,
 	});
 	children.push(child);
 	let output = "";
@@ -124,10 +140,26 @@ function launch(command, args, env) {
 async function stop(entry) {
 	const child = entry?.child ?? entry;
 	if (!child || child.exitCode !== null || child.signalCode !== null) return;
-	child.kill("SIGTERM");
+	/*
+	 * Signal the process GROUP first, falling back to the pid only when there is no
+	 * group to signal (it has already gone away). This is what actually stops the
+	 * app rather than its shim.
+	 */
+	const killTree = (signal) => {
+		try {
+			process.kill(-child.pid, signal);
+		} catch {
+			try {
+				child.kill(signal);
+			} catch {
+				/* already dead */
+			}
+		}
+	};
+	killTree("SIGTERM");
 	await new Promise((resolve) => {
 		const timer = setTimeout(() => {
-			child.kill("SIGKILL");
+			killTree("SIGKILL");
 			resolve();
 		}, 5_000);
 		child.on("exit", () => {
@@ -135,6 +167,30 @@ async function stop(entry) {
 			resolve();
 		});
 	});
+}
+
+/**
+ * The net under `stop`: reap anything still running against THIS run's scratch
+ * profiles, by the profile each launch named on its own command line.
+ *
+ * WHY both mechanisms rather than either one. The group kill is structural and
+ * covers the shim/app split, but a process can leave its group (a Chromium helper
+ * that re-execs under a new session, or an app relaunched by its own crash
+ * handler), and the failure mode of missing one is the operator's Dock filling
+ * with apps this rig left behind. The profile path is unique to this run - a fresh
+ * `mkdtemp` under the system temp dir - so this cannot match a process anybody
+ * else owns, which is the property `pkill` would otherwise need a much narrower
+ * pattern for.
+ */
+function reapScratchProfiles() {
+	if (process.platform === "win32") return;
+	try {
+		spawnSync("pkill", ["-f", `user-data-dir=${ROOT}`], {
+			stdio: "ignore",
+		});
+	} catch {
+		/* No pkill on this host, or nothing matched: the group kill already ran. */
+	}
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -626,6 +682,7 @@ try {
 	}
 } finally {
 	for (const child of children) await stop(child);
+	reapScratchProfiles();
 	writeFileSync(
 		join(OUT, `${LABEL}-frames.json`),
 		JSON.stringify(summary, null, 2),
