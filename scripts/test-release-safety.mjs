@@ -42,6 +42,24 @@ import {
 const SHA = "3becfb9c462f6adb1f47f9815767f5522755f849";
 const TAG = "v0.14.1";
 const ID = 383131955;
+/**
+ * The other spelling of the same release: `node_id` is the GraphQL global id,
+ * `id` is the numeric database id. Both are the release under test, and
+ * `NODE_ID_OTHER` is a different release's node id.
+ */
+const NODE_ID = "RE_kwDOOCmy184XNSAc";
+const NODE_ID_OTHER = "RE_kwDOOCmy184XNSAd";
+/**
+ * The two refusals the id-spelling tests below expect, built once beside the
+ * fixtures they describe rather than inside each test body -- the same shape this
+ * file already uses for its patterns.
+ */
+const EXPECTED_NUMERIC_MISMATCH = new RegExp(
+	`Release ID ${ID} does not match expected release ID ${ID + 1}`,
+);
+const EXPECTED_NODE_MISMATCH = new RegExp(
+	`Release ID ${ID} does not match expected release ID ${NODE_ID_OTHER} \\(node id ${NODE_ID}\\)`,
+);
 function fixture({
 	tag = TAG,
 	sha = SHA,
@@ -57,6 +75,7 @@ function fixture({
 	// /releases/latest sorts by, so every entry the recency check reads carries one.
 	const published = {
 		id: ID,
+		node_id: NODE_ID,
 		tag_name: tag,
 		draft: false,
 		prerelease: false,
@@ -117,6 +136,63 @@ for (const manual of [true, false]) {
 		);
 	});
 }
+// The release-ID pin has two spellings of the same value, and the tolerance for
+// the second one is an identity check rather than a loosening. What it is FOR:
+// v0.24.2's first automatic release was lost to `gh release view --json id`
+// answering with `RE_kwDOOCmy184XNSAc` while this validator compared against
+// `383131955` -- the same release, and every job after the validate skipped. The
+// invariant these two tests pin, in both directions: an identifier is accepted
+// exactly while it names THIS release, in either spelling, and refused when it
+// names another one.
+test("the node id of this release is this release: accepted, and emitted numerically", () => {
+	// Only the numeric spelling is passed on, because that is the spelling both
+	// consumers of this output require: upload-release.mjs and release-state.mjs
+	// each match /^[1-9]\d*$/ on the pin they are handed.
+	assert.deepEqual(validateRelease(fixture(), TAG, SHA, false, NODE_ID), {
+		source_sha: SHA,
+		release_id: ID,
+		release_tag: TAG,
+		prerelease: false,
+	});
+});
+test("another release is refused in either spelling", () => {
+	// The refusal names both spellings, because the reader of that line is looking
+	// at a payload whose spelling is the thing under suspicion.
+	assert.throws(
+		() => validateRelease(fixture(), TAG, SHA, false, ID + 1),
+		EXPECTED_NUMERIC_MISMATCH,
+	);
+	assert.throws(
+		() => validateRelease(fixture(), TAG, SHA, false, NODE_ID_OTHER),
+		EXPECTED_NODE_MISMATCH,
+	);
+});
+test("a release carrying no node id still pins on its numeric id alone", () => {
+	// A hand-built or older response without `node_id` must not turn the node
+	// spelling into an accepted wildcard: the numeric pin still matches, and
+	// anything else is still refused.
+	assert.equal(
+		validateRelease(
+			fixture({ release: { node_id: undefined } }),
+			TAG,
+			SHA,
+			false,
+			String(ID),
+		).release_id,
+		ID,
+	);
+	assert.throws(
+		() =>
+			validateRelease(
+				fixture({ release: { node_id: undefined } }),
+				TAG,
+				SHA,
+				false,
+				NODE_ID,
+			),
+		/Release ID.*does not match/,
+	);
+});
 for (const [name, options, error] of [
 	["missing tag", { missing: `/git/ref/tags/${TAG}` }, /404/],
 	["missing release", { missing: `/releases/tags/${TAG}` }, /404/],
@@ -188,6 +264,14 @@ for (const [name, overrides, error] of [
 	["missing ID", { expectedReleaseId: "" }, /EXPECTED_RELEASE_ID/],
 	["moved SHA", { expectedSha: "0".repeat(40) }, /Tag SHA/],
 	["changed ID", { expectedReleaseId: ID + 1 }, /Release ID/],
+	// Tolerance for the node spelling lives at the validator's INPUT and nowhere
+	// later: this pin addresses asset writes, so it stays numeric-only, and a node
+	// id handed to it is refused rather than translated.
+	[
+		"node id (other spelling)",
+		{ expectedReleaseId: NODE_ID },
+		/EXPECTED_RELEASE_ID/,
+	],
 	[
 		"collision",
 		{ api: fixture({ assets: [{ name: "app.dmg" }] }) },
