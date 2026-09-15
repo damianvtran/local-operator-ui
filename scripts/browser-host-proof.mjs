@@ -48,6 +48,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
 const SCRATCH = join(tmpdir(), `lo-browser-proof-${process.pid}`);
@@ -247,7 +248,13 @@ async function stopApp() {
 }
 
 async function launchApp() {
-	const env = {
+	/*
+	 * `withNotificationsOff`, and not merely for tidiness: this rig boots the
+	 * real app, and a backend it spawns reaches macOS through `osascript` for a
+	 * parked gate — a banner in the operator's real Notification Center from a
+	 * harness run. See `notifications-off.mjs`.
+	 */
+	const env = withNotificationsOff({
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
@@ -257,7 +264,7 @@ async function launchApp() {
 		// nothing to do with the browser host. The same switch the repo's other
 		// app-proof harness uses.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
-	};
+	});
 	// Every inherited cmux/lop variable is removed rather than overwritten: this
 	// process is driven by a session that has them set, and an inherited workspace
 	// id has already renamed the operator's real workspaces in this project.
