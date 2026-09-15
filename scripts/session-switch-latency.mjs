@@ -41,6 +41,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { cpus, loadavg } from "node:os";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ARGS = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -800,15 +801,18 @@ const main = async () => {
 
 	dataDir = join(tmpdir(), `lo-switch-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
-	chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-sandbox",
-		"--disable-gpu",
-		"--hide-scrollbars",
-		`--user-data-dir=${dataDir}`,
-		"--remote-debugging-port=0",
-		"about:blank",
-	]);
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
 		const timer = setTimeout(
