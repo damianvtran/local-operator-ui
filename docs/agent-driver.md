@@ -329,6 +329,15 @@ There are two scenes, and the second one is the worked example of that rule:
   is therefore covered by reading the two halves of its wiring, never by pressing
   it here; proving the runtime half needs a human in a visible window, and saying
   otherwise would be claiming coverage this harness cannot have.
+- **And a key injected through CDP stops at the app's handlers.**
+  `Input.dispatchKeyEvent` reaches a `keydown` listener — which is what makes the
+  guards around one measurable, `defaultPrevented` being the tell — but it does
+  not drive Chromium's EDITING pipeline: measured while giving the palette's
+  caret its modifier arrows back, the caret stayed at 8 whatever modifier arrived,
+  and the plain arrow moved the list while leaving the caret where it was. So a
+  property about what a keystroke then does to a selection or a caret is not
+  yours to assert here; assert the one this harness can see (whether the app
+  consumed the key) and say which half you left to a real keystroke.
 - **It is not a way to answer an approval, and must not be used as one.** A verb
   can press an in-app approval control, so a scene that did would make every "it
   works" captured through it worthless: approvals are the operator's, and the
