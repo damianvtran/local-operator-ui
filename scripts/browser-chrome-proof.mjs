@@ -222,10 +222,13 @@ async function launchApp() {
 	 *
 	 * THAT SHIM IS A NODE SCRIPT, and `child.kill()` signals the SHIM: the app it
 	 * spawned is orphaned, keeps its debug port, and keeps holding the app's
-	 * SINGLE-INSTANCE LOCK - which is global rather than per `--user-data-dir`, so
-	 * the next launch in the run dies with "Another instance is already running"
-	 * and the harness reports a failure that is its own teardown (QA round 2; the
-	 * same defect in #190's dev harness). `require("electron")` is the package's own
+	 * SINGLE-INSTANCE LOCK. That lock is PER `--user-data-dir` rather than
+	 * machine-wide - `renderer-driver.mjs` measures the same lock, and two boots on
+	 * different profiles coexist - and a run reads it as a global exclusion only
+	 * because it reuses one profile path, so the next launch in the run dies with
+	 * "Another instance is already running" and the harness reports a failure that
+	 * is its own teardown (QA round 2; the same defect in #190's dev harness).
+	 * `require("electron")` is the package's own
 	 * documented answer: it returns the executable path, on every platform, so
 	 * SIGTERM reaches the process whose quit path this run is testing. The same pid
 	 * is what `reap` below kills, by exact pid and never by pattern.

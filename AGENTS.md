@@ -104,6 +104,19 @@ not independent capture scripts importing the single-frame predicate. Run
 lightweight subprocess/CLI contract tests; they use isolated synthetic evidence,
 not the committed image set.
 
+**A commit that moves `src/` or `scripts/` costs every open branch two commits.**
+`docs/evidence/manifest.json` pins `srcTree`/`scriptsTree` to
+`git rev-parse HEAD:src`/`HEAD:scripts`, and the gate fails a mismatch with "re-capture
+and re-stamp" rather than a warning - so `main` moving a rig, or any sibling branch
+landing one, invalidates the stamp for everybody holding a branch, whether or not
+that branch's own frames changed. That is the convergence cost of the file, and the
+reason a sync here ends with a re-stamp-only commit whose message says what moved,
+what did not, and why. Only `pnpm check-evidence` checks it, and that is the command
+that defers (exit 75) while another sweep holds the lease, so a stale stamp is
+invisible locally until a sweep actually runs: re-derive both from the tree you are
+committing (`git rev-parse HEAD:src`, `HEAD:scripts` after staging) rather than
+letting the next author rediscover it.
+
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
@@ -288,7 +301,10 @@ the environment that backend child is handed is what it measures, so the switch
 is load-bearing twice over there) and the `app:headless` / `dev:headless` scripts.
 `scripts/notification-spawn-sites.test.mjs` enumerates those sites and fails on
 a new one that is not in its table, because the rig somebody adds next month is
-exactly the one that will forget. The deliberate exceptions
+exactly the one that will forget. Its reach is the site, its index and the
+kill-switch binding: the tree-ownership rule above - `detached`, the group signal,
+the profile reap - is asserted by no test, so it is enforced by review (R4). The
+deliberate exceptions
 (`notification-evidence.mjs`, interactive `pnpm dev` / `pnpm start`) are named in
 that module and in the table.
 
@@ -356,8 +372,9 @@ the app owns the whole process TREE**: spawn the runtime binary rather than the
 pid the rig holds orphans it), spawn `detached` and signal the GROUP, and keep a
 profile-match reap as a backstop whose kills are still by exact pid. Measured:
 the hand-run hop command left two headless trees of eight processes each with
-roots at `ppid 1`, and the global single-instance lock then turned the following
-launch into "Another instance is already running".
+roots at `ppid 1`, and the app's single-instance lock - PER `--user-data-dir`
+rather than machine-wide, as `renderer-driver.mjs` measures - then turned the
+following launch in that same tree into "Another instance is already running".
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 

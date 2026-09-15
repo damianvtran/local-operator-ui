@@ -37,12 +37,17 @@
  * Usage: node scripts/mentioned-files-app-proof.mjs <session-id> [out-dir]
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
+import {
+	onInterrupted,
+	reapOnExit,
+	stopAppTree,
+} from "./app-tree-teardown.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const SESSION = process.argv[2] ?? "225326399eed";
@@ -85,9 +90,12 @@ withNotificationsOff(childEnv);
  * THAT SHIM IS A NODE SCRIPT (`electron/cli.js`) whose child is the app, so the
  * pid a teardown holds belongs to the shim: signal it and the app is re-parented
  * to launchd, keeps its `--remote-debugging-port`, and keeps holding the app's
- * SINGLE-INSTANCE LOCK - which is global rather than per `--user-data-dir`, so
- * the next run in the same scratch tree dies with "Another instance is already
- * running" and this rig reports its own teardown as a failed measurement.
+ * SINGLE-INSTANCE LOCK, which is PER `--user-data-dir` rather than machine-wide
+ * (`renderer-driver.mjs` measures the same lock, and `docs/agent-driver.md` states
+ * it: two boots on different profiles coexist). A run reads it as a global
+ * exclusion only because it reuses one profile path, so the next run in this same
+ * scratch tree dies with "Another instance is already running" and this rig reports
+ * its own teardown as a failed measurement.
  * `require("electron")` is the package's own documented answer and returns the
  * executable path, which is what makes `app.pid` the app's main process - the
  * same resolution `browser-chrome-proof.mjs`, `browser-host-proof.mjs`,
@@ -96,7 +104,7 @@ withNotificationsOff(childEnv);
 const ELECTRON_BIN = createRequire(join(process.cwd(), "package.json"))(
 	"electron",
 );
-/* Spelled once: the spawn and `thisRunsProfile` below must name the same profile. */
+/* Spelled once: the spawn and the profile scan below must name the same profile. */
 const USER_DATA = join(OUT, "user-data");
 
 const app = spawn(
@@ -129,37 +137,22 @@ const app = spawn(
 		detached: true,
 	},
 );
+// The last resort, registered the moment there is a tree to lose: see
+// `reapOnExit` for the paths neither the handlers nor the `finally` can reach.
+reapOnExit({ pid: app.pid, userData: USER_DATA });
 app.stdout.on("data", (d) => log.push(`[app] ${d}`));
 app.stderr.on("data", (d) => log.push(`[app:err] ${d}`));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** One `ps` row, split into pid, parent and command line. */
-const PS_ROW = /^(\d+)\s+(\d+)\s+(.*)$/;
-
-/**
- * Every process whose command line names THIS run's profile, with its parent.
- *
- * DETECTION ONLY; the callers kill the pids this returns, one at a time. The path
- * carries this run's own pid, so a match cannot be another session's app or the
- * operator's. The boundary is explicit rather than incidental - `set-a/user-data`
- * is a prefix of `set-b/user-data`, and Electron's own helpers repeat the flag -
- * so the match is anchored on the flag and closed by whitespace or end of line.
- * Returns null when `ps` could not be read, which is NOT the same as clean.
+/*
+ * The profile scan and the stop itself live in `app-tree-teardown.mjs`, shared with
+ * the other rig that boots the app `detached`. The two copies had already drifted in
+ * ways neither file showed: this one failed OPEN on an unreadable `ps` while the hop
+ * rig failed closed, and it registered no interruption signals - so a Ctrl-C left
+ * exactly the app this rig exists to stop. What stays here is the reporting, in this
+ * file's voice, and the launch above.
  */
-function thisRunsProfile() {
-	const ps = spawnSync("ps", ["-eo", "pid,ppid,command"], { encoding: "utf8" });
-	if (ps.error || ps.status !== 0) return null;
-	const pattern = new RegExp(
-		`(?:^|\\s)--user-data-dir=${USER_DATA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`,
-	);
-	return ps.stdout
-		.split("\n")
-		.slice(1)
-		.map((line) => line.trim().match(PS_ROW))
-		.filter((match) => match && pattern.test(match[3]))
-		.map((match) => ({ pid: Number(match[1]), ppid: Number(match[2]) }));
-}
 
 /**
  * The stop: the process GROUP first, and a reap by profile as the backstop.
@@ -170,38 +163,22 @@ function thisRunsProfile() {
  * re-parented out of it answers to no pid this run holds, and only its command
  * line still names it. Kills there stay by EXACT PID, never a pattern pkill, and
  * the caller exits non-zero when this returns false, so a leak fails the run it
- * made rather than the next one.
+ * made rather than the next one. An unreadable `ps` is NOT clean either: the
+ * backstop could not run, so nothing verified the tree is gone.
  */
 async function stopApp() {
-	let exited = app.exitCode !== null || app.signalCode !== null;
-	if (!exited) {
-		app.once("exit", () => {
-			exited = true;
-		});
-		const killGroup = (signal) => {
-			try {
-				process.kill(-app.pid, signal);
-			} catch {
-				/* the group has already gone away */
-			}
-		};
-		killGroup("SIGTERM");
-		const deadline = Date.now() + 5000;
-		while (!exited && Date.now() < deadline) await sleep(100);
-		if (!exited) {
-			killGroup("SIGKILL");
-			await sleep(500);
-		}
-	}
-	await sleep(500);
-	const found = thisRunsProfile();
-	if (found === null) {
+	const result = await stopAppTree({
+		pid: app.pid,
+		userData: USER_DATA,
+		isExited: () => app.exitCode !== null || app.signalCode !== null,
+	});
+	if (result.profileUnreadable) {
 		console.error(
-			"teardown: `ps` could not be read, so the backstop did not run; the group signal is all this run has",
+			"teardown: `ps` could not be read, so the backstop did not run; the group signal is all this run has, and an unverified stop is reported as one",
 		);
-		return true;
+		return false;
 	}
-	for (const entry of found) {
+	for (const entry of result.reaped) {
 		console.error(
 			`teardown: ${entry.pid} outlived the group signal${
 				entry.ppid === 1
@@ -209,22 +186,52 @@ async function stopApp() {
 					: ` (ppid ${entry.ppid})`
 			}; reaping by exact pid`,
 		);
-		try {
-			process.kill(entry.pid, "SIGKILL");
-		} catch {
-			/* already gone */
-		}
 	}
-	if (found.length > 0) await sleep(500);
-	const survivors = thisRunsProfile() ?? [];
-	if (survivors.length > 0) {
+	if (result.survivors.length > 0) {
 		console.error(
-			`teardown: ${survivors.length} process(es) still name this run's profile (${survivors.map((entry) => entry.pid).join(", ")})`,
+			`teardown: ${result.survivors.length} process(es) still name this run's profile (${result.survivors.map((entry) => entry.pid).join(", ")})`,
 		);
-		return false;
 	}
-	return true;
+	return result.clean;
 }
+
+/*
+ * ONE teardown, whichever path reaches it.
+ *
+ * `detached: true` in the launch above is what puts the app in a process group of
+ * its own - which is what makes the group signal above a stop, and also why an
+ * interruption aimed at this rig no longer reaches the app on its own: a group
+ * signal (Ctrl-C, `killpg`, a harness that kills the group) used to arrive at the
+ * app too and now stops here. So the interruption is handled here, and so is a
+ * throw. `process.exit` does NOT run `finally` blocks, which is why every explicit
+ * exit below calls this itself rather than relying on the wrapper.
+ */
+let stopping = null;
+/** The stop, run once however many exit paths reach it. */
+function teardown() {
+	stopping ??= stopApp();
+	return stopping;
+}
+
+/*
+ * Stop the app, then report `code` - or 1 when the stop was not clean. An intended
+ * code that is already a failure wins, so an early exit is not masked by a teardown
+ * that failed too.
+ */
+const finish = (code) =>
+	teardown().then((clean) => (code === 0 && !clean ? 1 : code));
+
+/*
+ * A run stopped by hand says so, because it is the one case where the app would
+ * otherwise be left behind - and because "the handler ran" has to be readable in
+ * the output rather than inferred from a process that happens to be gone.
+ */
+onInterrupted(async (signal) => {
+	console.error(
+		`teardown: ${signal} received; stopping the app this run booted`,
+	);
+	return finish(0);
+});
 
 async function targets() {
 	try {
@@ -334,361 +341,373 @@ async function expectedPaths() {
 	};
 }
 
-const deadline = Date.now() + DEADLINE_MS;
-let page = null;
-while (Date.now() < deadline) {
-	page = (await targets()).find((target) => target.type === "page");
-	if (page) break;
-	await sleep(500);
-}
-if (!page) {
-	console.error(`no renderer target appeared; log:\n${log.join("")}`);
-	// Stopped before exiting, the way every other exit in this file is: a boot
-	// that failed to come up is exactly when an app is left running, and the
-	// single-instance lock it holds is global rather than per profile.
-	await stopApp();
-	process.exit(1);
-}
-
-if (!process.env.LO_PROOF_TOKEN) {
-	// Fail here rather than reporting an empty panel as a finding. An unpaired
-	// instance renders the Files view with nothing in it, which looks exactly
-	// like a producer that did not fire.
-	console.error(
-		"LO_PROOF_TOKEN is unset, so this instance would hold no bearer and no session would load. See the header for how to read it from the running backend.",
-	);
-	await stopApp();
-	process.exit(2);
-}
-
-const ws = new WebSocket(page.webSocketDebuggerUrl);
-await new Promise((resolve, reject) => {
-	ws.addEventListener("open", resolve);
-	ws.addEventListener("error", reject);
-});
-const cdp = new Cdp(ws);
-await cdp.send("Page.enable");
-await cdp.send("Runtime.enable");
-
-const report = { session: SESSION, out: OUT };
-
-// Assert the pairing before reading anything else: every claim below depends on
-// the app having been allowed to talk to the backend.
-const capabilities = await cdp.evaluate(
-	`(async () => { try { const r = await window.api.desktop.request({ op: "capabilities" }); return JSON.stringify(r.body?.result ?? r); } catch (e) { return "THREW: " + e.message; } })()`,
-);
-report.capabilities = capabilities;
-if (!String(capabilities).includes('"desktop_available":true')) {
-	console.error(
-		`the app is not paired with the backend (capabilities: ${capabilities}); nothing below would be meaningful`,
-	);
-	ws.close();
-	await stopApp();
-	process.exit(3);
-}
-
-// 0. Record any CSP violation the PDF path causes. The design's probe found
-//    that the `<embed>` variant of a blob PDF is blocked by our own CSP, so the
-//    frame must be an `<iframe>` and a violation here would be the regression.
-await cdp.evaluate(`(() => {
-	window.__cspViolations = [];
-	document.addEventListener("securitypolicyviolation", (event) => {
-		window.__cspViolations.push(event.violatedDirective + " " + event.blockedURI);
-	});
-	return true;
-})()`);
-
-// 1. Navigate to the real session. HashRouter, so the hash is the route.
-await cdp.evaluate(`location.hash = "#/chat/${SESSION}"; true`);
-
-// 2. Wait for the producer to have written the store. The canvas store is a
-//    zustand `persist` store, so what the panel will render is exactly what
-//    localStorage holds - and reading it proves the producer ran, not just that
-//    a component mounted.
-let stored = null;
-while (Date.now() < deadline) {
-	stored = await cdp.evaluate(`localStorage.getItem("canvas-store")`);
-	if (stored?.includes(SESSION)) break;
-	await sleep(1000);
-}
-const parsed = stored ? JSON.parse(stored) : null;
-const conversation = parsed?.state?.conversations?.[SESSION] ?? null;
-report.mentionedFilesWritten = conversation?.mentionedFiles?.length ?? 0;
-report.mentionedFilesSample = (conversation?.mentionedFiles ?? [])
-	.slice(0, 8)
-	.map((document) => ({
-		path: document.path,
-		type: document.type,
-		availability: document.availability ?? null,
-		sizeBytes: document.sizeBytes ?? null,
-		contentLength: document.content?.length ?? 0,
-	}));
-
-// 3. Open the canvas and switch to the Files view.
-report.openedCanvas = await cdp.evaluate(`(() => {
-	const button = document.querySelector('[data-tour-tag="open-canvas-button"]');
-	if (!button) return false;
-	button.click();
-	return true;
-})()`);
-await sleep(700);
-report.switchedToFiles = await cdp.evaluate(`(() => {
-	const button = document.querySelector('button[aria-label^="Files view"]');
-	if (!button) return false;
-	button.click();
-	return true;
-})()`);
-
 /*
- * 4. Wait for the scan to settle, sampling the store as it goes.
- *
- * The panel pages the conversation's own older history while it is open, so the
- * count is expected to CLIMB and then stop. Sampling it turns "the panel lists
- * the complete set" into two measurable claims: the final count matches the
- * extractor's answer over the whole durable transcript, and the head stopped
- * saying it was still searching.
+ * Everything after the spawn runs inside this wrapper, so an exception reaches the
+ * teardown the same way the normal path does: a throw out of `cdp.evaluate` or
+ * `esbuild.build` used to exit with the app still running, which is the same leak
+ * by a second route. `process.exit` below does not run a `finally` block, which is
+ * why each explicit exit stops the app itself as well.
  */
-const samples = [];
-let previousCount = -1;
-let stableFor = 0;
-const scanDeadline = Date.now() + 60_000;
-while (Date.now() < scanDeadline) {
-	const sample = await cdp.evaluate(`(() => {
+try {
+	const deadline = Date.now() + DEADLINE_MS;
+	let page = null;
+	while (Date.now() < deadline) {
+		page = (await targets()).find((target) => target.type === "page");
+		if (page) break;
+		await sleep(500);
+	}
+	if (!page) {
+		console.error(`no renderer target appeared; log:\n${log.join("")}`);
+		// Stopped before exiting, the way every other exit in this file is: a boot
+		// that failed to come up is exactly when an app is left running, and the
+		// single-instance lock it holds is per profile, so this rig's own next run in
+		// the same scratch tree would collide with it.
+		await finish(1);
+		process.exit(1);
+	}
+
+	if (!process.env.LO_PROOF_TOKEN) {
+		// Fail here rather than reporting an empty panel as a finding. An unpaired
+		// instance renders the Files view with nothing in it, which looks exactly
+		// like a producer that did not fire.
+		console.error(
+			"LO_PROOF_TOKEN is unset, so this instance would hold no bearer and no session would load. See the header for how to read it from the running backend.",
+		);
+		await finish(2);
+		process.exit(2);
+	}
+
+	const ws = new WebSocket(page.webSocketDebuggerUrl);
+	await new Promise((resolve, reject) => {
+		ws.addEventListener("open", resolve);
+		ws.addEventListener("error", reject);
+	});
+	const cdp = new Cdp(ws);
+	await cdp.send("Page.enable");
+	await cdp.send("Runtime.enable");
+
+	const report = { session: SESSION, out: OUT };
+
+	// Assert the pairing before reading anything else: every claim below depends on
+	// the app having been allowed to talk to the backend.
+	const capabilities = await cdp.evaluate(
+		`(async () => { try { const r = await window.api.desktop.request({ op: "capabilities" }); return JSON.stringify(r.body?.result ?? r); } catch (e) { return "THREW: " + e.message; } })()`,
+	);
+	report.capabilities = capabilities;
+	if (!String(capabilities).includes('"desktop_available":true')) {
+		console.error(
+			`the app is not paired with the backend (capabilities: ${capabilities}); nothing below would be meaningful`,
+		);
+		ws.close();
+		await finish(3);
+		process.exit(3);
+	}
+
+	// 0. Record any CSP violation the PDF path causes. The design's probe found
+	//    that the `<embed>` variant of a blob PDF is blocked by our own CSP, so the
+	//    frame must be an `<iframe>` and a violation here would be the regression.
+	await cdp.evaluate(`(() => {
+		window.__cspViolations = [];
+		document.addEventListener("securitypolicyviolation", (event) => {
+			window.__cspViolations.push(event.violatedDirective + " " + event.blockedURI);
+		});
+		return true;
+	})()`);
+
+	// 1. Navigate to the real session. HashRouter, so the hash is the route.
+	await cdp.evaluate(`location.hash = "#/chat/${SESSION}"; true`);
+
+	// 2. Wait for the producer to have written the store. The canvas store is a
+	//    zustand `persist` store, so what the panel will render is exactly what
+	//    localStorage holds - and reading it proves the producer ran, not just that
+	//    a component mounted.
+	let stored = null;
+	while (Date.now() < deadline) {
+		stored = await cdp.evaluate(`localStorage.getItem("canvas-store")`);
+		if (stored?.includes(SESSION)) break;
+		await sleep(1000);
+	}
+	const parsed = stored ? JSON.parse(stored) : null;
+	const conversation = parsed?.state?.conversations?.[SESSION] ?? null;
+	report.mentionedFilesWritten = conversation?.mentionedFiles?.length ?? 0;
+	report.mentionedFilesSample = (conversation?.mentionedFiles ?? [])
+		.slice(0, 8)
+		.map((document) => ({
+			path: document.path,
+			type: document.type,
+			availability: document.availability ?? null,
+			sizeBytes: document.sizeBytes ?? null,
+			contentLength: document.content?.length ?? 0,
+		}));
+
+	// 3. Open the canvas and switch to the Files view.
+	report.openedCanvas = await cdp.evaluate(`(() => {
+		const button = document.querySelector('[data-tour-tag="open-canvas-button"]');
+		if (!button) return false;
+		button.click();
+		return true;
+	})()`);
+	await sleep(700);
+	report.switchedToFiles = await cdp.evaluate(`(() => {
+		const button = document.querySelector('button[aria-label^="Files view"]');
+		if (!button) return false;
+		button.click();
+		return true;
+	})()`);
+
+	/*
+	 * 4. Wait for the scan to settle, sampling the store as it goes.
+	 *
+	 * The panel pages the conversation's own older history while it is open, so the
+	 * count is expected to CLIMB and then stop. Sampling it turns "the panel lists
+	 * the complete set" into two measurable claims: the final count matches the
+	 * extractor's answer over the whole durable transcript, and the head stopped
+	 * saying it was still searching.
+	 */
+	const samples = [];
+	let previousCount = -1;
+	let stableFor = 0;
+	const scanDeadline = Date.now() + 60_000;
+	while (Date.now() < scanDeadline) {
+		const sample = await cdp.evaluate(`(() => {
+			const raw = localStorage.getItem("canvas-store");
+			const conversation = raw
+				? JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]
+				: null;
+			const head = document.querySelector('[data-tour-tag="files-scanner-head"]');
+			return {
+				count: conversation?.mentionedFiles?.length ?? 0,
+				head: head ? head.innerText.trim() : null,
+			};
+		})()`);
+		if (samples.length === 0 || sample.count !== samples[samples.length - 1].count)
+			samples.push(sample);
+		if (sample.count === previousCount) stableFor += 1;
+		else stableFor = 0;
+		previousCount = sample.count;
+		// Three consecutive identical readings with no "Searching" line left: done.
+		if (stableFor >= 3 && !(sample.head ?? "").includes("Searching")) break;
+		await sleep(1000);
+	}
+	report.scanSamples = samples;
+	report.panelCount = previousCount;
+	report.panelHead = samples[samples.length - 1]?.head ?? null;
+
+	/*
+	 * The comparison is on RESOLVED paths, which is the panel's own identity.
+	 *
+	 * The extractor reports the spellings the transcript used (`~/x` and
+	 * `/Users/you/x` are two), and the probe collapses them to one tile by the
+	 * resolved path — so counting spellings would report a difference that is the
+	 * feature working. Resolution here mirrors `resolveUserPath` in main: `~`
+	 * expands against the home directory and a relative candidate resolves against
+	 * the session's cwd.
+	 */
+	const resolve = (path, cwd) => {
+		if (path.startsWith("~/")) return join(homedir(), path.slice(2));
+		if (path.startsWith("/")) return path;
+		return cwd ? join(cwd, path) : path;
+	};
+	const expected = await expectedPaths();
+	const expectedResolved = expected
+		? [...new Set(expected.paths.map((path) => resolve(path, expected.cwd)))]
+		: [];
+	const panelPaths = await cdp.evaluate(`(() => {
 		const raw = localStorage.getItem("canvas-store");
 		const conversation = raw
 			? JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]
 			: null;
-		const head = document.querySelector('[data-tour-tag="files-scanner-head"]');
+		return (conversation?.mentionedFiles ?? []).map((document) => document.path);
+	})()`);
+	const expectedSet = new Set(expectedResolved);
+	report.durable = expected
+		? {
+				records: expected.records,
+				cwd: expected.cwd,
+				distinctSpellings: expected.paths.length,
+				distinctResolvedPaths: expectedResolved.length,
+				panelTiles: panelPaths.length,
+				matchesPanel:
+					panelPaths.length === expectedResolved.length ? "exact" : "DIFFERENT",
+				panelPathsNotInTranscript: panelPaths.filter(
+					(path) => !expectedSet.has(path),
+				).length,
+				transcriptPathsNotInPanel: expectedResolved.filter(
+					(path) => !panelPaths.includes(path),
+				).length,
+			}
+		: null;
+
+	// 5. What the grid actually renders, plus the 1380x900 geometry (U1's check).
+	report.filesGrid = await cdp.evaluate(`(() => {
+		const grid = document.querySelector('[data-tour-tag="files-grid"]');
+		const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
+		const dock = document.querySelector('[data-tour-tag="canvas-dock"]');
+		const tiles = grid ? [...grid.querySelectorAll(":scope > *")] : [];
+		const rects = tiles
+			.map((tile) => tile.getBoundingClientRect())
+			.filter((rect) => rect.width > 0);
+		const inner = window.innerWidth;
+		const clipped = rects.filter((rect) => rect.right > inner + 0.5).length;
+		const columns = new Set(rects.map((rect) => Math.round(rect.left))).size;
 		return {
-			count: conversation?.mentionedFiles?.length ?? 0,
-			head: head ? head.innerText.trim() : null,
+			tileCount: tiles.length,
+			windowInnerWidth: inner,
+			windowInnerHeight: window.innerHeight,
+			dock: dock
+				? (({ x, width, right }) => ({
+						x: Math.round(x),
+						width: Math.round(width),
+						right: Math.round(right),
+					}))(dock.getBoundingClientRect())
+				: null,
+			grid: grid
+				? (({ x, width, right }) => ({
+						x: Math.round(x),
+						width: Math.round(width),
+						right: Math.round(right),
+					}))(grid.getBoundingClientRect())
+				: null,
+			scroller: scroller
+				? { clientWidth: scroller.clientWidth, scrollWidth: scroller.scrollWidth }
+				: null,
+			columns,
+			clippedTiles: clipped,
+			tileRightEdges: rects.map((rect) => Math.round(rect.right)),
+			documentScrollsHorizontally:
+				document.documentElement.scrollWidth > inner + 0.5,
 		};
 	})()`);
-	if (samples.length === 0 || sample.count !== samples[samples.length - 1].count)
-		samples.push(sample);
-	if (sample.count === previousCount) stableFor += 1;
-	else stableFor = 0;
-	previousCount = sample.count;
-	// Three consecutive identical readings with no "Searching" line left: done.
-	if (stableFor >= 3 && !(sample.head ?? "").includes("Searching")) break;
-	await sleep(1000);
-}
-report.scanSamples = samples;
-report.panelCount = previousCount;
-report.panelHead = samples[samples.length - 1]?.head ?? null;
 
-/*
- * The comparison is on RESOLVED paths, which is the panel's own identity.
- *
- * The extractor reports the spellings the transcript used (`~/x` and
- * `/Users/you/x` are two), and the probe collapses them to one tile by the
- * resolved path — so counting spellings would report a difference that is the
- * feature working. Resolution here mirrors `resolveUserPath` in main: `~`
- * expands against the home directory and a relative candidate resolves against
- * the session's cwd.
- */
-const resolve = (path, cwd) => {
-	if (path.startsWith("~/")) return join(homedir(), path.slice(2));
-	if (path.startsWith("/")) return path;
-	return cwd ? join(cwd, path) : path;
-};
-const expected = await expectedPaths();
-const expectedResolved = expected
-	? [...new Set(expected.paths.map((path) => resolve(path, expected.cwd)))]
-	: [];
-const panelPaths = await cdp.evaluate(`(() => {
-	const raw = localStorage.getItem("canvas-store");
-	const conversation = raw
-		? JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]
-		: null;
-	return (conversation?.mentionedFiles ?? []).map((document) => document.path);
-})()`);
-const expectedSet = new Set(expectedResolved);
-report.durable = expected
-	? {
-			records: expected.records,
-			cwd: expected.cwd,
-			distinctSpellings: expected.paths.length,
-			distinctResolvedPaths: expectedResolved.length,
-			panelTiles: panelPaths.length,
-			matchesPanel:
-				panelPaths.length === expectedResolved.length ? "exact" : "DIFFERENT",
-			panelPathsNotInTranscript: panelPaths.filter(
-				(path) => !expectedSet.has(path),
-			).length,
-			transcriptPathsNotInPanel: expectedResolved.filter(
-				(path) => !panelPaths.includes(path),
-			).length,
-		}
-	: null;
-
-// 5. What the grid actually renders, plus the 1380x900 geometry (U1's check).
-report.filesGrid = await cdp.evaluate(`(() => {
-	const grid = document.querySelector('[data-tour-tag="files-grid"]');
-	const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
-	const dock = document.querySelector('[data-tour-tag="canvas-dock"]');
-	const tiles = grid ? [...grid.querySelectorAll(":scope > *")] : [];
-	const rects = tiles
-		.map((tile) => tile.getBoundingClientRect())
-		.filter((rect) => rect.width > 0);
-	const inner = window.innerWidth;
-	const clipped = rects.filter((rect) => rect.right > inner + 0.5).length;
-	const columns = new Set(rects.map((rect) => Math.round(rect.left))).size;
-	return {
-		tileCount: tiles.length,
-		windowInnerWidth: inner,
-		windowInnerHeight: window.innerHeight,
-		dock: dock
-			? (({ x, width, right }) => ({
-					x: Math.round(x),
-					width: Math.round(width),
-					right: Math.round(right),
-				}))(dock.getBoundingClientRect())
-			: null,
-		grid: grid
-			? (({ x, width, right }) => ({
-					x: Math.round(x),
-					width: Math.round(width),
-					right: Math.round(right),
-				}))(grid.getBoundingClientRect())
-			: null,
-		scroller: scroller
-			? { clientWidth: scroller.clientWidth, scrollWidth: scroller.scrollWidth }
-			: null,
-		columns,
-		clippedTiles: clipped,
-		tileRightEdges: rects.map((rect) => Math.round(rect.right)),
-		documentScrollsHorizontally:
-			document.documentElement.scrollWidth > inner + 0.5,
-	};
-})()`);
-
-report.focusabilityOrder = await cdp.evaluate(`(() => {
-	const card = document.querySelector('[data-tour-tag="files-grid"] > *');
-	if (!card) return null;
-	return [...card.querySelectorAll("button, [tabindex]")].map(
-		(element) =>
-			element.getAttribute("aria-label") ??
-			element.innerText.trim().slice(0, 24),
-	);
-})()`);
-
-if (GEOMETRY_ONLY) {
-	report.tileTexts = await cdp.evaluate(`(() => {
-		const grid = document.querySelector('[data-tour-tag="files-grid"]');
-		return grid ? [...grid.querySelectorAll("button")].map((b) => b.innerText.trim()) : [];
+	report.focusabilityOrder = await cdp.evaluate(`(() => {
+		const card = document.querySelector('[data-tour-tag="files-grid"] > *');
+		if (!card) return null;
+		return [...card.querySelectorAll("button, [tabindex]")].map(
+			(element) =>
+				element.getAttribute("aria-label") ??
+				element.innerText.trim().slice(0, 24),
+		);
 	})()`);
-	writeFileSync(`${OUT}/report-geometry.json`, JSON.stringify(report, null, 2));
-	console.log(JSON.stringify(report, null, 2));
-	ws.close();
-	process.exit((await stopApp()) ? 0 : 1);
-}
 
-await cdp.evaluate(
-	`document.querySelector('[aria-label="Files view"]')?.scrollIntoView()`,
-);
-const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
-writeFileSync(`${OUT}/files-panel.png`, Buffer.from(shot.data, "base64"));
-
-// 5. Click the PDF tile and read the frame the viewer created. This is the
-//    "prove the producer fires AND the viewer opens it" half.
-report.pdfTileClicked = await cdp.evaluate(`(() => {
-	const grid = document.querySelector(".grid");
-	if (!grid) return false;
-	const tile = [...grid.querySelectorAll("button")].find((button) =>
-		button.innerText.toLowerCase().includes(".pdf"),
-	);
-	if (!tile) return false;
-	tile.click();
-	return true;
-})()`);
-await sleep(2500);
-report.pdfFrame = await cdp.evaluate(`(() => {
-	const frame = document.querySelector('iframe[src^="blob:"]');
-	const panel = document.querySelector('[data-tour-tag="canvas-container"]');
-	const tab = document.querySelector('[role="tab"][aria-selected="true"]');
-	const openInOs = panel
-		? panel.querySelector('[aria-label="Open in default app"]')
-		: null;
-	return {
-		framePresent: Boolean(frame),
-		frameSrcScheme: frame ? frame.src.split(":")[0] : null,
-		frameTitle: frame ? frame.getAttribute("title") : null,
-		/*
-		 * Where the document's name is printed, and where the way out to the OS
-		 * is. The name used to be read out of the viewer bar; design round 1 (D3)
-		 * dropped that copy because the tab above already carries it, so the
-		 * reading follows the decision - the tab is the name, and the bar is its
-		 * action.
-		 */
-		activeTabLabel: tab ? tab.textContent.trim() : null,
-		openInOsControl: Boolean(openInOs),
-		cspViolations: window.__cspViolations ?? null,
-		panelReceipt: document.body.innerText.includes("No longer on disk"),
-	};
-})()`);
-const shot2 = await cdp.send("Page.captureScreenshot", { format: "png" });
-writeFileSync(`${OUT}/pdf-viewer.png`, Buffer.from(shot2.data, "base64"));
-
-/*
- * 6. The keyboard and announcement checks (U3, U4, U5).
- *
- * All three are about ORDER and FOCUS, which source cannot settle: the tile's
- * Tab stop depends on the DOM order React actually produced, and the focus
- * return depends on where the browser puts focus when the focused control
- * unmounts. Driven with real key events, and read from the page.
- */
-report.filesSegmentLabel = await cdp.evaluate(`(() => {
-	const segment = document.querySelector(
-		'button[aria-label^="Files view"]',
-	);
-	return segment ? segment.getAttribute("aria-label") : null;
-})()`);
-
-/** One real Escape key press, dispatched the way a keyboard sends one. */
-const pressEscape = async () => {
-	for (const type of ["keyDown", "keyUp"]) {
-		await cdp.send("Input.dispatchKeyEvent", {
-			type,
-			key: "Escape",
-			code: "Escape",
-			windowsVirtualKeyCode: 27,
-			nativeVirtualKeyCode: 27,
-		});
+	if (GEOMETRY_ONLY) {
+		report.tileTexts = await cdp.evaluate(`(() => {
+			const grid = document.querySelector('[data-tour-tag="files-grid"]');
+			return grid ? [...grid.querySelectorAll("button")].map((b) => b.innerText.trim()) : [];
+		})()`);
+		writeFileSync(`${OUT}/report-geometry.json`, JSON.stringify(report, null, 2));
+		console.log(JSON.stringify(report, null, 2));
+		ws.close();
+		process.exit(await finish(0));
 	}
-};
-await pressEscape();
-await sleep(500);
-report.escapeReturnsToFiles = await cdp.evaluate(`(() => {
-	const raw = localStorage.getItem("canvas-store");
-	return JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]?.viewMode ?? null;
-})()`);
 
-// Closing the canvas from inside it is what used to drop focus on `<body>`.
-report.closedCanvas = await cdp.evaluate(`(() => {
-	const button = document.querySelector('[aria-label="Close canvas"]');
-	if (!button) return false;
-	button.focus();
-	button.click();
-	return true;
-})()`);
-await sleep(500);
-report.focusAfterClose = await cdp.evaluate(`(() => {
-	const active = document.activeElement;
-	return {
-		tag: active ? active.tagName.toLowerCase() : null,
-		label: active ? active.getAttribute("aria-label") : null,
-		tourTag: active ? active.getAttribute("data-tour-tag") : null,
+	await cdp.evaluate(
+		`document.querySelector('[aria-label="Files view"]')?.scrollIntoView()`,
+	);
+	const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+	writeFileSync(`${OUT}/files-panel.png`, Buffer.from(shot.data, "base64"));
+
+	// 5. Click the PDF tile and read the frame the viewer created. This is the
+	//    "prove the producer fires AND the viewer opens it" half.
+	report.pdfTileClicked = await cdp.evaluate(`(() => {
+		const grid = document.querySelector(".grid");
+		if (!grid) return false;
+		const tile = [...grid.querySelectorAll("button")].find((button) =>
+			button.innerText.toLowerCase().includes(".pdf"),
+		);
+		if (!tile) return false;
+		tile.click();
+		return true;
+	})()`);
+	await sleep(2500);
+	report.pdfFrame = await cdp.evaluate(`(() => {
+		const frame = document.querySelector('iframe[src^="blob:"]');
+		const panel = document.querySelector('[data-tour-tag="canvas-container"]');
+		const tab = document.querySelector('[role="tab"][aria-selected="true"]');
+		const openInOs = panel
+			? panel.querySelector('[aria-label="Open in default app"]')
+			: null;
+		return {
+			framePresent: Boolean(frame),
+			frameSrcScheme: frame ? frame.src.split(":")[0] : null,
+			frameTitle: frame ? frame.getAttribute("title") : null,
+			/*
+			 * Where the document's name is printed, and where the way out to the OS
+			 * is. The name used to be read out of the viewer bar; design round 1 (D3)
+			 * dropped that copy because the tab above already carries it, so the
+			 * reading follows the decision - the tab is the name, and the bar is its
+			 * action.
+			 */
+			activeTabLabel: tab ? tab.textContent.trim() : null,
+			openInOsControl: Boolean(openInOs),
+			cspViolations: window.__cspViolations ?? null,
+			panelReceipt: document.body.innerText.includes("No longer on disk"),
+		};
+	})()`);
+	const shot2 = await cdp.send("Page.captureScreenshot", { format: "png" });
+	writeFileSync(`${OUT}/pdf-viewer.png`, Buffer.from(shot2.data, "base64"));
+
+	/*
+	 * 6. The keyboard and announcement checks (U3, U4, U5).
+	 *
+	 * All three are about ORDER and FOCUS, which source cannot settle: the tile's
+	 * Tab stop depends on the DOM order React actually produced, and the focus
+	 * return depends on where the browser puts focus when the focused control
+	 * unmounts. Driven with real key events, and read from the page.
+	 */
+	report.filesSegmentLabel = await cdp.evaluate(`(() => {
+		const segment = document.querySelector(
+			'button[aria-label^="Files view"]',
+		);
+		return segment ? segment.getAttribute("aria-label") : null;
+	})()`);
+
+	/** One real Escape key press, dispatched the way a keyboard sends one. */
+	const pressEscape = async () => {
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+				nativeVirtualKeyCode: 27,
+			});
+		}
 	};
-})()`);
-report.canvasButtonLabel = await cdp.evaluate(`(() => {
-	const button = document.querySelector('[data-tour-tag="open-canvas-button"]');
-	return button ? button.getAttribute("aria-label") : null;
-})()`);
+	await pressEscape();
+	await sleep(500);
+	report.escapeReturnsToFiles = await cdp.evaluate(`(() => {
+		const raw = localStorage.getItem("canvas-store");
+		return JSON.parse(raw)?.state?.conversations?.[${JSON.stringify(SESSION)}]?.viewMode ?? null;
+	})()`);
 
-report.appLogTail = log.slice(-8);
-writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
-console.log(JSON.stringify(report, null, 2));
+	// Closing the canvas from inside it is what used to drop focus on `<body>`.
+	report.closedCanvas = await cdp.evaluate(`(() => {
+		const button = document.querySelector('[aria-label="Close canvas"]');
+		if (!button) return false;
+		button.focus();
+		button.click();
+		return true;
+	})()`);
+	await sleep(500);
+	report.focusAfterClose = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		return {
+			tag: active ? active.tagName.toLowerCase() : null,
+			label: active ? active.getAttribute("aria-label") : null,
+			tourTag: active ? active.getAttribute("data-tour-tag") : null,
+		};
+	})()`);
+	report.canvasButtonLabel = await cdp.evaluate(`(() => {
+		const button = document.querySelector('[data-tour-tag="open-canvas-button"]');
+		return button ? button.getAttribute("aria-label") : null;
+	})()`);
 
-ws.close();
-process.exit((await stopApp()) ? 0 : 1);
+	report.appLogTail = log.slice(-8);
+	writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
+	console.log(JSON.stringify(report, null, 2));
+
+	ws.close();
+	process.exit(await finish(0));
+} finally {
+	await teardown();
+}
