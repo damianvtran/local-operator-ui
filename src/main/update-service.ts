@@ -1787,111 +1787,6 @@ export class UpdateService {
 	}
 
 	/**
-	 * Register the backend service for proper shutdown when app quits
-	 * This ensures that restarted backend services are properly shut down
-	 */
-	private registerBackendShutdown(): void {
-		if (!this.backendService || this.backendService.isUsingExternalBackend()) {
-			return;
-		}
-
-		// We'll use a more direct approach to ensure the backend is shut down
-		// Register a handler for the 'before-quit' event which is supported in Electron's type definitions
-		const shutdownHandler = async () => {
-			logger.info(
-				"Shutting down backend service before app quit...",
-				LogFileType.UPDATE_SERVICE,
-			);
-			try {
-				// Use false for isRestart to indicate this is a final shutdown, not a restart
-				await this.backendService?.stop(false);
-				logger.info(
-					"Backend service successfully shut down before app quit",
-					LogFileType.UPDATE_SERVICE,
-				);
-			} catch (error) {
-				logger.error(
-					"Error shutting down backend service before app quit:",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-
-				// If normal shutdown fails, try a more aggressive approach
-				try {
-					logger.info(
-						"Attempting forced shutdown of backend service...",
-						LogFileType.UPDATE_SERVICE,
-					);
-					await this.forceTerminateBackendProcess();
-					logger.info(
-						"Forced shutdown of backend service completed",
-						LogFileType.UPDATE_SERVICE,
-					);
-				} catch (forceError) {
-					logger.error(
-						"Error during forced shutdown of backend service:",
-						LogFileType.UPDATE_SERVICE,
-						forceError,
-					);
-				}
-			}
-		};
-
-		// Remove any existing handlers to avoid duplicates
-		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
-		(app as any).removeAllListeners("before-quit");
-
-		// Register the handler for app quit
-		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
-		(app as any).once("before-quit", shutdownHandler);
-
-		// Also register a handler for the will-quit event as a backup
-		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
-		(app as any).once("will-quit", shutdownHandler);
-
-		logger.info(
-			"Registered backend service for proper shutdown on app quit",
-			LogFileType.UPDATE_SERVICE,
-		);
-	}
-
-	/**
-	 * Force terminate the backend process using platform-specific commands
-	 * This is a last resort method when normal termination fails
-	 */
-	private async forceTerminateBackendProcess(): Promise<void> {
-		if (!this.backendService) {
-			return;
-		}
-
-		const execAsync = promisify(exec);
-
-		try {
-			if (process.platform === "win32") {
-				// On Windows, use taskkill to forcefully terminate processes with "local-operator serve" in the command line
-				await execAsync('taskkill /f /im "local-operator serve" /t');
-				await execAsync(
-					"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
-				);
-			} else {
-				// On Unix systems (macOS/Linux), use pkill to forcefully terminate processes with "local-operator serve" in the command line
-				await execAsync('pkill -f "local-operator serve"');
-				// Give processes a moment to terminate gracefully before force killing
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-				// Force kill any remaining processes
-				await execAsync('pkill -9 -f "local-operator serve"');
-			}
-		} catch (error) {
-			// Ignore errors, as the process might not exist
-			logger.warn(
-				"Error during force termination (this may be normal if process was already terminated):",
-				LogFileType.UPDATE_SERVICE,
-				error,
-			);
-		}
-	}
-
-	/**
 	 * Set up event handlers for the autoUpdater
 	 */
 	private setupUpdateEvents(): void {
@@ -2274,6 +2169,17 @@ export class UpdateService {
 			let block: InstallBlock | null = null;
 			try {
 				block = await this.runInstallPreflight(this.lastUpdateInfo);
+				// Native updaters do not await Electron's async quit listeners.
+				// Cleanup must precede even the watchdog/marker handoff effects.
+				if (!block) await this.backendService?.stop(false);
+			} catch (error) {
+				this.updateStage = "idle";
+				logger.error(
+					"Update handoff refused: owned backend cleanup failed",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+				return false;
 			} finally {
 				this.installPreflightInFlight = false;
 			}
@@ -3493,25 +3399,6 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			// Ensure the backend is fully stopped before attempting to restart
-			// Wait a bit to ensure any cleanup processes have completed
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-
-			// Verify the backend is actually stopped
-			const isHealthy = await this.checkBackendHealth();
-			if (isHealthy) {
-				logger.warn(
-					"Backend service is still running after stop command, attempting force termination",
-					LogFileType.UPDATE_SERVICE,
-				);
-
-				// Try force termination
-				await this.forceTerminateBackendProcess();
-
-				// Wait again to ensure termination
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-			}
-
 			// Use the dedicated restart method which properly handles the restart process
 			const restartSuccess = await this.backendService.restart();
 
@@ -3555,9 +3442,6 @@ export class UpdateService {
 						return false;
 					}
 				}
-
-				// Register the backend service for proper shutdown when app quits
-				this.registerBackendShutdown();
 			} else {
 				logger.error(
 					"Failed to restart backend service after update",
