@@ -76,15 +76,24 @@ reserves a 28px box, matching the `icon-sm` control it stands in for).
 
 ## Reproducibility, stated precisely
 
-A re-shoot of this rig's frames is byte-identical except that the FIRST frame of a
-pass has differed once by up to 2/255 on the placeholder's glyphs (reviewer round
-1, NIT 3 measured 246 pixels with a maximum channel delta of 2 in a 16x24 box, on
-`chat-message-input/idle/localOperatorDark.webp`, whose Light sibling came back
-byte-identical from the same run). It is not a layout or colour change - the same
-pass's other frames, including two that render the identical placeholder string,
-reproduced exactly - and the cause is unresolved rather than explained away, so
-the claim this file makes is "no layout or colour change between passes", not
-"byte-identical".
+A re-shoot of these frames reproduces every frame byte for byte EXCEPT for
+anti-aliasing on a few text pixels, and that is measured twice rather than
+asserted once:
+
+- reviewer round 1's NIT 3: `chat-message-input/idle/localOperatorDark.webp`
+  moved 246 pixels with a maximum channel delta of 2 in a 16x24 box on the
+  placeholder's glyphs, while its Light sibling came back byte-identical from the
+  same run;
+- the pass that re-stamped this branch after the remediation commit moved
+  `chat-message-input/interrupt-left-work-running/tokyoNight.webp` by 20 pixels
+  with a maximum delta of 4 in a 4x6 box, on the first line of the notice's own
+  text.
+
+So the difference is not confined to a pass's first frame (where it would be a
+settle race), it is not a layout or colour change - box edges, control positions
+and every ground and ink role are identical across passes - and the cause is
+unresolved rather than explained away. The claim this file makes is therefore "no
+layout or colour change between passes", not "byte-identical".
 
 ## What these frames do NOT show
 
