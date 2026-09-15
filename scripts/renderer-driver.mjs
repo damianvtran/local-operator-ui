@@ -526,11 +526,15 @@ async function launchApp({
 			// app's own dotenv reads.
 			ROOT,
 			// A profile directory PER LAUNCH, not one per run. The app takes a
-			// single-instance lock (`app.requestSingleInstanceLock`) and the second
-			// boot of a `--gate-check` run otherwise finds the first one's lock still
-			// held, prints "Another instance is already running. Quitting this
-			// instance." and exits without ever creating a window — which looks
-			// exactly like a broken driver. Measured on the first two-boot run.
+			// single-instance lock PER PROFILE (`app.requestSingleInstanceLock`), so two
+			// boots sharing one `--user-data-dir` collide: the second prints "Another
+			// instance is already running. Quitting this instance." and exits without
+			// ever creating a window — which looks exactly like a broken driver.
+			// Measured on the first two-boot run, which reused one profile directory
+			// for both boots. Different profiles coexist (a peer session booted two apps
+			// at once on separate profiles, and on the same HOME/config with different
+			// profiles, with no collision), so what this buys is one profile per launch
+			// rather than a machine-wide exclusion — the harness does not serialise.
 			`--user-data-dir=${USER_DATA}-${tag}`,
 			`--remote-debugging-port=${port}`,
 			"--window-mode=headless",

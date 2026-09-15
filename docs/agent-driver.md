@@ -97,9 +97,13 @@ Two mistakes are recorded here because they are the two ways this gate fails:
   which is synchronous, cannot be forged from outside the process, and does not
   block. `--gate-check` asserts the paint first for that reason.
 - **Do not share one `--user-data-dir` between two boots.** The app takes a
-  single-instance lock, so the second boot of a two-boot run prints "Another
-  instance is already running" and exits without a window — which reads exactly
-  like a broken driver. The harness gives each launch its own profile directory.
+  single-instance lock **per profile**, so two boots sharing one profile collide:
+  the second prints "Another instance is already running" and exits without a
+  window — which reads exactly like a broken driver (that is what the first
+  two-boot run of this harness did, one profile directory for both). Two boots on
+  *different* profiles do coexist — a peer session measured that, on different
+  `HOME`/config as well as on the same config — so the requirement is one profile
+  per launch, which is what the harness does, and not serialisation of runs.
 
 ## Isolation: what the run cannot reach
 

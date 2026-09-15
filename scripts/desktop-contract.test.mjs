@@ -323,7 +323,12 @@ test("canonical session operations preserve identity, arguments and main-owned a
 		{ op: "subagents.transcript", sessionId: "../config", childId },
 		{ op: "subagents.transcript", sessionId, childId, limit: 501 },
 		{ op: "subagents.transcript", sessionId, childId, limit: 0 },
-		{ op: "subagents.transcript", sessionId, childId, beforeId: "e".repeat(129) },
+		{
+			op: "subagents.transcript",
+			sessionId,
+			childId,
+			beforeId: "e".repeat(129),
+		},
 		{ op: "subagents.transcript", sessionId, childId, path: "/etc/passwd" },
 	])
 		assert.equal((await requestDesktop(input, url, token)).status, 422);
@@ -509,7 +514,6 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 	// (review round 3, Q7). Each must now reach its real path and method with
 	// the main-owned bearer, and the write bodies must arrive unmangled.
 	const agentId = "fixture-agent";
-	const key = "API_TOKEN";
 	const agent = { name: "new agent", security_prompt: "be careful" };
 	for (const [operation, path, method, body] of [
 		[{ op: "legacy.agent.create", agent }, "/v1/agents", "POST", agent],
@@ -545,42 +549,6 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 			`/v1/agents/${agentId}/download`,
 			"GET",
 		],
-		[
-			{ op: "legacy.agent.variables.list", agentId },
-			`/v1/agents/${agentId}/execution-variables`,
-			"GET",
-		],
-		[
-			{
-				op: "legacy.agent.variables.create",
-				agentId,
-				variable: { key, value: "v" },
-			},
-			`/v1/agents/${agentId}/execution-variables`,
-			"POST",
-			{ key, value: "v" },
-		],
-		[
-			{ op: "legacy.agent.variables.get", agentId, key },
-			`/v1/agents/${agentId}/execution-variables/${key}`,
-			"GET",
-		],
-		[
-			{
-				op: "legacy.agent.variables.update",
-				agentId,
-				key,
-				variable: { value: "w" },
-			},
-			`/v1/agents/${agentId}/execution-variables/${key}`,
-			"PATCH",
-			{ value: "w" },
-		],
-		[
-			{ op: "legacy.agent.variables.delete", agentId, key },
-			`/v1/agents/${agentId}/execution-variables/${key}`,
-			"DELETE",
-		],
 		[{ op: "legacy.job.cancel", jobId: "job-1" }, "/v1/jobs/job-1", "DELETE"],
 	]) {
 		assert.equal((await requestDesktop(operation, url, token)).status, 200);
@@ -591,16 +559,23 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 		if (body) assert.deepEqual(JSON.parse(actual.body), body);
 	}
 
-	// The variable key lands in the PATH, so a permissive value would let the
-	// renderer address a route it was never given an operation for.
+	/*
+	 * The legacy agent-variable ops are GONE from the vocabulary, not merely
+	 * unused. The code-memory panel was their only consumer, and a
+	 * familiar-looking call is how the bug comes back: a session id sent to
+	 * `/v1/agents/{id}/execution-variables` can only 404, because that route
+	 * resolves agent-directory UUIDs. Refusing the op at the contract is what
+	 * makes that mistake impossible rather than merely unlikely.
+	 */
 	const count = seen.length;
 	for (const input of [
+		{ op: "legacy.agent.variables.list", agentId },
+		{ op: "legacy.agent.variables.get", agentId, key: "API_TOKEN" },
 		{
-			op: "legacy.agent.variables.get",
+			op: "legacy.agent.variables.delete",
 			agentId,
 			key: "../../../v1/credentials",
 		},
-		{ op: "legacy.agent.variables.delete", agentId, key: "a/b" },
 		{ op: "legacy.agent.update", agentId: "../config", update: {} },
 		{ op: "legacy.job.cancel", jobId: "../agents" },
 		{ op: "legacy.agent.create", agent: {}, extra: "smuggled" },
@@ -662,6 +637,11 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 		[
 			{ op: "sessions.failovers", sessionId },
 			`/v1/desktop/sessions/${sessionId}/failovers`,
+			"GET",
+		],
+		[
+			{ op: "sessions.variables.list", sessionId },
+			`/v1/desktop/sessions/${sessionId}/variables`,
 			"GET",
 		],
 		[
@@ -743,7 +723,86 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 		if (operation.control)
 			assert.deepEqual(JSON.parse(actual.body), operation.control);
 	}
+	/*
+	 * Code memory's write half, compared by BODY rather than by path alone:
+	 * create carries the key, update deliberately does not (once the name
+	 * exists it is immutable and travels in the path), and the body shape is the
+	 * route's own `{key, value, type}` / `{value, type}`. The key below has a
+	 * space in it on purpose - a Python name is not the only legal key
+	 * (`globals()["outstanding total"] = 1` is memory like any other), so the
+	 * path must percent-encode it rather than the renderer refusing to address
+	 * a name the panel lists.
+	 */
+	const codeMemoryKey = "outstanding total";
+	for (const [operation, path, method, body] of [
+		[
+			{
+				op: "sessions.variables.create",
+				sessionId,
+				key: codeMemoryKey,
+				value: "7",
+				type: "int",
+			},
+			`/v1/desktop/sessions/${sessionId}/variables`,
+			"POST",
+			{ key: codeMemoryKey, value: "7", type: "int" },
+		],
+		[
+			{
+				op: "sessions.variables.update",
+				sessionId,
+				key: codeMemoryKey,
+				value: "{'a': 1}",
+				type: "dict",
+			},
+			`/v1/desktop/sessions/${sessionId}/variables/outstanding%20total`,
+			"PATCH",
+			{ value: "{'a': 1}", type: "dict" },
+		],
+		[
+			{ op: "sessions.variables.delete", sessionId, key: codeMemoryKey },
+			`/v1/desktop/sessions/${sessionId}/variables/outstanding%20total`,
+			"DELETE",
+		],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, path);
+		assert.equal(actual.method, method);
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		if (body) assert.deepEqual(JSON.parse(actual.body), body);
+	}
+
+	/*
+	 * A key that could address another route, and a type outside the six-name
+	 * table, are both refused BEFORE the transport: the key becomes a path
+	 * segment, and the type selects the worker's coercion - neither is a value
+	 * to guess at.
+	 */
+	const beforeRefusals = seen.length;
+	for (const operation of [
+		{ op: "sessions.variables.delete", sessionId, key: "../../v1/credentials" },
+		{
+			op: "sessions.variables.update",
+			sessionId,
+			key: "a/b",
+			value: "1",
+			type: "int",
+		},
+		{
+			op: "sessions.variables.create",
+			sessionId,
+			key: "x",
+			value: "1",
+			type: "string",
+		},
+		{ op: "sessions.variables.list", sessionId: "not-a-session" },
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 422);
+	}
+	assert.equal(seen.length, beforeRefusals);
 	const count = seen.length;
+
 	for (const operation of [
 		{ op: "sessions.stop", requestId, targets: [sessionId], confirmed: false },
 		{
@@ -942,8 +1001,11 @@ test("a picker reopens where the last one of its kind landed", () => {
 
 	// An explicit defaultPath from the caller wins.
 	assert.equal(
-		withRememberedDirectory("picker-test-file", { defaultPath: "/elsewhere" }, fallback)
-			.defaultPath,
+		withRememberedDirectory(
+			"picker-test-file",
+			{ defaultPath: "/elsewhere" },
+			fallback,
+		).defaultPath,
 		"/elsewhere",
 	);
 
@@ -980,7 +1042,11 @@ test("a picker reopens where the last one of its kind landed", () => {
 	// The options the caller passed are preserved, and the caller's object is not
 	// mutated -- the renderer's own options object crosses the IPC boundary.
 	const options = { properties: ["openFile"], title: "Select File" };
-	const returned = withRememberedDirectory("picker-test-file", options, fallback);
+	const returned = withRememberedDirectory(
+		"picker-test-file",
+		options,
+		fallback,
+	);
 	assert.deepEqual(returned.properties, ["openFile"]);
 	assert.equal(returned.title, "Select File");
 	assert.equal(options.defaultPath, undefined);
@@ -1358,4 +1424,225 @@ test("sessions.warm reaches the warm route with an empty body on the control bud
 		);
 	}
 	assert.equal(seen.length, count + 1, "no malformed warm reached the network");
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * The code-memory read path, through the SHIPPING renderer module.
+ *
+ * Review round 1 (C-01 / Q-1 / U1) found the panel reading one envelope level
+ * too shallow: the four routes answer `result: {data: <state>, replayed: false}`
+ * and `desktopResult` returns `envelope.result`, so `data.state` was undefined
+ * and every state fell through to the empty branch - a populated namespace
+ * rendering "Nothing stored yet". Nothing in the suite could see it, because
+ * every fixture answered the shape for which an unwrapped read works.
+ *
+ * So this test does not assert a fixture's shape. It replays the bodies the
+ * BACKEND sent - copied from a live session against PR #1101's routes - through
+ * the module the renderer really calls, and asserts the resolved value. The
+ * second half is the guard that would have failed before the fix: the same
+ * module, handed the shallow envelope, must NOT resolve a state. A test that
+ * only asserted the correct shape would keep passing if someone re-flattened
+ * the read path and re-flattened the fixture with it.
+ * ---------------------------------------------------------------------------
+ */
+const rendererBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	listSessionVariables,
+	createSessionVariable,
+	updateSessionVariable,
+	deleteSessionVariable,
+	isWritableVariableKey,
+	desktopRequestSchema,
+	desktopEndpoint: rendererDesktopEndpoint,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
+);
+
+const SESSION = "8fd6c6a40934";
+
+/** Serve fixed bodies through the renderer transport, as a backend would. */
+const serveRenderBodies = (bodies) => {
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					const body = bodies[request.op];
+					if (!body) throw new Error(`no body for ${request.op}`);
+					return { status: 200, body };
+				},
+			},
+		},
+	};
+};
+
+/** What `GET /v1/desktop/sessions/{id}/variables` really answers. */
+const LIST_BODY = {
+	status: 200,
+	message: "Desktop session result.",
+	result: {
+		data: {
+			state: "observed",
+			runtime: "running",
+			kernel: "resident",
+			variables: [
+				{
+					key: "total_outstanding",
+					type: "float",
+					value: "1234.5",
+					editable: true,
+					truncated: false,
+				},
+			],
+			truncated: false,
+		},
+		replayed: false,
+	},
+};
+
+const VARIABLE = {
+	key: "total_outstanding",
+	type: "float",
+	value: "1234.5",
+	editable: true,
+	truncated: false,
+};
+
+test("a code-memory read resolves the state inside the backend's `data` wrapper", async () => {
+	serveRenderBodies({ "sessions.variables.list": LIST_BODY });
+	const result = await listSessionVariables(SESSION);
+	assert.equal(
+		result.state,
+		"observed",
+		"the read must resolve the state the backend named, not the wrapper around it",
+	);
+	assert.equal(result.variables.length, 1);
+	assert.equal(result.variables[0].key, "total_outstanding");
+});
+
+test("the writes resolve their ack out of the same wrapper", async () => {
+	serveRenderBodies({
+		"sessions.variables.create": {
+			status: 200,
+			message: "ok",
+			result: { data: { state: "ok", variable: VARIABLE }, replayed: false },
+		},
+		// A variable of its own, so the assertion below reads as "the update's ack
+		// is what came back" rather than as "the write was ignored": the value
+		// asked for and the value answered are deliberately different.
+		"sessions.variables.update": {
+			status: 200,
+			message: "ok",
+			result: {
+				data: {
+					state: "ok",
+					variable: { ...VARIABLE, value: "9" },
+				},
+				replayed: false,
+			},
+		},
+		"sessions.variables.delete": {
+			status: 200,
+			message: "ok",
+			result: { data: { state: "ok" }, replayed: false },
+		},
+	});
+	const created = await createSessionVariable(SESSION, {
+		key: "total_outstanding",
+		value: "1234.5",
+		type: "float",
+	});
+	assert.equal(created.key, "total_outstanding");
+	const updated = await updateSessionVariable(SESSION, {
+		key: "total_outstanding",
+		value: "9",
+		type: "float",
+	});
+	// The ack's own value, which is the one the backend stored, not the one the
+	// request asked for: an unwrap that read the wrong level would return the
+	// request body and still pass a comparison against it.
+	assert.equal(updated.value, "9");
+	await deleteSessionVariable(SESSION, "total_outstanding");
+});
+
+test("the shallow envelope - the shape this PR shipped against - does not resolve a state", async () => {
+	serveRenderBodies({
+		"sessions.variables.list": {
+			status: 200,
+			message: "ok",
+			// What the Storybook fixtures used to answer: the state where the
+			// backend puts its wrapper. Kept as a test rather than deleted from
+			// history, because this is the exact body that made a broken read
+			// path look correct in 98 committed frames.
+			result: LIST_BODY.result.data,
+		},
+	});
+	const result = await listSessionVariables(SESSION);
+	assert.equal(
+		result?.state,
+		undefined,
+		"if this ever resolves a state, the read path is reading a shape the backend does not send",
+	);
+});
+
+test("a dot-only key is refused by the contract and never addressed", () => {
+	for (const key of [".", "..", "...", "", "a".repeat(129), "bad\u0007name"]) {
+		assert.equal(
+			isWritableVariableKey(key),
+			false,
+			`${key} must not be addressable`,
+		);
+		const parsed = desktopRequestSchema.safeParse({
+			op: "sessions.variables.delete",
+			sessionId: SESSION,
+			key,
+		});
+		assert.equal(parsed.success, false, `${key} must not pass the schema`);
+	}
+	/*
+	 * And why the rule has to be a refusal rather than a warning: the endpoint
+	 * builder itself is happy to produce the traversing path, and `new URL` in
+	 * the transport resolves it away before the request leaves - so a name of
+	 * dots would address `/variables/` or the collection, not the name. Pinned
+	 * here so the rule cannot be relaxed without this line failing.
+	 */
+	const { path: traversing } = rendererDesktopEndpoint({
+		op: "sessions.variables.delete",
+		sessionId: SESSION,
+		key: "..",
+	});
+	assert.equal(
+		new URL(traversing, "http://127.0.0.1:1111").pathname,
+		`/v1/desktop/sessions/${SESSION}/`,
+		"a dot-only key re-points the request; the schema refusal is what stops it",
+	);
+	// Names that are legal memory stay addressable: a space, a dot inside a
+	// name, and a dunder - the reason this is a denylist rather than an
+	// identifier regex.
+	for (const key of ["outstanding total", "a.b", "__builtins__"]) {
+		assert.equal(
+			isWritableVariableKey(key),
+			true,
+			`${key} must stay addressable`,
+		);
+		const { path } = rendererDesktopEndpoint({
+			op: "sessions.variables.delete",
+			sessionId: SESSION,
+			key,
+		});
+		assert.equal(
+			new URL(path, "http://127.0.0.1:1111").pathname,
+			`/v1/desktop/sessions/${SESSION}/variables/${encodeURIComponent(key)}`,
+		);
+	}
 });

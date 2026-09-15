@@ -101,12 +101,17 @@ checks, all passing):
 [PASS] pressing the rail's Agent hub button navigated the app
 [PASS] pressing the rail's Chat button navigated back, and the theme survived
 [PASS] every capture is a frame the app held still for, with no toast on it
-        chat-dark: held still after 2 capture(s), toast-free true | chat-light: held still after 2 capture(s), toast-free true
+        chat-dark: held still after 2 capture(s), toast-free true, waited 3ms for toasts | chat-light: held still after 2 capture(s), toast-free true, waited 1ms for toasts | chat-light-returned: held still after 3 capture(s), toast-free true, waited 4213ms for toasts
 [PASS] every capture wrote a PNG of the requested size
 [PASS] no process from this run outlived its boot
         0 processes matching lo-renderer-driver-…
 ALL CHECKS PASSED
 ```
+
+The third capture in that line is the un-committed `chat-light-returned`, and the
+4213 ms it waited is the check doing its job in this very run: the app's own
+`List agents request failed: 503` toast arrived before that frame and the scene
+waited it out instead of committing it.
 
 ## What these frames do NOT show
 
