@@ -73,6 +73,18 @@ export type DesktopFeature =
 	 * already claimed the next `session_catalogue` version.
 	 */
 	| "draft_preview"
+	/**
+	 * `sessions.preview` and `sessions.create` accepting a `model` selection: the
+	 * draft pane's model and effort chips can be PICKED, not merely read.
+	 *
+	 * Its own key rather than a bump of `draft_preview`, for the same reason
+	 * `draft_preview` has one: the inert draft strip is useful on its own, so a
+	 * backend that can preview but cannot birth a conversation on a choice must
+	 * leave the chips inert rather than dead — the copy says the model is used,
+	 * and a control that opens a picker whose pick cannot reach the session the
+	 * first send creates is the dead affordance R20 forbids.
+	 */
+	| "draft_selection"
 	| "lifecycle"
 	| "mcp"
 	/**
@@ -86,7 +98,15 @@ export type DesktopFeature =
 	 * reader that fails silently when a row is clicked.
 	 */
 	| "subagent_transcript"
-	| "radient";
+	| "radient"
+	/*
+	 * The two diagnostics reads (`info.get`, `sessions.report`). A SEPARATE key
+	 * rather than a bump of `catalogues`, because `/analytics` and
+	 * `/failovers` must keep working against a backend that lacks the two new
+	 * routes — a bumped shared key would gate the working panels behind an
+	 * update they do not need.
+	 */
+	| "diagnostics";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

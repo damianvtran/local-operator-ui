@@ -103,6 +103,16 @@ export type { SheetContentProps } from "./sheet";
 export { Skeleton } from "./skeleton";
 export { Switch } from "./switch";
 export {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableFooter,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "./table";
+export {
 	TabPanel,
 	Tabs,
 	TabsContent,

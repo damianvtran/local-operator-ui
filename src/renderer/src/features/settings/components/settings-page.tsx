@@ -1,3 +1,4 @@
+import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
@@ -49,15 +50,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
-import {
-	CartesianGrid,
-	Line,
-	LineChart,
-	Tooltip as RechartsTooltip,
-	ResponsiveContainer,
-	XAxis,
-	YAxis,
-} from "recharts";
+
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 
@@ -66,6 +59,7 @@ import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
+import { SettingsUsageChart } from "./settings-usage-chart";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
 
@@ -126,32 +120,11 @@ const USAGE_METRICS: { id: UsageMetric; label: string }[] = [
 ];
 
 /**
- * The usage chart's own tooltip.
- *
- * Recharts' default panel is configured with `contentStyle` / `itemStyle` /
- * `labelStyle` objects, which take literal colours and cannot read a role. A
- * custom renderer is the only way to theme it, and it also lets the panel use
- * the same anatomy as every other overlay in the app: `elevated` ground,
- * `shadow-overlay`, and monospace for the number because a number is machine
- * voice.
+ * The usage chart's own tooltip used to live here, styling recharts' default
+ * panel through literal-colour style objects. It moved to the chart frame's one
+ * custom renderer, so the app has a single chart idiom rather than two — see
+ * the note at the render site.
  */
-const UsageTooltip: FC<{
-	active?: boolean;
-	label?: string;
-	payload?: { value?: number | string; name?: string }[];
-	unit: string;
-}> = ({ active, label, payload, unit }) => {
-	if (!active || !payload?.length) return null;
-
-	return (
-		<div className="rounded-md border border-hairline bg-elevated px-3 py-2 shadow-overlay">
-			<p className="text-meta text-ink-dim">{label}</p>
-			<p className="text-mono text-ink">
-				{payload[0]?.value} {unit}
-			</p>
-		</div>
-	);
-};
 
 const UsageInfo: FC = () => {
 	const [dataType, setDataType] = useState<UsageMetric>("credits");
@@ -178,12 +151,27 @@ const UsageInfo: FC = () => {
 			(a, b) =>
 				parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime(),
 		);
+		/*
+		 * The frame plots one series of `{ bucket, value }`, so the METRIC picks the
+		 * value here rather than a `dataKey` at the mark: one metric control, one
+		 * series, and the axis and the tooltip cannot describe two different
+		 * quantities.
+		 */
 		return sortedDataPoints.map((point) => ({
-			date: format(parseISO(point.timestamp), "MMM dd"),
-			credits: Number.parseFloat(point.total_cost.toFixed(2)),
-			tokens: point.total_tokens,
+			/*
+			 * The SHARED formatter rather than `date-fns`' own `MMM dd`: an axis day is
+			 * the same quantity as a panel's day bucket, and one quantity gets one
+			 * spelling ("Sep 7", never "Sep 07" — review round 1, N2). The formatter
+			 * takes the ledger's `YYYY-MM-DD` bucket, so the wire's timestamp is
+			 * reduced to its date first.
+			 */
+			bucket: formatDayBucket(format(parseISO(point.timestamp), "yyyy-MM-dd")),
+			value:
+				dataType === "credits"
+					? Number.parseFloat(point.total_cost.toFixed(2))
+					: point.total_tokens,
 		}));
-	}, [usageData]);
+	}, [usageData, dataType]);
 
 	return (
 		<div>
@@ -227,52 +215,18 @@ const UsageInfo: FC = () => {
 			)}
 			{!isLoading && !error && usageData && chartData.length > 0 && (
 				/*
-				 * Recharts is styled from here, by descendant selector, rather than
-				 * through its colour props. Those props land as SVG presentation
-				 * attributes, which cannot take a `var()`, so a themed chart would
-				 * otherwise have to read palette hexes through `useTheme` — the one
-				 * thing this port is removing. A CSS rule beats a presentation
-				 * attribute, so these win, and the class names are recharts' own
-				 * documented ones.
+				 * The chart's one idiom lives in `ChartFrame` (the panel primitives),
+				 * which owns the descendant-selector theming, the axes, the grid and the
+				 * custom tooltip. Styling recharts here instead — through colour props that
+				 * land as SVG presentation attributes and cannot take a `var()`, or through
+				 * a second copy of these selectors — is the two-wrappers defect that
+				 * migration exists to remove: with twelve themes, two copies are kept in
+				 * step by hand.
+				 *
+				 * `title=""` because this section already has a heading row, and that row
+				 * carries the metric toggle the frame has no slot for.
 				 */
-				<div
-					className={cn(
-						"h-62 w-full",
-						"[&_.recharts-cartesian-grid_line]:stroke-hairline",
-						"[&_.recharts-cartesian-axis-tick-value]:fill-ink-dim [&_.recharts-cartesian-axis-tick-value]:text-meta",
-						"[&_.recharts-line-curve]:stroke-accent",
-						"[&_.recharts-active-dot_circle]:fill-accent",
-						"[&_.recharts-tooltip-cursor]:stroke-hairline",
-					)}
-				>
-					<ResponsiveContainer width="100%" height="100%">
-						<LineChart
-							data={chartData}
-							margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-						>
-							<CartesianGrid strokeDasharray="3 3" />
-							<XAxis dataKey="date" tickLine={false} axisLine={false} />
-							<YAxis tickLine={false} axisLine={false} width={48} />
-							<RechartsTooltip
-								content={
-									<UsageTooltip
-										unit={dataType === "credits" ? "credits" : "tokens"}
-									/>
-								}
-							/>
-							<Line
-								type="monotone"
-								dataKey={dataType}
-								strokeWidth={2}
-								dot={false}
-								activeDot={{ r: 4, strokeWidth: 0 }}
-								name={
-									dataType === "credits" ? "Credits consumed" : "Tokens used"
-								}
-							/>
-						</LineChart>
-					</ResponsiveContainer>
-				</div>
+				<SettingsUsageChart metric={dataType} data={chartData} />
 			)}
 			{!isLoading && !error && (!usageData || chartData.length === 0) && (
 				<p className="text-body-sm text-ink-muted">

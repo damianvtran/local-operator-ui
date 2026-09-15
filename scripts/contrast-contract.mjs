@@ -516,6 +516,29 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: "inkDim",
 	},
+	/*
+	 * The panel share meter's fill, drawn inside the same `border-control` track
+	 * `/usage` uses (its geometry is a port of that meter, one primitive instead
+	 * of one per panel). It is a fill that carries meaning — the length IS the
+	 * datum — so it sits on the graphic-object floor rather than being read as
+	 * decoration.
+	 */
+	{
+		name: "panel proportion fill (accent)",
+		on: ["sunken"],
+		fg: "accent",
+	},
+	/*
+	 * The one chart hue. The frame draws bars on the panel's own ground (a chart
+	 * is a region, not a card), and `accent` is the only series colour the design
+	 * permits: a second series colour would need a semantic the contract has no
+	 * row for, which is why breakdowns are many rows of single-hue bars.
+	 */
+	{
+		name: "panel chart bar (accent)",
+		on: ["surface"],
+		fg: "accent",
+	},
 ];
 
 /**
@@ -756,6 +779,40 @@ const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
  */
 const EXCEPTIONS = [];
 
+/*
+ * The step between a CONTROL's ink and a READOUT's ink, measured in one row.
+ *
+ * A session's row has always put live chips (`inkMuted`) beside inert readings
+ * (`inkDim`), and a draft's row does now too: the two chips that open, next to
+ * the context reading that does not. That pair is the only at-rest colour cue
+ * separating a control from a readout, and in five palettes it is a smaller step
+ * than this file already demands of a comment against the code beside it
+ * (`SYNTAX_COMMENT_FLOOR`, 8).
+ *
+ * Pinned rather than fixed, deliberately. Lifting `inkDim` in those five
+ * palettes changes EVERY dim string in the app, because the pairing is the app's
+ * own vocabulary rather than this row's - so that fix is a palette-wide visual
+ * change owned by the design review for those palettes, not by the PR that made
+ * two draft readings clickable. What this file can do meanwhile is stop the
+ * numbers being a matter of opinion: each pin must still measure what it says,
+ * and a palette that has been lifted out of the floor FAILS until its pin is
+ * deleted, so the list cannot outlive the defect it records.
+ *
+ * It is a pin and not a blocker because the cue is not colour-only in the
+ * artifact: a control takes the pointer, carries a hover step, and is a plain
+ * button in the accessibility tree, while the inert label form is a button with
+ * `aria-disabled` and no hover step. The ink step is what a mouse user sees
+ * BEFORE approaching, and those are the measured facts this list records.
+ */
+const INK_STEP_PINNED = [
+	{ theme: "tokyoNight", got: 5.74 },
+	{ theme: "obsidian", got: 5.8 },
+	{ theme: "iceberg", got: 6.03 },
+	{ theme: "neon", got: 7.17 },
+	{ theme: "localOperatorLight", got: 7.93 },
+];
+const inkStepSeen = new Set();
+
 /* ---- 5. the run --------------------------------------------------------- */
 
 const log = [];
@@ -899,6 +956,11 @@ const SEPARABLE = ["success", "warning", "danger", "info"];
 const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info", "ink"];
 const SYNTAX_COMMENT_FLOOR = 8;
 const SEPARATION_FLOOR = 15;
+/* The ink step's floor is the comment floor: see `INK_STEP_PINNED` for why it is
+   the same number and for why five palettes are recorded below it instead of
+   being moved. Declared here rather than beside the list because `const` does
+   not hoist and the floor it names is declared at this point in the file. */
+const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
 
 /*
  * Two perceptual floors, because a field and a line are not the same problem.
@@ -1136,6 +1198,28 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/* The control/readout ink step: measured always, floored where it can be. */
+	if (isHex(p.inkMuted) && isHex(p.inkDim)) {
+		assertions++;
+		inkStepSeen.add(id);
+		const got = deltaE(p.inkMuted, p.inkDim);
+		const pin = INK_STEP_PINNED.find((e) => e.theme === id);
+		if (got < INK_STEP_FLOOR) {
+			if (!pin)
+				fail(
+					`${id}: the control ink \`inkMuted\` ${p.inkMuted} sits at ΔE00 ${r2(got)} from the readout ink \`inkDim\` ${p.inkDim} (need ${INK_STEP_FLOOR}) - a chip that opens cannot be told from a reading that does not`,
+				);
+			else if (Math.abs(pin.got - got) >= 0.01)
+				fail(
+					`${id}: INK_STEP_PINNED records ${pin.got} but \`inkMuted\`/\`inkDim\` now measure ${r2(got)} - re-measure and update the pin, so the recorded number stays the one in the palette`,
+				);
+		} else if (pin) {
+			fail(
+				`${id}: the ink step is pinned at ${pin.got} but now measures ${r2(got)}, clearing the ${INK_STEP_FLOOR} floor - delete the pin rather than leaving dead weight in the contract`,
+			);
+		}
+	}
+
 	/* Adjacent grounds must be a perceptible step, not merely a passing ratio.
 	   D21 established that 1.03:1 is a gate floor, not a human threshold -
 	   sage's canvas/surface at 1.9 dE00 renders a visible card boundary and
@@ -1268,6 +1352,15 @@ if (callSiteFailures > 0) {
 	process.exit(1);
 }
 
+/* A pin for a palette that is gone is the same dead weight. */
+const staleInk = INK_STEP_PINNED.filter((e) => !inkStepSeen.has(e.theme));
+if (staleInk.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${staleInk.length} pinned ink step(s) reference themes that no longer exist (${staleInk.map((e) => e.theme).join(", ")}).`,
+	);
+	process.exit(1);
+}
+
 /* An unpinned exception is dead weight that hides a fixed defect. */
 const stale = EXCEPTIONS.filter(
 	(e) => !palettes.some(({ id }) => id === e.theme),
@@ -1280,5 +1373,5 @@ if (stale.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s).`,
 );
