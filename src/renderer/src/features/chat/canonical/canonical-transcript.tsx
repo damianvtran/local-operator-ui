@@ -1604,7 +1604,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							)}
 							<p className="mt-2 text-ink-dim text-meta">
 								{gate.kind === "approval"
-									? "Reply yes or no in the composer."
+									? /*
+										 * BOTH exits, because a parked card has two and used to
+										 * name one (UX round 1, U2). Escape aborts the WHOLE
+										 * turn - measured: the card clears, the turn ends
+										 * `aborted`, the transcript keeps no denial - so the
+										 * sentence promises the turn's stop exactly as the
+										 * composer's Stop control does. On a paired backend that
+										 * predates the control Escape does nothing, and the
+										 * composer says so while the turn runs; the card stays
+										 * unconditional rather than reading the capability a
+										 * second time, which is a copy decision the UX round can
+										 * revisit if the skew window ever outlives the fix.
+										 */
+										"Reply yes or no in the composer, or press Escape to stop the turn."
 									: /*
 										 * The hint names the new affordance first and keeps the
 										 * free-text path honest, because both are real: the
