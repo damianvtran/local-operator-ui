@@ -225,24 +225,48 @@ export const STORIES = [
 	   (D1) — and the sizes are tight to their content, because a band is short and
 	   a frame that is 99% ground crosses `check-evidence`'s uniformity ceiling. */
 	["browser-consent-bar--pending", 1280, 300],
-	["browser-consent-bar--attributed-and-queued", 1280, 300],
-	["browser-consent-bar--unnamed-requester-no-domain", 1280, 280],
+	["browser-consent-bar--attributed-and-queued", 1280, 360],
+	["browser-consent-bar--unnamed-requester-no-domain", 1280, 300],
 	["browser-consent-bar--an-agent", 1280, 300],
 	["browser-consent-bar--busy", 1280, 300],
+	/* The queued band's own states, which the round that built the queue added: the
+	   numbered chips (the operator's "numbered badge callout"), the third request
+	   selected rather than the first, and the two ways a request leaves without an
+	   answer. */
+	["browser-consent-bar--three-waiting", 1280, 360],
+	["browser-consent-bar--expired-and-withdrawn", 1280, 140],
+	/* The Approvals control's badge: none, one, three. Sized to the bar plus the
+	   padding the badge needs, because the badge sits half outside the control's
+	   own box and a tight frame would clip the number the frame exists to show. */
+	["browser-url-bar--no-badge", 1280, 120],
+	["browser-url-bar--one-waiting", 1280, 120],
+	["browser-url-bar--three-waiting", 1280, 120],
+	/* The strip's grammar and its chips. Tight to the strip plus a slice of ground
+	   under it: the active tab's notch is the 1px of `canvas` that makes the tab
+	   continuous with the page, and a frame that stopped at the strip's rule could
+	   not show it. `actions-expanded` is taller by exactly the row the strip grows
+	   when a row's actions open in the band. */
+	["browser-tab-strip--one", 1280, 140],
+	["browser-tab-strip--many", 1280, 140],
+	["browser-tab-strip--overflowing", 1280, 140],
+	["browser-tab-strip--waiting", 1280, 140],
+	["browser-tab-strip--agent-and-waiting", 1280, 140],
+	["browser-tab-strip--failed", 1280, 140],
+	["browser-tab-strip--restored", 1280, 140],
+	["browser-tab-strip--actions-expanded", 1280, 180],
+	/* The dock, which replaced the Sites sheet. It is a full-height in-flow panel,
+	   so the declared height is the panel's; `narrow` is captured in a 560px
+	   viewport because the dock's own width classes are the product's (`w-80` below
+	   a 1280px surface), and forcing it narrow in a wide viewport would photograph a
+	   width the product never renders. */
+	["browser-approvals-dock--waiting", 1280, 720],
+	["browser-approvals-dock--approved", 1280, 720],
+	["browser-approvals-dock--denied", 1280, 720],
+	["browser-approvals-dock--empty", 1280, 720],
+	["browser-approvals-dock--narrow", 560, 720],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
-	/*
-	 * 1180 rather than 900 for the populated sheet, and the number is the fix for a
-	 * measured defect (review round 2, D8): the sheet is `h-full` of the VIEWPORT
-	 * with its own scroller, so at 900 the panel ended at a boundary rule with the
-	 * "Browsing data" section cut off inside it, while the empty frame showed that
-	 * section in full. A frame that claims to show the populated sheet has to
-	 * contain it. The capture floors the viewport at this number and grows it to the
-	 * content, so declaring it is what makes the whole panel photographable.
-	 */
-	["browser-sites-sheet--populated", 1280, 1180],
-	["browser-sites-sheet--empty", 1280, 760],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
