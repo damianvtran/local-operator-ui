@@ -375,6 +375,7 @@ async function loadMainProcess() {
 									contents: `
 					export const consoleInterpreter = () => "/fixture/python";
 					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
+					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
 					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
 				`,
 								}),

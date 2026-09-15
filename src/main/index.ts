@@ -24,7 +24,11 @@ import {
 import {
 	BackendInstaller,
 	BackendServiceManager,
+	CONSOLE_RESOLUTION_WORST_MS,
+	INTERPRETER_RESOLUTION_WORST_MS,
 	LocalOperatorStartupMode,
+	OWNED_STOP_WORST_MS,
+	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
@@ -459,6 +463,27 @@ function createWindow(): BrowserWindow {
 // Initialize backend service manager and installer
 const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
+
+/**
+ * Report a start failure unless a shutdown is already in flight.
+ *
+ * `dialog.showErrorBox` is a native modal and parks the main thread, and the
+ * quit path cannot proceed past a parked thread: the owned cleanup never
+ * finishes, the quit's failsafe is a timer on that same thread and so never
+ * fires, and the app sits windowless until something kills it (QA round 4,
+ * Q-20: a SIGTERM during the first start left the app alive 50 s later). When
+ * a shutdown is in flight the failure is logged instead, where the post-mortem
+ * reads it. */
+const reportBackendFailure = (message: string, fileType: LogFileType): void => {
+	if (backendService.isShuttingDown()) {
+		logger.error(
+			`Backend Error (not shown; the app is shutting down): ${message}`,
+			fileType,
+		);
+		return;
+	}
+	dialog.showErrorBox("Backend Error", message);
+};
 
 /*
  * How this process wants its window to behave. Resolved at load, from
@@ -1035,9 +1060,9 @@ app
 							"Failed to start backend after installation, quitting app",
 							LogFileType.INSTALLER,
 						);
-						dialog.showErrorBox(
-							"Backend Error",
+						reportBackendFailure(
 							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+							LogFileType.INSTALLER,
 						);
 						app.quit();
 						return;
@@ -1050,9 +1075,9 @@ app
 							"Failed to start backend with existing installation, quitting app",
 							LogFileType.BACKEND,
 						);
-						dialog.showErrorBox(
-							"Backend Error",
+						reportBackendFailure(
 							"Failed to start the Local Operator backend service. Please restart the application.",
+							LogFileType.BACKEND,
 						);
 						app.quit();
 						return;
@@ -1269,15 +1294,29 @@ app.on("window-all-closed", () => {
 /*
  * ...and never leave the user without a way out.
  *
- * Every step the retry waits on is bounded only by its own timers - the resolver
- * may still be proving an interpreter (<= the shared probe budget) and the owned
- * stop escalates over grace plus force - so a quit that arrives during a slow
- * first start would otherwise leave a windowless process with no failsafe at
- * all, which is exactly what the pre-remediation handler armed here (review
- * round 1 F5, round 2 F10: 45 s of probe budget + 8 s of stop escalation + the
- * readiness poll's last interval, rounded up).
+ * Derived from the work the retry waits on, not asserted: `stop(false)` waits
+ * for the start promise to settle, and that promise can be inside console
+ * discovery, interpreter resolution and the owned stop's own escalation, with
+ * the readiness poll's last interval on top. Round 2's version of this constant
+ * named only the probe budget and the stop escalation, which omitted the
+ * `where` execs and the discovery window entirely - so the "60000 ms" it
+ * claimed could be reached mid-cleanup and report a failure that had not
+ * happened (review round 3, F12). Each term is the exported bound it comes
+ * from; changing any of them moves this one.
+ *
+ * What it does NOT cover, stated because a bound that only holds while the
+ * thread is free is not a bound: it is a timer, so it cannot fire while the
+ * main thread is parked. The one way this path parked it - a failure modal
+ * raised while a quit was in flight - is removed (`reportBackendFailure`, QA
+ * round 4 Q-20); any future blocking call on the quit path re-opens the hole.
  */
-const QUIT_CLEANUP_FAILSAFE_MS = 60_000;
+const QUIT_FAILSAFE_MARGIN_MS = 5_000;
+const QUIT_CLEANUP_FAILSAFE_MS =
+	CONSOLE_RESOLUTION_WORST_MS +
+	INTERPRETER_RESOLUTION_WORST_MS +
+	OWNED_STOP_WORST_MS +
+	READINESS_POLL_INTERVAL_MS +
+	QUIT_FAILSAFE_MARGIN_MS;
 let backendQuitPending = false;
 app.on("will-quit", (event) => {
 	if (backendService.isOwnedCleanupComplete()) return;

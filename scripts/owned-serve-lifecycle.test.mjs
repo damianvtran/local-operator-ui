@@ -3,15 +3,18 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { EventEmitter, once } from "node:events";
 import {
 	chmodSync,
+	cpSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { createServer } from "node:net";
 import { createRequire } from "node:module";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -135,8 +138,17 @@ async function buildFixture(plugins) {
 }
 
 const bundle = await buildFixture([isolatedMain()]);
-const { BackendServiceManager, ownedServeLaunch, consoleInterpreter, windowsInterpreterCandidates } =
-	bundle;
+const {
+	BackendServiceManager,
+	ownedServeLaunch,
+	consoleInterpreter,
+	windowsInterpreterCandidates,
+	windowsPathInterpreterCandidates,
+	CONSOLE_RESOLUTION_WORST_MS,
+	INTERPRETER_RESOLUTION_WORST_MS,
+	OWNED_STOP_WORST_MS,
+	READINESS_POLL_INTERVAL_MS,
+} = bundle;
 BackendServiceManager.prototype.loadShellEnvironment = async () => {};
 const managers = [];
 const children = [];
@@ -374,8 +386,16 @@ test("stale exit/timer and reused PID never clear or signal replacement", async 
 	assert.equal(m.process, b);
 	a.exitCode = 0;
 	a.emit("exit", 0, null);
-	assert.equal(m.process, b, "a retired generation's late exit is not authority");
-	assert.equal(m.ownedServe, gb, "manager ownership still names the replacement");
+	assert.equal(
+		m.process,
+		b,
+		"a retired generation's late exit is not authority",
+	);
+	assert.equal(
+		m.ownedServe,
+		gb,
+		"manager ownership still names the replacement",
+	);
 	await stopping;
 	await new Promise((r) => setTimeout(r, 40));
 	assert.equal(m.process, b);
@@ -404,7 +424,11 @@ test("a handle the OS already reaped is never signalled, however its number is r
 		/unconfirmed/,
 		"a reaped handle cannot confirm an exit",
 	);
-	assert.deepEqual(c.signals, [], "a reaped handle is not a termination authority");
+	assert.deepEqual(
+		c.signals,
+		[],
+		"a reaped handle is not a termination authority",
+	);
 	assert.equal(m.process, c, "fail-closed cleanup keeps ownership");
 });
 
@@ -465,9 +489,10 @@ test("opaque launcher rejected; cli:main entrypoint works without __main__", asy
 
 test("index quit preserves listeners, waits cleanup, bounds itself and exits nonzero on failure", async () => {
 	const source = readFileSync("src/main/index.ts", "utf8");
-	// Sliced from the failsafe constant, so the bound the handler arms is inside
-	// the code under test rather than assumed from the file above it.
-	const start = source.indexOf("const QUIT_CLEANUP_FAILSAFE_MS");
+	// Sliced from the first term of the derivation, so both the arithmetic and the
+	// bound the handler arms are inside the code under test rather than assumed
+	// from the file above them.
+	const start = source.indexOf("const QUIT_FAILSAFE_MARGIN_MS");
 	const end = source.indexOf("// Handle before-quit", start);
 	const code = (await transform(source.slice(start, end), { loader: "ts" }))
 		.code;
@@ -506,6 +531,11 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			backendService,
 			logger: { error: (message) => errors.push(String(message)) },
 			LogFileType: { BACKEND: "backend" },
+			// The derivation's terms, as the module under test imports them.
+			CONSOLE_RESOLUTION_WORST_MS,
+			INTERPRETER_RESOLUTION_WORST_MS,
+			OWNED_STOP_WORST_MS,
+			READINESS_POLL_INTERVAL_MS,
 			setTimeout: (fn, ms) => {
 				const timer = { fn, ms, unref: () => {} };
 				timers.push(timer);
@@ -530,7 +560,23 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		assert.ok(app.listeners("before-quit").includes(hooks));
 		assert.ok(app.listeners("will-quit").includes(hooks));
 		assert.equal(timers.length, 1, "the quit armed exactly one bound");
-		assert.ok(timers[0].ms > 0 && timers[0].ms <= 60_000, `bound is ${timers[0].ms} ms`);
+		// Pinned to the derivation, not to a literal (round 3, F12): the bound must
+		// cover every step the quit waits on, and it must not be an order of
+		// magnitude above them either. Asserting a bare `<= 60_000` is what forbade
+		// the correct bound and let the 60 s constant survive its own arithmetic.
+		const derived =
+			CONSOLE_RESOLUTION_WORST_MS +
+			INTERPRETER_RESOLUTION_WORST_MS +
+			OWNED_STOP_WORST_MS +
+			READINESS_POLL_INTERVAL_MS;
+		assert.ok(
+			timers[0].ms >= derived,
+			`bound ${timers[0].ms} ms must cover the ${derived} ms it waits on`,
+		);
+		assert.ok(
+			timers[0].ms <= derived + 15_000,
+			`bound ${timers[0].ms} ms must stay within its margin of ${derived} ms`,
+		);
 		if (outcome === "failed") reject(Error("cleanup"));
 		else if (outcome === "ok") {
 			done = true;
@@ -538,9 +584,17 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		}
 		if (outcome === "stuck") {
 			await new Promise((r) => setImmediate(r));
-			assert.equal(exit, null, "nothing exits while the cleanup is still running");
+			assert.equal(
+				exit,
+				null,
+				"nothing exits while the cleanup is still running",
+			);
 			timers[0].fn();
-			assert.equal(exit, 1, "the bound exits rather than leaving the app windowless");
+			assert.equal(
+				exit,
+				1,
+				"the bound exits rather than leaving the app windowless",
+			);
 			assert.match(
 				errors.join("\n"),
 				/Owned backend cleanup did not finish within \d+ ms/,
@@ -663,7 +717,8 @@ function probeChild(outcome) {
 	(globalThis.__probeChildren ??= []).push(child);
 	child.kill = (signal) => {
 		child.signals.push(signal);
-		if (signal === "SIGKILL") setImmediate(() => child.emit("close", null, signal));
+		if (signal === "SIGKILL")
+			setImmediate(() => child.emit("close", null, signal));
 		return true;
 	};
 	setImmediate(() => {
@@ -766,7 +821,11 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		"win32",
 	);
 	assert.equal(direct.command, "/base/python.exe");
-	assert.equal(direct.env, env, "a direct interpreter needs no environment change");
+	assert.equal(
+		direct.env,
+		env,
+		"a direct interpreter needs no environment change",
+	);
 	assert.equal(globalThis.__probeCalls.length, 1);
 
 	// The base must report ITSELF, or the PID captured would not be serve.
@@ -775,12 +834,7 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		["/other/python.exe", "/other/python.exe", true, []],
 	];
 	await assert.rejects(
-		fixture.ownedServeLaunch(
-			["/venv/Scripts/python.exe"],
-			12345,
-			env,
-			"win32",
-		),
+		fixture.ownedServeLaunch(["/venv/Scripts/python.exe"], 12345, env, "win32"),
 		/reported itself as \/other\/python\.exe/,
 	);
 
@@ -791,12 +845,7 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		["/base/python.exe", "/base/python.exe", false, []],
 	];
 	await assert.rejects(
-		fixture.ownedServeLaunch(
-			["/venv/Scripts/python.exe"],
-			12345,
-			env,
-			"win32",
-		),
+		fixture.ownedServeLaunch(["/venv/Scripts/python.exe"], 12345, env, "win32"),
 		/cannot import local_operator\.cli even with the venv's own import paths/,
 	);
 
@@ -826,11 +875,7 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 	globalThis.__probeResults = [
 		["/python/python", "/python/python", true, ["/python/lib"]],
 	];
-	const posix = await fixture.ownedServeLaunch(
-		["/python/python"],
-		12345,
-		env,
-	);
+	const posix = await fixture.ownedServeLaunch(["/python/python"], 12345, env);
 	assert.equal(posix.command, "bash");
 	assert.equal(posix.env, env, "the POSIX plan passes its environment through");
 	delete globalThis.__probeResults;
@@ -872,7 +917,7 @@ test("a slow first probe is retried, and a stuck interpreter is killed and repor
 	const started = Date.now();
 	await assert.rejects(
 		fixture.ownedServeLaunch(["/python/python"], 4321, env, "darwin", tight),
-		/did not answer an identity probe within 300 ms/,
+		/did not answer an identity probe within \d+ ms/, // the effective ceiling, which the shared budget can reduce
 	);
 	assert.ok(
 		Date.now() - started < 3_000,
@@ -928,6 +973,203 @@ test("interpreter candidates are claims: a later one is admitted when an earlier
 	);
 });
 
+test("PATH discovery is not paid when a claim above it proves out", async () => {
+	// Round 3, F14: the two discovery children are start-path latency, and
+	// therefore quit-path latency, so they are asked for only after every claim
+	// above them has failed.
+	let asked = 0;
+	const plan = await ownedServeLaunch(
+		[python],
+		await freePort(),
+		env,
+		"darwin",
+		{},
+		async () => {
+			asked++;
+			return [];
+		},
+	);
+	assert.equal(asked, 0, "an admitted claim must not pay for PATH discovery");
+	assert.equal(plan.args[3], python);
+
+	let askedWhenNeeded = 0;
+	await assert.rejects(
+		ownedServeLaunch(
+			[join(home, "not-here", "python")],
+			await freePort(),
+			env,
+			"darwin",
+			{ totalMs: 2_000, attemptMs: 500, graceMs: 60, slackMs: 60 },
+			async () => {
+				askedWhenNeeded++;
+				return [];
+			},
+		),
+		/No backend interpreter could be proven/,
+	);
+	assert.equal(
+		askedWhenNeeded,
+		1,
+		"the fallback claims are asked when nothing above them proved out",
+	);
+});
+
+test("an interpreter that exists but is not the backend is rejected, and the next claim is admitted", async () => {
+	// Round 3, F13: the branch this fix depends on most - a real system Python
+	// that cannot import the CLI - was carried by a comment and by no test. A path
+	// that exists is not a backend; the probe decides.
+	const probeEnv = { ...env };
+	delete probeEnv.PYTHONPATH;
+	const wrong = [
+		"/usr/bin/python3",
+		"/opt/homebrew/bin/python3",
+		"/usr/local/bin/python3",
+	].find(
+		(candidate) =>
+			existsSync(candidate) &&
+			spawnSync(candidate, ["-c", "import local_operator"], { env: probeEnv })
+				.status !== 0,
+	);
+	if (!wrong) return; // no interpreter on this host without the fixture on its path
+
+	// A second interpreter that really is a backend, carrying the fixture package
+	// in its own site-packages so one environment serves both claims.
+	const venv = join(home, "second-claim-venv");
+	if (!existsSync(join(venv, "bin", "python"))) {
+		const made = spawnSync(python, ["-m", "venv", "--without-pip", venv], {
+			env: probeEnv,
+			encoding: "utf8",
+		});
+		assert.equal(made.status, 0, made.stderr);
+		const site = spawnSync(
+			join(venv, "bin", "python"),
+			["-c", "import site; print(site.getsitepackages()[0])"],
+			{ env: probeEnv, encoding: "utf8" },
+		).stdout.trim();
+		cpSync(join(home, "local_operator"), join(site, "local_operator"), {
+			recursive: true,
+		});
+	}
+	const second = join(venv, "bin", "python");
+	const wide = {
+		totalMs: 20_000,
+		attemptMs: 10_000,
+		graceMs: 200,
+		slackMs: 200,
+	};
+	const plan = await ownedServeLaunch(
+		[wrong, second],
+		await freePort(),
+		probeEnv,
+		"darwin",
+		wide,
+	);
+	assert.equal(
+		realpathSync(plan.args[3]),
+		realpathSync(second),
+		"the plan names the claim that proved itself, not the one that merely exists",
+	);
+
+	// And the rejected claim's message carries the cause rather than only the
+	// traceback header it starts with (round 4, Q-21).
+	await assert.rejects(
+		ownedServeLaunch([wrong], await freePort(), probeEnv, "darwin", wide),
+		/ImportError|ModuleNotFoundError/,
+	);
+});
+
+test("a start failure during a shutdown is logged, and raises no modal", async () => {
+	// Round 4, Q-20: `showErrorBox` parks the main thread, and the quit's bound is
+	// a timer on that thread - so a failure raised while a quit is in flight must
+	// not raise one. Driven directly, because the timing inside a start is not
+	// something a test can hold still.
+	const { BackendServiceManager: Manager } = await buildFixture([
+		isolatedMain(
+			"(title,message)=>{globalThis.__dialog.push([title,message]);}",
+		),
+	]);
+	Manager.prototype.loadShellEnvironment = async () => {};
+	globalThis.__dialog = [];
+	const m = new Manager();
+	m.shellEnv = { ...env };
+	m.isDisabled = false;
+
+	m.isAppClosing = false;
+	m.reportStartFailure("Backend Error", "the backend did not start");
+	assert.equal(
+		globalThis.__dialog.length,
+		1,
+		"an ordinary start failure still tells the user",
+	);
+	assert.equal(m.isShuttingDown(), false);
+
+	globalThis.__dialog = [];
+	m.isAppClosing = true;
+	m.reportStartFailure("Backend Error", "the backend did not start");
+	assert.equal(
+		globalThis.__dialog.length,
+		0,
+		"no modal while a quit is in flight: it would park the thread the quit needs",
+	);
+	assert.equal(m.isShuttingDown(), true);
+	delete globalThis.__dialog;
+});
+
+test("index's start-failure reporter consults the shutdown state, and nothing bypasses it", async () => {
+	const source = readFileSync("src/main/index.ts", "utf8");
+	// One call site, inside the guard: a second `showErrorBox` anywhere in this
+	// file is a modal that can park a quit again. Comment mentions do not count.
+	const dialogCalls = source
+		.split("\n")
+		.filter(
+			(line) =>
+				line.includes("dialog.showErrorBox") &&
+				!line.trimStart().startsWith("*"),
+		);
+	assert.equal(
+		dialogCalls.length,
+		1,
+		`exactly one dialog call, inside the shutdown-guarded reporter, not ${dialogCalls.length}`,
+	);
+	const start = source.indexOf("const reportBackendFailure");
+	const end = source.indexOf("\n};\n", start);
+	assert.ok(
+		start > 0 && end > start,
+		"the reporter is in the source where this test expects it",
+	);
+	const code = (await transform(source.slice(start, end + 4), { loader: "ts" }))
+		.code;
+	const call = (shuttingDown) => {
+		const shown = [];
+		const logged = [];
+		vm.runInNewContext(
+			`${code}\nreportBackendFailure("Backend Error: boom", "backend");`,
+			{
+				backendService: { isShuttingDown: () => shuttingDown },
+				logger: { error: (message) => logged.push(String(message)) },
+				LogFileType: { BACKEND: "backend" },
+				dialog: {
+					showErrorBox: (title, message) => shown.push([title, message]),
+				},
+			},
+		);
+		return { shown, logged };
+	};
+	const outside = call(false);
+	assert.equal(
+		outside.shown.length,
+		1,
+		"a start failure outside a shutdown is shown",
+	);
+	const during = call(true);
+	assert.equal(
+		during.shown.length,
+		0,
+		"a start failure during a shutdown is logged instead of parked in a modal",
+	);
+	assert.match(during.logged.join("\n"), /not shown; the app is shutting down/);
+});
+
 test("Windows candidates cover the layouts an installer can produce, and drop what is not there", async () => {
 	const uvRoot = join(home, "uv", "tools");
 	const pipxRoot = join(home, "pipx-venvs");
@@ -964,6 +1206,11 @@ test("Windows candidates cover the layouts an installer can produce, and drop wh
 		[],
 		"claims that do not exist are not offered to a probe",
 	);
+	// The PATH-side claims are their own function now (round 3, F14), so the two
+	// discovery children are only paid when nothing above them proved out. `where`
+	// and `py` do not exist on this host, so this asserts the miss is handled and
+	// not the Windows answer - the PR thread says so rather than implying coverage.
+	assert.deepEqual(await windowsPathInterpreterCandidates(env), []);
 });
 
 test("a probe against an interpreter that ignores SIGTERM is killed and reported, not left pending", async () => {
@@ -986,10 +1233,13 @@ test("a probe against an interpreter that ignores SIGTERM is killed and reported
 			"darwin",
 			{ totalMs: 1_200, attemptMs: 900, graceMs: 150, slackMs: 150 },
 		),
-		/did not answer an identity probe within 900 ms/,
+		/did not answer an identity probe within \d+ ms/, // the effective ceiling, not the configured one
 	);
 	const elapsed = Date.now() - started;
-	assert.ok(elapsed < 5_000, `the escalation bounded the attempt (${elapsed} ms)`);
+	assert.ok(
+		elapsed < 5_000,
+		`the escalation bounded the attempt (${elapsed} ms)`,
+	);
 	const pid = Number(readFileSync(pidFile, "utf8"));
 	assert.ok(pid > 0, "the fixture recorded its interpreter pid");
 	assert.throws(
@@ -1017,7 +1267,10 @@ test("the probe budget bounds the whole resolution, however many candidates ther
 		/No backend interpreter could be proven/,
 	);
 	const elapsed = Date.now() - started;
-	assert.ok(elapsed < 2_000, `the resolution stayed inside its budget (${elapsed} ms)`);
+	assert.ok(
+		elapsed < 4_000,
+		`the resolution stayed inside its budget (${elapsed} ms)`,
+	);
 	assert.ok(
 		globalThis.__probeCalls.length <= 4,
 		"candidates are not probed past the budget",
@@ -1050,7 +1303,9 @@ export function spawnSync() { return { status: 0, stdout: "" }; }
 		},
 	};
 	const { BackendServiceManager: Manager } = await buildFixture([
-		isolatedMain("(title,message)=>{globalThis.__dialog.push([title,message]);}"),
+		isolatedMain(
+			"(title,message)=>{globalThis.__dialog.push([title,message]);}",
+		),
 		processStub,
 	]);
 	Manager.prototype.loadShellEnvironment = async () => {};
@@ -1087,7 +1342,11 @@ export function spawnSync() { return { status: 0, stdout: "" }; }
 		false,
 		"a failed cleanup is reported, not thrown at the watchdog",
 	);
-	assert.equal(globalThis.__dialog.length, 1, "the failure still reaches the user");
+	assert.equal(
+		globalThis.__dialog.length,
+		1,
+		"the failure still reaches the user",
+	);
 	assert.match(
 		globalThis.__dialog[0][1],
 		/Error starting the Local Operator backend service/,

@@ -41,7 +41,34 @@ import {
 	consoleInterpreter,
 	ownedServeLaunch,
 	windowsInterpreterCandidates,
+	windowsPathInterpreterCandidates,
 } from "./owned-serve-launch";
+
+/** Every `where`/`which local-operator` exec the start path runs, bounded.
+ *
+ * Two of them - the existence check, then the resolution - at one ceiling each
+ * is the console half of the start path's worst case. The first used to have no
+ * timeout at all, which made it the only unbounded step a quit waiting on a
+ * start could land on (review round 3, F12); a bound that has to outlast this
+ * work derives from this number rather than restating it. */
+const CONSOLE_DISCOVERY_TIMEOUT_MS = 5_000;
+export const CONSOLE_RESOLUTION_WORST_MS = 2 * CONSOLE_DISCOVERY_TIMEOUT_MS;
+
+/** The shutdown escalation one `stop(false)` can spend before it gives up: the
+ * normal grace, then the force hold after SIGKILL. Exported for the same reason
+ * as the constant above - the quit failsafe is derived, not asserted. */
+const SHUTDOWN_TIMEOUT_DEFAULTS = {
+	restart: 10_000, // 10 seconds for restart operations
+	normal: 5_000, // 5 seconds for normal shutdowns
+	force: 3_000, // 3 seconds before force killing after SIGKILL
+};
+export const OWNED_STOP_WORST_MS =
+	SHUTDOWN_TIMEOUT_DEFAULTS.normal + SHUTDOWN_TIMEOUT_DEFAULTS.force;
+
+/** How long the readiness loop waits between attempts. Exported for the same
+ * reason as the bounds above: the quit path's failsafe adds it up rather than
+ * naming a number. */
+export const READINESS_POLL_INTERVAL_MS = 1_000;
 
 const execPromise = promisify(exec);
 
@@ -232,11 +259,7 @@ export class BackendServiceManager {
 	}
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
-	private shutdownTimeoutMs = {
-		restart: 10000, // 10 seconds for restart operations
-		normal: 5000, // 5 seconds for normal shutdowns
-		force: 3000, // 3 seconds before force killing after SIGKILL
-	}; // Configurable timeouts for different shutdown scenarios
+	private shutdownTimeoutMs = { ...SHUTDOWN_TIMEOUT_DEFAULTS }; // Configurable timeouts for different shutdown scenarios
 
 	/**
 	 * Constructor
@@ -597,7 +620,12 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 
-			const { stdout } = await execPromise(command);
+			const { stdout } = await execPromise(command, {
+				// Bounded: a quit that arrives mid-start waits on this same path, and an
+				// unbounded child here is a wait with nothing underneath it.
+				timeout: CONSOLE_DISCOVERY_TIMEOUT_MS,
+				windowsHide: true,
+			});
 
 			if (stdout.trim()) {
 				logger.info(
@@ -747,7 +775,7 @@ export class BackendServiceManager {
 			process.platform === "win32"
 				? "where local-operator"
 				: "which local-operator",
-			{ env, timeout: 5000 },
+			{ env, timeout: CONSOLE_DISCOVERY_TIMEOUT_MS },
 		);
 		return stdout.trim().split(LINE_BREAK)[0];
 	}
@@ -843,7 +871,18 @@ export class BackendServiceManager {
 				env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${env.PATH ?? ""}`;
 				env.PYTHONHOME = undefined;
 			}
-			const launch = await ownedServeLaunch(interpreters, this.port, env);
+			const launch = await ownedServeLaunch(
+				interpreters,
+				this.port,
+				env,
+				process.platform,
+				{},
+				// The PATH-side claims spawn discovery children, so they are offered
+				// only after the claims above have all failed (round 3, F14).
+				process.platform === "win32"
+					? () => windowsPathInterpreterCandidates(env)
+					: undefined,
+			);
 			if (epoch !== this.startEpoch || this.isAppClosing) return false;
 			const child = spawn(launch.command, launch.args, {
 				detached: false,
@@ -885,7 +924,9 @@ export class BackendServiceManager {
 				}
 
 				// Wait 1 second before next attempt
-				await new Promise((resolve) => setTimeout(resolve, 1000));
+				await new Promise((resolve) =>
+					setTimeout(resolve, READINESS_POLL_INTERVAL_MS),
+				);
 				attempts++;
 			}
 
@@ -896,8 +937,9 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 
-			// Show error dialog
-			electronDialog.showErrorBox(
+			// Report the failure without parking the main thread - see
+			// `reportStartFailure` for why the modal is suppressed on the quit path.
+			this.reportStartFailure(
 				"Backend Error",
 				"Failed to start the Local Operator backend service. Please check the logs for more information.",
 			);
@@ -936,8 +978,9 @@ export class BackendServiceManager {
 				error,
 			);
 
-			// Show error dialog
-			electronDialog.showErrorBox(
+			// Report the failure without parking the main thread - see
+			// `reportStartFailure` for why the modal is suppressed on the quit path.
+			this.reportStartFailure(
 				"Backend Error",
 				`Error starting the Local Operator backend service: ${error}`,
 			);
@@ -1090,6 +1133,39 @@ export class BackendServiceManager {
 
 	/** Whether a quit may proceed. `will-quit` cannot await a listener, so it
 	 * prevents the first quit, runs cleanup, and asks this on the retry. */
+	/** Whether a shutdown is in flight.
+	 *
+	 * `stop(false)` is terminal and is what the quit path calls, so this is the
+	 * state a caller checks before raising blocking UI it would never be able to
+	 * dismiss - `index.ts`'s start-failure paths are the callers. */
+	isShuttingDown(): boolean {
+		return this.isAppClosing;
+	}
+
+	/**
+	 * Report a start failure to the user - unless the app is on its way out.
+	 *
+	 * `showErrorBox` is a native modal: it parks the main thread until somebody
+	 * dismisses it, and Electron cannot run the quit it was asked for past a
+	 * parked thread. On the quit path that is not a message, it is a deadlock -
+	 * the quit has already prevented itself, the owned cleanup it waits on can
+	 * never finish, and the quit's own failsafe cannot even fire, because that is
+	 * a timer on the thread the dialog holds (review round 4, Q-20: a SIGTERM
+	 * during the first start left the app alive 50 s later with the failsafe line
+	 * never logged). A shutdown in flight logs the failure instead, where the
+	 * post-mortem finds it without the process still being up.
+	 */
+	private reportStartFailure(title: string, message: string): void {
+		if (this.isAppClosing) {
+			logger.error(
+				`${title} (not shown; the app is shutting down): ${message}`,
+				LogFileType.BACKEND,
+			);
+			return;
+		}
+		electronDialog.showErrorBox(title, message);
+	}
+
 	isOwnedCleanupComplete(): boolean {
 		return this.isAppClosing && !this.ownedServe && !this.startPromise;
 	}

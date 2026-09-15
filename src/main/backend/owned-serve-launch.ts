@@ -79,8 +79,24 @@ const DEFAULT_BUDGET: Required<InterpreterBudget> = {
 };
 
 /** A discovery command (`where`, `py -3`) answers in milliseconds or it is not
- * the thing we are looking for; it never gets the probe's budget. */
-const DISCOVERY_TIMEOUT_MS = 5_000;
+ * the thing we are looking for, and it never gets the probe's budget. Exported
+ * because the quit path's failsafe derives from it (see
+ * `INTERPRETER_RESOLUTION_WORST_MS`). */
+export const DISCOVERY_TIMEOUT_MS = 5_000;
+
+/**
+ * Worst-case wall time for resolving and proving the interpreter.
+ *
+ * The PATH-side claims are only asked for when no earlier claim proves out
+ * (round 3, F14), so the bound is one discovery pair - each with its own
+ * ceiling and escalation - plus the shared probe budget. Named and exported so
+ * a bound that must outlast this work derives from these numbers instead of
+ * restating them in prose, which is how the quit failsafe came to be wrong by
+ * arithmetic rather than by intent (round 3, F12).
+ */
+export const INTERPRETER_RESOLUTION_WORST_MS =
+	DEFAULT_BUDGET.totalMs +
+	2 * (DISCOVERY_TIMEOUT_MS + DEFAULT_BUDGET.graceMs + DEFAULT_BUDGET.slackMs);
 
 /** The one probe failure a retry can plausibly turn around, and the one that
  * must still settle when the interpreter ignores signals. */
@@ -169,7 +185,7 @@ function runBounded(
 					resolve(stdout);
 					return;
 				}
-				const detail = stderr.trim().split("\n")[0];
+				const detail = errorTail(stderr);
 				reject(
 					new Error(
 						`exited with code ${code ?? "null"}${signal ? ` (${signal})` : ""}${detail ? `: ${detail}` : ""}`,
@@ -179,6 +195,25 @@ function runBounded(
 		);
 	});
 }
+
+/** stderr's LAST lines, never its first.
+ *
+ * A Python failure begins with `Traceback (most recent call last):`, so keeping
+ * the first line reported the shape of the failure and dropped its cause - a
+ * rejected interpreter read as `exited with code 1: Traceback (most recent call
+ * last):` while the `ImportError` that explains it was discarded (review round
+ * 4, Q-21). The tail is where the cause is; kept to a few lines and marked when
+ * it was cut, so a noisy interpreter cannot paste a whole traceback into a
+ * dialog. */
+const errorTail = (text: string, lines = 3): string => {
+	const kept = text
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (kept.length === 0) return "";
+	const tail = kept.slice(-lines).join(" | ");
+	return kept.length > lines ? `\u2026 ${tail}` : tail;
+};
 
 function parseIdentity(
 	stdout: string,
@@ -361,40 +396,58 @@ export async function ownedServeLaunch(
 	env: NodeJS.ProcessEnv,
 	platform = process.platform,
 	budget: InterpreterBudget = {},
+	/**
+	 * Claims that are only resolved if no claim above proves out.
+	 *
+	 * The PATH-side ones cost two discovery children (`where python.exe`, `py
+	 * -3`) on every start, and on a normal install claim 1 or 2 wins, so paying
+	 * them unconditionally is latency the app never uses - and it is quit-path
+	 * latency, because `stop()` waits on this same promise (round 3, F14). A
+	 * callback rather than a flat list, so the spawns happen after the decision
+	 * that makes them unnecessary rather than before it.
+	 */
+	fallbackClaims?: () => Promise<string[]>,
 ): Promise<LaunchPlan> {
-	const candidates = [...new Set(interpreters)];
 	const bounds: Required<InterpreterBudget> = {
 		...DEFAULT_BUDGET,
 		...budget,
 	};
-	if (candidates.length === 0)
+	const deadline = Date.now() + bounds.totalMs;
+	const rejected: string[] = [];
+	const attempt = async (claims: string[]): Promise<LaunchPlan | null> => {
+		for (const interpreter of [...new Set(claims)]) {
+			if (!isAbsolute(interpreter)) {
+				rejected.push(`${interpreter || "(empty)"}: not an absolute path`);
+				continue;
+			}
+			try {
+				const identity = await probeWithin(interpreter, env, deadline, bounds);
+				return await planFor(
+					identity,
+					interpreter,
+					port,
+					env,
+					platform,
+					deadline,
+					bounds,
+				);
+			} catch (error) {
+				rejected.push(`${interpreter}: ${describe(error)}`);
+			}
+		}
+		return null;
+	};
+
+	if (interpreters.length === 0 && !fallbackClaims)
 		throw new Error(
 			"No backend interpreter was resolved. Install the Local Operator backend (`uv tool install local-operator`) or pair an external backend.",
 		);
-	const deadline = Date.now() + bounds.totalMs;
-	const rejected: string[] = [];
-	for (const interpreter of candidates) {
-		if (!isAbsolute(interpreter)) {
-			rejected.push(`${interpreter || "(empty)"}: not an absolute path`);
-			continue;
-		}
-		try {
-			const identity = await probeWithin(interpreter, env, deadline, bounds);
-			return await planFor(
-				identity,
-				interpreter,
-				port,
-				env,
-				platform,
-				deadline,
-				bounds,
-			);
-		} catch (error) {
-			rejected.push(`${interpreter}: ${describe(error)}`);
-		}
-	}
+	const planned =
+		(await attempt(interpreters)) ??
+		(fallbackClaims ? await attempt(await fallbackClaims()) : null);
+	if (planned) return planned;
 	throw new Error(
-		`No backend interpreter could be proven. Tried ${candidates.length}: ${rejected.join("; ")}. Install the backend with a supported installer (\`uv tool install local-operator\`) or pair an external backend.`,
+		`No backend interpreter could be proven. Tried ${rejected.length}: ${rejected.join("; ")}. Install the backend with a supported installer (\`uv tool install local-operator\`) or pair an external backend.`,
 	);
 }
 
@@ -429,12 +482,14 @@ async function firstLine(
  *    console script and the venv's interpreter in the same `Scripts` directory;
  * 2. the uv tool environment - uv's own `UV_TOOL_DIR` (or its default under
  *    `%APPDATA%\uv\tools`) holding `<tool>\Scripts\python.exe`, and pipx's
- *    `PIPX_HOME`/default `pipx\venvs\<tool>` for the same reason;
- * 3. `where python.exe` - the first interpreter on PATH. It is usually a system
- *    Python that cannot import `local_operator`, and that is exactly what the
- *    probe is for: it is admitted only if it really is the backend;
- * 4. `py -3` - the Windows launcher is a command, not a path, so its own answer
- *    to "where is my interpreter" is the candidate, proven like the rest.
+ *    `PIPX_HOME`/default `pipx\venvs\<tool>` for the same reason.
+ *
+ * These two are pure path arithmetic over the environment, so they cost nothing
+ * to offer. The PATH-side claims - `where python.exe` and the `py -3` launcher,
+ * where a real system Python that cannot import `local_operator` is exactly what
+ * the probe is for - live in `windowsPathInterpreterCandidates`, because they
+ * spawn discovery children and are only worth that when nothing above proves
+ * out (round 3, F14).
  *
  * Absent paths are dropped before probing (a stat is cheaper than a spawn); the
  * probe remains the only thing that can accept one.
@@ -458,16 +513,33 @@ export async function windowsInterpreterCandidates(
 	if (pipxHome)
 		candidates.push(join(pipxHome, "venvs", tool, "Scripts", "python.exe"));
 
+	return [...new Set(candidates)].filter(
+		(candidate) => isAbsolute(candidate) && existsSync(candidate),
+	);
+}
+
+/**
+ * The PATH-side claims, asked for only when nothing above proved out.
+ *
+ * The Windows launcher is a command rather than a path, so its own answer to
+ * "where is my interpreter" is one of the claims - but each of these costs a
+ * discovery child, and on a normal install the launcher's sibling or the tool
+ * environment is the backend, so they are resolved after the decision that
+ * makes them unnecessary (round 3, F14) rather than before it.
+ */
+export async function windowsPathInterpreterCandidates(
+	env: NodeJS.ProcessEnv,
+): Promise<string[]> {
+	const found: string[] = [];
 	const onPath = await firstLine("where", ["python.exe"], env);
-	if (onPath) candidates.push(onPath);
+	if (onPath) found.push(onPath);
 	const viaLauncher = await firstLine(
 		"py",
 		["-3", "-c", "import sys; print(sys.executable)"],
 		env,
 	);
-	if (viaLauncher) candidates.push(viaLauncher);
-
-	return [...new Set(candidates)].filter(
+	if (viaLauncher) found.push(viaLauncher);
+	return [...new Set(found)].filter(
 		(candidate) => isAbsolute(candidate) && existsSync(candidate),
 	);
 }
