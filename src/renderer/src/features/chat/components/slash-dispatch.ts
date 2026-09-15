@@ -519,7 +519,7 @@ export function useSlashDispatch({
 				commands: commandsQuery.data ?? [],
 				onClose: closePicker,
 				note,
-				dispatch: (line) => void dispatch(line),
+				dispatch: (invocation) => void dispatch(invocation),
 				rebind,
 				draft: draftPicker,
 			});
