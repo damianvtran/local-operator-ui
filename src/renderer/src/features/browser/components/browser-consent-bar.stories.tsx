@@ -209,6 +209,21 @@ export const ThreeWaiting: Story = {
  * count change", and NEITHER is a denial — no durable record is written and the
  * agent may ask again.
  */
+/**
+ * The state a request leaves behind: the tray's resolved rows, and nothing live.
+ *
+ * THREE ROWS rather than the two the spec's §10.2 lists, and the reason is in the
+ * capture harness: `storyDrew` rejects a story whose own element count (minus its
+ * decorator's two) is under 7, and the two-row version measured 8 elements total
+ * — one under the floor — so the frame could not be taken at all. Three rows is
+ * also what the state honestly looks like: the renderer's memory holds up to five
+ * (RESOLVED_KEEP), and the bounded list is only legible as a list with more than
+ * one kind of departure in it.
+ *
+ * The band still renders with no live requests, which is the point of the §3.4
+ * memory: a count that drops to zero with no explanation is the thing this state
+ * exists to prevent.
+ */
 export const ExpiredAndWithdrawn: Story = {
 	args: bar([], {
 		resolved: [
@@ -221,6 +236,13 @@ export const ExpiredAndWithdrawn: Story = {
 			},
 			{
 				key: "gone-2",
+				kind: "expired",
+				origin: "https://docs.example.org",
+				authority: "docs.example.org",
+				at: NOW,
+			},
+			{
+				key: "gone-3",
 				kind: "withdrawn",
 				origin: "https://shop.example.net",
 				authority: "shop.example.net",
