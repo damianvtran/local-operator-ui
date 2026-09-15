@@ -39,15 +39,26 @@ app.setPath("userData", process.env.SC_USER_DATA);
  * cannot see, a path-scoped one, a partitioned (CHIPS) one, a non-default source
  * port, and a persistent cookie that must NOT be the vault's business.
  *
- * THE VALUES ARE LONG AND HYPHENATED ON PURPOSE. The battery asserts that the
- * stored snapshot carries no cookie value in the clear, which is a substring scan
- * over the file — and a two-character value cannot be evidence either way, because
- * it occurs inside ciphertext bytes or inside framing by chance. Measured: the
- * original `srv_http=sh` collided with the literal `sha256=` in the snapshot's own
- * integrity digest, and `srv_chips=sc` collided with ciphertext bytes on a later
- * run, so that assertion was failing on material carrying no cookie material at
- * all. Every value here is now long enough (and carries a hyphen, which neither
- * the digest's hex nor base64 framing can spell) for a hit to mean a real leak. */
+ * THE VALUES ARE LONG AND HYPHENATED ON PURPOSE — every value this file puts in
+ * the jar, not only the pages below: the frame's two, the two the top-level
+ * response sets, and `prio_high`, which is written through the jar API further
+ * down. The assertion is a substring scan for each session cookie's value over
+ * the stored snapshot, and a two-character value is evidence of nothing either
+ * way, because the file is raw ciphertext: MEASURED, this scenario's own
+ * snapshot is 2523 bytes — 2451 of ciphertext plus the 72-byte `\nsha256=` hex
+ * suffix — so a two-byte ASCII value lands inside those bytes in about
+ * 2522/65536 = 3.8% of runs, per run, not per machine. Measured,
+ * historically: the original `srv_http=sh` collided with the literal `sha256=` in
+ * the snapshot's own integrity digest, and `srv_chips=sc` collided with
+ * ciphertext bytes on a later run, so that assertion was failing on material
+ * carrying no cookie material at all. That rewrite missed `prio_high=ph` here,
+ * which kept the same ~3.8% chance and took it — one false failure in seven
+ * observed runs, on a security property, which is exactly the kind of green run
+ * nobody can trust. Every value is now long enough, and hyphenated, for a hit to
+ * mean a real leak: the only textual framing in the file is the digest's
+ * lowercase hex, which cannot spell a hyphen, and a fifteen-byte value inside raw
+ * ciphertext collides with probability about 2437/2^120 rather than with the few
+ * percent a two-byte one has. */
 const PAGE = `<!doctype html><html><body><script>
 document.cookie = "plain_session=plain-session-value; Path=/";
 document.cookie = "strict_path=strict-path-value; Path=/deep; SameSite=Strict";
@@ -182,9 +193,14 @@ async function main() {
 		result.thirdPartyFrame = await frameReportWithin(5000);
 		// One cookie the page cannot set: a non-default eviction priority. It also
 		// covers a jar entry written through the same channel the restore uses.
+		// Its value is long for the same reason the pages' are (see the battery
+		// comment above): the plaintext scan reads EVERY session cookie's value out
+		// of this jar, this entry included, so a short one here can fail the scan on
+		// chance alone. It was `ph` — two bytes, ~3.8% per run, one false failure
+		// observed in seven runs.
 		await jar.writeCookie({
 			name: "prio_high",
-			value: "ph",
+			value: "prio-high-value",
 			url: `${origin}/`,
 			path: "/",
 			priority: "High",
