@@ -1,0 +1,174 @@
+{
+  "frame": {
+    "css": {
+      "x": 0,
+      "y": 0,
+      "width": 830,
+      "height": 572
+    },
+    "dpr": 2,
+    "device": {
+      "x": 0,
+      "y": 0,
+      "width": 1660,
+      "height": 1144
+    },
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  "at": 57388,
+  "viewport": "830x572",
+  "active": "TEXTAREA",
+  "stack": {
+    "height": 179.5,
+    "scrollHeight": 255,
+    "clientHeight": 180
+  },
+  "chips": [
+    {
+      "label": "Make me a space invaders game",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 353.25,
+      "bottom": 382.75
+    },
+    {
+      "label": "Create a presentation outline on climate change",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 390.75,
+      "bottom": 420.25
+    },
+    {
+      "label": "Make me a research report on the latest trends in AI",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 428.25,
+      "bottom": 457.75
+    },
+    {
+      "label": "Download some recent papers on fusion energy",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 465.75,
+      "bottom": 495.25
+    },
+    {
+      "label": "Train a classifier on the MPG dataset",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 503.25,
+      "bottom": 532.75
+    },
+    {
+      "label": "Do a technical analysis on NVDA over the last year",
+      "disabled": true,
+      "ariaHidden": "true",
+      "visibility": "hidden",
+      "focused": false,
+      "top": 540.75,
+      "bottom": 570.25
+    },
+    {
+      "label": "Remove downloads that are more than a year old",
+      "disabled": true,
+      "ariaHidden": "true",
+      "visibility": "hidden",
+      "focused": false,
+      "top": 578.25,
+      "bottom": 607.75
+    }
+  ],
+  "observed": {
+    "columnPx": 550,
+    "greeting": 1,
+    "smallView": false,
+    "chipsLaidOut": 7,
+    "chipsPainted": 5,
+    "chipsInert": 2,
+    "rowsLaidOut": 7,
+    "rowsPainted": 5
+  },
+  "expected": {
+    "columnPx": 550,
+    "smallView": false,
+    "greeting": 1,
+    "chipsPainted": "the sampled chips, whole rows only",
+    "rule": "chat-content.tsx:343 sets isSmallView from a container measurement of the chat column (contentRect.width < 550); message-input.tsx:1109-1110 paints the empty-chat prompt only on !isSmallView. A column narrower than 550 is the intended small view: one compact composer, no greeting, no suggestion stack."
+  },
+  "holds": {
+    "settled": true,
+    "smallView": true,
+    "greeting": true,
+    "noLoadingClaim": true,
+    "all": true
+  },
+  "settlement": {
+    "now": 49169,
+    "reads": 49,
+    "layoutChanges": 1,
+    "lastChangeAt": 4052,
+    "stableForMs": 45117,
+    "settleWindowMs": 3000,
+    "settled": true,
+    "noLoadingClaimInAnyState": true,
+    "states": [
+      {
+        "at": 946,
+        "lastSeenAt": 1122,
+        "reads": 3,
+        "columnWidth": null,
+        "bandY": null,
+        "bandHeight": null,
+        "composerY": null,
+        "composerHeight": null,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": null
+      },
+      {
+        "at": 4052,
+        "lastSeenAt": 49169,
+        "reads": 46,
+        "columnWidth": 550,
+        "bandY": 104,
+        "bandHeight": 468,
+        "composerY": 185.3,
+        "composerHeight": 347.5,
+        "stackTop": 353.3,
+        "stackHeight": 179.5,
+        "greeting": 1,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": 7,
+        "rowsInside": 5,
+        "boundaryInGap": true,
+        "claims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        }
+      }
+    ],
+    "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
+  },
+  "pageProbe": null,
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string, and this reader's output budget cut it on two of the eight reads; rather than ship some files with it and some without, all eight carry null and every field this set's table, its D2 check or its settlement record uses is a top-level field of the file below. The one reading that lived only there is `store.activeDraftKey`: `draft:17fadb82-8a2f-4dbf-8baf-9f2e1ff65b9b` on the after origin and `draft:6bbef56d-fe60-4b58-b308-280a0f1691dc` on the before origin, each with `activeSessionId: null`."
+}
