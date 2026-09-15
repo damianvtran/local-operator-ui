@@ -83,7 +83,7 @@ import {
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
-import { pointerPickRuns } from "./slash-contract";
+import { pickArmsCommand, pointerPickRuns } from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
@@ -91,7 +91,7 @@ import { pointerPickRuns } from "./slash-contract";
  * command runs.
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
-import { planSlashSubmission } from "./slash-submit";
+import { planSlashArming, planSlashSubmission } from "./slash-submit";
 import type {
 	SlashCommandInvocation,
 	SlashSubmissionPlan,
@@ -405,9 +405,10 @@ type MessageInputProps = {
 	 * Say something in the composer's own note idiom.
 	 *
 	 * The dispatcher already owns that surface (`useSlashDispatch`'s `note`), so
-	 * the composer borrows it rather than growing a second one. Used for the two
-	 * outcomes a user cannot read off the box: a mid-draft name-list command
-	 * whose list cannot answer, and a staged reassembly that did NOT send.
+	 * the composer borrows it rather than growing a second one. Used for the three
+	 * outcomes a user cannot read off the box: a mid-draft name-list command whose
+	 * list cannot answer, a staged reassembly that did NOT send, and a staged
+	 * ARMING by a pick (the goal is set by the next Enter, not by this one).
 	 */
 	onSlashNote?: (text: string) => void;
 	/**
@@ -1012,16 +1013,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					caret: at,
 					commandNames: slash.commandNames,
 					promptCommands: slash.promptCommands,
+					armedOnlyCommands: slash.armedOnlyCommands,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
 			[
 				slash.commandNames,
 				slash.promptCommands,
+				slash.armedOnlyCommands,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,
 			],
+		);
+
+		/**
+		 * Put a line in the box and say what the key DID NOT do.
+		 *
+		 * Both staging paths — a free-text command reassembled by Enter, and an
+		 * armed-only command hoisted by a pick — write the box and the caret the same
+		 * way, and both owe the user a sentence about a draft that changed under them.
+		 * One helper, so a stage that silently rewrites what somebody typed cannot
+		 * exist beside one that explains itself.
+		 */
+		const stage = useCallback(
+			(text: string, at: number, note: string) => {
+				pendingCaret.current = at;
+				setNewMessage(text);
+				setCaret(at);
+				onSlashNote?.(note);
+			},
+			[onSlashNote, setNewMessage],
 		);
 
 		/**
@@ -1087,10 +1109,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// guessing which trailing words are a name — but a user who pressed
 					// Enter twice has no other signal that their sentence MOVED and the
 					// key did not send, so say it (round 1 UX U7).
-					pendingCaret.current = plan.caret;
-					setNewMessage(plan.text);
-					setCaret(plan.caret);
-					onSlashNote?.(`Staged ${plan.text.trim()}. Enter again runs it.`);
+					stage(
+						plan.text,
+						plan.caret,
+						`Staged ${plan.text.trim()}. Enter again runs it.`,
+					);
 					return;
 				}
 				const outcome = await runSlashCommand(plan.command);
@@ -1112,6 +1135,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				setNewMessage,
 				slash.open,
 				slash.matches.length,
+				stage,
 			],
 		);
 
@@ -1127,6 +1151,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (!completion) return;
 				slash.close();
+				/*
+				 * ARMED, when the pick named an armed-only command's own row — the one
+				 * gesture that arms it, and the reason Enter needs no inference. The pick
+				 * hoists the command to the front and STAGES the line, so the box shows
+				 * exactly what the next Enter will run: the goal set and the text sent.
+				 *
+				 * The route is the ROW's (`pickArmsCommand`) and the line is the DRAFT's
+				 * (`planSlashArming`), both read off the vocabulary the registry derives,
+				 * so no command name and no destination is written into this path.
+				 *
+				 * `none` means there was nothing to arm — a bare `/goal` pick, where the
+				 * completion below is the same write it has always been and the bare form
+				 * still opens the goal read on the next Enter.
+				 */
+				if (pickArmsCommand(row, slash.armedOnlyCommands)) {
+					const armed = planSlashArming({
+						draft: completion.text,
+						caret: completion.caret,
+						commandNames: slash.commandNames,
+						armedOnlyCommands: slash.armedOnlyCommands,
+					});
+					if (armed.kind === "armed") {
+						stage(
+							armed.text,
+							armed.caret,
+							`Armed ${armed.text.trim()}. Enter sets the goal and sends the text.`,
+						);
+						return;
+					}
+				}
 				pendingCaret.current = completion.caret;
 				setNewMessage(completion.text);
 				setCaret(completion.caret);
@@ -1171,6 +1225,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSlashCommand,
 				planFor,
 				applyPlan,
+				stage,
 			],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
@@ -1215,6 +1270,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * can never be quietly turned back into prose by a later re-read of the
 				 * text, and a draft the planner called prose can never be claimed by a
 				 * command (QA round 2, Q4).
+				 *
+				 * Prose is also what an ARMED-ONLY command's word makes this draft, which
+				 * is why `/goal` in a sentence falls through here instead of being moved
+				 * to the front: that arming is the popup PICK's gesture, and only a pick
+				 * produces the staged line that arms it.
 				 */
 				if (
 					event.key === "Enter" &&

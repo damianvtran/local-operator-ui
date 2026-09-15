@@ -185,6 +185,31 @@ export function pointerPickRuns(
 }
 
 /**
+ * Whether a PICK of this row ARMS its command instead of only completing it.
+ *
+ * The ROW half of the arming rule, beside `pointerPickRuns` and answered the same
+ * way — from the vocabulary the composer derived from the registry, never from a
+ * command name or destination written here. A command row the vocabulary calls
+ * armed-only is hoisted to the front and STAGED by the pick (the DRAFT half is
+ * `planSlashArming` in `slash-submit.ts`): the pick is the explicit gesture and it
+ * is the only one, which is why an Enter over a draft that merely CONTAINS the
+ * word sends that draft as written instead.
+ *
+ * The WORD is the key rather than the destination because the word is what the
+ * draft and the completion both carry: `label` is the name OR ALIAS the row
+ * matched and the string `completionFor` writes, and the caller's set holds both
+ * members of that pair.
+ */
+export function pickArmsCommand(
+	row: RoutableRow,
+	armedOnlyCommands: ReadonlySet<string>,
+): boolean {
+	return (
+		row.kind === "command" && armedOnlyCommands.has(row.label.toLowerCase())
+	);
+}
+
+/**
  * Route one key press.
  *
  * Ported from `editor.py:_resolve_argument` / `:8060-8115` and pinned by
