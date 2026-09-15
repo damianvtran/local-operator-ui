@@ -106,7 +106,7 @@
       "addedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
       "note": "The capture that ADDED this branch's twelve picker/band surfaces. Recorded here because the remediation round's own narrowed capture overwrites `addedFrames`/`addedSurfaces` in place, and an addition that disappears from the manifest reads as though the stories had always been swept."
     },
-    "refreshedFromHead": "7591e7df2ea11aef4745df66c1a73ee02462aac2",
+    "refreshedFromHead": "9ab5abd94393d96a3f0102a569d0f75f67b9ae12",
     "branchRefresh": {
       "refreshedAt": "2026-09-15T03:40:00.000Z",
       "refreshedAtHead": "c23ad283a068f2528791d4b9ea3b0b0eef9cc103",
