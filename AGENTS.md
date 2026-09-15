@@ -77,7 +77,8 @@ ground where it does not.
 - Install deps: `pnpm install`
 - Dev app: `pnpm dev` (needs `.env`; copy from `.env.template`)
 - Dev app, no window: `pnpm dev:headless`
-- Built app, no window: `pnpm app:headless -- <extra electron args>`
+- Built app, no window: `pnpm app:headless <extra electron args>` (no `--`
+  separator — see the launch section)
 - Built app, driven by an agent: `pnpm app:driver` (see `docs/agent-driver.md`)
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
@@ -244,11 +245,26 @@ are why an assumed mode is reported on stdout rather than left implicit.
 
 ```bash
 # The built app, driven over CDP at an exact size, with no window at all.
-pnpm app:headless -- --remote-debugging-port=9451 --user-data-dir="$SCRATCH/profile" \
+#
+# NO `--` BEFORE THE EXTRA SWITCHES. `pnpm run <script> -- x` passes that `--`
+# through to Electron's argv as well, and CHROMIUM STOPS READING SWITCHES AT
+# `--`: everything after it is ignored, so a run that believes it is on a
+# scratch profile silently lands on the operator's own one instead (measured,
+# QA round 1 Q-1: the flag was in argv and `USER_DATA` stayed
+# `~/Library/Application Support/Electron`). pnpm forwards the switches
+# themselves without it.
+pnpm app:headless --remote-debugging-port=9451 --user-data-dir="$SCRATCH/profile" \
   --window-size=1380x900
 
 # The dev app, same rule.
 pnpm dev:headless
+
+# `electron-vite dev` takes its own options and spawns Electron itself, so a
+# Chromium switch handed to it — with or without a `--` — does not reach the
+# app's argv (measured: the app reported the default 1380x900 when
+# ELECTRON_CLI_ARGS asked for 1024x768). A dev run that needs a scratch profile
+# therefore cannot get one from argv; build first and use the line above, or
+# accept the profile the dev app already uses.
 
 # A harness that already spawns Electron itself: the switch rides the environment.
 LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=9451
@@ -267,6 +283,96 @@ too, not only to the backend log: a typo like
 `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls back to `normal`, which is the
 difference between a headless run and an interruption, and it must be visible to
 whoever launched it.
+
+**A second launch raises the window only as far as the REQUESTING launch asked.**
+Why it is not automatic: the single-instance lock is taken PER PROFILE, so a run
+that shares the operator's profile is refused by it and the instance that ALREADY
+holds the lock is the one that decides what happens next. It used to decide with
+its own plan, so an agent's deliberately invisible run answered as an ordinary
+launch — `show()` + `focus()` for a running app — and pulled the operator's window
+to the front. The mode now travels with the request, and either channel is
+enough: the losing launch forwards the mode it resolved (the
+`LOCAL_OPERATOR_UI_WINDOW_MODE` it was launched with), and `--window-mode=<mode>`
+on its command line is read as well, because that is the spelling that survives a
+launcher which drops the environment (macOS `open --args`). An UNDECLARED second
+launch keeps today's `show()` + `focus()`, since that is a person double-clicking
+the app while it runs; a `headless` request delivers the conversation it names to
+the renderer and raises nothing at all.
+
+That last promise holds in every state the running app can be in, INCLUDING the
+one where it holds the lock with no window open (Cmd+W on macOS keeps the process
+alive), and it is why `never` is the one plan that may not create a window at all.
+An `inactive` request that arrives then makes a window, and that window is
+presented under the REQUESTER's plan rather than the running app's: whoever
+threads a new present site through the window-creation path has to carry that plan
+with it, and `scripts/window-mode.test.mjs` fails on a present site that reaches
+for the process's own plan instead.
+
+A `headless` request that NAMES A CONVERSATION creates nothing and parks the
+conversation instead, and the operator's next window opens it. An invisible window
+is not a harmless one: macOS keeps the app alive with the renderer warm, so the
+Dock icon would activate an app showing nothing while a conversation sat in a
+screen nobody could reach. Nothing appears and nothing is raised — and a park is
+NOT silent: the winner writes `trigger=second-instance mode=headless requested=never
+parked=<id> applied=parked` (the conversation that is waiting), so the log answers
+"what happened to what I asked for" for the requests that raise nothing.
+
+THE PARK IS A QUEUE, AND THE CREATOR OF A WINDOW ALWAYS WINS IT. Every parked
+request waits, and the next window drains them in ARRIVAL ORDER: the first becomes
+that window's initial session (its first frame, not a swap) when the window's own
+request named no conversation, and the rest are delivered to it once its renderer
+can hear them. A window opened for something else — a catalogue click, a viewer
+`resume_session`, a banner click, a person's launch that named a conversation —
+opens what ITS request asked for, and the parked conversations follow it, so the
+last one is what the operator lands on and none is dropped.
+
+For the same reason an app with NO window answers a second launch that names no
+conversation at all: a request that may come forward opens the app's own window (it
+used to do nothing, so launching the app again looked like nothing happening),
+while `headless` still opens nothing. A DOCK CLICK PRESENTS THE WINDOW UNDER THE
+OPERATOR'S PLAN, not under the launch's: the window mode is a promise about the
+LAUNCH, and `app.on("activate")` is a person asking for the app they already have
+open — answering that with a window nobody can see would leave the parked
+conversation in an invisible screen with the queue emptied into it.
+
+The losing launch says what it did, because nothing else can: it prints
+`[second-instance] this launch did not start a window of its own: the app already
+open is the instance answering (profile: <path>), and this launch's window mode
+(<mode>) was handed to it — <what the running app will do>. Quit that app to start
+a fresh instance. Exiting.` The profile path is the proof a rig needs and the app-is-
+already-open fact is what a person can act on; the effect names what the mode can
+actually do (a `headless` request's conversation is delivered once a window is open,
+not when the request lands). It does NOT print the `[window-mode]` line, which
+describes the window this process never creates.
+
+An `inactive` request orders a window that is already on screen and never
+un-minimises one, BY ORDERING OR BY RESTORING: `restore()` is a focus-class act, and
+macOS deminiaturises a window as part of ordering it, so `showInactive()` alone
+brought a Dock-ed window back (measured). A minimised window is therefore left
+exactly where it is — and the decline is REPORTED (`applied=skipped+minimised`),
+because a request that was declined must not look like one that never arrived.
+Undeclared and `normal` requests keep restoring, because those are the ones that
+mean "bring this to me".
+
+Every raise writes one line to the backend log, naming the site, the mode and
+what it did — ONE line per present: the window's `ready-to-show` handler is
+one-shot, because it can fire twice for one window (a reload) and two identical
+lines for one window is a log a person cannot read.
+
+```
+[window-raise] trigger=second-instance mode=normal requested=focus pid=9182 \
+  cwd=/Users/someone/project applied=restore+show+focus
+```
+
+The triggers are `initial-present` (this process's own launch, including a window
+created for a conversation and presented late), `second-instance`, `banner-click`,
+`viewer-focus` and `viewer-resume` — one name per REQUEST, so the three requests
+that deliver a conversation before raising are told apart rather than collapsing
+into one. `mode` is the mode token a reader greps for; `requested` is the show
+policy it produced; `pid`/`cwd` are printed only when the requester declared them
+across the single-instance boundary, and their absence means this process asked
+itself. A mode that raises nothing writes nothing: a headless run leaves no trace,
+its log included.
 
 ### An agent-driven run does not banner either
 

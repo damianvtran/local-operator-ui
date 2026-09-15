@@ -1235,6 +1235,13 @@ test("refreshNotificationContract reads the capability and survives failure", as
  */
 function raiseHarness(windowRaise, host = undefined) {
 	const calls = [];
+	/*
+	 * The trigger line each raise reports. Asserted rather than ignored because
+	 * this path was indistinguishable from the second-instance one in the log
+	 * file: the operator's report ("the app steals my focus whenever a chat
+	 * completes") is only answerable if the line names WHO raised the window.
+	 */
+	const raises = [];
 	const target = {
 		id: 7,
 		isDestroyed: () => false,
@@ -1254,8 +1261,9 @@ function raiseHarness(windowRaise, host = undefined) {
 		},
 		windowRaise,
 		host,
+		(line) => raises.push(line),
 	);
-	return { notifier, calls, requests, target };
+	return { notifier, calls, requests, target, raises };
 }
 
 test("a headless run delivers no banner on any path, and burns no claim", async () => {
@@ -1294,18 +1302,26 @@ test("the same three paths do deliver in the ordinary mode", async () => {
 
 test("a clicked banner raises the window only as far as the plan allows", async () => {
 	const cases = [
-		// mode, what the click is allowed to do
+		// mode, what the click is allowed to do, and the trigger line it reports
 		//
 		// SEND FIRST, THEN RAISE (B3): naming the conversation before showing the
 		// window is what stops the click flashing the conversation the window was
 		// already on, which reads as a click that landed on the wrong row.
-		["focus", ["send:desktop-open-conversation", "show", "focus"]],
-		["inactive", ["send:desktop-open-conversation", "showInactive"]],
+		[
+			"focus",
+			["send:desktop-open-conversation", "show", "focus"],
+			["trigger=banner-click mode=normal requested=focus applied=show+focus"],
+		],
+		[
+			"inactive",
+			["send:desktop-open-conversation", "showInactive"],
+			["trigger=banner-click mode=inactive requested=inactive applied=showInactive"],
+		],
 	];
-	for (const [mode, expected] of cases) {
+	for (const [mode, expected, expectedRaises] of cases) {
 		globalThis.__toasts = [];
 		globalThis.__shown = [];
-		const { notifier, calls } = raiseHarness(mode);
+		const { notifier, calls, raises } = raiseHarness(mode);
 		notifier.observe(SESSION, completionFrame());
 		await settle(100);
 		const banner = globalThis.__shown[0];
@@ -1313,17 +1329,21 @@ test("a clicked banner raises the window only as far as the plan allows", async 
 		// A real click, through the handler the OS would call.
 		banner.handlers.click();
 		assert.deepEqual(calls, expected, `${mode}: the window was raised`);
+		assert.deepEqual(raises, expectedRaises, `${mode}: the raise named its trigger`);
 	}
 
 	// `headless` is covered by the absence of the handler itself: no banner, so
 	// nothing to click and no path to a window the mode never shows.
 	globalThis.__toasts = [];
 	globalThis.__shown = [];
-	const { notifier, calls } = raiseHarness("never");
+	const { notifier, calls, raises } = raiseHarness("never");
 	notifier.observe(SESSION, completionFrame());
 	await settle(100);
 	assert.equal(globalThis.__shown.length, 0);
 	assert.deepEqual(calls, []);
+	// And a mode that raises nothing reports nothing: a headless run's log stays
+	// free of raises it did not make.
+	assert.deepEqual(raises, []);
 });
 
 // ---------------------------------------------------------------- B1 and the feed
