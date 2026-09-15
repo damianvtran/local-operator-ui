@@ -164,10 +164,16 @@ const POINTER_PICK_NEVER_RUNS = new Set([
  * A destination this side has not learned yet RUNS: nothing is known about it to
  * say it opens a list, and the dispatcher answers an unmatched destination with
  * its own honest "not available in the desktop app yet" note — the same outcome
- * Enter has today. That arm is why `info` and `session.diagnostics`, which
- * arrive as `{kind: "picker"}` panels on the side that routes them, need no
- * entry here and must not be hardcoded: asked by KIND, they run the moment their
- * rows land.
+ * Enter has today.
+ *
+ * That arm is for ids with NO row here, and the ids it used to name as its
+ * examples are now routed: `info` and `session.diagnostics` arrived as
+ * `{kind: "picker"}` panels on the side that routes them, and the picker
+ * registry's own rows for them landed with `origin/main` (0.23.0, merged here).
+ * Asked by KIND they ran from the first day, which is the property this rule
+ * exists for; the examples moved into `slash-contract.test.mjs` as routed rows,
+ * and naming any one id as "not routed yet" is what made that test fail the day
+ * the id was routed. Nothing may be hardcoded here for the same reason.
  */
 export function pointerPickRuns(
 	destination: string,

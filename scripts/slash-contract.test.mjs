@@ -678,12 +678,34 @@ test("the three protected destinations are protected by id, not by kind", () => 
 		assert.equal(pickRuns(id), false, id);
 });
 
-test("a destination this side does not route yet answers by kind, not by id", () => {
-	// These two arrive as `{kind: "picker"}` panels on the side that routes them.
-	// Read off the kind, they run on the day their rows land, with no change here
-	// — which is why neither id may be hardcoded into the rule.
+test("a destination with no row here answers by kind, not by id", () => {
+	/*
+	 * The arm for an id this build has not learned: nothing is known about it, so
+	 * a pointer pick RUNS and the dispatcher answers with its own honest note.
+	 *
+	 * The id is synthetic on purpose. This test used to name `info` and
+	 * `session.diagnostics` as its examples — the ids the other side routes as
+	 * `{kind: "picker"}` panels — and it went red the day their rows landed here
+	 * with `origin/main` (0.23.0, merged into this branch). Naming a real id as
+	 * "not routed yet" makes a promise about somebody else's registry; the rule
+	 * is about the ABSENCE of a row, so the assertion takes an absent one.
+	 */
+	const unrouted = "session.not-a-destination";
+	assert.equal(registryEntry(unrouted), undefined, `${unrouted} is not routed`);
+	assert.equal(pickRuns(unrouted), true, unrouted);
+
+	/*
+	 * And the landed form of what those two stood for, which is the half worth
+	 * keeping: both ids are rows now, and a pick still runs them — a panel with
+	 * no inline list, read off the kind rather than off either id.
+	 */
 	for (const id of ["info", "session.diagnostics"]) {
-		assert.equal(registryEntry(id), undefined, `${id} is not routed here yet`);
+		assert.equal(registryEntry(id)?.kind, "picker", id);
+		assert.equal(
+			registryEntry(id)?.inline,
+			undefined,
+			`${id} lists nothing, so a pick runs it`,
+		);
 		assert.equal(pickRuns(id), true, id);
 	}
 });
