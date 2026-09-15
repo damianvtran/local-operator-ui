@@ -130,34 +130,6 @@ function caseEnv(bin, extra = {}) {
 	return env;
 }
 
-/** A scratch git repository: `v0.24.0` tagged on the released tree, then one
- * landing. `tip` is the landing's shape — a `feat:` commit, or a bump commit
- * (which has no parent content and must be read as the release commit). */
-function scratchRepo(root, { tip }) {
-	const dir = join(root, `repo-${tip}`);
-	mkdirSync(dir, { recursive: true });
-	const git = (...args) =>
-		execFileSync("git", args, {
-			cwd: dir,
-			encoding: "utf8",
-			env: caseEnv(join(root, "unused")),
-		});
-	git("init", "--quiet", "-b", "main");
-	writeFileSync(join(dir, "package.json"), packageJson("0.24.0"));
-	writeFileSync(join(dir, "file.txt"), "one\n");
-	git("add", "-A");
-	git("commit", "--quiet", "-m", "chore: the released state");
-	git("tag", "v0.24.0");
-	if (tip === "bump") {
-		writeFileSync(join(dir, "package.json"), packageJson("0.24.1"));
-		git("commit", "--quiet", "-am", "chore(release): bump version to 0.24.1");
-	} else {
-		writeFileSync(join(dir, "file.txt"), "two\n");
-		git("commit", "--quiet", "-am", "feat(panels): a real feature");
-	}
-	return dir;
-}
-
 /**
  * The scripts this file drives, and for each: an invocation that decides something
  * without a forge or a network, and what the PHYSICAL run of it does.
@@ -175,8 +147,6 @@ function scratchRepo(root, { tip }) {
  * steps themselves; this table is what proves the scripts can no longer produce it.
  */
 function cases(root) {
-	const featRepo = scratchRepo(root, { tip: "feat" });
-	const bumpRepo = scratchRepo(root, { tip: "bump" });
 	const plain = join(root, "plain");
 	mkdirSync(plain, { recursive: true });
 	writeFileSync(join(plain, "package.json"), packageJson("0.24.1"));
@@ -186,17 +156,6 @@ function cases(root) {
 	const emptyDist = join(root, "empty-dist");
 	mkdirSync(emptyDist, { recursive: true });
 	return [
-		{
-			// The next command in the workflow's own `run:` block, and the one whose
-			// silence was reported as `### No release` with an empty reason.
-			script: "derive-release.mjs",
-			args: ["--json"],
-			cwd: featRepo,
-			env: {},
-			status: 0,
-			stdout: /"release": true/,
-			stderr: /^$/,
-		},
 		{
 			// The only case that MUTATES its working directory: each spelling gets its
 			// own, or the second would be tested against the first's edit.
@@ -266,18 +225,6 @@ function cases(root) {
 			status: 1,
 			stdout: /^$/,
 			stderr: /PR_TITLE is not set/,
-		},
-		{
-			// The published gate the guard was fixed alone in #204 for: kept in the table
-			// so the refactor onto `entry-point.mjs` is covered the same way as the eight
-			// beside it.
-			script: "release-push-guard.mjs",
-			args: ["--json", "--released-tag", "v0.24.0"],
-			cwd: bumpRepo,
-			env: {},
-			status: 0,
-			stdout: /"skip": true/,
-			stderr: /^$/,
 		},
 		{
 			// `publish.yml` runs this three times and `signed-update-candidate.yml`

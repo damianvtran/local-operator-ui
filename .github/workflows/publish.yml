@@ -1,17 +1,19 @@
 name: Build and Publish
 
 on:
+  # WHO CREATES THE RELEASE IS WHAT DECIDES WHETHER THIS RUNS. A Release published
+  # by a person (the release owner's `gh release create`, see
+  # `.github/RELEASE_TEMPLATE.md`) fires this event directly. One published by
+  # `GITHUB_TOKEN` would not: an event created by that token starts no workflow run
+  # at all — GitHub's anti-recursion rule, which covers this `release` event and the
+  # tag's `push` alike. That rule, and not the event's name, is what the release
+  # procedure is built around, so there is no dispatch to carry the tag here: the
+  # tag, its commit and the release ID all arrive in this event's own payload.
   release:
     types: [published]
-  # The automated release path. `auto-release.yml` creates the Release with the
-  # repository's `GITHUB_TOKEN`, and an event created by that token starts no
-  # workflow run — which is GitHub's anti-recursion rule, and it covers the
-  # `release` event above and the tag's `push` alike. `repository_dispatch` is one
-  # of the two documented exceptions, so the automated publication arrives here.
-  # The payload names the tag, its commit and the release ID; `validate-release`
-  # proves all three against the API before anything is built.
-  repository_dispatch:
-    types: [release-published]
+  # The repair path: re-attach the assets of a Release whose build failed, or that
+  # was published before its assets could be built. It names the tag and the commit
+  # that tag must resolve to, and it deliberately never mutates release metadata.
   workflow_dispatch:
     inputs:
       release_tag:
@@ -25,7 +27,7 @@ on:
 
 # Serialize normal publishing and manual repairs for the same release tag.
 concurrency:
-  group: publish-${{ github.event.release.tag_name || github.event.client_payload.release_tag || inputs.release_tag }}
+  group: publish-${{ github.event.release.tag_name || inputs.release_tag }}
   cancel-in-progress: false
 
 env:
@@ -49,8 +51,11 @@ jobs:
       - name: Checkout workflow scripts
         uses: actions/checkout@v4
         with:
-          # Recovery payloads predate these helpers. Use the workflow's reviewed
-          # commit for tooling, never the old app tag or a moving branch name.
+          # `github.workflow_sha` is the commit the running copy of this file was
+          # loaded from — the tagged commit on the release path, the dispatch ref's
+          # head on a repair — so it is a commit and never a moving branch name: a
+          # `ref: main` checkout here would run today's tooling against an old tag.
+          # The app tree is a separate checkout, pinned to the SHA validated below.
           ref: ${{ github.workflow_sha }}
           # Every checkout in this file that lists one of these scripts lists
           # `scripts/entry-point.mjs` beside it, because each script resolves its own
@@ -66,23 +71,24 @@ jobs:
       - name: Validate release target
         id: validate
         env:
-          # One resolution for three triggers: the `release` event carries the tag
-          # in its payload, the automated publication arrives as a
-          # `repository_dispatch` carrying it in `client_payload`, and a manual
-          # repair names it as an input. The commit and the release ID are pinned
-          # the same way, so a Release replaced or recreated between the dispatch
-          # and this validation is refused rather than published.
-          RELEASE_TAG: ${{ github.event.release.tag_name || github.event.client_payload.release_tag || inputs.release_tag }}
-          EXPECTED_SOURCE_SHA: ${{ github.event.client_payload.source_sha || (github.event_name == 'workflow_dispatch' && inputs.expected_source_sha) || '' }}
+          # One resolution for two triggers: the `release` event carries the tag in
+          # its payload, and a manual repair names it as an input. The commit and
+          # the release ID are pinned the same way, so a Release replaced or
+          # recreated between the event and this validation is refused rather than
+          # published. A repair names no release id at all, and `validate-release`
+          # requires the tag and the commit on that path.
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+          EXPECTED_SOURCE_SHA: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_source_sha) || '' }}
           IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
-          # The ID pin arrives in one of two spellings of the same release:
-          # `github.event.release.id` is the numeric REST id, and a dispatch
-          # payload carries whatever its producer sent -- `auto-release.yml` sends
-          # the numeric id, and did not always. `validate-release.mjs` accepts
-          # either spelling of THIS release and emits the numeric id downwards; the
-          # note at the top of that script says which spelling is which and why only
-          # one is ever passed on.
-          EXPECTED_RELEASE_ID: ${{ github.event.release.id || github.event.client_payload.release_id || '' }}
+          # The ID pin is this event's own numeric REST id, and nothing else supplies
+          # one now that no dispatch carries a payload. `validate-release.mjs` still
+          # accepts either spelling of THIS release, because a hand-run repair can
+          # quote `gh release view --json id` -- which is the node id, not the numeric
+          # one its name suggests; that acceptance is what a past release lost a run
+          # to. The convention is unchanged: both spellings are accepted at that
+          # input, only the numeric one is passed on. The note at the top of that
+          # script says which spelling is which and why.
+          EXPECTED_RELEASE_ID: ${{ github.event.release.id || '' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/validate-release.mjs
 
@@ -164,11 +170,19 @@ jobs:
           done
           echo "All macOS signing secrets present"
 
+  # `open-release-window` is a dependency, not a concurrent sibling, and the
+  # edge is what makes a refused writeup stop the registry write as well as the
+  # builds. A job that only `needs: validate-release` runs while the window job
+  # is failing - Actions does not cancel a sibling when another job fails - so
+  # with this edge absent, a Release whose notes were refused still published to
+  # npm and skipped every installer, which is the one outcome the refusal exists
+  # to prevent. Ordering the window job first also means the writeup is judged
+  # before the registry is touched.
   npm-publish:
     name: Build and Publish to NPM
     runs-on: ubuntu-latest
-    needs: validate-release
-    if: ${{ needs.validate-release.result == 'success' }}
+    needs: [validate-release, open-release-window]
+    if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' }}
     permissions:
       id-token: write
       contents: read
@@ -198,12 +212,13 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       # The npm channel is part of a publication, and only a manual repair is not
-      # one. These four steps used to be keyed on `github.event_name == 'release'`,
-      # which was the same set of events only while the `release` event was the
-      # only way in: the automated publication arrives as a `repository_dispatch`,
-      # and under the old spelling it would have shipped installers while silently
-      # skipping npm. The discriminator is therefore "this is not a repair", which
-      # is the same thing `IS_MANUAL_DISPATCH` means to `release-state.mjs`.
+      # one. These four steps are keyed on "this is not a repair" rather than on
+      # `github.event_name == 'release'` because that is the predicate this block
+      # actually means — a repair re-attaches assets for an older tag whose npm
+      # version is already published, so it is the only run that must skip npm — and
+      # because the two spellings agreed only while the `release` event was the only
+      # way in. It is the same thing `IS_MANUAL_DISPATCH` means to
+      # `release-state.mjs`.
       - name: Ensure npm supports trusted publishing
         if: github.event_name != 'workflow_dispatch'
         run: |
@@ -603,11 +618,12 @@ jobs:
   # own run page rather than in this pipeline's colour.
   #
   # Why it is dispatched rather than triggered by `workflow_run` on this workflow:
-  # the automated publication is itself started by a `repository_dispatch`, and a
-  # run started from a `GITHUB_TOKEN` event is not documented to produce a
-  # `workflow_run` event. A verification that silently never fires is worse than
-  # no verification at all, because it reads as success; an explicit dispatch fails
-  # this run loudly if it cannot be made.
+  # the exception that lets a `GITHUB_TOKEN` event start a run at all
+  # (`repository_dispatch`) says nothing about a run started that way producing a
+  # `workflow_run` event, and this chain must not depend on an undocumented one. A
+  # verification that silently never fires is worse than no verification at all,
+  # because it reads as success; an explicit dispatch fails this run loudly if it
+  # cannot be made.
   #
   # Declared before `finalize-release` deliberately: nothing may depend on the
   # promotion, so a failed promotion stays terminal and no later job's success can
@@ -630,9 +646,9 @@ jobs:
         run: |
           set -euo pipefail
           # `repository_dispatch` is the documented exception to the rule that
-          # `GITHUB_TOKEN`-created events start no run, which is why the chain
-          # works at all here. The payload names the release; the verification
-          # resolves the candidate commit and the incumbent tag itself.
+          # `GITHUB_TOKEN`-created events start no run, which is why this dispatch
+          # reaches the verification at all. The payload names the release; the
+          # verification resolves the candidate commit and the incumbent tag itself.
           gh api -X POST "repos/$GITHUB_REPOSITORY/dispatches" \
             -f event_type=verify-signed-update \
             -f "client_payload[release_tag]=$RELEASE_TAG"
