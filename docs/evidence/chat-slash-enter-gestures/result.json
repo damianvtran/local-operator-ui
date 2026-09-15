@@ -1,0 +1,177 @@
+{
+  "origin": "http://localhost:6006",
+  "story": "chat-message-input--slash-enter",
+  "theme": "localOperatorDark",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "driver": "scripts/slash-enter-proof.mjs",
+  "at": "2026-09-15T20:51:34.840Z",
+  "cases": [
+    {
+      "name": "enter-runs-analytics",
+      "why": "The report: Enter on a command row completes the word and the dialog needs a second Enter.",
+      "gesture": "Enter after typing \"/analytics\"",
+      "expect": {
+        "ran": "/analytics",
+        "draft": ""
+      },
+      "before": {
+        "draft": "/analytics",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/analyticsAggregated token-consumption analytics across all sessionsvalue?"
+        ],
+        "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+        "ran": "none"
+      },
+      "after": {
+        "draft": "",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/analytics"
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/enter-runs-analytics-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/enter-runs-analytics-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "enter-completes-a-list-command",
+      "why": "A destination that opens an inline list still only completes and opens it — `/model` never runs on the Enter that names it.",
+      "gesture": "Enter after typing \"/model\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/model ",
+        "list": "Command arguments"
+      },
+      "before": {
+        "draft": "/model",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/modelSwitch model; /model default saves it for new sessionsvalue?"
+        ],
+        "active": "/modelSwitch model; /model default saves it for new sessionsvalue?",
+        "ran": "none"
+      },
+      "after": {
+        "draft": "/model ",
+        "list": "Command arguments",
+        "phase": "Models",
+        "rows": [],
+        "active": null,
+        "ran": "none"
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/enter-completes-a-list-command-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/enter-completes-a-list-command-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "tab-never-runs",
+      "why": "Tab is the completion key: it takes the highlighted row and never runs it.",
+      "gesture": "Tab after typing \"/analytics\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/analytics ",
+        "list": null
+      },
+      "before": {
+        "draft": "/analytics",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/analyticsAggregated token-consumption analytics across all sessionsvalue?"
+        ],
+        "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+        "ran": "none"
+      },
+      "after": {
+        "draft": "/analytics ",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none"
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/tab-never-runs-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/tab-never-runs-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "ambiguous-enter-grows-the-prefix",
+      "why": "`/l` leaves `login` and `logout`, so Enter grows the word to their common prefix `log` and leaves the list up.",
+      "gesture": "Enter after typing \"/l\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/log",
+        "list": "Slash commands"
+      },
+      "before": {
+        "draft": "/l",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?"
+        ],
+        "active": "/loginAuthenticate a providervalue?",
+        "ran": "none"
+      },
+      "after": {
+        "draft": "/log",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?"
+        ],
+        "active": "/loginAuthenticate a providervalue?",
+        "ran": "none"
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-grows-the-prefix-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-grows-the-prefix-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "click-runs-analytics",
+      "why": "The pointer arm, which already worked: a click on the row runs the command on the same pick.",
+      "gesture": "click on the \"/analytics\" row after typing \"/ana\"",
+      "expect": {
+        "ran": "/analytics",
+        "draft": ""
+      },
+      "before": {
+        "draft": "/ana",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/analyticsAggregated token-consumption analytics across all sessionsvalue?"
+        ],
+        "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+        "ran": "none"
+      },
+      "after": {
+        "draft": "",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/analytics"
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/click-runs-analytics-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/click-runs-analytics-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    }
+  ],
+  "pageProblems": [],
+  "failures": 0
+}
