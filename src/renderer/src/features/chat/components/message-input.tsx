@@ -71,6 +71,8 @@ import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { ComposerStatusRow } from "./composer-status-row";
+import { sampleSuggestions } from "./composer-suggestions";
+import { ComposerTipRow } from "./composer-tip";
 import {
 	DirectoryIndicator,
 	type DirectoryIndicatorHandle,
@@ -324,7 +326,12 @@ type MessageInputProps = {
 	 * used to render.
 	 */
 	sendError?: ComposerSendError;
-	initialSuggestions?: string[];
+	/**
+	 * The label pool an empty chat samples from. `readonly` because the pool is
+	 * a constant the caller owns: the composer draws a sample and never sorts,
+	 * appends to or otherwise edits what it was handed.
+	 */
+	initialSuggestions?: readonly string[];
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -789,17 +796,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			? "Voice input is unavailable while Local Operator is offline"
 			: "Sign in to Radient in the settings page to enable audio recording";
 
-		const MAX_SUGGESTIONS = 7;
+		/*
+		 * Whether the empty-chat prompt belongs in the band.
+		 *
+		 * Derived here rather than written into the JSX so the wrapper below does not
+		 * have to repeat the condition three times: the wrapper is always rendered and
+		 * only the prompt's presence is conditional. See the wrapper's own comment for
+		 * why that matters (QA round 1, Q4 - focus dropped to `<body>` when a press on
+		 * the plan chip narrowed the column across `isSmallView`).
+		 *
+		 * Above the suggestion sample because that sample is drawn for the prompt's
+		 * own mount rather than at the top of the composer's render: a resumed session
+		 * that is never empty must not consume the opening sample the first empty chat
+		 * of the session is pinned to.
+		 */
+		const showEmptyChatPrompt =
+			messages.length === 0 && !isHydrating && !isSmallView;
 
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
-			if (initialSuggestions.length <= MAX_SUGGESTIONS) {
-				return initialSuggestions;
-			}
-			// Randomly select MAX_SUGGESTIONS unique suggestions
-			const shuffled = [...initialSuggestions].sort(() => Math.random() - 0.5);
-			return shuffled.slice(0, MAX_SUGGESTIONS);
-		}, [initialSuggestions]);
+			/*
+			 * Nothing is sampled while the prompt is hidden. The sample is drawn when
+			 * the empty chat mounts, not on a timer, so nothing under the user's eye
+			 * changes while they read it - and the session's FIRST draw is the pool's
+			 * head, which is what makes a committed frame of this surface
+			 * reproducible (`composer-suggestions.ts` has the whole argument).
+			 */
+			if (!showEmptyChatPrompt) return [];
+			return sampleSuggestions(initialSuggestions);
+		}, [initialSuggestions, showEmptyChatPrompt]);
 
 		// Node-valued callback refs follow conditional splash remounts; a stable
 		// suggestion sample does not imply that the measured DOM is still alive.
@@ -1810,18 +1835,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * draw. The variant owns the size; the call sites no longer claim to.
 		 */
 
-		/*
-		 * Whether the empty-chat prompt belongs in the band.
-		 *
-		 * Derived here rather than written into the JSX so the wrapper below does not
-		 * have to repeat the condition three times: the wrapper is always rendered and
-		 * only the prompt's presence is conditional. See the wrapper's own comment for
-		 * why that matters (QA round 1, Q4 - focus dropped to `<body>` when a press on
-		 * the plan chip narrowed the column across `isSmallView`).
-		 */
-		const showEmptyChatPrompt =
-			messages.length === 0 && !isHydrating && !isSmallView;
-
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
 				{/*
@@ -2727,15 +2740,46 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						</div>
 					</div>
 				</div>
-
-				{messages.length === 0 && !isHydrating && !isSmallView && (
+				{/*
+				 * The ambient tip line: inside the splash, below the box, above
+				 * the chips.
+				 *
+				 * OUTSIDE `[data-lo-suggestion-stack]` deliberately. The stack's cap
+				 * reads its own children as chips and derives rows from the boxes
+				 * that share a top edge (`suggestion-stack.ts`), so a non-chip child
+				 * there would be counted as one and corrupt the row model.
+				 *
+				 * Lying inside the splash is the other half of the same contract, and
+				 * it is what keeps the cap arithmetic honest:
+				 * `MeasuredSuggestionStack` measures
+				 * `fixed = splash.height - stack.height`, so the row's own 32px
+				 * (12px margin + 20px row) lands in the fixed budget automatically
+				 * and the stack's allowance drops by exactly that much.
+				 *
+				 * The margin and the shared measure are the CALLER's, matching the
+				 * suggestion wrapper below: a component does not own its outer
+				 * margin, the container owns the gap (branding.md § 5).
+				 */}
+				{showEmptyChatPrompt && (
+					<div className={cn("mt-3", CHAT_MEASURE)}>
+						{/*
+						 * The clock is suspended while the box holds a draft, so a text
+						 * change in the peripheral field cannot pull the eye off what
+						 * the user is typing; the row itself keeps painting.
+						 */}
+						<ComposerTipRow suspended={newMessage.trim().length > 0} />
+					</div>
+				)}
+				{showEmptyChatPrompt && (
 					<div className={cn("mt-6", CHAT_MEASURE)}>
-						{/* Neutral chips. Twelve accent-washed pills was the accent
-						 * budget spent four times over on the one screen that has no
-						 * content to compete with them; as quiet outlines they read as
-						 * what they are — examples, not the primary action. Raycast and
-						 * Linear's command palettes hold suggestions at exactly this
-						 * weight. */}
+						{/* Borderless chips, left-aligned on the measure. Twelve
+						 * accent-washed pills was the accent budget spent four times over on
+						 * the one screen that has no content to compete with them, and the
+						 * neutral outline that replaced them still drew seven 3:1 boundaries
+						 * — a control's edge, on what are examples rather than the primary
+						 * action. As ghost controls they draw no boundary at all and read as
+						 * what they are. Raycast and Linear's command palettes hold
+						 * suggestions at exactly this weight. */}
 						<MeasuredSuggestionStack
 							band={band}
 							splash={splash}

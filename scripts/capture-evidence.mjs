@@ -790,6 +790,38 @@ export const STORIES = [
 		220,
 		{ dir: "activity-motion-2", liveMotion: true, phaseMs: 500 },
 	],
+	/* The fold with main's #223 (c17da5d4b): main appended its ACTIVITY entries at
+	   this same point in the list while this branch appended the composer band's,
+	   so the two sides are UNIONED rather than picked - every entry from both sides
+	   present exactly once, in main's order for main's ten entries, with this
+	   branch's six `chat-composer-band` entries appended after them. Nothing is
+	   dropped, reordered within either side, or shadowed. `--long-goal` above keeps
+	   MAIN's geometry (1000x560): #223 changed that band's height and this branch
+	   never touched the entry, so there is no branch intent to preserve it against. */
+	/*
+	 * The composer band's empty-chat state: the suggestion sample, the ambient
+	 * tip row, and the chips' new weight.
+	 *
+	 * `empty-chat` is the app's default layout, where the chat column IS the
+	 * window, so the story's column is the viewport and the shared measure caps
+	 * at 900px - the frame the design record's prediction 1 is about (whether
+	 * the opening four take one row). `column-floor` renders the band at 550px
+	 * inside an 830x572 viewport: the app's minimum window with the canvas open,
+	 * and the only frame in which the band's height cap can bind (prediction 2).
+	 * `small-view` is one step below the floor, where the whole prompt - the tip
+	 * row included - is absent by width alone.
+	 *
+	 * `draft-held` and `reduced-motion` are the tip's two clock states: the one
+	 * whose clock is suspended by a draft, and the one that does not rotate at
+	 * all. `long-labels` is the pool's longest four, which is the worst wrap a
+	 * later sample can draw.
+	 */
+	["chat-composer-band--empty-chat", 1380, 872],
+	["chat-composer-band--column-floor", 830, 572],
+	["chat-composer-band--small-view", 830, 572],
+	["chat-composer-band--long-labels", 900, 572],
+	["chat-composer-band--draft-held", 1380, 872],
+	["chat-composer-band--reduced-motion", 1380, 872, { reducedMotion: true }],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap
