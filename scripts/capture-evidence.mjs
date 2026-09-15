@@ -43,6 +43,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1603,15 +1604,18 @@ const main = async () => {
 	dataDir = join(tmpdir(), `lo-evidence-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 
-	chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-sandbox",
-		"--disable-gpu",
-		"--hide-scrollbars",
-		`--user-data-dir=${dataDir}`,
-		"--remote-debugging-port=0",
-		"about:blank",
-	]);
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
 
 	// Chrome prints the DevTools websocket on stderr.
 	const wsUrl = await new Promise((resolve, reject) => {

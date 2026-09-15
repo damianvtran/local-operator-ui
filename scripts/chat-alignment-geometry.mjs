@@ -46,6 +46,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ARGS = process.argv.slice(2);
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
@@ -204,15 +205,18 @@ const main = async () => {
 	dataDir = join(tmpdir(), `lo-geometry-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 
-	chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-sandbox",
-		"--disable-gpu",
-		"--hide-scrollbars",
-		`--user-data-dir=${dataDir}`,
-		"--remote-debugging-port=0",
-		"about:blank",
-	]);
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
 
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
