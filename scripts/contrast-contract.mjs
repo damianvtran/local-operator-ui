@@ -313,6 +313,22 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The strip's ACTIVE tab: `elevated` on the strip's own `sunken`, bounded by
+		 * `border-control` (design round 3, D18). It has its own fill and edge, so by
+		 * this file's first rule it has a row - and the row is the point: the ground
+		 * step alone is 1.11:1 in the dark palettes, which is a depth cue rather than
+		 * a marker, so `border-control` is what has to clear the 3:1 non-text floor.
+		 * It is asserted against BOTH grounds the edge borders: the strip's `sunken`
+		 * (in the gaps) and the neighbouring tab's `surface`.
+		 */
+		name: "browser active tab",
+		on: ["sunken", "surface"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The consent band: the surface the per-origin approval prompt renders on, in
 		 * the browser's chrome band. A control band rather than a callout, so its
 		 * boundary is `border-control` (design 11.2) and its ground is `surface` — see

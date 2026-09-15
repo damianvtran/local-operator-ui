@@ -30,8 +30,9 @@ import type { BrowserTabView } from "../hooks/use-browser-chrome";
  * boundary against the content area is `border-control` rather than `hairline`;
  * the agent marker is the accent, spent once in the band for exactly the state
  * the user must not miss; the tab's own ground is `surface` with the active tab
- * stepped up to `elevated`, which is how this system says "this one is selected"
- * without a border or a shadow.
+ * stepped up to `elevated` AND bounded by `border-control`. The step is the depth
+ * cue and the boundary is the marker a glance survives - a 1.11:1 step on its own
+ * is not something a user can look for (design round 3, D18).
  */
 
 export interface BrowserTabStripProps {
@@ -104,13 +105,31 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						<div
 							key={tab.tabId}
 							className={cn(
-								// A tab is a control, so it has a fill and a boundary: the
-								// active one steps up a ground rather than gaining a shadow.
-								"group flex max-w-56 min-w-32 items-center gap-1.5 rounded-sm px-2",
-								"border border-transparent text-body-sm",
+								/*
+								 * A tab is a control, so it has a fill and a boundary: the active one
+								 * steps up a ground rather than gaining a shadow, and (design round 3,
+								 * D18) it carries `border-control` as its own edge, because the ground
+								 * step alone measures 1.11:1 (`elevated` against `surface`) and a
+								 * selected tab has to survive a glance. The edge clears the 3:1
+								 * non-text floor against BOTH grounds it borders - the strip's own
+								 * `sunken` and the neighbouring tab's `surface` - in all twelve
+								 * themes, and it is `border-control` rather than the accent because
+								 * the accent is spent once, on the agent marker.
+								 *
+								 * THE WIDTH POLICY IS THE TITLE'S (design round 3, D13). A tab used to
+								 * stop at `max-w-56` however much of the strip was empty, so the
+								 * chrome - marker, chips, overflow menu, close - left the title about
+								 * thirty pixels and a failed agent tab painted `1...` beside 723 px of
+								 * nothing. Tabs now SHARE the row they have (`basis-32`, `grow`, half
+								 * the strip at most, `min-w-32` before the row scrolls), which is what
+								 * a tab strip is for: telling tabs apart is the job, and the name is
+								 * how the user tells them apart.
+								 */
+								"group flex min-w-32 max-w-[50%] grow basis-32 items-center gap-1.5 rounded-sm border px-2",
+								"text-body-sm",
 								active
-									? "bg-elevated text-ink"
-									: "bg-surface text-ink-muted hover:bg-elevated hover:text-ink",
+									? "border-control bg-elevated text-ink"
+									: "border-transparent bg-surface text-ink-muted hover:bg-elevated hover:text-ink",
 							)}
 						>
 							<button
@@ -122,7 +141,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 								data-tour-tag="browser-tab"
 							>
 								<TabMark tab={tab} loading={loading} />
-								<span className="min-w-0 truncate">{tab.title}</span>
+								{/*
+								 * `grow` so the title takes whatever the chrome leaves and the
+								 * marker/chips/buttons sit at the tab's edge, and the native
+								 * `title` so a truncated name is still recoverable with the pointer
+								 * - which is what D13 asked for alongside the width fix. The full
+								 * text is in the DOM either way, so assistive technology already
+								 * reads the whole name; this is the mouse's half of it.
+								 */}
+								<span className="min-w-0 grow truncate" title={tab.title}>
+									{tab.title}
+								</span>
 								{tab.owner === "agent" && (
 									// Sentence case, informational, and the element a QA pass
 									// asserts on: the marker is the ONLY thing that distinguishes

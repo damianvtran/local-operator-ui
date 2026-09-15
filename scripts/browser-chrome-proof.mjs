@@ -678,6 +678,41 @@ const activateUserTab = () =>
 	})()`);
 
 /**
+ * Close the ACTIVE tab, the way a user does.
+ *
+ * NOT `realClick('[data-tour-tag="browser-tab-close"]')`: that addresses the FIRST
+ * tab's close button, and the tab a state is reached from is whichever one is
+ * active. It matters here because the registry hands the active state to the next
+ * USER tab when the active one goes (`forget`), so "nothing selected" is reached by
+ * closing the user tabs deliberately rather than by hoping the first in the strip
+ * is the active one (design round 3, D17).
+ */
+const closeActiveTab = () =>
+	evaluate(`(() => {
+		const active = document.querySelector('[role="tab"][aria-selected="true"]');
+		if (!active) return 'no-active-tab';
+		const close = active.parentElement?.querySelector('[data-tour-tag="browser-tab-close"]');
+		if (!close) return 'missing';
+		close.click();
+		return 'clicked';
+	})()`);
+
+/**
+ * The page area's own copy and its controls, read from the DOM.
+ *
+ * The point of reading it rather than the frame: a still cannot assert anything,
+ * and the two empty states behind this run's 17/18 frames had no check anywhere in
+ * the tree (design round 3, D17 and D19).
+ */
+const pageAreaCopy = () =>
+	evaluate(`(() => {
+		const area = document.querySelector('[data-tour-tag="browser-content"]');
+		const text = (area?.innerText ?? '').replace(/\\s+/g, ' ').trim();
+		const buttons = [...(area?.querySelectorAll('button') ?? [])].map((el) => el.innerText.replace(/\\s+/g, ' ').trim());
+		return JSON.stringify({ text, buttons });
+	})()`);
+
+/**
  * A real pointer press on an element, for Radix triggers.
  *
  * `.click()` is not enough here: a Radix `DropdownMenuTrigger` opens on
@@ -2134,6 +2169,85 @@ async function main() {
 			restoredRect,
 		);
 		say(`frame: ${join(OUT_DIR, "12-restored-after-restart.png")}`);
+
+		/*
+		 * ---- the two empty page states: asserted, then photographed -----------
+		 *
+		 * (design round 3, D17 and D19.) Both branches had no assertion anywhere in
+		 * the tree, and in the round-3 set one of them had a frame whose provenance
+		 * was a separate run while the other had no frame at all. They are reached
+		 * here the way a user reaches them - closing the ACTIVE tab, from the strip -
+		 * and read out of the DOM, so the frames are a record of a state this run
+		 * checked rather than the only evidence of it.
+		 *
+		 * WHY IT TAKES MORE THAN ONE CLOSE: `forget` hands the active state to the
+		 * next USER tab, so a strip left with only the agent's tab is the state with
+		 * nothing selected (design 7.3), and closing that one too is the state with
+		 * no tabs at all. This is `D16`'s third tab doing a second job.
+		 */
+		let expectedTabs = beforeQuit.tabs.length;
+		let closes = 0;
+		let noTabState = await chromeState();
+		while (noTabState.activeTabId !== null && closes < 5) {
+			expectedTabs -= 1;
+			if ((await closeActiveTab()) !== "clicked") break;
+			closes += 1;
+			noTabState = await waitFor(
+				async () => {
+					const current = await chromeState();
+					return current.tabs.length === expectedTabs ? current : null;
+				},
+				`the strip to settle after close ${closes}`,
+			);
+		}
+		const noTabCopy = JSON.parse(await pageAreaCopy());
+		const noTabFrame = await captureRenderer("17-surface-no-tab-selected");
+		await compose(
+			"17-surface-no-tab-selected",
+			noTabFrame,
+			null,
+			await contentRect(),
+		);
+		check(
+			"with no tab selected the page area names the state and offers the action under the same `New tab` label the strip's own control carries (D17, D19)",
+			closes > 0 &&
+				noTabState.activeTabId === null &&
+				noTabState.tabs.length === 1 &&
+				noTabState.tabs.every((tab) => tab.owner === "agent") &&
+				noTabCopy.text.includes(
+					"No tab is selected. Pick a tab above, or open a new one.",
+				) &&
+				noTabCopy.buttons.join("|") === "New tab",
+			`${closes} close(s): activeTabId ${noTabState.activeTabId}, ${noTabState.tabs.length} tab(s) left (${noTabState.tabs.map((tab) => tab.owner).join(", ")}); page area "${noTabCopy.text}"; buttons ${JSON.stringify(noTabCopy.buttons)}`,
+		);
+		say(`frame: ${join(OUT_DIR, "17-surface-no-tab-selected.png")}`);
+
+		// The last tab, closed: the other empty state, and the one D19's label work is
+		// about - the same action under the same name in both branches.
+		const lastClose = await realClick(
+			'[data-tour-tag="browser-tab-close"]',
+		);
+		const noTabsState = await waitFor(async () => {
+			const current = await chromeState();
+			return current.tabs.length === 0 ? current : null;
+		}, "the last tab in the strip to close");
+		const noTabsCopy = JSON.parse(await pageAreaCopy());
+		const noTabsFrame = await captureRenderer("18-surface-no-tabs-open");
+		await compose(
+			"18-surface-no-tabs-open",
+			noTabsFrame,
+			null,
+			await contentRect(),
+		);
+		check(
+			"with no tabs open the page area names that state too, under the SAME label",
+			lastClose === "clicked" &&
+				noTabsState.activeTabId === null &&
+				noTabsCopy.text.includes("No tabs are open.") &&
+				noTabsCopy.buttons.join("|") === "New tab",
+			`${noTabsState.tabs.length} tab(s) left; page area "${noTabsCopy.text}"; buttons ${JSON.stringify(noTabsCopy.buttons)}`,
+		);
+		say(`frame: ${join(OUT_DIR, "18-surface-no-tabs-open.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);
