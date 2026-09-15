@@ -31,11 +31,18 @@ import { Notification } from "electron";
  */
 
 /** The banner's copy. Sentence case, no emoji, and it names the origin because
- * the origin is what the user is being asked about (design 9.3). */
+ * the origin is what the user is being asked about (design 9.3).
+ *
+ * TWO SHAPES, because the queue is real now: one pending request is a specific
+ * ask about one site, and several are a count — a banner that named one origin
+ * while three were waiting would be the half-truth this feature's copy standard
+ * exists to prevent. */
 export const CONSENT_TITLE = "Site approval needed";
 
-export function consentBody(origin: string): string {
-	return `An agent wants to open ${origin}. Approve or deny it in the browser tab.`;
+export function consentBody(count: number, origin: string): string {
+	return count === 1
+		? `An agent wants to open ${origin}. Approve or deny it in the browser tab.`
+		: `${count} site approvals are waiting. Approve or deny them in the browser tab.`;
 }
 
 export interface ConsentNotifierOptions {
@@ -46,51 +53,80 @@ export interface ConsentNotifierOptions {
 	 * browser route forward. Never a window raise. */
 	onAttention: (entryId: string) => void;
 	log?: (message: string) => void;
+	/**
+	 * How a banner is built, injectable so the ONE-BANNER-PER-COUNT-CHANGE rule has
+	 * an observer at all.
+	 *
+	 * It has none otherwise: a native banner is raised only when the launch plan
+	 * would itself have focused the window (`show === "focus"`), and the runs this
+	 * project can automate are headless, where no banner is ever raised. A rule that
+	 * only prose and a headless run can speak for is a rule that fails on the day
+	 * someone changes the diff to a per-entry loop again — which is exactly the
+	 * change this seam was added to make fail in CI.
+	 */
+	createNotification?: (options: {
+		title: string;
+		body: string;
+		silent: boolean;
+	}) => {
+		on(event: "click", listener: () => void): void;
+		show(): void;
+	};
 }
 
-/** The entries already announced, so a re-render of the same pending request
- * cannot produce a second banner. */
+/** The live count the last banner was raised for. */
 export class ConsentNotifier {
-	private readonly announced = new Set<string>();
+	private announced = 0;
 
 	constructor(private readonly options: ConsentNotifierOptions) {}
 
 	/**
-	 * Announce the pending entries that have not been announced yet.
+	 * Announce a change in the size of the pending set — ONE banner per increase.
 	 *
-	 * Called with the CURRENT pending list on every change rather than on an
-	 * "added" event: the store's change hook is one callback for a mutable set,
-	 * and a diff against what was already announced is both simpler and correct
-	 * when an entry is superseded and replaced by a new one with a new id.
+	 * WHY A COUNT WATERMARK RATHER THAN A SET OF ANNOUNCED IDS, which is what this
+	 * was: with one prompt slot the set could hold at most one entry, and with a
+	 * real queue (`approvals.ts` no longer displaces) the old rule raised one
+	 * banner PER UNANNOUNCED ENTRY — up to 16 banners for one busy minute, against
+	 * a rule that exists to avoid interrupting the operator (design 9.2, 11.4).
+	 * The count of the live set is the thing the user can act on, so an increase is
+	 * the event and a banner is the whole response to it.
+	 *
+	 * WHAT THIS GIVES UP, deliberately: a request that replaces another without
+	 * changing the count (a displacement at the cap, a cancel plus an arrival in
+	 * one refresh) raises no second banner. The alternative is a banner per entry,
+	 * and the banner's job is to bring the user to the band — where the tray shows
+	 * the whole live set, numbered. The click names the OLDEST live entry, which is
+	 * the one the tray selects by default.
 	 */
 	announce(pending: ReadonlyArray<{ entryId: string; origin: string }>): void {
-		const live = new Set(pending.map((entry) => entry.entryId));
-		for (const entryId of [...this.announced]) {
-			if (!live.has(entryId)) this.announced.delete(entryId);
-		}
+		const count = pending.length;
+		const increased = count > this.announced;
+		this.announced = count;
+		if (!increased) return;
 		if (this.options.show !== "focus") return;
-		if (!Notification.isSupported()) return;
-		for (const entry of pending) {
-			if (this.announced.has(entry.entryId)) continue;
-			this.announced.add(entry.entryId);
-			try {
-				const notification = new Notification({
+		const create = this.options.createNotification;
+		if (!create && !Notification.isSupported()) return;
+		const oldest = pending[0];
+		if (!oldest) return;
+		try {
+			const notification = (create ?? ((options) => new Notification(options)))(
+				{
 					title: CONSENT_TITLE,
-					body: consentBody(entry.origin),
+					body: consentBody(count, oldest.origin),
 					silent: false,
-				});
-				notification.on("click", () => this.options.onAttention(entry.entryId));
-				// Electron's own banner API on a `Notification`, not a window:
-				// `scripts/window-mode.test.mjs` allow-lists this exact call.
-				notification.show();
-			} catch (error) {
-				// A banner that cannot be raised is a missing convenience, never a
-				// reason a consent request fails to exist: the bar in the chrome band
-				// is the primary channel.
-				this.options.log?.(
-					`[browser] could not raise a consent banner: ${String(error)}`,
-				);
-			}
+				},
+			);
+			notification.on("click", () => this.options.onAttention(oldest.entryId));
+			// Electron's own banner API on a `Notification`, not a window:
+			// `scripts/window-mode.test.mjs` allow-lists this exact call.
+			notification.show();
+		} catch (error) {
+			// A banner that cannot be raised is a missing convenience, never a
+			// reason a consent request fails to exist: the band in the chrome band
+			// is the primary channel.
+			this.options.log?.(
+				`[browser] could not raise a consent banner: ${String(error)}`,
+			);
 		}
 	}
 }

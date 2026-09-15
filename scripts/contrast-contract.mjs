@@ -271,7 +271,15 @@ const CONTROLS = [
 		 * tab whose own fill changes with the active state.
 		 */
 		name: "browser agent marker chip",
-		on: ["surface", "elevated"],
+		/*
+		 * The grounds the chip is DRAWN on. The tab-strip grammar moved them: the chip
+		 * renders inside the tab button, whose only fills are the page's `canvas` (the
+		 * active tab) and the strip's `sunken` (an inactive one). `surface`/`elevated`
+		 * were the fills a tab used to have and no longer occur beneath this chip
+		 * (review round 2, F4: round 1's correction was not carried to the siblings of
+		 * the row it was made on).
+		 */
+		on: ["canvas", "sunken"],
 		fill: "accentWash",
 		border: "accent",
 		ink: "ink",
@@ -286,8 +294,38 @@ const CONTROLS = [
 		 * drawn on a tab whose fill moves with the active state. Measured, not
 		 * reasoned — this row failed with `warningBorder` before the change.
 		 */
+		name: "browser shared marker pill",
+		/*
+		 * `Shared` and `Restored` gained a `border-control` edge when design round 2's D11
+		 * harmonised the five state markers into one pill shape. By this file's first
+		 * rule a component with its own edge owns a row, and neither had one (review round
+		 * 2, F4) — the same coverage gap as the grounds above, one class down. `fill` is
+		 * null because the pill paints no ground of its own: the strip's shows through,
+		 * which is why the row asserts the edge against both grounds it can sit on.
+		 */
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
+	},
+	{
+		name: "browser restored marker pill",
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkDim",
+	},
+	{
 		name: "browser waiting marker chip",
-		on: ["surface", "elevated"],
+		/*
+		 * The grounds the chip is DRAWN on, which the tab-strip grammar moved (review
+		 * round 1, finding 3). It renders inside the tab button, and an inactive tab has
+		 * no fill at all any more, so the chip sits on the strip's `sunken`; on the
+		 * active tab it sits on the page's own `canvas`. It used to name `surface`,
+		 * which no longer occurs beneath it — a row asserting the wrong grounds is the
+		 * "green output about a component nobody listed" case.
+		 */
+		on: ["canvas", "sunken"],
 		fill: "warningWash",
 		border: "borderControl",
 		ink: "ink",
@@ -306,24 +344,83 @@ const CONTROLS = [
 		 * across the twelve themes); this row is what keeps that true.
 		 */
 		name: "browser failed marker chip",
-		on: ["surface", "elevated"],
+		// The same grammar change as the other two chips: inside the tab button, on
+		// `canvas` (active) or the strip's `sunken` (inactive).
+		on: ["canvas", "sunken"],
 		fill: "dangerWash",
 		border: "borderControl",
 		ink: "ink",
 	},
 	{
 		/*
-		 * The strip's ACTIVE tab: `elevated` on the strip's own `sunken`, bounded by
-		 * `border-control` (design round 3, D18). It has its own fill and edge, so by
-		 * this file's first rule it has a row - and the row is the point: the ground
-		 * step alone is 1.11:1 in the dark palettes, which is a depth cue rather than
-		 * a marker, so `border-control` is what has to clear the 3:1 non-text floor.
-		 * It is asserted against BOTH grounds the edge borders: the strip's `sunken`
-		 * (in the gaps) and the neighbouring tab's `surface`.
+		 * The strip's ACTIVE tab: the PAGE's own ground (`canvas`) on the strip's
+		 * `sunken`, bounded by `border-control` on the three edges it has (design
+		 * round 3, D18; re-specified with the tab-strip grammar, spec §6). It has its
+		 * own fill and edge, so by this file's first rule it has a row - and the row is
+		 * the point: the ground step alone is 1.11:1 in the dark palettes, which is a
+		 * depth cue rather than a marker, so `border-control` is what has to clear the
+		 * 3:1 non-text floor. Measured this round: `borderControl` on `sunken` is
+		 * 3.13:1 at worst (iceberg), and `ink` on `canvas` 9.66:1 at worst.
+		 *
+		 * `on` no longer lists `surface`: the INACTIVE tab has no fill any more, so the
+		 * only ground this edge borders is the strip's own `sunken`. Keeping a stale
+		 * `on` would keep measuring the component against a ground it is not drawn on,
+		 * which is the failure mode a green run cannot report.
 		 */
 		name: "browser active tab",
-		on: ["sunken", "surface"],
+		on: ["sunken"],
+		fill: "canvas",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The numbered badge on the Approvals control (spec §5.1). `warningWash` is
+		 * already this feature's one meaning - "an agent is blocked on you" - and
+		 * `border-control` is the contract's own answer for its edge: `warningBorder`
+		 * measures 2.51-2.98:1 on graded grounds in seven palettes (the sibling row
+		 * above records the measurement).
+		 *
+		 * TWO grounds, because the same control carries the badge in both hosts: the
+		 * URL bar's `canvas` in the browser surface, and the chat pane header's
+		 * `surface` when PR 2 puts the control there. Measured this round: `ink` on
+		 * `warningWash` 8.39:1 at worst (tokyoNight); `borderControl` 3.34:1 on
+		 * `canvas` and 3.65:1 on `surface` at worst.
+		 */
+		name: "browser approvals badge",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The tray's SELECTED row - the request the card below it answers (spec §4.1).
+		 * It steps up a ground rather than gaining a shadow (elevation is a lightness
+		 * step) and keeps `border-control`, because the row is what the user is
+		 * deciding about and a 1.2:1 ground step is a depth cue, not a boundary.
+		 * Measured this round: `ink` on `elevated` 7.64:1 at worst (tokyoNight), edge
+		 * 3.65:1 at worst (iceberg) - the fill alone would be 1.05-1.25:1, which is
+		 * the number that makes the edge load-bearing rather than decorative.
+		 */
+		name: "browser approvals tray row (selected)",
+		on: ["surface"],
 		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The approvals dock, whose left edge is the SOLE boundary between the app's
+		 * own approvals chrome and a live page (spec §4.2; `border-control` rather
+		 * than the canvas dock's `hairline`, which separates two app surfaces). It
+		 * holds text, so it is a control row rather than a graphic one. Measured this
+		 * round: `borderControl` on `canvas` 3.34:1 at worst (iceberg), `ink` on
+		 * `surface` 9.02:1 at worst.
+		 */
+		name: "browser approvals dock",
+		on: ["canvas"],
+		fill: "surface",
 		border: "borderControl",
 		ink: "ink",
 	},
@@ -597,6 +694,40 @@ const GRAPHICS = [
  */
 const PERCEPTIBLE = [
 	{
+		/*
+		 * THE HOVER STEP ON A BROWSER TAB, and why it is HERE rather than in
+		 * `CONTROLS`. A hovered tab steps its fill to `elevated` on the strip's
+		 * `sunken` and changes nothing else - no edge appears, because an edge that
+		 * appears on hover is a state change rather than a colour step, and the design
+		 * says hover is a colour step and only that (`branding.md` § "nothing lifts,
+		 * scales or translates on hover"; spec §6's table). `CONTROLS` asserts the
+		 * opposite shape - a control's fill OR border must clear 3:1 against its
+		 * ground - and a fill step between two ADJACENT GROUNDS cannot: `elevated` on
+		 * `sunken` measures 1.20-1.55:1 across the twelve palettes. Listing it there
+		 * would either fail on a property the design deliberately does not have, or
+		 * force an edge onto hover to satisfy a gate, which is the gate dictating the
+		 * design.
+		 *
+		 * What a hover owes is being SEEN, which is this table's own question. Measured
+		 * this round: ΔE00 5.85 at worst (iceberg), so the floor is 5.0 and the worst
+		 * palette clears it by 0.85. The weight-parity half compares the hovered fill
+		 * with the resting one, whose role IS the ground (`sunken`): the step is
+		 * 1.20-1.55x either way, so `maxWeightChange` 2.0 states that hover is a step
+		 * in one ramp rather than a different control.
+		 *
+		 * The hovered LABEL's legibility is already covered: `ink` is asserted at 7:1
+		 * on every ground, `elevated` among them (the `INKS` loop above), which is
+		 * where the hovered title is read.
+		 */
+		name: "browser tab hover fill",
+		role: "elevated",
+		on: ["sunken"],
+		minDeltaE: 5.0,
+		pairedWith: "sunken",
+		maxWeightChange: 2.0,
+		against: "sunken",
+	},
+	{
 		name: "context wheel track, empty state",
 		role: "hairline",
 		/* Both grounds the empty ring renders on: the composer, and the reading
@@ -660,6 +791,33 @@ const PERCEPTIBLE = [
  *     worth a parser.
  */
 const STRUCTURAL_CALL_SITES = [
+	{
+		/*
+		 * The approvals dock's left edge. It is the sole boundary between the app's own
+		 * approvals chrome and a LIVE PAGE, which is why it is `border-control` rather
+		 * than the `hairline` the canvas dock uses to separate two app surfaces. The
+		 * palette rows prove `borderControl` clears 3:1 on every ground; only this pin
+		 * can see the edit that removes it, and that edit leaves every ratio above
+		 * green while the two surfaces become one (spec §4.2).
+		 */
+		what: "browser approvals dock edge",
+		file: "src/renderer/src/features/browser/components/browser-approvals-dock.tsx",
+		must: "border-control border-l bg-surface",
+		why: "the dock's edge is the only thing separating the app's approvals chrome from the page it narrows; dropping to `hairline` (no floor) or removing it merges them, and no palette assertion can see it",
+	},
+	{
+		/*
+		 * The active tab's three edges. The tab takes the page's own ground, whose step
+		 * away from the strip's `sunken` is 1.11-1.4:1 - a depth cue, not a marker - so
+		 * the `border-control` edge is what makes the selected tab survive a glance
+		 * (design round 3, D18; spec §6). Reverting it to `border-transparent` (what the
+		 * tab looked like as a button) or to `hairline` keeps the palette rows green.
+		 */
+		what: "browser active tab edges",
+		file: "src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+		must: "border-control border-x border-t bg-canvas text-ink",
+		why: "the active tab's only marker a glance can find is its `border-control` edge; the ground step alone is a depth cue that measures under 1.4:1 in every palette",
+	},
 	{
 		what: "chat working surface ground",
 		file: "src/renderer/src/features/chat/components/chat-content.tsx",
@@ -848,14 +1006,62 @@ const EXCEPTIONS = [
 	 * the text pair above: a shared control's colour, recorded where a reader
 	 * can find it rather than changed in a panel's PR.
 	 */
-	{ theme: "monokai", fg: "dangerBorder", bg: "elevated", got: 2.49, why: "the danger control's only edge on a dialog ground; worst of the eight" },
-	{ theme: "dracula", fg: "dangerBorder", bg: "elevated", got: 2.51, why: "same pair as monokai" },
-	{ theme: "radient", fg: "dangerBorder", bg: "elevated", got: 2.58, why: "same pair as monokai" },
-	{ theme: "synth", fg: "dangerBorder", bg: "elevated", got: 2.6, why: "same pair as monokai" },
-	{ theme: "obsidian", fg: "dangerBorder", bg: "elevated", got: 2.65, why: "same pair as monokai" },
-	{ theme: "tokyoNight", fg: "dangerBorder", bg: "elevated", got: 2.66, why: "same pair as monokai" },
-	{ theme: "neon", fg: "dangerBorder", bg: "elevated", got: 2.78, why: "same pair as monokai" },
-	{ theme: "dune", fg: "dangerBorder", bg: "elevated", got: 2.88, why: "same pair as monokai; 0.12 under the floor" },
+	{
+		theme: "monokai",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.49,
+		why: "the danger control's only edge on a dialog ground; worst of the eight",
+	},
+	{
+		theme: "dracula",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.51,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "radient",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.58,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "synth",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.6,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "obsidian",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.65,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "tokyoNight",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.66,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "neon",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.78,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "dune",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.88,
+		why: "same pair as monokai; 0.12 under the floor",
+	},
 ];
 
 /*

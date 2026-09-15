@@ -64,7 +64,12 @@ const PROBE = `
 	import { renderToStaticMarkup } from "react-dom/server";
 	import { useBrowserChrome } from "./src/renderer/src/features/browser/hooks/use-browser-chrome";
 
-	import { BrowserConsentBar, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-bar";
+	import { BrowserConsentBar } from "./src/renderer/src/features/browser/components/browser-consent-bar";
+	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
+	import { BrowserApprovalsTray, defaultApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
+	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
+	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 
@@ -80,7 +85,27 @@ const PROBE = `
 
 	export const render = (element) => renderToStaticMarkup(element);
 	export const el = createElement;
-	export { BrowserConsentBar, requesterLabel, BrowserLoadFailure, loadFailureSentence, useCanonicalSessionsStore };
+	export {
+		BrowserConsentBar,
+		BrowserConsentRequest,
+		BrowserApprovalsTray,
+		BrowserApprovalsDock,
+		BrowserTabStrip,
+		requesterLabel,
+		defaultApprovalHeaderLabel,
+		approvalRows,
+		approvalScopeLabel,
+		liveRequests,
+		originOfUrl,
+		reconcileResolved,
+		remainingLabel,
+		tabsInScope,
+		waitingOrdinals,
+		RESOLVED_KEEP,
+		BrowserLoadFailure,
+		loadFailureSentence,
+		useCanonicalSessionsStore,
+	};
 `;
 
 const bundle = await build({
@@ -146,7 +171,21 @@ const {
 	render,
 	el,
 	BrowserConsentBar,
+	BrowserConsentRequest,
+	BrowserApprovalsTray,
+	BrowserApprovalsDock,
+	BrowserTabStrip,
 	requesterLabel,
+	defaultApprovalHeaderLabel,
+	approvalRows,
+	approvalScopeLabel,
+	liveRequests,
+	originOfUrl,
+	reconcileResolved,
+	remainingLabel,
+	tabsInScope,
+	waitingOrdinals,
+	RESOLVED_KEEP,
 	BrowserLoadFailure,
 	loadFailureSentence,
 	useCanonicalSessionsStore,
@@ -1275,6 +1314,30 @@ const PENDING = {
 	requesterSessionId: "session-abc",
 };
 
+/** A request as the model takes it, built the way the route builds one. */
+const request = (entryId, authority, minutesLeft) => ({
+	...PENDING,
+	entryId,
+	origin: `https://${authority}`,
+	authority,
+	expiresAt: Date.now() + Math.round(minutesLeft * 60_000),
+});
+
+/** The consent band's props, from the REAL model: the ordinal and the remaining
+ * time in these assertions are the ones the product computes, so a change to
+ * either fails here rather than only in a frame. */
+const trayProps = (requests, options = {}) => ({
+	rows: approvalRows(requests, Date.now()),
+	resolved: options.resolved ?? [],
+	selectedEntryId: options.selectedEntryId ?? null,
+	onSelect: () => {},
+	busy: options.busy ?? false,
+	onDecide: () => {},
+	dockOpen: options.dockOpen ?? false,
+	onToggleDock: () => {},
+	headerLabel: options.headerLabel ?? defaultApprovalHeaderLabel,
+});
+
 test("the consent bar names the conversation that is asking (D2)", () => {
 	// The resolution rule, exercised directly: `renderToStaticMarkup` reads a
 	// zustand store's INITIAL state for its server snapshot, so a store mutated
@@ -1299,12 +1362,7 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 	);
 
 	const markup = render(
-		el(BrowserConsentBar, {
-			pending: { ...PENDING, requesterSessionId: null },
-			waitingBehind: 0,
-			busy: false,
-			onDecide: () => {},
-		}),
+		el(BrowserConsentBar, trayProps([{ ...PENDING, requesterSessionId: null }])),
 	);
 	// The markup escapes the apostrophe, so the assertion is on the words rather
 	// than on the exact punctuation.
@@ -1316,16 +1374,27 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 		markup.includes("login.example.com"),
 		"and names the origin the decision is about",
 	);
+	// ONE PENDING REQUEST HAS NO HEADER ROW (spec §4.1): there is nothing to
+	// disambiguate, so the band is the card, which is the band the user knows.
+	assert.ok(
+		!markup.includes("approval waiting") && !markup.includes("approvals waiting"),
+		"one request renders no count and no chips",
+	);
 });
 
 test("the consent bar states each choice's own lifetime, and that the profile is shared (D3)", () => {
 	const markup = render(
-		el(BrowserConsentBar, {
-			pending: PENDING,
-			waitingBehind: 2,
-			busy: false,
-			onDecide: () => {},
-		}),
+		el(
+			BrowserConsentBar,
+			trayProps(
+				[
+					request("entry-a", "docs.example.org", 9),
+					PENDING,
+					request("entry-c", "shop.example.net", 2),
+				],
+				{ selectedEntryId: "entry-1" },
+			),
+		),
 	);
 	assert.ok(
 		!markup.includes("using this app's browser profile, until you revoke it"),
@@ -1355,24 +1424,203 @@ test("the consent bar states each choice's own lifetime, and that the profile is
 		markup.includes("You can open this site yourself either way"),
 		"and the gate's asymmetry survives the rewrite",
 	);
+	// The queued count moved from a sentence in the card to the tray's header,
+	// which is the surface that can also show WHICH request is which.
 	assert.ok(
-		markup.includes("2 other requests are waiting"),
-		"a user who arrived from a notification can see that others are queued",
+		markup.includes("3 approvals waiting"),
+		"a user can see that others are queued, and how many",
+	);
+	assert.ok(
+		markup.includes("browser-approvals-tray-chip"),
+		"one numbered chip per live request (spec 4.1's header row)",
+	);
+	assert.ok(
+		markup.includes(
+			"Request 2 from The agent in conversation session-abc: login.example.com",
+		),
+		"and the chip's accessible name carries the ordinal, the ASKING conversation and the authority (UX round 1, U2: two requests for one site must not read the same)",
+	);
+	assert.equal(
+		defaultApprovalHeaderLabel(1),
+		"1 approval waiting",
+		"the singular is its own sentence",
 	);
 
 	// The domain line is only offered when the host computed the broad key: the bar
 	// must not describe a choice it does not render.
 	const noBroad = render(
-		el(BrowserConsentBar, {
-			pending: { ...PENDING, broad: null },
-			waitingBehind: 0,
-			busy: false,
-			onDecide: () => {},
-		}),
+		el(BrowserConsentBar, trayProps([{ ...PENDING, broad: null }])),
 	);
 	assert.ok(
 		!noBroad.includes("example.com, kept until you revoke it"),
 		"no public-suffix data means no domain offer and no domain copy",
+	);
+});
+
+// ---- the approval queue model (spec 3.3, 3.4, 5.2) -------------------------
+
+test("liveness is derived from a clock: the count drops at the TTL with nothing firing in main", () => {
+	const now = 1_000_000;
+	const requests = [
+		{ ...PENDING, entryId: "live", expiresAt: now + 60_000 },
+		{ ...PENDING, entryId: "gone", expiresAt: now - 1 },
+	];
+	assert.deepEqual(
+		liveRequests(requests, now).map((entry) => entry.entryId),
+		["live"],
+		"the expired request is not live, and no main-side change was needed to say so",
+	);
+	// The boundary is `now < expiresAt`, the same comparison `access-queue.ts`
+	// makes: an entry is live up to its instant and not at it.
+	assert.deepEqual(
+		liveRequests(requests, now + 60_000).map((entry) => entry.entryId),
+		[],
+		"at exactly its expiry instant the request is gone",
+	);
+});
+
+test("the ordinal is a position in the live list, and answering one renumbers the rest", () => {
+	const now = 2_000_000;
+	const requests = [
+		{ ...PENDING, entryId: "one", expiresAt: now + 60_000 },
+		{ ...PENDING, entryId: "two", expiresAt: now + 120_000 },
+		{ ...PENDING, entryId: "three", expiresAt: now + 180_000 },
+	];
+	assert.deepEqual(
+		approvalRows(requests, now).map((row) => row.ordinal),
+		[1, 2, 3],
+		"1-based, in the order the host projected them",
+	);
+	// Answering the first is exactly what the host does: the entry leaves the
+	// projection and every later request moves up, the way a numbered list does.
+	assert.deepEqual(
+		approvalRows(requests.slice(1), now).map((row) => [row.ordinal, row.request.entryId]),
+		[
+			[1, "two"],
+			[2, "three"],
+		],
+		"a position, not an identity",
+	);
+});
+
+test("the remaining time is stated in words, and stops counting below a minute", () => {
+	const now = 3_000_000;
+	assert.equal(remainingLabel(now + 9 * 60_000, now), "expires in 9 minutes");
+	assert.equal(remainingLabel(now + 60_000, now), "expires in 1 minute");
+	assert.equal(remainingLabel(now + 59_999, now), "expires in under a minute");
+	assert.equal(remainingLabel(now, now), null, "nothing left to say");
+	assert.equal(
+		remainingLabel(now + 90_000, now),
+		"expires in 2 minutes",
+		"rounded up, so a reading is never optimistic about the agent's window",
+	);
+});
+
+test("a request that leaves the list is remembered as expired or withdrawn, and an answered one is not", () => {
+	const now = 4_000_000;
+	const expired = { ...PENDING, entryId: "expired", expiresAt: now - 1 };
+	const withdrawn = { ...PENDING, entryId: "withdrawn", expiresAt: now + 60_000 };
+	const answered = { ...PENDING, entryId: "answered", expiresAt: now + 60_000 };
+	const resolved = reconcileResolved(
+		[expired, withdrawn, answered],
+		[],
+		[],
+		new Set(["answered"]),
+		now,
+	);
+	assert.deepEqual(
+		resolved.map((row) => [row.key, row.kind]),
+		[
+			["expired", "expired"],
+			["withdrawn", "withdrawn"],
+		],
+		"past its TTL is an expiry; anything else that leaves the list without an answer is a withdrawal",
+	);
+	assert.ok(
+		!resolved.some((row) => row.key === "answered"),
+		"a request the user answered is not reported as gone: the user knows what happened to it",
+	);
+
+	// Bounded, both ways: five rows, and nothing older than five minutes.
+	const many = Array.from({ length: 9 }, (_, index) => ({
+		...PENDING,
+		entryId: `old-${index}`,
+		expiresAt: now - 1,
+	}));
+	assert.equal(
+		reconcileResolved(many, [], [], new Set(), now).length,
+		RESOLVED_KEEP,
+		"the memory is bounded",
+	);
+	assert.deepEqual(
+		reconcileResolved([], [], [{ key: "stale", kind: "expired", origin: "https://a.example", authority: "a.example", at: now - 5 * 60_000 }], new Set(), now),
+		[],
+		"and drops a row five minutes after the fact",
+	);
+	// A request that arrives in the same refresh a row was remembered for is not a
+	// second row: the retention is keyed on the entry the host minted.
+	assert.equal(
+		reconcileResolved([], [], [{ key: "expired", kind: "expired", origin: "https://a.example", authority: "a.example", at: now }], new Set(), now + 1000).length,
+		1,
+	);
+});
+
+test("a parked tab's Waiting chip carries the ordinal of the request its origin is on", () => {
+	const now = 5_000_000;
+	const rows = approvalRows(
+		[
+			{ ...PENDING, entryId: "one", origin: "https://docs.example.org", expiresAt: now + 60_000 },
+			{ ...PENDING, entryId: "two", origin: "https://login.example.com", expiresAt: now + 120_000 },
+		],
+		now,
+	);
+	const waiting = waitingOrdinals(rows, [
+		{ tabId: 1, url: "https://docs.example.org/page", owner: "agent" },
+		{ tabId: 2, url: "https://login.example.com/", owner: "agent" },
+		{ tabId: 3, url: "about:blank", owner: "agent" },
+		{ tabId: 4, url: "https://elsewhere.example/", owner: "agent" },
+		// A tab the USER opened to a pending origin: their own navigation is ungated
+		// and the page loads, so the marker would describe something that is not
+		// happening to that tab (UX round 1, U3).
+		{ tabId: 5, url: "https://docs.example.org/mine", owner: "user" },
+	]);
+	assert.deepEqual(
+		waiting,
+		{ 1: 1, 2: 2 },
+		"the chip names the same request the tray's chip and the dock's row name, and only on the agent's own tabs",
+	);
+	assert.equal(
+		originOfUrl("about:blank"),
+		null,
+		"`new URL('about:blank').origin` is the STRING \"null\", which is truthy",
+	);
+	assert.equal(originOfUrl("file:///tmp/x"), null, "and a non-http scheme is not an origin the gate knows");
+});
+
+test("a conversation's scope keeps a tab with no attribution out of its list", () => {
+	const tabs = [
+		{ tabId: 1, url: "https://a.example/", sessionId: "session-a" },
+		{ tabId: 2, url: "https://b.example/", sessionId: "session-b" },
+		{ tabId: 3, url: "https://c.example/", sessionId: null },
+		{ tabId: 4, url: "https://d.example/" },
+	];
+	assert.deepEqual(
+		tabsInScope(tabs, "all").map((tab) => tab.tabId),
+		[1, 2, 3, 4],
+		"the route shows every tab, including a restored one and one handed back",
+	);
+	assert.deepEqual(
+		tabsInScope(tabs, { sessionId: "session-a" }).map((tab) => tab.tabId),
+		[1],
+		"a conversation shows its own tabs, and only its own",
+	);
+});
+
+test("the scope labels name what each grant is", () => {
+	assert.deepEqual(
+		["origin", "domain", "host", "deny", "session"].map(approvalScopeLabel),
+		["This site", "Whole domain", "This host", "Denied", "This session only"],
+		"the vocabulary moved with the list it labels, unchanged",
 	);
 });
 
