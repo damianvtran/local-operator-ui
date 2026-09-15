@@ -14,9 +14,9 @@
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal, counted the same way. Main's #173 changes no theme list and this branch adds none, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-15T08:06:36.737Z",
-    "refreshedAtHead": "82fe9ec42fd6123ab7ef4029afe1182cc34d815e",
-    "refreshedFrames": 338,
+    "refreshedAt": "2026-09-15T17:12:18.315Z",
+    "refreshedAtHead": "4f12fa878bf73786a5dff460596352481f9a3960",
+    "refreshedFrames": 962,
     "refreshedStories": [
       "browser-consent-bar--pending",
       "browser-consent-bar--attributed-and-queued",
@@ -52,7 +52,25 @@
       "chat-slash-completion--command-phase-scrolled",
       "chat-slash-completion--command-phase",
       "chat-slash-completion--inline-mid-draft",
-      "chat-slash-completion--name-list-completed"
+      "chat-slash-completion--name-list-completed",
+      "browser-consent-bar--three-waiting",
+      "browser-consent-bar--expired-and-withdrawn",
+      "browser-url-bar--no-badge",
+      "browser-url-bar--one-waiting",
+      "browser-url-bar--three-waiting",
+      "browser-tab-strip--one",
+      "browser-tab-strip--many",
+      "browser-tab-strip--overflowing",
+      "browser-tab-strip--waiting",
+      "browser-tab-strip--agent-and-waiting",
+      "browser-tab-strip--failed",
+      "browser-tab-strip--restored",
+      "browser-tab-strip--actions-expanded",
+      "browser-approvals-dock--waiting",
+      "browser-approvals-dock--approved",
+      "browser-approvals-dock--denied",
+      "browser-approvals-dock--empty",
+      "browser-approvals-dock--narrow"
     ],
     "refreshedThemes": [
       "localOperatorDark",
