@@ -1264,12 +1264,20 @@ test("a stop that never settles is released at the budget instead of holding the
 	assert.deepEqual(calls, ["preventDefault", "quit"]);
 	/*
 	 * `budgetMs - 1`, not `budgetMs`: the release is a `setTimeout(budgetMs)` and
-	 * both ends of `elapsed` are `Date.now()` readings truncated to whole
-	 * milliseconds, so the timer legitimately lands one millisecond short of the
-	 * nominal boundary. Asserting the exact boundary fails on the clock's
-	 * granularity rather than on the behaviour - this line has been failing
-	 * intermittently on `main` at 119 ms against a 120 ms budget, and been
-	 * absorbed as a re-run, since the budget was introduced.
+	 * the runtime fires it a fraction of a millisecond EARLY, so a hold that is
+	 * working lands on a true elapsed just under the budget - measured as
+	 * `performance.now()` 119.674 ms against 120 ms, and 599.296 ms against
+	 * 600 ms at the sibling site - which whole-millisecond `Date.now()` readings
+	 * then report as `budgetMs - 1`.
+	 *
+	 * It is NOT the two readings' truncation, which cannot shorten a reading at
+	 * all: for a true elapsed of `budgetMs` or more, `floor(t0 + e) - floor(t0)`
+	 * is `budgetMs` or more, so a short reading means the timer really did fire
+	 * ahead of its deadline. Asserting the exact boundary fails on that early fire
+	 * rather than on the behaviour - this line has been failing intermittently on
+	 * `main` at 119 ms against a 120 ms budget (and at 599 ms against 600 ms at
+	 * the sibling site) since the budget was introduced, and been absorbed as a
+	 * re-run.
 	 */
 	assert.ok(
 		elapsed >= budgetMs - 1,
@@ -1283,10 +1291,11 @@ test("a stop that never settles is released at the budget instead of holding the
 	 * that released the quit after 1.5 s would have passed this test while the
 	 * budget it exists to pin was gone. `budgetMs + 400` still clears that
 	 * ceiling by more than an order of magnitude, and the margin is measured
-	 * rather than guessed: over 15 runs at a load average of 113-150 the timer's
-	 * overshoot was 1-15 ms, so the allowance is about 26x the jitter this suite
-	 * actually sees while catching a 4x slip the old bound would have let
-	 * through.
+	 * rather than guessed: over 300 runs at this site the timer's overshoot ran to
+	 * 34 ms with a median near 2 ms, and this PR's QA sweep of the same site saw
+	 * 22 ms (142 ms against a 120 ms budget), so the allowance is 12-18x the worst
+	 * overshoot this suite actually sees while catching the 4x slip the old bound
+	 * would have let through.
 	 */
 	assert.ok(
 		elapsed < budgetMs + 400,
