@@ -1,11 +1,18 @@
 # The composer band and the transcript pane on a New chat, before and after
 
-> **Historical evidence — not round-2 validation.** The PNGs, readbacks and
-> manifest source stamps below are unchanged historical captures from the prior
-> implementation. References below to “this round” describe that historical
-> capture generation, not the current remediation. PR169 round 2 changes the
-> measured stack's accessibility/lifecycle; fresh browser-tool evidence remains
-> **BLOCKED pending origin approval**. Nothing here is re-stamped as fresh.
+> **The earlier generation of this set, and nothing more.** The PNGs and
+> readbacks in this directory were taken with the retired raw-CDP instrument,
+> with `before` at `ef40c81e2` and `after` at pre-rebase heads; references
+> below to “this round” describe that historical capture generation. They are
+> kept, unchanged and labelled, because they remain the record of the band's
+> containment work and of the states the fresh set does not stage (the send
+> path, the draft-to-session flip, a real session's hold).
+>
+> **The fresh capture lives in [`../draft-splash-browser/`](../draft-splash-browser/README.md)** —
+> taken through the operator's own paired browser via the `browser` tool at
+> `8f764cb83` (after) and `d12fecbcf` (before), with its own instrument, heads
+> and numbers. Nothing here is re-stamped as fresh, and no frame in this
+> directory was re-shot.
 
 The operator's report: "the skeleton loader seems to be stuck on new chats …
 instead of showing the normal splash composer visuals". On a fresh **New chat**
@@ -90,8 +97,9 @@ raw CDP. That was **not compliant** with the operator's browser-tool-only rule.
 There is no localhost, no-login, existing-tooling or unavailable-bridge exemption.
 The old explanation claiming one is withdrawn. The actual capture instrument is
 still recorded in `readback-*.json` and the manifest `source`; preserving those
-records does not authorize rerunning it. Fresh capture uses only the browser tool
-and remains BLOCKED until that browser's origin approval is granted.
+records does not authorize rerunning it. Fresh capture uses
+only the browser tool — as the fresh set did, once that browser's `localhost`
+origin had been approved.
 
 **Two worktrees at once, one backend each.** `--label=after` is the branch head;
 `--label=before` is a worktree at `ef40c81e2` with the same harness files copied
@@ -388,14 +396,30 @@ entry being updated, `onDisk !== set.frames` and the gate names this set.
 Declaring it also puts the instrument and the reason on the record, which is what
 the note above is for.
 
+The fresh frames are declared separately as `draft-splash-browser`, with its
+own `source`, `capturedAt` and `capturedAtHead`. It is a SIBLING of this
+directory rather than a directory inside it: the sweep refuses a declaration
+nested inside another declared one, because the frames in it would be counted
+twice. The two generations stay legible per set instead of being merged into
+one stamp that would describe neither.
+
 ## Fresh validation — browser tool only
 
-**Round 2: BLOCKED pending browser-origin approval.** No fresh screenshots,
-trusted keyboard traversal, viewport transitions or real-backend hydration/send
-checks have been performed for this remediation. The mounted React DOM tests
-exercise the shipped `MeasuredSuggestionStack` and `Button` with explicit rectangle
-fixtures, not a layout engine. They prove observer lifecycle, focus recovery and
-non-actionable omitted controls; they do not replace the browser gate.
+**Done for the settled draft, at four sizes, and only that.** The fresh frames
+sit in [`../draft-splash-browser/`](../draft-splash-browser/README.md): the operator's own paired
+browser driven by the `browser` tool (Local Operator extension), at `8f764cb83`
+with `before` at `d12fecbcf` (`origin/main`, this branch's merge base) carrying
+this branch's own harness pages, both against one isolated
+`hosting: test` / `model_name: mock` backend. That README carries the
+instrument, the sequence, the numbers behind each frame and the limits.
+
+**Still not covered by any browser evidence on this head:** trusted keyboard
+traversal (the `browser` tool exposes no Tab/Enter/Space input), the
+`draft-to-session` flip and the states after a send, a cold or failing
+hydration, and a second theme. The mounted React DOM tests exercise the shipped
+`MeasuredSuggestionStack` and `Button` with explicit rectangle fixtures, not a
+layout engine: they prove observer lifecycle, focus recovery and non-actionable
+omitted controls, and they do not replace the browser gate.
 
 `scripts/draft-splash-capture.mjs` now fails closed. Its historical raw-CDP source
 is preserved in git at `85eb7546a` for audit, **not for agents to execute**. No

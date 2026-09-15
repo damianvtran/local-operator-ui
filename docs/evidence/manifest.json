@@ -436,7 +436,9 @@
       "surfaces": 9,
       "themes": 1,
       "source": "Real browser-tool screenshots, lossless WebP conversions; actual React renderer and isolated HTTP/SSE backend",
-      "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep."
+      "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep.",
+      "capturedAt": "2026-09-14T20:51:27.000Z",
+      "capturedAtNote": "DERIVED, not recorded: this set has no shutter time of its own. The `browser` tool does not stamp its output, and the pass that committed these frames recorded only `source` and `why` (their provenance is deliberately limited - see `source`), so this is the commit timestamp of the commit that landed them (19c8b0a1c) - an upper bound on when they were taken rather than a capture time. It is here because `check-evidence.mjs` requires provenance on every declared set, and a declaration nobody can audit is only a way of silencing the gate."
     },
     {
       "path": "chat-cwd-move-live",
@@ -548,7 +550,9 @@
       "surfaces": 1,
       "themes": 2,
       "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures",
-      "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."
+      "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser.",
+      "capturedAt": "2026-09-14T20:01:56.000Z",
+      "capturedAtNote": "DERIVED, not recorded: this set has no shutter time of its own. The `browser` tool does not stamp its output, and the pass that committed these frames recorded only `source` and `why` (their provenance is deliberately limited - see `source`), so this is the commit timestamp of the commit that landed them (7c64c9976) - an upper bound on when they were taken rather than a capture time. It is here because `check-evidence.mjs` requires provenance on every declared set, and a declaration nobody can audit is only a way of silencing the gate."
     },
     {
       "path": "chat-tool-rows/real-conversation-tool-rows",
@@ -634,6 +638,17 @@
       "capturedAt": "2026-09-14T17:13:51.898Z",
       "capturedAtHead": "07603d5ed050e997b93075943c35d4468db3ed80",
       "capturedAtHeadNote": "Re-pointed at the commit this REBASED head's history carries the frames' renderer source in. The run was taken at the head of the lineage before the rebase onto `915928a18`, and the rebase's own spellings no longer name this history; the `src` tree the frames are a picture of is this commit's - it is also the `capturedAtSrcTree` its readback records. The rebase moved `src` only by `main`'s main-process browser host, which cannot reach the renderer's chat column, so no frame was re-taken."
+    },
+    {
+      "path": "draft-splash-browser",
+      "frames": 0,
+      "surfaces": 2,
+      "themes": 1,
+      "capturedAtHead": "8f764cb83d06936e94602da39e01427f57aea303",
+      "capturedAtHeadNote": "The `after` half is this branch's head. The `before` half is `d12fecbcf24f2d5cfb6317880b7d78754713edc2` (= origin/main, this branch's merge base) with this branch's own harness pages copied in byte-for-byte, so the pair differs by the change under test and nothing else; both trees were served against ONE isolated `hosting: test` / `model_name: mock` backend.",
+      "source": "The `browser` tool driving the operator's own paired Chromium (the Local Operator browser extension 0.1.15 over its loopback bridge) - NOT a raw-CDP driver, NOT a private headless Chrome and NOT `scripts/draft-splash-capture.mjs`, which stays retired and fail-closed. Two Vite processes (127.0.0.1:15224 for the branch tree, 127.0.0.1:15225 for the merge-base tree) serve `scripts/draft-splash-viewport.html`, whose same-origin fixed-size iframe mounts the SHIPPED `ChatPage` through `scripts/draft-splash-evidence.html` and the dev `desktopProxyPlugin()`; behind the proxy is one throwaway `local-operator serve` whose bearer was generated in the launcher and passed only as child environment - never written to a file, never printed, never reachable from the page. The draft is staged by clicking the product's own New chat control, and the store persists `activeDraftKey`, so the iframe loads with the draft already staged rather than with a state injected into the store. Each frame is the browser tool's own screenshot of the whole window - the operator's window is 1440x873 CSS px, one pixel taller than the app's default window - cropped to the frame's published device-pixel box (0,0,width*dpr,height*dpr, published by `?capture=1`, which places the frame at the viewport origin with the harness controls below the fold) and downsampled from devicePixelRatio 2 to the app's own CSS pixel grid. Every pixel is a resample of a real render and the pre-resize capture is the browser's own PNG. Two consecutive frames per state: the AFTER pairs are pixel-identical (AE 0 at all four sizes) because the state is settled, and the BEFORE pairs move by 36 / 8,776 / 10,406 / 52,005 pixels because the pane's shimmer is an animation, which a single still could not show. The set's README carries the per-state numbers and names the readings it does NOT carry: `band.chips` is 0 there because that count is filtered against `window.__draftSplashChipList`, which only the retired CDP driver could inject, so the chip inventory comes from the harness's live DOM read in the same readback files.",
+      "why": "The PR's frames of the settled New chat were the raw-CDP generation, and this branch's CI has been red on one check since the rebase: the SHIPPED manifest's tree stamps name the trees the frames were captured from, not the tree under review, and re-stamping without a fresh capture would have been a false claim. The frames were therefore re-taken at this head through the instrument the operator's rules require - the paired browser - and shipped beside the earlier generation rather than on top of it.",
+      "capturedAt": "2026-09-15T00:36:32.000Z"
     },
     {
       "path": "job-result-label-round5",

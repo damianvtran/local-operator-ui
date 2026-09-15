@@ -461,6 +461,24 @@ function Probe() {
 	const { frames, total } = useBandTrace();
 	const draftView = useDraftStreamView();
 	/*
+	 * Re-render on a timer, so `#probe` is a reading of NOW rather than of the
+	 * last time something this component happens to subscribe to changed.
+	 *
+	 * The staleness is not theoretical: the band mounts when the suggestion
+	 * sample arrives, which is not one of the store slices below, so a driver
+	 * reading `#probe` at an arbitrary moment could read "no band in the
+	 * document" - and `loadingClaims` all zeros - off a page whose splash is
+	 * painted. A zero claim count from a document that had not yet rendered the
+	 * thing being counted is a vacuous reading, which is the one kind of
+	 * evidence these frames must never carry. The render is of this component,
+	 * which returns null, so nothing in the photographed surface depends on it.
+	 */
+	const [, tick] = useState(0);
+	useEffect(() => {
+		const id = setInterval(() => tick((value) => value + 1), 500);
+		return () => clearInterval(id);
+	}, []);
+	/*
 	 * One selector per field, deliberately. A selector returning a fresh object
 	 * makes every snapshot unequal and sends the store subscription into an
 	 * infinite re-render (measured: `Maximum update depth exceeded`, and the page

@@ -1,0 +1,92 @@
+{
+ "frame": {
+  "css": {
+   "x": 0,
+   "y": 0,
+   "width": 900,
+   "height": 572
+  },
+  "dpr": 2,
+  "device": {
+   "x": 0,
+   "y": 0,
+   "width": 1800,
+   "height": 1144
+  },
+  "scrollX": 0,
+  "scrollY": 0
+ },
+ "viewport": "900x572",
+ "active": "TEXTAREA",
+ "stack": {
+  "height": 179.5,
+  "scrollHeight": 180,
+  "clientHeight": 180
+ },
+ "chips": [
+  {
+   "label": "Make me a space invaders game",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 353.25,
+   "bottom": 382.75
+  },
+  {
+   "label": "Go to my documents folder",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 353.25,
+   "bottom": 382.75
+  },
+  {
+   "label": "Go to my downloads folder",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 390.75,
+   "bottom": 420.25
+  },
+  {
+   "label": "Put together a competitive analysis report on the agentic AI space",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 428.25,
+   "bottom": 457.75
+  },
+  {
+   "label": "Organize my desktop",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 465.75,
+   "bottom": 495.25
+  },
+  {
+   "label": "Train a classifier on the MPG dataset",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 465.75,
+   "bottom": 495.25
+  },
+  {
+   "label": "Do a buy/hold/sell and fundamentals analysis of Apple",
+   "disabled": false,
+   "ariaHidden": null,
+   "visibility": "visible",
+   "focused": false,
+   "top": 503.25,
+   "bottom": 532.75
+  }
+ ],
+ "pageProbe": "{\n \"href\": \"http://localhost:15224/draft-splash-evidence.html\",\n \"viewport\": \"900x572\",\n \"theme\": \"localOperatorDark\",\n \"harnessError\": null,\n \"store\": {\n \"activeDraftKey\": \"draft:ebe269b4-8555-4d00-9bfd-fb0ce90a7bdc\",\n \"activeSessionId\": null\n },\n \"bandNow\": {\n \"at\": 0,\n \"text\": \"What can I help you with today? mock ~ Make me a space invaders game Go to my documents folder Go to my downloads folder Put together a competitive analysis report on the agentic AI space Organize my desktop Train a classifier on the MPG dataset Do a buy/hold/sell and fundamentals analysis of Apple\",\n \"greeting\": 1,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 468,\n \"boxes\": {\n \"band\": {\n \"x\": 280,\n \"y\": 104,\n \"w\": 620,\n \"h\": 468\n },\n \"greeting\": {\n \"x\": 448.7,\n \"y\": 135.3,\n \"w\": 282.6,\n \"h\": 26\n },\n \"skeleton\": null,\n \"chipRow\": null,\n \"composer\": {\n \"x\": 304,\n \"y\": 185.3,\n \"w\": 572,\n \"h\": 347.5\n }\n },\n \"stack\": {\n \"top\": 353.3,\n \"bottom\": 532.8,\n \"height\": 179.5,\n \"clientHeight\": 180,\n \"scrollHeight\": 180,\n \"scrollable\": false,\n \"topEdgeInside\": true,\n \"rows\": [\n {\n \"top\": 353.3,\n \"bottom\": 382.8,\n \"chips\": 2\n },\n {\n \"top\": 390.8,\n \"bottom\": 420.3,\n \"chips\": 1\n },\n {\n \"top\": 428.3,\n \"bottom\": 457.8,\n \"chips\": 1\n },\n {\n \"top\": 465.8,\n \"bottom\": 495.3,\n \"chips\": 2\n },\n {\n \"top\": 503.3,\n \"bottom\": 532.8,\n \"chips\": 1\n }\n ],\n \"rowCount\": 5,\n \"visibleRows\": 5,\n \"lastVisibleRowBottom\": 532.8,\n \"lastVisibleRowInside\": true,\n \"boundaryInGap\": true,\n \"contentHeight\": 179.5,\n \"room\": 218.8\n },\n \"transcriptPainted\": false\n },\n \"loadingClaims\": {\n \"placeholders\": 0,\n \"outsideBand\": 0,\n \"shimmerBars\": 0,\n \"captionVisible\": false\n },\n \"draftStreamView\": {\n \"hydrated\": false,\n \"awaitingHydration\": false,\n \"status\": \"connecting\",\n \"failed\": false\n },\n \"framesRead\": 2,\n \"frames\": [\n {\n \"at\": 441,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n },\n {\n \"at\": 484,\n \"text\": \"<no band in the document>\",\n \"greeting\": 0,\n \"skeleton\": 0,\n \"chips\": 0,\n \"chipLabels\": [],\n \"bandHeight\": 0,\n \"boxes\": {},\n \"stack\": null,\n \"transcriptPainted\": false\n }\n ]\n}\n"
+}
