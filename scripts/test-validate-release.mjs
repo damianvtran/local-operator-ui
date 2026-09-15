@@ -191,6 +191,7 @@ const publishedRelease = {
 	draft: false,
 	prerelease: false,
 	published_at: "2026-09-05T00:00:00Z",
+	body: "## What's New\n\nHand-written notes.\n",
 };
 const draftRelease = { id: 123, tag_name: TAG, draft: true, prerelease: false };
 const wrongTagRelease = {
@@ -228,6 +229,17 @@ try {
 	else fail("happy manual", JSON.stringify(result));
 } catch (e) {
 	fail("happy manual", e.message);
+}
+
+try {
+	// The writeup makes the round trip with the pins, from the SAME response: the
+	// release-notes gate in `release-state.mjs` judges this field, and a body read
+	// from anywhere else could describe a release this validation never saw.
+	const result = validateRelease(happyApi, TAG, SHA, true);
+	if (result.body === publishedRelease.body) ok("release body carried through");
+	else fail("release body", JSON.stringify(result.body));
+} catch (e) {
+	fail("release body", e.message);
 }
 
 try {
