@@ -319,6 +319,16 @@ There are two scenes, and the second one is the worked example of that rule:
   waits for toasts to clear and discards a capture that has one. So a frame here
   is not evidence about toast styling, placement or timing — that needs a scene
   that triggers and captures one on purpose.
+- **A chord decided in MAIN is unreachable from here.** `before-input-event`
+  hooks read `mainWindow.isFocused() && mainWindow.isVisible()`, and a `headless`
+  launch is by construction `visible=false focused=false` — the mode's whole point.
+  Measured while pinning the command palette's second chord: `Cmd/Ctrl+P` could
+  not open the palette in any headless run, and the mutation-checked reason is
+  the guard, not the wiring. `Emulation.setFocusEmulationEnabled` moves the PAGE's
+  focus, not the window's, so no CDP variant closes this gap. A main-process chord
+  is therefore covered by reading the two halves of its wiring, never by pressing
+  it here; proving the runtime half needs a human in a visible window, and saying
+  otherwise would be claiming coverage this harness cannot have.
 - **It is not a way to answer an approval, and must not be used as one.** A verb
   can press an in-app approval control, so a scene that did would make every "it
   works" captured through it worthless: approvals are the operator's, and the

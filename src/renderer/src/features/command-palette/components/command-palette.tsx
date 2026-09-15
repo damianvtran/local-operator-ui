@@ -597,58 +597,65 @@ export const CommandPalette: FC = () => {
 						)}
 					</div>
 
+					{/*
+					 * The list, and the fold.
+					 *
+					 * The wrapper is `relative` so the fold's fade can be an OVERLAY rather
+					 * than something in the flow: `sticky` was the first cut of this, and a
+					 * sticky element OCCUPIES LAYOUT, so every list that fitted its content
+					 * came out 24px taller with a dead band above the footer (design round 2,
+					 * D7). The overlay is painted over the scroll viewport's bottom edge
+					 * instead, and both it and the end spacer inside are rendered only when
+					 * rows were actually dropped — a list that fits is exactly as tall as its
+					 * content, and a cut line has a cue rather than a hard edge (design round
+					 * 1, D1).
+					 */}
 					{hasResults ? (
-						<div
-							// biome-ignore lint/a11y/useSemanticElements: `select`/`option` is a native popup control, not a listbox whose rows are browsed by aria-activedescendant while focus stays in a text field.
-							role="listbox"
-							id={LIST_ID}
-							aria-label="Results"
-							/* Focusable only programmatically: the query field keeps focus,
-							   and this is here so the container can be scrolled into view. */
-							tabIndex={-1}
-							className="max-h-96 overflow-y-auto p-2"
-						>
-							{outcome.sections.map((section, sectionIndex) => (
-								<Fragment key={section.group}>
-									<div
-										role="presentation"
-										className={cn(
-											"px-2 pb-1 text-ink-dim text-meta",
-											sectionIndex === 0 ? "pt-1" : "pt-3",
-										)}
-									>
-										{PALETTE_GROUP_TITLES[section.group]}
-									</div>
-									{section.items.map((match) => (
-										<PaletteRow
-											key={match.item.id}
-											match={match}
-											isActive={match.item.id === activeItem?.id}
-											onHover={() => setSelectedIndex(matches.indexOf(match))}
-											onRun={() => runItem(match.item)}
-										/>
-									))}
-								</Fragment>
-							))}
-							{/*
-							 * The fold, said out loud.
-							 *
-							 * The list is cut wherever `max-h-96` lands, and a cut can orphan a
-							 * group heading — the browse frame showed `Settings` with no row
-							 * under it — which reads as a rendering fault rather than as
-							 * content below the fold. A `sticky` inset inside the scroll
-							 * container is the viewport's own edge rather than a decoration
-							 * that scrolls away with the content, so whatever the fold lands
-							 * on fades as continued; at the end of the list it is the
-							 * breathing room under the last row. `pointer-events-none` keeps
-							 * it out of the way of the row underneath it, and `-mx-2` cancels
-							 * the container's own inset so the fade spans the panel
-							 * (design round 1, D1).
-							 */}
+						<div className="relative">
+							{outcome.clipped && (
+								<div
+									aria-hidden="true"
+									className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-elevated to-transparent"
+								/>
+							)}
 							<div
-								aria-hidden="true"
-								className="pointer-events-none sticky bottom-0 -mx-2 h-6 bg-gradient-to-t from-elevated to-transparent"
-							/>
+								// biome-ignore lint/a11y/useSemanticElements: `select`/`option` is a native popup control, not a listbox whose rows are browsed by aria-activedescendant while focus stays in a text field.
+								role="listbox"
+								id={LIST_ID}
+								aria-label="Results"
+								/* Focusable only programmatically: the query field keeps focus,
+								   and this is here so the container can be scrolled into view. */
+								tabIndex={-1}
+								className="max-h-96 overflow-y-auto p-2"
+							>
+								{outcome.sections.map((section, sectionIndex) => (
+									<Fragment key={section.group}>
+										<div
+											role="presentation"
+											className={cn(
+												"px-2 pb-1 text-ink-dim text-meta",
+												sectionIndex === 0 ? "pt-1" : "pt-3",
+											)}
+										>
+											{PALETTE_GROUP_TITLES[section.group]}
+										</div>
+										{section.items.map((match) => (
+											<PaletteRow
+												key={match.item.id}
+												match={match}
+												isActive={match.item.id === activeItem?.id}
+												onHover={() => setSelectedIndex(matches.indexOf(match))}
+												onRun={() => runItem(match.item)}
+											/>
+										))}
+									</Fragment>
+								))}
+								{/*
+								 * The end spacer: room to scroll the last row clear of the fade, and
+								 * only when the list actually overflows.
+								 */}
+								{outcome.clipped && <div aria-hidden="true" className="h-6" />}
+							</div>
 						</div>
 					) : (
 						/*

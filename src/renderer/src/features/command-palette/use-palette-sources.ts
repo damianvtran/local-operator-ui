@@ -143,6 +143,13 @@ export type PaletteChatState = {
 	 * searching is worse than one that says why it cannot.
 	 */
 	overLong: boolean;
+	/**
+	 * The capability read is still in flight, so NOTHING is known yet — not
+	 * "unavailable", and not "available" either. The view says nothing about
+	 * the search state while this is true rather than picking a sentence that
+	 * will be wrong in one of the two cases.
+	 */
+	pending: boolean;
 };
 
 export type PaletteSources = {
@@ -287,10 +294,19 @@ export function usePaletteItems({
 				 * a row in the palette that the sidebar highlighted, for the same
 				 * query and the same conversation (round 1, R-2).
 				 */
-				tier: Math.min(
-					hit?.rank ?? SESSION_RANK_LABEL,
-					labelMatch ? SESSION_RANK_LABEL : Number.POSITIVE_INFINITY,
-				),
+				/*
+				 * No name tier at all when neither reading matched, rather than the
+				 * label tier by default: the join never admits such a row, so this only
+				 * keeps the claim honest for a browse-state row that is scored on nothing
+				 * (round 2, R2-2).
+				 */
+				tier:
+					labelMatch || hit
+						? Math.min(
+								hit?.rank ?? SESSION_RANK_LABEL,
+								labelMatch ? SESSION_RANK_LABEL : Number.POSITIVE_INFINITY,
+							)
+						: undefined,
 				/*
 				 * The catalogue's own preview is context, not a name: a row that matched
 				 * only inside it belongs in the list, at the bottom of its group, which is
@@ -569,7 +585,14 @@ export function usePaletteItems({
 				!search.isError &&
 				search.data?.query !== terms,
 			unavailable: wantsChats && terms.length > 0 && !chatSearchSupported,
-			unreachable: !capabilities.isSuccess,
+			/*
+			 * `isError`, not `!isSuccess`: the query is also "not successful" while it is
+			 * still PENDING, and calling a healthy backend unreachable during startup is
+			 * the same class of misstatement the two sentences exist to avoid (round 2,
+			 * R2-3). `pending` is what the view uses to say nothing at all in that window.
+			 */
+			unreachable: capabilities.isError,
+			pending: capabilities.isLoading || capabilities.isPending,
 			overLong: search.refused,
 		},
 	};
