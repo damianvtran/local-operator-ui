@@ -90,7 +90,6 @@ import { ToolDetail } from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	displayName,
 	formatBytes,
 	isBareToolName,
 	isDiffBodyRow,
@@ -103,6 +102,7 @@ import { CanonicalImage } from "./canonical-image";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type CanonicalTranscriptStatus,
+	canonicalTranscriptSpeaks,
 	transcriptPaneCollapses,
 	transcriptPaneHoldsPlaceholder,
 } from "./transcript-pane";
@@ -128,6 +128,7 @@ import {
  */
 import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
+import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
 
 /**
  * Opts the USER bubble into the reading measure defined in `markdown.css`.
@@ -148,6 +149,26 @@ export type CanonicalTranscriptProps = {
 	gate: PendingDesktopGate | null;
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
+	/**
+	 * A send from this conversation has been admitted and produced nothing yet.
+	 *
+	 * The one input here that is the APP's fact rather than the owner's: it is
+	 * true from the moment an admission request is issued. It exists because a
+	 * cold send spends seconds inside that request and the transcript used to
+	 * show the user's own bubble and then nothing, which reads as the message
+	 * having been dropped. See `working-line-model.ts` for the copy rule this
+	 * branch is held to.
+	 */
+	starting: boolean;
+	/**
+	 * The record this send painted, which the wait's clears measure from.
+	 *
+	 * Passed rather than looked up here because the anchor is the app's own
+	 * memory of its send, not a property of the transcript: see
+	 * `ownerAnswered` for why a clear scoped to the tail of the list is a
+	 * different (and wrong) rule.
+	 */
+	startingAfterId?: string | null;
 	loadingOlder: boolean;
 	/**
 	 * Fetch the next durable page. Resolving `false` rather than rejecting is
@@ -782,6 +803,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	transcript,
 	gate,
 	waiting,
+	starting,
+	startingAfterId,
 	loadingOlder,
 	onLoadOlder,
 	containerRef,
@@ -929,12 +952,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * `records` rather than `rows` because a record that renders to no row is still
 	 * nothing to scroll. The legacy twin (`MessagesView`) already does this with its
 	 * `collapsed` branch; the two paths change together so neither keeps the defect.
+
+	 * AND A SEND THIS PANE HAS ADMITTED, which is the case this change exists for
+	 * and the one row of the matrix the record list cannot express: the reader has
+	 * not been told what the conversation holds, there is nothing to scroll, and
+	 * the pane DOES have something of its own to say - the wait line the owner's
+	 * admission put in flight. So the placeholder stands down (it would be a
+	 * second, weaker claim: the load is not the thing the reader is waiting for
+	 * any more) and the pane still does not collapse, because the wait line is
+	 * rendered at this scroller's foot and had no height to paint in. Measured
+	 * before this term existed: the rung was in the DOM at t+258 ms and its first
+	 * painted pixel was at t+13.8 s (QA round 1, Q1) - exactly the dead air the
+	 * operator reported on the New-chat path.
 	 */
 	const paneView = {
 		status,
 		failure,
 		hydrated,
 		recordCount: transcript.records.length,
+		/*
+		 * A send this pane has admitted and the owner has not answered. The pane's
+		 * own fact rather than the stream's, and the one row of the matrix that no
+		 * record can express: see the term's rationale in `transcript-pane.ts`.
+		 */
+		admittedSend: starting,
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
@@ -1020,57 +1061,41 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	const lastRecord = transcript.records[transcript.records.length - 1];
 
-	// What the working line says, and which phase it is timing.
-	//
-	// Every branch is a fact the backend actually sent. `intent` rides
-	// `tool_execution_start` and is already on the tool record; a streaming
-	// assistant record IS what "responding" means; and `thinking` is the default
-	// for a model call in flight with nothing on the ledger to show for it. The
-	// vocabulary is the harness's own (`harness/intent.py`), so a reader who
-	// learned it in the terminal does not learn it again here.
-	//
-	// The PHASE is coarser than the label on purpose: a batch of three calls is
-	// one phase however many times its phrase is re-derived as calls settle, so
-	// the clock keeps counting instead of resetting to `0s` under the reader.
-	const working = useMemo(() => {
-		if (!waiting || gate) return null;
-		const runningTools = transcript.records.filter(
-			(record) => record.kind === "tool" && record.phase === "running",
-		) as Extract<TranscriptRecord, { kind: "tool" }>[];
-		if (runningTools.length > 0) {
-			// One call states its own purpose; a batch states a COUNT. Presenting
-			// one call's intent as the whole batch's activity is a claim the rows
-			// above it immediately contradict, and the count is the one fact this
-			// line has that appears nowhere else on screen.
-			const activity =
-				runningTools.length === 1
-					? (runningTools[0].intent ??
-						`running ${displayName(runningTools[0].toolName)}`)
-					: `running ${runningTools.length} tools`;
-			return { activity, phase: "running" };
-		}
-		const composing = transcript.records.filter(
-			(record) => record.kind === "tool" && record.phase === "composing",
-		).length;
-		if (composing > 0) {
-			// The tool's NAME is deliberately absent: it arrives in fragments, and
-			// `composing wr` reads as a typo rather than as a state.
-			return {
-				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
-				phase: "composing",
-			};
-		}
-		const tail = transcript.records[transcript.records.length - 1];
-		if (tail?.kind === "assistant" && tail.streaming) {
-			// Only once prose is ACTUALLY streaming. `message_start` fires from a
-			// placeholder at the top of every provider call, before the first
-			// token, so flipping on it would claim the model is writing for the
-			// whole of every turn — which is why the record's own `text` is the
-			// trigger here, not its existence.
-			if (tail.text) return { activity: "responding", phase: "responding" };
-		}
-		return { activity: "thinking", phase: "thinking" };
-	}, [waiting, gate, transcript.records]);
+	// What the working line says, and which phase it is timing. The derivation
+	// (and its copy contract, including the one branch this app drives from its
+	// own admitted send rather than from a frame) lives in
+	// `working-line-model.ts`; this is only the memo that keeps it off the
+	// per-token path.
+	const working = useMemo(
+		() =>
+			// One input builder for this claim's two readers - this rung and the
+			// composer's hint - so the two cannot be handed different facts
+			// (`workingLineInputFor`, `working-line-model.ts`).
+			deriveWorkingLine(
+				workingLineInputFor({
+					waiting,
+					starting,
+					startingAfterId,
+					gate,
+					// One definition of "this pane is speaking for itself", shared with the
+					// band's own greeting decision rather than a second copy of "the
+					// transport is down": the failure notice and the reconnecting line are
+					// the only things on screen that say what happened, so the rung must
+					// not claim progress beside them.
+					unavailable: canonicalTranscriptSpeaks({ status, failure }),
+					records: transcript.records,
+				}),
+			),
+		[
+			waiting,
+			starting,
+			startingAfterId,
+			gate,
+			status,
+			failure,
+			transcript.records,
+		],
+	);
 
 	return (
 		<div
