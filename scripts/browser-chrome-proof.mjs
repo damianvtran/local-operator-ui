@@ -459,49 +459,71 @@ async function grabRenderer(name) {
 }
 
 /**
- * Suppress the app's connectivity banner and report whether the tab strip is
- * actually exposed at its own centre.
+ * Suppress whatever the app paints over the tab strip, and report whether the
+ * strip is then the topmost element at its own centre.
  *
- * WHY THIS RUNS BEFORE EVERY CAPTURE, and why it is not the round-2 form. Round 2
- * hid the banner once, by setting an inline `display: none` on the element — and
- * the banner is React-rendered on a three-second connectivity poll, so React
- * re-rendered the style away and the banner covered the tab strip in ALL 43
- * frames: the strip, its agent marker, the active/inactive step and the new
- * `Failed` chip were never photographed while captions claimed them (review round
- * 2, D5). A `<style>` element injected into the document head is not React's to
- * remove, and the rule keys on an attribute THIS harness sets, so it cannot hide
- * an unrelated `div.fixed` by accident.
- *
- * The probe is the honest half: `elementFromPoint` at the strip's own centre must
- * resolve to the strip or a descendant of it. If a future app change puts
- * something else over the strip, the frame that follows is taken anyway and the
- * transcript says what is on top of it, rather than a caption claiming a strip
- * nobody can see.
+ * WHY THE RULE IS GENERAL RATHER THAN A BANNER'S NAME (review round 2, D5, and the
+ * round-3 run that followed it). Round 2 hid ONE banner by name, with an inline
+ * style that React re-rendered away, and the frames still contained no strip. This
+ * round's first run showed the other half of the problem: in a headless,
+ * backend-less boot the element over the strip is not the connectivity banner at
+ * all - it is the app's own "not paired with the running Local Operator"
+ * compatibility banner, `fixed inset-x-0 top-0`, measured at {top 0, height 53}
+ * over a strip at {top 0, height 43}, and the connectivity banner was not up at all
+ * in that run. So the rule is stated in terms of the STRIP: hide every element in
+ * the hit chain at the strip's centre that is neither the strip nor one of its own
+ * ancestors or descendants (an ancestor would take the strip down with it), name
+ * what was hidden in the transcript, and assert the strip is topmost afterwards. A
+ * `<style>` element injected into the document head is not React's to remove, so
+ * the suppression survives the app's re-renders, and it is re-asserted before every
+ * single frame rather than once.
  */
 async function exposeStrip() {
 	return await evaluate(`(() => {
-		const isBanner = (el) => /The server is offline|You are offline|A connectivity issue has been detected/i.test(el.innerText || '');
-		const banner = [...document.querySelectorAll('div.fixed')].find(isBanner) ?? null;
-		if (!document.getElementById('harness-hide-connectivity-banner')) {
+		if (!document.getElementById('harness-expose-strip')) {
 			const style = document.createElement('style');
-			style.id = 'harness-hide-connectivity-banner';
-			style.textContent = '[data-harness-hidden-banner]{display:none !important}';
+			style.id = 'harness-expose-strip';
+			style.textContent = '[data-harness-hidden-overlay]{display:none !important}';
 			document.head.appendChild(style);
 		}
-		for (const el of document.querySelectorAll('[data-harness-hidden-banner]')) el.removeAttribute('data-harness-hidden-banner');
-		if (banner) banner.setAttribute('data-harness-hidden-banner', '');
+		for (const el of document.querySelectorAll('[data-harness-hidden-overlay]')) el.removeAttribute('data-harness-hidden-overlay');
 		const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
-		if (!strip) return { banner: banner ? (banner.innerText || '').split('\\n')[0].slice(0, 60) : null, strip: null, topmost: null, hit: null };
+		if (!strip) return { strip: null, hidden: [], topmost: null, hit: null };
 		const r = strip.getBoundingClientRect();
 		const x = Math.round(r.left + r.width / 2);
 		const y = Math.round(r.top + r.height / 2);
+		const hidden = [];
+		const leftInPlace = [];
+		for (const el of document.elementsFromPoint(x, y)) {
+			if (el === strip || strip.contains(el) || el.contains(strip)) continue;
+			const entry = {
+				tag: el.tagName.toLowerCase(),
+				cls: String(el.className).slice(0, 90),
+				text: (el.innerText || '').replace(/\\s+/g, ' ').slice(0, 60),
+			};
+			// A SCRIM IS LEFT IN PLACE, and the rule is geometric on purpose. The app's
+			// banners are full-width BANDS at the top of the window (measured: 53 px over
+			// a 43 px strip); a modal's scrim is 'fixed inset-0', i.e. the whole viewport.
+			// Hiding a band removes app chrome that has nothing to do with the browser
+			// surface this run is photographing; hiding a scrim would take the frame's own
+			// subject with it, so a frame of an overlay keeps its scrim and the strip stays
+			// covered in it, which is what a user sees while a dialog is open.
+			const box = el.getBoundingClientRect();
+			if (box.height > 120) {
+				leftInPlace.push(entry);
+				continue;
+			}
+			hidden.push(entry);
+			el.setAttribute('data-harness-hidden-overlay', '');
+		}
 		const hit = document.elementFromPoint(x, y);
 		return {
-			banner: banner ? (banner.innerText || '').split('\\n')[0].slice(0, 60) : null,
 			strip: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) },
 			probe: { x, y },
+			hidden,
+			leftInPlace,
 			topmost: hit ? (strip === hit || strip.contains(hit)) : false,
-			hit: hit ? String(hit.getAttribute('data-tour-tag') || (hit.className || '').split(' ').slice(0, 4).join(' ')).slice(0, 80) : null,
+			hit: hit ? String(hit.getAttribute('data-tour-tag') || String(hit.className).split(' ').slice(0, 4).join(' ')).slice(0, 80) : null,
 		};
 	})()`);
 }
@@ -975,10 +997,10 @@ async function main() {
 			const isBanner = (el) => /The server is offline|You are offline|A connectivity issue has been detected/i.test(el.innerText || '');
 			const el = [...document.querySelectorAll('div.fixed')].find(isBanner) ?? null;
 			const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
-			if (!el) return { present: false };
-			const b = el.getBoundingClientRect();
-			const s = strip ? strip.getBoundingClientRect() : null;
 			const box = (r) => r ? { top: Math.round(r.top), height: Math.round(r.height) } : null;
+			const s = strip ? strip.getBoundingClientRect() : null;
+			if (!el) return { present: false, tabStrip: box(s), overlapsTabStrip: null };
+			const b = el.getBoundingClientRect();
 			return {
 				present: true,
 				text: (el.innerText || '').split('\\n')[0].slice(0, 60),
@@ -992,9 +1014,9 @@ async function main() {
 			JSON.stringify(banner, null, 2),
 		);
 		check(
-			"the tab strip is present in the layout, and the banner that covers it (by its own z-index comment) was measured before being hidden for the frames",
+			"the tab strip is present in the layout, whether or not the connectivity banner is up over it",
 			banner.tabStrip !== null && banner.tabStrip.height > 30,
-			`banner ${JSON.stringify(banner.banner)} (${banner.text}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
+			`banner ${JSON.stringify(banner.banner ?? null)} (${banner.text ?? "not up in this run"}), tab strip ${JSON.stringify(banner.tabStrip)}, overlaps ${banner.overlapsTabStrip}`,
 		);
 		/*
 		 * The suppression is re-asserted before EVERY frame by `captureRenderer`, so
@@ -1006,13 +1028,13 @@ async function main() {
 		const exposure = await exposeStrip();
 		lastStripReading = JSON.stringify(exposure);
 		record(
-			"strip exposure after the banner is suppressed",
+			"strip exposure after whatever covers it is suppressed",
 			JSON.stringify(exposure, null, 2),
 		);
 		check(
-			"with the banner suppressed the tab strip is the topmost element at its own centre, so a frame can contain it",
+			"the tab strip is the topmost element at its own centre once the app's own banners are suppressed for the frames, so a frame can contain it",
 			exposure.strip !== null && exposure.topmost === true,
-			`strip ${JSON.stringify(exposure.strip)}, elementFromPoint(${exposure.probe?.x}, ${exposure.probe?.y}) -> ${exposure.hit}`,
+			`strip ${JSON.stringify(exposure.strip)}, hidden over it: ${JSON.stringify(exposure.hidden)}, elementFromPoint(${exposure.probe?.x}, ${exposure.probe?.y}) -> ${exposure.hit}`,
 		);
 
 		/*
@@ -1969,15 +1991,34 @@ async function main() {
 		// ---- 11. restore across a restart ------------------------------------
 		const beforeQuit = await chromeState();
 		record("tabs at quit", JSON.stringify(beforeQuit.tabs, null, 2));
+		/*
+		 * THE TAB COUNT IS ASSERTED, not only the file's shape (QA round 2, Q3).
+		 * `stopApp` signals the app itself, and the stop path captures before the views
+		 * go - but the teardown that follows fires a `destroyed` event per view, and
+		 * before this round each of those ended in a capture of a strip that no longer
+		 * existed: the record was overwritten with `{tabs: []}` in 8 of 8 SIGTERM quits
+		 * (QA's measurement; this check is the harness's own version of it). So the
+		 * count is the assertion: every tab whose page had a URL of its own must be in
+		 * the file the stop wrote. An `about:blank` tab is excluded because `captureTabs`
+		 * drops it BY DESIGN (a restored blank tab is a tab the user never opened).
+		 */
+		const httpTabs = beforeQuit.tabs.filter((tab) =>
+			/^https?:/.test(String(tab.url ?? "")),
+		).length;
 		await stopApp();
 		const sessionFile = join(USER_DATA, "browser", "session.json");
+		const written = existsSync(sessionFile)
+			? readFileSync(sessionFile, "utf8")
+			: "";
+		const writtenRows = written ? (JSON.parse(written).tabs ?? []).length : -1;
 		check(
-			"stopping the host writes the tab list, 0600, with no nonce anywhere in it",
+			"stopping the host writes the tab list, 0600, with no nonce anywhere in it - and writes EVERY tab the strip held, which is what a SIGTERM stop used to lose",
 			existsSync(sessionFile) &&
-				readFileSync(sessionFile, "utf8").includes("127.0.0.1") &&
-				!readFileSync(sessionFile, "utf8").includes("nonce") &&
+				writtenRows >= httpTabs &&
+				written.includes("127.0.0.1") &&
+				!written.includes("nonce") &&
 				(statSync(sessionFile).mode & 0o777) === 0o600,
-			`${sessionFile} mode ${(statSync(sessionFile).mode & 0o777).toString(8)}\n${readFileSync(sessionFile, "utf8").slice(0, 400)}`,
+			`${sessionFile} mode ${(statSync(sessionFile).mode & 0o777).toString(8)}: ${writtenRows} row(s) written for ${httpTabs} navigated tab(s) of ${beforeQuit.tabs.length} in the strip\n${written.slice(0, 400)}`,
 		);
 
 		// Relaunch against the SAME user data and config dirs: the other half of the
