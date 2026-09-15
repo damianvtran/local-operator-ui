@@ -546,9 +546,21 @@ export class ApprovalStore {
 						requester: entry.requester,
 						requestedAt: entry.requestedAt,
 						expiresAt: entry.expiresAt,
-						...(this.decisionFor(entry)
-							? { decision: this.decisionFor(entry) }
-							: {}),
+						/*
+						 * NO `decision` TERM, and the removal is the point (review round 1,
+						 * finding 5). The vendored `accessState()` takes an optional decision so
+						 * that a LIVE record can read `allowed`/`denied` before the grant lands,
+						 * and this host fed it from the decision receipts — but every arm that
+						 * writes a receipt removes its entry from the queue FIRST (`respond`
+						 * filters, `cancelAccess` splices), entry ids are minted per entry and
+						 * nothing here is restored from disk, so a record with a decision can
+						 * never be the record this reads. It was unreachable code carrying the
+						 * residue of the defect this PR fixes, and a reader would reasonably infer
+						 * from it that a receipt can still answer. It cannot: `requestAccess`
+						 * answers from `liveAuthority` and from a durable verdict, and the
+						 * receipts are the store's record of what was decided (purged by
+						 * `revokeOrigin` and swept by TTL) rather than a reader's source.
+						 */
 					}
 				: undefined,
 			this.tombstones,
@@ -903,14 +915,6 @@ export class ApprovalStore {
 	}
 
 	// ---- internals -----------------------------------------------------------
-
-	private decisionFor(entry: AccessQueueEntry): OriginDecision | undefined {
-		const receipt = this.results[resultKey(entry.entryId, entry.requester)];
-		if (!receipt) return undefined;
-		if (receipt.state === "denied") return "deny";
-		if (receipt.state === "allowed") return "site";
-		return undefined;
-	}
 
 	/** At the cap: the OLDEST live entry (or entries, if a queue was restored over
 	 * the cap) steps aside, and its requester gets a tombstone so its next poll

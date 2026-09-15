@@ -75,6 +75,18 @@ export interface BrowserConsentRequestProps {
 	remaining: string | null;
 	busy: boolean;
 	onDecide: (entryId: string, decision: ConsentDecision) => void;
+	/**
+	 * How much width the card has, not what it looks like.
+	 *
+	 * The card is ONE component in two hosts (`spec §4.3`): the band, which is a
+	 * 1280px row, and the dock, which is 384px and 320px. The two-column legend is
+	 * right for the band and wrong for the dock — measured there, the term column
+	 * plus `gap-x-4` left the descriptions a 129px measure and a 96px dead gutter,
+	 * so every gloss wrapped to three or four lines and the last one ran past the
+	 * panel (design round 2, D2). `"stacked"` puts each term over its own
+	 * description and gives the copy ~230-370px instead.
+	 */
+	layout?: "inline" | "stacked";
 }
 
 /**
@@ -103,9 +115,15 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 	remaining,
 	busy,
 	onDecide,
+	layout = "inline",
 }) => {
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const who = requesterLabel(request.requesterSessionId, sessions);
+
+	/** The term's ink role, which is what changes between the two layouts: the
+	 * stacked form has no column for the eye to run down, so the term carries the
+	 * emphasis itself (design round 2, D2). */
+	const termClass = layout === "stacked" ? "text-ink" : "text-ink-muted";
 
 	const decide = (decision: ConsentDecision): void =>
 		onDecide(request.entryId, decision);
@@ -209,30 +227,36 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 			    lifetime sentence cannot be true of five different scopes, and the
 			    shared-across-conversations half is the part a user cannot infer from
 			    a button's label (D3). */}
-			{/* Two COLUMNS, with the `dt`/`dd` pairs as direct children: the previous
-			    form wrapped each pair in its own flex row, so `gap-x-4` never applied and
-			    the five glosses started at five different x positions — ragged in exactly
-			    the text whose job is to be compared row against row (review round 2, D7). */}
+			{/* Two COLUMNS in the band, with the `dt`/`dd` pairs as direct children: the
+			    previous form wrapped each pair in its own flex row, so `gap-x-4` never
+			    applied and the five glosses started at five different x positions —
+			    ragged in exactly the text whose job is to be compared row against row
+			    (review round 2, D7). ONE COLUMN in the dock, where two are what made the
+			    legend overflow (design round 2, D2). */}
 			<dl
-				className="ml-6 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+				className={
+					layout === "stacked"
+						? "ml-6 grid grid-cols-1 gap-y-1.5 text-meta text-ink-dim"
+						: "ml-6 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+				}
 				data-tour-tag="browser-consent-scopes"
 			>
-				<dt className="text-ink-muted">Allow once</dt>
+				<dt className={termClass}>Allow once</dt>
 				<dd>one navigation, for that conversation, up to ten minutes</dd>
-				<dt className="text-ink-muted">Allow until the app quits</dt>
+				<dt className={termClass}>Allow until the app quits</dt>
 				<dd>this site, for this run only, and for every conversation</dd>
-				<dt className="text-ink-muted">Always allow this site</dt>
+				<dt className={termClass}>Always allow this site</dt>
 				<dd>kept until you revoke it, and shared with every conversation</dd>
 				{request.broad && (
 					<>
-						<dt className="text-ink-muted">Allow all of {request.broad.key}</dt>
+						<dt className={termClass}>Allow all of {request.broad.key}</dt>
 						<dd>
 							every site under {request.broad.key}, kept until you revoke it,
 							shared with every conversation
 						</dd>
 					</>
 				)}
-				<dt className="text-ink-muted">Don't allow</dt>
+				<dt className={termClass}>Don't allow</dt>
 				<dd>
 					the agent stops asking about this site until you revoke the denial in
 					Approvals

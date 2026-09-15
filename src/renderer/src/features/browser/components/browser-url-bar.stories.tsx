@@ -66,3 +66,16 @@ export const OneWaiting: Story = {
 export const ThreeWaiting: Story = {
 	args: bar(3),
 };
+
+/**
+ * TWO DIGITS, the state that makes the badge's geometry load-bearing.
+ *
+ * The badge is `min-w-4` and grows with the number, anchored at the control's
+ * inner top-right corner; at one digit it is 18px and at two it is ~24px. This is
+ * the frame a reviewer needs to see that the wider pill still sits inside the URL
+ * bar's own box rather than over its right edge (design round 2, D3 asked for it
+ * by name), and it is the state a busy machine reaches in a minute.
+ */
+export const TwoDigits: Story = {
+	args: bar(12),
+};

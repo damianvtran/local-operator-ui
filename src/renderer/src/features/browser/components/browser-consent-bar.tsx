@@ -29,10 +29,13 @@ import type { ConsentDecision } from "./browser-consent-request";
  * THE GROUND IS `surface` RATHER THAN A WASH, and that is a measured choice kept
  * from the previous version: the band's content is `ink` and `ink-muted` on it, and
  * those pairs are asserted by the theme contract on every ground. A wash ground
- * would put two new pairs (`ink` on `warningWash`, `border-control` on
- * `warningWash`) into the UI that no palette assertion covers. The urgency is
- * carried by the icon and the words instead — a colour is not the only way to say
- * "act on this".
+ * would add two pairs (`ink` on `warningWash`, `border-control` on `warningWash`) —
+ * pairs the contract did not cover when this was written, and now does, because the
+ * badge the same feature adds is exactly `warningWash` with a `border-control` edge
+ * (`contrast-contract.mjs`'s `browser approvals badge` row). The rest of the
+ * reasoning is unchanged and is the reason it stays: at 1280px this is the app's
+ * largest text surface, and its alertness belongs to the icon and the words rather
+ * than to a fill that repaints the whole row in every palette.
  */
 
 export interface BrowserConsentBarProps {
