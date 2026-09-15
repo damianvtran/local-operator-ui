@@ -73,7 +73,18 @@ export const ComposerTipRow = ({ suspended }: Props) => {
 	}, [order, reduceMotion, suspended]);
 
 	return (
-		<div className={cn("flex h-5 items-center gap-1.5")}>
+		/*
+		 * `data-lo-composer-tip` is the hook the geometry rig measures through
+		 * (`scripts/composer-band-geometry.mjs`), on the same convention as
+		 * `data-lo-composer-band` and `data-lo-suggestion-stack`: the row has no box
+		 * of its own to see in a frame - it draws no border, no fill and no shadow -
+		 * so its geometry is otherwise unreadable from a still, and every number the
+		 * design record predicts about it would have to be taken on trust.
+		 */
+		<div
+			data-lo-composer-tip={true}
+			className={cn("flex h-5 items-center gap-1.5")}
+		>
 			{/*
 			 * 12px is the size the icon ramp permits at an ink this quiet, and it
 			 * is an existing call shape in the tree (app-updates-section.tsx:237).
