@@ -148,6 +148,23 @@ const MEASURE = `(() => {
 })()`;
 
 const app = await (async () => {
+	/*
+	 * A port somebody else is already holding is the one start-up failure that
+	 * looks exactly like a slow launch: the window comes up, `/json/list` answers,
+	 * and the page target this script waits for never appears because the port
+	 * belongs to another process. Name it here rather than waiting 60s for it.
+	 */
+	try {
+		const busy = await fetch(`http://127.0.0.1:${PORT}/json/version`);
+		if (busy.ok)
+			throw new Error(
+				`port ${PORT} already has a devtools endpoint; pass --port=<free port>`,
+			);
+	} catch (error) {
+		if (error instanceof Error && error.message.includes("already has"))
+			throw error;
+		// Nothing listening: the normal case.
+	}
 	const profile = mkdtempSync(join(tmpdir(), "lo-reveal-proof-"));
 	const child = spawn(
 		"npx",
@@ -298,16 +315,41 @@ try {
 	 * Warm the session the way the composer does on its first keystroke. The
 	 * plan does not reach the renderer until a runtime is engaged, and a proof
 	 * should not need a synthetic keystroke to make its own subject exist.
+	 *
+	 * The engage is ASYNC and the plan arrives over the canonical stream a moment
+	 * after it, so this polls for the chip and asks again rather than racing a
+	 * fixed sleep: a cold engage under load measured longer than the 9s this used
+	 * to wait, and the failure it produced ("the session has no plan chip") named
+	 * the fixture instead of the race. Asking twice costs one round trip when the
+	 * runtime was already engaged, which is the normal case for a re-run.
 	 */
-	await fetch(`${BACKEND}/v1/desktop/sessions/${SESSION}/warm`, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${TOKEN}`,
-			"Content-Type": "application/json",
-		},
-		body: "{}",
-	}).catch(() => {});
-	await wait(9000);
+	const warm = () =>
+		fetch(`${BACKEND}/v1/desktop/sessions/${SESSION}/warm`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${TOKEN}`,
+				"Content-Type": "application/json",
+			},
+			body: "{}",
+		}).catch(() => {});
+	for (let attempt = 0; attempt < 8; attempt++) {
+		await warm();
+		for (let tick = 0; tick < 10; tick++) {
+			await wait(1500);
+			if (
+				await app.evaluate(
+					`Boolean(document.querySelector("[data-status-plan]"))`,
+				)
+			)
+				break;
+		}
+		if (
+			await app.evaluate(
+				`Boolean(document.querySelector("[data-status-plan]"))`,
+			)
+		)
+			break;
+	}
 
 	if (
 		await app.evaluate(`Boolean(document.querySelector("div[role='dialog']"))`)
@@ -444,6 +486,19 @@ try {
 } finally {
 	app.socket.close();
 	app.child.kill("SIGTERM");
+	/*
+	 * WAIT for the exit before returning. A run that leaves the app holding its
+	 * devtools port makes the NEXT run fail with "no app page target", which reads
+	 * as a slow launch rather than as the collision it is (measured: two of three
+	 * consecutive sizes failed that way). SIGKILL is the backstop for an app that
+	 * ignores the term.
+	 */
+	for (let attempt = 0; attempt < 20 && app.child.exitCode === null; attempt++)
+		await wait(250);
+	if (app.child.exitCode === null) {
+		app.child.kill("SIGKILL");
+		await wait(500);
+	}
 	/*
 	 * The child's pipes keep this process alive on their own: a CLI that spawned
 	 * Electron with `stdio: ["ignore", "pipe", "pipe"]` and only killed it waits
