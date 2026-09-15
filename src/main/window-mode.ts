@@ -143,23 +143,39 @@ const WINDOW_BEHAVIOUR: Record<WindowMode, WindowBehaviour> = {
 	headless: { show: "never", focusable: false, backgroundThrottling: false },
 };
 
-/** Read `--name=value` or `--name value` from an argument vector. */
+/**
+ * Read `--name=value` or `--name value` from an argument vector, the LAST
+ * occurrence winning.
+ *
+ * Last-wins is the rule the rest of this app's flags state
+ * (`shared/open-session.ts`), and here it is what makes an appended argument an
+ * override: `pnpm app:headless` names `--window-mode=headless` on its own command
+ * line, and `pnpm app:headless -- --window-mode=inactive` APPENDS to that line — a
+ * launcher that appends rather than replaces must not be overruled by the default
+ * it was appending to, which is a silent downgrade of an explicit request.
+ *
+ * A following `--flag` is a missing value, never the value itself.
+ */
 function readFlag(
 	argv: readonly string[],
 	name: string,
 ): { found: boolean; value: string | undefined } {
+	let found = false;
+	let value: string | undefined;
 	for (let index = 0; index < argv.length; index += 1) {
 		const argument = argv[index];
 		if (argument === name) {
 			const next = argv[index + 1];
-			// A following `--flag` is a missing value, not the value itself.
-			return { found: true, value: next?.startsWith("--") ? undefined : next };
+			found = true;
+			value = next?.startsWith("--") ? undefined : next;
+			continue;
 		}
 		if (argument.startsWith(`${name}=`)) {
-			return { found: true, value: argument.slice(name.length + 1) };
+			found = true;
+			value = argument.slice(name.length + 1);
 		}
 	}
-	return { found: false, value: undefined };
+	return { found, value };
 }
 
 /**
@@ -337,6 +353,96 @@ export function resolveWindowLaunchPlan(
 		height,
 		problems,
 	};
+}
+
+/**
+ * The key a second launch uses to carry its window intent to the instance that
+ * already holds the single-instance lock.
+ *
+ * WHY THE INTENT HAS TO BE CARRIED AT ALL, and why it cannot be read from the
+ * running instance's own environment: `second-instance` is delivered to the
+ * process that WON the lock, and it hands over the losing process's argv and
+ * whatever that process attached to its `requestSingleInstanceLock` call. The
+ * environment of the losing process is not part of either, and the documented
+ * agent launches (`pnpm app:headless` is `LOCAL_OPERATOR_UI_WINDOW_MODE=headless
+ * electron .`) put the mode in exactly that environment. So a second launch
+ * forwards the mode it resolved, on the request that lost, and the winner
+ * answers with the requester's intent instead of its own plan.
+ *
+ * The key is namespaced because the payload crosses a process boundary that
+ * Electron does not police: anything else a future caller attaches to that call
+ * arrives in the same object.
+ */
+export const WINDOW_INTENT_KEY = "localOperatorWindowMode";
+
+/**
+ * What a launch that lost the single-instance lock hands to the one that won it.
+ *
+ * The MODE rather than the resolved `WindowShow`, deliberately: the receiver
+ * validates through `parseWindowMode` and applies its own behaviour table, so a
+ * payload cannot smuggle in a show value this build does not model, and two
+ * builds that disagree about what `inactive` means cannot disagree silently
+ * about what it does.
+ */
+export function windowIntentPayload(mode: WindowMode): Record<string, string> {
+	return { [WINDOW_INTENT_KEY]: mode };
+}
+
+/**
+ * The mode a second launch carried, or null when it carried none this build
+ * understands. Null is the ordinary case rather than an error: an older release
+ * on either side of the boundary attaches nothing, and a value that is not one
+ * of `WINDOW_MODES` is treated as absent instead of being guessed at.
+ */
+export function readWindowIntent(additionalData: unknown): WindowMode | null {
+	if (typeof additionalData !== "object" || additionalData === null)
+		return null;
+	const value = (additionalData as Record<string, unknown>)[WINDOW_INTENT_KEY];
+	return typeof value === "string" ? parseWindowMode(value) : null;
+}
+
+/**
+ * How far a SECOND launch may bring this process's window forward.
+ *
+ * This is the fix for a defect the operator reported as "the app steals my focus
+ * whenever a chat completes": a launch that shared the operator's profile was
+ * refused by the single-instance lock, and the RUNNING instance answered by
+ * applying ITS OWN plan — `show()` + `focus()` for the ordinary `normal` app — so
+ * an agent's deliberately invisible `headless` run yanked the operator's window
+ * to the front. Measured on this machine before the fix: frontmost went from the
+ * operator's app to the agent's, and back.
+ *
+ * The rule is that the WINDOW comes forward only as far as the request that
+ * asked for it:
+ *
+ * - `never` (a `headless` request) raises nothing at all;
+ * - `inactive` (an `inactive` request) may `showInactive()` — visible, never
+ *   activated;
+ * - `focus` is what an UNDECLARED launch gets, which is the person double-
+ *   clicking the app while it runs, and must keep the behaviour it has today.
+ *
+ * TWO SOURCES, in this order. The carried intent is more informed than the
+ * command line: it is the mode the losing launch itself resolved from its own
+ * environment, argv and size floor, so a rig-shaped launch is covered by
+ * whatever that launch's own policy said. The command line is the fallback, read
+ * through `resolveWindowLaunchPlan` — the same reader the launching process used
+ * — because a launch can reach the window server through paths that drop the
+ * environment (a LaunchServices `open --args`), and `--window-mode` is what
+ * survives those.
+ *
+ * The fallback is `focus` rather than `never`. The two directions are not
+ * symmetric, for the reason `resolveWindowLaunchPlan` gives for falling back to
+ * `normal`: a launch nobody declared is far more often a person than an agent,
+ * and answering a person's double-click with silence is the failure mode that
+ * looks like a broken app.
+ */
+export function resolveSecondLaunchShow(input: {
+	argv?: readonly string[];
+	additionalData?: unknown;
+}): WindowShow {
+	const carried = readWindowIntent(input.additionalData);
+	if (carried !== null) return WINDOW_BEHAVIOUR[carried].show;
+	return resolveWindowLaunchPlan({ argv: input.argv ?? [] }).show;
 }
 
 /**

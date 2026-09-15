@@ -268,6 +268,27 @@ too, not only to the backend log: a typo like
 difference between a headless run and an interruption, and it must be visible to
 whoever launched it.
 
+**A second launch raises the window only as far as the REQUESTING launch asked.**
+Why it is not automatic: the single-instance lock is taken PER PROFILE, so a run
+that shares the operator's profile is refused by it and the instance that ALREADY
+holds the lock is the one that decides what happens next. It used to decide with
+its own plan, so an agent's deliberately invisible run answered as an ordinary
+launch — `show()` + `focus()` for a running app — and pulled the operator's window
+to the front. The mode now travels with the request, and either channel is
+enough: the losing launch forwards the mode it resolved (the
+`LOCAL_OPERATOR_UI_WINDOW_MODE` it was launched with), and `--window-mode=<mode>`
+on its command line is read as well, because that is the spelling that survives a
+launcher which drops the environment (macOS `open --args`). An UNDECLARED second
+launch keeps today's `show()` + `focus()`, since that is a person double-clicking
+the app while it runs; a `headless` request still delivers the conversation it
+names to the renderer and raises nothing at all.
+
+Every raise writes one `[window-raise] trigger=<trigger> requested=<mode>
+applied=<calls>` line to the backend log (`initial-present`, `second-instance`,
+`banner-click`, `viewer-focus`, `open-conversation`), which is what makes "who
+took my focus" answerable on the machine where it happened. A mode that raises
+nothing writes nothing: a headless run leaves no trace, its log included.
+
 ### An agent-driven run does not banner either
 
 `headless` silences the **app's** own notification (`window-mode.ts` feeds
