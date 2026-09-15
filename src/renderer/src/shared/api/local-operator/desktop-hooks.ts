@@ -94,6 +94,7 @@ export type DesktopFeature =
 	| "draft_selection"
 	| "lifecycle"
 	| "mcp"
+	| "mcp_auth"
 	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
