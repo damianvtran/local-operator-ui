@@ -35,8 +35,13 @@ export type RoutableRow =
 
 /** What a key does to the list. `pass` hands the event back to the composer. */
 export type SlashKeyIntent =
-	/** Move the marker to `index` — an explicit choice by hand. */
-	| { kind: "move"; index: number }
+	/**
+	 * Move the marker to `index`. `moved` is false when the key clamped onto the
+	 * row the marker was already on, and the two cases are NOT the same event:
+	 * only a move is a choice the user made (see the gate in `slashKeyIntent`), so
+	 * a key that asked to move and could not is not the arming gesture (F2).
+	 */
+	| { kind: "move"; index: number; moved: boolean }
 	/** Apply `matches[index]`; `run` is false when Enter may only complete. */
 	| { kind: "apply"; index: number; run: boolean }
 	| { kind: "close" }
@@ -56,6 +61,30 @@ export type SlashKeyInput = {
 	nameThenMessage: boolean;
 	runs: boolean;
 	chosenByHand: boolean;
+	/**
+	 * The words whose command arms by PICK alone (`armedOnlyVocabulary`, off the
+	 * registry). Enter on one of these rows is not the arming gesture unless the
+	 * user chose the row by hand — see the gate in `slashKeyIntent`.
+	 */
+	armedOnlyCommands: ReadonlySet<string>;
+	/**
+	 * Whether text SURVIVES the caret's LINE in this draft.
+	 *
+	 * `slashTokenSpan`'s end is the END OF THE CARET'S OWN LINE, so the span this
+	 * question removes is the word plus the rest of its line, not the word alone.
+	 * True means a pick of the active row would HOIST the draft (the command moved
+	 * to the front with that surviving text as its argument) rather than only
+	 * complete its word. Read off the draft by the caller (`useSlashCompletion`,
+	 * which has the text and the caret) because the row alone cannot answer it: a
+	 * bare `/goal` pick completes, the same word inside a sentence hoists.
+	 *
+	 * The LINE is the span, and this doc used to describe the WORD's — which sent
+	 * a reader to the wrong span wherever the word sat at the head of a line with
+	 * prose after it (`Please fix the flaky test\nand run /goal and report` counts
+	 * ` and report` as NOT surviving, while `planSlashArming` hoists it with the
+	 * command — review N2).
+	 */
+	hoists: boolean;
 };
 
 /**
@@ -185,6 +214,153 @@ export function pointerPickRuns(
 }
 
 /**
+ * Whether a PICK of this row ARMS its command instead of only completing it.
+ *
+ * The ROW half of the arming rule, beside `pointerPickRuns` and answered the same
+ * way — from the vocabulary the composer derived from the registry, never from a
+ * command name or destination written here. A command row the vocabulary calls
+ * armed-only is hoisted to the front and STAGED by the pick (the DRAFT half is
+ * `planSlashArming` in `slash-submit.ts`): the pick is the explicit gesture and it
+ * is the only one, which is why an Enter over a draft that merely CONTAINS the
+ * word sends that draft as written instead.
+ *
+ * The WORD is the key rather than the destination because the word is what the
+ * draft and the completion both carry: `label` is the name OR ALIAS the row
+ * matched and the string `completionFor` writes, and the caller's set holds both
+ * members of that pair.
+ */
+export function pickArmsCommand(
+	row: RoutableRow,
+	armedOnlyCommands: ReadonlySet<string>,
+): boolean {
+	return (
+		row.kind === "command" && armedOnlyCommands.has(row.label.toLowerCase())
+	);
+}
+
+/**
+ * Whether this row's command TAKES THE DRAFT as its own argument.
+ *
+ * The free-text rows (`consumes_prompt`): `/loop`, `/team`. A pick on one of them
+ * reassembles — the command to the front, the surviving draft behind it as its
+ * text — and the planner never auto-submits a reassembled line, so the gesture
+ * ends STAGED rather than run.
+ *
+ * `runs` is part of the question and not a separate one: a row whose destination
+ * opens an inline list never reaches the pick's run path at all (the list owns
+ * the next key), and `/team` is exactly that row, so excluding it here is what
+ * keeps `/team`'s two lines saying "completes".
+ */
+export function rowTakesDraft(input: {
+	runs: boolean;
+	takesDraft: boolean;
+	hoists: boolean;
+}): boolean {
+	return input.hoists && input.runs && input.takesDraft;
+}
+
+/**
+ * Whether a POINTER pick of this row STAGES the line rather than running or only
+ * completing it — the row's REAL route, which is the only thing its click line
+ * may describe.
+ *
+ * For an ARMED row the answer is the arming the pick performs, and it needs no
+ * `runs`: `handleSlashPick` runs the armed branch BEFORE the run gate and does
+ * not consult the disposition, which is why a click stages a bare `/goal` only
+ * when there is a draft to hoist. For every other row the staging comes from the
+ * reassembly (`rowTakesDraft`).
+ *
+ * Two rows make this one function rather than an expression in the footer: UX U2
+ * measured the `/loop` row's click line reading "Click runs /loop." while the
+ * click reassembled and sent nothing — the copy was read off `pointerPickRuns`
+ * alone, which answers "does this destination's pick run", not "does THIS pick
+ * run". The row the delta cites as its control was the row telling the lie.
+ */
+export function pickStagesDraft(input: {
+	runs: boolean;
+	arms: boolean;
+	takesDraft: boolean;
+	hoists: boolean;
+}): boolean {
+	if (input.arms) return input.hoists;
+	return rowTakesDraft(input);
+}
+
+/**
+ * The sentence a STAGED line's next Enter owes the user, in the command's own
+ * terms (`Enter sets the goal and sends the text`).
+ *
+ * One table, read by the composer's note and by the popup's footer, because both
+ * describe the same key in the same state and a second copy is a second answer —
+ * the pair used to say "the next Enter runs it" in the popup beside "Enter sets
+ * the goal and sends the text" in the note, one flow describing one key twice
+ * (design D4). Keyed by DESTINATION rather than written at the call site for the
+ * reason F6 gave: the staging is a generic mechanism, so a sentence naming the
+ * goal would go false the moment a second destination joined
+ * `ARMED_ONLY_DESTINATIONS`. An unlisted destination gets the generic predicate,
+ * which is true of any staged armed line.
+ */
+const STAGED_PROMISE: Record<string, string> = {
+	"session.goal": "sets the goal and sends the text",
+};
+
+/**
+ * What the next Enter does with a line the pick staged.
+ *
+ * The FALLBACK is a sentence rather than nothing on purpose: an armed
+ * destination with no copy of its own still has an honest promise ("runs it"),
+ * so the absence of a sentence cannot turn into a note that says nothing about
+ * the key the user is about to press.
+ */
+export function stagedPromiseVerb(destination: string | undefined): string {
+	return (destination ? STAGED_PROMISE[destination] : undefined) ?? "runs it";
+}
+
+/** The stop a sentence already ends in, so the note does not double it. */
+const SENTENCE_STOP = /[.!?]$/;
+
+/**
+ * A staged line as the sentence the note puts after "Staged".
+ *
+ * The stop is added only when the line does not already carry one, because the
+ * line is the USER's own text: a draft ending in a full stop used to produce
+ * `Staged /goal Please fix the flaky test and then run the release.. Enter sets
+ * the goal and sends the text.` — the template appending its own full stop to
+ * text that ends in one (QA round 2, Q2-2, recorded there as a pre-existing
+ * shape of this sentence; the multi-line collapse is what started putting a
+ * whole draft's trailing punctuation into it). One helper, so the two staging
+ * notes cannot punctuate the same quote differently.
+ */
+export function stagedSentence(text: string): string {
+	return SENTENCE_STOP.test(text) ? text : `${text}.`;
+}
+
+/**
+ * The staged ARMED line's own receipt (`message-input.tsx`'s `onSlashNote`).
+ *
+ * `paneHasSession` is the ONE thing this sentence may not guess at: the
+ * dispatcher refuses `/goal` on a pane with no conversation
+ * (`slash-dispatch.ts`, "needs an open conversation") and the staged line goes
+ * with the refusal, so promising "Enter sets the goal and sends the text" there
+ * would be the app contradicting itself one keystroke later (UX U5 / design D5).
+ * The honest sentence is the dispatcher's own, so the note and the refusal the
+ * user then reads are the same words.
+ *
+ * The noun is `Staged`, the same one the reassembly's note uses, because from the
+ * user's side the two are one state: a command line sitting in the box whose
+ * next Enter runs it (design D3).
+ */
+export function stagedNote(
+	text: string,
+	destination: string | undefined,
+	paneHasSession: boolean,
+): string {
+	return paneHasSession
+		? `Staged ${stagedSentence(text)} Enter ${stagedPromiseVerb(destination)}.`
+		: `Staged ${stagedSentence(text)} Needs an open conversation; start one first.`;
+}
+
+/**
  * Route one key press.
  *
  * Ported from `editor.py:_resolve_argument` / `:8060-8115` and pinned by
@@ -196,21 +372,61 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 	if (input.composing) return { kind: "pass" };
 
 	switch (input.key) {
-		case "ArrowDown":
-			return {
-				kind: "move",
-				index: Math.min(input.active + 1, input.matches.length - 1),
-			};
-		case "ArrowUp":
-			return { kind: "move", index: Math.max(input.active - 1, 0) };
+		case "ArrowDown": {
+			/*
+			 * `moved` is the difference between a choice and a keystroke. The popup
+			 * opens with a row already active and the marker CLAMPS at both ends, so
+			 * Up on the first row and Down on the last are keys that asked to move and
+			 * could not; latching `chosenByHand` on those made Enter on the armed row
+			 * stage the sentence after two keys that changed nothing on screen
+			 * (review F2). Only the move is the choice.
+			 */
+			const index = Math.min(input.active + 1, input.matches.length - 1);
+			return { kind: "move", index, moved: index !== input.active };
+		}
+		case "ArrowUp": {
+			const index = Math.max(input.active - 1, 0);
+			return { kind: "move", index, moved: index !== input.active };
+		}
 		case "Enter":
 		case "Tab": {
 			const row = input.matches[input.active];
 			if (!row) return { kind: "pass" };
-			// A command row COMPLETES only: sending here would submit a
-			// half-typed command word.
-			if (row.kind === "command")
+			if (row.kind === "command") {
+				/*
+				 * AN ARMED ROW IS NOT ARMED BY A KEY THAT HAPPENED TO BE PRESSED.
+				 *
+				 * `pickArmsCommand` answers the row half — this row's pick stages its
+				 * command instead of only completing its word — and the remaining
+				 * question is whether THIS press is a pick at all. It is one only when
+				 * the user put the marker on the row by hand (an arrow key: the popup
+				 * opens with the row already active, so the pre-selected marker is not a
+				 * choice), and a pointer click never reaches here (`handleSlashPick` is
+				 * called with `run: true` straight from the row).
+				 *
+				 * A plain press must not silently become the arming gesture: that is the
+				 * operator's report, where Enter over `I approve spend /goal` moved his
+				 * sentence, staged it and sent nothing. So when something survives the
+				 * word — the draft a pick would HOIST — the key FALLS THROUGH to the
+				 * composer, which is where Enter submits: `planSlashSubmission` answers
+				 * `send` for an armed-only word, so the draft goes as prose in its own
+				 * order and nothing is staged. Tab follows the same rule, because Tab is
+				 * the accept-and-keep-typing key and a stray press must not rewrite a
+				 * sentence either (UX U3).
+				 *
+				 * When NOTHING survives, the word IS the line: this key completes it
+				 * exactly as it does for every other command row, which is what `/goal`
+				 * alone has always done.
+				 */
+				if (pickArmsCommand(row, input.armedOnlyCommands)) {
+					if (!input.hoists)
+						return { kind: "apply", index: input.active, run: false };
+					if (!input.chosenByHand) return { kind: "pass" };
+				}
+				// A command row COMPLETES only: sending here would submit a
+				// half-typed command word.
 				return { kind: "apply", index: input.active, run: false };
+			}
 			// A NAME+message list (`/team`, `/agent`) fills the name and nothing
 			// else: "a name is chosen" is "ready for the message", not "run it".
 			if (input.nameThenMessage)
@@ -319,12 +535,50 @@ export type EnterFooterInput = {
 	phase: "command" | "argument";
 	/** The command word whose argument list is up, without its slash. */
 	command: string | null;
+	/** The active COMMAND row's matched label (the alias that matched). */
+	label: string;
 	nameThenMessage: boolean;
 	runs: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
 	unambiguous: boolean;
+	/**
+	 * Whether a pick of the ACTIVE row ARMS its command (`pickArmsCommand`). Passed
+	 * in rather than resolved here because it depends on the registry-derived
+	 * vocabulary this module does not import, and because the row's own route is
+	 * exactly what this line has to describe.
+	 */
+	arms: boolean;
+	/**
+	 * The active command's own `consumes_prompt` — whether it can be handed a
+	 * whole sentence. Read off the row for the same reason `arms` is: this line
+	 * describes the route, and the route is the row's (UX U3).
+	 */
+	takesDraft: boolean;
+	/** The armed row's destination, for the promise table above. */
+	destination?: string;
+	/**
+	 * Whether text SURVIVES the caret's LINE — `slashTokenSpan`'s end is the end of
+	 * the caret's own line. A bare `/goal` completes like any other command row;
+	 * the same word inside a sentence is the question this footer has to answer.
+	 */
+	hoists: boolean;
+	/** Whether an arrow key moved the marker in this list (the pick by hand). */
+	chosenByHand: boolean;
+	/**
+	 * Whether this pane can address a SESSION at all — the dispatcher's own
+	 * question (`useSlashDispatch`'s `sessionId`), passed down from the page that
+	 * builds the dispatcher.
+	 *
+	 * It is not the same question as "does this composer hold a session id": on a
+	 * real New-chat pane the page supplies `sessionStatus` from the preview while
+	 * the composer's `conversationId` is the PANE's identity, so the composer read
+	 * `true` on the one pane whose next Enter is refused with "needs an open
+	 * conversation" (UX U1). This line is on screen during the gesture, so it owes
+	 * the same answer the note gives after it (design D3).
+	 */
+	paneHasSession: boolean;
 };
 
 /**
@@ -333,15 +587,75 @@ export type EnterFooterInput = {
  * A green test cannot see this; a user cannot either without it. The four
  * meanings of Enter (complete, complete-and-wait, run, stage) are real states,
  * and the TUI's practice is a footer that says which one is next — the desktop
- * left the user to remember it (UX round 1 U2). `stage` is deliberately absent:
- * staging happens on a composer Enter with the list already closed, and it is
- * announced there by its own note (see `message-input.tsx`, UX round 1 U7).
+ * left the user to remember it (UX round 1 U2). `stage` used to be deliberately
+ * absent: staging happened on a composer Enter with the list already closed and
+ * was announced there by its own note (UX round 1 U7). The arming changed that —
+ * the popup's own row is now one of the two staging gestures — so the ARMED row's
+ * states are named below, and a plain press that would hoist says what it does
+ * INSTEAD (review F2 / QA Q5 / UX U2 / design D1, which found this line promising
+ * "Enter completes the command." for a row whose Enter now hoists).
  */
 export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
 	// ("Enter opens the full picker."), so the footer would only repeat it.
 	if (!input.matched) return null;
-	if (input.phase === "command") return "Enter completes the command.";
+	if (input.phase === "command") {
+		/*
+		 * THE ARMED ROW says what its own key does, and the line BELOW it names the
+		 * gesture that stages — which is where the staging instruction lives, because
+		 * it is the only one that is true in every state:
+		 *   - nothing survives the line: the key completes it, as for every row;
+		 *   - a plain press with a sentence to keep: the draft goes as prose, and the
+		 *     prose is the WHOLE of Enter's meaning here;
+		 *   - the row was chosen by hand: the key stages it, and the promise it makes
+		 *     about the NEXT Enter is the note's own sentence, from the one table
+		 *     (design D4). Tab is named beside Enter because in this state it is the
+		 *     same gate and the same outcome (UX U5 / QA Q2-1).
+		 *
+		 * WHY THE PLAIN-PRESS LINE NAMES NO KEY. It used to say "press ↓ to stage
+		 * /goal", and ↓ cannot stage from this state: a state where the armed row is
+		 * the ACTIVE row is a state whose query matched it alone (`/goal` and `/go`
+		 * match only `goal` in the real catalogue), the marker clamps on a one-row
+		 * list, and a move that does not move the marker is not the choice
+		 * (review F2) — so the key the sentence named did nothing, and Enter sent the
+		 * draft as prose instead, which is the same lie this footer exists to prevent.
+		 * The keyboard path to a hand-made choice is real and is one row away: a bare
+		 * `/` lists the whole catalogue, and arrowing to `/goal` there is a move. The
+		 * pointer is the gesture that stages from THIS state, and `clickFooter` names
+		 * it on the line directly below.
+		 *
+		 * A pane that cannot address a session carries the refusal's clause in the
+		 * line that promises a run, which is the by-hand one (design D3 / UX U1): the
+		 * prose line promises nothing that pane cannot do.
+		 */
+		if (input.arms) {
+			if (!input.hoists) return "Enter completes the command.";
+			if (!input.chosenByHand) return "Enter sends this draft as prose.";
+			return input.paneHasSession
+				? `Enter or Tab stages /${input.label}; the next Enter ${stagedPromiseVerb(input.destination)}.`
+				: `Enter or Tab stages /${input.label}; this pane needs an open conversation to run it.`;
+		}
+		/*
+		 * THE FREE-TEXT ROW: this key completes the word like every other command
+		 * row, and the NEXT Enter is the one that moves the draft — the reassembly a
+		 * pick performs runs on the composer's own key too, and nothing on the row
+		 * said so. In the state where it surprises them (the popup closed, the caret
+		 * at the end) nothing visible says Enter will move the words (UX U3). The
+		 * predicate is the pick's, so these two lines cannot disagree about which
+		 * rows take the draft.
+		 */
+		if (
+			pickStagesDraft({
+				runs: input.runs,
+				arms: false,
+				takesDraft: input.takesDraft,
+				hoists: input.hoists,
+			})
+		) {
+			return `Enter completes /${input.label}; the next Enter stages this draft behind it.`;
+		}
+		return "Enter completes the command.";
+	}
 	if (input.nameThenMessage) return "Enter chooses this name.";
 	if (!input.runs) return "Enter completes the value.";
 	if (!input.unambiguous) return "Enter completes; Enter again runs.";
@@ -363,6 +677,25 @@ export type ClickFooterInput = {
 	 * destination table this module deliberately does not import.
 	 */
 	runs: boolean;
+	/**
+	 * Whether a pick of the ACTIVE row ARMS its command (`pickArmsCommand`). The
+	 * pointer's answer is unconditional — a click on the goal row IS the picking
+	 * gesture the keyboard needs a hand-made choice for — so this line needs the
+	 * row's route and whether there is a draft to hoist, and nothing else.
+	 */
+	arms: boolean;
+	/**
+	 * The active command's own `consumes_prompt`: a row that takes the draft as its
+	 * own argument STAGES on a pick rather than running, because the planner never
+	 * auto-submits a reassembled line (UX U2).
+	 */
+	takesDraft: boolean;
+	/**
+	 * Whether text SURVIVES the caret's LINE — the span runs to the end of the
+	 * caret's own line, not to the end of its word: a click then STAGES rather
+	 * than runs.
+	 */
+	hoists: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
@@ -390,10 +723,22 @@ export type ClickFooterInput = {
 export function clickFooter(input: ClickFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers.
 	if (!input.matched) return null;
-	if (input.phase === "command")
+	if (input.phase === "command") {
+		/*
+		 * WHAT THE PICK ACTUALLY DOES, from the row's own route. It is not
+		 * `pointerPickRuns` alone: that answers "does this destination's pick run",
+		 * and it is true of the `/loop` row, whose pick reassembles the draft and
+		 * stages it because the planner never auto-submits a reassembled line — so
+		 * this line promised a run on the very row the armed row's own fix cites as
+		 * its control (UX U2). `pickStagesDraft` is the whole of the question, and
+		 * the suite reads it against the real pick chain (`completionFor` →
+		 * `planSlashSubmission`) rather than against this function's own answer.
+		 */
+		if (pickStagesDraft(input)) return `Click stages /${input.label}.`;
 		return input.runs
 			? `Click runs /${input.label}.`
 			: `Click completes /${input.label}.`;
+	}
 	if (input.nameThenMessage) return "Click chooses this name.";
 	if (!input.runs) return "Click completes this value.";
 	const command = input.command ? `/${input.command} ` : "";

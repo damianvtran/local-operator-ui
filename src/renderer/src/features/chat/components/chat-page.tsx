@@ -736,6 +736,23 @@ function SessionPanel({
 					}
 				: undefined,
 	});
+	/*
+	 * Whether a command can address a SESSION on this pane — the dispatcher's own
+	 * question, stated ONCE beside the value it is asked of (`sessionId`, the only
+	 * thing `useSlashDispatch` reads to answer "/x needs an open conversation").
+	 *
+	 * The composer consumes it because two of the sentences around the `/goal`
+	 * arming are about what the NEXT Enter can do, and a second derivation is
+	 * already on record: the composer read "does `sessionStatus` exist", which on a
+	 * real New-chat pane is true — the page builds it from the preview's own
+	 * SNAPSHOT, with `draft: true` — while `conversationId` is the PANE's identity,
+	 * so the note promising the goal printed on exactly the pane whose next Enter
+	 * is refused (UX U1). One answer, one owner. (The payload is named as "the
+	 * preview's snapshot" rather than by its property path on purpose: this file's
+	 * structural test asserts that EVERY read of that path is the strip's prop, and
+	 * a prose mention inside this comment is a read as far as the scan can tell.)
+	 */
+	const paneHasSession = Boolean(sessionId);
 	useEffect(() => {
 		if (draftKey) input.current?.focusInput();
 	}, [draftKey]);
@@ -1743,6 +1760,12 @@ function SessionPanel({
 					 */
 					onSlashCommand={dispatchFromControl}
 					onSlashNote={slashNote}
+					/*
+					 * The pane's answer to the dispatcher's own question, handed to the
+					 * composer so its arming copy and the popup's cannot promise a run this
+					 * pane will refuse (UX U1 / design D3).
+					 */
+					paneHasSession={paneHasSession}
 					sendError={composerSendError}
 					/*
 					 * The session's readings, straight off the canonical stream, and

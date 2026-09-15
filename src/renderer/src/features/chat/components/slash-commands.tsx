@@ -70,6 +70,7 @@ import {
 	clickFooter,
 	enterFooter,
 	phaseLabel,
+	pickArmsCommand,
 	pointerPickRuns,
 	rowId,
 	slashDestructive,
@@ -77,12 +78,24 @@ import {
 	slashRunAllowed,
 } from "./slash-contract";
 import { commandSuggestions, matchChoices } from "./slash-rank";
+import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
 import {
 	caretPhase,
 	replaceSpan,
 	slashArgumentContext,
 	slashContext,
+	slashTokenSpan,
 } from "./slash-token";
+
+/*
+ * Imported, not redeclared: the planner owns the words and the destination
+ * set (`slash-submit.ts`), and its test suite executes them. A component file
+ * cannot be bundled by that harness, so a second DEFINITION here would be a
+ * second answer to "which words arm by pick" — the drift this change is closing.
+ * They are not re-exported either: the planner's own module is the one route to
+ * them, and a second public path with no caller is only a place for the next
+ * reader to look (review N1).
+ */
 
 export type SlashCommandMeta = {
 	name: string;
@@ -208,6 +221,21 @@ export type SlashCompletionState = {
 	/** Registry-derived vocabularies the submit planner needs. */
 	commandNames: ReadonlySet<string>;
 	promptCommands: ReadonlySet<string>;
+	/** Words the planner must not hoist and only a PICK may arm. */
+	armedOnlyCommands: ReadonlySet<string>;
+	/**
+	 * Whether text survives the caret's LINE: the draft a pick of an armed row
+	 * would HOIST (stage with the surviving text as its argument). Read off the
+	 * draft by `useSlashCompletion`, which has the text and the caret.
+	 */
+	hoists: boolean;
+	/**
+	 * Whether this pane can address a session — the dispatcher's question, read
+	 * from the caller. The arming lines decline to promise a run where it is
+	 * false, because that promise is one keystroke ahead of the refusal
+	 * (design D3 / UX U1).
+	 */
+	paneHasSession: boolean;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -314,6 +342,16 @@ export type SlashCompletionArgs = {
 	sessionId?: string;
 	/** The session's active profile, for the roster lists' current marker. */
 	activeProfile?: { team?: unknown; agent?: unknown };
+	/**
+	 * Whether the pane this composer sits on can address a SESSION — the
+	 * dispatcher's own question, passed down from the page that builds it.
+	 *
+	 * It is not `sessionId` above. That one is the id the entity LISTS query with,
+	 * and on a real New-chat pane it holds the PANE's identity while no command can
+	 * run there at all; this one is the answer the popup's arming line and the
+	 * staged note both have to give (UX U1 / design D3).
+	 */
+	paneHasSession?: boolean;
 };
 
 export function useSlashCompletion({
@@ -321,6 +359,7 @@ export function useSlashCompletion({
 	selectionStart,
 	sessionId,
 	activeProfile,
+	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
@@ -354,6 +393,18 @@ export function useSlashCompletion({
 		}
 		return names;
 	}, [registry]);
+	/*
+	 * Derived like the two sets above, and from the registry rather than from a
+	 * name written here: the arming vocabulary moves with the catalogue, so a
+	 * backend that renamed the command or gave it another alias cannot leave the
+	 * planner hoisting a word the pick no longer arms. The derivation itself is
+	 * `armedOnlyVocabulary` in `slash-submit.ts`, where the planner that consumes
+	 * it lives and where the test harness can execute it.
+	 */
+	const armedOnlyCommands = useMemo(
+		() => armedOnlyVocabulary(registry as ArmingCatalogueRow[]),
+		[registry],
+	);
 
 	// The caret's phase decides which list is up, and the two are mutually
 	// exclusive by construction (`slash-token.ts:caretPhase` asserts the order).
@@ -386,6 +437,24 @@ export function useSlashCompletion({
 		const spec = resolveCommand(registry, argumentWord);
 		return spec ? inlineArgumentFor(spec.destination) : undefined;
 	}, [argumentWord, registry]);
+
+	/*
+	 * Whether a pick of the active row would HOIST this draft: text that survives
+	 * the caret's token, so the command moves to the front with that text as its
+	 * argument (`planSlashArming`) instead of the pick only completing its word.
+	 *
+	 * It is a fact about the DRAFT, which is why it is derived here rather than in
+	 * the row: a bare `/goal` completes, and the same word inside a sentence is the
+	 * case the arming's copy and the keyboard gate both have to see. The span it
+	 * removes is the same one the pick's own plan removes (`slashTokenSpan` on the
+	 * completed line), trimmed the same way, so the two cannot disagree about
+	 * whether there is a draft to keep.
+	 */
+	const hoists = useMemo(() => {
+		const span = slashTokenSpan(inputValue, selectionStart, commandNames);
+		if (!span) return false;
+		return replaceSpan(inputValue, span.start, span.end, "").text.trim() !== "";
+	}, [inputValue, selectionStart, commandNames]);
 
 	const commandMatches = useMemo(() => {
 		if (!commandContext) return [];
@@ -558,6 +627,7 @@ export function useSlashCompletion({
 		active: state.active,
 		matches,
 		listId,
+		paneHasSession,
 		activeDescendantId:
 			state.open && visible && matches[state.active]
 				? `${listId}-${rowId(matches[state.active])}`
@@ -570,11 +640,20 @@ export function useSlashCompletion({
 		setActive,
 		setActiveHover,
 		chosenByHand,
+		/*
+		 * The arming's third input, read off the DRAFT rather than the row: whether
+		 * text survives the caret's word, i.e. whether an armed row's pick would
+		 * hoist this draft instead of only completing its word. The popup's routing
+		 * (`slashKeyIntent`) and its copy (`enterFooter`/`clickFooter`) both read it,
+		 * so neither can describe the other's gesture.
+		 */
+		hoists,
 		isLoading: enabled && query.isLoading,
 		available: enabled,
 		commands: registry,
 		commandNames,
 		promptCommands,
+		armedOnlyCommands,
 		nameListCommands: vocabulary.nameList,
 		argumentWords: vocabulary.words,
 		enabled,
@@ -628,10 +707,33 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const footer = enterFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,
+		label: activeRow?.kind === "command" ? activeRow.label : "",
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: state.inline?.runs ?? false,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
+		/*
+		 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
+		 * and off the draft (`state.hoists`) rather than written as a command name:
+		 * this line described "Enter completes the command." for the one row whose
+		 * Enter hoists and stages, and it stayed green because the test that pinned
+		 * it never asked the pick what it does (review F2 / QA Q5).
+		 */
+		arms:
+			activeRow?.kind === "command"
+				? pickArmsCommand(activeRow, state.armedOnlyCommands)
+				: false,
+		// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
+		// instead of running, which is what their two lines have to say (UX U2/U3).
+		takesDraft:
+			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
+		// The armed row's destination, so the promise this line makes about the
+		// next Enter is the note's own sentence rather than a second one (design D4).
+		destination:
+			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
+		paneHasSession: state.paneHasSession,
+		hoists: state.hoists,
+		chosenByHand: state.chosenByHand,
 		unambiguous: activeArgument
 			? slashRunAllowed({
 					argumentQuery: state.argumentQuery,
@@ -666,6 +768,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		label: activeRow?.kind === "command" ? activeRow.label : "",
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: pickRuns,
+		// A click on an armed row STAGES; `pointerPickRuns` still answers `true` for
+		// the goal destination, so this line cannot promise a run on the row whose
+		// pick hoists the draft (UX U2 / design D1).
+		arms:
+			activeRow?.kind === "command"
+				? pickArmsCommand(activeRow, state.armedOnlyCommands)
+				: false,
+		takesDraft:
+			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
+		hoists: state.hoists,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 	});
@@ -910,10 +1022,21 @@ export function handleSlashKeyDown(
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: state.inline?.runs ?? false,
 		chosenByHand: state.chosenByHand,
+		armedOnlyCommands: state.armedOnlyCommands,
+		hoists: state.hoists,
 	});
 	switch (intent.kind) {
 		case "move":
-			state.setActive(intent.index);
+			/*
+			 * A key that MOVED the marker is the choice; one that clamped back onto
+			 * the row it was already on is not. Latching the gate on the second kind
+			 * armed the goal row after an Up on the first row — the marker had not
+			 * moved, nothing on screen had changed, and Enter then hoisted and staged
+			 * the sentence (review F2). Moving without latching is what the pointer's
+			 * own hover does, so the no-op takes that route.
+			 */
+			if (intent.moved) state.setActive(intent.index);
+			else state.setActiveHover(intent.index);
 			return true;
 		case "apply": {
 			const row = state.matches[intent.index];
@@ -931,36 +1054,12 @@ export function handleSlashKeyDown(
 }
 
 /**
- * The buffer and caret that accepting a row produces. Pure, so the popup and
- * the apply path cannot disagree about what a pick writes.
+ * The write a PICK performs on the draft lives in `slash-completion.ts`.
  *
- * Command rows: replace the word token with `/<label> ` — the trailing space is
- * load-bearing, not cosmetic (it terminates the word, closing this list, and for
- * a list-taking command opens the argument phase). Argument rows: replace the
- * ARGUMENT span only, leaving the command word intact; the name-list commands
- * (`/team`, `/agent`) add their own terminating space, which is what closes the
- * list and opens the free-text tail (`editor.py:_complete_name_argument`). The
- * enum-tail commands add NO space, or the matcher would stop matching and Tab
- * would appear to fill the field and abandon it in one keystroke.
+ * It moved there so the pick's write and the arming plan can be exercised
+ * together by the node harness — `completionFor`'s output IS the input
+ * `planSlashArming` reads, and the multi-line draft whose staged line did not run
+ * (review F1 / QA Q4) was invisible to a suite that hand-built the string the
+ * pick writes (review F7). A component file cannot be bundled there: it imports
+ * React, the desktop hooks and the whole picker registry.
  */
-export function completionFor(
-	draft: string,
-	caret: number,
-	row: CompletionRow,
-	commands: ReadonlySet<string>,
-	argumentWords: readonly string[],
-	nameThenMessage: boolean,
-): { text: string; caret: number } | null {
-	if (row.kind === "command") {
-		const word = slashContext(draft, caret, commands);
-		if (!word) return null;
-		return replaceSpan(draft, word.start, word.end, `/${row.label} `);
-	}
-	const argument = slashArgumentContext(draft, argumentWords, caret, commands);
-	if (!argument) return null;
-	const suffix = nameThenMessage ? " " : "";
-	return {
-		text: `${draft.slice(0, argument.start)}${row.row.value}${suffix}${draft.slice(argument.end)}`,
-		caret: argument.start + row.row.value.length + suffix.length,
-	};
-}
