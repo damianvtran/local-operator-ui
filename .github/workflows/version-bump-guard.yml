@@ -48,9 +48,16 @@ jobs:
           # having checked nothing). The status is captured rather than left to
           # `set -e` because the two facts have to be told apart: a refusal prints
           # its reason, a silence does not.
+          #
+          # `|| status=$?` and not `verdict="$(...)"` followed by `status=$?` on the
+          # next line: this step's shell is `bash -e {0}` (no `defaults.run.shell`
+          # anywhere in this directory), so a bare substitution that FAILS aborts the
+          # step AT that line and the annotation below - the refusal's own reason,
+          # which is the product of this job - never prints. `-e` does not fire on a
+          # command in a `||` list, so the code is recorded and the reason survives.
           set -uo pipefail
-          verdict="$(node scripts/version-bump-guard.mjs)"
-          status=$?
+          status=0
+          verdict="$(node scripts/version-bump-guard.mjs)" || status=$?
           printf '%s\n' "$verdict"
           if [ "$status" -eq 0 ] && [ -z "$verdict" ]; then
             echo "::error title=Version bump guard produced no verdict::the guard exited 0 without printing one, so this pull request was never checked for a version bump. Refusing to pass a diff no guard read."

@@ -26,9 +26,27 @@
  * in the script. The other half is the consumer treating an empty or malformed
  * result as an answer, which lives in the workflow's shell: `auto-release.yml` and
  * `signed-update-candidate.yml` each assert the shape of what they parse before
- * they act on it. `scripts/entry-point.test.mjs` drives both halves.
+ * they act on it, and the gates whose consumer reads nothing but an exit status
+ * are run through `scripts/require-report.sh`, which refuses to read a silent
+ * success as a pass. `scripts/entry-point.test.mjs` drives both halves.
+ *
+ * WHY THE COMPARISON IS BY FILE IDENTITY. The question is "is this the same FILE",
+ * so it is not asked as a question about names. `realpathSync` closes the two
+ * spellings that produce the silent no-op here — a symlinked DIRECTORY (`/tmp` on
+ * macOS, the ordinary case) and a symlinked NAME (an alias beside the tree) — and
+ * both are pinned by tests. What it cannot answer is a name that resolves to a
+ * different path while being the same file: a hard link. Two paths that `stat` to
+ * the same device and inode are the same file, and the resolved-path comparison is
+ * kept as the fallback for a path that cannot be stat'ed at all, so the set of
+ * spellings recognised can only grow.
+ *
+ * Measured for the hard-link spelling, the one where the two answers could differ:
+ * a hard link of `check-runtime-deps.mjs` spelled through `/tmp` printed nothing and
+ * exited 0 before this change, and on this change it fails loudly — the link cannot
+ * resolve the sibling `entry-point.mjs` it now imports. Louder is the direction the
+ * rest of this file is about, and a link INSIDE `scripts/` still runs normally.
  */
-import { realpathSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /** A path as it physically is, or as it was spelled when it cannot be resolved: a
@@ -42,18 +60,35 @@ export const physical = (path) => {
 	}
 };
 
+/** Whether two spellings name the same file: same device, same inode. Falls back
+ * to resolved paths when either side cannot be stat'ed — a path that does not
+ * exist is not this module anyway, and throwing here would replace a readable
+ * verdict with a stack trace. */
+function sameFile(left, right) {
+	try {
+		const a = statSync(left);
+		const b = statSync(right);
+		return a.dev === b.dev && a.ino === b.ino;
+	} catch {
+		return physical(left) === physical(right);
+	}
+}
+
 /**
  * Whether the module at `moduleUrl` is the process's entry point.
  *
- * Both sides are resolved before they are compared, so the answer is the same
- * whatever spelling the caller used (and under `--preserve-symlinks-main`, where
- * `import.meta.url` itself keeps the caller's spelling, both sides still meet at
- * the same physical file). `process.argv[1]` is absent under `node -e`, `--eval`
- * and an import from a REPL, where no module is the entry point.
+ * Both sides are reduced to the same FILE before they are compared, so the answer
+ * is the same whatever spelling the caller used: through a symlinked directory
+ * (`/tmp` on macOS), through a symlinked basename, or through a hard link. Under
+ * `--preserve-symlinks-main`, where `import.meta.url` itself keeps the caller's
+ * spelling, both sides still meet at the same file.
+ *
+ * `process.argv[1]` is absent under `node -e`, `--eval` and an import from a
+ * REPL, where no module is the entry point.
  */
 export function isEntryPoint(moduleUrl) {
 	return (
 		Boolean(process.argv[1]) &&
-		physical(fileURLToPath(moduleUrl)) === physical(process.argv[1])
+		sameFile(fileURLToPath(moduleUrl), process.argv[1])
 	);
 }

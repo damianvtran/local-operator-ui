@@ -616,6 +616,17 @@ const guardStep = workflow.jobs["version-bump-guard"].steps.find((step) =>
  * the file, printed nothing and exited 0 — this job went green having checked no
  * diff at all. `scripts/entry-point.mjs` removes that cause; the step's check
  * removes the class.
+ *
+ * WHY THE SHELL IS `bash -e`. The runner's default for a `run:` step with no
+ * `defaults.run.shell` anywhere in `.github/workflows/` is `bash -e {0}`, and that
+ * `-e` is load-bearing for this step: the first version of it captured the verdict
+ * with a bare `verdict="$(node ...)"`, which under `-e` aborts AT the substitution,
+ * so a refused PR went red with the refusal's reason missing from the log. Driving
+ * the block with `bash -c` (no `-e`), as this harness did in review round 1 of
+ * #210, asserted something the runner cannot produce — the suite was green and the
+ * annotation was gone. The shell here is therefore the runner's, and
+ * `the step still prints the guard's refusal under the runner's shell` below is the
+ * case that fails when the step goes back to a bare substitution.
  */
 function runGuardStep({ guardScript }) {
 	const dir = mkdtempSync(join(tmpdir(), "version-bump-guard-step-"));
@@ -627,7 +638,7 @@ function runGuardStep({ guardScript }) {
 	let status = 0;
 	let stdout = "";
 	try {
-		stdout = execFileSync("bash", ["-c", guardStep.run], {
+		stdout = execFileSync("bash", ["-e", "-c", guardStep.run], {
 			cwd: dir,
 			encoding: "utf8",
 			stdio: ["ignore", "pipe", "pipe"],
@@ -659,9 +670,30 @@ test("the workflow passes a verdict through, and keeps the guard's own exit stat
 
 	// The guard's refusals are on stdout with a non-zero status, and both have to
 	// survive the step: a step that swallowed the status would pass every PR.
+	//
+	// THIS IS THE CASE THE ROUND-1 HARNESS COULD NOT SEE. Driving the block with
+	// `bash -c` (no `-e`) let a bare `verdict="$(node ...)"` look fine, while under
+	// the runner's `bash -e {0}` that substitution aborts the step and this
+	// assertion's output - the refusal's reason, which is the product of this job -
+	// never reaches the log. `runGuardStep` now drives the block with `-e`, so a
+	// step that goes back to the bare form fails here rather than on the next
+	// refused PR.
 	const refusing = runGuardStep({
 		guardScript: `console.log("::error file=package.json::A feature PR must not change the project version.");\nprocess.exit(1);\n`,
 	});
 	assert.equal(refusing.status, 1);
 	assert.match(refusing.stdout, /must not change the project version/);
+});
+
+test("a guard that dies with a non-zero status is passed through, not re-read as a silence", () => {
+	// The status has to survive whatever it is: a guard that crashes (exit 2)
+	// must not be reported as the empty-verdict case, and must not be turned into
+	// a pass by the step's own bookkeeping. It prints nothing, which on the
+	// success path is the refusal - on a failure path the status already fails the
+	// job, and the step adds no second verdict of its own.
+	const run = runGuardStep({
+		guardScript: `process.exit(2);\n`,
+	});
+	assert.equal(run.status, 2);
+	assert.doesNotMatch(run.stdout, /produced no verdict/);
 });

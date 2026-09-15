@@ -376,9 +376,15 @@ jobs:
           # what keep that asset present, so the arch set stays a property of this
           # workflow rather than of whichever tree is checked out.
           pnpm exec electron-builder --mac --arm64 --x64 --publish never -c.forceCodeSigning=true
-          pnpm notarize-dmg
-          pnpm verify-macos-artifacts
-          node scripts/check-packaged-closure.mjs --dist dist
+          # The three gates below are wrapped in `scripts/require-report.sh` for the
+          # same reason as their twins in `publish.yml`: this block reads an exit
+          # status, so a gate that exited 0 having printed nothing - which is what
+          # reaching a script through an unresolvable path spelling produced - was a
+          # pass. The helper refuses an empty success instead of reading it as one,
+          # and `pnpm --silent` keeps pnpm's own banner out of the stream it measures.
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+          bash scripts/require-report.sh "macOS artifact verification" pnpm --silent verify-macos-artifacts
+          bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
           git diff --exit-code package.json
       # `*.blockmap` is what makes an update a delta rather than a full-file
       # download, and publish.yml's macOS upload carries it for that reason: the
