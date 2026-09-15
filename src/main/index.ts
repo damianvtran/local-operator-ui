@@ -1796,7 +1796,20 @@ app
 			mainWindow.webContents.on("before-input-event", (event, input) => {
 				const isCmdOrCtrl = input.control || input.meta;
 
-				// Toggle command palette: Cmd/Ctrl + P
+				/*
+				 * Toggle command palette: Cmd/Ctrl + P — the palette's ORIGINAL gesture,
+				 * kept for everyone who learned it from the app's own tour.
+				 *
+				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
+				 * a `before-input-event` hook fires before the renderer sees the key at all,
+				 * and two surfaces in the canvas already own Cmd+K (the code editor's AI
+				 * edit and the Markdown editor's link insert, which is what Cmd+K means in
+				 * every editor these users have met). The renderer answers that one, so the
+				 * editor that got there first keeps it — see
+				 * `src/renderer/src/features/command-palette/palette-shortcut.ts`. One
+				 * keystroke, one owner: binding both here would toggle twice per press and
+				 * the palette would never open.
+				 */
 				if (
 					isCmdOrCtrl &&
 					input.key.toLowerCase() === "p" &&

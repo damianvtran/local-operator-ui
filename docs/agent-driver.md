@@ -35,7 +35,10 @@ node scripts/renderer-driver.mjs --gate-check       # proves the gate fails clos
 
 `pnpm app:driver` and `pnpm app:driver:gate-check` are the same two commands.
 `--scene states` (the default) writes a before/after pair of one screen plus a
-real control press; `--scene none` boots and arms the driver without running a
+real control press; `--scene palette` does the same for the command palette,
+driving it the way it is actually opened (a pointer sequence on the rail's
+Search row) and typing into it through CDP's own input pipeline; `--scene none`
+boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
@@ -57,8 +60,7 @@ The frames below came from exactly that command —
 
 | Frame | Surface |
 | --- | --- |
-| `chat-dark.png` | `/chat`, `localOperatorDark` |
-| `chat-light.png` | `/chat`, `localOperatorLight` — the same screen, same size |
+| `chat-dark.png` | `/chat`, `localOperatorDark` || `chat-light.png` | `/chat`, `localOperatorLight` — the same screen, same size |
 
 ## The gate: off unless the launch asked for it
 
@@ -231,6 +233,22 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
+There are two scenes, and the second one is the worked example of that rule:
+
+- **`states`** — the before/after pair of one screen plus a real control press;
+- **`palette`** — the command palette, opened by a pointer sequence on the rail's
+  Search row and typed into through CDP's own input pipeline
+  (`Input.insertText`, the same domain `click-proof.mjs` dispatches through,
+  rather than a synthetic DOM event from inside the page). No verb was added for
+  it: everything it needs is a scene-level use of what the harness already
+  speaks. It asserts what the frames cannot — that the press hit the row it
+  named, that focus landed in the query field, that typing narrowed the list,
+  that Escape closed the dialog, and that focus came BACK to the row that opened
+  it — and it does not claim the groups that need a backend (conversations, the
+  settings registry, and the panel rows, which need a live chat pane behind
+  them). Those are covered by unit tests over the join and the ranking, and by
+  the QA pass against a live backend.
+
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
   verified dead, and the run asserts the app holds no connection to the URL the
@@ -301,6 +319,25 @@ question "what can this reach" would have no answer.
   waits for toasts to clear and discards a capture that has one. So a frame here
   is not evidence about toast styling, placement or timing — that needs a scene
   that triggers and captures one on purpose.
+- **A chord decided in MAIN is unreachable from here.** `before-input-event`
+  hooks read `mainWindow.isFocused() && mainWindow.isVisible()`, and a `headless`
+  launch is by construction `visible=false focused=false` — the mode's whole point.
+  Measured while pinning the command palette's second chord: `Cmd/Ctrl+P` could
+  not open the palette in any headless run, and the mutation-checked reason is
+  the guard, not the wiring. `Emulation.setFocusEmulationEnabled` moves the PAGE's
+  focus, not the window's, so no CDP variant closes this gap. A main-process chord
+  is therefore covered by reading the two halves of its wiring, never by pressing
+  it here; proving the runtime half needs a human in a visible window, and saying
+  otherwise would be claiming coverage this harness cannot have.
+- **And a key injected through CDP stops at the app's handlers.**
+  `Input.dispatchKeyEvent` reaches a `keydown` listener — which is what makes the
+  guards around one measurable, `defaultPrevented` being the tell — but it does
+  not drive Chromium's EDITING pipeline: measured while giving the palette's
+  caret its modifier arrows back, the caret stayed at 8 whatever modifier arrived,
+  and the plain arrow moved the list while leaving the caret where it was. So a
+  property about what a keystroke then does to a selection or a caret is not
+  yours to assert here; assert the one this harness can see (whether the app
+  consumed the key) and say which half you left to a real keystroke.
 - **It is not a way to answer an approval, and must not be used as one.** A verb
   can press an in-app approval control, so a scene that did would make every "it
   works" captured through it worthless: approvals are the operator's, and the
