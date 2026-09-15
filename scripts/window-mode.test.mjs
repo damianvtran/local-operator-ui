@@ -399,6 +399,31 @@ test("the startup line cannot describe the wrong behaviour", () => {
 	);
 });
 
+test("the assumed line and the Dock clause are one sentence, on the platform that has a Dock", () => {
+	/*
+	 * The sync onto main put two suffixes on this line: main's assumption clause
+	 * (WHICH signal said this launch is a run rather than a person) and this
+	 * branch's Dock clause (what the mac window does about the tile). Each half has
+	 * its own assertion above, and the two never meet: the assumption test asserts
+	 * fragments, and the whole-sentence test above passes a NAMED mode, which by
+	 * construction carries no assumption at all. The platform was left to the
+	 * default too, so on CI — `Desktop Tests` runs on ubuntu-latest, where
+	 * `process.platform` is not darwin — the composed mac line was never rendered
+	 * by any assertion (round 4, R11).
+	 *
+	 * Both spellings are pinned as whole sentences, because the join is the part the
+	 * sync introduced and the Linux one is where the mac-only clause must not be.
+	 */
+	assert.equal(
+		describeWindowLaunch(plan({ argv: ["--user-data-dir=/tmp/rig"] }), "darwin"),
+		"window mode headless (assumed: --user-data-dir marks an agent-driven launch, and no window mode was named): 1380x900, window created and never shown, page throttling off, no Dock tile",
+	);
+	assert.equal(
+		describeWindowLaunch(plan({ argv: ["--user-data-dir=/tmp/rig"] }), "linux"),
+		"window mode headless (assumed: --user-data-dir marks an agent-driven launch, and no window mode was named): 1380x900, window created and never shown, page throttling off",
+	);
+});
+
 test("only a headless run with a launcher watches that launcher", () => {
 	const watch = (input) => resolveLauncherWatchPlan(input);
 
