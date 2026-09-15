@@ -37,12 +37,28 @@
  *      through the normal dispatch (which owns the "did you mean" note) and keep
  *      the ORIGINAL draft, so a misspelt inline command is there to fix rather
  *      than gone (round 1 U8).
- *   4. A free-text command → reassemble to the front, STAGED, never submitted.
+ *   4. An ARMED-ONLY command's word is not hoisted by this key at all: the
+ *      draft goes back as PROSE, in the order it was typed. The arming is an
+ *      explicit gesture, and it happens somewhere else entirely
+ *      (`planSlashArming`, called by the popup's pick).
+ *   5. A free-text command → reassemble to the front, STAGED, never submitted.
  *      Exception: a NAME+message command (`/team`, `/agent`) with no name typed
  *      yet does NOT reassemble on the word alone — the name is picked from the
  *      argument list first, and leaving that list open IS the interaction.
- *   5. Otherwise splice the token out and run it; the surrounding draft
+ *   6. Otherwise splice the token out and run it; the surrounding draft
  *      survives.
+ *
+ * ONE DELIBERATE DEVIATION FROM THE TUI, and the only one in this file: rule 4.
+ * The reference reassembles a free-text command typed into a sentence, and that
+ * is right where the assembled line is what the user asked to read before it
+ * ran. For `/goal` it made the arming IMPLICIT and the Enter lossy: the operator
+ * typed a request, appended `/goal`, pressed Enter, and got his own sentence
+ * rearranged with a note — nothing was sent, the words had moved, and a second
+ * Enter was needed. A word sitting in a sentence names no gesture, so the
+ * desktop arms `/goal` only from an explicit PICK of its own row in the popup,
+ * and an Enter over a draft that merely CONTAINS the word sends the draft as
+ * written. WHICH words this holds for is the registry's business
+ * (`armedOnlyCommands`), never a name written into this function.
  *
  * "WHICH LINE THE COMMAND OWNS", the rule this file exists to state: a command
  * owns its word plus the rest of ITS OWN LINE, never the lines around it. That
@@ -75,7 +91,10 @@ export type SlashCommandInvocation = {
 };
 
 export type SlashSubmissionPlan =
-	/** Not a command in this draft. Send the draft to the model. */
+	/**
+	 * Not a command in this draft. Send the draft to the model — which is also the
+	 * answer for a draft that merely CONTAINS an armed-only command's word.
+	 */
 	| { kind: "send" }
 	/** The whole draft is the command: nothing survives removing its token. */
 	| { kind: "whole"; command: SlashCommandInvocation }
@@ -102,6 +121,14 @@ export type SlashSubmissionArgs = {
 	commandNames: ReadonlySet<string>;
 	/** Names (primaries and aliases) of commands with `consumes_prompt: true`. */
 	promptCommands: ReadonlySet<string>;
+	/**
+	 * Names (primaries and aliases) of commands whose arming is EXPLICIT: a
+	 * free-text command this key never hoists, because the only gesture that arms
+	 * it is a PICK of its own row in the popup (`planSlashArming`). Derived from
+	 * the registry's destinations, so the set follows the catalogue rather than a
+	 * name written down here.
+	 */
+	armedOnlyCommands: ReadonlySet<string>;
 	/** Names of commands whose argument list is open before any name is typed. */
 	nameListCommands: ReadonlySet<string>;
 	/** Whether a boundary slash token is a command at all (the feature is on). */
@@ -135,11 +162,31 @@ function invocationOf(commandText: string): SlashCommandInvocation {
 	};
 }
 
+/**
+ * The staged line a HOISTED command is written as: the command's own text first,
+ * the surviving draft behind it as its argument (`/goal ship it` from `ship it
+ * /goal`).
+ *
+ * One helper because two gestures stage: a free-text command reassembled by
+ * Enter, and an armed-only command hoisted by a pick (`planSlashArming`). They
+ * must not be able to disagree about the shape, and the trailing space of the
+ * empty case is part of it — it terminates the word, which is one of the two
+ * jobs that space does (`editor.py:_complete_name_argument`).
+ */
+function stagedLine(
+	commandText: string,
+	rest: string,
+): { text: string; caret: number } {
+	const text = rest ? `${commandText} ${rest}` : `${commandText} `;
+	return { text, caret: text.length };
+}
+
 export function planSlashSubmission({
 	draft,
 	caret,
 	commandNames,
 	promptCommands,
+	armedOnlyCommands,
 	nameListCommands,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
@@ -173,6 +220,21 @@ export function planSlashSubmission({
 	// consuming the token (round 1 U8).
 	if (!commandNames.has(word)) return { kind: "unrecognised", command };
 
+	/*
+	 * ARMED-ONLY commands take nothing from this key. `/goal` inside a sentence is
+	 * prose: the draft goes back UNTOUCHED and in its own order rather than being
+	 * moved to the front, because moving a user's sentence is not an arming
+	 * gesture and the Enter that did it sent nothing (the operator's report). The
+	 * one gesture that arms the command is the popup pick, which is where the
+	 * hoisting lives now — and the pick's own note says what the next Enter does,
+	 * so the user is told the arming happened instead of inferring it from a box
+	 * that silently changed.
+	 *
+	 * The command is still RECOGNISED here (the `unrecognised` branch above is
+	 * unaffected), so a misspelt armed command is still reported rather than sent.
+	 */
+	if (armedOnlyCommands.has(word)) return { kind: "send" };
+
 	if (promptCommands.has(word)) {
 		const typedArgument = commandText.slice(1).split(" ").slice(1).join(" ");
 		// A name-list command with no name typed yet: `_apply_command` has
@@ -182,8 +244,7 @@ export function planSlashSubmission({
 		if (nameListCommands.has(word) && !typedArgument.trim())
 			return { kind: "list-open", command };
 		const rest = spliced.text.trim();
-		const text = rest ? `${commandText} ${rest}` : `${commandText} `;
-		return { kind: "reassemble", text, caret: text.length };
+		return { kind: "reassemble", ...stagedLine(commandText, rest) };
 	}
 
 	return {
@@ -194,4 +255,68 @@ export function planSlashSubmission({
 		text: spliced.text,
 		caret: spliced.caret,
 	};
+}
+
+/**
+ * What an EXPLICIT pick of a command's own row does with the draft.
+ *
+ * The pick is the popup's own gesture — Enter or a click on that row
+ * (`slash-commands.tsx` `handleSlashPick`) — and for an armed-only command it is
+ * the ONLY thing that arms the command. It writes the line the assembler writes:
+ * the command first, the surviving draft behind it as its argument, left in the
+ * box for the user to read before Enter runs it (the goal set, the text sent).
+ *
+ * `none` is two cases that the caller treats identically, because the pick has
+ * one write either way: the draft names no armed-only command at the caret, or
+ * nothing survives the token — a bare `/goal` pick stays the plain COMPLETION it
+ * has always been (`/goal ` with the caret after it), since there is no text to
+ * arm, and Enter still reaches the bare form's own READ (`PRESENT_DIRECTLY` in
+ * `slash-dispatch.ts`).
+ *
+ * WHY a second entry point rather than a flag on `planSlashSubmission`: the two
+ * gestures ask different questions about the same draft, and the answers are
+ * deliberately opposite. Enter asks "does this draft submit something?", which
+ * for an armed command is `send` — the draft is prose. A pick asks "does this
+ * gesture arm the command?", which is `armed`. One plan that meant the opposite
+ * of itself depending on how it was called is the class of defect this module's
+ * header exists to prevent.
+ */
+export type SlashArmingPlan =
+	/** The pick armed the command: this line is staged, the next Enter runs it. */
+	| { kind: "armed"; text: string; caret: number }
+	/** Nothing was armed: the pick writes its completion and nothing else. */
+	| { kind: "none" };
+
+export type SlashArmingArgs = {
+	/**
+	 * The draft as the pick left it: the completion already written in place
+	 * (`completionFor`), which is the draft the NEXT Enter will submit.
+	 */
+	draft: string;
+	caret: number;
+	commandNames: ReadonlySet<string>;
+	armedOnlyCommands: ReadonlySet<string>;
+};
+
+export function planSlashArming({
+	draft,
+	caret,
+	commandNames,
+	armedOnlyCommands,
+}: SlashArmingArgs): SlashArmingPlan {
+	const span = slashTokenSpan(draft, caret, commandNames);
+	if (span === null) return { kind: "none" };
+	const commandText = draft.slice(span.start, span.end).trim();
+	/*
+	 * The word is checked here as well as at the row (`pickArmsCommand`) because
+	 * this is the function that decides what gets HOISTED: a caller that reached
+	 * it with somebody else's command in the draft arms nothing and takes the
+	 * completion path, which is the safe direction. Both tests read the same
+	 * registry-derived set, so they can only disagree if the draft no longer names
+	 * the row that was picked.
+	 */
+	if (!armedOnlyCommands.has(wordOf(commandText))) return { kind: "none" };
+	const rest = replaceSpan(draft, span.start, span.end, "").text.trim();
+	if (!rest) return { kind: "none" };
+	return { kind: "armed", ...stagedLine(commandText, rest) };
 }
