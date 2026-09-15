@@ -48,6 +48,7 @@ import {
 	ThemePicker,
 	UsageView,
 } from "./destination-pickers";
+import { McpPicker } from "./mcp-picker";
 
 export type DestinationEntry =
 	| {
@@ -207,11 +208,7 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	providers: { kind: "navigate", route: () => "/settings?section=providers" },
 	accounts: { kind: "navigate", route: () => "/settings?section=credentials" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
-	mcp: {
-		kind: "navigate",
-		route: (args) =>
-			`/settings?section=integrations${args ? `&mcp=${encodeURIComponent(args)}` : ""}`,
-	},
+	mcp: { kind: "picker", component: McpPicker },
 };
 
 /** Mounts the adapter for the active presentation request. */
