@@ -28,9 +28,11 @@
  *      call-site reorder, or dropping the `hover:` half, or moving the ground
  *      off the element that carries the hover step, all move it. The entity
  *      row's ground is on two elements for exactly that reason — a child's
- *      background paints over its parent's — so `merged()` below resolves EVERY
- *      element that carries a hover step inside a current row, not just the one
- *      that names the ground;
+ *      background paints over its parent's — so `merged()` below resolves every
+ *      element of a current row that this file's `CURRENT` table names, and a
+ *      separate assertion counts the `hover:bg-*` class literals in both panels
+ *      and requires the file to account for every one of them, so a control
+ *      added to a row cannot be resolved by nobody;
  *   3. every current-row state in those two panels takes the same role — the
  *      four chat call sites, the entity row's three elements, and the settings
  *      rail's row are one fact.
@@ -352,6 +354,50 @@ test("a row that is NOT current still gets the pointer's step", () => {
 		assert.ok(
 			!classes.includes("bg-sunken"),
 			`${site.what} must not carry the current-row ground while it is not current:\n${classes}`,
+		);
+	}
+});
+
+test("the file accounts for every hover ground the two panels declare", () => {
+	/*
+	 * The mechanism behind the file's headline claim, asserted instead of assumed.
+	 * `CURRENT` names its elements by ANCHOR, so a NEW control inside a current row
+	 * would be resolved by nobody — which is round 1's MAJOR class, one element
+	 * over. Counting the `hover:bg-*` literals in each panel's source closes it:
+	 * adding a control that answers the pointer with a ground turns this red until
+	 * its expression is added above (or this expectation is extended with the
+	 * reason it can never sit inside a current row).
+	 *
+	 * Comment-stripped, because the count is a fact about the code the browser
+	 * gets — the same reason this file strips comments before reading any literal.
+	 */
+	const declared = new Map([
+		[
+			SIDEBAR,
+			{
+				// `rowStyle` (1), resolved through every expression that carries it; the two
+				// 24px controls' `!staged` guards (2); and the disclosure HEADING row
+				// (1), which is never a current row — it holds a section, and the panel
+				// marks the row the reader is IN, not the heading above it.
+				"hover:bg-elevated": 4,
+				// `rowCurrent` (1), the ground that beats the step above by merge order.
+				"hover:bg-sunken": 1,
+				// The New chat row's disabled reset: it paints NOTHING, which is why no
+				// expression has to resolve it.
+				"hover:bg-transparent": 1,
+			},
+		],
+		[SETTINGS_RAIL, { "hover:bg-elevated": 1, "hover:bg-sunken": 1 }],
+	]);
+	for (const [file, expected] of declared) {
+		const found = {};
+		for (const match of code.get(file).matchAll(/hover:bg-[a-z-]+/g)) {
+			found[match[0]] = (found[match[0]] ?? 0) + 1;
+		}
+		assert.deepEqual(
+			found,
+			expected,
+			`a \`hover:bg-*\` class in ${file} is not one this file accounts for: found ${JSON.stringify(found)} where it expects ${JSON.stringify(expected)}. Add the element's own class expression to the CURRENT table above if it can sit inside a current row, or extend this expectation and say why it cannot`,
 		);
 	}
 });
