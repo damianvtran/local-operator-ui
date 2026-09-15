@@ -53,6 +53,7 @@ const {
 	compareVersions,
 	configRoot,
 	discoverDaemons,
+	isZombie,
 	normaliseAddress,
 	parseRecord,
 	pidLiveness,
@@ -242,6 +243,27 @@ async function zombiePid() {
 	if (pid === null) {
 		child.kill("SIGKILL");
 		return null;
+	}
+	/*
+	 * Wait for the exit to have LANDED, not merely for the pid to be known.
+	 *
+	 * The parent prints the pid as soon as it has forked, and the child exits in
+	 * its own scheduler slice after that, so a probe that runs between the two
+	 * sees a live child: `pidLiveness` (signal 0) already answers "alive" while
+	 * `isZombie` answers false. CI hit exactly that pair - the case failed on
+	 * `isZombie === true` after signal 0 had passed - which is the fixture
+	 * racing the kernel rather than discovery misreading a corpse. Polling here
+	 * is what makes the fixture describe the state the case is about.
+	 */
+	const deadline = Date.now() + 10_000;
+	while (!isZombie(pid) && Date.now() < deadline) {
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	if (!isZombie(pid)) {
+		child.kill("SIGKILL");
+		throw new Error(
+			`pid ${pid} never became a zombie within 10s; an unreaped child is what this fixture exists to hold`,
+		);
 	}
 	return { pid, child };
 }
