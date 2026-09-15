@@ -212,7 +212,7 @@
     "appId": "com.local-operator",
     "electronVersion": "44.3.0",
     "productName": "Local Operator",
-    "copyright": "Copyright \u00a9 2025 Radient Inc.",
+    "copyright": "Copyright © 2025 Radient Inc.",
     "asar": true,
     "files": [
       "out/**/*",
