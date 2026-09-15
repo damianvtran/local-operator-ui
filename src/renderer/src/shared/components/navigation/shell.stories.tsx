@@ -8,6 +8,10 @@ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, type ReactNode, useLayoutEffect } from "react";
+import {
+	UP_TO_DATE_AFFIRMATION,
+	type UpdateCheckVerdict,
+} from "../../../../../main/update-check-verdict";
 
 /**
  * The app shell: the rail, the settings surface and the agents surface, in one
@@ -191,10 +195,25 @@ const route = (path: string): Response | null => {
  */
 const noopUnsubscribe = () => () => {};
 
+/**
+ * The verdict a fake bridge hands the renderer, as GIVEN data.
+ *
+ * The sentence is READ from the shipped module rather than retyped here, and
+ * for the same reason the shape is: `src/main/update-check-verdict.ts` owns that
+ * copy, and a second spelling of it in a story is exactly the drift the module
+ * exists to prevent. The type is imported so a change to the verdict's shape
+ * fails this file's typecheck the moment it lands.
+ */
+const UP_TO_DATE_VERDICT: UpdateCheckVerdict = {
+	app: "current",
+	server: "current",
+	affirmation: UP_TO_DATE_AFFIRMATION,
+};
+
 const UPDATER_STUB = {
 	checkForUpdates: async () => ({ updateInfo: {}, cancellationToken: null }),
 	checkForBackendUpdates: async () => null,
-	checkForAllUpdates: async () => {},
+	checkForAllUpdates: async () => UP_TO_DATE_VERDICT,
 	updateBackend: async () => false,
 	downloadUpdate: async () => [],
 	quitAndInstall: () => {},

@@ -642,6 +642,30 @@ export const STORIES = [
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
 
+	/*
+	 * Settings, Application updates and info, in the state the operator reported:
+	 * the app is current and the server trails, so one press of Check for updates
+	 * offers the server release. The story scripts the whole answer - both
+	 * channels' own events and the verdict the check returns - because the defect
+	 * is the panel and the snackbar disagreeing, and it is captured on two trees
+	 * (this one and a worktree at the pre-fix commit) so the pair shows the
+	 * contradiction rather than arguing it. Captured from a PRODUCTION Storybook
+	 * build, because the button does not check at all when import.meta.env.DEV is
+	 * true; see the story's own note.
+	 */
+	["settings-app-updates-section--server-update-offered", 900, 460],
+
+	/*
+	 * The other half of the same story: both channels proved current, so the
+	 * verdict carries the affirmation and no offer is raised. Captured here
+	 * because the sentence is new copy - the removed button stories drew their
+	 * own "latest version" alert from a channel event, which is a state the
+	 * shipped button can no longer produce, so the sweep had no frame of the
+	 * sentence the fix introduces. Not captured on a pre-fix tree: the
+	 * affirmation exists only on this one.
+	 */
+	["settings-app-updates-section--all-current", 900, 460],
+
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],
 	["canvas-workspace--markdown-format-menu", 1280, 900],
