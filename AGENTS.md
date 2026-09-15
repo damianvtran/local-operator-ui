@@ -78,6 +78,7 @@ ground where it does not.
 - Dev app: `pnpm dev` (needs `.env`; copy from `.env.template`)
 - Dev app, no window: `pnpm dev:headless`
 - Built app, no window: `pnpm app:headless -- <extra electron args>`
+- Built app, driven by an agent: `pnpm app:driver` (see `docs/agent-driver.md`)
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
 - Typecheck: `pnpm check-types`
@@ -258,9 +259,13 @@ Four consequences for how you take evidence:
 
 - **Read the viewport from the page and label frames with it.** A
   `BrowserWindow` size includes the platform's window chrome, so 1380x900 is a
-  1380x872 CSS viewport on macOS. A `--window-size` under the verified 800x600
-  floor is clamped to it and reported in the log, so a frame cannot be labelled
-  with a size the window never had.
+  1380x872 CSS viewport on macOS **on Electron 35.5.1 and a 1380x868 one on
+  44.3.0** (both measured; the chrome the runtime reserves moved between them), so
+  treat the number as something the run reports rather than a constant to recall —
+  a committed frame labelled with the other version's viewport is a caption that
+  does not match its bytes. A `--window-size` under the verified 800x600 floor is
+  clamped to it and reported in the log, so a frame cannot be labelled with a size
+  the window never had.
 - **Focus-dependent rendering differs.** A window that is never shown cannot be
   focused: text carets, `:focus`/`:focus-visible` rings, and anything gated on
   `document.hasFocus()`. For a change about those, drive it in `inactive` mode,
@@ -287,6 +292,16 @@ macOS `screencapture`, which works only on the frontmost window and so requires
 exactly the focus theft this section exists to remove. Storybook evidence is
 unaffected: `pnpm capture:evidence` already drives a private `--headless=new`
 Chrome.
+
+**Driving the renderer is a supported path now, not a rig per agent.**
+`scripts/renderer-driver.mjs` boots the built app headless in an isolated
+scratch profile, arms an opt-in bridge that exists only when the launch asked for
+it, and captures frames with the app's own `capturePage()`. `docs/agent-driver.md`
+is the contract: the exact commands, the verbs, what it can and cannot prove, and
+the reason it is not a substitute for the `browser` tool. Reach for it before
+writing a new rig — and read its limitations section before you present a frame
+from it as evidence for anything it cannot see (focus-dependent rendering, an
+embedded browser page, and backend-gated screens among them).
 
 ### What already opens no window, so a rebase does not re-introduce one
 

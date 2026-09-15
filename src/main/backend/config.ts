@@ -9,7 +9,23 @@
 import { join } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 import { z } from "zod";
+import { launchEnv } from "./launch-env";
 import { LogFileType, logger } from "./logger";
+
+/*
+ * The environment this process was LAUNCHED with, captured before the `.env`
+ * fold below — see `./launch-env`, which owns the snapshot and the two reasons it
+ * is a module of its own (a launch fact must come from the launch rather than
+ * from this repository's gitignored `.env`, and `logger.ts` has to read one of
+ * those facts without an import cycle back into this file).
+ *
+ * Re-exported from here because this is where the launch facts are resolved:
+ * `src/main/index.ts` reads it beside `backendConfig`. The import above is what
+ * keeps the ordering guarantee — a dependency's body is evaluated before the
+ * importing module's, so the snapshot is taken before the `dotenvConfig` call in
+ * this file's body can rewrite `process.env`.
+ */
+export { launchEnv };
 
 // Load environment variables from .env file
 const envResult = dotenvConfig({

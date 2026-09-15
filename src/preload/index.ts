@@ -16,6 +16,7 @@ import type {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
 const api = {
@@ -618,3 +619,16 @@ if (process.contextIsolated) {
 	// @ts-ignore (define in dts)
 	window.api = api;
 }
+
+/*
+ * The renderer dev driver, exposed only in an armed launch.
+ *
+ * Asked AFTER the app's own namespaces: it is a test surface, and a failure in
+ * it must never be able to take the real bridge down with it (the calls above
+ * are the app's; this one is a harness's). `installDevDriverBridge` answers
+ * false — and exposes nothing at all — when main was not asked for the driver,
+ * which is every normal launch. The decision lives in `src/main/dev-driver.ts`
+ * and is measured on a real boot by `node scripts/renderer-driver.mjs
+ * --gate-check`.
+ */
+installDevDriverBridge();
