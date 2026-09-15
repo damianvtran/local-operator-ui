@@ -192,6 +192,16 @@ const makeVault = (jar, cipher, paths, log, extra = {}) =>
 		...extra,
 	});
 
+/** The app's own lifecycle: the restore warms the jar channel before anything can
+ * browse, and the snapshot happens on the way out. `snapshot()` refuses to be the
+ * first user of that channel, because opening it on the quit path needs a renderer
+ * and a renderer created while the app tears down never comes up. */
+const savedSnapshot = async (jar, cipher, paths, log, extra = {}) => {
+	const vault = makeVault(jar, cipher, paths, log, extra);
+	await vault.restore();
+	return vault.snapshot();
+};
+
 const collector = () => {
 	const lines = [];
 	return { lines, log: (message) => lines.push(message) };
@@ -209,6 +219,9 @@ test("a clean cycle stores only session cookies, and restores their attributes",
 	const { log } = collector();
 	const jar = fakeJar(cookiesFor());
 	const vault = makeVault(jar, fakeCipher(), paths, log);
+	// The app's own order: the restore runs (and warms the jar channel) before
+	// anything browses, and the snapshot happens on the way out.
+	await vault.restore();
 
 	const saved = await vault.snapshot();
 	assert.equal(saved.written, true);
@@ -302,6 +315,7 @@ test("a cookie whose partition identity cannot be represented is refused, not fl
 	};
 	const jar = fakeJar([...cookiesFor(), opaque, incomplete]);
 	const vault = makeVault(jar, fakeCipher(), paths, log);
+	await vault.restore();
 	const saved = await vault.snapshot();
 
 	assert.equal(saved.saved, 2);
@@ -383,7 +397,7 @@ test("session-vs-persistent is read from either field, so an odd build cannot sm
 test("an unclean run's snapshot is discarded, and the marker is written before anything else", async () => {
 	const paths = dirFor("crash");
 	const { lines, log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	assert.equal(existsSync(paths.snapshotPath), true);
 	assert.equal(
 		existsSync(paths.markerPath),
@@ -418,7 +432,7 @@ test("an unclean run's snapshot is discarded, and the marker is written before a
 test("an unreadable marker still proves a run did not finish cleanly", async () => {
 	const paths = dirFor("crash-unreadable-marker");
 	const { log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	writeFileSync(paths.markerPath, "this is not json");
 	const jar = fakeJar([]);
 	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
@@ -429,7 +443,7 @@ test("an unreadable marker still proves a run did not finish cleanly", async () 
 test("a corrupt or truncated snapshot is refused and removed, never half-applied", async () => {
 	const paths = dirFor("corrupt");
 	const { lines, log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	const whole = readFileSync(paths.snapshotPath);
 	writeFileSync(
 		paths.snapshotPath,
@@ -451,7 +465,7 @@ test("a corrupt or truncated snapshot is refused and removed, never half-applied
 test("an interrupted write leaves the previous snapshot intact, not a truncated one", async () => {
 	const paths = dirFor("interrupted");
 	const { log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	const before = readFileSync(paths.snapshotPath);
 
 	// The staged file the writer uses, left behind by a kill between write and
@@ -490,7 +504,7 @@ test("a keychain that is unavailable fails closed in both directions", async () 
 
 	// And a snapshot that exists from a run with a working keychain is not read.
 	const good = dirFor("no-keychain-source");
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), good, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), good, log);
 	const jar2 = fakeJar([]);
 	const report = await makeVault(jar2, cipher, good, log).restore();
 	assert.equal(report.outcome, "cipher-unavailable");
@@ -559,7 +573,7 @@ test("a Linux basic_text or unknown keyring backend is refused; a real keyring i
 test("clearing cookies durably invalidates the snapshot first, and clearing the cache does not", async () => {
 	const paths = dirFor("clear");
 	const { log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	assert.equal(existsSync(paths.snapshotPath), true);
 
 	// The cache is not browsing data a user thinks of as a logout: the snapshot
@@ -592,7 +606,7 @@ test("clearing cookies durably invalidates the snapshot first, and clearing the 
 
 	// Same for everything, and the invalidation does not need a keychain: with the
 	// cipher refusing, a clear must still remove what a restore would read.
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	await makeVault(
 		fakeJar([]),
 		fakeCipher({ available: false }),
@@ -605,7 +619,7 @@ test("clearing cookies durably invalidates the snapshot first, and clearing the 
 test("a clear that lands during a restore runs after it, so nothing is written back after the user asked", async () => {
 	const paths = dirFor("clear-race");
 	const { log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 
 	const order = [];
 	const jar = fakeJar([]);
@@ -636,7 +650,7 @@ test("a clear that lands during a restore runs after it, so nothing is written b
 test("a newer persistent cookie is never overwritten by the older session snapshot", async () => {
 	const paths = dirFor("newer-cookie");
 	const { log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 
 	// The site replaced its session cookie with a persistent one between the two
 	// runs, so the jar has a same-identity entry that is newer than the snapshot.
@@ -657,12 +671,12 @@ test("a newer persistent cookie is never overwritten by the older session snapsh
 test("restoring the newest value is the whole point: the snapshot holds what the jar held", async () => {
 	const paths = dirFor("rotation");
 	const { log } = collector();
-	await makeVault(
+	await savedSnapshot(
 		fakeJar([{ ...cookiesFor()[0], value: "rotated" }]),
 		fakeCipher(),
 		paths,
 		log,
-	).snapshot();
+	);
 	const jar = fakeJar([]);
 	await makeVault(jar, fakeCipher(), paths, log).restore();
 	assert.equal(jar.writes[0].value, "rotated");
@@ -671,7 +685,7 @@ test("restoring the newest value is the whole point: the snapshot holds what the
 test("a read-back that disagrees is reported as drift rather than counted as restored", async () => {
 	const paths = dirFor("drift");
 	const { lines, log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	const jar = fakeJar([]);
 	const lying = {
 		...jar,
@@ -692,7 +706,7 @@ test("a read-back that disagrees is reported as drift rather than counted as res
 test("live values never reach the log", async () => {
 	const paths = dirFor("logging");
 	const { lines, log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	const jar = fakeJar([cookiesFor()[2]]);
 	await makeVault(jar, fakeCipher(), paths, log).restore();
 	const text = lines.join("\n");
@@ -709,7 +723,7 @@ test("live values never reach the log", async () => {
 test("the snapshot and the marker are private files, and the snapshot is not the plaintext", async () => {
 	const paths = dirFor("modes");
 	const { log } = collector();
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	const mode = statSync(paths.snapshotPath).mode & 0o777;
 	assert.equal(mode, 0o600, "the snapshot is a credential at rest");
 	const raw = readFileSync(paths.snapshotPath, "utf8");
@@ -730,13 +744,13 @@ test("a jar that cannot be read is a refusal, not a silent empty snapshot", asyn
 		},
 		async writeCookie() {},
 	};
-	const saved = await makeVault(jar, fakeCipher(), paths, log).snapshot();
+	const saved = await savedSnapshot(jar, fakeCipher(), paths, log);
 	assert.equal(saved.written, false);
 	assert.equal(existsSync(paths.snapshotPath), false);
 	assert.match(lines.join("\n"), /could not read the cookie jar/);
 
 	// The restore path refuses too, and says so rather than reporting "nothing to do".
-	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
 	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
 	assert.equal(report.outcome, "unreadable");
 	assert.equal(report.restored, 0);
@@ -849,12 +863,7 @@ test("the one adjustment this design makes is reported, and nothing else may mov
 		sourceScheme: "NonSecure",
 		sourcePort: 1234,
 	};
-	await makeVault(
-		fakeJar([trustworthyInsecure]),
-		fakeCipher(),
-		paths,
-		log,
-	).snapshot();
+	await savedSnapshot(fakeJar([trustworthyInsecure]), fakeCipher(), paths, log);
 	const jar = fakeJar([]);
 	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
 	assert.deepEqual(report.adjusted, [
@@ -878,6 +887,41 @@ test("the one adjustment this design makes is reported, and nothing else may mov
 	assert.equal(write.sourceScheme, "Secure");
 	assert.equal(write.sourcePort, 443);
 	assert.equal(write.url, "https://app.example/");
+});
+
+test("the quit path never opens the jar channel, because a renderer created while the app tears down never comes up", async () => {
+	const paths = dirFor("cold-channel");
+	const { lines, log } = collector();
+	const calls = [];
+	const base = fakeJar(cookiesFor());
+	const jar = {
+		...base,
+		async prepare() {
+			calls.push("prepare");
+		},
+		async readAllCookies() {
+			calls.push("read");
+			return base.readAllCookies();
+		},
+	};
+
+	// A vault that never restored must not read the jar: that read is what would
+	// open the channel, and on the built app it hung the clean quit (measured: no
+	// snapshot, and `will-quit` never returned).
+	const cold = makeVault(jar, fakeCipher(), paths, log);
+	const refused = await cold.snapshot();
+	assert.equal(refused.written, false);
+	assert.match(refused.reason, /never opened/);
+	assert.deepEqual(calls, [], "the quit path touched the jar");
+	assert.match(lines.join("\n"), /channel was never opened/);
+
+	// With the restore first — the app's order — the channel is opened while the
+	// app is healthy and both a snapshot and a restore run work.
+	const warm = makeVault(jar, fakeCipher(), paths, log);
+	await warm.restore();
+	const saved = await warm.snapshot();
+	assert.equal(saved.written, true);
+	assert.equal(calls[0], "prepare", "the channel is opened before it is used");
 });
 
 test("attributeDrift and cookieIdentity compare identity and the promised attributes", () => {

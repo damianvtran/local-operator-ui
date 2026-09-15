@@ -154,6 +154,15 @@ export interface CookieSnapshot {
 
 /** The jar channel. One read of everything, one write of one cookie. */
 export interface CookieJarTransport {
+	/** Open the channel now, while the app is healthy.
+	 *
+	 * Load-bearing, and learned from a real shutdown: the debugger channel needs a
+	 * document before it answers, so a lazily-opened channel opened for the first
+	 * time on the quit path would create a renderer while the app is tearing down —
+	 * which never resolves, so the clean quit hung and was killed (measured against
+	 * the built app: no snapshot, and `will-quit` never returned). Warming it at
+	 * startup, before any browsing, is what the restore step is for. */
+	prepare?(): Promise<void>;
 	readAllCookies(): Promise<JarCookie[]>;
 	writeCookie(params: Record<string, unknown>): Promise<void>;
 }
@@ -506,6 +515,10 @@ export class SessionCookieVault {
 	/** Set when the marker could not be written: the vault cannot then promise
 	 * that a crash will be detected, so it must not restore or snapshot at all. */
 	private disabledReason: string | null = null;
+	/** Whether the jar channel was opened by `restore()`. The quit path must never
+	 * be the first user of that channel: opening it there needs a renderer, and a
+	 * renderer created while the app is tearing down never comes up (measured). */
+	private channelReady = false;
 
 	constructor(private readonly options: SessionCookieVaultOptions) {}
 
@@ -571,6 +584,20 @@ export class SessionCookieVault {
 				);
 				removeDurable(this.options.snapshotPath);
 				report.outcome = "disabled";
+				return report;
+			}
+
+			// Warm the channel BEFORE the snapshot check, so the first run of an app
+			// store (nothing to restore yet) still opens it while the app is healthy
+			// rather than on the quit path. A channel that cannot be opened is reported
+			// and not fatal: the run simply has no persistence.
+			try {
+				await this.options.jar.prepare?.();
+				this.channelReady = true;
+			} catch (error) {
+				this.log(
+					`session cookies: the cookie-jar channel could not be opened (${String(error)}); session cookies will not be restored or saved this run`,
+				);
 				return report;
 			}
 
@@ -741,6 +768,16 @@ export class SessionCookieVault {
 			const report: SnapshotReport = { written: false, saved: 0, refused: [] };
 			if (this.disabledReason) {
 				report.reason = this.disabledReason;
+				return report;
+			}
+			if (!this.channelReady) {
+				// Deliberately not an attempt: reading the jar here would open the
+				// channel on the quit path, which is where it hangs. The marker is left
+				// in place, so the next start discards rather than replays.
+				report.reason = "the cookie-jar channel was never opened";
+				this.log(
+					"session cookies: not saving, the cookie-jar channel was never opened",
+				);
 				return report;
 			}
 			const availability = this.options.cipher.availability();
@@ -996,6 +1033,7 @@ export function createDebuggerCookieJar(
 		attached = true;
 	};
 	return {
+		prepare: attach,
 		async readAllCookies(): Promise<JarCookie[]> {
 			await attach();
 			const result = (await target.debugger.sendCommand(
