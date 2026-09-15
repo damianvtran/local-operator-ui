@@ -1,4 +1,7 @@
 import { z } from "zod";
+// The feed's frame family lives beside the session stream's, so the two cannot
+// drift into disagreeing about the envelope they deliberately share.
+import type { DesktopFeedFrame } from "./desktop-session-contract";
 
 const id = z
 	.string()
@@ -170,17 +173,96 @@ const chains = z.record(z.array(z.string().max(1024)).max(100));
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
 const scheduleUnit = z.enum(["minutes", "hours", "days"]);
+
 /**
- * An execution-variable key. Looser than `id` because these are user-named
- * Python identifiers rather than machine ids, but still no slashes, dots or
- * spaces -- the key goes into the PATH, so a permissive value would let the
- * renderer address a route it was never given an operation for.
+ * Whether a code-memory key addresses the route it is built into.
+ *
+ * The denylist above refuses the separators, the control characters and NUL -
+ * the characters that would let a key name a route segment of its own. This is
+ * the one shape that survives that rule and STILL does not address what it looks
+ * like it addresses: the transport fetches `new URL(target.path, backendUrl)`, so
+ * `..` and `.` are resolved away by the URL parser before the request leaves, and
+ * a PATCH built for the name `..` reaches the collection instead. A namespace
+ * may legally hold such a name (`globals()[".."] = 1` is ordinary memory, which
+ * is why this is a denylist at all), so the rule has to live here rather than in
+ * the backend's naming policy.
+ *
+ * Nothing is exploitable while no route lives at the resolved path; what this
+ * protects is the invariant the surrounding comment claims - a key addresses a
+ * route this op was given - so the next route added under `/variables/` does not
+ * inherit the reach. Exported because the panel asks the same question before it
+ * offers an Edit: `editable` is the backend's answer about the VALUE, and it
+ * cannot answer this (review round 1, C-03).
+ */
+export function isAddressableVariableKey(key: string): boolean {
+	return !/^\.+$/.test(key);
+}
+
+/**
+ * Whether this renderer's contract would let a write for `key` leave at all.
+ *
+ * The schema, asked directly, rather than a second copy of its rules. The panel
+ * needs this because `editable` is the BACKEND's judgement about the VALUE -
+ * could this text be coerced back into that type - and it says nothing about
+ * whether this renderer's own contract would accept the name: a key that is
+ * empty, longer than 128 characters, or carrying a control character is
+ * advertised as editable and then rejected by `desktopRequestSchema` before any
+ * request is built, which surfaces as "Invalid desktop operation." - a refusal
+ * the user cannot act on and cannot tell apart from a bug (backend PR #1101's
+ * MINOR-1). Asking the schema keeps the panel's offer and the write path's rule
+ * from drifting apart.
+ */
+export const isWritableVariableKey = (key: string): boolean =>
+	variableKey.safeParse(key).success;
+/**
+ * A session code-memory key.
+ *
+ * A key is a NAME in the session's eval namespace, and the worker reads it as a
+ * dict key rather than interpolating it into code, so a name that is not a
+ * Python identifier (`globals()["a b"] = 1`) is legal memory and has to stay
+ * addressable from the panel that lists it. That is why this is a denylist and
+ * not the identifier regex the legacy agent-variable ops used: the renderer
+ * must refuse exactly the characters that would let it address a route it was
+ * never given an operation for - the slash and backslash that separate route
+ * segments, the control characters and NUL no route can carry, and (below) the
+ * dot-only names `new URL()` would normalise out of the path. The
+ * backend applies the same rule plus its reserved-name list, which is the half
+ * that needs the namespace to answer.
  */
 const variableKey = z
 	.string()
 	.min(1)
 	.max(128)
-	.regex(/^[a-zA-Z0-9_-]+$/);
+	.refine((key) =>
+		[...key].every(
+			(character) =>
+				character.charCodeAt(0) >= 32 &&
+				character.charCodeAt(0) !== 127 &&
+				character !== "/" &&
+				character !== "\\",
+		),
+	)
+	.refine(isAddressableVariableKey);
+/**
+ * The writable code-memory types, as one table.
+ *
+ * Enumerated rather than free text so a typo is refused before it reaches the
+ * worker, and identical to the six names the worker's coercion table and the
+ * form's own select offer (see `VARIABLE_TYPES` in `session-variables-api.ts`).
+ * `str` is not `string`, and the form used to send `string` while the worker's
+ * table had no such row - the drift this freeze exists to end.
+ */
+const variableType = z.enum(["str", "int", "float", "bool", "list", "dict"]);
+/**
+ * A value crossing as TEXT, plus the type it should be coerced to.
+ *
+ * The worker builds the object from its own table; nothing the renderer sends
+ * is ever evaluated as code. 16 KiB is a transport bound only: the contract's
+ * real ceiling is the backend's 409 `too_large` at 4096 rendered characters,
+ * and pre-empting it here would answer "Invalid desktop operation." where the
+ * route would have named the limit.
+ */
+const variableValue = z.string().max(16384);
 // The fields create and edit have in common. Both extend it with their own
 // required/nullable variants of prompt, interval and unit, which differ because
 // create supplies defaults and edit sends only what changed.
@@ -423,6 +505,101 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("sessions.warm"), sessionId })
 		.strict(),
+	/*
+	 * A session's code memory: the names the session's own cells have left in its
+	 * eval namespace.
+	 *
+	 * Session-addressed, because the runtime is what holds a namespace and the
+	 * kernel it lives in is keyed by session id. The legacy
+	 * `/v1/agents/{id}/execution-variables` route answered through the agent
+	 * registry instead, which resolves agent-directory UUIDs - so a canonical
+	 * session id could only ever 404 there, and the panel that taught "code
+	 * memory" never loaded once.
+	 */
+	z
+		.object({ op: z.literal("sessions.variables.list"), sessionId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.create"),
+			sessionId,
+			key: variableKey,
+			value: variableValue,
+			type: variableType,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.update"),
+			sessionId,
+			key: variableKey,
+			value: variableValue,
+			type: variableType,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.delete"),
+			sessionId,
+			key: variableKey,
+		})
+		.strict(),
+	// Machine-wide desktop presence. NOT a watch lease and deliberately not
+	// shaped like one: it names no session, because the fact it carries is
+	// "somebody is at this machine's screen and this app can raise a banner",
+	// which is a property of the app rather than of any conversation. The
+	// backend reads it to decide whether a BACKGROUND completion is worth a
+	// banner here at all (a session runtime with no surface to present on
+	// otherwise toasts on its own host, where nobody may be).
+	//
+	// `subscription_id` is the LIVE feed subscription the presence belongs to,
+	// not a per-session watch subscription: the server holds the lease against
+	// that socket, so a dropped feed revokes the claim without waiting for a
+	// heartbeat to go stale. That is the whole reason presence is a route on the
+	// feed rather than a local file - a desktop paired to a backend on another
+	// host cannot write to that host's disk.
+	z
+		.object({
+			op: z.literal("sessions.presence"),
+			subscriptionId: z.string().regex(/^[a-f0-9]{1,64}$/),
+			canNotify: z.boolean(),
+			/*
+			 * WHY THE CLAIM CARRIES MORE THAN "a desktop is connected".
+			 *
+			 * The backend's delivery lease answers two separate questions from
+			 * this one beat, and a claim that names neither is a claim that
+			 * delivers NOTHING:
+			 *
+			 * - `can_notify_kinds` is what `delivers(kind)` reads. Empty (the
+			 *   default for a client that forgot) means rung 2 is never eligible
+			 *   for any completion, so rung 4 raises the runtime's own banner —
+			 *   earlier, and its claim advances the read watermark, so the
+			 *   clickable banner this app exists to raise never composes.
+			 *   The backend's own test for this is
+			 *   `test_a_claim_with_no_kinds_claims_nothing`: an app that does not
+			 *   advertise must not win the rung.
+			 * - `window` (with `session_id`) is what `attended` reads. Without it
+			 *   this app counts as watching NOTHING, so a completion in the
+			 *   conversation on screen raises a banner — the inverse of rung 1,
+			 *   and a regression against the per-session flag it replaces.
+			 *
+			 * `window` is sent even when there is no window: a windowless app
+			 * (macOS, alive in the dock) can still raise a banner but cannot be
+			 * displaying anything, which is why `session_id` must be "" there
+			 * rather than the last conversation the closed window held.
+			 */
+			canNotifyKinds: z.array(z.enum(["complete", "error"])).max(4),
+			sessionId: z.string().regex(/^([a-f0-9]{12})?$/),
+			window: z
+				.object({
+					exists: z.boolean(),
+					focused: z.boolean(),
+					visible: z.boolean(),
+					minimized: z.boolean(),
+				})
+				.strict(),
+		})
+		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
 	// everything else. These routes are gated in managed mode (agent inventory,
 	// cwd paths, job history and conversation content are the same tenant's data
@@ -559,38 +736,6 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
-	z
-		.object({ op: z.literal("legacy.agent.variables.list"), agentId: id })
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.create"),
-			agentId: id,
-			variable: z.record(z.unknown()),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.get"),
-			agentId: id,
-			key: variableKey,
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.update"),
-			agentId: id,
-			key: variableKey,
-			variable: z.record(z.unknown()),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.delete"),
-			agentId: id,
-			key: variableKey,
-		})
-		.strict(),
 	z.object({ op: z.literal("legacy.job.cancel"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
@@ -705,6 +850,37 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("mcp.credentials.store"),
+			sessionId,
+			name: z.string().min(1).max(256),
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// Field-level on purpose: a `.refine()` on the OBJECT would make this
+				// member a `ZodEffects`, which a discriminated union cannot take — it
+				// needs the `op` shape to discriminate on, so refining the whole
+				// object silently collapsed `DesktopRequest` to `unknown` and broke
+				// every `switch (request.op)` in this file.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					// Mirrors the owner's own bound (`local_operator/mcp/credentials.py`),
+					// so an oversized paste is refused as a sentence rather than
+					// serialized into a request the control budget rejects as an
+					// opaque 413.
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("mcp.control"),
@@ -1055,7 +1231,32 @@ export type DesktopStreamEvent = {
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
+	/**
+	 * The HTTP status that refused this stream, when one did.
+	 *
+	 * A REFUSAL is not a transport failure and the difference is user-visible:
+	 * the desktop plane answers 404 for a session this machine does not have, and
+	 * the one path that reaches it without validating the id first is the
+	 * notification click (which deliberately does NOT spend a `sessions.get`
+	 * round trip on the latency path). Without the code, that case fell into the
+	 * generic `unavailable` branch and the reader got "The event stream was
+	 * refused (404)." — transport text, saying what happened and neither what it
+	 * means nor what to do.
+	 *
+	 * Optional because not every emitter has one: a socket that died mid-stream
+	 * and a frame-budget overflow are failures, not refusals.
+	 */
+	status?: number;
 };
+
+/**
+ * Whether the machine-wide feed socket is live, as the sidebar needs it.
+ *
+ * It lives in the contract rather than in `desktop-feed.ts` because it is a
+ * RENDERER-visible shape: the sidebar renders the disconnected line from it, so
+ * it travels over IPC and belongs with the other wire types.
+ */
+export type DesktopFeedState = { connected: boolean };
 
 export type DesktopStreamSubscription = {
 	streamId: Promise<string>;
@@ -1127,6 +1328,14 @@ export type DesktopAPI = {
 		visible: boolean;
 		focused: boolean;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Tell main this pane has stopped displaying `sessionId` (review round 2,
+	 * R2-4). Electron only, and optional: absent means the pre-fix behaviour, where
+	 * the claim stood until the window closed.
+	 */
+	releaseWatchHeartbeat?: (args: {
+		sessionId: string;
+	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
 	/** `/exit`: close this window. Detach-only; the backend keeps sessions
@@ -1140,6 +1349,45 @@ export type DesktopAPI = {
 			onEvent: (event: DesktopStreamEvent) => void,
 		) => DesktopStreamSubscription;
 	};
+	/**
+	 * The machine-wide desktop feed, held by MAIN and not by this window.
+	 *
+	 * Absent in browser development, where there is no relay and no native
+	 * delivery to be told about — a renderer with no `feed` must keep the polling
+	 * behaviour it has today rather than waiting for a stream that cannot exist.
+	 *
+	 * Subscribe is a VIEW subscription and nothing more: main opens the feed on
+	 * its own (gated on the backend's capability) and stays subscribed with no
+	 * window at all, which is the state the operator reported — app alive in the
+	 * dock, nothing on screen, and a completion announced to nobody.
+	 */
+	feed?: {
+		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
+		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
+	};
+	/**
+	 * The conversation main was launched to display, or null.
+	 *
+	 * A VALUE rather than an event, and that is the point (B3): the initial
+	 * session has to be readable before the renderer's first paint, because a
+	 * recreated window rehydrates its persisted `activeSessionId` and paints THAT
+	 * conversation first. Delivering the id as a post-load IPC instead showed the
+	 * user the wrong conversation and then swapped it, which reads as a click
+	 * that landed on the wrong row.
+	 */
+	initialSession?: string | null;
+	/**
+	 * Whether main created this window to open the CATALOGUE (review round 2,
+	 * R2-1), read from the same argv and resolved through the same reader.
+	 *
+	 * Additive and optional like every other post-contract field: absent means "no
+	 * catalogue intent", which is what an older main says, and that degrades to
+	 * the pre-fix behaviour (restore the last conversation) rather than to an
+	 * error. It is NOT the same claim as `initialSession: null`, and that
+	 * distinction is the finding: `null` is also an ordinary launch, whose
+	 * correct answer is "restore what you had open".
+	 */
+	initialCatalogue?: boolean;
 };
 
 export type DesktopCapabilities = {
@@ -1408,6 +1656,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 					can_notify: request.canNotify,
 				},
 			};
+		case "sessions.presence":
+			return {
+				path: "/v1/desktop/presence",
+				method: "POST",
+				body: {
+					subscription_id: request.subscriptionId,
+					// The three fields the delivery lease reads beside it. Sent
+					// snake_case like the route's own model, and always sent: a
+					// defaulted claim is what made this app ineligible.
+					can_notify_kinds: request.canNotifyKinds,
+					session_id: request.sessionId,
+					window: request.window,
+					// `can_notify` means "can ATTEMPT delivery", never "the user will
+					// be reached": `Notification.isSupported()` knows nothing about
+					// macOS Focus/DND, Windows Focus Assist or a denied permission.
+					// The backend's suppression reads it as eligibility to try, and a
+					// claim never advances the read watermark, so a suppressed banner
+					// still leaves the durable unseen mark intact.
+					can_notify: request.canNotify,
+				},
+			};
 		case "sessions.warm":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/warm`,
@@ -1417,6 +1686,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// forbids extras but still wants a JSON OBJECT. An omitted body
 				// makes a legal call answer 422.
 				body: {},
+			};
+		case "sessions.variables.list":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
+				method: "GET",
+			};
+		case "sessions.variables.create":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
+				method: "POST",
+				// The route's own body shape, not the op's: `{key, value, type}` on
+				// create and `{value, type}` on update, because the key is in the path
+				// once the variable exists and is immutable after that.
+				body: { key: request.key, value: request.value, type: request.type },
+			};
+		case "sessions.variables.update":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables/${encodeURIComponent(request.key)}`,
+				method: "PATCH",
+				body: { value: request.value, type: request.type },
+			};
+		case "sessions.variables.delete":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables/${encodeURIComponent(request.key)}`,
+				method: "DELETE",
 			};
 		case "legacy.models": {
 			// The query the renderer's own listModels() built. Dropping it would
@@ -1534,33 +1828,6 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.download":
 			return { path: `/v1/agents/${request.agentId}/download`, method: "GET" };
-		case "legacy.agent.variables.list":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables`,
-				method: "GET",
-			};
-		case "legacy.agent.variables.create":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables`,
-				method: "POST",
-				body: request.variable,
-			};
-		case "legacy.agent.variables.get":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "GET",
-			};
-		case "legacy.agent.variables.update":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "PATCH",
-				body: request.variable,
-			};
-		case "legacy.agent.variables.delete":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "DELETE",
-			};
 		case "legacy.job.cancel":
 			return { path: `/v1/jobs/${request.jobId}`, method: "DELETE" };
 		case "commands.list":
@@ -1671,6 +1938,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "GET",
+			};
+		case "mcp.credentials.store":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp/credentials`,
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					confirmed_replace: request.confirmedReplace,
+				},
 			};
 		case "mcp.control":
 			return {

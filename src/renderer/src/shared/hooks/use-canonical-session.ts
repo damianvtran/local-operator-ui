@@ -47,6 +47,7 @@ import {
 	desktopResult,
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
+import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mergeCompletionAttention } from "../../../../shared/desktop-session-contract";
 import type {
@@ -108,12 +109,45 @@ export type CanonicalSessionView = {
 	/** Terminal event observed for the current turn; clears the wait latch. */
 	terminal: string | null;
 	/**
+	 * How many `turn_end` / `agent_end` events this viewer has applied.
+	 *
+	 * A counter rather than an event name because consecutive endings can have
+	 * the same name. The code-memory panel uses each observed ending to request
+	 * a fresh reading; these are completion pulses, not unique logical turns
+	 * (a run can emit both endings). Starts and steering only clear the wait
+	 * latch and must not trigger extra reads. A late join counts from that join,
+	 * not from the session's history.
+	 */
+	turnsCompleted: number;
+	/**
 	 * Set on an unrecoverable stream failure: the ONE sentence the reader sees,
 	 * and the one action that helps. A structured notice rather than a transport
 	 * `detail` string, because the two transports name the same failure in
 	 * different words and neither belongs on screen (design round 1, D1).
 	 */
 	failure: SessionFailureNotice | null;
+	/**
+	 * True while the painted rows came from the LOCAL PAINT CACHE rather than
+	 * from the owner (M2), which is what a notification click's first frame is.
+	 *
+	 * A state flag rather than a rendering hint: the rows stay at full `ink` (a
+	 * cached row is a real row, and opacity is banned as a state signal here), and
+	 * what says "this may be behind" is one caption in the pane's status slot.
+	 * Cleared by the SNAPSHOT, not by the first frame of any kind: a frontend
+	 * update, an attention delta or an event all leave the cached rows in place, so
+	 * only an authoritative reconcile makes them not-cached.
+	 */
+	stale: boolean;
+	/**
+	 * True when the backend says this conversation is not on this machine (M6).
+	 *
+	 * A terminal state, not a failure: it does not enter the retry budget and it
+	 * raises no `failure` notice, because retrying asks the same question and gets
+	 * the same answer. Only the transport knows it — the desktop plane answers 404
+	 * for a session id this host does not have — and the click path is what
+	 * reaches it, because it deliberately spends no validating round trip.
+	 */
+	missing: boolean;
 	/** The painted conversation, durable and live, oldest first. */
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
@@ -539,51 +573,92 @@ export function retractPendingUser(sessionId: string, id: string): void {
 	deliverEcho(sessionId, (state) => removeRecord(state, id));
 }
 
+/**
+ * The paint a conversation starts from: the cached rows with any queued
+ * optimistic echo applied on top, and whether anything was cached at all.
+ *
+ * The echo goes LAST because an echo is NEWER than the paint — the cached rows
+ * are what the panel last displayed, and a buffered echo is a mutation that
+ * happened after it stopped. Same order the live path produces.
+ */
+function paintSeed(sessionId: string): {
+	transcript: TranscriptState;
+	stale: boolean;
+} {
+	const cached = readPaint(sessionId);
+	if (!cached) {
+		return {
+			transcript: seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT),
+			stale: false,
+		};
+	}
+	return {
+		transcript: seedPendingEchoes(sessionId, cached.transcript),
+		stale: true,
+	};
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
 ): CanonicalSessionHandle {
-	const [view, setView] = useState<CanonicalSessionView>(() => ({
-		status: "connecting",
-		frontend: null,
-		pendingModel: null,
-		history: null,
-		cold: false,
-		subscriptionId: null,
-		ownerEpoch: null,
-		receipt: null,
-		terminal: null,
-		failure: null,
-		/*
-		 * SEEDED, and only here. A panel mounted while its own echo is already
-		 * buffered must paint that echo in its FIRST frame: on the New-chat path
-		 * this mount IS the identity flip the send triggers, and the echo reaches
-		 * the panel through a passive effect - one commit too late - unless the
-		 * initial state already holds it. See `seedPendingEchoes` for why this is
-		 * a peek rather than a take, and why the drain that follows is harmless.
-		 */
-		transcript:
-			enabled && sessionId
-				? seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT)
-				: EMPTY_TRANSCRIPT,
-		loadingOlder: false,
-		// No child has been heard from yet: the snapshot that follows seeds the
-		// counter from its own `live_events`.
-		subagentPulses: {},
-		/*
-		 * NOT hydrated, even when the initial transcript above was seeded from a
-		 * pending echo. The two are different claims: an echo is this renderer's own
-		 * optimistic paint of a message it just sent, while `hydrated` means an
-		 * AUTHORITATIVE page for this session has been applied. A seeded echo is
-		 * therefore no evidence at all about whether the conversation is empty - it
-		 * is evidence that we sent something - and the panel still waits for the
-		 * snapshot or the `/history` reconcile before the composer may say the
-		 * conversation has nothing in it. (#118's seeding does not need hydration for
-		 * what it is for: the echo makes `transcript.records` non-empty on the first
-		 * frame, which is what suppresses the greeting and paints the message.)
-		 */
-		hydrated: false,
-	}));
+	const [view, setView] = useState<CanonicalSessionView>(() => {
+		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
+		return {
+			status: "connecting",
+			frontend: null,
+			pendingModel: null,
+			history: null,
+			cold: false,
+			subscriptionId: null,
+			ownerEpoch: null,
+			receipt: null,
+			terminal: null,
+			turnsCompleted: 0,
+			failure: null,
+			/*
+			 * SEEDED, and only here. A panel mounted while its own echo is already
+			 * buffered must paint that echo in its FIRST frame: on the New-chat path
+			 * this mount IS the identity flip the send triggers, and the echo reaches
+			 * the panel through a passive effect - one commit too late - unless the
+			 * initial state already holds it. See `seedPendingEchoes` for why this is
+			 * a peek rather than a take, and why the drain that follows is harmless.
+			 *
+			 * The echo is applied OVER the cached paint rather than instead of it.
+			 * They are different claims about the same first frame: the paint is this
+			 * window's memory of the conversation (the click-path states this branch
+			 * exists for are painted from it), and the echo is a message just sent
+			 * into that conversation. Seeding the echo alone would drop the rows the
+			 * click path came for; seeding the paint alone would drop the echo. So the
+			 * echo composes on top of the paint and neither seam is lost.
+			 */
+			transcript:
+				enabled && sessionId
+					? seedPendingEchoes(sessionId, seed?.transcript ?? EMPTY_TRANSCRIPT)
+					: EMPTY_TRANSCRIPT,
+			// A cached paint is a real memory of a real transcript, but it is not the
+			// owner's current state — so it says so until the snapshot lands.
+			stale: seed?.stale ?? false,
+			missing: false,
+			loadingOlder: false,
+			// No child has been heard from yet: the snapshot that follows seeds the
+			// counter from its own `live_events`.
+			subagentPulses: {},
+			/*
+			 * NOT hydrated, even when the initial transcript above was seeded from a
+			 * pending echo. The two are different claims: an echo is this renderer's own
+			 * optimistic paint of a message it just sent, while `hydrated` means an
+			 * AUTHORITATIVE page for this session has been applied. A seeded echo is
+			 * therefore no evidence at all about whether the conversation is empty - it
+			 * is evidence that we sent something - and the panel still waits for the
+			 * snapshot or the `/history` reconcile before the composer may say the
+			 * conversation has nothing in it. (#118's seeding does not need hydration for
+			 * what it is for: the echo makes `transcript.records` non-empty on the first
+			 * frame, which is what suppresses the greeting and paints the message.)
+			 */
+			hydrated: false,
+		};
+	});
 	/*
 	 * Which session the transcript IN `view` belongs to, so the reset effect
 	 * below can tell another session's rows from this one's own seeded echo.
@@ -1040,6 +1115,11 @@ export function useCanonicalSessionStream(
 									snapshot.frontend.snapshot.live_events,
 								),
 								status: "live",
+								// The reconcile, in the same commit as the rows: the caption
+								// and the cached rows it describes go together, so the reader
+								// never sees a reconciled transcript labelled as last-saved or
+								// the reverse.
+								stale: false,
 								frontend: {
 									...snapshot.frontend.snapshot,
 									attention: mergeCompletionAttention(
@@ -1058,7 +1138,23 @@ export function useCanonicalSessionStream(
 								// this batch fires (see `reconcileTail`). `next.hydrated` is
 								// OR-ed in so a later snapshot cannot un-prove what an earlier
 								// page already established.
-								hydrated: next.hydrated || !snapshot.history.cursor_missing,
+								//
+								// AN EMPTY PAGE PROVES NOTHING EITHER (UX round 1, U2). A
+								// snapshot whose page carries no entries — a session with an
+								// empty or absent journal — used to satisfy this on
+								// `!cursor_missing` alone and set `hydrated`, so the composer
+								// could then claim the conversation was EMPTY while the
+								// authoritative read was still failing. That is the walked
+								// defect: press Reconnect with the backend down and the history
+								// error is replaced by "What can I help you with today?" over a
+								// conversation whose history nobody has read. An empty page is
+								// exactly the case `/history` exists to settle, and it is
+								// already asked once per snapshot, so the greeting waits for
+								// that answer.
+								hydrated:
+									next.hydrated ||
+									(!snapshot.history.cursor_missing &&
+										snapshot.history.entries.length > 0),
 								transcript,
 							};
 							snapshotted = true;
@@ -1120,7 +1216,15 @@ export function useCanonicalSessionStream(
 					if (frame.type === "event") {
 						const eventType = String(frame.payload.type ?? "");
 						if (TERMINAL_EVENTS.has(eventType)) {
-							next = { ...next, terminal: eventType };
+							next = {
+								...next,
+								terminal: eventType,
+							};
+						}
+						if (DURABLE_ROUND_ENDINGS.has(eventType)) {
+							// Separate from the wait latch: starts/steering end a wait,
+							// not a round whose namespace consumers need to re-read.
+							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
 						const transcript = applyEvent(next.transcript, frame.payload, now);
 						if (transcript !== next.transcript) {
@@ -1209,6 +1313,29 @@ export function useCanonicalSessionStream(
 						// from and nothing to report.
 						if (closingIntentionally) return;
 						closeStream();
+						/*
+						 * 404 is about the SESSION, not the transport: the desktop plane
+						 * answers it for an id this host does not have. It is terminal by
+						 * construction — retrying asks the same question and gets the same
+						 * answer — so it does not enter the retry budget and raises no
+						 * `failure` notice, which is transport vocabulary. The click path
+						 * is what reaches it, because it deliberately spends no validating
+						 * round trip on the latency path (M6).
+						 */
+						if (event.kind === "error" && event.status === 404) {
+							// Its paint goes with it: a later click on the same id would
+							// otherwise paint rows for a transcript that no longer exists,
+							// with nothing to tell the reader they are fiction.
+							if (sessionId) dropPaint(sessionId);
+							setView((current) => ({
+								...current,
+								subscriptionId: null,
+								status: "unavailable",
+								missing: true,
+								failure: null,
+							}));
+							return;
+						}
 						const detail =
 							event.kind === "error"
 								? (event.detail ?? "The event stream failed.")
@@ -1382,6 +1509,12 @@ export function useCanonicalSessionStream(
 		 */
 		const sameSession = transcriptSession.current === sessionId;
 		transcriptSession.current = sessionId;
+		// The cached rows when this window has shown the conversation before, so a
+		// switch paints in its first frame; empty otherwise. The paint is NOT
+		// written from here — the panel is keyed by identity, so a switch unmounts
+		// this hook, and the cleanup effect below is the only moment that always
+		// happens.
+		const seed = sessionId ? readPaint(sessionId) : null;
 		setView((current) => ({
 			...current,
 			frontend: null,
@@ -1390,7 +1523,24 @@ export function useCanonicalSessionStream(
 			pendingModel: null,
 			history: null,
 			terminal: null,
-			transcript: sameSession ? current.transcript : EMPTY_TRANSCRIPT,
+			/*
+			 * The completion counter shares the transcript's lifetime, so it is kept
+			 * under the same rule. It is a monotonic count the code-memory panel
+			 * compares against its own last reading, and resetting it on a remount
+			 * that deliberately keeps the transcript would describe a turn this
+			 * viewer never saw end. A genuine session change still restarts it — the
+			 * previous conversation's endings say nothing about the new one.
+			 */
+			turnsCompleted: sameSession ? current.turnsCompleted : 0,
+			// All three follow the SAME rule: keep this conversation's own state, and
+			// reset it only when the conversation really changed. `stale` and `missing`
+			// travel with the transcript they describe - a kept transcript with a
+			// reset "this paint is old" flag would claim rows the owner never sent.
+			transcript: sameSession
+				? current.transcript
+				: (seed?.transcript ?? EMPTY_TRANSCRIPT),
+			stale: sameSession ? current.stale : seed !== null,
+			missing: sameSession ? current.missing : false,
 			status: "connecting",
 			// A different session's children are different children, and a pulse
 			// carried across is a counter no reader can match to a job.
@@ -1408,6 +1558,29 @@ export function useCanonicalSessionStream(
 		// that can only be a no-op. `reconnectRef`, `receiptRef` and `paintedIds` are
 		// cleared here for the same reason.
 		labelGapRef.current = new Map();
+	}, [sessionId]);
+
+	/*
+	 * Cache this conversation's paint on the way out.
+	 *
+	 * The panel is keyed by identity, so a switch to another conversation UNMOUNTS
+	 * this hook rather than re-running it with a new id — which makes this cleanup
+	 * the only moment that always happens. It is also the right moment for the
+	 * reason the cache exists: the rows the ref holds here are exactly the rows
+	 * that were last on screen.
+	 *
+	 * Read from the ref rather than from `view`: a cleanup closes over the render
+	 * that created it, and for an unmount that render is not the last one.
+	 */
+	useEffect(() => {
+		if (!sessionId) return;
+		return () => {
+			const painted = viewRef.current.transcript;
+			// Nothing to cache for a conversation this window never painted: an
+			// empty transcript would be a cache hit that correctly paints nothing.
+			if (painted.records.length > 0)
+				writePaint(sessionId, { transcript: painted });
+		};
 	}, [sessionId]);
 
 	// Latest view for callbacks that must not re-create per render.
