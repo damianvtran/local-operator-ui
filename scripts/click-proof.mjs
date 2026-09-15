@@ -40,6 +40,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://localhost:5199";
@@ -60,15 +61,18 @@ const TARGET = process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the p
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const dataDir = mkdtempSync(join(tmpdir(), "ask-click-proof-"));
-const chrome = spawn(CHROME, [
-	"--headless=new",
-	"--no-sandbox",
-	"--disable-gpu",
-	"--hide-scrollbars",
-	`--user-data-dir=${dataDir}`,
-	"--remote-debugging-port=0",
-	"about:blank",
-]);
+const chrome = spawn(
+	CHROME,
+	withMockKeychain([
+		"--headless=new",
+		"--no-sandbox",
+		"--disable-gpu",
+		"--hide-scrollbars",
+		`--user-data-dir=${dataDir}`,
+		"--remote-debugging-port=0",
+		"about:blank",
+	]),
+);
 
 const wsUrl = await new Promise((resolve, reject) => {
 	let buf = "";
