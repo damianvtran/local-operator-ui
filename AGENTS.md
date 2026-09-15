@@ -438,6 +438,36 @@ gate), because the run has nobody at the screen and a toast would interrupt
 whoever is really at the machine — and because a banner's own click handler is
 a path that raises a window.
 
+### A rig's Chrome does not touch the keychain either
+
+The same rule one runtime over: a capture rig's browser must not reach the
+operator's desktop. On 2026-09-15 the rigs below started raising **"Keychain Not
+Found — A keychain cannot be found to store "Chrome.""** on the operator's
+screen, Chrome's icon and `Cancel` / `Reset To Defaults` included. macOS
+resolves the keychain from `HOME`, and these runs are normally invoked with
+`HOME` and `TMPDIR` pointed at a scratch directory so a run cannot write into the
+operator's own config and session store — in which case there is no login
+keychain in reach at all. Chrome then cannot encrypt its cookie store
+(`Encryption is not available.` on its stderr), a `Network.setCookie` that
+answers `success: true` writes no row to the profile, and macOS logs `authd …
+Failed to authorize right 'system.keychain.create.loginkc' by client
+'/Applications/Google Chrome.app'` — Chrome trying to CREATE one, which is the
+alert. Five launches inside two minutes is why it kept coming back.
+
+`scripts/chrome-keychain.mjs` exports `withMockKeychain`, which puts
+`--use-mock-keychain` on a rig's Chrome argv so OSCrypt uses a constant mock key
+and Keychain Services is never called. Every rig that launches Chrome routes its
+argv through it — the nine in `scripts/` and the three under
+`docs/evidence/<surface>/harness/`, which are archived beside their frames but
+are still runnable — and `scripts/chrome-keychain.test.mjs` scans for the calls
+that start Chrome and fails on one that does not. A rig added without it fails
+that test instead of the operator's screen.
+
+What this deliberately does not touch: `session-cookie-restart-proof.mjs` and
+`session-cookie-electron.test.mjs` boot the PRODUCT, and reaching the keychain is
+their subject rather than collateral — they are app launches rather than Chrome
+launches.
+
 ### Capturing the frame
 
 Capture from inside the app — `webContents.capturePage()` or CDP — never with
