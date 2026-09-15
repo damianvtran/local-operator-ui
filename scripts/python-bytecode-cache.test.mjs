@@ -1894,9 +1894,23 @@ test("the pre-split environments are reported from the paths that actually exist
 	const support = join(home, "Library", "Application Support", "Local Operator");
 	const legacy = join(support, "local-operator-venv");
 	mkdirSync(join(legacy, "bin"), { recursive: true });
+	/*
+	 * A fixture bundle INSIDE this temp directory, not the operator's installed
+	 * app. The first version of this test named `/Applications/Local Operator.app`
+	 * and asserted the "still built on the installed bundle" line - which exists on
+	 * the machine it was written on and nowhere else, so it was asserting a
+	 * property of that machine and would have failed on any runner (measured: it
+	 * did, on `ubuntu-latest`). `venvInterpreter` decides "bundled" from the
+	 * `pyvenv.cfg` `home` alone plus whether the bundle named there is on disk, so
+	 * a fixture bundle makes the same assertion true anywhere. The directory is
+	 * what makes it "bundled" rather than "missing"; nothing is executed.
+	 */
+	const bundle = join(home, "Fixture.app");
+	const bundledBin = join(bundle, "Contents", "Resources", "python_aarch64", "bin");
+	mkdirSync(bundledBin, { recursive: true });
 	writeFileSync(
 		join(legacy, "pyvenv.cfg"),
-		"home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin\n",
+		`home = ${bundledBin}\n`,
 	);
 
 	// The input the old report used, for the record: neither answer resolves
@@ -1915,18 +1929,26 @@ test("the pre-split environments are reported from the paths that actually exist
 	const lines = legacyEnvironmentReport(support);
 	assert.equal(lines.length, 1);
 	assert.match(lines[0], /pre-split environment at .*local-operator-venv/);
-	assert.match(lines[0], /built on the interpreter inside \/Applications\/Local Operator\.app/);
+	// The fixture bundle from this temp directory, by its own path: the assertion
+	// is about what `venvInterpreter` resolves, not about what this machine has
+	// installed.
+	assert.match(lines[0], /built on the interpreter inside .*Fixture\.app/);
+	assert.ok(
+		lines[0].includes(bundle),
+		`the line must name the bundle the venv actually points at: ${lines[0]}`,
+	);
 	assert.match(lines[0], /left exactly as it is/);
 
 	// The bundle gone is a DIFFERENT fact, and it is stated as one.
+	const gone = join(home, "Gone.app");
 	writeFileSync(
 		join(legacy, "pyvenv.cfg"),
-		"home = /Applications/Gone.app/Contents/Resources/python_aarch64/bin\n",
+		`home = ${join(gone, "Contents", "Resources", "python_aarch64", "bin")}\n`,
 	);
 	const afterReplacement = legacyEnvironmentReport(support);
 	assert.equal(afterReplacement.length, 1);
 	assert.match(afterReplacement[0], /names an interpreter bundle that is not on disk/);
-	assert.match(afterReplacement[0], /\/Applications\/Gone\.app/);
+	assert.ok(afterReplacement[0].includes(gone));
 
 	// And a machine with no pre-split environment says nothing at all.
 	assert.deepEqual(legacyEnvironmentReport(join(home, "elsewhere")), []);

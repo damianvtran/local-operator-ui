@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -10,13 +10,45 @@ import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
 
 const result = await build({ stdin: { contents: 'export * from "./src/main/backend/managed-python";', resolveDir: process.cwd() }, bundle: true, platform: "node", format: "esm", write: false });
 const runtime = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
-const { runtimeManifest, runtimeId, runtimeIdentity, readManagedSelection, inspectManagedSelection, managedSelectionReady, prepareManagedPython, reapSupersededGenerations, managedPythonRoot, isLegacyManagedCommand } = runtime;
+const { runtimeManifest, runtimeId, runtimeIdentity, readManagedSelection, inspectManagedSelection, managedSelectionReady, prepareManagedPython, reapSupersededGenerations, managedPythonRoot, isLegacyManagedCommand, PYTHON_SEED_NAMESPACE } = runtime;
 function fixture(t) {
 	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-test-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
 	return root;
 }
 function options(support, packaged = true) { return { support, resources: "", packaged, arch: "arm64" }; }
+
+/**
+ * The macOS toolchain these tests drive, and why skipping one is not a pass.
+ *
+ * `prepareManagedPython` is a macOS path end to end and says so: the manifest it
+ * writes is `platform: "darwin"`, the preparation lock is `/usr/bin/shlock`, and
+ * `verifyMachO` refuses a seed with no Mach-O in it while running
+ * `/usr/bin/codesign` and `/usr/bin/otool` over every one it does find. The seed
+ * fixture that satisfies it therefore needs a REAL signed Mach-O, which
+ * `signedMachO` makes by thinning `/usr/bin/true` with `lipo` and ad-hoc signing
+ * it. `finalContainerChecks` needs the same shell from the other end: `ditto` to
+ * build an archive, `hdiutil` to mount an image, `lipo` to read an app's
+ * architecture.
+ *
+ * The suite runs on `ubuntu-latest` in CI, where none of those binaries exist, so
+ * these tests were failing with `spawnSync /usr/bin/lipo ENOENT` rather than
+ * reporting anything about the code. They are skipped on such a platform instead,
+ * and the skip NAMES the tool it is missing: a green Linux run must not be
+ * mistakable for coverage of this path. On macOS `skipUnlessDarwin` returns false
+ * and the test runs to the end, unweakened - the parts of this file that assert
+ * the same contracts without the toolchain are the tests that call
+ * `runtimeManifest`/`runtimeIdentity`/`inspectManagedSelection` directly.
+ */
+const MACOS_SEED_TOOLCHAIN =
+	"preparing an environment takes the shlock lock and verifies every Mach-O in the seed with codesign and otool, so the fixture seed is a real thinned, ad-hoc-signed binary (lipo, codesign)";
+const MACOS_CONTAINER_TOOLCHAIN =
+	"the container gate builds archives with ditto, mounts images with hdiutil and reads an app's architecture with lipo";
+function skipUnlessDarwin(t, missing) {
+	if (process.platform === "darwin") return false;
+	t.skip(`macOS only: ${missing}`);
+	return true;
+}
 
 test("runtime identity binds final file bytes, names, modes and internal link targets", (t) => {
 	const root = fixture(t);
@@ -199,12 +231,25 @@ function failures(results) {
 	return results.filter((result) => !result.passed).map((result) => `${result.id}: ${result.output}`);
 }
 
+/*
+ * The filename is the ONLY statement of an artifact's architecture, and
+ * `mac.artifactName` is where it is made. Pure string work, so it runs on every
+ * platform - the half of this that needs the container tools is the test below.
+ */
+test("an artifact's filename is the only statement of its architecture", () => {
+	assert.equal(artifactArch("/tmp/local-operator-ui-0.0.0-arm64.zip"), "arm64");
+	assert.equal(artifactArch("/tmp/local-operator-ui-0.0.0-x64.dmg"), "x64");
+	assert.equal(
+		artifactArch("/tmp/Local Operator.app"),
+		null,
+		"an unpacked app claims no architecture",
+	);
+});
+
 test("a container's filename architecture is cross-checked against the app inside it", (t) => {
+	if (skipUnlessDarwin(t, MACOS_CONTAINER_TOOLCHAIN)) return;
 	const scratch = fixture(t);
 	const app = appBundle(scratch);
-	assert.equal(artifactArch(`/tmp/local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`), MACHINE_ARTIFACT_ARCH);
-	assert.equal(artifactArch(`/tmp/local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.dmg`), MACHINE_ARTIFACT_ARCH);
-	assert.equal(artifactArch("/tmp/Local Operator.app"), null, "an unpacked app claims no architecture");
 	const matched = containerResults(zipApp(app, join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.zip`)));
 	assert.deepEqual(failures(matched), [], "a correctly named archive must pass; the checks below would mean nothing otherwise");
 	// The same bytes under the other architecture's name: the failure is invisible
@@ -216,6 +261,7 @@ test("a container's filename architecture is cross-checked against the app insid
 });
 
 test("the container gate refuses a legacy interpreter alias and a seed for the wrong architecture", (t) => {
+	if (skipUnlessDarwin(t, MACOS_CONTAINER_TOOLCHAIN)) return;
 	const scratch = fixture(t);
 	const legacy = appBundle(join(scratch, "legacy"), { legacyAlias: "python_aarch64" });
 	const refused = containerResults(zipApp(legacy, join(scratch, "local-operator-ui-0.0.0-arm64.zip")));
@@ -228,6 +274,7 @@ test("the container gate refuses a legacy interpreter alias and a seed for the w
 });
 
 test("the container gate names an archive with no application rather than passing", (t) => {
+	if (skipUnlessDarwin(t, "the archive is built with ditto, which this platform does not have")) return;
 	const scratch = fixture(t);
 	const empty = join(scratch, "empty");
 	mkdirSync(empty, { recursive: true });
@@ -241,6 +288,7 @@ test("the container gate names an archive with no application rather than passin
 });
 
 test("the disk image path is exercised by mounting the real image, not by assertion", (t) => {
+	if (skipUnlessDarwin(t, "the image is built and mounted with hdiutil, which this platform does not have")) return;
 	const scratch = fixture(t);
 	const app = appBundle(scratch);
 	const image = join(scratch, `local-operator-ui-0.0.0-${MACHINE_ARTIFACT_ARCH}.dmg`);
@@ -268,6 +316,77 @@ test("the disk image path is exercised by mounting the real image, not by assert
 
 // ---------------------------------------------------------------------------
 // Retry has to be able to repair: review R8, QA Q1, review R12
+
+/**
+ * The published-selection verdict, built by hand so it needs no toolchain.
+ *
+ * `prepareManagedPython` is macOS-only (see `skipUnlessDarwin` above), but the
+ * decision it acts on - is what is published still usable? - is a read of the
+ * pointer, the record beside it, the two generations and the runtime's identity.
+ * Building that state directly is what lets the contract R8 is about - "not
+ * usable" is a VERDICT, not an exception - be checked on every platform, and it
+ * is the state the five tests below break in five different ways.
+ */
+test("a published selection answers ready, missing or unprepared, and never throws", async (t) => {
+	const support = fixture(t);
+	const resources = join(support, "checkout");
+	const arch = "arm64";
+	const opts = { support, resources, packaged: true, arch };
+	const root = managedPythonRoot(opts);
+	const generation = "11111111-1111-4111-8111-111111111111";
+
+	// A generation of the runtime, and the seed it was copied from, carrying the
+	// same bytes - which is what lets the mismatch below name the file rather than
+	// the verdict (QA Q1).
+	const seed = join(resources, PYTHON_SEED_NAMESPACE, arch);
+	const runtime = join(root, "runtimes", `staging-${generation}`);
+	for (const tree of [seed, runtime]) {
+		mkdirSync(join(tree, "bin"), { recursive: true });
+		writeFileSync(join(tree, "bin", "python3.12"), "fixture bytes\n");
+		writeFileSync(join(tree, "lib.py"), "pass\n");
+	}
+	const id = runtimeIdentity(runtime, arch);
+	const placed = join(root, "runtimes", `${id}-${generation}`);
+	renameSync(runtime, placed);
+
+	const venv = join(root, "environments", `${id}-22222222-2222-4222-8222-222222222222`);
+	mkdirSync(join(venv, "bin"), { recursive: true });
+	writeFileSync(join(venv, "bin", "local-operator"), "#!/bin/sh\n");
+	writeFileSync(join(venv, "pyvenv.cfg"), `home = ${join(placed, "bin")}\n`);
+	const selection = { format: 1, runtimeId: id, runtime: placed, venv, backendVersion: "0.0.0-fixture" };
+	const record = `${JSON.stringify(selection)}\n`;
+	// The filename the module writes and reads; not exported, and the point here is
+	// that the record and the pointer hold the SAME bytes.
+	writeFileSync(join(venv, "environment-ready.json"), record);
+	writeFileSync(join(root, "selected-environment.json"), record);
+
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+	assert.deepEqual(readManagedSelection(opts), selection);
+	assert.equal(await managedSelectionReady(opts), true);
+
+	// A byte that was signed, changed under the runtime: named, and a verdict.
+	writeFileSync(join(placed, "lib.py"), "changed\n");
+	const changed = inspectManagedSelection(opts);
+	assert.equal(changed.kind, "missing");
+	assert.match(changed.detail, /lib\.py does not match the seed/);
+
+	// The environment gone is the same answer from a different cause.
+	writeFileSync(join(placed, "lib.py"), "pass\n");
+	rmSync(venv, { recursive: true, force: true });
+	assert.equal(inspectManagedSelection(opts).kind, "missing");
+	assert.equal(await managedSelectionReady(opts), false);
+	assert.equal(readManagedSelection(opts), null);
+
+	// A pointer describing something this app does not own is not usable either,
+	// and not an error: preparation republishes over it (review R8).
+	writeFileSync(
+		join(root, "selected-environment.json"),
+		`${JSON.stringify({ format: 1, runtimeId: id, runtime: "/tmp/not-owned", venv: "/tmp/not-owned", backendVersion: "0" })}\n`,
+	);
+	const unowned = inspectManagedSelection(opts);
+	assert.equal(unowned.kind, "unprepared");
+	assert.match(unowned.detail, /does not describe a managed environment/);
+});
 
 /** A real, ad-hoc-signed Mach-O for this machine's architecture. */
 function signedMachO(destination) {
@@ -345,6 +464,7 @@ async function provisioned(t) {
 }
 
 test("a selected runtime that changed out of band is rebuilt beside the old one", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);
 	writeFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "changed out of band\n");
 	const verdict = inspectManagedSelection(opts);
@@ -361,6 +481,7 @@ test("a selected runtime that changed out of band is rebuilt beside the old one"
 });
 
 test("a selected environment that was removed is rebuilt, and the runtime is reused", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);
 	rmSync(first.venv, { recursive: true, force: true });
 	assert.equal(inspectManagedSelection(opts).kind, "missing");
@@ -371,6 +492,7 @@ test("a selected environment that was removed is rebuilt, and the runtime is reu
 });
 
 test("a selected runtime that was removed is reprinted from the seed", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);
 	rmSync(first.runtime, { recursive: true, force: true });
 	assert.equal(inspectManagedSelection(opts).kind, "missing");
@@ -381,6 +503,7 @@ test("a selected runtime that was removed is reprinted from the seed", async (t)
 });
 
 test("a published selection whose runtime and environment are both gone is recoverable", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	const { opts, install, state, first } = await provisioned(t);
 	rmSync(first.runtime, { recursive: true, force: true });
 	rmSync(first.venv, { recursive: true, force: true });
@@ -393,6 +516,7 @@ test("a published selection whose runtime and environment are both gone is recov
 });
 
 test("a seed that carries bytecode still yields a selection that stays usable", async (t) => {
+	if (skipUnlessDarwin(t, MACOS_SEED_TOOLCHAIN)) return;
 	// QA Q1: the published id counted cache files while every later comparison
 	// ignored them, so one stray `.pyc` in the seed - which the unpackaged path's
 	// `resources/python_aarch64` acquires from any python run over it - made the
