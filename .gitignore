@@ -69,3 +69,11 @@ storybook-static/
 # contradicts the branch's own provenance records, which describe it as
 # untracked (review round 4 addendum, MAJOR).
 .storybook-local/
+
+# A throwaway esbuild bundle a test writes next to itself and unlinks. The
+# pattern is here because a killed run leaves the file behind and one such file
+# was committed at 12MB (`scripts/_interrupt-composer.bundle.*`) - invisible to
+# every test, cited by nothing, and a repeat of a build tree a previous review
+# round already filed. Names starting with `_` are the convention for these.
+scripts/_*.bundle.mjs
+scripts/_*.bundle.cjs

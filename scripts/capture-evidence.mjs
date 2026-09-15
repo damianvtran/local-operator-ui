@@ -731,6 +731,23 @@ export const STORIES = [
 	["chat-message-input--awaiting-reply", 1024, 300],
 	["chat-message-input--awaiting-reply-transport-down", 1024, 300],
 	["chat-message-input--awaiting-answer", 1024, 300],
+	/* The interrupt's own states, on the same 1024 measure as the rows above.
+	   The third is the only one that SPEAKS: a stopped turn with nothing left
+	   under it renders nothing at all, so the control's presence and its absence
+	   are the pair a reviewer reads, and the notice is its own frame. */
+	["chat-message-input--stop-control-while-streaming", 1024, 300],
+	["chat-message-input--stop-control-without-capability", 1024, 300],
+	["chat-message-input--interrupt-left-work-running", 1024, 300],
+	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
+	   notice branches (design round 1's N2), and the version-skew line. The
+	   reservation has no ink of its own by design, so its frames are read against
+	   `stop-control-while-streaming` (the same cluster, occupied) and
+	   `stop-control-without-capability` (a backend that reserves nothing). */
+	["chat-message-input--stop-slot-reserved", 1024, 300],
+	["chat-message-input--stop-slot-reserved-small-view", 1024, 300],
+	["chat-message-input--interrupt-left-children-only", 1024, 300],
+	["chat-message-input--interrupt-left-jobs-only", 1024, 300],
+	["chat-message-input--interrupt-unavailable-old-backend", 1024, 300],
 	/* The COMMON case, which had no standing frame until design review round 1
 	   (D4) asked for one: an answer mixing prose with a fenced code block, a
 	   table and a list. The alignment frames above are plain paragraphs, and
@@ -2339,7 +2356,23 @@ const main = async () => {
 				 * add up to what is on disk.
 				 */
 				frames: partialFrameCount(previous, addedFrames),
-				surfaces: (previous.surfaces ?? 0) + addedSurfaces.length,
+				/*
+				 * The STORY COUNT, recomputed rather than incremented, because
+				 * `surfaces` is a claim about the whole declared set and the
+				 * declared set is the table above.
+				 *
+				 * It used to be `previous.surfaces + addedSurfaces.length`, and
+				 * that drifts the moment a narrowed run ADDS frames to a surface
+				 * that already existed: `--only=chat-message-input` matched four
+				 * committed stories plus three new ones and wrote 355 against the
+				 * table's 351, because the four existing surfaces each gained
+				 * frames they had never had (only the two `localOperator*` themes
+				 * were committed for that surface). `stampFailures` compares this
+				 * field against the table's own row count, so the drift is a
+				 * failing suite rather than a silent one - and the fix is the
+				 * same number the full sweep writes below.
+				 */
+				surfaces: STORIES.length,
 				srcTree: treeHash("src"),
 				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
