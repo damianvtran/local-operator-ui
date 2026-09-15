@@ -26,15 +26,19 @@
  *   that produced it is deleted — so the pair that exists is (fold) against
  *   (every phase named), and `docs/evidence/chat-run-panel/README.md` says so.
  *
- * Two states are interactive rather than pre-opened, and both click the real
- * control and hold the shutter with `data-capture-pending` — the convention the
- * retired set used and `chat-trace--conversation-reasoning-open` still does,
- * because a frame of the wrong state passes every guard the rig has.
+ * Several states are interactive rather than pre-opened, and each one clicks the
+ * real control and holds the shutter with `data-capture-pending` — the convention
+ * the retired set used and `chat-trace--conversation-reasoning-open` still does,
+ * because a frame of the wrong state passes every guard the rig has. Three of
+ * them press a SEQUENCE of controls rather than one (`back-to-roster`,
+ * `back-pop`, `close-from-reader`): which component is mounted after a press is a
+ * fact no pre-opened state can carry, and it is the fact the operator's own
+ * report was about.
  */
 
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import "../../../../styles/index.css";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
@@ -894,6 +898,209 @@ const LatePageGround = () => {
 
 export const InteractiveLatePage: Story = {
 	render: () => <LatePageGround />,
+};
+
+/*
+ * The two exits from a reader, driven by real presses and held to their landing.
+ *
+ * WHY THESE ARE FRAMES AND THE KEYBOARD STATES ARE NOT. Every other rule round 1
+ * settled is invisible to a still, because the two states differ by which
+ * component is mounted and a photograph of a panel that stayed open is a
+ * photograph of a panel that stayed open. These three are the exception, and that
+ * is what the operator's report was: pressing Back at the FIRST level closed the
+ * pane, so "Back" and "Close run details" were the same control with two labels.
+ * A press moves the tree, and the tree is what a frame shows.
+ *
+ * The press sequence is DRIVEN HERE rather than by the rig, because the rig moves
+ * a pointer and cannot click one control and then another: it opens a story and
+ * takes a frame. So the story performs its own walk and holds the shutter with
+ * `data-capture-pending` (the convention above), releasing it when the walk has
+ * LANDED - polled from the DOM, since a fixed sleep is a race a frame can lose
+ * silently.
+ *
+ * The landing predicates are stated so that the PRE-CHANGE tree also settles,
+ * and that is deliberate: `back-to-roster` photographed against the fix and
+ * against `origin/main` is the before/after pair, and a predicate that only
+ * released on the fixed tree would make the rig throw on the old one instead of
+ * showing the reviewer what the operator saw (the pane gone).
+ */
+type PressStep = {
+	/** The state the previous step must have produced before this press lands. */
+	waitFor: string;
+	/** The control to press, found at that point. */
+	press: string;
+};
+
+const PANE_HOOK = "[data-run-panel-pane]";
+const ROW_HOOK = "[data-run-panel-row]";
+const READER_HOOK = 'nav[aria-label="Subagent path"]';
+const BACK_CONTROL = 'button[aria-label="Back"]';
+const CLOSE_CONTROL = 'button[aria-label="Close run details"]';
+const DESCEND_CONTROL = 'button[aria-label="Open 1 child subagent"]';
+const MEMBER_ROW = '[data-run-panel-row="job-audit"] button';
+const MEMBER_CRUMB = `${READER_HOOK} [aria-current="page"]`;
+
+/**
+ * Run a list of presses in order, then release the shutter on the landing.
+ *
+ * Each step waits for the previous one's state, so the walk is a chain of
+ * observed facts rather than a chain of timeouts. The landing is polled twice
+ * over for the same answer: one poll can catch a frame mid-swap, two cannot.
+ */
+const usePressFlow = (steps: PressStep[], landed: () => boolean) => {
+	const config = useRef({ steps, landed });
+	config.current = { steps, landed };
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let index = 0;
+		let agrees = 0;
+		const poll = window.setInterval(() => {
+			const { steps: sequence, landed: isLanded } = config.current;
+			if (index < sequence.length) {
+				const step = sequence[index];
+				if (!document.querySelector(step.waitFor)) return;
+				const target = document.querySelector<HTMLElement>(step.press);
+				if (!target) return;
+				target.click();
+				index += 1;
+				return;
+			}
+			agrees = isLanded() ? agrees + 1 : 0;
+			if (agrees < 2) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+};
+
+/**
+ * The pane with real state and real callbacks, walking to one landing.
+ *
+ * The same composition as `InteractiveGround` (real `ChatHeader`, real pane)
+ * because the frame has to show the defect where the operator met it: the pane
+ * inside the app, not a pane on its own ground. The header is what makes the
+ * `before` frame legible - the transcript is still there, and the trigger is
+ * back to its unpressed state.
+ */
+const PaneFlowGround = ({
+	steps,
+	landed,
+}: {
+	steps: PressStep[];
+	landed: () => boolean;
+}) => {
+	const open = useUiPreferencesStore((state) => state.isRunPanelOpen);
+	const setRunPanelOpen = useUiPreferencesStore(
+		(state) => state.setRunPanelOpen,
+	);
+	const [readerChildId, setReaderChildId] = useState<string | null>(null);
+	const details = useMemo(() => deriveRunDetails(fixtures.rosterMembers()), []);
+	const page = useMemo(() => fixtures.childPage({ includeTool: true }), []);
+	useEffect(() => {
+		useUiPreferencesStore.setState({
+			isRunPanelOpen: true,
+			isCanvasOpen: false,
+		});
+	}, []);
+	useEffect(() => {
+		if (!open) setReaderChildId(null);
+	}, [open]);
+	usePressFlow(steps, landed);
+	return (
+		<div className="flex h-screen overflow-hidden bg-canvas">
+			<div className="flex min-w-0 flex-1 flex-col">
+				<ChatHeader
+					agentName="Core"
+					description="Invoices workspace · on this machine"
+					onOpenOptions={() => undefined}
+					runDetails={details}
+					mcpServers={[]}
+					listOnScreen={open && readerChildId === null}
+					readerChildId={readerChildId}
+				/>
+				<TranscriptGround />
+			</div>
+			{open && (
+				<RunPane
+					details={details}
+					readerChildId={readerChildId}
+					previewPage={page}
+					onReaderChildChange={setReaderChildId}
+					onClose={() => setRunPanelOpen(false)}
+				/>
+			)}
+		</div>
+	);
+};
+
+/**
+ * WHERE THE DEFECT LIVES: the first-level exit (`§ 5.5`).
+ *
+ * A member's reader, then Back. The fixed tree lands on the roster with the pane
+ * still open; `origin/main`'s tree lands on the chat with no pane at all, and
+ * `docs/evidence/run-panel-back-before/` is that second reading, taken from the
+ * same story. The landing predicate releases on either - see the note above.
+ */
+export const BackToRoster: Story = {
+	render: () => (
+		<PaneFlowGround
+			steps={[
+				{ waitFor: ROW_HOOK, press: MEMBER_ROW },
+				{ waitFor: READER_HOOK, press: BACK_CONTROL },
+			]}
+			landed={() =>
+				Boolean(document.querySelector(ROW_HOOK)) ||
+				!document.querySelector(PANE_HOOK)
+			}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The rule that is UNCHANGED: one level up while there is a level to pop.
+ *
+ * From the member's page, descend to its child (the `1 child` control), then
+ * Back: the landing is the MEMBER's page, not the roster and not the chat. The
+ * predicate names the member's own crumb so a frame can only be taken once that
+ * page is on screen.
+ */
+export const BackPop: Story = {
+	render: () => (
+		<PaneFlowGround
+			steps={[
+				{ waitFor: ROW_HOOK, press: MEMBER_ROW },
+				{ waitFor: DESCEND_CONTROL, press: DESCEND_CONTROL },
+				{ waitFor: BACK_CONTROL, press: BACK_CONTROL },
+			]}
+			landed={() => {
+				const crumb = document.querySelector(MEMBER_CRUMB)?.textContent ?? "";
+				return crumb.startsWith("Audit");
+			}}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The control that DOES close the pane, in the same bar and the same state the
+ * other two are pressed from (`PanelRightClose`).
+ */
+export const CloseFromReader: Story = {
+	render: () => (
+		<PaneFlowGround
+			steps={[
+				{ waitFor: ROW_HOOK, press: MEMBER_ROW },
+				{ waitFor: CLOSE_CONTROL, press: CLOSE_CONTROL },
+			]}
+			landed={() => !document.querySelector(PANE_HOOK)}
+		/>
+	),
+	decorators: [withCanvasClosed],
 };
 
 export const TodosOnly: Story = {

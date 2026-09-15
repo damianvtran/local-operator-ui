@@ -491,6 +491,19 @@ export const STORIES = [
 	/* A lineage of depth 3 with the pane at its 320px floor: the width the
 	   breadcrumb's cap has to survive (round 2's open residual risk). */
 	["chat-run-panel--reader-deep-floor", 800, 700],
+	/* The two EXITS from a reader, which are the one kind of state this set can
+	   photograph and a keyboard walk could not: the press moves the TREE.
+	   `back-to-roster` is where the defect was and is the after half of the pair
+	   whose before half is `docs/evidence/run-panel-back-before/` (a supplementary
+	   set, declared in the manifest, captured from `origin/main`'s own
+	   `run-panel.tsx` with this story). `back-pop` is the rule that did NOT change -
+	   one level up while there is a level to pop - and `close-from-reader` is the
+	   control that still closes the pane, from the same state, in the same bar.
+	   All three drive themselves; see the stories' own note for why the rig cannot
+	   press one control after another. */
+	["chat-run-panel--back-to-roster", 1280, 900],
+	["chat-run-panel--back-pop", 1280, 900],
+	["chat-run-panel--close-from-reader", 1280, 900],
 	/* The MCP section, whose states a live session cannot produce on demand: an
 	   expired grant, a dead process, a word from a runtime this build has not been
 	   taught, and the cold payload of a session with no runtime. */
