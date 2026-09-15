@@ -27,6 +27,12 @@ const bundle = await build({
 			 * whose staged line did not run (review F1 / QA Q4).
 			 */
 			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
+			/*
+			 * The tokenizer's own span, so the case below can assert that the planner and
+			 * the span agree about where a token's WORD ends (review F1 is exactly the
+			 * two of them disagreeing about the separator).
+			 */
+			'export { slashTokenSpan } from "./src/renderer/src/features/chat/components/slash-token";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -35,10 +41,15 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { armedOnlyVocabulary, completionFor, planSlashArming, planSlashSubmission } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	armedOnlyVocabulary,
+	completionFor,
+	planSlashArming,
+	planSlashSubmission,
+	slashTokenSpan,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /** The registry-derived vocabularies the composer hands the planner. */
 const COMMAND_NAMES = new Set([
@@ -242,6 +253,67 @@ test("an armed-only command is never hoisted by Enter (the operator's report)", 
 	});
 });
 
+/*
+ * THE SEPARATOR IS THE WHITESPACE CLASS, not a literal space (review F1).
+ *
+ * `wordOf` — the "is this token a command's word" question — split on a literal
+ * `" "` while the tokenizer ends its word on `\s` and the dispatcher posts the
+ * `\s` split, so a token pasted with a TAB or an NBSP between the name and its
+ * argument was read as ONE long word. The armed row's footer then promised prose,
+ * Enter fell through, and the planner answered `unrecognised` with a command
+ * whose `name` IS the catalogue word — which the dispatcher resolves, posting
+ * `/goal <tail>` and opening the goal read over a draft nothing had sent. Every
+ * one of the 126 of 261 fall-through states the review swept was a non-U+0020
+ * separator, i.e. a paste shape: a TSV tab, or an NBSP lifted off a web page.
+ */
+test("the word/argument separator is the whitespace class, not a literal space", () => {
+	for (const separator of ["\t", "\u00a0", "\u2009", "\v", "\f"]) {
+		const at = JSON.stringify(separator);
+		// The armed word is recognised, so Enter hands the draft back as PROSE —
+		// the honest answer, and the one its footer gave for the same state.
+		assert.deepEqual(
+			plan(`prose${separator}/goal${separator}and more`, 11),
+			{ kind: "send" },
+			`armed word, separator ${at}`,
+		);
+		// A free-text command reassembles with its argument split the same way the
+		// dispatcher will split it, rather than taking `list-open` on a name the
+		// user had already typed.
+		const team = plan(`ship it${separator}/team${separator}ops`, 11);
+		assert.equal(team.kind, "reassemble", `prompt row, separator ${at}`);
+		assert.equal(team.text, `/team${separator}ops ship it`);
+	}
+	// The plain space is unchanged, which is exactly why nothing noticed the rest.
+	assert.deepEqual(plan("prose /goal and more", 11), { kind: "send" });
+});
+
+/* The tokenizer's separator class, as the planner and the dispatcher read it;
+   top-level because the lint rule that keeps regexes out of hot paths applies
+   here too (the repo's `useTopLevelRegex`). */
+const SEPARATOR = /\s/;
+
+/**
+ * The same question asked of the TOKENIZER, so the two answers cannot drift
+ * again: the word `slashTokenSpan` claims ends at the first whitespace character.
+ */
+test("the tokenizer and the planner split a token at the same character", () => {
+	for (const separator of [" ", "\t", "\u00a0"]) {
+		const draft = `please run${separator}/team${separator}ops`;
+		const span = slashTokenSpan(draft, 13, COMMAND_NAMES);
+		assert.ok(
+			span,
+			`a token at the caret with separator ${JSON.stringify(separator)}`,
+		);
+		// The invoked name is the word up to the separator, in both modules: the
+		// planner answers `reassemble` (above) rather than the `unrecognised`
+		// branch F1 measured.
+		assert.equal(
+			draft.slice(span.start + 1).split(SEPARATOR)[0],
+			"team",
+			`separator ${JSON.stringify(separator)}`,
+		);
+	}
+});
 test("the non-goal prompt commands keep the reassembly Enter has always had", () => {
 	/*
 	 * The change is scoped to the armed vocabulary, and the vocabulary is the
@@ -290,10 +362,9 @@ test("the pick arms the command: hoisted, staged, and nothing else", () => {
 test("a pick with nothing to arm is the completion it has always been", () => {
 	// A bare `/goal ` pick: no text to arm, so the pick writes its completion and
 	// the next Enter reaches the bare form's own READ (`PRESENT_DIRECTLY`).
-	assert.deepEqual(
-		planSlashArming({ draft: "/goal ", caret: 6, ...ARMS }),
-		{ kind: "none" },
-	);
+	assert.deepEqual(planSlashArming({ draft: "/goal ", caret: 6, ...ARMS }), {
+		kind: "none",
+	});
 	// A pick of a row the vocabulary does not call armed-only writes nothing
 	// extra, and a pick with no token at the caret arms nothing at all.
 	assert.deepEqual(
@@ -432,7 +503,8 @@ test("an armed line runs on the next Enter, whatever shape the draft had", () =>
 	});
 
 	// Three lines, caret at the end: the F1/Q4 draft verbatim.
-	const threeDraft = "Please fix the flaky test and\nthen run the release.\n/goal";
+	const threeDraft =
+		"Please fix the flaky test and\nthen run the release.\n/goal";
 	const three = picked(threeDraft, threeDraft.length);
 	assert.deepEqual(
 		three.armed.text,
@@ -461,7 +533,10 @@ test("an armed line runs on the next Enter, whatever shape the draft had", () =>
 	);
 	assert.deepEqual(mid.next, {
 		kind: "whole",
-		command: { name: "goal", args: "and report Please fix the flaky test and run" },
+		command: {
+			name: "goal",
+			args: "and report Please fix the flaky test and run",
+		},
 	});
 
 	// Every staged line is a single line, and the caret is at its end: the two
@@ -503,8 +578,12 @@ test("a line-initial `/goal <text>` command line above prose is prose (stated ch
 	 * rather than a silent one. What is NOT changed: the same line with nothing
 	 * below it is still a whole-draft command, at every caret past the slash.
 	 */
-	assert.deepEqual(plan("/goal ship it\nand then tell me", 30), { kind: "send" });
-	assert.deepEqual(plan("/goal ship it\nand then tell me", 6), { kind: "send" });
+	assert.deepEqual(plan("/goal ship it\nand then tell me", 30), {
+		kind: "send",
+	});
+	assert.deepEqual(plan("/goal ship it\nand then tell me", 6), {
+		kind: "send",
+	});
 	assert.equal(plan("/goal ship it", 13).kind, "whole");
 });
 

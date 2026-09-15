@@ -211,6 +211,11 @@ type ChatContentProps = {
 		invocation: SlashCommandInvocation,
 	) => Promise<SlashDispatchOutcome>;
 	/**
+	 * Whether this pane can address a session — the dispatcher's own question,
+	 * forwarded verbatim to the composer. See `MessageInputProps.paneHasSession`.
+	 */
+	paneHasSession?: boolean;
+	/**
 	 * The dispatcher's own note surface, borrowed by the composer so a staged
 	 * reassembly and an unanswerable name list can say what happened. Forwarded
 	 * verbatim; see `MessageInputProps.onSlashNote`.
@@ -426,6 +431,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		sessionStatus,
 		onSlashCommand,
 		onSlashNote,
+		paneHasSession,
 		canonical,
 		runDetails,
 		mcpServers = [],
@@ -953,6 +959,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}
 								onSlashNote={onSlashNote}
+								/*
+								 * The pane's own answer, forwarded untouched: whether a command can address
+								 * a session here is the dispatcher's question and only the page that built
+								 * it can answer — the composer's `sessionStatus` and `conversationId` are
+								 * both present on a draft pane (UX U1).
+								 */
+								paneHasSession={paneHasSession}
 								/*
 								 * The SAME derived model the header trigger and the pane read, handed
 								 * to the composer so its status row states the plan's size without a
