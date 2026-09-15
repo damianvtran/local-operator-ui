@@ -161,6 +161,18 @@ export class DesktopStreamRelay {
 		if (args.epoch) query.set("epoch", args.epoch);
 		if (args.afterSeq !== undefined)
 			query.set("after_seq", String(args.afterSeq));
+		/*
+		 * The additive `frontend_replace=1` negotiation (remediation contract § C).
+		 *
+		 * Unconditional rather than a caller option, because the flag says something
+		 * about THIS BUILD rather than about the subscription: main relays frames to
+		 * the renderer in this same build, and this build's reducer consumes
+		 * `frontend.replace`. An older backend ignores an unknown query parameter, and
+		 * the backend's own feature gate keeps the move controls off there, so
+		 * sending it against an older server cannot promise anything that server will
+		 * not do.
+		 */
+		query.set("frontend_replace", "1");
 		const suffix = query.size > 0 ? `?${query}` : "";
 		const url = new URL(
 			`/v1/desktop/sessions/${args.sessionId}/events${suffix}`,

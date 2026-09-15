@@ -1,0 +1,52 @@
+/*
+ * Stylesheet for the draft-splash evidence harness.
+ *
+ * It exists only to tell Tailwind where the classes are. Tailwind v4 detects
+ * source files relative to the VITE ROOT, and this harness's root is
+ * `scripts/` — so the app's own utilities are never generated and the frame
+ * comes out as correct markup with no design system, which is evidence of
+ * nothing. `submit-latency-evidence.css` and `usage-real-evidence.css` carry
+ * the same note for the same reason.
+ *
+ * `@source` points the scanner back at the renderer tree. The app stylesheet is
+ * imported rather than restated so the harness and the product resolve the same
+ * roles, radii and type ramp — which is load-bearing here, because the band's
+ * vertical behaviour (grow and centre when empty, natural height when not) is
+ * class-driven and the frames are read for layout rather than for presence.
+ */
+
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
+
+/*
+ * The app gives the chat surface the full window; `ChatLayout` fills its
+ * parent, so without an explicit viewport box the page collapses to content
+ * height and the band has no column to sit in.
+ *
+ * `overflow: hidden` on the body, deliberately: the readback below must not be
+ * able to introduce a scrollbar, which would both move the measured column
+ * width and put a control in the frame that the app does not have.
+ */
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+}
+
+/*
+ * The readback lives off-canvas rather than under a `display: none`, so it stays
+ * a rendered element that a driver can read (`innerText` on a hidden element is
+ * not the text this probe wants to report) while occupying no space in the
+ * layout being photographed.
+ */
+#probe {
+	position: fixed;
+	top: 0;
+	left: -20000px;
+	width: 600px;
+	margin: 0;
+	font: 11px/1.4 ui-monospace, monospace;
+	white-space: pre-wrap;
+}

@@ -1,11 +1,13 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
+import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
 	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
+import type { DevDriverBridge } from "./dev-driver";
 
 // Matching same type in `src/main/index.ts`
 type ReadFileResponse =
@@ -15,6 +17,14 @@ type ReadFileResponse =
 declare global {
 	interface Window {
 		electron: ElectronAPI;
+		/**
+		 * The renderer dev driver, present ONLY in an armed launch.
+		 *
+		 * Optional on purpose: it is absent in every normal run, and typing it as
+		 * always-present would invite renderer code to call it without asking.
+		 * `docs/agent-driver.md` says what arming requires.
+		 */
+		__loDevDriver?: DevDriverBridge;
 		api: {
 			desktop: DesktopAPI;
 			/**
@@ -40,15 +50,38 @@ declare global {
 				revokeHandOver: (tabId: number) => Promise<unknown>;
 				respondToConsent: (
 					entryId: string,
-					decision: "once" | "site" | "domain" | "deny",
+					decision: "once" | "session" | "site" | "domain" | "deny",
 				) => Promise<unknown>;
+				revokeApproval: (origin: string) => Promise<unknown>;
+				revokeAllApprovals: () => Promise<unknown>;
+				forgetSite: (origin: string) => Promise<unknown>;
 				clearData: (
 					what: "cookies" | "cache" | "everything",
 				) => Promise<unknown>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
+				onConsentAttention: (
+					callback: (payload: { entryId: string }) => void,
+				) => () => void;
 				onPopupBlocked: (
 					callback: (payload: { tabId: number; url: string }) => void,
+				) => () => void;
+			};
+			/**
+			 * The server-status signal, from the MAIN process.
+			 *
+			 * Not a health probe made by the renderer: main sends no Origin and holds
+			 * the bearer, so this answer cannot be turned into "server down" by a CORS
+			 * or allowlist decision (see `shared/backend-status.ts`).
+			 *
+			 * `reconnect` asks main to re-discover NOW (the connectivity banner's
+			 * Retry) and answers with the snapshot it ended on.
+			 */
+			backend: {
+				getStatus: () => Promise<DaemonStatusSnapshot>;
+				reconnect: () => Promise<DaemonStatusSnapshot>;
+				onStatusChange: (
+					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;
 			};
 			openFile: (filePath: string) => Promise<void>;

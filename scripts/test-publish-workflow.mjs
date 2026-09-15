@@ -92,6 +92,28 @@ function shell(script, env, cwd) {
 	);
 }
 
+// The trigger set itself is asserted, not inferred from the matrix below. The
+// matrix walks the events it is TOLD about, so a trigger silently disappearing
+// from `on:` (or being added back) would shrink this list and every case in it
+// would still pass - a release path nothing covers, reported as green.
+test("the only way in is a published Release, or a repair dispatch", () => {
+	// Two, and only two. `release: published` is the release path, and it works
+	// because a PERSON creates the Release: GitHub's anti-recursion rule means a
+	// Release published by `GITHUB_TOKEN` starts no run at all, which is why the
+	// tag and the Release are cut by hand (`gh release create`, see
+	// `.github/RELEASE_TEMPLATE.md`) rather than by a workflow. `workflow_dispatch`
+	// is the repair path, which attaches assets and never promotes.
+	assert.deepEqual(Object.keys(workflow.on).sort(), [
+		"release",
+		"workflow_dispatch",
+	]);
+});
+
+// Every trigger above is simulated here as well: a trigger whose jobs the graph
+// tests below do not cover is a trigger whose job wiring nothing checks. There is
+// no `repository_dispatch` case because there is no longer such a trigger - the
+// automated release that produced one is deleted, and a person's Release reaches
+// this workflow through the `release` event directly.
 for (const [event, prerelease] of [
 	["workflow_dispatch", false],
 	["release", false],
@@ -175,6 +197,38 @@ test("the checkout guard walks imports transitively, not just the direct ones", 
 		),
 	);
 });
+
+test("every scripts checkout in this workflow carries the whole import closure", () => {
+	// One rule for every checkout in the file, rather than a closure test per job.
+	// The two window jobs are asserted one by one below; this covers the validate
+	// job and the attach job as well, and it is the general form of a defect that is
+	// not hypothetical: when all the release scripts moved their entry-point
+	// comparison into `scripts/entry-point.mjs`, EVERY handwritten list that names
+	// one of them became incomplete at once, in a file none of those scripts lives
+	// in, and would have failed at IMPORT time on a runner rather than here.
+	let checkouts = 0;
+	for (const job of Object.keys(jobs)) {
+		for (const s of steps(job)) {
+			const listed = s.with?.["sparse-checkout"];
+			if (typeof listed !== "string") continue;
+			const scripts = [
+				...listed.matchAll(/^\s*(scripts\/[\w.-]+\.mjs)\s*$/gm),
+			].map((match) => match[1]);
+			if (scripts.length === 0) continue;
+			checkouts += 1;
+			for (const module of scripts.flatMap((file) => localImports(file)))
+				assert.match(
+					listed,
+					new RegExp(`^\\s*${module.replace(/\./g, "\\.")}\\s*$`, "m"),
+					`${module} missing from ${job}'s checkout`,
+				);
+		}
+	}
+	// The count is the point of the assertion: a fifth checkout is a new list this
+	// test has just started covering, and a missing one would mean this test stopped
+	// looking at a job without saying so.
+	assert.ok(checkouts >= 4, `only ${checkouts} scripts checkouts found in publish.yml`);
+});
 for (const [job, mode] of windowJobs) {
 	test(`${job} runs ${mode} with both pins and its imports checked out`, () => {
 		const run = steps(job).find((step) => step.run);
@@ -197,12 +251,19 @@ for (const [job, mode] of windowJobs) {
 		assert.ok(!("permissions" in jobs[job]));
 	});
 }
+// A refused writeup (the window job failing) has to stop everything that can
+// ship something, and `npm-publish` is the one that does not look like shipping:
+// it is a sibling of the window job rather than a descendant of it, and Actions
+// only gates a job on its own `needs`, never on a sibling's failure. With the
+// edge absent, a Release whose notes were refused published to npm while every
+// installer was skipped. This case is the assertion that keeps the edge there.
 for (const [label, forced] of [
 	["cannot be held", { "open-release-window": "failure" }],
 ]) {
-	test(`a release that ${label} stops every build instead of shipping assets`, () => {
+	test(`a release that ${label} stops every build and the npm publish`, () => {
 		const result = graph("release", false, forced);
 		for (const job of [
+			"npm-publish",
 			"build-macos",
 			"build-windows",
 			"build-linux",
@@ -214,7 +275,12 @@ for (const [label, forced] of [
 }
 test("the window opens before every build and closes only after attach", () => {
 	assert.deepEqual(needsOf("open-release-window"), ["validate-release"]);
-	for (const job of ["build-macos", "build-windows", "build-linux"]) {
+	for (const job of [
+		"npm-publish",
+		"build-macos",
+		"build-windows",
+		"build-linux",
+	]) {
 		assert.ok(needsOf(job).includes("open-release-window"), job);
 		assert.match(
 			jobs[job].if,
@@ -246,6 +312,11 @@ test("window scoping is the event variable, never a job that a repair skips", ()
 			graph(event, event === "release")["finalize-release"],
 			"success",
 		);
+	// The window is a dependency of `npm-publish` too, so the dispatch path is the
+	// case worth pinning: a repair must still REACH the npm job (the window job
+	// returns success there, having only refused to mutate), and the registry write
+	// stays skipped by that job's own event guard rather than by this edge.
+	assert.equal(graph("workflow_dispatch", false)["npm-publish"], "success");
 });
 test("a failed promotion is terminal and cannot cascade", () => {
 	// The promotion is the last job and nothing needs it, so a failed PATCH (the
@@ -321,7 +392,12 @@ for (const event of ["release", "workflow_dispatch"]) {
 					github: { event_name: event },
 					steps: { check_version: { outputs: { published } } },
 				}),
-				event === "release" && published === "false",
+				// The npm channel ships on every publication and on no repair. It
+				// used to be keyed on the `release` event, which was the same set
+				// of runs only while that event was the only way in: under the
+				// automated publication it would have shipped installers while
+				// silently skipping npm.
+				event !== "workflow_dispatch" && published === "false",
 			);
 		});
 	}

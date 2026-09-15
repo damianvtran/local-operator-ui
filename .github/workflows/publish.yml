@@ -1,8 +1,19 @@
 name: Build and Publish
 
 on:
+  # WHO CREATES THE RELEASE IS WHAT DECIDES WHETHER THIS RUNS. A Release published
+  # by a person (the release owner's `gh release create`, see
+  # `.github/RELEASE_TEMPLATE.md`) fires this event directly. One published by
+  # `GITHUB_TOKEN` would not: an event created by that token starts no workflow run
+  # at all — GitHub's anti-recursion rule, which covers this `release` event and the
+  # tag's `push` alike. That rule, and not the event's name, is what the release
+  # procedure is built around, so there is no dispatch to carry the tag here: the
+  # tag, its commit and the release ID all arrive in this event's own payload.
   release:
     types: [published]
+  # The repair path: re-attach the assets of a Release whose build failed, or that
+  # was published before its assets could be built. It names the tag and the commit
+  # that tag must resolve to, and it deliberately never mutates release metadata.
   workflow_dispatch:
     inputs:
       release_tag:
@@ -40,19 +51,44 @@ jobs:
       - name: Checkout workflow scripts
         uses: actions/checkout@v4
         with:
-          # Recovery payloads predate these helpers. Use the workflow's reviewed
-          # commit for tooling, never the old app tag or a moving branch name.
+          # `github.workflow_sha` is the commit the running copy of this file was
+          # loaded from — the tagged commit on the release path, the dispatch ref's
+          # head on a repair — so it is a commit and never a moving branch name: a
+          # `ref: main` checkout here would run today's tooling against an old tag.
+          # The app tree is a separate checkout, pinned to the SHA validated below.
           ref: ${{ github.workflow_sha }}
-          sparse-checkout: scripts/validate-release.mjs
+          # Every checkout in this file that lists one of these scripts lists
+          # `scripts/entry-point.mjs` beside it, because each script resolves its own
+          # entry point through that module now. A handwritten list that omits a
+          # transitive import fails the job at runtime, after the release is already
+          # published, which is why `test-publish-workflow.mjs` derives the closure
+          # from the scripts and asserts every list carries it.
+          sparse-checkout: |
+            scripts/entry-point.mjs
+            scripts/validate-release.mjs
           sparse-checkout-cone-mode: false
 
       - name: Validate release target
         id: validate
         env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
-          EXPECTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_source_sha || '' }}
+          # One resolution for two triggers: the `release` event carries the tag in
+          # its payload, and a manual repair names it as an input. The commit and
+          # the release ID are pinned the same way, so a Release replaced or
+          # recreated between the event and this validation is refused rather than
+          # published. A repair names no release id at all, and `validate-release`
+          # requires the tag and the commit on that path.
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+          EXPECTED_SOURCE_SHA: ${{ (github.event_name == 'workflow_dispatch' && inputs.expected_source_sha) || '' }}
           IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
-          EXPECTED_RELEASE_ID: ${{ github.event_name == 'release' && github.event.release.id || '' }}
+          # The ID pin is this event's own numeric REST id, and nothing else supplies
+          # one now that no dispatch carries a payload. `validate-release.mjs` still
+          # accepts either spelling of THIS release, because a hand-run repair can
+          # quote `gh release view --json id` -- which is the node id, not the numeric
+          # one its name suggests; that acceptance is what a past release lost a run
+          # to. The convention is unchanged: both spellings are accepted at that
+          # input, only the numeric one is passed on. The note at the top of that
+          # script says which spelling is which and why.
+          EXPECTED_RELEASE_ID: ${{ github.event.release.id || '' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/validate-release.mjs
 
@@ -93,6 +129,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: workflow
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/release-state.mjs
             scripts/upload-release.mjs
             scripts/validate-release.mjs
@@ -133,11 +170,19 @@ jobs:
           done
           echo "All macOS signing secrets present"
 
+  # `open-release-window` is a dependency, not a concurrent sibling, and the
+  # edge is what makes a refused writeup stop the registry write as well as the
+  # builds. A job that only `needs: validate-release` runs while the window job
+  # is failing - Actions does not cancel a sibling when another job fails - so
+  # with this edge absent, a Release whose notes were refused still published to
+  # npm and skipped every installer, which is the one outcome the refusal exists
+  # to prevent. Ordering the window job first also means the writeup is judged
+  # before the registry is touched.
   npm-publish:
     name: Build and Publish to NPM
     runs-on: ubuntu-latest
-    needs: validate-release
-    if: ${{ needs.validate-release.result == 'success' }}
+    needs: [validate-release, open-release-window]
+    if: ${{ needs.validate-release.result == 'success' && needs.open-release-window.result == 'success' }}
     permissions:
       id-token: write
       contents: read
@@ -166,14 +211,22 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
+      # The npm channel is part of a publication, and only a manual repair is not
+      # one. These four steps are keyed on "this is not a repair" rather than on
+      # `github.event_name == 'release'` because that is the predicate this block
+      # actually means — a repair re-attaches assets for an older tag whose npm
+      # version is already published, so it is the only run that must skip npm — and
+      # because the two spellings agreed only while the `release` event was the only
+      # way in. It is the same thing `IS_MANUAL_DISPATCH` means to
+      # `release-state.mjs`.
       - name: Ensure npm supports trusted publishing
-        if: github.event_name == 'release'
+        if: github.event_name != 'workflow_dispatch'
         run: |
           npm install -g npm@^11.5.1
           npm --version
 
       - name: Install dependencies
-        if: github.event_name == 'release'
+        if: github.event_name != 'workflow_dispatch'
         run: pnpm install --frozen-lockfile
 
       - name: Check if version already published
@@ -209,7 +262,7 @@ jobs:
       # after this step would rebuild and publish an artifact nothing checked.
       - name: Pack and assert the tarball ships no V8 bytecode
         id: pack
-        if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
+        if: github.event_name != 'workflow_dispatch' && steps.check_version.outputs.published == 'false'
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -227,7 +280,7 @@ jobs:
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm
-        if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
+        if: github.event_name != 'workflow_dispatch' && steps.check_version.outputs.published == 'false'
         run: npm publish "${TARBALL}" --provenance
         env:
           TARBALL: ${{ steps.pack.outputs.tarball }}
@@ -323,8 +376,14 @@ jobs:
       # at: `check-runtime-deps.mjs` guards what may be declared, and this guards
       # that the declared closure actually reached app.asar. Nothing here needs a
       # display or a signature - it reads the archive.
+      #
+      # Run through `require-report.sh` rather than bare `node`, because this step
+      # reads an exit status and nothing else: reached through a path spelling the
+      # script could not resolve it exited 0 having printed nothing, and that was a
+      # PASS. The helper refuses an empty success instead (see
+      # `scripts/require-report.sh` for why that shape has to be red).
       - name: Assert the packaged app carries its whole runtime closure
-        run: node scripts/check-packaged-closure.mjs --dist dist
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
       # The app inside the image is signed and notarized by electron-builder
       # and afterSign, but the image itself was not: `dmg.sign` defaults to
@@ -336,7 +395,14 @@ jobs:
       # computed as the artifact is created, so stapling afterwards makes it
       # stale, and the update metadata has to describe the file we ship.
       - name: Notarize and staple the disk images
-        run: pnpm notarize-dmg
+        # Wrapped for the same reason as the closure check above: a silent exit 0
+        # would read as "nothing to notarize" on the one step whose product is the
+        # staple. `pnpm --silent` because pnpm's own banner (`> local-operator-ui@...
+        # notarize-dmg`) is output too, and it would satisfy the emptiness check on
+        # behalf of a script that printed nothing — measured against an empty module
+        # in the script's place: a bare `pnpm notarize-dmg` passed, `pnpm --silent`
+        # and a direct `node` invocation both refused it.
+        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -351,7 +417,12 @@ jobs:
       # bundle and every image the build produced is asserted, so both
       # architectures are covered rather than the first of each.
       - name: Verify macOS artifacts
-        run: pnpm verify-macos-artifacts
+        # Wrapped for the same reason as the closure check above: this is the gate
+        # that decides whether a release is promotable, and its consumer is the exit
+        # status. `pnpm --silent` for the reason given on the notarization step — the
+        # banner would otherwise stand in for the report a gate that never ran
+        # cannot produce.
+        run: bash scripts/require-report.sh "macOS artifact verification" pnpm --silent verify-macos-artifacts
 
       # `*.blockmap` is what makes an update a delta rather than a 350 MB
       # download: electron-updater fetches `<artifact>.blockmap` for the version
@@ -428,7 +499,11 @@ jobs:
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
 
       - name: Assert the packaged app carries its whole runtime closure
-        run: node scripts/check-packaged-closure.mjs --dist dist
+        # `shell: bash` because this job's default shell is pwsh and
+        # `require-report.sh` is a bash helper (Git Bash is on PATH on that image);
+        # wrapped on the same argument as the macOS step of this name.
+        shell: bash
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -478,7 +553,8 @@ jobs:
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
 
       - name: Assert the packaged app carries its whole runtime closure
-        run: node scripts/check-packaged-closure.mjs --dist dist
+        # Wrapped on the same argument as the macOS step of this name.
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
       # The `*.blockmap` glob is kept here for symmetry and forward
       # compatibility, and currently matches nothing: none of the Linux targets
@@ -511,6 +587,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: workflow
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/validate-release.mjs
             scripts/upload-release.mjs
           sparse-checkout-cone-mode: false
@@ -533,6 +610,49 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node workflow/scripts/upload-release.mjs
 
+  # The signed-update verification, started once this release's assets are
+  # attached. It is a separate workflow on purpose: it is an audit of the built
+  # candidate rather than part of publishing it — it builds a signed candidate from
+  # the released commit and drives the unmodified incumbent's updater against it on
+  # a disposable macOS VM — and its verdict (PASS / FAIL / BLOCKED) belongs on its
+  # own run page rather than in this pipeline's colour.
+  #
+  # Why it is dispatched rather than triggered by `workflow_run` on this workflow:
+  # the exception that lets a `GITHUB_TOKEN` event start a run at all
+  # (`repository_dispatch`) says nothing about a run started that way producing a
+  # `workflow_run` event, and this chain must not depend on an undocumented one. A
+  # verification that silently never fires is worse than no verification at all,
+  # because it reads as success; an explicit dispatch fails this run loudly if it
+  # cannot be made.
+  #
+  # Declared before `finalize-release` deliberately: nothing may depend on the
+  # promotion, so a failed promotion stays terminal and no later job's success can
+  # paper over it.
+  dispatch-signed-verification:
+    name: Dispatch the signed-update verification
+    runs-on: ubuntu-latest
+    needs: [validate-release, attach-to-release]
+    if: ${{ needs.validate-release.result == 'success' && needs.attach-to-release.result == 'success' }}
+
+    steps:
+      # No `if: github.event_name == 'release'` here: a manual repair that ends with
+      # the assets attached is a publication too, and the verification derives its
+      # own inputs from the release it is told about, so it is equally meaningful
+      # for a repaired older release.
+      - name: Dispatch the verification for this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          # `repository_dispatch` is the documented exception to the rule that
+          # `GITHUB_TOKEN`-created events start no run, which is why this dispatch
+          # reaches the verification at all. The payload names the release; the
+          # verification resolves the candidate commit and the incumbent tag itself.
+          gh api -X POST "repos/$GITHUB_REPOSITORY/dispatches" \
+            -f event_type=verify-signed-update \
+            -f "client_payload[release_tag]=$RELEASE_TAG"
+
   # Closes the window opened above, and is the only step that may put a release
   # back into /releases/latest. It runs after the assets are attached and checks
   # for them itself, so `latest` cannot come to mean "published but empty"
@@ -553,6 +673,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: workflow
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/release-state.mjs
             scripts/upload-release.mjs
             scripts/validate-release.mjs

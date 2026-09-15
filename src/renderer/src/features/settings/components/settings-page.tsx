@@ -360,8 +360,14 @@ export const SettingsPage: FC = () => {
 		const params = new URLSearchParams(location.search);
 		return params.get("filter") ?? "";
 	}, [location.search]);
-	// `/mcp <name>` deep-links to one configured server. The picker has always
+	// `/mcp <argument>` deep-links to one configured server. The picker has always
 	// emitted this; nothing read it until now.
+	//
+	// The ARGUMENT is passed through verbatim — `/mcp reauth hubspot` arrives as
+	// `"reauth hubspot"` — because resolving it needs the configured server list,
+	// which the section that reads it already has. Resolving here would mean a
+	// second reader of the same list, and the renderer holds no copy of the
+	// backend's subcommand vocabulary by design.
 	const mcpTarget = useMemo(() => {
 		const params = new URLSearchParams(location.search);
 		return params.get("mcp") ?? undefined;

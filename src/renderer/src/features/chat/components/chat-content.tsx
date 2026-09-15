@@ -44,6 +44,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -52,6 +53,9 @@ import {
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -75,7 +79,7 @@ const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Fetch the MNIST dataset and train a good classifier",
 	"Look up interest rate trends and make a projection for the next 5 years",
 	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
-	"Is Apple buy/hold/sell?  Do a fundamentals analysis",
+	"Do a buy/hold/sell and fundamentals analysis of Apple",
 	"Do a technical analysis on NVDA over the last year",
 	"What are the trending stocks on WallStreetBets?",
 	"What stocks are trending right now?",
@@ -150,7 +154,25 @@ type ChatContentProps = {
 	 */
 	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
-	onChangeCwd?: (cwd: string) => void;
+	/** How the chip's commit is applied; see `MessageInputProps.cwdWritePath`. */
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * A working-directory move is in flight for this session; see
+	 * `MessageInputProps.cwdPending`.
+	 *
+	 * Threaded through here rather than read from a store because this component
+	 * is a pure pass-through for the composer's props: the value belongs to the
+	 * session pane that owns the move, and a second reader of it would be a second
+	 * answer to "is this session's chip settled".
+	 */
+	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight; see
+	 * `MessageInputProps.cwdPendingAccepted`.
+	 */
+	cwdPendingAccepted?: boolean;
+	/** Why the chip is read-only here, per cause; see `MessageInputProps`. */
+	cwdReadOnlyReason?: string;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
@@ -159,7 +181,7 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -180,6 +202,20 @@ type ChatContentProps = {
 		 */
 		draftResolution?: DraftResolution;
 	};
+	/**
+	 * The command dispatcher the composer splices an inline command into, with
+	 * its outcome handed back. Forwarded verbatim; see
+	 * `MessageInputProps.onSlashCommand` for why the outcome matters.
+	 */
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
+	/**
+	 * The dispatcher's own note surface, borrowed by the composer so a staged
+	 * reassembly and an unanswerable name list can say what happened. Forwarded
+	 * verbatim; see `MessageInputProps.onSlashNote`.
+	 */
+	onSlashNote?: (text: string) => void;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -242,6 +278,26 @@ type ChatContentProps = {
 	 * section render as absence.
 	 */
 	mcpServers?: readonly McpServerRow[];
+	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * Threaded from the page (`use-mcp-servers.ts`) so the section can disable every
+	 * other row's control while the backend's one grant runs. It comes off the
+	 * document's `operations` rather than off the folded rows on purpose: a row
+	 * exists only where the read carries a server, so an operation for a server that
+	 * was removed or renamed still holds the lock while no row would show it (code
+	 * review round 1, finding 5).
+	 */
+	mcpGrantRunning?: boolean;
+	/**
+	 * The panel's MCP remedy controls (`use-mcp-remedy.ts`).
+	 *
+	 * Read by the page, like the server list itself, and threaded down rather than
+	 * taken inside the section: the controls address the ACTIVE session and write
+	 * into the one query the trigger and the panel both read, so the page is the
+	 * level that owns both facts.
+	 */
+	mcpRemedy: McpRemedyControls;
 	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
@@ -343,12 +399,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwd,
 		sessionId,
 		turnTerminal,
-		onChangeCwd,
+		cwdWritePath,
+		cwdPending,
+		cwdPendingAccepted,
+		cwdReadOnlyReason,
 		sendError,
 		sessionStatus,
+		onSlashCommand,
+		onSlashNote,
 		canonical,
 		runDetails,
 		mcpServers = [],
+		mcpGrantRunning = false,
+		mcpRemedy,
 		childrenOpenable = false,
 		pulses,
 	}) => {
@@ -647,13 +710,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											status={canonical.view.status}
 											failure={canonical.view.failure}
 											/*
-											 * The reader's own question, and the same property the band
+											 * The reader's own question, and the same value the band
 											 * below reads as `isHydrating`: the pane's hold and the
 											 * band's claim are one decision with two readers, so
-											 * they are handed one value rather than each deriving its
-											 * own.
+											 * they are handed one value rather than deriving it
+											 * twice. `hydrated` is deliberately NOT that value: it
+											 * answers "has a page been applied", which is false
+											 * forever for a session-less draft - the pane held
+											 * `Loading conversation…` over the splash that way.
 											 */
-											hydrated={canonical.view.hydrated}
+											awaitingHydration={canonical.view.awaitingHydration}
 											onReconnect={canonical.view.retry}
 											onAnswer={canonical.onAnswer}
 											// The composer's own in-flight flag, reused: one
@@ -761,30 +827,34 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// before it knew, then repainted when history arrived
 								// (design D7's hydration note). Passing the real state
 								// lets the composer wait instead of guessing.
+								//
 								// The rule is NOT "the stream is connecting" any more. That
 								// asked the transport a question the reader was asking about
 								// the CONVERSATION: a stream that failed, or one whose
 								// history read did, is not "connecting", so the composer
 								// asserted the empty-conversation greeting over rows that
-								// had existed the whole time. `hydrated` answers the reader's
-								// actual question instead - has an authoritative page been
-								// applied for this session - so the loading state holds
-								// until the app genuinely knows, whether that takes a retry
-								// or not.
+								// had existed the whole time.
 								//
-								// And `hydrated` is not the band's question on its own
-								// either: a pane that is already saying what went wrong is
-								// not "still hydrating", so the band takes the same
-								// statement term the pane's hold does. The two readers
-								// derive one question rather than one of them reading a
-								// proxy for it (and the answer is unaffected today: a
-								// speaking pane is handed `CANONICAL_NONEMPTY` above, so
-								// the greeting is already withheld - this keeps the two
-								// expressions from drifting apart).
+								// `awaitingHydration` is the reader's actual question -- is a
+								// page for THIS session still owed -- so the loading state
+								// holds until the app genuinely knows, whether that takes a
+								// retry or not. It is composed by the canonical session
+								// handle (see its docstring) rather than from `hydrated`
+								// alone, because "no page has been applied" is equally true
+								// of a New chat's draft, which has no session and therefore
+								// no page to wait for -- the stuck skeleton this band showed
+								// instead of the greeting and its suggestion chips.
+								//
+								// The statement term the pane's own hold grew alongside this
+								// one (a pane already saying what went wrong is not "still
+								// hydrating") is deliberately not repeated: it guards a state
+								// this band cannot reach, because a speaking pane is handed
+								// `CANONICAL_NONEMPTY` above, so the greeting is withheld
+								// before this prop is read - and the refusal it stands down
+								// for is a state in which a page IS owed, which is exactly
+								// the claim this band makes.
 								isHydrating={
-									canonical
-										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
-										: false
+									canonical ? canonical.view.awaitingHydration : false
 								}
 								/*
 								 * U8: a pending question is answered in this box, so the box
@@ -831,9 +901,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
 								cwd={cwd}
-								onChangeCwd={onChangeCwd}
+								cwdWritePath={cwdWritePath}
+								cwdPending={cwdPending}
+								cwdPendingAccepted={cwdPendingAccepted}
+								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
+								onSlashCommand={onSlashCommand}
+								onSlashNote={onSlashNote}
 								/*
 								 * The SAME derived model the header trigger and the pane read, handed
 								 * to the composer so its status row states the plan's size without a
@@ -935,6 +1010,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<RunPanel
 								details={runDetails}
 								mcpServers={mcpServers}
+								mcpGrantRunning={mcpGrantRunning}
+								mcpRemedy={mcpRemedy}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}

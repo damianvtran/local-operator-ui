@@ -179,7 +179,7 @@ export type CanonicalTranscriptProps = {
 	/** The published failure state: one product sentence and its action. */
 	failure: SessionFailureNotice | null;
 	/**
-	 * Has the durable history been READ for this conversation?
+	 * Is an authoritative page for THIS session still owed?
 	 *
 	 * The hold stand-down below asks this and not `status`, because the two
 	 * disagree in both directions on this path: `Retry` re-arms the stream as
@@ -188,10 +188,15 @@ export type CanonicalTranscriptProps = {
 	 * ever hydrating. Required rather than defaulted, like `onReconnect`: the
 	 * caller that owns the reader is the only thing that can answer it, and a
 	 * default would let a new call site collapse a conversation nobody has read
-	 * yet. The rule and its two failing shapes live in
-	 * `transcriptPaneHoldsPlaceholder`.
+	 * yet.
+	 *
+	 * It is the SAME composed value the composer band reads as `isHydrating`
+	 * (`CanonicalSessionHandle.awaitingHydration`), not a second derivation: a
+	 * session-less draft owes no page, and `hydrated` alone cannot say so - it is
+	 * false for a pane that will never have a session to hydrate. The rule and
+	 * its failing shapes live in `transcriptPaneHoldsPlaceholder`.
 	 */
-	hydrated: boolean;
+	awaitingHydration: boolean;
 	/**
 	 * True while the rows below came from the local paint cache rather than from
 	 * the owner (M2).
@@ -904,7 +909,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	isSmallView,
 	status,
 	failure,
-	hydrated,
+	awaitingHydration,
 	stale = false,
 	missing = false,
 	attachmentScope,
@@ -998,30 +1003,42 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * suggestion chips on exactly that condition -- is left pinned to the bottom
 	 * under a large dark void.
 	 *
-	 * So the hold asks `hydrated` and NOT `status`, and the distance between the
-	 * two is the whole of the pre-merge resolution check's Finding 1. They
-	 * disagree in both directions on this path: `Retry` re-arms the stream as
-	 * `connecting` in front of a conversation a completed read has already proven
-	 * EMPTY (`use-canonical-session.ts` leaves `hydrated` untouched), and a cold
-	 * session's `cursor_missing` snapshot goes `live` without hydrating. Keyed on
-	 * the transport's word the pane held "Loading conversation…" over a
-	 * conversation known to hold nothing while the band took the greeting and its
-	 * own `grow`, two contradictory claims splitting one column until the
-	 * snapshot landed and the composer dropped to the empty-chat position -- the
-	 * 468px -> 736px move this work exists to remove -- and the mirror state (not
-	 * yet read, already `live`) left no loading claim anywhere. Both directions
-	 * are pinned in `scripts/session-switch.test.mjs`.
+	 * So the hold asks whether this session is still OWED a page, and NOT `status` -
+	 * the handle's composed `awaitingHydration`, the same value the composer band
+	 * below reads as `isHydrating`. The distance between those two is the whole of
+	 * the pre-merge resolution check's Finding 1. They disagree in both directions
+	 * on this path: `Retry` re-arms the stream as `connecting` in front of a
+	 * conversation a completed read has already proven EMPTY
+	 * (`use-canonical-session.ts` leaves `hydrated` untouched), and a cold session's
+	 * `cursor_missing` snapshot goes `live` without hydrating. Keyed on the
+	 * transport's word the pane held "Loading conversation…" over a conversation
+	 * known to hold nothing while the band took the greeting and its own `grow`, two
+	 * contradictory claims splitting one column until the snapshot landed and the
+	 * composer dropped to the empty-chat position -- the 468px -> 736px move this
+	 * work exists to remove -- and the mirror state (not yet read, already `live`)
+	 * left no loading claim anywhere. Both directions are pinned in
+	 * `scripts/session-switch.test.mjs`.
+	 *
+	 * THE THIRD DIRECTION, and it is the operator's own report in a second surface:
+	 * a pane with NO session answers "has a page been applied" with `no` forever.
+	 * A New chat is a staged draft that opens no stream at all, so keyed on
+	 * `hydrated` this pane held `Loading conversation…` and its shimmer rows above
+	 * the band's restored greeting and chips - the same two-contradictory-claims
+	 * class as Finding 1, and the half the operator would still read as an unfixed
+	 * stuck loader. The owed question is composed ONCE, on the canonical session
+	 * handle, precisely so a session-less pane cannot be read as a wait that is not
+	 * happening; the band and this pane are its two readers.
 	 *
 	 * THE DECISION IS A MATRIX, NOT A CASE. A row-less pane has exactly one claim
 	 * to make, and the rule over all four of its inputs lives in `transcript-pane.ts`,
 	 * where a node test walks every combination rather than the directions a defect
 	 * happened to be found in. It reads: the pane HOLDS the placeholder exactly
-	 * while the reader has not been told what the conversation holds, there is
-	 * nothing to scroll, AND the pane has nothing of its own to say.
+	 * while a page for this session is still owed, there is nothing to scroll, AND
+	 * the pane has nothing of its own to say.
 	 *
-	 * The statement term is there because a pane can be speaking while nobody has
-	 * read it: the failure notice (`unavailable` with a published failure, which the
-	 * history-read arm publishes with `hydrated` still false by construction) and the
+	 * The statement term is there because a pane can be speaking while no page has
+	 * been applied: the failure notice (`unavailable` with a published failure, which
+	 * the history-read arm publishes with `hydrated` still false by construction) and the
 	 * reconnecting line are both CONTENT, and the notice is the only thing on screen
 	 * that says what happened and the only place its control lives. This rule once
 	 * hid them behind an `overflow: hidden` box 0px tall - measured in the running
@@ -1038,11 +1055,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * there either, because the scroller is already held out of `collapsed` by the
 	 * statement, so the placeholder buys a contradiction and nothing else.
 	 *
-	 * The three facts stay separate and none implies another: a hydrated
-	 * `reconnecting` or `unavailable` pane has rows or a statement to show, an
-	 * unhydrated `connecting` pane has no statement of its own, and a pane with rows
-	 * paints them whatever its stream is doing. The collapse therefore stands down
-	 * for all three, and happens only in the one row where none of them is true.
+	 * The three facts stay separate and none implies another: a `reconnecting` or
+	 * `unavailable` pane has rows or a statement to show, a `connecting` pane with a
+	 * page still owed has no statement of its own, and a pane with rows paints them
+	 * whatever its stream is doing. The collapse therefore stands down for all
+	 * three, and happens only in the one row where none of them is true.
 	 *
 	 * `records` rather than `rows` because a record that renders to no row is still
 	 * nothing to scroll. The legacy twin (`MessagesView`) already does this with its
@@ -1063,7 +1080,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneView = {
 		status,
 		failure,
-		hydrated,
+		awaitingHydration,
 		recordCount: transcript.records.length,
 		/*
 		 * A send this pane has admitted and the owner has not answered. The pane's

@@ -8,7 +8,7 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { basename, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 import {
 	ValidationError,
 	createApi,
@@ -111,10 +111,7 @@ function uploadRelease({
 	return release;
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	try {
 		const {
 			RELEASE_TAG: tag,

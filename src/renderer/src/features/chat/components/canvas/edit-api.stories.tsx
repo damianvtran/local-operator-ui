@@ -1,5 +1,5 @@
 import { Button } from "@shared/components/ui";
-import { apiConfig } from "@shared/config";
+import { apiConfig, setDiscoveredBackendUrl } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
@@ -31,7 +31,9 @@ const EditApiFixture = () => {
 		const originalFetch = window.fetch;
 		const originalSave = window.api.saveFile;
 		const originalElectron = window.electron;
-		apiConfig.baseUrl = "http://127.0.0.1:18762";
+		// The renderer builds its clients from the daemon main reports;
+		// this fixture points them at its own stub server.
+		setDiscoveredBackendUrl("http://127.0.0.1:18762");
 		window.api.saveFile = async (path, content) => {
 			setSaved(JSON.stringify({ path, content }));
 		};
@@ -72,7 +74,7 @@ const EditApiFixture = () => {
 			})
 			.catch((reason) => setError(String(reason)));
 		return () => {
-			apiConfig.baseUrl = originalBase;
+			setDiscoveredBackendUrl(originalBase);
 			window.fetch = originalFetch;
 			window.api.saveFile = originalSave;
 			window.electron = originalElectron;

@@ -66,3 +66,8 @@ export type { RunPanelProps } from "./run-panel";
 export { RunDetailsTrigger } from "./run-details-trigger";
 export type { RunDetailsTriggerProps } from "./run-details-trigger";
 export { useRunPanelMcpServers } from "./use-mcp-servers";
+export { useMcpRemedy } from "./use-mcp-remedy";
+export type {
+	McpRefusal,
+	McpRemedyControls,
+} from "./use-mcp-remedy";

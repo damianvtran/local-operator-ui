@@ -10,6 +10,7 @@ import {
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
+	Globe,
 	MessageSquare,
 	Settings,
 	Store,
@@ -129,6 +130,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			path: "/schedules",
 			isActive: currentView === "schedules",
 			tourTag: "nav-item-schedules",
+		},
+		{
+			// Named "Browser" rather than "Web" or "Pages": the feature is a browser
+			// the user can use and an agent can drive, and the design's own word for
+			// it is the tab it opens (design 11.9).
+			icon: Globe,
+			label: "Browser",
+			path: "/browser",
+			isActive: currentView === "browser",
+			tourTag: "nav-item-browser",
 		},
 		{
 			icon: Settings,

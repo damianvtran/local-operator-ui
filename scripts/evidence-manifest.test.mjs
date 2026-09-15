@@ -8,6 +8,7 @@ import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import {
 	citationAncestryFailures,
 	frames as frameFiles,
+	partialCaptureFailures,
 	provenanceFailures,
 	stampFailures,
 } from "./check-evidence.mjs";
@@ -384,6 +385,291 @@ test("a pass that added no frames does not claim to have added them", () => {
 		addedAt: "2026-09-13T00:00:00.000Z",
 		addedAtHead: GOOD.head,
 	});
+});
+
+/*
+ * ---- the pass's own tally, from the diff its commits wrote ------------------
+ */
+
+/**
+ * A fake `git` for `partialCaptureFailures`, which asks two questions.
+ *
+ * `lsTree` feeds the term asked of `HEAD`'s tree, `diff` the one asked of the
+ * pass's own commits. Either can be left unanswerable - `null` - which is what
+ * a one-commit-deep checkout does to `diff`: `actions/checkout`'s default clone
+ * has no ancestor of `HEAD`, and the Desktop Tests job is that clone, so the
+ * term that answers the field there is the one `lsTree` feeds.
+ */
+const fakeGitFor = ({ lsTree = null, diff = null } = {}) => (args) => {
+	if (args[0] === "ls-tree")
+		return lsTree === null ? null : lsTree.join("\n");
+	if (args[0] === "diff" && args[1] === "--name-only")
+		return diff === null ? null : diff.join("\n");
+	return null;
+};
+
+const fakeDiff = (paths) => fakeGitFor({ diff: paths });
+
+const MOVED_FRAMES = [
+	"docs/evidence/chat-run-panel/mcp-key-saving/dracula.webp",
+	"docs/evidence/chat-run-panel/mcp-key-saving/dune.webp",
+	"docs/evidence/chat-run-panel/mcp-key-error/dune.webp",
+];
+
+const HONEST_PASS = {
+	refreshedAtHead: GOOD.head,
+	refreshedFrames: 4,
+	refreshedStories: [
+		"chat-run-panel--mcp-key-saving",
+		"chat-run-panel--mcp-key-error",
+	],
+};
+
+/**
+ * Frames `HEAD`'s tree holds, as `ls-tree` reports them.
+ *
+ * A tree holds more than the pass moved, which is why this is not
+ * `MOVED_FRAMES`: it carries an untouched frame in a directory the block DOES
+ * name (counted - the field is a tally for that directory), a frame inside the
+ * declared `live` set (excluded), and a frame in a directory the block does not
+ * name at all (ignored, because the field is a claim about a run and not about
+ * the swept tree). `refreshedFrames` is 4 above for the same reason.
+ */
+const COMMITTED_FRAMES = [
+	...MOVED_FRAMES,
+	"docs/evidence/chat-run-panel/mcp-key-saving/obsidian.webp",
+	"docs/evidence/live/one/dracula.webp",
+	"docs/evidence/chat-trace/conversation/dracula.webp",
+];
+
+test("a tally that accounts for the pass's own diff passes", () => {
+	assert.deepEqual(
+		partialCaptureFailures(
+			{ ...GOOD, partialCapture: HONEST_PASS },
+			fakeDiff(MOVED_FRAMES),
+		),
+		[],
+	);
+});
+
+test("a tally below the pass's own diff fails, and says by how much", () => {
+	// The round-4 incident exactly: `refreshedFrames` carried a previous run's
+	// total, so the block claimed fewer frames than the pass's commit rewrote.
+	const out = partialCaptureFailures(
+		{ ...GOOD, partialCapture: { ...HONEST_PASS, refreshedFrames: 2 } },
+		fakeDiff(MOVED_FRAMES),
+	);
+	assert.equal(out.length, 1);
+	assert.match(
+		out[0],
+		/claims 2 refreshed frames, but 3 committed frames differ/,
+	);
+});
+
+test("a story list that lost a directory the pass rewrote fails", () => {
+	/*
+	 * The other half of R5-2, and the round-4 incident's own shape: the field
+	 * named 17 of the 21 directories the pass rewrote. `refreshedStories` is what
+	 * a reader follows to the frames, so a list that lost one describes a run that
+	 * did not happen - and until this check, nothing anywhere asked.
+	 */
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedStories: ["chat-run-panel--mcp-key-saving"],
+			},
+		},
+		fakeDiff(MOVED_FRAMES),
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /refreshedStories misses 1 story directory/);
+	assert.match(out[0], /chat-run-panel--mcp-key-error/);
+});
+
+test("a width-suffixed directory is the story it belongs to", () => {
+	// A story swept at several widths writes `<leaf>@<width>`, one directory per
+	// width, under the story's own id - so the claim is the story, not the width.
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedStories: ["chat-older-history-slot--app-minimum-width"],
+			},
+		},
+		fakeDiff([
+			"docs/evidence/chat-older-history-slot/app-minimum-width@900/dracula.webp",
+		]),
+	);
+	assert.deepEqual(out, []);
+});
+
+test("frames inside a declared set are not demanded of the pass's tally", () => {
+	// A set is declared precisely because a sweep CANNOT produce its frames, so
+	// the denominator excludes every declared directory - the same exclusion
+	// `frames` is measured with, and the reason the shipped field passes on the
+	// over-claim side rather than on a coincidence.
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedFrames: 0,
+				refreshedStories: [],
+			},
+		},
+		fakeDiff(["docs/evidence/live/one/dracula.webp"]),
+	);
+	assert.deepEqual(out, []);
+});
+
+test("a repository git cannot read is not a failure", () => {
+	// Nothing to question is not the same as a defect found: a tree with no `.git`
+	// and a checkout that cannot answer either read reports nothing.
+	assert.deepEqual(
+		partialCaptureFailures({ ...GOOD, partialCapture: HONEST_PASS }, () => null),
+		[],
+	);
+});
+
+/*
+ * ---- term 1: the field answered from `HEAD`'s tree, with no history --------
+ */
+
+test("a tally below the frames HEAD holds in the directories it names fails", () => {
+	/*
+	 * The round-6 finding (R6-1), in the clone CI actually runs. `diff` is
+	 * unanswerable here - `actions/checkout`'s default is one commit deep, so the
+	 * pass's parent does not exist - and the field has to be caught anyway.
+	 */
+	const out = partialCaptureFailures(
+		{ ...GOOD, partialCapture: { ...HONEST_PASS, refreshedFrames: 3 } },
+		fakeGitFor({ lsTree: COMMITTED_FRAMES }),
+	);
+	assert.equal(out.length, 1);
+	assert.match(
+		out[0],
+		/claims 3 refreshed frames, but 4 committed frames stand in the directories refreshedStories names at HEAD/,
+	);
+});
+
+test("an honest tally passes on HEAD's tree alone", () => {
+	// The positive control for the case above: a term that fired on any tree
+	// would report a defect on every run of this suite.
+	assert.deepEqual(
+		partialCaptureFailures(
+			{ ...GOOD, partialCapture: HONEST_PASS },
+			fakeGitFor({ lsTree: COMMITTED_FRAMES }),
+		),
+		[],
+	);
+});
+
+test("frames HEAD holds outside the named directories are not this field's", () => {
+	/*
+	 * The denominator is scoped to the directories the block NAMES, not to the
+	 * swept tree: `COMMITTED_FRAMES` carries a frame under `chat-trace/`, which no
+	 * entry names. Counting the swept set instead would demand the field claim
+	 * every frame in the repository and fire on every honest tally.
+	 */
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedFrames: 4,
+				refreshedStories: ["chat-run-panel--mcp-key-saving"],
+			},
+		},
+		fakeGitFor({
+			lsTree: [
+				"docs/evidence/chat-trace/conversation/dracula.webp",
+				"docs/evidence/chat-trace/conversation/dune.webp",
+			],
+		}),
+	);
+	assert.deepEqual(out, []);
+});
+
+test("frames inside a declared set are not demanded of the tally on HEAD's tree either", () => {
+	// The same exclusion term 2 makes, on the same reason: a set is declared
+	// because a sweep cannot produce its frames.
+	assert.deepEqual(
+		partialCaptureFailures(
+			{
+				...GOOD,
+				partialCapture: { ...HONEST_PASS, refreshedFrames: 0, refreshedStories: [] },
+			},
+			fakeGitFor({ lsTree: ["docs/evidence/live/one/dracula.webp"] }),
+		),
+		[],
+	);
+});
+
+test("an entry that only prefixes a directory does not name it", () => {
+	/*
+	 * Round 6's R6-2 and Q5 in miniature: `claimedStory` used to accept any
+	 * extension of the entry's own name, so `chat-run-panel--mcp-key` claimed the
+	 * frames of `mcp-key-saving` and `mcp-key-error` - an entry satisfied without
+	 * naming a directory, which is how a shortened entry kept the guard green over
+	 * a directory the list had dropped.
+	 */
+	const out = partialCaptureFailures(
+		{
+			...GOOD,
+			partialCapture: {
+				...HONEST_PASS,
+				refreshedStories: ["chat-run-panel--mcp-key"],
+			},
+		},
+		fakeDiff(MOVED_FRAMES),
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /refreshedStories misses 2 story directories/);
+	assert.match(out[0], /chat-run-panel--mcp-key-saving/);
+	assert.match(out[0], /chat-run-panel--mcp-key-error/);
+});
+
+test("the capturer's own dir override still names the directory it writes", () => {
+	/*
+	 * The other direction, and the reason the rule above is not simply an exact
+	 * match: one STORIES entry writes a SECOND state of its story into a directory
+	 * the story id only prefixes (`chat-tool-rows--expanded-overflow-narrow` writes
+	 * `expanded-overflow-narrow-end`, a scroll position). This case can only pass
+	 * through the capturer's own table - no exact name matches - so it fails if
+	 * that lookup breaks or if the override stops being declared where it is
+	 * written.
+	 */
+	const override = [
+		"docs/evidence/chat-tool-rows/expanded-overflow-narrow-end/dracula.webp",
+	];
+	assert.deepEqual(
+		partialCaptureFailures(
+			{
+				...GOOD,
+				partialCapture: {
+					...HONEST_PASS,
+					refreshedFrames: 1,
+					refreshedStories: ["chat-tool-rows--expanded-overflow-narrow"],
+				},
+			},
+			fakeGitFor({ lsTree: override, diff: override }),
+		),
+		[],
+	);
+});
+
+test("a clone with history asks both questions, and a mutated tally answers both", () => {
+	// The full-clone shape: term 1 counts the tree, term 2 the pass's commits.
+	const out = partialCaptureFailures(
+		{ ...GOOD, partialCapture: { ...HONEST_PASS, refreshedFrames: 2 } },
+		fakeGitFor({ lsTree: COMMITTED_FRAMES, diff: MOVED_FRAMES }),
+	);
+	assert.equal(out.length, 2);
+	assert.match(out[0], /committed frames stand in the directories/);
+	assert.match(out[1], /committed frames differ at/);
 });
 
 /* ---- the shipped manifest, against the tree it ships in ------------------ */

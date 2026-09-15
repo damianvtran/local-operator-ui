@@ -58,6 +58,9 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-hand-over",
 	"browser-revoke-hand-over",
 	"browser-consent-respond",
+	"browser-revoke-approval",
+	"browser-revoke-all-approvals",
+	"browser-forget-site",
 	"browser-clear-data",
 ] as const;
 
@@ -150,6 +153,7 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			}
 			if (
 				decision !== "once" &&
+				decision !== "session" &&
 				decision !== "site" &&
 				decision !== "domain" &&
 				decision !== "deny"
@@ -159,6 +163,29 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return host.respondToConsent(entryId, decision);
 		},
 	);
+
+	// Revocation (design 9.4). Three affordances rather than one, because
+	// "stop this agent", "forget this site" and "revoke everything" are three
+	// different user intentions with three different consequences.
+	ipcMain.handle("browser-revoke-approval", (event, origin: unknown) => {
+		const host = authorize(event);
+		if (typeof origin !== "string" || !origin.trim()) {
+			throw new Error("An origin is required.");
+		}
+		return host.revokeApproval(origin.trim());
+	});
+
+	ipcMain.handle("browser-revoke-all-approvals", (event) =>
+		authorize(event).revokeAllApprovals(),
+	);
+
+	ipcMain.handle("browser-forget-site", async (event, origin: unknown) => {
+		const host = authorize(event);
+		if (typeof origin !== "string" || !origin.trim()) {
+			throw new Error("An origin is required.");
+		}
+		return host.forgetSite(origin.trim());
+	});
 
 	ipcMain.handle("browser-clear-data", async (event, what: unknown) => {
 		authorize(event);

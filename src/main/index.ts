@@ -17,6 +17,11 @@ import {
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
+	BACKEND_RECONNECT_CHANNEL,
+	BACKEND_STATUS_CHANNEL,
+	BACKEND_STATUS_EVENT,
+} from "../shared/backend-status";
+import {
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
 	type ProbedFile,
@@ -39,15 +44,23 @@ import {
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
-import { backendConfig } from "./backend/config";
+import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
+	browserHostStopPending,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
+import {
+	describeDevDriverArming,
+	devDriverArgument,
+	resolveDevDriverArming,
+} from "./dev-driver";
+import { registerDevDriverIPC } from "./dev-driver-ipc";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
 import {
@@ -110,9 +123,17 @@ export type ReadFileResponse =
  * tile. Resolving the plan first is what lets the Dock decision be made once,
  * from the same table the window itself is built from, rather than re-read from
  * the environment at a second call site that could disagree.
+ *
+ * Read from `launchEnv` — the environment this process was LAUNCHED with — and
+ * not from `process.env`, because `./backend/config` has already folded a
+ * `.env` from the working directory into `process.env` with dotenv
+ * `override: true` by the time this runs (see the comment on `launchEnv`). A
+ * window mode is a fact about the launch: a file in the checkout must not be
+ * able to turn a deliberately `headless` run into one that raises a window and
+ * takes the operator's focus.
  */
 const windowLaunch = resolveWindowLaunchPlan({
-	env: process.env,
+	env: launchEnv,
 	argv: process.argv,
 });
 for (const problem of windowLaunch.problems) {
@@ -472,8 +493,19 @@ function createWindow(
 			 * no single conversation to name, and "no flag at all" already means
 			 * "restore what you had open" — so it needs a flag of its own rather than
 			 * sharing that absence.
+			 *
+			 * AND the renderer dev driver's arming entry, which is the other thing this
+			 * app puts in a renderer's argv — usually absent, because it is present only
+			 * in a launch that opted in. See `devDriverWebPreferences` above and
+			 * `src/main/dev-driver.ts` for what arms a run and what the entry is read by.
+			 *
+			 * WHY ONE SPREAD AND NOT TWO: both sources write `additionalArguments`, so a
+			 * second spread REPLACES the first's array rather than adding to it — and
+			 * either one alone still produces a well-formed window, so the loss would be
+			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
+			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...launchArgumentFlags(initialSession, openCatalogue),
+			...rendererArgumentFlags(initialSession, openCatalogue),
 		},
 	});
 
@@ -682,6 +714,43 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
 	dialog.showErrorBox("Backend Error", message);
 };
 
+/*
+ * The renderer dev driver's opt-in, resolved here for the same reason the
+ * window mode is: it is a fact about the LAUNCH, decided once, and a rig reads
+ * it on stdout. Nothing is registered or exposed unless this says armed, so a
+ * launch that did not ask for the driver has no `dev-driver-*` channel and no
+ * bridge in the renderer at all — which is what
+ * `node scripts/renderer-driver.mjs --gate-check` measures on a real boot
+ * rather than trusting this comment. `src/main/dev-driver.ts` holds the rules
+ * and `docs/agent-driver.md` is the contract for anyone using it.
+ *
+ * From `launchEnv`, for the reason given at the window mode above and measured
+ * on real boots by `--gate-check`'s `.env` cases: the opt-in is a control
+ * surface on a trusted process, so a `.env` in the working directory must not be
+ * able to arm it, and an explicit `=0` at the shell must not be overridden by
+ * one.
+ */
+const devDriverArming = resolveDevDriverArming({
+	env: launchEnv,
+	windowMode: windowLaunch.mode,
+});
+const devDriverLine = describeDevDriverArming(devDriverArming);
+if (devDriverLine) console.log(devDriverLine);
+
+/*
+ * The renderer's half of that decision, as `webPreferences` for whichever window
+ * is created. Empty in an unarmed launch, so a normal run's window options are
+ * the options they would have had: the preload reads this entry out of its own
+ * `argv` and exposes `window.__loDevDriver` only when it is there, while main
+ * independently registers the `dev-driver-*` channels only when armed. Spelled as
+ * a spread rather than as `additionalArguments: []` so that "unarmed adds no
+ * option at all" is literally true of the object, not merely equivalent.
+ */
+const devDriverWebPreferences =
+	devDriverArming.armed && devDriverArming.outDir
+		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
+		: {};
+
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
 // desktop bearer is process-scoped, so main keeps no credential store.
@@ -741,6 +810,34 @@ function launchArgumentFlags(
 	}
 	if (openCatalogue) return { additionalArguments: [OPEN_CATALOGUE_FLAG] };
 	return {};
+}
+
+/**
+ * Everything this app puts in a renderer process's argv, in one value.
+ *
+ * WHY IT EXISTS. There are two sources now — the conversation or catalogue a
+ * window was created for (`launchArgumentFlags`) and the dev driver's arming
+ * entry (`devDriverWebPreferences`) — and both express themselves through the
+ * SAME `webPreferences.additionalArguments` slot. Spreading them as two separate
+ * entries at the call site does not union them: the second spread overwrites the
+ * first's array, so an armed run that also names a session would carry one flag
+ * and silently drop the other, with a well-formed window either way. This is the
+ * one place that decides, so the two can never disagree about who wins.
+ *
+ * Empty means `{}` and not `additionalArguments: []`, for the reason
+ * `launchArgumentFlags` gives: "this launch adds no option at all" has to be
+ * true of the object, not merely equivalent to it.
+ */
+function rendererArgumentFlags(
+	initialSession: string | null,
+	openCatalogue: boolean,
+): { additionalArguments?: string[] } {
+	const flags = [
+		...(launchArgumentFlags(initialSession, openCatalogue)
+			.additionalArguments ?? []),
+		...(devDriverWebPreferences.additionalArguments ?? []),
+	];
+	return flags.length > 0 ? { additionalArguments: flags } : {};
 }
 
 /**
@@ -958,12 +1055,15 @@ app
 		 * still answering on its debugging port. `resolveLauncherWatchPlan` decides
 		 * whether this run is launcher-bound at all (only `headless` with a real
 		 * launcher is); the reason is printed either way, so a rig reads the policy
-		 * rather than inferring it from the mode.
+		 * rather than inferring it from the mode. Read from `launchEnv` for the reason
+		 * the window mode above is: the `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE`
+		 * opt-out is a fact about the LAUNCH, so a `.env` in the checkout must not be
+		 * able to make a run outlive the harness that started it.
 		 */
 		const launcher = resolveLauncherWatchPlan({
 			mode: windowLaunch.mode,
 			launcherPid: process.ppid,
-			env: process.env,
+			env: launchEnv,
 		});
 		logger.info(`[window-mode] ${launcher.reason}`, LogFileType.BACKEND);
 		if (windowLaunch.mode !== "normal") {
@@ -1216,6 +1316,34 @@ app
 			desktopNotifier,
 			(sessionId) => viewerRecord?.releaseSession(sessionId),
 		);
+
+		/*
+		 * The renderer dev driver's channels, present ONLY in an armed launch.
+		 *
+		 * Placed next to `registerDesktopIPC` because it is the same kind of
+		 * thing — a main-owned surface the window may call — and registered
+		 * BEFORE the first window is created, so the window cannot invoke a
+		 * `dev-driver-*` channel before its handler exists and get Electron's
+		 * "No handler registered" for a driver that is in fact armed. (The
+		 * preload learns the frames directory from its own synchronous `argv`
+		 * entry rather than from an IPC handshake — see the note on
+		 * `DEV_DRIVER_ARG` in `src/main/dev-driver.ts` for why — so what the
+		 * ordering protects is the capture call a scene makes later, not a
+		 * handshake.) It reuses the same single trusted-renderer URL: a second
+		 * spelling of "the trusted document" is how one of the two drifts.
+		 */
+		if (devDriverArming.armed && devDriverArming.outDir) {
+			registerDevDriverIPC({
+				window: () => mainWindow,
+				expectedUrl: rendererUrl,
+				outDir: devDriverArming.outDir,
+				identity: {
+					windowMode: windowLaunch.mode,
+					appVersion: app.getVersion(),
+					platform: process.platform,
+				},
+			});
+		}
 
 		// Add IPC handlers for opening files and URLs
 		ipcMain.handle("open-file", async (_, filePath) => {
@@ -1547,90 +1675,163 @@ app
 			};
 		});
 
+		/*
+		 * The server-status signal, answered by MAIN.
+		 *
+		 * The renderer used to decide "is the server online" by fetching `/health`
+		 * itself, from the packaged app's `file://` document. That makes a CORS
+		 * decision - and, on a claimed daemon, the origin allowlist - into a liveness
+		 * signal, so a change in the backend's origin handling reports a healthy
+		 * server as down. That is the reported failure. Main sends no Origin and
+		 * holds the bearer, so it is the only process that can answer honestly, and
+		 * the only one that knows whether the daemon it attached to is still the
+		 * daemon it attached to.
+		 *
+		 * A pull (`backend-status`) plus a push (`backend-status-changed`): the pull
+		 * so a window that opens later is not left waiting for the next transition,
+		 * the push so a state change reaches the renderer within one probe interval.
+		 */
+		ipcMain.handle(BACKEND_STATUS_CHANNEL, () =>
+			backendService.getStatusSnapshot(),
+		);
+		/*
+		 * The banner's Retry, as a verb rather than a re-read.
+		 *
+		 * Re-reading the snapshot cannot cause a reconnection - main's own recovery
+		 * timer is the only thing that could - so a renderer that only pulled the
+		 * snapshot rendered a Retry that did nothing in the one state that offers
+		 * one. This asks main to try now and answers with what it observed.
+		 */
+		ipcMain.handle(BACKEND_RECONNECT_CHANNEL, () =>
+			backendService.reconnectNow(),
+		);
+		backendService.onStatusChange((snapshot) => {
+			if (mainWindow && !mainWindow.isDestroyed()) {
+				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
+			}
+		});
+
 		// Check if backend manager is disabled via environment variable
 		const isBackendManagerDisabled =
 			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
 
-		if (!isBackendManagerDisabled) {
-			// Check if an external backend is already running
-			const hasExternalBackend = await backendService.checkExistingBackend();
+		/*
+		 * Discovery runs UNCONDITIONALLY, including when the manager is disabled.
+		 * The flag means "do not spawn or kill a daemon", never "assume one
+		 * exists": running it only in the enabled branch is why an app configured
+		 * with the flag could not see the operator's own TUI-started daemon - it
+		 * never looked, so it never found it, and every conversation opened empty
+		 * (design §3.7).
+		 */
+		const hasExternalBackend = await backendService.checkExistingBackend();
 
-			if (!hasExternalBackend) {
-				// Check if local-operator command exists globally
-				const hasGlobalCommand =
-					await backendService.checkLocalOperatorExists();
+		/*
+		 * Only an app permitted to manage a daemon may install or start one. A
+		 * disabled manager keeps looking (its probe loop re-discovers on every
+		 * tick) and reports what it finds, which is what lets a daemon started
+		 * after the app gets picked up without a restart.
+		 */
+		if (hasExternalBackend && isBackendManagerDisabled) {
+			// A daemon was found with the manager disabled: nothing to install and
+			// nothing to spawn, which is the whole of that flag's meaning.
+			logger.info(
+				"Discovered a daemon; the backend manager is configured not to spawn or kill one.",
+				LogFileType.BACKEND,
+			);
+		} else if (!hasExternalBackend && isBackendManagerDisabled) {
+			// Nothing was found and this app may not start a daemon. `start()` is
+			// still the right call: with the flag set it spawns nothing - it
+			// publishes the state and ARMS THE PROBE LOOP, so a daemon the operator
+			// starts a minute from now is attached without restarting the app. Its
+			// `false` is the honest answer here and must not quit the app.
+			//
+			// `reuseDiscovery` because the pass above ran in this same startup tick:
+			// the verdict it recorded (nothing found, and whether a live record
+			// forbids spawning) is what this call decides on, so a second sweep of
+			// the record directory could only repeat it.
+			await backendService.start({ reuseDiscovery: true });
+		}
 
-				// If local-operator doesn't exist globally and our backend is not installed
-				if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
-					// Install backend
-					const installSuccess = await backendInstaller.install();
-					// If installation was cancelled or failed, quit the app
-					if (!installSuccess) {
-						logger.error(
-							"Backend installation cancelled or failed, quitting app",
-							LogFileType.INSTALLER,
-						);
-						app.quit();
-						return; // Exit early to prevent window creation
-					}
+		if (!hasExternalBackend && !isBackendManagerDisabled) {
+			// Check if local-operator command exists globally
+			const hasGlobalCommand = await backendService.checkLocalOperatorExists();
 
-					// After successful installation, attempt to start the backend with retries
-					logger.info(
-						"Attempting to start backend service after installation",
+			// If local-operator doesn't exist globally and our backend is not installed
+			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
+				// Install backend
+				const installSuccess = await backendInstaller.install();
+				// If installation was cancelled or failed, quit the app
+				if (!installSuccess) {
+					logger.error(
+						"Backend installation cancelled or failed, quitting app",
 						LogFileType.INSTALLER,
 					);
-					let startAttempts = 0;
-					const maxStartAttempts = 3;
-					let backendStarted = false;
+					app.quit();
+					return; // Exit early to prevent window creation
+				}
 
-					while (startAttempts < maxStartAttempts && !backendStarted) {
-						try {
-							backendStarted = await backendService.start();
-							if (!backendStarted) {
-								logger.error(
-									`Backend start attempt ${startAttempts + 1} failed`,
-									LogFileType.INSTALLER,
-								);
-								// Wait before retrying
-								await new Promise((resolve) => setTimeout(resolve, 2000));
-							}
-						} catch (error) {
+				// After successful installation, attempt to start the backend with retries
+				logger.info(
+					"Attempting to start backend service after installation",
+					LogFileType.INSTALLER,
+				);
+				let startAttempts = 0;
+				const maxStartAttempts = 3;
+				let backendStarted = false;
+
+				while (startAttempts < maxStartAttempts && !backendStarted) {
+					try {
+						backendStarted = await backendService.start();
+						if (!backendStarted) {
 							logger.error(
-								`Error starting backend (attempt ${startAttempts + 1}):`,
+								`Backend start attempt ${startAttempts + 1} failed`,
 								LogFileType.INSTALLER,
-								error,
 							);
+							// Wait before retrying
+							await new Promise((resolve) => setTimeout(resolve, 2000));
 						}
-						startAttempts++;
+					} catch (error) {
+						logger.error(
+							`Error starting backend (attempt ${startAttempts + 1}):`,
+							LogFileType.INSTALLER,
+							error,
+						);
 					}
+					startAttempts++;
+				}
 
-					if (!backendStarted) {
-						logger.error(
-							"Failed to start backend after installation, quitting app",
-							LogFileType.INSTALLER,
-						);
-						reportBackendFailure(
-							"Failed to start the Local Operator backend service after installation. Please restart the application.",
-							LogFileType.INSTALLER,
-						);
-						app.quit();
-						return;
-					}
-				} else {
-					// Start our backend service (for existing installations)
-					const backendStarted = await backendService.start();
-					if (!backendStarted) {
-						logger.error(
-							"Failed to start backend with existing installation, quitting app",
-							LogFileType.BACKEND,
-						);
-						reportBackendFailure(
-							"Failed to start the Local Operator backend service. Please restart the application.",
-							LogFileType.BACKEND,
-						);
-						app.quit();
-						return;
-					}
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend after installation, quitting app",
+						LogFileType.INSTALLER,
+					);
+					reportBackendFailure(
+						"Failed to start the Local Operator backend service after installation. Please restart the application.",
+						LogFileType.INSTALLER,
+					);
+					app.quit();
+					return;
+				}
+			} else {
+				// Start our backend service (for existing installations).
+				// `reuseDiscovery` for the reason the disabled-manager branch states,
+				// and pointedly NOT on the post-install retries above: an install can
+				// take minutes, and a daemon that appeared while it ran has to be found
+				// rather than spawned over.
+				const backendStarted = await backendService.start({
+					reuseDiscovery: true,
+				});
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend with existing installation, quitting app",
+						LogFileType.BACKEND,
+					);
+					reportBackendFailure(
+						"Failed to start the Local Operator backend service. Please restart the application.",
+						LogFileType.BACKEND,
+					);
+					app.quit();
+					return;
 				}
 			}
 		}
@@ -1781,10 +1982,15 @@ app
 		 * take its webContents down when the window closes (Electron's own documented
 		 * leak). So closing the window stops the host — which closes every view,
 		 * releases every debugger session and removes the state file — and a window
-		 * re-created by a dock click starts a fresh one. Tabs do not survive that, and
-		 * a session holding a handle gets the ordinary `tab_closed` and re-`open`s,
-		 * which is the designed recovery rather than a special case. Restoring tabs
-		 * across a window re-creation is the tab-restore work (design 7), not this PR.
+		 * re-created by a dock click starts a fresh one. A session holding a handle
+		 * gets the ordinary `tab_closed` and re-`open`s, which is the designed
+		 * recovery rather than a special case.
+		 *
+		 * THE TAB LIST SURVIVES it, which is the tab-restore work (design 7) and the
+		 * reason the stop path captures and flushes `session.json` before it destroys
+		 * anything: a window re-creation reopens the tabs the user had, and a session
+		 * still holding `ui:<oldTabId>:<oldNonce>` gets the same `tab_closed` it always
+		 * did, because a restored tab comes back with a fresh id and no nonce.
 		 *
 		 * A failure here must never be why the app does not start: the host is a
 		 * capability, not a dependency of the window. It is reported and the app
@@ -1806,6 +2012,11 @@ app
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
 					userDataDir: app.getPath("userData"),
+					// The launch plan's own answer, forwarded rather than re-derived: the
+					// browser host uses it to suppress consent banners in a run with nobody at
+					// the screen, and re-deciding it there would be a second policy beside
+					// `window-mode.ts`.
+					windowShow: windowLaunch.show,
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {
@@ -2044,7 +2255,61 @@ app.on("will-quit", (event) => {
 });
 
 // Handle before-quit event to ensure proper cleanup
-app.on("before-quit", () => {
+/*
+ * The session-cookie hold: the quit waits on the browser host's stop, so the
+ * snapshot that stop writes is on disk before the app goes away.
+ *
+ * The stop reads the cookie jar over CDP, so it is asynchronous and its duration
+ * is the host's to inflate; a quit that exited mid-snapshot would leave the next
+ * launch with nothing to restore, and with a marker the next start rejects.
+ * EVERY quit while that stop is owed is held, including a second one the user
+ * makes while the first is still waiting — the quit that releases them is the
+ * hold's own, issued once the stop has settled or the budget has expired, and it
+ * is the only pass that may proceed. Module scope so the mark distinguishing
+ * those two survives between quits, and the decision itself lives in
+ * `createSessionCookieQuitHold`, which is testable without booting the app. The
+ * hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget it releases
+ * the quit, leaves the marker behind for the next start to reject, and says so in
+ * the log — "quitting anyway" is that line, not an exit, and in a frozen teardown
+ * the process can outlive it (the pre-existing stall QA's SIGSTOPped run hit 42 s
+ * later, in a build without this hold's involvement).
+ *
+ * WHY THIS HOLDS `before-quit` AND NOT `will-quit`, where it was authored: the
+ * `will-quit` listener above also owns the backend's owned cleanup, and that
+ * handler has to reach its `event.preventDefault()` in the SYNCHRONOUS part of
+ * the listener - Electron reads the cancelled flag when the synchronous part
+ * returns, so a preventDefault that lands after an `await` cancels nothing, and
+ * `scripts/owned-serve-lifecycle.test.mjs` pins that (two synchronous emits, both
+ * counted as prevented). Awaiting this hold inside that listener would defer its
+ * gate by a microtask and silently drop the owned cleanup. Holding here instead
+ * keeps that gate synchronous AND serialises the two shutdown obligations rather
+ * than racing them: the stop settles first, the re-quit it asks for then reaches
+ * the owned cleanup, and only the pass with both behind it exits. The hold module
+ * is unchanged and says nothing about which event it is asked from.
+ */
+const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
+	isPending: browserHostStopPending,
+	stop: stopBrowserHost,
+	quit: () => app.quit(),
+	log: (message) => logger.warn(message, LogFileType.BACKEND),
+});
+
+app.on("before-quit", async (event) => {
+	/*
+	 * Hold the quit for the browser host's stop, then let the ordinary pass
+	 * through: the stop settles or the budget expires, the hold asks for the quit
+	 * that reaches the body below. A second quit arriving while that stop is still
+	 * running is held against the same stop — see the hold's own module for why a
+	 * spent flag could not do that and exited with the snapshot still running.
+	 *
+	 * `before-quit` starts the stop and cannot await it, so the wait lives here;
+	 * the `will-quit` listener owns the owned cleanup and runs once this has
+	 * settled. A stop that FAILS still re-quits - see the hold's own module for why
+	 * that is the difference between a shutdown and an app that refuses to close
+	 * without saying so.
+	 */
+	if (await holdQuitForSessionCookieSnapshot(event)) return;
+
 	logger.info("App is about to quit", LogFileType.BACKEND);
 	/*
 	 * The bounded exit for EVERY way a headless run can be asked to quit, not

@@ -53,20 +53,50 @@ export interface DriveableWebContents {
 	removeListener(event: string, listener: (...args: never[]) => void): unknown;
 	/** Present on a real `WebContents`; optional so a fake view in a test does not
 	 * have to model history to exercise the registry. Callers guard for it. */
-	navigationHistory?: {
-		canGoBack(): boolean;
-		canGoForward(): boolean;
-		goBack(): void;
-		goForward(): void;
-		length(): number;
-	};
+	navigationHistory?: NavigationHistoryLike;
 	reload(): void;
 	stop(): void;
 	isLoading(): boolean;
 }
 
-/** The subset of `WebContentsView` the tab registry uses. */
-export interface DriveableView {
+/** One entry of a restore-able navigation stack, structurally: Electron's
+ * `NavigationEntry` (`url`, `title`, and the optional base64 `pageState`). */
+export interface NavigationEntryLike {
+	url: string;
+	title?: string;
+	pageState?: string;
+}
+
+/**
+ * The subset of Electron's `NavigationHistory` this feature uses.
+ *
+ * The three entries-related members are OPTIONAL, and that is deliberate: the
+ * back/forward controls only need the four navigation members, so a fake view in
+ * a test (`scripts/browser-host.test.mjs`) can drive the registry without
+ * modelling history at all. The restore path guards for their absence and falls
+ * back to a plain `loadURL` of the entry the run was on, which is the honest
+ * degradation: a view that cannot replay a stack can still be put back on the
+ * page, and refusing to restore anything would lose the tab entirely.
+ *
+ * The deprecated `contents.canGoBack()`/`goBack()` pair is deliberately absent
+ * (design 6.1): Electron 44 documents that these "should use the new
+ * `contents.navigationHistory.…` API" instead.
+ */
+export interface NavigationHistoryLike {
+	canGoBack(): boolean;
+	canGoForward(): boolean;
+	goBack(): void;
+	goForward(): void;
+	length(): number;
+	getAllEntries?(): NavigationEntryLike[];
+	getActiveIndex?(): number;
+	restore?(options: {
+		entries: NavigationEntryLike[];
+		index?: number;
+	}): Promise<void>;
+}
+
+/** The subset of `WebContentsView` the tab registry uses. */ export interface DriveableView {
 	setBounds(rect: {
 		x: number;
 		y: number;

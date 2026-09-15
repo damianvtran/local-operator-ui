@@ -458,6 +458,35 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			images: z.array(sessionImage).max(8).optional(),
 		})
 		.strict(),
+	/*
+	 * Point a LIVE session at another working directory (the desktop's `/move`).
+	 *
+	 * Its own op rather than an argument to `sessions.command`, and the reason is
+	 * where the work happens: the move is executed in the SERVER process against
+	 * the session's viewer (`POST
+	 * /v1/desktop/sessions/{id}/working-directory`), while the command endpoint
+	 * answers a `NativeAction | OwnerCommandResult` - the union's other member is
+	 * the RUNTIME's own slash answer, and a move produces neither. `/move`
+	 * therefore stays a presentation request in the backend's command catalogue
+	 * (`desktop_destination="session.move"`): a bare `/move` opens the picker,
+	 * and the argument form and the chip both call this op instead. The shape is
+	 * `sessions.warm`'s: a lifecycle operation on the session's runtime, with its
+	 * own receipt.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`): a
+	 * path is not prose, and claiming image-sized room for a 4 KB field would
+	 * spend the message budget on nothing. `cwd` carries the same bound as
+	 * `sessions.create`/`sessions.preview` because it reaches the same route
+	 * model, which refuses anything else.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.move"),
+			sessionId,
+			requestId,
+			cwd: z.string().min(1).max(4096),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.answer"),
@@ -850,6 +879,37 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("mcp.credentials.store"),
+			sessionId,
+			name: z.string().min(1).max(256),
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// Field-level on purpose: a `.refine()` on the OBJECT would make this
+				// member a `ZodEffects`, which a discriminated union cannot take — it
+				// needs the `op` shape to discriminate on, so refining the whole
+				// object silently collapsed `DesktopRequest` to `unknown` and broke
+				// every `switch (request.op)` in this file.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					// Mirrors the owner's own bound (`local_operator/mcp/credentials.py`),
+					// so an oversized paste is refused as a sentence rather than
+					// serialized into a request the control budget rejects as an
+					// opaque 413.
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("mcp.control"),
@@ -1646,6 +1706,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 					can_notify: request.canNotify,
 				},
 			};
+		case "sessions.move":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/working-directory`,
+				method: "POST",
+				// `request_id` is the receipt key the route journals on, and it is what
+				// makes a retried move replay the first answer rather than retire the
+				// runtime a second time. `cwd` is sent as typed: resolving `~` and a
+				// relative path is the backend's job, because the base for a relative
+				// path is the SESSION's directory, which the renderer does not own.
+				body: { request_id: request.requestId, cwd: request.cwd },
+			};
 		case "sessions.warm":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/warm`,
@@ -1907,6 +1978,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "GET",
+			};
+		case "mcp.credentials.store":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp/credentials`,
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					confirmed_replace: request.confirmedReplace,
+				},
 			};
 		case "mcp.control":
 			return {

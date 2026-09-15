@@ -49,7 +49,10 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { mergeCompletionAttention } from "../../../../shared/desktop-session-contract";
+import {
+	acceptFrontendReplace,
+	mergeCompletionAttention,
+} from "../../../../shared/desktop-session-contract";
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
@@ -218,6 +221,42 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * opened, or this one unmounted).
 	 */
 	retry: () => void;
+	/**
+	 * Whether an authoritative page for THIS session is still owed.
+	 *
+	 * The composed fact the composer band's loading state and the transcript
+	 * pane's own hold are both claims about, and neither half of the view states
+	 * it alone. `hydrated` answers "has a page been applied for this session",
+	 * which a pane with NO session answers "no" to forever: a New chat is a
+	 * staged DRAFT, the stream is deliberately off until the user's first send
+	 * creates a session, so that answer describes a wait that is not happening.
+	 * Both readers waited on it: the band showed the hydration skeleton in place
+	 * of the greeting and the suggestion chips, and the pane held
+	 * `Loading conversation…` and its shimmer above the splash the band had
+	 * restored - two contradictory claims on one screen.
+	 *
+	 * Both terms are this hook's own inputs, which is why the rule is here and
+	 * said once:
+	 *
+	 *   - `enabled`/`sessionId` are "there is a stream that owes us a page". A
+	 *     draft has neither, and a caller that holds the stream off on purpose
+	 *     must not strand the composer in a wait that can never end. That trade
+	 *     is deliberate and it runs the OTHER way too: a disabled stream means
+	 *     "nothing owed", including for a session that already has rows, so a
+	 *     caller that backgrounds a stream it could resume must not read this
+	 *     field as "there is nothing here" and paint the empty-conversation band
+	 *     over rows that had simply not arrived. Both call sites pass
+	 *     `Boolean(sessionId)` today, so no caller is in that state - the
+	 *     sentence is here for the one that would be.
+	 *   - `hydrated` stays false for a session whose stream failed, so a real
+	 *     conversation whose cold history is in flight (or whose read failed)
+	 *     keeps waiting instead of asserting it is empty over rows that had
+	 *     simply not arrived (design D7).
+	 *
+	 * Deliberately NOT a redefinition of `hydrated`: that field's scope is a page
+	 * that exists, and a reader of it must keep reading it that way.
+	 */
+	awaitingHydration: boolean;
 };
 
 const TERMINAL_EVENTS = new Set([
@@ -1055,6 +1094,12 @@ export function useCanonicalSessionStream(
 						continue;
 					}
 					// From here the frame is a receipt with an epoch/seq cursor.
+					//
+					// The cursor as it stood BEFORE this frame is read first and kept
+					// beside the assignment, because `frontend.replace` below is ordered
+					// against it: checking the value this very frame is about to write
+					// would reject every replacement (remediation contract § C).
+					const priorCursor = receiptRef.current;
 					if (frame.type === "open" || "seq" in frame) {
 						receiptRef.current = { epoch: frame.epoch, seq: frame.seq };
 						next = { ...next, receipt: receiptRef.current };
@@ -1209,6 +1254,53 @@ export function useCanonicalSessionStream(
 									),
 									sequence: update.sequence,
 								},
+							};
+						}
+						continue;
+					}
+					if (frame.type === "frontend.replace") {
+						/*
+						 * An accepted move's own authoritative repaint, and the reason it is
+						 * not a delta.
+						 *
+						 * A move rewrites the facade's cwd without moving the owner's clock,
+						 * so the bridge publishes this explicit replacement rather than a
+						 * same-sequence `frontend.update` - which the rule just above would
+						 * (and must) reject as stale, leaving a mounted viewer on the
+						 * directory the session has already left (backend review R4).
+						 *
+						 * It replaces the PAINT PROJECTION and nothing else: `history`,
+						 * `transcript`, the durable rows, hydration and the subscription id
+						 * all survive, because this spreads them rather than rebuilding the
+						 * view. `cold` comes from the frame too - it is the facade's ACTUAL
+						 * cold status at publish time, which is what a cold move changes.
+						 *
+						 * Attention still goes through the receipt-revision helper: the paint
+						 * copy inside a replacement can be older than attention the stream has
+						 * already delivered, and attention may only ever rise.
+						 *
+						 * The `frontend.update` rule above is left exactly as it was. This
+						 * branch is only about ACCEPTING the replacement: the next real owner
+						 * delta at sequence N+1 must still apply over a replacement at N, and
+						 * an ordinary stale delta must still be rejected.
+						 */
+						if (
+							next.frontend &&
+							acceptFrontendReplace(priorCursor, sessionId, frame)
+						) {
+							const replaced = frame.payload.frontend;
+							next = {
+								...next,
+								frontend: {
+									...replaced.snapshot,
+									attention: mergeCompletionAttention(
+										next.frontend.attention,
+										replaced.snapshot.attention,
+										sessionId,
+									),
+								},
+								ownerEpoch: replaced.epoch,
+								cold: frame.payload.cold,
 							};
 						}
 						continue;
@@ -1745,6 +1837,14 @@ export function useCanonicalSessionStream(
 	return useMemo(
 		() => ({
 			...view,
+			/*
+			 * Composed here rather than at the consumer, and not stored in the view
+			 * state: it is derived from the hook's own arguments, which the state
+			 * does not observe, so a stored copy would go stale the moment the panel
+			 * changed session. See `CanonicalSessionHandle.awaitingHydration` for why
+			 * the composer needs it and why `hydrated` is left alone.
+			 */
+			awaitingHydration: enabled && Boolean(sessionId) && !view.hydrated,
 			loadOlder,
 			clearView,
 			addNote,
@@ -1754,6 +1854,8 @@ export function useCanonicalSessionStream(
 		}),
 		[
 			view,
+			enabled,
+			sessionId,
 			loadOlder,
 			clearView,
 			addNote,

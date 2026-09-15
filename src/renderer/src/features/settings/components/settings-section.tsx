@@ -86,14 +86,37 @@ type InfoItemProps = {
 	label: ReactNode;
 	value: ReactNode;
 	className?: string;
+	/**
+	 * Overrides the value's ink run.
+	 *
+	 * WHY this is a prop rather than a `className` on the value node: the value
+	 * sits inside a container that already sets `text-ink`, and two ink utilities
+	 * on nested elements are ordered by the stylesheet, not by intent - the
+	 * collision AGENTS.md warns about, where one of the two is dropped silently.
+	 * Passing the role here keeps the choice in the one `cn()` call that renders
+	 * the value.
+	 */
+	valueClassName?: string;
 };
 
-export const InfoItem: FC<InfoItemProps> = ({ label, value, className }) => (
+export const InfoItem: FC<InfoItemProps> = ({
+	label,
+	value,
+	className,
+	valueClassName,
+}) => (
 	<div className={cn("min-w-0", className)}>
 		<div className="flex items-center gap-1.5 text-meta text-ink-dim">
 			{label}
 		</div>
-		<div className="mt-0.5 break-words text-body-sm text-ink">{value}</div>
+		<div
+			className={cn(
+				"mt-0.5 break-words text-body-sm",
+				valueClassName ?? "text-ink",
+			)}
+		>
+			{value}
+		</div>
 	</div>
 );
 

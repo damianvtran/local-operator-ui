@@ -261,6 +261,88 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The browser tab strip's agent marker: the one element that distinguishes a
+		 * tab an AGENT opened from one the user opened (design 6.1/11.8).
+		 *
+		 * The ink is `ink` rather than `accent` as the chip above uses, because this
+		 * chip's whole job is to be READ — "Agent" is the label the user is looking for
+		 * when they want to know who owns a tab — where the chip above is a pointer
+		 * mark. The edge is the accent border, which is what keeps it perceivable on a
+		 * tab whose own fill changes with the active state.
+		 */
+		name: "browser agent marker chip",
+		on: ["surface", "elevated"],
+		fill: "accentWash",
+		border: "accent",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The same chip in its waiting state: a tab parked on an origin with a pending
+		 * approval request (design 9.3). The warning WASH marks the state and
+		 * `border-control` is the edge, which is the contract's own answer rather than
+		 * a preference: `warningBorder` measures 2.51-2.98:1 against `elevated` in
+		 * seven palettes, so the semantic border cannot be the boundary of a chip
+		 * drawn on a tab whose fill moves with the active state. Measured, not
+		 * reasoned — this row failed with `warningBorder` before the change.
+		 */
+		name: "browser waiting marker chip",
+		on: ["surface", "elevated"],
+		fill: "warningWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The same chip in its failed state: a tab whose main-frame load was refused
+		 * (design round 1, D1). The failure PANEL belongs to whichever tab the user is
+		 * looking at, so this chip is the only thing that carries the state on a
+		 * background tab — which makes it a component with its own fill and edge, and
+		 * by this file's own first rule that means a row here. The edge is
+		 * `borderControl` for the reason the waiting chip above records, and the row
+		 * was added this round because a green `check-themes` said nothing about a chip
+		 * nobody had listed (review round 2, D12). The designer measured it clearing
+		 * from the generated CSS (ink on `dangerWash` 8.62:1, edge 3.02:1 at worst
+		 * across the twelve themes); this row is what keeps that true.
+		 */
+		name: "browser failed marker chip",
+		on: ["surface", "elevated"],
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The strip's ACTIVE tab: `elevated` on the strip's own `sunken`, bounded by
+		 * `border-control` (design round 3, D18). It has its own fill and edge, so by
+		 * this file's first rule it has a row - and the row is the point: the ground
+		 * step alone is 1.11:1 in the dark palettes, which is a depth cue rather than
+		 * a marker, so `border-control` is what has to clear the 3:1 non-text floor.
+		 * It is asserted against BOTH grounds the edge borders: the strip's `sunken`
+		 * (in the gaps) and the neighbouring tab's `surface`.
+		 */
+		name: "browser active tab",
+		on: ["sunken", "surface"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The consent band: the surface the per-origin approval prompt renders on, in
+		 * the browser's chrome band. A control band rather than a callout, so its
+		 * boundary is `border-control` (design 11.2) and its ground is `surface` — see
+		 * the component for why the urgency is carried by an icon and words rather
+		 * than by a wash no palette assertion would cover.
+		 */
+		name: "browser consent band",
+		on: GROUNDS,
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The user's message bubble in the transcript.
 		 *
 		 * `on` names `canvas` because that is the ground the bubble is drawn on

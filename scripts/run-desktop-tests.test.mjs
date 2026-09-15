@@ -49,15 +49,26 @@ const USAGE_ERROR = /needs a positive whole number/;
  */
 const FAIL_REPORTED = /^(?:✖|not ok \d+ -) fails/m;
 const PASS_REPORTED = /^(?:✔|ok \d+ -) passes/m;
+/** What the reporting file saw, in either reporter's spelling of a pass. */
+const REPORTS_ENV_PATTERN = /NOTIFICATIONS_ENV=(.+)$/m;
 
 /*
- * Two throwaway test files: one that passes and one that fails. They live in the
- * OS temp directory, never in the repo, so a run of this file cannot leave the
- * suite's own tree dirty (the CI job asserts exactly that).
+ * Three throwaway test files: one that passes, one that fails, and one that
+ * reports the notification switch it was handed. They live in the OS temp
+ * directory, never in the repo, so a run of this file cannot leave the suite's
+ * own tree dirty (the CI job asserts exactly that).
  */
 const scratch = mkdtempSync(join(tmpdir(), "desktop-runner-"));
 const PASSES = join(scratch, "passes.test.mjs");
 const FAILS = join(scratch, "fails.test.mjs");
+/*
+ * Prints what it RECEIVED, rather than what the runner's source says it should
+ * have: the claim is about the environment a suite's test files — and, through
+ * them, every app and backend they spawn — are actually handed. `(unset)` is
+ * printed for the missing case so a failed assertion says which shape arrived
+ * instead of just showing an empty line.
+ */
+const REPORTS_ENV = join(scratch, "reports-env.test.mjs");
 writeFileSync(
 	PASSES,
 	'import { test } from "node:test";\ntest("passes", () => {});\n',
@@ -65,6 +76,10 @@ writeFileSync(
 writeFileSync(
 	FAILS,
 	'import { test } from "node:test";\ntest("fails", () => { throw new Error("deliberate"); });\n',
+);
+writeFileSync(
+	REPORTS_ENV,
+	'import { test } from "node:test";\ntest("reports the switch it received", () => {\n\tconst value = process.env.LOCAL_OPERATOR_NO_NOTIFICATIONS;\n\tconsole.log(`NOTIFICATIONS_ENV=${value === undefined ? "(unset)" : value}`);\n});\n',
 );
 process.on("exit", () => rmSync(scratch, { recursive: true, force: true }));
 
@@ -177,4 +192,79 @@ test("an ambient NODE_TEST_CONTEXT cannot make a failing suite report success", 
 	const passing = runRunner([PASSES], { NODE_TEST_CONTEXT: "child-v8" });
 	assert.equal(passing.status, 0, passing.stdout);
 	assert.match(passing.stdout, PASS_REPORTED);
+});
+
+test("the children the runner spawns are handed the notification kill switch", () => {
+	/*
+	 * The window this closes. `pnpm test:desktop` boots the real app; the app
+	 * spawns a real backend; a session parking on a gate announces itself through
+	 * `local_operator/tui/notify.py`, which on macOS is `osascript -e 'display
+	 * notification ...'` — attributed to Script Editor, delivered to the
+	 * operator's ACTUAL Notification Center. Roughly 46 of those arrived in six
+	 * minutes mid-run and buried whatever he was reading. The switch that stops
+	 * it is read at that path's source (`notifications_enabled()`); nothing in
+	 * this repo set it, so the default was "banner".
+	 *
+	 * AMBIENT REMOVED FIRST, and that is the whole difference between a real
+	 * test and a tautology: the runner passes the caller's environment through
+	 * unfiltered apart from NODE_TEST_CONTEXT, so on a machine that exports the
+	 * variable — the machine the incident happened on — a bare read of the child
+	 * would pass with the runner doing nothing at all. `undefined` drops the key
+	 * from the child environment, which is what makes this case about the
+	 * DEFAULT rather than about the harness's own shell.
+	 *
+	 * The assertion is on what the CHILD PRINTED, not on the runner's source:
+	 * the claim is about the environment a suite's test files — and, through
+	 * them, every app and backend they spawn — actually receive.
+	 */
+	const { status, stdout } = runRunner([REPORTS_ENV], {
+		LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined,
+	});
+	assert.equal(status, 0, stdout);
+	assert.equal(
+		stdout.match(REPORTS_ENV_PATTERN)?.[0],
+		"NOTIFICATIONS_ENV=1",
+		stdout,
+	);
+});
+
+test("a notification setting someone made deliberately survives the runner", () => {
+	/*
+	 * A default, not an override. Someone who exports a value — an operator
+	 * silencing one run, say — means it, and a value this runner re-derived would
+	 * be tooling deciding something about the operator's desktop without telling
+	 * them. Both `0` and `1` are passed through untouched. That is NOT the same as
+	 * saying `0` means "banners back on": the consumer silences on any non-empty
+	 * value (`os.environ.get()`, see `notifications-off.mjs`), so `0` is off like
+	 * `1`, and unsetting the key is the only way back on.
+	 */
+	for (const value of ["0", "1", "yes"]) {
+		const { status, stdout } = runRunner([REPORTS_ENV], {
+			LOCAL_OPERATOR_NO_NOTIFICATIONS: value,
+		});
+		assert.equal(status, 0, stdout);
+		assert.equal(
+			stdout.match(REPORTS_ENV_PATTERN)?.[0],
+			`NOTIFICATIONS_ENV=${value}`,
+			stdout,
+		);
+	}
+
+	/*
+	 * Empty is NOT a deliberate choice. The backend reads this variable with
+	 * `os.environ.get()`, where `""` is falsy, i.e. still "notifications on": an
+	 * empty value is what a stale export or a shell mishap leaves behind, and
+	 * honouring it would leave every banner armed behind a variable that looks
+	 * switched off. It takes the default, so the two cases agree about what "off"
+	 * means.
+	 */
+	const empty = runRunner([REPORTS_ENV], {
+		LOCAL_OPERATOR_NO_NOTIFICATIONS: "",
+	});
+	assert.equal(empty.status, 0, empty.stdout);
+	assert.equal(
+		empty.stdout.match(REPORTS_ENV_PATTERN)?.[0],
+		"NOTIFICATIONS_ENV=1",
+		empty.stdout,
+	);
 });
