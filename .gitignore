@@ -59,3 +59,13 @@ node_modules
 # and committing it put 327 files and ~67k lines of vendored bundle in a docs
 # commit (review round 3, MAJOR 1).
 storybook-static/
+
+# A machine-local Storybook config used when the preview has to be served from a
+# variant of `.storybook/` (currently `reactDocgen: false`, because
+# react-docgen-typescript 2.2.2 reads a TypeScript 7 API that no longer exists).
+# Nothing in the repo references it - no script or package.json passes
+# `-c .storybook-local` - and its `stories` globs are absolute paths into one
+# checkout, so tracking it ships one machine's layout in a shared repo and
+# contradicts the branch's own provenance records, which describe it as
+# untracked (review round 4 addendum, MAJOR).
+.storybook-local/
