@@ -794,6 +794,63 @@ const STRUCTURAL_CALL_SITES = [
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
 		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
 	},
+	{
+		/*
+		 * The chat sidebar's CURRENT-ROW ground, and the operator's own report:
+		 * "the sidebar doesn't visibly highlight the selected conversation".
+		 *
+		 * Every row in that panel is drawn on `surface`, and the ground every
+		 * current-row state used was `accent-wash` — ΔE00 1.05 against it in
+		 * tokyoNight (#262B3F on #24283B), which is no mark at all, while the
+		 * hover step the same rows carry (`elevated`) measures 4.58 there. The
+		 * pointer therefore read as the current row and the current row did not.
+		 * Contrast is equally useless as an instrument here: the two colours
+		 * differ in hue rather than luminance, so the pair reads 1.04:1.
+		 *
+		 * WHY A CALL SITE AND NOT A PALETTE ROW. `accent-wash` is only invisible
+		 * on THIS ground — the app rail and the settings rail draw it on `canvas`,
+		 * where the same pair measures 6.45 in tokyoNight — so strengthening the
+		 * role would make every hover tint in the app louder to fix one panel.
+		 * The replacement is `sunken`, which the adjacent-ground loop above
+		 * already asserts as a perceptible step from `surface` AND from `elevated`
+		 * in all twelve palettes (worst case ΔE00 3.75 against the 2.0 field
+		 * floor). What no palette assertion can see is the CLASS on the row, which
+		 * is how this shipped: every row in this file stayed green while painting
+		 * a ground the user could not see. Reverting this line to a wash fails
+		 * here and nowhere else; a palette edit that collapsed `surface` against
+		 * `sunken` fails the `["surface", "sunken"]` pair above.
+		 *
+		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
+		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
+		 * background in the cascade, so without it the pointer REPLACED the
+		 * selection ground on the row the user is on — in obsidian those two
+		 * grounds are ΔE00 0.77 apart, so hovering the current row erased it.
+		 * The class is one shared constant for all four current-row states in
+		 * this panel (the selected conversation, the All chats filter, the New
+		 * chat row and the entity row staging a draft), so pinning the
+		 * declaration is what holds all four.
+		 */
+		what: "chat sidebar current-row ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: 'const rowCurrent = "bg-sunken text-ink hover:bg-sunken";',
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05), and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place the invisible selection can be caught",
+	},
+	{
+		/*
+		 * The row the operator reported, pinned as the EXPRESSION rather than the
+		 * ground: a later reader can leave the shared constant intact and still
+		 * un-mark the conversation — by dropping the reference, or by weakening
+		 * the predicate so the row never reaches it. Both are this substring.
+		 *
+		 * `!activeDraftKey` is in the pin because it is the same term the row's
+		 * `aria-current` reads: the row may not paint a ground the accessibility
+		 * tree does not claim, and it may not claim one it does not paint.
+		 */
+		what: "chat session row current-row mark",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: "selectedConversation === row.session_id &&\n\t\t\t\t\t\t!activeDraftKey &&\n\t\t\t\t\t\trowCurrent,",
+		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader",
+	},
 ];
 
 /** Roles that must clear the structural 3:1 floor on all four grounds. */
