@@ -1,4 +1,3 @@
-import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect } from "react";
