@@ -47,7 +47,16 @@ const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		"Another copy of Local Operator is setting up its backend right now. Retry in a moment.",
 	],
 	[
-		/did not become healthy|Backend smoke|did not complete|exited with/i,
+		/*
+		 * The smoke arm only. `did not complete` used to be in here, and it is the
+		 * phrase `prepareManagedPython` throws when the install callback returns
+		 * false - a pip or network failure, where nothing was installed at all - so
+		 * the user read "The backend was installed but did not start correctly" about
+		 * an install that never happened (review round 2, N6). It now falls through
+		 * to the generic cause, which is true of it, and the app's own sentence still
+		 * follows under `The app recorded:`.
+		 */
+		/did not become healthy|Backend smoke|exited with/i,
 		"The backend was installed but did not start correctly.",
 	],
 	[

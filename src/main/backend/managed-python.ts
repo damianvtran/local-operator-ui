@@ -405,8 +405,19 @@ export type ManagedSelectionState =
 	| { kind: "ready"; selection: ManagedSelection }
 	/** Nothing usable is published; preparing one is the answer. */
 	| { kind: "unprepared"; detail: string }
-	/** What was published is gone, unreadable or not the published bytes. */
-	| { kind: "missing"; detail: string };
+	/**
+	 * What was published is gone, unreadable or not the published bytes.
+	 *
+	 * `published` is the record the pointer names, whatever is wrong with it, and
+	 * exactly one caller needs it: the reaper must not delete the generation a
+	 * repair is about to reuse. "Not the published bytes" is not the same statement
+	 * as "stale" - a downgrade, or any two generations copied from two seeds,
+	 * leaves the SELECTED generation older by mtime than one that is not selected,
+	 * and the retention rule is about what is selected rather than what is newest
+	 * (review round 2, N4). Absent only where the pointer itself is unusable,
+	 * which is `unprepared`, with nothing published to preserve.
+	 */
+	| { kind: "missing"; detail: string; published?: ManagedSelection };
 
 function describe(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -480,6 +491,17 @@ export function inspectManagedSelection(
 			kind: "unprepared",
 			detail: `The published environment pointer does not describe a managed environment: ${pointer}`,
 		};
+	/*
+	 * Every "not usable" answer carries the record the pointer names, so the one
+	 * caller that acts on the verdict can protect what a repair is about to reuse
+	 * (review round 2, N4). Built here rather than at each site: this is a verdict
+	 * with a reason, and the reason is the only part that differs between them.
+	 */
+	const missing = (detail: string): ManagedSelectionState => ({
+		kind: "missing",
+		detail,
+		published: selection,
+	});
 	for (const [what, path] of [
 		["Python runtime", selection.runtime],
 		["environment", selection.venv],
@@ -487,10 +509,9 @@ export function inspectManagedSelection(
 		try {
 			realDirectory(path);
 		} catch (error) {
-			return {
-				kind: "missing",
-				detail: `The selected ${what} is not there any more (${path}): ${describe(error)}`,
-			};
+			return missing(
+				`The selected ${what} is not there any more (${path}): ${describe(error)}`,
+			);
 		}
 	}
 	try {
@@ -498,45 +519,39 @@ export function inspectManagedSelection(
 			fs.readFileSync(join(selection.venv, READY), "utf8"),
 		);
 		if (JSON.stringify(ready) !== JSON.stringify(selection))
-			return {
-				kind: "missing",
-				detail: `The selected environment does not match the record published with it: ${selection.venv}`,
-			};
+			return missing(
+				`The selected environment does not match the record published with it: ${selection.venv}`,
+			);
 	} catch (error) {
-		return {
-			kind: "missing",
-			detail: `The selected environment is not complete (${selection.venv}): ${describe(error)}`,
-		};
+		return missing(
+			`The selected environment is not complete (${selection.venv}): ${describe(error)}`,
+		);
 	}
 	if (!fs.existsSync(join(selection.venv, "bin", "local-operator")))
-		return {
-			kind: "missing",
-			detail: `The selected environment has no backend installed: ${selection.venv}`,
-		};
+		return missing(
+			`The selected environment has no backend installed: ${selection.venv}`,
+		);
 	let home: string | undefined;
 	try {
 		home = PYVENV_HOME.exec(
 			fs.readFileSync(join(selection.venv, "pyvenv.cfg"), "utf8"),
 		)?.[1]?.trim();
 	} catch (error) {
-		return {
-			kind: "missing",
-			detail: `The selected environment has no readable pyvenv.cfg (${selection.venv}): ${describe(error)}`,
-		};
+		return missing(
+			`The selected environment has no readable pyvenv.cfg (${selection.venv}): ${describe(error)}`,
+		);
 	}
 	if (home !== join(selection.runtime, "bin"))
-		return {
-			kind: "missing",
-			detail: `The selected environment does not belong to its external Python runtime (${selection.venv} names ${home ?? "no runtime"})`,
-		};
+		return missing(
+			`The selected environment does not belong to its external Python runtime (${selection.venv} names ${home ?? "no runtime"})`,
+		);
 	let identity: string;
 	try {
 		identity = runtimeIdentity(selection.runtime, options.arch);
 	} catch (error) {
-		return {
-			kind: "missing",
-			detail: `The selected Python runtime could not be read (${selection.runtime}): ${describe(error)}`,
-		};
+		return missing(
+			`The selected Python runtime could not be read (${selection.runtime}): ${describe(error)}`,
+		);
 	}
 	if (identity !== selection.runtimeId) {
 		let reason: string;
@@ -548,10 +563,9 @@ export function inspectManagedSelection(
 		} catch {
 			reason = "the two trees could not be compared";
 		}
-		return {
-			kind: "missing",
-			detail: `The selected Python runtime is no longer the runtime that was published (${reason}); a fresh runtime will be published beside it`,
-		};
+		return missing(
+			`The selected Python runtime is no longer the runtime that was published (${reason}); a fresh runtime will be published beside it`,
+		);
 	}
 	return { kind: "ready", selection };
 }
@@ -578,8 +592,13 @@ export function readManagedSelection(
  * it is published, and `verifyMachO`'s per-Mach-O `codesign`+`otool` pair cost
  * ~100 subprocesses on a path `index.ts` awaited BEFORE creating the window -
  * measured at 2214/2262 ms for a 50-Mach-O tree (review R11). Mach-O verification
- * is a property of provisioning, where it still runs against the seed, the staged
- * copy and every candidate generation; a tree that no longer hashes to what was
+ * is a property of provisioning, where it runs against the seed and against the
+ * staged copy this process is about to publish - and NOT against a reused
+ * generation, which `usableRuntimeGeneration` accepts on its identity alone. That
+ * is sufficient rather than a gap: a reused generation is byte-identical to a
+ * staged copy that `verifyMachO` passed over, which is what the identity hash
+ * asserts, and this sentence used to claim a per-generation signature pass that
+ * does not happen (review round 2, N6). A tree that no longer hashes to what was
  * published is refused by the identity check below whatever its signatures say.
  */
 export async function managedSelectionReady(
@@ -603,10 +622,17 @@ const PREPARATION_LOCK_MS = 120_000;
  * added a new ~47 MB runtime while the one before it stayed forever. Nothing
  * owned any of them, and there was no stated bound (review R12).
  *
- * The retention rule, deliberately narrow: the selected generation and the most
+ * The retention rule, deliberately narrow: the SELECTED generation and the most
  * recently modified other generation in each root survive, so a restart or a
  * rollback mid-switch still has something to fall back to; a staging tree older
- * than the lock deadline is abandoned by construction. Only names this module
+ * than the lock deadline is abandoned by construction.
+ *
+ * `keep` is required rather than defaulted, and the type is the point: a
+ * keep-less call's only survivor is the newest generation in the root, which is
+ * not necessarily the selected one, so such a call can delete the generation a
+ * repair was about to reuse and turn a recoverable state into a re-copy of the
+ * seed (review round 2, N4). Every caller states what it protects; a caller with
+ * nothing published passes an empty object deliberately. Only names this module
  * writes are ever considered - `[0-9a-f]{64}-<uuid>` and `.preparing-*` - so a
  * file an operator or a future version put here is left alone, and nothing
  * outside `managedPythonRoot` is read, walked or removed. Never a machine-wide
@@ -614,7 +640,7 @@ const PREPARATION_LOCK_MS = 120_000;
  */
 export function reapSupersededGenerations(
 	options: ManagedPythonOptions,
-	keep: { runtime?: string; venv?: string } = {},
+	keep: { runtime?: string; venv?: string },
 	now = Date.now(),
 ): string[] {
 	const removed: string[] = [];
@@ -831,8 +857,20 @@ export async function prepareManagedPython(
 		const state = inspectManagedSelection(options);
 		if (state.kind === "ready") return state.selection;
 		const superseded = state.kind === "missing" ? state.detail : null;
+		// `unprepared` has no pointer at all, so there is nothing published to keep.
+		const published = state.kind === "missing" ? state.published : undefined;
 		const root = managedPythonRoot(options);
-		reapSupersededGenerations(options);
+		/*
+		 * Reclaim BEFORE the copy, which is worth ~47 MB on the disk-full path this
+		 * branch writes user copy for - but never the published generation: a
+		 * selection that is `missing` is not necessarily superseded, and the venv
+		 * removed is the ordinary case where its runtime is the very tree the reuse
+		 * below is about to find. `unprepared` has nothing published to keep.
+		 */
+		reapSupersededGenerations(options, {
+			runtime: published?.runtime,
+			venv: published?.venv,
+		});
 		const { runtime, id } = await prepareRuntime(options);
 		await mkdir(environmentsRoot(options), { recursive: true, mode: 0o700 });
 		realDirectory(environmentsRoot(options));
