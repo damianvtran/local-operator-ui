@@ -273,13 +273,19 @@ const CONTROLS = [
 		name: "browser agent marker chip",
 		/*
 		 * The grounds the chip is DRAWN on. The tab-strip grammar moved them: the chip
-		 * renders inside the tab button, whose only fills are the page's `canvas` (the
-		 * active tab) and the strip's `sunken` (an inactive one). `surface`/`elevated`
-		 * were the fills a tab used to have and no longer occur beneath this chip
-		 * (review round 2, F4: round 1's correction was not carried to the siblings of
-		 * the row it was made on).
+		 * renders inside the tab button, whose fills are the page's `canvas` (the active
+		 * tab), the strip's `sunken` (an inactive one) and `elevated` (an inactive tab
+		 * hovered, focused within, or with its actions row open). `surface` was the fill
+		 * a tab used to have and no longer occurs beneath this chip (review round 2, F4:
+		 * round 1's correction was not carried to the siblings of the row it was made
+		 * on).
+		 *
+		 * `elevated` was dropped in round 2 and is back in round 3: those three states
+		 * are all reachable, the chip now LEADS the title so it is never under the
+		 * chrome cluster's opaque band, and the ink has to clear the floor on every
+		 * ground it can actually be drawn on (review round 3, MINOR).
 		 */
-		on: ["canvas", "sunken"],
+		on: ["canvas", "sunken", "elevated"],
 		fill: "accentWash",
 		border: "accent",
 		ink: "ink",
@@ -303,14 +309,14 @@ const CONTROLS = [
 		 * null because the pill paints no ground of its own: the strip's shows through,
 		 * which is why the row asserts the edge against both grounds it can sit on.
 		 */
-		on: ["canvas", "sunken"],
+		on: ["canvas", "sunken", "elevated"],
 		fill: null,
 		border: "borderControl",
 		ink: "inkMuted",
 	},
 	{
 		name: "browser restored marker pill",
-		on: ["canvas", "sunken"],
+		on: ["canvas", "sunken", "elevated"],
 		fill: null,
 		border: "borderControl",
 		ink: "inkDim",
@@ -325,7 +331,7 @@ const CONTROLS = [
 		 * which no longer occurs beneath it — a row asserting the wrong grounds is the
 		 * "green output about a component nobody listed" case.
 		 */
-		on: ["canvas", "sunken"],
+		on: ["canvas", "sunken", "elevated"],
 		fill: "warningWash",
 		border: "borderControl",
 		ink: "ink",
@@ -346,7 +352,7 @@ const CONTROLS = [
 		name: "browser failed marker chip",
 		// The same grammar change as the other two chips: inside the tab button, on
 		// `canvas` (active) or the strip's `sunken` (inactive).
-		on: ["canvas", "sunken"],
+		on: ["canvas", "sunken", "elevated"],
 		fill: "dangerWash",
 		border: "borderControl",
 		ink: "ink",

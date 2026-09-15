@@ -309,7 +309,18 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										    differ by - to 49px of its 108px, so the fix made two rows for
 										    one host look identical again. The site is unshrinkable now and
 										    the requester is the flexible one, in its short form. */}
-										<span className="shrink-0 whitespace-nowrap font-mono text-mono-sm text-ink">
+										{/* ...and it is BOUNDED (review round 3, MINOR): unshrinkable with no
+										    ceiling meant a host wider than the leftover pushed the row past
+										    `w-full`, and the panel body's `overflow-y-auto` resolves
+										    `overflow-x` to `auto`, so that rendered as a horizontal
+										    scrollbar inside the dock rather than as a clipped field.
+										    `max-w-[60%]` plus `truncate` keeps D14's ordering - the site is
+										    the last thing to give way - while the row stays inside its own
+										    width, and the full host is in the element's `title`. */}
+										<span
+											className="max-w-[60%] shrink-0 truncate font-mono text-mono-sm text-ink"
+											title={row.request.authority}
+										>
 											{row.request.authority}
 										</span>
 										{/* WHO is asking, on the row rather than only inside the card it

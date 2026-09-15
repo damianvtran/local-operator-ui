@@ -152,7 +152,112 @@ test("a live request is never reported as resolved, however often the tick runs"
 test("the reconcile's rule is unchanged for a departure: withdrawal stays a withdrawal", () => {
 	const now = Date.now();
 	const withdrawn = request({ expiresAt: now + 60_000 });
-	const rows = reconcileResolved([withdrawn], [], [], new Set(), now);
+	const rows = reconcileResolved([withdrawn], [], [], new Set(), new Set(), now);
 	assert.equal(rows.length, 1);
 	assert.equal(rows[0].kind, "withdrawn");
+});
+
+/*
+ * THE ROW IS EXPLAINED ONCE, NOT ONCE PER RETENTION WINDOW (review round 3, MAJOR).
+ *
+ * Main keeps a dead entry in the projection until some unrelated change arrives, and
+ * the interval that moves `now` runs for as long as ANY request is live. So a surface
+ * whose de-dupe memory was derived from the retention-pruned `resolved` state
+ * re-resolved the same entry every five minutes — a fresh `at` each time — for as
+ * long as another request kept the clock alive, and re-announced it each time,
+ * because the surface renders these rows inside `aria-live="polite"`. A stale
+ * "expired" row on a five-minute loop is worse than a missing one.
+ *
+ * How the clock is moved: `Date.now` is the module's clock (`now` comes from
+ * `Date.now()` in the hook, not from a timer's own reading), so the test holds the
+ * clock in a variable, jumps it by more than `RESOLVED_RETENTION_MS`, and lets the
+ * REAL interval fire. Nothing else about the app changes: same props, same entry in
+ * the projection.
+ *
+ * This is the assertion that fails on the pre-fix code: the row's `at` is what a reset
+ * looks like, and a pruned-then-re-added memory is the only thing that produces one.
+ */
+test("a stale entry is resolved once, not again every retention window", async () => {
+	const realNow = Date.now;
+	const startedAt = realNow();
+	// The clock tracks real time so the first phase is an ordinary TTL, and `offset`
+	// is what the jump adds on top of it.
+	let offset = 0;
+	Date.now = () => realNow() + offset;
+	try {
+		const reports = [];
+		const host = bootstrapDOM.window.document.createElement("div");
+		bootstrapDOM.window.document.body.appendChild(host);
+		const root = createRoot(host);
+
+		const requests = [
+			// Dies almost immediately, and stays in the projection afterwards: main's
+			// dead entries are removed by the next unrelated change, not by the clock.
+			request({ entryId: "expiring", expiresAt: startedAt + 200 }),
+			// Long-lived, and it is why the interval keeps ticking after the first row
+			// appears — the condition the finding needs.
+			request({
+				entryId: "keeper",
+				authority: "keeper.example",
+				expiresAt: startedAt + 60 * 60_000,
+			}),
+		];
+		const Probe = renderQueueProbe(requests, [], (model) => reports.push(model));
+		await act(async () => {
+			root.render(createElement(Probe));
+		});
+
+		// One real interval tick past the TTL: the row, with the `at` the surface first
+		// explained it with.
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 1400));
+		});
+		const first = reports.at(-1);
+		assert.equal(first.resolved.length, 1, "the expiry is explained once");
+		const firstAt = first.resolved[0].at;
+
+		// Now jump past the retention window with the interval still running, which is
+		// exactly what an hour on a quiet surface looks like.
+		offset += 301_000;
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 2400));
+		});
+
+		/*
+		 * THE ENTRY IS STILL IN THE PROJECTION HERE — nothing removed it — and the row is
+		 * gone, which is retention doing its bounded job rather than the memory doing
+		 * anything. What must NOT happen is the row coming back: `length === 1` with an
+		 * `at` of `after` is the defect, and it is what the pre-fix derivation produced
+		 * (the row is pruned from `resolved`, so its key leaves the de-dupe set, so the
+		 * arm that reads the projection resolves it again). Asserting the empty list is
+		 * asserting the absence of the loop, on a tick that did happen.
+		 */
+		const after = reports.at(-1);
+		assert.equal(
+			after.resolved.length,
+			0,
+			"the pruned row is not re-resolved from the projection",
+		);
+		assert.ok(
+			after.now - firstAt >= 300_000,
+			"and the window genuinely elapsed, so the prune above is retention's and not a clock that stalled",
+		);
+		// One more tick, in case the re-resolution lags a render behind the prune.
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 1200));
+		});
+		assert.equal(
+			reports.at(-1).resolved.length,
+			0,
+			"and it does not arrive a tick later either",
+		);
+
+		await act(async () => {
+			root.unmount();
+		});
+		host.remove();
+	}
+	finally {
+		Date.now = realNow;
+	}
 });

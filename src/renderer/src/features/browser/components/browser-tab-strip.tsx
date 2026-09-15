@@ -209,6 +209,22 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					{tabs.map((tab, index) => {
 						const active = tab.tabId === activeTabId;
 						const waitingOrdinal = waiting[tab.tabId];
+						/*
+						 * A MARKED ROW CARRIES MORE CHROME, so it gets a wider floor (review
+						 * round 3, MAJOR). `min-w-44` is the width at which nine BARE tabs fit
+						 * and each still names itself; a row carrying the `Agent` chip AND the
+						 * active tab's permanent close control has 43px more in it than that,
+						 * so at 176px its title measured ~17px however the chrome behaved -
+						 * the marker cannot go (it is the only thing that tells an agent's tab
+						 * from the user's) and neither can the title, so the floor moves
+						 * instead of either.
+						 */
+						const marked =
+							tab.owner === "agent" ||
+							tab.handedOver ||
+							tab.restored ||
+							tab.failed ||
+							waitingOrdinal !== undefined;
 						const previous = index > 0 ? tabs[index - 1] : null;
 						// The divider belongs to the gap between two inactive tabs: the active
 						// one is continuous with the page, so no rule may run into it.
@@ -236,7 +252,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 * chrome buttons also step in on hover/focus now (below), which is what
 										 * pays for the wider floor.
 										 */
-										"group relative flex min-w-44 max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
+										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
+										marked ? "min-w-56" : "min-w-44",
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
 											: "text-ink-muted hover:bg-elevated hover:text-ink",
@@ -258,22 +275,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										data-tour-tag="browser-tab"
 									>
 										<TabMark tab={tab} />
-										{/*
-										 * `grow` so the title takes whatever the chrome leaves and the
-										 * marker/chips sit at the tab's edge, and the native `title` so a
-										 * truncated name is still recoverable with the pointer - which is
-										 * what D13 asked for alongside the width fix. The full text is in
-										 * the DOM either way, so assistive technology already reads the
-										 * whole name; this is the mouse's half of it. The tag is what the
-										 * proof harness measures a title box with (QA round 2, Q4).
-										 */}
-										<span
-											className="min-w-0 grow truncate"
-											title={tab.title}
-											data-tour-tag="browser-tab-title"
-										>
-											{tab.title}
-										</span>
 										{tab.owner === "agent" && (
 											// Sentence case, informational, and the element a QA pass
 											// asserts on: the marker is the ONLY thing that distinguishes
@@ -338,28 +339,68 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Request {waitingOrdinal}
 											</span>
 										)}
+										{/*
+										 * THE TITLE COMES AFTER THE MARKERS, and that ordering is the fix
+										 * for review round 3's MAJOR. The chrome cluster is overlaid on the
+										 * row's right end (below), so anything trailing the title sits under
+										 * an opaque panel whenever the panel is revealed - and the marker
+										 * chip is "the ONLY thing that distinguishes an agent tab from a
+										 * user tab in the strip". At `[W-51, W-8]` it sat ENTIRELY inside the
+										 * cluster's 66px band: the panel covered the marker, not the title's
+										 * tail, so the state this feature exists to show was invisible on
+										 * exactly the tabs it marks. Leading the title is also where real
+										 * chrome puts a tab's status: the pip is read before the name.
+										 *
+										 * `grow` so the title still takes whatever the leading markers leave,
+										 * and the native `title` so a truncated name is recoverable with the
+										 * pointer - which is what D13 asked for alongside the width fix. The
+										 * full text is in the DOM either way, so assistive technology already
+										 * reads the whole name; this is the mouse's half of it. The tag is
+										 * what the proof harness measures a title box with (QA round 2, Q4).
+										 */}
+										<span
+											className="min-w-0 grow truncate"
+											title={tab.title}
+											data-tour-tag="browser-tab-title"
+										>
+											{tab.title}
+										</span>
 									</button>
-									{/* THE CHROME CLUSTER IS OVERLAID, NOT RESERVED (design round 3, D13;
-									    QA round 2 Q4 and the UX round's U5, which measured the same
-									    thing from the other side). `opacity-0` does not reclaim layout:
-									    the two 28px controls held 68px of every tab's 176px, so the
-									    rows carrying the `Agent` marker had 21px of title - one glyph -
-									    on exactly the tabs this feature adds. Absolutely positioned, the
-									    cluster takes no width from the title and paints over its tail
-									    when revealed, on the tab's own ground so the overlap reads as
-									    chrome rather than as a second surface. It carries the grounds
-									    the tab itself has, because `bg-inherit` would be transparent on
-									    a keyboard-focused inactive tab.
-									
-									    `pointer-events-none` while hidden is part of the move: two
-									    invisible controls now sit over the title's tail, and a click
-									    meant for the name must not land on Close. */}
+									{/* THE CHROME CLUSTER IS PERMANENT IN FLOW ON THE ACTIVE TAB
+									AND OVERLAID ON AN INACTIVE ONE, AND ITS GROUND IS EARNED
+									(design round 3, D13; QA round 2 Q4 and the UX round's U5 from
+									the other side; review round 3, MAJOR). `opacity-0` does not
+									reclaim layout, which is what D13 found: the two 28px controls
+									held 68px of every tab's 176px, so the rows carrying the
+									`Agent` marker had 21px of title - one glyph - on exactly the
+									tabs this feature adds. The overlay takes that width back on
+									an inactive tab, where the controls are revealed by hover or
+									focus and cost the title nothing while the pointer is away.
+									THE ACTIVE TAB'S CLOSE CONTROL IS NOT TRANSIENT, so there the
+									cluster sits in flow instead: a panel floated over a
+									permanently visible control would put the title's tail under
+									an opaque band with no ellipsis to show for it. In flow, the
+									title truncates before it, which is the honest rendering. THE
+									GROUND IS EARNED, which is the half review round 3 caught. An
+									opaque band painted in every state covers whatever trails the
+									title - and on the active tab (`bg-canvas` over `bg-canvas`)
+									it hid the state chips at rest as well, on exactly the tabs
+									this feature adds. The markers lead the title now, and the
+									band appears only with the controls it belongs to. On an
+									inactive tab it takes the tab's hover ground rather than
+									`bg-inherit`, which would be transparent on a keyboard-focused
+									inactive tab. `pointer-events-none` while hidden is part of
+									the overlay: two invisible controls sit over the title's tail,
+									and a click meant for the name must not land on Close. */}
 									<div
 										className={cn(
-											"absolute inset-y-0 right-1 flex items-center gap-1.5",
 											active
-												? "bg-canvas"
-												: "bg-sunken group-hover:bg-elevated",
+												? "relative flex shrink-0 items-center gap-1.5"
+												: "absolute inset-y-0 right-1 flex items-center gap-1.5",
+											// Its own actions row being open is not a hover, so the ground
+											// and the reveal follow that state explicitly.
+											!active &&
+												"group-hover:bg-elevated group-focus-within:bg-elevated",
 											actionsTabId === tab.tabId && !active && "bg-elevated",
 										)}
 									>
@@ -401,8 +442,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												// hover OR focus-within (§6): a focusable but invisible control
 												// is a keyboard trap of its own, and the row's actions expansion
 												// is the always-reachable path for the mouse. The reveal is an
-												// opacity step, never a layout shift - and now it is neither a
-												// layout shift nor a held reserve.
+												// opacity step, never a layout shift - and on the active tab,
+												// where this control is permanent, it is IN FLOW, so the title
+												// truncates before it instead of running under it (review
+												// round 3, MAJOR).
 												className={cn(
 													"transition-opacity",
 													active

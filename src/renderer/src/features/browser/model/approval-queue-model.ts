@@ -210,12 +210,25 @@ export function waitingOrdinals(
  * WHY RENDERER-SIDE RATHER THAN A PROJECTION FIELD: publishing a resolved set
  * from main would add a second, expiring copy of state the store deliberately
  * does not keep.
+ *
+ * `reported` IS THE MEMORY RETENTION MUST NOT PRUNE (review round 3, MAJOR).
+ * `resolved` is a bounded reading of the recent past — the retention filter drops
+ * a row after `RESOLVED_RETENTION_MS` — so deriving the de-dupe set from it meant
+ * an entry that is still IN the projection (main keeps dead entries until some
+ * unrelated change arrives) was re-resolved, with a fresh `at`, every time the
+ * window rolled off: once per five minutes, for as long as any other request kept
+ * the clock alive, and re-announced every time because the surface renders these
+ * rows inside `aria-live`. The caller owns a set that grows and is never pruned
+ * for as long as the surface lives; that is the honest boundary, because "I have
+ * already explained this one" is a fact about the session, not about the last
+ * five minutes.
  */
 export function reconcileResolved(
 	previous: ReadonlyArray<ApprovalRequestInput>,
 	current: ReadonlyArray<ApprovalRequestInput>,
 	resolved: ReadonlyArray<ResolvedRow>,
 	answered: ReadonlySet<string>,
+	reported: ReadonlySet<string>,
 	now: number,
 ): ResolvedRow[] {
 	const liveIds = new Set(current.map((request) => request.entryId));
@@ -255,7 +268,7 @@ export function reconcileResolved(
 			authority: request.authority,
 			at: now,
 		}));
-	const known = new Set(resolved.map((row) => row.key));
+	const known = reported;
 	return [...fresh, ...expired]
 		.filter((row) => !known.has(row.key))
 		.concat(resolved)
@@ -331,6 +344,41 @@ export function useApprovalQueue(
 	/** The entries this host answered. A ref, not state: the projection's next
 	 * refresh reads it inside an effect, and a re-render is not wanted for it. */
 	const answered = useRef<Set<string>>(new Set());
+	/**
+	 * Every entry this surface has already explained, for as long as it lives.
+	 *
+	 * NOT derived from `resolved`: retention prunes that state after five minutes,
+	 * and an entry that is still in the projection while its row has aged out was
+	 * then re-resolved with a fresh `at` on every retention window — a stale
+	 * `expired` row re-announced inside `aria-live` once per five minutes, for as
+	 * long as any other request kept the clock alive (review round 3, MAJOR).
+	 * Bounded by the queue's own cap and dropped with the surface, which is the
+	 * same lifetime the memory's meaning has.
+	 */
+	const reported = useRef<Set<string>>(new Set());
+	/** The updater both arms share: reconcile, then remember what was reported so
+	 * retention cannot un-remember it. Idempotent, which matters because React may
+	 * run an updater twice. */
+	const reconcile = useCallback(
+		(
+			was: ReadonlyArray<ApprovalRequestInput>,
+			next: ReadonlyArray<ApprovalRequestInput>,
+			at: number,
+		) =>
+			setResolved((current) => {
+				const rows = reconcileResolved(
+					was,
+					next,
+					current,
+					answered.current,
+					reported.current,
+					at,
+				);
+				for (const row of rows) reported.current.add(row.key);
+				return rows;
+			}),
+		[],
+	);
 
 	/*
 	 * THE GATE IS THE LIVE COUNT, not the projection's length (review round 1,
@@ -367,10 +415,8 @@ export function useApprovalQueue(
 		 */
 		const was = previous.current;
 		previous.current = requests;
-		setResolved((current) =>
-			reconcileResolved(was, requests, current, answered.current, at),
-		);
-	}, [requests]);
+		reconcile(was, requests, at);
+	}, [requests, reconcile]);
 
 	/*
 	 * THE CLOCK IS ALSO A TRIGGER, not only a reading (QA round 2, Q3). The effect
@@ -389,10 +435,8 @@ export function useApprovalQueue(
 	 * was asking.
 	 */
 	useEffect(() => {
-		setResolved((current) =>
-			reconcileResolved(requests, requests, current, answered.current, now),
-		);
-	}, [now, requests]);
+		reconcile(requests, requests, now);
+	}, [now, requests, reconcile]);
 
 	// Leaving the surface drops the memory by construction: it is a reading of the
 	// live list, not a history (spec 3.4), so there is nothing to clean up on
