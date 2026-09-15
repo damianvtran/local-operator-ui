@@ -30,6 +30,7 @@ import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
+	browserHostStopPending,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
@@ -1264,8 +1265,32 @@ app.on("window-all-closed", () => {
 	app.quit();
 });
 
+/** Whether this quit has already been held for the browser host's session-cookie
+ * snapshot. Module scope so the re-quit does not hold itself again. */
+let sessionCookieSnapshotHeld = false;
+
 // Stop backend service when app is quitting
 app.on("will-quit", async (event) => {
+	/*
+	 * Hold the quit once, for the browser host's stop.
+	 *
+	 * That stop is what writes the session-cookie snapshot, and it is asynchronous:
+	 * it reads the cookie jar over CDP. Every other step of this shutdown is safe
+	 * to lose, and this one is the feature itself — a quit that exited mid-snapshot
+	 * would leave the next launch with nothing to restore (and, worse, with a
+	 * snapshot the marker has already rejected). `before-quit` starts the stop but
+	 * cannot await it, so the first will-quit is held for the stop alone and the
+	 * app is asked to quit again once it has settled: one hold per quit, and the
+	 * second pass is the ordinary one.
+	 */
+	if (!sessionCookieSnapshotHeld && browserHostStopPending()) {
+		sessionCookieSnapshotHeld = true;
+		event.preventDefault();
+		await stopBrowserHost();
+		app.quit();
+		return;
+	}
+
 	// Check if backend manager is disabled
 	const isBackendManagerDisabled =
 		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
