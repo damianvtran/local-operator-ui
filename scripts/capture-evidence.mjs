@@ -780,6 +780,42 @@ export const STORIES = [
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
 
+	/*
+	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
+	 * branch's evidence rather than an oversight.
+	 *
+	 * The five chip states and the two picker states this block used to declare
+	 * were withdrawn together with their committed frames - 84 `.webp`. Two
+	 * reasons, and the second is the one that decides it:
+	 *
+	 *  1. They were taken by driving a scripted browser (this script, over CDP),
+	 *     which is not an acceptable method for this feature's visual evidence.
+	 *  2. They photograph the PRE-remediation UI. The chip gained a spinner for
+	 *     the in-flight state, an at-rest chevron, a fixed path column, a
+	 *     measured-overflow tooltip and a new refusal/announcement path; the menu
+	 *     gained a bounded scrollable body. Frames of the old pixels under these
+	 *     filenames would describe a superseded control, whatever their
+	 *     provenance - which is why they were deleted rather than retained with a
+	 *     disclosure.
+	 *
+	 * The replacement frames ARE captured, and they are deliberately NOT here:
+	 * `docs/evidence/chat-cwd-move-live/` is a declared supplementary set of
+	 * fifteen browser-tool frames in eleven states across three themes
+	 * (`localOperatorLight`, `localOperatorDark` and `dracula`) with its own
+	 * README, `source` and `why` — the counts here name the set's own entry in
+	 * `docs/evidence/manifest.json`, which is where they are derived from and the
+	 * only place a reader should take them from (agent review round 3, R3-2). The method is the operator's own rule -
+	 * page interaction and screenshots go through the Local Operator browser tool,
+	 * never a scripted or downloaded engine - so the capture can neither be
+	 * produced nor reproduced by this file, and adding the stories back to STORIES
+	 * below would re-commit the very thing the withdrawal was about.
+	 *
+	 * The picker states are GONE rather than merely unphotographed, and that is a
+	 * product change: `/move` no longer mounts a dialog that hosts the chip (it
+	 * focuses the composer's own chip), so there is no picker left to photograph
+	 * and no story file left to sweep.
+	 */
+
 	/* The band's own half of U1: the model reading painted from the user's pick
 	   before the owner's frame confirms it. Two frames in one story, so the
 	   pending mark is judged against the same reading at full weight. */

@@ -44,6 +44,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -153,7 +154,25 @@ type ChatContentProps = {
 	 */
 	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
-	onChangeCwd?: (cwd: string) => void;
+	/** How the chip's commit is applied; see `MessageInputProps.cwdWritePath`. */
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * A working-directory move is in flight for this session; see
+	 * `MessageInputProps.cwdPending`.
+	 *
+	 * Threaded through here rather than read from a store because this component
+	 * is a pure pass-through for the composer's props: the value belongs to the
+	 * session pane that owns the move, and a second reader of it would be a second
+	 * answer to "is this session's chip settled".
+	 */
+	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight; see
+	 * `MessageInputProps.cwdPendingAccepted`.
+	 */
+	cwdPendingAccepted?: boolean;
+	/** Why the chip is read-only here, per cause; see `MessageInputProps`. */
+	cwdReadOnlyReason?: string;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
@@ -380,7 +399,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwd,
 		sessionId,
 		turnTerminal,
-		onChangeCwd,
+		cwdWritePath,
+		cwdPending,
+		cwdPendingAccepted,
+		cwdReadOnlyReason,
 		sendError,
 		sessionStatus,
 		onSlashCommand,
@@ -872,7 +894,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
 								cwd={cwd}
-								onChangeCwd={onChangeCwd}
+								cwdWritePath={cwdWritePath}
+								cwdPending={cwdPending}
+								cwdPendingAccepted={cwdPendingAccepted}
+								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}

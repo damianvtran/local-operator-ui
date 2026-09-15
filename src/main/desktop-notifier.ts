@@ -638,7 +638,18 @@ export class DesktopNotifier {
 		 * ordinary "only news when nobody is looking" rule applies unchanged.
 		 */
 		if (this.windowRaise === "never") return;
-		if (frame.type === "snapshot") {
+		/*
+		 * A `frontend.replace` is read by the SAME branch as the snapshot, and
+		 * deliberately so: its payload is literally the same `{frontend, cold}`
+		 * shape (the bridge publishes its bounded `state()`), and this notifier keeps
+		 * no cwd or title cache to go stale - only the owner epoch it keys banner
+		 * claims by and the pending gate. A replacement carries the facade's current
+		 * projection at the SAME owner epoch, so re-reading it is consistent rather
+		 * than a step back, and skipping it would be worse: a gate raised by the move
+		 * itself can ride this frame, and a branch that ignored it would drop that
+		 * banner while every other frame shape still raised one.
+		 */
+		if (frame.type === "snapshot" || frame.type === "frontend.replace") {
 			this.epochs.set(sessionId, frame.payload.frontend.epoch);
 			const gate = frame.payload.frontend.snapshot.pending_gate;
 			if (gate) this.gate(sessionId, gate);

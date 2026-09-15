@@ -17,6 +17,8 @@
 
 import type { FC } from "react";
 import type { ArgumentSource } from "../components/slash-argument-rows";
+import { runMoveSessionFromDispatch } from "../move-session";
+import type { MoveRunContext } from "../move-session";
 import {
 	AnalyticsView,
 	ApprovalsPicker,
@@ -50,14 +52,43 @@ import {
 } from "./destination-pickers";
 import { McpPicker } from "./mcp-picker";
 
+/**
+ * How a destination answers a command that CARRIES arguments.
+ *
+ * `present` (every entry but one): mount the picker (or run the direct action)
+ * and let it consume the args - `/model gpt-5` opens the picker preselected, and
+ * the user still confirms.
+ *
+ * `execute`: the args ARE the action, so they run through `runArgs` instead of
+ * opening anything. `/move <path>` is the only case, and it is the TUI's rule in
+ * the same words (`_cmd_move` applies the argument form and only opens the
+ * chooser for the bare form). Carried on every member of the union below rather
+ * than only on the picker kind, because the ONE entry that uses it is a `direct`
+ * one: the real `/move` presents by focusing the composer's chip, and its
+ * argument form still has to execute. `runArgs` lives on the entry rather than in
+ * a name check in `slash-dispatch` so this table stays the one place that
+ * answers "what does this destination mean", which is the stated reason it is
+ * keyed by destination at all.
+ */
+type ArgsBehavior = {
+	argsBehavior?: "present" | "execute";
+	runArgs?: (context: MoveRunContext) => Promise<void>;
+};
+
 export type DestinationEntry =
-	| {
+	| ({
 			kind: "picker";
 			component: FC<PickerContext>;
 			inline?: InlineArgumentSource;
-	  }
-	| { kind: "navigate"; route: (args: string, sessionId: string) => string }
-	| { kind: "direct"; action: "clear" | "exit" };
+	  } & ArgsBehavior)
+	| ({
+			kind: "navigate";
+			route: (args: string, sessionId: string) => string;
+	  } & ArgsBehavior)
+	| ({
+			kind: "direct";
+			action: "clear" | "exit" | "focus-cwd-chip";
+	  } & ArgsBehavior);
 
 /**
  * One argument list's rows, and how they may be acted on.
@@ -139,6 +170,24 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"sessions.stop": { kind: "picker", component: StopPicker },
 	"session.rename": { kind: "picker", component: RenamePicker },
 	"session.fork": { kind: "picker", component: ForkPicker },
+	/*
+	 * `/move`: the one destination that presents by focusing an EXISTING control.
+	 *
+	 * It used to be a picker that hosted the composer's own chip in a modal dialog,
+	 * and inside that dialog the chip's menu opened 620px tall at `y=-192` with
+	 * `overflow-y: hidden` - two of the three ways to choose were unreachable by
+	 * pointer and the focused row was off-screen (UX U2). The control the user
+	 * already has does not have that problem, so the bare form focuses it and opens
+	 * its menu in place (design § 5.2's alternative), while `/move <path>` still
+	 * executes directly - one destination, one write path, and no popper inside a
+	 * dialog.
+	 */
+	"session.move": {
+		kind: "direct",
+		action: "focus-cwd-chip",
+		argsBehavior: "execute",
+		runArgs: runMoveSessionFromDispatch,
+	},
 	"session.model": {
 		kind: "picker",
 		component: ModelPicker,
