@@ -2026,16 +2026,38 @@ async function main() {
 		 * opened through the bridge and closed again, so the sections after this one
 		 * see the strip they expect.
 		 */
+		/*
+		 * WHAT THE MARKER'S BOX IS FOR, because geometry passing while the marker is
+		 * invisible is the exact failure this check shipped with (review round 3,
+		 * MAJOR 1). The first version asked whether the marker ELEMENT exists and how
+		 * wide the title was - and the overlaid chrome cluster, opaque in every state,
+		 * covered the marker on every marked row, so the check was green with the one
+		 * element that distinguishes an agent tab from a user tab painted out. It now
+		 * reports each row's marker box and the cluster's box, so the assertion can be
+		 * about non-overlap and non-zero paint rather than about presence.
+		 */
 		const measureTitles = async () =>
 			JSON.parse(
 				await evaluate(`(() => {
 					const rows = [...document.querySelectorAll('[role="tab"]')].map((tab) => {
 						const box = tab.parentElement;
 						const title = box.querySelector('[data-tour-tag="browser-tab-title"]');
+						const marker = box.querySelector('[data-tour-tag="browser-tab-agent-marker"]');
+						const cluster = box.querySelector('[data-tour-tag="browser-tab-menu"]')?.parentElement ?? null;
+						const rect = (node) => {
+							if (!node) return null;
+							const box = node.getBoundingClientRect();
+							return { left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) };
+						};
 						return {
-							marked: !!box.querySelector('[data-tour-tag="browser-tab-agent-marker"]'),
+							active: tab.getAttribute('aria-selected') === 'true',
+							marked: !!marker,
 							tabWidth: Math.round(box.getBoundingClientRect().width),
 							titleBox: title ? Math.round(title.getBoundingClientRect().width) : null,
+							titleRight: rect(title)?.right ?? null,
+							titleText: title?.textContent?.trim() ?? null,
+							markerBox: rect(marker),
+							clusterBox: rect(cluster),
 						};
 					});
 					return JSON.stringify({ rows });
@@ -2075,6 +2097,41 @@ async function main() {
 				marked.every((row) => (row.titleBox ?? 0) >= 85) &&
 				narrowest >= 60,
 			JSON.stringify({ two: beforeWide.rows, crowded, narrowest }, null, 2),
+		);
+		/*
+		 * THE MARKER MUST BE PAINTED, on every marked row, in the state the run is in -
+		 * and the assertion is geometric because it can be: the marker LEADS the title
+		 * now, and the only element that could cover it is the chrome cluster, so
+		 * requiring the marker's box to be non-empty and to end before the cluster's box
+		 * begins is a check with a failure mode rather than a presence test.
+		 */
+		const covered = crowded.rows.filter(
+			(row) =>
+				row.marked &&
+				(!row.markerBox ||
+					row.markerBox.width <= 0 ||
+					row.markerBox.height <= 0 ||
+					(row.clusterBox !== null &&
+						row.markerBox.right > row.clusterBox.left + 1)),
+		);
+		check(
+			"every marked row's `Agent` chip is painted, and clear of the chrome cluster",
+			marked.length >= 1 && covered.length === 0,
+			JSON.stringify({ covered, marked }, null, 2),
+		);
+		/*
+		 * AND THE MARKER IS NOT A ONE-OFF: the same check on the ACTIVE row, which is the
+		 * case the old cluster hid permanently (`bg-canvas` over `bg-canvas`, so the chip
+		 * was invisible at rest and not merely on hover). If the active row happens to be
+		 * unmarked this reports that rather than asserting a state the run did not reach.
+		 */
+		const activeRow = crowded.rows.find((row) => row.active) ?? null;
+		check(
+			"the active row's chrome sits in flow, so nothing in it can be painted over",
+			activeRow === null ||
+				activeRow.clusterBox === null ||
+				(activeRow.titleRight ?? 0) <= activeRow.clusterBox.left + 1,
+			JSON.stringify({ activeRow }, null, 2),
 		);
 		// Put the strip back: the sections after this one count tabs, and the session
 		// file at the end of the run must match them.

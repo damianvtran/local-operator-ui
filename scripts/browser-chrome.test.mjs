@@ -1526,6 +1526,9 @@ test("a request that leaves the list is remembered as expired or withdrawn, and 
 		[],
 		[],
 		new Set(["answered"]),
+		// Nothing was reported before this call, so the memory starts empty — that
+		// argument is the set retention cannot prune (review round 3, MAJOR).
+		new Set(),
 		now,
 	);
 	assert.deepEqual(
@@ -1548,19 +1551,19 @@ test("a request that leaves the list is remembered as expired or withdrawn, and 
 		expiresAt: now - 1,
 	}));
 	assert.equal(
-		reconcileResolved(many, [], [], new Set(), now).length,
+		reconcileResolved(many, [], [], new Set(), new Set(), now).length,
 		RESOLVED_KEEP,
 		"the memory is bounded",
 	);
 	assert.deepEqual(
-		reconcileResolved([], [], [{ key: "stale", kind: "expired", origin: "https://a.example", authority: "a.example", at: now - 5 * 60_000 }], new Set(), now),
+		reconcileResolved([], [], [{ key: "stale", kind: "expired", origin: "https://a.example", authority: "a.example", at: now - 5 * 60_000 }], new Set(), new Set(), now),
 		[],
 		"and drops a row five minutes after the fact",
 	);
 	// A request that arrives in the same refresh a row was remembered for is not a
 	// second row: the retention is keyed on the entry the host minted.
 	assert.equal(
-		reconcileResolved([], [], [{ key: "expired", kind: "expired", origin: "https://a.example", authority: "a.example", at: now }], new Set(), now + 1000).length,
+		reconcileResolved([], [], [{ key: "expired", kind: "expired", origin: "https://a.example", authority: "a.example", at: now }], new Set(), new Set(), now + 1000).length,
 		1,
 	);
 });
