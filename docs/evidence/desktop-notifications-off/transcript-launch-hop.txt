@@ -1,0 +1,143 @@
+The app -> backend hop, measured on the app itself.
+
+WHY THIS FILE EXISTS. The rest of this bundle drives the backend's notification
+path and the runner that hands the suite's children the switch, and it does that
+honestly. The hop BETWEEN those two - the app handing the backend it spawns the
+environment it was launched with - was, in the first revision of this evidence,
+asserted from the source rather than measured (review round 1, MINOR-3). It is
+the hop that can be lost silently: `backend/config.ts` folds a `.env` from the
+working directory over the launch with dotenv `override: true`, and
+`loadMacOSEnvironment` merges the operator's shell rc over that.
+
+WHAT WAS RUN. The app, headless, with `harness/hop-probe.cjs` loaded into its
+main process by `NODE_OPTIONS=--require` (Electron honours it for the main
+process). The probe records what the launch handed the process, what the same key
+is after the fold, and the environment of every child the app starts through
+`child_process.spawn`/`spawnSync` - which is every child that matters here,
+except one: `loadShellEnvironment` reaches its `source "$HOME/.zshrc" && env`
+child through `promisify(exec)`, i.e. `execFile`, and a patched `cp.spawn` never
+sees that (measured; see "HOW TO READ IT"). Nothing is replaced or stubbed: the
+app really spawns the backend, which really answers (`GET /health 200` below),
+and it is killed by exact pid afterwards.
+
+Both trees carried the same `.env` line, deliberately in the EMPTY shape - the
+shape `.env.template` uses for every optional value, and the one a stale export
+leaves behind:
+
+    /Users/damian/local-operator-ui-worktrees/notify-kill-switch/.env
+    11:LOCAL_OPERATOR_NO_NOTIFICATIONS=
+
+The launch value was `1`, as `pnpm app:headless` sets it (it is also why the
+first line of each log below is a `1`), and the port was a scratch one
+(`127.0.0.1:18321`) baked into the build so nothing here can reach the operator's
+own backend. Scratch HOME, config dir, log dir and `--user-data-dir` throughout.
+
+  BEFORE  f69a59971  the head this bundle shipped with
+  AFTER   this head  (the launch fact resolved in `backendSpawnEnv`)
+
+THE COMMAND, once per tree:
+
+  $ LOCAL_OPERATOR_NO_NOTIFICATIONS=1 \
+    HOME=/tmp/hop/home-$TAG LOCAL_OPERATOR_CONFIG_DIR=/tmp/hop/config-$TAG \
+    LOCAL_OPERATOR_LOG_DIR=/tmp/hop/logs-$TAG LO_HOP_LOG=/tmp/hop/hop-$TAG.log \
+    NODE_OPTIONS=--require=<repo>/docs/evidence/desktop-notifications-off/harness/hop-probe.cjs \
+    ./node_modules/.bin/electron . --user-data-dir=/tmp/hop/user-data-$TAG --window-mode=headless
+
+--- BEFORE: f69a59971 (no fix). The backend child is handed "" ----------------
+
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/private/tmp/hop-before envExists=true
+spawn   spawn "Electron" dir="." child LOCAL_OPERATOR_NO_NOTIFICATIONS=undefined (env keys: 0)
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/private/tmp/hop-before envExists=true
+spawn   spawn "python3" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="" (env keys: 97)
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+spawn   spawn "bash" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="" (env keys: 97)
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="" cwd=/private/tmp/hop-before envExists=true
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+
+--- AFTER: this head. The same child is handed "1" ---------------------------
+
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/Users/damian/local-operator-ui-worktrees/notify-kill-switch envExists=true
+spawn   spawn "Electron" dir="." child LOCAL_OPERATOR_NO_NOTIFICATIONS=undefined (env keys: 0)
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/Users/damian/local-operator-ui-worktrees/notify-kill-switch envExists=true
+spawn   spawn "python3" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="1" (env keys: 97)
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+spawn   spawn "bash" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="1" (env keys: 97)
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="" cwd=/Users/damian/local-operator-ui-worktrees/notify-kill-switch envExists=true
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+
+--- The child is a real backend, in both trees --------------------------------
+
+  $ grep "Backend stdout" /tmp/hop/app-after.log
+  13:06:51.525 › Backend stdout: INFO:     127.0.0.1:59222 - "GET /health HTTP/1.1" 200 OK
+  13:06:56.743 › Backend stdout: INFO:     127.0.0.1:59341 - "POST /v1/desktop/presence HTTP/1.1" 200 OK
+
+  $ grep "health" /tmp/hop/app-before.log
+  13:07:21.558 › Backend stdout: INFO:     127.0.0.1:59921 - "GET /health HTTP/1.1" 200 OK
+  13:07:21.747 › Backend stdout: INFO:     127.0.0.1:59922 - "GET /health HTTP/1.1" 200 OK
+
+HOW TO READ IT.
+
+  - `launch` and `folded@N` are the SAME PROCESS twice: the value it was given,
+    and the value it holds once `backend/config.ts` has folded the `.env` from
+    its working directory. In both trees the fold wins - `""` - which is the
+    defect, live, on a real launch, and it is why reading the source is not
+    enough.
+  - `spawn python3 dir="-c"` is `runBounded`'s bounded IDENTITY PROBE - the
+    `python3 -c <PROBE_SCRIPT>` that proves which interpreter this is before
+    anything is launched (`owned-serve-launch.ts::probeOnce`). It is handed the
+    same `backendSpawnEnv()` object the launch itself is, which is why its row
+    agrees with the next one.
+  - `spawn bash dir="-c"` is THE BACKEND. The POSIX plan is
+    `bash -c 'exec "$@"' owned-serve <interpreter> -c <entry> serve --port N`
+    (`owned-serve-launch.ts::planFor`), and that is the spawn in
+    `backend-service.ts::startOwned` whose `env` is `launch.env`. So this row is
+    the value the backend itself is handed: `""` in the BEFORE tree, which
+    `notify.py` reads as ENABLED (case 1b of `transcript.txt` measures that), and
+    `"1"` in the AFTER tree, the launch's own value. The first revision of this
+    file had these two rows the other way round and called the backend row the
+    shell-environment probe (review round 2, MINOR-1); the conclusion is
+    unchanged and in fact stronger, because the row that carries the value is the
+    serve launch itself rather than a child beside it.
+  - the `source "$HOME/.zshrc" && env` child that becomes `shellEnv` does NOT
+    appear here at all, and that is the instrument's reach rather than the run's:
+    `loadShellEnvironment` starts it with `promisify(exec)`, and the probe wraps
+    `child_process.spawn`/`spawnSync` only. Two child rows per process is the
+    whole of what this file can see.
+  - the later `launch ... ""` block is a SECOND Electron process the app starts
+    itself, inheriting the folded environment. It is in both trees, is not this
+    change's path, and is left visible rather than filtered.
+
+TEARDOWN, AND THE ONE THING THIS FILE'S OWN COMMAND GOT WRONG. The capture above
+is unchanged, and it is still a faithful record of what those two runs measured;
+what it records about the STOP is wrong, and it is worth stating because the
+command as written leaks. `./node_modules/.bin/electron` is a Node shim whose
+child is the app, so "killed by exact pid afterwards" killed the shim and left the
+app re-parented to launchd. Re-running the same command once per tree left TWO
+headless trees alive - `/tmp/hop/user-data-before` and `/tmp/hop/user-data-after`,
+eight processes each, every root reporting `ppid 1` - and each survivor kept
+re-creating the scratch profile the run believed it had finished with.
+
+`scripts/notification-hop-proof.mjs` is this measurement as a re-runnable rig with
+the teardown fixed, and it is what a re-run should use: it spawns the runtime
+BINARY (`require("electron")`, so the pid it holds is the app's own main process),
+puts the app in its own process GROUP with `detached: true` and signals the group,
+escalating to SIGKILL, and then reaps anything whose command line still names this
+run's `--user-data-dir` BY EXACT PID - detection by profile, never the pattern kill
+that would reach another session's app. It reports what it found rather than
+asserting success, and it exits non-zero if anything survives. The command block
+above is kept as it ran rather than rewritten, because the log beside it is the
+output of that command and not of the rig.
