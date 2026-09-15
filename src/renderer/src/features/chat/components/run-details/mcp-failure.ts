@@ -23,6 +23,15 @@
  * 2. the ROUTING: which of the row's own remedies a failure state offers, and
  *    the one route that reaches the rest.
  *
+ * Two surfaces of this app still choose their own controls rather than calling
+ * `mcpFailureActions`, and neither is a second copy of this rule (review R4):
+ * the key form (`mcp-key-dialog.tsx`) offers the route to the row and nothing
+ * else, because `Save and reconnect` IS its retry and the row owns every other
+ * control; and the Settings section itself (`mcp-management-section.tsx`) offers
+ * no remedy at all, because the row whose control just failed is already on
+ * screen, one row below the sentence. What neither may do is author a sentence:
+ * both take theirs from `mcpFailure`, which is the half that has one owner.
+ *
  * ## Why the sentence is chosen here rather than echoed from the wire
  *
  * The wire cannot be trusted to phrase a remedy, because it collapses causes:
@@ -197,9 +206,17 @@ export function mcpFailure(
 	// A 503 the app did not author is the session this conversation needs, not the
 	// server: main's own two sentences are the only ones that mean "no answer
 	// arrived", and both are checked above by identity rather than by shape.
+	//
+	// The tail names `Try again` rather than "reopen the conversation", which is the
+	// design round's D10 reconciled with the routing rule below: a control request is
+	// itself what re-engages a session (`desktop_lifecycle.py` binds the runtime
+	// before routing), so the retry the dialog OFFERS is the move that brings the
+	// session back — reopening a conversation is not a control on this surface at
+	// all, and naming it left the sentence pointing away from the accented control
+	// underneath it.
 	if (error.status === 503 && !MCP_APP_AUTHORED_503.includes(message))
 		return {
-			message: `${lead} because this conversation's session is not running. Reopen the conversation, then try again.`,
+			message: `${lead} because this conversation's session is not running. Trying again restarts it and repeats this request.`,
 			cause: "session",
 			phase,
 			detail: message.startsWith(MCP_SESSION_UNAVAILABLE) ? null : message,
@@ -259,21 +276,35 @@ export const mcpConfigActions = (): McpFailureAction[] => [
  *
  * Fixed rules, all of them about honesty rather than convenience:
  *
- * - **The remedy that just failed is not offered again under a second label.** The
- *   dialog's `Try again` re-runs that request; a control naming it twice is one
- *   press advertised as two, and it is what made a retry look like an escape.
- * - **`Reload` is offered wherever a remedy is.** It re-reads the server's config
+ * - **A failure about the SERVER offers nothing at all, not even the row's own
+ *   remedy.** A server that did not answer, is not paired, or is older than this
+ *   app expects already has its remedy in the sentence and in the app-wide banner,
+ *   and a route into Settings would fail to load for the same reason — but the
+ *   row's own remedy is not an exception to that rule, it is the most tempting
+ *   instance of it: `Grant account access` from an unreachable or outdated server
+ *   is the same request into the same dead backend, and it answers with a second,
+ *   differently-worded failure (QA round 1, Q1, reproduced live on a 404, a 401
+ *   and a server that never answered). The guard below therefore runs BEFORE the
+ *   row's remedy is pushed, so this state returns `[]` for every phase and every
+ *   row.
+ * - **The remedy that just failed is not offered again under a second label.** It
+ *   is the request the reader has just watched being refused, and naming it twice
+ *   is one press advertised as two — the shape that made a retry look like an
+ *   escape. What re-offers it is the dialog's `Try again`, which re-runs the
+ *   PROBE for the row: a probe that answers puts the dialog back on its own
+ *   primary, so a refused sign-in is one press away rather than gone.
+ * - **`Reload` is offered wherever a remedy is** — everywhere except the server
+ *   cause above, which offers nothing at all. It re-reads the server's config
  *   from disk and writes nothing, so it is the action that picks up the `${NAME}`
  *   reference the copy may be asking for.
- * - **Two states offer nothing, and that is the honest answer rather than a gap.**
- *   A server that did not answer, is not paired, or is older than this app expects
- *   already has its remedy in the sentence and in the app-wide banner, and a route
- *   into Settings would fail to load for the same reason. A conversation whose
- *   session is not running is the same shape: every control that would be offered
- *   here — including `Reload`, and including the whole row in Settings, which calls
- *   this same route — would answer with this same failure. Offering a control that
- *   cannot work is the class of copy the design contract refuses; the sentence
- *   states the state and what brings the session back instead.
+ * - **A conversation whose session is not running KEEPS its remedies, and this is
+ *   the authoritative reading** (review R1 asked for the two to be reconciled, and
+ *   QA Q5 with it; the shipped rule is what the test pins and what the fixture
+ *   answered — a control request is itself what re-engages a session,
+ *   `desktop_lifecycle.py` binding the runtime before it routes, so the next
+ *   `reload` after a session had gone answered 200). Only the request that just
+ *   failed is withheld, exactly as for every other cause. The copy leans the same
+ *   way: the sentence names `Try again`, which is a control on this surface.
  * - **The row in Settings is last wherever it CAN work**, and it is what remains
  *   when the dialog's own two operations cannot be offered.
  */
@@ -284,6 +315,12 @@ export function mcpFailureActions(input: {
 	/** Whether this build can take a credential write at all (`mcp_auth`). */
 	keyEntryAvailable: boolean;
 }): McpFailureAction[] {
+	// A server that did not answer, is not paired, or is older than this app
+	// expects is the one state nothing here can help, and the sentence is where its
+	// remedy lives. This returns BEFORE the row's own remedy is pushed: the row's
+	// remedy is not exempt from the rule, it is the case the rule exists for (QA
+	// round 1, Q1).
+	if (input.cause === "server") return [];
 	const actions: McpFailureAction[] = [];
 	const remedy = input.row.remedy;
 	const grant: McpFailureAction = {
@@ -300,9 +337,6 @@ export function mcpFailureActions(input: {
 		actions.push({ kind: "key", label: MCP_CONTROL_WORD.key });
 	if (remedy?.kind === "reconnect" && input.phase !== "reconnect")
 		actions.push({ kind: "reconnect", label: MCP_CONTROL_WORD.reconnect });
-	// A server that did not answer is the one state nothing here can help, and the
-	// sentence is where its remedy lives.
-	if (input.cause === "server") return actions;
 	// Same rule as the row's own remedies: a reload that just failed is not offered
 	// again here, and the failure sentence's own outcome is what the reader needs
 	// instead of a second press of the identical request.

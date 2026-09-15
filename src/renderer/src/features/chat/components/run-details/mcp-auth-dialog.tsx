@@ -25,7 +25,7 @@ import {
 	mcpServerSettingsRoute,
 } from "./mcp-failure";
 import { McpKeyDialog } from "./mcp-key-dialog";
-import type { McpServerRow } from "./run-detail-model";
+import { type McpServerRow, mcpGrantInFlight } from "./run-detail-model";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 
 /**
@@ -158,7 +158,19 @@ export function McpAuthDialog({
 				// The failure path that produced the finding: one classification, which
 				// replaces the backend's sentence with ours and decides which of the
 				// row's remedies are honest to offer from here.
-				const failure = mcpFailure("probe", cause, false);
+				//
+				// `grantRunning` comes from the same read this dialog already renders
+				// (`status.data`), because a hardcoded `false` made the ONE cause this
+				// surface can name with certainty unreachable: `mcp/desktop.py` refuses
+				// every action except list/status/cancel while a grant runs, so reopening
+				// this dialog during a sign-in is a refused probe whose cause is already
+				// published in the operations list, and the reader got "refused it without
+				// giving a reason" for a reason the app was holding (review R3).
+				const failure = mcpFailure(
+					"probe",
+					cause,
+					mcpGrantInFlight(status.data?.operations),
+				);
 				setState({
 					kind: "notice",
 					severity: "danger",
@@ -248,8 +260,14 @@ export function McpAuthDialog({
 		if (remedyAction.kind === "reload") {
 			// `reload` re-reads the config, so the probe has to run again afterwards:
 			// the answer it is asked for (which sign-in this server takes) is exactly
-			// what the edit reloaded was for.
-			void remedy.reload(row).then(() => setAttempt((value) => value + 1));
+			// what the edit reloaded was for. Only an ACCEPTED reload re-arms it — the
+			// hook resolves `true` on acceptance alone for this caller — because a
+			// reload that was itself refused must keep ITS sentence: re-probing here
+			// clears it in the same commit and lands the reader back on the sentence
+			// they just failed on, with `Reload` offered again (QA round 1, Q2).
+			void remedy.reload(row).then((accepted) => {
+				if (accepted) setAttempt((value) => value + 1);
+			});
 			return;
 		}
 		if (remedyAction.kind === "reconnect") {
@@ -259,7 +277,15 @@ export function McpAuthDialog({
 		remedy.press({ ...row, remedy: { kind: "grant" } }, action);
 		setState({ kind: "running" });
 	};
-	const offered = state.kind === "notice" ? state.actions : [];
+	/*
+	 * The probe's own state, and it stands down the moment a PRESS has authored a
+	 * failure: the recorded failure is the more recent and more specific fact, and
+	 * rendering both put a status line for a sign-in the callout below had just
+	 * said could not be started (QA round 1, Q4), and left the reader reading the
+	 * sentence they had already acted on.
+	 */
+	const notice = state.kind === "notice" && !failure ? state : null;
+	const offered = notice?.actions ?? [];
 	const failureActions = failure
 		? mcpFailureActions({
 				row,
@@ -293,12 +319,15 @@ export function McpAuthDialog({
 					failure ||
 					(state.kind === "running" && !running) ? (
 						/*
-						 * The retry is a SECONDARY here, and that is D1's second half: it
-						 * re-runs the request that just failed, so when the accent is
-						 * available it belongs to a remedy instead. It keeps the word `Try
-						 * again` because it is still the honest move for a failure that was
-						 * transient, and dropping it would leave the states with no remedy of
-						 * their own a dialog with no action but Close.
+						 * The retry is a SECONDARY here, and that is D1's second half: the
+						 * remedy carries the accent, so when one is on screen it takes it. It
+						 * keeps the word `Try again` because it is still the honest move for a
+						 * failure that was transient: it re-runs the PROBE for this row, and a
+						 * probe that answers puts the dialog back on its own primary — which is
+						 * how the request that just failed is offered again, one press away,
+						 * rather than as a second control under this callout. Dropping it would
+						 * leave the states with no remedy of their own a dialog with no action
+						 * but Close.
 						 */
 						<SecondaryButton onClick={() => setAttempt((value) => value + 1)}>
 							Try again
@@ -316,7 +345,12 @@ export function McpAuthDialog({
 				{state.kind === "probing" ? (
 					<p>Checking this server's sign-in method…</p>
 				) : null}
-				{state.kind === "notice" ? (
+				{/*
+				 * The recorded press failure IS the state while it is on screen (see
+				 * `notice` above), so the probe's callout renders only when no press has
+				 * answered since it was authored.
+				 */}
+				{notice ? (
 					<>
 						{/*
 						 * The state wears the app's own callout for its severity, because the
@@ -329,18 +363,18 @@ export function McpAuthDialog({
 						 * stays `ink`, which `alert.tsx` measures at 8.62:1 on this wash
 						 * against 4.62:1 for the semantic ink itself.
 						 */}
-						<Alert variant={state.severity}>
+						<Alert variant={notice.severity}>
 							<div className="flex flex-col gap-1">
-								<p role="alert">{state.failure.message}</p>
+								<p role="alert">{notice.failure.message}</p>
 								{/* The server's own words, verbatim, where they are a reason this
 								    build cannot restate — the same treatment the run panel gives a
 								    diagnosis, and machine voice for the same reason. */}
-								{state.failure.detail ? (
+								{notice.failure.detail ? (
 									<p
 										className="font-mono text-ink-dim text-mono-sm"
-										title={state.failure.detail}
+										title={notice.failure.detail}
 									>
-										{state.failure.detail}
+										{notice.failure.detail}
 									</p>
 								) : null}
 							</div>
@@ -390,7 +424,7 @@ export function McpAuthDialog({
 							: ""}
 					</p>
 				) : null}
-				{state.kind === "running" ? (
+				{state.kind === "running" && !failure ? (
 					<p>
 						{operation?.message ||
 							(running

@@ -122,6 +122,29 @@ type MCPAction =
 	| "cancel";
 
 /**
+ * The phase each control on this surface sends, for the failure copy.
+ *
+ * One row per verb, so a refusal cannot be described with another verb's sentence:
+ * "the server could not be removed" and "the server could not be reconnected" are
+ * different facts about a row, and the wire says neither.
+ */
+const MCP_ACTION_PHASE: Record<MCPAction, McpFailurePhase> = {
+	// A read: its own failures are already reported as the list's, not as an action.
+	list: "status",
+	add: "add",
+	remove: "remove",
+	reload: "reload",
+	connect: "reconnect",
+	probe: "probe",
+	disconnect: "disconnect",
+	login: "grant",
+	logout: "disconnect",
+	reauth: "grant",
+	status: "status",
+	cancel: "cancel",
+};
+
+/**
  * The server a `/mcp <argument>` deep link names, or why nothing matched.
  *
  * Resolution is against the LOADED list rather than against a grammar of verbs,
@@ -149,29 +172,6 @@ type MCPAction =
  * the last token alone explains, including the operator's own `reauth hubspot`,
  * so the note never appears on the case this rule exists for.
  */
-/**
- * The phase each control on this surface sends, for the failure copy.
- *
- * One row per verb, so a refusal cannot be described with another verb's sentence:
- * "the server could not be removed" and "the server could not be reconnected" are
- * different facts about a row, and the wire says neither.
- */
-const MCP_ACTION_PHASE: Record<MCPAction, McpFailurePhase> = {
-	// A read: its own failures are already reported as the list's, not as an action.
-	list: "status",
-	add: "add",
-	remove: "remove",
-	reload: "reload",
-	connect: "reconnect",
-	probe: "probe",
-	disconnect: "disconnect",
-	login: "grant",
-	logout: "disconnect",
-	reauth: "grant",
-	status: "status",
-	cancel: "cancel",
-};
-
 export type McpTarget =
 	| { kind: "matched"; name: string; unresolved: string | null }
 	| { kind: "miss"; asked: string }
@@ -371,7 +371,10 @@ const AddServerForm: FC<{
 				<Alert variant="danger">
 					<p>{error.message}</p>
 					{error.detail ? (
-						<p className="font-mono text-mono-sm" title={error.detail}>
+						<p
+							className="font-mono text-ink-dim text-mono-sm"
+							title={error.detail}
+						>
 							{error.detail}
 						</p>
 					) : null}
@@ -611,7 +614,10 @@ export const McpManagementSection: FC<{
 					<Alert variant="danger">
 						<p>{actionError.message}</p>
 						{actionError.detail ? (
-							<p className="font-mono text-mono-sm" title={actionError.detail}>
+							<p
+								className="font-mono text-ink-dim text-mono-sm"
+								title={actionError.detail}
+							>
 								{actionError.detail}
 							</p>
 						) : null}
