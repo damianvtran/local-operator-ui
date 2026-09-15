@@ -22,12 +22,6 @@ import {
 import { TabRegistry, surfaceToken } from "./registry";
 import { type RpcServer, startRpcServer } from "./rpc";
 import {
-	BrowserSessionStore,
-	SESSION_FILENAME,
-	captureTabs,
-	readSession,
-} from "./session-store";
-import {
 	type RestoreReport,
 	SessionCookieVault,
 	sessionCookiePaths,
@@ -37,6 +31,12 @@ import {
 	browserProfileCipher,
 	createHiddenCookieJarTarget,
 } from "./session-cookies-electron";
+import {
+	BrowserSessionStore,
+	SESSION_FILENAME,
+	captureTabs,
+	readSession,
+} from "./session-store";
 import { permittedScheme } from "./settle";
 import {
 	BrowserStateWriter,
