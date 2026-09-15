@@ -2,6 +2,12 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { BackendUpdateInfo } from "../main/update-service";
+import {
+	BACKEND_RECONNECT_CHANNEL,
+	BACKEND_STATUS_CHANNEL,
+	BACKEND_STATUS_EVENT,
+	type DaemonStatusSnapshot,
+} from "../shared/backend-status";
 import type {
 	DesktopMediaRequest,
 	DesktopRequest,
@@ -189,6 +195,38 @@ const api = {
 	systemInfo: {
 		getAppVersion: () => ipcRenderer.invoke("get-app-version"),
 		getPlatformInfo: () => ipcRenderer.invoke("get-platform-info"),
+	},
+
+	/**
+	 * The server-status signal, answered by the MAIN process.
+	 *
+	 * The renderer used to read `/health` from its own document; from the
+	 * packaged app that is a `file://` origin, so a CORS decision (and, on a
+	 * claimed daemon, the origin allowlist) decided whether a live server looked
+	 * online. Main sends no Origin and holds the bearer, so it answers the
+	 * question the renderer actually has - and it is the only process that knows
+	 * whether the daemon it attached to is still the daemon it attached to.
+	 *
+	 * `getStatus` is the pull, `onStatusChange` the push; both carry the same
+	 * snapshot, so a window that opens between transitions is never stale.
+	 *
+	 * `reconnect` is the third verb, and it is the difference between a control
+	 * that retries and one that only re-reads: main owns the re-discovery timer,
+	 * so only main can be asked to try NOW.
+	 */
+	backend: {
+		getStatus: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_STATUS_CHANNEL),
+		reconnect: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_RECONNECT_CHANNEL),
+		onStatusChange: (callback: (snapshot: DaemonStatusSnapshot) => void) => {
+			const handler = (_event: unknown, snapshot: DaemonStatusSnapshot) =>
+				callback(snapshot);
+			ipcRenderer.on(BACKEND_STATUS_EVENT, handler);
+			return () => {
+				ipcRenderer.removeListener(BACKEND_STATUS_EVENT, handler);
+			};
+		},
 	},
 
 	// Add methods for auto-updater
