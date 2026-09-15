@@ -6,13 +6,20 @@
  *
  *  - the **version anchor** is the newest released tag of any kind. The next
  *    version is derived from it so a number is never reused: a published version
- *    cannot be re-published, so a version that went backwards (see the
- *    window-anchor note below) would consume a number that has already been used
- *    and has to be skipped by the next release.
- *  - the **window anchor** is the newest release a user could actually be
+ *    cannot be re-published, so a version that went backwards would consume a
+ *    number that has already been used and has to be skipped by the next release.
+ *    It is ALSO what bounds the commit range a release describes (`derive-release.mjs`
+ *    takes both bases from it), because the range that has not been released yet
+ *    starts after the newest tag — a release this workflow creates stays a
+ *    pre-release for the 25-50 minutes its pipeline takes, and anchoring the range
+ *    at the newest *non*-pre-release would leave the release-in-flight's own
+ *    commits inside it for that whole window.
+ *  - the **incumbent anchor** is the newest release a user could actually be
  *    running: published, not a pre-release, and carrying the architecture-matched
- *    archive its feed needs. It bounds the commit range the release notes
- *    describe, and it is the incumbent the signed-update exercise upgrades from.
+ *    archive its feed needs. It is the release a signed update upgrades FROM, and
+ *    the only question it answers is that one (`release-candidate.mjs`). It is
+ *    deliberately NOT the bound on a derivation range: it lags by one release for
+ *    the length of every publish.
  *
  * They are normally the same tag. They differ in exactly the cases worth being
  * explicit about, and both were observed in this repository on 2026-09-15:
@@ -89,15 +96,20 @@ export function normaliseReleases(releases) {
 }
 
 /**
- * The newest release a user could be running, or null when there is none.
+ * The newest release a user could be running (the *incumbent*), or null when
+ * there is none.
  *
  * `below` bounds the search under a candidate version so that a repair of an old
  * Release derives the incumbent *that* release's users upgrade from, rather than
  * the newest release in the repository. `exclude` names the candidate tag, which
  * is the same exclusion when the candidate is the newest release (the normal
  * case at publish time, because the candidate has just been published).
+ *
+ * It answers "what could a machine have been running", and that is the only
+ * question it may be asked: a caller that wants "what has not been released yet"
+ * wants `selectVersionAnchor` (see the module note above).
  */
-export function selectWindowAnchor(
+export function selectIncumbentAnchor(
 	releases,
 	{ below = null, exclude = null } = {},
 ) {
@@ -160,14 +172,14 @@ function main() {
 	try {
 		const releases = fetchReleases(repository);
 		const result = {
-			window: selectWindowAnchor(releases, {
+			incumbent: selectIncumbentAnchor(releases, {
 				below: arg("--below"),
 				exclude: arg("--exclude"),
 			}),
 			version: selectVersionAnchor(releases, { exclude: arg("--exclude") }),
 		};
-		const wanted = arg("--which") ?? "window";
-		const selected = wanted === "version" ? result.version : result.window;
+		const wanted = arg("--which") ?? "incumbent";
+		const selected = wanted === "version" ? result.version : result.incumbent;
 		if (!selected) {
 			// Loud, and naming the question that failed: "no baseline" is a
 			// different fact from "the API returned nothing useful", and the

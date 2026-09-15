@@ -23,14 +23,35 @@ name: Signed update candidate (nonpublishing)
 #    that branch's copy of it. `ref-guard` fails such a run loudly rather than
 #    skipping it, because a run where nothing happened reports green.
 #
-# NOBODY APPROVES THIS RUN. The `signed-update-candidate` environment is still
-# attached to `build` (it carries the branch policy that keeps a deployment to
-# `main`, which is why the environment remains), but its required reviewer was
-# deliberately removed so that a release needs no human in the loop: the operator
-# asked for releases with no human input, and a dispatch that waits for an
-# approval is human input. What still bounds the key is `derive` plus the guard
-# inside `build`: the tree that receives it must be exactly the commit this run
-# resolved and pinned before the keychain is touched.
+# NOBODY APPROVES THIS RUN, AND THE ENVIRONMENT IS NOT WHAT BOUNDS IT. The
+# `signed-update-candidate` environment is still attached to `build`; its approval
+# gate was removed on 2026-09-15 so that a release needs nobody in the loop, and
+# what is left of the environment is its branch policy (`main`). The earlier prose
+# here credited that policy with keeping the key-bearing job on the default branch,
+# which is more than the mechanism does, so the boundary is stated exactly:
+#
+#  - a branch policy is evaluated against the DISPATCH REF. On the automated path
+#    (`repository_dispatch`) that ref IS the default branch by construction, so the
+#    policy constrains nothing there; on the manual path `ref-guard` fails a
+#    non-`main` dispatch and `build` requires `github.ref == 'refs/heads/main'`
+#    anyway, which makes it a redundant third lock rather than a control.
+#  - what bounds this job on the automated path is the pin below: the tree that
+#    receives the key must be the commit `derive` resolved from the published
+#    Release's tag. It proves WHICH tree is signed; it never proves anyone vetted
+#    that tree, and it is not meant to.
+#  - the manual path's candidate is a free-form SHA (`expected_source_sha`), which
+#    is shape-checked here and proved equal to `HEAD` below and constrained nowhere
+#    else — deliberately, because "a candidate that is not a release yet" is what
+#    that path exists for. Anyone who can dispatch from `main` (that is, anyone with
+#    write access to this repository) can therefore name an unmerged commit and have
+#    it built in the job that holds the Developer ID keychain. Narrowing that would
+#    be a real design change — a reviewer-gated environment for the hand-named path,
+#    or moving the Apple secrets into an environment required wherever they are
+#    referenced, rather than an environment on one job — and it is deferred rather
+#    than half-done; AGENTS.md records it as the boundary of the automated-change
+#    claim. The environment was never the door to the secrets in any case: they are
+#    repository-level, and `publish.yml` signs with the same ones and declares no
+#    environment at all.
 on:
   workflow_dispatch:
     inputs:

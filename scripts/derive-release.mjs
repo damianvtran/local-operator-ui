@@ -20,7 +20,12 @@
  *     reserves a major for "a new version considered a distinct product", which no
  *     commit type can assert, and a pre-1.0 `1.0.0` would be a claim about the
  *     product's stability that this workflow has no basis to make.
- *   - `fix:`, `perf:`, `revert:` -> **patch**.
+ *   - `fix:`, `perf:`, `revert:` -> **patch**, and so is the subject `git revert`
+ *     writes by itself (`Revert "feat: the thing"`): a revert removes a change a
+ *     user can see, and the spelling a tool produces is not a different class of
+ *     work from the spelling a person types. The one exception is the revert of
+ *     this workflow's own release bump, which restores the version surface and
+ *     asks for nothing (see `REVERTED_RELEASE_BUMP`).
  *   - `docs:`, `chore:`, `ci:`, `test:`, `refactor:`, `style:`, `build:` alone ->
  *     **no release**, and the run says so instead of inventing a number.
  *   - a conventional-looking type that is neither list (`deps:`, `security:`) ->
@@ -43,7 +48,6 @@ import {
 	compareVersions,
 	fetchReleases,
 	selectVersionAnchor,
-	selectWindowAnchor,
 	tagVersion,
 } from "./release-baseline.mjs";
 
@@ -67,6 +71,18 @@ const NO_RELEASE_TYPES = new Set([
 
 /** `type(scope)!: subject` — the only shape that carries a type at all. */
 const CONVENTIONAL_SUBJECT = /^([a-z][a-z0-9-]*)(?:\([^)]*\))?(!)?: \S/;
+/** The subject `git revert` writes by itself: `Revert "feat: the thing"`. `AGENTS.md`
+ * maps `revert:` to a patch, and this is the same act with the spelling a tool
+ * produces — a range whose only change was `git revert`'s must not read as a
+ * window with nothing in it. */
+const GIT_REVERT_SUBJECT = /^Revert "(.+)"$/;
+/** The one revert that is not a change: undoing this workflow's own release bump.
+ * It restores the version surface rather than removing anything a user can see, so
+ * it contributes no bump — without this case a window holding a bump and its undo
+ * would derive a patch release of a tree that is byte-identical to the last
+ * release, burning a version on nothing. */
+const REVERTED_RELEASE_BUMP =
+	/^Revert "chore\(release\): bump version to \d+\.\d+\.\d+(?: \(#\d+\))?"/;
 /** The footer spelling, which GitHub's squash UI and a hand-written body both use. */
 const BREAKING_FOOTER = /^BREAKING[ -]CHANGE:/m;
 /** A merge commit, whose own subject describes the landing rather than a change. */
@@ -90,6 +106,24 @@ export function classifyCommit(commit) {
 	const breaking = BREAKING_FOOTER.test(body);
 	const match = CONVENTIONAL_SUBJECT.exec(subject);
 	if (!match) {
+		// `git revert`'s own subject, which is not a conventional type and is
+		// still a described landing: the more specific case first, because a
+		// revert of the release bump also matches the general one.
+		if (REVERTED_RELEASE_BUMP.test(subject))
+			return {
+				type: "revert",
+				bump: null,
+				breaking,
+				conventional: true,
+				revertedReleaseBump: true,
+			};
+		if (GIT_REVERT_SUBJECT.test(subject))
+			return {
+				type: "revert",
+				bump: "patch",
+				breaking,
+				conventional: true,
+			};
 		// No type at all: a merge commit, a hand-written subject, a `wip`. Listed
 		// by the caller, never guessed at here.
 		return { type: null, bump: null, breaking, conventional: false };
@@ -325,7 +359,7 @@ export function renderNotes({
 	);
 	const prs = landings.filter((landing) => landing.number !== null);
 	if (prs.length === 0) {
-		lines.push("No pull requests are recorded in this range.", "");
+		lines.push("No pull-request references are recorded in this range.", "");
 	}
 	for (const landing of prs) {
 		lines.push(
@@ -339,7 +373,15 @@ export function renderNotes({
 	}
 	const direct = landings.filter((landing) => landing.number === null);
 	if (direct.length > 0) {
-		lines.push("", "Commits that landed on `main` without a pull request:", "");
+		// Named for what was observed. A rebase-merged PR carries no `(#N)` in its
+		// subject, so `landing.number` is null for one — and a heading that called
+		// that "without a pull request" would describe a merged pull request as
+		// having none.
+		lines.push(
+			"",
+			"Commits that landed on `main` with no pull-request reference in their subject:",
+			"",
+		);
 		for (const landing of direct)
 			lines.push(`- \`${landing.sha.slice(0, 10)}\` ${landing.subject}`);
 	}
@@ -367,7 +409,7 @@ export function renderNotes({
 		);
 	for (const landing of direct)
 		lines.push(
-			`- \`${landing.sha.slice(0, 10)}\` ${landing.subject} (no pull request)`,
+			`- \`${landing.sha.slice(0, 10)}\` ${landing.subject} (no pull-request reference in its subject)`,
 		);
 	lines.push(
 		"",
@@ -410,6 +452,26 @@ export function renderNotes({
 const FORMAT = `--format=%H${FIELD}%s${FIELD}%P${FIELD}%b${RECORD}`;
 const git = (args) =>
 	execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+
+/** Whether a ref names something this clone carries.
+ *
+ * `--base`/`--ref` are how a reviewer replays a past window, and both are read
+ * with `git log <base>..<ref>`: an unresolvable one makes git print
+ * `fatal: ambiguous argument 'v9.9.9..HEAD'` and fail the run with a stack, which
+ * reads as a broken tool rather than as "the tag you asked for is not here". The
+ * same state is reached with no flag at all when the release list names a tag
+ * this clone does not carry (a Release whose tag was deleted), so the refusal
+ * names both remedies rather than only the flag. */
+export function assertRefExists(ref, source = "--base") {
+	try {
+		// `--quiet` suppresses git's own message: this refusal replaces it.
+		git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+	} catch {
+		throw new DerivationError(
+			`The window base \`${ref}\` (${source}) is not a tag or commit in this clone, so the window cannot be read. Fetch the tags if it is a released one; check the spelling if it was named by hand. A release tag looks like \`v0.24.0\`.`,
+		);
+	}
+}
 
 /** Every commit in the range, merge commits included but not classified: a merge
  * commit's own subject describes a landing, and its content is in the range
@@ -457,6 +519,44 @@ export function readLandings(base, ref) {
 	});
 }
 
+/** The two bases a derivation reads, resolved from the released tags.
+ *
+ * ONE ANCHOR FOR BOTH, and it is the newest tag of ANY kind. The range has to
+ * start after everything that has been released, whether or not that release is
+ * one a user could be running: a release this workflow creates stays a
+ * pre-release until `publish.yml` promotes it, 25-50 minutes later, so from the
+ * moment it is tagged the newest *non*-pre-release is one release BEHIND, and a
+ * range anchored there still holds the release-in-flight's own commits. A
+ * `docs:`-only merge inside that window then cuts a release no content asked for,
+ * and a window that carried a `feat:` cuts an over-called minor whose notes
+ * re-list the previous release.
+ *
+ * "A release a user could be running" is the right question, and it is a
+ * different one: it is the *incumbent* a signed update upgrades FROM, which is
+ * `selectIncumbentAnchor` and `release-candidate.mjs`.
+ *
+ * `--base`/`--version-base` override either base so a reviewer can reproduce a
+ * past window — "what would this have derived for the release that shipped
+ * v0.24.0?" — and so the release job can re-derive against the bases the dry run
+ * printed instead of resolving them a second time against a repository that has
+ * moved since. `resolved` says whether they were derived: an explicit base is a
+ * deliberate replay of a past window, so the version-surface check cannot apply
+ * to it, because that check is about the repository's current state.
+ */
+export function releaseBases({
+	releases,
+	exclude = null,
+	base = null,
+	versionBase = null,
+}) {
+	const version = selectVersionAnchor(releases, { exclude });
+	return {
+		windowBase: base ?? version?.tag ?? null,
+		versionBase: versionBase ?? (version ? tagVersion(version.tag) : null),
+		resolved: !base && !versionBase,
+	};
+}
+
 function main() {
 	const arg = (name) => {
 		const index = process.argv.indexOf(name);
@@ -468,37 +568,26 @@ function main() {
 		"damianvtran/local-operator-ui";
 	const ref = arg("--ref") ?? "HEAD";
 	const forcedBump = arg("--force-bump");
-	/** The two anchors (see `release-baseline.mjs`). `--base` and `--version-base`
-	 * exist so a reviewer can reproduce a past window — "what would this have
-	 * derived for the release that shipped v0.24.0?" — and so the release job can
-	 * re-derive against the anchors the dry run printed instead of resolving them
-	 * a second time against a repository that has moved since. */
-	const anchors = () => {
-		const releases = fetchReleases(repository);
-		const window = selectWindowAnchor(releases, { exclude: arg("--exclude") });
-		const version = selectVersionAnchor(releases, {
-			exclude: arg("--exclude"),
-		});
-		return {
-			windowBase: arg("--base") ?? window?.tag ?? version?.tag ?? null,
-			versionBase:
-				arg("--version-base") ?? (version ? tagVersion(version.tag) : null),
-			// An explicit anchor is a deliberate replay of a past window, so the
-			// check below cannot apply to it; it is about the repository's current
-			// state, not about the window being reproduced.
-			resolved: !arg("--base") && !arg("--version-base"),
-		};
-	};
 	try {
-		if (forcedBump && !(forcedBump in RANK) && forcedBump !== "major")
+		if (forcedBump && !Object.hasOwn(RANK, forcedBump) && forcedBump !== "major")
 			throw new DerivationError(
 				`--force-bump must be minor, patch or major: ${forcedBump}`,
 			);
-		const { windowBase, versionBase, resolved } = anchors();
+		const { windowBase, versionBase, resolved } = releaseBases({
+			releases: fetchReleases(repository),
+			exclude: arg("--exclude"),
+			base: arg("--base"),
+			versionBase: arg("--version-base"),
+		});
 		if (!windowBase || !versionBase)
 			throw new DerivationError(
 				"No released tag found to derive a version from",
 			);
+		assertRefExists(
+			windowBase,
+			arg("--base") ? "--base" : "resolved from the released tags",
+		);
+		assertRefExists(ref, "--ref");
 		if (resolved) {
 			// The version surface the release is about to be cut against, checked
 			// here because the check has to happen before a version is derived from

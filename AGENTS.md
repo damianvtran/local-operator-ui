@@ -540,17 +540,38 @@ theirs. None of that work needed a distinct version; it needed to land.
 
 ### What the run does, in order
 
-1. **Derives the next version** — `scripts/derive-release.mjs`, unit-tested in
+1. **Skips a push that carries nothing to release** —
+   `scripts/release-push-guard.mjs`, executed over every shape a bump lands in by
+   `scripts/release-push-guard.test.mjs`. Two readings, and either one answers
+   "nothing to release": **what this push landed** (its own diff against its first
+   parent is nothing but `package.json`'s version line) and **what is unreleased**
+   (nothing since the newest released tag, or nothing but the version line).
+   The guard asks what the push **contains** rather than how its head is **spelled**,
+   because this repository lands its bumps as merge commits: `8f80697c8` is `Merge
+   pull request #202 from …/release-next-0236`, whose second parent is `d7e7d63b7
+   chore(release): bump version to 0.24.0`, and its own landing is one line —
+   `git diff --name-only 8f80697c8^ 8f80697c8` is `package.json`. Against the newest
+   released *tag* that same push looks like 177 files, because the window's PRs
+   landed before the bump PR did; a guard that tested one subject shape (or one
+   anchor) answers "not the release commit" for exactly the push it exists to catch,
+   and what follows is a second release of a window that has already shipped. (A
+   `GITHUB_TOKEN` push starts no run at all, so this guard is what stops a loop if
+   the repository's credential is ever changed to an App or a PAT, which *would*
+   start one.)
+2. **Derives the next version** — `scripts/derive-release.mjs`, unit-tested in
    `scripts/derive-release.test.mjs` and exercisable on demand (see *Exercising the
-   derivation without releasing*). The mapping is stated below. Nothing to release
-   is a real answer: a window of `docs:`, `chore:`, `ci:`, `test:`, `refactor:`,
-   `style:` or `build:` commits releases nothing, exits cleanly, and says so in the
-   run summary rather than spending a version.
-2. **Skips its own release commit.** The bump it pushes carries the subject
-   `chore(release): bump version to X.Y.Z`, and a push whose head commit has that
-   subject releases nothing. (A `GITHUB_TOKEN` push starts no run at all, so this
-   guard is what stops a loop if the repository's credential is ever changed to an
-   App or a PAT, which *would* start one.)
+   derivation without releasing*). The range is `git log <the newest released tag
+   of any kind>..HEAD`, and it is the newest **tag** rather than the newest release
+   a user could be running, because a release this workflow creates stays a
+   pre-release until `publish.yml` promotes it 25-50 minutes later: anchoring the
+   range at the newest non-pre-release would leave the release-in-flight's own
+   commits inside it for the whole of every publish, so a `docs:`-only merge would
+   release a version no content asked for and a window that carried a `feat:` would
+   cut an over-called minor whose notes re-listed the previous release. The mapping
+   is stated below. Nothing to release is a real answer: a window of `docs:`,
+   `chore:`, `ci:`, `test:`, `refactor:`, `style:` or `build:` commits releases
+   nothing, exits cleanly, and says so in the run summary rather than spending a
+   version.
 3. **Bumps `package.json`** — one line in one file, asserted by
    `scripts/apply-release-bump.mjs` *before* the commit exists rather than in a
    review of it afterwards. The commit is
@@ -566,7 +587,8 @@ theirs. None of that work needed a distinct version; it needed to land.
    neither the `release` event nor a tag `push` would build anything.
    `repository_dispatch` is one of the two documented exceptions, which is why the
    chain uses it.
-6. **`publish.yml` builds, gates and promotes**, unchanged: the installers and the
+6. **`publish.yml` builds, gates and promotes** — its build, gate and promote
+   steps are unchanged: the installers and the
    npm package, then the artifact gate, then the promotion of the Release to
    `latest`. Its trigger set now includes `repository_dispatch`, its tag/SHA/release
    ID are resolved from whichever trigger fired, and the npm steps are gated on
@@ -582,17 +604,39 @@ theirs. None of that work needed a distinct version; it needed to land.
    archive (`scripts/release-candidate.mjs`). It never publishes anything, and its
    verdict is PASS, FAIL or **BLOCKED**: a run that could not exercise the update
    says so and names the capability it lacked, and it never reports a pass it did
-   not earn. No human approves it — the `signed-update-candidate` environment's
-   required reviewer was removed on 2026-09-15 so a release needs nobody in the
-   loop; the environment stays attached because its **branch policy** (`main`) is
-   the control that keeps that job to the default branch.
+   not earn.
+
+   **Who can reach the signing key, exactly.** No human approves this run: the
+   `signed-update-candidate` environment's approval gate was removed on 2026-09-15
+   so a release needs nobody in the loop. Do not read the environment as a bound it
+   is not — a branch policy is evaluated against the **dispatch ref**, which on the
+   automated path is the default branch by construction (so it constrains nothing
+   there) and on the manual path is already enforced by `ref-guard` and by the
+   `build` job's own `if:`. What actually bounds the job is:
+
+   - **on the automated path, the pin**: the tree that receives the key must be the
+     commit `derive` resolved from the published Release's tag. It proves *which*
+     tree is signed, and never that anyone vetted that tree;
+   - **on the manual path, nothing else**: `expected_source_sha` is a free-form SHA,
+     shape-checked and then proved equal to `HEAD`, and that path exists precisely
+     for candidates that are not releases yet. So anyone who can dispatch from
+     `main` — that is, anyone with **write access to this repository** — can name an
+     unmerged commit and have it built in the job that holds the Developer ID
+     keychain. The Apple secrets are repository-level, which is why
+     `publish.yml` signs with the same ones and declares no environment at all.
+
+   Narrowing that is a change of its own (a reviewer-gated environment for the
+   hand-named path, or the Apple secrets moved into an environment that is required
+   wherever they are referenced). It is **deferred** rather than half-done, and this
+   paragraph is the boundary statement that replaces the claim that was wrong.
 
 ### The version mapping, and what it is not
 
 `!:` or a `BREAKING CHANGE:` footer, or a `feat:` | **minor**
-`fix:`, `perf:`, `revert:` | **patch**
+`fix:`, `perf:`, `revert:`, and the `Revert "…"` subject `git revert` writes | **patch**
 `docs:`, `chore:`, `ci:`, `test:`, `refactor:`, `style:`, `build:` alone | **no release**
 a conventional type on neither list (`deps:`, `security:`) | **patch**, and the notes name it
+the revert of this workflow's own release bump, `Revert "chore(release): bump version to X.Y.Z"` | **no release**: it restores the version surface rather than removing anything a user can see
 
 Three things follow, and they are worth reading before you write a commit subject:
 
@@ -629,11 +673,16 @@ the repository's real state. Neither pushes, commits, tags or releases anything.
 # The workflow's own dry run; `dry_run` defaults to true on the dispatch path.
 gh workflow run auto-release.yml
 
-# The same question locally. With no anchors it resolves them from the released
-# tags; `--base`/`--version-base` replay a past window (this is how the v0.24.0
+# The same question locally. With no flags it resolves BOTH bases from the newest
+# released tag of any kind (that is the bound on what has not been released yet);
+# `--base`/`--version-base` replay a past window instead (this is how the v0.24.0
 # derivation was checked against the release that actually shipped).
 node scripts/derive-release.mjs
 node scripts/derive-release.mjs --base v0.23.5 --version-base 0.23.5
+
+# What the loop guard answers for the current head, before the derivation runs:
+# `"skip": true` means this push carries nothing the newest released tag does not.
+node scripts/release-push-guard.mjs --json
 ```
 
 ### The one-off path, still needed
@@ -646,12 +695,19 @@ rather than the rule, and the pieces of it are:
 
 1. **Land the bump as its own PR** — one commit, one file, one line, titled
    `chore(release): bump version to X.Y.Z`, with an independent review round on that
-   diff (the guards below still apply to it).
+   diff (the guards below still apply to it). Landing it triggers Auto Release, whose
+   loop guard then **skips** that push rather than failing on it: the bump PR lands
+   nothing but the version line, so "nothing to release" is the designed answer. It
+   has to be the designed answer in *this* shape too — this path lands the bump as a
+   merge commit whose diff against the newest released tag is a whole window, which is
+   the shape the guard used to miss.
 2. **Tag the bump's merge commit and publish the Release as a pre-release**:
    `gh release create vX.Y.Z --target "$(git -C <repo> rev-parse origin/main)" --prerelease --notes-file <notes>`.
    While nothing else has merged past the bump, `rev-parse origin/main` *is* the
    bump commit. `publish.yml` still fires on the Release being published, which is
-   what makes this path work at all.
+   what makes this path work at all. Keep the gap between 1 and 2 short: nothing is
+   lost while it is open, but the next push to `main` refuses loudly until it closes
+   (the recovery is under *Invariants*).
 3. **Repairing an older Release** is a `workflow_dispatch` of `publish.yml` with
    `release_tag` and `expected_source_sha`. It attaches assets and **never
    promotes** — `scripts/release-state.mjs` refuses a promotion on that path, and
@@ -673,7 +729,7 @@ path:
   minute build, the metadata request 404s, and every running app filters that into
   "no updates available". `--prerelease` **is** the hold.
 - **Derive the window from the commits, not from the commit shape** — plain
-  `git log <last-tag>..origin/main`, never `--merges`. GitHub's merge button
+  `git log <the newest released tag>..origin/main`, never `--merges`. GitHub's merge button
   produces a merge commit that `--merges` sees and its squash button produces a
   single-parent commit that `--merges` silently drops, so a wrong window is not
   empty, it is **partially listed**, and a partially correct window looks right.
@@ -713,8 +769,26 @@ path:
   depends on that staying true: it derives the next version from the last released
   tag, and a stray bump on `main` makes that derivation refuse (see
   `assertVersionSurface`). The workflow's own bump is the one commit exempt from
-  this, which is why it is committed directly to `main` with the exact subject the
-  workflow skips.
+  this, which is why it is committed directly to `main` and skipped by the push
+  guard on its **content** rather than its subject (see *The automatic release*).
+- **Write access to `main` is release authority, and it is the widest control this
+  repository has.** `main` is not protected and carries no ruleset —
+  `gh api repos/<owner>/<repo>/rules/branches/main` answers `[]`, the check this file
+  already prescribes — so nothing mechanical prevents a direct push, and under the
+  automation a direct push **is** a version, a tag and a signed Release. The agent
+  review round is therefore the only thing standing between a change and a shipped
+  release. Read every "who can reach the signing key" question against that boundary:
+  the `signed-update-candidate` environment does not narrow it (*The automatic
+  release* says exactly what does).
+- **A run that dies between the bump push and the tag stops the train, and the
+  recovery is a tag.** `main` then advertises a version no Release explains, so every
+  later push refuses on `assertVersionSurface`, naming both numbers, until somebody
+  closes it. Either finish the release —
+  `gh release create vX.Y.Z --target <the orphaned bump commit> --prerelease --notes-file <notes>`
+  — or drop the bump with `git revert <the bump commit>`, which the loop guard
+  recognises as carrying nothing to release. Both need only the write access a
+  release always needs, and neither is something to leave unattended: this is the one
+  state the automation cannot get itself out of.
 
 ## Notes for Future Agents
 
