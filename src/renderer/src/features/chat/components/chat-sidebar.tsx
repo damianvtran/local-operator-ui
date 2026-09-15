@@ -8,7 +8,6 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
-import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
@@ -45,7 +44,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
-import { newChatShortcutCap } from "../new-chat-shortcut";
+import { catalogueGate } from "../sidebar-catalogue-gate";
 
 type Props = {
 	selectedConversation?: string;
@@ -111,41 +110,6 @@ const rowStyle =
  */
 const rowCurrent = "bg-sunken text-ink hover:bg-sunken";
 
-/**
- * The edge the New chat row's caps carry while that row is CURRENT, and the
- * reason it is a call site rather than a change to `KeyboardShortcut`'s own
- * appearance.
- *
- * THE DEFECT THIS EXISTS FOR. `rowCurrent` paints the row `sunken`, which is also
- * the cap's own fill (`CAP` in `keyboard-shortcut.tsx`), so on the one row the
- * chord creates, the caps and their ground are the same role: measured 1.00:1 over
- * ΔE00 0.00 in all twelve palettes, and the caps read as plain monospace glyphs
- * exactly when the user has just used the chord they name. The glyph ink stays
- * legible there (6.33-12.59:1) — this is the affordance, not legibility. That is
- * why `keyboard-shortcut.tsx`'s own "a cap that is already a different ground does
- * not need an edge" premise is corrected there rather than contradicted silently
- * here.
- *
- * WHY AN OUTLINE RATHER THAN A BORDER, AND WHY THESE ROLES. A border enters the
- * box model, so the caps would grow 1px per side in one state only and jitter as
- * the row becomes current; this row also retires `border-control` on the ROW
- * itself for precisely that shift (see the comment above the row). An outline
- * draws outside layout, so the cap's box — and the row's alignment with the All
- * chats row — is identical in both states. `outline-control` against `sunken`
- * measures 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13), clearing
- * `docs/branding.md` § 3's 3:1 structural floor in every one of them, and it is
- * the idiom this app already uses for a structural edge on a row
- * (`pickers/picker-host.tsx`). The "the cap steps to `bg-elevated` instead"
- * alternative was measured and rejected: it would raise the one element on a row
- * whose whole point is being recessed, and its ratio to that ground is
- * 1.20-1.55:1 against the edge's 3.13-5.91:1.
- *
- * `scripts/contrast-contract.mjs` pins this string, because no palette assertion
- * can see a class, and `scripts/new-chat-row.test.mjs`'s own pin is why the row
- * below repeats its predicate rather than hoisting it.
- */
-const capEdge = "outline-solid outline-1 -outline-offset-1 outline-control";
-
 import { ChatSessionStatus } from "./chat-session-status";
 
 /**
@@ -176,35 +140,47 @@ export function ChatSidebar({
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
+	/*
+	 * The catalogue rows are subscribed BEFORE the gate that reads their count,
+	 * which is the only reason this subscription sits above the hooks it is
+	 * unrelated to: `lastKnownRows` is a statement about what is on screen, so the
+	 * gate cannot decide it without the store. Nothing here is conditional, so the
+	 * order is a readability choice rather than a hooks rule.
+	 */
+	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const ready = desktopFeatureEnabled(
 		capabilities.data,
 		"session_catalogue",
 		2,
 	);
-	// Losing the backend mid-session must not look like an empty catalogue. Once
-	// the sidebar has been ready we keep its structure and last-known rows
-	// mounted through a capability error, marked stale, instead of replacing the
-	// whole list with a bare error paragraph the user cannot act on.
+	/*
+	 * Losing the backend mid-session must not look like an empty catalogue, and
+	 * neither must losing the GATE. Once the sidebar has been ready we keep its
+	 * structure and last-known rows mounted through a capability error or a
+	 * capability answer that withdraws the catalogue, marked stale, instead of
+	 * replacing the whole list with a bare paragraph the user cannot act on. The
+	 * decision itself lives in `sidebar-catalogue-gate.ts` so that it is driven by
+	 * tests rather than by this file's source text; that module's docstring carries
+	 * the report it answers and why the withdrawn case is not the error case.
+	 */
 	const searchRef = useRef<HTMLInputElement>(null);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
-	const stale = Boolean(capabilities.error) && wasReady.current;
-	const showList = ready || stale;
-	/*
-	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY
-	 * on purpose: it is the same `navigator.platform` read `chat-header.tsx` and
-	 * `sidebar-navigation.tsx` make, and the boolean it produces is what the cap
-	 * helper takes (`newChatShortcutCap`, aligned with the palette's
-	 * `paletteShortcutCaps` rather than taking the platform string itself).
-	 */
-	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const { stale, showList, lastKnownRows } = catalogueGate({
+		ready,
+		failed: Boolean(capabilities.error),
+		answered: Boolean(capabilities.data),
+		wasReady: wasReady.current,
+		// Read here rather than inside the module: the gate is a decision, and the
+		// store is a subscription.
+		rows: sessions.length,
+	});
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
-	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const error = useCanonicalSessionsStore((s) => s.error);
@@ -959,11 +935,43 @@ export function ChatSidebar({
 						</button>
 					</div>
 				)}
+				{/*
+				    The gate closed with no error to report, and WHICH half closed decides
+				    the sentence (review-round shape: the copy may not promise a remedy the
+				    fact does not support). `desktop_available` true with a short catalogue
+				    version is a backend that predates the route, and updating it is the
+				    remedy that exists. Anything else is this app not being able to use the
+				    backend's desktop controls at all - a daemon it holds no token for, or a
+				    backend old enough to publish no `desktop_available` - where "update the
+				    backend" named a remedy for a condition nobody had established.
+
+				    `lastKnownRows` gates the second half: over a store that is genuinely
+				    empty this says nothing extra and the list below still reads "No chats
+				    yet", which is the answer the store actually gives.
+
+				    Retry is re-negotiation, not recovery: the poll in
+				    `useDesktopCapabilities` already re-asks on its own cadence, and this
+				    button is for the operator who would rather not wait. It is the same
+				    control the error branch above offers, for the same reason.
+				 */}
 				{capabilities.data && !ready && !capabilities.error && (
-					<p role="alert" className="text-body-sm text-warning">
-						Update the backend to use canonical chats. Existing histories are
-						unchanged.
-					</p>
+					<div role="alert" className="space-y-1 text-body-sm text-warning">
+						<p>
+							{capabilities.data.desktop_available
+								? "Update the backend to use canonical chats. Existing histories are unchanged."
+								: "Chats and teams are not updating: this app cannot use the backend's desktop controls."}
+							{lastKnownRows
+								? " Showing the last chats and teams that loaded."
+								: ""}
+						</p>
+						<button
+							type="button"
+							className="underline"
+							onClick={() => void capabilities.refetch()}
+						>
+							Retry
+						</button>
+					</div>
 				)}
 				{showList && (
 					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
@@ -994,6 +1002,11 @@ export function ChatSidebar({
 							{heading("teams", "Teams", true)}
 							{(query || isOpen("teams", true)) && (
 								<>
+									{teams.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-muted">
+											Loading teams…
+										</p>
+									)}
 									{teams.data?.map((team) => entity("team", team.name))}
 									<button
 										type="button"
@@ -1074,24 +1087,23 @@ export function ChatSidebar({
 						    not a free tidy-up for a later reader. */}
 						<button
 							type="button"
-							// DEFENSIVE, not currently reachable — and the earlier comment
-							// here named the stale state as the case that makes it live,
-							// which measurement disproved. `stale` requires
-							// `capabilities.error`, and react-query retains the last good
-							// `data` across a failed refetch (`retry: false`, no reset), so
-							// `ready` is still true there and this row renders enabled.
-							// With `showList = ready || stale` there is no state that
-							// renders the row while `ready` is false.
+							// REACHABLE now, and this is the state that makes it live: a gate that
+							// withdraws without an error leaves `showList` true (the last-known
+							// rows stay mounted) while `ready` is false, so this row renders
+							// disabled and refuses to stage a draft against an absent catalogue.
+							// Before the withdrawn case was handled, the only way here was a
+							// capability error, and react-query keeps the last good `data`
+							// across a failed refetch (`retry: false`, no reset) - so `ready`
+							// stayed true there and this was defensive rather than reachable.
 							//
-							// Kept because the pairing is what makes decoupling them safe:
-							// staging a draft needs the session catalogue, so if `showList`
-							// ever admits a not-ready state the row must disable rather
-							// than stage against an absent catalogue. Only a focusable row
-							// is a stop in the arrow ring — `keyDown` moves by calling
-							// `.focus()` on the next `[data-chat-row]` and a disabled
-							// button silently refuses it — so the attribute has to drop out
-							// in exactly the states the button is disabled, or a keyboard
-							// user strands here.
+							// Kept and now load-bearing, because the pairing is what makes
+							// decoupling `showList` from `ready` safe: staging a draft needs the
+							// session catalogue, so a not-ready render must disable rather than
+							// stage against nothing. Only a focusable row is a stop in the arrow
+							// ring - `keyDown` moves by calling `.focus()` on the next
+							// `[data-chat-row]` and a disabled button silently refuses it - so the
+							// attribute has to drop out in exactly the states the button is
+							// disabled, or a keyboard user strands here.
 							data-chat-row={ready || undefined}
 							className={cn(
 								rowStyle,
@@ -1111,43 +1123,6 @@ export function ChatSidebar({
 						>
 							<MessageSquarePlus className="size-4" />
 							<span className="flex-1 text-left">New chat</span>
-							{/*
-							 * The chord this row is the visible half of, as caps — the same
-							 * `KeyboardShortcut` the inline editor's footer prints, so the two
-							 * spellings of "a shortcut" in this app cannot diverge.
-							 *
-							 * It is the TRAILING element, where the All chats row above carries
-							 * its count: both rows end in the column that says what the row will
-							 * give you, and the label's own `flex-1` is what holds it there.
-							 *
-							 * AND WHEN THE ROW IS CURRENT THE CAPS TAKE AN EDGE, because on that
-							 * row their own fill IS the ground (`capEdge` carries the
-							 * measurement and the reason it is an outline rather than a border).
-							 * The condition is the row's own current-draft predicate, spelled out
-							 * again rather than hoisted to a name: `scripts/new-chat-row.test.mjs`
-							 * pins that expression as source text — it is what holds the ground and
-							 * `aria-current` to the same two terms — so a name here would move a
-							 * pin this change has no business moving. The two must agree: the edge
-							 * appears exactly where the row paints `rowCurrent`.
-							 *
-							 * Platform: `isMac` above, derived from `navigator.platform` the way
-							 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
-							 * `newChatShortcutCap` as a boolean - the shape the palette's own caps
-							 * use. The read is synchronous (the capability hook's answer is async,
-							 * and a row that painted `⌘N` before it arrived would flash the wrong cap
-							 * on Windows), and the cap is asserted in
-							 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
-							 *
-							 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
-							 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
-							 * attribute would announce the same chord twice.
-							 */}
-							<KeyboardShortcut
-								shortcut={newChatShortcutCap(isMac)}
-								className={cn(
-									Boolean(activeDraftKey) && !draft?.target && capEdge,
-								)}
-							/>
 						</button>
 					</section>
 					{all ? (
