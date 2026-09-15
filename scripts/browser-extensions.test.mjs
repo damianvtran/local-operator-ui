@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, statSync, existsSync, symlinkSync, realpathSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, statSync, existsSync, symlinkSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -111,6 +112,76 @@ test("corrupt registry is visible and cannot silently overwrite prior registrati
 	assert.match(f.manager.list().error, /registry is unreadable/);
 	await assert.rejects(f.manager.install(), /registry is unreadable/);
 	assert.equal(readFileSync(f.manager.filePath, "utf8"), "broken JSON");
+});
+
+test("a directory with no manifest, and one that is gone, report a message a user can act on", async () => {
+	/* Review round 1, R2: Node's own text reached the user here — `ENOENT: no such
+	 * file or directory, stat '/…/manifest.json'` — where the doc promises "a
+	 * message". The error still fails closed; only the copy moved. The second half
+	 * is the same class one line up (a registration outliving its directory), and
+	 * it is asserted here because the doc sentence covers both clauses at once. */
+	const f = fixture();
+	const bare = join(f.root, "bare"); mkdirSync(bare);
+	f.choose(bare);
+	// install() propagates the inspection failure: the sheet shows it as the
+	// action's error, which is where a user met Node's sentence.
+	await assert.rejects(f.manager.install(), (error) => {
+		assert.match(error.message, /has no manifest\.json/);
+		assert.doesNotMatch(error.message, /ENOENT/);
+		return true;
+	});
+	assert.deepEqual(f.manager.list().rows, []);
+
+	f.choose(f.source); await f.manager.install();
+	rmSync(f.source, { recursive: true, force: true });
+	// A restart is a fresh Chromium: the mock's loaded map is what the previous
+	// process's session held, so emptying it models the next launch.
+	f.loaded.clear();
+	const restarted = new BrowserExtensionManager(f.options);
+	await restarted.start();
+	const gone = restarted.list().rows.find((row) => row.path === f.source);
+	assert.equal(gone.loaded, false);
+	assert.match(gone.error, /extension directory is missing/);
+	assert.doesNotMatch(gone.error, /ENOENT/);
+});
+
+test("the registry file IS the approval record: a row written outside the app loads, with no dialog", async () => {
+	/* This test asserts a GAP on purpose, and it exists to keep the doc's statement
+	 * of it falsifiable. `docs/browser-extensions.md` ("What the registry actually
+	 * trusts") says `<userData>/browser/extensions.json` is trusted as the record
+	 * of approval: nothing signs it, so a process running as this user can write a
+	 * row and have that directory loaded at the next start with no dialog. That is
+	 * review round 1's R1, recorded as DEFERRED on PR #192 with the reasoning.
+	 *
+	 * If a change ever binds rows to their approval, this test fails, and the
+	 * failure is the instruction: update that doc section, do not delete this case. */
+	const f = fixture();
+	mkdirSync(f.options.dir, { recursive: true });
+	writeFileSync(f.manager.filePath, JSON.stringify({
+		version: 1,
+		rows: [{
+			key: "11111111-1111-4111-8111-111111111111",
+			path: f.source,
+			name: "Hand-written",
+			version: "1.0",
+			enabled: true,
+			id: null,
+			digest: createHash("sha256").update(readFileSync(join(f.source, "manifest.json"))).digest("hex"),
+			keyId: null,
+			permissions: [],
+			warnings: [],
+			popupPath: null,
+		},
+	] }));
+	let chooserCalls = 0;
+	f.options.chooseDirectory = async () => { chooserCalls += 1; return null; };
+	await f.manager.start();
+	const row = f.manager.list().rows[0];
+	assert.equal(f.manager.list().error, null);
+	assert.equal(row.loaded, true);
+	assert.deepEqual(f.calls.filter((call) => call[0] === "load"), [["load", f.source, { allowFileAccess: false }]]);
+	assert.equal(f.calls.filter((call) => call[0] === "approve").length, 0);
+	assert.equal(chooserCalls, 0);
 });
 
 test("failed load stays registered with an actionable error; missing IDs reject", async () => {

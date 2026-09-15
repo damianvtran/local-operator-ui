@@ -111,7 +111,10 @@ export function BrowserExtensionsSheet({
 						Could not load extensions. Try Refresh.
 					</p>
 				)}
-				{state?.rows.length === 0 && (
+				{/* Not beside an error: a registry that could not be read has no rows
+				    either, so gating on the row count alone put this sentence and the
+				    error panel on screen together (review round 1, R5). */}
+				{state && !state.error && state.rows.length === 0 && (
 					<p className="mt-6 text-body text-ink-muted">
 						No extensions installed. Choose a directory containing a
 						manifest.json file to get started.

@@ -53,6 +53,12 @@ export interface ExtensionManagerOptions {
 const DIGEST = /^[a-f0-9]{64}$/;
 const EXTENSION_ID = /^[a-p]{32}$/;
 const MAX_MANIFEST = 1024 * 1024;
+const NO_DIRECTORY =
+	"The extension directory is missing. Restore it, or remove the registration.";
+const NO_MANIFEST =
+	"This directory has no manifest.json. Choose an unpacked extension directory that contains one.";
+const UNREADABLE_MANIFEST =
+	"The extension manifest could not be read. Check that the file is readable.";
 const COMPATIBILITY_WARNING =
 	"Chrome extension support is partial. A successful load does not prove every feature works. Native messaging, browser-store services and desktop companion integrations are unavailable. File access is not granted.";
 
@@ -62,18 +68,48 @@ function strings(value: unknown): string[] {
 		: [];
 }
 
+/** The two filesystem failures a directory can arrive in, in the manager's own
+ * words rather than Node's.
+ *
+ * WHY this is a function and not three inline calls: `statSync`/`readFileSync`
+ * outside a try reach the user as `ENOENT: no such file or directory, lstat
+ * '/…'` — a syscall and a path where the promise (docs/browser-extensions.md,
+ * "Load failures fail closed") is a message they can act on, and the second of
+ * the three cases is the one a user hits by picking a folder that is not an
+ * extension at all. Fail-closed either way; this is copy, not safety. */
+function manifestText(canonical: string): string {
+	const manifestPath = join(canonical, "manifest.json");
+	let size: number;
+	try {
+		size = statSync(manifestPath).size;
+	} catch {
+		throw new Error(NO_MANIFEST);
+	}
+	if (size > MAX_MANIFEST)
+		throw new Error("The extension manifest is too large.");
+	try {
+		return readFileSync(manifestPath, "utf8");
+	} catch {
+		throw new Error(UNREADABLE_MANIFEST);
+	}
+}
+
 /** Approval covers a trusted directory AND its manifest. Keeping the canonical path
  * stable preserves Chromium's path-derived ID, and a manifest change on disk stops
  * automatic loading until the user explicitly reviews the new permissions. Source
  * code inside that directory is trusted code: this is not a signed-store updater. */
 export function inspectExtension(path: string): ExtensionInspection {
-	const canonical = realpathSync(path);
+	let canonical: string;
+	try {
+		canonical = realpathSync(path);
+	} catch {
+		// A registration outlives its directory: `load()` re-inspects by path on
+		// every start, so a directory the user moved or deleted lands here.
+		throw new Error(NO_DIRECTORY);
+	}
 	if (!statSync(canonical).isDirectory())
 		throw new Error("Choose an unpacked extension directory.");
-	const manifestPath = join(canonical, "manifest.json");
-	if (statSync(manifestPath).size > MAX_MANIFEST)
-		throw new Error("The extension manifest is too large.");
-	const text = readFileSync(manifestPath, "utf8");
+	const text = manifestText(canonical);
 	const manifest = JSON.parse(text);
 	if (
 		!manifest ||

@@ -9,8 +9,11 @@ operations to the renderer's Extensions sheet.
 
 ## What the model is, and what it is not
 
-- **The user chooses a directory; nothing else can.** No IPC operation takes a
-  filesystem path, so only the native directory chooser can supply one.
+- **The user chooses a directory; no IPC operation can.** Every channel on
+  this surface takes a key or a boolean and never a path, so the native directory
+  chooser is the only way a path gets in. That is a claim about the IPC surface
+  and not about the file — see *What the registry actually trusts* below, which
+  is the half a reader could otherwise take as stronger than it is.
 - **Approval covers a directory *and* the manifest read from it.** The canonical
   path and the manifest's SHA-256 are recorded at approval. A manifest edited
   afterwards stops loading until the user reviews the new permissions, and the
@@ -28,6 +31,42 @@ operations to the renderer's Extensions sheet.
 - **Load failures fail closed.** A missing directory, an unreadable manifest, a
   changed manifest and a conflicting extension ID all leave the registration
   unloaded with a message, rather than falling back to something permissive.
+## What the registry actually trusts
+
+The bullet above describes the IPC surface, and the approval itself lives in a
+place that is worth stating as plainly as the rest of this page: in
+`<userData>/browser/extensions.json`, which is trusted *as the record of the
+approval*, with nothing signing it and nothing re-asking. A row written by hand
+— a `path`, any UUID, and the SHA-256 of that directory's own `manifest.json` —
+is loaded at the next launch **with no dialog**, into the partition that holds
+the user's authenticated sessions, where its code runs with that profile's
+cookies. The digest is not a secret, so it is no obstacle to whoever wrote the
+row; it exists to notice a manifest that *changed*, not to prove one was
+approved. Both halves are reproduced in the committed runs:
+`scripts/browser-extensions.test.mjs` ("the registry file IS the approval record:
+a row written outside the app loads, with no dialog") and the `unbound.*`
+observations in `scripts/browser-extensions-proof.mjs` — native, against the real
+session, zero dialogs and `loadedInChromium: true`.
+
+What that access is, is access **as this user**. The file is 0600 inside a 0700
+directory, and anything able to write it can already write `approvals.json`
+beside it — the site grants of #177, which have exactly the same property and no
+authentication either — along with the browser profile, the app's settings and
+the rest of the user-data directory. This directory is the app's trust boundary;
+this surface sits inside it rather than being exempt from it.
+
+The alternative, considered and deliberately not taken: seal each row with a key
+held in the OS keychain (`safeStorage`) and refuse a row that does not open,
+which is what review round 1 (R1) proposed. The reason it is not here is
+measured rather than aesthetic. With `HOME` redirected to a scratch directory —
+what `browser-extensions-proof.mjs` must do, and what any isolated run does —
+`safeStorage.isEncryptionAvailable()` never returns on macOS: it raises a
+Keychain authorization prompt on the machine's screen and waits for a human.
+A launch that had to decrypt its registry to know what to load would inherit
+that, so a locked keychain or a Linux session with no keyring would hang the app
+instead of failing closed, to move the bar from "same user" to "same user with
+keychain access". The reproduction and the full reasoning are on #192, recorded
+there as a deferred item rather than a fixed one.
 
 ## The capability matrix
 
@@ -54,7 +93,7 @@ it was shown, so the approval copy is inspected rather than assumed.
 | MV3 service worker executes | supported | the fixture's `background.service_worker` wrote `chrome.storage.local` on boot; an extension page messaged it and got a reply |
 | Content scripts (`content_scripts` with `matches`) | supported | ran in a page served over loopback and both set a DOM flag and wrote storage |
 | `chrome.storage.local` | supported | a value written before the restart was read in a fresh process |
-| `chrome.alarms` | partial | `create`/`getAll` work and a ~30 s alarm was delivered **1.0 ms after its scheduled time** to a listener in an open extension page. The service-worker listener recorded nothing in the same window, so delivery to a **suspended** worker is unverified — do not rely on an alarm waking a worker |
+| `chrome.alarms` | partial | `create`/`getAll` work and a ~30 s alarm was delivered sub-millisecond after its scheduled time in both recorded runs — `alarms.firedDeltaVsScheduleMs` was 0.536 ms and 1.0 ms, so the number belongs to a run and not to the platform. The service-worker listener recorded nothing in the same window, so delivery to a **suspended** worker is unverified — do not rely on an alarm waking a worker |
 | `chrome.action` default popup | partial | the app opens the declared popup as a sandboxed, hidden `BrowserWindow` on the extension's own origin; toolbar integration, active-tab grants and action-click dispatch do not exist |
 | `chrome.tabs`, `chrome.i18n`, `chrome.runtime` messaging | present | `typeof` measured `object`/`function`; only `runtime` messaging was exercised (round trip above) |
 | `chrome.scripting` | not available | `typeof chrome.scripting` is `undefined` — no programmatic injection |
@@ -117,4 +156,7 @@ an unsupported `manifest_version` gets the friendly message. The raw parse error
 is not a security problem (the extension does not load either way), it is copy a
 user cannot act on, and it is recorded here rather than fixed inside the
 verification change because the two paths are the manager's error surface and
-changing it belongs with a review of that surface.
+changing it belongs with a review of that surface. **It is now the only Node
+message left on this surface**: review round 1's R2 was the `statSync(ENOENT)`
+one beside it, and that now reports "This directory has no manifest.json", with
+the missing-directory case above it saying "The extension directory is missing."
