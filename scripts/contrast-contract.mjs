@@ -950,6 +950,7 @@ const REQUIRED_ROLES = [
 	"accentActive",
 	"accentWash",
 	"onAccent",
+	"chartBarHover",
 	"success",
 	"successWash",
 	"successBorder",
@@ -1055,6 +1056,31 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
+
+/*
+ * The chart's hover mark, and why it is TWO assertions rather than one.
+ *
+ * Separation from `accent` is what makes the mark findable at all. The field
+ * floor above (2.0) is argued for a control compared with ITSELF across two
+ * states in the same place; here the reader is finding ONE bar among six to
+ * thirty-one by comparing it with its neighbours in SPACE, with the tooltip's
+ * own box often covering the bar beside it. The floor is therefore 8, the same
+ * one the syntax tokens take, and for the same reason: it is the point where two
+ * things side by side reliably take different names rather than scraping the
+ * threshold. The role this replaced measured 2.8 in monokai, 3.7 in neon and 4.3
+ * in localOperatorDark against the mark it was supposed to pick out.
+ *
+ * Distance from the plot ground is what makes it a highlight rather than a
+ * demotion, and it is the half no floor saw. `accentHover` - the role this used
+ * to borrow - moves TOWARD the ground in obsidian (16.97:1 at rest, 13.96:1
+ * hovered, the only palette of the twelve that does), so the pointed-at bar reads
+ * as receding. Every palette's `chartBarHover` is authored to be at least as far
+ * from the ground the chart is drawn on as `accent` is: a brighter step on a dark
+ * ground, a darker one on a light ground, and - in obsidian, whose accent is
+ * already its brightest value - a chroma step at the same lightness instead.
+ */
+const CHART_HOVER_SEPARATION_FLOOR = 8;
+const CHART_HOVER_GROUND = "surface";
 
 /*
  * And the other end. A hairline that clears the line floor by enough stops
@@ -1404,6 +1430,30 @@ for (const { id, palette: p } of palettes) {
 		if (got < FIELD_SEPARATION_FLOOR) {
 			fail(
 				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${FIELD_SEPARATION_FLOOR}) — a step the eye cannot see is not a step`,
+			);
+		}
+	}
+
+	/* The chart's hover mark: findable among its siblings, and never closer to the
+	   plot ground than the resting mark. */
+	if (
+		isHex(p.chartBarHover) &&
+		isHex(p.accent) &&
+		isHex(p[CHART_HOVER_GROUND])
+	) {
+		assertions++;
+		const separation = deltaE(p.chartBarHover, p.accent);
+		if (separation < CHART_HOVER_SEPARATION_FLOOR) {
+			fail(
+				`${id}: \`chartBarHover\` ${p.chartBarHover} is ΔE00 ${r2(separation)} from \`accent\` ${p.accent}, need ${CHART_HOVER_SEPARATION_FLOOR} — a mark the reader has to find among its SIBLINGS is compared with them, not with itself across two states`,
+			);
+		}
+		assertions++;
+		const hovered = ratio(p.chartBarHover, p[CHART_HOVER_GROUND]);
+		const resting = ratio(p.accent, p[CHART_HOVER_GROUND]);
+		if (hovered < resting) {
+			fail(
+				`${id}: \`chartBarHover\` is ${r2(hovered)}:1 on ${CHART_HOVER_GROUND} where \`accent\` is ${r2(resting)}:1 — the hovered mark must not recede toward the ground it is drawn on`,
 			);
 		}
 	}
