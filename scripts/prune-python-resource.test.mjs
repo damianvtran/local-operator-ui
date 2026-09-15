@@ -85,12 +85,12 @@ test("an arm64 build ships only the aarch64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python")]);
-	assert.equal(existsSync(join(resources, "python")), false);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/x64")]);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), false);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 	// The tree that stays is untouched, not rebuilt: the app's own probe reads
 	// this directory at runtime, and pruning must not disturb what it finds.
-	assert.deepEqual(readdirSync(join(resources, "python_aarch64", "lib", "python3.12")), [
+	assert.deepEqual(readdirSync(join(resources, "python-runtime-seed/arm64", "lib", "python3.12")), [
 		"os.py",
 	]);
 });
@@ -106,14 +106,14 @@ test("an x64 build ships only the x86_64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python_aarch64")]);
-	assert.equal(existsSync(join(resources, "python_aarch64")), false);
-	assert.equal(existsSync(join(resources, "python")), true);
+	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/arm64")]);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), false);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
 });
 
 test("a build that carries only its own interpreter is left alone", () => {
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"), {
-		trees: ["python_aarch64"],
+		trees: ["python-runtime-seed/arm64"],
 	});
 
 	const result = pruneUnshippedPythonResources({
@@ -125,7 +125,7 @@ test("a build that carries only its own interpreter is left alone", () => {
 	});
 
 	assert.deepEqual(result.pruned, []);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("a non-macOS build is not touched", () => {
@@ -135,8 +135,8 @@ test("a non-macOS build is not touched", () => {
 	const dir = tempDir("lo-prune-win-");
 	const appOutDir = join(dir, "win-unpacked");
 	const resources = join(appOutDir, "resources");
-	mkdirSync(join(resources, "python_aarch64"), { recursive: true });
-	mkdirSync(join(resources, "python"), { recursive: true });
+	mkdirSync(join(resources, "python-runtime-seed/arm64"), { recursive: true });
+	mkdirSync(join(resources, "python-runtime-seed/x64"), { recursive: true });
 
 	const result = pruneUnshippedPythonResources({
 		appOutDir,
@@ -147,8 +147,8 @@ test("a non-macOS build is not touched", () => {
 	});
 
 	assert.deepEqual(result.pruned, []);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
-	assert.equal(existsSync(join(resources, "python")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
 });
 
 test("the numeric Arch enum an afterPack context carries is understood", () => {
@@ -165,8 +165,8 @@ test("the numeric Arch enum an afterPack context carries is understood", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python")]);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/x64")]);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("an architecture with no bundled interpreter mapping fails loudly", () => {
@@ -198,8 +198,8 @@ test("an architecture with no bundled interpreter mapping fails loudly", () => {
 			}),
 		/Cannot prune bundled Python for arch "universal"/,
 	);
-	assert.equal(existsSync(join(resources, "python")), true);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("the afterPack hook resolves the bundle from the packager context", async () => {
@@ -212,8 +212,8 @@ test("the afterPack hook resolves the bundle from the packager context", async (
 		packager: { appInfo: { productFilename: "Local Operator" } },
 	});
 
-	assert.equal(existsSync(join(resources, "python")), false);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), false);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("the hook refuses a context it cannot resolve a bundle from", async () => {
