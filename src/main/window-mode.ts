@@ -37,6 +37,32 @@ export const WINDOW_MODE_FLAG = "--window-mode";
 export const WINDOW_SIZE_FLAG = "--window-size";
 
 /**
+ * The opt-out from the launcher watch below, for a run that MEANS to detach.
+ *
+ * It exists because the watch is a default, not a law: a harness that
+ * deliberately outlives its launcher (`setsid`, `nohup`, a CI step that hands a
+ * built app to something else) says so here rather than having to defeat the
+ * watch by pointing it at a process it cannot observe.
+ */
+export const LAUNCHER_KEEP_ALIVE_ENV = "LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE";
+
+/**
+ * How often a headless run asks whether its launcher is still there. Two
+ * seconds is a compromise between the cost of asking (a `kill(pid, 0)`, which
+ * is a syscall and no scheduling) and how long an abandoned instance is allowed
+ * to hold ~150 MB and a Dock tile after the harness that started it died.
+ */
+export const LAUNCHER_POLL_INTERVAL_MS = 2_000;
+
+/**
+ * How long a headless run may take to leave after its launcher goes, before it
+ * exits without waiting for the owned backend cleanup. The graceful path is
+ * still tried first (`app.quit()`); this is only the bound on it, because the
+ * failure this whole module guards against is an instance that never leaves.
+ */
+export const LAUNCHER_EXIT_DEADLINE_MS = 10_000;
+
+/**
  * The layout is verified at these dimensions and not below: the app rail, the
  * per-route list pane and the canvas each have their own minimum, and past
  * 800x600 they start taking room from each other rather than from the window.
@@ -67,6 +93,17 @@ export interface WindowLaunchPlan {
 	focusable: boolean;
 	/** `webPreferences.backgroundThrottling`, true only in `normal`. */
 	backgroundThrottling: boolean;
+	/**
+	 * `app.dock.hide()` on macOS: true only in `headless`.
+	 *
+	 * A `headless` run is not an app the operator is using, and a Dock tile
+	 * says otherwise — it is an icon that cannot be clicked into anything (the
+	 * window is never shown) and that a matrix of boots multiplies. Measured on
+	 * this repo, one evidence session left ~30 running apps in the Dock, all of
+	 * them headless runs whose launcher had gone; the tile is the half of that
+	 * the operator sees first.
+	 */
+	hideDock: boolean;
 	/** The window size that will actually exist, after the floor and ceiling. */
 	width: number;
 	height: number;
@@ -81,6 +118,7 @@ interface WindowBehaviour {
 	show: WindowShow;
 	focusable: boolean;
 	backgroundThrottling: boolean;
+	hideDock: boolean;
 }
 
 /**
@@ -95,9 +133,26 @@ interface WindowBehaviour {
  * decides about windows nobody is looking at.
  */
 const WINDOW_BEHAVIOUR: Record<WindowMode, WindowBehaviour> = {
-	normal: { show: "focus", focusable: true, backgroundThrottling: true },
-	inactive: { show: "inactive", focusable: true, backgroundThrottling: false },
-	headless: { show: "never", focusable: false, backgroundThrottling: false },
+	normal: {
+		show: "focus",
+		focusable: true,
+		backgroundThrottling: true,
+		hideDock: false,
+	},
+	inactive: {
+		show: "inactive",
+		focusable: true,
+		backgroundThrottling: false,
+		// Visible on purpose, so it keeps its tile: a run somebody wants to
+		// watch has to be findable in the Dock.
+		hideDock: false,
+	},
+	headless: {
+		show: "never",
+		focusable: false,
+		backgroundThrottling: false,
+		hideDock: true,
+	},
 };
 
 /** Read `--name=value` or `--name value` from an argument vector. */
@@ -229,6 +284,87 @@ export function resolveWindowLaunchPlan(
 }
 
 /**
+ * Which process ends this run, if any — the second half of the launch policy.
+ *
+ * Why this exists. A `headless` run is launched by a harness: the dev driver, a
+ * QA rig, a shell that boots the built app and drives it over CDP. Nothing in
+ * the app used to tie its life to the launcher's, and the app cannot be closed
+ * the way a window can — the window is never shown, and macOS keeps a
+ * windowless process alive by design (`window-all-closed` is a no-op there). So
+ * a harness that died, or that stopped the launcher wrapper rather than the app
+ * (the `node` process the pnpm shim `exec`s — which is what `stopApp()` in
+ * `scripts/renderer-driver.mjs` signals), left the app running with no launcher
+ * and no driver. Measured on this repo: one QA round's 13 boots left 13
+ * survivors, all `ppid 1`, and an evidence matrix left ~30 of them holding a
+ * Dock tile each.
+ *
+ * The watch is deliberately narrow. It applies only to `headless` — the mode an
+ * agent-driver run uses — and only when there is a launcher to outlive, so:
+ *
+ * - a human's `normal` app is never affected, even launched from a terminal;
+ * - a run that detached on purpose (`ppid 1` at startup, so it has no launcher
+ *   to watch) is left alone rather than guessed at, with
+ *   `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE` as the explicit way to say so;
+ * - the smoke-test path exits before any of this runs, so its marker line and
+ *   exit code are unchanged.
+ */
+export interface LauncherWatchPlan {
+	/** True when this run must not outlive the process that launched it. */
+	watch: boolean;
+	/** The pid to watch, or null when there is nothing to outlive. */
+	launcherPid: number | null;
+	/**
+	 * One line for the startup log. Set even when `watch` is false, so a rig
+	 * reading stdout can tell why a run is not launcher-bound instead of
+	 * assuming the watch is broken.
+	 */
+	reason: string;
+}
+
+/** Values of `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE` that ask for detachment. */
+const KEEP_ALIVE_VALUES = ["1", "true", "yes", "on"];
+
+/**
+ * Decide whether a run watches its launcher. Pure: the caller supplies the
+ * launch mode, the launcher pid and the environment, so the policy is testable
+ * without a process, a parent or Electron.
+ */
+export function resolveLauncherWatchPlan(input: {
+	mode: WindowMode;
+	launcherPid: number;
+	env?: Record<string, string | undefined>;
+}): LauncherWatchPlan {
+	const env = input.env ?? {};
+	const keepAlive = (env[LAUNCHER_KEEP_ALIVE_ENV] ?? "").trim().toLowerCase();
+	if (KEEP_ALIVE_VALUES.includes(keepAlive)) {
+		return {
+			watch: false,
+			launcherPid: null,
+			reason: `${LAUNCHER_KEEP_ALIVE_ENV}=${keepAlive} was set, so this run outlives its launcher`,
+		};
+	}
+	if (input.mode !== "headless") {
+		return {
+			watch: false,
+			launcherPid: null,
+			reason: `window mode ${input.mode} is not launcher-bound: a person can close it`,
+		};
+	}
+	if (!Number.isInteger(input.launcherPid) || input.launcherPid <= 1) {
+		return {
+			watch: false,
+			launcherPid: null,
+			reason: "headless run already detached (no launcher to outlive)",
+		};
+	}
+	return {
+		watch: true,
+		launcherPid: input.launcherPid,
+		reason: `headless run launched by pid ${input.launcherPid}; it quits when that process goes`,
+	};
+}
+
+/**
  * One line naming what the window will do, for the startup log. Rigs read the
  * process's stdout, so this is how a run says out loud that it is headless
  * rather than looking identical to one that popped a window.
@@ -246,5 +382,16 @@ export function describeWindowLaunch(plan: WindowLaunchPlan): string {
 			: plan.show === "inactive"
 				? "window shown without activating the app"
 				: "window shown and focused";
-	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}`;
+	/*
+	 * The two properties a rig cannot see for itself are named here: a run that
+	 * takes no Dock tile, and a run that is expected to leave with its launcher.
+	 * A reviewer reading a harness's stdout should not have to know `headless`
+	 * implies either of them.
+	 */
+	const extras = [
+		plan.hideDock ? "no Dock tile" : null,
+		plan.mode === "headless" ? "quits when its launcher goes" : null,
+	].filter((part): part is string => part !== null);
+	const suffix = extras.length === 0 ? "" : `, ${extras.join(", ")}`;
+	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}`;
 }

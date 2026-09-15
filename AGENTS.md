@@ -222,6 +222,50 @@ to the backend log: a typo like `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls
 back to `normal`, which is the difference between a headless run and an
 interruption, and it must be visible to whoever launched it.
 
+### A `headless` run takes no Dock tile, and leaves when its launcher does
+
+Two things `headless` does differently from every other mode, both of them about
+not accumulating on the operator's machine. The behaviour is in
+`src/main/window-mode.ts` (`hideDock`, `resolveLauncherWatchPlan`) and applied in
+`src/main/index.ts`; the watch itself is `src/main/launcher-watch.ts`.
+
+- **No Dock tile.** A headless run is an app nobody is using — the window is
+  never shown, so the tile leads nowhere — and it is the mode this repository
+  boots tens of times over on one laptop. `app.dock.hide()` is the `headless`
+  arm of the mode table. Measured: one evidence session left ~30 of them in the
+  operator's Dock, which is how the defect below was noticed.
+- **It leaves when its launcher does.** The pid that launched the app (its
+  `ppid` at startup) is polled every 2 s, and the app quits when that process is
+  gone — after two consecutive misses, because a single one is a race. Being
+  reparented (`process.ppid` no longer naming the launcher) counts as the same
+  fact seen from the child's side. `app.quit()` goes first, so the owned backend
+  is stopped by `will-quit`; if the process is still alive after 10 s it exits
+  anyway. The startup line names which policy is in force, so a rig reads it
+  instead of inferring it from the mode.
+
+Same defect, both halves of it: a harness that signalled the launcher — the
+`node` process the pnpm `electron` shim `exec`s — rather than the app left the
+app running with no driver, one instance per boot. Measured here: 13 boots in a
+QA round left 13 survivors, all `ppid 1`, and a matrix left ~30. Nothing in the
+app could end one: the window is never shown and macOS keeps a windowless app
+alive by design, so SIGTERM to the app closed its window and left the process
+running (20 s, and indefinitely beyond). `window-all-closed` now quits a
+`headless` run for exactly that reason.
+
+What this does NOT cover, stated because it is easy to over-read:
+
+- A harness that **detaches on purpose** (`detached: true`/`setsid`, so `ppid`
+  is 1 at startup) has no launcher to watch and is left alone rather than
+  guessed at — it must reap its own instances. `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE=1`
+  is the explicit way to say so for a run whose `ppid` is real.
+- A launcher that kills *nothing* still leaks: the watch fires when the launcher
+  is **gone**, so a driver that stops the wrapper and stays alive itself holds
+  its app until the driver exits.
+- `stopApp()` in `scripts/renderer-driver.mjs` signals the launcher rather than
+  the app; that file's own fix (kill the app pid, TERM then KILL) is tracked on
+  PR #190. Either way a harness must stop by **pid**: a `pkill` by pattern takes
+  the operator's own running app with it.
+
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
 That is what makes it usable as evidence rather than only as a way to stay out
