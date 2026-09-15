@@ -258,6 +258,16 @@ test("the watch is wired to the real probe, the real parent and the plan", () =>
 		"the launch mode and the live pid",
 		/mode: windowLaunch\.mode, launcherPid: process\.ppid,/,
 	);
+	/*
+	 * The opt-out's SOURCE, which is the one argument here a reader cannot infer
+	 * from the plan: `resolveLauncherWatchPlan` reads `LOCAL_OPERATOR_UI_HEADLESS_
+	 * KEEP_ALIVE` out of what it is handed, so `process.env` and the launch's own
+	 * environment answer differently for a run started beside a `.env` — one of
+	 * them lets that file make the run outlive its harness, which is the
+	 * accumulation this whole change exists to stop. Pinned here because the
+	 * difference is invisible in the plan the other assertions read (round 4, R8).
+	 */
+	wired("the launch environment", /env: launchEnv,/);
 });
 
 test("every way a headless run can end is bounded by the same deadline", () => {
