@@ -1092,9 +1092,145 @@ export const mcpAllConnected = (): McpWireRow[] => [
 	{ name: "linear", status: "connected", tool_count: 7, source: "~/mcp.json" },
 ];
 
+/** One row of an `mcp.list` payload's `operations`, in the wire's own names. */
+type McpWireOperation = Record<string, unknown>;
+
 export const mcpAuthRequired = (): McpWireRow[] => [
 	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
-	{ name: "notion", status: "auth-required", owned_scope: "project" },
+	{
+		name: "notion",
+		status: "auth-required",
+		transport: "http",
+		owned_scope: "project",
+	},
+];
+
+/**
+ * Two problem rows, for the frame that proves one grant locks the other.
+ *
+ * `transport_oauth_supported` is deliberately left off both: `None` is the
+ * NORMAL answer for an http server (`public_server_config` publishes `False`
+ * only for a definite refusal), so both rows are offered the grant and the
+ * disabled state on the second one is the subject of the frame.
+ */
+export const mcpTwoProblems = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{ name: "hubspot", status: "auth-required", transport: "http" },
+	{
+		name: "notion",
+		status: "auth-required",
+		transport: "http",
+		owned_scope: "project",
+	},
+];
+
+/**
+ * The servers whose remedy is a CREDENTIAL rather than a grant.
+ *
+ * Three cases in one payload, because the row's control is decided from them:
+ * a stdio child declaring an `env` name, an http server declaring a `header` name
+ * (its transport refuses OAuth — `transport_oauth_supported: false` is the only
+ * value that means a definite refusal), and a server that declares NOTHING, which
+ * keeps the sentence pointing at the surface that owns its configuration.
+ * `environment_keys`/`header_keys` carry names only — the backend publishes what
+ * a config references and never a value.
+ */
+export const mcpKeyAuth = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{
+		name: "google-workspace",
+		status: "auth-required",
+		transport: "stdio",
+		environment_keys: ["GOOGLE_CLIENT_SECRET"],
+		owned_scope: "global",
+	},
+	{
+		name: "legacy-stdio",
+		status: "auth-required",
+		transport: "stdio",
+		owned_scope: "global",
+	},
+	{
+		name: "slack",
+		status: "auth-required",
+		transport: "http",
+		transport_oauth_supported: false,
+		header_keys: ["Authorization"],
+		owned_scope: "global",
+	},
+];
+
+/** A grant the backend says is RUNNING, which must never read as complete. */
+export const mcpGrantRunning = (): McpWireOperation[] => [
+	{
+		id: "1".repeat(32),
+		name: "notion",
+		action: "reauth",
+		status: "running",
+		created_at: 1_760_000_000,
+		credential_removed: false,
+	},
+];
+
+/** The same grant after the backend reported a failure. */
+export const mcpGrantFailed = (): McpWireOperation[] => [
+	{ ...mcpGrantRunning()[0], status: "failed" },
+];
+
+/**
+ * A cancelled grant that took the credential with it.
+ *
+ * `grants.py:168-175`: a cancel between the grant's delete and its reconnect
+ * leaves the server with NO credential, which is the one thing that separates
+ * "cancelled, try again" from "cancelled, and your credential is gone".
+ */
+export const mcpGrantCancelledRemoved = (): McpWireOperation[] => [
+	{ ...mcpGrantRunning()[0], status: "cancelled", credential_removed: true },
+];
+
+/**
+ * Two operations the backend FINISHED earlier in this session.
+ *
+ * The case the fold has to refuse: settled operations stay in `mcp.list` for the
+ * rest of the session (the backend evicts only at 64), so these sit beside servers
+ * that are problems AGAIN — `hubspot`'s credential expired after a successful
+ * grant, `slack`'s transport dropped after a successful connect. Neither settled
+ * op may be rendered as the row's state, and neither may delete the row's remedy
+ * (code review round 1, finding 1).
+ */
+export const mcpGrantSettled = (): McpWireOperation[] => [
+	{
+		...mcpGrantRunning()[0],
+		id: "2".repeat(32),
+		name: "hubspot",
+		status: "complete",
+		created_at: 1_760_000_100,
+	},
+	{
+		...mcpGrantRunning()[0],
+		id: "3".repeat(32),
+		name: "slack",
+		action: "connect",
+		status: "complete",
+		created_at: 1_760_000_200,
+	},
+];
+
+/** The two servers those completed operations were about, problem again. */
+export const mcpProblemAgain = (): McpWireRow[] => [
+	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
+	{
+		name: "hubspot",
+		status: "auth-required",
+		transport: "http",
+		owned_scope: "global",
+	},
+	{
+		name: "slack",
+		status: "disconnected",
+		transport: "http",
+		owned_scope: "global",
+	},
 ];
 
 export const mcpDisconnected = (): McpWireRow[] => [

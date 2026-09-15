@@ -174,6 +174,47 @@ export const STORIES = [
 	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
 	   either side of the threshold, and a bulky one. */
 	["chat-canonical-notices--notice-lengths", 1280, 340],
+	/*
+	 * The three states a notification click can paint before the owner answers:
+	 * a cached paint with its caption, the skeleton for a first-ever open, and
+	 * the named state for a conversation this machine no longer has.
+	 *
+	 * `the-two-misses` exists because the pair a reader most needs to tell apart
+	 * is "this may be behind" against "this is gone" — two sentences, two
+	 * different next actions, and a frame that shows only one of them cannot be
+	 * judged for whether they are distinguishable.
+	 *
+	 * The narrow pass is the same caption in the narrowest chat column, where the
+	 * sentence is longer than the `Reconnecting` it shares a slot with.
+	 */
+	["chat-notification-feed-states--cached-paint", 1280, 600],
+	["chat-notification-feed-states--reconciled", 1280, 600],
+	/* These two are captured in a viewport SIZED TO THEM for the reason the
+	   `narrow` tool-row pass is: the vanished state is three lines and a button,
+	   and at 600px it is 99.45% one colour, which `check-evidence` rejects as
+	   "the story painted its ground and nothing else" — its judgement, and the
+	   right one. Sizing the frame to the state keeps it a picture of the state. */
+	["chat-notification-feed-states--conversation-gone", 720, 200],
+	["chat-notification-feed-states--the-two-misses", 760, 200],
+	["chat-notification-feed-states--cached-paint-narrow", 420, 600],
+	["chat-notification-feed-states--loading-first-open", 1280, 600],
+	/* The caption on a transcript TALLER than the pane, which is the ordinary
+	   cached paint rather than an edge (design review round 1, D1): the cache is
+	   only written for a conversation this pane has already shown, and the
+	   earlier five-row frame fit, so it could not show that the sentence was
+	   thousands of pixels above the fold. */
+	["chat-notification-feed-states--cached-paint-overflow", 1280, 600],
+	/* The gone state with the cached rows a real click arrives with — the half
+	   the committed empty-rows frame cannot cover (design review round 1, D2). */
+	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
+
+	/* The composer's two refusals and the state a vanished conversation leaves
+	   it in (design review round 1, D3): the transcript stories above render the
+	   transcript alone, so the false "Agent is busy" placeholder and the missing
+	   colour step were never in a frame. Sized to the band, not to a window. */
+	["chat-composer-states--idle", 900, 160],
+	["chat-composer-states--busy", 900, 160],
+	["chat-composer-states--conversation-gone", 900, 160],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
@@ -399,12 +440,100 @@ export const STORIES = [
 	   shut; the story holds the shutter until the sequence has arrived. */
 	["chat-run-panel--mcp-dot-ack-acknowledged", 460, 220],
 	["chat-run-panel--mcp-dot-ack", 460, 220],
+	/* The remedy as a CONTROL, which is the change to § 7.2 (§ 4 of the design brief). The row's own frames
+	   above show it at rest (a link where the sentence used to be, and the words
+	   that survive on the states this surface cannot act on); these show the four
+	   states a press produces, and all four come from the FIXTURE's `operations`
+	   rather than from a handler, because that is where the row reads them. */
+	["chat-run-panel--mcp-grant-running", 1280, 700],
+	["chat-run-panel--mcp-grant-failed", 1280, 700],
+	["chat-run-panel--mcp-grant-cancelled-removed", 1280, 700],
+	/* One grant per session: the second problem row's control is disabled, in
+	   colour rather than opacity. */
+	["chat-run-panel--mcp-grant-locked", 1280, 700],
+	/* The dialog, opened by clicking the row's own link and held until it is on
+	   screen. Both consequences are in the copy because both are facts the reader
+	   would otherwise discover afterwards. */
+	["chat-run-panel--mcp-grant-confirm", 1280, 700],
+	/* The key remedy, for a server whose transport cannot complete a browser
+	   sign-in: the three decisions a payload makes (a stdio `env` name, an http
+	   header name with OAuth refused, nothing declared) in one frame, and the
+	   popout opened by the same click convention. The fields are the payload's own
+	   declared names, never a value. */
+	["chat-run-panel--mcp-key-auth", 1280, 700],
+	["chat-run-panel--mcp-key-popout", 1280, 700],
+	/* The settled-op state, which is where a remedy can vanish: two operations the
+	   backend finished earlier in the session beside servers that are problems
+	   again. Round 1's finding 1 was that this path blanked the row. */
+	["chat-run-panel--mcp-grant-settled", 1280, 700],
+	/* § 8's 64px shape: a grant line AND the runtime's own diagnosis under it. */
+	["chat-run-panel--mcp-grant-failed-diagnosis", 1280, 700],
+	/* The remedy link's hover ground and its `:focus-visible` ring. The pointer is
+	   the rig's own CDP input (`{ hover }`), the same mechanism the trigger's hover
+	   frames use; the ring is produced by the story, since a programmatic focus is
+	   not the same thing as keyboard focus. */
+	[
+		"chat-run-panel--mcp-remedy-hover",
+		1280,
+		700,
+		{ hover: '[data-mcp-remedy="grant"]' },
+	],
+	["chat-run-panel--mcp-remedy-focus", 1280, 700],
+	/* The two dialog states a click cannot reach: the write in flight, and the
+	   reconnect that came back without the credential taking. Captured at the size
+	   of the dialog in its window rather than at the pane's, because the dialog is
+	   portal-rendered and viewport-fixed (`check-evidence`'s uniformity ceiling is
+	   the other half of the number). */
+	["chat-run-panel--mcp-key-saving", 900, 620],
+	["chat-run-panel--mcp-key-error", 900, 620],
+	/* The pane's 320px floor with the longest action line it can hold. Round 1's D5
+	   measured `Sign-in cancelled` + the credential sentence + `Try again` at 369px
+	   in the 375px column a 420px pane gives, so the floor is where it has to wrap
+	   rather than ellipsise. 800x700 for the reason `narrow-800` uses it: the pane
+	   plus the chat column's own floor. */
+	["chat-run-panel--mcp-floor-320", 800, 700],
 	/* The window floor, and the two gated surfaces in one frame pair. */
 	["chat-run-panel--narrow-800", 800, 700],
 	["chat-run-panel--capability-absent", 1280, 700],
 	/* The pane's two animated glyphs with motion reduced: the running child's
 	   spinner and the MCP `connecting` mark. */
 	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
+	/*
+	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
+	 * that report was about — the deep link revealing a named server, an argument
+	 * that names nothing, the section's own search, and the borrow when no
+	 * conversation is open.
+	 *
+	 * Captured at 1000x860 rather than the 1280 default because the section is drawn
+	 * on the settings page's own column (`max-w-3xl`), so a wider viewport only adds
+	 * ground either side of it; 860 is tall enough that the search box, the note and
+	 * every row are in frame at once, which is what the search and borrow frames are
+	 * about (`check-evidence`'s uniformity ceiling is the other half of the choice).
+	 */
+	["settings-integrations--deep-link-hit", 1000, 860],
+	["settings-integrations--deep-link-verb-hit", 1000, 860],
+	/* The shadowed case, which is the one frame where the resolution RULE becomes
+	   visible: with a server named `login`, `/mcp login hubspo` resolves to `login`
+	   and the section says so instead of landing in silence (round-1 code review,
+	   finding 4). Recorded here so nobody re-shoots the frame above expecting a
+	   delta: `deep-link-verb-hit` (`reauth hubspot`) is byte-identical to
+	   `deep-link-hit` by DESIGN — the verb is a token that is not a server, it is
+	   dropped, and a resolution that had something else to say would be the bug. */
+	["settings-integrations--deep-link-verb-shadowed", 1000, 860],
+	["settings-integrations--deep-link-miss", 1000, 860],
+	["settings-integrations--no-session-fallback", 1000, 860],
+	["settings-integrations--filtered", 1000, 860],
+	["settings-integrations--filtered-empty", 1000, 860],
+	["settings-integrations--no-servers", 1000, 860],
+	/*
+	 * And the state this list deliberately does NOT carry, so the omission is a
+	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
+	 * section asked the roster and there is nothing to borrow), so it never clears
+	 * the ≥8-element "prepared" count this file asserts before a shutter, and the
+	 * paint guard below it would refuse a frame of one sentence on ground anyway.
+	 * Both guards are right. The story stays for review and QA; the frame would be
+	 * padding, so it is absent and this comment says why.
+	 */
 	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
 	   `usage_panel.py`. Swept for the states that cannot be produced on demand
 	   live — an OAuth grant has to die, a provider has to go idle past its
