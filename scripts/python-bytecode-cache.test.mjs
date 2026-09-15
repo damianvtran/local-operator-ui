@@ -1642,55 +1642,33 @@ const SPAWN_SITES = [
 		"src/main/backend/backend-service.ts",
 		"spawn",
 		1,
-		/env:\s*this\.backendSpawnEnv\(\)/,
-		"the global-install backend, whose `python` is the interpreter we ship",
+		/*
+		 * The plan's environment, not a `spawn` argument of its own.
+		 *
+		 * #180 collapsed this file's two serve spawns and its two taskkill spawns
+		 * into this one call, which starts the plan `ownedServeLaunch` returned, so
+		 * the environment arrives as the plan's field. The binding below is what
+		 * keeps that a guard rather than a shape: the plan is handed the
+		 * environment `backendSpawnEnv()` built, and that builder is where
+		 * `withPythonBytecodeCache` is applied.
+		 */
+		/env:\s*launch\.env/,
+		"the owned serve launch, whose plan carries the environment `this.backendSpawnEnv()` built, whichever interpreter it admitted",
+		/const env = this\.backendSpawnEnv\(\);/,
 	),
-	runsPython(
-		"src/main/backend/backend-service.ts",
+	passThrough(
+		"src/main/backend/owned-serve-launch.ts",
 		"spawn",
-		2,
-		/env:\s*this\.backendSpawnEnv\(\)/,
-		"the app-bundled venv backend, built on the interpreter inside the sealed bundle",
+		1,
+		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. `ownedServeLaunch` has exactly one caller - `backend-service.ts`, which hands it the environment `backendSpawnEnv()` built, asserted by the row above - so this site never decides the environment it runs a probe under",
 	),
-	runsCommand(
-		"src/main/backend/backend-service.ts",
-		"spawn",
-		3,
-		/"taskkill"/,
-		"kills the backend by pid",
-	),
-	runsCommand(
-		"src/main/backend/backend-service.ts",
-		"spawn",
-		4,
-		/"taskkill"/,
-		"kills the backend by pid, forcibly",
-	),
-	// `index.ts` is the process-cleanup block: every site is a ps/pkill/pgrep or
-	// taskkill/tasklist call, none of which is an interpreter. Listed one by one
-	// rather than exempted as a file, because a file-level exemption is exactly
-	// what a new `spawn(pythonPath)` there would hide behind.
-	runsCommand("src/main/index.ts", "execSync", 1, /taskkill .*python\.exe/, "kills stray python processes on Windows"),
-	runsCommand("src/main/index.ts", "execSync", 2, /taskkill .*local-operator\.exe/, "kills the global install on Windows"),
-	runsCommand("src/main/index.ts", "execSync", 3, /pkill -f "local-operator serve"/, "stops the backend, gracefully"),
-	runsCommand("src/main/index.ts", "execSync", 4, /pkill -9 -f "local-operator serve"/, "stops the backend, forcibly"),
-	runsCommand("src/main/index.ts", "execSync", 5, /tasklist .*python\.exe/, "lists python processes on Windows"),
-	runsCommand("src/main/index.ts", "execSync", 6, /tasklist .*local-operator\.exe/, "lists the global install on Windows"),
-	runsCommand("src/main/index.ts", "execSync", 7, /pgrep -f "local-operator serve"/, "asks whether the backend is still up"),
-	runsCommand("src/main/index.ts", "execSync", 8, /taskkill .*python\.exe \/t/, "final cleanup on Windows"),
-	runsCommand("src/main/index.ts", "execSync", 9, /pkill -9 -f python/, "final cleanup on Unix"),
-	runsCommand("src/main/index.ts", "execSync", 10, /taskkill .*python\.exe/, "the same cleanup on the error path"),
-	runsCommand("src/main/index.ts", "execSync", 11, /taskkill .*local-operator\.exe/, "the same, for the global install"),
-	runsCommand("src/main/index.ts", "execSync", 12, /pkill -f "local-operator serve"/, "the same, gracefully"),
-	runsCommand("src/main/index.ts", "execSync", 13, /sleep 1 && pkill -9/, "the same, after a grace period"),
-	runsCommand("src/main/index.ts", "spawnSync", 1, /"cmd\.exe"/, "the same cleanup through cmd.exe"),
-	runsCommand("src/main/index.ts", "spawnSync", 2, /"cmd\.exe"/, "the same, for the global install"),
-	runsCommand("src/main/index.ts", "spawnSync", 3, /"bash"/, "the same cleanup through bash"),
-	runsCommand("src/main/index.ts", "spawnSync", 4, /"bash"/, "the same, after a grace period"),
-	runsCommand("src/main/index.ts", "spawnSync", 5, /"cmd\.exe"/, "the relaunch path's cleanup"),
-	runsCommand("src/main/index.ts", "spawnSync", 6, /"cmd\.exe"/, "the relaunch path's cleanup, for the global install"),
-	runsCommand("src/main/index.ts", "spawnSync", 7, /"bash"/, "the relaunch path's cleanup on Unix"),
-	runsCommand("src/main/index.ts", "spawnSync", 8, /"bash"/, "the relaunch path's cleanup, after a grace period"),
+	// `index.ts` has no child-process site left: #180 removed every name and image
+	// sweep (`pkill`, `killall`, `taskkill /im`, `xargs -r kill`, a `ps | grep`
+	// pipeline) and replaced them with cleanup scoped to the child this app
+	// spawned, so the rows that used to name those sites are gone with the calls
+	// they described. The file is deliberately NOT exempted as a whole: the
+	// scanner still walks it, so a new `spawn(pythonPath)` there fails this test
+	// for being unlisted rather than hiding behind a file-level exemption.
 
 	passThrough(
 		"src/main/update-service.ts",
