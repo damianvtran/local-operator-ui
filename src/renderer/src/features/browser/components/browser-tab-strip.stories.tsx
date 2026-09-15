@@ -100,14 +100,22 @@ export const Many: Story = {
 	),
 };
 
-/** Twelve tabs with titles long enough to truncate: the row scrolls rather than
- * shrinking tabs below the width at which a name is readable (D13). */
+/**
+ * Twelve tabs with titles long enough to truncate: the row scrolls rather than
+ * shrinking tabs below the width at which a name is readable (D13).
+ *
+ * THE TITLES DIFFER IN THEIR FIRST WORD (design round 3, D18). They used to share
+ * `Release notes for the `, so a frame whose whole point is what survives truncation
+ * showed twelve textually identical tabs: the measurement proved the width and the
+ * picture could not. `Spring release notes` and its siblings put the distinguishing
+ * word where the truncation leaves it.
+ */
 export const Overflowing: Story = {
 	args: strip(
 		Array.from({ length: 12 }, (_, index) =>
 			tab(
 				index + 1,
-				`Release notes for the ${["spring", "summer", "autumn", "winter"][index % 4]} cycle`,
+				`${["Spring", "Summer", "Autumn", "Winter", "Budget", "Roadmap"][index % 6]} release notes`,
 			),
 		),
 		10,
