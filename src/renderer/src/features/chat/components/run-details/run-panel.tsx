@@ -383,7 +383,8 @@ export const RunPanel = ({
 	/*
 	 * `§ 3.5`'s ladder, bound on the DOCUMENT while the pane is open and GUARDED
 	 * to a press that actually belongs to it: one that came from inside this
-	 * section, or from the trigger.
+	 * section, from the trigger, or from the composer's plan chip — the three
+	 * controls that open it.
 	 *
 	 * Why not on the container, which is where it used to be: the trigger lives in
 	 * the header, outside this subtree (`section.contains(trigger) === false`), so
@@ -413,6 +414,15 @@ export const RunPanel = ({
 			const target = event.target instanceof Element ? event.target : null;
 			if (!target) return;
 			const fromTrigger = target.closest("[data-run-panel-trigger]") !== null;
+			/*
+			 * The composer's plan chip is a THIRD control that opens this pane (`§ 5.2`,
+			 * `revealPlan`), and it is neither the trigger nor inside the section — so a
+			 * press that came from it was refused here, and the one flow this pane is
+			 * reached by (press the chip, look at the plan, press Escape) had no exit at
+			 * all. The composer's own Escape is untouched: the chip is a button in the
+			 * status row, not the textarea that owns that key.
+			 */
+			const fromChip = target.closest("[data-status-plan]") !== null;
 			const inPane = sectionRef.current?.contains(target) ?? false;
 			/*
 			 * A press carrying no element of its own — `<body>`, which is where focus
@@ -423,7 +433,7 @@ export const RunPanel = ({
 			 */
 			const onDocument =
 				target === document.body || target === document.documentElement;
-			const mine = fromTrigger || inPane;
+			const mine = fromTrigger || fromChip || inPane;
 			/*
 			 * ESCAPE IS THE PANE'S FROM ANYWHERE WHILE IT IS OPEN (QA round 1's
 			 * Q2). The contract lists this pane ABOVE the composer's turn
@@ -898,6 +908,14 @@ export const RunPanel = ({
 				 */
 				<div
 					ref={bodyRef}
+					/*
+					 * The pane's own scroll region, named for the same reason the pane and
+					 * its rows are: a proof driver and a QA pass have to be able to say WHICH
+					 * box moved. `run-panel-reveal-proof.mjs --expect=region-only` reads this
+					 * attribute to separate "the pane's reading position moved", which is the
+					 * behaviour, from "something else moved", which is the defect.
+					 */
+					data-run-panel-region=""
 					className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
 				>
 					{/*
