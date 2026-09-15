@@ -464,10 +464,12 @@ argv through it — the nine in `scripts/` and the three under
 are still runnable — and `scripts/chrome-keychain.test.mjs` scans for the calls
 that start Chrome and fails on one that does not. That scan states its own
 bound rather than promising more than it can see: `.mjs`/`.js`/`.cjs` files under
-`scripts/`, `bin/` and each `docs/evidence/<surface>/harness/` tree, and a command
-token that says `chrome`. A rig added as a `.ts` file, or in a directory outside
-those roots, is review's business rather than that test's — the test's own
-docstring says the same thing, and so does this paragraph.
+`scripts/`, `bin/` and each `docs/evidence/<surface>/harness/` tree, a command
+token that says `chrome`, and a spawn spelled with one of six call names
+(`spawn`, `spawnSync`, `exec`, `execSync`, `execFile`, `execFileSync`, a namespace
+prefix like `cp.spawn` included). A rig added as a `.ts` file, or in a directory
+outside those roots, is review's business rather than that test's — the test's
+own docstring says the same thing, and so does this paragraph.
 
 What this deliberately does not touch: the rigs that boot the PRODUCT are
 outside the Chrome scan by construction, and the ones that reach the real
