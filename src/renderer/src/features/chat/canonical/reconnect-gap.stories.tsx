@@ -287,10 +287,10 @@ const Frame = ({
 					/*
 					 * These transcripts are built by the PRODUCTION reducer from wire-shaped
 					 * pages, so the conversation has been read and what the set shows is which
-					 * ids survived the gap. The hold is not the question here; `true` is what
-					 * the reader would answer.
+					 * ids survived the gap. The hold is not the question here; `false` - no page
+					 * owed - is what the reader would answer.
 					 */
-					hydrated={true}
+					awaitingHydration={false}
 					/*
 					 * A fixture has no session handle to re-arm: it is a static
 					 * transcript for `check-evidence` to photograph. The prop is
