@@ -1,0 +1,106 @@
+The app -> backend hop, measured on the app itself.
+
+WHY THIS FILE EXISTS. The rest of this bundle drives the backend's notification
+path and the runner that hands the suite's children the switch, and it does that
+honestly. The hop BETWEEN those two - the app handing the backend it spawns the
+environment it was launched with - was, in the first revision of this evidence,
+asserted from the source rather than measured (review round 1, MINOR-3). It is
+the hop that can be lost silently: `backend/config.ts` folds a `.env` from the
+working directory over the launch with dotenv `override: true`, and
+`loadMacOSEnvironment` merges the operator's shell rc over that.
+
+WHAT WAS RUN. The app, headless, with `harness/hop-probe.cjs` loaded into its
+main process by `NODE_OPTIONS=--require` (Electron honours it for the main
+process). The probe records what the launch handed the process, what the same key
+is after the fold, and the environment of every child the app spawns. Nothing is
+replaced or stubbed: the app really spawns the backend, which really answers
+(`GET /health 200` below), and it is killed by exact pid afterwards.
+
+Both trees carried the same `.env` line, deliberately in the EMPTY shape - the
+shape `.env.template` uses for every optional value, and the one a stale export
+leaves behind:
+
+    /Users/damian/local-operator-ui-worktrees/notify-kill-switch/.env
+    11:LOCAL_OPERATOR_NO_NOTIFICATIONS=
+
+The launch value was `1`, as `pnpm app:headless` sets it (it is also why the
+first line of each log below is a `1`), and the port was a scratch one
+(`127.0.0.1:18321`) baked into the build so nothing here can reach the operator's
+own backend. Scratch HOME, config dir, log dir and `--user-data-dir` throughout.
+
+  BEFORE  f69a59971  the head this bundle shipped with
+  AFTER   this head  (the launch fact resolved in `backendSpawnEnv`)
+
+THE COMMAND, once per tree:
+
+  $ LOCAL_OPERATOR_NO_NOTIFICATIONS=1 \
+    HOME=/tmp/hop/home-$TAG LOCAL_OPERATOR_CONFIG_DIR=/tmp/hop/config-$TAG \
+    LOCAL_OPERATOR_LOG_DIR=/tmp/hop/logs-$TAG LO_HOP_LOG=/tmp/hop/hop-$TAG.log \
+    NODE_OPTIONS=--require=<repo>/docs/evidence/desktop-notifications-off/harness/hop-probe.cjs \
+    ./node_modules/.bin/electron . --user-data-dir=/tmp/hop/user-data-$TAG --window-mode=headless
+
+--- BEFORE: f69a59971 (no fix). The backend child is handed "" ----------------
+
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/private/tmp/hop-before envExists=true
+spawn   spawn "Electron" dir="." child LOCAL_OPERATOR_NO_NOTIFICATIONS=undefined (env keys: 0)
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/private/tmp/hop-before envExists=true
+spawn   spawn "python3" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="" (env keys: 97)
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+spawn   spawn "bash" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="" (env keys: 97)
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="" cwd=/private/tmp/hop-before envExists=true
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+
+--- AFTER: this head. The same child is handed "1" ---------------------------
+
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/Users/damian/local-operator-ui-worktrees/notify-kill-switch envExists=true
+spawn   spawn "Electron" dir="." child LOCAL_OPERATOR_NO_NOTIFICATIONS=undefined (env keys: 0)
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="1" cwd=/Users/damian/local-operator-ui-worktrees/notify-kill-switch envExists=true
+spawn   spawn "python3" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="1" (env keys: 97)
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+spawn   spawn "bash" dir="-c" child LOCAL_OPERATOR_NO_NOTIFICATIONS="1" (env keys: 97)
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+launch  LOCAL_OPERATOR_NO_NOTIFICATIONS="" cwd=/Users/damian/local-operator-ui-worktrees/notify-kill-switch envExists=true
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS="1"
+folded@1500  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@4000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+folded@8000  LOCAL_OPERATOR_NO_NOTIFICATIONS=""
+
+--- The child is a real backend, in both trees --------------------------------
+
+  $ grep "Backend stdout" /tmp/hop/app-after.log
+  13:06:51.525 › Backend stdout: INFO:     127.0.0.1:59222 - "GET /health HTTP/1.1" 200 OK
+  13:06:56.743 › Backend stdout: INFO:     127.0.0.1:59341 - "POST /v1/desktop/presence HTTP/1.1" 200 OK
+
+  $ grep "health" /tmp/hop/app-before.log
+  13:07:21.558 › Backend stdout: INFO:     127.0.0.1:59921 - "GET /health HTTP/1.1" 200 OK
+  13:07:21.747 › Backend stdout: INFO:     127.0.0.1:59922 - "GET /health HTTP/1.1" 200 OK
+
+HOW TO READ IT.
+
+  - `launch` and `folded@N` are the SAME PROCESS twice: the value it was given,
+    and the value it holds once `backend/config.ts` has folded the `.env` from
+    its working directory. In both trees the fold wins - `""` - which is the
+    defect, live, on a real launch, and it is why reading the source is not
+    enough.
+  - `spawn python3 dir="-c"` is the BACKEND. `dir="-c"` is the shape
+    `owned-serve-launch.ts` builds (`["-c", <supervisor>, "serve", "--port", N]`),
+    and the app's log shows it serving. In the BEFORE tree it is handed `""`
+    (which `notify.py` reads as ENABLED - case 1b of `transcript.txt` measures
+    that); in the AFTER tree it is handed `"1"`, the launch's own value.
+  - `spawn bash dir="-c"` is the `source "$HOME/.zshrc" && env` child that becomes
+    `shellEnv`, the base of the environment the backend is spawned with. It
+    follows the same value on both sides, which is what makes the two rows one
+    hop rather than two measurements.
+  - the later `launch ... ""` block is a SECOND Electron process the app starts
+    itself, inheriting the folded environment. It is in both trees, is not this
+    change's path, and is left visible rather than filtered.

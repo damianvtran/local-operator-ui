@@ -117,6 +117,25 @@ env -u LOCAL_OPERATOR_NO_NOTIFICATIONS \
 echo "  osascript log:"
 sed 's/^/    /' "$LO_OSASCRIPT_LOG"
 
+# The case between the two, and the one that makes the rest legible. The switch
+# is NOT boolean to the consumer: `notifications_enabled()` tests
+# `os.environ.get(_ENV_DISABLE)` for truthiness, so a value that is present but
+# EMPTY leaves the banners ARMED while looking switched off. That is exactly the
+# shape a stale shell export leaves, the shape `.env.template` uses for every
+# optional value, and the shape the app's own `.env` fold produced in the
+# measurement under `transcript-launch-hop.txt` - which is why an empty value is
+# treated as "not a choice" on both sides of this change rather than as "on".
+echo
+echo "=== 1b. the same call with the switch PRESENT but EMPTY (the shape a stale export leaves) ==="
+echo '$ LOCAL_OPERATOR_NO_NOTIFICATIONS= "$LO_PYTHON" "$LO_PROBE_SCRIPT"'
+LOCAL_OPERATOR_NO_NOTIFICATIONS= \
+	HOME="$LO_SCRATCH_HOME" \
+	LOCAL_OPERATOR_CONFIG_DIR="$LO_SCRATCH_CONFIG" \
+	PATH="$SCRATCH/bin:$PATH" \
+	"$LO_PYTHON" "$LO_PROBE_SCRIPT"
+echo "  osascript log:"
+sed 's/^/    /' "$LO_OSASCRIPT_LOG"
+
 # The after case, through the runner that `pnpm test:desktop` uses. The probe
 # file lives in the scratch tree, not in the repo: the runner takes file paths as
 # arguments, which is also how the runner's own test drives it.
@@ -187,5 +206,5 @@ node ./scripts/run-desktop-tests.mjs "$SCRATCH/probe.test.mjs"
 
 echo
 echo "=== 3. the osascript log, whole: every invocation this run recorded ==="
-echo "  line 1 is case 1's banner; case 2's control is line 2; nothing else may appear"
+echo "  lines 1 and 2 are case 1's and case 1b's banners; case 2's control is line 3; nothing else may appear"
 cat -n "$LO_OSASCRIPT_LOG"

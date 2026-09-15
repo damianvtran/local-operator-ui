@@ -68,9 +68,11 @@ for (const key of Object.keys(childEnv)) {
 	if (key.startsWith("CMUX_")) delete childEnv[key];
 }
 /*
- * The kill switch goes on for the same reason the cmux variables come off: this
- * rig boots the app, and a backend announcing a parked gate ends at `osascript`
- * on macOS, whose banner lands in the operator's real Notification Center. See
+ * The kill switch goes on for the same reason the cmux variables come off — and
+ * that strip is pre-existing context in this file, not something this change
+ * adds: what is new here is only the line below. This rig boots the app, and a
+ * backend announcing a parked gate ends at `osascript` on macOS, whose banner
+ * lands in the operator's real Notification Center. See
  * `notifications-off.mjs`.
  */
 withNotificationsOff(childEnv);

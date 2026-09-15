@@ -37,6 +37,14 @@
  *    the launcher spawns Electron with the caller's environment, so exporting
  *    the variable covers it too.
  *
+ * EVERY SITE IS ENUMERATED RATHER THAN REMEMBERED.
+ * `scripts/notification-spawn-sites.test.mjs` scans `scripts/` and `bin/` for
+ * the calls that start Electron and fails on one that is not in its table; the
+ * rig somebody adds next month is exactly the one that would forget this line.
+ * The other end of the same path — the app's own spawn of the backend — is
+ * resolved from the launch in `src/main/backend/notification-launch.ts`, because
+ * the environment the app hands that child is not the launch it was given.
+ *
  * WHY THE UPSTREAM FIX IS NOT THE RIGHT ONE. The tempting "correct" change —
  * have `notify.py` default to off when a session is not attached to a TTY —
  * is wrong in both directions. Reaching a user who is NOT attached is the
@@ -55,7 +63,19 @@
  *
  * `local_operator/tui/notify.py` reads this exact name as `_ENV_DISABLE`, and a
  * typo would fail silently — the backend would simply keep bannering — so
- * callers take the name from here instead of restating the string.
+ * callers take the name from here instead of restating the string. The app
+ * spells the same key in `src/main/backend/notification-launch.ts` for the
+ * backend it spawns, and `scripts/notification-launch.test.mjs` asserts the two
+ * agree, because nothing else would notice them drifting apart.
+ *
+ * WHAT THIS PIN DOES NOT COVER, and it is the honest edge of the whole change:
+ * the consumer is that python file, and it lives in a separately installed
+ * backend package this repo does not pin
+ * (`src/main/update-install.ts` -> `pip install --upgrade local-operator`). A
+ * rename upstream turns every switch set here into a variable nobody reads, and
+ * every test in this repo stays green while the banners come back. A pin would
+ * have to assert the installed backend's own name or version against this
+ * constant; nothing in this repo can do that today.
  */
 export const NOTIFICATIONS_ENV = "LOCAL_OPERATOR_NO_NOTIFICATIONS";
 
@@ -66,17 +86,38 @@ export const NOTIFICATIONS_ENV = "LOCAL_OPERATOR_NO_NOTIFICATIONS";
  *
  *     const env = withNotificationsOff({ ...process.env, HOME: scratch });
  *
- * AN EXPLICIT VALUE WINS, and that is what makes this a default rather than an
- * override. Someone who deliberately sets `0` — an operator debugging why a
- * banner went missing, say — means it, and flipping their choice silently would
- * reproduce the very class of defect this closes: tooling deciding something
- * about the operator's desktop without telling them.
+ * THE CONSUMER IS PRESENCE-BASED, and that decides what this function can and
+ * cannot promise. `notify.py` reads the key with `os.environ.get()` and silences
+ * on any NON-EMPTY string, measured against the shipped reader:
+ *
+ *     unset -> banners ON      0 -> SILENCED      1 -> SILENCED      no -> SILENCED
+ *
+ * So there is no value that means "banners back on". `0` is not re-arm, and
+ * saying so — three places in this repo did before review caught it — is worse
+ * than saying nothing, because `LOCAL_OPERATOR_NO_NOTIFICATIONS=0` is exactly the
+ * instruction a person would follow to get their banners back, and following it
+ * yields silence while looking switched off. The way back on is to UNSET the
+ * key, which is what this change's own harness does:
+ *
+ *     env -u LOCAL_OPERATOR_NO_NOTIFICATIONS <command>
+ *
+ * A VALUE THE CALLER SET IS STILL PASSED THROUGH UNTOUCHED, and that is what
+ * makes this a default rather than an override: silently flipping a caller's
+ * choice would reproduce the very class of defect this closes — tooling deciding
+ * something about the operator's desktop without telling them. Read together
+ * with the rule above, the pass-through means `0` in a child environment
+ * silences that child exactly as `1` does.
  *
  * Only an ABSENT or EMPTY value takes the default. Empty is deliberate:
  * `os.environ.get()` returns `""`, which is falsy in `notifications_enabled()`
  * and therefore already means ENABLED, so treating `LOCAL_OPERATOR_NO_
  * NOTIFICATIONS=` (what a shell mishap or a stale export leaves behind) as a
  * considered choice would quietly re-arm every banner.
+ *
+ * The APP applies the same rule to its own LAUNCH environment for the backend it
+ * spawns (`src/main/backend/notification-launch.ts`), so a `.env` in the working
+ * directory cannot replace what a launch was given — the same "empty is not a
+ * choice" reading, one runtime over.
  */
 export function withNotificationsOff(env) {
 	const current = env[NOTIFICATIONS_ENV];
