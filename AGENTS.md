@@ -217,14 +217,26 @@ implies `headless`.** The app resolves it from `--window-mode=<mode>` or
 | `normal` | `show()` — raises and focuses the window | a human starting the app. Never an agent run |
 
 **Leaving the mode out of a rig-shaped launch is `headless`, not `normal`.** A
-launch that carries a scratch `--user-data-dir` or a `--remote-debugging-port`
-has already said it is a run rather than a person using the app, so the app
-resolves it to `headless` and the startup line says the mode was assumed and
-which switch said so. This is the belt to the rule's braces: the rule above is
-enforced by every caller remembering it, and the afternoon on this machine that
-left nine Electron windows in the dock — each of them stealing focus as it
-appeared — was nine callers that had not. A launch that names no mode *and*
-passes neither switch is still the operator's own app and still `normal`.
+launch has said it is a run rather than a person using the app in either of two
+ways, and either one resolves it to `headless` with the startup line naming which
+signal said so. The first is a switch only a rig passes: a scratch
+`--user-data-dir` or a `--remote-debugging-port`. The second is shape rather than
+vocabulary — **the launch is not a packaged app and has no terminal on either
+stream**, which is what every tool-spawned launch looks like: a harness boots
+`out/main/index.js` out of a checkout, a QA matrix boots a copy of one under
+`/tmp`, and a tool spawns both with pipes where a person's terminal would be.
+That second signal is not decoration. Measured on this machine after the
+switch-based assumption shipped: every launch in a full afternoon's shared app
+log still ran `normal` — including ten boots in seven minutes from a flagless
+harness — because the rigs that take the operator's focus are exactly the ones
+that never learned to pass a switch. `packaged` is the half that keeps the
+shipped app out of it: the `.app` a person double-clicks also has no terminal, so
+it is never assumed headless, whatever its streams look like. This is the belt to
+the rule's braces: the rule above is enforced by every caller remembering it, and
+the afternoon on this machine that left nine Electron windows in the dock — each
+of them stealing focus as it appeared — was nine callers that had not. A launch
+that names no mode, passes neither switch, and is either packaged or still
+attached to a terminal is the operator's own app, and stays `normal`.
 An empty or blank `LOCAL_OPERATOR_UI_WINDOW_MODE` (`env MODE="$MODE"` with
 `MODE` unset, a harness env block with an empty default) names nothing and is
 treated the same way; a value the app cannot parse is a *typo*, keeps its
@@ -255,10 +267,19 @@ LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=94
 
 # Omit the mode and it is still headless: the scratch profile says what this is.
 npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
+
+# And so is this, which passes nothing at all: no terminal on either stream, and
+# not a packaged app, is a tool-spawned run by shape alone. This is the launch
+# shape that was still stealing focus, so prefer naming the mode anyway.
+npx electron ./out/main/index.js --window-size=1380x900
 ```
 
 `npx local-operator-ui` spawns Electron with this process's environment, so the
-same switch covers a check of the published launcher. Any mode but `normal`
+same switch covers a check of the published launcher. It is also an unpackaged
+launch, so a *piped* one (`local-operator-ui | tee run.log`, a launcher script, a
+CI job) is assumed `headless` by the shape rule above — a non-terminal launcher
+that really wants a window names `--window-mode=normal`, which wins over every
+assumption here. Any mode but `normal`
 prints a `[window-mode] ...` line to the process's own output, so a run says out
 loud that it was headless instead of looking identical to one that popped a
 window — including when the mode was assumed, which it names along with the
