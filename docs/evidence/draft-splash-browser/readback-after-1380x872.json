@@ -1,0 +1,174 @@
+{
+  "frame": {
+    "css": {
+      "x": 0,
+      "y": 0,
+      "width": 1380,
+      "height": 872
+    },
+    "dpr": 2,
+    "device": {
+      "x": 0,
+      "y": 0,
+      "width": 2760,
+      "height": 1744
+    },
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  "at": 47650,
+  "viewport": "1380x872",
+  "active": "TEXTAREA",
+  "stack": {
+    "height": 142,
+    "scrollHeight": 142,
+    "clientHeight": 142
+  },
+  "chips": [
+    {
+      "label": "Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 506,
+      "bottom": 535.5
+    },
+    {
+      "label": "Look up interest rate trends and make a projection for the next 5 years",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 543.5,
+      "bottom": 573
+    },
+    {
+      "label": "Find me a royalty free gif of a cute cat",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 543.5,
+      "bottom": 573
+    },
+    {
+      "label": "Make me a brick breaker game",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "What's the latest news?",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "Create a presentation outline on climate change",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "What stocks are trending right now?",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 618.5,
+      "bottom": 648
+    }
+  ],
+  "observed": {
+    "columnPx": 1100,
+    "greeting": 1,
+    "smallView": false,
+    "chipsLaidOut": 7,
+    "chipsPainted": 7,
+    "chipsInert": 0,
+    "rowsLaidOut": 4,
+    "rowsPainted": 4
+  },
+  "expected": {
+    "columnPx": 1100,
+    "smallView": false,
+    "greeting": 1,
+    "chipsPainted": "the sampled chips, whole rows only",
+    "rule": "chat-content.tsx:343 sets isSmallView from a container measurement of the chat column (contentRect.width < 550); message-input.tsx:1109-1110 paints the empty-chat prompt only on !isSmallView. A column narrower than 550 is the intended small view: one compact composer, no greeting, no suggestion stack."
+  },
+  "holds": {
+    "settled": true,
+    "smallView": true,
+    "greeting": true,
+    "noLoadingClaim": true,
+    "all": true
+  },
+  "settlement": {
+    "now": 44911,
+    "reads": 47,
+    "layoutChanges": 1,
+    "lastChangeAt": 1897,
+    "stableForMs": 43014,
+    "settleWindowMs": 3000,
+    "settled": true,
+    "noLoadingClaimInAnyState": true,
+    "states": [
+      {
+        "at": 479,
+        "lastSeenAt": 514,
+        "reads": 3,
+        "columnWidth": null,
+        "bandY": null,
+        "bandHeight": null,
+        "composerY": null,
+        "composerHeight": null,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": null
+      },
+      {
+        "at": 1897,
+        "lastSeenAt": 44911,
+        "reads": 44,
+        "columnWidth": 1100,
+        "bandY": 104,
+        "bandHeight": 768,
+        "composerY": 370,
+        "composerHeight": 278,
+        "stackTop": 506,
+        "stackHeight": 142,
+        "greeting": 1,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": 4,
+        "rowsInside": 4,
+        "boundaryInGap": true,
+        "claims": {
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
+        }
+      }
+    ],
+    "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
+  },
+  "pageProbe": null,
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string, and this reader's output budget cut it on two of the eight reads; rather than ship some files with it and some without, all eight carry null and every field this set's table, its D2 check or its settlement record uses is a top-level field of the file below. The one reading that lived only there is `store.activeDraftKey`: `draft:17fadb82-8a2f-4dbf-8baf-9f2e1ff65b9b` on the after origin and `draft:6bbef56d-fe60-4b58-b308-280a0f1691dc` on the before origin, each with `activeSessionId: null`."
+}
