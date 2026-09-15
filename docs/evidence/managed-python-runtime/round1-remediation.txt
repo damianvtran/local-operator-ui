@@ -1,7 +1,9 @@
 # Round-1 findings: the output of what answered each one
 
-Head: 83a615ab1 (this file is re-stamped with the manifest at the commit that carries it).
-Every block below is a command and its own output, not a summary of one.
+Head: the tests, the gate and the frame capture below were run on 83a615ab1; the
+container block was re-run after a later commit changed the walk's own success
+line (it names the four trees it walks now, read from the shared definition).
+Every command is shown with its output, uncut.
 
 ## R8 - a runtime or environment that is gone or changed is rebuilt
 
