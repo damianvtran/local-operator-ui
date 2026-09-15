@@ -118,14 +118,8 @@ import {
 	buildRows,
 	ledgerName,
 	paintsSomething,
+	splitFirstLine,
 } from "./transcript-rows";
-/*
- * Both sides edited this import block: this branch added `ledgerName` to the
- * row-projection import (receipt rows take part in the shared name column) and
- * `main` added `AttachmentScope` for the attachment-URL reader. Nothing here
- * chooses between them - the two changes are independent, so the resolution is
- * the union.
- */
 import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
 import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
@@ -488,17 +482,69 @@ const NoticeRow = memo(function NoticeRow({
 	>;
 	isSmallView: boolean;
 }) {
+	// A custom row and a notice are two registers, and the difference is what
+	// the row is FOR.
+	//
+	// A custom row is a STATEMENT the harness made in the conversation -- a
+	// session incident, a model switch, a relayed message -- and its text IS the
+	// message. Painting its type name and hiding the text behind a chevron is
+	// what made 946 of the operator's own incidents read as the literal string
+	// "session incident": an error row in the info ink, its message visible only
+	// to someone who thought to click. The TUI has never done that
+	// (`tui/widgets/transcript.py::NoticeBlock` paints one wrapping line in the
+	// kind's ink, message in place), and the reducer now decides the level, the
+	// message and the supporting detail for every custom type -- so this row
+	// paints what it is given rather than re-deciding how long is too long.
+	if (record.kind === "custom") {
+		const Icon = record.level === "error" ? CircleAlert : MessageSquareText;
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<TraceLine
+					// The ledger pitch, so a run does not go ragged wherever a
+					// statement lands in it. The message wraps BELOW that pitch
+					// rather than truncating at it: a clipped sentence costs the
+					// reader the half that says what happened.
+					dense
+					// Keep an explicit statement label even when the payload repeats
+					// "job": omitting it selects the tool fallback, which replaces the
+					// glyph and clips narration even when there is no detail to open.
+					verbOverride={record.category ?? record.customType.replace(/_/g, " ")}
+					// The provider/model the incident names rides the ledger's
+					// machine-voice object column: it is an identifier, not prose, and
+					// "which provider died" is the decision-relevant half for an
+					// operator running several of them.
+					object={record.provider ?? undefined}
+					narration={record.headline}
+					failed={record.level === "error"}
+					wrap
+					glyph={<Icon />}
+					details={
+						/* No extra indent: the disclosure's content box already sits on
+						   the ledger's body edge (x250 in the 1280 column, the same as a
+						   tool row's args block), which was measured in the DOM rather
+						   than read off a frame — see the design round's D4 in the PR
+						   thread. Indenting the paragraph further put it at x270, off
+						   the edge it already shared. */
+						record.detail ? (
+							// `break-words` for the same reason the notice's tail carries
+							// it: `pre-wrap` alone leaves `overflow-wrap: normal`, and an
+							// errno string or a socket path is one unbreakable run.
+							<p className="whitespace-pre-wrap break-words text-body-sm text-ink-muted">
+								{record.detail}
+							</p>
+						) : undefined
+					}
+				/>
+			</MessageContainer>
+		);
+	}
 	const level = record.kind === "notice" ? record.level : ("info" as const);
 	const Icon =
 		level === "error"
 			? CircleAlert
 			: level === "warning"
 				? TriangleAlert
-				: record.kind === "custom"
-					? MessageSquareText
-					: Info;
-	const label =
-		record.kind === "custom" ? record.customType.replace(/_/g, " ") : undefined;
+				: Info;
 	// Notices are machine voice at the trace tier: one quiet line, the body
 	// (when genuinely long) behind the same disclosure idiom as a tool's output.
 	//
@@ -515,24 +561,38 @@ const NoticeRow = memo(function NoticeRow({
 	// chevron: a notice the user must ACT on should not require a click to
 	// read, and collapsing it merely trades a clipped sentence for an invisible
 	// one. The disclosure is kept for text that is actually bulky.
-	const long = record.text.length > 400 || record.text.includes("\n");
+	//
+	// And the disclosure carries the REST of the notice, never the notice again:
+	// `details={record.text}` disclosed a verbatim duplicate of the row above it
+	// whenever the opening line was the whole text (a long single-line notice) and
+	// re-read the first line whenever it was not (round 2's D7/Q5/R11/U14). A
+	// notice whose first line IS the whole text now has nothing to disclose and
+	// paints through the static branch, which is the honest affordance: a chevron
+	// that reveals the same bytes promises material it does not add.
+	const { headline, rest } = splitFirstLine(record.text);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
 				// Same column as the tool rows, so the same pitch: a notice must not
 				// be the row that makes a run look ragged.
-				dense={!long}
-				verbOverride={label ?? (long ? "Notice" : record.text)}
-				narration={label && !long ? record.text : undefined}
+				dense={!rest}
+				// The row states the notice's OWN opening line, not the word
+				// "Notice": a bulky notice used to render as the literal type name
+				// with the whole body behind the chevron, which is the defect the
+				// operator reported one register down.
+				verbOverride={headline}
 				failed={level === "error"}
-				// The row carries the whole message when it is not collapsed, so
-				// it must not be clipped to the rail width.
-				wrap={!long}
+				// The row carries the whole opening line when it is not collapsed,
+				// so it must not be clipped to the rail width.
+				wrap
 				glyph={<Icon />}
 				details={
-					long ? (
-						<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
-							{record.text}
+					rest ? (
+						// `break-words` as well as `pre-wrap`: a notice's own tail can be
+						// an unbreakable run (D7 measured `scrollWidth` 2773 in an 840px
+						// box), and `pre-wrap` alone leaves `overflow-wrap: normal`.
+						<p className="whitespace-pre-wrap break-words text-body-sm text-ink-muted">
+							{rest}
 						</p>
 					) : undefined
 				}
@@ -707,7 +767,6 @@ const WakeRow = memo(function WakeRow({
 		</MessageContainer>
 	);
 });
-
 // ---------------------------------------------------------------- list
 
 /** Development row-render counter; read by the perf readout below. */

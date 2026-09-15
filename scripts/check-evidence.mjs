@@ -301,6 +301,40 @@ const shaReaders = (git) => ({
  * hashes and the three counts the manifest states about itself, read from
  * `HEAD`'s trees, the capturer's own lists and the committed frames themselves,
  * with no history needed.
+ *
+ * ## What the aggregate fields mean, and where a capture's own origin lives
+ *
+ * `head`, `capturedAt`, `srcTree` and `scriptsTree` describe the tree the frames
+ * SHIP IN, not the pass that took them. `srcTree`/`scriptsTree` are read against
+ * the current `HEAD`, so a value naming an earlier commit is exactly the
+ * staleness this half reports, and history cannot live in them; `head` is a
+ * commit of the branch under review, which the citation half already requires to
+ * be an ancestor of the tip.
+ *
+ * The capture itself is recorded in `captureOrigin`, which no gate reads: the
+ * commit and time the frames came from (`head`/`capturedAt`), the tree hashes the
+ * aggregate fields carried before they were re-derived, and the capture's own
+ * `dirtyWorkingTree`. That block exists because the two questions are different -
+ * "do these stamps describe the tree under review" (gate) and "which tree did
+ * these pixels come from" (record) - and re-deriving the first used to destroy the
+ * second. The shipped `dirtyWorkingTree` is the CAPTURE's, deliberately not a
+ * current value: a re-derivation does not make an older capture clean, and
+ * reporting one would be the misrepresentation this field exists to prevent.
+ *
+ * TWO passes contribute to that block, which is why it is described here rather
+ * than read as one record (round 7's R35): `head`/`capturedAt` and
+ * `srcTree`/`scriptsTree` are the inherited stamp block, preserved verbatim and
+ * self-consistent only at the upstream commit that wrote it - its tree hashes are
+ * that commit's own trees and never the capture head's (`0f19ae5e2:src` is a
+ * different tree) - while `dirtyWorkingTree` is this branch's own `8e8660808`-era
+ * record of the scratch docgen override its capture needed. A reader asking which
+ * pass a field belongs to should be able to answer it from this comment.
+ *
+ * A re-derivation is therefore not a recapture and must not be described as one:
+ * no frame is re-taken, no theme sweep is run, and older frames are historical
+ * captures of the trees they name. A branch whose own delta is not covered by
+ * those frames declares the sets that do cover it, so the uncovered delta is
+ * named rather than implied.
  */
 export const stampFailures = (manifest, git = gitOut) => {
 	const out = [];
