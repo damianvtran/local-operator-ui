@@ -41,6 +41,11 @@
  *   from a run somebody believed was sandboxed.
  * - `--user-data-dir` is scratch, so the Electron profile (cookies, localStorage
  *   where the UI preferences persist) cannot see or touch the real one.
+ * - `LOCAL_OPERATOR_LOG_DIR` is scratch. The app's default log directory is its
+ *   real home (Electron's `home`, which neither `HOME` nor `--user-data-dir`
+ *   redirects), so without the app's own override every run appended to the
+ *   operator's own log files — the harness asserts the override took effect
+ *   rather than assuming it.
  * - The app is started with its **cwd outside the checkout**, and the scratch cwd
  *   holds its own `.env`. `src/main/backend/config.ts` loads `.env` from
  *   `process.cwd()` with dotenv `override: true`, so the repo's own `.env` is not
@@ -60,11 +65,19 @@
  *
  * The bridge exists only when the launch opted in
  * (`LOCAL_OPERATOR_UI_DEV_DRIVER=1` **and** `LOCAL_OPERATOR_UI_DEV_DRIVER_OUT`)
- * and the window mode is not `normal`. `--gate-check` boots the app twice and
- * reports, from the real renderer: absent bridge, refused IPC channel and an
- * empty frames directory in the unarmed boot; a present bridge and a real PNG in
- * the armed one. Nothing about that is inferred from a flag this script read in
- * its own process.
+ * and the window mode is not `normal`. `--gate-check` boots the app four times
+ * and reports, from the real renderer: absent bridge, refused IPC channel and an
+ * empty frames directory in three unarmed launches — nothing set anywhere, a cwd
+ * `.env` asking to be armed, and that same file asking while the environment
+ * says `=0` — and a present bridge and a real PNG in the armed one. Nothing
+ * about that is inferred from a flag this script read in its own process.
+ *
+ * The `.env` boots exist because `src/main/backend/config.ts` applies a `.env`
+ * from the app's cwd with dotenv `override: true`, and the opt-in used to be
+ * resolved from `process.env` after that fold: the repository's own gitignored
+ * config file could arm a control surface on a trusted process and beat an
+ * explicit refusal, with no flag anywhere. Launch facts now come from the
+ * pre-dotenv `launchEnv` snapshot, and those two boots are what keep it so.
  *
  * What this harness CANNOT show is in `docs/agent-driver.md`; the short version
  * is that it is not a substitute for the `browser` tool (a page's behaviour in a
@@ -82,7 +95,9 @@
  */
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
+	existsSync,
 	mkdirSync,
 	readFileSync,
 	readdirSync,
@@ -119,9 +134,56 @@ const SCRATCH = join(tmpdir(), `lo-renderer-driver-${process.pid}`);
 const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const USER_DATA = join(SCRATCH, "userdata");
+/**
+ * The app's own log files, for this run.
+ *
+ * Set through the app's `LOCAL_OPERATOR_LOG_DIR` override in the child
+ * environment, because the default cannot be redirected from outside: Electron's
+ * `home` — which `src/main/backend/logger.ts` uses on macOS and Linux — is the OS
+ * account's home, so neither the scratch `HOME` above nor `--user-data-dir` moves
+ * it. Measured before this was wired up: a run's dead backend port appeared in
+ * the operator's `~/Library/Application Support/Local Operator/logs/
+ * backend-service.log`, i.e. the one path in this script's isolation list that
+ * was not actually redirected.
+ */
+const LOG_DIR = join(SCRATCH, "logs");
 /** The app's cwd. Outside the checkout on purpose: this is where dotenv looks. */
 const APP_CWD = join(SCRATCH, "cwd");
 const FRAMES = OUT_ARG ? resolve(OUT_ARG) : join(SCRATCH, "frames");
+
+/**
+ * The dead backend URL this run points the app at.
+ *
+ * Set once in `main()` and used by `writeAppCwdEnv`, which is called per boot:
+ * the gate's `.env` cases rewrite the scratch `.env` between boots, so the file
+ * cannot be written once up front. It is always a port this script picked and
+ * verified dead, which is what keeps every frame publishable.
+ */
+let APP_API_URL = null;
+
+/**
+ * The scratch `.env` at the app's cwd, rewritten before every boot.
+ *
+ * This is what keeps a run off the operator's backend: main loads `.env` from
+ * its cwd with dotenv `override: true`, and the cwd is outside the checkout, so
+ * the repository's own `.env` is never read. It is also what the gate's `.env`
+ * cases put the driver's opt-in into — a file in the working directory must not
+ * be able to arm anything, which is a property only a real boot can measure.
+ */
+function writeAppCwdEnv(extraLines = []) {
+	writeFileSync(
+		join(APP_CWD, ".env"),
+		[
+			`# Written by scripts/renderer-driver.mjs. The app loads this with dotenv`,
+			`# override:true from its cwd, which is why the harness runs with a cwd`,
+			`# outside the checkout: a repo .env would win otherwise.`,
+			`VITE_LOCAL_OPERATOR_API_URL=${APP_API_URL}`,
+			`VITE_DISABLE_BACKEND_MANAGER=true`,
+			...extraLines,
+			"",
+		].join("\n"),
+	);
+}
 
 const transcript = [];
 let failures = 0;
@@ -185,10 +247,18 @@ async function isListening(port, timeoutMs = 750) {
 let app = null;
 
 /** Kill by exact pid, never a pattern: a `pkill` would take the operator's app too. */
-async function stopApp() {
-	const stopping = app;
+async function stopApp(handle = app) {
+	const stopping = handle;
 	if (!stopping) return;
-	app = null;
+	/*
+	 * The gate's boots are not the scene's, so `stopApp` has to be told WHICH
+	 * launch to stop rather than assuming the module-level one. Leaving the
+	 * parameter off is what the scene path does, and it clears `app`; every other
+	 * caller passes its own handle, because a `--gate-check` run that relied on
+	 * the global would kill nothing and leave one Electron per boot alive on the
+	 * operator's machine after the script exited.
+	 */
+	if (stopping === app) app = null;
 	stopping.flush();
 	await new Promise((resolveStop) => {
 		stopping.child.once("exit", resolveStop);
@@ -204,11 +274,28 @@ async function stopApp() {
 	});
 }
 
-async function launchApp({ armed, apiUrl, logName, tag }) {
+async function launchApp({
+	armed,
+	apiUrl,
+	logName,
+	tag,
+	/*
+	 * Extra lines for the scratch `.env` this boot runs with, and extra variables
+	 * for its environment. Both exist for the gate's `.env` cases below, which
+	 * measure that a file in the working directory can neither arm the driver
+	 * nor beat an explicit off: only the ENVIRONMENT the process was launched
+	 * with may carry the opt-in, and these two knobs are how a case puts the
+	 * keys where they must be ignored.
+	 */
+	dotenvLines = [],
+	envExtra = {},
+}) {
+	writeAppCwdEnv(dotenvLines);
 	const env = {
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 		// No backend manager: this run must not install or start a Local Operator
 		// backend in the scratch HOME.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
@@ -216,10 +303,24 @@ async function launchApp({ armed, apiUrl, logName, tag }) {
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
+	/*
+	 * The driver's own variables are decided HERE, for every boot, rather than
+	 * inherited from whoever ran this script. `armed: false` has to mean not
+	 * armed, and an opt-in exported in the operator's shell (or left over in the
+	 * environment from a previous command) must not arm the boot that exists to
+	 * prove an unarmed launch is inert — which would report a healthy tree as
+	 * three FAILs, or arm a boot this script believes is inert. Deleting rather
+	 * than overwriting is what makes "the unarmed boot was given no frames
+	 * directory at all" true, so the empty-frames assertion below is about the
+	 * launch rather than about which directory the harness happened to count.
+	 */
+	delete env.LOCAL_OPERATOR_UI_DEV_DRIVER;
+	delete env.LOCAL_OPERATOR_UI_DEV_DRIVER_OUT;
 	if (armed) {
 		env.LOCAL_OPERATOR_UI_DEV_DRIVER = "1";
 		env.LOCAL_OPERATOR_UI_DEV_DRIVER_OUT = FRAMES;
 	}
+	Object.assign(env, envExtra);
 
 	const port = await pickFreePort();
 	if (await isListening(port)) throw new Error(`picked port ${port} is in use`);
@@ -591,8 +692,19 @@ async function sceneStates(cdp) {
 	// 2. The same screen in another palette: the before/after pair a visual
 	// change is reviewed against. Driven by the app's own theme action (the one
 	// the settings picker and the `/theme` picker call), not by writing the DOM.
-	await verb(cdp, "setTheme", "localOperatorLight");
+	const themeAction = await verb(cdp, "setTheme", "localOperatorLight");
 	const after = await verb(cdp, "state");
+	/*
+	 * Recorded because it is the difference between an after frame that is the
+	 * light palette and one that is a blend of the two: the verb waits out the
+	 * `transition-colors duration-fast` (120ms) the change starts, and a reader
+	 * comparing a fresh run against the committed frame needs to know the wait
+	 * happened and that it did not hit its bound.
+	 */
+	note(
+		"theme change settled before the frame",
+		`${themeAction.settledAfterMs}ms${themeAction.settleTimedOut ? " (TIMED OUT: the frame may be mid-transition)" : ""}`,
+	);
 	check(
 		"the theme action changed the app's own theme state",
 		after.theme === "localOperatorLight",
@@ -606,6 +718,28 @@ async function sceneStates(cdp) {
 			beforeFrame.viewport.height === afterFrame.viewport.height &&
 			before.route === after.route,
 		`${before.route} ${JSON.stringify(beforeFrame.viewport)} vs ${after.route} ${JSON.stringify(afterFrame.viewport)}`,
+	);
+	/*
+	 * ...and it has to be TWO renders.
+	 *
+	 * Every other assertion about this pair — same route, same viewport, and the
+	 * theme state the app reports — is satisfied by the same bytes written twice,
+	 * which is exactly what once shipped: `chat-light.png` was a byte copy of
+	 * `chat-dark.png`, so the "before/after pair" tabled in the README as the
+	 * light palette showed the dark screen twice, and nothing here noticed. The
+	 * check is on the FILES ON DISK rather than on `bytes` or the app's state,
+	 * because a frame is only evidence if what a reviewer opens is what the theme
+	 * action produced. The hashes are printed so a reader can compare a committed
+	 * frame against a fresh run without trusting either this script's summary or
+	 * the file's size.
+	 */
+	const darkBytes = readFileSync(join(FRAMES, "chat-dark.png"));
+	const lightBytes = readFileSync(join(FRAMES, "chat-light.png"));
+	const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
+	check(
+		"the before/after pair is two different renders, not one frame twice",
+		!darkBytes.equals(lightBytes),
+		`chat-dark.png ${darkBytes.length}B ${sha(darkBytes).slice(0, 16)}… vs chat-light.png ${lightBytes.length}B ${sha(lightBytes).slice(0, 16)}…`,
 	);
 
 	// 3. Real controls, to prove the driver reaches the app's own handlers and
@@ -670,86 +804,233 @@ async function sceneStates(cdp) {
 // ---- gate-check --------------------------------------------------------------
 
 /**
- * The fail-closed proof, on two real boots: an unarmed launch must be
- * indistinguishable from the app as it was — no bridge, no channel, no frames —
- * and an armed one must produce all three.
+ * The checks ONE launch that did not ask for the driver must pass: the app
+ * paints normally, exposes no bridge, has main refuse the capture channel,
+ * writes no frame, and prints no banner.
+ *
+ * The paint assertion comes first on purpose. The first cut of this gate used
+ * an `ipcRenderer.sendSync` handshake, which never answers on a channel with no
+ * listener, so an ordinary launch hung inside the preload and never painted —
+ * and "the bridge is absent" would have passed while the app was broken.
+ *
+ * Factored out because the gate has FOUR boots that must all be inert except
+ * the last: the plain one, one whose cwd `.env` carries the opt-in, one whose
+ * `.env` carries it while the launch environment explicitly refuses, and the
+ * armed one. Four hand-copied versions of this list is how one of them quietly
+ * stops asserting.
  */
-async function gateCheck() {
+async function inertBootChecks(
+	cdp,
+	handle,
+	prefix,
+	framesDir,
+	{ refusalExpected = false } = {},
+) {
 	const results = [];
+	const page = await waitForPage(cdp);
+	results.push(
+		check(
+			`${prefix}: the app loaded and painted normally`,
+			page.mounted === true && page.title === "Local Operator",
+			JSON.stringify(page),
+		),
+	);
+	const bridgeType = await cdp.evaluate("typeof window.__loDevDriver");
+	results.push(
+		check(
+			`${prefix}: the renderer has no dev-driver bridge`,
+			bridgeType === "undefined",
+			`typeof window.__loDevDriver === ${bridgeType}`,
+		),
+	);
+	const refused = await cdp.evaluate(`(async () => {
+		try {
+			await window.electron.ipcRenderer.invoke("dev-driver-capture", "gate-check-probe");
+			return "resolved";
+		} catch (error) { return String(error?.message ?? error); }
+	})()`);
+	results.push(
+		check(
+			`${prefix}: main refuses the capture channel`,
+			/no handler registered/i.test(refused),
+			refused,
+		),
+	);
+	/*
+	 * Counted in the directory THIS boot could have written to, not in the
+	 * harness's own frames directory: those are the same place for the plain
+	 * unarmed boot and different ones for the `.env` cases, which name a
+	 * directory of their own in the file that asks to be armed. An ambient
+	 * `LOCAL_OPERATOR_UI_DEV_DRIVER_OUT` in the caller's shell is no longer a
+	 * third answer, because `launchApp` deletes the variable rather than
+	 * inheriting it.
+	 */
+	const framesBefore = readdirSync(framesDir).filter((f) => f.endsWith(".png"));
+	results.push(
+		check(
+			`${prefix}: no frame was written`,
+			framesBefore.length === 0,
+			`${framesBefore.length} PNG(s) in ${framesDir}`,
+		),
+	);
+	const log = await readAppLog(handle);
+	const driverLines = log
+		.split("\n")
+		.filter((line) => line.includes("[dev-driver]"));
+	/*
+	 * "Not armed" and "silent" are different claims, and which one is right
+	 * depends on what the LAUNCH was given.
+	 *
+	 * A launch whose environment said nothing about the driver must be silent:
+	 * that is the property a normal launch has, and it is also what a `.env`
+	 * asking to be armed must not change. The boot that sets `=0` explicitly is
+	 * the exception, because a value that was set and refused is REPORTED rather
+	 * than ignored — `=0` is not one of the accepted opt-ins (`1`, `true`), so
+	 * the launch prints the refusal below. Both are asserted here, in those
+	 * words, rather than with one loose "it did not say ARMED", so a boot that
+	 * stopped reporting a refusal would fail this check instead of passing it.
+	 */
+	const armedLines = driverLines.filter((line) =>
+		/\[dev-driver\] ARMED/.test(line),
+	);
+	results.push(
+		refusalExpected
+			? check(
+					`${prefix}: the launch refused the driver out loud`,
+					armedLines.length === 0 &&
+						/not an opt-in/.test(driverLines.join(" / ")) &&
+						/stayed off/.test(driverLines.join(" / ")),
+					driverLines.join(" / ") || "no [dev-driver] line",
+				)
+			: check(
+					`${prefix}: the launch said nothing about the driver`,
+					driverLines.length === 0,
+					driverLines.join(" / ") || "no [dev-driver] line",
+				),
+	);
+	return results;
+}
 
-	// --- 1. unarmed ---
-	let handle = await launchApp({
+/** Boot a launch that must be inert, measure it, and stop it by its own pid. */
+async function inertBoot({
+	prefix,
+	logName,
+	tag,
+	framesDir,
+	dotenvLines = [],
+	envExtra = {},
+	refusalExpected = false,
+}) {
+	const handle = await launchApp({
 		armed: false,
-		logName: "app-unarmed.log",
-		tag: "unarmed",
+		logName,
+		tag,
+		dotenvLines,
+		envExtra,
 	});
 	let cdp = null;
 	try {
 		await waitForDevtools(handle);
 		cdp = await CdpClient.attach(handle.port, "out/renderer/index.html");
-		/*
-		 * The unarmed launch must be a NORMAL app, not merely one with the bridge
-		 * missing: the first cut of the gate used an `ipcRenderer.sendSync`
-		 * handshake, which never answers on a channel with no listener, so an
-		 * ordinary launch hung in the preload and never painted. "The bridge is
-		 * absent" would have passed while the app was broken, which is why the
-		 * paint assertion comes first here.
-		 */
-		const page = await waitForPage(cdp);
-		results.push(
-			check(
-				"unarmed: the app loaded and painted normally",
-				page.mounted === true && page.title === "Local Operator",
-				JSON.stringify(page),
-			),
-		);
-		const bridgeType = await cdp.evaluate("typeof window.__loDevDriver");
-		results.push(
-			check(
-				"unarmed: the renderer has no dev-driver bridge",
-				bridgeType === "undefined",
-				`typeof window.__loDevDriver === ${bridgeType}`,
-			),
-		);
-		const refused = await cdp.evaluate(`(async () => {
-			try {
-				await window.electron.ipcRenderer.invoke("dev-driver-capture", "gate-check-probe");
-				return "resolved";
-			} catch (error) { return String(error?.message ?? error); }
-		})()`);
-		results.push(
-			check(
-				"unarmed: main refuses the capture channel",
-				/no handler registered/i.test(refused),
-				refused,
-			),
-		);
-		const framesBefore = readdirSync(FRAMES).filter((f) => f.endsWith(".png"));
-		results.push(
-			check(
-				"unarmed: no frame was written",
-				framesBefore.length === 0,
-				`${framesBefore.length} PNG(s) in ${FRAMES}`,
-			),
-		);
-		const log = await readAppLog(handle);
-		results.push(
-			check(
-				"unarmed: the launch printed no dev-driver banner",
-				!/\[dev-driver\]/.test(log),
-				log
-					.split("\n")
-					.filter((l) => l.includes("[dev-driver]"))
-					.join(" / ") || "no [dev-driver] line",
-			),
-		);
+		return await inertBootChecks(cdp, handle, prefix, framesDir, {
+			refusalExpected,
+		});
 	} finally {
 		cdp?.close();
-		await stopApp();
+		await stopApp(handle);
 	}
+}
 
-	// --- 2. armed ---
-	handle = await launchApp({ armed: true, logName: "app-armed.log", tag: "armed" });
+/**
+ * The fail-closed proof, on four real boots: three launches that must be
+ * indistinguishable from the app as it was — no bridge, no channel, no frames —
+ * and one armed launch that must produce all three.
+ *
+ * The three inert boots are not redundant. One has nothing set anywhere; one is
+ * asked to arm by a `.env` in its own working directory; and one is asked to arm
+ * by that same file while its environment says `=0`. Those are the two ways the
+ * gate could be defeated without a flag — a control surface the repository's own
+ * config file can switch on, and an explicit refusal a file can override — and
+ * both were real before this round: measured, a `.env` carrying the opt-in armed
+ * a launch with no driver variable in the child environment at all, and an
+ * explicit `LOCAL_OPERATOR_UI_DEV_DRIVER=0` in the shell still armed it and
+ * wrote a real PNG.
+ */
+async function gateCheck() {
+	const results = [];
+
+	// --- 1. unarmed, nothing set anywhere ---
+	results.push(
+		...(await inertBoot({
+			prefix: "unarmed",
+			logName: "app-unarmed.log",
+			tag: "unarmed",
+			framesDir: FRAMES,
+		})),
+	);
+
+	/*
+	 * --- 2. the cwd `.env` asks to be armed, and is ignored ---
+	 *
+	 * `src/main/backend/config.ts` folds a `.env` from the app's cwd into
+	 * `process.env` with dotenv `override: true` at import time. The driver's
+	 * opt-in (and the window mode) is resolved from `launchEnv`, the snapshot
+	 * taken before that fold, so the same keys in the file must do nothing — and
+	 * this boot is what keeps it that way. The window mode is named in the file
+	 * here for the same reason it is a launch fact in the code: a file that could
+	 * set it could turn a deliberate headless run into one that raises a window
+	 * over the operator's work, and this script's only consent to show a window
+	 * is the `--window-mode` flag it passes.
+	 */
+	const dotenvFrames = join(SCRATCH, "dotenv-frames");
+	const dotenvOffFrames = join(SCRATCH, "dotenv-off-frames");
+	mkdirSync(dotenvFrames, { recursive: true });
+	mkdirSync(dotenvOffFrames, { recursive: true });
+	results.push(
+		...(await inertBoot({
+			prefix: "a cwd .env cannot arm",
+			logName: "app-dotenv.log",
+			tag: "dotenv",
+			framesDir: dotenvFrames,
+			dotenvLines: [
+				"LOCAL_OPERATOR_UI_DEV_DRIVER=1",
+				`LOCAL_OPERATOR_UI_DEV_DRIVER_OUT=${dotenvFrames}`,
+				"LOCAL_OPERATOR_UI_WINDOW_MODE=headless",
+			],
+		})),
+	);
+
+	/*
+	 * --- 3. an explicit off in the environment beats the file ---
+	 *
+	 * The other half of the same property, and the one a person relies on: while
+	 * a `.env` line is present, `LOCAL_OPERATOR_UI_DEV_DRIVER=0` on the command
+	 * line has to mean no. This is the boot that would have armed before the fix.
+	 */
+	results.push(
+		...(await inertBoot({
+			prefix: "an explicit off beats the .env",
+			logName: "app-dotenv-off.log",
+			tag: "dotenv-off",
+			framesDir: dotenvOffFrames,
+			dotenvLines: [
+				"LOCAL_OPERATOR_UI_DEV_DRIVER=1",
+				`LOCAL_OPERATOR_UI_DEV_DRIVER_OUT=${dotenvOffFrames}`,
+			],
+			envExtra: { LOCAL_OPERATOR_UI_DEV_DRIVER: "0" },
+			// `=0` is not one of the accepted opt-ins, so this launch reports the
+			// refusal rather than staying silent — see `inertBootChecks`.
+			refusalExpected: true,
+		})),
+	);
+
+	// --- 4. armed: the opt-in AND a frames directory, in the environment ---
+	const handle = await launchApp({
+		armed: true,
+		logName: "app-armed.log",
+		tag: "armed",
+	});
+	let cdp = null;
 	try {
 		await waitForDevtools(handle);
 		cdp = await CdpClient.attach(handle.port, "out/renderer/index.html");
@@ -782,7 +1063,7 @@ async function gateCheck() {
 		);
 	} finally {
 		cdp?.close();
-		await stopApp();
+		await stopApp(handle);
 	}
 
 	return results;
@@ -798,19 +1079,11 @@ async function main() {
 
 	// The scratch `.env` at the app's cwd: this is what keeps the run off the
 	// operator's backend, because main loads `.env` from cwd with `override: true`.
+	// Written per boot by `writeAppCwdEnv`, which the gate's `.env` cases vary.
 	const deadApiPort = await pickFreePort();
 	const apiUrl = `http://127.0.0.1:${deadApiPort}`;
-	writeFileSync(
-		join(APP_CWD, ".env"),
-		[
-			`# Written by scripts/renderer-driver.mjs. The app loads this with dotenv`,
-			`# override:true from its cwd, which is why the harness runs with a cwd`,
-			`# outside the checkout: a repo .env would win otherwise.`,
-			`VITE_LOCAL_OPERATOR_API_URL=${apiUrl}`,
-			`VITE_DISABLE_BACKEND_MANAGER=true`,
-			"",
-		].join("\n"),
-	);
+	APP_API_URL = apiUrl;
+	writeAppCwdEnv();
 
 	say("local-operator-ui renderer driver");
 	say(`  repo          ${ROOT}`);
@@ -837,7 +1110,7 @@ async function main() {
 
 	if (GATE_CHECK) {
 		say(
-			"\n[gate-check] two real boots: unarmed must be inert, armed must work\n",
+			"\n[gate-check] four real boots: three inert (nothing set, a cwd .env asking, and an explicit off) and one armed\n",
 		);
 		await gateCheck();
 	} else {
@@ -860,6 +1133,28 @@ async function main() {
 					.split("\n")
 					.filter((line) => line.includes("[dev-driver]"))
 					.join(" / "),
+			);
+			/*
+			 * Isolation, on the one path that used to escape it.
+			 *
+			 * The app's log directory is its real home unless the launch overrode
+			 * it, so this reads the line the app itself wrote at logger init ("Log
+			 * path: …") rather than trusting that the variable was passed: what
+			 * matters is where the app RESOLVED it, not what this script exported. A
+			 * run whose logs land in the operator's directory is not isolated, however
+			 * many other paths are redirected.
+			 */
+			const installerLog = join(LOG_DIR, "backend-installer.log");
+			const installerText = existsSync(installerLog)
+				? readFileSync(installerLog, "utf8")
+				: "";
+			check(
+				"the app's logs went to this run's scratch tree, not the operator's",
+				installerText.includes(`Log path: ${LOG_DIR}`),
+				installerText
+					.split("\n")
+					.filter((line) => line.includes("Log path:"))
+					.join(" / ") || `${installerLog} is missing or names no log path`,
 			);
 			const hello = await verb(cdp, "hello");
 			const probe = await connectionsTo(handle.pid, hello.apiBaseUrl);

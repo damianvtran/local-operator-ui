@@ -23,6 +23,17 @@
  *   existed — the assertion is not "it looks off", it is that main registers no
  *   `dev-driver-*` channel and the preload exposes no bridge, both of which
  *   `node scripts/renderer-driver.mjs --gate-check` measures on a real boot.
+ *
+ *   "Asked for" means the ENVIRONMENT THIS PROCESS WAS LAUNCHED WITH, which is
+ *   why `src/main/index.ts` passes `launchEnv` rather than `process.env`. The
+ *   `environment` here is a snapshot taken by `src/main/backend/config.ts`
+ *   before it applies a `.env` from the working directory with dotenv
+ *   `override: true`, so a file in the checkout cannot arm this: it can neither
+ *   supply the opt-in nor the frames directory, and an explicit
+ *   `LOCAL_OPERATOR_UI_DEV_DRIVER=0` at the shell beats whatever such a file
+ *   says. Both halves are measured on real boots by `--gate-check`'s `.env`
+ *   cases, because this is the difference between an opt-in and a control
+ *   surface the repository's own config file can switch on.
  * - **A typo is off, loudly.** `LOCAL_OPERATOR_UI_DEV_DRIVER=yes` is not an
  *   opt-in; it is refused with a problem line naming the accepted values. The
  *   same rule as `window-mode.ts`: a value that was understood and adjusted is

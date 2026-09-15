@@ -227,3 +227,68 @@ test("nothing in main registers a dev-driver channel outside the armed branch", 
 		"the preload no longer tries to install the bridge",
 	);
 });
+
+/*
+ * R1: the opt-in is a fact about the LAUNCH, so it is resolved from an
+ * environment snapshot taken before this repository's own `.env` is folded in.
+ *
+ * `src/main/backend/config.ts` runs dotenv with `override: true` at import time,
+ * so from that line onward `process.env` is "the launch, with a file at the cwd
+ * folded in, and the file wins" — and reading the opt-in from it meant a
+ * gitignored `.env` could arm a control surface on a trusted process and beat an
+ * explicit `LOCAL_OPERATOR_UI_DEV_DRIVER=0` typed at the shell.
+ *
+ * These two cases are source assertions rather than imports, because the fold
+ * happens at import time in a module that reaches Electron and cannot be loaded
+ * in a bare `node --test` process. The property itself is measured on REAL boots
+ * by `node scripts/renderer-driver.mjs --gate-check`, which now boots three
+ * inert launches — nothing set anywhere, a cwd `.env` carrying the opt-in, and
+ * that same file carrying it while the environment says `=0` — and asserts no
+ * bridge, no channel, no frame and no banner in each. What is pinned here is the
+ * wiring those boots depend on, because a refactor that moved the read back to
+ * `process.env` would leave every other test in this file passing.
+ */
+test("the launch environment is snapshotted before the .env is folded in", () => {
+	const config = readFileSync(
+		join(process.cwd(), "src/main/backend/config.ts"),
+		"utf8",
+	);
+	const snapshot = config.indexOf("export const launchEnv");
+	const fold = config.indexOf("dotenvConfig({");
+	assert.notEqual(snapshot, -1, "backend/config.ts no longer exports launchEnv");
+	assert.notEqual(
+		fold,
+		-1,
+		"backend/config.ts no longer calls dotenvConfig; re-read this test",
+	);
+	assert.ok(
+		snapshot < fold,
+		"the launch snapshot is taken AFTER the .env is folded into process.env, so it is not a record of the launch",
+	);
+	// A copy, not a live view: `process.env` is mutated by the dotenv call below
+	// it, and a snapshot that kept referring to it would carry the file's values
+	// anyway.
+	assert.match(
+		config.slice(snapshot, fold),
+		/\{\s*\.\.\.process\.env,?\s*\}/,
+		"launchEnv is not a copy of process.env",
+	);
+});
+
+test("both launch facts are resolved from that snapshot, not the folded process.env", () => {
+	const main = readFileSync(join(process.cwd(), "src/main/index.ts"), "utf8");
+	for (const resolver of ["resolveWindowLaunchPlan({", "resolveDevDriverArming({"]) {
+		const at = main.indexOf(resolver);
+		assert.notEqual(at, -1, `index.ts no longer calls ${resolver}`);
+		assert.match(
+			main.slice(at, at + 400),
+			/\n\tenv: launchEnv,/,
+			`${resolver} must read launchEnv: a cwd .env must not be able to arm the driver or set a window mode that raises a window`,
+		);
+	}
+	assert.doesNotMatch(
+		main,
+		/env: process\.env,/,
+		"a launch fact is resolved from process.env again, which is the folded one",
+	);
+});

@@ -12,6 +12,22 @@ launch: 2760x1744 pixels at devicePixelRatio 2 for a 1380x872 CSS viewport
 points the app at a port verified dead, which is why every frame here is safe to
 publish.
 
+```
+9b467ef9bb8bd573d2213e4505b6fdeba4866b7102b30bb4a51f1cfda3194224  chat-dark.png    82724 B
+d58948b75ca89a00e021b89790ed57be30c8b98b39191f2e2068aff65dae1690  chat-light.png   82118 B
+```
+
+Those hashes are worth comparing against a run of your own: both frames are
+reproducible byte-for-byte on a given build. The light half was not, until this
+round — it was captured one `nextFrame()` after the theme action, so it caught
+the rail's `transition-colors duration-fast` (120ms) mid-flight and varied run to
+run (80963 B, 80225 B, 80995 B on three runs, the whole difference inside the
+rail's active item). The verb now waits the transition out and reports how long
+that took, so what is committed here is the palette the app settles into rather
+than a blend no user sees. `--scene states` also asserts that the two frames on
+disk DIFFER, which is the check that would have caught the earlier accident where
+`chat-light.png` was a byte copy of `chat-dark.png`.
+
 ## What each frame shows
 
 | frame | what it is |
@@ -25,7 +41,8 @@ and nothing else different between them that a reviewer has to explain away.
 ## The run's own output
 
 The scene asserts as it goes and prints each check. From the run these frames
-came from:
+came from (`node scripts/renderer-driver.mjs --scene states --out <dir>`, 17
+checks, all passing):
 
 ```
 [PASS] the renderer reports this run's frames directory
@@ -35,8 +52,12 @@ came from:
 [PASS] the window never has focus
 [PASS] the requested window size is the size that exists      1380x900
 [PASS] the content area is smaller than the window by the platform's chrome only
+[note] theme change settled before the frame
+        116ms
 [PASS] the theme action changed the app's own theme state     localOperatorDark -> localOperatorLight
 [PASS] the before/after pair is the same screen at the same size
+[PASS] the before/after pair is two different renders, not one frame twice
+        chat-dark.png 82724B 9b467ef9bb8bd573… vs chat-light.png 82118B d58948b75ca89a00…
 [PASS] the pressed control received the point (hit test)      button "Agent hub"
 [PASS] pressing the rail's Agent hub button navigated the app
 [PASS] pressing the rail's Chat button navigated back, and the theme survived
@@ -56,6 +77,11 @@ The two limits a reader should know before quoting them, both stated in full in
   `WebContentsView`, and a renderer capture does not include it. A browser-chrome
   review needs the page captured separately through the browser host's own
   `screenshot` RPC, and a single composed image has to be labelled as composed.
+- **The run is not network-isolated.** It reaches no backend, but the app's own
+  telemetry still leaves the machine during a run (`us.i.posthog.com`); the
+  harness's isolation covers the operator's state — profile, config dir, log
+  directory, backend URL — and not egress. `docs/agent-driver.md` states this
+  where a reader will look for it.
 
 These are live-app frames rather than Storybook captures, so the Storybook sweep
 (`pnpm check-evidence`, which walks `.webp` under this root) does not cover them:

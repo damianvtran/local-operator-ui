@@ -26,7 +26,7 @@ import {
 	BackendServiceManager,
 	LocalOperatorStartupMode,
 } from "./backend";
-import { backendConfig } from "./backend/config";
+import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
@@ -479,9 +479,17 @@ const backendInstaller = new BackendInstaller();
  * so every launch path is covered by one switch: `pnpm dev`, `pnpm start`,
  * `npx electron .` in a rig, and `npx local-operator-ui` (which spawns
  * Electron with this process's environment, so it inherits the value).
+ *
+ * Read from `launchEnv` — the environment this process was LAUNCHED with — and
+ * not from `process.env`, because `./backend/config` has already folded a
+ * `.env` from the working directory into `process.env` with dotenv
+ * `override: true` by the time this runs (see the comment on `launchEnv`). A
+ * window mode is a fact about the launch: a file in the checkout must not be
+ * able to turn a deliberately `headless` run into one that raises a window and
+ * takes the operator's focus.
  */
 const windowLaunch = resolveWindowLaunchPlan({
-	env: process.env,
+	env: launchEnv,
 	argv: process.argv,
 });
 for (const problem of windowLaunch.problems) {
@@ -511,9 +519,15 @@ if (windowLaunch.mode !== "normal") {
  * `node scripts/renderer-driver.mjs --gate-check` measures on a real boot
  * rather than trusting this comment. `src/main/dev-driver.ts` holds the rules
  * and `docs/agent-driver.md` is the contract for anyone using it.
+ *
+ * From `launchEnv`, for the reason given at the window mode above and measured
+ * on real boots by `--gate-check`'s `.env` cases: the opt-in is a control
+ * surface on a trusted process, so a `.env` in the working directory must not be
+ * able to arm it, and an explicit `=0` at the shell must not be overridden by
+ * one.
  */
 const devDriverArming = resolveDevDriverArming({
-	env: process.env,
+	env: launchEnv,
 	windowMode: windowLaunch.mode,
 });
 const devDriverLine = describeDevDriverArming(devDriverArming);
@@ -692,10 +706,15 @@ app
 		 *
 		 * Placed next to `registerDesktopIPC` because it is the same kind of
 		 * thing — a main-owned surface the window may call — and registered
-		 * BEFORE the first window is created, so the preload's `sendSync`
-		 * handshake cannot arrive before the listener exists. It reuses the
-		 * same single trusted-renderer URL: a second spelling of "the trusted
-		 * document" is how one of the two drifts.
+		 * BEFORE the first window is created, so the window cannot invoke a
+		 * `dev-driver-*` channel before its handler exists and get Electron's
+		 * "No handler registered" for a driver that is in fact armed. (The
+		 * preload learns the frames directory from its own synchronous `argv`
+		 * entry rather than from an IPC handshake — see the note on
+		 * `DEV_DRIVER_ARG` in `src/main/dev-driver.ts` for why — so what the
+		 * ordering protects is the capture call a scene makes later, not a
+		 * handshake.) It reuses the same single trusted-renderer URL: a second
+		 * spelling of "the trusted document" is how one of the two drifts.
 		 */
 		if (devDriverArming.armed && devDriverArming.outDir) {
 			registerDevDriverIPC({
