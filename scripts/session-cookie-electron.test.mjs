@@ -9,7 +9,10 @@
  *
  *   process 1  a page sets a battery of cookies; the vault stores the session-only
  *              ones; the jar is recorded before and after, beside what the
- *              ELECTRON cookie API reports (the naive design's entire input)
+ *              ELECTRON cookie API reports (the naive design's entire input). The
+ *              page also embeds a genuine third-party frame, which is what makes
+ *              the battery contain a partition key with `hasCrossSiteAncestor:
+ *              true` — the shape CHIPS exists for
  *   process 2  a fresh profile: the vault restores, and the jar is compared
  *              attribute by attribute with process 1's
  *   process 3  a fresh profile again, but replaying the API-shaped dump through
@@ -183,6 +186,12 @@ test(
 			"the battery must include partitioned (CHIPS) cookies",
 		);
 		assert.ok(
+			partitioned.some(
+				(cookie) => cookie.partitionKey.hasCrossSiteAncestor === true,
+			),
+			"the battery must include a partitioned cookie whose key carries a cross-site ancestor: that is the shape CHIPS exists for, and it comes from the third-party frame",
+		);
+		assert.ok(
 			sessionCookies.some(
 				(cookie) => (cookie.sameSite ?? "unspecified") === "unspecified",
 			),
@@ -301,6 +310,85 @@ test(
 			);
 		}
 		assert.equal(statSync(snapshotFile).mode & 0o777, 0o600);
+	},
+);
+
+test(
+	"a partition key carrying a cross-site ancestor survives the restart, and the frame it came from cannot see the page's cookies",
+	{ skip },
+	async () => {
+		const first = await scenarioResult("snapshot", { profile: "cross-site" });
+		const crossSite = first.before.filter(
+			(cookie) => cookie.partitionKey?.hasCrossSiteAncestor === true,
+		);
+		assert.ok(
+			crossSite.length >= 1,
+			"the battery produced no `hasCrossSiteAncestor: true` key, so the one CHIPS shape this feature exists for is untested",
+		);
+
+		// What the third-party frame could see, recorded by the scenario's own frame
+		// server rather than inferred. The narrow fact the design's disclosure rests on
+		// is that the frame is not delivered the TOP-LEVEL page's cookies — not that it
+		// receives no cookies at all, which the two it sets for itself here contradict.
+		assert.ok(first.thirdPartyFrame, "the third-party frame never reported");
+		const sentToFrame = first.thirdPartyFrame.cookieHeader
+			.split(";")
+			.map((pair) => pair.trim().split("=")[0])
+			.sort();
+		assert.deepEqual(
+			sentToFrame,
+			["chips_3p", "plain_3p"],
+			"the frame must be sent its own cookies and none of the top-level page's",
+		);
+		assert.match(
+			first.thirdPartyFrame.frameView,
+			/(^|;\s*)chips_3p=c3p/,
+			"the frame must be able to read the partitioned cookie it set",
+		);
+
+		// The restart: the same profile in a new process, which is what a restart is.
+		const second = await scenarioResult("restore", { profile: "cross-site" });
+		assert.equal(second.restore.outcome, "restored");
+		assert.deepEqual(second.restore.refused, []);
+		assert.deepEqual(second.restore.failed, []);
+		assert.deepEqual(
+			second.restore.drifted,
+			[],
+			"a partition-identity mismatch would surface here as drift",
+		);
+
+		// The attributes the design promises, partition identity included. Source
+		// scheme/port are excluded for the one documented adjustment (a Secure cookie
+		// from a trustworthy-but-insecure origin), which the run reports by name.
+		const promised = (cookie) => ({
+			value: cookie.value,
+			domain: cookie.domain,
+			path: cookie.path,
+			secure: cookie.secure,
+			httpOnly: cookie.httpOnly,
+			session: cookie.session,
+			sameSite: cookie.sameSite ?? "unspecified",
+			partitionKey: cookie.partitionKey ?? null,
+		});
+		for (const cookie of crossSite) {
+			const live = second.jar.find(
+				(entry) => identity(entry) === identity(cookie),
+			);
+			assert.ok(
+				live,
+				`${cookie.name} did not come back under its own partition identity (${identity(cookie)})`,
+			);
+			assert.equal(
+				live.partitionKey?.hasCrossSiteAncestor,
+				true,
+				`${cookie.name} came back with the cross-site ancestor flag dropped`,
+			);
+			assert.deepEqual(
+				promised(live),
+				promised(cookie),
+				`${cookie.name} came back with different attributes`,
+			);
+		}
 	},
 );
 

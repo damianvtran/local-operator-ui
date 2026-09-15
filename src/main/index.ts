@@ -34,6 +34,7 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -1265,9 +1266,16 @@ app.on("window-all-closed", () => {
 	app.quit();
 });
 
-/** Whether this quit has already been held for the browser host's session-cookie
- * snapshot. Module scope so the re-quit does not hold itself again. */
-let sessionCookieSnapshotHeld = false;
+/** Holds the first quit once, for the browser host's stop and the session-cookie
+ * snapshot it writes. Module scope so the re-quit does not hold itself again; the
+ * decision itself lives in `createSessionCookieQuitHold`, which is testable
+ * without booting the app. */
+const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
+	isPending: browserHostStopPending,
+	stop: stopBrowserHost,
+	quit: () => app.quit(),
+	log: (message) => logger.warn(message, LogFileType.BACKEND),
+});
 
 // Stop backend service when app is quitting
 app.on("will-quit", async (event) => {
@@ -1281,15 +1289,11 @@ app.on("will-quit", async (event) => {
 	 * snapshot the marker has already rejected). `before-quit` starts the stop but
 	 * cannot await it, so the first will-quit is held for the stop alone and the
 	 * app is asked to quit again once it has settled: one hold per quit, and the
-	 * second pass is the ordinary one.
+	 * second pass is the ordinary one. A stop that FAILS still re-quits — see the
+	 * hold's own module for why that is the difference between a shutdown and an
+	 * app that refuses to close without saying so.
 	 */
-	if (!sessionCookieSnapshotHeld && browserHostStopPending()) {
-		sessionCookieSnapshotHeld = true;
-		event.preventDefault();
-		await stopBrowserHost();
-		app.quit();
-		return;
-	}
+	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
 	// Check if backend manager is disabled
 	const isBackendManagerDisabled =
