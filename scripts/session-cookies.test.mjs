@@ -1245,8 +1245,10 @@ test("a stop that never settles is released at the budget instead of holding the
 	const budgetMs = 120;
 	const holder = createSessionCookieQuitHold({
 		isPending: () => true,
-		// Never settles: a stop waiting on a CDP read the host is not answering, which
-		// is what independent QA measured as 68-8776 ms per quit and once past 30 s.
+		// Never settles: a stop waiting on a CDP read the host is not answering. QA
+		// constructed exactly this by SIGSTOPping the network service; its 68-8776 ms
+		// figure is process-exit latency on the healthy path, not this hold, which it
+		// measured at 13-29 ms over six quits with this budget never firing.
 		stop: () => new Promise(() => {}),
 		quit: () => calls.push("quit"),
 		log: (message) => lines.push(message),
@@ -1299,8 +1301,9 @@ test("a second quit during the stop is held until the snapshot lands, so the run
 		isPending: () => pending,
 		stop: async () => {
 			stops += 1;
-			// The window the user's second Cmd+Q lands in: independent QA measured
-			// real stops of 68-8776 ms on a loaded host, and one past 30 s.
+			// The window the user's second Cmd+Q lands in: the hold lasts as long as
+			// the snapshot does, which round 2 measured at 13-29 ms on a healthy host
+			// (round 1's 68-8776 ms is exit latency, not this phase).
 			await new Promise((resolve) => setTimeout(resolve, 150));
 			await vault.snapshot();
 			pending = false;

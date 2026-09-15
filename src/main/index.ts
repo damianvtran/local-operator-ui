@@ -1886,8 +1886,11 @@ app.on("will-quit", (event) => {
  * is the only pass that may proceed. Module scope so the mark distinguishing
  * those two survives between quits, and the decision itself lives in
  * `createSessionCookieQuitHold`, which is testable without booting the app. The
- * hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget the app quits
- * anyway, leaves the marker behind and says so.
+ * hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget it releases
+ * the quit, leaves the marker behind for the next start to reject, and says so in
+ * the log — "quitting anyway" is that line, not an exit, and in a frozen teardown
+ * the process can outlive it (the pre-existing stall QA's SIGSTOPped run hit 42 s
+ * later, in a build without this hold's involvement).
  *
  * WHY THIS HOLDS `before-quit` AND NOT `will-quit`, where it was authored: the
  * `will-quit` listener above also owns the backend's owned cleanup, and that
