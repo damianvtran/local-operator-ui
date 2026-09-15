@@ -42,8 +42,11 @@ const bundle = await build({
 const {
 	NOTHING_SEEN,
 	accumulateSeen,
+	activityMark,
+	activityTally,
 	acknowledgeMcpWhileShown,
 	acknowledgeWhileOpen,
+	childClause,
 	childStateLabel,
 	deriveMcpServers,
 	deriveRunDetails,
@@ -52,6 +55,8 @@ const {
 	hasRunDetails,
 	hasUnseenFailure,
 	hasUnseenMcpProblem,
+	isOpenRow,
+	jobClause,
 	MCP_COLD_LINE,
 	mcpErrorTexts,
 	mcpGrantInFlight,
@@ -737,7 +742,15 @@ test("the tally budget tracks the pane, and sheds the last segment whole at the 
 	// A sane value at every width the pane can take, and a width that is not a
 	// usable number falls back to the design's default rather than poisoning the
 	// shed comparison with `NaN` (which would silently disable shedding).
-	for (const width of [320, 420, 640, 0, -1000, Number.NaN, Number.POSITIVE_INFINITY]) {
+	for (const width of [
+		320,
+		420,
+		640,
+		0,
+		-1000,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+	]) {
 		assert.ok(tallyBudget(width) >= 1, String(width));
 	}
 	assert.equal(tallyBudget(Number.NaN), tallyBudget(420));
@@ -757,7 +770,10 @@ test("the tally budget tracks the pane, and sheds the last segment whole at the 
 	// prefix of WHOLE segments — never a fragment of one.
 	const narrow = subagentTally(rows, tallyBudget(320));
 	assert.ok(narrow.length < full.length);
-	assert.ok(full.startsWith(narrow), `${narrow} is a whole-segment prefix of ${full}`);
+	assert.ok(
+		full.startsWith(narrow),
+		`${narrow} is a whole-segment prefix of ${full}`,
+	);
 	assert.equal(narrow, "2 running · 1 queued · 1 failed");
 	// The measured failure was the word `interrupted` cut at `interr`; assert the
 	// property rather than the string, so a future segment change cannot quietly
@@ -816,12 +832,25 @@ test("the brief is suppressed when the transcript already carries it", () => {
 	assert.equal(briefIsInTranscript(reconciled, brief), true);
 	// A child whose record predates `launch_message_id` matches nothing and keeps
 	// the brief: the fallback direction, not a silenced block.
-	assert.equal(briefIsInTranscript(reconciled, "Some other instruction"), false);
+	assert.equal(
+		briefIsInTranscript(reconciled, "Some other instruction"),
+		false,
+	);
 	// Non-user rows are not the brief, however they read: only a user turn can be
 	// the launch.
 	assert.equal(
 		briefIsInTranscript(
-			[{ kind: "assistant", id: "c-a1", ts: 1, text: brief, streaming: false, stopReason: null, error: false }],
+			[
+				{
+					kind: "assistant",
+					id: "c-a1",
+					ts: 1,
+					text: brief,
+					streaming: false,
+					stopReason: null,
+					error: false,
+				},
+			],
 			brief,
 		),
 		false,
@@ -852,14 +881,28 @@ test("a truncated launch row is still the brief", () => {
 		"Carry out these four steps IN ORDER, one bash tool call each, then give a one-line summary: (1) bash: sleep 150; (2) bash: wc -l /tmp/lo-live/work/notes.txt; (3) bash: sleep 150; (4) bash: tail -2 /tmp/lo-live/work/notes.txt. Never combine two steps into one call.";
 	const truncated = `${brief.slice(0, 200)}…`;
 	const records = [
-		{ kind: "user", id: "subagent-launch:job-a", ts: 1, text: truncated, images: [] },
+		{
+			kind: "user",
+			id: "subagent-launch:job-a",
+			ts: 1,
+			text: truncated,
+			images: [],
+		},
 	];
 	assert.equal(briefIsInTranscript(records, brief), true);
 	// A record that is a DIFFERENT instruction still leaves the brief standing,
 	// even when it shares an opening phrase.
 	assert.equal(
 		briefIsInTranscript(
-			[{ kind: "user", id: "c-u1", ts: 2, text: "Carry out these three steps", images: [] }],
+			[
+				{
+					kind: "user",
+					id: "c-u1",
+					ts: 2,
+					text: "Carry out these three steps",
+					images: [],
+				},
+			],
 			brief,
 		),
 		false,
@@ -1065,6 +1108,32 @@ test("open work, and an unseen failure, both raise it", () => {
 	// A cancelled child — which is what a paused one looks like here — is settled
 	// work: on its own it is not a reason to raise the trigger (`§3.3`).
 	assert.equal(hasRunDetails(derive([job({ status: "cancelled" })])), false);
+	/*
+	 * And the tool-job half of the same question (the architect's D10): without this
+	 * clause the pane's quiet branch could read "Nothing in flight." over a Jobs
+	 * section that renders rows. It is DEFENSIVE at the only call site — the panel
+	 * pushes the section whenever `openJobs > 0` and its quiet line needs
+	 * `sections.length === 0` (`run-details-panel.tsx`, whose own comment already
+	 * calls that arm defensive) — and it is kept precisely because it is the
+	 * predicate's contract rather than a picture of one caller (agent review round
+	 * 1, n2).
+	 */
+	assert.equal(
+		hasRunDetails(
+			derive([job({ id: "shell", type: "bash", status: "running" })]),
+		),
+		true,
+		"an open tool job is something outstanding",
+	);
+	assert.equal(
+		hasRunDetails(
+			derive([
+				job({ id: "shell", type: "bash", status: "done", settled_at: 1_010 }),
+			]),
+		),
+		false,
+		"a settled tool job is not",
+	);
 });
 
 test("a failure raises the trigger until it has been seen", () => {
@@ -1443,6 +1512,42 @@ test("the tooltip carries counts, pluralised honestly, and names the ACTION", ()
 	assert.equal(
 		runDetailTriggerLabel(todos),
 		"Open run details — 3 to-dos open",
+	);
+
+	/*
+	 * The tool jobs are a clause of their own, between the children and the plan:
+	 * one noun per list, never a summed "3 jobs" that would put a delegated child
+	 * and a `sleep 150` under one word the app does not use. The order is the
+	 * composer's own, so the tooltip and the chips one line below it rank the same
+	 * three facts the same way.
+	 */
+	const jobs = derive(
+		[
+			job({ id: "shell", type: "bash", status: "running" }),
+			job({ id: "shell-2", type: "bash", status: "running" }),
+		],
+		plan(["pending"]),
+	);
+	assert.equal(
+		runDetailTriggerLabel(jobs),
+		"Open run details — 2 jobs running, 1 to-do open",
+	);
+
+	const allThree = derive(
+		[job({ id: "a" }), job({ id: "shell", type: "bash", status: "running" })],
+		plan(["pending"]),
+	);
+	assert.equal(
+		runDetailTriggerLabel(allThree),
+		"Open run details — 1 subagent running, 1 job running, 1 to-do open",
+	);
+
+	// One job, pluralised by the model and not by the caller.
+	assert.equal(
+		runDetailTriggerLabel(
+			derive([job({ id: "shell", type: "bash", status: "running" })]),
+		),
+		"Open run details — 1 job running",
 	);
 
 	const failed = derive([job({ id: "a", status: "failed" })]);
@@ -2154,6 +2259,256 @@ test("the roster is the session's sub-agents, not its job ledger", () => {
 	);
 });
 
+test("the tool jobs are the partition's other half, and no row lands in both lists", () => {
+	/*
+	 * `docs/composer-activity-chips.md` § 4: the rows the roster excludes are the
+	 * session's own activity, so they are the composer's jobs chip and the pane's
+	 * Jobs section — which is why the membership FILTER became a PARTITION. The
+	 * assertion is over ids rather than counts, so a row claimed by both lists
+	 * fails here instead of being painted twice.
+	 */
+	const details = derive([
+		job({ id: "child", status: "running", label: "Audit the invoices" }),
+		job({
+			id: "shell",
+			type: "bash",
+			status: "running",
+			label: "bash: sleep 150 ; echo child-done",
+		}),
+		job({
+			id: "shell-done",
+			type: "bash",
+			status: "succeeded",
+			settled_at: 1_010,
+		}),
+		job({ id: "unknown-type", type: "reticulate", status: "running" }),
+	]);
+	assert.deepEqual(
+		details.subagents.map((row) => row.id),
+		["child"],
+	);
+	assert.deepEqual(
+		details.jobs.map((row) => row.id),
+		["shell", "shell-done"],
+		"a bash row is a tool job, settled or not: the LIST is the whole partition, and the slice is the consumer's",
+	);
+	assert.equal(details.openChildren, 1);
+	assert.equal(details.openJobs, 1, "a settled tool row is not open work");
+	/*
+	 * The third case: a `type` this renderer has not been taught is claimed by
+	 * NEITHER list. It is the other half of the row above's caution — an unknown row
+	 * may be a child, and it may not be a shell job — and the failure it prevents is
+	 * a row under a heading whose tally does not count it.
+	 */
+	assert.equal(
+		details.subagents.some((row) => row.id === "unknown-type"),
+		false,
+	);
+	assert.equal(
+		details.jobs.some((row) => row.id === "unknown-type"),
+		false,
+	);
+	/*
+	 * And the derived tool row is the ROSTER's row shape, off the same
+	 * `deriveChild`: label, status mark, elapsed. Nothing about it is a second
+	 * vocabulary — which is what lets one `SubagentRowBody` draw both lists.
+	 */
+	assert.equal(details.jobs[0].label, "bash: sleep 150 ; echo child-done");
+	assert.equal(details.jobs[0].status, "running");
+	/*
+	 * The settled row is settled by the model's own predicate, which is the only
+	 * property the Jobs section and the chip's count read — and the wire word it was
+	 * settled BY does not matter here: `succeeded` is not in `foldStatus`'s
+	 * vocabulary, so this row folds to `unknown` (settled, quiet, `CircleHelp`).
+	 * That is the fold's business and not this partition's, and it is not reachable
+	 * through this change either — the Jobs section draws the OPEN rows only — so it
+	 * is recorded in the PR rather than repaired here.
+	 */
+	assert.equal(isOpenRow(details.jobs[1]), false);
+});
+
+test("an activity mark exists exactly when its count is positive", () => {
+	/*
+	 * The composer's two activity chips gate on their MARK rather than on the number
+	 * they print, and the whole justification for that is this equivalence: the mark
+	 * and the count are derived from ONE predicate (`isOpenRow`), so "the chip
+	 * renders" and "the number is positive" cannot come apart. Pinned over a matrix
+	 * of wire shapes, including the ones that are settled — a chip over a session
+	 * whose only rows are done would be the `0 subagents running` this design
+	 * refuses (`§ 5`).
+	 */
+	const cases = [
+		[],
+		[job({ status: "done" })],
+		[job({ status: "failed" })],
+		[job({ status: "running" })],
+		[job({ status: "running", queued: true })],
+		[job({ status: "paused" })],
+		[job({ type: "bash", status: "running" })],
+		[job({ type: "bash", status: "succeeded", settled_at: 1_010 })],
+		[
+			job({ id: "open", status: "running" }),
+			job({ id: "settled", type: "bash", status: "done", settled_at: 1_010 }),
+		],
+	];
+	for (const jobs of cases) {
+		const details = derive(jobs);
+		assert.equal(
+			activityMark(details.subagents) !== null,
+			details.openChildren > 0,
+		);
+		assert.equal(activityMark(details.jobs) !== null, details.openJobs > 0);
+	}
+});
+
+test("the sentence and the mark are one derivation, for every open state", () => {
+	/*
+	 * Design review round 1's D1 and UX's U4 are the same defect: the chips printed
+	 * "N running" for any unsettled row while the mark beside them drew `Clock` for a
+	 * capacity-queued child or `CirclePause` for a parked one, and the mark is
+	 * `aria-hidden` — so the WORDS were the only thing assistive tech got, and they
+	 * said a parked child was working.
+	 *
+	 * The fix is that a clause cannot be handed a bare number at all: `childClause`
+	 * and `jobClause` take an `ActivityTally`, which is the count and the mark
+	 * DERIVED TOGETHER, so there is no way to state a state the glyph denies. This
+	 * case drives every open state the ladder can return and asserts the sentence's
+	 * last word IS the mark, rather than listing the expected strings in a second
+	 * place that could drift from the ladder.
+	 */
+	const cases = [
+		[{ status: "running" }, "running"],
+		[{ status: "running", queued: true }, "queued"],
+		[{ status: "paused" }, "paused"],
+		// A running sibling outranks a parked one, so the CLAUSE follows the mark up
+		// the ladder rather than describing whichever row the wire listed first.
+		[null, "running"],
+	];
+	for (const [state, word] of cases) {
+		const rows =
+			state === null
+				? [
+						job({ id: "parked", status: "paused" }),
+						job({ id: "busy", status: "running" }),
+					]
+				: [job(state)];
+		const tally = activityTally(derive(rows).subagents);
+		assert.equal(tally.mark, word);
+		assert.ok(
+			childClause(tally).endsWith(word),
+			`"${childClause(tally)}" must end in the mark's own state`,
+		);
+		// The count is the same predicate the gate and `openChildren` use.
+		assert.equal(tally.count, derive(rows).openChildren);
+	}
+	// The jobs half takes the same shape, so a tool row of any state is spelled as
+	// the mark beside it, and an empty list has no tally at all (the chips' gate).
+	assert.equal(
+		jobClause(activityTally(derive([job({ type: "bash" })]).jobs)),
+		"1 job running",
+	);
+	assert.equal(activityTally(derive([]).jobs), null);
+	assert.equal(activityTally(derive([]).subagents), null);
+	assert.equal(
+		activityTally(derive([job({ status: "succeeded" })]).subagents),
+		null,
+		"a settled row is not activity",
+	);
+});
+
+test("the activity mark is the busiest open row, and a settled row contributes nothing", () => {
+	// One open row: the mark is simply that row's own, which is the ordinary case.
+	assert.equal(
+		activityMark(derive([job({ status: "running" })]).subagents),
+		"running",
+	);
+	assert.equal(
+		activityMark(derive([job({ status: "running", queued: true })]).subagents),
+		"queued",
+	);
+	assert.equal(
+		activityMark(derive([job({ status: "paused" })]).subagents),
+		"paused",
+	);
+	/*
+	 * Several: a running row outranks a parked sibling whatever order the wire
+	 * lists them in, because "something here is running" is the true reading and
+	 * the first row on the ledger is not.
+	 */
+	const several = derive([
+		job({ id: "parked", status: "paused" }),
+		job({ id: "busy", status: "running" }),
+	]).subagents;
+	assert.equal(activityMark(several), "running");
+	/*
+	 * A settled row never contributes a mark, including the two states that carry
+	 * one of their own: a failed child is DANGER's fact (the trigger's dot), not
+	 * activity's, and a done child is not activity at all. Counting either would put
+	 * a `failed` mark on a chip that stands for running work.
+	 */
+	assert.equal(
+		activityMark(derive([job({ status: "failed" })]).subagents),
+		null,
+	);
+	assert.equal(
+		activityMark(
+			derive([
+				job({ id: "done", status: "done" }),
+				job({ id: "busy", status: "running" }),
+			]).subagents,
+		),
+		"running",
+	);
+});
+
+test("the tool jobs are re-measured on the roster's own tick", () => {
+	/*
+	 * The Jobs section draws an elapsed label, so this list has to move with the
+	 * clock the pane already runs — otherwise a backgrounded shell's row freezes at
+	 * the reading the wire last published while the roster beside it counts up,
+	 * which is exactly the defect the reader's own clock was added for (`Q3`).
+	 */
+	const details = derive([
+		job({ id: "shell", type: "bash", status: "running", start_time: 1_000 }),
+	]);
+	assert.equal(details.jobs[0].elapsedLabel, "1m");
+	const later = retimeRunDetails(details, NOW_MS + 120_000);
+	assert.equal(later.jobs[0].elapsedLabel, "3m");
+	// The tick is a re-measure, not a re-derivation: nothing else about the list moves.
+	assert.equal(later.openJobs, details.openJobs);
+	assert.deepEqual(
+		later.jobs.map((row) => row.status),
+		details.jobs.map((row) => row.status),
+	);
+	// And a tick that moves no label in EITHER list hands back the same object: a row
+	// with no launch time at all has no clock to move (`start_time: 0`).
+	const still = derive([
+		job({ id: "shell", type: "bash", status: "running", start_time: 0 }),
+	]);
+	assert.equal(still.jobs[0].elapsedLabel, null);
+	assert.equal(retimeRunDetails(still, NOW_MS + 60_000), still);
+});
+
+test("a running tool job is a reason for the pane to have content", () => {
+	/*
+	 * `hasRunDetails` decides whether the pane says "Nothing in flight" or "Nothing
+	 * to show yet", and the Jobs section is gated on `openJobs > 0` — so without
+	 * this clause the quiet line would claim an empty run while the section directly
+	 * beneath it drew rows (`docs/composer-activity-chips.md` § 4).
+	 */
+	assert.equal(
+		hasRunDetails(derive([job({ type: "bash", status: "running" })])),
+		true,
+	);
+	assert.equal(
+		hasRunDetails(
+			derive([job({ type: "bash", status: "succeeded", settled_at: 1_010 })]),
+		),
+		false,
+		"a settled tool row is not run details, and the section it would have drawn is gone too",
+	);
+});
+
 test("a nested child is a descendant, and its parent's control is the way to it", () => {
 	/*
 	 * Q2: a grandchild painted as a top-level row double-reports the same work in
@@ -2260,7 +2615,10 @@ test("the MCP tally pluralises, and agrees with the trigger's own clause", () =>
 	});
 	assert.match(label, /1 MCP server needs attention/);
 	// The cold payload has no status to tally at all.
-	assert.equal(mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])), MCP_COLD_LINE);
+	assert.equal(
+		mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])),
+		MCP_COLD_LINE,
+	);
 });
 
 test("an MCP row's diagnosis is the canonical projection's, and only where it applies", () => {
@@ -2328,10 +2686,9 @@ test("the remedy is the one this surface can carry out, and words where it canno
 	// An http server with no explicit refusal is the NORMAL case — the backend
 	// publishes `False` only for a definite one (`mcp/desktop.py:104-116`) — so
 	// "unknown" is offered the grant rather than read as a refusal.
-	assert.deepEqual(
-		remedy({ status: "auth-required", transport: "http" }),
-		{ kind: "grant" },
-	);
+	assert.deepEqual(remedy({ status: "auth-required", transport: "http" }), {
+		kind: "grant",
+	});
 	assert.deepEqual(
 		remedy({
 			status: "auth-required",
@@ -2477,7 +2834,9 @@ test("an operation the backend FINISHED is not a row state, and never deletes a 
 	assert.deepEqual(row.remedy, { kind: "grant" });
 
 	// The same rule for a transport that dropped after a successful connect.
-	const dropped = [{ name: "slack", status: "disconnected", transport: "http" }];
+	const dropped = [
+		{ name: "slack", status: "disconnected", transport: "http" },
+	];
 	const connected = [
 		{
 			id: "op-2",
@@ -2540,7 +2899,12 @@ test("a server that declares credential fields gets the key remedy, and one that
 			status: "auth-required",
 			transport: "stdio",
 			environment_keys: ["GOOGLE_CLIENT_SECRET"],
-			secret_refs: [{id: "GOOGLE_CLIENT_SECRET", bindings: [{field: "env", key: "GOOGLE_CLIENT_SECRET"}]}],
+			secret_refs: [
+				{
+					id: "GOOGLE_CLIENT_SECRET",
+					bindings: [{ field: "env", key: "GOOGLE_CLIENT_SECRET" }],
+				},
+			],
 		}).remedy,
 		{ kind: "key" },
 	);
@@ -2550,7 +2914,12 @@ test("a server that declares credential fields gets the key remedy, and one that
 			transport: "http",
 			transport_oauth_supported: false,
 			header_keys: ["Authorization"],
-			secret_refs: [{id: "SERVICE_TOKEN", bindings: [{field: "headers", key: "Authorization"}]}],
+			secret_refs: [
+				{
+					id: "SERVICE_TOKEN",
+					bindings: [{ field: "headers", key: "Authorization" }],
+				},
+			],
 		}).remedy,
 		{ kind: "key" },
 	);
@@ -2561,10 +2930,14 @@ test("a server that declares credential fields gets the key remedy, and one that
 		row({ status: "auth-required", transport: "stdio" }).remedy,
 		{ kind: "words", label: "Manage this server's credentials in Settings" },
 	);
-	assert.deepEqual(row({ status: "auth-required", transport: "stdio", environment_keys: [] }).remedy, {
-		kind: "words",
-		label: "Manage this server's credentials in Settings",
-	});
+	assert.deepEqual(
+		row({ status: "auth-required", transport: "stdio", environment_keys: [] })
+			.remedy,
+		{
+			kind: "words",
+			label: "Manage this server's credentials in Settings",
+		},
+	);
 
 	// A server that CAN grant never gets the key remedy: the browser flow is the
 	// one that re-consents, and a declared header map does not change that.
@@ -2589,7 +2962,12 @@ test("a row's key fields are the backend's secret-reference IDs, never config fi
 			// left `${HUBSPOT_TOKEN}` unresolved after a "successful" save.
 			environment_keys: ["TOKEN", "SHARED"],
 			header_keys: ["Authorization", "SHARED"],
-			secret_refs: [{id: "TOKEN"}, {id: "SHARED"}, {id: "TOKEN"}, {id: "SERVICE_TOKEN"}],
+			secret_refs: [
+				{ id: "TOKEN" },
+				{ id: "SHARED" },
+				{ id: "TOKEN" },
+				{ id: "SERVICE_TOKEN" },
+			],
 		},
 	]);
 	// Declared order, deduped by ID: one field per referenced secret, and never a

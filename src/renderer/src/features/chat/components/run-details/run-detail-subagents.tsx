@@ -27,16 +27,16 @@
 
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import type { Ref } from "react";
 import {
 	type RunDetails,
 	type SubagentRow,
 	childOpenable,
-	childStateLabel,
 	panelSlice,
 	subagentTally,
 	tallyBudget,
 } from "./run-detail-model";
-import { NumberRun, SubagentStateIcon } from "./run-detail-row-parts";
+import { SubagentRowBody } from "./run-detail-row-parts";
 
 /**
  * The row's second line (`§4.1`), which is one of two different kinds of text.
@@ -103,38 +103,11 @@ const SubagentRowView = ({
 	/*
 	 * The row's content, shared verbatim by both branches so the interactive and
 	 * the degraded row cannot drift: the difference between them is the control
-	 * wrapper, not what a child's row says.
+	 * wrapper, not what a child's row says — and the same component is the Jobs
+	 * section's row, so the three lists that draw a row draw ONE row
+	 * (`run-detail-row-parts.tsx`).
 	 */
-	const body = (
-		<>
-			<span className={cn("pt-0.5")}>
-				<SubagentStateIcon status={row.status} />
-			</span>
-			<div className={cn("flex min-w-0 flex-1 flex-col")}>
-				<div className={cn("flex items-baseline gap-2")}>
-					<span
-						className={cn(
-							"min-w-0 flex-1 truncate text-body-sm text-ink leading-5",
-						)}
-						title={row.label}
-					>
-						{row.label}
-					</span>
-					{/*
-					 * The state in words, for a reader who cannot see the mark.
-					 *
-					 * The glyph is `aria-hidden` — it is decoration to assistive tech —
-					 * so without this the row announced a label and a row of numbers and
-					 * never whether the child was still going or had failed, which is
-					 * the one fact the row exists to carry (`§6.4`).
-					 */}
-					<span className={cn("sr-only")}>{childStateLabel(row)}</span>
-					<NumberRun row={row} />
-				</div>
-				<DetailLine row={row} />
-			</div>
-		</>
-	);
+	const body = <SubagentRowBody row={row} detail={<DetailLine row={row} />} />;
 
 	/*
 	 * `py-1.5` with the two pinned line-heights below is what makes the row
@@ -190,6 +163,7 @@ export const RunDetailSubagents = ({
 	onOpenChild,
 	interactive,
 	paneWidth,
+	sectionRef,
 }: {
 	details: RunDetails;
 	/** Whether the disclosure has been opened, hoisted to the pane (§ 4). */
@@ -197,6 +171,16 @@ export const RunDetailSubagents = ({
 	onToggleExpanded: () => void;
 	onOpenChild: (id: string) => void;
 	interactive: boolean;
+	/**
+	 * The section's own element, for a caller that has to bring it into view.
+	 *
+	 * Held by the PANE rather than by this section, for the reason
+	 * `run-detail-todos.tsx` states at its own ref: the request comes from outside
+	 * the pane entirely (the composer's subagents chip) and the pane is what
+	 * consumes it. Nothing here reads the ref; the section is simply where the
+	 * node exists.
+	 */
+	sectionRef?: Ref<HTMLElement>;
 	/**
 	 * The pane's own width, which is what the tally's budget is measured against.
 	 *
@@ -224,7 +208,7 @@ export const RunDetailSubagents = ({
 		expanded ? details.subagents.length : undefined,
 	);
 	return (
-		<section className={cn("flex flex-col pb-1.5")}>
+		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
 			{/*
 			 * Label left, tally right, on one line: "the section label with a quiet
 			 * trailing tally" (`§4.1`). Right-aligning it is what gives the tally the
