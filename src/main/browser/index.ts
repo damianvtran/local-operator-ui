@@ -2,8 +2,9 @@ import { join } from "node:path";
 import { type BrowserWindow, type Event, WebContentsView, app } from "electron";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
+import { ConsentNotifier } from "./consent-notifier";
 import type { DriveableView } from "./electron-types";
-import { BrowserHost } from "./host";
+import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
@@ -13,6 +14,7 @@ import {
 	browserStoragePath,
 	browserUserAgent,
 	clearBrowsingData,
+	clearOriginData,
 	flushBrowserStorage,
 	installBrowserSessionHandlers,
 	resolveBrowserSession,
@@ -29,6 +31,12 @@ import {
 	browserProfileCipher,
 	createHiddenCookieJarTarget,
 } from "./session-cookies-electron";
+import {
+	BrowserSessionStore,
+	SESSION_FILENAME,
+	captureTabs,
+	readSession,
+} from "./session-store";
 import { permittedScheme } from "./settle";
 import {
 	BrowserStateWriter,
@@ -70,8 +78,18 @@ export interface StartBrowserHostOptions {
 	/** The trusted renderer URL, for the IPC sender check. */
 	expectedUrl: string;
 	appVersion: string;
-	/** `userData` — where the approvals store and (later) `session.json` live. */
+	/** `userData` — where the approvals store, `session.json` and the extensions
+	 * directory live. */
 	userDataDir: string;
+	/**
+	 * The launch plan's own answer to "would this window be brought forward?".
+	 *
+	 * Passed in rather than read here so this module never has to decide whether a
+	 * window may come up: `window-raise.ts` is the only module that does, and the
+	 * one thing the value is used for is the OPPOSITE direction — suppressing a
+	 * consent banner when nobody is at the screen (design 11.4).
+	 */
+	windowShow: "focus" | "inactive" | "never";
 	log: (message: string) => void;
 }
 
@@ -218,9 +236,67 @@ export async function startBrowserHost(
 	const views = new Map<number, WebContentsView>();
 	let stateWriter: BrowserStateWriter | null = null;
 
+	/**
+	 * The tab-restore file (design 7.2): the hand-over of session state between two
+	 * runs of the app.
+	 *
+	 * Declared BEFORE the registry, because the registry's change hook captures a
+	 * snapshot on every create, close and navigation. Owning it here also puts it
+	 * beside the approvals store and outside the Chromium profile, so "clear
+	 * browsing data" and "forget my tabs" stay separate actions.
+	 */
+	const sessionStore = new BrowserSessionStore({
+		dir: join(options.userDataDir, "browser"),
+		log,
+	});
+
+	/**
+	 * One banner per pending site approval (design 9.2). Declared here because the
+	 * approvals store's change hook raises it, and `windowShow` is the ONLY
+	 * permission it needs — this module never decides whether a window comes
+	 * forward (design 11.4).
+	 */
+	const consentNotifier = new ConsentNotifier({
+		show: options.windowShow,
+		// A banner click NAVIGATES A ROUTE AND NOTHING ELSE. It must not raise the
+		// window: "never steal focus" is the rule for every browser this project
+		// starts (design 11.4), and `window-raise.ts` stays the only module that
+		// decides whether a window comes forward.
+		onAttention: (entryId) =>
+			options.window.webContents.send("browser-consent-attention", {
+				entryId,
+			}),
+		log,
+	});
+
+	/**
+	 * The snapshot every change writes, debounced by the store.
+	 *
+	 * NOT GATED ON A "the process is stopping" FLAG ANY MORE (review round 3,
+	 * B2's MAJOR). The gate was a function-local boolean set inside `stop()`, and
+	 * the ordering that defeats the stop decision is the one where the views are
+	 * already destroyed when `stop()` runs: each `destroyed` handler fires
+	 * `notifyChanged` while that boolean is still false, so the short capture was
+	 * staged, the stop decision refused it - and the store's own `flush()` wrote
+	 * it anyway. The binding part of that rule is the store's `seal()`, which is
+	 * what no longer accepts a capture after the stop decision; a flag that has to
+	 * be set first only covers the orderings that happen to run through `stop()`.
+	 * One mechanism, at the only writer, instead of two that can disagree.
+	 */
+	const captureSession = (): void => {
+		sessionStore.record(
+			captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
+		);
+	};
+
 	const notifyChanged = (): void => {
 		stateWriter?.publishNow();
 		options.window.webContents.send("browser-state-changed");
+		// The tab list is durable state now (design 7.2): a create, a close and a
+		// navigation are what changes it, and every one of those paths ends here.
+		// Teardown fires it too; what keeps a teardown capture out of the file is
+		// the store's own seal, not a check here.
+		captureSession();
 	};
 
 	const registry = new TabRegistry(
@@ -286,6 +362,10 @@ export async function startBrowserHost(
 		dir: join(options.userDataDir, "browser"),
 		onChanged: () => {
 			options.window.webContents.send("browser-consent-changed");
+			// One banner per pending request, raised HERE rather than from the renderer:
+			// the renderer is exactly what may be behind another window, which is the
+			// case the banner exists for (design 9.2).
+			consentNotifier.announce(approvals.pendingEntries());
 		},
 		log,
 	});
@@ -308,7 +388,26 @@ export async function startBrowserHost(
 		log,
 		onChanged: notifyChanged,
 		facts: () => facts,
+		forgetSiteData: (origin) => clearOriginData(browserSession, origin),
 	});
+
+	// Restore BEFORE any interaction is possible, and after the session handlers
+	// exist (the user agent must already be set: Electron documents that
+	// `setUserAgent` does not affect existing WebContents, so a restore that beat
+	// it would leave the first tab presenting the default Electron UA).
+	//
+	// NOT awaited. The call allocates every view and settles the active tab
+	// synchronously, so the strip is correct on the first paint; the pages then load
+	// under the host's own bounded background budget, which is what stops a file full
+	// of rows — or one page that never answers — from withholding the browser until
+	// the RPC server exists (review round 1, R5).
+	const recorded = readSession(sessionStore.filePath, log);
+	host.restoreTabs(recorded);
+	if (recorded.length) {
+		log(
+			`[browser] restored ${recorded.length} tab(s) from ${SESSION_FILENAME}; every restored tab is user-owned and holds no handle (design 7.3)`,
+		);
+	}
 
 	const sessionKey = mintSessionKey();
 	const server: RpcServer = await startRpcServer({
@@ -351,6 +450,41 @@ export async function startBrowserHost(
 		agentTabs: () => registry.agentTabCount(),
 		sessionCookies: () => restoreReport,
 		stop: async () => {
+			/*
+			 * The quit-time capture, taken BEFORE the views are destroyed
+			 * (`captureTabs` reads each view's live navigation history and a destroyed
+			 * view has none) - and the one place a capture may be REFUSED.
+			 *
+			 * A capture taken while the process is coming down can be short for a reason
+			 * that is not the user's doing: the views may already be gone (SIGTERM, an
+			 * update restart, a renderer crash). Measured: a SIGTERM quit left
+			 * `{"version":1,"tabs":[]}` in 8 of 8 runs while a window close kept the
+			 * tabs. `stopSnapshotDecision` refuses a capture shorter than the record
+			 * already on disk, so the worst case is a tab the user had just closed
+			 * coming back rather than a session disappearing. This is also why the flush
+			 * lives here rather than in `before-quit`: stopping the host is what happens
+			 * on a quit AND on a window close, so one call site covers both instead of a
+			 * quit-only hook that a window close would skip.
+			 *
+			 * THE DECISION AND THE WRITE ARE ONE CALL, on the store
+			 * (`commitStopCapture`), because splitting them was round 3's MAJOR: the
+			 * refusal has to take back what is staged and stop accepting more, or the
+			 * `flush()` two lines down writes the capture the decision just refused.
+			 */
+			const atStop = captureTabs(
+				registry.list(),
+				registry.activeTab?.tabId ?? null,
+			);
+			const decision = sessionStore.commitStopCapture(atStop);
+			if (!decision.write) {
+				log(
+					`[browser] not overwriting ${SESSION_FILENAME} at stop: ${decision.reason}`,
+				);
+			}
+			// Nothing durable is written after this point: the store is sealed with the
+			// decision, and the per-view `destroyed` handlers below still fire a capture
+			// each (a strip that no longer exists is another way to lose the session).
+			sessionStore.flush();
 			registry.destroyAll();
 			await cdp.close();
 			await server.close();
@@ -454,6 +588,52 @@ export async function startBrowserHost(
 		contents.on("will-navigate", onWillNavigate);
 		contents.on("will-redirect", onWillNavigate);
 
+		// THE CHROME'S OWN FEEDBACK, and the reason it is wired per view rather than
+		// read on demand: the URL bar shows the tab's LIVE url, "updated from
+		// navigation events, never from what was requested" (design 6.1). Without
+		// these listeners the strip and the bar would only move when an ACTION ran —
+		// so a redirect, a client-side route change, a load that never finishes and a
+		// page that sets its own title would all leave the chrome showing the state
+		// from the last click. Measured: the loading frame in
+		// `scripts/browser-chrome-proof.mjs` showed a Reload control while main's own
+		// `loading` read true, and the field was empty through a whole slow load.
+		//
+		// Deliberately NOT `notifyChanged`, which also publishes the state file and
+		// re-captures the session: a load emits start/stop pairs and a page emits
+		// title changes as it runs scripts, and none of those change what is durable.
+		// One event, so the renderer re-reads the projection it already owns.
+		const notifyChrome = (): void => {
+			options.window.webContents.send("browser-state-changed");
+		};
+		contents.on("did-start-loading", () => {
+			// A navigation is under way, so the last refusal is stale — otherwise the
+			// failure panel would outlive the retry the user just pressed.
+			host.clearLoadFailure(tabId);
+			notifyChrome();
+		});
+		contents.on("did-stop-loading", notifyChrome);
+		contents.on("page-title-updated", notifyChrome);
+		contents.on(
+			"did-fail-load",
+			(_event, code, description, url, isMainFrame) => {
+				// Sub-frame failures are ordinary (an ad iframe), and this run's own error
+				// frame is a main-frame refusal, which is the one that changes the state the
+				// chrome shows.
+				if (!isMainFrame) return;
+				// The remote document CANNOT report this: a refused main-frame load leaves
+				// Chromium's own blank surface in the view, so the reason travels in the
+				// projection and the chrome paints it (design round 1, D1).
+				if (isReportableLoadFailure(code)) {
+					host.recordLoadFailure(tabId, {
+						code,
+						description,
+						url,
+					});
+				}
+				notifyChrome();
+			},
+		);
+
 		// A driven page must never be able to embed one.
 		contents.on("will-attach-webview", (event) => {
 			event.preventDefault();
@@ -466,16 +646,23 @@ export async function startBrowserHost(
 		// page-initiated ones are all covered.
 		contents.on("did-navigate", (_event, url) => {
 			registry.bumpEpoch(tabId);
+			// The tab is on a document now, so whatever the last navigation was refused
+			// for no longer describes what is on screen.
+			host.clearLoadFailure(tabId);
 			// Returning to an approved site must not expose logs buffered while
 			// an autonomous unapproved document occupied this same WebContents.
 			stopLogCapture(contents.id);
 			startLogCapture(contents.id);
 			log(`[browser] tab ${tabId} navigated to ${url}`);
+			// A real navigation is durable state (the session file records the URL), so
+			// this is the full path rather than the light notification above.
+			notifyChanged();
 		});
 		contents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
 			if (!isMainFrame) return;
 			registry.bumpEpoch(tabId, false);
 			log(`[browser] tab ${tabId} navigated in page to ${url}`);
+			notifyChanged();
 		});
 
 		// A webContents that dies on its own (a renderer crash, a close from
@@ -492,6 +679,8 @@ export async function startBrowserHost(
 				if (token) approvals.forgetDocument(token);
 				registry.forget(tabId);
 			}
+			// A failure recorded against a tab whose view died describes nothing.
+			host.clearLoadFailure(tabId);
 			// The same release the registry's own close performs. A view that is
 			// already destroyed makes the detach's own `try` a no-op and the child-view
 			// removal a no-op too, so this is safe to run on a death we did not ask for.

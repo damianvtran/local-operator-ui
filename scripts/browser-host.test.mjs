@@ -37,6 +37,10 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/browser/registry";',
+			// `session-store` is here for the capture rule alone: what a change capture
+			// contains is a property of `captureTabs`, and a restore's own capture is what
+			// round 2's B2 was about.
+			'export * from "./src/main/browser/session-store";',
 			'export * from "./src/main/browser/state-file";',
 			'export * from "./src/main/browser/rpc";',
 			'export * from "./src/main/browser/protocol";',
@@ -66,6 +70,7 @@ const mod = await import(
 const {
 	TabRegistry,
 	MAX_AGENT_TABS,
+	captureTabs,
 	surfaceToken,
 	parseSurface,
 	redactToken,
@@ -85,6 +90,7 @@ const {
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
+	isReportableLoadFailure,
 	configurePslRules,
 	domainScopeAvailable,
 	registrableDomain,
@@ -1859,7 +1865,7 @@ test("a token that ends drops the document receipt it was granted", async () => 
 	assert.deepEqual(dropped, [freshToken], "the chrome's close dropped nothing");
 });
 
-test("allow once authorizes one requester document until navigation or revocation", async () => {
+test("allow once authorizes one requester document until the next navigation", async () => {
 	const { host, registry } = makeHost();
 	const owner = {
 		requester: "session:alice",
@@ -1883,17 +1889,84 @@ test("allow once authorizes one requester document until navigation or revocatio
 		() => host.dispatch("read", { ...owner, tab: opened.tab }, "next-document"),
 		{ code: "origin_not_allowed" },
 	);
-	await host.dispatch(
-		"request_access",
-		{ ...owner, url: "https://other.example/" },
-		"other",
-	);
+});
+
+/*
+ * THE PER-ORIGIN CONTROLS, WHICH ARE THE ONES A USER CLICKS (QA round 2, Q1).
+ *
+ * The title above used to be "...until navigation or revocation" and its last act
+ * was `host.approvals.revokeAll()`: the bulk path, not the control the Sites sheet
+ * and "Forget this site" both run. So a per-origin revoke that left an unspent
+ * once grant live passed a suite whose own title said otherwise - the negative
+ * control passing is what hid the hole (QA's finding, and round 2's B1). This test
+ * is that claim asked of the buttons: both entry points in the host, not the store
+ * directly, and the count reported back to the user is asserted too because the
+ * sheet renders it.
+ */
+test("both per-origin controls a user clicks retire an unspent once grant", async () => {
+	for (const control of ["revokeApproval", "forgetSite"]) {
+		// `forgetSite` is the two-mechanism control, so the host needs the storage half:
+		// recording it here also lets the log line's count be asserted rather than
+		// assumed.
+		const cleared = [];
+		const { host } = makeHost({
+			forgetSiteData: async (origin) => {
+				cleared.push(origin);
+			},
+		});
+		const owner = {
+			requester: "session:alice",
+			url: "https://approved.example/",
+		};
+		await host.dispatch("request_access", owner, "request");
+		host.respondToConsent(
+			host.chromeState().pendingConsent[0].entryId,
+			"once",
+		);
+		// The grant is live but unspent, which is the state a revoke has to retire:
+		// it admits the origin without ever having written a durable row.
+		assert.equal(
+			host.approvals.originAllowed(new URL(owner.url)),
+			false,
+			"a once grant leaves no durable approval behind",
+		);
+
+		const report = await host[control](owner.url);
+
+		assert.equal(
+			report.removed > 0,
+			true,
+			`${control} must report the authority it retired, because the sheet renders that number`,
+		);
+		assert.throws(
+			() =>
+				host.approvals.ensureTopLevelAccess(
+					new URL(owner.url),
+					owner.requester,
+				),
+			{ code: "origin_not_allowed" },
+			`${control} must retire the unspent once grant, not only the durable rows`,
+		);
+		assert.equal(
+			cleared.length,
+			control === "forgetSite" ? 1 : 0,
+			control === "forgetSite"
+				? "forget-site clears the stored data as well as the approval"
+				: "the plain revoke leaves stored data alone (design 9.4)",
+		);
+	}
+
+	// The BULK control is pinned here too, because it is the limb the old test
+	// exercised: removing it above must not quietly drop its coverage.
+	const { host } = makeHost();
+	const owner = { requester: "session:alice", url: "https://approved.example/" };
+	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
-	host.approvals.revokeAll();
+	assert.equal(host.revokeAllApprovals().removed > 0, true);
 	assert.throws(
 		() =>
 			host.approvals.ensureTopLevelAccess(
-				new URL("https://other.example/"),
+				new URL(owner.url),
 				owner.requester,
 			),
 		{ code: "origin_not_allowed" },
@@ -2721,6 +2794,230 @@ test("owner_* without a proof is refused with the extension's own answer", async
 		"req-q2b",
 	);
 	assert.deepEqual(recovered, { ownership_version: 1, state: "unresolved" });
+});
+
+// ---- restore is allocated up front and bounded (review round 1, R5) ---------
+
+/** A registry whose every page load never settles, so nothing about the restore
+ * pass can be observed as accidental progress. */
+function makeHangingRegistry() {
+	const views = new Map();
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			// The one thing a real page can do that no bound can wait out.
+			view.webContents.loadURL = () => new Promise(() => {});
+			views.set(tabId, view);
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	return { registry, views };
+}
+
+test("a restore allocates the whole strip before it returns, and serves while a page hangs", async () => {
+	const { registry, views } = makeHangingRegistry();
+	const { host } = makeHost({ registry });
+	const recorded = [
+		{ owner: "user", active: false, entries: [{ url: "https://example.com/a" }], activeIndex: 0 },
+		{ owner: "user", active: true, entries: [{ url: "https://example.com/b" }], activeIndex: 0 },
+	];
+
+	const state = host.restoreTabs(recorded);
+
+	// Allocated, and the recorded active tab, before any page has loaded.
+	assert.equal(views.size, 2, "one view per recorded tab, immediately");
+	assert.equal(state.tabs.length, 2, "and the strip is complete on the first read");
+	const active = state.tabs.find((tab) => tab.active);
+	assert.equal(
+		active.url === "about:blank" || active.tabId === state.activeTabId,
+		true,
+		"the recorded active tab is the active one, even though its page has not loaded",
+	);
+	assert.equal(
+		registry.activeTab.tabId,
+		state.tabs[1].tabId,
+		"the SECOND recorded tab was the active one and it did not lose its place",
+	);
+
+	// The claim the round-1 finding is about: the host serves while a page hangs.
+	// Nothing here waits on `whenRestored`, and the page never answers.
+	const status = await host.dispatch("status", {}, "restore-status");
+	assert.ok(status && typeof status === "object", "the host answered while a page was hung");
+
+	// And the hydration pass is genuinely still outstanding, rather than having
+	// finished silently: it is a background obligation, not a startup gate.
+	const settled = await Promise.race([
+		host.whenRestored().then(() => "settled"),
+		Promise.resolve("still-loading"),
+	]);
+	assert.equal(settled, "still-loading", "the restore is still in flight, and the host did not wait for it");
+});
+
+test("an empty restore still comes back as the blank tab it always did", async () => {
+	const { host, registry } = makeHost();
+	const state = host.restoreTabs([]);
+	assert.equal(state.tabs.length, 1, "a first run opens one blank tab");
+	assert.equal(registry.count(), 1);
+	await host.whenRestored();
+});
+
+/*
+ * Round 2's B2, at the layer it was found: the capture the RESTORE itself fires.
+ *
+ * `restoreTabs` allocates every view and settles the active tab synchronously,
+ * then calls `onChanged` — before a single `history.restore()` has run, because
+ * the pages load under the host's own background budget. The view a capture reads
+ * has no history yet, so before this round that first capture was empty by
+ * construction: `sessionStore.record([])`, and 500 ms later a `session.json`
+ * holding no tabs — over the very file the restore was reading. A window close or
+ * a kill inside that window persisted the truncation for good.
+ *
+ * The fake view here has NO `getAllEntries`/`getActiveIndex` at all, which is the
+ * strictest form of "no history yet": the tab still has to be captured, from the
+ * row it was restored from.
+ */
+test("the change capture a restore fires already carries every tab, before a page commits (review round 2, B2)", () => {
+	const snapshots = [];
+	const views = new Map();
+	let nextWebContentsId = 900;
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(nextWebContentsId++);
+			views.set(tabId, view);
+			return view;
+		},
+		() => {},
+		() =>
+			snapshots.push(
+				captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
+			),
+	);
+	const { host } = makeHost({ registry });
+	const recorded = [
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://example.com/a" }],
+			activeIndex: 0,
+		},
+		{
+			owner: "agent",
+			active: false,
+			entries: [{ url: "https://example.com/b" }],
+			activeIndex: 0,
+		},
+	];
+
+	host.restoreTabs(recorded);
+
+	assert.ok(
+		snapshots.length > 0,
+		"a restore changes the strip, so it fires the capture",
+	);
+	assert.deepEqual(
+		snapshots.at(-1).map((tab) => tab.entries[0].url),
+		["https://example.com/a", "https://example.com/b"],
+		"the capture the restore fires holds every tab, so the write it schedules cannot truncate the file",
+	);
+	assert.equal(
+		snapshots.at(-1)[1].owner,
+		"user",
+		"and a restored tab comes back the user's whatever the file said, so the row is state and not authority",
+	);
+});
+
+// ---- a refused load is published, per tab (design round 1, D1) --------------
+
+test("a main-frame load refusal is published for its tab, and cleared by the next load", () => {
+	const { host, registry } = makeHost();
+	const first = registry.create({ owner: "user" });
+	const second = registry.create({ owner: "agent", sessionId: "alice" });
+	assert.equal(host.chromeState().navFailure, null, "a healthy tab reports no failure");
+
+	host.recordLoadFailure(second.tabId, {
+		code: -324,
+		description: "ERR_EMPTY_RESPONSE",
+		url: "http://127.0.0.1:9/",
+	});
+	let state = host.chromeState();
+	assert.equal(
+		state.navFailure,
+		null,
+		"the failure panel belongs to the tab the user is looking at, not to a background tab",
+	);
+	assert.equal(
+		state.tabs.find((tab) => tab.tabId === second.tabId).failed,
+		true,
+		"but the strip marks the tab that failed, because its page area says nothing on its own",
+	);
+	assert.equal(
+		state.tabs.find((tab) => tab.tabId === first.tabId).failed,
+		false,
+		"and only that tab",
+	);
+
+	host.recordLoadFailure(first.tabId, {
+		code: -324,
+		description: "ERR_EMPTY_RESPONSE",
+		url: "http://127.0.0.1:9/",
+	});
+	state = host.chromeState();
+	assert.equal(state.navFailure.description, "ERR_EMPTY_RESPONSE");
+	assert.equal(state.navFailure.url, "http://127.0.0.1:9/", "the attempted address rides with it");
+
+	host.clearLoadFailure(first.tabId);
+	state = host.chromeState();
+	assert.equal(state.navFailure, null, "the next navigation on that tab retires the failure");
+	assert.equal(state.tabs.find((tab) => tab.tabId === first.tabId).failed, false);
+
+	// A closed tab cannot leave a failure behind for whatever reuses the id.
+	host.recordLoadFailure(first.tabId, {
+		code: -105,
+		description: "ERR_NAME_NOT_RESOLVED",
+		url: "http://nope.invalid/",
+	});
+	host.closeTab(first.tabId);
+	assert.equal(host.chromeState().navFailure, null, "a closed tab's failure goes with it");
+});
+
+test("a refused load is reported only when it is one a user can act on", () => {
+	// ERR_ABORTED is a stop, a redirect hop and a superseded navigation - browsing
+	// working, not a refusal - and ERR_ABORTED is emitted far more often than any
+	// other code on a normal session.
+	assert.equal(isReportableLoadFailure(-3), false, "ERR_ABORTED is not a failure to show");
+	assert.equal(isReportableLoadFailure(0), false, "a zero code names no failure");
+	assert.equal(isReportableLoadFailure(-324), true);
+	assert.equal(isReportableLoadFailure(-105), true);
+});
+
+// ---- who is asking travels as an id and nothing else (D2) -------------------
+
+test("a pending request names its requesting session, and never a non-session identity", () => {
+	const { host } = makeHost();
+	host.approvals.requestAccess("https://login.example.com/", "session:alice");
+	let state = host.chromeState();
+	assert.equal(
+		state.pendingConsent[0].requesterSessionId,
+		"alice",
+		"the bare session id travels, so the chrome can resolve the conversation title",
+	);
+	assert.ok(
+		!JSON.stringify(state.pendingConsent).includes("session:alice"),
+		"and the raw requester identity does not",
+	);
+
+	// A requester that is NOT a session identity is an authority-boundary value -
+	// the context falls back to a request id - and must never be published.
+	host.approvals.cancelAccess("https://login.example.com/", "session:alice");
+	host.approvals.requestAccess("https://login.example.com/", "request-7f3a");
+	state = host.chromeState();
+	assert.equal(
+		state.pendingConsent[0].requesterSessionId,
+		null,
+		"an internal request id is not a conversation and is not rendered as one",
+	);
 });
 
 /**

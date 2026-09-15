@@ -1714,10 +1714,15 @@ app
 		 * take its webContents down when the window closes (Electron's own documented
 		 * leak). So closing the window stops the host — which closes every view,
 		 * releases every debugger session and removes the state file — and a window
-		 * re-created by a dock click starts a fresh one. Tabs do not survive that, and
-		 * a session holding a handle gets the ordinary `tab_closed` and re-`open`s,
-		 * which is the designed recovery rather than a special case. Restoring tabs
-		 * across a window re-creation is the tab-restore work (design 7), not this PR.
+		 * re-created by a dock click starts a fresh one. A session holding a handle
+		 * gets the ordinary `tab_closed` and re-`open`s, which is the designed
+		 * recovery rather than a special case.
+		 *
+		 * THE TAB LIST SURVIVES it, which is the tab-restore work (design 7) and the
+		 * reason the stop path captures and flushes `session.json` before it destroys
+		 * anything: a window re-creation reopens the tabs the user had, and a session
+		 * still holding `ui:<oldTabId>:<oldNonce>` gets the same `tab_closed` it always
+		 * did, because a restored tab comes back with a fresh id and no nonce.
 		 *
 		 * A failure here must never be why the app does not start: the host is a
 		 * capability, not a dependency of the window. It is reported and the app
@@ -1739,6 +1744,11 @@ app
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
 					userDataDir: app.getPath("userData"),
+					// The launch plan's own answer, forwarded rather than re-derived: the
+					// browser host uses it to suppress consent banners in a run with nobody at
+					// the screen, and re-deciding it there would be a second policy beside
+					// `window-mode.ts`.
+					windowShow: windowLaunch.show,
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {

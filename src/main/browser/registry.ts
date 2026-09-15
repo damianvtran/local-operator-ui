@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import type { PersistedTab } from "./session-store";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
 /**
@@ -49,6 +50,21 @@ export interface TabRecord {
 	/** The session a user tab has been handed to (design 6.3), or null. */
 	handedTo: string | null;
 	restored: boolean;
+	/**
+	 * The `session.json` row a restored tab was allocated from, kept until the tab
+	 * has a history of its own.
+	 *
+	 * WHY the record carries it (review round 2, B2): a restored view has NO
+	 * history until its page commits, so a capture taken in that window — the
+	 * restore's own change notification, or a quit a second after launch — used to
+	 * find nothing for that tab and write a session file without it. The tab was
+	 * then dropped for good by the next write. `captureTabs` consults this row as
+	 * the fallback for a tab whose live history is not restorable yet, so no
+	 * capture can be a partial one. It is dropped with the record, and it holds
+	 * URLs and page state only: nothing here is authority (design 7.3 — a restored
+	 * tab has no nonce and never regains one).
+	 */
+	restoreRow?: PersistedTab;
 	createdAt: number;
 	lastUsedAt: number;
 	/** The navigation epoch refs are stamped with, and the current ref table for
@@ -168,6 +184,8 @@ export interface CreateTabOptions {
 	/** A tab whose URL is restored from `session.json`. Restored tabs are always
 	 * `user`-owned and never get a nonce, whatever they were before. */
 	restored?: boolean;
+	/** The row this tab is restored from, when it is one. See `TabRecord`. */
+	restoreRow?: PersistedTab;
 	allocationId?: string;
 }
 
@@ -214,6 +232,7 @@ export class TabRegistry {
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
 			restored,
+			restoreRow: options.restoreRow,
 			createdAt: Date.now(),
 			lastUsedAt: Date.now(),
 			epoch: 0,
@@ -441,7 +460,16 @@ export class TabRegistry {
 
 	/** The renderer owns presentation geometry, not whether a background renderer
 	 * has a viewport. Inactive views keep bounded default dimensions independently
-	 * of this rectangle, so agent actions never require a route or focus change. */
+	 * of this rectangle, so agent actions never require a route or focus change.
+	 *
+	 * A NULL rect still hides every view, and that is a correctness requirement
+	 * rather than a tidy-up: the browser surface is a ROUTE, so navigating away
+	 * unmounts the only thing that knows where the view belongs. Without this, the
+	 * last rect would stay applied and the native view would go on painting over
+	 * the chat route — the one failure mode that makes this feature look like a
+	 * hijacked window. Visiting the route again reports a fresh rect and restores
+	 * it. A null rect is also how the caller hides the view at teardown, so it must
+	 * never be swallowed on the way here (see `use-browser-chrome`). */
 	setContentRect(rect: ContentRect | null): void {
 		this.contentRect = rect;
 		this.applyLayout();
