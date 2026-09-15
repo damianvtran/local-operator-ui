@@ -16,7 +16,7 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 179326,
+  "at": 105506,
   "viewport": "800x572",
   "active": "TEXTAREA",
   "stack": null,
@@ -46,18 +46,18 @@
     "all": true
   },
   "settlement": {
-    "now": 164335,
-    "reads": 106,
+    "now": 98187,
+    "reads": 93,
     "layoutChanges": 2,
-    "lastChangeAt": 104908,
-    "stableForMs": 59427,
+    "lastChangeAt": 62290,
+    "stableForMs": 35897,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": true,
     "states": [
       {
-        "at": 268,
-        "lastSeenAt": 383,
+        "at": 204,
+        "lastSeenAt": 368,
         "reads": 3,
         "columnWidth": null,
         "bandY": null,
@@ -72,29 +72,24 @@
         "rowsLaidOut": null,
         "rowsInside": null,
         "boundaryInGap": null,
-        "claims": {
-          "placeholders": 0,
-          "outsideBand": 0,
-          "shimmerBars": 0,
-          "captionVisible": false
-        }
+        "claims": null
       },
       {
-        "at": 1345,
-        "lastSeenAt": 104758,
-        "reads": 42,
+        "at": 2553,
+        "lastSeenAt": 61999,
+        "reads": 52,
         "columnWidth": 520,
         "bandY": 104,
         "bandHeight": 468,
-        "composerY": 194.3,
-        "composerHeight": 329.5,
-        "stackTop": 362.3,
-        "stackHeight": 161.5,
+        "composerY": 185.3,
+        "composerHeight": 347.5,
+        "stackTop": 353.3,
+        "stackHeight": 179.5,
         "greeting": 1,
         "skeleton": 0,
         "chipLabels": [],
         "rowsLaidOut": 5,
-        "rowsInside": 4,
+        "rowsInside": 5,
         "boundaryInGap": true,
         "claims": {
           "placeholders": 0,
@@ -104,9 +99,9 @@
         }
       },
       {
-        "at": 104908,
-        "lastSeenAt": 164335,
-        "reads": 61,
+        "at": 62290,
+        "lastSeenAt": 98187,
+        "reads": 38,
         "columnWidth": 520,
         "bandY": 104,
         "bandHeight": 468,
@@ -131,5 +126,5 @@
     "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
   },
   "pageProbe": null,
-  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string; this reader's output budget cut it on four of the eight reads, and it is not transcribed on the other four so that the eight files describe the same thing. Every field the table, the settlement record and the D2 check use is a top-level field of this file (`frame`, `observed`, `expected`, `holds`, `settlement.states`, `chips`); the inner page's own probe text, which duplicates them, is the only loss."
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string, and this reader's output budget cut it on two of the eight reads; rather than ship some files with it and some without, all eight carry null and every field this set's table, its D2 check or its settlement record uses is a top-level field of the file below. The one reading that lived only there is `store.activeDraftKey`: `draft:17fadb82-8a2f-4dbf-8baf-9f2e1ff65b9b` on the after origin and `draft:6bbef56d-fe60-4b58-b308-280a0f1691dc` on the before origin, each with `activeSessionId: null`."
 }
