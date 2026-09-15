@@ -71,7 +71,7 @@ Two things in the frames are the FIXTURE's, not the product's:
   - because a `{silent:true}` check's verdict is never applied to the button.
   That stale echo is deliberate rather than a leftover: it is the claim the
   product has just withdrawn, printed on the same frame as the DOM line and the
-  panel that withdraw it. The product UI is everything at or below the
+  panel that withdrew it. The product UI is everything at or below the
   "Application updates and info" heading.
 - the offer panel, and its remedy wording ("The server is a uv tool install
   built from source on this machine…"). The wording is this host's real install

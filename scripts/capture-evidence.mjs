@@ -156,6 +156,25 @@ export const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 
+	/* Session incidents on their own rows — the operator's report that an error
+	  row read only `session incident` with the message behind a chevron. The
+	  rows are the PRODUCTION reducer's, over fourteen real persisted payloads
+	  (one per category the classifier emits, plus the three harness statements
+	  and a relayed `hub_message` as the bulky control), so the frame shows what
+	  the row is GIVEN rather than what a hand-written record can be made to
+	  say. Sized to the rows it holds (700), for the reason `working-labels`
+	  is: at 900 tall it is mostly ground, which crosses `check-evidence`'s
+	  uniformity ceiling. */
+	["chat-canonical-notices--session-incidents", 1280, 800],
+	/* The same rows in the narrow column, which is where the wrapped row's mark
+	   was measured wrong (design round 1, D1): at 560 the 17 rows wrap hardest
+	   and the danger markers must still form a column. Sized to its content. */
+	["chat-canonical-notices--session-incidents-narrow", 560, 1220],
+	/* The notice register's own length cases, which the `notice` branch's fix
+	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
+	   either side of the threshold, and a bulky one. */
+	["chat-canonical-notices--notice-lengths", 1280, 340],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
@@ -448,6 +467,14 @@ export const STORIES = [
 	["chat-session-status-strip--context-tooltip", 860, 400],
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
+	/*
+	 * The sidebar's session-status mark, in the one place it can be photographed:
+	 * the sidebar itself has no story (see the note below), so the read/unread
+	 * specimen matrix is the surface that carries this mark's pixels. Added by
+	 * the receipt round, whose whole visible delta is one glyph's resting state
+	 * -- without a frame here, that change had no evidence anywhere.
+	 */
+	["chat-session-status--neighbours", 860, 600],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
