@@ -254,15 +254,23 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					Approvals
 				</Button>
 				{waitingCount > 0 && (
-					// Position is the operator's own words — "at the corner of the button" —
-					// expressed as the spec's `-translate-y-1/2 translate-x-1/2` half-step out
-					// of the control. `rounded-full` and `tabular-nums` so the count does not
-					// change width as it is decided down.
-					<span className="pointer-events-none absolute -top-1 -right-1 -translate-y-1/2 translate-x-1/2">
+					// POSITION IS THE OPERATOR'S — "at the corner of the button" — but it no
+					// longer paints OUTSIDE the surface (design round 2, D3). It used to sit on
+					// the control's outer corner (`-translate-y-1/2 translate-x-1/2`), which
+					// put 7px of it past the bar's own `px-2` box; the Approvals control is
+					// the bar's last element and that box is the window's right edge, so in
+					// the running app the far arc of the circle was outside the window and
+					// only the numeral survived (measured in situ at 1380x868: the fill
+					// reached the frame's last pixel column). The offset is inward now, and
+					// the ring names the ground behind the badge so the overlap reads as an
+					// object on top of the control rather than a notch cut out of its stroke.
+					// `rounded-full` and `tabular-nums` so the count does not change width as
+					// it is decided down.
+					<span className="pointer-events-none absolute -top-1.5 -right-1.5">
 						<Badge
 							variant="attention"
 							shape="pill"
-							className="h-4 min-w-4 justify-center px-1 tabular-nums"
+							className="h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas"
 							data-tour-tag="browser-approvals-badge"
 						>
 							{waitingCount}

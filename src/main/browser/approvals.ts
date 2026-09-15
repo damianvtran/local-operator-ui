@@ -550,18 +550,19 @@ export class ApprovalStore {
 						requestedAt: entry.requestedAt,
 						expiresAt: entry.expiresAt,
 						/*
-						 * NO `decision` TERM, and the removal is the point. The vendored
-						 * `accessState()` takes an optional decision so that a LIVE record can read
-						 * `allowed`/`denied` before the grant lands, and this host fed it from the
-						 * decision receipts — but every arm that writes a receipt removes its entry
-						 * from the queue FIRST (`respond` filters, `cancelAccess` splices), entry ids
-						 * are minted per entry and nothing here is restored from disk, so a record
-						 * with a decision can never be the record this reads. It was unreachable code
-						 * carrying the residue of the defect this fix closes, and a reader would
-						 * reasonably infer from it that a receipt can still answer. It cannot:
-						 * `requestAccess` answers from `liveAuthority` and from a durable verdict, and
-						 * the receipts are the store's record of what was decided (swept by TTL)
-						 * rather than a reader's source.
+						 * NO `decision` TERM, and the removal is the point (review round 1,
+						 * finding 5). The vendored `accessState()` takes an optional decision so
+						 * that a LIVE record can read `allowed`/`denied` before the grant lands,
+						 * and this host fed it from the decision receipts — but every arm that
+						 * writes a receipt removes its entry from the queue FIRST (`respond`
+						 * filters, `cancelAccess` splices), entry ids are minted per entry and
+						 * nothing here is restored from disk, so a record with a decision can
+						 * never be the record this reads. It was unreachable code carrying the
+						 * residue of the defect this PR fixes, and a reader would reasonably infer
+						 * from it that a receipt can still answer. It cannot: `requestAccess`
+						 * answers from `liveAuthority` and from a durable verdict, and the
+						 * receipts are the store's record of what was decided (purged by
+						 * `revokeOrigin` and swept by TTL) rather than a reader's source.
 						 */
 					}
 				: undefined,

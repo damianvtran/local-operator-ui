@@ -129,7 +129,10 @@ export const AttributedAndQueued: Story = {
 			LIVE,
 			request("specimen-c", "shop.example.net", 4, "session-9a11"),
 		],
-		{ selectedEntryId: "specimen-1" },
+		// THE THIRD, not the second: a frame that always selects the middle of the
+		// list cannot show that selection is a position the user moves, and this is
+		// the specimen the spec asks for (§10.2, "the third queued request selected").
+		{ selectedEntryId: "specimen-c" },
 	),
 	render: (args) => (
 		<WithSessions titles={{ "session-1f4c": "Quarterly research" }}>
@@ -193,7 +196,10 @@ export const ThreeWaiting: Story = {
 			request("specimen-b", "shop.example.net", 6, "session-1f4c"),
 			request("specimen-c", "news.example.io", 2, "session-1f4c"),
 		],
-		{ selectedEntryId: "specimen-b" },
+		// THE FIRST, which is what the tray selects with nothing clicked: this frame is
+		// the arrival state, and the selected chip is the request the card answers.
+		// `attributed-and-queued` is the frame that moves the selection instead.
+		{ selectedEntryId: "specimen-a" },
 	),
 	render: (args) => (
 		<WithSessions titles={{ "session-1f4c": "Quarterly research" }}>

@@ -1,11 +1,13 @@
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { FC } from "react";
 import type { ApprovalRow, ResolvedRow } from "../model/approval-queue-model";
 import {
 	BrowserConsentRequest,
 	type ConsentDecision,
+	requesterLabel,
 } from "./browser-consent-request";
 
 /**
@@ -89,10 +91,24 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 }) => {
 	const selected =
 		rows.find((row) => row.request.entryId === selectedEntryId) ?? rows[0];
+	/** The session list, so a chip can name the asking conversation and not just the
+	 * site (UX round 1, U2): two requests for one site are ordinary, and the ordinal
+	 * alone made the two chips and the two dock rows byte-identical. */
+	const sessions = useCanonicalSessionsStore((state) => state.sessions);
+	/**
+	 * THE HEADER ROW'S VISIBILITY, and the two cases it answers.
+	 *
+	 * It renders when there IS a queue to disambiguate (`rows.length > 1`), and it
+	 * keeps rendering while the dock it opens is open — a control that vanished the
+	 * moment the user answered one request took away the way back to the thing they
+	 * were looking at (UX round 1, U6). One pending request with the dock closed is
+	 * still the band the user already knows: no count, no chips.
+	 */
+	const showHeaderRow = rows.length > 1 || dockOpen;
 
 	return (
 		<div className="flex flex-col gap-2" data-tour-tag="browser-approvals-tray">
-			{rows.length > 1 && (
+			{showHeaderRow && (
 				<div className="flex flex-wrap items-center gap-2">
 					<p
 						className="text-body-sm text-ink"
@@ -116,8 +132,8 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 									<button
 										type="button"
 										onClick={() => onSelect(row.request.entryId)}
-										aria-current={current}
-										aria-label={`Request ${row.ordinal}: ${row.request.authority}`}
+										aria-current={current ? "true" : undefined}
+										aria-label={`Request ${row.ordinal} from ${requesterLabel(row.request.requesterSessionId, sessions)}: ${row.request.authority}`}
 										data-tour-tag="browser-approvals-tray-chip"
 										className={cn(
 											"flex h-5 min-w-5 items-center justify-center rounded-full border border-control px-1 text-meta tabular-nums",
@@ -149,7 +165,13 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 					</Button>
 				</div>
 			)}
-			{selected && (
+			{selected && !dockOpen && (
+				// ONE CARD AT A TIME (design round 2, D9; UX round 1, U8). With the dock
+				// open, both surfaces rendered the SAME request in full — same sentence,
+				// same five scopes, two copies of `Allow once … Don't allow` on screen at
+				// once and the same five controls twice in one tab order. The dock is the
+				// surface with the room for it, so the band keeps the count and the chips
+				// that select it.
 				<BrowserConsentRequest
 					request={selected.request}
 					remaining={selected.remaining}

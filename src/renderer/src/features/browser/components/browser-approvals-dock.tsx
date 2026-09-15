@@ -1,7 +1,8 @@
 import { Badge, Button, Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ShieldCheck, X } from "lucide-react";
-import type { FC, KeyboardEvent } from "react";
+import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import type { ApprovalView } from "../hooks/use-browser-chrome";
 import {
@@ -9,6 +10,7 @@ import {
 	type ResolvedRow,
 	approvalScopeLabel,
 } from "../model/approval-queue-model";
+import { requesterLabel } from "./browser-consent-request";
 import {
 	BrowserConsentRequest,
 	type ConsentDecision,
@@ -112,10 +114,51 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 	// Opening the dock moves focus to its header, so the next Tab lands inside the
 	// list the user just opened rather than back at the top of the page.
 	const headingRef = useRef<HTMLHeadingElement | null>(null);
+	/** The session list, so a waiting row can name the conversation that is asking
+	 * and not just the site (UX round 1, U2). */
+	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	useEffect(() => {
 		if (!open) return;
 		headingRef.current?.focus();
 	}, [open]);
+
+	// Escape closes the dock, BOUND ON THE DOCUMENT rather than on the section (UX
+	// round 1, U1). The section handler looked equivalent and was not: deciding on
+	// the selected request unmounts the row whose button was pressed, the browser
+	// then moves focus to `<body>`, and a handler on the section never sees the key
+	// again — so the §4.2 contract ("Escape closes it and returns focus to the
+	// trigger") stopped holding at exactly the moment the user finished. The dock is
+	// not a dialog and has no focus trap, which is precisely why the binding cannot
+	// be scoped to it.
+	useEffect(() => {
+		if (!open) return;
+		const onKeyDown = (event: KeyboardEvent): void => {
+			if (event.key !== "Escape") return;
+			event.preventDefault();
+			onClose();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [open, onClose]);
+
+	/*
+	 * AND FOCUS COMES BACK when a decision removes the control it was on. Same
+	 * cause as the Escape binding: the acted-on row unmounts, focus falls to
+	 * `<body>`, and a screen reader user loses the place they were working in. The
+	 * heading is the one element this component owns that is always there.
+	 *
+	 * It fires on a row LEAVING, not on every projection push (that would steal focus
+	 * from wherever the user happens to be, which is the failure mode this exists to
+	 * avoid), and only when focus is genuinely unowned.
+	 */
+	const rowCount = rows.length;
+	const previousRowCount = useRef(rowCount);
+	useEffect(() => {
+		const shrank = rowCount < previousRowCount.current;
+		previousRowCount.current = rowCount;
+		if (!open || !shrank) return;
+		if (document.activeElement === document.body) headingRef.current?.focus();
+	}, [open, rowCount]);
 
 	// A `deny` record is a durable NO, not a grant: the agent stops asking about
 	// that origin. It is listed separately because "what may the agent reach" and
@@ -126,19 +169,9 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 
 	if (!open) return null;
 
-	const closeOnEscape = (event: KeyboardEvent<HTMLElement>): void => {
-		// Escape closes and returns focus to the trigger, which the surface owns —
-		// this component cannot know where the control is, and a `document.activeElement`
-		// hunt here would be a second implementation of the focus return.
-		if (event.key !== "Escape") return;
-		event.preventDefault();
-		onClose();
-	};
-
 	return (
 		<section
 			aria-label="Approvals"
-			onKeyDown={closeOnEscape}
 			data-tour-tag={surfaceTag}
 			className={cn(
 				"flex shrink-0 flex-col gap-4 overflow-y-auto px-3 py-3",
@@ -160,13 +193,22 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 					>
 						Approvals
 					</h2>
-					{/* The approved count relocates here rather than sitting on the control:
-					    it is not a demand on the user, where the badge's number is (§3.5). */}
-					{granted.length > 0 && (
+					{/* The queue is what this panel opens onto, so its own line says so
+					    before the approved count does (design round 2, D8): the dock is where
+					    the user reads pending requests, and the only summary it carried was
+					    about a different list. */}
+					{(rows.length > 0 || granted.length > 0) && (
 						<p className="text-meta text-ink-dim">
-							{granted.length === 1
-								? "1 site approved"
-								: `${granted.length} sites approved`}
+							{[
+								rows.length > 0 ? `${rows.length} waiting` : null,
+								granted.length === 1
+									? "1 site approved"
+									: granted.length > 1
+										? `${granted.length} sites approved`
+										: null,
+							]
+								.filter(Boolean)
+								.join(" \u00b7 ")}
 						</p>
 					)}
 				</div>
@@ -189,6 +231,24 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 				the one that asked. Requests wait for ten minutes; after that the agent
 				has to ask again.
 			</p>
+
+			{/* The persistent statement (design 9.3): a standing notice in the browser
+			    feature that agents can drive tabs here, so the capability is never
+			    something the user has to remember. FIRST, because its words are "each
+			    site BELOW" and it used to be the panel's last child — under Browsing
+			    data, pointing at nothing (review round 1, finding 2; design round 2, D6).
+			    In the sheet it replaces it sat above the Approved list, which is the
+			    position its copy assumes and the one spec §4.2 says it keeps. */}
+			<div
+				className="flex items-start gap-2 rounded-sm bg-accent-wash px-3 py-2"
+				data-tour-tag="browser-agents-notice"
+			>
+				<ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
+				<p className="text-body-sm text-ink">
+					Agents can drive tabs in this app. Each site below was approved by a
+					click in this window, and none of them can be reached without one.
+				</p>
+			</div>
 
 			<section aria-label="Waiting requests">
 				<h3 className="text-heading text-ink">Waiting</h3>
@@ -235,6 +295,13 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										<span className="min-w-0 grow truncate font-mono text-mono-sm text-ink">
 											{row.request.authority}
 										</span>
+										{/* WHO is asking, on the row rather than only inside the card it
+										    expands into (UX round 1, U2): two requests for one site
+										    are ordinary, and ordinal + authority made those two rows
+										    byte-identical. */}
+										<span className="min-w-0 shrink truncate text-meta text-ink-muted">
+											{requesterLabel(row.request.requesterSessionId, sessions)}
+										</span>
 										{row.remaining && (
 											<span className="shrink-0 text-meta text-ink-dim">
 												{row.remaining}
@@ -248,6 +315,11 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 												remaining={row.remaining}
 												busy={busy}
 												onDecide={onDecide}
+												// The dock is 384px and 320px, not 1280: the band's two-column
+												// legend left a 96px gutter and a 129px measure here, which
+												// wrapped every gloss and ran the last one past the panel
+												// (design round 2, D2).
+												layout="stacked"
 											/>
 										</div>
 									)}
@@ -310,9 +382,15 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 				)}
 				{granted.length > 0 && (
 					<Button
-						variant="ghost"
+						// THE SAME TREATMENT AS `Forget this site` (design round 2, D7). This is
+						// the widest-blast-radius control in the panel — it drops every site
+						// approval at once — and it was plain body text at the end of a list
+						// whose per-row `Revoke` is an outlined control and whose `Forget this
+						// site` is a danger-outlined one. One class of action, three
+						// affordances, and the loudest action was the quietest.
+						variant="danger"
 						size="sm"
-						className="mt-3"
+						className="mt-3 w-full"
 						disabled={busy}
 						onClick={onRevokeAll}
 						data-tour-tag="browser-revoke-all"
@@ -423,21 +501,6 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 					for a site you already approved.
 				</p>
 			</section>
-
-			{/* The persistent statement (design 9.3): a standing notice in the browser
-			    feature that agents can drive tabs here, so the capability is never
-			    something the user has to remember. Kept in this position and with these
-			    words from the sheet it replaces (§4.2). */}
-			<div
-				className="flex items-start gap-2 rounded-sm bg-accent-wash px-3 py-2"
-				data-tour-tag="browser-agents-notice"
-			>
-				<ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
-				<p className="text-body-sm text-ink">
-					Agents can drive tabs in this app. Each site below was approved by a
-					click in this window, and none of them can be reached without one.
-				</p>
-			</div>
 		</section>
 	);
 };

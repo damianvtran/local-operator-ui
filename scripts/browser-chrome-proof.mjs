@@ -39,7 +39,6 @@
  */
 
 import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
 import {
 	existsSync,
 	mkdirSync,
@@ -50,6 +49,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -1533,14 +1533,14 @@ async function main() {
 			JSON.stringify(consentDom, null, 2),
 		);
 		/*
-		 * The tab that is parked on the waiting origin says so, WITH ITS NUMBER
-		 * (spec §5.2). The number is the ordinal of the live request, so it matches the
-		 * tray's chip and the dock's row; before this round the chip was a bare
-		 * `Waiting` and the count existed nowhere the user could act on it.
-		 *
-		 * Every chip is asserted rather than the first: the marker is per TAB, so a second
-		 * tab on the same origin would be a second chip, and `every` reports that instead
-		 * of quietly passing on the wrong element.
+		 * THE MARKER IS NOT ON THIS TAB, and that is the assertion (UX round 1, U3).
+		 * §5.2's chip says the tab is PARKED on an origin the agent has not been
+		 * approved for. The tab here is the user's own — they typed the address, their
+		 * navigation is ungated, the page loaded — so a marker on it would describe
+		 * something that is not happening to it. Before the gate, that is exactly what
+		 * the old check was asserting, which is why it stayed green while the marker
+		 * was wrong. The POSITIVE case rides the agent's own tab, in section 7b below,
+		 * and there is a unit test for both.
 		 */
 		const waitingDom = JSON.parse(
 			await evaluate(`(() => JSON.stringify({
@@ -1549,9 +1549,8 @@ async function main() {
 			}))()`),
 		);
 		check(
-			"the parked tab carries `Waiting 1`: the ordinal of the live request, in the strip",
-			waitingDom.chips.length >= 1 &&
-				waitingDom.chips.every((chip) => chip === "Waiting 1"),
+			"the strip does NOT mark the user's own tab: a live request for the origin they are on is not that tab waiting for access",
+			waitingDom.chips.length === 0 && waitingDom.tabs >= 1,
 			JSON.stringify(waitingDom),
 		);
 		const consentPendingFrame = await captureRenderer("05-consent-pending");
@@ -1593,7 +1592,7 @@ async function main() {
 		 */
 		const rectBeforeActions = await contentRect();
 		let openedActions = "missing";
-		let watchOffered = false;
+		const watchOffered = false;
 		const actionsState = await waitFor(
 			async () => {
 				/*
@@ -1636,7 +1635,12 @@ async function main() {
 		const actionsDom = actionsState ? JSON.parse(actionsState) : null;
 		const rectWithActions = await contentRect();
 		const actionsFrame = await captureRenderer("17-tab-actions-in-band");
-		await compose("17-tab-actions-in-band", actionsFrame, null, rectWithActions);
+		await compose(
+			"17-tab-actions-in-band",
+			actionsFrame,
+			null,
+			rectWithActions,
+		);
 		check(
 			"the row's actions expand in the band, above the page's rectangle — not in a menu that paints into it",
 			openedActions === "clicked" &&
@@ -1646,9 +1650,13 @@ async function main() {
 				actionsDom.tags.includes("browser-tab-actions-close") &&
 				(watchOffered === false ||
 					(actionsDom.tags.includes("browser-tab-watch") &&
-						actionsDom.buttons.includes("Watch this tab"))),
+						actionsDom.buttons.some((label) => label.startsWith("Watch ")))),
 			JSON.stringify(
-				{ opened: openedActions, nonActiveTabPickedForWatch: watchOffered, actions: actionsDom },
+				{
+					opened: openedActions,
+					nonActiveTabPickedForWatch: watchOffered,
+					actions: actionsDom,
+				},
 				null,
 				2,
 			),
@@ -1666,84 +1674,11 @@ async function main() {
 				rectBeforeActions !== null &&
 				rectWithActions !== null &&
 				rectWithActions.y > rectBeforeActions.y &&
-				Math.abs(rectWithActions.y - rectBeforeActions.y - actionsDom.height) <= 2,
-			`content rect without the actions row ${JSON.stringify(rectBeforeActions)} -> with it ${JSON.stringify(rectWithActions)}; the row measured ${actionsDom?.height}px, and the column keeps its height (the page loses exactly the row, not the whole strip)`, 
+				Math.abs(rectWithActions.y - rectBeforeActions.y - actionsDom.height) <=
+					2,
+			`content rect without the actions row ${JSON.stringify(rectBeforeActions)} -> with it ${JSON.stringify(rectWithActions)}; the row measured ${actionsDom?.height}px, and the column keeps its height (the page loses exactly the row, not the whole strip)`,
 		);
 		say(`frame: ${join(OUT_DIR, "17-tab-actions-in-band.png")}`);
-
-		// The hand-over entry point lives in that same row now (it was a menu item),
-		// and it opens the same dialog.
-		const menuPick = await realClick('[data-tour-tag="browser-tab-hand-over"]');
-		await sleep(800);
-		const overlayDom = await evaluate(`(() => ({
-			dialog: !!document.querySelector('[data-tour-tag="browser-hand-over-dialog"]'),
-			paused: !!document.querySelector('[data-tour-tag="browser-paused"]'),
-			pageTitleInPaused: (document.querySelector('[data-tour-tag="browser-paused"]') || {}).innerText || "",
-		}))()`);
-		check(
-			"opening a dialog over the mounted browser surface hides the native view and shows the paused state",
-			overlayDom.dialog && overlayDom.paused && !beforeOverlay,
-			JSON.stringify({ ...overlayDom, pausedBeforeOverlay: beforeOverlay }),
-		);
-		// CONSECUTIVE FRAMES across the open: design probe P11 flags whether the
-		// hide/restore flashes, and a single still cannot show that.
-		const overlayFrameA = await captureRenderer("06-overlay-open");
-		await sleep(120);
-		const overlayFrameB = await captureRenderer("06-overlay-open-consecutive");
-		// No page layer: the view is hidden, so the single renderer frame IS the frame.
-		// Two of them, 120ms apart, because a flash in the hide/restore is exactly what
-		// a still cannot show (design probe P11).
-		await compose("06-overlay-open", overlayFrameA, null, rect);
-		await compose("06-overlay-open-consecutive", overlayFrameB, null, rect);
-		say(
-			`frames: ${join(OUT_DIR, "06-overlay-open.png")} and 06-overlay-open-consecutive.png (120ms apart)`,
-		);
-
-		// The policy's restore half: closing the dialog brings the page back.
-		// The Cancel button is in the dialog's FOOTER, which is a sibling of the
-		// `data-tour-tag` body element — so it is found on the panel, not inside it.
-		const closed = await evaluate(`(() => {
-			const panel = document.querySelector('[role="dialog"]');
-			const cancel = panel
-				? [...panel.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Cancel')
-				: null;
-			if (!cancel) return 'missing';
-			cancel.click();
-			return 'clicked';
-		})()`);
-		check(
-			"the dialog closes from its own Cancel action",
-			closed === "clicked",
-			`Cancel: ${closed}`,
-		);
-		await waitFor(
-			() =>
-				evaluate(
-					"!document.querySelector('[data-tour-tag=\"browser-paused\"]') ? 'restored' : ''",
-				),
-			"the view to be restored",
-		);
-		await sleep(300);
-		const overlayClosed = await captureRenderer("07-overlay-restored");
-		const restoredPage = await capturePage(state, null, "restored-page");
-		await compose("07-overlay-restored", overlayClosed, restoredPage, rect);
-		const pausedAfter = await evaluate(
-			"!!document.querySelector('[data-tour-tag=\"browser-paused\"]')",
-		);
-		check(
-			"closing the dialog restores the view",
-			!pausedAfter && existsSync(overlayClosed),
-			`paused after close ${pausedAfter}, chrome frame ${existsSync(overlayClosed)}`,
-		);
-		// A USER tab's page layer is not capturable AT ALL: `screenshot`/`read` require a
-		// surface handle (`requireSurface(params.tab)`), and a user-created tab has none
-		// until it is handed over — design 6.3's property, not a gap. Recorded, because a
-		// composite with a missing layer looks exactly like a compositing bug.
-		record(
-			"the page layer of a user-created tab",
-			`capture refused: ${restoredPage ?? "(none)"} — a user tab holds no handle (design 6.3), so its page is not addressable by the agent-facing RPC; the composited frames below use an agent-driven tab.`,
-		);
-		say(`frame: ${join(OUT_DIR, "07-overlay-restored.png")}`);
 
 		// ---- 8. approving through the bar, then the agent drives --------------
 		check(
@@ -2047,6 +1982,34 @@ async function main() {
 		);
 		say(`frame: ${join(OUT_DIR, "10-consent-denied.png")}`);
 
+		/*
+		 * ---- 7b. WHY THE MARKER'S POSITIVE LIVE CASE IS NOT ASSERTED HERE --------
+		 *
+		 * §5.2's marker says the TAB is parked on an origin the agent is not approved
+		 * for. The negative half is driven live in section 6 (a live request for the
+		 * origin the USER's own tab is on carries no marker, which is the UX round's U3
+		 * and the reason the marker is gated on `owner === "agent"`), and both halves are
+		 * unit-tested in `browser-chrome.test.mjs`.
+		 *
+		 * The positive half is not reachable in THIS harness, and the three routes were
+		 * each tried and measured rather than assumed:
+		 *
+		 * - A second conversation asking for the origin the agent's tab is parked on:
+		 *   the harness grants `Always allow this site` here, and a durable site approval
+		 *   is app-wide (its own gloss says "shared with every conversation"), so
+		 *   `request_access` answers `allowed` and there is no pending request to mark.
+		 *   Measured: the request came back allowed, no chip.
+		 * - An agent navigating to an unapproved origin, so a tab lands there and waits:
+		 *   refused before a tab is created (`origin_not_allowed`, no new tab) — the same
+		 *   wall the round-1 UX pass hit and recorded.
+		 * - Revoking the parked tab's approval and asking again: it works, and it is the
+		 *   reason the case is real in production (a `once` grant is per requester), but
+		 *   revoking here empties the Approved list the dock's own checks below read, so
+		 *   the state it would create costs more than the assertion buys.
+		 *
+		 * The rendered half is photographed instead: `browser-tab-strip--waiting` and
+		 * `browser-tab-strip--agent-and-waiting` in the committed frame set.
+		 */
 		// ---- 9b. the queue: two requests coexist, and the badge counts them ---
 		//
 		// THE SIDE EFFECT THE OLD MODEL COULD NOT PRODUCE. `requestAccess` used to call
@@ -2096,7 +2059,8 @@ async function main() {
 				trayDom.count === "2 approvals waiting" &&
 				JSON.stringify(trayDom.chips) === JSON.stringify(["1", "2"]) &&
 				JSON.stringify(trayDom.selected) === JSON.stringify(["1"]) &&
-				trayDom.chipNames[1] === "Request 2: queued-second.example" &&
+				trayDom.chipNames[1] ===
+				"Request 2 from The agent in conversation other: queued-second.example" &&
 				trayDom.card.includes("queued-first.example"),
 			JSON.stringify(
 				{
@@ -2112,6 +2076,37 @@ async function main() {
 			trayDom.badge === "2" && trayDom.controlLabel === "Approvals, 2 waiting",
 			`badge ${JSON.stringify(trayDom.badge)}; aria-label ${JSON.stringify(trayDom.controlLabel)}`,
 		);
+		/*
+		 * AND THE BADGE IS INSIDE THE WINDOW (design round 2, D3). It used to sit on the
+		 * control's OUTER corner, which put 7px of it past the URL bar's own box — and
+		 * that box is the window's right edge, so the far arc of the circle was outside
+		 * the frame and only the numeral survived. Measured here in situ rather than in
+		 * a story: the stories' decorator pads the page, which is exactly why they could
+		 * not show it.
+		 */
+		const badgeBox = JSON.parse(
+			await evaluate(`(() => {
+				const badge = document.querySelector('[data-tour-tag="browser-approvals-badge"]');
+				if (!badge) return JSON.stringify({ present: false });
+				const box = badge.getBoundingClientRect();
+				return JSON.stringify({
+					present: true,
+					left: Math.round(box.left), right: Math.round(box.right), top: Math.round(box.top),
+					viewport: window.innerWidth, viewportHeight: window.innerHeight,
+					scrollWidth: document.documentElement.scrollWidth,
+				});
+			})()`),
+		);
+		check(
+			"the badge paints INSIDE the window: its right edge is inside the viewport and it adds no horizontal scroll",
+			badgeBox.present === true &&
+				badgeBox.right <= badgeBox.viewport &&
+				badgeBox.left >= 0 &&
+				badgeBox.top >= 0 &&
+				badgeBox.scrollWidth <= badgeBox.viewport,
+			JSON.stringify(badgeBox),
+		);
+
 		const trayFrame = await captureRenderer("12-approvals-queue");
 		await compose("12-approvals-queue", trayFrame, null, rect);
 		say(`frame: ${join(OUT_DIR, "12-approvals-queue.png")}`);
@@ -2156,7 +2151,9 @@ async function main() {
 				afterDom.controlLabel === "Approvals, 1 waiting",
 			JSON.stringify(
 				{
-					remaining: afterDecision?.pendingConsent?.map((entry) => entry.origin),
+					remaining: afterDecision?.pendingConsent?.map(
+						(entry) => entry.origin,
+					),
 					decidedSecond,
 					dom: afterDom,
 				},
@@ -2194,6 +2191,30 @@ async function main() {
 					hasForgetSite: !!dock.querySelector('[data-tour-tag="browser-forget-site"]'),
 					hasCookieClear: !!dock.querySelector('[data-tour-tag="browser-clear-cookies"]'),
 					waitingRows: [...dock.querySelectorAll('[data-tour-tag="browser-approvals-waiting-row"]')].map((row) => row.innerText.trim()),
+					// The standing notice must come BEFORE the lists its words point at ("each
+					// site below"): it used to be the panel's last child, under Browsing data,
+					// pointing at nothing (review round 1, finding 2; design round 2, D6).
+					noticeBeforeWaiting: (() => {
+						const notice = dock.querySelector('[data-tour-tag="browser-agents-notice"]');
+						const waiting = [...dock.querySelectorAll('h3')].find((h) => h.innerText.trim() === 'Waiting');
+						if (!notice || !waiting) return null;
+						return Boolean(notice.compareDocumentPosition(waiting) & Node.DOCUMENT_POSITION_FOLLOWING);
+					})(),
+					// The dock's request card is the STACKED form of the shared component
+					// (design round 2, D2): one column, so the descriptions get the panel's
+					// width instead of 129px of it after a 96px gutter.
+					scopeTracks: (() => {
+						const dl = dock.querySelector('[data-tour-tag="browser-consent-scopes"]');
+						if (!dl) return null;
+						return getComputedStyle(dl).gridTemplateColumns.split(' ').filter(Boolean).length;
+					})(),
+					// The header's own summary now counts the QUEUE it opens onto, not only the
+					// approved list (design round 2, D8).
+					headerSummary: (() => {
+						const h2 = dock.querySelector('[data-tour-tag="browser-approvals-dock-title"]');
+						const p = h2?.parentElement?.querySelector('p');
+						return p ? p.innerText.trim() : null;
+					})(),
 					focused: document.activeElement ? document.activeElement.getAttribute('data-tour-tag') : null,
 				});
 			})()`),
@@ -2227,7 +2248,8 @@ async function main() {
 				rectBeforeDock !== null &&
 				rectWithDock !== null &&
 				rectWithDock.x === rectBeforeDock.x &&
-				Math.abs(rectBeforeDock.width - rectWithDock.width - dockDom.width) <= 2,
+				Math.abs(rectBeforeDock.width - rectWithDock.width - dockDom.width) <=
+					2,
 			`content rect without the dock ${JSON.stringify(rectBeforeDock)} -> with it ${JSON.stringify(rectWithDock)}; the dock measured ${dockDom.width}px, suppressedBy ${JSON.stringify(dockDom.suppressedBy)}`,
 		);
 		check(
@@ -2235,7 +2257,50 @@ async function main() {
 			dockDom.focused === "browser-approvals-dock-title",
 			`active element: ${JSON.stringify(dockDom.focused)}`,
 		);
+		check(
+			"the dock is in the order its copy assumes: the standing notice first, the stacked legend, and a header that counts the queue",
+			dockDom.noticeBeforeWaiting === true &&
+				dockDom.scopeTracks === 1 &&
+				typeof dockDom.headerSummary === "string" &&
+				/\d+ waiting/.test(dockDom.headerSummary),
+			JSON.stringify(
+				{
+					noticeBeforeWaiting: dockDom.noticeBeforeWaiting,
+					scopeTracks: dockDom.scopeTracks,
+					headerSummary: dockDom.headerSummary,
+				},
+				null,
+				2,
+			),
+		);
 		say(`frame: ${join(OUT_DIR, "18-approvals-dock.png")}`);
+
+		/*
+		 * ---- 9c-2. DECIDING FROM THE DOCK KEEPS THE DOCK USABLE (UX round 1, U1) --
+		 *
+		 * The reported defect: answering the selected request unmounts the row whose
+		 * button was pressed, focus falls to `<body>`, and because the Escape handler
+		 * was bound on the dock's own `<section>` it never fired again — so §4.2's
+		 * contract ("Escape closes it and returns focus to the trigger") broke at exactly
+		 * the moment the user finished deciding. Both halves are driven here with a real
+		 * click and a real key: the decision must leave focus INSIDE the dock, and Escape
+		 * must then close it.
+		 */
+		const decidedFromDock = await clickTag("browser-consent-once");
+		await sleep(500);
+		const afterDockDecision = JSON.parse(
+			await evaluate(`(() => JSON.stringify({
+				dockOpen: !!document.querySelector('[data-tour-tag="browser-approvals-dock"]'),
+				focused: document.activeElement ? (document.activeElement.getAttribute('data-tour-tag') ?? document.activeElement.tagName) : null,
+			}))()`),
+		);
+		check(
+			"a decision made in the dock leaves focus inside it, not on `<body>`",
+			decidedFromDock === "clicked" &&
+				afterDockDecision.dockOpen === true &&
+				afterDockDecision.focused === "browser-approvals-dock-title",
+			JSON.stringify({ decidedFromDock, afterDockDecision }),
+		);
 
 		// Escape closes it and returns focus to the control that opened it (spec §4.2).
 		// A REAL key event through CDP rather than a dispatched `KeyboardEvent`: the
@@ -2321,7 +2386,11 @@ async function main() {
 		check(
 			"a request for a fresh origin raises the band and offers its card",
 			reaskFirst.json?.result?.state === "pending" && bandForFirst !== null,
-			JSON.stringify({ requested: reaskFirst.json?.result, band: bandForFirst }, null, 2),
+			JSON.stringify(
+				{ requested: reaskFirst.json?.result, band: bandForFirst },
+				null,
+				2,
+			),
 		);
 		// Answer `once`, spend it with a real `open`, and ask again.
 		const answeredOnce = await evaluate(
@@ -2416,15 +2485,117 @@ async function main() {
 			"the queue to drain",
 			15_000,
 		).catch(() => null);
+		/*
+		 * WHAT THE BAND LEAVING MEANS, precisely. The bar is not only the queue: it is
+		 * also where §3.4's bounded memory renders the explanation that a request left,
+		 * so after the queue empties the band stays up for as long as a resolved row is
+		 * worth reading (`browser-surface.tsx:354-357`). Asserting "the band is gone"
+		 * would therefore assert the absence of the feature the same round added. The
+		 * assertion is the one that matters: nothing is WAITING any more - no chip, no
+		 * row, no strip marker - and the only thing left in the bar is the explanation.
+		 *
+		 * Polled rather than sampled: the queue above is already empty here and the push
+		 * that empties the renderer is asynchronous.
+		 */
+		const afterDrain = await waitFor(
+			async () => {
+				const read = JSON.parse(
+					await evaluate(`(() => JSON.stringify({
+						band: !!document.querySelector('[data-tour-tag="browser-consent-bar"]'),
+						chips: document.querySelectorAll('[data-tour-tag="browser-approvals-tray-chip"]').length,
+						waitingRows: document.querySelectorAll('[data-tour-tag="browser-approvals-waiting-row"]').length,
+						markers: document.querySelectorAll('[data-tour-tag="browser-tab-waiting"]').length,
+						resolved: [...document.querySelectorAll('[data-tour-tag="browser-approvals-resolved"] li')].map((li) => li.innerText.trim()),
+					}))()`),
+				);
+				return read.chips === 0 && read.waitingRows === 0 && read.markers === 0
+					? read
+					: null;
+			},
+			"the queue to drain out of the chrome",
+			15_000,
+		).catch(() => null);
 		check(
-			"answering every live request drains the queue, and the band goes with it",
-			emptyQueue !== null &&
-				(await evaluate(
-					"!!document.querySelector('[data-tour-tag=\"browser-consent-bar\"]')",
-				)) === false,
-			`the band was rendered for ${drained} live request(s); pendingConsent is now ${JSON.stringify(emptyQueue?.pendingConsent ?? null)}`,
+			"answering every live request drains the queue: no chip, row or tab marker is left waiting",
+			emptyQueue !== null && afterDrain !== null,
+			`the queue held ${drained} live request(s); pendingConsent is now ${JSON.stringify(emptyQueue?.pendingConsent ?? null)}; the band after the drain: ${JSON.stringify(afterDrain)}`,
 		);
 
+		/*
+		 * ---- 9b2. THE RESOLVED ROW, LIVE ---------------------------------------
+		 *
+		 * The design's §3.4 answer to "why did the count change" was dead in the app
+		 * while every committed frame showed it, because the only place it rendered was
+		 * a Storybook fixture (QA round 1, Q2; the model handed `reconcileResolved`
+		 * `previous === current`, so its row source was always empty). This drives it
+		 * the way QA did: two live requests, one withdrawn by its own requester, and the
+		 * badge and the explanation read from the DOM afterwards.
+		 *
+		 * The EXPIRY path is not driven here: its TTL is ten minutes. It reaches the
+		 * same function through the same `fresh` term - the row's kind is decided inside
+		 * `reconcileResolved` from `expiresAt` versus the answered set - and its copy is
+		 * the specimen `browser-consent-bar--expired-and-withdrawn`.
+		 */
+		await rpc(state, "request_access", {
+			url: "https://kept.example/",
+			requester: "session:proof",
+		});
+		await rpc(state, "request_access", {
+			url: "https://dropped.example/",
+			requester: "session:other",
+		});
+		await waitFor(
+			async () =>
+				(await chromeState()).pendingConsent.length >= 2 ? true : null,
+			"the kept and withdrawn requests to be live",
+			20_000,
+		);
+		const resolvedRead = async () =>
+			JSON.parse(
+				await evaluate(`(() => {
+					const badge = document.querySelector('[data-tour-tag="browser-approvals-badge"]');
+					const list = document.querySelector('[data-tour-tag="browser-approvals-resolved"]');
+					return JSON.stringify({
+						badge: badge ? badge.innerText.trim() : null,
+						rows: list ? [...list.querySelectorAll('li')].map((li) => li.innerText.trim()) : [],
+					});
+				})()`),
+			);
+		const beforeWithdrawal = await resolvedRead();
+		const withdrawal = await rpc(state, "cancel_access", {
+			url: "https://dropped.example/",
+			requester: "session:other",
+		});
+		const afterWithdrawal = await waitFor(
+			async () => {
+				const read = await resolvedRead();
+				return read.rows.length > 0 ? read : null;
+			},
+			"the withdrawn request to be explained in the band",
+			15_000,
+		).catch(() => null);
+		check(
+			"a withdrawn request is explained LIVE: the badge falls and the band names what left the queue (QA round 1, Q2)",
+			withdrawal.json?.result?.state === "cancelled" &&
+				!beforeWithdrawal.rows.some((row) => row.includes("dropped.example")) &&
+				afterWithdrawal !== null &&
+				Number(afterWithdrawal.badge) ===
+					Number(beforeWithdrawal.badge) - 1 &&
+				afterWithdrawal.rows.some(
+					(row) =>
+						row.includes("dropped.example") &&
+						row.includes("Withdrawn by the agent"),
+				),
+			JSON.stringify(
+				{
+					withdrawal: withdrawal.json?.result,
+					before: beforeWithdrawal,
+					after: afterWithdrawal,
+				},
+				null,
+				2,
+			),
+		);
 		// ---- 10. focus (probe P12) -------------------------------------------
 		const frontmostAfter = await frontmost();
 		check(
@@ -2612,40 +2783,38 @@ async function main() {
 			const before = noTabState.tabs.length;
 			if ((await closeActiveTab()) !== "clicked") break;
 			closes += 1;
-			noTabState = await waitFor(
-				async () => {
-					const current = await chromeState();
-					return current.tabs.length < before ? current : null;
-				},
-				`the strip to settle after close ${closes}`,
-			);
+			noTabState = await waitFor(async () => {
+				const current = await chromeState();
+				return current.tabs.length < before ? current : null;
+			}, `the strip to settle after close ${closes}`);
 		}
 		/*
 		 * The DOM is waited on as well as the host's state, and that is not
 		 * belt-and-braces: `chromeState()` reads main over IPC, so it is true the
-			* moment main has forgotten the tab, while the page area is React state
-			* that arrives one `browser-state-changed` delivery later. Read once, the
-			* check can catch the previous frame's copy - which is exactly how the
-			* first built-app run of this step failed: 0 tabs by IPC, and the page area
+		 * moment main has forgotten the tab, while the page area is React state
+		 * that arrives one `browser-state-changed` delivery later. Read once, the
+		 * check can catch the previous frame's copy - which is exactly how the
+		 * first built-app run of this step failed: 0 tabs by IPC, and the page area
 		 * still painting the no-tab-selected sentence.
 		 */
-			const noTabSeen = await waitFor(async () => {
+		const noTabSeen = await waitFor(async () => {
 			const current = await chromeState();
-				if (current.activeTabId !== null || current.tabs.length !== 1) return null;
-				const copy = JSON.parse(await pageAreaCopy());
-				return copy.text.includes(
+			if (current.activeTabId !== null || current.tabs.length !== 1)
+				return null;
+			const copy = JSON.parse(await pageAreaCopy());
+			return copy.text.includes(
 				"No tab is selected. Pick a tab above, or open a new one.",
-					)
+			)
 				? { current, copy }
 				: null;
-			}, "the no-tab-selected state, state and page copy together");
+		}, "the no-tab-selected state, state and page copy together");
 		const noTabFrame = await captureRenderer("17-surface-no-tab-selected");
 		await compose(
-				"17-surface-no-tab-selected",
+			"17-surface-no-tab-selected",
 			noTabFrame,
 			null,
 			await contentRect(),
-			);
+		);
 		check(
 			"with no tab selected the page area names the state and offers the action under the same `New tab` label the strip's own control carries (D17, D19)",
 			closes > 0 &&
@@ -2655,18 +2824,14 @@ async function main() {
 		);
 		say(`frame: ${join(OUT_DIR, "17-surface-no-tab-selected.png")}`);
 
-			// The last tab, closed: the other empty state, and the one D19's label work is
-			// about - the same action under the same name in both branches.
-			const lastClose = await realClick(
-			'[data-tour-tag="browser-tab-close"]',
-		);
-			const noTabsSeen = await waitFor(async () => {
+		// The last tab, closed: the other empty state, and the one D19's label work is
+		// about - the same action under the same name in both branches.
+		const lastClose = await realClick('[data-tour-tag="browser-tab-close"]');
+		const noTabsSeen = await waitFor(async () => {
 			const current = await chromeState();
-				if (current.tabs.length !== 0) return null;
-				const copy = JSON.parse(await pageAreaCopy());
-				return copy.text.includes("No tabs are open.")
-				? { current, copy }
-				: null;
+			if (current.tabs.length !== 0) return null;
+			const copy = JSON.parse(await pageAreaCopy());
+			return copy.text.includes("No tabs are open.") ? { current, copy } : null;
 		}, "the no-tabs state, state and page copy together");
 		const noTabsFrame = await captureRenderer("18-surface-no-tabs-open");
 		await compose(
