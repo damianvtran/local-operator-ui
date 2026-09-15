@@ -53,10 +53,13 @@ Four strings carry a decision, and each is easy to "tidy" into being wrong:
   affordance taking the right edge. Two unrelated statements in one right-aligned
   slot read as one sentence (design round 1, D5).
 - **The list fades at the fold, and only when there is a fold.** The scroll
-  container's inset is an overlay, not a spacer in the flow, and it is rendered
-  only when rows were actually dropped (`clipped`) — a list that fits its content
-  is as tall as its content, and a cut line has a cue rather than a hard edge
-  (design rounds 1 and 2, D1 and D7).
+  container's inset is an overlay rather than a spacer in the flow, and the
+  condition is MEASURED — the content's height against the scroller's box — not
+  inferred from `clipped`, which is a statement about the result cap and is false
+  on the commonest overflowing list of all, the browse layout. `clipped` still
+  drives the footer's "showing the best N of M", which is the question it
+  answers; the fold has its own (design rounds 1, 2 and 3, D1, D7 and the MAJOR
+  that pairing the two produced).
 
 ## What a query means
 
