@@ -7,10 +7,15 @@
  * main knows whether `Notification.isSupported()`. A lease claiming delivery
  * that never happens would silently swallow a pending approval.
  *
- * Frames come from the existing stream relay (one subscription per window,
- * no second connection): a `pending_gate` appearing in a snapshot or update
- * raises a gate notification, and a backend-composed `notification` frame
- * raises a completion or error one. Dedupe is by `session:epoch:request_id`
+ * Frames come from TWO subscriptions. The per-window stream relay carries the
+ * conversation on screen (one subscription per window, no second connection),
+ * and the machine-wide feed (`desktop-feed.ts`) carries the sessions no window
+ * holds at all — which is the case the app was silent about, and the one that
+ * matters when the last window is closed and the app is alive in the dock. Both
+ * land in `observe`, and the backend's own `dedupe_key` collapses a pair into
+ * one banner. A `pending_gate` appearing in a snapshot or update raises a gate
+ * notification, and a backend-composed `notification` frame raises a completion
+ * or error one. Dedupe is by `session:epoch:request_id`
  * (gates) and by the backend-minted `dedupe_key` (composed notifications)
  * across every window, so two windows on one session yield one toast.
  *
@@ -51,6 +56,7 @@
 import { type BrowserWindow, Notification } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import type {
+	DesktopFeedFrame,
 	DesktopNotification,
 	DesktopSessionFrame,
 	PendingDesktopGate,
@@ -145,9 +151,154 @@ function gateBody(kind: string, gateTitle: string, gateDetail: string): string {
 	return subject || GATE_BODIES[kind] || GATE_BODIES.approval;
 }
 
+/**
+ * Whether a frame is a BURST DIGEST rather than one conversation's completion.
+ *
+ * Read from the fields, never from the title: the backend caps per-tick banners
+ * and composes ONE frame for the remainder with `burst_count` and `session_ids`
+ * on it (`_digest_payload`), and `session_id` is set to the last overflow member
+ * only because a session frame must name a session. Matching on the strings
+ * would make this routing decision depend on wording the backend owns.
+ */
+function isBurstDigest(n: DesktopNotification): boolean {
+	return (n.burst_count ?? 0) > 1 || (n.session_ids?.length ?? 0) > 1;
+}
+
+/**
+ * How many MEMBERS a frame names: the completions one banner stands for.
+ *
+ * A SEPARATE QUESTION FROM `isBurstDigest`, and asking the wrong one is R3-1.
+ * The backend composes a digest for the per-tick overflow whatever its SIZE —
+ * `overflow = candidates[BURST_LIMIT:]` over a ceiling of 3 — so the commonest
+ * overflow is a SINGLE member, and that frame's `burst_count` and `session_ids`
+ * are both 1. `isBurstDigest` is therefore false for it, the claim step was
+ * skipped entirely, and its member stayed claimable: a second surface could
+ * announce the same completion again, which is the duplicate-banner hole R2-5
+ * exists to close. The member marker is the field the backend sends for exactly
+ * this purpose, and the only one that does not depend on the overflow's size.
+ */
+function digestMemberCount(n: DesktopNotification): number {
+	/*
+	 * CLAIMABLE PAIRS, not raw array entries (review round 5, R5-2). The claim loop
+	 * below skips a pair that carries no id or no token, so counting raw length made
+	 * the two disagree about what a member is: `[{session_id: "", completion_token:
+	 * ""}]` is type-legal, claims nothing, and counted as one member — which sent the
+	 * frame down the "every member is somebody else's" path and dropped its banner
+	 * (0 banners in the probe). One definition, read by both.
+	 */
+	return (n.member_tokens ?? []).filter(
+		(member) => !!member?.session_id && !!member?.completion_token,
+	).length;
+}
+
+/**
+ * The collaborators a caller gets by saying nothing.
+ *
+ * Named rather than inlined so the one place that accepts "no host" is
+ * greppable, and so the reasoning sits where the default does. A test that
+ * builds a notifier to exercise delivery alone is the caller: it has no windows
+ * and no click to serve, so "always alive" and "nothing to reopen" are the
+ * honest answers there rather than a convenience. Production always passes a
+ * real host (`index.ts`), which is what makes the click path unable to become a
+ * silent no-op again.
+ */
+const SILENT_HOST: DesktopNotifierHost = {
+	windowAlive: () => true,
+	noteDisplayed: () => undefined,
+	reopen: () => undefined,
+};
+
+/**
+ * How long a renderer's report of what it is displaying stays believed.
+ *
+ * THREE BEATS, matching the watch lease the renderer renews every 15 s and the
+ * 45 s TTL everything else about presence uses, so "the renderer is still there"
+ * reads the same way here as everywhere else.
+ *
+ * WHY A REPORT EXPIRES AT ALL (review round 2, R2-4). The map is cleared when a
+ * WINDOW closes, but a pane that navigates away neither closes the window nor
+ * sends anything — so the last report stood for the life of the process and the
+ * machine-wide presence kept renewing a conversation no pane was displaying. The
+ * backend believes fresh presence, so it then suppressed that session's feed
+ * banner while the completion was on nobody's screen.
+ *
+ * Deliberately separate from whether this app can NOTIFY: a windowless app can
+ * raise a completion banner perfectly well and must keep doing so. What expires
+ * is the claim to be DISPLAYING a conversation.
+ */
+const RENDERER_REPORT_TTL_MS = 45_000;
+
 type WatchState = {
 	visible: boolean;
 	focused: boolean;
+	/**
+	 * When the renderer last reported this state, on the Node clock.
+	 *
+	 * Read by `presence()` and `anyDisplayingFocused` through
+	 * `RENDERER_REPORT_TTL_MS`: a report is evidence with an age, not a standing
+	 * fact (review round 2, R2-4).
+	 */
+	seenAt: number;
+	/**
+	 * The conversation this window is DISPLAYING, from the renderer's own watch
+	 * heartbeat. Not decoration: the completion gate is session-scoped (B1), and
+	 * without this the notifier can only answer "is any window focused", which is
+	 * the predicate that swallowed every background completion while the user sat
+	 * in the app on another conversation.
+	 *
+	 * `""` means the renderer is not displaying one: it has not named one yet (it
+	 * is still booting), or it has withdrawn the one it had because the pane left
+	 * the conversation. Deliberately NOT a wildcard: an unnamed window suppresses
+	 * nothing.
+	 */
+	session: string;
+};
+
+/**
+ * What a click on a banner needs from the app that owns the windows.
+ *
+ * The notifier owns DELIVERY and the app owns WINDOWS, and the two cannot be
+ * the same object without the notifier importing `createWindow` from the entry
+ * point. A caller that says nothing gets `SILENT_HOST` below — which is the
+ * honest answer for a unit test with no windows and no click to serve, and is
+ * why production must pass a real one: a `reopen` that does nothing would be
+ * exactly the silent no-op this change removes.
+ */
+export type DesktopNotifierHost = {
+	/**
+	 * Whether a window we have heard a heartbeat from is still there.
+	 *
+	 * A window can disappear without a `closed` event reaching the notifier — a
+	 * renderer process that dies takes its `webContents` id with it — so the
+	 * heartbeat map is filtered through this on every read rather than trusted.
+	 */
+	windowAlive: (windowId: number) => boolean;
+	/**
+	 * The conversation the renderer has just reported it is DISPLAYING.
+	 *
+	 * Called from the watch heartbeat, which is the only place main learns this,
+	 * and it has two consumers main owns: the viewer record's `current_session`
+	 * (so a click can route here and can skip a redundant switch), and the held
+	 * first present of a click-created window — that report is the "conversation
+	 * is on screen" milestone a window milestone cannot stand in for (B3).
+	 *
+	 * It is a callback rather than something the notifier does itself because
+	 * neither consumer has anything to do with delivery.
+	 */
+	noteDisplayed: (sessionId: string) => void;
+	/**
+	 * Recreate the window if there is none, and open this conversation in it.
+	 *
+	 * Called ONLY when there is no window: with one, the notifier sends and
+	 * raises directly, because the renderer is already mounted and can take the
+	 * message. Recreation lives in the app because it owns `createWindow` and the
+	 * readiness handshake that makes a click-created window safe to show (B3).
+	 *
+	 * `null` is a real target and not a missing value: it is the catalogue. A
+	 * burst digest names a COUNT of conversations, so the click has no single
+	 * conversation to open and must land where all of them are listed.
+	 */
+	reopen: (sessionId: string | null) => void;
 };
 
 export class DesktopNotifier {
@@ -229,6 +380,8 @@ export class DesktopNotifier {
 		 * says nothing keeps the app it has today.
 		 */
 		private readonly windowRaise: WindowShow = "focus",
+		/** Window state the notifier cannot see from here. See the type. */
+		private readonly host: DesktopNotifierHost = SILENT_HOST,
 	) {}
 
 	get canNotify(): boolean {
@@ -375,6 +528,13 @@ export class DesktopNotifier {
 	 * renderer's active subscription; `can_notify` is asserted only when main
 	 * can really deliver. A focused window is interactive; a visible-but-
 	 * unfocused one still watches but is not; a hidden one is neither.
+	 *
+	 * ``windowId`` IS THE WEB CONTENTS ID (``event.sender.id``, from the IPC
+	 * handler), and the map is keyed on it because that is what a close cleanup can
+	 * still name after the window is gone. Every reader must use the SAME id — see
+	 * `presence()`, where reading the ``BrowserWindow`` id instead made the
+	 * machine-wide presence report an empty session id for a window it was
+	 * claiming was focused on a conversation (review round 2, R2-3).
 	 */
 	async heartbeat(
 		windowId: number,
@@ -388,7 +548,15 @@ export class DesktopNotifier {
 		this.windows.set(windowId, {
 			visible: args.visible,
 			focused: args.focused,
+			session: args.sessionId,
+			// THE REPORT'S AGE, part of the record rather than a separate map
+			// (R2-4): a state that cannot expire is a state that outlives its pane.
+			seenAt: Date.now(),
 		});
+		// Before the request: the record and the held present are this app's own
+		// bookkeeping, and making them wait on a round trip would tie them to the
+		// backend's availability for no reason.
+		this.host.noteDisplayed(args.sessionId);
 		return this.request({
 			op: "sessions.watch",
 			sessionId: args.sessionId,
@@ -398,12 +566,67 @@ export class DesktopNotifier {
 		});
 	}
 
+	/**
+	 * Forget a window's watch state on close.
+	 *
+	 * This had NO CALLER while `mainWindow.on("closed")` nulled the window
+	 * without telling the notifier, and `webContents` ids are not reused — so
+	 * after one window close the map held `{visible: true, focused: true}` for
+	 * the life of the process and every `when_unfocused` completion was
+	 * suppressed for good. That is the strongest candidate for the operator's
+	 * "I don't reliably get notified", and the fix is this call plus the
+	 * liveness read in `anyDisplayingFocused`.
+	 */
 	forgetWindow(windowId: number): void {
 		this.windows.delete(windowId);
 	}
 
-	/** Called by the stream relay for every parsed frame it forwards. */
-	observe(sessionId: string, frame: DesktopSessionFrame): void {
+	/**
+	 * Withdraw the DISPLAYED conversation when the pane that reported it leaves.
+	 *
+	 * THE NAVIGATION HALF OF R2-4. `forgetWindow` runs when a window closes, and
+	 * the report now expires on its own after `RENDERER_REPORT_TTL_MS` — but
+	 * navigating from a conversation to the catalogue or Settings stops the watch
+	 * and unsubscribes its stream while leaving the window, and therefore the map
+	 * entry, exactly where it was. Main's own feed then kept renewing "showing A"
+	 * every beat and the backend, which treats fresh presence as authoritative,
+	 * suppressed A's banner while no pane displayed it.
+	 *
+	 * IDENTITY-SAFE BY CONSTRUCTION, which is the part a naive clear gets wrong: a
+	 * cleanup runs asynchronously after the pane has already changed, so an
+	 * unconditional clear would wipe the session a DEEPER pane has since
+	 * subscribed to. This withdraws only the report that names the conversation
+	 * being left.
+	 */
+	releaseWatch(windowId: number, sessionId: string): void {
+		const state = this.windows.get(windowId);
+		if (!state) return;
+		/*
+		 * An EMPTY id withdraws NOTHING (review round 3, N3-2). The argument is
+		 * typed `string`, and reading an empty one as "clear whatever this window
+		 * reports" is the single input that skips the identity check this method
+		 * exists for: a caller that sent "" would un-claim a conversation it is not
+		 * leaving, which is the hazard the check is here to prevent. Nothing sends
+		 * it today (the renderer hook early-returns on a falsy id), but the type
+		 * permits it, so the guard is at the door rather than at the caller.
+		 */
+		if (!sessionId || state.session !== sessionId) return;
+		this.windows.set(windowId, { ...state, session: "" });
+	}
+
+	/**
+	 * Called by the stream relay for every parsed frame it forwards, and by the
+	 * machine-wide feed for the frames it carries.
+	 *
+	 * ONE method for both sources on purpose. A `notification` frame's payload is
+	 * byte-identical whichever way it arrived — same `dedupe_key`, minted by the
+	 * backend — so two entry points would be two places to keep that true, and
+	 * the pair would eventually be delivered twice instead of once.
+	 */
+	observe(
+		sessionId: string,
+		frame: DesktopSessionFrame | DesktopFeedFrame,
+	): void {
 		if (!this.canNotify) return;
 		/*
 		 * The single delivery gate for every banner, ahead of every claim. A
@@ -487,8 +710,13 @@ export class DesktopNotifier {
 		if (!this.claim(n.dedupe_key)) return;
 		// A gate arrives as `always` because the user may be reading another
 		// conversation in the same window; a completion is only news when nobody
-		// is looking. The backend decides which; this app does not second-guess it.
-		if (n.focus_policy === "when_unfocused" && this.anyFocused()) return;
+		// is looking at THAT conversation. The backend decides which; this app does
+		// not second-guess it.
+		if (
+			n.focus_policy === "when_unfocused" &&
+			this.anyDisplayingFocused(sessionId)
+		)
+			return;
 		if (n.completion_token) {
 			// Claim LAST, immediately before delivery: an unclaimed completion stays
 			// available to another surface (a TUI on this machine), while a claim
@@ -508,18 +736,125 @@ export class DesktopNotifier {
 				if (outcome === "failed") this.delivered.delete(n.dedupe_key);
 				return;
 			}
+		} else if (digestMemberCount(n) > 0 || isBurstDigest(n)) {
+			/*
+			 * A DIGEST IS CLAIMED MEMBER BY MEMBER (review round 2, R2-5; the same
+			 * contract as backend #1116's R8).
+			 *
+			 * The digest itself has no `completion_token` — no single completion owns
+			 * it — so the branch above skipped it entirely, and nothing marked its
+			 * MEMBERS delivered. An individual frame for one of them (another feed
+			 * instance, a TUI on this machine, a re-delivery) then raised a SECOND
+			 * banner for a completion the digest had already announced, which is the
+			 * cross-surface arbitration the whole claim exists to provide.
+			 *
+			 * The backend names the pairs and does NOT preclaim them, so the claim can
+			 * be taken here — immediately before delivery, exactly like a single
+			 * frame, and never when the frame was merely queued.
+			 *
+			 * PARTIAL RACES ARE THE NORMAL CASE, not an error: a member another surface
+			 * already claimed was already delivered by that surface, so it is simply
+			 * not this digest's to announce. What matters is that ZERO won members
+			 * means every one of them is somebody else's, and then there is nothing
+			 * left to say — the local dedupe key is released so a later regrouped
+			 * digest of the same members can try again rather than being swallowed.
+			 *
+			 * There is NO local cap here. The backend's per-tick ceiling composes the
+			 * digest; a second, independent cap in this app would be a different
+			 * promise about the same burst, and the two would drift.
+			 *
+			 * THE MEMBER MARKER IS THE TRIGGER, NOT THE SIZE (review round 3, R3-1).
+			 * A one-member overflow takes this branch too, which is what stops its
+			 * completion being claimable twice. The `|| isBurstDigest(n)` arm beside
+			 * it is for a frame from a backend that predates `member_tokens` — the
+			 * pre-R8 shape named only session ids — so that shape is attempted here
+			 * exactly as it was before.
+			 */
+			const won = await this.claimDigestMembers(n);
+			/*
+			 * A MEMBERLESS DIGEST IS NOT A LOST ONE (review round 4, R4-1).
+			 *
+			 * The `|| isBurstDigest(n)` arm above is for a backend that predates
+			 * `member_tokens`, and that shape has nothing to try at all: `won` is 0
+			 * because there is nothing to arbitrate, NOT because another surface owns
+			 * every member. Returning there dropped the banner outright — and
+			 * `desktop-session-contract.ts` promises the opposite in as many words
+			 * ("the digest still renders, its members are simply not arbitrated"), so
+			 * the bail-out is conditional on there being members to lose. The local
+			 * dedupe key stays spent in that case: the digest IS announced, and a
+			 * re-delivery of the same burst must not announce it twice.
+			 */
+			if (won === 0 && digestMemberCount(n) > 0) {
+				this.delivered.delete(n.dedupe_key);
+				return;
+			}
 		}
 		// `body_is_failure` is additive and optional on the wire (see the type):
 		// absent from a backend that predates the flag, which falls through to the
 		// bare body it rendered before the flag existed rather than throwing.
 		this.show(
-			sessionId,
+			/*
+			 * A BURST DIGEST is not about one conversation (R1-2). The backend
+			 * caps per-tick banners and publishes ONE frame for the remainder,
+			 * carrying `burst_count` and `session_ids` and setting `session_id`
+			 * to the LAST overflow member — it must name something for the frame
+			 * to be a valid session frame at all. Routing its click to that id
+			 * opened one arbitrary member of the burst, which is the "the click
+			 * did not land where I expected" defect this change exists to
+			 * remove, so a digest opens the catalogue instead.
+			 *
+			 * Detected on the fields themselves rather than on a title string:
+			 * the strings are the backend's to word, and a surface that matched
+			 * on them would route a re-worded digest to a random conversation.
+			 *
+			 * A ONE-MEMBER DIGEST LANDS ON ITS OWN CONVERSATION, and that is a
+			 * decision rather than a fall-through (review round 3, R3-1). The frame
+			 * above is the case the claim branch now recognises and this one does
+			 * not: `burst_count` is 1 and it names exactly one conversation, so the
+			 * banner says one thing and the click goes there — the operator's own
+			 * request ("a click landing on the exact conversation") read literally.
+			 * Folding the member marker into `isBurstDigest` would send it to the
+			 * catalogue and lose that navigation for no gain in correctness, since
+			 * it is the CLAIM that has to happen for every member, not the routing.
+			 */
+			isBurstDigest(n) ? null : sessionId,
 			n.title,
 			n.status,
 			n.body,
 			n.body_is_snippet,
 			n.body_is_failure ?? false,
 		);
+	}
+
+	/**
+	 * Claim a burst digest's members, and report how many this surface won.
+	 *
+	 * One `sessions.notified` per member, through the SAME atomic claim a single
+	 * frame uses — that is the point of the contract: the arbitration lives in one
+	 * place (the backend's `claim_delivery`), so a digest and an individual banner
+	 * for one of its members cannot both win.
+	 *
+	 * Members are claimed SEQUENTIALLY rather than in parallel, deliberately: this
+	 * runs on the delivery path with a banner's worth of latency behind it, and a
+	 * burst is capped at a handful of members by the backend's own ceiling.
+	 *
+	 * A `failed` claim is treated as NOT won, which makes the whole digest fail
+	 * closed when the backend is unreachable — the same choice the single-frame
+	 * path makes, and for the same reason: showing the banner anyway would risk a
+	 * second banner for completions another surface may also have reached.
+	 */
+	private async claimDigestMembers(n: DesktopNotification): Promise<number> {
+		const members = n.member_tokens ?? [];
+		let won = 0;
+		for (const member of members) {
+			if (!member?.session_id || !member?.completion_token) continue;
+			const outcome = await this.claimDelivery(
+				member.session_id,
+				member.completion_token,
+			);
+			if (outcome === "won") won += 1;
+		}
+		return won;
 	}
 
 	/**
@@ -556,11 +891,104 @@ export class DesktopNotifier {
 		}
 	}
 
-	private anyFocused(): boolean {
-		for (const state of this.windows.values()) {
-			if (state.visible && state.focused) return true;
+	/**
+	 * Whether a LIVE window is displaying `sessionId` in the foreground.
+	 *
+	 * THE completion gate, and the predicate is deliberately two facts rather
+	 * than one. `anyFocused()` alone answers "is the app in front", which is not
+	 * the question: with the app focused on session A, a completion in session B
+	 * was suppressed and announced to nobody — and rung 3 had already deferred
+	 * to rung 2, so nothing else could raise it either. That is the operator's
+	 * reported symptom, made permanent by the presence mechanism itself (B1).
+	 *
+	 * Only a window showing THIS conversation is a reason not to banner, because
+	 * only then is the completion already on screen.
+	 *
+	 * Dead windows are filtered rather than assumed gone. `forgetWindow` runs on
+	 * `closed`, but a renderer process that dies takes its `webContents` id with
+	 * it and no `closed` event reaches this map, and `webContents` ids are not
+	 * reused — so an unfiltered stale `{visible: true, focused: true}` entry
+	 * suppresses every completion for the life of the process.
+	 */
+	private anyDisplayingFocused(sessionId: string): boolean {
+		for (const [id, state] of this.windows) {
+			if (!state.visible || !state.focused) continue;
+			if (state.session !== sessionId) continue;
+			if (!this.host.windowAlive(id)) continue;
+			// ...and the report has to be CURRENT (R2-4). A live window whose renderer
+			// stopped reporting — a wedged pane, a navigation that never beat again —
+			// is not evidence that this conversation is on screen, and treating it as
+			// such suppresses the banner for the conversation nobody can see.
+			if (Date.now() - state.seenAt > RENDERER_REPORT_TTL_MS) continue;
+			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * What this app can say about itself for the machine-wide presence claim.
+	 *
+	 * The claim is not "a desktop is connected" - the backend already knows that
+	 * from the socket. It is the two answers only the app has, and both are
+	 * read by the delivery ladder: `session_id` + `window` decide `attended`
+	 * (rung 1's "a watching surface already has it"), and a MISSING window is not
+	 * a missing value - it means this app is watching nothing, which is the
+	 * correct answer for the operator's own windowless case and the wrong answer
+	 * for a window that is merely minimised.
+	 *
+	 * `sessionId` comes from this notifier's own heartbeat map rather than from
+	 * the renderer, so it cannot disagree with the completion gate above: the
+	 * same value that suppresses a banner is the value that tells the backend
+	 * not to raise someone else's. An app that names a conversation it is not
+	 * showing suppresses the banner for a conversation nobody can see.
+	 *
+	 * Dead windows answer "no window" rather than "last known window": a
+	 * destroyed window has no `is*()` to read, and reporting its stale state
+	 * would advertise a surface that cannot display anything.
+	 *
+	 * THE SESSION IS READ BY THE ID THE WRITER USED (review round 2, R2-3).
+	 * `heartbeat` keys this map on `event.sender.id` — the WEB CONTENTS id —
+	 * because that is what the IPC event carries and what the close cleanup
+	 * captures. This accessor read `window.id`, the BrowserWindow id, which merely
+	 * happens to be equal early in a session and drifts as soon as anything else
+	 * is created (the browser host's own webContents, a second window). It then
+	 * reported a focused, visible window with `session_id: ""`, so the backend
+	 * could not recognise the conversation actually on screen and bannered it as
+	 * background.
+	 */
+	presence(): {
+		sessionId: string;
+		window: {
+			exists: boolean;
+			focused: boolean;
+			visible: boolean;
+			minimized: boolean;
+		};
+	} {
+		const window = this.window();
+		if (!window || window.isDestroyed()) {
+			return {
+				sessionId: "",
+				window: {
+					exists: false,
+					focused: false,
+					visible: false,
+					minimized: false,
+				},
+			};
+		}
+		const reported = this.windows.get(window.webContents.id);
+		const current =
+			reported && Date.now() - reported.seenAt <= RENDERER_REPORT_TTL_MS;
+		return {
+			sessionId: current ? reported.session : "",
+			window: {
+				exists: true,
+				focused: window.isFocused(),
+				visible: window.isVisible(),
+				minimized: window.isMinimized(),
+			},
+		};
 	}
 
 	/**
@@ -640,8 +1068,15 @@ export class DesktopNotifier {
 	private turn(sessionId: string, seq: number): void {
 		const key = `turn:${sessionId}:${this.epochs.get(sessionId) ?? ""}:${seq}`;
 		if (!this.claim(key)) return;
-		// Completion is only news when nobody is looking.
-		if (this.anyFocused()) return;
+		// Completion is only news when nobody is looking AT THIS CONVERSATION.
+		//
+		// Session-scoped here too, and not only on the composed path: this is the
+		// fallback for a backend old enough to compose nothing, and it reaches an
+		// ORDINARY run — a provider fallback mid-session, or a downgrade by a
+		// health-check restart (design 4.3). Leaving it window-scoped would keep
+		// the reported defect alive on exactly the backends that cannot send a
+		// composed frame at all, and it has the session id in hand to do better.
+		if (this.anyDisplayingFocused(sessionId)) return;
 		this.show(sessionId, "Turn complete", "", "The agent finished its turn.");
 	}
 
@@ -700,7 +1135,12 @@ export class DesktopNotifier {
 	 * unaffected either way.
 	 */
 	private show(
-		sessionId: string,
+		/*
+		 * Where the click lands: a conversation id, or `null` for the catalogue.
+		 * A digest banner names several conversations and has no single one to
+		 * open, so the honest target is the list they are all in.
+		 */
+		sessionId: string | null,
 		title: string,
 		status: string,
 		body: string,
@@ -715,16 +1155,40 @@ export class DesktopNotifier {
 		});
 		notification.on("click", () => {
 			const target = this.window();
-			if (!target) return;
+			if (!target || target.isDestroyed()) {
+				/*
+				 * No window: the app is alive in the dock, which is the operator's
+				 * own reported case. This used to return here, so the click did
+				 * nothing at all.
+				 *
+				 * Recreation is the app's business (`index.ts` owns `createWindow`)
+				 * and it also owns the part that makes this safe: a `webContents.send`
+				 * into a window that has not loaded is dropped silently, so the
+				 * session id is QUEUED and delivered once the renderer reports the
+				 * conversation on screen. Sending it here directly would turn the
+				 * reported no-op into a rarer one.
+				 */
+				this.host.reopen(sessionId);
+				return;
+			}
 			/*
+			 * SEND BEFORE RAISING (B3).
+			 *
 			 * A click is the operator asking for the window, but only `normal` may
 			 * answer by activating the app: `raiseWindow` orders an `inactive`
 			 * window without taking focus and leaves a `headless` one off screen.
 			 * The conversation is delivered either way — the renderer decides how
 			 * to open it, and this line only names it.
+			 *
+			 * The order is the fix, not a preference. Raising first shows the
+			 * window holding whatever conversation it was on, for as long as the
+			 * switch takes, and that flash reads as a click that landed on the
+			 * wrong row. Naming the conversation first means whatever comes
+			 * forward is already correct — the same "switch first, then focus"
+			 * rule the backend's own click client states.
 			 */
-			raiseWindow(target, this.windowRaise);
 			target.webContents.send("desktop-open-conversation", { sessionId });
+			raiseWindow(target, this.windowRaise);
 		});
 		notification.show();
 	}
