@@ -295,6 +295,15 @@ export type TranscriptState = {
 	 * `tool_calls` across 26,973 real tool rows. Only the lookup window was too
 	 * narrow, so it is widened to the session rather than the page, and a later
 	 * page can backfill a row an earlier one painted blank.
+	 *
+	 * The value is what the session knows about the call: `arguments` as above,
+	 * plus `anchoredAt` — epoch ms of the frame or durable row that STATED the
+	 * call, i.e. roughly when it was composed. `anchoredAt` is a POSITION, not a
+	 * label: the seed can be handed a settling frame for a call made hours
+	 * earlier (`tool_execution_end` carries no clock at all, and the start that
+	 * did is deleted from the seed by the same fold that appends the end), and
+	 * the durable row that named the call is then the only statement of WHEN it
+	 * happened. See `seededClock`.
 	 */
 	argsByCall: Map<string, Record<string, unknown>>;
 };
@@ -516,6 +525,33 @@ function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
 	const index = new Map<string, number>();
 	records.forEach((record, position) => index.set(record.id, position));
 	return index;
+}
+
+/**
+ * The same records in TIME order, ties broken by the position each already had.
+ *
+ * The rule the durable page is ordered by, extracted so the live seed can use
+ * the SAME rule rather than a second one: a row the seed places from a truthful
+ * clock belongs where that time belongs, and `upsert` appends an unknown id —
+ * right for a row arriving now, wrong for one the seed itself dated to hours
+ * ago. Ties keep the order they already had, so this can never reshuffle two
+ * rows that state the same instant while the reader is looking at them (the
+ * property `applyHistoryPage` gives this rule where it merges pages).
+ *
+ * The positions come from the list being sorted, which is the merged list on
+ * the page path: a record that was already painted keeps its old position and a
+ * row arriving with the merge keeps its arrival order among the new ones — the
+ * two maps `applyHistoryPage` used to build separately, for the same reason.
+ */
+function withTimeOrder(state: TranscriptState): TranscriptState {
+	const prior = new Map(
+		state.records.map((record, position) => [record.id, position]),
+	);
+	const records = [...state.records].sort((a, b) => {
+		if (a.ts !== b.ts) return a.ts - b.ts;
+		return (prior.get(a.id) ?? 0) - (prior.get(b.id) ?? 0);
+	});
+	return { ...state, records, index: withIndex(records) };
 }
 
 function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
@@ -1181,6 +1217,11 @@ export function applyHistoryPage(
 	for (const entry of page.entries) {
 		const calls = entry.payload?.tool_calls;
 		if (!Array.isArray(calls)) continue;
+		// The assistant row's own instant. The call it names was composed in THAT
+		// message, so this is the durable anchor a replayed settling frame for the
+		// call is placed at (`seededClock`) — read here because this loop is the
+		// only place the row and its calls are both in hand.
+		const anchoredAt = Math.round((entry.ts ?? 0) * 1000);
 		for (const call of calls as Record<string, unknown>[]) {
 			if (!call || typeof call.id !== "string") continue;
 			if (argsByCall.has(call.id)) continue;
@@ -1191,7 +1232,7 @@ export function applyHistoryPage(
 				argsByCall = new Map(argsByCall);
 				argsChanged = true;
 			}
-			argsByCall.set(call.id, call);
+			argsByCall.set(call.id, { ...call, anchoredAt });
 		}
 	}
 	for (let i = 0; i < incoming.length; i++) {
@@ -1268,19 +1309,13 @@ export function applyHistoryPage(
 	if (!changed && state.hasMore === page.has_more) return state;
 
 	// Stable order: by timestamp, ties broken by prior position so a page
-	// that lands out of order cannot reshuffle rows the user is reading.
-	const priorPosition = new Map(
-		base.records.map((record, position) => [record.id, position]),
-	);
-	const incomingPosition = new Map(
-		incoming.map((record, position) => [record.id, position]),
-	);
-	const records = [...byId.values()].sort((a, b) => {
-		if (a.ts !== b.ts) return a.ts - b.ts;
-		const pa = priorPosition.get(a.id) ?? incomingPosition.get(a.id) ?? 0;
-		const pb = priorPosition.get(b.id) ?? incomingPosition.get(b.id) ?? 0;
-		return pa - pb;
-	});
+	// that lands out of order cannot reshuffle rows the user is reading. The
+	// merged list IS the prior order (base rows first, the page's new rows
+	// after them), which is what `withTimeOrder` reads its positions from.
+	const records = withTimeOrder({
+		...base,
+		records: [...byId.values()],
+	}).records;
 	// The paging cursor is the first entry of the OLDEST page received: a
 	// newer page (the snapshot's tail after a history_delta) must not move it
 	// forward, or the next "load older" request would skip rows.
@@ -1510,7 +1545,13 @@ export function applyEvent(
 			// page whose assistant row is not in the same page.
 			const learned =
 				args && !state.argsByCall.has(callId)
-					? new Map(state.argsByCall).set(callId, { arguments: args })
+					? new Map(state.argsByCall).set(callId, {
+							arguments: args,
+							// The frame's own start when it states one, so a later replay of
+							// this call's settling frame lands where the call really ran rather
+							// than where that viewer happened to be looking.
+							anchoredAt: epochMs(event) ?? now,
+						})
 					: state.argsByCall;
 			const seeded =
 				learned === state.argsByCall
@@ -1594,7 +1635,14 @@ export function applyEvent(
 			// identical, which is what the view's memoisation depends on.
 			const learned =
 				args && !state.argsByCall.has(callId)
-					? new Map(state.argsByCall).set(callId, { arguments: args })
+					? new Map(state.argsByCall).set(callId, {
+							arguments: args,
+							// A settling frame is the LAST moment this call is dated: it carries
+							// no start, so the arrival instant is all the session will ever know
+							// — and it is already in hand here, which is the case this anchor
+							// exists for.
+							anchoredAt: epochMs(event) ?? now,
+						})
 					: state.argsByCall;
 			const seeded =
 				learned === state.argsByCall
@@ -1712,8 +1760,104 @@ function formatTokens(count: number) {
 }
 
 /**
+ * `started_at_epoch` in epoch ms when the frame states one, else `null`.
+ *
+ * The producer stamps it where a call actually began (`harness/loop.py`), which
+ * is the only wall clock any tool frame carries: `tool_execution_end` has none.
+ * `null` rather than a defaulted instant on purpose — the tempting default is
+ * the reader's own arrival dressed as the call's start, which is the fabricated
+ * zero the whole `started_at_epoch` path exists to refuse.
+ */
+function epochMs(event: LiveEvent): number | null {
+	const epoch = Number(event.started_at_epoch);
+	return Number.isFinite(epoch) && epoch > 0 ? Math.round(epoch * 1000) : null;
+}
+
+/** The call id a seeded tool frame names, or `null` for any other frame. */
+function seededCallId(event: LiveEvent): string | null {
+	if (!event.type.startsWith("tool_")) return null;
+	const callId = String(event.tool_call_id ?? "");
+	return callId ? callId : null;
+}
+
+/**
+ * The record id a seeded frame would paint, or `null` when it cannot be
+ * attributed without folding it.
+ *
+ * Mirrors the two id rules `applyEvent` applies — a tool row keys by call id, a
+ * message row by the message's own id — because the placement rule below has to
+ * ask "would this CREATE a row" BEFORE the frame is folded.
+ */
+function seededRecordId(event: LiveEvent): string | null {
+	const callId = seededCallId(event);
+	if (callId) return `tool:${callId}`;
+	const message = event.message as { id?: unknown } | undefined;
+	return typeof message?.id === "string" && message.id ? message.id : null;
+}
+
+/**
+ * The epoch ms a seeded row may be placed at, or `null` when the seed makes no
+ * statement about WHEN the row happened.
+ *
+ * Two producers state a time and the backend owns both:
+ *
+ *   - a `tool_execution_start` carries `started_at_epoch`, so a call still
+ *     running is placed at the instant it really began;
+ *   - a call the transcript already holds a DURABLE statement about —
+ *     `argsByCall`'s `anchoredAt`, the assistant row whose `tool_calls` named
+ *     it — dates the settling frame that follows. `tool_execution_end` itself
+ *     has no clock field at all, and the start that used to carry one is
+ *     DELETED from the seed by the same fold that appends the end
+ *     (`frontend_state._fold_live_event`), so when a result is replayed the
+ *     durable row that named the call is the only honest anchor left.
+ *
+ * `null` is a real answer, not a missing value to be defaulted: it says the
+ * seed can only claim the row arrived at the viewer now.
+ */
+function seededClock(event: LiveEvent, state: TranscriptState): number | null {
+	const stated = epochMs(event);
+	if (stated !== null) return stated;
+	const callId = seededCallId(event);
+	if (!callId) return null;
+	const anchoredAt = state.argsByCall.get(callId)?.anchoredAt;
+	return typeof anchoredAt === "number" && Number.isFinite(anchoredAt)
+		? anchoredAt
+		: null;
+}
+
+/**
  * Seed the in-flight turn from a snapshot's `live_events`. Called after the
  * snapshot's history page has been applied so durable rows win.
+ *
+ * A SEEDED ROW MAY ONLY CLAIM A POSITION IT CAN JUSTIFY. The seed is defined by
+ * the runtime as the bounded in-flight turn "a frontend that joins mid-turn
+ * would otherwise miss", and this function is where that list becomes painted
+ * rows — so this is where the claim gets checked:
+ *
+ *   - the list is capped at 100 SETTLED CALLS per turn
+ *     (`frontend_state.LIVE_EVENT_END_ROWS_MAX`) while a single turn can run for
+ *     hours (this harness's own sessions spend hours inside `wait`, and one such
+ *     turn's 100 ends reached back past the 100-row page the snapshot carried);
+ *     so the seed can name rows OLDER than the conversation's last row;
+ *   - `frontend.streaming` is the wire's own statement that a turn is in
+ *     flight, and a seed arriving with no turn in flight is not the in-flight
+ *     turn it is defined as. The runtime serves exactly that: the desktop bridge
+ *     hands over the follower's `frontend_state`, whose `live_events` is emptied
+ *     only by a folded `agent_end`, while `refresh_from_session` republishes
+ *     `streaming` from the live session and leaves the seed alone — so a viewer
+ *     that attaches after a turn ended is handed that turn's seed.
+ *
+ * Placement therefore follows the frame's own clock where one exists, and a
+ * frame that would CREATE a row and states no time is refused outright when no
+ * turn is in flight: its only remaining time is the viewer's arrival, and
+ * appending it paints `wait`/`hub`/`task` rows from hours earlier under a
+ * conversation whose last message is the one the reader expects to be last.
+ * Refusing loses nothing: every row such a seed names is durable on the backend,
+ * the page or an older page owns it, and the client already fires a read sized
+ * for exactly these unlabelled calls (`reconcileLimit`) — which brings them back
+ * as durable rows with their real times, in their real places. A frame whose
+ * record is ALREADY painted is folded onto it whatever the clock, because that
+ * settles a card the reader can see without moving any row.
  */
 export function applyLiveSeed(
 	state: TranscriptState,
@@ -1724,10 +1868,25 @@ export function applyLiveSeed(
 	if (frontend.streaming && frontend.generation > next.generation) {
 		next = { ...next, generation: frontend.generation };
 	}
+	const inFlight = frontend.streaming === true;
+	/* A row was placed at a time the seed itself stated, so order by time. */
+	let placed = false;
 	for (const data of frontend.live_events ?? []) {
-		next = applyEvent(next, data as LiveEvent, now);
+		const event = data as LiveEvent;
+		let clock = now;
+		const id = seededRecordId(event);
+		if (id !== null && !next.index.has(id)) {
+			const stated = seededClock(event, next);
+			if (stated !== null) {
+				clock = stated;
+				placed = true;
+			} else if (!inFlight) {
+				continue;
+			}
+		}
+		next = applyEvent(next, event, clock);
 	}
-	return next;
+	return placed ? withTimeOrder(next) : next;
 }
 
 /**
