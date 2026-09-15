@@ -18,10 +18,15 @@ import { MOCK_KEYCHAIN_SWITCH, withMockKeychain } from "./chrome-keychain.mjs";
  * The shape follows this repo's own precedents: `notification-spawn-sites.
  * test.mjs` scans for the calls that start Electron and requires each to be
  * named in its table, and `python-bytecode-cache.test.mjs` does the same for
- * child-process sites. Like those, it is a TEXT scan, so its reach is exactly
- * the spellings below - a rig that hid the Chrome binary behind a name that does
- * not say "chrome" would not be found by it. What it does guarantee is that a
- * new Chrome rig cannot be added without this table being considered.
+ * child-process sites. Like those, it is a TEXT scan, so what it can see is
+ * bounded and the bound is worth stating plainly rather than implying (round 1,
+ * R1-2): it sees `.mjs`/`.js`/`.cjs` files under the roots below, a command
+ * token that says `chrome`, and a call spelled `spawn(`, `exec(`,
+ * `execFile(`, `spawnSync(`, `execSync(`, `execFileSync(` (a namespace prefix,
+ * `cp.spawn(`, included). A rig that is a `.ts` file, that lives outside those
+ * three roots, or that starts the browser through a name that does not say
+ * `chrome` is NOT caught here - which is why AGENTS.md names the same bound
+ * instead of promising that any new rig is caught.
  */
 const SPAWN_NAMES = [
 	"spawn",
@@ -34,14 +39,41 @@ const SPAWN_NAMES = [
 
 /**
  * Comments blanked to SPACES, so an index into the result is still an index into
- * the original text: a name inside a comment or a string is not a call site, and
- * the slicing below reads the raw text by offset.
+ * the original text: a name inside a comment is not a call site, and the slicing
+ * below reads the raw text by offset.
+ *
+ * QUOTE-AWARE, which is a correction rather than a flourish (round 1, R1-5): the
+ * first version treated `//` as a comment opener even inside a string literal, so
+ * everything after a URL on that line was blanked and a call site later on the
+ * same line vanished from the scan. `docs/evidence/desktop-413/harness/
+ * capture-413.mjs` holds `"http://localhost:5199"` today, and a rig that spawns
+ * Chrome on the same line as a URL is exactly the shape that would have gone
+ * unseen. Strings are copied through untouched; only real comments are blanked.
  */
 function blankComments(source) {
 	let out = "";
 	let i = 0;
+	let quote = null;
 	while (i < source.length) {
 		const ch = source[i];
+		if (quote) {
+			out += ch;
+			if (ch === "\\" && quote !== "`") {
+				// Copy the escaped character too, so `\"` cannot close the string.
+				out += source[i + 1] ?? "";
+				i += 2;
+				continue;
+			}
+			if (ch === quote) quote = null;
+			i += 1;
+			continue;
+		}
+		if (ch === '"' || ch === "'" || ch === "`") {
+			quote = ch;
+			out += ch;
+			i += 1;
+			continue;
+		}
 		if (ch === "/" && source[i + 1] === "/") {
 			while (i < source.length && source[i] !== "\n") {
 				out += " ";
@@ -102,13 +134,14 @@ function splitArguments(text) {
 /**
  * The directories whose `.mjs`/`.js`/`.cjs` files are scanned, and how deeply.
  *
- * The three `docs/evidence/<surface>/harness/` rigs are scanned recursively because
- * their docstrings say they drive Chrome "exactly the way
- * `scripts/capture-evidence.mjs` does - same private `--headless=new` profile
- * under the system temp dir, same DevTools websocket", and a rig that is
- * runnable reproduces whatever it is missing however old the frames beside it
- * are. They are not in `scripts/`, which is why the walk is recursive rather
- * than the flat readdir the sibling notification scan uses.
+ * The three `docs/evidence/<surface>/harness/` rigs are scanned recursively, to
+ * any depth under `harness/`, because their docstrings say they drive Chrome
+ * "exactly the way `scripts/capture-evidence.mjs` does - same private
+ * `--headless=new` profile under the system temp dir, same DevTools websocket",
+ * and a rig that is runnable reproduces whatever it is missing however old the
+ * frames beside it are. They are not in `scripts/`, which is why the walk is
+ * recursive rather than the flat readdir the sibling notification scan uses.
+ * The depth bound used to be exactly one level (round 1, R1-2).
  */
 const SCAN_ROOTS = [
 	{ dir: "scripts", recursive: false },
@@ -127,11 +160,11 @@ function scanFiles() {
 			// A flat root is flat: a nested path comes back with a separator in it,
 			// and only `scripts/`'s own files are rigs.
 			if (!root.recursive && name.includes(sep)) continue;
-			// One level of `harness/` inside a per-surface evidence directory: the
+			// Any depth under `harness/` inside a per-surface evidence directory: the
 			// frames' own rigs, not the surface's other notes and stubs.
 			if (
 				root.harnessOnly &&
-				!/^docs\/evidence\/[^/]+\/harness\/[^/]+$/.test(rel)
+				!/^docs\/evidence\/[^/]+\/harness\//.test(rel)
 			) {
 				continue;
 			}
@@ -158,8 +191,14 @@ function findSpawnSites() {
 		const source = blankComments(raw);
 		const found = [];
 		for (const name of SPAWN_NAMES) {
+			/*
+			 * A namespace prefix is allowed - `cp.spawn(CHROME, …)` is the same site as
+			 * `spawn(CHROME, …)` (round 1, R1-2). It also matches `someRegExp.exec(`,
+			 * which is not a child process at all; that costs nothing here, because a
+			 * site only matters when the command it starts says `chrome`.
+			 */
 			for (const match of source.matchAll(
-				new RegExp(`(?<![\\.\\w])${name}\\s*\\(`, "g"),
+				new RegExp(`(?<![\\w.])(?:[A-Za-z_$][\\w$]*\\.)?${name}\\s*\\(`, "g"),
 			)) {
 				found.push({ name, at: match.index });
 			}

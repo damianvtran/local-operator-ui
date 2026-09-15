@@ -452,7 +452,9 @@ keychain in reach at all. Chrome then cannot encrypt its cookie store
 answers `success: true` writes no row to the profile, and macOS logs `authd …
 Failed to authorize right 'system.keychain.create.loginkc' by client
 '/Applications/Google Chrome.app'` — Chrome trying to CREATE one, which is the
-alert. Five launches inside two minutes is why it kept coming back.
+alert. Two such denials two minutes apart (`17:29:36`, `17:31:42`), with the
+same log showing five Chrome processes reaching the Security framework in
+`17:27:40`–`17:29:35`, is why it kept coming back.
 
 `scripts/chrome-keychain.mjs` exports `withMockKeychain`, which puts
 `--use-mock-keychain` on a rig's Chrome argv so OSCrypt uses a constant mock key
@@ -460,13 +462,26 @@ and Keychain Services is never called. Every rig that launches Chrome routes its
 argv through it — the nine in `scripts/` and the three under
 `docs/evidence/<surface>/harness/`, which are archived beside their frames but
 are still runnable — and `scripts/chrome-keychain.test.mjs` scans for the calls
-that start Chrome and fails on one that does not. A rig added without it fails
-that test instead of the operator's screen.
+that start Chrome and fails on one that does not. That scan states its own
+bound rather than promising more than it can see: `.mjs`/`.js`/`.cjs` files under
+`scripts/`, `bin/` and each `docs/evidence/<surface>/harness/` tree, and a command
+token that says `chrome`. A rig added as a `.ts` file, or in a directory outside
+those roots, is review's business rather than that test's — the test's own
+docstring says the same thing, and so does this paragraph.
 
-What this deliberately does not touch: `session-cookie-restart-proof.mjs` and
-`session-cookie-electron.test.mjs` boot the PRODUCT, and reaching the keychain is
-their subject rather than collateral — they are app launches rather than Chrome
-launches.
+What this deliberately does not touch: the rigs that boot the PRODUCT are
+outside the Chrome scan by construction, and the ones that reach the real
+keychain do it on purpose — `session-cookie-restart-proof.mjs` symlinks the
+scratch `HOME`'s `Library/Keychains` at the real one, and
+`session-cookie-electron.test.mjs` does not override `HOME` at all, because
+Electron's own `safeStorage` round-trip is what they prove. The rigs that boot
+the app with an EMBEDDED Chromium under a scratch `HOME` (`browser-chrome-proof`,
+`browser-host-proof`) do not prompt either, and the reason lives in the app
+rather than in them: `src/main/browser/session-cookies.ts` asks the cheap
+question first — whether `~/Library/Keychains/login.keychain-db` exists — and
+fails closed, because calling `safeStorage` in that state can block the main
+thread (measured: 7785 ms in Electron 44.3.0) or wait on a SecurityAgent prompt
+an unattended launch can never answer.
 
 ### Capturing the frame
 
