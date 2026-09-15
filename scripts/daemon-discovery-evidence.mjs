@@ -73,7 +73,7 @@ async function bundleManagerModule(buildIndex) {
 	const result = await build({
 		stdin: {
 			contents:
-				'export { BackendServiceManager, LocalOperatorStartupMode } from "./src/main/backend/backend-service";',
+				'export { BackendServiceManager, LocalOperatorStartupMode } from "./src/main/backend/backend-service"; export { PROBE_INTERVAL_MS } from "./src/main/backend/daemon-status";',
 			resolveDir: REPO,
 		},
 		bundle: true,
@@ -199,9 +199,9 @@ const children = [];
 /** Every listener this script opens, so cleanup closes them all - including the
  * one a later phase replaces by rebinding the same variable. */
 const servers = [];
-function startRealDaemon(label) {
+function startRealDaemon(label, configRoot = ROOT) {
 	const child = spawn("lop", ["serve", "--port", "0"], {
-		env,
+		env: { ...env, LOCAL_OPERATOR_CONFIG_DIR: configRoot },
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	children.push(child);
@@ -216,8 +216,8 @@ function startRealDaemon(label) {
 }
 
 /** Wait for a daemon's own record (keyed by its pid) to appear. */
-async function waitForRecord(child, timeoutMs = 30_000) {
-	const file = join(RUN_DIR, `${child.pid}.json`);
+async function waitForRecord(child, timeoutMs = 30_000, runDir = RUN_DIR) {
+	const file = join(runDir, `${child.pid}.json`);
 	const deadline = Date.now() + timeoutMs;
 	while (Date.now() < deadline) {
 		if (existsSync(file)) {
@@ -230,6 +230,21 @@ async function waitForRecord(child, timeoutMs = 30_000) {
 		await new Promise((r) => setTimeout(r, 200));
 	}
 	throw new Error(`no record for pid ${child.pid} within ${timeoutMs}ms`);
+}
+
+/** Wait for the first status push `matches`, or fail with what was seen. */
+async function waitForPush(pushes, matches, timeoutMs) {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		const found = pushes.find(matches);
+		if (found) return found;
+		if (Date.now() > deadline) {
+			throw new Error(
+				`no matching status push within ${timeoutMs}ms; saw ${JSON.stringify(pushes.map((push) => push.state))}`,
+			);
+		}
+		await new Promise((r) => setTimeout(r, 100));
+	}
 }
 
 const redact = (record) => ({
@@ -272,7 +287,10 @@ const curl = async (args, expectedStatus = 200) => {
 };
 
 const stopChild = async (child) => {
-	if (child.exitCode !== null) return;
+	// A child killed by a signal reports `exitCode === null` with `signalCode`
+	// set, and it is just as gone: without this the wait below ends on its 5s
+	// failsafe instead of on the exit that already happened.
+	if (child.exitCode !== null || child.signalCode !== null) return;
 	child.kill("SIGTERM");
 	await new Promise((r) => {
 		const timer = setTimeout(() => {
@@ -652,10 +670,65 @@ try {
 		`owned_pid ${ownedManager.getOwnedPid()} === snapshot pid ${ownedStatus.pid}: ${ownedManager.getOwnedPid() === ownedStatus.pid}`,
 	);
 	/*
+	 * CONTROL for the adopted-path measurement further down, and the reason it
+	 * can be read: the SAME instrument (a push subscription and a wall clock) on
+	 * the path that was always armed, so a slow or absent correction there
+	 * cannot be blamed on a reader that never worked. Nothing ticks by hand -
+	 * the kill is the whole input - and the app's own replacement that follows a
+	 * dead child is driven to completion, because `stop()` below is what proves
+	 * the handle it now owns is the one it kills.
+	 */
+	const ownedPid = ownedManager.getOwnedPid();
+	const ownedPushes = [];
+	ownedManager.onStatusChange((snapshot) =>
+		ownedPushes.push({
+			at: Date.now(),
+			state: snapshot.state,
+			detail: snapshot.detail,
+		}),
+	);
+	const ownedKilledAt = Date.now();
+	// Killed by the handle this app spawned, the way an external SIGKILL arrives
+	// (crash, OOM, the operator's `kill`), never by a pattern.
+	ownedManager.process.kill("SIGKILL");
+	const ownedNoticed = await waitForPush(
+		ownedPushes,
+		(snapshot) => snapshot.state !== "attached",
+		ownedModule.PROBE_INTERVAL_MS * 2 + 8_000,
+	);
+	say(
+		`owned path: daemon pid ${ownedPid} SIGKILLed, no manual tick`,
+		`noticed in ${ownedNoticed.at - ownedKilledAt} ms (state ${ownedNoticed.state}, ${ownedPushes.length} push event(s))`,
+	);
+	line(`detail: ${ownedNoticed.detail}`);
+	assert.equal(
+		ownedNoticed.state,
+		"detached",
+		"the owned path must notice a killed child on its own tick",
+	);
+	assert.ok(
+		ownedNoticed.at - ownedKilledAt < ownedModule.PROBE_INTERVAL_MS * 2,
+		`the owned control has to be noticed within two probe intervals, took ${ownedNoticed.at - ownedKilledAt} ms`,
+	);
+	const ownedReplacement = await waitForPush(
+		ownedPushes,
+		(snapshot) => snapshot.state === "attached",
+		ownedModule.PROBE_INTERVAL_MS * 3 + 20_000,
+	);
+	const replacementPid = ownedManager.getOwnedPid();
+	assert.notEqual(
+		replacementPid,
+		ownedPid,
+		"a dead child of ours is replaced, and the replacement is the handle stop() must now kill",
+	);
+	line(
+		`then a replacement the app started: pid ${replacementPid} at ${ownedManager.getStatusSnapshot().url} (re-attached in ${ownedReplacement.at - ownedKilledAt} ms)`,
+	);
+
+	/*
 	 * And the child it started is still OURS to stop: kill only this handle, by
 	 * pid, and leave nothing of this run behind.
 	 */
-	const ownedPid = ownedManager.getOwnedPid();
 	await ownedManager.stop(false);
 	let stopped = discovery.pidLiveness(ownedPid);
 	for (let i = 0; i < 50 && stopped === "alive"; i++) {
@@ -665,8 +738,129 @@ try {
 	line(
 		`\n(app's own daemon pid ${ownedPid} after stop(): ${stopped}, killed by handle, not by pattern)`,
 	);
+	let replacementStopped = discovery.pidLiveness(replacementPid);
+	for (let i = 0; i < 50 && replacementStopped === "alive"; i++) {
+		await new Promise((r) => setTimeout(r, 200));
+		replacementStopped = discovery.pidLiveness(replacementPid);
+	}
+	line(
+		`(the replacement pid ${replacementPid} after the same stop(): ${replacementStopped}, so the kill followed the handle and not the number)`,
+	);
+	assert.equal(replacementStopped, "dead");
 	process.env.LOCAL_OPERATOR_CONFIG_DIR = ROOT;
 	rmSync(ownedRoot, { recursive: true, force: true });
+
+	// --------------- the app that ADOPTS a daemon at startup keeps observing it
+	line(
+		"\n\n# ===== an app that ADOPTS a daemon at startup keeps observing it =====",
+	);
+	/*
+	 * QA round 3, Q-1 (and review round 3, R3-1) on the real app: the startup
+	 * path every user without a running app takes - discovery finds the daemon
+	 * the operator's TUI started and `start()` is never called - so whatever
+	 * observes that daemon has to be armed by the ADOPTION itself. On the old
+	 * head nothing armed it, and the app reported `attached` (naming a dead pid)
+	 * for 150 s after the daemon was killed, with zero push events, because the
+	 * renderer's own 5 s `/health` poll is gone on this path too.
+	 *
+	 * Nothing here ticks by hand: adoption is the setup and the kill is the only
+	 * input, which is what makes the elapsed time a measurement of the app's own
+	 * observation rather than of this script's.
+	 */
+	const adoptedRoot = mkdtempSync(join(tmpdir(), "lop-ui-daemon-adopted-"));
+	const adoptedRunDir = join(adoptedRoot, "run", "serve");
+	mkdirSync(adoptedRunDir, { recursive: true });
+	const adoptedDaemon = startRealDaemon("daemon 3 (adopted at startup)", adoptedRoot);
+	const adoptedRecord = await waitForRecord(
+		adoptedDaemon.child,
+		30_000,
+		adoptedRunDir,
+	);
+	const adoptedPid = adoptedDaemon.child.pid;
+	globalThis.__evidenceConfiguredUrl = `http://${adoptedRecord.host}:${adoptedRecord.port}`;
+	/*
+	 * A config root of its own, so this case adopts the daemon it started and not
+	 * whichever other daemon of this run ranks higher - discovery prefers a
+	 * record to the configured URL, which is the ranking behaviour the section
+	 * above demonstrates.
+	 */
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = adoptedRoot;
+	const observeModule = await bundleManagerModule(8);
+	const observer = new observeModule.BackendServiceManager();
+	const adoptedPushes = [];
+	observer.onStatusChange((snapshot) =>
+		adoptedPushes.push({
+			at: Date.now(),
+			state: snapshot.state,
+			detail: snapshot.detail,
+		}),
+	);
+	const adopted = await observer.checkExistingBackend();
+	assert.equal(
+		adopted,
+		true,
+		"the daemon the script started is found and adopted, exactly as at startup",
+	);
+	const adoptedSnapshot = observer.getStatusSnapshot();
+	assert.equal(adoptedSnapshot.state, "attached");
+	assert.equal(adoptedSnapshot.pid, adoptedPid);
+	assert.equal(adoptedSnapshot.owned, false);
+	say("manager.checkExistingBackend()   # index.ts:1054's startup call", "");
+	line(JSON.stringify(adoptedSnapshot, null, 2));
+	line(
+		`(no child was spawned: owned_pid ${observer.getOwnedPid()} - this app did not start it)`,
+	);
+	// A healthy daemon must leave the snapshot alone, so the transition timed
+	// below cannot be a settle that was going to happen anyway. Adoption itself
+	// publishes the attached state once - that push is the baseline.
+	const baselinePushes = adoptedPushes.length;
+	assert.equal(baselinePushes, 1, "adoption publishes the attached state once");
+	await new Promise((r) => setTimeout(r, 3_000));
+	assert.equal(observer.getStatusSnapshot().state, "attached");
+	assert.equal(
+		adoptedPushes.length,
+		baselinePushes,
+		"a healthy daemon produces no further pushes",
+	);
+
+	const adoptedKilledAt = Date.now();
+	// SIGKILL, by handle: the crash the report measured, not a stop this app asked
+	// for (which would be the quit path's job and a different code path).
+	adoptedDaemon.child.kill("SIGKILL");
+	await new Promise((r) => adoptedDaemon.child.on("exit", r));
+	assert.equal(discovery.pidLiveness(adoptedPid), "dead");
+	const adoptedNoticed = await waitForPush(
+		adoptedPushes,
+		(snapshot) => snapshot.state !== "attached",
+		observeModule.PROBE_INTERVAL_MS * 2 + 8_000,
+	);
+	const adoptedElapsed = adoptedNoticed.at - adoptedKilledAt;
+	say(
+		`daemon pid ${adoptedPid} SIGKILLed after startup; no tick called by hand`,
+		`noticed in ${adoptedElapsed} ms (state ${adoptedNoticed.state}, ${adoptedPushes.length} push event(s))`,
+	);
+	line(`detail: ${adoptedNoticed.detail}`);
+	assert.equal(
+		adoptedNoticed.state,
+		"detached",
+		"an adopted daemon that is gone must not leave the app on `attached`",
+	);
+	assert.ok(
+		adoptedElapsed < observeModule.PROBE_INTERVAL_MS * 2,
+		`the adopted path must notice a killed daemon within two probe intervals, took ${adoptedElapsed} ms`,
+	);
+	assert.match(adoptedNoticed.detail, /process is gone/);
+	assert.equal(
+		observer.getOwnedPid(),
+		null,
+		"the app did not spawn a daemon to replace one it never started",
+	);
+	line(
+		"(the dead daemon's record is refused, never re-attached, and no daemon is started in its place)",
+	);
+	await observer.stop(false);
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = ROOT;
+	rmSync(adoptedRoot, { recursive: true, force: true });
 
 	// ------------------------------------------------------------- negatives
 	line("\n\n# ===== negative cases =====");
