@@ -4,16 +4,16 @@
  *
  * TWO ANCHORS, and the distinction is the whole point of this module:
  *
- *  - the **version anchor** is the newest released tag of any kind. The next
- *    version is derived from it so a number is never reused: a published version
- *    cannot be re-published, so a version that went backwards would consume a
- *    number that has already been used and has to be skipped by the next release.
- *    It is ALSO what bounds the commit range a release describes (`derive-release.mjs`
- *    takes both bases from it), because the range that has not been released yet
- *    starts after the newest tag — a release this workflow creates stays a
- *    pre-release for the 25-50 minutes its pipeline takes, and anchoring the range
- *    at the newest *non*-pre-release would leave the release-in-flight's own
- *    commits inside it for that whole window.
+ *  - the **version anchor** is the newest released tag of any kind. It answers
+ *    "what number is already spent": a published version cannot be re-published, so
+ *    a version that went backwards would consume a number that has already been
+ *    used and has to be skipped by the next release. It is ALSO what bounds the
+ *    commit range a release describes, because the range that has not been released
+ *    yet starts after the newest tag — a release stays a pre-release for the 25-50
+ *    minutes its pipeline takes, and anchoring the range at the newest
+ *    *non*-pre-release would leave the release-in-flight's own commits inside it for
+ *    that whole window (that range is the release owner's now: `git log
+ *    --first-parent --oneline <prev>..origin/main`, see AGENTS.md).
  *  - the **incumbent anchor** is the newest release a user could actually be
  *    running: published, not a pre-release, and carrying the architecture-matched
  *    archive its feed needs. It is the release a signed update upgrades FROM, and
