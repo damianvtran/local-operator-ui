@@ -215,10 +215,34 @@ const collector = () => {
 	return { lines, log: (message) => lines.push(message) };
 };
 
+/** Declared outside the hooks so `after` can clear it (see `before`). */
+let loopHold = null;
+
 before(() => {
 	root = mkdtempSync(join(tmpdir(), "lop-session-cookies-"));
+	/*
+	 * Hold the loop for this file's duration, because the timers this file waits on
+	 * are unref'd on purpose and a case that awaits one therefore depends on
+	 * something ELSE keeping the process alive.
+	 *
+	 * The hold's quit budget and the jar layer's per-call deadline are unref'd
+	 * because neither may be the reason the app is still alive, which is right in
+	 * the app and fatal to a test that waits on one alone: under the Node 22 the CI
+	 * job runs, the loop drains at the first case that only awaits such a timer and
+	 * the runner cancels it and its successors. Measured, not assumed - `a stop that
+	 * never settles is released at the budget` was cancelled 10 ms into its own
+	 * 120 ms budget with "Promise resolution is still pending but the event loop has
+	 * already resolved", and the four cases after it went with it, while the same
+	 * file passes on Node 26 (whose runner keeps a handle of its own).
+	 *
+	 * Bounded rather than open-ended, so a genuine regression - a budget that never
+	 * fires - still ends the file instead of holding the job open; cleared in
+	 * `after`. It asserts nothing and changes no expectation.
+	 */
+	loopHold = setTimeout(() => {}, 30_000);
 });
 after(() => {
+	clearTimeout(loopHold);
 	rmSync(root, { recursive: true, force: true });
 });
 
