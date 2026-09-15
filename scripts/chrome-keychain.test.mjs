@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { test } from "node:test";
-import { MOCK_KEYCHAIN_SWITCH, withMockKeychain } from "./chrome-keychain.mjs";
+import {
+	blankComments,
+	MOCK_KEYCHAIN_SWITCH,
+	withMockKeychain,
+} from "./chrome-keychain.mjs";
 
 /**
  * Every headless Chrome this repo launches gets the mock-keychain switch.
@@ -38,81 +42,11 @@ const SPAWN_NAMES = [
 ];
 
 /**
- * Comments blanked to SPACES, so an index into the result is still an index into
- * the original text: a name inside a comment is not a call site, and the slicing
- * below reads the raw text by offset.
- *
- * QUOTE-AWARE, which is a correction rather than a flourish (round 1, R1-5): the
- * first version treated `//` as a comment opener even inside a string literal, so
- * everything after a URL on that line was blanked and a call site later on the
- * same line vanished from the scan. `docs/evidence/desktop-413/harness/
- * capture-413.mjs` holds `"http://localhost:5199"` today, and a rig that spawns
- * Chrome on the same line as a URL is exactly the shape that would have gone
- * unseen. Strings are copied through untouched; only comments are blanked.
- *
- * WHAT IT STILL DOES NOT SEE, stated because the previous sentence used to claim
- * otherwise (round 2, R2-2): a REGEX LITERAL is not tracked, so a line like
- * `const re = /[//]/g; spawn(CHROME, […])` reads as a comment starting inside
- * that literal and the real site on that line is missed. Tracking regexes means
- * deciding whether a `/` opens one or is division, and a wrong guess there hides
- * arbitrary code between two divisions - a worse failure than this one - so the
- * gap stays and is named here instead. Templates ARE tracked as strings, escapes
- * included (round 2, R2-1: exempting them from the escape guard let one `\``
- * desync the tracking), which means a call inside a `${…}` interpolation is not
- * scanned; no rig here spawns that way.
+ * The comment blanker the scan below runs on. It lives in `./chrome-keychain.mjs`
+ * rather than here because it must be exported to be tested and it is the piece
+ * of this scan that has been wrong twice (rounds 1 and 2); the tests at the
+ * bottom of this file pin it, which is what round 3 asked for (R3-1).
  */
-function blankComments(source) {
-	let out = "";
-	let i = 0;
-	let quote = null;
-	while (i < source.length) {
-		const ch = source[i];
-		if (quote) {
-			out += ch;
-			if (ch === "\\") {
-				// Copy the escaped character too, so `\"` cannot close a string -
-				// and, for a template, so an escaped backtick cannot end it
-				// (round 2, R2-1).
-				out += source[i + 1] ?? "";
-				i += 2;
-				continue;
-			}
-			if (ch === quote) quote = null;
-			i += 1;
-			continue;
-		}
-		if (ch === '"' || ch === "'" || ch === "`") {
-			quote = ch;
-			out += ch;
-			i += 1;
-			continue;
-		}
-		if (ch === "/" && source[i + 1] === "/") {
-			while (i < source.length && source[i] !== "\n") {
-				out += " ";
-				i += 1;
-			}
-			continue;
-		}
-		if (ch === "/" && source[i + 1] === "*") {
-			out += "  ";
-			i += 2;
-			while (
-				i < source.length &&
-				!(source[i] === "*" && source[i + 1] === "/")
-			) {
-				out += source[i] === "\n" ? "\n" : " ";
-				i += 1;
-			}
-			out += "  ";
-			i += 2;
-			continue;
-		}
-		out += ch;
-		i += 1;
-	}
-	return out;
-}
 
 /** Splits an argument list on its top-level commas. */
 function splitArguments(text) {
@@ -437,5 +371,56 @@ test("withMockKeychain appends the switch once and returns the same array", () =
 		args,
 		["--headless=new", "--no-sandbox", MOCK_KEYCHAIN_SWITCH],
 		"a rig that names the switch itself must not get it twice",
+	);
+});
+
+/*
+ * The fixture text for the blanker tests is ASSEMBLED rather than written
+ * literally, because the scan in this file reads this file too: a string holding
+ * `spawn(CHROME, […])` is a chrome site to that scan, and a fixture is not a
+ * launch. The scan found these four lines as unlisted sites the first time they
+ * were written out in full, which is the scan working as intended.
+ */
+const SPWAN_CALL = `spawn${"(CHROME, [])"}`;
+const SPWAN_CALL_WITH_ARGV = `spawn${'(CHROME, ["--headless=new"])'};`;
+
+test("the comment blanker preserves offsets, and does not mistake code for comments", () => {
+	/*
+	 * Round 3, R3-1: the round-2 fix had no fixture - reverting the escape guard
+	 * still produced an identical scan result and the suite stayed green - so the
+	 * blanker is exported and pinned here directly. Offsets come first: the site
+	 * finder slices the raw text by index, so a blanker that changed the length
+	 * would silently mis-report every line after the change.
+	 */
+	const code = `${SPWAN_CALL_WITH_ARGV};`;
+	const source = [
+		'const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";',
+		"const t = `a\\`b`;",
+		`// this comment mentions ${SPWAN_CALL} and must not be a site`,
+		code,
+		"",
+	].join("\n");
+	const blanked = blankComments(source);
+
+	assert.equal(blanked.length, source.length, "every offset must still index the raw text");
+	assert.equal(
+		blanked.split("\n").length,
+		source.split("\n").length,
+		"newlines survive, so line numbers do too",
+	);
+	assert.equal(blanked.split("\n")[2].trim(), "", "the comment is blanked");
+	assert.equal(blanked.split("\n")[3], code, "code below it is untouched");
+});
+
+test("a call inside a template is seen, and one inside a comment is not", () => {
+	assert.match(
+		blankComments(`const x = \`\${${SPWAN_CALL}}\`;`),
+		/spawn\(CHROME/,
+		"template content is copied through, so a call inside an interpolation still counts as a site",
+	);
+	assert.doesNotMatch(
+		blankComments(`// ${SPWAN_CALL}`),
+		/spawn\(CHROME/,
+		"a call named only in a comment is not a site",
 	);
 });

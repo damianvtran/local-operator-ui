@@ -122,3 +122,84 @@ export function withMockKeychain(args) {
 	if (!args.includes(MOCK_KEYCHAIN_SWITCH)) args.push(MOCK_KEYCHAIN_SWITCH);
 	return args;
 }
+
+
+/**
+ * The comment blanker the scan in `chrome-keychain.test.mjs` runs before it looks
+ * for call sites, exported so the tests can pin it directly (round 3, R3-1): it
+ * is the one piece of that scan which has been wrong twice, both times found by
+ * review rather than by the suite.
+ *
+ * Comments are blanked to SPACES - never removed - so an index into the result is
+ * still an index into the source, which the site finder depends on: it slices the
+ * RAW text by offset.
+ *
+ * The two failures, and why they are worth a paragraph here: `//` inside a string
+ * literal blanked the rest of a line and hid a call site after a URL (round 1,
+ * R1-5, and one rig already holds `"http://localhost:5199"`), and exempting
+ * templates from the escape guard let a single escaped backtick desync quote
+ * tracking and report a COMMENT as a site (round 2, R2-1).
+ *
+ * WHAT IT STILL DOES NOT TRACK, stated because the first version claimed
+ * otherwise (round 2, R2-2): a REGEX LITERAL. `const re = /[//]/g;
+ * spawn(CHROME, […])` reads as a comment starting inside that literal, and the
+ * real site on the line is missed. Tracking regexes means deciding whether a `/`
+ * opens one or is division, and a wrong guess there hides arbitrary code between
+ * two divisions - a worse failure than this one - so the gap stays and is named.
+ *
+ * Templates ARE tracked as strings, escapes included, and their CONTENT is copied
+ * through rather than blanked, so a call inside one - an interpolation included -
+ * is still seen (round 3, R3-2: the earlier wording said the opposite).
+ */
+export function blankComments(source) {
+	let out = "";
+	let i = 0;
+	let quote = null;
+	while (i < source.length) {
+		const ch = source[i];
+		if (quote) {
+			out += ch;
+			if (ch === "\\") {
+				// Copy the escaped character too, so `\"` cannot close a string -
+				// and, for a template, so an escaped backtick cannot end it
+				// (round 2, R2-1).
+				out += source[i + 1] ?? "";
+				i += 2;
+				continue;
+			}
+			if (ch === quote) quote = null;
+			i += 1;
+			continue;
+		}
+		if (ch === '"' || ch === "'" || ch === "`") {
+			quote = ch;
+			out += ch;
+			i += 1;
+			continue;
+		}
+		if (ch === "/" && source[i + 1] === "/") {
+			while (i < source.length && source[i] !== "\n") {
+				out += " ";
+				i += 1;
+			}
+			continue;
+		}
+		if (ch === "/" && source[i + 1] === "*") {
+			out += "  ";
+			i += 2;
+			while (
+				i < source.length &&
+				!(source[i] === "*" && source[i + 1] === "/")
+			) {
+				out += source[i] === "\n" ? "\n" : " ";
+				i += 1;
+			}
+			out += "  ";
+			i += 2;
+			continue;
+		}
+		out += ch;
+		i += 1;
+	}
+	return out;
+}
