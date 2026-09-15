@@ -19,9 +19,21 @@ This pass ran against 6018: a sibling worktree's Storybook was already listening
 6017, and the frames are whatever the URL you pass is serving.
 
 `--themes` is the two brand palettes, which is `branding.md` § 9.9's minimum, and
-the light pass is where contrast defects hide. The tree is the commit that added
-this surface; `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carry
-it, as they do for every frame here.
+the light pass is where contrast defects hide. The tree that added this surface
+is what `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carried
+then, as they do for every frame here.
+
+**The `states` pair was re-taken for the settled-plan copy** (`fix(composer):
+state a settled plan instead of a zero count`): the chip's finished case printed
+`0 to-dos open`, which stated the remainder rather than the plan's ending, and it
+now says what settled. The two bands that carry that pair are `All to-dos
+resolved` (every item done) and `All to-dos closed` (one dropped, and
+deliberately not `resolved`) — the sixth band's label says the second half out
+loud so the difference is not left to the reader's eye. The run above is that
+pass, and `partialCapture` records it at the head that made the change. The other
+three directories were re-written by the same run and came back byte-identical,
+which is what says the copy change moved no height, no in-flight count and
+nothing at the column floor.
 
 ## What is in each frame, and what it proves
 
@@ -56,9 +68,20 @@ record's arithmetic — and stated because four of them are what the record's
 | Row `overflowX` | 0 | **0** | **0** |
 | Expanded body measure | (see below) | — | **136px** client, **120px** tall (six whole lines) against **300px** of content — the cap and its own scroller |
 
+**The settled chips are wider than the count chip, and the frames say by how
+much.** Read off the re-captured `states` pair the same way the table above was
+read: the count chip's ink spans x=40–139, `All to-dos closed` x=40–154 and
+`All to-dos resolved` x=40–165, all three starting at the same leading edge and
+occupying the same 14px mark-and-label line — so the settled copy adds up to
+26px to a chip that is already `shrink-0`, and changes no band's height. The
+widest settled chip is therefore ~137px of box against the floor's 156px content
+box; that case is arithmetic here rather than a frame, because `column-floor`
+photographs the count form and this pass did not add a settled band to it.
+
 Measured with a real browser on these stories, out of the live DOM — not
 re-derived from the record's arithmetic, which is what made the first version of
-this table wrong in two rows. The two corrections worth naming: the floor is 172px
+this table wrong in two rows.
+The two corrections worth naming: the floor is 172px
 and takes the small-view step (so 54px, not 58px, and the body is 136px, not the
 168px a large-view inset produced), and the goal's label is VISIBLE at the floor
 rather than `sr-only` (design review round 1, D3 and D4).
