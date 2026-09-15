@@ -16,59 +16,41 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 41256,
+  "at": 216199,
   "viewport": "830x572",
   "active": "TEXTAREA",
   "stack": {
-    "height": 142,
-    "scrollHeight": 142,
-    "clientHeight": 142
+    "height": 179.5,
+    "scrollHeight": 217,
+    "clientHeight": 180
   },
   "chips": [
     {
-      "label": "Go to my documents folder",
+      "label": "Look up interest rate trends and make a projection for the next 5 years",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 372,
-      "bottom": 401.5
+      "top": 353.25,
+      "bottom": 382.75
     },
     {
-      "label": "Train a classifier on the MPG dataset",
+      "label": "Make me a research report on the latest trends in AI",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 372,
-      "bottom": 401.5
+      "top": 390.75,
+      "bottom": 420.25
     },
     {
-      "label": "What stocks are trending right now?",
+      "label": "Make me a brick breaker game",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 409.5,
-      "bottom": 439
-    },
-    {
-      "label": "What's the latest news?",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 409.5,
-      "bottom": 439
-    },
-    {
-      "label": "Make me a space invaders game",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 447,
-      "bottom": 476.5
+      "top": 428.25,
+      "bottom": 457.75
     },
     {
       "label": "Go to my downloads folder",
@@ -76,17 +58,35 @@
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 447,
-      "bottom": 476.5
+      "top": 428.25,
+      "bottom": 457.75
     },
     {
-      "label": "Organize my documents folder",
+      "label": "Make me a space invaders game",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 484.5,
-      "bottom": 514
+      "top": 465.75,
+      "bottom": 495.25
+    },
+    {
+      "label": "Download some recent papers on cancer research",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 503.25,
+      "bottom": 532.75
+    },
+    {
+      "label": "What's the latest news?",
+      "disabled": true,
+      "ariaHidden": "true",
+      "visibility": "hidden",
+      "focused": false,
+      "top": 540.75,
+      "bottom": 570.25
     }
   ],
   "observed": {
@@ -94,10 +94,10 @@
     "greeting": 1,
     "smallView": false,
     "chipsLaidOut": 7,
-    "chipsPainted": 7,
-    "chipsInert": 0,
-    "rowsLaidOut": 4,
-    "rowsPainted": 4
+    "chipsPainted": 6,
+    "chipsInert": 1,
+    "rowsLaidOut": 6,
+    "rowsPainted": 5
   },
   "expected": {
     "columnPx": 550,
@@ -114,19 +114,19 @@
     "all": true
   },
   "settlement": {
-    "now": 23420,
-    "reads": 21,
+    "now": 48066,
+    "reads": 9,
     "layoutChanges": 1,
-    "lastChangeAt": 4407,
-    "stableForMs": 19013,
+    "lastChangeAt": 43727,
+    "stableForMs": 4339,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": true,
     "states": [
       {
-        "at": 1970,
-        "lastSeenAt": 2423,
-        "reads": 3,
+        "at": 35552,
+        "lastSeenAt": 37786,
+        "reads": 4,
         "columnWidth": null,
         "bandY": null,
         "bandHeight": null,
@@ -148,21 +148,21 @@
         }
       },
       {
-        "at": 4407,
-        "lastSeenAt": 23420,
-        "reads": 18,
+        "at": 43727,
+        "lastSeenAt": 48066,
+        "reads": 5,
         "columnWidth": 550,
         "bandY": 104,
         "bandHeight": 468,
-        "composerY": 204,
-        "composerHeight": 310,
-        "stackTop": 372,
-        "stackHeight": 142,
+        "composerY": 185.3,
+        "composerHeight": 347.5,
+        "stackTop": 353.3,
+        "stackHeight": 179.5,
         "greeting": 1,
         "skeleton": 0,
         "chipLabels": [],
-        "rowsLaidOut": 4,
-        "rowsInside": 4,
+        "rowsLaidOut": 6,
+        "rowsInside": 5,
         "boundaryInGap": true,
         "claims": {
           "placeholders": 0,

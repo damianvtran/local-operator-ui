@@ -16,17 +16,17 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 47434,
+  "at": 121890,
   "viewport": "900x572",
   "active": "TEXTAREA",
   "stack": {
     "height": 179.5,
-    "scrollHeight": 255,
+    "scrollHeight": 217,
     "clientHeight": 180
   },
   "chips": [
     {
-      "label": "Put together a competitive analysis report on the agentic AI space",
+      "label": "Go to my documents folder",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -35,7 +35,16 @@
       "bottom": 382.75
     },
     {
-      "label": "Search for quantum computing papers and download interesting ones to read later",
+      "label": "Make me a space invaders game",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 353.25,
+      "bottom": 382.75
+    },
+    {
+      "label": "Look up interest rate trends and make a projection for the next 5 years",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -44,7 +53,7 @@
       "bottom": 420.25
     },
     {
-      "label": "Train a classifier on the MPG dataset",
+      "label": "Make me a GDPR compliant privacy policy",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -53,7 +62,7 @@
       "bottom": 457.75
     },
     {
-      "label": "Fetch the MNIST dataset and train a good classifier",
+      "label": "Download some recent papers on cancer research",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -62,7 +71,7 @@
       "bottom": 495.25
     },
     {
-      "label": "Make me a GDPR compliant privacy policy",
+      "label": "Fetch the MNIST dataset and train a good classifier",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -71,22 +80,13 @@
       "bottom": 532.75
     },
     {
-      "label": "Download some recent papers on cancer research",
+      "label": "Do a buy/hold/sell and fundamentals analysis of Apple",
       "disabled": true,
       "ariaHidden": "true",
       "visibility": "hidden",
       "focused": false,
       "top": 540.75,
       "bottom": 570.25
-    },
-    {
-      "label": "Do a buy/hold/sell and fundamentals analysis of Apple",
-      "disabled": true,
-      "ariaHidden": "true",
-      "visibility": "hidden",
-      "focused": false,
-      "top": 578.25,
-      "bottom": 607.75
     }
   ],
   "observed": {
@@ -94,9 +94,9 @@
     "greeting": 1,
     "smallView": false,
     "chipsLaidOut": 7,
-    "chipsPainted": 5,
-    "chipsInert": 2,
-    "rowsLaidOut": 7,
+    "chipsPainted": 6,
+    "chipsInert": 1,
+    "rowsLaidOut": 6,
     "rowsPainted": 5
   },
   "expected": {
@@ -114,19 +114,19 @@
     "all": true
   },
   "settlement": {
-    "now": 29258,
-    "reads": 31,
+    "now": 66899,
+    "reads": 9,
     "layoutChanges": 1,
-    "lastChangeAt": 4796,
-    "stableForMs": 24462,
+    "lastChangeAt": 28832,
+    "stableForMs": 38067,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": true,
     "states": [
       {
-        "at": 723,
-        "lastSeenAt": 2361,
-        "reads": 4,
+        "at": 23147,
+        "lastSeenAt": 23992,
+        "reads": 3,
         "columnWidth": null,
         "bandY": null,
         "bandHeight": null,
@@ -148,9 +148,9 @@
         }
       },
       {
-        "at": 4796,
-        "lastSeenAt": 29258,
-        "reads": 27,
+        "at": 28832,
+        "lastSeenAt": 66899,
+        "reads": 6,
         "columnWidth": 620,
         "bandY": 104,
         "bandHeight": 468,
@@ -161,7 +161,7 @@
         "greeting": 1,
         "skeleton": 0,
         "chipLabels": [],
-        "rowsLaidOut": 7,
+        "rowsLaidOut": 6,
         "rowsInside": 5,
         "boundaryInGap": true,
         "claims": {
