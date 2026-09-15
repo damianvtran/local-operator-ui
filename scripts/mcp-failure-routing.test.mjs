@@ -17,8 +17,10 @@ import { build } from "esbuild";
  *     nouns, and a status the app can classify must not be answered with the
  *     sentence the wire chose;
  *   - the ROUTING: the remedies offered from a failure are the row's own, the
- *     request that just failed is not offered again under a second label, and the
- *     route to the row exists for everything this dialog must not re-implement.
+ *     request that just failed is not offered again under a second label, the
+ *     route to the row exists wherever a remedy does, and a failure about the
+ *     SERVER offers none at all — nothing in the dialog can fix a server that did
+ *     not answer.
  *
  * The SOURCE half is here for the same reason `mcp-auth-surface.test.mjs` has one:
  * the defect was one renderer printing a caught message, and a test over the files
@@ -189,7 +191,63 @@ test("a 404 is the app's own 'older server' reading", () => {
 	assert.match(outdated.message, /Update the server/);
 });
 
-test("the remedy that just failed is not offered again, and the route always is", () => {
+test("a server-cause failure offers nothing, whatever the row's own remedy is", () => {
+	/*
+	 * QA round 1 (Q1) found this live, and it is the same defect the two code
+	 * review majors were describing from the doc side: the states whose own
+	 * contract is "nothing here can help" offered the ROW's remedy, accented as the
+	 * dialog's primary, and pressing it answered with a second failure ("The sign-in
+	 * could not be started. The Local Operator server is older than this app
+	 * expects."). The cause was ordering rather than a missing guard — the row's
+	 * remedy was pushed before the `cause === "server"` early return — so the case
+	 * has to be pinned against a row that CARRIES a remedy, at every phase.
+	 *
+	 * The three states are the three reproduced on the fixture: a server older than
+	 * this app (404), an app that cannot authenticate to its own server (401), and a
+	 * request that never answered (no status at all, and main's own 503, which mean
+	 * the same thing and are classified the same way).
+	 */
+	const serverStates = [
+		["404", new DesktopControlError(404, "Not Found"), /older than this app expects/],
+		[
+			"401",
+			new DesktopControlError(401, "Unauthorized"),
+			/cannot authenticate/,
+		],
+		[
+			"no answer",
+			new DesktopControlError(null, "Failed to fetch"),
+			/is not answering/,
+		],
+		["main's 503", new DesktopControlError(503, TRANSPORT_503), /is not answering/],
+	];
+	const rows = [
+		{ remedy: { kind: "grant" }, keyNames: [] },
+		{ remedy: { kind: "key" }, keyNames: ["HUBSPOT_TOKEN"] },
+		{ remedy: { kind: "reconnect" }, keyNames: [] },
+		{ remedy: null, keyNames: [] },
+	];
+	for (const [label, error, sentence] of serverStates) {
+		const failure = mcpFailure("probe", error, false);
+		assert.equal(failure.cause, "server", label);
+		assert.match(failure.message, sentence, label);
+		for (const row of rows)
+			for (const phase of PHASES)
+				for (const keyEntryAvailable of [true, false])
+					assert.deepEqual(
+						mcpFailureActions({
+							row,
+							phase,
+							cause: failure.cause,
+							keyEntryAvailable,
+						}),
+						[],
+						`${label}: ${phase} offered ${row.remedy?.kind ?? "no"} remedy for a failure nothing here can fix`,
+					);
+	}
+});
+
+test("the remedy that just failed is not offered again, and the route is wherever a remedy is", () => {
 	const grantRow = { remedy: { kind: "grant" }, keyNames: [] };
 	const kinds = (actions) => actions.map((action) => action.kind);
 
@@ -222,7 +280,10 @@ test("the remedy that just failed is not offered again, and the route always is"
 	// A session that is not running keeps its remedies, because a control request
 	// is itself what re-engages a session (`desktop_lifecycle.py` binds the runtime
 	// before routing): the fixture answered 200 to the next `reload` after the
-	// session had gone. Only the request that just failed is withheld.
+	// session had gone. Only the request that just failed is withheld. This is the
+	// authoritative reading of the module's routing contract (review R1 and QA Q5
+	// asked which of the two it was, and the doc now states this one), and the
+	// SERVER cause is the one that offers nothing at all.
 	assert.deepEqual(
 		kinds(
 			mcpFailureActions({
@@ -371,7 +432,16 @@ test("no surface prints the caught message as copy", () => {
 		"utf8",
 	);
 	assert.match(dialog, /mcpFailureActions\(/);
-	assert.match(dialog, /mcpFailure\("probe"/);
+	// The probe's classification takes the grant state from the read this dialog
+	// already renders. A hardcoded `false` here made the `busy` cause — the one this
+	// surface can name with certainty, because `mcp.list` publishes the operations —
+	// unreachable through the dialog, so reopening it during a running sign-in said
+	// "the server refused it without giving a reason" (review R3).
+	assert.match(
+		dialog,
+		/mcpFailure\(\s*"probe",\s*cause,\s*mcpGrantInFlight\(status\.data\?\.operations\),/,
+	);
+	assert.ok(!/mcpFailure\("probe",\s*cause,\s*false\)/.test(dialog));
 	assert.match(dialog, /mcpServerSettingsRoute\(row\.name\)/);
 	assert.match(dialog, /data-mcp-failure-action=/);
 	// The row that refuses in the panel is a control offline too: the sentence stays
