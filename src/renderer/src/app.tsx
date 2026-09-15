@@ -8,6 +8,7 @@ import { ChatPage } from "@features/chat/components/chat-page";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import { noteConsentAttention } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
@@ -142,6 +143,26 @@ const App: FC = () => {
 		);
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession]);
+
+	// A consent banner's click, handled where the ROUTES are.
+	//
+	// A native banner is raised for a request the user cannot see (design 9.2), so its
+	// click has to reach them wherever they are — and the browser surface's own
+	// subscriber is unmounted on every other route, which is precisely the case the
+	// banner exists for (review round 1, R8). The shell therefore owns the two halves
+	// that only the shell can do: remember which request was named, and bring the
+	// browser route forward.
+	//
+	// IT MUST NOT RAISE THE WINDOW. Navigating a route is renderer work; no window is
+	// shown, focused or activated here, and `src/main/window-raise.ts` stays the only
+	// module that decides whether a window comes forward (design 11.4).
+	useEffect(() => {
+		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
+			noteConsentAttention(payload.entryId);
+			navigate("/browser");
+		});
+		return () => unsubscribe?.();
+	}, [navigate]);
 
 	return (
 		<OnboardingProvider>

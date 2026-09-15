@@ -148,6 +148,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										Restored
 									</span>
 								)}
+								{tab.failed && (
+									// Marked per tab, not only on the active one: a background tab whose
+									// load was refused shows a blank page and nothing else, and the
+									// failure panel belongs to whichever tab the user is looking at
+									// (design round 1, D1).
+									<span
+										className="shrink-0 rounded-sm border border-control bg-danger-wash px-1 text-meta text-ink"
+										data-tour-tag="browser-tab-failed"
+									>
+										Failed
+									</span>
+								)}
 								{waiting && (
 									// The tab is parked on an origin the agent has not been approved
 									// for. Marked on the TAB rather than only in the band, because with
