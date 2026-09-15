@@ -50,6 +50,11 @@ const snapshot = (
 /**
  * The page ground the fixed banner covers, so the frame is the surface a user
  * actually sees rather than a bare rectangle on the story ground.
+ *
+ * It is a realistic conversation list rather than two lines of prose, and it has
+ * to be: the rig treats a story root with fewer than eight elements as not yet
+ * drawn, and a frame whose subject is the banner's ABSENCE (attached, degraded)
+ * is otherwise indistinguishable from a story that never mounted.
  */
 const PageGround = () => (
 	<div className="flex h-full flex-col gap-3 p-6 pt-24">
@@ -58,6 +63,21 @@ const PageGround = () => (
 			Nothing is in flight. The banner above the page is the whole of what this
 			surface has to say about the server.
 		</p>
+		<ul className="flex max-w-xl flex-col gap-2">
+			{[
+				"Deploy the staging cluster",
+				"Review the paging change",
+				"Triage the support queue",
+			].map((row) => (
+				<li
+					key={row}
+					className="flex items-center justify-between rounded-md border border-hairline bg-surface px-3 py-2"
+				>
+					<span className="text-body-sm text-ink">{row}</span>
+					<span className="text-meta text-ink-dim">idle</span>
+				</li>
+			))}
+		</ul>
 	</div>
 );
 

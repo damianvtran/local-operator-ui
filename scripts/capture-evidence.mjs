@@ -1099,8 +1099,16 @@ export const STORIES = [
 	["settings-app-updates-and-info--wedged-daemon", 980, 320],
 	/* The value's tooltip, which is where the daemon's own sentence lives. Its own
 	   id because `:hover` cannot be a story state: the rig moves a real pointer at
-	   `[data-backend-version]` for this frame (see the entry's options below). */
-	["settings-app-updates-and-info--value-hover", 980, 320, { hover: "[data-backend-version]" }],
+	   `[data-backend-version]` for this frame. `hoverSettleMs` is there because a
+	   tooltip opens on the shared `TooltipProvider`'s 400 ms delay rather than with
+	   the pointer - without it the frame is the unopened state under a name that
+	   claims the tooltip. */
+	[
+		"settings-app-updates-and-info--value-hover",
+		980,
+		320,
+		{ hover: "[data-backend-version]", hoverSettleMs: 900 },
+	],
 
 	/* The same section at a narrow width: the value now carries `version ·
 	   address`, `InfoGrid` is `repeat(auto-fit, minmax(160px, 1fr))`, and a narrow
@@ -1908,6 +1916,17 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
+				/*
+				 * A TOOLTIP IS NOT A `:hover` GROUND, and this is what tells the two apart.
+				 *
+				 * A colour step happens with the pointer; a tooltip opens on a TIMER
+				 * (`TooltipProvider`'s 400 ms delay), so a frame taken on the next paint
+				 * photographs the unopened state and files it under a name that claims the
+				 * tooltip. An entry that names a tooltip's trigger says how long the
+				 * shutter waits, which keeps the instrument the real pointer and keeps the
+				 * claim honest; entries without it are unchanged, byte for byte.
+				 */
+				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
 			}
 			/*
 			 * A SCROLL POSITION, for the frame whose claim is a section's END.

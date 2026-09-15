@@ -1,4 +1,9 @@
-import { Alert, AlertDescription, Button } from "@shared/components/ui";
+import {
+	Alert,
+	AlertDescription,
+	type AlertProps,
+	Button,
+} from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
 import { useEffect, useState } from "react";
 import { serverBannerCopy } from "../../../../../shared/backend-status";
@@ -145,6 +150,10 @@ export const ConnectivityBanner = ({
 	 */
 	const serverIssue = isInternetIssue ? null : serverBannerCopy(serverSnapshot);
 	const isTransientServerIssue = serverSnapshot?.reconnecting === true;
+	// A state the app is expected to recover from on its own is a warning, not an
+	// alarm: "not connected, reconnecting" is not the claim "the server stopped".
+	const bannerVariant: AlertProps["variant"] =
+		isInternetIssue || isTransientServerIssue ? "warning" : "danger";
 
 	return (
 		/*
@@ -154,13 +163,7 @@ export const ConnectivityBanner = ({
 		 */
 		<div className="fixed inset-x-0 top-0 z-2200 w-full">
 			<Alert
-				variant={
-					isInternetIssue
-						? "warning"
-						: isTransientServerIssue
-							? "warning"
-							: "danger"
-				}
+				variant={bannerVariant}
 				// The banner appears in response to connectivity dropping while the
 				// user is working, so it interrupts rather than waits to be found.
 				role="alert"

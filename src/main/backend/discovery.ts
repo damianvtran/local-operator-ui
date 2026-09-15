@@ -150,6 +150,17 @@ export type RecordHealth = "live" | "wedged" | "stale";
 export interface WedgedRecord {
 	file: string;
 	pid: number;
+	/**
+	 * Whether the process is still there. `classifyRecord` calls a record wedged
+	 * for two different reasons - a LIVE pid whose heartbeat stopped, and a pid
+	 * that is GONE with a heartbeat too fresh to reap - and the two need different
+	 * sentences: one has a daemon running, the other's daemon is already dead.
+	 *
+	 * Carried rather than re-derived, so a caller cannot word the second case as
+	 * the first (QA round 1, Q-N1: the rejection said "pid N is alive" for a pid
+	 * that was not).
+	 */
+	alive: boolean;
 }
 
 /** Result of the signal-0 check, mirroring `registry.py::pid_alive`. */
@@ -643,7 +654,9 @@ export async function discoverDaemons(
 			});
 			continue;
 		}
-		const health = classifyRecord(record, now());
+		const at = now();
+		const liveness = recordPidLiveness(record, at);
+		const health = classifyRecord(record, at, liveness);
 		if (health === "stale") {
 			// Dead pid AND an aged heartbeat: the file outlived the process.
 			rejected.push({
@@ -655,17 +668,26 @@ export async function discoverDaemons(
 			continue;
 		}
 		if (health === "wedged") {
-			// Live pid, stopped heartbeat: report it, never attach to it, never
-			// reap it (the process still owns that file). It is also the reason no
-			// candidate exists AND no spawn is allowed, so it is named to the caller
-			// as its own fact rather than left inside `blocksSpawn`: a surface told
-			// only "blocked" renders a daemon that is running as an outage.
+			// Not attachable and not reapable, for one of two reasons, and the log has
+			// to name which one it is: a LIVE pid whose heartbeat stopped, or a pid that
+			// is GONE with a heartbeat too fresh to justify reaping it. It is also the
+			// reason no candidate exists, so it is named to the caller as its own fact
+			// rather than left inside `blocksSpawn` - a surface told only "blocked"
+			// renders a daemon that is running as an outage.
+			const ageSeconds = Math.round((at - record.heartbeat_at * 1000) / 1000);
 			rejected.push({
 				subject: entry.file,
 				reason: "wedged",
-				detail: `pid ${record.pid} is alive but its heartbeat is ${Math.round((now() - record.heartbeat_at * 1000) / 1000)}s old`,
+				detail:
+					liveness === "alive"
+						? `pid ${record.pid} is alive but its heartbeat is ${ageSeconds}s old`
+						: `pid ${record.pid} is gone and its heartbeat is only ${ageSeconds}s old, so the record is too fresh to reap`,
 			});
-			wedged.push({ file: entry.file, pid: record.pid });
+			wedged.push({
+				file: entry.file,
+				pid: record.pid,
+				alive: liveness === "alive",
+			});
 			continue;
 		}
 		const address = recordAddress(record);
