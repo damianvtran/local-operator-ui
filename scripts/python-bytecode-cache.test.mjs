@@ -326,9 +326,11 @@ async function loadMainProcess() {
 					globalThis.__loSpawns.push({ cmd, args, options });
 					const child = new EventEmitter();
 					child.pid = 4242;
+					child.exitCode = null;
+					child.signalCode = null;
 					child.stdout = new EventEmitter();
 					child.stderr = new EventEmitter();
-					child.kill = () => true;
+					child.kill = (signal) => { child.signalCode = signal; queueMicrotask(() => child.emit("exit", null, signal)); return true; };
 					child.unref = () => {};
 					return child;
 				};
@@ -360,6 +362,25 @@ async function loadMainProcess() {
 					{
 						name: "electron-and-spawn-fixtures",
 						setup(builder) {
+							// Launch identity has real-child coverage in owned-serve-lifecycle;
+							// this fixture measures the spawn environment, not installation.
+							builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
+								path: "launch",
+								namespace: "owned-launch-fixture",
+							}));
+							builder.onLoad(
+								{ filter: /.*/, namespace: "owned-launch-fixture" },
+								() => ({
+									loader: "js",
+									contents: `
+					export const consoleInterpreter = () => "/fixture/python";
+					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
+					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
+					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
+				`,
+								}),
+							);
+
 							builder.onResolve(
 								{ filter: /^(electron|electron-updater|electron-log)$/ },
 								(args) => ({ path: args.path, namespace: "fixture" }),
@@ -546,6 +567,7 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			// request against whatever is listening on the app's port.
 			manager.checkExistingBackend = async () => false;
 			manager.checkLocalOperatorExists = async () => globalInstall;
+			manager.resolveGlobalConsole = async () => "/fixture/local-operator";
 			manager.checkHealth = async () => true;
 
 			assert.equal(
@@ -583,7 +605,10 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			);
 			// Additive, never a replacement: the backend needs the operator's PATH
 			// to reach gh and brew.
-			assert.equal(env.PATH, process.env.PATH, `${label}: PATH survives`);
+			assert.ok(
+				env.PATH.endsWith(process.env.PATH),
+				`${label}: PATH survives activation`,
+			);
 			assert.match(
 				env.LOCAL_OPERATOR_DESKTOP_TOKEN,
 				/^[0-9a-f]{64}$/,
@@ -598,7 +623,7 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 				assert.equal(spawned.cmd, "bash", `${label}: the command is unchanged`);
 				assert.match(
 					spawned.args.join(" "),
-					globalInstall ? /local-operator serve --port/ : /bin\/activate/,
+					/from local_operator.cli import main; main\(\) serve --port/,
 					`${label}: the command is unchanged`,
 				);
 			}
