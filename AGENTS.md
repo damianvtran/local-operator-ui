@@ -328,10 +328,11 @@ it — <what the running app will do>. Exiting.` It does NOT print the
 `[window-mode]` line, which describes the window this process never creates.
 
 An `inactive` request orders a window that is already on screen and never
-un-minimises one: `restore()` is a focus-class act, and a run that asked not to be
-in front has no business pulling a window back out of the Dock. Undeclared and
-`normal` requests keep restoring, because those are the ones that mean "bring this
-to me".
+un-minimises one, BY ORDERING OR BY RESTORING: `restore()` is a focus-class act, and
+macOS deminiaturises a window as part of ordering it, so `showInactive()` alone
+brought a Dock-ed window back (measured). A minimised window is therefore left
+exactly where it is. Undeclared and `normal` requests keep restoring, because those
+are the ones that mean "bring this to me".
 
 Every raise writes one line to the backend log, naming the site, the mode and
 what it did:

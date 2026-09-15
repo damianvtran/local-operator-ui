@@ -553,19 +553,24 @@ test("the raise policy is the only thing that decides how a window comes forward
 	/*
 	 * A minimised window is restored only for a FOCUS-class request (UX review
 	 * U3): `restore()` takes a window back out of the Dock, and an `inactive`
-	 * request is precisely the one that must not do that — it may order a window
-	 * that is already on screen, and nothing more.
+	 * request is precisely the one that must not do that -- AND IT MAY NOT DO IT BY
+	 * ORDERING EITHER. macOS deminiaturises a window as part of ordering it, so
+	 * `showInactive()` on a Dock-ed window brought it back even after the explicit
+	 * `restore()` was removed; measured, the window's own state went
+	 * `minimized: true` -> `false` with `applied=showInactive`. So a minimised
+	 * window is left alone and an `inactive` request only orders one that is
+	 * already on screen.
 	 */
 	const restored = [];
 	for (const show of ["focus", "inactive", "never"]) {
 		const window = fakeWindow({ minimized: true });
 		raiseWindow(window, show, { trigger: "second-instance" });
-		restored.push([show, window.calls.includes("restore")]);
+		restored.push([show, window.calls]);
 	}
 	assert.deepEqual(restored, [
-		["focus", true],
-		["inactive", false],
-		["never", false],
+		["focus", ["restore", "show", "focus"]],
+		["inactive", []],
+		["never", []],
 	]);
 });
 
