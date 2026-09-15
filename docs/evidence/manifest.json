@@ -10,7 +10,7 @@
   "themes": 12,
   "countsMean": {
     "frames": "2361 committed WebP files: 1982 swept and 379 in 34 declared supplementary sets. File counts on the merged disk, not a newly completed full sweep.",
-    "surfaces": "250 entries in the merged capture-evidence.mjs STORIES literal, counted the way `check-evidence.mjs` counts them: this branch's 238 plus upstream's entries. The declared live-app sets are not swept stories.",
+    "surfaces": "250 entries in the merged capture-evidence.mjs STORIES literal, counted the way `check-evidence.mjs` counts them: upstream's 187 entries plus this branch's 63. The declared live-app sets are not swept stories.",
     "themes": "12 theme names in the merged capture script; per-set theme counts may be narrower."
   },
   "partialCapture": {
