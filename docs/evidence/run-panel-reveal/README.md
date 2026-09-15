@@ -109,6 +109,22 @@ own `--user-data-dir` under the system temp dir and strips any inherited
 backend is a real `local_operator` server; only its conversation content is
 synthetic.
 
+## Re-checked on the rebased base
+
+This branch was rebased onto `d0f86ffaf` (the 0.24.1 bump and #169's
+draft-splash/hydration fix, which touches `run-child-reader.tsx` — no overlap
+with the three files this change edits, and no scroll behaviour added upstream).
+The rebased build was re-driven at all three sizes and the readings are
+identical to the table above: no mover, chat column at `left: 500`, composer at
+`500`, pane at `721` (1024, 800) and `961` (1380).
+
+The frames were re-taken and compared against these committed ones rather than
+assumed valid: at 1024x673 / 800x600 / 1380x900 the layout is identical and the
+only differing pixels are the content this set already declares as live — the
+transcript's clock and the MCP section's rows and tally (2.0% / 1.3% / 4.4% of
+pixels, all inside those regions; the dark ground and every rect measure the
+same). No frame was replaced for the rebase.
+
 ## Provenance and the limits of these frames
 
 - The app is the BUILT one (`pnpm build` + `npx electron .`), never `pnpm dev`:
