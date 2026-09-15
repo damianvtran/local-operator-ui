@@ -87,6 +87,27 @@ export const CheckForUpdatesButton = () => {
 	const checkSeqRef = useRef(0);
 
 	/**
+	 * Whether an offer arrived AFTER the check in flight started.
+	 *
+	 * QA round 2 (O1) = review round 3 (R9): an offer raised while a manual check
+	 * is in flight is remembered nowhere. `dismissAffirmation()` is called from the
+	 * offer listeners, but the claim was already retired when this check started,
+	 * so that call returns early and the offer leaves no trace - and this check's
+	 * affirming verdict then paints the sentence over the panel that offer raised,
+	 * which is the reported contradiction in miniature. The window is narrow (the
+	 * two checks must disagree about the published version, i.e. a release lands
+	 * between their registry reads) but it needs no button involvement at all: the
+	 * periodic `{silent:true}` check overlaps the manual one by design.
+	 *
+	 * Cleared at the same moment `checkSeqRef` advances, so it always answers
+	 * "since THIS check started" - the same monotonic ordering the seq guard
+	 * establishes - rather than "at any time", which would make the sentence
+	 * unearnable for the rest of the session once any background check had found
+	 * an update. Read at the verdict, below.
+	 */
+	const offerSinceCheckStartRef = useRef(false);
+
+	/**
 	 * Show a message that is NOT the affirmation, retiring any affirmation first.
 	 *
 	 * Every message path goes through here or `showAffirmation` so the ref cannot
@@ -205,17 +226,26 @@ export const CheckForUpdatesButton = () => {
 		 * QA reproduced the second half of Q1 - a background `{silent:true}` server
 		 * check emits `backend-update-available` with no button involved at all.
 		 *
+		 * They record the OFFER as well as retiring the sentence, because
+		 * `dismissAffirmation()` alone cannot: an offer raised while a check is in
+		 * flight finds the claim already retired and leaves no trace, which is the
+		 * ordering review round 3 asked for (R9) and `offerSinceCheckStartRef`
+		 * closes at the verdict.
+		 *
 		 * The three channels are listed separately because they are three events:
 		 * a future fourth channel must add itself here rather than inherit a rule
 		 * nobody stated.
 		 */
-		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
-			() => dismissAffirmation(),
-		);
+		const offerArrived = () => {
+			offerSinceCheckStartRef.current = true;
+			dismissAffirmation();
+		};
+		const removeUpdateAvailableListener =
+			window.api.updater.onUpdateAvailable(offerArrived);
 		const removeNpxUpdateAvailableListener =
-			window.api.updater.onUpdateNpxAvailable(() => dismissAffirmation());
+			window.api.updater.onUpdateNpxAvailable(offerArrived);
 		const removeBackendUpdateAvailableListener =
-			window.api.updater.onBackendUpdateAvailable(() => dismissAffirmation());
+			window.api.updater.onBackendUpdateAvailable(offerArrived);
 
 		return () => {
 			removeUpdateErrorListener();
@@ -267,6 +297,9 @@ export const CheckForUpdatesButton = () => {
 		 */
 		const seq = ++checkSeqRef.current;
 		dismissAffirmation();
+		// This check's own window for offers opens here: anything raised from now
+		// until its verdict lands is something this verdict may not paint over.
+		offerSinceCheckStartRef.current = false;
 		try {
 			setChecking(true);
 			manualCheckRef.current = true;
@@ -295,7 +328,15 @@ export const CheckForUpdatesButton = () => {
 			// check owns the screen, and its own outcome has already been applied.
 			if (seq !== checkSeqRef.current) return;
 
-			if (result?.affirmation) {
+			/*
+			 * An affirmation is painted only when this check's own window saw no
+			 * offer. `dismissAffirmation()` at the top of this function cannot cover
+			 * that case: it is a no-op once the claim is already retired, so an offer
+			 * that arrived mid-check would otherwise be forgotten and this verdict
+			 * would put the sentence over its panel (review round 3, R9). The flag is
+			 * per check, so a window with no offer still earns the sentence.
+			 */
+			if (result?.affirmation && !offerSinceCheckStartRef.current) {
 				showAffirmation(result.affirmation);
 			} else {
 				/*
