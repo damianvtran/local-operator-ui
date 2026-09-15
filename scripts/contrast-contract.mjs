@@ -794,6 +794,33 @@ const STRUCTURAL_CALL_SITES = [
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
 		why: "PERCEPTIBLE measures hairline against sunken; nothing otherwise proves the component renders those two roles, and one token here reproduces D7 behind a green gate",
 	},
+	{
+		/*
+		 * The transcript's quote toolkit, and why this is a PIN rather than a row
+		 * in `CONTROLS`.
+		 *
+		 * `CONTROLS` asserts `ink` on the control's fill AND an edge — fill or
+		 * border — clearing 3:1 against the ground behind it. The toolkit is a
+		 * floating surface, not a bounded control, and it fails the second term in
+		 * all twelve palettes by measurement: `elevated` is 1.13-1.40:1 against
+		 * `canvas` and `hairline` is 1.25-1.79:1, because § 2 caps a hairline below
+		 * 2:1 by design. A row here would therefore either fail the gate or be a
+		 * lie about which ground the object is read against. The ink half IS
+		 * already asserted — `inkDim` on `elevated` is one of the INKS x GROUNDS
+		 * pairs, 4.51-6.20:1 across the twelve — and the icons are the whole
+		 * affordance, so what is left unguarded is the call site: repaint the
+		 * floating shell `bg-canvas` and it stops being a floating object at all
+		 * while every palette assertion stays green.
+		 *
+		 * The same roles are pinned on the legacy `message-controls.tsx` strip by
+		 * that component's own comment rather than by a row here, which is the
+		 * gap this entry closes for the canonical transcript.
+		 */
+		what: "transcript quote toolkit floating shell",
+		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
+		must: "z-10 flex h-8 items-center rounded-md border border-hairline bg-elevated px-1",
+		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
+	},
 ];
 
 /** Roles that must clear the structural 3:1 floor on all four grounds. */
