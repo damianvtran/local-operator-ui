@@ -100,6 +100,16 @@ export type RefusedPayloadAdoption = {
 	text: string;
 	/** The chip paths to write to the composer's own row; empty when it took none. */
 	paths: readonly string[];
+	/**
+	 * The owed files the draft is NOT carrying once this adoption has run.
+	 *
+	 * Owed paths that this adoption did not write AND that the composer's row does
+	 * not already hold. Empty does not mean "this call restored every file" - see
+	 * the decision below, where the named-session arm holds the file already - it
+	 * means "the draft carries every file the refusal owed", which is the only
+	 * question the sentence about them is allowed to answer.
+	 */
+	missingFiles: readonly string[];
 	/** The owed half this composer's own content kept out, or null when none was. */
 	withheld: RefusedPayloadHalf | null;
 };
@@ -129,6 +139,17 @@ export type RefusedPayloadAdoption = {
  * A "half" is owed only when the payload really carried it: an attachment-only
  * refusal owes no text, and a text-only refusal owes no files. That is why an
  * empty list is not a withheld half - there would be nothing to say.
+ *
+ * A HALF IS HELD ONLY WHEN THE DRAFT IS NOT CARRYING IT, which is not the same
+ * question as "did this call write it" (UX round 5's U17, QA round 4's Q8). On a
+ * NAMED session the composer is never remounted and its
+ * chip row is never cleared, so the row already holds the very file the refused
+ * send carried: the empty-slot rule above adopts nothing, and the first version
+ * of this decision read that as "the file was withheld", printing a sentence
+ * that told the user to attach a file that was on screen one line below it and
+ * already in the next payload (`images: 1` on the wire). The rule the sentence
+ * needs is about the DRAFT, not about this function's write, so the owed paths
+ * are compared against what the row holds afterwards.
  */
 export const adoptRefusedPayload = (
 	box: string,
@@ -155,11 +176,22 @@ export const adoptRefusedPayload = (
 			: restoreSubmittedAttachments(chips, refusal.attachments);
 	const owedFiles = (refusal.attachments?.length ?? 0) > 0;
 	const textOwed = owedText !== "";
+	// What the draft carries ONCE THIS ADOPTION HAS RUN: what it wrote, plus what
+	// the row already held - the named-session arm above, where the chip the
+	// refusal names is the chip the composer never lost.
+	const carried = new Set([
+		...(chips ?? []).map((chip) => chip.path),
+		...paths,
+	]);
+	const missingFiles = (refusal.attachments ?? EMPTY_PATHS).filter(
+		(path) => !carried.has(path),
+	);
 	// Held, not merely unchanged: the half was owed and the adoption took it
 	// nowhere, which happens exactly when the slot held the user's own content -
-	// or, for the files, when this composer has no slot to offer at all.
+	// or, for the files, when this composer has no slot to offer at all, or when
+	// the slot had to keep the user's own chips out of the way of the owed one.
 	const textHeld = textOwed && text === box;
-	const filesHeld = owedFiles && paths.length === 0;
+	const filesHeld = owedFiles && missingFiles.length > 0;
 	/*
 	 * Only a SPLIT is news. Both halves owed and exactly one held back is the
 	 * state a user can misread as "the refused message came back" while it came
@@ -173,7 +205,7 @@ export const adoptRefusedPayload = (
 				? "text"
 				: "files"
 			: null;
-	return { text, paths, withheld };
+	return { text, paths, missingFiles, withheld };
 };
 
 /**
@@ -185,23 +217,35 @@ export const adoptRefusedPayload = (
  * records what the adoption DID, so removing the restored chip afterwards does
  * not turn it into a lie.
  *
- * "No free slot" is the accurate reason for BOTH ways a files half is held: a
- * chip row that already holds files the user just picked, and a composer with
- * no chip row at all (one keyed to a draft that never minted a session). The
- * first could be named more precisely, but a sentence that describes one of the
- * two arms as the cause is false on the other.
+ * `owed` and `missing` are both needed because the two arms name different
+ * lists: the text arm names the files that came BACK (every owed one), and the
+ * files arm names the ones the draft is not carrying. Naming the owed list in
+ * the files arm told the user to re-attach a file that was already in the row
+ * and in the payload (round 4, Q8/U17) - the same lie, one sentence over.
+ *
+ * "No free slot" was the first version's reason, and it is gone (round 4, D14):
+ * it was the region's only machine noun, it described the row's internal shape
+ * rather than the user's situation, and the helper's other arm already says the
+ * ordinary thing in ordinary words. The files arm now names the reason the app
+ * does teach: the composer is holding files the user picked.
  */
 export const refusedSplitNotice = (
 	withheld: RefusedPayloadHalf | null,
-	files: readonly string[] | undefined,
+	owed: readonly string[] | undefined,
+	missing: readonly string[] | undefined,
 ): string | null => {
 	if (withheld === null) return null;
-	const names = (files ?? []).map(getFileName);
+	// The two arms name different lists: the text arm names the files that came
+	// BACK (every owed one), and the files arm names the ones the draft is not
+	// carrying. `?? owed` so a caller that passes only the owed list still gets a
+	// sentence rather than a trailing blank.
+	const named = withheld === "text" ? owed : (missing ?? owed);
+	const names = (named ?? []).map(getFileName);
 	const one = names.length === 1;
 	const list = names.join(", ");
 	if (withheld === "text")
 		return `The ${one ? "file" : "files"} ${list} from your refused message ${one ? "is" : "are"} attached again; its text was left out because the box already holds text you typed.`;
-	return `The text of your refused message was restored, but not its ${one ? "file" : "files"} ${list} — the composer has no free slot for ${one ? "it" : "them"}, so attach ${one ? "it" : "them"} again if you still need ${one ? "it" : "them"}.`;
+	return `The text of your refused message was restored, but not its ${one ? "file" : "files"} ${list} — the composer already holds files you picked, so attach ${one ? "it" : "them"} again if you still need ${one ? "it" : "them"}.`;
 };
 
 /**

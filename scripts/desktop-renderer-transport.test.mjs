@@ -846,8 +846,23 @@ test("the send path refuses on an unreadable attachment, before admission", () =
 	);
 	assert.match(
 		send,
-		/setSendError\(unreadableRefusal\);[\s\S]{0,40}return false;/,
+		/setSendError\(unreadableRefusal\);\s*setSendErrorCode\(UNREADABLE_ATTACHMENT_CODE\);\s*return false;/,
 		"the unreadable refusal is computed and the send proceeds anyway, so the file is still lost",
+	);
+	/*
+	 * And the refusal carries its own code, because the alert's generic "Send it
+	 * again" half has to be withheld for it (design round 4, D13): the same chip is
+	 * still attached and still unreadable on the next attempt, so a retry is refused
+	 * for the same reason. `withholdsRetryHint` is executed against that constant in
+	 * `canonical-chat.test.mjs`; what is pinned here is that the refusal sets it at
+	 * all, since leaving it unset is how the hint was measured both present and
+	 * absent on this one sentence (`chat-page` reads `sendErrorCode ??
+	 * draft.errorCode`).
+	 */
+	assert.match(
+		send,
+		/setSendErrorCode\(UNREADABLE_ATTACHMENT_CODE\)/,
+		"the refusal does not set its own code, so the retry hint it must withhold is decided by whatever code the draft was last left holding",
 	);
 });
 
@@ -872,19 +887,25 @@ test("an unreadable attachment is named rather than dropped, and a clean send is
 
 	// One file, named the way every other surface names one - the file a person
 	// recognises, not the directory it sits in - and with both remedies.
+	//
+	// "So this message was not sent", not "would go out without it": the refusal
+	// is raised before admission and the whole round's wire evidence was one 422,
+	// so the conditional described an event that does not happen (design round 4,
+	// D13). The tense is the claim, which is why it is asserted whole.
 	assert.match(
 		unreadableAttachmentRefusal(["/tmp/shots/notes.png"]),
-		/^notes\.png could not be read \(it may have been moved or deleted\), and this message would go out without it\. Attach it again, or remove it from the draft\.$/,
+		/^notes\.png could not be read \(it may have been moved or deleted\), so this message was not sent\. Attach it again, or remove it from the draft\.$/,
 	);
 
-	// Several at once: the count AND the names, because "2 attachments could not
-	// be read" on its own is not a file the user can find or remove.
+	// Several at once: every name, because "attachments could not be read" on its
+	// own is not a file the user can find or remove.
 	const many = unreadableAttachmentRefusal([
 		"/tmp/notes.png",
 		"/tmp/screens/shot.jpeg",
 	]);
-	assert.match(many, /^2 attachments could not be read/);
-	assert.match(many, /notes\.png, shot\.jpeg/);
+	assert.match(many, /^notes\.png, shot\.jpeg could not be read/);
+	assert.match(many, /so this message was not sent\./);
+	assert.match(many, /Attach them again, or remove them from the draft\.$/);
 });
 
 test("a text-dominant overflow says to split the text even when an image is attached", async () => {

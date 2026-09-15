@@ -18,6 +18,7 @@ import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
 	UNCONFIRMED_SEND_CODE,
+	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	draftIdentityFor,
 	isRefusedBeforeAdmission,
@@ -740,10 +741,19 @@ function SessionPanel({
 			 * same reason as the budget refusal below: the file is not in the message
 			 * the user thinks they are sending, and here the composer is still
 			 * editable so the chip can be re-attached or removed (round 8, MINOR-1).
+			 *
+			 * The CODE travels with it and is what the composer's alert reads: this
+			 * refusal cannot be answered by resending the same bytes, so the generic
+			 * "Send it again" hint must not sit under a sentence whose remedy is
+			 * "replace or remove the chip". Leaving the code unset would leave the hint
+			 * to whatever `draft.errorCode` the conversation was last holding, which is
+			 * how the same sentence was measured both with and without it (design
+			 * round 4, D13; the predicate is `withholdsRetryHint`).
 			 */
 			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
+				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
 				return false;
 			}
 			// Refuse BEFORE admission, where the sizes are still known and the

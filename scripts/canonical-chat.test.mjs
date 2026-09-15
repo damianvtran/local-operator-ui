@@ -99,6 +99,7 @@ const {
 	LEADING_SLASH_CODE,
 	LEADING_SLASH_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	UNREADABLE_ATTACHMENT_CODE,
 	refusedBeforeAdmissionAttachments,
 	refusedBeforeAdmissionText,
 	restoreSubmittedAttachments,
@@ -1003,6 +1004,20 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	// it is not this rule's business either.
 	assert.equal(withholdsRetryHint(draft.errorCode), true);
 	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), true);
+	/*
+	 * Round 4's D13: the unreadable-attachment refusal is the third one a resend
+	 * cannot answer. Its chip is still attached and still unreadable, so the next
+	 * send meets the same rule and is refused for the same reason - the designer
+	 * clicked Send again at three widths and the whole round put exactly one
+	 * request on the wire. Its own sentence carries the remedy (attach it again,
+	 * or remove it), which is what makes withholding the generic hint correct
+	 * rather than merely quiet. It is a CODE rather than a fact about the copy so
+	 * the alert cannot be told to say "send it again" by an unrelated refusal's
+	 * code left in `draft.errorCode`, which is how the hint was measured both
+	 * present and absent on the same sentence (chat-page reads
+	 * `sendErrorCode ?? draft.errorCode`).
+	 */
+	assert.equal(withholdsRetryHint(UNREADABLE_ATTACHMENT_CODE), true);
 	assert.equal(withholdsRetryHint(UNCONFIRMED_SEND_CODE), false);
 	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
 	assert.equal(withholdsRetryHint(undefined), false);
@@ -1286,8 +1301,12 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	const whole = adoptRefusedPayload("", [], refusal);
 	assert.equal(whole.text, text);
 	assert.deepEqual(whole.paths, attachments);
+	assert.deepEqual(whole.missingFiles, []);
 	assert.equal(whole.withheld, null);
-	assert.equal(refusedSplitNotice(whole.withheld, refusal.attachments), null);
+	assert.equal(
+		refusedSplitNotice(whole.withheld, refusal.attachments, whole.missingFiles),
+		null,
+	);
 
 	// THE ARM THIS FINDING IS ABOUT: the box holds text the user typed while the
 	// send was in flight. It keeps the box - and the caret - while the files come
@@ -1296,17 +1315,19 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	const boxHeld = adoptRefusedPayload("a line I typed", [], refusal);
 	assert.equal(boxHeld.text, "a line I typed");
 	assert.deepEqual(boxHeld.paths, attachments);
+	assert.deepEqual(boxHeld.missingFiles, []);
 	assert.equal(boxHeld.withheld, "text");
 	const restoredNotice = refusedSplitNotice(
 		boxHeld.withheld,
 		refusal.attachments,
+		boxHeld.missingFiles,
 	);
 	assert.match(restoredNotice, /notes\.txt, screenshot\.png/);
 	assert.match(restoredNotice, /text was left out/);
 
 	// The other split: the text comes back into an empty box while the chip row
-	// holds files the user picked themselves. Those keep the row, and the file the
-	// refusal owed is NAMED as not restored rather than dropped in silence.
+	// holds files the user picked themselves. Those keep the row, and the files the
+	// refusal owed are NAMED as not attached again rather than dropped in silence.
 	const chipsHeld = adoptRefusedPayload(
 		"",
 		[{ id: "mine", path: "/tmp/mine.txt" }],
@@ -1314,13 +1335,61 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	);
 	assert.equal(chipsHeld.text, text);
 	assert.deepEqual(chipsHeld.paths, []);
+	assert.deepEqual(chipsHeld.missingFiles, attachments);
 	assert.equal(chipsHeld.withheld, "files");
 	const withheldNotice = refusedSplitNotice(
 		chipsHeld.withheld,
 		refusal.attachments,
+		chipsHeld.missingFiles,
 	);
 	assert.match(withheldNotice, /notes\.txt, screenshot\.png/);
-	assert.match(withheldNotice, /no free slot/);
+	// D14: the row's shape is not a thing the app teaches. "No free slot" was the
+	// region's only machine noun, and the helper's other arm names the ordinary
+	// reason in ordinary words.
+	assert.match(withheldNotice, /already holds files you picked/);
+	assert.doesNotMatch(withheldNotice, /slot/);
+
+	/*
+	 * THE ARM QA round 4's Q8 and UX round 5's U17 are about, and the one the three
+	 * arms above cannot see: the chip row holds the VERY FILE the refused send
+	 * carried. On a named session the composer is never remounted and its chips are
+	 * never cleared, so nothing was taken out of the row and there is nothing to put
+	 * back - the restored draft is the whole payload, the next send carries it
+	 * (`images: 1` on the wire), and a sentence claiming a file was withheld would
+	 * be false about a file the user can see one line below it. The rule is "is the
+	 * owed file in the draft", not "did this call write it".
+	 */
+	const heldInRow = adoptRefusedPayload(
+		"",
+		[{ id: "held", path: "/tmp/notes.txt" }],
+		{ text: refusal.text, attachments: ["/tmp/notes.txt"] },
+	);
+	assert.equal(heldInRow.text, text);
+	assert.deepEqual(heldInRow.paths, []);
+	assert.deepEqual(heldInRow.missingFiles, []);
+	assert.equal(heldInRow.withheld, null);
+	assert.equal(
+		refusedSplitNotice(heldInRow.withheld, ["/tmp/notes.txt"], heldInRow.missingFiles),
+		null,
+	);
+
+	// The row holds ONE of the two owed files: the other was genuinely left out, so
+	// the sentence names the one that is missing rather than both - naming a file
+	// that is on screen is the same lie in a smaller font.
+	const halfInRow = adoptRefusedPayload(
+		"",
+		[{ id: "held", path: "/tmp/notes.txt" }],
+		refusal,
+	);
+	assert.equal(halfInRow.withheld, "files");
+	assert.deepEqual(halfInRow.missingFiles, ["/tmp/screenshot.png"]);
+	const halfNotice = refusedSplitNotice(
+		halfInRow.withheld,
+		refusal.attachments,
+		halfInRow.missingFiles,
+	);
+	assert.match(halfNotice, /screenshot\.png/);
+	assert.doesNotMatch(halfNotice, /notes\.txt/);
 
 	// Both slots occupied - the named-session arm's state, where the local restore
 	// already put the payload back and both halves are held by content the user put
@@ -1334,7 +1403,10 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	assert.equal(rebuilt.text, "a line I typed");
 	assert.deepEqual(rebuilt.paths, []);
 	assert.equal(rebuilt.withheld, null);
-	assert.equal(refusedSplitNotice(rebuilt.withheld, refusal.attachments), null);
+	assert.equal(
+		refusedSplitNotice(rebuilt.withheld, refusal.attachments, rebuilt.missingFiles),
+		null,
+	);
 
 	// A composer with NO chip row (one keyed to a draft that never minted a
 	// session): the text comes back, the files cannot, and that is a split like any
@@ -1343,6 +1415,7 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	const noRow = adoptRefusedPayload("", null, refusal);
 	assert.equal(noRow.text, text);
 	assert.deepEqual(noRow.paths, []);
+	assert.deepEqual(noRow.missingFiles, attachments);
 	assert.equal(noRow.withheld, "files");
 
 	// An attachment-only refusal owes no text, so its files are not "a half held
@@ -1352,16 +1425,32 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	// said.
 	const filesOnly = adoptRefusedPayload("", [], { text: "", attachments });
 	assert.deepEqual(filesOnly.paths, attachments);
+	assert.deepEqual(filesOnly.missingFiles, []);
 	assert.equal(filesOnly.withheld, null);
 
 	/*
-	 * THE PROPERTY, over the arms above and the states between them: exactly one
-	 * owed half adopted means `withheld` names the half that was not, and a
-	 * sentence exists wherever a split happened. `withheld === null` therefore means
-	 * every owed half landed, or none was owed - never a silent half.
+	 * THE PROPERTY, over the arms above and the states between them: a `withheld`
+	 * answer means exactly one owed half is not in the draft the user is looking at,
+	 * and a sentence exists wherever that happened. `withheld === null` therefore
+	 * means every owed half is in the draft, or none was owed - never a silent half.
+	 *
+	 * "IN THE DRAFT", not "adopted by this call": the files half is present when
+	 * every owed path is in the chip row afterwards, whether this adoption wrote it
+	 * or the row already held it (the named-session arm, Q8/U17). The matrix carries
+	 * a row that holds the owed files for exactly that reason - without it the
+	 * property is only checked against rows that are none of the refused payload.
 	 */
 	const boxes = ["", "a line I typed"];
-	const rows = [null, [], [{ id: "mine", path: "/tmp/mine.txt" }]];
+	const rows = [
+		null,
+		[],
+		[{ id: "mine", path: "/tmp/mine.txt" }],
+		[{ id: "held", path: "/tmp/notes.txt" }],
+		[
+			{ id: "held1", path: "/tmp/notes.txt" },
+			{ id: "held2", path: "/tmp/screenshot.png" },
+		],
+	];
 	const payloads = [
 		refusal,
 		{ text: refusal.text, attachments: [] },
@@ -1373,10 +1462,15 @@ test("the pair is adopted through one decision, and a split is never silent", as
 			for (const payload of payloads) {
 				const result = adoptRefusedPayload(box, row, payload);
 				const textAdopted = payload.text !== "" && result.text !== box;
-				const filesAdopted =
-					payload.attachments.length > 0 && result.paths.length > 0;
+				const filesPresent =
+					payload.attachments.length > 0 &&
+					payload.attachments.every(
+						(path) =>
+							result.paths.includes(path) ||
+							(row ?? []).some((chip) => chip.path === path),
+					);
 				const bothOwed = payload.text !== "" && payload.attachments.length > 0;
-				const split = bothOwed && textAdopted !== filesAdopted;
+				const split = bothOwed && textAdopted !== filesPresent;
 				const where = `box=${JSON.stringify(box)} row=${JSON.stringify(row)} payload=${JSON.stringify(payload)}`;
 				assert.equal(
 					result.withheld,
@@ -1384,10 +1478,36 @@ test("the pair is adopted through one decision, and a split is never silent", as
 					`a split reached the composer unnamed: ${where}`,
 				);
 				assert.equal(
-					refusedSplitNotice(result.withheld, payload.attachments) !== null,
+					refusedSplitNotice(
+						result.withheld,
+						payload.attachments,
+						result.missingFiles,
+					) !== null,
 					split,
 					`the sentence does not match the split: ${where}`,
 				);
+				// The sentence may only name files the draft is NOT carrying, or the
+				// user is sent looking for a chip that is already in front of them.
+				const named = refusedSplitNotice(
+					result.withheld,
+					payload.attachments,
+					result.missingFiles,
+				);
+				if (named)
+					for (const path of payload.attachments) {
+						const name = path.split("/").pop();
+						const carried =
+							result.paths.includes(path) ||
+							(row ?? []).some((chip) => chip.path === path);
+						// The files arm names what the draft is NOT carrying; the text arm
+						// names the files that came back. Either way a name the user cannot
+						// match to a chip is the defect, in one direction or the other.
+						assert.equal(
+							named.includes(name),
+							result.withheld === "files" ? !carried : carried,
+							`the sentence ${named.includes(name) ? "names" : "omits"} ${name} in the wrong direction: ${where}`,
+						);
+					}
 				checked += 1;
 			}
 	assert.equal(checked, boxes.length * rows.length * payloads.length);
@@ -1472,8 +1592,10 @@ test("the composer adopts a refused payload through the shipped rules, at the en
 		"the restored chips are not written to the composer's own conversation, so the file list the next Send reads is still empty",
 	);
 	assert.ok(
-		/setRefusedNotice\(\s*refusedSplitNotice\(/.test(adoption),
-		"the adoption's split answer is computed and never rendered, so a draft carrying one half of the refused payload reads exactly like one carrying both (round 8, MINOR-2)",
+		/setRefusedNotice\(\s*refusedSplitNotice\(\s*adoption\.withheld,\s*refusedAttachments,\s*adoption\.missingFiles,?\s*\)/.test(
+			adoption,
+		),
+		"the adoption's split answer is computed and never rendered, so a draft carrying one half of the refused payload reads exactly like one carrying both (round 8, MINOR-2) - and its third argument is the FILES the draft is not carrying, which is what the sentence names (round 4, Q8/U17/D14)",
 	);
 	assert.ok(
 		/pendingCaret\.current = adoption\.text\.length/.test(adoption),
@@ -1483,6 +1605,85 @@ test("the composer adopts a refused payload through the shipped rules, at the en
 		/setNewMessage\(adoption\.text\)/.test(adoption),
 		"the adopted text is computed and never written to the box",
 	);
+});
+
+/*
+ * D12: what SURVIVES the alert region's cap, which is the whole question at a
+ * narrow column.
+ *
+ * The region caps itself at `7.5rem` and scrolls internally, and that cap is
+ * load-bearing rather than stylistic: the footer reserves whatever the region
+ * renders, so an unbounded alert over a long retained draft pushed the composer
+ * and the send control off the bottom of the window (`chat-measure.ts`,
+ * `CAPPED_BLOCK`). Measured at the column the canvas pane leaves at a 1440px
+ * window: the region shows 120px of a 388px block, so the ORDER decides what
+ * the user can read without discovering a thin internal scrollbar.
+ *
+ * It was the muted context first - what the composer did with the refused draft
+ * - and the failure, with its remedy, second: the notice's seven wrapped lines
+ * filled the window on their own and the sentence saying which file failed and
+ * what to do about it began at offset 144, entirely below the fold (design
+ * round 4, D12). So the order is asserted here, because the pixels are the
+ * symptom and the DOM order is the cause: the failure and its own controls come
+ * first, and the muted line about the draft follows them.
+ *
+ * The cap is asserted in the same breath, because "make the failure visible"
+ * has an easy wrong answer - raising the cap, which moves the composer's top
+ * border and takes Send off screen. The region keeps `CAPPED_BLOCK`.
+ */
+test("the alert region renders the failure before the muted context it lands under", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	const start = source.indexOf('role="alert"');
+	assert.ok(start > 0, "the alert region has no `role=\"alert\"` root");
+	// Bounded by the composer box, which is the region's next sibling, so the
+	// slice is this region and nothing else.
+	// `COMPOSER_BOX,` with the comma is code and only code: the region's own
+	// comment names `COMPOSER_BOX`'s padding, so matching the bare name would end
+	// the slice inside that sentence.
+	const regionRaw = source.slice(start, source.indexOf("COMPOSER_BOX,", start));
+	// Comment-stripped only for the marker order below, which reads the CODE. The
+	// bare-comment check after it deliberately reads the raw slice: stripping
+	// comments first would erase exactly the text node that check exists for.
+	const region = regionRaw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		region,
+		/CAPPED_BLOCK/,
+		"the region no longer caps itself, so a long alert over a retained draft pushes the composer and the send control off the bottom of a narrow window (D12's load-bearing half)",
+	);
+	/*
+	 * The marker order below is blind to one defect class, and this region has
+	 * already shipped it once: a block comment written as a bare JSX child is not
+	 * a comment, it is TEXT, and React renders it inside the alert. The reorder
+	 * this test pins was first written that way and the region carried 224px of
+	 * the comment describing the fix, which pushed the failure sentence back out of
+	 * the window it had just been moved into — with every assertion in this file
+	 * still green. It cannot be caught from the source with a line rule (`/*` at
+	 * the start of a line is a legitimate comment inside `cn(...)` and inside
+	 * every callback in this region, and there are six of those), so the instrument
+	 * is the rendered DOM: `scripts/composer-alert-geometry.mjs` fails on a
+	 * non-whitespace text node anywhere in this region, and the frames it writes
+	 * show it. Run it after any edit to this block.
+	 */
+	const order = [
+		["the failure sentence", "composerAlert.message"],
+		["the held-claim statement", "composerAlert.showHeld"],
+		["the remedy controls", "composerAlert.actions.length"],
+		["the split notice", "refusedNotice &&"],
+		["the held notice", "heldNotice &&"],
+	];
+	let previous = -1;
+	for (const [what, marker] of order) {
+		const at = region.indexOf(marker);
+		assert.ok(at >= 0, `${what} is no longer rendered in the region at all`);
+		assert.ok(
+			at > previous,
+			`${what} renders before what precedes it in the list, so at a narrow column the cap can show context and hide the failure the user has to act on (design round 4, D12)`,
+		);
+		previous = at;
+	}
 });
 
 /*

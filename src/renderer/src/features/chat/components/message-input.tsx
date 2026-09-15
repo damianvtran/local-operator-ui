@@ -855,9 +855,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * adoption: the user is looking at a draft that carries ONE half of a
 			 * message they sent, and nothing else on screen distinguishes that from
 			 * a draft that carries both.
+			 *
+			 * The sentence names the FILES THE DRAFT IS NOT CARRYING
+			 * (`adoption.missingFiles`), not every file the refusal owed. On the arm
+			 * where the chip row still holds the file the refused send carried - a
+			 * named session, where nothing cleared that row - the draft carries all
+			 * of them, so there is nothing to say and no sentence is rendered at all
+			 * (UX round 5 U17, QA round 4 Q8: the notice claimed a file had been
+			 * withheld while its chip sat in the row and the very next send carried
+			 * `images: 1`).
 			 */
 			setRefusedNotice(
-				refusedSplitNotice(adoption.withheld, refusedAttachments),
+				refusedSplitNotice(
+					adoption.withheld,
+					refusedAttachments,
+					adoption.missingFiles,
+				),
 			);
 			// The user's own text is what the box holds, so it keeps the caret too.
 			if (adoption.text === newMessage) return;
@@ -1624,19 +1637,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							// and no icon: this is the resolved state, not a failure.
 							<p className="text-ink-muted">{abandonNotice}</p>
 						)}
-						{!abandonNotice && refusedNotice && (
-							// Also muted, and for the same reason: the refusal's own alert
-							// across the two branches below is the failure, and this line says
-							// what the composer did with the payload that failure left behind -
-							// including, when the halves part, which half is not in the draft.
-							<p className="text-ink-muted">{refusedNotice}</p>
-						)}
-						{!abandonNotice && !sendError && heldNotice && (
-							// Muted ink on purpose: the region as a whole is the danger
-							// register, and nothing has failed here - the box is one message
-							// ahead of the conversation, which is a fact about the wait.
-							<p className="text-ink-muted">{heldNotice}</p>
-						)}
 						{!abandonNotice && composerAlert.message && (
 							/*
 							 * Icon and weight, not colour, are what rank this line.
@@ -1850,6 +1850,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									)}
 								</div>
 							)}
+						{/*
+						 * THE MUTED CONTEXT COMES LAST, AFTER THE FAILURE AND ITS CONTROLS.
+						 *
+						 * The region caps itself and scrolls internally (see the region's own
+						 * note on `max-h`), so its children are ranked in the only way a capped
+						 * block can rank them: by what survives when they no longer all fit.
+						 * The order was the notice first, and that is wrong in the one
+						 * direction that costs a user something. Measured in the column the
+						 * canvas pane leaves at a 1440px window: 388px of content in a 120px
+						 * window, where the muted notice's seven wrapped lines filled the
+						 * window on their own and the sentence naming the file that failed -
+						 * and the remedy for it - began at offset 144, with not one line of it
+						 * visible short of finding the region's thin internal scrollbar
+						 * (design round 4, D12).
+						 *
+						 * So the failure, the state it is in and the controls that answer it
+						 * render first, and what the composer did with the refused draft
+						 * renders after them: the user's next action depends on the first and
+						 * not on the second. The cap is untouched - it is what keeps the
+						 * composer's top border and the send control on screen, measured at CSS
+						 * y=540 in every state at 892px - so the fix is the order and never the
+						 * height. `scripts/canonical-chat.test.mjs` pins the order;
+						 * `scripts/composer-alert-geometry.mjs` measures what it buys at the
+						 * narrowest reached width.
+						 */}
+						{!abandonNotice && refusedNotice && (
+							// Also muted, and for the same reason: the refusal's own alert
+							// above is the failure, and this line says what the composer did
+							// with the payload that failure left behind - including, when the
+							// halves part, which half is not in the draft.
+							<p className="text-ink-muted">{refusedNotice}</p>
+						)}
+						{!abandonNotice && !sendError && heldNotice && (
+							// Muted ink on purpose: the region as a whole is the danger
+							// register, and nothing has failed here - the box is one message
+							// ahead of the conversation, which is a fact about the wait.
+							<p className="text-ink-muted">{heldNotice}</p>
+						)}
 					</div>
 				)}
 				<div
