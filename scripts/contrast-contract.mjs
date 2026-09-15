@@ -807,18 +807,23 @@ const STRUCTURAL_CALL_SITES = [
 		 * Contrast is equally useless as an instrument here: the two colours
 		 * differ in hue rather than luminance, so the pair reads 1.04:1.
 		 *
-		 * WHY A CALL SITE AND NOT A PALETTE ROW. `accent-wash` is only invisible
-		 * on THIS ground — the app rail and the settings rail draw it on `canvas`,
-		 * where the same pair measures 6.45 in tokyoNight — so strengthening the
-		 * role would make every hover tint in the app louder to fix one panel.
-		 * The replacement is `sunken`, which the adjacent-ground loop above
-		 * already asserts as a perceptible step from `surface` AND from `elevated`
-		 * in all twelve palettes (worst case ΔE00 3.75 against the 2.0 field
-		 * floor). What no palette assertion can see is the CLASS on the row, which
-		 * is how this shipped: every row in this file stayed green while painting
-		 * a ground the user could not see. Reverting this line to a wash fails
-		 * here and nowhere else; a palette edit that collapsed `surface` against
-		 * `sunken` fails the `["surface", "sunken"]` pair above.
+		 * WHY A CALL SITE AND NOT A PALETTE ROW. `accent-wash` is not invisible
+		 * everywhere: the app rail paints it on `sunken`, where it measures 9.6 in
+		 * tokyoNight, and the settings rail is the OTHER `surface` panel and is
+		 * fixed with this one (the pin below). Strengthening the role would make
+		 * every hover tint in the app louder to fix the two panels that draw it on
+		 * `surface`. The replacement is `sunken`, which the field-floor loop at the
+		 * bottom of this file already asserts as a perceptible step from `surface`
+		 * AND from `elevated` in all twelve palettes — BOTH pairs pre-date this
+		 * change; only the call-site pins are new — with a worst case of ΔE00 3.75
+		 * against the 2.0 field floor. What no palette assertion can see is the
+		 * CLASS on the row, which is how this shipped: every row in this file stayed
+		 * green while painting a ground the user could not see. Reverting this line
+		 * to a wash fails here and nowhere else in THIS file
+		 * (`scripts/chat-sidebar-selection.test.mjs` catches it too, by resolving the
+		 * row's own class expression through the shipped `cn`); a palette edit that
+		 * collapsed `surface` against `sunken` fails the `["surface", "sunken"]`
+		 * pair in that loop.
 		 *
 		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
 		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
@@ -833,7 +838,7 @@ const STRUCTURAL_CALL_SITES = [
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		must: 'const rowCurrent = "bg-sunken text-ink hover:bg-sunken";',
-		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05), and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place the invisible selection can be caught",
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05), and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the invisible selection",
 	},
 	{
 		/*
@@ -850,6 +855,37 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		must: "selectedConversation === row.session_id &&\n\t\t\t\t\t\t!activeDraftKey &&\n\t\t\t\t\t\trowCurrent,",
 		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader",
+	},
+	{
+		/*
+		 * The ENTITY row's name button, and the reason it needs its own pin rather
+		 * than a share of the constant's: this element carries `rowStyle`, so its
+		 * `hover:bg-elevated` painted over the wrapper's ground and the pointer
+		 * replaced the mark across the row (round 1, the MAJOR the entity row was
+		 * changed for). The ground therefore appears TWICE on that row — on the
+		 * wrapper, which fills the gaps and corners, and on this button, where the
+		 * `hover:` half is the only thing that beats the step it inherits — and a
+		 * reader who deletes either one leaves a row that still looks marked in the
+		 * source and is not. The pin is the button's own expression.
+		 */
+		what: "entity row current-row ground",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: 'className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}',
+		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one",
+	},
+	{
+		/*
+		 * The settings rail's current row, which was the same defect on the same
+		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
+		 * marked its current section with `accent-wash` — ΔE00 1.06 in tokyoNight
+		 * (#272B3E on #25283A), a row with no ground at all, identifiable only by
+		 * its accent glyph and weight. It is here rather than in a set of its own
+		 * because it is one class for one role decision (round 1, design D2).
+		 */
+		what: "settings rail current-row ground",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: '"bg-sunken font-medium text-ink hover:bg-sunken"',
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.06 and the current destination had no mark at all; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer",
 	},
 ];
 
