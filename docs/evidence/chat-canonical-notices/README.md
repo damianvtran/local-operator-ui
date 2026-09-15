@@ -304,13 +304,17 @@ that repeated itself behind its own chevron.
 - **two wake rules that stood in this list are superseded, and the code is deleted
   rather than left disabled (round 7's R33 — see the Round 4 entry below):** "a
   one-shot wake states its goal rather than its arming line, which carries no
-  cadence" (202 of the store's 967 wake rows at the head that rewrote them: 766
-  keep an arming line that does state one) and "the wake-arming clause is stripped
-  only from a wake row, so a hub message that quotes the phrase keeps its own
-  words". A `wake_prompt` record is projected to its own `wake` kind before the
-  relay path that implemented them, so neither rule can fire; the clause is
-  stripped from nothing at all now, which is why a hub message that quotes it keeps
-  its words;
+  cadence" (counted in one pass at the 2026-09-15 scan of the operator's
+  transcripts: of 1,028 wake rows, 806 open with an arming line that does state a
+  cadence, 130 with one that states none and carries a goal line below it — the
+  population the rule rewrote — and 92 with the payload's own preamble, where no
+  arming line is the row's own line at all; 806 + 130 + 92 = 1,028, and the
+  "202 of 967 : 766 keep one" pair this replaces summed to 968) and "the
+  wake-arming clause is stripped only from a wake row, so a hub message that
+  quotes the phrase keeps its own words". A `wake_prompt` record is projected to
+  its own `wake` kind before the relay path that implemented them, so neither rule
+  can fire; the clause is stripped from nothing at all now, which is why a hub
+  message that quotes it keeps its words;
 - the first-sentence scan requires a capital after the terminator and rejects a
   leading `digits.`, so `approx.`, `e.g.` and `1.` no longer split a headline —
   without a table of abbreviations to keep in step with English;
