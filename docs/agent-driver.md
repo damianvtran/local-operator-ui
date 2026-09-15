@@ -34,7 +34,11 @@ node scripts/renderer-driver.mjs --gate-check       # proves the gate fails clos
 ```
 
 `pnpm app:driver` and `pnpm app:driver:gate-check` are the same two commands.
-`--scene states` (the default) writes a before/after pair of one screen plus a
+`--scene new-chat` drives the app-wide `⌘N` with a real CDP key chord
+(`Input.dispatchKeyEvent`) and asserts the two things the New chat row's click
+does — a fresh draft staged, and the app on the chat route — plus the two presses
+that are deliberately not it (`⌘⇧N`, a bare `n`). `--scene states` (the default)
+writes a before/after pair of one screen plus a
 real control press; `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
