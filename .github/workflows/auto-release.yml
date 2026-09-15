@@ -1,0 +1,258 @@
+name: Auto Release
+
+# WHAT THIS DOES. Every push to `main` asks one question — "does the range since
+# the last released tag ask for a release, and which version?" — and, if the answer
+# is yes, lands the bump commit, tags it, creates the Release as a pre-release and
+# hands it to `publish.yml`. Nobody decides the bump and nobody cuts the release.
+#
+# WHY THE DERIVATION IS A SCRIPT AND NOT SHELL HERE. The version is the one number
+# in this repository that cannot be taken back, and logic inside a YAML `run:`
+# block cannot be unit-tested. `scripts/derive-release.mjs` holds the mapping; this
+# file only supplies the commits and applies the result.
+#
+# WHY THE PUBLISH WORKFLOW IS DISPATCHED AND NOT TRIGGERED BY THE RELEASE EVENT.
+# The Release this workflow creates is created with the repository's `GITHUB_TOKEN`,
+# and an event created by that token starts no workflow run — which is GitHub's
+# anti-recursion rule, and it applies to `release: published` and to a tag `push`
+# alike. `repository_dispatch` is one of the two documented exceptions, so the
+# publish workflow is dispatched explicitly. A design that relied on the Release
+# event would publish nothing at all, silently, which is why this is spelled out
+# here rather than left as a puzzle for whoever finds the empty run page.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Compute the version and the notes and print them; never push, commit, tag or release'
+        type: boolean
+        default: true
+      bump:
+        description: 'Override the derived bump class. `auto` reads the commit types; the others exist for a window no conventional type describes.'
+        type: choice
+        options:
+          - auto
+          - minor
+          - patch
+        default: auto
+
+# One release at a time, and never cancelled in flight: a run killed between the
+# bump commit and the tag is a version nothing can reuse, and the tag would then
+# have to skip a number.
+concurrency:
+  group: auto-release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  derive:
+    name: Derive the next version
+    runs-on: ubuntu-latest
+    # Generous against the ~1 min this takes (a clone, a git log walk and a few
+    # hundred PR lookups). It exists so a wedged step cannot hold a runner for the
+    # 360-minute default.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # The notes quote each PR's title and `Release:` line, which is a read of the
+      # pull-request API. Harmless on a public repository, required on a private one.
+      pull-requests: read
+    outputs:
+      release: ${{ steps.derive.outputs.release }}
+      version: ${{ steps.derive.outputs.version }}
+      bump: ${{ steps.derive.outputs.bump }}
+      base: ${{ steps.derive.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Both anchors are tags and the window is a `git log --first-parent` walk
+          # from one of them, so a shallow clone or a tag-less one cannot answer
+          # the question this job exists to answer.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Derive, and refuse to derive from this workflow's own commit
+        id: derive
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # `auto` means "read the commit types"; anything else is the escape hatch
+          # for a window whose landings carry no conventional type at all.
+          FORCED_BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          # The bump commit this workflow pushes carries this exact subject. The
+          # push is made with GITHUB_TOKEN, which starts no run by itself — but a
+          # repository that ever switches to an App or PAT credential would start
+          # one, and this guard is what stops that from looping.
+          subject="$(git log -1 --format=%s)"
+          case "$subject" in
+            'chore(release): bump version to '*)
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              {
+                echo '### No release'
+                echo
+                echo "This push is the release commit itself (\`$subject\`), so there is nothing to release."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+              ;;
+          esac
+          forced=()
+          if [ -n "${FORCED_BUMP:-}" ] && [ "$FORCED_BUMP" != auto ]; then
+            forced=(--force-bump "$FORCED_BUMP")
+          fi
+          # A derivation error exits non-zero and fails this step: "could not work
+          # out the version" must never be reported as "nothing to release".
+          node scripts/derive-release.mjs --json "${forced[@]+"${forced[@]}"}" > derivation.json
+          release="$(jq -r .release derivation.json)"
+          if [ "$release" != true ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            {
+              echo '### No release'
+              echo
+              jq -r .reason derivation.json
+              # The landings no type describes are named here rather than dropped:
+              # they are exactly the ones a reader has to check by hand, and a
+              # silent omission is how a window ends up looking complete.
+              if [ "$(jq -r '.unclassified | length' derivation.json)" -gt 0 ]; then
+                echo
+                echo 'Landings no conventional type describes, listed rather than guessed at:'
+                while IFS= read -r landing; do
+                  echo "- \`$landing\`"
+                done < <(jq -r '.unclassified[]' derivation.json)
+              fi
+              echo
+              echo "A release needs a breaking change, a \`feat:\`, or a \`fix:\`/\`perf:\`/\`revert:\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          jq -r '"version=\(.version)", "bump=\(.bump)", "base=\(.windowBase)"' derivation.json >> "$GITHUB_OUTPUT"
+          jq -r .notes derivation.json > release-notes.md
+          {
+            echo "### Derivation: $(jq -r .bump derivation.json) -> v$(jq -r .version derivation.json)"
+            echo
+            echo "Window: \`$(jq -r .windowBase derivation.json)..$(git rev-parse --short HEAD)\`; $(jq -r .reason derivation.json)"
+            echo
+            echo '```markdown'
+            cat release-notes.md
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ steps.derive.outputs.release == 'true' }}
+        with:
+          # Kept for the review of a dry run and for the audit trail of a real one;
+          # the release job re-derives its own copy rather than trusting this one.
+          name: release-notes-${{ steps.derive.outputs.version }}
+          path: release-notes.md
+          retention-days: 30
+
+  release:
+    name: Bump, tag and publish
+    needs: derive
+    # `inputs.dry_run` is empty on a push, which is what keeps the push path live
+    # while the dispatch path defaults to a dry run.
+    if: ${{ needs.derive.outputs.release == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Configure the release commit's identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Re-derive against the anchors the dry run used
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_VERSION: ${{ needs.derive.outputs.version }}
+          BASE: ${{ needs.derive.outputs.base }}
+        run: |
+          set -euo pipefail
+          # Re-derived here rather than passed between jobs, because the notes have
+          # to describe the commits this run is about to tag — the window is
+          # re-read immediately before the tag for the reason `AGENTS.md` gives:
+          # a PR merged after the derivation still rides the release. The anchors
+          # are pinned to the ones the dry run printed so a repository that moved
+          # in between cannot silently change the version.
+          node scripts/derive-release.mjs --json --base "$BASE" > derivation.json
+          version="$(jq -r .version derivation.json)"
+          if [ "$(jq -r .release derivation.json)" != true ]; then
+            echo "::error title=Derivation changed::The window no longer asks for a release; re-run the workflow."
+            exit 1
+          fi
+          if [ "$version" != "$EXPECTED_VERSION" ]; then
+            echo "::error title=Version changed::Derived v$version here, v$EXPECTED_VERSION when the run started. The repository moved mid-run; re-run rather than releasing a version nothing derived."
+            exit 1
+          fi
+          jq -r .notes derivation.json > release-notes.md
+
+      - name: Bump package.json, in one line and one file
+        env:
+          VERSION: ${{ needs.derive.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The script asserts the change is exactly the version line — before the
+          # commit exists, rather than in a review of it afterwards.
+          node scripts/apply-release-bump.mjs --version "$VERSION"
+          git add package.json
+          git diff --cached --numstat
+          git commit -m "chore(release): bump version to $VERSION"
+          # A fast-forward or nothing: if `main` moved since the checkout this
+          # fails loudly instead of rewriting anything. No force-push, ever.
+          git push origin HEAD:main
+
+      - name: Tag the bump commit and create the Release
+        env:
+          VERSION: ${{ needs.derive.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The tag names the bump commit, never `main`'s head: `validate-release.mjs`
+          # reads `package.json` at the tag and requires it to equal the tag number,
+          # so a tag on any other commit is refused by the publish workflow rather
+          # than shipped.
+          sha="$(git rev-parse HEAD)"
+          # `--prerelease` is the hold that keeps a Release with no assets out of
+          # `/releases/latest`, where every running app reads it. `publish.yml`
+          # promotes it once its installers are attached and verified.
+          gh release create "v$VERSION" \
+            --target "$sha" \
+            --prerelease \
+            --notes-file release-notes.md
+          echo "TAG=v$VERSION" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$sha" >> "$GITHUB_ENV"
+
+      - name: Dispatch the publish workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          release_id="$(gh release view "$TAG" --json id --jq .id)"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/dispatches" \
+            -f event_type=release-published \
+            -f "client_payload[release_tag]=$TAG" \
+            -f "client_payload[source_sha]=$SOURCE_SHA" \
+            -f "client_payload[release_id]=$release_id"
+          {
+            echo "### Released $TAG"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Bump | \`$(jq -r .bump derivation.json)\` |"
+            echo "| Tag | \`$TAG\` |"
+            echo "| Commit | \`$SOURCE_SHA\` |"
+            echo "| Release | https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG |"
+            echo
+            echo "The Release is a pre-release. \`Build and Publish\` was dispatched to build, sign"
+            echo "and attach the installers, and to promote it to \`latest\` only if the artifact"
+            echo "gate passes."
+          } >> "$GITHUB_STEP_SUMMARY"
