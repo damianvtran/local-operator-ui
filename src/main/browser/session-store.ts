@@ -320,7 +320,7 @@ export function readSession(
 		const { kept, dropped } = boundTabs(sane);
 		if (dropped) {
 			log(
-				`[browser] restoring ${kept.length} of ${sane.length} recorded tabs; the newest ${kept.length} are kept, plus whichever tab was active`,
+				`[browser] restoring ${kept.length} of ${sane.length} recorded tabs; the cap keeps whichever tab was active plus the newest of the rest`,
 			);
 		}
 		return kept;
@@ -349,6 +349,12 @@ export function readSession(
  * 500 ms debounce can leave the older record on disk). Accepting one loses the
  * entire session. The rare stale tab is the cheaper mistake, and the log line says
  * which happened so support does not have to guess.
+ *
+ * CONSULTED BY `BrowserSessionStore.commitStopCapture` AND NOWHERE ELSE, which is
+ * what makes a refusal binding: the store drops the staged capture and seals
+ * itself in the same call, so no later `record()` or `flush()` can write the
+ * content this function refused (review round 3, B2's MAJOR). A caller that asked
+ * and then wrote anyway was the defect, so there is no longer such a caller.
  */
 export function stopSnapshotDecision(
 	rows: number,
@@ -460,6 +466,8 @@ export class BrowserSessionStore {
 	private readonly debounceMs: number;
 	private timer: NodeJS.Timeout | null = null;
 	private pending: PersistedTab[] | null = null;
+	/** Set by `commitStopCapture`: from then on this store stages nothing more. */
+	private sealed = false;
 
 	constructor(options: BrowserSessionStoreOptions) {
 		this.path = join(options.dir, SESSION_FILENAME);
@@ -471,14 +479,67 @@ export class BrowserSessionStore {
 		return this.path;
 	}
 
-	/** Record the current tabs, to be written after the debounce. */
+	/** Record the current tabs, to be written after the debounce.
+	 *
+	 * A SEALED STORE IGNORES THIS (review round 3, B2's MAJOR). The stop path has
+	 * already made the last write decision this process gets to make, and the
+	 * capture that arrives afterwards is not a change to record: it is a view's
+	 * `destroyed` handler running during teardown, which is exactly the capture
+	 * that is short for a reason that is not the user's doing. Accepting it would
+	 * put the refused content back in `pending` for the next `flush()` to write,
+	 * which is the data loss the decision exists to prevent. The guard therefore
+	 * lives here, at the only writer, rather than at the call site that happens to
+	 * be running when the views die. */
 	record(tabs: PersistedTab[]): void {
+		if (this.sealed) return;
 		this.pending = tabs;
 		if (this.timer) clearTimeout(this.timer);
 		this.timer = setTimeout(() => this.flush(), this.debounceMs);
 		// A pending write must not hold the process open: the app's lifetime is
 		// decided by its window, exactly as the state file's heartbeat is.
 		this.timer.unref?.();
+	}
+
+	/** Commit the quit-time capture: stage it, or refuse it and TAKE BACK what is
+	 * staged. Returns the decision so the caller can log which happened.
+	 *
+	 * WHY THE STORE OWNS THIS, rather than the host's stop path deciding and the
+	 * store writing whatever happened to be pending (review round 3, B2's MAJOR).
+	 * The stop path is not the only writer of `pending`: every `notifyChanged`
+	 * during teardown stages one, and the measured ordering - the views destroyed
+	 * BEFORE `stop()` runs - stages a short capture first and then reaches the
+	 * decision. `flush()` writes `pending` regardless of what the decision said,
+	 * so a refusal that only declined to call `record()` was undone by the flush a
+	 * line later: 3 rows durable, 1 row captured, decision `write: false`, 1 row on
+	 * disk. Refusing and then writing the refused content is the original B2 loss
+	 * through a different door. Making the decision binding means the refused
+	 * capture must be dropped before anything can flush it, and the seal must
+	 * outlive the call so no later capture can stage it again.
+	 *
+	 * WHAT IT DOES NOT DO: it does not read the capture's CONTENT, and it does not
+	 * compare it against the durable rows. The rule is `stopSnapshotDecision`'s and
+	 * is deliberately one-sided on a COUNT (see its comment). */
+	commitStopCapture(rows: PersistedTab[]): { write: boolean; reason: string } {
+		const decision = stopSnapshotDecision(
+			rows.length,
+			readSession(this.path, this.log).length,
+		);
+		if (decision.write) {
+			this.record(rows);
+		} else {
+			this.discard();
+		}
+		this.sealed = true;
+		return decision;
+	}
+
+	/** Take back whatever `record()` staged, without writing it. */
+	discard(): void {
+		if (this.timer) {
+			clearTimeout(this.timer);
+			this.timer = null;
+		}
+		this.pending = null;
 	}
 
 	/** Write now, if anything is pending. Called from the host's stop path, so a

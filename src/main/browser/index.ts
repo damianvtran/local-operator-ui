@@ -26,7 +26,6 @@ import {
 	SESSION_FILENAME,
 	captureTabs,
 	readSession,
-	stopSnapshotDecision,
 } from "./session-store";
 import { permittedScheme } from "./settle";
 import {
@@ -200,35 +199,34 @@ export async function startBrowserHost(
 		log,
 	});
 
-	/** The snapshot every change writes, debounced by the store. */
+	/**
+	 * The snapshot every change writes, debounced by the store.
+	 *
+	 * NOT GATED ON A "the process is stopping" FLAG ANY MORE (review round 3,
+	 * B2's MAJOR). The gate was a function-local boolean set inside `stop()`, and
+	 * the ordering that defeats the stop decision is the one where the views are
+	 * already destroyed when `stop()` runs: each `destroyed` handler fires
+	 * `notifyChanged` while that boolean is still false, so the short capture was
+	 * staged, the stop decision refused it - and the store's own `flush()` wrote
+	 * it anyway. The binding part of that rule is the store's `seal()`, which is
+	 * what no longer accepts a capture after the stop decision; a flag that has to
+	 * be set first only covers the orderings that happen to run through `stop()`.
+	 * One mechanism, at the only writer, instead of two that can disagree.
+	 */
 	const captureSession = (): void => {
 		sessionStore.record(
 			captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
 		);
 	};
 
-	/**
-	 * Whether this process is stopping.
-	 *
-	 * WHY IT GATES THE SESSION CAPTURE (QA round 2, Q3). The stop path captures the
-	 * session ONCE, before the views are destroyed, because `captureTabs` reads each
-	 * view's live navigation history and a destroyed view has none. After that
-	 * capture, tearing the browser down fires a `destroyed` event per view, every one
-	 * of which ends in `notifyChanged` -> `captureSession`: a capture of a strip that
-	 * no longer exists, which then overwrote the good record with `{version:1,
-	 * tabs:[]}`. That is the measured SIGTERM behaviour - the file was empty
-	 * immediately after 8 of 8 SIGTERM quits and intact after a window close - so one
-	 * quit-time capture is taken and nothing durable is written after it.
-	 */
-	let stopping = false;
-
 	const notifyChanged = (): void => {
 		stateWriter?.publishNow();
 		options.window.webContents.send("browser-state-changed");
 		// The tab list is durable state now (design 7.2): a create, a close and a
-		// navigation are what changes it, and every one of those paths ends here. A
-		// teardown is the exception: see `stopping` above.
-		if (!stopping) captureSession();
+		// navigation are what changes it, and every one of those paths ends here.
+		// Teardown fires it too; what keeps a teardown capture out of the file is
+		// the store's own seal, not a check here.
+		captureSession();
 	};
 
 	const registry = new TabRegistry(
@@ -396,25 +394,25 @@ export async function startBrowserHost(
 			 * lives here rather than in `before-quit`: stopping the host is what happens
 			 * on a quit AND on a window close, so one call site covers both instead of a
 			 * quit-only hook that a window close would skip.
+			 *
+			 * THE DECISION AND THE WRITE ARE ONE CALL, on the store
+			 * (`commitStopCapture`), because splitting them was round 3's MAJOR: the
+			 * refusal has to take back what is staged and stop accepting more, or the
+			 * `flush()` two lines down writes the capture the decision just refused.
 			 */
-			const durableRows = readSession(sessionStore.filePath, log).length;
 			const atStop = captureTabs(
 				registry.list(),
 				registry.activeTab?.tabId ?? null,
 			);
-			const decision = stopSnapshotDecision(atStop.length, durableRows);
-			if (decision.write) {
-				sessionStore.record(atStop);
-			} else {
+			const decision = sessionStore.commitStopCapture(atStop);
+			if (!decision.write) {
 				log(
 					`[browser] not overwriting ${SESSION_FILENAME} at stop: ${decision.reason}`,
 				);
 			}
-			// From here on the browser is coming down, and nothing durable is written
-			// again: the per-view `destroyed` handlers still fire, and a capture of a
-			// strip that no longer exists is another way to lose the session (see
-			// `stopping`).
-			stopping = true;
+			// Nothing durable is written after this point: the store is sealed with the
+			// decision, and the per-view `destroyed` handlers below still fire a capture
+			// each (a strip that no longer exists is another way to lose the session).
 			sessionStore.flush();
 			registry.destroyAll();
 			await cdp.close();

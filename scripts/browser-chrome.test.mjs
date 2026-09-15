@@ -548,6 +548,95 @@ test("a quit-time capture shorter than the record on disk is refused, not writte
 	);
 });
 
+/*
+ * The two halves below are the BINDING half of that rule (review round 3, B2's
+ * MAJOR), and they are here rather than in the decision-function test above because
+ * the pure function was never the part that was wrong.
+ *
+ * What round 3 measured on the shipped classes: `durableRows 3 / atStop 1 / decision
+ * write false` and then ONE ROW ON DISK. The stop path declined to `record()` the
+ * short capture and called `flush()` anyway, and `flush()` writes whatever `record()`
+ * last staged - which, in the ordering the guard exists for (the views destroyed
+ * BEFORE `stop()` runs), is the short capture the per-view `destroyed` handlers had
+ * already staged through `notifyChanged` -> `captureSession`. Refusing and then
+ * writing the refused content is the original data loss through a different door.
+ *
+ * So these cases drive the STORE, not `stopSnapshotDecision`: a test that only asked
+ * the pure function would pass against the code that lost the session.
+ */
+function sessionRows(count, prefix = "kept") {
+	return Array.from({ length: count }, (_unused, index) => ({
+		owner: "user",
+		active: index === 0,
+		entries: [{ url: `https://${prefix}.example/${index}` }],
+		activeIndex: 0,
+	}));
+}
+
+test("a refused quit-time capture is not written by the flush that follows it (review round 3, B2's MAJOR)", async () => {
+	const dir = join(root, "session-stop-refusal");
+	const store = new BrowserSessionStore({ dir, debounceMs: 20 });
+	store.record(sessionRows(3));
+	store.flush();
+	assert.equal(readSession(store.filePath).length, 3, "three rows durable first");
+
+	// The teardown ordering: the views are already gone when `stop()` runs, so their
+	// `destroyed` handlers staged a one-row capture BEFORE the stop path read
+	// anything. `captureTabs` on destroyed views is what produces it.
+	const short = sessionRows(1);
+	store.record(short);
+
+	const decision = store.commitStopCapture(short);
+	assert.equal(
+		decision.write,
+		false,
+		"the stop decision refuses a capture shorter than the record",
+	);
+	// THE LINE THAT LOST THE SESSION: the host's stop path flushes unconditionally,
+	// because a quit must not lose the last change to a debounce that was ticking.
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		3,
+		`the refused capture is not on disk: ${JSON.stringify(readSession(store.filePath).map((tab) => tab.entries[0]?.url))}`,
+	);
+
+	// The second door: a teardown capture staged after the decision, with the
+	// debounce left to write it. The seal is what has to keep it out.
+	store.record(short);
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	assert.equal(
+		readSession(store.filePath).length,
+		3,
+		"nor by a later capture, after its debounce would have fired",
+	);
+});
+
+test("an accepted quit-time capture still lands, and the later teardown capture cannot replace it", () => {
+	const dir = join(root, "session-stop-accept");
+	const store = new BrowserSessionStore({ dir, debounceMs: 20 });
+	store.record(sessionRows(1, "older"));
+	store.flush();
+
+	const decision = store.commitStopCapture(sessionRows(3, "live"));
+	assert.equal(decision.write, true, "a longer capture replaces the record");
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		3,
+		"the accepted capture is written by the flush that follows the decision",
+	);
+
+	// The seal is not "write nothing": it is "write what the decision accepted".
+	store.record(sessionRows(1, "teardown"));
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		3,
+		"and a capture staged after the decision cannot replace it",
+	);
+});
+
 test("a destroyed view is captured from its recorded row rather than dropped", () => {
 	// The teardown case: a view can be destroyed before the stop path reads it, and a
 	// tab the user still has must not vanish from the record because its view went
