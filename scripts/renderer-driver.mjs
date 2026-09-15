@@ -111,6 +111,7 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
 
@@ -491,7 +492,15 @@ async function launchApp({
 	envExtra = {},
 }) {
 	writeAppCwdEnv(dotenvLines);
-	const env = {
+	/*
+	 * `withNotificationsOff`: this rig boots the real app, whose backend
+	 * announces a parked gate through `osascript` on macOS — a banner in the
+	 * operator's Notification Center from a harness run. The window mode below
+	 * silences the app's own banner and has no reach into the backend's, so the
+	 * switch goes into the environment this child is handed. See
+	 * `notifications-off.mjs`.
+	 */
+	const env = withNotificationsOff({
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
@@ -499,7 +508,7 @@ async function launchApp({
 		// No backend manager: this run must not install or start a Local Operator
 		// backend in the scratch HOME.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
-	};
+	});
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
