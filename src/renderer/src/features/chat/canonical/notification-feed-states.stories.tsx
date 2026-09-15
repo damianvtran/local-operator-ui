@@ -128,6 +128,15 @@ function Panel({
 				hydrated={false}
 				gate={null}
 				waiting={false}
+				/*
+				 * No send is admitted in any of these states, and that is the fixtures'
+				 * choice rather than a default: `admittedSend` is the pane's own "I took a
+				 * message and nothing has answered it", and a click-path frame is about
+				 * what the pane paints BEFORE the owner answers, not about a turn the
+				 * reader just started. Passing `true` here would put the wait line in
+				 * every frame and photograph a different state.
+				 */
+				starting={false}
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}

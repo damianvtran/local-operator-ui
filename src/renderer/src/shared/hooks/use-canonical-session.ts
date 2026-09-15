@@ -1138,7 +1138,23 @@ export function useCanonicalSessionStream(
 								// this batch fires (see `reconcileTail`). `next.hydrated` is
 								// OR-ed in so a later snapshot cannot un-prove what an earlier
 								// page already established.
-								hydrated: next.hydrated || !snapshot.history.cursor_missing,
+								//
+								// AN EMPTY PAGE PROVES NOTHING EITHER (UX round 1, U2). A
+								// snapshot whose page carries no entries — a session with an
+								// empty or absent journal — used to satisfy this on
+								// `!cursor_missing` alone and set `hydrated`, so the composer
+								// could then claim the conversation was EMPTY while the
+								// authoritative read was still failing. That is the walked
+								// defect: press Reconnect with the backend down and the history
+								// error is replaced by "What can I help you with today?" over a
+								// conversation whose history nobody has read. An empty page is
+								// exactly the case `/history` exists to settle, and it is
+								// already asked once per snapshot, so the greeting waits for
+								// that answer.
+								hydrated:
+									next.hydrated ||
+									(!snapshot.history.cursor_missing &&
+										snapshot.history.entries.length > 0),
 								transcript,
 							};
 							snapshotted = true;

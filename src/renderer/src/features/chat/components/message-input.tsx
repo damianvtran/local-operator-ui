@@ -1537,17 +1537,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * round 2, D3). The remaining terms are the U8 pair, unchanged.
 								 */
 								unavailable
-																? "This conversation is gone"
-																: isInputDisabled
-																								? "Agent is busy"
-																								: awaitingAnswer
-																																? // Names the thing the box is now for, without restating
-																																								// the question card or the waiting line (§ 7 keeps one
-																																								// liveness statement per turn, and the card owns it).
-																																								"Answer the question above"
-																																: awaitingReply
-																																								? "Waiting for the agent"
-																																								: "Ask me for help"
+									? "This conversation is gone"
+									: isInputDisabled
+										? "Agent is busy"
+										: awaitingAnswer
+											? // Names the thing the box is now for, without restating
+												// the question card or the waiting line (§ 7 keeps one
+												// liveness statement per turn, and the card owns it).
+												"Answer the question above"
+											: awaitingReply
+												? "Waiting for the agent"
+												: "Ask me for help"
 							}
 							value={newMessage}
 							onChange={(e) => {

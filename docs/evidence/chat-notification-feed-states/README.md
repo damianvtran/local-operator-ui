@@ -61,13 +61,35 @@ headless Chromium the capture uses (1280x600 / 720x260 / 900x160, DPR 1).
 | `the-two-misses/*` | "this may be behind" and "this is gone" side by side, so the two are judged for whether they read apart | 760x200 |
 | `cached-paint-narrow/*` | the same caption at 420x600, the narrow end of the supported range | 420x600 |
 | `chat-composer-states--idle` | the ordinary composer, for comparison | `placeholder` `Ask me for help`, `disabled` false, placeholder colour `rgb(145,139,125)` = `#918B7D` = `--lo-ink-dim`, `opacity: 1` |
-| `chat-composer-states--busy` | a turn in flight keeps a truthful placeholder (`Agent is busy`) and still accepts typing — it steers | `disabled` false |
+| `chat-composer-states--busy` | a turn in flight keeps a truthful placeholder (`Agent is busy`), and in THIS state the composer is disabled | `disabled` is **true**: the predicate is `isInputDisabled = unavailable \|\| isBusy` (`message-input.tsx:639`), bound straight to the textarea at `:1427`. **Source-verified, not re-measured from this frame** — see the correction below. The earlier reading of `disabled: false` described a different state |
 | `chat-composer-states--conversation-gone` | the composer under a conversation this machine does not have | `placeholder` `This conversation is gone`, `disabled` **true**, placeholder colour **`rgb(95,90,78)`** = `#5F5A4E` = `--lo-ink-disabled`, `opacity: 1`. The colour step is the point: disabled changes colour, never opacity, and before this pass the only signal was `cursor: not-allowed` after the user had typed |
 
 Two defects in this set were found by *looking* at frames rather than by a test,
 and both are in the table above: the three rowless states rendered as blank
 (`h-0 overflow-hidden`, 99.92% one colour) and a cached paint claimed "Start of
 conversation" through the exhausted-history slot.
+
+### Correction: the busy composer (design review round 2, D4)
+
+An earlier revision of the table above claimed the busy frame was
+`disabled: false` and that it "still accepts typing — it steers". **Both halves
+were wrong about the state this set captures.** The frame renders the disabled
+ink, and the production predicate is `isInputDisabled = unavailable || isBusy`
+(`message-input.tsx:639`), bound straight to the textarea at `:1427`, with
+`isBusy = Boolean(isLoading && currentJobId)`.
+
+Steering during a turn is a property of the CANONICAL path, which hands the
+composer `currentJobId = null` — so `isBusy` is false there and the composer
+stays live. That is a DIFFERENT state from this frame, and one sentence cannot
+describe both: a reader who came to this frame to find out whether the busy
+composer is interactive was told the opposite of what the pixels show.
+
+What this correction rests on is the SOURCE, stated as such: the composer
+cannot be rendered in isolation for a markup assertion (see
+`scripts/composer-readings.test.mjs`), and the capture harness drives a headless
+browser, so no fresh DOM reading is offered here. The frame remains the record
+of the captured state; the predicate above is the record of the behaviour, and
+the two now agree.
 
 ## What this set does NOT contain, and why
 

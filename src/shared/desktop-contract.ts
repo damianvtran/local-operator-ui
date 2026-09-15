@@ -1297,6 +1297,14 @@ export type DesktopAPI = {
 		visible: boolean;
 		focused: boolean;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Tell main this pane has stopped displaying `sessionId` (review round 2,
+	 * R2-4). Electron only, and optional: absent means the pre-fix behaviour, where
+	 * the claim stood until the window closed.
+	 */
+	releaseWatchHeartbeat?: (args: {
+		sessionId: string;
+	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
 	/** `/exit`: close this window. Detach-only; the backend keeps sessions
@@ -1337,6 +1345,18 @@ export type DesktopAPI = {
 	 * that landed on the wrong row.
 	 */
 	initialSession?: string | null;
+	/**
+	 * Whether main created this window to open the CATALOGUE (review round 2,
+	 * R2-1), read from the same argv and resolved through the same reader.
+	 *
+	 * Additive and optional like every other post-contract field: absent means "no
+	 * catalogue intent", which is what an older main says, and that degrades to
+	 * the pre-fix behaviour (restore the last conversation) rather than to an
+	 * error. It is NOT the same claim as `initialSession: null`, and that
+	 * distinction is the finding: `null` is also an ordinary launch, whose
+	 * correct answer is "restore what you had open".
+	 */
+	initialCatalogue?: boolean;
 };
 
 export type DesktopCapabilities = {

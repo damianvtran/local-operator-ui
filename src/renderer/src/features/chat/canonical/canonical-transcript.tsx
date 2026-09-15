@@ -1226,7 +1226,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					// transport is down": the failure notice and the reconnecting line are
 					// the only things on screen that say what happened, so the rung must
 					// not claim progress beside them.
-					unavailable: canonicalTranscriptSpeaks({ status, failure }),
+					//
+					// The four fields are spelled out rather than handed over as
+					// `paneView`: this is a memo, and a fresh object would make its deps
+					// depend on the view's identity instead of on the facts it reads.
+					unavailable: canonicalTranscriptSpeaks({
+						status,
+						failure,
+						missing,
+						stale,
+					}),
 					records: transcript.records,
 				}),
 			),
@@ -1237,6 +1246,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			gate,
 			status,
 			failure,
+			// The pane's two click-path states, because the predicate above reads them
+			// and a memo that missed them would keep a claim the pane has withdrawn.
+			missing,
+			stale,
 			transcript.records,
 		],
 	);
@@ -1398,6 +1411,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						/>
 					)}
 
+					{/*
+					 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
+					 * D10). It is hoisted above the scroller — see the `stale` paragraph near
+					 * the top of this component — and the second, legacy copy that used to sit
+					 * at this spot rendered the SAME sentence twice on every short pane: once
+					 * pinned to the pane's top edge, once immediately above the first bubble.
+					 * A long transcript hid it above the fold, which is why only the ordinary
+					 * and narrow fixtures showed the duplication while the overflowing one
+					 * passed.
+					 *
+					 * This surface's contract is ONE caption for one status, and a status the
+					 * reader has already read is not improved by being repeated, so the
+					 * in-scroll copy is the one that goes. The hoisted one is kept because it
+					 * survives not scrolled to the top, which was the original D1 defect.
+					 *
+					 * The loading skeleton is not rendered here either: it is
+					 * `TranscriptPlaceholder`, inside the content column above, because the
+					 * pane's own decision module (`transcript-pane.ts`) is the single
+					 * authority for when a row-less pane holds a placeholder — and because the
+					 * ground the old inline bars used (`sunken`, the weakest adjacent step in
+					 * most palettes) was measured against the pane's `canvas` and replaced
+					 * with `elevated` there.
+					 */}
 					{missing ? (
 						/*
 						 * The named state for a conversation this machine does not have,
@@ -1436,25 +1472,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								Start a new chat
 							</Button>
 						</div>
-					) : (
-						<>
-							{stale && (
-								<p className="mb-4 text-ink-dim text-meta">
-									Showing the last saved view — checking for newer messages.
-								</p>
-							)}
-							{/*
-							 * The skeleton is NOT here any more. It is
-							 * `TranscriptPlaceholder`, rendered inside the content column
-							 * above, because the pane's own decision module
-							 * (`transcript-pane.ts`) is the single authority for when a
-							 * row-less pane holds a placeholder - and because the ground
-							 * the old inline bars used (`sunken`, the weakest adjacent
-							 * step in most palettes) was measured against the pane's
-							 * `canvas` and replaced with `elevated` there.
-							 */}
-						</>
-					)}
+					) : null}
 
 					{status === "unavailable" && failure && (
 						/*

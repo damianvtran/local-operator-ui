@@ -551,10 +551,17 @@ against `canvas`, and it is a ground role the palette already owns.
 `font-semibold` on a row whose title is `flex-1 truncate`, so the marking event
 rewrote the visible string and re-truncated text under the reader's cursor. It
 now lands in the reserved status slot as an **ink step on the existing glyph**:
-the glyph takes `text-accent`. A glyph carrying its own meaning — `danger` for a
+the glyph takes `text-success`. A glyph carrying its own meaning — `danger` for a
 failed turn, `warning` for a parked approval — keeps it, since an unread arrival
-must not erase information the user needs; the unread semantic travels in the
-accessible name for every row. Every OTHER code re-inks, including `complete`:
+must not erase information the user needs. The unread semantic therefore travels
+in the accessible NAME beside the ink: the status slot's screen-reader name gains
+`, unread` exactly when an unseen `complete` takes its `text-success` step, which
+is the case the ink itself carries and the one a reader cannot hear otherwise.
+It is that narrow on purpose — the status slot's own test pins that an
+acknowledged row renders identically to an unacknowledged one for every other
+code, so a name that changed for a `danger` or `warning` row would be a second,
+untrue statement about a turn the user still needs to see. Every OTHER code
+re-inks, including `complete`:
 a session that finished while you were elsewhere is the case the mark was built
 for, and a green check does not distinguish read from unread. A running turn
 keeps its motion, which is a fact about the turn rather than a colour. Layout

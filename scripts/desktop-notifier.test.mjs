@@ -1608,3 +1608,415 @@ test("a click for a window that is gone takes the recreate path too", async () =
 	globalThis.__shown[0].handlers.click();
 	assert.deepEqual(reopened, [SESSION]);
 });
+
+// -- review round 2: R2-3, R2-4, R2-5 --------------------------------------
+
+/**
+ * A window whose BrowserWindow id and webContents id DIFFER.
+ *
+ * That is the ordinary case, not a contrived one: Electron's two id spaces are
+ * independent counters, the heartbeat is keyed on `event.sender.id` (a
+ * webContents id) while `window.id` is a BrowserWindow id, and they drift apart
+ * as soon as anything else creates a webContents — which the browser host does.
+ * A fixture with one id shared between them could not express the defect.
+ */
+function splitIdWindow({ focused = true, visible = true } = {}) {
+	return {
+		id: 7,
+		isDestroyed: () => false,
+		isFocused: () => focused,
+		isVisible: () => visible,
+		isMinimized: () => false,
+		webContents: { id: 107, send: () => undefined },
+	};
+}
+
+function recordingSender() {
+	const requests = [];
+	const sender = async (input) => {
+		requests.push(input);
+		return { status: 200, body: { result: { claimed: true } } };
+	};
+	return { requests, sender };
+}
+
+test("presence reads the displayed conversation by the id the heartbeat wrote", async () => {
+	/*
+	 * REVIEW ROUND 2, R2-3. The writer keys the map on the webContents id and the
+	 * accessor read `window.id` — the BrowserWindow id — so with the two unequal
+	 * the machine-wide presence reported a focused, visible window showing
+	 * NOTHING. The backend then could not recognise the conversation actually on
+	 * screen and bannered it as a background completion.
+	 */
+	const { requests, sender } = recordingSender();
+	const notifier = new DesktopNotifier(() => splitIdWindow(), sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	await notifier.heartbeat(107, {
+		sessionId: SESSION,
+		subscriptionId: "a".repeat(32),
+		visible: true,
+		focused: true,
+	});
+	aassertPresence(notifier, SESSION);
+	// The lease traffic is not what this test measures, and reading it back keeps
+	// the assertion below about the notification path.
+	requests.length = 0;
+});
+
+function aassertPresence(notifier, expected) {
+	assert.deepEqual(notifier.presence(), {
+		sessionId: expected,
+		window: { exists: true, focused: true, visible: true, minimized: false },
+	});
+}
+
+test("a pane that leaves the conversation withdraws its report, identity-safely", async () => {
+	/*
+	 * REVIEW ROUND 2, R2-4. Navigating from a conversation to the catalogue stops
+	 * the watch but leaves the window (and so the report) in place, so main kept
+	 * renewing "showing A" every beat and the backend suppressed A's banner while
+	 * no pane displayed it.
+	 *
+	 * The identity half is what makes the withdrawal safe: a cleanup runs after
+	 * the pane has already changed, so clearing unconditionally would wipe the
+	 * session a DEEPER pane has since subscribed to.
+	 */
+	const { requests, sender } = recordingSender();
+	const notifier = new DesktopNotifier(() => splitIdWindow(), sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	const heartbeat = () =>
+		notifier.heartbeat(107, {
+			sessionId: SESSION,
+			subscriptionId: "a".repeat(32),
+			visible: true,
+			focused: true,
+		});
+	await heartbeat();
+	aassertPresence(notifier, SESSION);
+
+	// An older pane's cleanup naming a DIFFERENT conversation must not clear this
+	// one: that is the ordering hazard, and it is why the release is scoped.
+	notifier.releaseWatch(107, OTHER);
+	aassertPresence(notifier, SESSION);
+
+	notifier.releaseWatch(107, SESSION);
+	aassertPresence(notifier, "");
+	// ...and a pane that comes back re-establishes it, so the withdrawal is a
+	// withdrawal rather than a one-way latch.
+	await heartbeat();
+	aassertPresence(notifier, SESSION);
+	requests.length = 0;
+});
+
+test("a report that stops arriving stops counting, without disabling delivery", async () => {
+	/*
+	 * R2-4's second half: a renderer that goes quiet — a wedged pane, a
+	 * navigation that never beat again — must not go on asserting what is on
+	 * screen. The window is still alive and can still raise a banner, which is
+	 * the distinction: the DISPLAY claim expires, the app's ability to notify
+	 * does not.
+	 */
+	const { requests, sender } = recordingSender();
+	const notifier = new DesktopNotifier(() => splitIdWindow(), sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	const realNow = Date.now;
+	let now = realNow();
+	Date.now = () => now;
+	try {
+		await notifier.heartbeat(107, {
+			sessionId: SESSION,
+			subscriptionId: "a".repeat(32),
+			visible: true,
+			focused: true,
+		});
+		aassertPresence(notifier, SESSION);
+		// Inside the TTL: still believed, so this is not an off-by-default field.
+		now += 40_000;
+		aassertPresence(notifier, SESSION);
+		// Past it: the report is stale, and the window itself is unchanged.
+		now += 10_000;
+		aassertPresence(notifier, "");
+	} finally {
+		Date.now = realNow;
+	}
+	requests.length = 0;
+});
+
+test("a burst digest claims its members, and shows nothing when it wins none", async () => {
+	/*
+	 * REVIEW ROUND 2, R2-5 (backend #1116's R8). A digest carries no
+	 * `completion_token`, so the single-frame claim branch skipped it and nothing
+	 * marked its members delivered — an individual frame for one of them could
+	 * then raise a SECOND banner for a completion the digest had already
+	 * announced.
+	 *
+	 * Three cases, because "it claimed something" is not the contract: every
+	 * member won, a PARTIAL race (the normal case), and a total loss.
+	 */
+	const memberTokens = [
+		{ session_id: SESSION, completion_token: TOKEN },
+		{ session_id: OTHER, completion_token: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" },
+	];
+	const digest = (id) => ({
+		epoch: "feed1",
+		seq: 9,
+		type: "notification",
+		session_id: OTHER,
+		payload: {
+			...completionFrame().payload,
+			dedupe_key: `burst:${id}`,
+			completion_token: null,
+			burst_count: 2,
+			session_ids: [SESSION, OTHER],
+			member_tokens: memberTokens,
+		},
+	});
+
+	// (1) EVERY MEMBER WON: one toast, and one claim per member.
+	const all = recordingSender();
+	const winning = new DesktopNotifier(() => null, all.sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	winning.observe(OTHER, digest("a"));
+	await settle(50);
+	assert.equal(globalThis.__toasts.length, 1, "the digest banners");
+	const claimed = all.requests.filter((r) => r?.op === "sessions.notified");
+	assert.deepEqual(
+		claimed.map((r) => [r.sessionId, r.completionToken]).sort(),
+		memberTokens
+			.map((m) => [m.session_id, m.completion_token])
+			.sort(),
+		"each member is claimed through the same call a single frame uses",
+	);
+
+	// (2) A PARTIAL RACE: the second member is already somebody else's. The
+	// digest still announces the burst — the count is the backend's statement of
+	// what happened — and it claims only what it won.
+	globalThis.__toasts = [];
+	const partialRequests = [];
+	const partial = new DesktopNotifier(
+		() => null,
+		async (input) => {
+			partialRequests.push(input);
+			const lost = input?.completionToken === memberTokens[1].completion_token;
+			return { status: 200, body: { result: { claimed: !lost } } };
+		},
+		"focus",
+		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+	);
+	partial.observe(OTHER, digest("b"));
+	await settle(50);
+	assert.equal(globalThis.__toasts.length, 1, "a member somebody else delivered is not a reason to say nothing");
+
+	// (3) EVERY MEMBER LOST: nothing is left to announce, and the dedupe key is
+	// released so a later frame can still try rather than being swallowed for the
+	// full TTL.
+	globalThis.__toasts = [];
+	const losing = new DesktopNotifier(
+		() => null,
+		async () => ({ status: 200, body: { result: { claimed: false } } }),
+		"focus",
+		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+	);
+	losing.observe(OTHER, digest("c"));
+	await settle(50);
+	assert.equal(globalThis.__toasts.length, 0, "every member belonged to another surface");
+});
+
+test("a burst digest from a backend without member_tokens still renders", async () => {
+	/*
+	 * REVIEW ROUND 4, R4-1. `member_tokens` is additive and optional on the wire
+	 * (src/shared/desktop-session-contract.ts), and that file says in as many
+	 * words what the pre-R8 shape does: "the digest still renders, its members are
+	 * simply not arbitrated". It did not. The digest branch ran, `won` came back 0
+	 * for the only reason there was nothing to try, and the frame was dropped
+	 * before `show()` — no banner at all, for a shape the contract covers.
+	 *
+	 * Two assertions, because either alone would pass a wrong implementation: a
+	 * banner is raised (the loss this fixes), and NO claim is sent (the shape has
+	 * no members, so there is nothing to arbitrate and nothing to invent).
+	 */
+	const memberlessDigest = (id) => ({
+		epoch: "feed1",
+		seq: 9,
+		type: "notification",
+		session_id: OTHER,
+		payload: {
+			...completionFrame().payload,
+			dedupe_key: `burst-memberless:${id}`,
+			completion_token: null,
+			burst_count: 2,
+			session_ids: [SESSION, OTHER],
+		},
+	});
+	globalThis.__toasts = [];
+	const claims = recordingSender();
+	const notifier = new DesktopNotifier(
+		() => null,
+		claims.sender,
+		"focus",
+		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+	);
+	notifier.observe(OTHER, memberlessDigest("a"));
+	await settle(50);
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"a memberless digest has nothing to claim, so dropping it loses the banner the contract promises",
+	);
+	assert.equal(
+		claims.requests.filter((r) => r?.op === "sessions.notified").length,
+		0,
+		"a memberless digest must not claim members it does not name",
+	);
+	/*
+	 * (2) THE SAME SHAPE WITH A PAIR THAT IS PRESENT BUT EMPTY. `member_tokens` is
+	 * a wire array, so `[{session_id: "", completion_token: ""}]` is type-legal and
+	 * the claim loop skips it — which means this digest has nothing claimable and
+	 * must render like the memberless one. Counting raw array entries instead sent
+	 * it down the dropped path (review round 5, R5-2).
+	 */
+	globalThis.__toasts = [];
+	const empty = recordingSender();
+	const emptyNotifier = new DesktopNotifier(
+		() => null,
+		empty.sender,
+		"focus",
+		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+	);
+	emptyNotifier.observe(OTHER, {
+		...memberlessDigest("b"),
+		payload: {
+			...memberlessDigest("b").payload,
+			member_tokens: [{ session_id: "", completion_token: "" }],
+		},
+	});
+	await settle(50);
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"a digest whose only member pair is empty has nothing to claim, so it must still be announced",
+	);
+	assert.equal(
+		empty.requests.filter((r) => r?.op === "sessions.notified").length,
+		0,
+		"an empty pair is not a claimable member, so no claim may be sent for it",
+	);
+});
+
+test("a ONE-MEMBER burst digest claims its member, and its click lands on it", async () => {
+	/*
+	 * REVIEW ROUND 3, R3-1 — the boundary of R2-5, and the size that was missing.
+	 *
+	 * The backend caps a tick's banners at `BURST_LIMIT = 3` and composes
+	 * `_digest_payload` for the remainder WHATEVER ITS SIZE, so the commonest
+	 * overflow is FOUR completions: three announced individually and one held
+	 * back as a digest with `burst_count: 1`, one `session_ids` entry and one
+	 * `member_tokens` pair. `isBurstDigest` asks `burst_count > 1 ||
+	 * session_ids.length > 1`, so it answered FALSE for that frame: neither claim
+	 * branch ran, no `sessions.notified` was sent, and the member stayed
+	 * claimable — the duplicate-banner hole R2-5 closes, one completion wide. The
+	 * existing digest fixtures hard-code `burst_count: 2`, the one size at which
+	 * the predicate is true, so nothing in this suite could see it.
+	 *
+	 * The click half is asserted here as a DECISION rather than a leftover: a frame
+	 * naming exactly one conversation lands on it, and only a multi-member digest
+	 * opens the catalogue (the case above).
+	 */
+	const memberToken = { session_id: SESSION, completion_token: TOKEN };
+	const oneMemberDigest = (id) => ({
+		epoch: "feed1",
+		seq: 9,
+		type: "notification",
+		session_id: SESSION,
+		payload: {
+			...completionFrame().payload,
+			dedupe_key: `burst-one:${id}`,
+			completion_token: null,
+			burst_count: 1,
+			session_ids: [SESSION],
+			member_tokens: [memberToken],
+		},
+	});
+
+	// (1) The member IS claimed, exactly once, through the same call a single
+	// frame uses — the arbitration R2-5 promised, at the size it missed.
+	const won = recordingSender();
+	const claiming = new DesktopNotifier(() => null, won.sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
+	claiming.observe(SESSION, oneMemberDigest("a"));
+	await settle(50);
+	assert.equal(globalThis.__toasts.length, 1, "a one-member burst is still announced");
+	assert.deepEqual(
+		won.requests
+			.filter((r) => r?.op === "sessions.notified")
+			.map((r) => [r.sessionId, r.completionToken]),
+		[[memberToken.session_id, memberToken.completion_token]],
+		"the single member is claimed, so no other surface can announce it again",
+	);
+
+	// (2) Losing that claim says NOTHING, and releases the dedupe key so a later
+	// regrouped digest can try rather than being swallowed for the full TTL.
+	globalThis.__toasts = [];
+	const losing = new DesktopNotifier(
+		() => null,
+		async () => ({ status: 200, body: { result: { claimed: false } } }),
+		"focus",
+		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+	);
+	losing.observe(SESSION, oneMemberDigest("b"));
+	await settle(50);
+	assert.equal(
+		globalThis.__toasts.length,
+		0,
+		"another surface already delivered this member, so there is nothing left to announce",
+	);
+
+	// (3) The click: one member, one destination. `sessionId: null` is the
+	// catalogue, and a frame with a single member must not take it.
+	const sent = [];
+	const target = {
+		id: 7,
+		isDestroyed: () => false,
+		show: () => undefined,
+		showInactive: () => undefined,
+		focus: () => undefined,
+		isMinimized: () => false,
+		restore: () => undefined,
+		isFocused: () => false,
+		isVisible: () => true,
+		webContents: { send: (channel, payload) => sent.push({ channel, payload }) },
+	};
+	globalThis.__toasts = [];
+	const routing = new DesktopNotifier(
+		() => target,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+	);
+	routing.observe(SESSION, oneMemberDigest("c"));
+	await settle(100);
+	const banner = globalThis.__shown.at(-1);
+	assert.ok(banner, "the one-member digest is delivered as a banner");
+	banner.handlers.click();
+	const opened = sent.find((c) => c.channel === "desktop-open-conversation");
+	assert.deepEqual(
+		opened?.payload,
+		{ sessionId: SESSION },
+		"a banner naming one conversation opens THAT conversation, not the catalogue",
+	);
+});

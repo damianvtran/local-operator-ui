@@ -108,7 +108,20 @@ export type CanonicalTranscriptStatus =
  * the user is waiting through has to be visible, and it has to stop the band
  * from offering the greeting over a conversation nobody has read.
  */
-export function canonicalTranscriptSpeaks(view: TranscriptPaneView): boolean {
+export function canonicalTranscriptSpeaks(view: {
+	status: CanonicalTranscriptStatus;
+	failure: SessionFailureNotice | null;
+	/*
+	 * The two states a notification click can paint, optional for the same reason
+	 * they are optional on `TranscriptPaneView`: a caller that knows neither is a
+	 * caller for which neither is true. They are named here rather than read off
+	 * the whole view because the band and the working-line rung both ask this
+	 * question with only what they hold, and widening the parameter to the full
+	 * pane view would make every asker hand over fields this predicate ignores.
+	 */
+	missing?: boolean;
+	stale?: boolean;
+}): boolean {
 	return (
 		view.status === "reconnecting" ||
 		(view.status === "unavailable" && Boolean(view.failure)) ||

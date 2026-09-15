@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +11,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -38,6 +38,7 @@ const bundle = await build({
 	],
 });
 const {
+	ViewerRecordPublisher,
 	requestDesktop,
 	trustedDesktopFrame,
 	registerDesktopIPC,
@@ -862,6 +863,78 @@ test("sender URL allows only packaged file or exact dev origin", () => {
 	);
 	assert.ok(
 		!trustedDesktopFrame("http://localhost:5188", "http://localhost:5187"),
+	);
+});
+
+test("a watch release withdraws the record's conversation, so a later click switches instead of raising", async () => {
+	/*
+	 * QA ROUND 2, Q1 — the entry point the renderer actually uses.
+	 *
+	 * The presence withdrawal (R2-4) and the routing record are two answers to two
+	 * questions, and only the first was being cleared: a click after navigating away
+	 * from A found the record still naming A, was answered with a raise, and because
+	 * that branch reports success no later rung of the ladder was tried. So this
+	 * drives the real handler with the real publisher and then reads the FILE the
+	 * backend's `lop resume-click` reads, because the file is what the click routes on.
+	 */
+	globalThis.__desktopHandlers = new Map();
+	const frame = { url: "file:///app/index.html" };
+	const contents = { mainFrame: frame };
+	const owner = { webContents: contents, isDestroyed: () => false };
+	const released = [];
+	const dir = mkdtempSync(join(tmpdir(), "viewer-release-"));
+	const publisher = new ViewerRecordPublisher(dir, 4249);
+	publisher.setControlPort(1);
+	publisher.start();
+	publisher.noteSession("conversation-a");
+	assert.equal(
+		JSON.parse(readFileSync(join(dir, "4249.json"), "utf8")).current_session,
+		"conversation-a",
+	);
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+		undefined,
+		undefined,
+		{ releaseWatch: (windowId, sessionId) => released.push([windowId, sessionId]) },
+		(sessionId) => {
+			released.push(["record", sessionId]);
+			publisher.releaseSession(sessionId);
+		},
+	);
+	await globalThis.__desktopHandlers.get("desktop-watch-release")(
+		{ sender: contents, senderFrame: frame },
+		{ sessionId: "conversation-a" },
+	);
+	assert.deepEqual(
+		released,
+		[
+			[contents.id, "conversation-a"],
+			["record", "conversation-a"],
+		],
+		"the release withdraws the presence AND the routing record",
+	);
+	assert.equal(
+		JSON.parse(readFileSync(join(dir, "4249.json"), "utf8")).current_session,
+		"",
+		"a click for that conversation must now be told to switch to it",
+	);
+	publisher.stop();
+	rmSync(dir, { recursive: true, force: true });
+
+	/*
+	 * ...AND THE LIVE CALL SITE IS WIRED, which is the half a handler test cannot
+	 * see: a handler that offers the hook is useless if `index.ts` never passes the
+	 * record to it. Asserted on the call's own argument list, the way this suite's
+	 * sibling guards assert the shapes they depend on.
+	 */
+	const index = readFileSync("src/main/index.ts", "utf8");
+	const call = index.slice(index.indexOf("registerDesktopIPC("));
+	assert.match(
+		call.slice(0, call.indexOf(");")),
+		/viewerRecord\?\.releaseSession\(sessionId\)/,
+		"index.ts must hand the release handler the live viewer record, or the record keeps naming the conversation the pane left",
 	);
 });
 

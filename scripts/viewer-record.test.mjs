@@ -100,6 +100,48 @@ test("the directory is 0700 and the file is 0600", () => {
 	publisher.stop();
 });
 
+test("a pane that leaves its conversation withdraws the routing report, identity-safely", () => {
+	/*
+	 * QA ROUND 2, Q1. `current_session` is the click's DESTINATION, so a record
+	 * that keeps naming a conversation the pane has left is not merely stale: the
+	 * backend reads the match as "already displayed", skips `resume_session` and
+	 * reports success, so the click raises whatever the window happens to show and
+	 * no later rung of the ladder corrects it.
+	 *
+	 * Three cases, because "it cleared" is not the contract: the session the record
+	 * NAMES is withdrawn, a DIFFERENT session is left alone (a deeper pane has
+	 * reported it since), and an empty id withdraws nothing.
+	 */
+	const dir = tempDir();
+	const publisher = new ViewerRecordPublisher(dir, 4248);
+	publisher.setControlPort(1);
+	publisher.start();
+	publisher.noteSession(SESSION);
+	assert.equal(readRecord(dir, 4248).current_session, SESSION);
+
+	publisher.releaseSession("ffffffffffff");
+	assert.equal(
+		readRecord(dir, 4248).current_session,
+		SESSION,
+		"another conversation's report is not this pane's to withdraw",
+	);
+
+	publisher.releaseSession("");
+	assert.equal(
+		readRecord(dir, 4248).current_session,
+		SESSION,
+		"an empty id is this record's own 'nothing on screen' value, not a session to leave",
+	);
+
+	publisher.releaseSession(SESSION);
+	assert.equal(
+		readRecord(dir, 4248).current_session,
+		"",
+		"the pane that left A must stop naming A, or the click for A is answered with a raise",
+	);
+	publisher.stop();
+});
+
 test("the write is staged, so no reader can see a half-written record", () => {
 	const dir = tempDir();
 	publishViewerRecord(
