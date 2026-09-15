@@ -562,7 +562,13 @@ test("a quit-time capture shorter than the record on disk is refused, not writte
  * writing the refused content is the original data loss through a different door.
  *
  * So these cases drive the STORE, not `stopSnapshotDecision`: a test that only asked
- * the pure function would pass against the code that lost the session.
+ * the pure function would pass against the code that lost the session. The length
+ * condition is what the loss needs - a staged capture SHORTER than the durable
+ * record - so it is opened deliberately here (3 durable rows, a 1-row capture)
+ * rather than left to a representative sequence, which is the difference between a
+ * test that passes and a test that would have caught this: the independent QA pass
+ * drove six stop cases through the same mechanism and lost no session, because none
+ * of them staged a shorter record than the one on disk.
  */
 function sessionRows(count, prefix = "kept") {
 	return Array.from({ length: count }, (_unused, index) => ({
@@ -573,7 +579,7 @@ function sessionRows(count, prefix = "kept") {
 	}));
 }
 
-test("a refused quit-time capture is not written by the flush that follows it (review round 3, B2's MAJOR)", async () => {
+test("a refused quit-time capture - shorter than the durable record - is not written by the flush that follows it (review round 3, B2's MAJOR)", async () => {
 	const dir = join(root, "session-stop-refusal");
 	const store = new BrowserSessionStore({ dir, debounceMs: 20 });
 	store.record(sessionRows(3));
