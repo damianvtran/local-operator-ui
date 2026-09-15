@@ -10,7 +10,7 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useConnectivityStatus } from "./use-connectivity-status";
 
 /**
@@ -74,25 +74,42 @@ export const useConnectivityGate = () => {
 		};
 	}, [refetchInternetStatus, queryClient]);
 
-	// When server status changes, invalidate all queries except connectivity-related ones
+	/**
+	 * Refresh what the server's absence paused, at the moment it comes back.
+	 *
+	 * WHY this replaced "invalidate when the server goes offline". That invalidation
+	 * ran on the way DOWN, with `refetchType: "active"`, against queries whose own
+	 * gate had just disabled them - so a flap re-ran reads that could only fail,
+	 * replaced rendered rows with an error, and discarded in-flight work at exactly
+	 * the moment the daemon was least able to answer. The user's report is the
+	 * result: after a reload nothing loaded, and only a later reload brought the
+	 * conversations back. Nothing here cancels anything on the way down: the reads
+	 * that are already rendered stay rendered, and what the app owes the user on
+	 * the way back up is a re-read.
+	 */
+	const wasOffline = useRef(false);
 	useEffect(() => {
-		// Only invalidate queries when the server is offline
-		// Internet connectivity issues should not invalidate local backend queries
-		if (!isLoading && !isServerOnline) {
-			// Invalidate all queries except connectivity-related ones
-			queryClient.invalidateQueries({
-				predicate: (query) => {
-					const queryKey = query.queryKey[0];
-					return (
-						queryKey !== "server-health" &&
-						queryKey !== "internet-connectivity" &&
-						queryKey !== "config"
-					);
-				},
-				// Force refetch to ensure queries are updated with new connectivity status
-				refetchType: "active",
-			});
+		if (isLoading) return;
+		if (!isServerOnline) {
+			wasOffline.current = true;
+			return;
 		}
+		if (!wasOffline.current) return;
+		wasOffline.current = false;
+		queryClient.invalidateQueries({
+			predicate: (query) => {
+				const queryKey = query.queryKey[0];
+				return (
+					queryKey !== "server-health" &&
+					queryKey !== "internet-connectivity" &&
+					queryKey !== "config"
+				);
+			},
+			// Bounded by the server's own return, not by a schedule: main has just
+			// reported a live connection, so these reads are the ones that can be
+			// answered now.
+			refetchType: "active",
+		});
 	}, [isServerOnline, isLoading, queryClient]);
 
 	/**

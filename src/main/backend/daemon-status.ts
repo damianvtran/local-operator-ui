@@ -13,6 +13,16 @@
  * - `/health` with a matching `instance_id` is the ONLY liveness signal;
  * - three consecutive identity-failing probes are needed before the state is
  *   `detached` - one 2 s timeout is not evidence that a server is gone;
+ * - a probe that did not ANSWER is weaker evidence still, and is counted
+ *   separately (`UNANSWERED_BEFORE_DETACHED`): a busy daemon misses a 2 s
+ *   budget while it serves every real request, and reading that as absence is
+ *   the mechanism behind "the app says my server is offline while my server
+ *   answers the TUI";
+ * - a REAL answer wins over a probe's silence: while this app's own desktop
+ *   requests are still succeeding (`recordTransportSuccess`), no miss - not
+ *   even `UNANSWERED_BEFORE_DETACHED` of them - may move the connection to
+ *   `detached`, because the transport and the probe demonstrably disagree and
+ *   the transport is the one carrying the user's data;
  * - a daemon whose pid is gone is `detached` immediately, because that IS
  *   evidence;
  * - a daemon whose pid is ALIVE but whose published heartbeat stopped is
@@ -48,9 +58,34 @@ import type {
 	DaemonConnectionState,
 	DaemonStatusSnapshot,
 } from "../../shared/backend-status";
+import type { UnreachableCause } from "./discovery";
 
 /** Consecutive identity-failing probes before `detached` (design §5). */
 export const DEGRADED_AFTER_FAILURES = 3;
+
+/**
+ * Consecutive UNANSWERED probes before `detached`.
+ *
+ * Deliberately far higher than `DEGRADED_AFTER_FAILURES`, and for a different
+ * reason: a failed probe HAD an answer, so it is evidence about the connection
+ * (a stranger on the port, a non-daemon, a refused socket). A probe that ran out
+ * its budget had no answer at all, and CPython serving one long turn - the
+ * operator's ordinary condition, not an exotic one - is enough to miss several
+ * in a row while every other request succeeds. Nine misses at the 10 s cadence
+ * is 90 s of continuous silence, which no healthy daemon produces and which
+ * still recovers a genuinely stopped one well inside the `DETACHED_AFTER_MS`
+ * report window.
+ */
+export const UNANSWERED_BEFORE_DETACHED = 9;
+
+/**
+ * How long a successful desktop request keeps a probe's silence from counting.
+ *
+ * Three probe intervals: long enough that one answered read covers the misses
+ * around it, short enough that a daemon which really did stop stops being
+ * excused within the same minute a user would notice.
+ */
+export const TRANSPORT_EVIDENCE_MS = 30_000;
 
 /** Probe cadence once attached. */
 export const PROBE_INTERVAL_MS = 10_000;
@@ -73,9 +108,26 @@ export const REATTACH_BACKOFF_CEILING_MS = 300_000;
 export type ProbeObservation =
 	| { kind: "identified" }
 	| { kind: "heartbeat-stale"; detail: string }
+	| {
+			/**
+			 * A daemon is serving the address this app is configured for, and this app
+			 * is not attaching to it. Distinct from `heartbeat-stale` because the
+			 * REASON differs (no key, a key that was refused, an install without the
+			 * claim route) - and because "a server is running, we did not attach" is
+			 * the honest sentence for all of them, which is what the copy needs.
+			 */
+			kind: "unattachable";
+			detail: string;
+	  }
 	| { kind: "capability"; status: number; detail: string }
 	| { kind: "build-announced"; detail: string }
 	| { kind: "failed"; detail: string }
+	| {
+			/** The probe ran out of budget with no answer at all. */
+			kind: "unanswered";
+			cause: UnreachableCause;
+			detail: string;
+	  }
 	| { kind: "pid-dead" }
 	| { kind: "no-candidate"; detail: string };
 
@@ -99,6 +151,10 @@ export class DaemonStateMachine {
 	private updatedAt: number;
 	private detachedSince: number | null = null;
 	private backoffMs = REATTACH_BACKOFF_MS;
+	/** Consecutive probes that ran out of budget with no answer at all. */
+	private unanswered = 0;
+	/** When a desktop request was last answered, or null. */
+	private lastTransportAt: number | null = null;
 
 	constructor(private readonly now: () => number = Date.now) {
 		this.updatedAt = now();
@@ -109,6 +165,7 @@ export class DaemonStateMachine {
 		this.identity = identity;
 		this.owned = options.owned;
 		this.failures = 0;
+		this.unanswered = 0;
 		this.detachedSince = null;
 		this.backoffMs = REATTACH_BACKOFF_MS;
 		this.state = "attached";
@@ -141,6 +198,7 @@ export class DaemonStateMachine {
 		switch (observation.kind) {
 			case "identified":
 				this.failures = 0;
+				this.unanswered = 0;
 				this.capabilityStatus = null;
 				this.detachedSince = null;
 				this.backoffMs = REATTACH_BACKOFF_MS;
@@ -191,8 +249,30 @@ export class DaemonStateMachine {
 					this.detail = `${observation.detail} (probe ${this.failures} of ${DEGRADED_AFTER_FAILURES})`;
 				}
 				break;
+			case "unanswered":
+				this.observeUnanswered(observation.detail);
+				break;
+			case "unattachable":
+				/*
+				 * A daemon answered the address this app is configured for, and this app is
+				 * not attaching to it. Same state as `heartbeat-stale` and for the same
+				 * reason - the daemon EXISTS - but produced by a different path (a record
+				 * with no key this app may use, a key the daemon refused, an install
+				 * predating the claim route), which the detail names. It never overwrites a
+				 * live attachment: a daemon answering a port this app is NOT using says
+				 * nothing about the one it is.
+				 */
+				if (this.state !== "attached" && this.state !== "replaced") {
+					this.state = "wedged";
+				}
+				this.detail = observation.detail;
+				break;
 			case "pid-dead":
-				this.enterDetached("The daemon's process is gone.");
+				// Corroborated absence, and the one path that bypasses the
+				// transport-evidence gate below: a process that is gone cannot be the
+				// process answering this app's requests, so no answered request
+				// contradicts this observation.
+				this.enterDetached("The daemon's process is gone.", true);
 				break;
 			case "no-candidate":
 				this.enterDetached(observation.detail);
@@ -202,7 +282,100 @@ export class DaemonStateMachine {
 		return this.state;
 	}
 
-	private enterDetached(detail: string): void {
+	/**
+	 * Fold a probe that ran out of budget with no answer.
+	 *
+	 * Three rules, in order, and each one exists because the alternative was
+	 * measured on the operator's machine:
+	 *
+	 *   1. A successful desktop request inside the evidence window means the
+	 *      connection is ALIVE and the probe is the thing that is wrong. The state
+	 *      does not move at all - not to `degraded`, because the app is talking to
+	 *      its daemon right now - and the detail records both facts. This is the
+	 *      rule that makes "no surface may say offline while the app is still
+	 *      reading from it" true by construction rather than by each surface
+	 *      remembering to check a second flag.
+	 *   2. Without that evidence, misses accumulate as `degraded` (usable), which
+	 *      is all a 2 s budget on a busy box justifies.
+	 *   3. Only `UNANSWERED_BEFORE_DETACHED` consecutive misses detach, and the
+	 *      detail says how many were counted, so the log line names the evidence.
+	 */
+	private observeUnanswered(detail: string): void {
+		this.unanswered += 1;
+		if (this.transportEvidenceFresh()) {
+			const silentFor = Math.round(
+				(this.now() - (this.lastTransportAt as number)) / 1000,
+			);
+			this.detail = `${detail} The daemon answered a request ${silentFor}s ago, so it is serving and the probe's budget is what expired (no answer to probe ${this.unanswered}).`;
+			return;
+		}
+		if (this.unanswered >= UNANSWERED_BEFORE_DETACHED) {
+			this.enterDetached(detail);
+			return;
+		}
+		this.state = "degraded";
+		this.detail = `${detail} (no answer to probe ${this.unanswered} of ${UNANSWERED_BEFORE_DETACHED})`;
+	}
+
+	/**
+	 * Record that a real request against the attached daemon was answered.
+	 *
+	 * WHY this is the state machine's business and not a caller's: the probe and
+	 * the transport disagree regularly on a box running long turns - the probe
+	 * has a 2 s budget, a session list has a 30 s one - and the one carrying the
+	 * user's data is the transport. Recording it here is what lets
+	 * {@link observeUnanswered} prefer it without every surface re-deriving the
+	 * same fact.
+	 *
+	 * It revives `degraded` (the daemon just answered, so the missed probes are
+	 * explained) and never a `detached` connection: coming back from those is
+	 * `recoverFromDetachment`'s job, because that path also has to re-prove the
+	 * daemon's IDENTITY before anything may use it.
+	 *
+	 * @returns whether the state actually moved, so the caller only pushes a
+	 * snapshot when there is something new to push.
+	 */
+	recordTransportSuccess(): boolean {
+		const moved = this.state === "degraded";
+		this.lastTransportAt = this.now();
+		this.unanswered = 0;
+		if (moved) {
+			this.failures = 0;
+			this.state = this.identity ? "attached" : "connecting";
+			this.detail = this.identity
+				? `Connected to the daemon on ${this.identity.url} (pid ${this.identity.pid}, v${this.identity.version}).`
+				: "Connected to the Local Operator daemon.";
+		}
+		this.updatedAt = this.now();
+		return moved;
+	}
+
+	/** Whether a successful request is recent enough to outrank a probe. */
+	private transportEvidenceFresh(): boolean {
+		return (
+			this.lastTransportAt !== null &&
+			this.now() - this.lastTransportAt <= TRANSPORT_EVIDENCE_MS
+		);
+	}
+
+	private enterDetached(detail: string, corroborated = false): void {
+		/*
+		 * The last gate before a surface is allowed to say "offline". A daemon that
+		 * answered one of this app's own requests seconds ago is not gone, whatever
+		 * the probes could not read, and detaching on that evidence is how the app
+		 * came to cancel the reads it was still completing. The caller's own
+		 * recovery path re-proves identity on the next attempt, so refusing here
+		 * costs nothing but the false sentence it prevents.
+		 *
+		 * `corroborated` is for observations that are themselves direct evidence -
+		 * a pid that is gone - and for which no answered request can exist.
+		 */
+		if (!corroborated && this.transportEvidenceFresh()) {
+			this.failures = 0;
+			this.state = "degraded";
+			this.detail = `${detail} The daemon answered a request ${Math.round((this.now() - (this.lastTransportAt as number)) / 1000)}s ago, so this app is not reporting it as gone.`;
+			return;
+		}
 		this.failures = DEGRADED_AFTER_FAILURES;
 		this.state = "detached";
 		if (this.detachedSince === null) this.detachedSince = this.now();
@@ -270,6 +443,13 @@ export class DaemonStateMachine {
 			desktopAvailable: this.desktopAvailable,
 			failures: this.failures,
 			capabilityStatus: this.capabilityStatus,
+			/**
+			 * Carried so a surface can explain a `degraded` connection in the same
+			 * terms main used, rather than inventing a second reason for it. Both are
+			 * also what a reader needs to tell a busy daemon from a gone one.
+			 */
+			unanswered: this.unanswered,
+			lastTransportAt: this.lastTransportAt,
 			detail: this.detail,
 			updatedAt: this.updatedAt,
 		};
