@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type BrowserWindow, type Event, WebContentsView, app } from "electron";
 import { ApprovalStore } from "./approvals";
@@ -6,8 +5,9 @@ import { CdpPool } from "./cdp";
 import { ConsentNotifier } from "./consent-notifier";
 import type { DriveableView } from "./electron-types";
 import { createBrowserExtensionManager } from "./extension-ui";
-import { BrowserHost } from "./host";
+import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
+import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
 import {
 	BROWSER_PARTITION,
@@ -20,8 +20,18 @@ import {
 	installBrowserSessionHandlers,
 	resolveBrowserSession,
 } from "./profile";
-import { TabRegistry } from "./registry";
+import { TabRegistry, surfaceToken } from "./registry";
 import { type RpcServer, startRpcServer } from "./rpc";
+import {
+	type RestoreReport,
+	SessionCookieVault,
+	sessionCookiePaths,
+} from "./session-cookies";
+import {
+	HIDDEN_COOKIE_JAR_WEB_PREFERENCES,
+	browserProfileCipher,
+	createHiddenCookieJarTarget,
+} from "./session-cookies-electron";
 import {
 	BrowserSessionStore,
 	SESSION_FILENAME,
@@ -38,6 +48,7 @@ import {
 	configurePslRules,
 	domainScopeAvailable,
 } from "./vendor/driver/origin-policy";
+import { PSL_RULES } from "./vendor/driver/psl.gen";
 
 /**
  * The browser host: wiring, lifecycle, and the per-view security handlers.
@@ -88,6 +99,10 @@ export interface BrowserHostHandle {
 	port: number;
 	profileDir: string;
 	agentTabs: () => number;
+	/** What the last restore of session-only cookies did. Exposed so an evidence
+	 * run can report it without reading the log, and so a test can assert the
+	 * restore ran before any page loaded. */
+	sessionCookies: () => RestoreReport | null;
 	stop: () => Promise<void>;
 }
 
@@ -100,6 +115,17 @@ export interface BrowserHostHandle {
  */
 let activeHost: BrowserHostHandle | null = null;
 
+/** The in-flight stop, so a second caller waits for the first instead of
+ * returning while the first is still writing the session-cookie snapshot. */
+let stopping: Promise<void> | null = null;
+
+/** Whether a stop is still owed: a running host, or a stop that has not settled.
+ * Read by the app's quit path, which has to hold the quit until the
+ * session-cookie snapshot the stop writes is on disk. */
+export function browserHostStopPending(): boolean {
+	return activeHost !== null || stopping !== null;
+}
+
 /**
  * Stop the host if one is running.
  *
@@ -108,11 +134,21 @@ let activeHost: BrowserHostHandle | null = null;
  * without this running, the leftover state file names a dead pid, which the
  * Python side classifies as ABSENT without probing — a crash leaves a harmless
  * record rather than a phantom host.
+ *
+ * Idempotent AND awaitable: a second caller gets the first call's promise rather
+ * than an immediate return. The session-cookie snapshot runs inside this stop, so
+ * a quit path that awaited a no-op second call could exit before the snapshot was
+ * on disk while reporting that it had stopped cleanly.
  */
 export async function stopBrowserHost(): Promise<void> {
+	if (stopping) return stopping;
 	const handle = activeHost;
 	activeHost = null;
-	if (handle) await handle.stop();
+	if (!handle) return;
+	stopping = handle.stop().finally(() => {
+		stopping = null;
+	});
+	return stopping;
 }
 
 /**
@@ -157,24 +193,44 @@ export async function startBrowserHost(
 		log,
 	});
 
-	// Electron does not restore unpacked extensions itself. Load the approved
-	// registry before restoring browser tabs so content scripts see first navigation.
-	const extensions = createBrowserExtensionManager({
-		window: options.window,
-		session: browserSession,
-		dir: join(options.userDataDir, "browser"),
-		windowShow: options.windowShow,
-	});
-	await extensions.start();
+	// Policy and data share one immutable vendoring pin. A writable userData
+	// file must not silently redefine which public suffixes admit broad grants.
+	configurePslRules(PSL_RULES);
 
-	// The public-suffix rules the `domain` approval scope needs. The vendored
-	// `origin-policy` (design 12.2) takes them by injection rather than importing the
-	// generated table, so this reads an OPTIONAL file and reports the consequence
-	// instead of failing: without rules, no broad-domain option is offered and no
-	// stored domain grant is matched. Exact-origin behaviour is untouched — see
-	// `vendor/driver/origin-policy.ts`'s ADAPTED note (and PROVENANCE.json's
-	// `patches`) for why this is fail-closed.
-	configurePslRules(readOptionalPslRules(options.userDataDir, log));
+	/*
+	 * Session-only cookie persistence, restored BEFORE anything can load a page.
+	 *
+	 * This is the only moment at which the jar holds nothing but what the previous
+	 * run stored: a restore that ran after a tab had navigated would race the
+	 * site's own cookie writes and lose to whichever came second, and the point is
+	 * to put the previous session's cookies back the way the site left them. The
+	 * jar channel is a CDP attachment to a hidden `WebContentsView` in the same
+	 * partition — the only in-process channel that carries a CHIPS partition key
+	 * (see `session-cookies.ts` for the measurements) — and that view is never
+	 * attached to a window, so it is never laid out, painted or focused.
+	 */
+	const cookieJar = createHiddenCookieJarTarget(
+		new WebContentsView({
+			webPreferences: { ...HIDDEN_COOKIE_JAR_WEB_PREFERENCES },
+		}),
+	);
+	const sessionCookies = new SessionCookieVault({
+		jar: cookieJar.jar,
+		cipher: browserProfileCipher(),
+		...sessionCookiePaths(options.userDataDir),
+		flushStore: () => browserSession.cookies.flushStore(),
+		clearSessionData: (what) => clearBrowsingData(browserSession, what),
+		log,
+	});
+	let restoreReport: RestoreReport | null = null;
+	try {
+		restoreReport = await sessionCookies.restore();
+	} catch (error) {
+		// A restore that throws must not stop the browser starting: the user loses
+		// session cookies they were going to lose anyway, and the vault has already
+		// failed closed on its own paths.
+		log(`[browser] session cookies: the restore failed (${String(error)})`);
+	}
 	const cdp = new CdpPool({ log });
 	/** Child views by tab id, so close and quit can release each one, and a
 	 * webContents that dies on its own can be matched back to its tab. */
@@ -214,7 +270,20 @@ export async function startBrowserHost(
 		log,
 	});
 
-	/** The snapshot every change writes, debounced by the store. */
+	/**
+	 * The snapshot every change writes, debounced by the store.
+	 *
+	 * NOT GATED ON A "the process is stopping" FLAG ANY MORE (review round 3,
+	 * B2's MAJOR). The gate was a function-local boolean set inside `stop()`, and
+	 * the ordering that defeats the stop decision is the one where the views are
+	 * already destroyed when `stop()` runs: each `destroyed` handler fires
+	 * `notifyChanged` while that boolean is still false, so the short capture was
+	 * staged, the stop decision refused it - and the store's own `flush()` wrote
+	 * it anyway. The binding part of that rule is the store's `seal()`, which is
+	 * what no longer accepts a capture after the stop decision; a flag that has to
+	 * be set first only covers the orderings that happen to run through `stop()`.
+	 * One mechanism, at the only writer, instead of two that can disagree.
+	 */
 	const captureSession = (): void => {
 		sessionStore.record(
 			captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
@@ -226,6 +295,8 @@ export async function startBrowserHost(
 		options.window.webContents.send("browser-state-changed");
 		// The tab list is durable state now (design 7.2): a create, a close and a
 		// navigation are what changes it, and every one of those paths ends here.
+		// Teardown fires it too; what keeps a teardown capture out of the file is
+		// the store's own seal, not a check here.
 		captureSession();
 	};
 
@@ -261,9 +332,17 @@ export async function startBrowserHost(
 	}
 
 	const ownership = new OwnershipLedger({
+		mayAdopt: (token, requester) => {
+			const record = registry.requireSurface(token);
+			return (
+				record.handedTo === requester.slice("session:".length) &&
+				!record.allocationId
+			);
+		},
 		closeTab: async (token) => {
 			try {
 				const record = registry.requireSurface(token);
+				approvals.forgetDocument(token);
 				registry.destroy(record.tabId);
 			} catch {
 				// Already gone is the finished state, not a pending obligation.
@@ -313,12 +392,28 @@ export async function startBrowserHost(
 		forgetSiteData: (origin) => clearOriginData(browserSession, origin),
 	});
 
+	// Electron does not restore unpacked extensions itself. Load the approved
+	// registry before restoring browser tabs so content scripts see first navigation.
+	const extensions = createBrowserExtensionManager({
+		window: options.window,
+		session: browserSession,
+		dir: join(options.userDataDir, "browser"),
+		windowShow: options.windowShow,
+	});
+	await extensions.start();
+
 	// Restore BEFORE any interaction is possible, and after the session handlers
 	// exist (the user agent must already be set: Electron documents that
 	// `setUserAgent` does not affect existing WebContents, so a restore that beat
 	// it would leave the first tab presenting the default Electron UA).
+	//
+	// NOT awaited. The call allocates every view and settles the active tab
+	// synchronously, so the strip is correct on the first paint; the pages then load
+	// under the host's own bounded background budget, which is what stops a file full
+	// of rows — or one page that never answers — from withholding the browser until
+	// the RPC server exists (review round 1, R5).
 	const recorded = readSession(sessionStore.filePath, log);
-	await host.restoreTabs(recorded);
+	host.restoreTabs(recorded);
 	if (recorded.length) {
 		log(
 			`[browser] restored ${recorded.length} tab(s) from ${SESSION_FILENAME}; every restored tab is user-owned and holds no handle (design 7.3)`,
@@ -352,7 +447,7 @@ export async function startBrowserHost(
 		expectedUrl: options.expectedUrl,
 		host: () => host,
 		extensions,
-		clearData: (what: ClearWhat) => clearBrowsingData(browserSession, what),
+		clearData: (what: ClearWhat) => sessionCookies.clearBrowsingData(what),
 		log,
 	});
 
@@ -365,13 +460,42 @@ export async function startBrowserHost(
 		port: server.port,
 		profileDir,
 		agentTabs: () => registry.agentTabCount(),
+		sessionCookies: () => restoreReport,
 		stop: async () => {
-			// Capture BEFORE the views are destroyed: `captureTabs` reads each view's
-			// live navigation history, and a destroyed webContents has none. This is
-			// also why the flush lives here rather than in `before-quit`: stopping the
-			// host is what happens on a quit AND on a window close, so one call site
-			// covers both instead of a quit-only hook that a window close would skip.
-			captureSession();
+			/*
+			 * The quit-time capture, taken BEFORE the views are destroyed
+			 * (`captureTabs` reads each view's live navigation history and a destroyed
+			 * view has none) - and the one place a capture may be REFUSED.
+			 *
+			 * A capture taken while the process is coming down can be short for a reason
+			 * that is not the user's doing: the views may already be gone (SIGTERM, an
+			 * update restart, a renderer crash). Measured: a SIGTERM quit left
+			 * `{"version":1,"tabs":[]}` in 8 of 8 runs while a window close kept the
+			 * tabs. `stopSnapshotDecision` refuses a capture shorter than the record
+			 * already on disk, so the worst case is a tab the user had just closed
+			 * coming back rather than a session disappearing. This is also why the flush
+			 * lives here rather than in `before-quit`: stopping the host is what happens
+			 * on a quit AND on a window close, so one call site covers both instead of a
+			 * quit-only hook that a window close would skip.
+			 *
+			 * THE DECISION AND THE WRITE ARE ONE CALL, on the store
+			 * (`commitStopCapture`), because splitting them was round 3's MAJOR: the
+			 * refusal has to take back what is staged and stop accepting more, or the
+			 * `flush()` two lines down writes the capture the decision just refused.
+			 */
+			const atStop = captureTabs(
+				registry.list(),
+				registry.activeTab?.tabId ?? null,
+			);
+			const decision = sessionStore.commitStopCapture(atStop);
+			if (!decision.write) {
+				log(
+					`[browser] not overwriting ${SESSION_FILENAME} at stop: ${decision.reason}`,
+				);
+			}
+			// Nothing durable is written after this point: the store is sealed with the
+			// decision, and the per-view `destroyed` handlers below still fire a capture
+			// each (a strip that no longer exists is another way to lose the session).
 			sessionStore.flush();
 			registry.destroyAll();
 			await cdp.close();
@@ -382,6 +506,18 @@ export async function startBrowserHost(
 			approvals.resetPending();
 			ownership.clear();
 			flushBrowserStorage(browserSession);
+			// The snapshot reads the jar through the hidden view, so it has to happen
+			// BEFORE that view is released. It is also what removes the marker that
+			// tells the next start whether this shutdown was clean, so it is the last
+			// thing this feature writes.
+			try {
+				await sessionCookies.snapshot();
+			} catch (error) {
+				log(
+					`[browser] session cookies: the snapshot failed (${String(error)})`,
+				);
+			}
+			cookieJar.dispose();
 			log("[browser] host stopped");
 		},
 	};
@@ -425,8 +561,9 @@ export async function startBrowserHost(
 		// Popups: DENY everything, and do not auto-open the URL. The main window's
 		// own handler is deliberately not copied: its trusted-auth-domain allowlist
 		// exists for the app's own OAuth popup, while a driven page's `window.open`
-		// is arbitrary web content. An auth redirect inside a driven page navigates
-		// the same tab, which is what a browser does.
+		// is arbitrary web content. Only same-tab HTTP(S) navigation is supported;
+		// this is not popup OAuth parity. POST bodies, window.opener and postMessage
+		// exchanges cannot be recreated safely from a blocked popup's URL.
 		contents.setWindowOpenHandler((details) => {
 			if (HTTP_SCHEME.test(details.url)) {
 				log(
@@ -481,16 +618,32 @@ export async function startBrowserHost(
 		const notifyChrome = (): void => {
 			options.window.webContents.send("browser-state-changed");
 		};
-		contents.on("did-start-loading", notifyChrome);
+		contents.on("did-start-loading", () => {
+			// A navigation is under way, so the last refusal is stale — otherwise the
+			// failure panel would outlive the retry the user just pressed.
+			host.clearLoadFailure(tabId);
+			notifyChrome();
+		});
 		contents.on("did-stop-loading", notifyChrome);
 		contents.on("page-title-updated", notifyChrome);
 		contents.on(
 			"did-fail-load",
-			(_event, _code, _description, _url, isMainFrame) => {
+			(_event, code, description, url, isMainFrame) => {
 				// Sub-frame failures are ordinary (an ad iframe), and this run's own error
 				// frame is a main-frame refusal, which is the one that changes the state the
 				// chrome shows.
-				if (isMainFrame) notifyChrome();
+				if (!isMainFrame) return;
+				// The remote document CANNOT report this: a refused main-frame load leaves
+				// Chromium's own blank surface in the view, so the reason travels in the
+				// projection and the chrome paints it (design round 1, D1).
+				if (isReportableLoadFailure(code)) {
+					host.recordLoadFailure(tabId, {
+						code,
+						description,
+						url,
+					});
+				}
+				notifyChrome();
 			},
 		);
 
@@ -506,22 +659,41 @@ export async function startBrowserHost(
 		// page-initiated ones are all covered.
 		contents.on("did-navigate", (_event, url) => {
 			registry.bumpEpoch(tabId);
+			// The tab is on a document now, so whatever the last navigation was refused
+			// for no longer describes what is on screen.
+			host.clearLoadFailure(tabId);
+			// Returning to an approved site must not expose logs buffered while
+			// an autonomous unapproved document occupied this same WebContents.
+			stopLogCapture(contents.id);
+			startLogCapture(contents.id);
 			log(`[browser] tab ${tabId} navigated to ${url}`);
 			// A real navigation is durable state (the session file records the URL), so
 			// this is the full path rather than the light notification above.
 			notifyChanged();
 		});
-		contents.on("did-navigate-in-page", (_event, url) => {
-			registry.bumpEpoch(tabId);
+		contents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
+			if (!isMainFrame) return;
+			registry.bumpEpoch(tabId, false);
 			log(`[browser] tab ${tabId} navigated in page to ${url}`);
 			notifyChanged();
 		});
 
 		// A webContents that dies on its own (a renderer crash, a close from
 		// elsewhere) must not leave a tab record pointing at nothing: the handle has
-		// to fail closed, which means the record has to go.
+		// to fail closed, which means the record has to go. The document receipt the
+		// record's token was granted goes with it — this is the third path that ends a
+		// token (the ownership close and the chrome's close button are the others),
+		// and a receipt outliving its token is unbounded growth in a long-lived app
+		// (review round 1, N1). Read both BEFORE `forget`, which is what clears them.
 		contents.on("destroyed", () => {
-			if (registry.get(tabId)) registry.forget(tabId);
+			const record = registry.get(tabId);
+			if (record) {
+				const token = surfaceToken(record);
+				if (token) approvals.forgetDocument(token);
+				registry.forget(tabId);
+			}
+			// A failure recorded against a tab whose view died describes nothing.
+			host.clearLoadFailure(tabId);
 			// The same release the registry's own close performs. A view that is
 			// already destroyed makes the detach's own `try` a no-op and the child-view
 			// removal a no-op too, so this is safe to run on a death we did not ask for.
@@ -552,24 +724,6 @@ function releaseView(
 		window.contentView.removeChildView(view);
 	} catch {
 		// The window itself may be closing; nothing to detach from.
-	}
-}
-
-/** The public-suffix data, if the install provides one. Absent is a supported
- * state: see the call site and `vendor/driver/origin-policy.ts`'s ADAPTED note. */
-function readOptionalPslRules(
-	userDataDir: string,
-	log: (message: string) => void,
-): string | null {
-	try {
-		const path = join(userDataDir, "browser", "psl.txt");
-		if (!existsSync(path)) return null;
-		const rules = readFileSync(path, "utf8");
-		log(`[browser] loaded public-suffix rules from ${path}`);
-		return rules;
-	} catch (error) {
-		log(`[browser] could not load public-suffix rules: ${String(error)}`);
-		return null;
 	}
 }
 

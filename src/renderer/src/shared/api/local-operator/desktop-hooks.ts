@@ -59,6 +59,13 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	/*
+	 * A session's code memory (the `sessions.variables.*` ops). A backend that
+	 * predates the surface simply does not advertise the key, so
+	 * `desktopFeatureEnabled` answers false and the panel offers "Update the
+	 * backend" rather than firing a call it knows will 404.
+	 */
+	| "session_variables"
 	// Content search over past conversations. Its own feature rather than part
 	// of `session_catalogue`: a client renders the catalogue perfectly well
 	// against a backend without the search route, so gating the list on the
@@ -73,8 +80,21 @@ export type DesktopFeature =
 	 * already claimed the next `session_catalogue` version.
 	 */
 	| "draft_preview"
+	/**
+	 * `sessions.preview` and `sessions.create` accepting a `model` selection: the
+	 * draft pane's model and effort chips can be PICKED, not merely read.
+	 *
+	 * Its own key rather than a bump of `draft_preview`, for the same reason
+	 * `draft_preview` has one: the inert draft strip is useful on its own, so a
+	 * backend that can preview but cannot birth a conversation on a choice must
+	 * leave the chips inert rather than dead — the copy says the model is used,
+	 * and a control that opens a picker whose pick cannot reach the session the
+	 * first send creates is the dead affordance R20 forbids.
+	 */
+	| "draft_selection"
 	| "lifecycle"
 	| "mcp"
+	| "mcp_auth"
 	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
@@ -86,7 +106,53 @@ export type DesktopFeature =
 	 * reader that fails silently when a row is clicked.
 	 */
 	| "subagent_transcript"
-	| "radient";
+	| "radient"
+	/*
+	 * The two diagnostics reads (`info.get`, `sessions.report`). A SEPARATE key
+	 * rather than a bump of `catalogues`, because `/analytics` and
+	 * `/failovers` must keep working against a backend that lacks the two new
+	 * routes — a bumped shared key would gate the working panels behind an
+	 * update they do not need.
+	 */
+	| "diagnostics"
+	/**
+	 * The machine-wide feed: `GET /v1/desktop/events` and `POST
+	 * /v1/desktop/presence`, with their frame and lease shapes. The consumer gate
+	 * is BOTH directions: when the backend does not advertise it the renderer
+	 * keeps the 5 s catalogue poll and the per-session notification path
+	 * verbatim, and when this app is old enough not to open the feed nothing on
+	 * the backend changes either. Neither skew can double-toast.
+	 */
+	| "desktop_feed"
+	/**
+	 * `sessions.move`: moving a LIVE session's working directory
+	 * (`POST /v1/desktop/sessions/{id}/working-directory`).
+	 *
+	 * Its OWN key rather than a bump of `commands` or `session_catalogue`, on the
+	 * rule `session_search` and `draft_preview` state above: an EXISTING surface
+	 * must keep working against a backend that lacks the new route. Here the
+	 * existing surface is the working-directory chip, which is exactly what a
+	 * renderer that sees no `session_move` keeps rendering - read-only, with a
+	 * sentence that says why. Bumping `commands` would be the wrong lever twice
+	 * over: a client renders the command palette perfectly well without this
+	 * route, and `/move`'s presentation already exists on older backends (it
+	 * answers its `native_action` today), so the chip is the only surface this
+	 * negotiation actually protects.
+	 */
+	| "session_move"
+	/**
+	 * `frontend.replace`: the desktop-only replacement frame that carries an
+	 * accepted move's directory to an already-mounted viewer.
+	 *
+	 * Its OWN key, and it must gate INDEPENDENTLY of `session_move`, because the
+	 * two are independently useful: a backend can accept a move (so the route
+	 * works) while a viewer that cannot repaint is mounted next to it, and a move
+	 * whose accepted directory no mounted viewer can render is exactly the
+	 * stale-paint defect the frame exists to fix. The move controls therefore
+	 * require `session_move >= 2` AND `frontend_replace >= 1` - see
+	 * `sessionMoveEnabled`, which is the ONE place that pair is written down.
+	 */
+	| "frontend_replace";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

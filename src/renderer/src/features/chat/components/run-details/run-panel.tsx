@@ -43,6 +43,7 @@
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -55,10 +56,19 @@ import {
 	type SubagentRow,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
+import type { McpRemedyControls } from "./use-mcp-remedy";
 
 export type RunPanelProps = {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
+	/**
+	 * Whether the read carries an operation that is still running. Passed through to
+	 * the MCP section, which disables every other row's control while it does (code
+	 * review round 1, finding 5: the lock covers servers this pane has no row for).
+	 */
+	mcpGrantRunning: boolean;
+	/** The pane's MCP remedy controls, threaded to the MCP section (`chat-page`). */
+	mcpRemedy: McpRemedyControls;
 	/** The canonical session id the reader's route is addressed with. */
 	sessionId: string | null;
 	/** Per-child pulse counters, from the canonical session stream (`§ 5.3`). */
@@ -120,6 +130,8 @@ const childrenOf = (
 export const RunPanel = ({
 	details,
 	mcpServers,
+	mcpGrantRunning,
+	mcpRemedy,
 	sessionId,
 	pulses,
 	childrenOpenable,
@@ -401,6 +413,56 @@ export const RunPanel = ({
 		setUnopenable(false);
 		cachedRow.current = null;
 	}, [sessionId]);
+
+	/*
+	 * The composer's plan chip, consumed once (`docs/composer-status-tabs.md` § 5.2).
+	 *
+	 * The chip names a destination INSIDE this pane, so the request is a transient
+	 * one in the store that owns the pane's placement, and the pane is what acts on
+	 * it: ensure the LIST is showing, bring the plan into view, and retire the
+	 * request. It is not a toggle and it must not depend on hidden pane state —
+	 * the chip carries no `aria-pressed` for exactly that reason.
+	 */
+	const revealRequest = useUiPreferencesStore((state) => state.runPanelReveal);
+	const clearReveal = useUiPreferencesStore(
+		(state) => state.clearRunPanelReveal,
+	);
+	const todosSectionRef = useRef<HTMLElement | null>(null);
+
+	useEffect(() => {
+		if (!revealRequest) return;
+		/*
+		 * A reader replaces the body wholesale and the plan is not on screen inside
+		 * one, so a reader is left first and the request is held: closing it changes
+		 * `openChildId`, this effect runs again on that render, and by then the list
+		 * — and the section's ref — are mounted. Retiring the request here instead
+		 * would consume it without ever doing what it asked.
+		 */
+		if (openChildId) {
+			onReaderChildChange(null);
+			return;
+		}
+		const target = todosSectionRef.current;
+		if (target) {
+			/*
+			 * `block: "start"` and no `behavior`, so the reveal is instant rather than a
+			 * smooth scroll: `branding.md` § 5 reserves motion for entrances, and a pane
+			 * that animated its own scroll under a user who is reading would move text
+			 * they are already looking at. Focus deliberately does NOT move (`§ 9`: a
+			 * pane is part of the page, and the user pressing this chip is in the
+			 * composer, usually mid-sentence) — `scrollIntoView` takes no focus with it.
+			 */
+			target.scrollIntoView({ block: "start" });
+		}
+		/*
+		 * Retired either way: a request whose section is not in this pane (todos that
+		 * left the wire between the press and this effect) has nothing to scroll to,
+		 * and holding it would let a later mount of another session's pane act on it.
+		 * The nonce is passed rather than cleared unconditionally, so this effect
+		 * cannot consume a NEWER request than the one it ran for.
+		 */
+		clearReveal(revealRequest.nonce);
+	}, [revealRequest, openChildId, onReaderChildChange, clearReveal]);
 
 	const siblings = row ? siblingsOf(details.lineage, row) : [];
 	const index = row ? siblings.findIndex((entry) => entry.id === row.id) : -1;
@@ -750,11 +812,14 @@ export const RunPanel = ({
 					<RunDetailsPanel
 						details={details}
 						mcpServers={mcpServers}
+						mcpGrantRunning={mcpGrantRunning}
+						mcpRemedy={mcpRemedy}
 						childrenOpenable={childrenOpenable}
 						onOpenChild={openChild}
 						rosterExpanded={rosterExpanded}
 						onToggleRosterExpanded={() => setRosterExpanded(true)}
 						paneWidth={paneWidth}
+						todosSectionRef={todosSectionRef}
 					/>
 				</div>
 			)}

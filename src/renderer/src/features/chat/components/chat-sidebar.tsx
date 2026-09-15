@@ -9,6 +9,7 @@ import {
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { Button } from "@shared/components/ui/button";
+import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -16,19 +17,11 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import {
 	Bot,
-	Check,
 	ChevronDown,
 	ChevronRight,
-	Circle,
-	CircleAlert,
-	Clock,
-	HelpCircle,
 	List,
-	LoaderCircle,
-	MessageSquare,
 	MessageSquarePlus,
 	MoreHorizontal,
-	Pause,
 	Plus,
 	Users,
 	X,
@@ -60,57 +53,27 @@ type Props = {
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
-/** Resting codes that legitimately render as a plain ring; see `Status`. */
-const KNOWN_RESTING = new Set(["idle", "recent"]);
+import { ChatSessionStatus } from "./chat-session-status";
 
-function Status({ row }: { row: CanonicalSessionRow }) {
-	const code = row.status?.code;
-	const Icon =
-		code === "busy"
-			? LoaderCircle
-			: code === "approval" ||
-					code === "answer" ||
-					code === "wedged" ||
-					code === "error"
-				? CircleAlert
-				: code === "interrupted" || code === "dormant"
-					? Pause
-					: code === "complete"
-						? Check
-						: code === "scheduled"
-							? Clock
-							: code === "attached"
-								? MessageSquare
-								: // `idle`/`recent` are ordinary resting states and keep the plain
-									// ring. Anything else is a code this build does not know, so it
-									// must not be normalised into looking like "Recent" — a backend
-									// newer than the UI would silently misreport state. An ABSENT
-									// status is a different case: a locally created row carries none
-									// until the next fetch, and the label already reads "Recent", so
-									// treating it as unknown made the icon contradict the label.
-									KNOWN_RESTING.has(code ?? "recent")
-									? Circle
-									: HelpCircle;
-	const ink =
-		code === "busy"
-			? "text-info motion-safe:animate-spin"
-			: code === "error" || code === "wedged"
-				? "text-danger"
-				: code === "approval" || code === "answer" || code === "interrupted"
-					? "text-warning"
-					: code === "complete"
-						? "text-success"
-						: "text-ink-dim";
-	return (
-		<span
-			className="flex size-4 shrink-0"
-			title={row.status?.label ?? "Recent"}
-		>
-			<Icon className={cn("size-4", ink)} aria-hidden="true" />
-			<span className="sr-only">{row.status?.label ?? "Recent"}</span>
-		</span>
-	);
-}
+/**
+ * How often the catalogue polls when the machine-wide feed is NOT available.
+ *
+ * Unchanged from what shipped, and it has to stay that way: this is the branch
+ * an older backend takes, and the whole point of the capability gate is that a
+ * backend without `desktop_feed` behaves exactly as it did before this app
+ * learned about one.
+ */
+const LEGACY_CATALOGUE_POLL_MS = 5_000;
+
+/**
+ * Drift insurance for the event-driven path, not a poll.
+ *
+ * The `catalogue` frame is the mechanism; this is what bounds the damage if one
+ * is ever missed. 30 s is chosen against the thing it replaces: it is six times
+ * cheaper than the 5 s scan of every transcript tail, and slow enough that the
+ * event is unambiguously doing the work when the two disagree.
+ */
+const CATALOGUE_SAFETY_POLL_MS = 30_000;
 
 export function ChatSidebar({
 	selectedConversation,
@@ -119,6 +82,7 @@ export function ChatSidebar({
 }: Props) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
+	const feed = useDesktopFeed();
 	const ready = desktopFeatureEnabled(
 		capabilities.data,
 		"session_catalogue",
@@ -166,14 +130,49 @@ export function ChatSidebar({
 	useEffect(() => {
 		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
 	}, [expanded]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogueRevision is a trigger, not a read
 	useEffect(() => {
 		if (!ready) return;
 		void fetchSessions();
+		if (!feed.available) {
+			/*
+			 * No feed: an older backend, or a browser-dev renderer with no relay.
+			 * Keep the poll this change replaces, gated exactly as it was — the
+			 * behaviour of an old renderer against the new code, which must be
+			 * identical rather than merely similar.
+			 */
+			const timer = window.setInterval(() => {
+				if (document.visibilityState === "visible") void fetchSessions();
+			}, LEGACY_CATALOGUE_POLL_MS);
+			return () => window.clearInterval(timer);
+		}
+		/*
+		 * The feed replaces the timer, and the two fallbacks that remain are named
+		 * rather than left to be inferred (M5):
+		 *
+		 * - the 30 s safety poll, UNGATED. The 5 s poll's gate on
+		 *   `document.visibilityState` was itself a hole — a background window stops
+		 *   polling and so stops noticing — and since the event is the mechanism
+		 *   here, this only has to be drift insurance. Making it visibility-gated
+		 *   would reintroduce the same hole for a smaller gain.
+		 * - a refetch on window focus, which is the one moment a stale catalogue is
+		 *   about to be looked at.
+		 */
 		const timer = window.setInterval(() => {
-			if (document.visibilityState === "visible") void fetchSessions();
-		}, 5000);
-		return () => window.clearInterval(timer);
-	}, [ready, fetchSessions]);
+			void fetchSessions();
+		}, CATALOGUE_SAFETY_POLL_MS);
+		const onFocus = () => void fetchSessions();
+		window.addEventListener("focus", onFocus);
+		return () => {
+			window.clearInterval(timer);
+			window.removeEventListener("focus", onFocus);
+		};
+		// `feed.catalogueRevision` is a DEPENDENCY so each invalidation re-runs this
+		// effect body once — exactly one refetch per `catalogue` frame, with the
+		// safety timer restarted from the event rather than from a clock. It is
+		// deliberately not READ in the body: the revision's only job is to be the
+		// trigger, which is what the suppression on the hook itself covers.
+	}, [ready, fetchSessions, feed.available, feed.catalogueRevision]);
 	// Search is the backend's (`sessions.search`, negotiated as `session_search`),
 	// not a filter over titles: a conversation is remembered by what was SAID in
 	// it, and the sidebar only holds titles. The backend's answer is used only
@@ -352,7 +351,10 @@ export function ChatSidebar({
 					selectedConversation === row.session_id &&
 						!activeDraftKey &&
 						"bg-accent-wash text-ink",
-					row.attention?.unseen && "font-semibold",
+					// m4: the unread mark is NOT here. `font-semibold` on this
+					// `flex-1 truncate` title rewrote the visible string when the
+					// mark arrived, re-truncating text under the reader's cursor;
+					// it lives in the reserved status slot instead (see `Status`).
 				)}
 				aria-current={
 					selectedConversation === row.session_id && !activeDraftKey
@@ -372,7 +374,7 @@ export function ChatSidebar({
 				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
 				onClick={() => onSelectConversation(row.session_id)}
 			>
-				<Status row={row} />
+				<ChatSessionStatus row={row} />
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 				    in `features/chat/chat-search.ts` — which is also where the three
 				    failed layouts that led to it are written down (an orphan `·` from
@@ -1047,6 +1049,37 @@ export function ChatSidebar({
 						<p className="text-meta text-ink-muted">
 							Showing up to 500 chats. Older chats remain available in the
 							terminal.
+						</p>
+					)}
+					{/*
+					 * The feed's own state, in the sidebar's register (M3).
+					 *
+					 * `ink-dim` rather than `warning`, because a disconnected feed is not a
+					 * failure in front of the user: banners and marks stop arriving, and
+					 * everything already on screen is still true. `warning` ink is spent
+					 * only when the app is otherwise IDLE, where this line is the whole
+					 * reason nothing is updating. Never `danger`: nothing the user did
+					 * failed, and the retry is main's watchdog's, not theirs.
+					 *
+					 * Rendered only when the feed is expected to exist — an older backend
+					 * or a browser-dev renderer has no feed to be disconnected from, and
+					 * the legacy poll is running instead.
+					 */}
+					{/* Suppressed when the alert below already carries the condition
+					    (design review round 1, D9): the catalogue fetch fails exactly
+					    when the backend is down, so the two statements about one
+					    backend would otherwise stack — a quiet `ink-dim` line directly
+					    under a `role="alert" text-danger` block about the same thing. */}
+					{feed.available && !feed.connected && !error && (
+						<p
+							className={cn(
+								"text-meta",
+								sessions.some((row) => row.active)
+									? "text-ink-dim"
+									: "text-warning",
+							)}
+						>
+							Not connected to the backend — showing the last known state.
 						</p>
 					)}
 				</div>

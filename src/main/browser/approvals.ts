@@ -175,6 +175,26 @@ export class ApprovalStore {
 	private sessionRecords: ApprovalRecord[] = [];
 	/** Receipts for displaced requesters (see `access-flow.ts`). */
 	private tombstones: AccessTombstones = {};
+	/** Consumed once grants authorize one committed document, not every future
+	 * document on that origin. Revocation invalidates in-flight admissions too. */
+	private revision = 0;
+	/**
+	 * Per-origin revocation epochs, bumped by `revokeOrigin` and by nothing else.
+	 *
+	 * The global `revision` cannot do this job: bumping it for one site's revoke
+	 * would refuse every OTHER approved origin, which `documentAllowed`'s own
+	 * comment rules out (review round 1). But a per-origin revoke still has to
+	 * invalidate an admission that was already granted when it landed — the agent
+	 * pressed a nav against a `once` grant, the user revoked while it was in
+	 * flight, and the closure `admit` handed back kept saying yes because the
+	 * revision it compares had not moved (review round 2, R1's third limb). So the
+	 * epoch moves per origin and `admit`'s closure compares the origin's.
+	 */
+	private originEpochs = new Map<string, number>();
+	private documents = new Map<
+		string,
+		{ origin: string; requester: string; epoch: number; revision: number }
+	>();
 
 	constructor(options: ApprovalStoreOptions) {
 		this.path = join(options.dir, APPROVALS_FILENAME);
@@ -273,6 +293,82 @@ export class ApprovalStore {
 				authority: displayAuthority(url),
 				reason: this.refusalReason(url),
 			},
+		);
+	}
+
+	/** Admission is captured once, but revocation remains authoritative while an
+	 * asynchronous navigation is in flight. A receipt is never transferable. */
+	admit(
+		url: URL,
+		requester: string,
+	): { viaOnceGrant: boolean; approved: (candidate: URL) => boolean } {
+		const { viaOnceGrant } = this.ensureTopLevelAccess(url, requester);
+		const revision = this.revision;
+		const epoch = this.originEpochs.get(url.origin) ?? 0;
+		return {
+			viaOnceGrant,
+			approved: (candidate) =>
+				this.originAllowed(candidate) ||
+				(viaOnceGrant &&
+					revision === this.revision &&
+					(this.originEpochs.get(url.origin) ?? 0) === epoch &&
+					candidate.origin === url.origin),
+		};
+	}
+
+	rememberDocument(
+		token: string,
+		url: URL,
+		requester: string,
+		epoch: number,
+		admitted: (url: URL) => boolean,
+	): void {
+		if (!admitted(url)) this.refuseDocument(url);
+		this.documents.set(token, {
+			origin: url.origin,
+			requester,
+			epoch,
+			revision: this.revision,
+		});
+	}
+
+	documentAllowed(
+		token: string,
+		url: URL,
+		requester: string,
+		epoch: number,
+	): boolean {
+		// An explicit DENY outranks a live receipt, and this line is the whole of that
+		// rule. `originAllowed` already answers false for a denied origin, but its
+		// false is only the first term below: the receipt check that follows would
+		// answer TRUE anyway, so a user pressing Deny left the agent reading the very
+		// document it had just been refused — the "authority the user withdrew is
+		// still live" class this host exists to close (review round 1, R2). The check
+		// is keyed on the exact origin because that is exactly the scope a receipt can
+		// authorise; bumping the global `revision` here instead (the other route the
+		// review offered) would make one denied site invalidate receipts for unrelated
+		// approved origins, refusing a read the user never withdrew.
+		if (this.store.origins[url.origin] === "deny") return false;
+		if (this.originAllowed(url)) return true;
+		const receipt = this.documents.get(token);
+		return (
+			!!receipt &&
+			receipt.origin === url.origin &&
+			receipt.requester === requester &&
+			receipt.epoch === epoch &&
+			receipt.revision === this.revision
+		);
+	}
+
+	forgetDocument(token: string): void {
+		this.documents.delete(token);
+	}
+
+	refuseDocument(url: URL): never {
+		throw new BrowserHostError(
+			"origin_not_allowed",
+			`the user has not approved ${url.origin} for this document; request access before driving it`,
+			{ origin: url.origin, reason: this.refusalReason(url) },
 		);
 	}
 
@@ -579,8 +675,9 @@ export class ApprovalStore {
 	}
 
 	/**
-	 * Revoke one origin's approvals: the exact-origin verdict, a session grant, and
-	 * any BROAD grant that covers it.
+	 * Revoke one origin's approvals: the exact-origin verdict, a session grant, any
+	 * BROAD grant that covers it, an unspent `once` grant, and the document receipts
+	 * issued on it.
 	 *
 	 * A broad grant is revoked too, and that is the honest reading of a per-origin
 	 * revoke: the user pointed at a site and said "not this one". Leaving a domain
@@ -590,8 +687,22 @@ export class ApprovalStore {
 	 * Deliberately does NOT touch cookies (design 9.4): revoking approvals does not
 	 * log the user out, and clearing cookies does not restore the deny state.
 	 *
-	 * Returns how many records were dropped, so the caller can say what happened
-	 * rather than reporting a click.
+	 * WHY THIS IS NOT `revokeAll` FOR ONE ORIGIN, and why the two paths cannot share
+	 * an implementation: the bulk path can bump the global `revision` and floor every
+	 * capability in the store, because it is revoking everything. A per-origin
+	 * revoke that did the same would refuse receipts and in-flight admissions for
+	 * origins the user never touched (review round 1's objection to that route), so
+	 * it moves ONE origin's epoch instead — and everything that authorises that
+	 * origin dies with it: the durable verdict, the session grant, the provenance
+	 * rows, the covering broad grant, the unspent `once` grant, the document
+	 * receipts already issued for it, and any admission closure still in flight.
+	 *
+	 * Returns how many grants were dropped, so the caller can say what happened
+	 * rather than reporting a click. An unspent `once` grant counts: it is live
+	 * authority for this origin (review round 2, minor) and a revoke that left it
+	 * behind reported "0 approvals revoked" to the user. A document receipt does
+	 * NOT count separately: it is a capability derived from a grant that is already
+	 * counted, and counting both would double-count one decision.
 	 */
 	revokeOrigin(rawOrigin: string): number {
 		let removed = 0;
@@ -601,6 +712,14 @@ export class ApprovalStore {
 		} catch {
 			// Already an origin, or something a caller assembled: match it verbatim.
 		}
+		if (this.onceGrants[origin] !== undefined) {
+			delete this.onceGrants[origin];
+			removed += 1;
+		}
+		for (const [token, receipt] of this.documents) {
+			if (receipt.origin === origin) this.documents.delete(token);
+		}
+		this.originEpochs.set(origin, (this.originEpochs.get(origin) ?? 0) + 1);
 		if (this.store.origins[origin] !== undefined) {
 			delete this.store.origins[origin];
 			removed += 1;
@@ -645,10 +764,21 @@ export class ApprovalStore {
 	 * in the copy rather than left to look like a bug.
 	 */
 	revokeAll(): number {
-		const removed = this.store.records.length + this.sessionRecords.length;
+		/*
+		 * The unspent once grants count here for the same reason a per-origin revoke
+		 * counts them: they are live authority with NO durable row behind them, so
+		 * counting only records reported "0 approvals revoked" for a decision that
+		 * had in fact left the agent able to drive a site — and the Sites sheet renders
+		 * this number (review round 2, minor 4; QA round 2, Q1).
+		 */
+		const removed =
+			this.store.records.length +
+			this.sessionRecords.length +
+			Object.keys(this.onceGrants).length;
 		this.store.origins = {};
 		this.store.siteGrants = { version: 1, grants: {} };
 		this.store.records = [];
+		this.resetPending();
 		this.sessionGrants.clear();
 		this.sessionRecords = [];
 		this.persist();
@@ -661,6 +791,8 @@ export class ApprovalStore {
 	 * grants: turning the host off leaves the approvals inspectable and revocable
 	 * (design 9.4), it does not silently withdraw them. */
 	resetPending(): void {
+		this.revision += 1;
+		this.documents.clear();
 		this.queue = [];
 		this.results = {};
 		this.onceGrants = {};

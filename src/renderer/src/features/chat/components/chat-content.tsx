@@ -26,6 +26,14 @@ import type {
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
+import {
+	workingLineClaimed,
+	workingLineInputFor,
+} from "../canonical/working-line-model";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -36,6 +44,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -44,6 +53,9 @@ import {
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -126,8 +138,41 @@ type ChatContentProps = {
 	onComposerInput?: () => void;
 	/** Working directory for this conversation, shown on the composer's chip. */
 	cwd?: string;
+	/**
+	 * The canonical session this pane is showing, or undefined for a draft.
+	 *
+	 * Threaded, not derived: the canvas's `conversationId` is its store key (the
+	 * draft key before the session exists), while the code-memory panel needs
+	 * the identity a backend route can resolve. See `CanvasProps.sessionId`.
+	 */
+	sessionId?: string;
+	/**
+	 * How many turns the canonical stream has seen end, forwarded to the canvas
+	 * so the code-memory panel can re-read when a cell finishes; see
+	 * `CanvasProps.turnTerminal`. Undefined on the legacy path, where there is no
+	 * canonical stream to take the signal from.
+	 */
+	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
-	onChangeCwd?: (cwd: string) => void;
+	/** How the chip's commit is applied; see `MessageInputProps.cwdWritePath`. */
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * A working-directory move is in flight for this session; see
+	 * `MessageInputProps.cwdPending`.
+	 *
+	 * Threaded through here rather than read from a store because this component
+	 * is a pure pass-through for the composer's props: the value belongs to the
+	 * session pane that owns the move, and a second reader of it would be a second
+	 * answer to "is this session's chip settled".
+	 */
+	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight; see
+	 * `MessageInputProps.cwdPendingAccepted`.
+	 */
+	cwdPendingAccepted?: boolean;
+	/** Why the chip is read-only here, per cause; see `MessageInputProps`. */
+	cwdReadOnlyReason?: string;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
@@ -136,14 +181,41 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
 		/** A draft pane's readings, which have no session behind them. */
 		draft?: boolean;
+		/**
+		 * Open a model or effort picker for this DRAFT pane's own selection.
+		 *
+		 * Forwards to `SessionStatusStripProps["onOpenDraftPicker"]`, and is absent
+		 * unless the backend advertises the capability — which is what leaves the two
+		 * readings inert with today's copy on a backend that cannot honour a pick.
+		 */
+		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		/**
+		 * Where a draft's resolution IS, while it has no reading yet; see
+		 * `SessionStatusStripProps["draftResolution"]`.
+		 */
+		draftResolution?: DraftResolution;
 	};
+	/**
+	 * The command dispatcher the composer splices an inline command into, with
+	 * its outcome handed back. Forwarded verbatim; see
+	 * `MessageInputProps.onSlashCommand` for why the outcome matters.
+	 */
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
+	/**
+	 * The dispatcher's own note surface, borrowed by the composer so a staged
+	 * reassembly and an unanswerable name list can say what happened. Forwarded
+	 * verbatim; see `MessageInputProps.onSlashNote`.
+	 */
+	onSlashNote?: (text: string) => void;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -153,6 +225,22 @@ type ChatContentProps = {
 		view: CanonicalSessionHandle;
 		busy: boolean;
 		admitting?: boolean;
+		/**
+		 * A send this conversation has admitted and that has produced nothing yet.
+		 *
+		 * Distinct from `admitting`, which is the composer-side window in which a
+		 * send is being issued and the text is still the user's. This one spans the
+		 * whole wait, from the send until the owner paints something, so it covers
+		 * the cold engage the user actually waits through — and it is what the
+		 * transcript's working line, the pane's own emptiness and the composer's
+		 * placeholder all read. See `working-line-model.ts` for the copy rule.
+		 */
+		starting?: boolean;
+		/**
+		 * The record this send painted, which every clear measures from. Null only
+		 * when no send is admitted.
+		 */
+		startingAfterId?: string | null;
 		onStop: () => void;
 		/**
 		 * Answer the pending `ask` gate with an option's label.
@@ -190,6 +278,26 @@ type ChatContentProps = {
 	 * section render as absence.
 	 */
 	mcpServers?: readonly McpServerRow[];
+	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * Threaded from the page (`use-mcp-servers.ts`) so the section can disable every
+	 * other row's control while the backend's one grant runs. It comes off the
+	 * document's `operations` rather than off the folded rows on purpose: a row
+	 * exists only where the read carries a server, so an operation for a server that
+	 * was removed or renamed still holds the lock while no row would show it (code
+	 * review round 1, finding 5).
+	 */
+	mcpGrantRunning?: boolean;
+	/**
+	 * The panel's MCP remedy controls (`use-mcp-remedy.ts`).
+	 *
+	 * Read by the page, like the server list itself, and threaded down rather than
+	 * taken inside the section: the controls address the ACTIVE session and write
+	 * into the one query the trigger and the panel both read, so the page is the
+	 * level that owns both facts.
+	 */
+	mcpRemedy: McpRemedyControls;
 	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
@@ -239,6 +347,12 @@ const canonicalSpeaking = (
 			canonicalTranscriptSpeaks({
 				status: canonical.view.status,
 				failure: canonical.view.failure,
+				// The two states a click can paint, which are the band's business for
+				// the same reason they are the pane's: a cached or vanished conversation
+				// must not have the greeting offered over it. The rest of the pane's view
+				// is not this predicate's question, so it is not handed over.
+				stale: canonical.view.stale,
+				missing: canonical.view.missing,
 			}),
 	);
 
@@ -283,12 +397,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		refetch,
 		messageInputRef,
 		cwd,
-		onChangeCwd,
+		sessionId,
+		turnTerminal,
+		cwdWritePath,
+		cwdPending,
+		cwdPendingAccepted,
+		cwdReadOnlyReason,
 		sendError,
 		sessionStatus,
+		onSlashCommand,
+		onSlashNote,
 		canonical,
 		runDetails,
 		mcpServers = [],
+		mcpGrantRunning = false,
+		mcpRemedy,
 		childrenOpenable = false,
 		pulses,
 	}) => {
@@ -578,6 +701,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											transcript={canonical.view.transcript}
 											gate={canonical.view.frontend?.pending_gate ?? null}
 											waiting={canonical.busy}
+											starting={canonical.starting === true}
+											startingAfterId={canonical.startingAfterId ?? null}
 											loadingOlder={canonical.view.loadingOlder}
 											onLoadOlder={canonical.view.loadOlder}
 											containerRef={messagesContainerRef}
@@ -601,6 +726,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											// card holds itself disabled after an answer instead of
 											// coming back live against a gate the owner already took.
 											answer={canonical.answer ?? null}
+											// The two states a notification click paints before the
+											// owner answers: the rows may be this window's memory of
+											// the conversation rather than the owner's, or the
+											// conversation may not be on this machine at all.
+											stale={canonical.view.stale}
+											missing={canonical.view.missing}
 										/>
 									) : (
 										<MessagesView
@@ -632,12 +763,54 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onSendMessage={onSendMessage}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-								isLoading={canonical ? Boolean(canonical.admitting) : isLoading}
+								isLoading={
+									canonical
+										? Boolean(canonical.admitting || canonical.starting)
+										: isLoading
+								}
+								/*
+								 * Derived from the same expression the transcript's own line is, so
+								 * the two surfaces cannot disagree about whether work is being
+								 * claimed: a pending question and a dead transport both retire
+								 * this hint with the line (review round 2, R2-3; design round
+								 * 2, D5). Reading the latch directly is what let the composer
+								 * keep saying "Waiting for the agent" 46px below a pane that had
+								 * withdrawn exactly that claim.
+								 */
+								awaitingReply={Boolean(
+									canonical &&
+										workingLineClaimed(
+											workingLineInputFor({
+												waiting: canonical.busy,
+												starting: canonical.starting === true,
+												startingAfterId: canonical.startingAfterId ?? null,
+												gate: canonical.view.frontend?.pending_gate ?? null,
+												unavailable: canonicalSpeaking(canonical),
+												records: canonical.view.transcript.records,
+											}),
+										),
+								)}
 								conversationId={agentId}
 								messages={
 									canonical
-										? canonical.view.transcript.records.length > 0 ||
-											canonicalSpeaking(canonical)
+										? /*
+											 * A send this pane has admitted counts as content here, and that is
+											 * a correction rather than a nicety: with zero records the
+											 * greeting's branch renders into the column and the transcript is
+											 * left no height at all (`canonical-transcript.tsx`'s `collapsed`),
+											 * so the rung existed in the DOM through the whole cold engage and
+											 * never painted a pixel — the operator's dead-air window, unchanged
+											 * (QA round 1, Q1). The pane is not empty once a message is on its
+											 * way: "What can I help you with today?" and the suggestion chips
+											 * are claims about a conversation that has already started.
+											 *
+											 * `canonicalSpeaking` is the other half of the same question, for
+											 * the states where the pane speaks for itself (a failure notice, a
+											 * reconnect) rather than answering anybody.
+											 */
+											canonical.view.transcript.records.length > 0 ||
+											canonicalSpeaking(canonical) ||
+											canonical.starting
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
 												? messages
@@ -676,6 +849,39 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
 										: false
 								}
+								/*
+								 * U8: a pending question is answered in this box, so the box
+								 * says so instead of inviting a message. The card above owns the
+								 * question and the reply it expects; this only stops the
+								 * composer reading "Ask me for help" over a turn that is waiting
+								 * on the user (UX round 2, U8).
+								 */
+								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								/*
+								 * U3: the held-claim sentence offers the transcript as proof
+								 * that the message exists somewhere ("its copy is in the
+								 * transcript above"), which is only true when a copy is
+								 * actually painted. On the draft path the pane held no rows at
+								 * all, so the sentence pointed at a greeting (UX round 2, U3).
+								 * Answered from the records this pane renders rather than
+								 * assumed; `undefined` (no canonical stream, nothing held)
+								 * leaves the clause out.
+								 */
+								heldCopyOnScreen={
+									canonical && sendError?.heldText
+										? canonical.view.transcript.records.some(
+												(record) =>
+													record.kind === "user" &&
+													record.text === sendError.heldText,
+											)
+										: undefined
+								}
+								// A conversation the backend says is gone is a KNOWN
+								// answer, so the composer refuses input rather than
+								// accepting a message that can only 404. The pane above
+								// carries the sentence and the way out (M6); this only
+								// refuses the keystroke.
+								unavailable={Boolean(canonical?.view.missing)}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
@@ -688,9 +894,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
 								cwd={cwd}
-								onChangeCwd={onChangeCwd}
+								cwdWritePath={cwdWritePath}
+								cwdPending={cwdPending}
+								cwdPendingAccepted={cwdPendingAccepted}
+								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
+								onSlashCommand={onSlashCommand}
+								onSlashNote={onSlashNote}
+								/*
+								 * The SAME derived model the header trigger and the pane read, handed
+								 * to the composer so its status row states the plan's size without a
+								 * second tally (spec § 3.2). `null` on every path with no canonical
+								 * session, which is also what keeps the row off a legacy pane.
+								 */
+								runDetails={runDetails}
 								isSmallView={isSmallView}
 							/>
 						)}
@@ -735,6 +953,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialDocuments={files}
 								conversationId={conversationId}
 								agentId={agentId}
+								sessionId={sessionId}
+								turnTerminal={turnTerminal}
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								scan={filesScan}
@@ -783,6 +1003,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<RunPanel
 								details={runDetails}
 								mcpServers={mcpServers}
+								mcpGrantRunning={mcpGrantRunning}
+								mcpRemedy={mcpRemedy}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}

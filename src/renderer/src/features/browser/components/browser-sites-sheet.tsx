@@ -93,7 +93,9 @@ export const BrowserSitesSheet: FC<BrowserSitesSheetProps> = ({
 					<SheetDescription>
 						Approvals are kept per origin and are separate from cookies.
 						Revoking one does not sign you out; clearing cookies does not
-						restore a denial.
+						restore a denial. This app's browser keeps its sign-ins across
+						conversations and app restarts, and an approval here applies to
+						every conversation — not only the one that asked.
 					</SheetDescription>
 				</SheetHeader>
 

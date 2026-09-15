@@ -54,6 +54,16 @@ import { build } from "esbuild";
 
 const HOME = mkdtempSync(join(tmpdir(), "session-stream-token-"));
 
+/*
+ * Discovery reads the rendezvous records under the config root, and the
+ * operator's machine has one daemon record per process they have run there. A
+ * test that read that directory would attach to (or reap) a real daemon's
+ * record, so the root is isolated here: no records means discovery finds
+ * nothing and the manager takes the deprecated pre-record path, which is the
+ * path these four cases were written against.
+ */
+process.env.LOCAL_OPERATOR_CONFIG_DIR = HOME;
+
 /**
  * The fixture's state, shared with the bundled module.
  *
@@ -81,7 +91,7 @@ globalThis.__backendTestState = state;
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL, streamFailureNotice } from "./src/shared/desktop-stream-notice.ts";',
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL, streamFailureNotice } from "./src/shared/desktop-stream-notice.ts"; export { DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -92,6 +102,25 @@ const bundle = await build({
 		{
 			name: "main-process-fixtures",
 			setup(builder) {
+				// Launch identity has real-child coverage in owned-serve-lifecycle;
+				// this fixture measures the spawn environment, not installation.
+				builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
+					path: "launch",
+					namespace: "owned-launch-fixture",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "owned-launch-fixture" },
+					() => ({
+						loader: "js",
+						contents: `
+					export const consoleInterpreter = () => "/fixture/python";
+					export const windowsInterpreterCandidates = async () => ["/fixture/python"];
+					export const windowsPathInterpreterCandidates = async () => ["/fixture/python"];
+					export const ownedServeLaunch = async (interpreters, port, env) => ({ command: "bash", args: ["-c", 'exec "$@"', "owned-serve", interpreters[0], "-c", "from local_operator.cli import main; main()", "serve", "--port", String(port)], env });
+				`,
+					}),
+				);
+
 				/** Every substitution names its original, so a reader can see
 				 * exactly what is not shipping code in this run. */
 				const aliases = new Map([
@@ -141,12 +170,24 @@ const bundle = await build({
 									 * persistent \`on("exit")\` handler - firing the wrong one would
 									 * leave stop() waiting for its full 10s timeout.
 									 */
-									const persistent = new Map();
-									const onceOnly = new Map();
 									function makeChild(env) {
-										const listeners = new Map([["persistent", persistent], ["once", onceOnly]]);
+ const persistent = new Map();
+ const onceOnly = new Map();
+ const listeners = new Map([["persistent", persistent], ["once", onceOnly]]);
 										return {
-											pid: 4242,
+											/*
+											 * A pid that is genuinely ALIVE, because the manager
+											 * checks liveness before it probes: a fixed pretend pid
+											 * (4242) is usually nobody, and the manager would read
+											 * that as "the daemon's process is gone" and detach on
+											 * every tick - the fixture would be testing its own
+											 * honesty about pids rather than the watchdog.
+											 */
+											pid: process.pid,
+											// Real ChildProcess fields stay null until exit; undefined
+											// would model a malformed fixture rather than a live child.
+											exitCode: null,
+											signalCode: null,
 											stdout: null,
 											stderr: null,
 											killed: [],
@@ -163,6 +204,7 @@ const bundle = await build({
 												return this;
 											},
 											kill(signal) {
+												this.signalCode = signal;
 												this.killed.push(signal);
 												const fire = (map) => {
 													const cbs = map.get("exit") ?? [];
@@ -182,8 +224,10 @@ const bundle = await build({
 											 * reports and the one code that shows no error dialog.
 											 */
 											exitNow(code = null) {
-												const cbs = persistent.get("exit") ?? [];
-												for (const cb of cbs) cb(code, null);
+												const cbs = [...(persistent.get("exit") ?? []), ...(onceOnly.get("exit") ?? [])];
+ onceOnly.set("exit", []);
+ this.exitCode = code;
+ for (const cb of cbs) cb(code, null);
 											},
 										};
 									}
@@ -208,6 +252,17 @@ const bundle = await build({
 									export function spawnSync() {
 										return { status: 0, stdout: "", stderr: "" };
 									}
+									/**
+									 * The probe \`isZombie\` makes on macOS (\`ps -o state= -p <pid>\`), and the
+									 * only reason this stub needs an answer for it: discovery spends that
+									 * probe on a record whose heartbeat has gone quiet. \`S\` is a live,
+									 * non-zombie process state, which is the fail-closed answer the real
+									 * probe gives on any doubt - so the manager's own logic stays the
+									 * subject here rather than this fixture's idea of a process table.
+									 */
+									export function execFileSync() {
+										return "S";
+									}
 									export function exec(command, options, callback) {
 										const done = typeof options === "function" ? options : callback;
 										globalThis.__backendTestState.execs.push(command);
@@ -215,6 +270,25 @@ const bundle = await build({
 										// the venv branch is taken and the spawn above is the one
 										// recorded. No command is ever really run.
 										if (done) done(null, { stdout: "", stderr: "" });
+										return { on() {}, kill() {} };
+									}
+									/**
+									 * Imported by managed-python (through venv-paths, which the manager
+									 * constructs from). Nothing on that path executes anything - the runtime
+									 * copy and the prepared venv are the installer's job - so this is
+									 * recorded and REJECTED rather than stubbed green: a future change that
+									 * starts a real command from import or construction fails here instead
+									 * of spawning on the operator's machine.
+									 */
+									export function execFile(command, args, options, callback) {
+										const done = typeof options === "function" ? options : callback;
+										globalThis.__backendTestState.execs.push(
+											"execFile:" + command + " " + (args ?? []).join(" "),
+										);
+										const error = new Error(
+											"this fixture runs no command: " + command,
+										);
+										if (done) done(error, "", "");
 										return { on() {}, kill() {} };
 									}
 								`,
@@ -339,10 +413,15 @@ globalThis.__backendTestUrl = url;
  * The `backendUrl` assertion in the first test exists so that failure can only
  * ever be loud.
  */
-const { BackendServiceManager, DesktopStreamRelay, DESKTOP_STREAM_DETAIL, streamFailureNotice } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	BackendServiceManager,
+	DesktopStreamRelay,
+	DESKTOP_STREAM_DETAIL,
+	streamFailureNotice,
+	DEGRADED_AFTER_FAILURES,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 after(async () => {
 	await new Promise((resolve, reject) =>
@@ -430,7 +509,7 @@ test("the relay authenticates with the token the current backend was started wit
 	}
 });
 
-test("a watchdog restart carries the restart intent and never takes the final-shutdown path", async () => {
+test("a watchdog timeout never terminates a still-live owned daemon", async () => {
 	const manager = new BackendServiceManager();
 	try {
 		state.healthy = false;
@@ -444,28 +523,40 @@ test("a watchdog restart carries the restart intent and never takes the final-sh
 			stopIntents.push(isRestart);
 			return realStop(isRestart);
 		};
-		// One unhealthy sample, the condition the watchdog acts on, without
-		// waiting out the 30s interval that samples it.
+		// Failing samples, driven directly rather than by waiting out the probe
+		// interval that would produce them.
 		//
-		// Bounded to that ONE sample deliberately. `checkHealth` is the same method
-		// the replacement `start()` polls while it waits for its new process, so a
-		// blanket `false` here made the restart spend its whole retry budget (30s)
-		// before the test could finish - a property of the stub, not of the
-		// manager. The assertions below are unchanged.
+		// Bounded to the detach threshold deliberately. `checkHealth` is also the
+		// method the replacement `start()` polls while it waits for its new
+		// process, so a blanket `false` here would make a recovery spend its whole
+		// retry budget (30s) before the test could finish - a property of the
+		// stub, not of the manager.
 		const realCheckHealth = manager.checkHealth.bind(manager);
 		let samples = 0;
 		manager.checkHealth = async () => {
 			samples += 1;
-			return samples === 1 ? false : realCheckHealth();
+			return samples <= DEGRADED_AFTER_FAILURES ? false : realCheckHealth();
 		};
 
+		manager.discoverAndAttach = async () => false;
 		const execsBefore = state.execs.length;
-		await manager.checkUnhealthyBackend();
+		const spawnsBefore = state.spawns.length;
+		// Three failing probes: the threshold before the state is `detached` and
+		// recovery is allowed to act. One sample is `degraded`, which never
+		// restarts anything - that is the point of the change.
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			await manager.checkBackendHealth();
+		}
 
 		assert.deepEqual(
 			stopIntents,
-			[true],
-			"the watchdog must ask stop() for a RESTART; the no-argument form is the final-shutdown path",
+			[],
+			"three timeouts do not authorize killing a live daemon or its active turns",
+		);
+		assert.equal(
+			state.spawns.length,
+			spawnsBefore,
+			"no replacement on uncertainty",
 		);
 		const commands = state.execs.slice(execsBefore);
 		assert.deepEqual(
@@ -539,9 +630,19 @@ test("an unpaired app does not adopt a healthy backend it can never authenticate
 	}
 });
 
-test("a paired app adopts the configured backend, and only once it accepts the token (Q-1)", async () => {
+test("a paired app adopts the configured backend, and only once it accepts the token (Q-1)", async (t) => {
 	const saved = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
 	const pairingToken = "b".repeat(64);
+	/*
+	 * A manager that ATTACHES now arms the probe loop (round 3, Q-1), so it owns
+	 * a live interval - and a case that adopts and walks away would hold this
+	 * file's process open forever. Torn down from the test's own hook, so a
+	 * failing assertion cannot leave it behind either.
+	 */
+	let adopting = null;
+	t.after(async () => {
+		if (adopting) await adopting.stop(true);
+	});
 	process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = pairingToken;
 	try {
 		state.healthy = true;
@@ -561,6 +662,7 @@ test("a paired app adopts the configured backend, and only once it accepts the t
 		// Now the server holds the token the app was paired with.
 		state.pairedToken = pairingToken;
 		const manager = new BackendServiceManager();
+		adopting = manager;
 		assert.equal(await manager.checkExistingBackend(), true);
 		assert.equal(
 			manager.isUsingExternalBackend(),
@@ -594,13 +696,72 @@ test("adoption never probes an origin other than the one the app was configured 
 		/localhost:1111|altUrl/,
 		"no hardcoded fallback origin: a configured rig must never adopt a server on a different port",
 	);
-	// The configured origin is the only one the adoption path names.
+	/*
+	 * The configured origin is the only address the adoption path may DIAL
+	 * without a record to answer for it, and even there it must prove the
+	 * daemon is the one a record described. Adoption is: enumerate the records,
+	 * require `/health` to report the record's own `instance_id`, require a
+	 * bearer the daemon accepts, and only then rotate onto it.
+	 *
+	 * The slice below is the RECORD-BACKED path - the sweep that enumerates and
+	 * ranks the records, plus the candidate attach - and ends where the
+	 * deprecated pre-record fallback is declared. It used to end at
+	 * `authenticatesAgainst(`, which left `legacyFixedPortAdoption` outside the
+	 * slice: that method DOES fetch `${backendUrl}${HEALTH_PATH}` directly (it
+	 * has no record to answer for it, which is what makes it deprecated), so
+	 * the message claimed more than the slice checked. The positive assertion
+	 * after it pins where that one direct fetch is allowed to live.
+	 */
 	const adoption = source.slice(
-		source.indexOf("async checkExistingBackend"),
-		source.indexOf("async start("),
+		source.indexOf("async adoptFirstUsableDaemon"),
+		source.indexOf("private async legacyFixedPortAdoption("),
 	);
-	assert.match(adoption, /\$\{this\.backendUrl\}\/health/);
-	assert.doesNotMatch(adoption, /https?:\/\/[a-z0-9.:]+/i);
+	assert.match(
+		adoption,
+		/probe|discoverDaemons/,
+		"the record-backed adoption path must go through discovery, never a fetch of its own",
+	);
+	assert.doesNotMatch(
+		adoption,
+		/fetch\(/,
+		"the record-backed adoption path must not fetch an origin directly: identity comes from the record, through the probe",
+	);
+	assert.doesNotMatch(
+		adoption,
+		/https?:\/\/[a-z0-9.:]+/i,
+		"no literal origin to fall back to",
+	);
+	/*
+	 * The one direct fetch adoption still makes, pinned to the method that is
+	 * allowed to make it. Without this pairing the negative assertion above
+	 * would be reworded again the moment somebody moved the fetch, because
+	 * nothing states where it belongs: the pre-record fallback, reachable only
+	 * when the record directory is empty.
+	 */
+	const legacyAdoption = source.slice(
+		source.indexOf("private async legacyFixedPortAdoption("),
+		source.indexOf("private async authenticatesAgainstBackend("),
+	);
+	assert.match(
+		legacyAdoption,
+		/fetch\(/,
+		"the deprecated pre-record fallback is where a direct fetch belongs, because it has no record to identify the daemon with",
+	);
+	// The identity half of the rule, from the module that owns it.
+	const discoverySource = await readFile(
+		new URL("../src/main/backend/discovery.ts", import.meta.url),
+		"utf8",
+	);
+	assert.match(
+		discoverySource,
+		/identity\.instanceId !== expectedInstanceId/,
+		"a 200 is not identification: the answering instance must BE the recorded one",
+	);
+	assert.match(
+		discoverySource,
+		/process\.kill\(pid, 0\)/,
+		"pid liveness is checked before any probe, so a dead daemon is never dialled",
+	);
 });
 
 /*
@@ -633,7 +794,11 @@ test("a backend child that exited is restored by the watchdog (Q-2)", async () =
 		);
 
 		const spawnsBefore = state.spawns.length;
-		await manager.checkUnhealthyBackend();
+		// The detach threshold, then the recovery it authorises: three failed
+		// probes, not one.
+		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+			await manager.checkBackendHealth();
+		}
 
 		assert.equal(
 			state.spawns.length,
@@ -687,6 +852,54 @@ test("the relay's own refusal detail is the shared vocabulary and maps to the sh
 	} finally {
 		relay.dispose();
 	}
+});
+
+test("an explicit remote target stays remote and never spawns a local fallback", async () => {
+	const previousUrl = globalThis.__backendTestUrl;
+	globalThis.__backendTestUrl = "https://127.0.0.2:9";
+	const manager = new BackendServiceManager();
+	try {
+		const before = state.spawns.length;
+		assert.equal(manager.backendUrl, "https://127.0.0.2:9");
+		assert.equal(await manager.start({ quiet: true }), false);
+		await manager.recoverFromDetachment();
+		assert.equal(state.spawns.length, before);
+		assert.equal(manager.getStatusSnapshot().state, "detached");
+	} finally {
+		await manager.stop(false);
+		globalThis.__backendTestUrl = previousUrl;
+	}
+});
+
+test("a missing external daemon never becomes a managed replacement", async () => {
+	const manager = new BackendServiceManager();
+	manager.isExternalBackend = true;
+	manager.discoverAndAttach = async () => false;
+	const before = state.spawns.length;
+	await manager.recoverFromDetachment();
+	assert.equal(state.spawns.length, before);
+});
+
+test("an announced build change leaves the daemon attached and its relay unchanged", async () => {
+	const manager = new BackendServiceManager();
+	const candidate = {
+		address: url,
+		file: "/synthetic/serve/record.json",
+		source: "record",
+		record: { pid: process.pid, retiring_from: "1.0.0", retiring_to: "1.0.1" },
+		identity: {
+			instanceId: "announcing",
+			pid: process.pid,
+			version: "1.0.0",
+			prefix: "/synthetic",
+			installKind: "uv-tool",
+		},
+	};
+	await manager.attachTo(candidate);
+	const relay = manager.getStreamRelay();
+	assert.equal(manager.getStatusSnapshot().state, "attached");
+	assert.equal(manager.getStreamRelay(), relay);
+	await manager.stop(false);
 });
 
 test("a stream against a backend that is not listening reports the server, not the stream (Q-2)", async () => {

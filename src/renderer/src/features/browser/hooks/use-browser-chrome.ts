@@ -29,6 +29,9 @@ export interface BrowserTabView {
 	restored: boolean;
 	/** A user tab the user has handed to a session (design 6.3). */
 	handedOver: boolean;
+	/** This tab's last top-level navigation was refused by the network. Marked in
+	 * the strip, because a background tab's blank page says nothing on its own. */
+	failed: boolean;
 }
 
 /** A pending per-origin approval request (design 9.2). */
@@ -41,6 +44,24 @@ export interface PendingConsentView {
 	 * it rather than offering something the host would refuse. */
 	broad: { scope: "domain" | "host"; key: string } | null;
 	expiresAt: number;
+	/** The bare lop session id of whoever asked, or null when the requester is not a
+	 * session identity. Resolved to a conversation title for display; never rendered
+	 * raw on its own. See the host's `chromeState` for what travels and why. */
+	requesterSessionId: string | null;
+}
+
+/**
+ * Why the active tab's last navigation failed.
+ *
+ * The remote document cannot paint this: a refused main-frame load leaves
+ * Chromium's own blank surface in the view, so without this the chrome shows an
+ * empty rectangle that is indistinguishable from a successfully loaded empty page
+ * (design round 1, D1).
+ */
+export interface LoadFailureView {
+	code: number;
+	description: string;
+	url: string;
 }
 
 /** A decision still in force (design 9.3). */
@@ -60,9 +81,20 @@ export interface BrowserChromeState {
 	canGoForward: boolean;
 	pendingConsent: PendingConsentView[];
 	approvals: ApprovalView[];
+	/** Null while the active tab's last navigation succeeded, is still loading, or
+	 * has no document yet. */
+	navFailure: LoadFailureView | null;
 }
 
 export type ConsentDecision = "once" | "session" | "site" | "domain" | "deny";
+
+/** The content rectangle main applies to the active view, in CSS pixels. */
+export interface ContentRect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
 
 /** What the preload exposes. Absent outside Electron (Storybook, the unit tests). */
 type BrowserBridge = NonNullable<typeof window.api>["browser"];
@@ -75,6 +107,20 @@ function bridge(): BrowserBridge | null {
  * Electron says so rather than throwing on the first click. */
 export function browserBridgeAvailable(): boolean {
 	return bridge() !== null;
+}
+
+/**
+ * Send one rectangle to main, unconditionally and without waiting.
+ *
+ * Extracted so the two call sites that must NOT go through the frame scheduler
+ * (a null rect, and the unmount) can share one implementation of "deliver it".
+ * A delivery that fails is corrected by the next report; reporting it in the band
+ * would put a message there for a transient during a drag.
+ */
+function deliverContentRect(rect: ContentRect | null): void {
+	void bridge()
+		?.setContentRect(rect)
+		.catch(() => {});
 }
 
 export interface BrowserChrome {
@@ -90,8 +136,12 @@ export interface BrowserChrome {
 	 * navigation rather than a copy of the bar.
 	 */
 	pendingUrl: string | null;
-	/** A read or an action failed. Shown in the band, not as a toast per keystroke. */
+	/** An action refusal or a failed state read, whichever is newest. Shown in the
+	 * band, not as a toast per keystroke. */
 	error: string | null;
+	/** Clear it by hand. The only way an action refusal goes away other than a
+	 * later action succeeding. */
+	dismissError: () => void;
 	available: boolean;
 	refresh: () => Promise<void>;
 	newTab: () => Promise<void>;
@@ -101,9 +151,7 @@ export interface BrowserChrome {
 	reload: () => Promise<void>;
 	stop: () => Promise<void>;
 	history: (direction: "back" | "forward") => Promise<void>;
-	setContentRect: (
-		rect: { x: number; y: number; width: number; height: number } | null,
-	) => void;
+	setContentRect: (rect: ContentRect | null) => void;
 	setViewVisible: (visible: boolean) => void;
 	respondToConsent: (
 		entryId: string,
@@ -119,9 +167,28 @@ export interface BrowserChrome {
 
 export function useBrowserChrome(): BrowserChrome {
 	const [state, setState] = useState<BrowserChromeState | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	/** A STATE READ failed: main could not answer, or answered something unusable. */
+	const [readError, setReadError] = useState<string | null>(null);
+	/** An ACTION was refused: `nav_failed`, `tab_limit`, `origin_not_allowed`... */
+	const [actionError, setActionError] = useState<string | null>(null);
 	const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 	const available = browserBridgeAvailable();
+
+	/**
+	 * The one error the band renders, and WHY THERE ARE TWO SLOTS BEHIND IT.
+	 *
+	 * An action failure and a state-fetch failure are different facts with
+	 * different lifetimes, and a single slot let the second erase the first: every
+	 * action re-reads the projection, so a refused navigation, a failed hand-over
+	 * or a `tab_limit` was cleared by the successful state read that followed it a
+	 * few milliseconds later. The user saw a dead button rather than the refusal
+	 * the feature promises (review round 1, R6).
+	 *
+	 * So a successful READ clears only `readError`, and `actionError` is cleared
+	 * only by a successful ACTION or by the user dismissing it. That is the whole
+	 * rule, and it is why `run` no longer funnels both through one setter.
+	 */
+	const error = actionError ?? readError;
 
 	const refresh = useCallback(async (): Promise<void> => {
 		const api = bridge();
@@ -130,12 +197,12 @@ export function useBrowserChrome(): BrowserChrome {
 			const next = (await api.state()) as BrowserChromeState | null;
 			if (next && Array.isArray(next.tabs)) {
 				setState(next);
-				setError(null);
+				setReadError(null);
 				// The tab has a URL of its own now: the pending note's job is done.
 				if (next.url && next.url !== "about:blank") setPendingUrl(null);
 			}
 		} catch (caught) {
-			setError(messageOf(caught));
+			setReadError(messageOf(caught));
 		}
 	}, []);
 
@@ -163,54 +230,77 @@ export function useBrowserChrome(): BrowserChrome {
 	 * refusals are the intended behaviour (a `nav_failed` for a non-http URL, a
 	 * `tab_limit` on the ninth agent tab), so a silent failure would look like a
 	 * dead button.
+	 *
+	 * The `await refresh()` is deliberately AFTER the error is recorded and cannot
+	 * clear it - see the two error slots above. Reading the projection is how the
+	 * band learns what main did; it is not an answer to what the action was told.
 	 */
 	const run = useCallback(
 		async (action: () => Promise<unknown> | undefined): Promise<void> => {
 			try {
 				await action();
-				setError(null);
+				setActionError(null);
 			} catch (caught) {
-				setError(messageOf(caught));
+				setActionError(messageOf(caught));
 			}
 			await refresh();
 		},
 		[refresh],
 	);
 
-	// The rect report is throttled to one per frame HERE, in the renderer, because
-	// this is where the events originate: a live window resize fires far faster
-	// than a native view can be repositioned, and an unthrottled `setBounds` storm
-	// is visible as tearing (design 11.2).
+	/** Clear the band's error. The one explicit dismissal, so a refusal the user
+	 * has read does not sit there until something else happens to succeed. */
+	const dismissError = useCallback((): void => {
+		setActionError(null);
+		setReadError(null);
+	}, []);
+
+	// ---- the rectangle, and the ONE update that must not be throttled --------
+	//
+	// The throttle exists because a live window resize fires far faster than a
+	// native view can be repositioned, and an unthrottled `setBounds` storm is
+	// visible as tearing (design 11.2).
+	//
+	// A NULL RECT IS NOT A RESIZE SAMPLE. It is the lifecycle invalidation that
+	// takes the native view off the screen when the browser route unmounts (design
+	// 11.3): nothing is left that knows where the view belongs, and main treats a
+	// null rect as "nowhere to paint". Throttling it through a frame is a
+	// correctness bug with a visual consequence, not a missed tick - the pending
+	// frame is cancelled by this hook's own unmount cleanup, so the null update was
+	// dropped and the native view stayed over the chat (review round 1, R4).
+	//
+	// So null bypasses the scheduler and is sent on the spot, and it also cancels
+	// any pending non-null frame - which would otherwise be applied AFTER the hide
+	// and put the view back up on a route that no longer exists.
 	const frame = useRef<number | null>(null);
-	const pendingRect = useRef<{
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-	} | null>(null);
+	const pendingRect = useRef<ContentRect | null>(null);
 
-	const setContentRect = useCallback(
-		(rect: { x: number; y: number; width: number; height: number } | null) => {
-			pendingRect.current = rect;
-			if (frame.current !== null) return;
-			frame.current = requestAnimationFrame(() => {
+	const setContentRect = useCallback((rect: ContentRect | null) => {
+		if (rect === null) {
+			if (frame.current !== null) {
+				cancelAnimationFrame(frame.current);
 				frame.current = null;
-				const next = pendingRect.current;
-				void bridge()
-					?.setContentRect(next)
-					.catch(() => {
-						// A rect that could not be delivered is corrected by the next
-						// resize; reporting it as an error would put a message in the band
-						// for a transient during a drag.
-					});
-			});
-		},
-		[],
-	);
+			}
+			pendingRect.current = null;
+			deliverContentRect(null);
+			return;
+		}
+		pendingRect.current = rect;
+		if (frame.current !== null) return;
+		frame.current = requestAnimationFrame(() => {
+			frame.current = null;
+			deliverContentRect(pendingRect.current);
+		});
+	}, []);
 
+	// The hook's own terminal guarantee: whatever the caller's own cleanup order
+	// is, this mount's last word about the rectangle is the hide. It is idempotent
+	// on main's side (`setContentRect(null)` hides a view that is already hidden),
+	// which is what makes it safe to send even when the caller already reported it.
 	useEffect(
 		() => () => {
 			if (frame.current !== null) cancelAnimationFrame(frame.current);
+			deliverContentRect(null);
 		},
 		[],
 	);
@@ -240,6 +330,7 @@ export function useBrowserChrome(): BrowserChrome {
 			state,
 			pendingUrl,
 			error,
+			dismissError,
 			available,
 			refresh,
 			newTab: () => run(() => api?.newTab()),
@@ -270,6 +361,7 @@ export function useBrowserChrome(): BrowserChrome {
 			state,
 			pendingUrl,
 			error,
+			dismissError,
 			available,
 			refresh,
 			run,

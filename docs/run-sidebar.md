@@ -253,10 +253,10 @@ when `canonical.frontend` exists and passes `null` on the legacy path
 canonical session*, which is the state every session this surface can describe is
 in — and a legacy chat grows no button, exactly as it does not today.
 
-**Icon: `Activity`, unchanged.** The old reasoning still holds: `Users` and
-`ListChecks` already mean a specific tool in this app
-(`trace/tool-glyphs.ts:54-79`) and a header button wearing one would read as that
-tool.
+**Icon: `Info`, not `Activity`** — see `docs/composer-status-tabs.md` § 6. The
+surviving half of the old reasoning still holds: `Users` and `ListChecks` already
+mean a specific tool in this app (`trace/tool-glyphs.ts:54-79`) and a header
+button wearing one would read as that tool.
 
 **Behaviour: a toggle.** Clicking it when the pane is closed opens the run panel
 and closes the canvas; clicking it when the pane is open closes the panel. It is
@@ -928,18 +928,20 @@ looking, at a cadence that could show it at all:
   (`:251-260`) — so it is read when the section mounts and not otherwise. The
   fact exists, on a page nobody is looking at, refreshed at nobody's cadence:
   that is the reported failure in one sentence.
-- **That section also reads three fields the route never sends**, which is worth
-  recording here because the panel must not inherit the mistake: `server.scope`
-  (`:398`), `server.setup_prompt` (`:479`) and `server.error` (`:422`).
-  `MCPDesktop.snapshot()` sends `owned_scope`, a `setup` object and **no error
-  key at all**, so the scope badge never renders, the stdio setup offer never
-  appears, and the error line is dead code. The remove control is the visible
-  consequence: it sends `scope: server.scope === "project" ? "project" :
-  "global"` (`:505-508`), and `mcp/desktop.py:191-193` refuses a mismatch with
-  *"This source is not owned by the selected scope"* — so **a project-scoped
-  server cannot be removed from the desktop**. Real, small, and the Settings
-  surface's rather than this panel's; § 13 records it, and the panel reads
-  `owned_scope`.
+- **That section's three missing fields are fixed, and the panel still reads the
+  wire's own names.** The section used to read `server.scope` (`:398`),
+  `server.setup_prompt` (`:479`) and `server.error` (`:422`), none of which
+  `MCPDesktop.snapshot()` has ever sent — the route sends `owned_scope`, a `setup`
+  object and **no error key at all** — so the scope badge never rendered, the
+  stdio setup offer never appeared, and the remove control derived its scope from
+  the missing field, which is how a project-scoped server became unremovable
+  (`mcp/desktop.py:191-193` refuses a mismatch with *"This source is not owned by
+  the selected scope"*). Fixed in `b8de0a387`, which derives the row from
+  `DesktopMcpState` and sends `scope: ownedScope`; § 13's entry is closed with it.
+  Recorded here rather than deleted because it is the mistake a second reader of
+  this document is most likely to copy — the panel has always read `owned_scope`,
+  and the drift survived a review round precisely because every access was
+  optional.
 
 ### 7.2 The section, the row and the states
 
@@ -971,7 +973,8 @@ label, then the quiet numbers):
 | qualifier | `tool_count` when connected (`12 tools`, singular `1 tool`), then `owned_scope` (`global` / `project`) else the source file's basename | `ink-dim`; the count `tabular-nums` |
 
 **The second line exists only for a remedy**, and only on a problem row: an
-indented, quiet line in the to-do section's blocked-row shape (`— <hint>`). A
+indented, quiet line in the to-do section's blocked-row shape (`— <remedy>` for the
+states this surface cannot act on, and the control itself where it can — § 7.2). A
 problem row whose read carries a diagnosis takes a **third line** under it — the
 projection's own failure text, VERBATIM and in mono — because the two answer two
 different questions (what to do, and why this server is down) and round 2's U2-2
@@ -990,8 +993,9 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
 |---|---|---|---|---|
 | `connected` | `Check` | `connected` | no | — |
 | `connecting` | `LoaderCircle`, `motion-safe:animate-spin` | `connecting` | no | — |
-| `auth-required` | `CircleAlert` | `auth-required` | **yes** | `— Grant this server account access in Settings`, with the canonical projection's own error text on the line below when it carries one |
-| `disconnected` | `X` | `disconnected` | **yes** | `— Reconnect this server in Settings`, with the canonical projection's own error text on the line below when it carries one |
+| `auth-required` | `CircleAlert` | `auth-required` | **yes** | one of three forms, by what the transport can do: `Grant account access` (a link) when it can complete a browser sign-in; `Enter API key` when it cannot but the config DECLARES secret references (`secret_refs`); otherwise `— Manage this server's credentials in Settings`. The canonical projection's own error text goes on the line below when it carries one |
+| `disconnected` | `CircleDashed` | `disconnected` | **yes** | `Enter API key` where the config DECLARES secret references AND is known not to do OAuth (`transport_oauth_supported: false`, or a stdio transport), otherwise `Reconnect`. A real 401/403 or a failed stdio initialize reports `disconnected`, not `auth-required`, so judging the status word first offered Reconnect — and only Reconnect — to exactly the rows a key would fix (R2-4). An unknown-OAuth http row that also declares a reference keeps `Reconnect`: the SHARED flow re-probes the named server and starts whichever transition the backend actually reports, so the row never promises a flow the press will not run |
+| `disconnected` | `X` | `disconnected` | **yes** | `Reconnect` (a link), with the canonical projection's own error text on the line below when it carries one |
 | `cold` | — (the section's own state, below) | — | no | — |
 | anything else | `CircleHelp` | the wire's own word | **yes** | none — a fix for a word this build cannot name would be a guess |
 
@@ -1000,23 +1004,82 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   disagree about one server's state — the second, divergent reading of one
   document that this section exists to avoid — and the backend's own docstring
   (`mcp/manager.py:1331-1335`) makes rendering the string directly the contract
-  between them. The human meaning is carried by the hint line instead, which
+  between them. The human meaning is carried by the remedy line instead, which
   names the fix in the app's own control vocabulary. A friendlier *word* is a
   backend vocabulary change; § 13 defers it rather than re-spelling it here.
-- **The hint names the Settings control, not the TUI's verb.** The Settings
-  section's own buttons are `Connect` / `Disconnect` / `Reload` /
-  `Grant account access` (`mcp-management-section.tsx:447-478`), and `auth-required` is an OAuth-grant
-  condition (`mcp/manager.py:1330-1341`, `_block_on_auth` at `:3051-3066`), which
-  a stdio server cannot be in — so "grant this server account access" is exact
-  for the state that carries it. `disconnected` is transport-level and either
-  control applies, so the hint says reconnect.
+- **One word, two severities, and the reason (round-1 design finding D4).**
+  `auth-required` is `danger` ink here and an amber `warning` pill on Settings
+  (`mcp-management-section.tsx:686-697`), and this change is what newly sends a
+  reader from the red row to that page. The difference is deliberate rather than
+  missed, because the two surfaces answer different questions:
+
+  - **Settings is a MANAGEMENT list.** Its pill states what can be done about the
+    entry, and amber is the recoverable class — the row beside it offers
+    `Grant account access` or the credential form.
+  - **The panel is a LIVE VIEW.** The same server is unusable *right now*, its ink
+    is the dock band's failure ink (§ 6.3), and the dot it feeds exists to say
+    "this needs you". `disconnected` is the same distinction from the other side:
+    neutral on Settings (a state the page can change), `danger` here.
+
+  A later round that prefers one severity for one word changes two state tables
+  and re-shoots the MCP frames; what must not happen is one surface drifting into
+  the other's spelling by accident.
+- **The remedy is actionable in place, and the panel still does not own
+  configuration.**
+
+  A problem row's remedy is a control when this surface can carry it out: a
+  browser sign-in (`mcp.control {action: "reauth", confirmed: true}`) and a
+  reconnect (`{action: "connect"}`), plus `cancel` for a grant already running.
+  Those three are operations the BACKEND owns and runs; the panel starts them,
+  watches them in the read it already polls (`mcp.list` returns `operations`),
+  and cancels one. It never writes configuration: no add, no remove, no reload,
+  no scope, no credential — those stay where the configuration lives
+  (`settings/components/mcp-management-section.tsx`), and the row's copy still
+  names that surface for every state this control cannot fix.
+
+  The rule the old refusal protected is kept, not repealed: **there is still one
+  place that owns the confirmation, the scope and the error copy.** As of the
+  integration round that place is the SHARED flow
+  (`run-details/mcp-auth-dialog.tsx`), opened from here, from `/mcp login|reauth
+  <name>` and from Settings — one transition owner, which is what stops a stale
+  derived remedy from starting a browser grant when the server's real answer is a
+  key (R2-6). Both surfaces' controls speak the same control vocabulary
+  (`Grant account access`, `Reconnect`, `Enter API key`) so one state cannot
+  acquire two spellings. What was refused before was a second PLACE to get those
+  facts wrong; what changed is that the panel opens the same place the other two
+  entry points do, rather than holding a modal of its own.
+
+  **The shared flow re-probes the named server before it acts.** That is one
+  extra round trip on a press, and it is the honest price of the single owner:
+  the row's status word cannot answer "does this server do OAuth, and which
+  reference IDs does it declare", which is why the answer comes from the backend
+  (`probe`, with `transport_oauth_supported`, `secret_refs`,
+  `credential_state` and `key_submission_supported`) instead of from the row's
+  own derived remedy.
+
+  The remedy is a `link`-variant control on the row's second line, never a
+  clickable row and never hover ground: the row still takes no hover step (§ 4),
+  because its neighbour's hover means "this opens a page" and this one does not.
+
+  Where the action is impossible — a stdio server or one whose config declares
+  another `auth.type` (`server_rejects_oauth`), and any status word this build
+  does not know — the row keeps the sentence, in the app's own control
+  vocabulary. A fix the reader cannot find is not a hint, and a control that can
+  only be refused is not a fix.
+
+  While a grant is running the other rows' controls are `disabled` — a colour
+  step, never opacity — because the backend allows one grant per session
+  (`mcp/desktop.py:158-160`) and a live control whose every press refuses with the
+  route's single opaque sentence is worse than a dead one.
 - **The section has no cap and no `+N more`.** The roster's disclosure exists
   because children are an unbounded stream; servers are the finite set the user
   configured, so every row is rendered and § 3.4's "rendered slice" for this
   ledger is the whole set. A cap here would put a problem behind a control.
 - **The section's tally** follows its neighbours' grammar (label left, quiet
   right-aligned tally): `{connected} of {total} connected`, and `·
-  {problems} needs attention` (singular) or `need attention` when there is one.
+  {problems} need attention` (plural) or `needs attention` when there is one —
+  which is the order the frames render (`1 needs attention`, `2 need attention`,
+  `3 need attention`).
   Those are two different facts rather than one restated — `connecting` is
   neither connected nor a problem, so the healthy count does not imply the
   problem count — which is why § 6.2's de-duplication argument does not apply
@@ -1025,11 +1088,12 @@ two, and ink spent on failure and nothing else (the dock band's law, § 6.3):
   the same words, in one model function (`mcpTally`), because they said `1 need
   attention` and `1 MCP server needs attention` about the same server (U1-7/Q7).
 - **The REMEDY takes the second line and the DIAGNOSIS a third**, as the line table
-  above states and as `mcp-disconnected` renders: line 2 is `— Reconnect this
-  server in Settings` and line 3 the canonical `frontend.mcp_servers[].error` when
+  above states and as `mcp-disconnected` renders: line 2 is the row's remedy — a
+  `Reconnect` control under § 7.2's amended rule, or the sentence for a state the
+  panel cannot fix — and line 3 the canonical `frontend.mcp_servers[].error` when
   the read carries one — machine voice, verbatim, like every other exception this
   app prints — clamped at two lines. This bullet used to say the diagnosis
-  OUTRANKED the remedy and stood in the hint's place; round 2's U2-2 replaced that
+  OUTRANKED the remedy and stood in the remedy's place; round 2's U2-2 replaced that
   rule (a diagnosis alone leaves the operator's "what do I do about a broken one"
   unanswered) and this line was left standing until D3-3. The diagnosis is only
   ever taken for a row the RENDERED read already calls a problem, so a startup
@@ -1234,7 +1298,9 @@ section at `run-detail-mcp.tsx`, with the derivation in `run-detail-model.ts`
 
 Already satisfied and hereby ratified — no change wanted: presence and order; the
 mark/word encoding with `aria-hidden` marks and colour spent only on failure; no
-hover ground and no control on the row; a hint-not-control remedy; a scope
+hover ground on the row; the remedy is a link control under § 7.2's amended rule,
+and the confirmation is the shared flow's, opened once from the section rather
+than held as a modal here; a scope
 qualifier; name-only rows for a nameless payload row; sorting by name so the list
 does not reorder across refetches; one query sharing the Settings cache key so a
 screen with both surfaces open has one answer; and stop conditions 1-4 of § 7.4.
@@ -1254,14 +1320,14 @@ The requirements, in the order that matters:
 4. **The cold state is the section's**, not a per-row `cold` word
    (`run-detail-mcp.tsx:46`, `:58`) with a `0 of N connected` tally
    (`:80-85`) (§ 7.2).
-5. **The scope moves to line one**; line two is the hint only
+5. **The scope moves to line one**; line two is the remedy only
    (`run-detail-mcp.tsx:155-170`) (§ 7.2).
 6. **The status word is the wire's verbatim**, including `auth-required`, not the
    working tree's `sign-in required` spelling (`run-detail-mcp.tsx:68-69`)
    (§ 7.2).
 7. **The model test covers the derivation and these rules** (§ 11.2) — the four
    words, the cold payload, a nameless row, a missing status, the negative
-   predicate with an unrecognised word taking attention, the hint on the two
+   predicate with an unrecognised word taking attention, the remedy on the two
    known problems only, the verbatim word, and the re-arm across a
    heal-and-break-again.
 8. **The hook's docstring is corrected** on the bridge (`use-mcp-servers.ts:44-47`)
@@ -1276,9 +1342,10 @@ The requirements, in the order that matters:
 | Poll only while the panel is open | Deletes the operator's ask (§ 7.4) — the dot exists for the closed panel. |
 | Poll only while a turn is running | A dead server is precisely what you want to learn while idle, and the runtime is attached between turns anyway; this makes the panel silent in the state it exists for. |
 | A new push channel (a frame, or a field delta at every manager transition) | A backend change to close a gap that is in the PUBLISH, not the observation: the manager already observes a drop (`mcp/manager.py:2953-2980`). Deferred rather than refused (§ 13), because the poll is what makes it unnecessary. |
-| A `reauth` / `connect` control on the row | The panel is a view (§ 5.6's rule for the reader, applied to the whole surface). A second place to press those buttons is a second place to get the confirmation, the scope and the error copy wrong, and the row names the fix in words instead. |
+| A CONFIGURATION control on the row (`add` / `remove` / `reload` / scope / credential entry) | Refused by design, and kept refused by § 7.2's amended rule: the panel starts the three operations the backend owns, and every state it cannot fix names the surface that owns the configuration (`settings/components/mcp-management-section.tsx`). A second place to press those is a second place to get the confirmation, the scope and the error copy wrong. |
+| A clickable row, or a control on hover ground | The row holds two possible actions (grant, reconnect) and a status, so "click anywhere" has no single meaning; and its neighbour's hover means "this opens a page", which this one does not (§ 7.2). |
 | A distinct dot or a second mark per ledger | One 8px dot cannot say which fact it means, and two marks on one 32px control is a decoration nobody can read (§ 3.4). |
-| Re-spelling the wire word for humans (`sign-in required`) | One state would then have two spellings across two surfaces of the same app, which is the divergence this section exists to avoid; the hint line carries the human meaning instead (§ 7.2). |
+| Re-spelling the wire word for humans (`sign-in required`) | One state would then have two spellings across two surfaces of the same app, which is the divergence this section exists to avoid; the remedy line carries the human meaning instead (§ 7.2). |
 | A per-row `cold` word | One jargon word repeated N times, plus a tally claiming `0 of N connected` — three servers reported down when none was asked to be up (§ 7.2). |
 | Folding an unrecognised word to a quiet, dotless row | The operator's failure is a missed problem; a spurious dot costs one glance and self-clears when the panel is opened, and the negative predicate is the one this codebase already adopted for this exact data (§ 7.3). |
 | A row cap or a `+N more` disclosure | Refused by the shape of the data: servers are the finite set the user configured, not an unbounded stream of children, so a cap would hide a problem behind a control (§ 3.4). |
@@ -1300,7 +1367,7 @@ exact steps inside a stated range are the implementation's to choose.
 | Roster area | `bg-surface`, rows hover `bg-elevated`, scroll region = the rest of the panel | A list panel's ground; `elevated` is the hovered-row role (`branding.md` § 2). |
 | Reader body | `bg-canvas` | The main transcript's ground (`chat-content.tsx:349`), so the child's conversation resolves against the same plane as the parent's — the "reads like the parent transcript" requirement is partly a *ground* requirement. |
 | Between sections | one `hairline` rule | Unchanged from `docs/run-details.md` § 5. |
-| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, up to 80px when the diagnosis wraps** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them, and the measured worst case is 6 + 20 + 16 + 32 + 6 = **80px** — 64px was the row without the second diagnosis line), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. |
+| Row heights | subagent 32/48/64px; to-do 24px, 40px with a reason line and up to 56px when the reason wraps; **MCP 32px, 48px with a remedy, 80px with the diagnosis, and up to ~104px when a cancelled-with-removed-credential grant line WRAPS above a two-line diagnosis at the pane's 320px floor** | Carried over with their line-height pins; the roster row gains only a hover ground, not a height. The variable-length lines are corrected here against the FRAMES rather than the arithmetic: the MCP diagnosis has always been `line-clamp-2` (the approved `mcp-disconnected` frame renders two of them, and the measured worst case is 6 + 20 + 16 + 32 + 6 = **80px** — 64px was the row without the second diagnosis line), and round 2's U2-2/U2-3 gave the to-do reason the pane's own two-line clamp instead of a single clipped line — so these are the worst cases the pane can paint, which is what a row-height record is for. **The ~104px figure is a design-review round-2 correction (D5) and is stated as a range on purpose**: the grant line can hold three things (state word, the credential-removal sentence, and its control), so at 320px it takes a second line and the wrapping container's `gap-2` adds an 8px band between the two action lines — 6 + 20 + (16 + 8 + 16) + 32 + 6 = 104px. It is the *narrow* worst case only (the pane floor, a cancelled grant whose credential was removed, and a diagnosis that wraps to two lines simultaneously), it wraps rather than ellipsising, and no `§ 8` ceiling is met by pretending otherwise. The remedy is a smaller `row-gap` token if that band is unwanted, deliberately NOT taken here: it is a visual change to a surface two review rounds have already measured. |
 | MCP row segments | mark 16px (the roster's own box), name truncating with an ellipsis, then the status word, tool count and scope as non-truncating qualifiers | The roster's segment grammar, so the two lists read as one panel. The name is the only segment allowed to shrink: the numbers rule of § 9 forbids truncating a value mid-figure, and a name has a `title` to state it whole. |
 | MCP section | last in the panel's scroll region; its own section header with the tally; no separate scroll container, no hover ground, no cap | § 7.2's fixed order; the panel's single scroll region (the `Scroll owner` row below) is the roster's, so a section with its own container would put two scrollbars in one pane. |
 | Scroll owner | the roster area in the roster view; the transcript in the reader view — never both | Two nested scroll containers is the defect the old doc's `min(60vh, 480px)` ceiling existed to avoid; with a full-height pane the roster scrolls in the pane, and the cap that used to be a popover artefact is gone. |
@@ -1351,12 +1418,14 @@ exact steps inside a stated range are the implementation's to choose.
   `run-detail-subagents.tsx:266`); the breadcrumb is a `<nav>`; the pressed
   trigger carries `aria-pressed`; the reader's body is not `aria-live` (§ 5.3);
   the resize handle announces its own value and needs its own label (§ 3.2).
-- **The MCP rows are not controls**: no tab stop, no `Enter`, and no hover
-  ground (§ 7.2), because the action they need is in Settings. Each row still
-  carries the roster's `sr-only` state clause (`run-detail-subagents.tsx:266`) so
-  a screen reader hears the name and the state word rather than the mark, which
-  is `aria-hidden` decoration; the hint line is real text and is read with the
-  row.
+- **The MCP rows are not controls**: no tab stop on the row itself, no `Enter`,
+  and no hover ground (§ 7.2). The remedy under it IS one — a `link` control on
+  the second line, reached by Tab and named by the app's own control word — which
+  is why the row and its action are two different objects rather than one. Each
+  row still carries the roster's `sr-only` state clause
+  (`run-detail-subagents.tsx:266`) so a screen reader hears the name and the state
+  word rather than the mark, which is `aria-hidden` decoration; the remedy line is
+  real text (or a real control) and is read with the row.
 - **The trigger's name must carry the dot's reason** (§ 3.4): the tooltip and
   `aria-label` gain the MCP clause, so a lit dot for a dropped server is
   announced rather than implied by a mark nobody can see.
@@ -1590,7 +1659,8 @@ Contents:
   `scripts/run-detail-model.test.mjs` gains the MCP cases with them: the
   derivation (the four words, the cold payload, a nameless row, a missing
   status), the negative problem predicate including an unrecognised word taking
-  attention, the hint only on the two known problems, the verbatim word, and the
+  attention, the remedy only on the states this surface can act on or explain, the
+  verbatim word, and the
   re-arm rule (`seen' = seen ∩ problems`) exercised across a heal-and-break
   again, which is the case a name-keyed ledger gets wrong;
 - the capability gate and the old-backend degraded state (§ 10.5), including the
@@ -1637,7 +1707,7 @@ per `branding.md` § 9's checklist.
 | `mcp-auth-required` | one server `auth-required`: the `danger` mark, the wire's own word, and its remedy line — plus the trigger's dot and its clause (before/after: closed with the dot, then open on the list with the dot cleared and the row visible) |
 | `mcp-disconnected` | the same encoding for the transport state, with its own copy — the two states must be distinguishable side by side, which is the confusion the operator reported |
 | `mcp-cold` | the cold payload: the section's one line in place of its tally, rows with no status word, no tool count and no dot |
-| `mcp-unknown-status` | a status word this renderer was not taught: rendered verbatim in the quiet ink with the unknown mark, **no** hint, and the dot ON (§ 7.3) — the refusal is "never claim the good state" |
+| `mcp-unknown-status` | a status word this renderer was not taught: rendered verbatim in the quiet ink with the unknown mark, **no** remedy, and the dot ON (§ 7.3) — the refusal is "never claim the good state" |
 | `narrow-800` | the window floor: panel at its 320px minimum, chat column at its floor, small-view transcript |
 | `capability-absent` | § 10.5's degraded state, **both gated surfaces in one frame pair**: the reader's non-clickable row with the one update line, and no MCP section at all beside it (§ 10.5). One rule, one frame pair — a second near-identical frame for the second capability is the redundancy § 6.1 spends a section removing. |
 | `reduced-motion` | the panel with the spinner's motion off; shape still distinguishes state — for the roster's child spinner **and** the MCP `connecting` mark, which is the only other animated glyph in the pane |
@@ -1795,12 +1865,14 @@ The backend PR takes the review round alone.
     rather than a source — but a future change that RENDERS `frontend.mcp_servers`
     somewhere would reintroduce the untimestamped merge § 7.6 refuses. The
     reviewer should treat "renders the canonical MCP projection" as a finding.
-11. **The Settings surface has a live field-name bug beside this section.**
-    `scope` / `setup_prompt` do not exist on the payload and the remove control's
-    scope is derived from the missing field (§ 7.1, § 13), so a project-scoped
-    server cannot be removed from the desktop. It is out of this panel's scope
-    and inside the same feature's, so it should not be discovered by a reviewer
-    as if this change caused it — and the panel must not copy the read.
+11. **The Settings surface's field-name drift is fixed, and the fix is a lesson
+    rather than a live risk.** `scope` / `setup_prompt` did not exist on the
+    payload and the remove control's scope was derived from the missing field
+    (§ 7.1), so a project-scoped server could not be removed from the desktop.
+    Fixed in `b8de0a387`. What survives is the shape of the mistake: every access
+    was optional and both surfaces type-checked, which is the same class as § 7.5's
+    one-key-two-shapes cache and the reason both are now pinned by a test rather
+    than by a reading.
 
 ---
 
@@ -1816,11 +1888,10 @@ The backend PR takes the review round alone.
 | The pause intent on a live session's job row | Unchanged from `docs/run-details.md` § 10: a backend publish-side fix, not this PR's. |
 | A real keyboard shortcut for the panel | The canvas's advertised `⌘+Shift+C` (`chat-header.tsx:42`) has no handler anywhere in the renderer — the tooltip promises a keybinding that does not exist. This change does not repeat that: no shortcut is advertised until one is bound, and binding one is its own small change. |
 | Restoring the reader's scroll position across nested hops | Implementation detail (§ 10.6); the constraint is only that a retarget resets and a pulse does not. |
-| The failure REASON on a panel MCP row | `mcp.list` carries no error field (`mcp/desktop.py:127-152` sends none, which is why Settings' `server.error` read at `mcp-management-section.tsx:422` is dead), and the only source on the wire is the canonical projection's startup-failure map (`frontend_state.py:4385-4387`) — a BOOT snapshot that `mcp_status.py:47-49` explicitly says cannot describe a server that dropped later. Adding it to the route is a backend change, and a reason that is right for a startup failure and wrong for the reported case is worse than no reason. |
+| The failure REASON on a panel MCP row | `mcp.list` carries no error field (`mcp/desktop.py:127-152` sends none), and the only source on the wire is the canonical projection's startup-failure map (`frontend_state.py:4385-4387`) — a BOOT snapshot that `mcp_status.py:47-49` explicitly says cannot describe a server that dropped later. Adding it to the route is a backend change, and a reason that is right for a startup failure and wrong for the reported case is worse than no reason. |
 | A human spelling for the wire status words (`auth-required`) | The string is the wire's and the backend's docstring makes rendering it directly the contract between surfaces (`mcp/manager.py:1331-1335`); re-spelling it in one renderer is the divergence § 7.2 refuses. A friendlier word is a backend vocabulary change with its own review. |
 | A push channel for MCP status (a frame, or a delta at every manager transition) | It would close the residue § 7.4 accepts — a transport that dies while the app is idle — but it is a backend change to fix a gap in the PUBLISH, not the observation, and the poll already makes the indication exist. Worth doing if the 15 s latency proves too coarse. |
-| Restoring a control (reauth / connect / reload) to the MCP row | Refused by design rather than deferred (§ 7.6): the panel is a view, and the row names the fix instead. Listed here so it is not re-proposed as an oversight. |
-| The Settings page's `scope` / `setup_prompt` / remove-scope field names | Real, small, and in the same feature: `mcp-management-section.tsx:398` and `:479` read fields `mcp/desktop.py:127-152` never sends, and `:505-508` derives the removal scope from the missing one, so `mcp/desktop.py:191-193` refuses a project-scoped removal. Its own small PR beside this one; § 12's risk 11 keeps it from surfacing as a review finding against this panel, and § 7.1 records it so the panel reads `owned_scope`. |
+| The key-entry popout's WRITE PATH, which no action on the wire can reach | The popout ships (it is the `key` remedy on a row whose transport cannot do OAuth), and its write is the DEDICATED encrypted-store op `mcp.credentials.store` (`POST /v1/desktop/sessions/{id}/mcp/credentials`), whose backend half is `damianvtran/local-operator` **PR #1125**: `${NAME}` references in MCP `env` and `headers` resolve at transport-build time, an unresolved whole-value reference is refused BY NAME, and each server row publishes the reference IDs its config declares (`secret_refs`). The COUPLING is in the copy rather than in silence: the dialog promises only what it does ("Saved to the encrypted secret store, then this server is reconnected"), the fields come from the payload's own declared IDs, and the outcome is derived from the read — the returned snapshot's own row, because `manager.reconnect_server` swallows failures and returns `None` (`manager.py:1671-1679`) — so a store write that does not authenticate leaves the form open and says so. Against a backend without the op, the surface offers no key form and says to update the backend for secure MCP key entry; it never falls back to a plaintext write. |
 
 ---
 
