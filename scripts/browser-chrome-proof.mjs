@@ -2010,6 +2010,92 @@ async function main() {
 		 * The rendered half is photographed instead: `browser-tab-strip--waiting` and
 		 * `browser-tab-strip--agent-and-waiting` in the committed frame set.
 		 */
+		/*
+		 * ---- 7c. THE TITLE'S MEASURE, MARKED AND UNMARKED (design round 3, D13;
+		 *          QA round 2, Q4; the UX round's U5) --------------------------------
+		 *
+		 * The operator's own ask, and the round-1 fix did not deliver it. `min-w-44`
+		 * raised the floor, but the two 28px controls are revealed with `opacity-0` -
+		 * which does not reclaim LAYOUT - so every tab still spent 68px of its 176px
+		 * on chrome nobody can see. On an unmarked row that left ~68px of title; on a
+		 * marked one the 43px `Agent` chip took it to 21px, one glyph, on exactly the
+		 * tabs this feature adds.
+		 *
+		 * Measured in the running app, at the floor, on both kinds of row - not in a
+		 * story, whose decorator sets its own width. The extra tabs are real tabs
+		 * opened through the bridge and closed again, so the sections after this one
+		 * see the strip they expect.
+		 */
+		const measureTitles = async () =>
+			JSON.parse(
+				await evaluate(`(() => {
+					const rows = [...document.querySelectorAll('[role="tab"]')].map((tab) => {
+						const box = tab.parentElement;
+						const title = box.querySelector('[data-tour-tag="browser-tab-title"]');
+						return {
+							marked: !!box.querySelector('[data-tour-tag="browser-tab-agent-marker"]'),
+							tabWidth: Math.round(box.getBoundingClientRect().width),
+							titleBox: title ? Math.round(title.getBoundingClientRect().width) : null,
+						};
+					});
+					return JSON.stringify({ rows });
+				})()`),
+			);
+
+		const beforeWide = await measureTitles();
+		const beforeState = await chromeState();
+		const activeBeforeCrowding = beforeState.tabs.find((tab) => tab.active)?.tabId ?? null;
+		for (let index = 0; index < 9; index += 1) {
+			await evaluate(
+				`window.api.browser.newTab().then(() => "ok").catch(() => "refused")`,
+			);
+		}
+		await waitFor(
+			async () => {
+				const current = await chromeState();
+				return current.tabs.length >= 11 ? true : null;
+			},
+			"the strip to reach the width floor",
+			20_000,
+		).catch(() => null);
+		// The ids to close are whatever the strip holds that it did not hold before.
+		const extraTabs = (await chromeState()).tabs
+			.map((tab) => tab.tabId)
+			.filter((id) => !beforeState.tabs.some((tab) => tab.tabId === id));
+		const crowded = await measureTitles();
+		const marked = crowded.rows.filter((row) => row.marked);
+		const unmarked = crowded.rows.filter((row) => !row.marked);
+		const narrowest = Math.min(...crowded.rows.map((row) => row.titleBox ?? 0));
+		check(
+			"at the width floor a MARKED tab still names its site: the chrome cluster is overlaid, not reserved",
+			crowded.rows.length >= 10 &&
+				marked.length >= 1 &&
+				unmarked.every((row) => (row.titleBox ?? 0) >= 60) &&
+				marked.every((row) => (row.titleBox ?? 0) >= 85) &&
+				narrowest >= 60,
+			JSON.stringify({ two: beforeWide.rows, crowded, narrowest }, null, 2),
+		);
+		// Put the strip back: the sections after this one count tabs, and the session
+		// file at the end of the run must match them.
+		for (const id of extraTabs) {
+			await evaluate(
+				`window.api.browser.closeTab(${id}).then(() => "ok").catch(() => "closed")`,
+			);
+		}
+		if (activeBeforeCrowding !== null) {
+			await evaluate(
+				`window.api.browser.activateTab(${activeBeforeCrowding}).then(() => "ok").catch(() => "no")`,
+			);
+		}
+		await waitFor(
+			async () => {
+				const current = await chromeState();
+				return current.tabs.length <= 2 ? true : null;
+			},
+			"the strip to return to the two tabs the later sections expect",
+			15_000,
+		).catch(() => null);
+
 		// ---- 9b. the queue: two requests coexist, and the badge counts them ---
 		//
 		// THE SIDE EFFECT THE OLD MODEL COULD NOT PRODUCE. `requestAccess` used to call
@@ -2503,14 +2589,15 @@ async function main() {
 					await evaluate(`(() => JSON.stringify({
 						band: !!document.querySelector('[data-tour-tag="browser-consent-bar"]'),
 						chips: document.querySelectorAll('[data-tour-tag="browser-approvals-tray-chip"]').length,
-						waitingRows: document.querySelectorAll('[data-tour-tag="browser-approvals-waiting-row"]').length,
+						// No waiting-row term: the dock returns null when closed, and the
+						// Escape assertion a moment earlier closed it, so the count could only
+						// ever read zero (review round 2, NIT-1). What the dock shows with the
+						// queue empty is asserted where the dock IS open.
 						markers: document.querySelectorAll('[data-tour-tag="browser-tab-waiting"]').length,
 						resolved: [...document.querySelectorAll('[data-tour-tag="browser-approvals-resolved"] li')].map((li) => li.innerText.trim()),
 					}))()`),
 				);
-				return read.chips === 0 && read.waitingRows === 0 && read.markers === 0
-					? read
-					: null;
+				return read.chips === 0 && read.markers === 0 ? read : null;
 			},
 			"the queue to drain out of the chrome",
 			15_000,

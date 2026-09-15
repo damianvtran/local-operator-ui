@@ -240,9 +240,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					size="sm"
 					onClick={onOpenApprovals}
 					disabled={disabled}
-					// `pr-4` so the badge, which sits over the control's top-right corner,
-					// never covers the label (§5.1).
-					className="pr-4"
+					// `pr-5` so the badge, which sits over the control's top-right corner, never
+					// covers the label (§5.1). `pr-4` cleared one digit by 16px and TWO by
+					// only ~6px, and two is the reachable maximum (the queue cap is 16), so
+					// the reserve is sized for the worst case rather than the common one
+					// (design round 3, D17: at two digits the badge's left arc came within 6px
+					// of the last glyph of `Approvals`).
+					className="pr-5"
 					aria-label={
 						waitingCount > 0
 							? `Approvals, ${waitingCount} waiting`

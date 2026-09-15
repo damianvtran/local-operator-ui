@@ -3,6 +3,7 @@ import { Button } from "@shared/components/ui";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ShieldAlert } from "lucide-react";
 import type { FC } from "react";
+import { useState } from "react";
 import type { ApprovalRequestInput } from "../model/approval-queue-model";
 
 /**
@@ -101,11 +102,25 @@ export interface BrowserConsentRequestProps {
 export function requesterLabel(
 	requesterSessionId: string | null,
 	sessions: ReadonlyArray<{ session_id: string; title?: string | null }>,
+	/**
+	 * The form for a row that has to share its line with the site it is about.
+	 *
+	 * `The agent in conversation ` is 26 characters of boilerplate, and in the dock's
+	 * 349px row it was eating the width the authority needed (design round 2, D14; UX
+	 * round 2, U10: the site was clipped to 49px of 108px while the requester held
+	 * 121px of a 255px label, so two rows differing by site still rendered the same).
+	 * The short form keeps the distinguishing part - the conversation - and drops the
+	 * sentence around it. The card and the chip's accessible name keep the full form,
+	 * so nothing loses the explanation.
+	 */
+	options?: { short?: boolean },
 ): string {
 	if (!requesterSessionId) return "An agent";
 	const title = sessions.find(
 		(session) => session.session_id === requesterSessionId,
 	)?.title;
+	const name = title?.trim() || requesterSessionId;
+	if (options?.short) return name;
 	if (title?.trim()) return `The agent in '${title.trim()}'`;
 	return `The agent in conversation ${requesterSessionId}`;
 }
@@ -119,14 +134,39 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 }) => {
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const who = requesterLabel(request.requesterSessionId, sessions);
+	/** Which control THIS user pressed, so the busy cue can sit next to it rather than
+	 * at the far end of the row (design round 3, D12: in a 1280px band the trailing
+	 * cue sat ~700px from the button it confirmed). */
+	const [pressed, setPressed] = useState<ConsentDecision | null>(null);
 
 	/** The term's ink role, which is what changes between the two layouts: the
 	 * stacked form has no column for the eye to run down, so the term carries the
 	 * emphasis itself (design round 2, D2). */
 	const termClass = layout === "stacked" ? "text-ink" : "text-ink-muted";
 
-	const decide = (decision: ConsentDecision): void =>
+	const decide = (decision: ConsentDecision): void => {
+		setPressed(decision);
 		onDecide(request.entryId, decision);
+	};
+
+	/* THE CUE SITS NEXT TO THE CONTROL THAT WAS PRESSED (design round 3, D12). Every
+	 * choice is disabled while a decision is in flight, which on its own reads as an
+	 * inert card rather than a working one, so something has to say the click landed -
+	 * and where it sits is the difference between "the card is working" and "the row
+	 * you clicked is working". The words carry it under `prefers-reduced-motion` too,
+	 * where the ring is frozen (`spinner.tsx`). */
+	const cue = (
+		<span
+			className="flex items-center gap-1.5 text-meta text-ink-muted"
+			data-tour-tag="browser-consent-busy"
+		>
+			<Spinner size="sm" />
+			Recording your choice…
+		</span>
+	);
+	/** The trailing form is kept only for a decision this card did not originate. */
+	const cueAfter = (decision: ConsentDecision) =>
+		busy && pressed === decision ? cue : null;
 
 	return (
 		<div
@@ -170,6 +210,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 				>
 					Allow once
 				</Button>
+				{cueAfter("once")}
 				<Button
 					variant="outline"
 					size="sm"
@@ -179,6 +220,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 				>
 					Allow until the app quits
 				</Button>
+				{cueAfter("session")}
 				<Button
 					variant="outline"
 					size="sm"
@@ -188,16 +230,20 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 				>
 					Always allow this site
 				</Button>
+				{cueAfter("site")}
 				{request.broad && (
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={busy}
-						onClick={() => decide("domain")}
-						data-tour-tag="browser-consent-domain"
-					>
-						Allow all of {request.broad.key}
-					</Button>
+					<>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={busy}
+							onClick={() => decide("domain")}
+							data-tour-tag="browser-consent-domain"
+						>
+							Allow all of {request.broad.key}
+						</Button>
+						{cueAfter("domain")}
+					</>
 				)}
 				<Button
 					variant="ghost"
@@ -208,20 +254,8 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 				>
 					Don't allow
 				</Button>
-				{busy && (
-					// Every choice is disabled while a decision is in flight, which on its own
-					// reads as an inert card rather than a working one: nothing on screen said
-					// the click had landed (review round 2, D11). The words are the cue, and
-					// they carry it even under `prefers-reduced-motion`, where the ring is
-					// frozen (see `spinner.tsx`).
-					<span
-						className="flex items-center gap-1.5 text-meta text-ink-muted"
-						data-tour-tag="browser-consent-busy"
-					>
-						<Spinner size="sm" />
-						Recording your choice…
-					</span>
-				)}
+				{cueAfter("deny")}
+				{busy && pressed === null && cue}
 			</div>
 			{/* What each choice actually persists, next to the choice. A single
 			    lifetime sentence cannot be true of five different scopes, and the

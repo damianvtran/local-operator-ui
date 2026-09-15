@@ -234,8 +234,31 @@ export function reconcileResolved(
 			authority: request.authority,
 			at: now,
 		}));
+	/*
+	 * AND THE ONES THAT DIE WHILE THE USER WATCHES (QA round 2, Q3; the reviewer's
+	 * NIT-2). Main fires nothing at expiry, so an entry that runs out its ten minutes
+	 * leaves the LIST on the renderer's own tick (`approvalRows` filters on `now`) and
+	 * had no explanation until some unrelated change happened to push a projection -
+	 * the count dropped and nothing said why. An entry still in the projection, past
+	 * its `expiresAt` and not answered by this surface IS gone from the user's point
+	 * of view, and its own TTL is the reason, so it resolves here. Same de-dupe and
+	 * same retention as the departure half, so the two cannot disagree.
+	 */
+	const expired = current
+		.filter(
+			(request) => request.expiresAt <= now && !answered.has(request.entryId),
+		)
+		.map<ResolvedRow>((request) => ({
+			key: request.entryId,
+			kind: "expired",
+			origin: request.origin,
+			authority: request.authority,
+			at: now,
+		}));
 	const known = new Set(resolved.map((row) => row.key));
-	return [...fresh.filter((row) => !known.has(row.key)), ...resolved]
+	return [...fresh, ...expired]
+		.filter((row) => !known.has(row.key))
+		.concat(resolved)
 		.filter((row) => now - row.at < RESOLVED_RETENTION_MS)
 		.slice(0, RESOLVED_KEEP);
 }
@@ -348,6 +371,24 @@ export function useApprovalQueue(
 			reconcileResolved(was, requests, current, answered.current, at),
 		);
 	}, [requests]);
+
+	/*
+	 * THE CLOCK IS ALSO A TRIGGER, not only a reading (QA round 2, Q3). The effect
+	 * above explains a DEPARTURE, and a departure is only observable when a new
+	 * projection arrives; an entry that dies of its TTL while the user watches
+	 * changes no projection at all, so the same reconcile has to run on the tick that
+	 * already moves `now`. Nothing is paid for an idle route: that interval exists
+	 * only while something is live, and the tick that empties the list is the one
+	 * that resolves the last entry.
+	 */
+	const liveIds = liveRequests(requests, now)
+		.map((request) => request.entryId)
+		.join("|");
+	useEffect(() => {
+		setResolved((current) =>
+			reconcileResolved(requests, requests, current, answered.current, now),
+		);
+	}, [liveIds, now, requests]);
 
 	// Leaving the surface drops the memory by construction: it is a reading of the
 	// live list, not a history (spec 3.4), so there is nothing to clean up on

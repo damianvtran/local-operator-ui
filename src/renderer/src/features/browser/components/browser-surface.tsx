@@ -267,8 +267,26 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// (spec 3.4: an answered request is excluded from the expiry memory).
 			queue.noteDecision(entryId);
 			void runBusy(() => chrome.respondToConsent(entryId, decision));
+			/*
+			 * THE BAND CAN UNMOUNT WITH THIS CLICK, so focus is handed on rather than
+			 * dropped (UX round 2, U11). Answering the LAST request leaves the band nothing
+			 * to render - a user decision writes no resolved row, that memory is for
+			 * expiry and withdrawal - and the pressed control leaves with it, so
+			 * `document.activeElement` fell to `<body>` and a keyboard user restarted from
+			 * the top of the document. The Approvals control is the same place
+			 * `closeDock` sends focus, and this is the same "task finished" moment.
+			 *
+			 * Guarded on focus being genuinely unowned and the dock being closed: an
+			 * expiry elsewhere, or a user whose focus is on the page, must not have the
+			 * control grabbed out from under them.
+			 */
+			window.requestAnimationFrame(() => {
+				if (dockOpen) return;
+				if (document.activeElement !== document.body) return;
+				approvalsTriggerRef.current?.focus();
+			});
 		},
-		[chrome.respondToConsent, queue.noteDecision, runBusy],
+		[chrome.respondToConsent, dockOpen, queue.noteDecision, runBusy],
 	);
 
 	const closeDock = useCallback(() => {

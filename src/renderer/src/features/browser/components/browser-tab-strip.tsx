@@ -142,7 +142,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const [actionsTabId, setActionsTabId] = useState<number | null>(null);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-	const closeActions = useCallback(() => setActionsTabId(null), []);
+	/** One ref per tab's actions trigger, so dismissing the row can hand focus back
+	 * to the tab it belonged to (UX round 2, U9: both dismissal paths unmount the
+	 * element that had focus, which dropped the keyboard user to `<body>` and out of
+	 * the strip). A ref map rather than a `querySelector`: this component never hunts
+	 * the document for its own controls. */
+	const menuRefs = useRef(new Map<number, HTMLButtonElement | null>());
+
+	const closeActions = useCallback((): void => {
+		const owner = actionsTabId;
+		setActionsTabId(null);
+		if (owner !== null) menuRefs.current.get(owner)?.focus();
+	}, [actionsTabId]);
 
 	/** The row's own element, so opening it can move focus INTO it (design round 2,
 	 * D4 / the UX round's U4): the row lives after the scroller in DOM order, and
@@ -249,13 +260,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										<TabMark tab={tab} />
 										{/*
 										 * `grow` so the title takes whatever the chrome leaves and the
-										 * marker/chips/buttons sit at the tab's edge, and the native
-										 * `title` so a truncated name is still recoverable with the pointer
-										 * - which is what D13 asked for alongside the width fix. The full
-										 * text is in the DOM either way, so assistive technology already
-										 * reads the whole name; this is the mouse's half of it.
+										 * marker/chips sit at the tab's edge, and the native `title` so a
+										 * truncated name is still recoverable with the pointer - which is
+										 * what D13 asked for alongside the width fix. The full text is in
+										 * the DOM either way, so assistive technology already reads the
+										 * whole name; this is the mouse's half of it. The tag is what the
+										 * proof harness measures a title box with (QA round 2, Q4).
 										 */}
-										<span className="min-w-0 grow truncate" title={tab.title}>
+										<span
+											className="min-w-0 grow truncate"
+											title={tab.title}
+											data-tour-tag="browser-tab-title"
+										>
 											{tab.title}
 										</span>
 										{tab.owner === "agent" && (
@@ -323,54 +339,82 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											</span>
 										)}
 									</button>
-									{/* The actions trigger. The menu it used to open painted into the
-									    content rect, where the native view occludes it (§6), so this
-									    now expands the row's actions inside the band instead. */}
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										aria-label={`Tab actions for ${tab.title}`}
-										aria-expanded={actionsTabId === tab.tabId}
-										onClick={() =>
-											setActionsTabId((current) =>
-												current === tab.tabId ? null : tab.tabId,
-											)
-										}
-										// Revealed on hover/focus like the close button, unless its own row
-										// is open: the 24px it holds is 24px the title gets back (design
-										// round 2, D1), and an open row must keep its trigger visible.
+									{/* THE CHROME CLUSTER IS OVERLAID, NOT RESERVED (design round 3, D13;
+									    QA round 2 Q4 and the UX round's U5, which measured the same
+									    thing from the other side). `opacity-0` does not reclaim layout:
+									    the two 28px controls held 68px of every tab's 176px, so the
+									    rows carrying the `Agent` marker had 21px of title - one glyph -
+									    on exactly the tabs this feature adds. Absolutely positioned, the
+									    cluster takes no width from the title and paints over its tail
+									    when revealed, on the tab's own ground so the overlap reads as
+									    chrome rather than as a second surface. It carries the grounds
+									    the tab itself has, because `bg-inherit` would be transparent on
+									    a keyboard-focused inactive tab.
+									
+									    `pointer-events-none` while hidden is part of the move: two
+									    invisible controls now sit over the title's tail, and a click
+									    meant for the name must not land on Close. */}
+									<div
 										className={cn(
-											"transition-opacity",
-											actionsTabId === tab.tabId
-												? "opacity-100 text-ink"
-												: "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+											"absolute inset-y-0 right-1 flex items-center gap-1.5",
+											active
+												? "bg-canvas"
+												: "bg-sunken group-hover:bg-elevated",
+											actionsTabId === tab.tabId && !active && "bg-elevated",
 										)}
-										data-tour-tag="browser-tab-menu"
 									>
-										<MoreHorizontal aria-hidden className="size-3.5" />
-									</Button>
-									<Tooltip content="Close tab">
+										{/* The actions trigger. The menu it used to open painted into the
+										    content rect, where the native view occludes it (§6), so this
+										    now expands the row's actions inside the band instead. */}
 										<Button
+											ref={(node) => {
+												menuRefs.current.set(tab.tabId, node);
+											}}
 											variant="ghost"
 											size="icon-sm"
-											aria-label={`Close ${tab.title}`}
-											onClick={() => onClose(tab.tabId)}
-											// Rendered for the active tab always and for an inactive one on
-											// hover OR focus-within (§6): a focusable but invisible control
-											// is a keyboard trap of its own, and the row's actions expansion
-											// is the always-reachable path for the mouse. The reveal is an
-											// opacity step, never a layout shift.
+											aria-label={`Tab actions for ${tab.title}`}
+											aria-expanded={actionsTabId === tab.tabId}
+											onClick={() => {
+												if (actionsTabId === tab.tabId) closeActions();
+												else setActionsTabId(tab.tabId);
+											}}
+											// Revealed on hover/focus like the close button, unless its own row
+											// is open - and it holds no width now, so the reveal costs the title
+											// nothing (D13).
 											className={cn(
 												"transition-opacity",
-												active
-													? "opacity-100"
-													: "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+												actionsTabId === tab.tabId
+													? "text-ink"
+													: "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
 											)}
-											data-tour-tag="browser-tab-close"
+											data-tour-tag="browser-tab-menu"
 										>
-											<X aria-hidden className="size-3.5" />
+											<MoreHorizontal aria-hidden className="size-3.5" />
 										</Button>
-									</Tooltip>
+										<Tooltip content="Close tab">
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												aria-label={`Close ${tab.title}`}
+												onClick={() => onClose(tab.tabId)}
+												// Rendered for the active tab always and for an inactive one on
+												// hover OR focus-within (§6): a focusable but invisible control
+												// is a keyboard trap of its own, and the row's actions expansion
+												// is the always-reachable path for the mouse. The reveal is an
+												// opacity step, never a layout shift - and now it is neither a
+												// layout shift nor a held reserve.
+												className={cn(
+													"transition-opacity",
+													active
+														? "opacity-100"
+														: "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+												)}
+												data-tour-tag="browser-tab-close"
+											>
+												<X aria-hidden className="size-3.5" />
+											</Button>
+										</Tooltip>
+									</div>
 									{active && (
 										// THE NOTCH. The strip's rule runs along the whole band, and the
 										// active tab paints the page's own ground across its own bottom

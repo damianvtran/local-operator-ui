@@ -134,6 +134,15 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		if (!open) return;
 		const onKeyDown = (event: KeyboardEvent): void => {
 			if (event.key !== "Escape") return;
+			/*
+			 * A NEARER CONTROL'S ESCAPE WINS (review round 2, F3). The URL field abandons
+			 * its edit on Escape without stopping propagation, so with the dock open one
+			 * keypress both reverted the text and closed the panel: the page widened and
+			 * focus left the field for a key the user aimed at the input. Anything that
+			 * preventDefaults has already handled it; the dock's own heading does not, so
+			 * §4.2's contract is unchanged.
+			 */
+			if (event.defaultPrevented) return;
 			event.preventDefault();
 			onClose();
 		};
@@ -245,8 +254,9 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 			>
 				<ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
 				<p className="text-body-sm text-ink">
-					Agents can drive tabs in this app. Each site below was approved by a
-					click in this window, and none of them can be reached without one.
+					Agents can drive tabs in this app. Sites an agent can reach were
+					approved by a click in this window, and none of them can be reached
+					without one.
 				</p>
 			</div>
 
@@ -292,15 +302,26 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										>
 											{row.ordinal}
 										</Badge>
-										<span className="min-w-0 grow truncate font-mono text-mono-sm text-ink">
+										{/* THE AUTHORITY KEEPS ITS WIDTH and the requester takes what is left
+										    (design round 2, D14; UX round 2, U10). Round 1 added the
+										    requester to this row to tell two same-site requests apart, and
+										    the layout then clipped the SITE - the one field both rows
+										    differ by - to 49px of its 108px, so the fix made two rows for
+										    one host look identical again. The site is unshrinkable now and
+										    the requester is the flexible one, in its short form. */}
+										<span className="shrink-0 whitespace-nowrap font-mono text-mono-sm text-ink">
 											{row.request.authority}
 										</span>
 										{/* WHO is asking, on the row rather than only inside the card it
-										    expands into (UX round 1, U2): two requests for one site
-										    are ordinary, and ordinal + authority made those two rows
-										    byte-identical. */}
-										<span className="min-w-0 shrink truncate text-meta text-ink-muted">
-											{requesterLabel(row.request.requesterSessionId, sessions)}
+										    expands into (UX round 1, U2). */}
+										<span className="min-w-0 grow truncate text-meta text-ink-muted">
+											{requesterLabel(
+												row.request.requesterSessionId,
+												sessions,
+												{
+													short: true,
+												},
+											)}
 										</span>
 										{row.remaining && (
 											<span className="shrink-0 text-meta text-ink-dim">
