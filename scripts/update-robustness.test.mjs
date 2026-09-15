@@ -4368,9 +4368,53 @@ const loadUpdateServiceModule = async () => {
 						}
 						if (args.path === "electron-updater") {
 							return fixture(`
+								/*
+								 * A listener registry rather than the no-op methods this
+								 * stub used to carry, so the service's OWN wiring is
+								 * exercised: the renderer message a not-available check
+								 * produces comes from the listener registered in the service's
+								 * constructor rather than from the check itself, and a stub
+								 * that swallowed registrations could not tell whether that
+								 * path still works.
+								 */
+								const listeners = new Map();
+								const register = (event, handler) => {
+									listeners.set(event, [...(listeners.get(event) ?? []), handler]);
+									return autoUpdater;
+								};
 								export const autoUpdater = {
-									on: () => {}, once: () => {}, removeAllListeners: () => {},
-									checkForUpdates: async () => null,
+									on: (event, handler) => register(event, handler),
+									once: (event, handler) => register(event, handler),
+									removeAllListeners: (event) => {
+										if (event === undefined) listeners.clear();
+										else listeners.delete(event);
+										return autoUpdater;
+									},
+									listeners: (event) => listeners.get(event) ?? [],
+									emit: (event, payload) => {
+										for (const handler of [...(listeners.get(event) ?? [])]) handler(payload);
+									},
+									/*
+									 * The library's own ORDER, which is the part that matters
+									 * here: electron-updater emits update-not-available and only
+									 * then resolves a result whose isUpdateAvailable is false,
+									 * and resolves null only when isUpdaterActive() says the
+									 * updater will not run at all. The outcome is driven through
+									 * a global so a case can hand the check either thing. No
+									 * backticks in this comment: it lives inside a template
+									 * literal, and one would end it here.
+									 */
+									checkForUpdates: async () => {
+										const result = globalThis.__loTestAppCheck
+											? await globalThis.__loTestAppCheck()
+											: null;
+										if (result && !result.isUpdateAvailable) {
+											autoUpdater.emit("update-not-available", {
+												version: "0.0.0-test",
+											});
+										}
+										return result;
+									},
 									downloadUpdate: async () => [],
 									quitAndInstall: () => {},
 									setFeedURL: () => {},
@@ -4478,6 +4522,762 @@ test("the banner's remedy names the release the last check read", async () => {
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// The one sentence a whole update check may earn
+// ---------------------------------------------------------------------------
+
+/**
+ * Why this section exists: a user reported seeing, from ONE press of "Check for
+ * updates", both "Server version 0.54.44 is available. You are currently using
+ * version 0.54.43." and "You are up to date" - application 0.22.1 against
+ * server 0.54.43, with 0.54.44 published. It happened "when there's an
+ * available version on either the server or the UI", which is the shape of the
+ * bug: each channel's own event was rendered as a sentence about the whole
+ * installation, so exactly one trailing channel produced an offer and an
+ * affirmation in the same turn, and which sentence the user saw was decided by
+ * whichever event the main process happened to emit last.
+ *
+ * The rule under test (`src/main/update-check-verdict.ts`): the affirmation is
+ * earned only by a check that positively proved BOTH channels current, never by
+ * a channel with an update to offer and never by a channel that could not find
+ * out. These cases drive the real service and assert the real renderer events,
+ * so "the app channel said nothing newer" is asserted BESIDE the verdict that
+ * refuses to affirm - which is the property the event-driven button lacked.
+ *
+ * What is real, and what is substituted - the bound on the claim:
+ *
+ * REAL: `UpdateService.checkForUpdates`, `checkForBackendUpdates` and
+ * `checkForAllUpdates`, the server probe over real loopback HTTP (the shipped
+ * `getInstalledBackendVersion` fetch, status handling and version parse), the
+ * comparison that decides whether the server trails, and every renderer event
+ * each channel sends.
+ *
+ * SUBSTITUTED: `electron`, `electron-updater` and `electron-log`, because this
+ * process is not Electron (`loadUpdateServiceModule`'s fixture - the app
+ * channel's outcome is handed in as the `UpdateCheckResult` the real updater
+ * resolves), and `getLatestPypiVersion`, whose only source is a hard-coded
+ * `https://pypi.org/pypi/local-operator/json` that no test can point at
+ * loopback. The published version is an INPUT to the check rather than part of
+ * the rule, so supplying it directly copies nothing the assertions rely on.
+ */
+
+/**
+ * Drive one aggregate check against the shipped service.
+ *
+ * Returns the verdict the renderer receives and every event the check sent it,
+ * because the defect is about the two TOGETHER: an event that means "nothing
+ * newer on this channel" is legitimate, and only the sentence built from it was
+ * not.
+ *
+ * `ipc` reaches the same check the way the RENDERER does - `setupIpcHandlers`
+ * and then the registered `check-for-all-updates` handler, invoked with
+ * `ipc.options` - rather than by calling the service method directly. That is
+ * the boundary the silent flag crosses, so the two rules that live there (an
+ * absent option runs non-silent, and `silent` is the only thing that suppresses
+ * the events) are only reachable through it.
+ */
+const loAggregateCheck = async ({
+	appCheck,
+	serverVersion,
+	publishedVersion,
+	serverAnswersVersion = true,
+	devMode = false,
+	ipc = null,
+	/*
+	 * The npx install is a channel of its own: it answers from the npm registry
+	 * rather than from electron-updater, so a case reaches it by naming the
+	 * version the registry would hand back (QA round 1, Q2 covers that channel
+	 * too). Omitted means the app is not an npx install, which is every other
+	 * case in this file.
+	 */
+	npxVersion = null,
+}) => {
+	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	let interval = null;
+	let health = null;
+	try {
+		health = createServer((request, response) => {
+			if (!request.url?.startsWith("/health")) {
+				response.writeHead(404);
+				response.end();
+				return;
+			}
+			response.writeHead(200, { "Content-Type": "application/json" });
+			response.end(
+				JSON.stringify({
+					result: serverAnswersVersion ? { version: serverVersion } : {},
+				}),
+			);
+		});
+		const port = await new Promise((resolve) =>
+			health.listen(0, "127.0.0.1", () => resolve(health.address().port)),
+		);
+
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: (channel, payload) => sent.push({ channel, payload }),
+					isDestroyed: () => false,
+				},
+			},
+			{
+				getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+			},
+		);
+		interval = updateService.updateCheckInterval;
+		updateService.backendUrl = `http://127.0.0.1:${port}`;
+		// The field the constructor derives from `app.isPackaged`, which the
+		// fixture pins to a packaged app for every other case in this file.
+		if (devMode) updateService.isDevMode = true;
+		if (npxVersion !== null) {
+			updateService.isNpxInstall = true;
+			updateService.getLatestNpmVersion = async () => npxVersion;
+		}
+		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
+		globalThis.__loTestAppCheck = appCheck;
+		/*
+		 * The fixture's `ipcMain.handle` RECORDS the handlers (see its own comment),
+		 * which is how a case can call the function the app would call - the same
+		 * route the quit-for-update-install case above takes to its decision.
+		 */
+		let verdict;
+		if (ipc) {
+			delete globalThis.__loIpcHandlers;
+			updateService.setupIpcHandlers();
+			const handler = globalThis.__loIpcHandlers?.["check-for-all-updates"];
+			assert.equal(
+				typeof handler,
+				"function",
+				"the aggregate check must have a handler for the renderer to invoke",
+			);
+			verdict = await handler({}, ipc.options);
+		} else {
+			verdict = await updateService.checkForAllUpdates(false);
+		}
+		return { verdict, sent };
+	} finally {
+		delete globalThis.__loTestAppCheck;
+		delete globalThis.__loIpcHandlers;
+		if (interval) clearInterval(interval);
+		if (health) {
+			health.closeAllConnections();
+			health.close();
+		}
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+};
+
+/*
+ * The app channel's fixtures carry `versionInfo`, because the real updater does.
+ *
+ * electron-updater's `AppUpdater.doCheckForUpdates` returns
+ * `{isUpdateAvailable, versionInfo, updateInfo}` on BOTH of its outcomes - the
+ * not-available return and the available one - with `versionInfo` the parsed
+ * feed entry. A fixture that answered with the flag alone was modelling
+ * something the library never produces, and it is exactly the shape QA round 1's
+ * Q2 finding turns on: the channel now needs the READINGS, not just the flag
+ * computed from them, so a missing `versionInfo` is refused rather than read as
+ * "nothing newer".
+ */
+const APP_RUNNING_VERSION = "0.0.0-test";
+const loAppCurrent = () => ({
+	isUpdateAvailable: false,
+	versionInfo: { version: APP_RUNNING_VERSION },
+});
+const loAppTrails = () => ({
+	isUpdateAvailable: true,
+	versionInfo: { version: "0.22.4" },
+});
+
+/**
+ * The pure rule, bundled with NO fixture and no stubs.
+ *
+ * Kept out of `loadUpdateServiceModule` on purpose: the module's whole point is
+ * that it has no electron import standing between it and its callers, and a
+ * case that reaches it through the service's graph could not tell the two
+ * apart. The caller removes the temp directory.
+ */
+const loadVerdictRule = async () => {
+	const built = await build({
+		stdin: {
+			contents: 'export * from "./src/main/update-check-verdict";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const dir = mkdtempSync(join(tmpdir(), "lo-verdict-rule-"));
+	const file = join(dir, "update-check-verdict.mjs");
+	writeFileSync(file, built.outputFiles[0].text);
+	return { rule: await import(file), dir };
+};
+
+/**
+ * The operator's report, as a test: the app is current and the server trails
+ * 0.54.43 -> 0.54.44.
+ */
+test("a server offer leaves the whole check with nothing to affirm", async () => {
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+
+	/*
+	 * Both halves of the reported pair really are produced, and that is the
+	 * point: `update-not-available` is the app channel saying the app is
+	 * current, and `backend-update-available` carries the server offer. The
+	 * old button turned the FIRST of those into "You are up to date" and the
+	 * notification panel rendered the second, so asserting only the absence of
+	 * an affirmation would pass on a check that had stopped offering anything.
+	 */
+	const channels = sent.map(({ channel }) => channel);
+	assert.ok(
+		channels.includes("update-not-available"),
+		JSON.stringify(channels),
+	);
+	assert.ok(
+		channels.includes("backend-update-available"),
+		JSON.stringify(channels),
+	);
+
+	// And the verdict - the only thing the renderer may read a sentence from -
+	// affirms nothing, because half of this check found an update.
+	assert.equal(verdict.app, "current");
+	assert.equal(verdict.server, "available");
+	assert.equal(verdict.affirmation, null);
+});
+
+/**
+ * The mirror case, which the report also named ("either the server or the UI"):
+ * the app trails and the server is current. The old renderer turned the server
+ * channel's `backend-update-not-available` into "The server is up to date"
+ * beside the app's own update offer.
+ */
+test("an app offer leaves the whole check with nothing to affirm", async () => {
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loAppTrails,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+
+	const channels = sent.map(({ channel }) => channel);
+	assert.ok(
+		channels.includes("backend-update-not-available"),
+		JSON.stringify(channels),
+	);
+	// The event still exists and still means what it says about its own
+	// channel; what changed is that no sentence about the installation is
+	// built from it while the app has an update to offer.
+	assert.equal(verdict.app, "available");
+	assert.equal(verdict.server, "current");
+	assert.equal(verdict.affirmation, null);
+});
+
+/** The one pair that earns a sentence, and it names both halves. */
+test("a check that proved both channels current earns the affirmation", async () => {
+	// The sentence is READ from the shipped module rather than retyped here, so
+	// a copy change cannot pass an assertion that repeats the old words.
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const { verdict, sent } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+
+		assert.equal(verdict.app, "current");
+		assert.equal(verdict.server, "current");
+		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		// Both channels' own "nothing newer" events are still emitted (the
+		// notification panel clears a stale offer on them), so the sentence and
+		// the events cannot have been the same mechanism by accident.
+		const channels = sent.map(({ channel }) => channel);
+		assert.ok(
+			channels.includes("update-not-available"),
+			JSON.stringify(channels),
+		);
+		assert.ok(
+			channels.includes("backend-update-not-available"),
+			JSON.stringify(channels),
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The same check, driven through the IPC handler the renderer actually invokes.
+ *
+ * Why this case exists (review round 1, R4): the six cases above reach
+ * `UpdateService.checkForAllUpdates` and never `setupIpcHandlers`, so the rule
+ * that decides whether a renderer-originated check is silent was asserted
+ * nowhere - and `silent` is not a detail. It is what decides whether either
+ * channel emits its own `*-not-available` event, which is the property
+ * `update-notification.tsx` clears a stale offer and a by-hand panel on
+ * (`:669`, `:827`), and it gates the npx registry read.
+ *
+ * Two invokes must run NON-silent: no options at all (the default this handler
+ * had when it dropped `options` entirely, so no caller changed behaviour), and
+ * `{manual: true}` (what every renderer caller sends). `{silent: true}` is the
+ * only thing that suppresses the events - and it suppresses only the events: the
+ * check still proved both channels current, so the invoke still resolves the
+ * sentence.
+ */
+test("an invoke through the aggregate handler emits both channels' events unless it asks to be silent", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		for (const options of [undefined, { manual: true }]) {
+			const { verdict, sent } = await loAggregateCheck({
+				appCheck: loAppCurrent,
+				serverVersion: "0.54.44",
+				publishedVersion: "0.54.44",
+				ipc: { options },
+			});
+			const channels = sent.map(({ channel }) => channel);
+			assert.ok(
+				channels.includes("update-not-available"),
+				`options=${JSON.stringify(options)}: ${JSON.stringify(channels)}`,
+			);
+			assert.ok(
+				channels.includes("backend-update-not-available"),
+				`options=${JSON.stringify(options)}: ${JSON.stringify(channels)}`,
+			);
+			assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		}
+
+		const { verdict, sent } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { options: { silent: true } },
+		});
+		const channels = sent.map(({ channel }) => channel);
+		assert.ok(
+			!channels.includes("update-not-available"),
+			JSON.stringify(channels),
+		);
+		assert.ok(
+			!channels.includes("backend-update-not-available"),
+			JSON.stringify(channels),
+		);
+		// Silence is about the EVENTS, not the answer: the check still proved both
+		// channels current, so the invoke that asked for it still resolves the one
+		// sentence such a check earns.
+		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * QA round 1, Q2: a status may not be derived from a version nobody can read.
+ *
+ * `isNewerVersion` splits on `.` and coerces with `Number`, so a part that is
+ * not a number becomes `NaN`, every `NaN` comparison is false, and a malformed
+ * pair reads as "nothing newer" - which then earned the WHOLE-installation
+ * affirmation. Three shapes, one rule: an unreadable reading is the same
+ * absence as one that never arrived.
+ */
+test("an unreadable server version reading cannot earn the affirmation", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		// The installed version, from a real /health response whose payload
+		// carries `999.invalid` - QA's first reproduction, verbatim.
+		const installedUnreadable = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "999.invalid",
+			publishedVersion: "0.54.43",
+		});
+		assert.equal(installedUnreadable.verdict.server, "unavailable");
+		assert.equal(installedUnreadable.verdict.app, "current");
+		assert.equal(installedUnreadable.verdict.affirmation, null);
+		/*
+		 * The reading was PRESENT - the health endpoint answered with a version
+		 * string - so this is about the value rather than about a missing answer,
+		 * which is what separates it from the no-version case above.
+		 */
+		assert.ok(
+			installedUnreadable.sent.some(
+				({ channel }) => channel === "backend-update-error",
+			),
+			JSON.stringify(installedUnreadable.sent.map(({ channel }) => channel)),
+		);
+
+		// The published version, which is the other side of the same comparison.
+		const publishedUnreadable = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.43",
+			publishedVersion: "invalid",
+		});
+		assert.equal(publishedUnreadable.verdict.server, "unavailable");
+		assert.equal(publishedUnreadable.verdict.affirmation, null);
+
+		/*
+		 * And the direction QA also measured: an unreadable INSTALLED version used
+		 * to produce an offer ("update to 0.54.44") for a server whose version
+		 * could not be read at all - the same confusion that once produced a pip
+		 * command for an unreadable server. No offer, and no status.
+		 */
+		const offerFromUnreadable = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "not-a-version",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(offerFromUnreadable.verdict.server, "unavailable");
+		assert.equal(offerFromUnreadable.verdict.affirmation, null);
+		assert.ok(
+			!offerFromUnreadable.sent.some(
+				({ channel }) => channel === "backend-update-available",
+			),
+			JSON.stringify(offerFromUnreadable.sent.map(({ channel }) => channel)),
+		);
+
+		// The app channel: no `versionInfo` at all, then a malformed one.
+		const appNoReading = await loAggregateCheck({
+			appCheck: () => ({ isUpdateAvailable: false }),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(appNoReading.verdict.app, "unavailable");
+		assert.equal(appNoReading.verdict.affirmation, null);
+
+		const appUnreadable = await loAggregateCheck({
+			appCheck: () => ({
+				isUpdateAvailable: false,
+				versionInfo: { version: "999.invalid" },
+			}),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(appUnreadable.verdict.app, "unavailable");
+		assert.equal(appUnreadable.verdict.affirmation, null);
+
+		// The npx channel reads the npm registry instead of the updater.
+		const npxUnreadable = await loAggregateCheck({
+			appCheck: () => ({ isUpdateAvailable: false, versionInfo: { version: "0.0.0-test" } }),
+			npxVersion: "invalid",
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(npxUnreadable.verdict.app, "unavailable");
+		assert.equal(npxUnreadable.verdict.affirmation, null);
+
+		// And the sentence is still reachable where the readings are real.
+		const npxCurrent = await loAggregateCheck({
+			appCheck: () => ({ isUpdateAvailable: false, versionInfo: { version: "0.0.0-test" } }),
+			npxVersion: "0.0.0-test",
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(npxCurrent.verdict.app, "current");
+		assert.equal(npxCurrent.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * Review round 3 (R8): the unreadable-reading gate must not swallow the two
+ * branches that name an ABSENT reading.
+ *
+ * The gate was first written ABOVE both of them, and `isReadableVersion("Unknown")`
+ * is false - the sentinel is in this file's own pinned reject list below - so the
+ * `"Unknown"` branch and the missing-reading branch above it could never run,
+ * while the gate's own comment claimed the `Unknown` case kept its own, more
+ * specific message. The STATUS is `unavailable` on all three paths, so the
+ * ordering is visible only in the MESSAGE: it is what tells a reader which of the
+ * three absences this check hit, and it is the surface this whole change exists to
+ * stop misdescribing.
+ */
+test("an absent server reading keeps its own message, and an unparseable one takes the gate", async () => {
+	// An older server's health answer, which carries no version at all: the
+	// `"Unknown"` sentinel path.
+	const unknown = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverAnswersVersion: false,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(unknown.verdict.server, "unavailable");
+	assert.equal(unknown.verdict.affirmation, null);
+
+	// A reading that arrived and cannot be parsed: the gate's own case.
+	const unparseable = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "999.invalid",
+		publishedVersion: "0.54.43",
+	});
+	assert.equal(unparseable.verdict.server, "unavailable");
+	assert.equal(unparseable.verdict.affirmation, null);
+
+	const errorMessages = (result) =>
+		result.sent
+			.filter(({ channel }) => channel === "backend-update-error")
+			.map(({ payload }) => payload);
+	const unknownMessage = errorMessages(unknown);
+	const gateMessage = errorMessages(unparseable);
+	assert.equal(
+		unknownMessage.length,
+		1,
+		JSON.stringify(unknown.sent.map(({ channel }) => channel)),
+	);
+	assert.equal(
+		gateMessage.length,
+		1,
+		JSON.stringify(unparseable.sent.map(({ channel }) => channel)),
+	);
+	/*
+	 * The ordering, without retyping either sentence: if the gate preempted the
+	 * sentinel branch, these would be the SAME message - the gate's - and the
+	 * sentinel's own, user-visible remedy would be unreachable. They differ, and
+	 * the sentinel's is the one that names the remedy.
+	 */
+	assert.notEqual(
+		unknownMessage[0],
+		gateMessage[0],
+		"the sentinel path and the gate must not answer with the same sentence",
+	);
+	assert.match(unknownMessage[0], /Restart the app/);
+
+	// The third absence is the mirror: a reading that IS readable and older must
+	// still reach the offer, so the gate cannot be widened into the ordinary path.
+	const older = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(older.verdict.server, "available");
+	assert.ok(
+		older.sent.some(({ channel }) => channel === "backend-update-available"),
+		JSON.stringify(older.sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
+ * The other half of Q2: the fix must not reclassify anything this product
+ * actually publishes. These are the comparisons the update path has always
+ * made, kept as themselves so a future tightening of the grammar names the
+ * release form it broke.
+ */
+test("the readable-version grammar keeps every comparison it always made", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const equal = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+		assert.equal(equal.verdict.server, "current");
+		assert.equal(equal.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+
+		const newer = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.45",
+		});
+		assert.equal(newer.verdict.server, "available");
+		assert.equal(newer.verdict.affirmation, null);
+
+		// The four-part form (the backend has published `0.18.0.1`) and the
+		// pre-release form (the registry carries `0.55.0-rc1`), both readable.
+		const fourPart = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44.1",
+			publishedVersion: "0.54.44.2",
+		});
+		assert.equal(fourPart.verdict.server, "available");
+
+		const preRelease = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.55.0-rc1",
+			publishedVersion: "0.55.0",
+		});
+		assert.equal(preRelease.verdict.server, "available");
+
+		/*
+		 * The grammar itself, over the forms the product publishes.
+		 *
+		 * What this case asserts is the two pinned lists below and nothing more: a
+		 * representative sample of ACCEPTED published forms plus the REJECTED ones,
+		 * so a tightening of the rule fails on a nameable form rather than in
+		 * production. It does NOT re-check the published corpus - the sentence "a case
+		 * in the suite re-checks that set" in the PR thread was stronger than what was
+		 * committed (review round 3, R10).
+		 *
+		 * The corpus sweep was the DERIVATION, made once when the rule was written:
+		 * every version then published for `local-operator` on PyPI and
+		 * `local-operator-ui` on npm was run through it, and review round 3 re-derived
+		 * that result from both registries - 561 of 561 accepted (452 PyPI releases
+		 * plus 109 npm versions). Re-running it needs the two registries, so it is not
+		 * part of this suite; these pinned lists are the standing regression.
+		 *
+		 * The rejects are QA's own inputs plus the shapes a truncating reader can
+		 * produce.
+		 */
+		const readable = [
+			"0.54.44",
+			"0.18",
+			"0.18.0.1",
+			"v0.22.3",
+			"0.0.0-test",
+			"0.1.0-beta.1",
+			"0.18.0-rc1",
+			"0.1.3b0",
+			"1.0.0.post1",
+			"0.55.0.dev3",
+		];
+		const unreadable = [
+			"999.invalid",
+			"invalid",
+			"not-a-version",
+			"Unknown",
+			"",
+			"v",
+			"1.2.3.4.5",
+			"0.54.43-",
+			"1.2.x",
+			"0.1.0;rm -rf /",
+		];
+		for (const version of readable)
+			assert.equal(rule.isReadableVersion(version), true, `${version} is a published form`);
+		for (const version of unreadable)
+			assert.equal(rule.isReadableVersion(version), false, `${version} must not be compared`);
+		assert.equal(rule.isReadableVersion(null), false, "no reading");
+		assert.equal(rule.isReadableVersion(undefined), false, "no reading");
+		assert.equal(
+			rule.isReadableVersion("  0.54.43  "),
+			true,
+			"trimmed, the way isNewerVersion normalises",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/** Both trailing: an offer on each side and no sentence. */
+test("two offers leave the whole check with nothing to affirm", async () => {
+	const { verdict } = await loAggregateCheck({
+		appCheck: loAppTrails,
+		serverVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+
+	assert.equal(verdict.app, "available");
+	assert.equal(verdict.server, "available");
+	assert.equal(verdict.affirmation, null);
+});
+
+/**
+ * A channel that could not find out is not a channel that found nothing, and it
+ * may not supply the half of the affirmation the other channel is missing. This
+ * is the repository's documented defect class - a surface treating "we could
+ * not find out" as an answer - in the one place it decided a sentence.
+ */
+test("a channel that could not find out does not let the other one affirm", async () => {
+	// The app channel errors (a real throw from the updater, which is what a
+	// failed feed fetch does) while the server is positively current.
+	const errored = await loAggregateCheck({
+		appCheck: () => {
+			throw new Error("net::ERR_INTERNET_DISCONNECTED");
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(errored.verdict.app, "unavailable");
+	assert.equal(errored.verdict.server, "current");
+	assert.equal(errored.verdict.affirmation, null);
+	// The failure is still reported to the user: the status replaces nothing.
+	assert.ok(
+		errored.sent.some(({ channel }) => channel === "update-error"),
+		JSON.stringify(errored.sent.map(({ channel }) => channel)),
+	);
+
+	// A health endpoint that answers but carries no version: "Unknown" is the
+	// absence of a reading, not an older version (the same confusion produced
+	// a pip command for a server whose version could not be read at all).
+	const unreadable = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverAnswersVersion: false,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(unreadable.verdict.server, "unavailable");
+	assert.equal(unreadable.verdict.app, "current");
+	assert.equal(unreadable.verdict.affirmation, null);
+
+	// Development mode never runs the check at all, so it has nothing to say.
+	const dev = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		devMode: true,
+	});
+	assert.equal(dev.verdict.app, "unavailable");
+	assert.equal(dev.verdict.server, "unavailable");
+	assert.equal(dev.verdict.affirmation, null);
+});
+
+/**
+ * The rule itself, over every pair: the affirmation is a function of the two
+ * channel statuses and of nothing else. Pinned as a table because the cases
+ * above can only ever visit four of the nine pairs, and the sentence's own
+ * content matters - it has to speak for both halves, since a sentence that
+ * names one channel is the defect.
+ */
+test("the affirmation is earned by both channels current and by nothing else", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const {
+			updateCheckVerdict: verdictFor,
+			updateCheckAffirmation: affirmationFor,
+			UP_TO_DATE_AFFIRMATION: sentence,
+		} = rule;
+
+		const statuses = ["available", "current", "unavailable"];
+		let earned = 0;
+		for (const app of statuses) {
+			for (const server of statuses) {
+				const verdict = verdictFor({ app, server });
+				assert.equal(verdict.app, app);
+				assert.equal(verdict.server, server);
+				const bothCurrent = app === "current" && server === "current";
+				assert.equal(
+					verdict.affirmation,
+					bothCurrent ? sentence : null,
+					`${app}/${server}`,
+				);
+				assert.equal(affirmationFor({ app, server }), verdict.affirmation);
+				if (bothCurrent) earned++;
+			}
+		}
+
+		// Exactly one of the nine pairs earns a sentence, and the sentence
+		// speaks for both halves - one that named a single channel is the
+		// defect, stated as copy.
+		assert.equal(earned, 1);
+		assert.match(sentence, /app/i);
+		assert.match(sentence, /server/i);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
 	}
 });
 
