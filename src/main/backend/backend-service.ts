@@ -23,7 +23,7 @@ import { type ChildProcess, exec, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DesktopResponse } from "../../shared/desktop-contract";
@@ -37,7 +37,11 @@ import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
 
-import { consoleInterpreter, ownedServeLaunch } from "./owned-serve-launch";
+import {
+	consoleInterpreter,
+	ownedServeLaunch,
+	windowsInterpreterCandidates,
+} from "./owned-serve-launch";
 
 const execPromise = promisify(exec);
 
@@ -805,31 +809,41 @@ export class BackendServiceManager {
 		try {
 			const globalInstall = await this.checkLocalOperatorExists();
 			const env = this.backendSpawnEnv();
-			let python: string;
+			/*
+			 * The interpreter to own, as CLAIMS rather than one path.
+			 *
+			 * POSIX reads the console script's shebang, which names the interpreter
+			 * exactly. Windows cannot: the launcher is a PE shim, and the directory it
+			 * was found in need not hold an interpreter at all - uv's executable
+			 * directory holds versioned shims while the tool environment lives in
+			 * another tree - so this side asks for every layout that could carry the
+			 * backend and lets the identity probe admit one. A wrong assumption here is
+			 * an app that cannot start (review round 2, F8).
+			 */
+			let interpreters: string[];
 			if (globalInstall) {
 				this.startupMode = LocalOperatorStartupMode.GLOBAL_INSTALL;
 				const executable = await this.resolveGlobalConsole(env);
-				python =
+				interpreters =
 					process.platform === "win32"
-						? join(dirname(executable), "python.exe")
-						: consoleInterpreter(executable);
+						? await windowsInterpreterCandidates(executable, env)
+						: [consoleInterpreter(executable)];
 			} else {
 				this.startupMode = LocalOperatorStartupMode.APP_BUNDLED_VENV;
 				const bin = join(
 					this.venvPath,
 					process.platform === "win32" ? "Scripts" : "bin",
 				);
-				python = join(
-					bin,
-					process.platform === "win32" ? "python.exe" : "python",
-				);
+				interpreters = [
+					join(bin, process.platform === "win32" ? "python.exe" : "python"),
+				];
 				// Preserve activation's environment without leaving an activation
 				// shell between the ChildProcess handle and the actual HTTP server.
 				env.VIRTUAL_ENV = this.venvPath;
 				env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${env.PATH ?? ""}`;
 				env.PYTHONHOME = undefined;
 			}
-			const launch = await ownedServeLaunch(python, this.port, env);
+			const launch = await ownedServeLaunch(interpreters, this.port, env);
 			if (epoch !== this.startEpoch || this.isAppClosing) return false;
 			const child = spawn(launch.command, launch.args, {
 				detached: false,
