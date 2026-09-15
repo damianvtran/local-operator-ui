@@ -120,3 +120,24 @@ HOW TO READ IT.
   - the later `launch ... ""` block is a SECOND Electron process the app starts
     itself, inheriting the folded environment. It is in both trees, is not this
     change's path, and is left visible rather than filtered.
+
+TEARDOWN, AND THE ONE THING THIS FILE'S OWN COMMAND GOT WRONG. The capture above
+is unchanged, and it is still a faithful record of what those two runs measured;
+what it records about the STOP is wrong, and it is worth stating because the
+command as written leaks. `./node_modules/.bin/electron` is a Node shim whose
+child is the app, so "killed by exact pid afterwards" killed the shim and left the
+app re-parented to launchd. Re-running the same command once per tree left TWO
+headless trees alive - `/tmp/hop/user-data-before` and `/tmp/hop/user-data-after`,
+eight processes each, every root reporting `ppid 1` - and each survivor kept
+re-creating the scratch profile the run believed it had finished with.
+
+`scripts/notification-hop-proof.mjs` is this measurement as a re-runnable rig with
+the teardown fixed, and it is what a re-run should use: it spawns the runtime
+BINARY (`require("electron")`, so the pid it holds is the app's own main process),
+puts the app in its own process GROUP with `detached: true` and signals the group,
+escalating to SIGKILL, and then reaps anything whose command line still names this
+run's `--user-data-dir` BY EXACT PID - detection by profile, never the pattern kill
+that would reach another session's app. It reports what it found rather than
+asserting success, and it exits non-zero if anything survives. The command block
+above is kept as it ran rather than rewritten, because the log beside it is the
+output of that command and not of the rig.

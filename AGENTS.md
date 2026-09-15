@@ -250,7 +250,10 @@ reach — and it is protected on the app side rather than here.
 and every path in this repo that spawns the app or the suite sets it:
 `run-desktop-tests.mjs`, the app-proof rigs (`browser-chrome-proof`,
 `renderer-driver`, `browser-host-proof`, `mentioned-files-app-proof`,
-`session-cookie-restart-proof`) and the `app:headless` / `dev:headless` scripts.
+`session-cookie-restart-proof`), the hop rig
+(`notification-hop-proof`, which booted with the manager ENABLED on purpose —
+the environment that backend child is handed is what it measures, so the switch
+is load-bearing twice over there) and the `app:headless` / `dev:headless` scripts.
 `scripts/notification-spawn-sites.test.mjs` enumerates those sites and fails on
 a new one that is not in its table, because the rig somebody adds next month is
 exactly the one that will forget. The deliberate exceptions
@@ -314,7 +317,15 @@ the app ever can.
 
 `docs/evidence/desktop-notifications-off/` carries the before/after proof, stood
 on a shim `osascript` so neither case can touch the real one, and the measurement
-of the app→backend hop.
+of the app→backend hop — which `scripts/notification-hop-proof.mjs` makes
+re-runnable rather than a command retyped from the transcript. **A rig that boots
+the app owns the whole process TREE**: spawn the runtime binary rather than the
+`node_modules/.bin/electron` shim (the shim's child is the app, so a signal to the
+pid the rig holds orphans it), spawn `detached` and signal the GROUP, and keep a
+profile-match reap as a backstop whose kills are still by exact pid. Measured:
+the hand-run hop command left two headless trees of eight processes each with
+roots at `ppid 1`, and the global single-instance lock then turned the following
+launch into "Another instance is already running".
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 

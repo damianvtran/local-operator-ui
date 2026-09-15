@@ -226,6 +226,14 @@ const APP_SPAWN_SITES = [
 		"boots the app against the operator's live backend, so its child environment is built as `childEnv` and then handed to the spawn as a literal",
 		/withNotificationsOff\(childEnv\);/,
 	),
+	guarded(
+		"scripts/notification-hop-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the app headless to measure the environment it hands the backend it spawns, so the app and that backend both banner here if the switch is missing",
+		/withNotificationsOff\(env\);/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",
