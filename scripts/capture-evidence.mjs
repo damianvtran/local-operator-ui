@@ -43,6 +43,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
@@ -2493,7 +2494,7 @@ const main = async () => {
  * reach it must not launch Chrome and delete the evidence tree - the same
  * guard `check-evidence.mjs` uses for `assertFramePaints`.
  */
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (isEntryPoint(import.meta.url)) {
 	/* Also covers Ctrl-C and a kill, which a try/finally alone does not. */
 	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 		process.on(signal, () => {

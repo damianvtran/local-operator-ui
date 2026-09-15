@@ -63,9 +63,8 @@
  *    that lands nothing while content is unreleased still owes a release.
  */
 import { execFileSync } from "node:child_process";
-import { realpathSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { isVersionOnlyChange } from "./apply-release-bump.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { fetchReleases, selectVersionAnchor } from "./release-baseline.mjs";
 
 /** Thrown for anything that must stop the run rather than be guessed around. */
@@ -212,6 +211,17 @@ function main() {
 			);
 		const previous = readFirstParent(ref);
 		const head = git(["rev-parse", ref]).trim();
+		// Read ONCE and used twice: `pushVerdict` decides the shape from this reading,
+		// and the `--json` document carries the very same value, so a reader of
+		// `push-guard.json` (and the suite) can see which landing the verdict was
+		// about instead of inferring it from the message.
+		const landed = previous
+			? {
+					files: readChangedFiles(previous, ref),
+					packageAtFrom: readPackageAt(previous),
+					packageAtTo: readPackageAt(ref),
+				}
+			: null;
 		const verdict = pushVerdict({
 			releasedTag,
 			unreleased: {
@@ -219,18 +229,12 @@ function main() {
 				packageAtFrom: readPackageAt(releasedTag),
 				packageAtTo: readPackageAt(ref),
 			},
-			landed: previous
-				? {
-						files: readChangedFiles(previous, ref),
-						packageAtFrom: readPackageAt(previous),
-						packageAtTo: readPackageAt(ref),
-					}
-				: null,
+			landed,
 		});
 		if (process.argv.includes("--json")) {
 			console.log(
 				JSON.stringify(
-					{ ...verdict, ref, sha: head, releasedTag, previous },
+					{ ...verdict, ref, sha: head, releasedTag, previous, landed },
 					null,
 					2,
 				),
@@ -253,39 +257,14 @@ function main() {
 	}
 }
 
-/** A path as it physically is, or as it was spelled when it cannot be resolved: a
- * path that does not exist is not this module anyway, and throwing here would
- * replace a readable verdict with a stack trace. */
-const physical = (path) => {
-	try {
-		return realpathSync(path);
-	} catch {
-		return path;
-	}
-};
-
-/**
- * Whether this module is the process's ENTRY POINT, compared by physical path.
- *
- * WHY NOT `import.meta.url === pathToFileURL(process.argv[1]).href`. The two sides
- * are written by different parties and only one of them is resolved: Node loads
- * this module through its real path, so `import.meta.url` is physical, while
- * `process.argv[1]` is whatever the caller typed. Through a symlinked directory
- * they disagree — and the disagreement is SILENT: the file loads, `main()` never
- * runs, nothing is printed and the process exits 0. macOS makes that the ordinary
- * case rather than an exotic one, because `/tmp` is a symlink to `private/tmp`, so
- * `node /tmp/<checkout>/scripts/release-push-guard.mjs` did nothing at all — and
- * the workflow's `jq -r .skip` then read the empty file as "not a skip" and
- * carried on WITHOUT the guard. That is the guard failing to run on the one path
- * where it exists to stop a duplicate release, so both sides are resolved here
- * before they are compared, whatever spelling the caller used. The workflow side
- * of the same defect — treating an empty result as an answer — is refused in
- * `auto-release.yml`, and `release-push-guard.test.mjs` drives both.
- */
-const isEntryPoint = () =>
-	Boolean(process.argv[1]) &&
-	physical(fileURLToPath(import.meta.url)) === physical(process.argv[1]);
-
-if (isEntryPoint()) {
+// The guard reaches its own entry point by PHYSICAL path like every other release
+// script (`./entry-point.mjs` says why). Its own stake in that is the largest of
+// the eight: this is the script that decides whether a push is the release commit,
+// so a spelling that silenced it did not fail the run, it let the release proceed
+// unguarded — the workflow's `jq -r .skip` read the empty file as "not a skip".
+// `release-push-guard.test.mjs` drives that invocation, and the consumer half of
+// the same defect — treating an empty result as an answer — is refused in
+// `auto-release.yml`.
+if (isEntryPoint(import.meta.url)) {
 	main();
 }

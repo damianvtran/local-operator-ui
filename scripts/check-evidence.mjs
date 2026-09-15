@@ -40,6 +40,7 @@ import { fileURLToPath } from "node:url";
  */
 import { STORIES } from "./capture-evidence.mjs";
 import { deltaE, r2 } from "./color.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1011,7 +1012,7 @@ export const main = (lockFd) => {
 	);
 };
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (isEntryPoint(import.meta.url)) {
 	// A fixed host path shares capacity across worktrees and isolated HOME/TMPDIR
 	// runs. Never unlink this file: flock, not its contents or PID, owns admission.
 	// Python's stdlib supplies nonblocking flock on both macOS and Linux without
