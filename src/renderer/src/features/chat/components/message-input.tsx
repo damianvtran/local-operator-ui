@@ -317,6 +317,15 @@ type MessageInputProps = {
 	 * existing in-flight treatment and not a new one.
 	 */
 	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight.
+	 *
+	 * The chip's two pending sentences make different claims: the first is true from
+	 * the commit, the second is a statement about what the backend did. Timed, the
+	 * second could announce a restart on a slow refusal; driven by the receipt, it
+	 * cannot (UX review round 2, U3).
+	 */
+	cwdPendingAccepted?: boolean;
 	isSmallView?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
@@ -573,6 +582,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			cwdWritePath,
 			cwdReadOnlyReason,
 			cwdPending,
+			cwdPendingAccepted,
 			isSmallView = false,
 			isHydrating = false,
 			unavailable = false,
@@ -2338,6 +2348,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										currentWorkingDirectory={cwdToShow}
 										writePath={cwdWritePath}
 										pending={cwdPending}
+										pendingAccepted={cwdPendingAccepted}
 										readOnlyReason={
 											cwdWritePath
 												? undefined

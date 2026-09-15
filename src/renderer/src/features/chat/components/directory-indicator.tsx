@@ -122,10 +122,22 @@ type DirectoryIndicatorProps = {
 	 * `ink-dim` is the read-only branch's role, and a pending move would then look
 	 * like the dead state.
 	 *
-	 * The two sentences are still the substance - they are in the tooltip and in
-	 * the live region, and the receipt follows them into the transcript.
+	 * The two sentences are still the substance - they are in the tooltip, in
+	 * the live region, and (since design review round 2's D11) in the chip's own
+	 * LABEL slot, because under `prefers-reduced-motion` the app's stylesheet caps
+	 * the spinner's animation to a single 0.01 ms iteration, so the ring lands
+	 * FROZEN and the surface would otherwise carry neither motion nor words.
 	 */
 	pending?: boolean;
+	/**
+	 * Whether the backend has ACCEPTED the move in flight; see `pendingAccepted`'s
+	 * paragraph on the sentence selector below.
+	 *
+	 * Passed rather than timed so the chip cannot claim a restart the backend has
+	 * not reported. Defaults to false: a caller with no acceptance to report gets
+	 * the sentence that is true from the commit.
+	 */
+	pendingAccepted?: boolean;
 };
 
 /** Imperative handle: how `/move` reaches the one chooser there is. */
@@ -194,16 +206,32 @@ const RECENT_PATH_TRUNCATES_AT = 42;
 const CHIP_PATH_COLUMN = "@min-[900px]/chatcol:w-[16ch]";
 
 /**
- * How long the chip says WHERE a move is going before it says what the move does.
+ * What a live move costs, said once - the tooltip is the only pre-commit place.
  *
- * About 600 ms, which is roughly where the optimistic path stops being news:
- * "Moving to ~/x" is true the instant the user chose, and it is no longer the
- * useful fact once the wait is long enough to wonder about - at that point what
- * the user is waiting on is that this session's runtime is being replaced. Past
- * the second sentence there is nothing more to say until the backend answers, so
- * it stays up rather than cycling through a third phrase.
+ * Named rather than inlined because two arms of the chip's tooltip chain carry it
+ * (the truncated-path arm and the ordinary live arm) and a sentence that exists
+ * twice is how one of them starts describing a different cost.
  */
-const PENDING_RESTART_AFTER_MS = 600;
+const MOVE_COST_SENTENCE =
+	"Click to change the working directory. A running session's runtime restarts there.";
+
+/**
+ * Which of the pending chip's two sentences is in force.
+ *
+ * The escalation is driven by the BACKEND's acceptance rather than by a clock,
+ * and that is the correction a round-2 UX finding asked for: the two sentences
+ * make different claims. "Moving to ~/x…" is true from the commit - the user has
+ * asked, and nothing has come back. "Restarting this session's runtime…" is a
+ * claim about what the backend did, and on a slow refusal (the busy 409 is
+ * authored AFTER the runtime answers) a 600 ms timer announced a restart for the
+ * moment before the refusal's own sentence replaced it (UX review round 2, U3).
+ *
+ * So `pendingAccepted` is the receipt's arrival, which is the only thing that
+ * makes the second sentence true, and the first sentence simply stays up until
+ * it arrives. Nothing cycles through a third phrase.
+ */
+
+/**
 
 /**
  * The chip's outer slot.
@@ -427,7 +455,13 @@ export const DirectoryIndicator = forwardRef<
 	DirectoryIndicatorHandle,
 	DirectoryIndicatorProps
 >(function DirectoryIndicator(
-	{ currentWorkingDirectory, writePath, readOnlyReason, pending = false },
+	{
+		currentWorkingDirectory,
+		writePath,
+		readOnlyReason,
+		pending = false,
+		pendingAccepted = false,
+	},
 	ref,
 ) {
 	const [isEditing, setIsEditing] = useState(false);
@@ -487,26 +521,13 @@ export const DirectoryIndicator = forwardRef<
 	}, [currentWorkingDirectory]);
 
 	/*
-	 * The pending chip's two sentences, escalated on a timer.
+	 * The pending chip's two sentences, chosen by what the backend has said.
 	 *
-	 * State rather than a derived value because the escalation is the only thing
-	 * that makes this chip's copy time-dependent, and it has to reset when a new
-	 * move starts (a second move must not open on "Restarting…" from the first).
-	 * See `PENDING_RESTART_AFTER_MS` for why the second sentence replaces the
-	 * first rather than joining it.
+	 * Derived rather than stored: the selector's docblock above says why the second
+	 * sentence is the receipt's arrival and not a timer. Nothing to reset, because a
+	 * new move starts with no acceptance and therefore with the first sentence.
 	 */
-	const [pendingRestarting, setPendingRestarting] = useState(false);
-	useEffect(() => {
-		if (!pending) {
-			setPendingRestarting(false);
-			return;
-		}
-		const timer = setTimeout(
-			() => setPendingRestarting(true),
-			PENDING_RESTART_AFTER_MS,
-		);
-		return () => clearTimeout(timer);
-	}, [pending]);
+	const pendingRestarting = Boolean(pending) && pendingAccepted === true;
 
 	const handleCloseMenu = useCallback(() => {
 		setIsMenuOpen(false);
@@ -589,7 +610,18 @@ export const DirectoryIndicator = forwardRef<
 			if (writePath?.kind === "move") {
 				const outcome = await writePath.commit(trimmed);
 				if (outcome.kind === "settled") {
-					addRecentDirectory(trimmed);
+					/*
+					 * The RECEIPT's path, not the typed string (agent review round 2, R-2).
+					 *
+					 * The receipt carries the backend's own absolute `cwd`, and this file's
+					 * doctrine is that only the process that owns the session knows how to spell
+					 * the directory. Since the client-side existence check no longer runs on the
+					 * live path, the typed text is the first route by which a RELATIVE spelling
+					 * ("../logs", "sub/dir") could become a one-click row - and a relative row
+					 * resolves against whatever the session's directory happens to be when it is
+					 * used again.
+					 */
+					addRecentDirectory(outcome.receipt.cwd);
 					setAnnouncement(outcome.sentence);
 				} else if (outcome.kind === "refused") {
 					setAnnouncement(outcome.sentence);
@@ -778,7 +810,26 @@ export const DirectoryIndicator = forwardRef<
 	 * the width is a container query's answer, and the chip that hosts this span is
 	 * now a fixed column, so a character threshold can only describe today's
 	 * layout (design review D6, UX U8).
+	 *
+	 * `[shown]`, and the observer is not enough on its own (agent review round 2,
+	 * R-1).
+	 *
+	 * A `ResizeObserver` reports BOX size. Above a 900px chat column the span is a
+	 * fixed 16ch column, so a path CHANGE alters `scrollWidth` and leaves
+	 * `clientWidth` exactly where it was - the box never resizes and the observer
+	 * never fires. Measured once per mount, that made this chip hide the tail of the
+	 * new directory while the tooltip still offered the generic hint: the exact
+	 * defect D6/U8 were fixed for, reachable through a live move, which is the
+	 * feature's own primary action. The observer still earns its place for the
+	 * container-query reflow (a sidebar opening changes the column with no path
+	 * change at all); the dependency covers the other direction.
+	 *
+	 * The suppression is the linter's blind spot and not a silence: `shown` is the
+	 * TRIGGER for this effect rather than a value its body reads (the body reads the
+	 * rendered box, deliberately - see above), so the exhaustive-deps rule, which
+	 * only looks for identifiers in the body, cannot see why it is here.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `shown` is the trigger, not a body read; the pixels decide (agent review round 2, R-1).
 	useEffect(() => {
 		const node = pathRef.current;
 		if (!node) return;
@@ -790,7 +841,7 @@ export const DirectoryIndicator = forwardRef<
 		const observer = new ResizeObserver(measure);
 		observer.observe(node);
 		return () => observer.disconnect();
-	}, []);
+	}, [shown]);
 
 	/*
 	 * What the chip says while a move it has asked for has not been confirmed.
@@ -976,15 +1027,23 @@ export const DirectoryIndicator = forwardRef<
 							(isInvalid
 								? `${shown} is not a directory on this computer`
 								: pathOverflows
-									? shown
+									? // ONE tooltip carries BOTH facts when the path is truncated (UX review
+										// round 2, U2). The chain used to answer the overflow case first, so on a
+										// long path the hover revealed the path and never the cost - and the
+										// truncated case is exactly the one where the pixels have hidden the
+										// path, i.e. the case that needs the tooltip. The cost sentence is the
+										// only pre-commit statement of what a live move does, so dropping it
+										// here hid the price precisely when the control was hardest to read.
+										writePath?.kind === "move"
+										? `${shown} - ${MOVE_COST_SENTENCE}`
+										: shown
 									: writePath?.kind === "move"
 										? // The LIVE chip names the cost at the point of decision (UX review
 											// U9): the two entry points into one write path are this chip and
 											// the bare `/move` command, and the command's own note explains that
 											// the runtime restarts while the tooltip the user actually hovers
-											// said nothing about it. Same sentence as the notes, so the
-											// product states the consequence once.
-											"Click to change the working directory. A running session's runtime restarts there."
+											// said nothing about it.
+											MOVE_COST_SENTENCE
 										: "Click to change the working directory")
 						}
 						side="top"
@@ -1021,7 +1080,36 @@ export const DirectoryIndicator = forwardRef<
 								) : (
 									<FolderOpen aria-hidden="true" />
 								)}
-								<span className={cn(CHIP_LABEL)}>Working directory:</span>
+								<span className={cn(CHIP_LABEL)}>
+									{/*
+									 * The in-flight words, in the label slot (design review round 2, D11).
+									 *
+									 * The spinner alone is not enough, and the reason is a contract of this app
+									 * rather than a taste: `styles/index.css` caps `animation-duration` to
+									 * 0.01ms under `prefers-reduced-motion: reduce`, so the ring lands on its
+									 * end keyframe - FROZEN - and the state then carries no motion anywhere on
+									 * the surface. A sighted user with reduced motion was left with a still
+									 * glyph whose only explanation lived in a tooltip they had no reason to
+									 * hover and in a live region they cannot see.
+									 *
+									 * "Moving session:" rather than the full sentence, and the difference is
+									 * measured rather than preferred. The first capture of this fix put
+									 * `Restarting this session's runtime…` here and the frame showed the defect
+									 * the sentence was about with the DIRECTORY IT WAS MOVING TO invisible:
+									 * at a >=900px column this chip sits at its own ceiling (~303px of a 304px
+									 * `max-w-[19rem]`, measured for D6/D7), so a longer label does not make the
+									 * chip wider - it squeezes the path span, which is `min-w-0 truncate`, to
+									 * nothing. The label is also the chip's visible identity, and its own width
+									 * is what keeps the composer row from reflowing at the moment of the move.
+									 *
+									 * One phrase covers both phases on purpose: the label must not change width
+									 * when the receipt lands (that would reflow mid-flight), and "Restarting"
+									 * before the backend has accepted anything is the claim U3(r2) removed from
+									 * the tooltip. The escalation is still there, on the surface that has room
+									 * for it: the tooltip and the live region (`pendingText`).
+									 */}
+									{pending ? "Moving session:" : "Working directory:"}
+								</span>
 								<span
 									ref={pathRef}
 									className={cn(
@@ -1048,6 +1136,14 @@ export const DirectoryIndicator = forwardRef<
 								 * choice: this chip sits in a composer row beside controls that do
 								 * carry one, and a second bounded box there competes with the
 								 * composer's own edge - the field it belongs to is already framed.
+								 *
+								 * This chevron is THIS control's own idiom, and it is recorded as such
+								 * because it has no precedent to point at (design review round 2, D15):
+								 * no other chat picker trigger renders one, and the sidebar's two
+								 * chevrons are the SWAPPING disclosure idiom
+								 * (`open ? ChevronDown : ChevronRight`, branding § 9) - a menu trigger
+								 * is not a disclosure, and copying that behaviour here would say
+								 * "collapsed" about a popover that has no collapsed state.
 								 */}
 								<ChevronDown
 									aria-hidden="true"
@@ -1078,9 +1174,23 @@ export const DirectoryIndicator = forwardRef<
 							"max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto",
 						)}
 					>
+						{/*
+						 * Radix disables the ROWS, not the trigger, while a move is in flight (UX
+						 * review round 2, U1).
+						 *
+						 * Choosing a row during the restart used to close the menu and change
+						 * nothing: `moveTo` refuses the second commit as `in-flight` and the chip's
+						 * live branch deliberately says nothing for that kind, so the user's gesture
+						 * produced no visible answer at all - while the TYPED form answers the same
+						 * condition with a sentence. One write path, one question, one answer: the
+						 * rows go inert and the chip's own pending sentence (label, tooltip and live
+						 * region) is what explains why. The trigger stays live because the menu is
+						 * also where the user re-reads the path, which is not an action.
+						 */}
 						<DropdownMenuLabel>Custom directory</DropdownMenuLabel>
 
 						<DropdownMenuItem
+							disabled={pending}
 							onClick={(e) => {
 								e.stopPropagation();
 								handleStartEdit();
@@ -1090,7 +1200,10 @@ export const DirectoryIndicator = forwardRef<
 							Enter custom path...
 						</DropdownMenuItem>
 
-						<DropdownMenuItem onClick={handleBrowseForDirectory}>
+						<DropdownMenuItem
+							disabled={pending}
+							onClick={handleBrowseForDirectory}
+						>
 							<FolderTree aria-hidden="true" />
 							Browse for directory...
 						</DropdownMenuItem>
@@ -1107,6 +1220,7 @@ export const DirectoryIndicator = forwardRef<
 									<DropdownMenuItem
 										key={`recent-${path}`}
 										className={cn("group")}
+										disabled={pending}
 										onClick={() => handleSelectDirectory(path)}
 										aria-current={
 											path === currentWorkingDirectory ? "true" : undefined
@@ -1173,6 +1287,7 @@ export const DirectoryIndicator = forwardRef<
 							return (
 								<DropdownMenuItem
 									key={dir.path}
+									disabled={pending}
 									onClick={() => handleSelectDirectory(dir.path)}
 								>
 									<DirIcon aria-hidden="true" />

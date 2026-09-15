@@ -52,7 +52,7 @@
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
-import { type FC, useRef } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type {
 	TranscriptRecord,
@@ -117,6 +117,8 @@ type FrameProps = {
 	currentWorkingDirectory?: string;
 	writePath?: DirectoryWritePath;
 	pending?: boolean;
+	/** Whether the pending move has the backend's acceptance; see `pendingAccepted`. */
+	pendingAccepted?: boolean;
 	readOnlyReason?: string;
 	/** The chat column's width, in px. 880 is the composer's own. */
 	column?: number;
@@ -128,10 +130,15 @@ type FrameProps = {
  * Two load-bearing details, both learned from a failed first capture of these
  * frames rather than reasoned out:
  *
- *   - `@container/chatcol` on the OUTER element, because the chip's wide form is
- *     behind `@min-[750px]/chatcol`. Without the container the chip renders at
- *     its icon-only floor, and the first capture photographed a 20px box with a
- *     folder glyph in it and called it the editable state.
+ *   - `@container/chatcol` on the element that CARRIES the column width, because
+ *     the chip's wide form is behind `@min-[750px]/chatcol` and a named
+ *     container query resolves against the nearest ancestor holding that name
+ *     (design review round 2, D12). It used to sit on the outer
+ *     `min-h-screen w-full` box, so `@min-[900px]/chatcol` was answered by the
+ *     VIEWPORT: `MenuOpenNarrow` rendered the >=900px chip and could not
+ *     photograph the case it is titled for. Without any container the chip
+ *     renders at its icon-only floor - the first capture photographed a 20px box
+ *     with a folder glyph in it and called it the editable state.
  *   - a column that fills the viewport with the chip row at its BOTTOM, which is
  *     where the composer sits. A hugging wrapper put ~99.5% of the frame on the
  *     ground, which `check-evidence` refuses (a frame that shows the ground and
@@ -139,14 +146,10 @@ type FrameProps = {
  *     the chip is laid out as it is in the app rather than at a story-only size.
  */
 const Frame: FC<FrameProps> = ({ column = 880, ...props }) => (
-	<div
-		className={cn(
-			"@container/chatcol",
-			"flex min-h-screen w-full justify-center bg-canvas",
-		)}
-	>
+	<div className={cn("flex min-h-screen w-full justify-center bg-canvas")}>
 		<div
 			className={cn(
+				"@container/chatcol",
 				"flex h-screen flex-col justify-end border-x border-hairline bg-surface p-3",
 			)}
 			style={{ width: `${column}px` }}
@@ -156,6 +159,7 @@ const Frame: FC<FrameProps> = ({ column = 880, ...props }) => (
 					currentWorkingDirectory={props.currentWorkingDirectory}
 					writePath={props.writePath}
 					pending={props.pending}
+					pendingAccepted={props.pendingAccepted}
 					readOnlyReason={props.readOnlyReason}
 				/>
 			</div>
@@ -250,7 +254,8 @@ export const MenuOpenNarrow: Story = {
  * Two things carry the state, and both are deliberate. The folder glyph is the
  * app's own `Spinner` - the same affordance the model reading and the picker
  * footers use while an owner confirms a change - in the glyph's own box, so the
- * row does not move. And the tooltip and the live region carry the sentence.
+ * row does not move. And the label slot, the tooltip and the live region carry
+ * the sentence.
  *
  * The spinner exists because a tooltip is not a state: the design round measured
  * the pending and settled chips as byte-identical apart from the path and a
@@ -259,8 +264,52 @@ export const MenuOpenNarrow: Story = {
  * is the design's rule 1 - the chip's optimistic value comes from the prop
  * (`pending ?? canonical.frontend?.cwd`) - and the spinner is what keeps it from
  * reading as settled.
+ *
+ * The spinner is also not ENOUGH on its own, which is why the label slot now
+ * carries the sentence too: `styles/index.css` caps `animation-duration` to
+ * 0.01ms under `prefers-reduced-motion: reduce`, so the ring lands frozen and a
+ * reduced-motion user would otherwise get a still glyph with no words anywhere
+ * on the surface (design review round 2, D11).
+ *
+ * `pendingAccepted` is the backend's acceptance, so this story is the state AFTER
+ * the receipt: the sentence is the one that claims a restart. `PendingMoving` is
+ * the same chip before it.
  */
 export const Pending: Story = {
+	render: () => (
+		<Frame
+			currentWorkingDirectory={`${HOME}/Downloads`}
+			writePath={MOVING}
+			pending
+			pendingAccepted
+		/>
+	),
+	play: async () => {
+		await userEvent.hover(
+			await screen.findByRole("button", { name: /^Working directory:/ }),
+		);
+		// The escalated sentence, which is now the RECEIPT's arrival rather than a
+		// clock. Asserted rather than assumed: a play that silently does nothing
+		// photographs a resting chip and calls it pending.
+		await waitFor(() =>
+			expect(
+				screen.getAllByText(/Restarting this session's runtime/).length,
+			).toBeGreaterThan(0),
+		);
+	},
+};
+
+/**
+ * The same move BEFORE the backend answered: "Moving…", no claim about a restart.
+ *
+ * The two sentences make different claims and this is the one that is true from
+ * the commit - the user has asked, nothing has come back. A 600 ms timer used to
+ * escalate between them on elapsed time, which on a slow refusal (the busy 409 is
+ * authored AFTER the runtime answers) announced a restart that never happened
+ * (UX review round 2, U3). Their difference is in the pixels and it is capturable
+ * because it is now a prop rather than a delay.
+ */
+export const PendingMoving: Story = {
 	render: () => (
 		<Frame
 			currentWorkingDirectory={`${HOME}/Downloads`}
@@ -272,14 +321,100 @@ export const Pending: Story = {
 		await userEvent.hover(
 			await screen.findByRole("button", { name: /^Working directory:/ }),
 		);
-		// The escalated sentence, because a mounted story is photographed well
-		// past the 600 ms escalation. Asserted rather than assumed: a play that
-		// silently does nothing photographs a resting chip and calls it pending.
 		await waitFor(() =>
-			expect(
-				screen.getByText(/Restarting this session's runtime/),
-			).toBeTruthy(),
+			expect(screen.getAllByText(/Moving to/).length).toBeGreaterThan(0),
 		);
+		// And NOT the escalated sentence: the assertion above would pass on a chip
+		// that painted both, which is the state this story exists to distinguish.
+		expect(screen.queryByText(/Restarting this session's runtime/)).toBeNull();
+	},
+};
+
+/**
+ * The chip the moment after a REFUSAL revoked the value it was painting (D14).
+ *
+ * There is no frame of this state anywhere, and it is the one where the optimistic
+ * value painted during flight is disproved: the path is back to the directory the
+ * session is actually in, the spinner is gone, and the row is the settled chip
+ * again. What the user is left with is the transcript's refusal note, which is the
+ * other half of this pair (`Receipts`) - so what this frame can answer is the
+ * narrow question "does the composer itself leave anything proximate", and the
+ * answer it shows is "no, and that is the intended shape": the chip cannot invent
+ * a second failure surface when the backend's sentence is already in the
+ * transcript's own history.
+ *
+ * Not `Editable` with a different name: the assertion below is the point of the
+ * story, and it fails if the chip ever starts painting a residue of the refusal.
+ */
+export const RefusedSettled: Story = {
+	render: () => (
+		<Frame currentWorkingDirectory={`${HOME}/project`} writePath={MOVING} />
+	),
+	play: async () => {
+		const trigger = await screen.findByRole("button", {
+			name: /^Working directory:/,
+		});
+		// The settled chip's marks: no in-flight sentence and no spinner ring. The
+		// ring is `span.animate-spin` inside the chip's glyph box (the app's one
+		// indeterminate-progress affordance, unlabelled here because the live region
+		// carries the sentence).
+		expect(screen.queryByText(/Moving to|Restarting this session/)).toBeNull();
+		expect(trigger.querySelector(".animate-spin")).toBeNull();
+	},
+};
+
+/**
+ * A path that GROWS after mount, which is the state the measured tooltip had to
+ * survive and did not (agent review round 2, R-1).
+ *
+ * Above a 900px chat column the path span is a fixed `16ch` column, so a path
+ * change moves `scrollWidth` and leaves `clientWidth` alone - and a
+ * `ResizeObserver` reports BOX size, so nothing re-measured: the chip ellipsised
+ * the new directory while the tooltip went on offering the previous path's
+ * answer. The story mounts at `~/src/project` (13 characters, fits) and then
+ * grows to a path longer than the column, which is reachable by hand through the
+ * feature's own primary action (move to a longer directory) and by no story
+ * before this one.
+ *
+ * The play asserts the OBSERVABLE end of it rather than the mechanism: the
+ * tooltip must reveal the path the chip is hiding. With the effect's dependency
+ * list back at `[]`, this assertion fails - the regression is falsifiable here
+ * instead of only photographable.
+ */
+const GrownPathFrame: FC = () => {
+	const [path, setPath] = useState(PROJECT);
+	useEffect(() => {
+		// Mount, then move: the mount-time short path is what the old effect
+		// measured, and the growth is what it never saw.
+		setPath(`${HOME}/project-with-a-considerably-longer-name`);
+	}, []);
+	// `column={1000}` is load-bearing: below 900px the path span hugs its content
+	// and cannot overflow, so the fixed column this regression lives in only exists
+	// above the threshold.
+	return (
+		<Frame currentWorkingDirectory={path} writePath={MOVING} column={1000} />
+	);
+};
+
+export const GrownPath: Story = {
+	render: () => <GrownPathFrame />,
+	play: async () => {
+		await userEvent.hover(
+			await screen.findByRole("button", { name: /^Working directory:/ }),
+		);
+		/*
+		 * The TOOLTIP, not the chip's own span: the span's text content is the whole
+		 * path whatever CSS does to it, so asserting on it would pass on the broken
+		 * build. The hovered tooltip showing the path AND the cost sentence is the
+		 * observable end of both R-1 and U2(r2).
+		 */
+		const tooltip = await screen.findByRole("tooltip");
+		await waitFor(() =>
+			expect(tooltip.textContent).toMatch(
+				/project-with-a-considerably-longer-name/,
+			),
+		);
+		expect(tooltip.textContent).toMatch(/runtime restarts there/);
 	},
 };
 
@@ -378,11 +513,22 @@ export const TruncatedPath: Story = {
 		await userEvent.hover(
 			await screen.findByRole("button", { name: /^Working directory:/ }),
 		);
+		/*
+		 * The tooltip's own content, in the spelling the chip paints: the span shows
+		 * `~/` rather than the absolute path because it renders through the home
+		 * directory the story stubs, so asserting `${HOME}/src/...` here (the shape
+		 * this play shipped with) could never match and never did - a play nobody ran,
+		 * because this story's swept entry was withdrawn with the frames. Found while
+		 * re-capturing this state with the browser tool.
+		 *
+		 * Both facts are asserted, because that is what U2(r2) changed: the hidden path
+		 * AND the cost sentence, which used to be suppressed in exactly this case.
+		 */
+		const tooltip = await screen.findByRole("tooltip");
 		await waitFor(() =>
-			expect(
-				screen.getByText(`${HOME}/src/a-project-with-a-long-name`),
-			).toBeTruthy(),
+			expect(tooltip.textContent).toMatch(/a-project-with-a-long-name/),
 		);
+		expect(tooltip.textContent).toMatch(/runtime restarts there/);
 	},
 };
 
