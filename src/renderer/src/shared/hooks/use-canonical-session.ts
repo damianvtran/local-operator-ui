@@ -584,6 +584,29 @@ export function useCanonicalSessionStream(
 		 */
 		hydrated: false,
 	}));
+	/*
+	 * Which session the transcript IN `view` belongs to, so the reset effect
+	 * below can tell another session's rows from this one's own seeded echo.
+	 *
+	 * WHY THIS EXISTS RATHER THAN A SECOND SEED. `seedPendingEchoes` above puts a
+	 * buffered echo in a panel's FIRST frame - and the effect below used to
+	 * overwrite that same state with `EMPTY_TRANSCRIPT` one commit later, because
+	 * its only question was "did the session id change". On the New-chat path the
+	 * panel that mounts IS the identity flip, so its first render is the seeded
+	 * one and the reset then wiped the echo it had just been given: measured in
+	 * the live app, the row was seeded (records: 1 at +74 ms) and the mounted
+	 * transcript read 0 records for the whole eleven seconds the pane was waiting,
+	 * with the message appearing only when the owner's durable row arrived with
+	 * the first frame (UX round 2, U1). Seeding again in the effect would be a
+	 * second mechanism doing the initializer's job and would still lean on effect
+	 * ORDER (the drain registration is declared below), so the reset asks whether
+	 * this state is already this session's instead.
+	 *
+	 * A ref rather than state: it is read inside the effect's updater, must not
+	 * schedule a render of its own, and only ever changes at a session boundary -
+	 * the same moments the effect itself runs.
+	 */
+	const transcriptSession = useRef<string | undefined>(sessionId);
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
@@ -1349,6 +1372,16 @@ export function useCanonicalSessionStream(
 		// The transcript is replaced below, so a previous session's anchors must
 		// not suppress the first reconcile of the new one.
 		paintedIds.current = EMPTY_TRANSCRIPT.index;
+		/*
+		 * Kept when the state already belongs to THIS session. The panel that
+		 * mounts on the New-chat flip is exactly that case: it mounted with the id
+		 * it keeps, carrying the echo `seedPendingEchoes` gave its first frame, and
+		 * replacing that with an empty transcript is the defect UX round 2's U1
+		 * measured. A real change of session id still resets, because the state on
+		 * screen then belongs to a conversation nobody is looking at.
+		 */
+		const sameSession = transcriptSession.current === sessionId;
+		transcriptSession.current = sessionId;
 		setView((current) => ({
 			...current,
 			frontend: null,
@@ -1357,7 +1390,7 @@ export function useCanonicalSessionStream(
 			pendingModel: null,
 			history: null,
 			terminal: null,
-			transcript: EMPTY_TRANSCRIPT,
+			transcript: sameSession ? current.transcript : EMPTY_TRANSCRIPT,
 			status: "connecting",
 			// A different session's children are different children, and a pulse
 			// carried across is a counter no reader can match to a job.

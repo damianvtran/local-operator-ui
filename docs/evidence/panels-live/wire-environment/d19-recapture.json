@@ -1,6 +1,9 @@
 {
   "frame": "docs/evidence/panels-live/wire-environment/localOperatorDark.webp",
   "sourcePngSha256": "c96f09dad8fc503c75c3cc859851bb4bfbee0e5c4bef22cc6948e07250cd337c",
+  "retainedOriginal": null,
+  "sourcePngRetained": false,
+  "retentionNote": "NOT RETAINED. The source PNG this frame was encoded from is not in the tree and not on this machine, so the digest above records what was captured rather than something a reader can verify against a file. The sibling records in ../panels-remediation/crop-index.json pair their hash with a `retainedOriginal`; this one cannot, and says so instead of leaving the pairing implied. Review round 5 hashed all 163 committed PNGs and searched the plausible scratch homes (/tmp, ~/workspace, the worktrees root, ~/.cache, ~/Downloads; PNGs over 200 KB modified since 2026-09-13) and found no file matching this digest. What IS verifiable is the frame itself: the committed WebP is the artefact, its own header is 2880x1634, and `capturedAtUtc` sits 2 s before the file's modification time. Retaining an original needs a re-capture, and the Browser surface that took this frame was unavailable afterwards (QA report, round 3, Q1 - a wedged MV3 service worker), so the frame is kept rather than churned for a file that would not be the same pixels.",
   "dimensions": [
     2880,
     1634
