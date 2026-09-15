@@ -316,8 +316,15 @@ const mockUpdaterApi = () => {
 				callback({
 					code: "installed-bundle-not-sealed",
 					version: null,
+					// The fact only; the remedy line below owns the instruction, and the
+					// heading says what the state is rather than answering an update
+					// question this user never asked (design D1, D2, D3). All three are
+					// asserted against `installedBundleSealBlock(..., "startup")` by the
+					// drift guard in `scripts/update-robustness.test.mjs`.
+					heading: "This copy of Local Operator needs replacing",
+					dismissLabel: "Not now",
 					message:
-						"This copy of Local Operator did not pass its integrity check and cannot update itself. Download a fresh copy and replace the app in Applications.",
+						"This copy of Local Operator did not pass its integrity check, so it can't repair itself.",
 					remedy: {
 						text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
 						url: "https://local-operator.com/download",

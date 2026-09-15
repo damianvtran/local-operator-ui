@@ -34,16 +34,17 @@
  */
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { LAYOUT, seedResourceDir } from "./bundled-python-layout.mjs";
 
 /**
  * The directory each architecture's interpreter occupies, by the same names
- * `backend-installer.ts` probes and `python-bytecode-cache.ts` lists. Kept as
- * one map so a third spelling cannot appear beside them.
+ * `backend-installer.ts` probes. Read from the app's own layout definition so a
+ * third spelling cannot appear beside them - this map and the app's `seedPath`
+ * were the two that had to agree and did not (review R10 / QA Q2).
  */
-export const PYTHON_RESOURCE_DIRS = {
-	arm64: "python-runtime-seed/arm64",
-	x64: "python-runtime-seed/x64",
-};
+export const PYTHON_RESOURCE_DIRS = Object.fromEntries(
+	LAYOUT.architectures.map((arch) => [arch, seedResourceDir(arch)]),
+);
 
 /**
  * `builder-util`'s `Arch` enum, as `afterPack` receives it.

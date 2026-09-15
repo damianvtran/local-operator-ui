@@ -213,24 +213,28 @@ export type VenvBytecodeGuard = {
  * exactly one copy.
  *
  * Why a file inside the venv at all: the app's environment variables reach only
- * the processes it spawns or that inherit from one. The venv at
- * `~/Library/Application Support/Local Operator/local-operator-venv` is built on
- * the interpreter inside the installed bundle - its `pyvenv.cfg` records
- * `home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin`
- * - so *any* process that runs that venv's python resolves the stdlib inside the
- * code-sealed `.app`: the operator's shell, a CLI script, launchd, an agent
- * session. Measured in the field on 2026-09-14: the install of 0.22.2 was
- * refused by Gatekeeper one run after the update with exactly one added file,
+ * the processes it spawns or that inherit from one, and the processes that write
+ * bytecode beside a stdlib are not all ours. The environment this app manages used
+ * to be built on the interpreter INSIDE the installed bundle - its `pyvenv.cfg`
+ * recorded `home = /Applications/Local Operator.app/Contents/Resources/
+ * python_aarch64/bin`, so any process that ran its python resolved the stdlib
+ * inside the code-sealed `.app`, and one `__pycache__` write there was a change to
+ * a sealed resource. Measured in the field on 2026-09-14: the install of 0.22.2
+ * was refused by Gatekeeper one run after the update with exactly one added file,
  * `lib/python3.12/__pycache__/webbrowser.cpython-312.pyc`, written by a python
  * this app never spawned.
  *
- * The guard is the half that covers those processes whoever starts them, and it
- * is deliberately the cheap half: `site` imports `sitecustomize` in every
- * process that uses this environment, so one file in `site-packages` turns the
- * refusal on for all of them. It is not sufficient alone - `site.py`'s own
- * startup imports (`encodings` and friends) are compiled before it runs, which
- * is why the seal on the tree remains the load-bearing half - and it is confined
- * to the venv this app creates: the operator's own environments are theirs.
+ * That is no longer where the environment's stdlib is. Since the interpreter
+ * moved out of the bundle, this venv resolves every import from a runtime copied
+ * outside every `.app`, so the guard no longer stands between a process and a
+ * code-sealed tree - what it protects now is the runtime's IDENTITY, which is the
+ * sha256 of the signed bytes it was copied from and which a stray cache file must
+ * not be able to disturb. The structural half is that nothing resolves an
+ * interpreter inside a bundle at all; see `managed-python.ts`. This guard is the
+ * cheap half and it is not sufficient alone - `site.py`'s own startup imports
+ * (`encodings` and friends) are compiled before `sitecustomize` runs - and it is
+ * confined to the venv this app creates: the operator's own environments are
+ * theirs.
  */
 export function venvBytecodeGuardSource(): string {
 	return `${VENV_BYTECODE_GUARD_SENTINEL}. Do not edit; the app rewrites this file.

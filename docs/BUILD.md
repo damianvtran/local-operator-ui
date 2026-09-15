@@ -162,6 +162,48 @@ violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
 the release if a delivered bundle does not carry exactly the seed its
 architecture needs, or carries a legacy alias beside it.
 
+**One definition of that layout.** The names above are spelled nowhere else.
+`src/shared/bundled-python-layout.json` holds the seed namespace, both
+architectures, the checkout spellings and the retired names; the app imports it
+(`managed-python.ts`, `update-install.ts`) and the scripts read it through
+`scripts/bundled-python-layout.mjs`. That is not tidiness - the previous six
+spellings drifted apart in exactly one place (the heal's predicate kept the
+retired names while the release gate was updated), which made every bytecode
+violation on a bundle this branch builds unhealable by construction while the
+gate that shares its job was green.
+
+### What the app does with the seed at runtime
+
+`Contents/Resources/python-runtime-seed/<arch>` is never executed. On first run
+the app copies the complete tree to `~/Library/Application Support/Local
+Operator/managed-python/<packaged|dev>/runtimes/<seed identity>-<uuid>`, creates
+the venv at its final path under `environments/<seed identity>-<uuid>`, and only
+then runs any Python - so every interpreter, stdlib and native dependency an
+app-managed environment uses is outside every `.app`.
+
+Three details are load-bearing and are pinned by tests:
+
+- **The identity excludes bytecode caches.** It is the sha256 of the tree's
+  signed bytes; a `.pyc` beside them is derived data. Counting them on one side
+  and ignoring them on the other made a selection unusable the moment the seed
+  picked one up.
+- **A generation is addressed by identity AND a uuid.** A runtime whose bytes no
+  longer match its identity is therefore not a candidate rather than a repair
+  target, nothing is ever overwritten in place, and a broken runtime or
+  environment is rebuilt beside the old one - which is what makes Retry work.
+- **Superseded generations are reaped**, bounded: the selected one plus the most
+  recent other in each root, and staging trees older than the preparation lock.
+  Only names the module writes are considered, so nothing an operator or a later
+  version put there is touched.
+
+### macOS first-run
+
+A first run on macOS does not show the "First-Time Setup Required" consent
+prompt or the "Setup Complete" acknowledgement any more. The progress window
+that follows carries its own Cancel, it is the surface a user actually watches,
+and on macOS the preparation runs inside a lock a held-open modal would starve.
+Windows and Linux keep both dialogs and their cancel paths.
+
 ### Windows: the union installer is load-bearing
 
 Windows keeps **three** installers: `local-operator-ui-setup-<version>.exe`

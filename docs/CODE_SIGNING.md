@@ -128,6 +128,16 @@ assembled. A shipped `.pyc` is bytecode that must not exist in a code-sealed
 bundle at all, and two seed trees mean half of it is an interpreter the machine
 cannot run (`afterPack` in `scripts/after-pack.mjs` removes the other one).
 
+Both bytecode rows name the interpreter trees through
+`src/shared/bundled-python-layout.json` - the same definition the app's own
+update-time heal reads (`isPythonBytecodePath` in `src/main/update-install.ts`),
+which lists the retired `python`/`python_aarch64` names *and*
+`python-runtime-seed/<arch>`. That heal is the app deleting a `.pyc` a stray
+process wrote beside the interpreter it ships; it is deliberately narrow (added
+bytecode under those trees only, never a sealed file, never a `modified` entry),
+and it has to know both layouts because the bundle being replaced is the old one
+and the bundle being healed is either.
+
 The container rows exist because the app checks used to run against
 electron-builder's unpacked `dist` output and nothing else, so the bundle a user
 actually downloads was never asked. That is not a cosmetic gap: the ZIP is what

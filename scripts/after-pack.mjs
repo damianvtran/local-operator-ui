@@ -23,17 +23,19 @@
  */
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
+import { LEGACY_RESOURCE_NAMES } from "./bundled-python-layout.mjs";
 import pruneAfterPack from "./prune-python-resource.mjs";
 
 /**
  * The legacy resource names a bundle must never carry again.
  *
- * Written out rather than derived: these are the names shipped builds used -
- * `python_aarch64` on arm64, `python` on x64 - and the point of the check is
- * that they stay gone. Deriving them from the seed paths would silently start
- * checking the *new* names instead, which are the ones that must be present.
+ * Read from the app's own layout definition rather than written out again here.
+ * They are the names shipped builds used - `python_aarch64` on arm64, `python` on
+ * x64 - and the point of the check is that they stay gone; the set is defined by
+ * the layout, not by this hook, so adding a name to the definition is what
+ * changes both halves at once.
  */
-const LEGACY_PYTHON_RESOURCE_NAMES = ["python", "python_aarch64"];
+const LEGACY_PYTHON_RESOURCE_NAMES = LEGACY_RESOURCE_NAMES;
 
 export default async function afterPack(context) {
 	const productFilename = context.packager?.appInfo?.productFilename;
