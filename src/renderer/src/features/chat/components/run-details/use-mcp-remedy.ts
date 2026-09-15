@@ -2,13 +2,16 @@
  * Starting an MCP remedy from the run panel (`docs/run-sidebar.md` § 7.2, as
  * amended by this change).
  *
- * Three operations, all of them the BACKEND's: a browser sign-in
+ * Four operations, all of them the BACKEND's: a browser sign-in
  * (`mcp.control {action: "reauth", confirmed: true}`), a reconnect
- * (`{action: "connect"}`), and a cancel for a grant already running
- * (`{action: "cancel", operation_id}`). The panel starts them, watches them in
- * the read it already polls, and cancels one — it never writes configuration.
- * `add`, `remove`, `reload`, `scope` and credential entry stay on the surface
- * that owns the configuration (`settings/components/mcp-management-section.tsx`).
+ * (`{action: "connect"}`), a cancel for a grant already running
+ * (`{action: "cancel", operation_id}`), and a `reload` that re-reads one server's
+ * configuration from disk. The panel starts them, watches them in the read it
+ * already polls, and cancels one — it never writes configuration. `add`, `remove`,
+ * `scope` and credential entry stay on the surface that owns the configuration
+ * (`settings/components/mcp-management-section.tsx`); `reload` is a READ of that
+ * configuration, and it is the one action that picks up a `${NAME}` reference the
+ * failure copy asks for, so a failure state offers it where it can work.
  *
  * ## Why the list poll is the RENDERING source, and the POST response is not
  *
@@ -44,12 +47,16 @@
 import {
 	DesktopControlError,
 	desktopResult,
-	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import { fetchMcpProbe, mcpKeys } from "@shared/api/local-operator/mcp-list";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { DesktopMcpState } from "../../../../../../shared/desktop-control-contract";
+import {
+	type McpFailure,
+	type McpFailurePhase,
+	mcpFailure,
+} from "./mcp-failure";
 import { type McpServerRow, mcpGrantInFlight } from "./run-detail-model";
 
 /**
@@ -81,6 +88,19 @@ export type McpRemedyControls = {
 	) => Promise<boolean>;
 	/** Cancel a running grant by operation id. */
 	cancel: (operationId: string) => void;
+	/**
+	 * Re-read the named server's configuration from disk.
+	 *
+	 * A READ: it writes no config, which is why this surface can carry it at all
+	 * (`§ 7.2`) — and it is the one action that picks up a `${NAME}` reference the
+	 * failure copy may be asking for, which is why the sign-in dialog's failure
+	 * state offers it (`mcp-failure.ts`).
+	 *
+	 * Resolves `true` only when the control was ACCEPTED, so a caller that re-asks
+	 * the server a question about the reloaded config (the sign-in dialog re-probes
+	 * after it) does not ask it of a config that never reloaded.
+	 */
+	reload: (row: McpServerRow) => Promise<boolean>;
 	/** The row whose press is in flight, or `null`. */
 	pendingName: string | null;
 	/**
@@ -94,12 +114,26 @@ export type McpRemedyControls = {
 	 */
 	refusalFor: (row: McpServerRow) => McpRefusal | null;
 	/**
-	 * The sentence for a failed credential write on ONE server, or `null`.
+	 * The last failure recorded for ONE server, or `null`.
+	 *
+	 * Already classified (`mcp-failure.ts`): the raw backend sentence is never what
+	 * a surface renders, and the same record carries the server's own words when
+	 * they are a reason rather than a category.
 	 *
 	 * Per server rather than one slot: a sentence authored by A's refusal must not
 	 * appear in B's form (code review round 1, finding 3).
 	 */
-	keyErrorFor: (name: string) => string | null;
+	failureFor: (name: string) => McpFailure | null;
+	/**
+	 * Drop the failure remembered for one server.
+	 *
+	 * Called when a surface makes a FRESH attempt at that row — the sign-in dialog
+	 * clears it as it re-probes — because a sentence authored by the last press
+	 * describes a request nobody is repeating. Without it the record outlives the
+	 * dialog that authored it (the hook lives on the page, not in the dialog) and
+	 * the next open renders a stale failure under a fresh probe.
+	 */
+	clearFailure: (name: string) => void;
 };
 
 /**
@@ -127,9 +161,9 @@ export function useMcpRemedy({
 	const [refusals, setRefusals] = useState<
 		Readonly<Record<string, McpRefusal>>
 	>({});
-	const [keyErrors, setKeyErrors] = useState<Readonly<Record<string, string>>>(
-		{},
-	);
+	const [failures, setFailures] = useState<
+		Readonly<Record<string, McpFailure>>
+	>({});
 
 	const explain = useCallback(
 		async (row: McpServerRow, refused: DesktopControlError) => {
@@ -160,6 +194,28 @@ export function useMcpRemedy({
 		[queryClient, sessionId],
 	);
 
+	/**
+	 * Classify one failure and remember it against its server.
+	 *
+	 * The classification is a single call into `mcp-failure.ts`, so no surface
+	 * renders the wire's own sentence by accident: `grantRunning` is read from the
+	 * read's own operations, which is what makes "a sign-in is already running"
+	 * sayable at all (the backend answers that case with the same opaque 409 it
+	 * answers every other refusal with).
+	 */
+	const recordFailure = useCallback(
+		(name: string, phase: McpFailurePhase, cause: unknown) => {
+			const cached = queryClient.getQueryData<DesktopMcpState>(
+				mcpKeys.list(sessionId ?? ""),
+			);
+			setFailures((previous) => ({
+				...previous,
+				[name]: mcpFailure(phase, cause, mcpGrantInFlight(cached?.operations)),
+			}));
+		},
+		[queryClient, sessionId],
+	);
+
 	const press = useCallback(
 		(row: McpServerRow, action: "login" | "reauth" = "reauth") => {
 			if (!sessionId || !row.remedy) return;
@@ -173,6 +229,12 @@ export function useMcpRemedy({
 			// different cause, and a remembered `not-oauth` would then be stale copy.
 			setRefusals((previous) => {
 				const { [refusalKey(row)]: _cleared, ...rest } = previous;
+				return rest;
+			});
+			// And its last failure, for the same reason: a press is new information,
+			// so a sentence authored by the previous one must not outlive it.
+			setFailures((previous) => {
+				const { [row.name]: _cleared, ...rest } = previous;
 				return rest;
 			});
 			void (async () => {
@@ -206,13 +268,13 @@ export function useMcpRemedy({
 					// started as anything the backend has not said.
 					void queryClient.invalidateQueries({ queryKey: key });
 				} catch (cause) {
-					setKeyErrors((previous) => ({
-						...previous,
-						[row.name]: userFacingMessage(
-							cause,
-							"Sign-in was not started. Retry or check this server's setup.",
-						),
-					}));
+					// The phase is the request this press actually made, not the row's
+					// remedy: `reconnect` and a refused sign-in need different copy.
+					recordFailure(
+						row.name,
+						row.remedy?.kind === "reconnect" ? "reconnect" : "grant",
+						cause,
+					);
 					if (cause instanceof DesktopControlError) {
 						await explain(row, cause);
 					}
@@ -221,7 +283,7 @@ export function useMcpRemedy({
 				}
 			})();
 		},
-		[explain, queryClient, sessionId],
+		[explain, queryClient, recordFailure, sessionId],
 	);
 
 	const cancel = useCallback(
@@ -244,18 +306,11 @@ export function useMcpRemedy({
 					const name = state?.operations?.find(
 						(op) => op.id === operationId,
 					)?.name;
-					if (name)
-						setKeyErrors((previous) => ({
-							...previous,
-							[name]: userFacingMessage(
-								cause,
-								"Cancellation was not confirmed. Retry or check the operation status.",
-							),
-						}));
+					if (name) recordFailure(name, "cancel", cause);
 				}
 			})();
 		},
-		[queryClient, sessionId],
+		[queryClient, recordFailure, sessionId],
 	);
 
 	/**
@@ -299,7 +354,7 @@ export function useMcpRemedy({
 		): Promise<boolean> => {
 			if (!sessionId) return false;
 			setPendingName(row.name);
-			setKeyErrors((previous) => {
+			setFailures((previous) => {
 				const { [row.name]: _cleared, ...rest } = previous;
 				return rest;
 			});
@@ -320,25 +375,28 @@ export function useMcpRemedy({
 						result?.code === "replace_confirmation_required"
 							? "Confirm replacement of the existing shared keys before saving."
 							: `Not saved: ${(result?.failed_ids ?? Object.keys(values)).join(", ")}. Unlock or repair the encrypted store, then retry.`;
-					setKeyErrors((previous) => ({
+					// An OUTCOME rather than an exception: the write answered, and the
+					// answer is what the sentence reports. Its cause is `unknown` because
+					// only the failed IDs are known — the store's reason is not on this
+					// wire — so the remedies stay available rather than being guessed at.
+					setFailures((previous) => ({
 						...previous,
-						[row.name]:
-							why +
-							(result?.saved_ids.length
-								? ` Saved: ${result.saved_ids.join(", ")}.`
-								: ""),
+						[row.name]: {
+							cause: "unknown",
+							phase: "key",
+							detail: null,
+							message:
+								why +
+								(result?.saved_ids.length
+									? ` Saved: ${result.saved_ids.join(", ")}.`
+									: ""),
+						},
 					}));
 					setPendingName(null);
 					return false;
 				}
 			} catch (cause) {
-				setKeyErrors((previous) => ({
-					...previous,
-					[row.name]: userFacingMessage(
-						cause,
-						"The keys were not saved. Retry secure MCP key entry.",
-					),
-				}));
+				recordFailure(row.name, "key", cause);
 				setPendingName(null);
 				return false;
 			}
@@ -359,26 +417,65 @@ export function useMcpRemedy({
 				} else {
 					void queryClient.invalidateQueries({ queryKey: key });
 				}
-				setKeyErrors((previous) => ({
+				setFailures((previous) => ({
 					...previous,
-					[row.name]:
-						"The keys were saved, but this server is not connected. Check the credentials and server setup, then retry.",
+					[row.name]: {
+						cause: "unknown",
+						phase: "reconnect",
+						detail: null,
+						message:
+							"The keys were saved, but this server is not connected. Check the credentials and server setup, then retry.",
+					},
 				}));
 				return false;
 			} catch (cause) {
-				setKeyErrors((previous) => ({
-					...previous,
-					[row.name]: userFacingMessage(
-						cause,
-						"The server could not be reconnected.",
-					),
-				}));
+				recordFailure(row.name, "reconnect", cause);
 				return false;
 			} finally {
 				setPendingName(null);
 			}
 		},
-		[queryClient, sessionId],
+		[queryClient, recordFailure, sessionId],
+	);
+
+	/**
+	 * Re-read one server's configuration from disk.
+	 *
+	 * Offered from a failure state (`mcp-failure.ts`) because it is the action that
+	 * picks up a config the user has just edited — the `${NAME}` reference an
+	 * earlier sentence may have asked for — and it writes nothing, so it belongs on
+	 * the same surface as the other backend-owned operations. A failure here is
+	 * recorded like any other, which is how the sentence for it reaches the dialog
+	 * that offered the control.
+	 */
+	const reload = useCallback(
+		async (row: McpServerRow): Promise<boolean> => {
+			if (!sessionId) return false;
+			setPendingName(row.name);
+			setFailures((previous) => {
+				const { [row.name]: _cleared, ...rest } = previous;
+				return rest;
+			});
+			try {
+				const envelope = await desktopResult<{ data: DesktopMcpState }>({
+					op: "mcp.control",
+					sessionId,
+					control: { action: "reload", name: row.name },
+				});
+				const key = mcpKeys.list(sessionId);
+				if (envelope?.data) queryClient.setQueryData(key, envelope.data);
+				else void queryClient.invalidateQueries({ queryKey: key });
+				return true;
+			} catch (cause) {
+				// Its own phase: a reload that failed is not a status read that failed,
+				// and the sentence for it is the one about the server's configuration.
+				recordFailure(row.name, "reload", cause);
+				return false;
+			} finally {
+				setPendingName(null);
+			}
+		},
+		[queryClient, recordFailure, sessionId],
 	);
 
 	const refusalFor = useCallback(
@@ -386,18 +483,28 @@ export function useMcpRemedy({
 		[refusals],
 	);
 
-	const keyErrorFor = useCallback(
-		(name: string) => keyErrors[name] ?? null,
-		[keyErrors],
+	const failureFor = useCallback(
+		(name: string) => failures[name] ?? null,
+		[failures],
 	);
+
+	const clearFailure = useCallback((name: string) => {
+		setFailures((previous) => {
+			if (!(name in previous)) return previous;
+			const { [name]: _cleared, ...rest } = previous;
+			return rest;
+		});
+	}, []);
 
 	return {
 		sessionId,
 		press,
 		pressKey,
 		cancel,
+		reload,
 		pendingName,
-		keyErrorFor,
+		failureFor,
+		clearFailure,
 		refusalFor,
 	};
 }

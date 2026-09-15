@@ -1417,6 +1417,27 @@ const MCP_WORDS: Record<string, string> = {
 };
 
 /**
+ * The app's own control words for the remedies a problem row can carry out.
+ *
+ * Here rather than beside either control that renders one, because two surfaces
+ * now speak them: the run panel's action line and the sign-in dialog's failure
+ * state (`mcp-failure.ts` routes the reader to the same remedies). One state must
+ * not acquire two spellings, and a table copied into the second surface is how
+ * `Grant account access` becomes `Sign in` on one screen and not the other.
+ *
+ * `reload` is a READ of the config from disk — it writes nothing — so it is
+ * offered from a failure state next to the operations the panel already starts:
+ * a `${NAME}` reference added to the server's config is picked up by it and by
+ * nothing else this surface owns.
+ */
+export const MCP_CONTROL_WORD = {
+	grant: "Grant account access",
+	key: "Enter API key",
+	reconnect: "Reconnect",
+	reload: "Reload",
+} as const;
+
+/**
  * A sign-in this surface started, as the READ carries it (`mcp.list` returns
  * `operations`, `MCPDesktop.snapshot()` at `mcp/desktop.py:152`).
  *
