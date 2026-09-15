@@ -143,6 +143,32 @@ export const showErrorToast = (
 };
 
 /**
+ * Forget every refusal `showErrorToast` has already accounted for.
+ *
+ * The deduplication above is a user-facing policy - the same refusal must not
+ * stack, and repeating it inside the cooldown shows nothing - and it is done in
+ * module state, which is right for the app: one window, one person, one
+ * cooldown clock. It is wrong for a fixture that mounts the same refusal twice
+ * in one document, and it does not clean itself up. A held toast (the refusal
+ * story's `toastDuration: Infinity`) is never dismissed and never auto-closes,
+ * so `activeToasts` keeps its id for the page's life while Sonner keeps
+ * nothing: the next mount's identical refusal finds the key present, returns
+ * the stale id and publishes no toast at all. The story then has no refusal on
+ * screen even though the write really was refused, which is exactly the frame
+ * the story exists to produce (agent review round 4, C-11).
+ *
+ * Production never calls this, and the policy itself is untouched: the shipping
+ * cooldown still applies to everything the app says. Only the fixture's own
+ * teardown does, at the same moment it dismisses the toast it was holding
+ * (`RefusalFixture` in `canvas.stories.tsx`).
+ */
+export const resetToastDedup = () => {
+	activeToasts.clear();
+	lastErrorShownTime.clear();
+	errorCountInPeriod.clear();
+};
+
+/**
  * Show an info toast
  *
  * @param message - The info message to display

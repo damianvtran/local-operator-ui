@@ -174,6 +174,47 @@ export const STORIES = [
 	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
 	   either side of the threshold, and a bulky one. */
 	["chat-canonical-notices--notice-lengths", 1280, 340],
+	/*
+	 * The three states a notification click can paint before the owner answers:
+	 * a cached paint with its caption, the skeleton for a first-ever open, and
+	 * the named state for a conversation this machine no longer has.
+	 *
+	 * `the-two-misses` exists because the pair a reader most needs to tell apart
+	 * is "this may be behind" against "this is gone" — two sentences, two
+	 * different next actions, and a frame that shows only one of them cannot be
+	 * judged for whether they are distinguishable.
+	 *
+	 * The narrow pass is the same caption in the narrowest chat column, where the
+	 * sentence is longer than the `Reconnecting` it shares a slot with.
+	 */
+	["chat-notification-feed-states--cached-paint", 1280, 600],
+	["chat-notification-feed-states--reconciled", 1280, 600],
+	/* These two are captured in a viewport SIZED TO THEM for the reason the
+	   `narrow` tool-row pass is: the vanished state is three lines and a button,
+	   and at 600px it is 99.45% one colour, which `check-evidence` rejects as
+	   "the story painted its ground and nothing else" — its judgement, and the
+	   right one. Sizing the frame to the state keeps it a picture of the state. */
+	["chat-notification-feed-states--conversation-gone", 720, 200],
+	["chat-notification-feed-states--the-two-misses", 760, 200],
+	["chat-notification-feed-states--cached-paint-narrow", 420, 600],
+	["chat-notification-feed-states--loading-first-open", 1280, 600],
+	/* The caption on a transcript TALLER than the pane, which is the ordinary
+	   cached paint rather than an edge (design review round 1, D1): the cache is
+	   only written for a conversation this pane has already shown, and the
+	   earlier five-row frame fit, so it could not show that the sentence was
+	   thousands of pixels above the fold. */
+	["chat-notification-feed-states--cached-paint-overflow", 1280, 600],
+	/* The gone state with the cached rows a real click arrives with — the half
+	   the committed empty-rows frame cannot cover (design review round 1, D2). */
+	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
+
+	/* The composer's two refusals and the state a vanished conversation leaves
+	   it in (design review round 1, D3): the transcript stories above render the
+	   transcript alone, so the false "Agent is busy" placeholder and the missing
+	   colour step were never in a frame. Sized to the band, not to a window. */
+	["chat-composer-states--idle", 900, 160],
+	["chat-composer-states--busy", 900, 160],
+	["chat-composer-states--conversation-gone", 900, 160],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
@@ -719,6 +760,36 @@ export const STORIES = [
 	["canvas-workspace--audio-viewer", 1280, 900],
 	["canvas-workspace--video-viewer", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
+	/* The other seven states the code-memory panel defines. They are separate
+	   stories rather than one story with a knob because each is a claim about
+	   what the panel SAYS when the backend answers differently - and two of them
+	   (no kernel, a draft) are claims about what it does not say, which a
+	   populated frame cannot show. */
+	["canvas-workspace--variables-empty-with-kernel", 1280, 900],
+	["canvas-workspace--variables-no-kernel", 1280, 900],
+	["canvas-workspace--variables-draft", 1280, 900],
+	["canvas-workspace--variables-busy", 1280, 900],
+	["canvas-workspace--variables-unsupported", 1280, 900],
+	["canvas-workspace--variables-backend-too-old", 1280, 900],
+	/* The refusal toast, driven through the real form by the story's play
+	   function: the only frame in this set whose subject is a control's
+	   outcome rather than a rest state. */
+	["canvas-workspace--variables-write-refused", 1280, 900],
+	/* The six states remediation round 1 added, each because a round named the
+	   claim it could not judge from the frames that existed (design D2/D3/D5,
+	   the backend's truncation edge, and the failure branch whose copy still
+	   carried the advice this PR retires). */
+	["canvas-workspace--variables-backend-unreachable", 1280, 900],
+	/*
+	 * The panel's FIRST question failing, as distinct from the read failing:
+	 * the capabilities query rejects, so the panel cannot say whether the
+	 * backend is old or absent and quotes the transport (design round 2, D4).
+	 */
+	["canvas-workspace--variables-capabilities-unreachable", 1280, 900],
+	["canvas-workspace--variables-truncated", 1280, 900],
+	["canvas-workspace--variables-row-actions", 1280, 900],
+	["canvas-workspace--variables-uneditable-row", 1280, 900],
+	["canvas-workspace--variables-delete-confirm", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
 

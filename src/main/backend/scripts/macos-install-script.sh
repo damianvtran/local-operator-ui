@@ -105,6 +105,18 @@ if [ -f "$FFMPEG_BIN" ] && [ -x "$FFMPEG_BIN" ]; then
 else
     echo "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
 
+    # The architecture, read here because this URL is the one place left that needs
+    # it: the environment is built on `PYTHON_BIN`, handed in above, so nothing
+    # else in this script derives anything from `uname -m`. The block that used to
+    # compute it at the top of the file was removed with the in-bundle interpreter
+    # search it existed for (review N1) - and that removal took this variable with
+    # it while this block still read it, so `$ARCH` was empty for every caller,
+    # including the app, and any install on a machine without a cached ffmpeg
+    # exited 1 here, before the venv was ever created. Measured: `bash
+    # src/main/backend/scripts/macos-install-script.sh` with `PYTHON_BIN` set stops
+    # on "Unsupported CPU architecture for FFmpeg download:".
+    ARCH=$(uname -m)
+
     FFMPEG_DOWNLOAD_URL=""
 
     if [[ "$ARCH" == "x86_64" ]]; then

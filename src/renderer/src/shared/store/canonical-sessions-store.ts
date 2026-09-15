@@ -24,6 +24,7 @@ import {
 	type SessionCatalogueStatus,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
+import type { LaunchTarget } from "../../../../shared/open-session";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -946,6 +947,22 @@ type CanonicalSessionsState = {
 	 * user is actually on.
 	 */
 	confirmSessionLive: (sessionId: string | null) => void;
+	/**
+	 * Merge one machine-wide `attention` frame into its row.
+	 *
+	 * This is the unseen mark's ARRIVAL path. It used to be a 5 s
+	 * `sessions.list` poll, which re-read a transcript-tail preview per row to
+	 * learn one boolean; the feed now carries the delta as it happens, so the
+	 * mark lands on the event instead of on a timer.
+	 *
+	 * A frame for a session the catalogue does not know is DROPPED rather than
+	 * inserted: the feed's frames are live-only and the catalogue's membership is
+	 * a separate question (a new session directory is what the `catalogue`
+	 * invalidation exists for). Inserting here would create a row with no title,
+	 * no binding and no status — a sidebar entry for something the user cannot
+	 * identify.
+	 */
+	applyAttention: (sessionId: string, attention: CompletionAttention) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
@@ -1016,11 +1033,96 @@ export function replaceSessionRows(
 }
 let navigationGeneration = 0;
 let refreshGeneration = 0;
+
+/**
+ * What main asked THIS window to open, resolved through the shared reader.
+ *
+ * Read from the preload's `desktop.initialSession`/`initialCatalogue`, which come
+ * from THIS process's own argv (`webPreferences.additionalArguments`, set only
+ * when main created the window for a notification click). It is a VALUE rather
+ * than an event on purpose (B3): a recreated window rehydrates its persisted
+ * `activeSessionId` and paints that conversation in the first frame, so an id
+ * that arrives as a post-load IPC shows the user the wrong conversation and
+ * then swaps it — which reads as a click that landed on the wrong row.
+ *
+ * IT RESOLVES THREE INTENTS, NOT TWO (review round 2, R2-1). "Restore", "open
+ * this conversation" and "open the catalogue" are genuinely different answers,
+ * and the third used to be indistinguishable from the first: both arrived as
+ * `initialSession: null`, so a window created for a burst digest restored
+ * whatever was last read.
+ *
+ * Guarded because this module is imported in contexts with no `window` (the node
+ * test harness), where the answer is simply "no launch argument".
+ */
+function launchTarget(): LaunchTarget {
+	try {
+		const desktop = window.api?.desktop;
+		if (!desktop) return { kind: "restore" };
+		// A named conversation outranks the catalogue, the same precedence the
+		// argv reader applies: naming one is the more specific instruction.
+		if (desktop.initialSession) {
+			return { kind: "session", sessionId: desktop.initialSession };
+		}
+		if (desktop.initialCatalogue) return { kind: "catalogue" };
+		return { kind: "restore" };
+	} catch {
+		return { kind: "restore" };
+	}
+}
+
+/** The launched conversation's id, or null — which includes the catalogue. */
+function launchSession(): string | null {
+	const target = launchTarget();
+	return target.kind === "session" ? target.sessionId : null;
+}
+/**
+ * The launch argument OUTRANKS the persisted conversation.
+ *
+ * Main was asked for this conversation BY NAME, and the window exists to show
+ * it; the persisted id is merely what the user last read, which on a
+ * click-created window is exactly the wrong one. Overriding here rather than in
+ * an effect is what makes it true of the FIRST render — a layout effect would
+ * already have committed the wrong conversation to the DOM, and any effect
+ * after paint is the flash this exists to prevent (B3).
+ *
+ * THE CATALOGUE OUTRANKS IT TOO (review round 2, R2-1). `activeSessionId: null`
+ * is how this store models "no conversation selected", i.e. the list — so a
+ * window main created for a burst digest must land there rather than on the
+ * persisted conversation. Missing this branch is what made a windowless digest
+ * click restore the last conversation instead of opening the catalogue.
+ *
+ * Named and exported rather than inlined in the store's `persist` options
+ * because it is the rule B3 rests on: hydration is what would otherwise put the
+ * persisted id back, and no test can reach that path without a browser's
+ * storage. Called by `persist` exactly as before.
+ */
+export function mergePersistedSession(
+	persisted: unknown,
+	current: CanonicalSessionsState,
+): CanonicalSessionsState {
+	const merged = {
+		...current,
+		...(persisted as Partial<CanonicalSessionsState> | undefined),
+	};
+	const target = launchTarget();
+	if (target.kind === "session") {
+		return { ...merged, activeSessionId: target.sessionId };
+	}
+	if (target.kind === "catalogue") {
+		return { ...merged, activeSessionId: null };
+	}
+	return merged;
+}
+
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
-			activeSessionId: null,
+			// Seeded from the launch argument when there is one, so the very first
+			// render is already the requested conversation rather than the persisted
+			// one. `merge` below holds the same line against hydration, which would
+			// otherwise put the persisted id back.
+			activeSessionId: launchSession(),
 			activeDraftKey: null,
 			drafts: {},
 			sessionByAgent: {},
@@ -1119,6 +1221,28 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			confirmSessionLive: (sessionId) => {
 				if (sessionId && get().validatingSessionId === sessionId)
 					set({ validatingSessionId: null });
+			},
+			applyAttention: (sessionId, attention) => {
+				set((state) => {
+					const index = state.sessions.findIndex(
+						(row) => row.session_id === sessionId,
+					);
+					if (index < 0) return state;
+					const row = state.sessions[index];
+					// The same revision guard the catalogue merge uses, so a frame that
+					// arrives out of order can never un-read a row the user has seen.
+					const merged = mergeCompletionAttention(
+						row.attention,
+						attention,
+						sessionId,
+					);
+					// Identity, not equality: an unchanged merge must not re-render every
+					// row of a 500-row sidebar for a beat that carried nothing new.
+					if (merged === row.attention) return state;
+					const sessions = state.sessions.slice();
+					sessions[index] = { ...row, attention: merged };
+					return { ...state, sessions };
+				});
 			},
 			openSession: async (sessionId) => {
 				/*
@@ -1482,6 +1606,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			merge: mergePersistedSession,
 			partialize: (state) => ({
 				sessionByAgent: state.sessionByAgent,
 				activeSessionId: state.activeSessionId,

@@ -69,6 +69,23 @@ export function useDesktopWatchLease(
 			document.removeEventListener("visibilitychange", send);
 			window.removeEventListener("focus", send);
 			window.removeEventListener("blur", send);
+			/*
+			 * WITHDRAW THE DISPLAYED CONVERSATION (review round 2, R2-4).
+			 *
+			 * This cleanup runs when the pane LEAVES the conversation — navigating to
+			 * the catalogue or Settings, or unmounting — as well as when the session
+			 * changes. Stopping the beats is not enough: the backend expires the LEASE
+			 * on a missed heartbeat, but main's own machine-wide presence is built from
+			 * its last report, and it kept renewing "showing A" every beat for as long
+			 * as the process lived. The backend believes fresh presence, so A's banner
+			 * was suppressed while no pane displayed A.
+			 *
+			 * Only on the native path, and fire-and-forget: this is a teardown, so it
+			 * cannot await, and main's own `releaseWatch` is identity-safe — an older
+			 * pane's withdrawal cannot clear a newer pane's report.
+			 */
+			const release = window.api?.desktop?.releaseWatchHeartbeat;
+			if (release) void Promise.resolve(release({ sessionId })).catch(() => {});
 		};
 	}, [sessionId, subscriptionId]);
 }
