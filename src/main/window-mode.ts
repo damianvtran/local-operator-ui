@@ -512,16 +512,24 @@ export function describeWindowLaunch(
 				? "window shown without activating the app"
 				: "window shown and focused";
 	/*
-	 * Both suffixes ride on the same sentence, because a reader needs both facts
-	 * at once: WHICH mode this is and whether it was assumed (the mode alone
-	 * cannot say) reads as the subject, and the Dock clause is what the mac
-	 * window does about it. The Dock claim stays mac-only -- `hideDock` is an
-	 * `app.dock` call -- while the assumption is platform-independent.
+	 * Two facts ride on the one sentence, and the order is deliberate: the mode is
+	 * the subject and keeps its colon where every reader expects it, the geometry
+	 * and behaviour follow, the mac Dock clause closes the clause list, and the
+	 * assumption's aside comes LAST.
+	 *
+	 * The aside used to sit between the mode and its colon. Design round 4 (D18)
+	 * measured what that cost on this line: the aside is 86 characters, so the
+	 * colon moved to offset 120 and a wrapped row began at `: 1380x900, ...` with
+	 * nothing in it a reader could anchor on, while the two spellings of the same
+	 * line no longer shared the prefix a rig greps (`window mode headless: `).
+	 * Trailing it keeps that anchor on both spellings and keeps the facts in the
+	 * first rows; the aside is the only part a reader can skip without losing what
+	 * the line is about.
 	 */
-	const assumption = plan.assumed ? ` (assumed: ${plan.assumed})` : "";
+	const assumption = plan.assumed ? ` (mode assumed: ${plan.assumed})` : "";
 	const extras = [
 		plan.hideDock && platform === "darwin" ? "no Dock tile" : null,
 	].filter((part): part is string => part !== null);
 	const suffix = extras.length === 0 ? "" : `, ${extras.join(", ")}`;
-	return `window mode ${plan.mode}${assumption}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}`;
+	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}${assumption}`;
 }
