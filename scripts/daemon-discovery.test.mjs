@@ -428,8 +428,35 @@ test("a WEDGED record (live pid, stopped heartbeat) is reported, not attached to
 	 * remaining way this app told a user their server was offline while a process
 	 * was still there.
 	 */
-	assert.deepEqual(result.wedged, [{ file, pid: process.pid }]);
+	assert.deepEqual(result.wedged, [
+		{ file, pid: process.pid, alive: true },
+	]);
 	assert.equal(result.blocksSpawn, true);
+	rmSync(file, { force: true });
+});
+
+test("a dead pid with a FRESH heartbeat is wedged too, and the report does not call it alive", async () => {
+	const gone = await deadPid();
+	/*
+	 * `classifyRecord` refuses to call this `stale` - the heartbeat has not aged
+	 * past the timeout, so the record is too fresh to reap - and it is wedged for
+	 * the opposite reason from the case above: the process is GONE. QA round 1
+	 * (Q-N1) caught the report saying "pid N is alive" here, which is a claim the
+	 * check never made, so the two reasons are now carried apart.
+	 */
+	const file = writeRecord({
+		pid: gone,
+		port: 65531,
+		instanceId: "instance-dead-but-fresh",
+	});
+	const result = await discoverDaemons({ env: env(), log: silence });
+	const rejection = result.rejected.find((r) => r.subject === file);
+	assert.equal(rejection.reason, "wedged");
+	assert.doesNotMatch(rejection.detail, /is alive/);
+	assert.match(rejection.detail, /is gone and its heartbeat is only/);
+	assert.deepEqual(result.wedged, [
+		{ file, pid: gone, alive: false },
+	]);
 	rmSync(file, { force: true });
 });
 

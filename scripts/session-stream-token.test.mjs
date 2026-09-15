@@ -252,6 +252,17 @@ const bundle = await build({
 									export function spawnSync() {
 										return { status: 0, stdout: "", stderr: "" };
 									}
+									/**
+									 * The probe \`isZombie\` makes on macOS (\`ps -o state= -p <pid>\`), and the
+									 * only reason this stub needs an answer for it: discovery spends that
+									 * probe on a record whose heartbeat has gone quiet. \`S\` is a live,
+									 * non-zombie process state, which is the fail-closed answer the real
+									 * probe gives on any doubt - so the manager's own logic stays the
+									 * subject here rather than this fixture's idea of a process table.
+									 */
+									export function execFileSync() {
+										return "S";
+									}
 									export function exec(command, options, callback) {
 										const done = typeof options === "function" ? options : callback;
 										globalThis.__backendTestState.execs.push(command);

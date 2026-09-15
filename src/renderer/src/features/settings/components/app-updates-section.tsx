@@ -219,6 +219,15 @@ export const AppUpdatesSection: FC = () => {
 			 * honest instead of lucky.
 			 */
 			valueHoverTarget?: boolean;
+			/**
+			 * A short state word for the row, rendered on its own line under the value.
+			 *
+			 * Only where the row's own state has something to say that the number
+			 * cannot: a `degraded` connection keeps the number (the claim is that it
+			 * does not blank), and this is what makes the state visible in a still
+			 * without reflowing the label.
+			 */
+			statusNote?: string;
 		} = {},
 	) => (
 		<InfoItem
@@ -232,18 +241,36 @@ export const AppUpdatesSection: FC = () => {
 			}
 			valueClassName={options.valueClassName}
 			value={
-				options.valueTooltip ? (
-					<Tooltip content={options.valueTooltip}>
-						<span
-							data-backend-version={options.valueHoverTarget ? "" : undefined}
-							className="cursor-help"
-						>
-							{value}
+				<>
+					{options.valueTooltip ? (
+						<Tooltip content={options.valueTooltip}>
+							<span
+								data-backend-version={options.valueHoverTarget ? "" : undefined}
+								className="cursor-help"
+							>
+								{value}
+							</span>
+						</Tooltip>
+					) : (
+						value
+					)}
+					{/*
+					 * The state word, on its OWN line under the number.
+					 *
+					 * Not a suffix on the value and not a suffix on the label: both wrap
+					 * in the column this grid gives them (`minmax(160px, 1fr)`), and the
+					 * first attempt at this put "Server version" on one line and
+					 * "(reconnecting)" on the next, which pushed the number below its
+					 * siblings' baseline - visible in the frame the reviewer of round 1
+					 * asked for. A third line leaves the label, the number and every other
+					 * row's alignment alone, which is what makes the reading comparable.
+					 */}
+					{options.statusNote ? (
+						<span className="mt-0.5 block text-meta text-ink-dim">
+							{options.statusNote}
 						</span>
-					</Tooltip>
-				) : (
-					value
-				)
+					) : null}
+				</>
 			}
 		/>
 	);
@@ -263,17 +290,19 @@ export const AppUpdatesSection: FC = () => {
 						"The version of the Local Operator user interface application.",
 					)}
 					{renderInfoItem(
-						// The suffix, not a hue: `degraded` means two of three probes failed
-						// on a connection that is still there, and the row has to say so
-						// without blanking the number.
-						serverVersion.degraded
-							? "Server version (reconnecting)"
-							: "Server version",
+						"Server version",
 						serverVersion.value,
 						"The version of the Local Operator API server backend, and the address of the daemon it was read from.",
 						{
 							valueTooltip: serverVersion.detail,
 							valueHoverTarget: true,
+							// "Not answering" rather than "reconnecting": main's own
+							// vocabulary reserves the second word for a DETACHED connection
+							// inside its reconnection window (the snapshot field of the same
+							// name), and the banner renders that state with it. A row that is
+							// still attached must not borrow the word that the banner uses to
+							// mean something else.
+							statusNote: serverVersion.degraded ? "Not answering" : undefined,
 							valueClassName: serverVersion.degraded
 								? "text-ink-muted"
 								: undefined,
