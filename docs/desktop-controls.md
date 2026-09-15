@@ -57,12 +57,46 @@ those paths require separate native-app validation.
 ## Canonical session checkpoint
 
 The request allowlist now includes `sessions.list/create/get/history/message/
-command/answer/watch`, mapped only to `/v1/desktop/sessions` and its fixed child
-paths. These are canonical12-hex session IDs, not legacy agent UUIDs. Request IDs
+command/answer/watch` plus `sessions.interrupt`, mapped only to
+`/v1/desktop/sessions` and its fixed child paths. These are canonical12-hex
+session IDs, not legacy agent UUIDs. Request IDs
 for creation/messages/commands are lowercase UUID strings. For `sessions.answer`,
 requestId is the pending gate's opaque ID and epoch is the **owner frontend**
 epoch. questionIndex is required for ask text; approved is a strict boolean.
 Closed Zod validation still runs in main before any HTTP request.
+
+### `sessions.interrupt`, and why it is not `/stop`
+
+`POST /v1/desktop/sessions/{id}/interrupt` stops the session's CURRENT TURN and
+the work under it and leaves the session, its runtime and its process alive. It
+is what the composer's Stop control and its Escape accelerator fire, and it is a
+separate op from `sessions.command` because that route answers a CATALOGUE
+command: `{command: "stop"}` is not an owner command, so it comes back as a
+presentation form - HTTP 200, a `native_action` whose destination is
+`sessions.stop` - while the turn keeps streaming. A 200 and a resolved promise
+read exactly like a stop that worked, which is how the defect survived every
+review.
+
+It is deliberately NOT `sessions.stop`, one letter away in name and one rung up
+in meaning: that op is the KILL SWITCH (deny the pending gates, dispose the
+runtime, release the writer lease, unpublish, exit) and it is what the `/stop`
+picker offers. A control that promises a session's current work must never be
+answered by ending the session, so the two are separate ops AND separate
+capabilities: `session_interrupt` is a new key rather than a bump of
+`lifecycle`, because a backend that can stop a session but cannot interrupt a
+turn must keep `/stop` working and must not be told it can interrupt. A renderer
+that sees no `session_interrupt` renders no Stop control at all - never a
+fallback to `/stop`, and never today's silent no-op.
+
+The response is an honest receipt: `status` (`interrupted`, or `idle` for a cold
+session and for one between turns, which is a SUCCESS and rides a 200),
+`receipt` (the runtime's own sentence, verbatim), `children_running` and
+`background_jobs` (read off the follower's published roster AFTER the interrupt,
+so a surface can word its own notice without parsing prose). `requestId` is the
+receipt key and reaches the wire as `request_id`; the same id replayed with the
+same body answers the first receipt (`replayed: true`) rather than interrupting
+twice. An interrupt destroys nothing, so the body carries no `confirmed` field
+and requiring one would make Escape useless.
 
 `src/shared/desktop-session-contract.ts` defines the response and stream types.
 Large roster/accounting/model additions retain unknown fields so a newer owner

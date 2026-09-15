@@ -535,6 +535,35 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({ op: z.literal("sessions.warm"), sessionId })
 		.strict(),
 	/*
+	 * Stop the session's CURRENT TURN and the work under it, leaving the session
+	 * and its process alive: the composer's Stop control and the Escape that is
+	 * its accelerator.
+	 *
+	 * Its OWN op rather than an argument to `sessions.command`, because the
+	 * command endpoint answers a presentation form: `/stop` is a catalogue entry
+	 * whose `native_action` asks the client to open the session-stop picker, so a
+	 * body of `{command: "stop"}` there answers 200, changes nothing, and reads as
+	 * a stop that worked. That is the reported defect this op exists to remove.
+	 *
+	 * NOT `sessions.stop` either, and the two are one letter apart on purpose of
+	 * naming rather than of meaning: `sessions.stop` is the KILL SWITCH (deny the
+	 * pending gates, dispose the runtime, release the writer lease, unpublish,
+	 * exit) reached from the `/stop` picker, and it is the rung ABOVE this one. A
+	 * client that could not interrupt a turn can still stop a session; a backend
+	 * that can do the second must not be told it can do the first, which is why
+	 * the capability key is new rather than a `lifecycle` bump.
+	 *
+	 * `requestId` is the route's receipt key: "make the current turn stop" is
+	 * idempotent and creates or destroys nothing, so the same id replayed with the
+	 * same body answers the first receipt rather than interrupting twice.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`): a
+	 * uuid is not prose, so this costs the control budget.
+	 */
+	z
+		.object({ op: z.literal("sessions.interrupt"), sessionId, requestId })
+		.strict(),
+	/*
 	 * A session's code memory: the names the session's own cells have left in its
 	 * eval namespace.
 	 *
@@ -1168,11 +1197,13 @@ export const MAX_DESKTOP_REQUEST_BYTES = Math.max(
  *
  * The envelope is bounded, which is what makes a constant allowance safe
  * rather than a guess: `op` is a string literal from a closed set (longest
- * `"sessions.command"`), `sessionId` is a 12-char id and `requestId` a 36-char
+ * `"sessions.interrupt"`), `sessionId` is a 12-char id and `requestId` a 36-char
  * UUID, plus their keys, quotes, colons and commas. 256 is comfortably above
  * that worst case and still far too small to admit a body the per-op check
  * would refuse - the proxy bounds the READ, and `requestDesktop` still applies
- * the exact per-op budget afterwards.
+ * the exact per-op budget afterwards. `desktop-contract.test.mjs` measures the
+ * worst case against this constant rather than restating it, so adding a longer
+ * op name fails there instead of silently truncating here.
  */
 export const MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES = 256;
 
@@ -1726,6 +1757,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// forbids extras but still wants a JSON OBJECT. An omitted body
 				// makes a legal call answer 422.
 				body: {},
+			};
+		case "sessions.interrupt":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/interrupt`,
+				method: "POST",
+				// The route's own field name, and the only field: there is no
+				// `confirmed` here because an interrupt destroys nothing, and a
+				// confirmation gate would make Escape useless. The route answers the
+				// runtime's abort receipt verbatim - see `DesktopInterruptReceipt`.
+				body: { request_id: request.requestId },
 			};
 		case "sessions.variables.list":
 			return {
