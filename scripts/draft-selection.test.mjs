@@ -472,41 +472,87 @@ test("each picker routes a draft's pick through one resolver, and never through 
  * clearing that is not stated is the defect rather than the rule.
  */
 test("a model that offers the chosen rung carries it, and the confirmation says so", () => {
-	const carry = effortCarry("high", ["low", "medium", "high", "xhigh", "max"], "low");
+	const carry = effortCarry("high", {
+		ladder: ["low", "medium", "high", "xhigh", "max"],
+		ladderKnown: true,
+		level: "low",
+	});
+	assert.equal(carry.checked, true);
 	assert.equal(carry.rung, "high");
 	assert.equal(
 		carry.confirmation("openrouter/openai/gpt-6-astra"),
-		"The first message will run openrouter/openai/gpt-6-astra at high effort.",
+		"This conversation will run openrouter/openai/gpt-6-astra at high effort.",
 	);
 });
 
 test("a model that does not offer it clears the rung AND names the level that will run", () => {
-	const carry = effortCarry("high", ["low", "medium"], "low");
+	const carry = effortCarry("high", {
+		ladder: ["low", "medium"],
+		ladderKnown: true,
+		level: "low",
+	});
+	assert.equal(carry.checked, true);
 	assert.equal(carry.rung, null);
 	const sentence = carry.confirmation("openrouter/meta/llama-4");
-	assert.match(sentence, /The first message will run openrouter\/meta\/llama-4\./);
-	assert.match(sentence, /effort goes back to low/, "the level that will actually run");
-	assert.match(sentence, /high belongs to the other model/, "the level that was dropped");
+	assert.match(sentence, /This conversation will run openrouter\/meta\/llama-4\./);
+	assert.match(sentence, /effort falls to low/, "the level that will actually run");
+	assert.match(sentence, /high is not one of that model's levels/, "the level dropped");
 });
 
 test("a pane that never chose a rung is unchanged, and claims no level", () => {
-	const carry = effortCarry("", ["low", "medium"], "low");
+	const carry = effortCarry("", { ladder: ["low", "medium"], ladderKnown: true, level: "low" });
+	assert.equal(carry.checked, true);
 	assert.equal(carry.rung, null);
 	assert.equal(
 		carry.confirmation("openrouter/openai/gpt-5"),
-		"The first message will run openrouter/openai/gpt-5.",
+		"This conversation will run openrouter/openai/gpt-5.",
 	);
 });
 
-test("a resolution that names no default level still says the rung was cleared", () => {
-	// The fallback is `effortState(...)?.label ?? "its own default"` at the call
-	// site; the decision must not turn an unknown default into a silent clear.
-	const carry = effortCarry("xhigh", [], "its own default");
+test("a target that reports no level says so, rather than naming one it does not have", () => {
+	/*
+	 * QA round 4, Q-R4-1: the degradation used to print "its own default", which
+	 * asserts a level on a target that reports none - a non-reasoning model, where
+	 * the pane shows no effort reading at all. Saying that no level is set is the
+	 * honest form, and it is still a clearing that is STATED.
+	 */
+	const carry = effortCarry("xhigh", { ladder: ["low"], ladderKnown: true, level: null });
 	assert.equal(carry.rung, null);
 	assert.match(
 		carry.confirmation("openrouter/openai/gpt-5"),
-		/effort goes back to its own default, because xhigh belongs to the other model's ladder/,
+		/No effort level is set on it, because xhigh is not one of that model's levels/,
 	);
+});
+
+test("a ladder that was never reported is a check that could not be made, not an empty ladder", () => {
+	/*
+	 * Review round 4, F4. `!ladder.includes(...)` is also true when the resolution
+	 * reported no ladder at all, and the old branch then asserted "belongs to the
+	 * other model's ladder" about a model whose ladder nobody had read (the class
+	 * UX round 3's U12 named). `checked: false` is what makes the caller refuse
+	 * instead of recording a rung-less selection under a claim it cannot support.
+	 */
+	const carry = effortCarry("high", { ladder: [], ladderKnown: false, level: "low" });
+	assert.equal(carry.checked, false);
+	assert.equal(carry.rung, null);
+	assert.match(
+		carry.confirmation("openrouter/openai/gpt-5"),
+		/effort level was not carried, because that model's levels could not be read/,
+	);
+});
+
+test("the comparison is case-insensitive and padded, and the ladder's own spelling is recorded", () => {
+	// QA round 4, Q-R4-2: the trim used to live at the call site and the compare was
+	// exact, so a padded or differently-cased rung silently stopped carrying. The
+	// helper owns both now, and it records the string the wire will be asked about
+	// again - the ladder's - rather than the caller's.
+	const carry = effortCarry("  High ", {
+		ladder: ["low", "medium", "high"],
+		ladderKnown: true,
+		level: "low",
+	});
+	assert.equal(carry.rung, "high");
+	assert.equal(carry.checked, true);
 });
 
 test("the affordance is gated on all three capabilities the pickers depend on", () => {
@@ -683,21 +729,51 @@ function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
 		notes: [],
 		reject: false,
 		lastPreviewKey: null,
+		/**
+		 * The rungs a NAMED model's resolution reports, by selector. Empty means
+		 * "answer with the SPEC's own ladder", which is what every test that does not
+		 * care about the carrying question wants.
+		 */
+		ladders: {},
+		/**
+		 * How many leading resolutions to fail before answering. This is how a
+		 * transient probe failure is reproduced: the probe fails, the pick's own
+		 * resolution (a SECOND call, on the same or another key) would succeed.
+		 */
+		failing: 0,
 		preview: (key) => {
 			if (!key[5]) return resolved;
 			const slash = key[5].indexOf("/");
-			return frame({
+			const named = frame({
 				...SPEC,
 				provider: key[5].slice(0, slash),
 				model_id: key[5].slice(slash + 1),
 				reasoning_effort: key[6],
+			});
+			const rungs = instance.ladders[key[5]];
+			if (rungs === "unreported")
+				return frame({
+					...named,
+					reasoning_efforts: undefined,
+					reasoning_default_effort: undefined,
+				});
+			if (!Array.isArray(rungs)) return named;
+			return frame({
+				...named,
+				reasoning_efforts: rungs,
+				reasoning_default_effort: "low",
 			});
 		},
 	};
 	instance.client = {
 		fetchQuery: async (query) => {
 			instance.requests.push(query.queryKey);
+			instance.lastPreviewKey = query.queryKey;
 			if (instance.reject) throw new Error("The candidate was refused.");
+			if (instance.failing > 0) {
+				instance.failing -= 1;
+				throw new Error("The resolution could not be reached.");
+			}
 			return instance.preview(query.queryKey);
 		},
 	};
@@ -846,4 +922,126 @@ test("a resolved ladderless model stays honestly non-adjustable and makes no req
 	assert.equal(view.emptyText, "Effort is not adjustable on this model.");
 	assert.deepEqual(picker.requests, []);
 	assert.deepEqual(picker.selections, []);
+});
+
+/* ---- 7. the carry, driven through the SHIPPED hook the picker calls ------- */
+
+/*
+ * The missing level, named by review round 4: everything above pins `effortCarry`
+ * as a pure decision and the call site as source text, and neither drives the
+ * path a user's click takes. These tests call the REAL `useDraftPick` — the same
+ * function `ModelPicker` calls, extracted from the shipped file and executed
+ * against a stubbed transport — with the reading a model pick passes it.
+ *
+ * They are also where F1 and F2 are pinned, because both are properties of where
+ * the check lives rather than of what it decides: the probe has to sit inside the
+ * busy window, and a probe that cannot answer has to REFUSE the pick.
+ */
+
+const DRAFT_RUNG = {
+	provider: "openrouter",
+	model_id: "openai/gpt-5",
+	reasoning_effort: "high",
+};
+const NEW_MODEL = {
+	provider: "openrouter",
+	model_id: "openai/gpt-6-astra",
+	reasoning_effort: null,
+};
+const MODEL_READING = {
+	describe: (resolved) =>
+		`This conversation will run ${
+			selectionSelector(
+				resolved.snapshot.selected_model ?? resolved.snapshot.effective_model,
+			) ?? "?"
+		}.`,
+	carry: "high",
+	carryUnchecked: "The model was not changed.",
+	refused: "The model was not changed.",
+};
+
+test("a model pick carries the chosen rung through the shipped hook, and says the level", async () => {
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/openai/gpt-6-astra"] = [
+		"low",
+		"medium",
+		"high",
+		"xhigh",
+		"max",
+	];
+	const hook = picker.hook();
+	await hook.pick(NEW_MODEL, MODEL_READING);
+	assert.deepEqual(picker.selections, [{ ...NEW_MODEL, reasoning_effort: "high" }]);
+	assert.equal(picker.requests.length, 2, "carrying costs the probe and the pick");
+	assert.equal(hook.result.tone, "success");
+	assert.match(hook.result.text, /at high effort\.$/);
+	assert.deepEqual(picker.notes, []);
+});
+
+test("a model that does not offer the rung clears it, states the level, and costs one resolution", async () => {
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/openai/gpt-6-astra"] = ["low", "medium"];
+	const hook = picker.hook();
+	await hook.pick(NEW_MODEL, MODEL_READING);
+	assert.deepEqual(picker.selections, [NEW_MODEL], "no rung is recorded");
+	assert.equal(
+		picker.requests.length,
+		1,
+		"the clearing is served from the probe, which is the pick's own key",
+	);
+	assert.match(hook.result.text, /effort falls to low/);
+	assert.match(hook.result.text, /because high is not one of that model's levels/);
+});
+
+test("F1: a probe that cannot answer REFUSES the pick instead of dropping the rung in silence", async () => {
+	/*
+	 * The defect the round-4 review filed: a caller-side probe's failure left the
+	 * decision at its level-free default while the pick went ahead and recorded
+	 * `reasoning_effort: null` - U1's original silence, on a narrower path. The
+	 * pick's own resolution is a SECOND call and would have succeeded, so
+	 * "the pick's refusal path reports it" was never true.
+	 */
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/openai/gpt-6-astra"] = ["low", "medium", "high"];
+	picker.failing = 1;
+	const hook = picker.hook();
+	await hook.pick(NEW_MODEL, MODEL_READING);
+	assert.deepEqual(picker.selections, [], "nothing is recorded");
+	assert.equal(picker.requests.length, 1, "the pick's own resolution is not attempted");
+	assert.equal(hook.result.tone, "error");
+	assert.match(hook.result.text, /could not be checked, so nothing was changed/);
+	assert.deepEqual(picker.notes, [[hook.result.text, true]], "said twice, as a refusal is");
+});
+
+test("F4: an unreported ladder is refused, not read as an empty one", async () => {
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/openai/gpt-6-astra"] = "unreported";
+	const hook = picker.hook();
+	await hook.pick(NEW_MODEL, MODEL_READING);
+	assert.deepEqual(picker.selections, []);
+	assert.equal(hook.result.tone, "error");
+	assert.match(hook.result.text, /could not be checked/);
+});
+
+test("F2: the busy window covers the probe, so a second click cannot commit behind it", async () => {
+	const picker = pickerHarness({ initial: DRAFT_RUNG });
+	picker.ladders["openrouter/openai/gpt-6-astra"] = ["low", "high"];
+	const hook = picker.hook();
+	const pending = hook.pick(NEW_MODEL, MODEL_READING);
+	assert.equal(
+		picker.hook().busy,
+		true,
+		"busy is set before the probe, and it is the dialog's only guard",
+	);
+	await pending;
+	assert.equal(picker.hook().busy, false, "and it clears when the pick settles");
+});
+
+test("a model pick on a pane with no rung is unchanged, and passes no carry question", async () => {
+	const picker = pickerHarness();
+	const hook = picker.hook();
+	await hook.pick(NEW_MODEL, { ...MODEL_READING, carry: "" });
+	assert.deepEqual(picker.selections, [NEW_MODEL]);
+	assert.equal(picker.requests.length, 1, "no probe without a rung to check");
+	assert.match(hook.result.text, /This conversation will run openrouter\/openai\/gpt-6-astra\./);
 });

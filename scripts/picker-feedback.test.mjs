@@ -597,8 +597,13 @@ test("one binding answers which model the session is on", () => {
 	);
 	assert.match(
 		picker,
-		/description=\{\s*draft\s*\?\s*shownSelector\s*\?\s*`The first message will run \$\{shownSelector\}/,
-		"a draft's header sentence names the first message, not a session that does not exist",
+		/description=\{\s*draft\s*\?\s*shownSelector\s*\?\s*`This conversation starts on \$\{shownSelector\}/,
+		// Round 4's D10: the sentence names the CONVERSATION the draft becomes, not
+		// one message of it - the pick rides `sessions.create` and the backend pins
+		// the session to it, so "the first message only" was a scope the system does
+		// not implement. It still must not call a session that does not exist a
+		// session, which is what the draft register is for.
+		"a draft's header sentence names the conversation the draft becomes, scope included",
 	);
 	assert.match(
 		picker,

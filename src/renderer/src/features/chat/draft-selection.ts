@@ -139,45 +139,101 @@ export async function fetchDraftPreview(
  * The wire cannot express "keep the previous rung": `reasoning_effort` names a
  * level on THIS request, and `null` is "no rung chosen", which the backend
  * resolves to the new model's own default. A pick that always sent `null`
- * therefore discarded an explicit choice in silence — the pane read `low` where
+ * therefore discarded an explicit choice in silence - the pane read `low` where
  * the user had set `high`, the first turn ran at a different level AND a
  * different cost, and every on-screen signal said the pick had succeeded
  * (UX U1; design D7 is the same defect read from the copy side).
  *
- * The backend can answer the only question that matters — does the new model
- * OFFER that level — so this decides AFTER the new model is resolved, from the
+ * The backend can answer the only question that matters - does the new model
+ * OFFER that level - so this decides AFTER the new model is resolved, from the
  * resolution's own ladder, and returns both halves of the answer: the rung to
  * record, and the sentence the confirmation must print. Clearing a rung is a
  * legitimate outcome; clearing it silently is not, which is why the two live
  * together here rather than at the call site, where the sentence could drift
  * from the decision it describes.
  *
- * `carried` is the level in force on the DRAFT's own pick (empty when the user
- * never chose one), `ladder` the new model's resolved rungs, and `fallback` the
- * level the first message will actually run when the rung is dropped — the
- * resolved default's own label, or `its own default` when the resolution does
- * not name one.
+ * ## `checked`, and why an unreadable ladder is not an empty one
+ *
+ * An unresolved read reports no ladder at all, which is a different fact from a
+ * model that reports an empty one (UX round 3's U12, the predicate
+ * `specUnresolved` exists for). `ladder.includes(...)` is false in both cases,
+ * so the third branch used to assert "belongs to the other model's ladder"
+ * about a model whose ladder nobody had read (review round 4, F4). `checked` is
+ * how the caller can tell the difference and refuse rather than guess.
+ *
+ * ## Normalising here (review round 4, Q-R4-2)
+ *
+ * `carried` arrives as the pane holds it, padded and in whatever case the rung
+ * was written in; matching it against the ladder is the helper's job, not the
+ * caller's, so the trim lives here and the comparison is case-insensitive. The
+ * spelling RECORDED is the ladder's own, never the caller's, because that is
+ * the string the wire will be asked about again.
+ *
+ * `level` is the level the new model runs without a rung, read off the same
+ * resolution - and `null` when the resolution names none, which is the case a
+ * non-reasoning target produces. No sentence here says "its own default": that
+ * phrase was reported as a claim the pane cannot support on such a target
+ * (review round 4, Q-R4-1), and naming no level is what "no level is set" is
+ * for.
  */
-export function effortCarry(
-	carried: string,
-	ladder: readonly string[],
-	fallback: string,
-): { rung: string | null; confirmation: (selector: string) => string } {
-	if (!carried)
+export type EffortTarget = {
+	/** The rungs the new model reported, in its own order. */
+	ladder: readonly string[];
+	/**
+	 * Whether the resolution REPORTED a ladder, as opposed to none at all.
+	 * `reasoning_efforts` is present-but-empty on a model that has no levels.
+	 */
+	ladderKnown: boolean;
+	/** The level the new model runs with no rung chosen, or `null` if unwritten. */
+	level: string | null;
+};
+
+export type EffortCarry = {
+	/**
+	 * False when the new model's levels could not be READ. The caller must then
+	 * refuse the pick rather than record a rung-less selection while a level the
+	 * user chose disappears without a word (review round 4, F1).
+	 */
+	checked: boolean;
+	/** The rung to record, in the ladder's own spelling, or `null`. */
+	rung: string | null;
+	/** What the confirmation says, given the selector that was resolved. */
+	confirmation: (selector: string) => string;
+};
+
+export function effortCarry(carried: string, target: EffortTarget): EffortCarry {
+	const wanted = carried.trim();
+	if (!wanted)
 		return {
+			checked: true,
 			rung: null,
-			confirmation: (selector) => `The first message will run ${selector}.`,
-		};
-	if (ladder.includes(carried))
-		return {
-			rung: carried,
 			confirmation: (selector) =>
-				`The first message will run ${selector} at ${carried} effort.`,
+				`This conversation will run ${selector}.`,
+		};
+	if (!target.ladderKnown)
+		return {
+			checked: false,
+			rung: null,
+			confirmation: (selector) =>
+				`This conversation will run ${selector}. The effort level was not carried, because that model's levels could not be read.`,
+		};
+	const offered = target.ladder.find(
+		(rung) => rung.trim().toLowerCase() === wanted.toLowerCase(),
+	);
+	if (offered)
+		return {
+			checked: true,
+			rung: offered,
+			confirmation: (selector) =>
+				`This conversation will run ${selector} at ${offered} effort.`,
 		};
 	return {
+		checked: true,
 		rung: null,
 		confirmation: (selector) =>
-			`The first message will run ${selector}. Its effort goes back to ${fallback}, because ${carried} belongs to the other model's ladder.`,
+			target.level
+				? `This conversation will run ${selector}. Its effort falls to ${target.level}, because ${wanted} is not one of that model's levels.`
+				: `This conversation will run ${selector}. No effort level is set on it, because ${wanted} is not one of that model's levels.`,
 	};
 }
 

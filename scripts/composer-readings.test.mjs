@@ -306,7 +306,7 @@ test("a draft without a resolved model offers the pick, where it used to render 
 	});
 	assert.match(
 		html,
-		/<button type="button" aria-label="Model: none resolved yet\. Choose the model the first message will run on\."/,
+		/<button type="button" aria-label="Model: none resolved yet\. Choose the model this conversation will run on\."/,
 	);
 	assert.match(text(html), /Choose a model/);
 	assert.doesNotMatch(
@@ -404,7 +404,7 @@ test("a draft whose backend selects exposes model and effort as CONTROLS, in the
 	// user's question ("did that change my default?") had no answer on screen.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Model: openrouter\/openai\/gpt-5\. Click to choose a different model\. It applies to the first message\."/,
+		/<button type="button" aria-label="Model: openrouter\/openai\/gpt-5\. Click to choose a different model\. It applies to this conversation\."/,
 	);
 	assert.doesNotMatch(
 		html,
@@ -417,7 +417,7 @@ test("a draft whose backend selects exposes model and effort as CONTROLS, in the
 	// earlier, with the same U2 scope clause after it.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Reasoning effort: high\. Change it\. It applies to the first message\."/,
+		/<button type="button" aria-label="Reasoning effort: high\. Change it\. It applies to this conversation\."/,
 	);
 
 	// The sentences a draft may no longer say where the chip CAN open (R21/R8 of
@@ -478,7 +478,7 @@ test("a draft whose resolution is still in flight says so instead of offering a 
 	assert.match(html, /Resolving the model/, "the pending reading is on the pane");
 	assert.match(
 		html,
-		/aria-label="Model: resolving the model the first message will run on\."/,
+		/aria-label="Model: resolving the model this conversation will run on\."/,
 		"and it is announced as the question, not the answer",
 	);
 	// The app's own waiting treatment, not a bare sentence: this is the same
@@ -503,7 +503,7 @@ test("a failed resolution offers the retry nothing else on the pane would", () =
 	// React escapes the apostrophe in its text projection, hence the alternation.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Model: the first message(?:&#x27;|')s model was not resolved\. Retry\."/,
+		/<button type="button" aria-label="Model: this conversation(?:&#x27;|')s model was not resolved\. Retry\."/,
 		"the failure is a control, because `retry: false` means nothing else will ask",
 	);
 	assert.doesNotMatch(html, /role="status"/, "nothing is in flight any more");
@@ -578,7 +578,7 @@ test("a ladderless draft offers no effort control even where the model can be pi
 	// The model beside it IS a control: the gate is per reading, not per pane.
 	assert.match(
 		html,
-		/aria-label="Model: [^"]*\. Click to choose a different model\. It applies to the first message\."/,
+		/aria-label="Model: [^"]*\. Click to choose a different model\. It applies to this conversation\."/,
 	);
 	const effort = readingClasses(html, "Reasoning effort:");
 	assert.equal(effort.label, "Reasoning effort: reasoning.");
