@@ -1,8 +1,8 @@
 {
-  "head": "05cbed1c752e692c46494f0cac63d1ca0b578d71",
+  "head": "1715b917298d589114f4bd34e6b2eb8ff415203b",
   "headNote": "  THIS PASS (the unpacked-extension manager) re-stamped the file the paragraph above describes, and the values in that paragraph no longer describe it: `head` names `05cbed1c7` (`test(browser): render the extensions sheet's states in the gallery`), this branch's last commit to move `src` or `scripts`, `surfaces` is 166 (161 + the five `browser-extensions-sheet` entries this branch registers) and `frames` is 1224 (1164 + the sixty frames those five captured). The frames were captured by the committed capturer against a real Storybook at this head rather than re-stamped, so `dirtyWorkingTree` is false and describes committed source; the five stories render the shipped sheet over a stubbed transport, which is why a later sweep can re-derive every one of them. The commit this file rides in changes `docs/evidence` alone, so `head`'s two tree hashes are unchanged by it and the pair `check-evidence.mjs` asserts against `HEAD:src`/`HEAD:scripts` holds across it.",
-  "srcTree": "47ebf6728ee3717da6be3a034d54e7d5d68af642",
-  "scriptsTree": "6610a9e7d982292141fa80536012c2123956f3ab",
+  "srcTree": "679482b42a22ca1f50267e0715265e364ef2fcd9",
+  "scriptsTree": "b97bdd074c2247e305ef7e754d90c1a3c4fc9ba7",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-13T11:13:12.499634Z",
   "frames": 1224,
@@ -14,9 +14,9 @@
     "themes": "`capture-evidence.mjs`'s `THEMES.length` - 12. Asserted the same way as `surfaces`: the gate counts the capturer's own list and fails a mismatch."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-15T03:41:57.421Z",
-    "refreshedAtHead": "05cbed1c752e692c46494f0cac63d1ca0b578d71",
-    "refreshedFrames": 336,
+    "refreshedAt": "2026-09-15T05:10:01.844Z",
+    "refreshedAtHead": "1715b917298d589114f4bd34e6b2eb8ff415203b",
+    "refreshedFrames": 348,
     "refreshedStories": [
       "chat-ask-options--options",
       "chat-ask-options--single-option",
