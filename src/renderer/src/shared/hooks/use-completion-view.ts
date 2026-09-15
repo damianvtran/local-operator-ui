@@ -1,11 +1,17 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type RefObject, useEffect } from "react";
-import type { CanonicalFrontendState } from "../../../../shared/desktop-session-contract";
+import {
+	type CanonicalFrontendState,
+	type CompletionAttention,
+	receiptSettled,
+} from "../../../../shared/desktop-session-contract";
 
 /** A stream, mount, watch lease or offscreen row is never evidence of reading.
  * Capture canonical identity and completion together; navigation retires this
  * attempt, and main independently checks the actual BrowserWindow at admission.
+ * An acknowledgement is believed only when its ANSWER says this conversation is
+ * read (`receiptSettled`), never because the call resolved.
  */
 
 /** Poll cadence while the completion has not been acknowledged. */
@@ -14,6 +20,18 @@ const CHECK_MS = 500;
 const FAILURES_BEFORE_BACKOFF = 3;
 /** Ceiling on the backed-off cadence: ~1 attempt/minute, not ~7,200/hour. */
 const MAX_BACKOFF_MS = 60_000;
+/**
+ * The wait after `attempts` consecutive attempts that got nowhere.
+ *
+ * One function because two kinds of attempt back off (a refusal that failed and
+ * a refusal that cannot resolve) and two copies of the ladder would be two
+ * places to change the ceiling.
+ */
+const backoffMs = (attempts: number) =>
+	Math.min(
+		MAX_BACKOFF_MS,
+		CHECK_MS * 2 ** (attempts - FAILURES_BEFORE_BACKOFF + 1),
+	);
 export function useCompletionView(
 	frontend: CanonicalFrontendState | null | undefined,
 	ready: boolean,
@@ -40,8 +58,21 @@ export function useCompletionView(
 		let cancelled = false;
 		let pending = false;
 		let acknowledged = false;
-		let failures = 0;
+		let attempts = 0;
 		let nextAttempt = 0;
+		// All non-settling outcomes share a budget: alternating a refusal with
+		// an old backend's unread 2xx must not reset the ladder forever.
+		const unresolved = (reason: unknown) => {
+			attempts += 1;
+			if (attempts === FAILURES_BEFORE_BACKOFF) {
+				console.warn(
+					`[attention] ${sessionId} receipt unresolved after ${attempts} attempts; backing off`,
+					reason,
+				);
+			}
+			if (attempts >= FAILURES_BEFORE_BACKOFF)
+				nextAttempt = Date.now() + backoffMs(attempts);
+		};
 		let timer = 0;
 		const stop = () => {
 			if (timer) {
@@ -65,53 +96,51 @@ export function useCompletionView(
 			);
 			if (!element) return;
 			const rect = element.getBoundingClientRect();
-			const x = rect.left + rect.width / 2;
 			const y = rect.bottom - 2;
+			if (rect.width <= 0 || rect.height <= 0 || y < 0 || y >= innerHeight)
+				return;
+			/*
+			 * SEVERAL SAMPLES, not one pixel. The gate exists to prove the END of this
+			 * result is on screen -- not merely that a row exists -- so the probe has to
+			 * be a hit test rather than a layout measure. But a single sample at the
+			 * row's centre is at the mercy of the app's OWN floating controls, and it
+			 * was: measured on the real app, the "Scroll to bottom" button sits at the
+			 * transcript's bottom centre, over the last row's bottom edge, and the one
+			 * sample landed on it -- so the acknowledgement was refused for as long as
+			 * the conversation stayed open, over a result the reader was looking at.
+			 * (That control also stayed hit-testable while invisible; it no longer is.
+			 * Both halves are needed: the overlay was a bug and the probe was fragile.)
+			 *
+			 * One free sample admits a partially covered bottom edge, unlike the old
+			 * centre-only rule. It does not prove the whole result is unobscured. A
+			 * viewport-spanning scrim still covers every sample and refuses receipt.
+			 */
+			const coveredBy = (x: number): boolean => {
+				if (x < 0 || x >= innerWidth) return true;
+				const top = document.elementFromPoint(x, y);
+				return !top || !element.contains(top);
+			};
 			if (
-				rect.width <= 0 ||
-				rect.height <= 0 ||
-				x < 0 ||
-				x >= innerWidth ||
-				y < 0 ||
-				y >= innerHeight
+				[0.25, 0.5, 0.75].every((fraction) =>
+					coveredBy(rect.left + rect.width * fraction),
+				)
 			)
 				return;
-			const top = document.elementFromPoint(x, y);
-			if (!top || !element.contains(top)) return;
 			pending = true;
-			void desktopResult({ op: "sessions.seen", sessionId, completionToken })
-				.then(() => {
+			void desktopResult<CompletionAttention>({
+				op: "sessions.seen",
+				sessionId,
+				completionToken,
+			})
+				.then((state) => {
+					if (!receiptSettled(state, sessionId, completionToken)) {
+						unresolved("answer did not settle the rendered completion");
+						return;
+					}
 					acknowledged = true;
-					// Nothing left to attempt for this completion; a new one
-					// re-runs the effect with a fresh token.
 					stop();
 				})
-				.catch((error: unknown) => {
-					// No optimistic clear. A rejected native-focus check or stale
-					// token leaves authoritative state intact and permits a retry.
-					//
-					// Backed off and logged ONCE at the threshold because the
-					// failing cases are persistent, not transient: a backend that
-					// predates the receipt route, a wedged store, a window state
-					// the native gate keeps refusing. At a flat cadence that is
-					// thousands of silent IPC round trips an hour with nothing in
-					// the renderer rendering `attention` to explain them.
-					failures += 1;
-					if (failures === FAILURES_BEFORE_BACKOFF) {
-						console.warn(
-							`[attention] could not mark ${sessionId} read after ${failures} attempts; backing off`,
-							error,
-						);
-					}
-					if (failures >= FAILURES_BEFORE_BACKOFF) {
-						nextAttempt =
-							Date.now() +
-							Math.min(
-								MAX_BACKOFF_MS,
-								CHECK_MS * 2 ** (failures - FAILURES_BEFORE_BACKOFF + 1),
-							);
-					}
-				})
+				.catch((error: unknown) => unresolved(error))
 				.finally(() => {
 					pending = false;
 				});

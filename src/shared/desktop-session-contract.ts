@@ -68,6 +68,56 @@ export type CompletionAttention = {
 	/** False for a live owner that has not negotiated completion receipts. */
 	supported?: boolean;
 };
+
+/**
+ * The backend's machine code for "your token is no longer the current one".
+ *
+ * The string is the BACKEND's, and the backend is its source of truth:
+ * `SUPERSEDED_TOKEN_CODE` in `local_operator/session/attention.py`, documented
+ * for clients in `docs/DESKTOP_API.md`. This copy exists because a renderer
+ * cannot import Python, and a copy cannot be bound automatically across two
+ * repositories -- each side's tests pin its own literal, so a change on one side
+ * lands green on the other. What makes that a maintenance step rather than a
+ * silent break is that this literal is asserted against the documented wire value
+ * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
+ * names the backend's value.
+ *
+ * Nothing in the renderer FORKS on this code, and that is deliberate rather than
+ * an omission: `use-completion-view.ts` sends every rejection -- this 409
+ * included -- to the one shared retry ladder, so a superseded token costs its
+ * attempt like any other failure and the re-arm comes from the projection naming
+ * a NEW token, not from a special case here. It is kept because it is part of
+ * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
+ * a client that does need to tell the refusal apart must not have to spell the
+ * string itself.
+ */
+export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
+
+/**
+ * Whether an acknowledgement may be taken as marking this conversation READ.
+ *
+ * `sessions.seen` answers with the resulting attention state, and `unseen` is the
+ * whole verdict: a 2xx is NOT a read. A backend that had already moved past the
+ * token answered with a 200 whose body still said `unseen: true`, and a client
+ * that latched on the resolved call stopped retrying -- leaving the completion's
+ * mark on forever, over a result the operator was looking at (the reported
+ * defect). Identity is part of the test rather than assumed: only a state about
+ * THIS conversation can settle this attempt.
+ */
+export function receiptSettled(
+	state: unknown,
+	sessionId: string,
+	token: string,
+): boolean {
+	if (!state || typeof state !== "object") return false;
+	const attention = state as Partial<CompletionAttention>;
+	return (
+		attention.unseen === false &&
+		attention.conversation_id === `session/${sessionId}` &&
+		attention.completion_token === token
+	);
+}
+
 export function mergeCompletionAttention(
 	current: CompletionAttention | undefined,
 	incoming: CompletionAttention | undefined,

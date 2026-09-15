@@ -1,0 +1,341 @@
+name: Signed update candidate (nonpublishing)
+
+# Registration on the default branch needs its own reviewed change before the
+# first dispatch. This workflow never calls publish.yml or creates a release.
+#
+# Dispatch it from `main` (`--ref main`), never from the branch that carries the
+# candidate: the candidate is named by `expected_source_sha`, every job here is
+# guarded on the dispatch ref, and `ref-guard` fails the run loudly on any other
+# ref so that a wrong-ref attempt cannot report a green run in which nothing ran.
+#
+# Use of the Developer ID key is authorized by the `signed-update-candidate`
+# environment on the `build` job, not by the ref guard: read that job's comment
+# before dispatching, and confirm the environment carries its required reviewer.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_source_sha:
+        description: 'Explicitly reviewed candidate full commit SHA; dispatch from main, not the candidate branch; manager approval required before dispatch'
+        required: true
+        type: string
+      incumbent_tag:
+        description: 'Exact existing signed release to upgrade from; must ship an architecture-matched -<arch>.zip (v0.22.2 does); dispatch from main'
+        required: true
+        default: 'v0.22.2'
+        type: string
+
+permissions:
+  contents: read
+concurrency:
+  group: signed-update-candidate-${{ inputs.expected_source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  ref-guard:
+    # Runs on every dispatch, from every ref, and fails rather than skipping. The
+    # jobs below are all guarded on `github.ref`, so without this a dispatch from
+    # any other ref would skip the entire workflow: no step would run, nothing
+    # would fail, and the run would report green - the worst outcome for a first
+    # attempt at the thing this workflow exists for, because it reads as success.
+    # `workflow_dispatch` resolves the workflow definition from the ref it was
+    # dispatched against, and that ref has to be `main`: this file defines the
+    # half that handles the signing key, and it is the default branch's copy that
+    # does so. The candidate commit itself never comes from the dispatch ref - it
+    # is `expected_source_sha` - which is why the ref is the one thing a dispatcher
+    # has to get right and the one thing worth refusing loudly.
+    runs-on: ubuntu-latest
+    # Generous against the ~10 s a string comparison takes. It exists so a wedged
+    # step cannot hold a runner for the 360-minute default.
+    timeout-minutes: 5
+    steps:
+      - name: Refuse a dispatch from a ref other than main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != 'refs/heads/main' ]; then
+            echo "::error title=Dispatch ref refused::$REF is not refs/heads/main. Re-dispatch with --ref main; the candidate commit is named by expected_source_sha, not by the dispatch ref."
+            exit 1
+          fi
+          echo "Dispatch ref accepted: $REF"
+
+  provenance:
+    # Runs before the environment gate, and without it. `github.ref` below is the
+    # ref the dispatch came *from*, not the commit it names, so the person asked
+    # to authorize the signing key needs the resolved commit in front of them:
+    # this job holds no secret, imports no keychain and targets no environment,
+    # and exists to put that commit on the run page before the approval prompt.
+    needs: ref-guard
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Generous against the ~20 s a checkout and a `git show` take. It exists so a
+    # wedged step cannot hold a runner for the 360-minute default.
+    timeout-minutes: 5
+    steps:
+      # Before the checkout rather than after it: `actions/checkout` falls back to
+      # the event ref when its `ref` input is empty or whitespace (both are
+      # trimmed), so an unset input would check out `main` and this job would then
+      # record main's head under a heading that says it is the pinned candidate.
+      # Refusing the input first means the summary can only ever name a commit the
+      # dispatch actually named.
+      - name: Refuse a missing or unpinned candidate SHA
+        env:
+          EXPECTED: ${{ inputs.expected_source_sha }}
+        run: |
+          # The same shape rule as the guard before the keychain. `build` goes on
+          # to prove this equals the checked-out HEAD; here it is enough that the
+          # value cannot be absent.
+          [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_source_sha }}
+          persist-credentials: false
+      - name: Record the commit the dispatch pinned
+        run: |
+          {
+            echo '### Pinned candidate awaiting sign-off'
+            echo
+            echo '```'
+            git show -s --format="commit    %H%nauthor    %an <%ae>%ncommitter %cn <%ce>%ndate      %aI%nsubject   %s" HEAD
+            echo '```'
+            echo
+            echo 'Approve the signed-update-candidate environment only if this'
+            echo 'commit is the head of the reviewed PR named when it was dispatched.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    # `github.ref` is the ref the dispatch came FROM and is not the control that
+    # protects the signing key: the tree that receives it is
+    # `inputs.expected_source_sha`, and the first step below proves only that the
+    # input is 40 lowercase hex characters equal to the checked-out HEAD - never
+    # that anyone reviewed that commit. An ancestor-of-`main` check would be the
+    # wrong control for the same reason in reverse: the intended first candidate
+    # is unmerged work on another branch.
+    if: github.ref == 'refs/heads/main' && needs.provenance.result == 'success'
+    needs: provenance
+    runs-on: macos-latest
+    # 75 min against publish.yml's documented 60 for the same signing and
+    # notarizing workload: this job adds `setup-python`, the package-closure
+    # assertion and a two-architecture upload. Packaging there is measured at
+    # 30-50 min, and the bound exists because a codesign hang once sat for ~5h50m
+    # (run 33948569170) instead of failing. A wedged step must fail bounded.
+    timeout-minutes: 75
+    # The environment is the control. A job targeting an environment with a
+    # required reviewer does not start any step - so the keychain import below
+    # cannot run, and CSC_KEY_PASSWORD / APPLE_ID / APPLE_ID_PASSWORD /
+    # APPLE_TEAM_ID are never placed in a live environment - until that reviewer
+    # approves the deployment. That makes the approval, rather than the right to
+    # dispatch, the thing that releases the key. The `provenance` job above is
+    # what the approver reads to decide.
+    #
+    # This is a standing precondition, not a one-time setup: it holds only while
+    # `signed-update-candidate` carries its required reviewer, so confirm that is
+    # still the case before dispatching. As configured, that environment has one
+    # required reviewer (`damianvtran`), a custom branch policy of `main`, and
+    # `can_admins_bypass: true`. The branch policy is a second control and it
+    # fails closed - a deployment ref outside it is refused rather than run
+    # unprotected - and a dispatch from `main` is the case this workflow exists
+    # for. `can_admins_bypass: true` means an admin can force the deployment
+    # without approving it, which no workflow file can turn off.
+    #
+    # The failure mode to keep in mind is the quiet one: referencing an
+    # environment that does not exist creates it *unprotected* and the job simply
+    # runs, so a misspelled environment name is a way past the gate rather than a
+    # red job.
+    #
+    # Not covered: the environment does not read the tree, so an approver can
+    # still approve unreviewed code by mistake; the approval is same-identity -
+    # one required reviewer with self-review permitted (`prevent_self_review` is
+    # off), on a repository where every agent dispatches as that one account - so
+    # it is a deliberate second action by one principal rather than review by a
+    # second person, and it can be taken through the pending-deployments API; it
+    # does not stop another workflow in this repository from reaching these
+    # repository-level secrets; and it does not apply to `exact-update`, which is
+    # built to hold no secret at all.
+    environment: signed-update-candidate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_source_sha }}
+          persist-credentials: false
+      - name: Refuse unpinned or different source before accessing signing secrets
+        env:
+          EXPECTED: ${{ inputs.expected_source_sha }}
+        run: |
+          [[ "$EXPECTED" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      # No `cache: pnpm` here, unlike publish.yml, and `exact-update` below does
+      # the same. This job builds a tree named by `expected_source_sha` - code that
+      # has not necessarily been reviewed, running with the signing key reachable
+      # in its environment - and `workflow_dispatch` writes caches into the
+      # dispatch ref's scope, which is `main`'s. The entry is an exact-key restore
+      # on the candidate's own `pnpm-lock.yaml`, so it is only ever read by a run
+      # whose lockfile hashes the same (the merge case, not an arbitrary overwrite
+      # of a warm entry), and no secret goes into a cache path. It is still store
+      # content that candidate code chose, sitting in the default branch's trusted
+      # scope and counting against the repository's cache quota, and this job is
+      # dispatch-only with a 75-minute bound: a cold install is the cheaper side of
+      # that trade, and it keeps the pnpm setup identical to `exact-update`'s.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare job-local signing keychain
+        env:
+          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          CSC_KEYCHAIN="$RUNNER_TEMP/candidate.keychain-db"
+          echo "CSC_KEYCHAIN=$CSC_KEYCHAIN" >> "$GITHUB_ENV"
+          CERTIFICATE="$RUNNER_TEMP/candidate.p12"
+          trap 'rm -f "$CERTIFICATE"' EXIT
+          printf '%s' "$CSC_CONTENT" | base64 --decode > "$CERTIFICATE"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          security default-keychain -s "$CSC_KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          # A fresh keychain defaults to lock-on-sleep with a 300s timeout. It
+          # relocked partway through signing and codesign blocked on a GUI unlock
+          # prompt for ~6h (run 33948569170). Without -t/-l this removes both the
+          # timeout and lock-on-sleep, mirroring electron-builder's own
+          # createKeychain. show-keychain-info prints only the resulting
+          # "no-timeout" line, never the password, and this job holds the
+          # keychain unlocked across a longer window than publish.yml does
+          # (setup-python, the build, a two-architecture electron-builder, then
+          # DMG notarization and stapling), so the assertion is carried over
+          # rather than dropped: if the settings call ever stops doing what it
+          # says, the failure lands here instead of mid-signature hours later.
+          security set-keychain-settings "$CSC_KEYCHAIN"
+          security show-keychain-info "$CSC_KEYCHAIN"
+          security import "$CERTIFICATE" -k "$CSC_KEYCHAIN" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+      - run: pnpm setup-python
+      - name: Build signed candidate without publishing or version changes
+        env:
+          NOTARIZE: 'true'
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          pnpm build
+          # The arch flags are pinned here even though `main`'s build.mac.target
+          # already resolves to the same `{arm64: [dmg, zip], x64: [dmg, zip]}`:
+          # the dispatch names a candidate commit, not necessarily `main`, and the
+          # updater exercise needs an archive named for the runner's own arch. On
+          # a tree whose config says `arch: ["universal"]` the explicit flags are
+          # what keep that asset present, so the arch set stays a property of this
+          # workflow rather than of whichever tree is checked out.
+          pnpm exec electron-builder --mac --arm64 --x64 --publish never -c.forceCodeSigning=true
+          pnpm notarize-dmg
+          pnpm verify-macos-artifacts
+          node scripts/check-packaged-closure.mjs --dist dist
+          git diff --exit-code package.json
+      # `*.blockmap` is what makes an update a delta rather than a full-file
+      # download, and publish.yml's macOS upload carries it for that reason: the
+      # files are written beside every archive and were once dropped at upload,
+      # which left every release without one. Dropping them here would mean the
+      # candidate's artifact set differs from the set a release ships, so the
+      # exercise could only ever cover the full-download path a real update takes
+      # only when no blockmap is available.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-update-candidate-${{ inputs.expected_source_sha }}
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/*.blockmap
+            dist/*-mac*.yml
+          if-no-files-found: error
+          retention-days: 7
+
+  exact-update:
+    needs: build
+    # The guard is repeated here rather than left to `needs:` alone: `always()` -
+    # the obvious thing to reach for when the proof artifact should upload after a
+    # failed build - is a status-check function, and including one of those in an
+    # `if` replaces the default `success()` check that a plain condition keeps. So
+    # `always()` would be enough to run candidate code on a dispatch this workflow
+    # does not serve, and the build result is asserted here explicitly to keep the
+    # guard meaning what it reads as even then. A fresh hosted VM: no signing
+    # keychain, Apple/API secrets, live installation or user sessions. The harness
+    # refuses self-hosted and local execution.
+    if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
+    runs-on: macos-latest
+    # 35 min: downloads a ~350 MB incumbent, installs it into VM-local state with
+    # a synthetic legacy venv, drives the unmodified incumbent's electron-updater
+    # singleton to install the candidate, then relaunches and health-checks it.
+    # The harness bounds each phase and reports BLOCKED rather than approximating,
+    # so this only has to bound a phase that wedges.
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_source_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-update-candidate-${{ inputs.expected_source_sha }}
+          path: candidate
+      - name: Refuse a malformed incumbent tag
+        env:
+          INCUMBENT_TAG: ${{ inputs.incumbent_tag }}
+        run: |
+          # The tag selects which published release is downloaded and which
+          # incumbent app is installed, so a typo or a branch name has to be a
+          # refusal here rather than an ambiguous failure deep inside the
+          # harness. `^v<X.Y.Z>$` is the shape every release in this repository
+          # uses; the harness separately requires that release to carry a
+          # `-${process.arch}.zip`.
+          [[ "$INCUMBENT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+      - name: Exercise unmodified incumbent updater against exact candidate bytes
+        env:
+          INCUMBENT_TAG: ${{ inputs.incumbent_tag }}
+        run: |
+          # Exit 2 is BLOCKED - a capability this VM lacks, the verdict the
+          # harness prefers over a surrogate result. Exit 1 is the harness's own
+          # FAIL, a candidate failing a check about what was assembled, but it is
+          # also what node exits with when the harness is not there at all, which
+          # is exactly what a dispatch against a SHA predating it hits; the two
+          # are not distinguishable from the exit code. Both fail the job, so the
+          # label below names the outcome without asserting a cause it cannot
+          # know, and the step log is what separates them. `--evidence` is passed
+          # explicitly so the uploaded path does not depend on the harness's own
+          # default.
+          status=0
+          node scripts/verify-signed-update.mjs \
+            --candidate-dir candidate \
+            --incumbent-tag "$INCUMBENT_TAG" \
+            --evidence signed-update-evidence || status=$?
+          case "$status" in
+            0) verdict='PASS' ;;
+            2) verdict='BLOCKED - a capability this runner lacks; not a candidate failure' ;;
+            *) verdict="FAIL - the exercise did not complete (exit $status); the log says whether a candidate check failed or the harness never started" ;;
+          esac
+          {
+            echo "### Signed update exercise: $verdict"
+            echo
+            echo "harness exit code: $status"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      # `if-no-files-found: warn` rather than `error`: the step above already
+      # fails the job on a non-zero exit, and when the harness dies before its
+      # first record - exactly what happens against a SHA predating it - `error`
+      # adds a second red step about a missing path on top of the real message.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: signed-update-proof-${{ inputs.expected_source_sha }}
+          path: signed-update-evidence
+          if-no-files-found: warn
+          retention-days: 14
