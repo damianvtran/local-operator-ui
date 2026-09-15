@@ -1354,16 +1354,20 @@ app.on("will-quit", (event) => {
 
 // Handle before-quit event to ensure proper cleanup
 /*
- * The session-cookie hold: one quit spent on the browser host's stop, so the
+ * The session-cookie hold: the quit waits on the browser host's stop, so the
  * snapshot that stop writes is on disk before the app goes away.
  *
  * The stop reads the cookie jar over CDP, so it is asynchronous and its duration
  * is the host's to inflate; a quit that exited mid-snapshot would leave the next
  * launch with nothing to restore, and with a marker the next start rejects.
- * Module scope so the re-quit does not hold itself again, and the decision itself
- * lives in `createSessionCookieQuitHold`, which is testable without booting the
- * app. The hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget the
- * app quits anyway, leaves the marker behind and says so.
+ * EVERY quit while that stop is owed is held, including a second one the user
+ * makes while the first is still waiting — the quit that releases them is the
+ * hold's own, issued once the stop has settled or the budget has expired, and it
+ * is the only pass that may proceed. Module scope so the mark distinguishing
+ * those two survives between quits, and the decision itself lives in
+ * `createSessionCookieQuitHold`, which is testable without booting the app. The
+ * hold is bounded (`SESSION_COOKIE_QUIT_BUDGET_MS`); past the budget the app quits
+ * anyway, leaves the marker behind and says so.
  *
  * WHY THIS HOLDS `before-quit` AND NOT `will-quit`, where it was authored: the
  * `will-quit` listener above also owns the backend's owned cleanup, and that
@@ -1387,8 +1391,11 @@ const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
 
 app.on("before-quit", async (event) => {
 	/*
-	 * Hold the first quit for the browser host's stop, then let the ordinary pass
-	 * through: one hold per quit, and the second pass runs the body below.
+	 * Hold the quit for the browser host's stop, then let the ordinary pass
+	 * through: the stop settles or the budget expires, the hold asks for the quit
+	 * that reaches the body below. A second quit arriving while that stop is still
+	 * running is held against the same stop — see the hold's own module for why a
+	 * spent flag could not do that and exited with the snapshot still running.
 	 *
 	 * `before-quit` starts the stop and cannot await it, so the wait lives here;
 	 * the `will-quit` listener owns the owned cleanup and runs once this has
