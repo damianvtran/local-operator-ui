@@ -56,6 +56,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
+import { COMPOSER_TEXTAREA_SELECTOR } from "../composer-field";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -265,8 +266,37 @@ type MessageInputProps = {
 	 * flight does NOT disable the composer: typing during a turn steers it, and
 	 * a pending gate is answered here. So the stop button sits beside Send
 	 * rather than replacing it, and only while the owner is actually working.
+	 *
+	 * `active` is `busy` AND the backend's `session_interrupt` capability, folded
+	 * at the call site rather than here so that the ESCAPE accelerator's own
+	 * predicate can be the same expression (`use-interrupt-on-escape.ts`). An
+	 * older backend therefore renders no control at all rather than one whose
+	 * every press is refused: the button promises this session's CURRENT WORK,
+	 * and the only other route this build has for stopping work is `/stop`, which
+	 * ends the session - a different promise than the control makes.
 	 */
 	canonicalStop?: { active: boolean; onStop: () => void };
+	/**
+	 * Whether this session's backend negotiates `session_interrupt` at all.
+	 *
+	 * The control's SLOT exists whenever this is true, even while no turn runs:
+	 * the reservation below is what keeps the dictation control out of the
+	 * position a reflex second press lands on (UX round 1's U1, QA's Q1). It is
+	 * the same capability `canonicalStop.active` is folded with at the call site,
+	 * so the reservation cannot outlive the control it reserves for.
+	 */
+	canonicalStopAvailable?: boolean;
+	/**
+	 * What the last interrupt left running, or null for the common case.
+	 *
+	 * Deliberately NOT the `sendError` alert, which is the failure register: this
+	 * sentence says a stop worked and names work that outlived it, so routed
+	 * through the alert it would read as an error and take `role="alert"`'s
+	 * assertive announcement for a press the user just made themselves. Muted ink
+	 * and its own line, which is what `heldNotice` and `refusedNotice` do in that
+	 * same region for the same reason.
+	 */
+	interruptNotice?: string | null;
 	/**
 	 * The last send that failed, rendered against this composer rather than at
 	 * the top of the page.
@@ -461,11 +491,13 @@ const firstLiveAnswerOption = (): HTMLElement | null =>
  *
  * Queried rather than read from a ref because the one caller
  * (`composerHoldsFocusUntouched`) runs from `chat-page.tsx`'s layout effect,
- * outside this component's render, and `aria-label="Message"` is the same
- * handle the answer options are found by.
+ * outside this component's render, and `COMPOSER_TEXTAREA_SELECTOR` is the same
+ * handle the answer options are found by - and the same one the escape ladder's
+ * field rule uses, which is why the name lives in a leaf module rather than
+ * here (see `composer-field.ts`).
  */
 const composerBox = (): HTMLTextAreaElement | null =>
-	document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]');
+	document.querySelector<HTMLTextAreaElement>(COMPOSER_TEXTAREA_SELECTOR);
 
 /**
  * Whether the user has POINTED at the composer since it was last handed focus.
@@ -576,6 +608,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			hasNewActivity = false,
 			scrollToBottom = () => {},
 			canonicalStop,
+			canonicalStopAvailable = false,
+			interruptNotice,
 			sendError,
 			initialSuggestions,
 			agentData,
@@ -1687,7 +1721,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `docs/composer-status-tabs.md` § 2.1. The alert is a transient failure
 				 * that points at the composer; this row is persistent ambient context, so
 				 * it sits outboard of the transient one. Band order, top to bottom: row,
-				 * alert, box.
+				 * alert, the interrupt notice, box - the fourth block is a transient too and
+				 * therefore sits inboard of the row as well; see its own comment for why it
+				 * is the alert's sibling rather than its child.
 				 *
 				 * KEYED ON THE CONVERSATION, and that is a requirement rather than
 				 * tidiness: the composer is not remounted on a session switch, so a goal
@@ -2014,6 +2050,52 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							<p className="text-ink-muted">{heldNotice}</p>
 						)}
 					</div>
+				)}
+				{/*
+				 * What an interrupt left running, and NOT in the alert above.
+				 *
+				 * The band order the status row's comment records becomes row, alert,
+				 * notice, box, and the notice sits INBOARD of the alert because both are
+				 * transient results of a press while the row above is ambient context.
+				 * It is a sibling rather than a child of the alert region because that
+				 * region is the FAILURE register: it carries `text-danger` and
+				 * `role="alert"`, and this sentence says a stop WORKED. Sharing the
+				 * region would both paint it as an error and inherit the alert's
+				 * assertive announcement for a press the user made themselves - which is
+				 * the same reason the notifier deliberately raises no banner for a
+				 * completed `interrupted`. An `<output>` instead: it implies the same
+				 * polite `status` role, and its own definition - the outcome of a user
+				 * action - is this sentence exactly.
+				 *
+				 * Null in the common case by construction - see `interruptNotice` - so
+				 * a stopped turn with nothing under it leaves the band's height alone.
+				 * The padding steps are the alert's own, and they put this line one
+				 * padding step (16px at the default rung, 8 at the small one) inside
+				 * the box's OUTER edge - the same track the send-error alert resolves,
+				 * and NOT the textarea's text edge, which is that plus the textarea's
+				 * own step. Design round 1's D1 measured both (16/25 dev px at 1x,
+				 * +17/+25.5 CSS live): the two lines stacked here therefore do not share
+				 * a column with the placeholder beneath them, which is pre-existing and
+				 * which moving would move the alert too.
+				 */}
+				{interruptNotice && (
+					/*
+					 * `<output>` rather than a `role="status"` div, and the element is doing
+					 * real work rather than satisfying a linter: the role it implies IS
+					 * `status` (polite, an atomic whole), and its definition - the result of
+					 * a calculation or the outcome of a USER ACTION - is exactly this
+					 * sentence. `block` is needed because the element defaults to inline and
+					 * carries the padding steps the alert beside it uses.
+					 */
+					<output
+						className={cn(
+							CHAT_MEASURE,
+							"block text-body-sm text-ink-muted",
+							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
+						)}
+					>
+						{interruptNotice}
+					</output>
 				)}
 				<div
 					className={cn(
@@ -2437,6 +2519,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										</Tooltip>
 									</>
 								)}
+								{/*
+								 * THE SLOT IS RESERVED, not merely vacated.
+								 *
+								 * Without this, pressing Stop slides the dictation control 36px
+								 * right - 32px of control plus the row's 4px gap - into the exact
+								 * centre of the box the press just landed in, so a reflex second
+								 * press starts a MICROPHONE RECORDING. Measured independently by
+								 * UX round 1 (U1) and QA (Q1): the element at the Stop's own
+								 * centre is `button[aria-label="Start recording"]` once the turn
+								 * settles, and pressing there reports `recording_started: true`.
+								 * A 120ms double press still hits Stop twice, which is what made
+								 * it a trap rather than something a user notices.
+								 *
+								 * So an invisible, non-interactive box holds the position for as
+								 * long as the backend negotiates `session_interrupt`, and the mic
+								 * never occupies the Stop's centre. `aria-hidden`, no focus and no
+								 * pointer events: this is geometry, not a control - nothing may be
+								 * reachable, announced or pressed there. The cost, stated rather
+								 * than hidden: the idle composer carries a one-control gap between
+								 * the dictation control and Send.
+								 *
+								 * Gated on the same legacy condition the mic is (`isLoading &&
+								 * currentJobId`), because that path hides the mic and renders its
+								 * own `Stop agent` in this cluster; reserving a slot nothing will
+								 * fill would move a control for no reason.
+								 */}
+								{canonicalStopAvailable &&
+									!canonicalStop?.active &&
+									!(isLoading && currentJobId) && (
+										<span
+											aria-hidden="true"
+											data-interrupt-slot=""
+											className={cn(
+												"pointer-events-none",
+												isSmallView ? "size-7" : "size-8",
+											)}
+										/>
+									)}
 								{canonicalStop?.active && (
 									<Tooltip content="Stop this session's current work">
 										<span>
