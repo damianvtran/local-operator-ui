@@ -27,6 +27,16 @@ import {
 	captureTabs,
 	readSession,
 } from "./session-store";
+import {
+	type RestoreReport,
+	SessionCookieVault,
+	sessionCookiePaths,
+} from "./session-cookies";
+import {
+	HIDDEN_COOKIE_JAR_WEB_PREFERENCES,
+	browserProfileCipher,
+	createHiddenCookieJarTarget,
+} from "./session-cookies-electron";
 import { permittedScheme } from "./settle";
 import {
 	BrowserStateWriter,
@@ -88,6 +98,10 @@ export interface BrowserHostHandle {
 	port: number;
 	profileDir: string;
 	agentTabs: () => number;
+	/** What the last restore of session-only cookies did. Exposed so an evidence
+	 * run can report it without reading the log, and so a test can assert the
+	 * restore ran before any page loaded. */
+	sessionCookies: () => RestoreReport | null;
 	stop: () => Promise<void>;
 }
 
@@ -100,6 +114,17 @@ export interface BrowserHostHandle {
  */
 let activeHost: BrowserHostHandle | null = null;
 
+/** The in-flight stop, so a second caller waits for the first instead of
+ * returning while the first is still writing the session-cookie snapshot. */
+let stopping: Promise<void> | null = null;
+
+/** Whether a stop is still owed: a running host, or a stop that has not settled.
+ * Read by the app's quit path, which has to hold the quit until the
+ * session-cookie snapshot the stop writes is on disk. */
+export function browserHostStopPending(): boolean {
+	return activeHost !== null || stopping !== null;
+}
+
 /**
  * Stop the host if one is running.
  *
@@ -108,11 +133,21 @@ let activeHost: BrowserHostHandle | null = null;
  * without this running, the leftover state file names a dead pid, which the
  * Python side classifies as ABSENT without probing — a crash leaves a harmless
  * record rather than a phantom host.
+ *
+ * Idempotent AND awaitable: a second caller gets the first call's promise rather
+ * than an immediate return. The session-cookie snapshot runs inside this stop, so
+ * a quit path that awaited a no-op second call could exit before the snapshot was
+ * on disk while reporting that it had stopped cleanly.
  */
 export async function stopBrowserHost(): Promise<void> {
+	if (stopping) return stopping;
 	const handle = activeHost;
 	activeHost = null;
-	if (handle) await handle.stop();
+	if (!handle) return;
+	stopping = handle.stop().finally(() => {
+		stopping = null;
+	});
+	return stopping;
 }
 
 /**
@@ -160,6 +195,41 @@ export async function startBrowserHost(
 	// Policy and data share one immutable vendoring pin. A writable userData
 	// file must not silently redefine which public suffixes admit broad grants.
 	configurePslRules(PSL_RULES);
+
+	/*
+	 * Session-only cookie persistence, restored BEFORE anything can load a page.
+	 *
+	 * This is the only moment at which the jar holds nothing but what the previous
+	 * run stored: a restore that ran after a tab had navigated would race the
+	 * site's own cookie writes and lose to whichever came second, and the point is
+	 * to put the previous session's cookies back the way the site left them. The
+	 * jar channel is a CDP attachment to a hidden `WebContentsView` in the same
+	 * partition — the only in-process channel that carries a CHIPS partition key
+	 * (see `session-cookies.ts` for the measurements) — and that view is never
+	 * attached to a window, so it is never laid out, painted or focused.
+	 */
+	const cookieJar = createHiddenCookieJarTarget(
+		new WebContentsView({
+			webPreferences: { ...HIDDEN_COOKIE_JAR_WEB_PREFERENCES },
+		}),
+	);
+	const sessionCookies = new SessionCookieVault({
+		jar: cookieJar.jar,
+		cipher: browserProfileCipher(),
+		...sessionCookiePaths(options.userDataDir),
+		flushStore: () => browserSession.cookies.flushStore(),
+		clearSessionData: (what) => clearBrowsingData(browserSession, what),
+		log,
+	});
+	let restoreReport: RestoreReport | null = null;
+	try {
+		restoreReport = await sessionCookies.restore();
+	} catch (error) {
+		// A restore that throws must not stop the browser starting: the user loses
+		// session cookies they were going to lose anyway, and the vault has already
+		// failed closed on its own paths.
+		log(`[browser] session cookies: the restore failed (${String(error)})`);
+	}
 	const cdp = new CdpPool({ log });
 	/** Child views by tab id, so close and quit can release each one, and a
 	 * webContents that dies on its own can be matched back to its tab. */
@@ -365,7 +435,7 @@ export async function startBrowserHost(
 		window: () => options.window,
 		expectedUrl: options.expectedUrl,
 		host: () => host,
-		clearData: (what: ClearWhat) => clearBrowsingData(browserSession, what),
+		clearData: (what: ClearWhat) => sessionCookies.clearBrowsingData(what),
 		log,
 	});
 
@@ -378,6 +448,7 @@ export async function startBrowserHost(
 		port: server.port,
 		profileDir,
 		agentTabs: () => registry.agentTabCount(),
+		sessionCookies: () => restoreReport,
 		stop: async () => {
 			/*
 			 * The quit-time capture, taken BEFORE the views are destroyed
@@ -422,6 +493,18 @@ export async function startBrowserHost(
 			approvals.resetPending();
 			ownership.clear();
 			flushBrowserStorage(browserSession);
+			// The snapshot reads the jar through the hidden view, so it has to happen
+			// BEFORE that view is released. It is also what removes the marker that
+			// tells the next start whether this shutdown was clean, so it is the last
+			// thing this feature writes.
+			try {
+				await sessionCookies.snapshot();
+			} catch (error) {
+				log(
+					`[browser] session cookies: the snapshot failed (${String(error)})`,
+				);
+			}
+			cookieJar.dispose();
 			log("[browser] host stopped");
 		},
 	};

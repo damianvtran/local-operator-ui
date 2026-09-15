@@ -1,0 +1,25 @@
+<!doctype html>
+<!--
+  Rendered-geometry harness for the composer's alert region (a capture and
+  measurement surface, not part of the app).
+
+  Why not a story, and why not the real app. D12 is a claim about what SURVIVES
+  a capped, internally scrolling block at a column width the app can really be
+  put in, so it needs three things a story cannot give at once: the shipped
+  composer, a chosen column width, and a number. The real app gives all three
+  and cannot be put in the state on demand — the state needs a refusal whose
+  payload comes back in part, a chip row that keeps the user's own file, and a
+  column narrowed to 172px by opening the canvas pane. This page renders the
+  shipped `MessageInput` with exactly that state, at the width the driver asks
+  for, and `scripts/composer-alert-geometry.mjs` measures and asserts it.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Composer alert geometry — the capped region at a narrow column</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./composer-alert-geometry.tsx"></script>
+	</body>
+</html>
