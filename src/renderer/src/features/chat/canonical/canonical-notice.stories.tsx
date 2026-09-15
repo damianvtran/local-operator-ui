@@ -107,10 +107,10 @@ const Frame = ({
 				failure={null}
 				/*
 				 * A read conversation with rows: the notice is what this set is about, not
-				 * the read, so the reader's question is answered `true` and the hold cannot
-				 * fire (`records` are non-empty in every frame here).
+				 * the read, so no page is owed (`awaitingHydration` false) and the hold
+				 * cannot fire (`records` are non-empty in every frame here).
 				 */
-				hydrated={true}
+				awaitingHydration={false}
 				onReconnect={() => {}}
 			/>
 		</div>

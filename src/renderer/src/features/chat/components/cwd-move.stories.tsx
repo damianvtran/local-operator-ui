@@ -579,7 +579,9 @@ const ReceiptFrame: FC<{ records: TranscriptRecord[] }> = ({ records }) => {
 				isSmallView={false}
 				status="live"
 				failure={null}
-				hydrated={true}
+				// No page is owed here: the story photographs a live, already-read
+				// session, so the composed question is false (`!hydrated`).
+				awaitingHydration={false}
 				// The Receipts group photographs the move's own transcript notes on a
 				// live, already-started session, so the admission band is not what these
 				// frames are about - the prop is the merge's requirement, not this

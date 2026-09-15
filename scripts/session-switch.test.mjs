@@ -565,20 +565,31 @@ test("re-selecting the active session still leaves a staged draft", async () => 
  *
  * The pre-merge resolution check (Finding 1) found the pane and the band asking
  * different questions: the hold was `status === "connecting"`, while the band
- * this PR re-keyed asks `hydrated`. On this path the two disagree in both
- * directions, and the two named cases below ARE those directions - the first
- * FAILS on the pre-fix expression (it held a conversation a completed read had
- * already proven EMPTY while the band offered the greeting and its own `grow`
- * beside it), and the second FAILS on it too (an unhydrated `live` pane, which
- * the old expression collapsed, leaving no loading claim anywhere on screen).
+ * this PR re-keyed asks the reader's own question. On this path the two disagree
+ * in both directions, and the two named cases below ARE those directions - the
+ * first FAILS on the pre-fix expression (it held a conversation a completed read
+ * had already proven EMPTY while the band offered the greeting and its own
+ * `grow` beside it), and the second FAILS on it too (a `live` pane whose page is
+ * still owed, which the old expression collapsed, leaving no loading claim
+ * anywhere on screen).
  *
- * Keyed on `hydrated` alone it was then wrong in the OPPOSITE direction: a pane
+ * Asking the reader's own field was then wrong in the OPPOSITE direction: a pane
  * whose own statement is already on screen - the failure notice, or the
  * "Reconnecting" line - has nobody having read it either, so it painted the
  * placeholder beside the statement. The table below is the answer to having
  * repaired this class twice, in two opposite directions: it walks EVERY
  * combination of the rule's inputs, so the next change moves a row rather than
  * adding a case. A case records the last bug; a row is a fact about the rule.
+ *
+ * The THIRD repair is why the third axis below is `awaitingHydration` rather
+ * than `hydrated`: "has a page been applied" is false forever for a pane with no
+ * session, so a fresh New chat - a staged draft that opens no stream at all -
+ * held the placeholder over the screen the band had already restored, two
+ * contradictory claims on one screen. The axis is the COMPOSED fact
+ * (`CanonicalSessionHandle.awaitingHydration`), which is why a session-less
+ * draft and a settled-empty conversation share one row here: neither owes a
+ * page, so neither may claim to be loading, and the composition that decides
+ * which is which is not this rule's business to guess at.
  *
  * The rules live in `transcript-pane.ts` rather than inside the component for
  * the same reason `scroll-paging.ts` does: a decision about state can be pinned
@@ -608,21 +619,21 @@ const {
 );
 
 test("a conversation the read has already proven empty is NOT held, even while `connecting`", () => {
-	// `Retry` re-arms the stream as `connecting` with `hydrated` untouched
+	// `Retry` re-arms the stream as `connecting` without undoing a completed read
 	// (`use-canonical-session.ts:1307-1312`), so the transport is saying
 	// "connecting" about a conversation the reader has already answered.
 	assert.equal(
 		holdsPlaceholder({
 			status: "connecting",
 			failure: null,
-			hydrated: true,
+			awaitingHydration: false,
 			recordCount: 0,
 		}),
 		false,
 	);
 });
 
-test("a conversation nobody has read yet IS held, at `connecting` and at `live`", () => {
+test("a conversation whose page is still owed IS held, at `connecting` and at `live`", () => {
 	// Two routes into the same reader-state: this switch's own hydrating window,
 	// and a cold session whose `cursor_missing` snapshot goes `live` without ever
 	// hydrating (`:1019`, `:1038`). The placeholder is the loading claim in both.
@@ -631,7 +642,7 @@ test("a conversation nobody has read yet IS held, at `connecting` and at `live`"
 			holdsPlaceholder({
 				status,
 				failure: null,
-				hydrated: false,
+				awaitingHydration: true,
 				recordCount: 0,
 			}),
 			true,
@@ -639,14 +650,14 @@ test("a conversation nobody has read yet IS held, at `connecting` and at `live`"
 	}
 });
 
-test("records beat the hold: an unhydrated pane with rows paints no placeholder", () => {
+test("records beat the hold: a pane with a page owed and rows to paint shows no placeholder", () => {
 	// Optimistic echo and live events paint rows before the history read lands,
 	// and a placeholder over them would contradict the pane's own content.
 	assert.equal(
 		holdsPlaceholder({
 			status: "live",
 			failure: null,
-			hydrated: false,
+			awaitingHydration: true,
 			recordCount: 2,
 		}),
 		false,
@@ -655,21 +666,45 @@ test("records beat the hold: an unhydrated pane with rows paints no placeholder"
 		holdsPlaceholder({
 			status: "connecting",
 			failure: null,
-			hydrated: true,
+			awaitingHydration: false,
 			recordCount: 3,
 		}),
 		false,
 	);
 });
 
+test("a session-less draft owes no page, so the pane makes no claim at all", () => {
+	/*
+	 * The operator's report in its second surface: on a fresh New chat the pane held
+	 * `Loading conversation…` and its shimmer rows above the splash the band had
+	 * already restored. What was wrong was the INPUT to this rule rather than the
+	 * rule: a draft opens no stream, so `hydrated` is false for it forever.
+	 *
+	 * It lands on the same row a settled-empty conversation lands on, and that is the
+	 * fix rather than a loss of resolution: neither owes a page, so neither may claim
+	 * to be loading. The rule is deliberately NOT given a "there is no session here"
+	 * term of its own - only the session can answer whether a page is owed, so the
+	 * handle composes that answer once and both readers take it. The composition
+	 * itself is pinned against the shipped hook in `draft-splash.test.mjs`.
+	 */
+	const view = {
+		status: "connecting",
+		failure: null,
+		awaitingHydration: false,
+		recordCount: 0,
+	};
+	assert.equal(holdsPlaceholder(view), false);
+	assert.equal(collapses(view), true);
+});
+
 /*
  * THE WHOLE MATRIX.
  *
  * A row-less pane has exactly one claim to make, and which one is a function of
- * five values: the status, whether a failure is published, whether the durable
- * history has been read, whether there are any records, and whether this pane has
+ * five values: the status, whether a failure is published, whether the session
+ * is still OWED a page, whether there are any records, and whether this pane has
  * ADMITTED a send the owner has not answered. Every combination is below.
- * `failure` present or absent, `hydrated` read or not, `records` zero or
+ * `failure` present or absent, a page owed or settled, `records` zero or
  * non-zero (2 is a stand-in; the rule reads only the zero test), `admittedSend`
  * on or off, and `claim` is the single thing the pane is then allowed to show:
  *
@@ -684,7 +719,8 @@ test("records beat the hold: an unhydrated pane with rows paints no placeholder"
  *                    column stays open because the line is rendered into it
  *   placeholder      the pulsing "Loading conversation…" placeholder alone
  *   empty            nothing: the pane collapses, and the band may claim the
- *                    conversation is empty because the read proved it
+ *                    conversation is empty - because the read proved it, or
+ *                    because nothing here owes a read at all
  *
  * The rung itself is `deriveWorkingLine`'s (`working-line-model.ts`, asserted in
  * `tool-row.test.mjs`); what this table reads is that the pane's geometry and its
@@ -709,92 +745,92 @@ const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
 /** Any non-null notice: the rule reads its presence, not its prose. */
 const FAILURE = { statement: "unreadable", action: "reconnect" };
 const MATRIX = [
-	["connecting", null, false, 0, false, true, "placeholder"],
-	["connecting", null, false, 2, false, true, "rows"],
-	["connecting", null, true, 0, false, true, "empty"],
+// status, failure, pageOwed, records, admitted, reachable, claim
+	["connecting", null, true, 0, false, true, "placeholder"],
 	["connecting", null, true, 2, false, true, "rows"],
-	["connecting", FAILURE, false, 0, false, false, "placeholder"],
-	["connecting", FAILURE, false, 2, false, false, "rows"],
-	["connecting", FAILURE, true, 0, false, false, "empty"],
+	["connecting", null, false, 0, false, true, "empty"],
+	["connecting", null, false, 2, false, true, "rows"],
+	["connecting", FAILURE, true, 0, false, false, "placeholder"],
 	["connecting", FAILURE, true, 2, false, false, "rows"],
-	["live", null, false, 0, false, true, "placeholder"],
-	["live", null, false, 2, false, true, "rows"],
-	["live", null, true, 0, false, true, "empty"],
+	["connecting", FAILURE, false, 0, false, false, "empty"],
+	["connecting", FAILURE, false, 2, false, false, "rows"],
+	["live", null, true, 0, false, true, "placeholder"],
 	["live", null, true, 2, false, true, "rows"],
-	["live", FAILURE, false, 0, false, false, "placeholder"],
-	["live", FAILURE, false, 2, false, false, "rows"],
-	["live", FAILURE, true, 0, false, false, "empty"],
+	["live", null, false, 0, false, true, "empty"],
+	["live", null, false, 2, false, true, "rows"],
+	["live", FAILURE, true, 0, false, false, "placeholder"],
 	["live", FAILURE, true, 2, false, false, "rows"],
-	["reconnecting", null, false, 0, false, true, "reconnect"],
-	["reconnecting", null, false, 2, false, true, "rows+reconnect"],
+	["live", FAILURE, false, 0, false, false, "empty"],
+	["live", FAILURE, false, 2, false, false, "rows"],
 	["reconnecting", null, true, 0, false, true, "reconnect"],
 	["reconnecting", null, true, 2, false, true, "rows+reconnect"],
-	["reconnecting", FAILURE, false, 0, false, false, "reconnect"],
-	["reconnecting", FAILURE, false, 2, false, false, "rows+reconnect"],
+	["reconnecting", null, false, 0, false, true, "reconnect"],
+	["reconnecting", null, false, 2, false, true, "rows+reconnect"],
 	["reconnecting", FAILURE, true, 0, false, false, "reconnect"],
 	["reconnecting", FAILURE, true, 2, false, false, "rows+reconnect"],
-	["unavailable", null, false, 0, false, false, "placeholder"],
-	["unavailable", null, false, 2, false, false, "rows"],
-	["unavailable", null, true, 0, false, false, "empty"],
+	["reconnecting", FAILURE, false, 0, false, false, "reconnect"],
+	["reconnecting", FAILURE, false, 2, false, false, "rows+reconnect"],
+	["unavailable", null, true, 0, false, false, "placeholder"],
 	["unavailable", null, true, 2, false, false, "rows"],
-	["unavailable", FAILURE, false, 0, false, true, "notice"],
-	["unavailable", FAILURE, false, 2, false, true, "rows+notice"],
+	["unavailable", null, false, 0, false, false, "empty"],
+	["unavailable", null, false, 2, false, false, "rows"],
 	["unavailable", FAILURE, true, 0, false, true, "notice"],
 	["unavailable", FAILURE, true, 2, false, true, "rows+notice"],
-	["connecting", null, false, 0, true, true, "waitline"],
-	["connecting", null, false, 2, true, true, "rows+waitline"],
+	["unavailable", FAILURE, false, 0, false, true, "notice"],
+	["unavailable", FAILURE, false, 2, false, true, "rows+notice"],
 	["connecting", null, true, 0, true, true, "waitline"],
 	["connecting", null, true, 2, true, true, "rows+waitline"],
-	["connecting", FAILURE, false, 0, true, false, "waitline"],
-	["connecting", FAILURE, false, 2, true, false, "rows+waitline"],
+	["connecting", null, false, 0, true, true, "waitline"],
+	["connecting", null, false, 2, true, true, "rows+waitline"],
 	["connecting", FAILURE, true, 0, true, false, "waitline"],
 	["connecting", FAILURE, true, 2, true, false, "rows+waitline"],
-	["live", null, false, 0, true, true, "waitline"],
-	["live", null, false, 2, true, true, "rows+waitline"],
+	["connecting", FAILURE, false, 0, true, false, "waitline"],
+	["connecting", FAILURE, false, 2, true, false, "rows+waitline"],
 	["live", null, true, 0, true, true, "waitline"],
 	["live", null, true, 2, true, true, "rows+waitline"],
-	["live", FAILURE, false, 0, true, false, "waitline"],
-	["live", FAILURE, false, 2, true, false, "rows+waitline"],
+	["live", null, false, 0, true, true, "waitline"],
+	["live", null, false, 2, true, true, "rows+waitline"],
 	["live", FAILURE, true, 0, true, false, "waitline"],
 	["live", FAILURE, true, 2, true, false, "rows+waitline"],
-	["reconnecting", null, false, 0, true, true, "reconnect"],
-	["reconnecting", null, false, 2, true, true, "rows+reconnect"],
+	["live", FAILURE, false, 0, true, false, "waitline"],
+	["live", FAILURE, false, 2, true, false, "rows+waitline"],
 	["reconnecting", null, true, 0, true, true, "reconnect"],
 	["reconnecting", null, true, 2, true, true, "rows+reconnect"],
-	["reconnecting", FAILURE, false, 0, true, false, "reconnect"],
-	["reconnecting", FAILURE, false, 2, true, false, "rows+reconnect"],
+	["reconnecting", null, false, 0, true, true, "reconnect"],
+	["reconnecting", null, false, 2, true, true, "rows+reconnect"],
 	["reconnecting", FAILURE, true, 0, true, false, "reconnect"],
 	["reconnecting", FAILURE, true, 2, true, false, "rows+reconnect"],
-	["unavailable", null, false, 0, true, false, "waitline"],
-	["unavailable", null, false, 2, true, false, "rows+waitline"],
+	["reconnecting", FAILURE, false, 0, true, false, "reconnect"],
+	["reconnecting", FAILURE, false, 2, true, false, "rows+reconnect"],
 	["unavailable", null, true, 0, true, false, "waitline"],
 	["unavailable", null, true, 2, true, false, "rows+waitline"],
-	["unavailable", FAILURE, false, 0, true, true, "notice"],
-	["unavailable", FAILURE, false, 2, true, true, "rows+notice"],
+	["unavailable", null, false, 0, true, false, "waitline"],
+	["unavailable", null, false, 2, true, false, "rows+waitline"],
 	["unavailable", FAILURE, true, 0, true, true, "notice"],
 	["unavailable", FAILURE, true, 2, true, true, "rows+notice"],
+	["unavailable", FAILURE, false, 0, true, true, "notice"],
+	["unavailable", FAILURE, false, 2, true, true, "rows+notice"],
 ];
 
-
-const key = (status, failure, hydrated, records, admitted) =>
-	`${status}|${failure ? "failure" : "none"}|${hydrated ? "read" : "unread"}|${records === 0 ? 0 : "rows"}|${admitted ? "admitted" : "quiet"}`;
+const key = (status, failure, owed, records, admitted) =>
+	`${status}|${failure ? "failure" : "none"}|${owed ? "owed" : "settled"}|${records === 0 ? 0 : "rows"}|${admitted ? "admitted" : "quiet"}`;
 
 test("the pane's single claim, over every combination of the rule's inputs", async (t) => {
 	const seen = new Set(
-		MATRIX.map(([status, failure, hydrated, records, admitted]) =>
-			key(status, failure, hydrated, records, admitted),
+		MATRIX.map(([status, failure, owed, records, admitted]) =>
+			key(status, failure, owed, records, admitted),
 		),
 	);
 	assert.equal(MATRIX.length, 64, "a combination is missing from the table");
 	assert.equal(seen.size, 64, "a combination is listed twice");
 	for (const status of STATUSES) {
 		for (const failure of [null, FAILURE]) {
-			for (const hydrated of [false, true]) {
+			for (const owed of [true, false]) {
 				for (const records of [0, 2]) {
 					for (const admitted of [false, true]) {
 						assert.ok(
-							seen.has(key(status, failure, hydrated, records, admitted)),
-							`${key(status, failure, hydrated, records, admitted)} is not in the table`,
+							seen.has(key(status, failure, owed, records, admitted)),
+							`${key(status, failure, owed, records, admitted)} is not in the table`,
 						);
 					}
 				}
@@ -802,10 +838,16 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 		}
 	}
 
-	for (const [status, failure, hydrated, records, admitted, reachable, claim] of MATRIX) {
-		const name = `${key(status, failure, hydrated, records, admitted)} -> ${claim}`;
+	for (const [status, failure, owed, records, admitted, reachable, claim] of MATRIX) {
+		const name = `${key(status, failure, owed, records, admitted)} -> ${claim}`;
 		await t.test(name, () => {
-			const view = { status, failure, hydrated, recordCount: records, admittedSend: admitted };
+			const view = {
+				status,
+				failure,
+				awaitingHydration: owed,
+				recordCount: records,
+				admittedSend: admitted,
+			};
 			const shows = [];
 			if (records > 0) shows.push("rows");
 			if (speaks(view))

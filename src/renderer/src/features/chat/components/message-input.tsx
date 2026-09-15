@@ -72,6 +72,7 @@ import {
 	type DirectoryIndicatorHandle,
 	type DirectoryWritePath,
 } from "./directory-indicator";
+import { MeasuredSuggestionStack } from "./measured-suggestion-stack";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
@@ -746,6 +747,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			const shuffled = [...initialSuggestions].sort(() => Math.random() - 0.5);
 			return shuffled.slice(0, MAX_SUGGESTIONS);
 		}, [initialSuggestions]);
+
+		// Node-valued callback refs follow conditional splash remounts; a stable
+		// suggestion sample does not imply that the measured DOM is still alive.
+		const [band, setBand] = useState<HTMLDivElement | null>(null);
+		const [splash, setSplash] = useState<HTMLDivElement | null>(null);
 
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
@@ -2494,20 +2500,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * what they are — examples, not the primary action. Raycast and
 						 * Linear's command palettes hold suggestions at exactly this
 						 * weight. */}
-						<div className="flex flex-wrap justify-center gap-2">
-							{suggestions.map((suggestion) => (
-								<Button
-									key={suggestion}
-									variant="outline"
-									size="sm"
-									className="h-auto max-w-full whitespace-normal break-words px-3 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"
-									onClick={() => handleSuggestionClick(suggestion)}
-									disabled={isInputDisabled || isRecording || isTranscribing}
-								>
-									{suggestion}
-								</Button>
-							))}
-						</div>
+						<MeasuredSuggestionStack
+							band={band}
+							splash={splash}
+							suggestions={suggestions}
+							disabled={isInputDisabled || isRecording || isTranscribing}
+							onSelect={handleSuggestionClick}
+							focusComposer={() => textareaRef.current?.focus()}
+						/>
 					</div>
 				)}
 			</form>
@@ -2605,6 +2605,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
 				data-lo-composer-band={true}
+				ref={setBand}
 			>
 				{/*
 				 * ONE wrapper at every state, and only its CLASSES change.
@@ -2627,8 +2628,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * what keeps this neutral - the band is a centred flex COLUMN, and a plain
 				 * unwidthed wrapper would shrink to its content instead of filling the column
 				 * the way `inputContent`'s own `w-full` did.
+				 *
+				 * The splash ref the suggestion cap measures sits on THIS element, which
+				 * is why the two halves compose rather than conflict: the prompt classes
+				 * are the splash wrapper's own, so the node the cap measures, its
+				 * geometry and its children are exactly what the ternary used to mount -
+				 * the same node, now surviving a column crossing instead of being
+				 * replaced by it. The cap's guard is unaffected: it also requires the
+				 * stack node, which only exists with the prompt, so a wrapper that is
+				 * non-null in every other state cannot arm the measurement.
 				 */}
 				<div
+					ref={setSplash}
 					className={cn(
 						showEmptyChatPrompt
 							? "flex w-full flex-col items-center justify-center gap-6 py-4"
