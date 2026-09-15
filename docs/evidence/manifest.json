@@ -1,17 +1,17 @@
 {
-  "head": "b70fd40f16c4c731c328705e3b1c177031687fd0",
-  "headNote": "Aggregate stamps re-derived for the head under review, without recapture: `head`/`capturedAt` name this re-derivation's commit and time, and `srcTree`/`scriptsTree` are this head's trees, because the gate accepts nothing else in those fields. The counts are re-derived rather than restated - `frames` is the committed `.webp` outside every declared set, `surfaces` the capturer's own list length. The capture the older frames came from is recorded in `captureOrigin`, including its dirty working tree. The sets this branch owns are declared as supplementary; the uncovered part of the delta is named in `captureOrigin.note` rather than implied.",
-  "srcTree": "752cabca6de2492e60a57bd3eab742ad7a80d0db",
-  "scriptsTree": "483e2e65e82dcb5b0827bf747d778b2441a52839",
+  "head": "0b3351a4b39de5f878b5bb50b12c91d29de3bb54",
+  "headNote": "Sync merge of `origin/main` `56800cb1e` (#179, three commits on from the head the round-8 review pinned) and the re-stamp that follows it, WITHOUT RECAPTURE. `head`/`capturedAt` name the commit and time this re-derivation was taken at - the merge commit `0b3351a4b`, whose `src`/`scripts` trees this stamp commit does not move, because it touches `docs/` only - and `srcTree`/`scriptsTree` are those trees, since the gate accepts nothing else in those fields. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is the CAPTURE's and not this pass's: no frame was re-taken, nothing behind these counts was re-captured or re-swept, and the capture the older frames came from is recorded in `captureOrigin`, beside main's own record of its pass in `upstreamComposerCapture`. The sets this branch owns are declared as supplementary; the uncovered part of the delta is named in `captureOrigin.note` rather than implied.",
+  "srcTree": "b0c9bec1a57ffcab968bd752752ea98c57be184b",
+  "scriptsTree": "e0fb369dbd82006c666e1e8fb0d6ff5b2220e396",
   "dirtyWorkingTree": true,
-  "capturedAt": "2026-09-14T23:08:17.461740Z",
-  "frames": 1198,
-  "surfaces": 178,
+  "capturedAt": "2026-09-15T00:21:21.000000Z",
+  "frames": 1214,
+  "surfaces": 186,
   "themes": 12,
   "countsMean": {
-    "frames": "1566 WebP files: 1208 swept and 358 in 30 declared supplementary sets. File counts on disk, not a newly completed full sweep.",
-    "surfaces": "183 entries in the merged capture script; the two cold-send supplementary sets are not swept stories.",
-    "themes": "12 theme names in the merged capture script; per-set theme counts may be narrower."
+    "frames": "1579 committed WebP files minus 365 in 32 declared supplementary sets = 1214 sweep frames. File counts on the merged disk after the #179 sync, not a newly completed full sweep.",
+    "surfaces": "186 entries in the merged capture-evidence.mjs STORIES literal by the gate method: main's 183 plus this branch's three chat-canonical-notices stories. Both sides are preserved.",
+    "themes": "The capturer retains 12 THEMES entries; no palette or theme is added by this merge."
   },
   "partialCapture": {
     "refreshedAt": "2026-09-14T18:10:25.667Z",
