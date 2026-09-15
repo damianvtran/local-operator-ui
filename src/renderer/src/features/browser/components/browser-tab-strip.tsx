@@ -1,6 +1,14 @@
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { Bot, Globe, MoreHorizontal, Plus, RotateCw, X } from "lucide-react";
+import {
+	Bot,
+	ChevronUp,
+	Globe,
+	MoreHorizontal,
+	Plus,
+	RotateCw,
+	X,
+} from "lucide-react";
 import type { FC } from "react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
@@ -108,6 +116,17 @@ const TabMark: FC<{ tab: BrowserTabView }> = ({ tab }) => {
 	return <Globe aria-hidden className="size-4 shrink-0 text-ink-dim" />;
 };
 
+/** A tab's name for a button label: short enough to sit in a row of actions
+ * without wrapping, long enough to identify the tab when two of them are alike
+ * (design round 2, D4 — "Watch 'Reports'", not "Watch this tab"). */
+const tabLabel = (title: string): string => {
+	const trimmed = title.trim();
+	if (!trimmed) return "this tab";
+	return trimmed.length <= 24
+		? trimmed
+		: `${trimmed.slice(0, 23).trimEnd()}\u2026`;
+};
+
 export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
 	activeTabId,
@@ -125,9 +144,24 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 
 	const closeActions = useCallback(() => setActionsTabId(null), []);
 
+	/** The row's own element, so opening it can move focus INTO it (design round 2,
+	 * D4 / the UX round's U4): the row lives after the scroller in DOM order, and
+	 * without this the first Tab after opening landed on the neighbouring tab's
+	 * Close button. */
+	const actionsRowRef = useRef<HTMLDivElement | null>(null);
+
 	// A tab that is closed, or that stops existing, must not leave an action row
 	// pointing at nothing.
 	const actionsTab = tabs.find((tab) => tab.tabId === actionsTabId) ?? null;
+
+	useEffect(() => {
+		if (actionsTabId === null) return;
+		// Keyed on the ID rather than on the tab object, because `tabs.find` returns a
+		// fresh object on every render: an object dependency re-ran this on every
+		// keystroke elsewhere in the surface and took focus with it (measured - the
+		// focused element after an unrelated click in the dock was this row).
+		actionsRowRef.current?.focus();
+	}, [actionsTabId]);
 
 	// The activated tab scrolls into view (spec §6's last row). With the width
 	// policy kept, a long strip scrolls, and a tab activated from the dock or by an
@@ -159,7 +193,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					// `-mb-px` extends the scroll container's clip box 1px down, over the
 					// strip's bottom rule, so the active tab's notch can paint ON that rule
 					// rather than being clipped by the scroll container one pixel above it.
-					className="flex min-w-0 grow items-stretch overflow-x-auto -mb-px"
+					className="flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px"
 				>
 					{tabs.map((tab, index) => {
 						const active = tab.tabId === activeTabId;
@@ -181,18 +215,27 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									data-tab-id={tab.tabId}
 									className={cn(
 										/*
-										 * THE WIDTH POLICY IS THE TITLE'S (design round 3, D13). Tabs SHARE
-										 * the row they have (`basis-32`, `grow`, half the strip at most,
-										 * `min-w-32` before the row scrolls), which is what a tab strip is for:
-										 * telling tabs apart is the job, and the name is how the user tells
-										 * them apart. Chrome shrinks tabs below 128px; this strip cannot,
-										 * because the mark, the chips and the buttons need the room — a
-										 * deliberate difference, stated so it is not "fixed" later.
+										 * THE WIDTH POLICY IS THE TITLE'S (design round 3, D13; widened by a
+										 * second design round, D1). Tabs SHARE the row they have (`basis-32`,
+										 * `grow`, half the strip at most), and the floor before the row scrolls
+										 * is `min-w-44` rather than `min-w-32`: at 128px the title had ~17px of
+										 * measure once the mark, the always-held close reserve and the row menu
+										 * were inside it, so nine tabs all read `R…` — a strip that cannot name
+										 * its tabs is not doing the job the policy exists to protect. The two
+										 * chrome buttons also step in on hover/focus now (below), which is what
+										 * pays for the wider floor.
 										 */
-										"group relative flex min-w-32 max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
+										"group relative flex min-w-44 max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
 											: "text-ink-muted hover:bg-elevated hover:text-ink",
+										// The tab whose actions row is open keeps a visible selected treatment:
+										// the row is a band under the whole strip, and the only other tie to its
+										// owner was a `:focus-visible` ring, which a mouse click does not paint
+										// (design round 2, D4).
+										actionsTabId === tab.tabId &&
+											!active &&
+											"bg-elevated text-ink",
 									)}
 								>
 									<button
@@ -227,7 +270,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											</span>
 										)}
 										{tab.handedOver && (
-											<span className="shrink-0 rounded-sm bg-sunken px-1 text-meta text-ink-muted">
+											// One pill shape for every state marker, differing by role only
+											// (design round 2, D11): `Restored` used to be bare dim text with no
+											// frame at all, which read as a caption beside the four framed
+											// markers rather than as a state.
+											<span className="shrink-0 rounded-sm border border-control px-1 text-meta text-ink-muted">
 												Shared
 											</span>
 										)}
@@ -236,7 +283,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											// FRESH navigation to the same URL (design 7.3): a page that
 											// logged out since shows logged out, and saying "restored"
 											// pre-empts the "why am I signed out" question.
-											<span className="shrink-0 text-meta text-ink-dim">
+											<span className="shrink-0 rounded-sm border border-control px-1 text-meta text-ink-dim">
 												Restored
 											</span>
 										)}
@@ -263,7 +310,16 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												className="shrink-0 rounded-sm border border-control bg-warning-wash px-1 text-meta text-ink tabular-nums"
 												data-tour-tag="browser-tab-waiting"
 											>
-												Waiting {waitingOrdinal}
+												{/*
+												 * NOT "Waiting 2": that is an ordinal wearing a count's clothes.
+												 * The number is the ordinal of the live request, and the
+												 * identically shaped chip on the Approvals control IS a count, so
+												 * nothing on the strip distinguished the two readings (design
+												 * round 2, D5). `Request 2` is the wording the tray's chip uses,
+												 * so the tie between the two numbers is stated rather than
+												 * inferred.
+												 */}
+												Request {waitingOrdinal}
 											</span>
 										)}
 									</button>
@@ -280,6 +336,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												current === tab.tabId ? null : tab.tabId,
 											)
 										}
+										// Revealed on hover/focus like the close button, unless its own row
+										// is open: the 24px it holds is 24px the title gets back (design
+										// round 2, D1), and an open row must keep its trigger visible.
+										className={cn(
+											"transition-opacity",
+											actionsTabId === tab.tabId
+												? "opacity-100 text-ink"
+												: "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+										)}
 										data-tour-tag="browser-tab-menu"
 									>
 										<MoreHorizontal aria-hidden className="size-3.5" />
@@ -341,10 +406,31 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				// and the page's rectangle shrinks by exactly the same amount, because the
 				// content element is measured by a `ResizeObserver` (`browser-surface.tsx`)
 				// and the host re-bounds the view. No suppression, no z-index.
+				//
+				// IT NAMES ITS TAB, and it takes focus when it opens (design round 2, D4
+				// and the UX round's U4). The row is a band under the whole strip, so
+				// without a name the only tie to its owner was the trigger's focus ring —
+				// which a mouse click does not paint. And because the row sits after the
+				// scroller in DOM order, the first Tab after opening used to land on the
+				// neighbouring tab's Close button: destructive, and not what the user was
+				// reaching for. The container is focusable (`tabIndex={-1}`) purely so
+				// opening moves focus into the row's first action.
 				<div
-					className="flex flex-wrap items-center gap-2 border-control border-t bg-surface px-2 py-1"
+					ref={actionsRowRef}
+					tabIndex={-1}
+					onKeyDown={(event) => {
+						// Escape dismisses the row, the way it dismisses the dock (§4.2).
+						if (event.key === "Escape") {
+							event.stopPropagation();
+							closeActions();
+						}
+					}}
+					className="flex flex-wrap items-center gap-2 border-control border-t bg-surface px-2 py-1 focus:outline-none"
 					data-tour-tag="browser-tab-actions"
 				>
+					<span className="shrink-0 text-meta text-ink-dim">
+						Actions for "{tabLabel(actionsTab.title)}"
+					</span>
 					{!actionsTab.active && (
 						// §8.3's "one click to watch": activation is the USER's click, which is
 						// what design 11.4 permits — the app never activates a tab on the agent's
@@ -360,7 +446,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							}}
 							data-tour-tag="browser-tab-watch"
 						>
-							Watch this tab
+							Watch "{tabLabel(actionsTab.title)}"
 						</Button>
 					)}
 					{/*
@@ -378,7 +464,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							}}
 							data-tour-tag="browser-tab-hand-over"
 						>
-							Let an agent use this tab…
+							Let an agent use "{tabLabel(actionsTab.title)}"…
 						</Button>
 					)}
 					{(actionsTab.handedOver || actionsTab.owner === "agent") && (
@@ -391,7 +477,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							}}
 							data-tour-tag="browser-tab-revoke-hand-over"
 						>
-							Stop letting the agent use this tab
+							Stop letting the agent use "{tabLabel(actionsTab.title)}"
 						</Button>
 					)}
 					<Button
@@ -403,17 +489,20 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						}}
 						data-tour-tag="browser-tab-actions-close"
 					>
-						Close tab
+						Close "{tabLabel(actionsTab.title)}"
 					</Button>
 					<div className="grow" />
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close tab actions"
+						aria-label="Hide tab actions"
 						onClick={closeActions}
 						data-tour-tag="browser-tab-actions-dismiss"
 					>
-						<X aria-hidden className="size-3.5" />
+						{/* A chevron, not an `×`: the row already ends near the tab-close
+						    button's own glyph, and two `×`s 200px apart with different
+						    meanings is a shape the eye reads as one control (D4). */}
+						<ChevronUp aria-hidden className="size-3.5" />
 					</Button>
 				</div>
 			)}

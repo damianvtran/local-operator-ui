@@ -251,9 +251,11 @@ export async function startBrowserHost(
 	});
 
 	/**
-	 * One banner per pending site approval (design 9.2). Declared here because the
-	 * approvals store's change hook raises it, and `windowShow` is the ONLY
-	 * permission it needs — this module never decides whether a window comes
+	 * One banner per INCREASE in the live request count (design 9.2; the notifier's
+	 * own header states the rule). Not per pending ENTRY: with a real queue, a busy
+	 * minute of arrivals would otherwise raise one banner per request. Declared here
+	 * because the approvals store's change hook raises it, and `windowShow` is the
+	 * ONLY permission it needs — this module never decides whether a window comes
 	 * forward (design 11.4).
 	 */
 	const consentNotifier = new ConsentNotifier({

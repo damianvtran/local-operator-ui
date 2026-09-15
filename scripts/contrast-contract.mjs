@@ -287,7 +287,15 @@ const CONTROLS = [
 		 * reasoned — this row failed with `warningBorder` before the change.
 		 */
 		name: "browser waiting marker chip",
-		on: ["surface", "elevated"],
+		/*
+		 * The grounds the chip is DRAWN on, which the tab-strip grammar moved (review
+		 * round 1, finding 3). It renders inside the tab button, and an inactive tab has
+		 * no fill at all any more, so the chip sits on the strip's `sunken`; on the
+		 * active tab it sits on the page's own `canvas`. It used to name `surface`,
+		 * which no longer occurs beneath it — a row asserting the wrong grounds is the
+		 * "green output about a component nobody listed" case.
+		 */
+		on: ["canvas", "sunken"],
 		fill: "warningWash",
 		border: "borderControl",
 		ink: "ink",

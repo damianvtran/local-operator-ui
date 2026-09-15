@@ -1435,8 +1435,10 @@ test("the consent bar states each choice's own lifetime, and that the profile is
 		"one numbered chip per live request (spec 4.1's header row)",
 	);
 	assert.ok(
-		markup.includes("Request 2: login.example.com"),
-		"and the chip's accessible name carries the ordinal and the authority",
+		markup.includes(
+			"Request 2 from The agent in conversation session-abc: login.example.com",
+		),
+		"and the chip's accessible name carries the ordinal, the ASKING conversation and the authority (UX round 1, U2: two requests for one site must not read the same)",
 	);
 	assert.equal(
 		defaultApprovalHeaderLabel(1),
@@ -1573,15 +1575,19 @@ test("a parked tab's Waiting chip carries the ordinal of the request its origin 
 		now,
 	);
 	const waiting = waitingOrdinals(rows, [
-		{ tabId: 1, url: "https://docs.example.org/page" },
-		{ tabId: 2, url: "https://login.example.com/" },
-		{ tabId: 3, url: "about:blank" },
-		{ tabId: 4, url: "https://elsewhere.example/" },
+		{ tabId: 1, url: "https://docs.example.org/page", owner: "agent" },
+		{ tabId: 2, url: "https://login.example.com/", owner: "agent" },
+		{ tabId: 3, url: "about:blank", owner: "agent" },
+		{ tabId: 4, url: "https://elsewhere.example/", owner: "agent" },
+		// A tab the USER opened to a pending origin: their own navigation is ungated
+		// and the page loads, so the marker would describe something that is not
+		// happening to that tab (UX round 1, U3).
+		{ tabId: 5, url: "https://docs.example.org/mine", owner: "user" },
 	]);
 	assert.deepEqual(
 		waiting,
 		{ 1: 1, 2: 2 },
-		"the chip names the same request the tray's chip and the dock's row name",
+		"the chip names the same request the tray's chip and the dock's row name, and only on the agent's own tabs",
 	);
 	assert.equal(
 		originOfUrl("about:blank"),

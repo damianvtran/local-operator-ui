@@ -59,6 +59,17 @@ export interface ApprovalTabInput {
 	 * over and a tab handed back are all the user's, not a conversation's).
 	 */
 	sessionId?: string | null;
+	/**
+	 * Who opened the tab, which the waiting marker reads.
+	 *
+	 * Present in the projection already (`chromeState()` maps `owner`, and the strip
+	 * has always drawn the `Agent` mark from it), so this is the same fact the strip
+	 * uses rather than a new field. The chip is gated on it (UX round 1, U3): the
+	 * marker says the tab is parked waiting for access, and a tab the USER opened to
+	 * the same origin is not waiting for anything — their own navigation is ungated
+	 * and the page loads.
+	 */
+	owner?: "user" | "agent";
 }
 
 /** Which tabs a browser surface is showing. PR 1 only ever passes `"all"`. */
@@ -84,7 +95,9 @@ export interface ResolvedRow {
 	at: number;
 }
 
-/** Below a minute the copy stops counting (§3.3). */
+/** Below a minute the copy stops counting (§3.3). Two names for the same
+ * number on purpose: the threshold and the unit are separate facts, and the day
+ * one moves the other must not follow it by accident. */
 const UNDER_A_MINUTE_MS = 60_000;
 const MINUTE_MS = 60_000;
 
@@ -152,8 +165,14 @@ export function approvalRows(
  * Matching on the URL's origin rather than on a tab id is deliberate: the prompt
  * is raised by an agent's navigation, which may target a tab the user is not
  * looking at (`browser-page.tsx`'s own note). The map is built from the same
- * numbered rows as the tray, so `Waiting 2` in the strip and chip [2] in the
- * tray are the same request by construction. */
+ * numbered rows as the tray, so `Request 2` in the strip and chip [2] in the
+ * tray are the same request by construction.
+ *
+ * AGENT TABS ONLY, and that is a copy contract rather than a filter for taste
+ * (UX round 1, U3): the chip says the tab is waiting for the agent's access, and
+ * a tab the USER opened to the same origin is neither parked nor blocked — their
+ * own navigation is ungated, the page loads, and a chip reading `Request 1` on it
+ * describes something that is not happening to that tab. */
 export function waitingOrdinals(
 	rows: ReadonlyArray<ApprovalRow>,
 	tabs: ReadonlyArray<ApprovalTabInput>,
@@ -168,6 +187,7 @@ export function waitingOrdinals(
 	}
 	const waiting: Record<number, number> = {};
 	for (const tab of tabs) {
+		if (tab.owner !== "agent") continue;
 		const origin = originOfUrl(tab.url);
 		if (!origin) continue;
 		const ordinal = byOrigin.get(origin);
@@ -289,12 +309,21 @@ export function useApprovalQueue(
 	 * refresh reads it inside an effect, and a re-render is not wanted for it. */
 	const answered = useRef<Set<string>>(new Set());
 
-	const pending = requests.length;
+	/*
+	 * THE GATE IS THE LIVE COUNT, not the projection's length (review round 1,
+	 * finding 4). `pendingConsent` is main's queue filtered AT PROJECTION TIME and
+	 * nothing in main fires at expiry, so after the last request expires the
+	 * projection keeps its dead entries until some unrelated change arrives — the
+	 * rows and the badge correctly fall to zero while this timer kept waking the
+	 * route once a second for a list that cannot change, against the rule stated
+	 * below.
+	 */
+	const live = liveRequests(requests, now).length;
 	useEffect(() => {
-		if (pending === 0) return;
+		if (live === 0) return;
 		const id = window.setInterval(() => setNow(Date.now()), 1000);
 		return () => window.clearInterval(id);
-	}, [pending]);
+	}, [live]);
 
 	// A new projection is also a moment to re-read the clock: without this the
 	// first render after an arrival could use a `now` up to a second stale, which
@@ -303,16 +332,21 @@ export function useApprovalQueue(
 	useEffect(() => {
 		const at = Date.now();
 		setNow(at);
-		setResolved((current) =>
-			reconcileResolved(
-				previous.current,
-				requests,
-				current,
-				answered.current,
-				at,
-			),
-		);
+		/*
+		 * THE PREVIOUS ARRAY IS CAPTURED BEFORE THE REF MOVES, and that is the whole
+		 * fix for the finding QA reproduced twice (round 1, Q2). The updater passed
+		 * to `setResolved` runs LATER than this effect body, so reading
+		 * `previous.current` inside it read the value line below had already written —
+		 * `previous === requests` every time, `reconcileResolved`'s `fresh` therefore
+		 * always empty, and the resolved list always `[]`. The state it feeds is the
+		 * answer to "why did the count change", so the effect was carrying a feature
+		 * that could never render.
+		 */
+		const was = previous.current;
 		previous.current = requests;
+		setResolved((current) =>
+			reconcileResolved(was, requests, current, answered.current, at),
+		);
 	}, [requests]);
 
 	// Leaving the surface drops the memory by construction: it is a reading of the
