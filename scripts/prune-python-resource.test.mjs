@@ -4,6 +4,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -16,6 +17,8 @@ import afterPack, {
 	pythonResourcesDir,
 	pruneUnshippedPythonResources,
 } from "./prune-python-resource.mjs";
+import seedAfterPack from "./after-pack.mjs";
+import { LEGACY_RESOURCE_NAMES, seedResourceDir } from "./bundled-python-layout.mjs";
 
 /*
  * Coverage for the `afterPack` step that keeps one bundled interpreter per
@@ -85,12 +88,12 @@ test("an arm64 build ships only the aarch64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python")]);
-	assert.equal(existsSync(join(resources, "python")), false);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/x64")]);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), false);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 	// The tree that stays is untouched, not rebuilt: the app's own probe reads
 	// this directory at runtime, and pruning must not disturb what it finds.
-	assert.deepEqual(readdirSync(join(resources, "python_aarch64", "lib", "python3.12")), [
+	assert.deepEqual(readdirSync(join(resources, "python-runtime-seed/arm64", "lib", "python3.12")), [
 		"os.py",
 	]);
 });
@@ -106,14 +109,14 @@ test("an x64 build ships only the x86_64 interpreter", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python_aarch64")]);
-	assert.equal(existsSync(join(resources, "python_aarch64")), false);
-	assert.equal(existsSync(join(resources, "python")), true);
+	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/arm64")]);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), false);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
 });
 
 test("a build that carries only its own interpreter is left alone", () => {
 	const { appOutDir, resources } = makePackagedApp(tempDir("lo-prune-"), {
-		trees: ["python_aarch64"],
+		trees: ["python-runtime-seed/arm64"],
 	});
 
 	const result = pruneUnshippedPythonResources({
@@ -125,7 +128,7 @@ test("a build that carries only its own interpreter is left alone", () => {
 	});
 
 	assert.deepEqual(result.pruned, []);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("a non-macOS build is not touched", () => {
@@ -135,8 +138,8 @@ test("a non-macOS build is not touched", () => {
 	const dir = tempDir("lo-prune-win-");
 	const appOutDir = join(dir, "win-unpacked");
 	const resources = join(appOutDir, "resources");
-	mkdirSync(join(resources, "python_aarch64"), { recursive: true });
-	mkdirSync(join(resources, "python"), { recursive: true });
+	mkdirSync(join(resources, "python-runtime-seed/arm64"), { recursive: true });
+	mkdirSync(join(resources, "python-runtime-seed/x64"), { recursive: true });
 
 	const result = pruneUnshippedPythonResources({
 		appOutDir,
@@ -147,8 +150,8 @@ test("a non-macOS build is not touched", () => {
 	});
 
 	assert.deepEqual(result.pruned, []);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
-	assert.equal(existsSync(join(resources, "python")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
 });
 
 test("the numeric Arch enum an afterPack context carries is understood", () => {
@@ -165,8 +168,8 @@ test("the numeric Arch enum an afterPack context carries is understood", () => {
 		log: () => {},
 	});
 
-	assert.deepEqual(result.pruned, [join(resources, "python")]);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.deepEqual(result.pruned, [join(resources, "python-runtime-seed/x64")]);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("an architecture with no bundled interpreter mapping fails loudly", () => {
@@ -198,8 +201,8 @@ test("an architecture with no bundled interpreter mapping fails loudly", () => {
 			}),
 		/Cannot prune bundled Python for arch "universal"/,
 	);
-	assert.equal(existsSync(join(resources, "python")), true);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("the afterPack hook resolves the bundle from the packager context", async () => {
@@ -212,8 +215,8 @@ test("the afterPack hook resolves the bundle from the packager context", async (
 		packager: { appInfo: { productFilename: "Local Operator" } },
 	});
 
-	assert.equal(existsSync(join(resources, "python")), false);
-	assert.equal(existsSync(join(resources, "python_aarch64")), true);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), false);
+	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
 });
 
 test("the hook refuses a context it cannot resolve a bundle from", async () => {
@@ -250,4 +253,67 @@ test("the arch name is the one the app resolves its interpreter by", () => {
 	// the caller refuses them against PYTHON_RESOURCE_DIRS.
 	assert.equal(archName("mips"), "mips");
 	assert.equal(archName(9), "9");
+});
+
+/*
+ * The two halves a release nearly went out without, both of them in
+ * `package.json` rather than in the modules above.
+ *
+ * Why these cases exist: the hook and the mapping were once correct together,
+ * and a later merge of `main` dropped both from the config while every test in
+ * this file stayed green - they drive the modules, not the thing that decides
+ * whether the modules run. A build then carried a legacy tree and no seed at
+ * all, which is exactly what `verify-macos-artifacts.mjs` refused on the v0.23.2
+ * publish run. The gap is the config itself, so the config is what is asserted.
+ */
+test("the builder config stages the mac interpreters into the seed namespace", () => {
+	const config = JSON.parse(
+		readFileSync(join(process.cwd(), "package.json"), "utf8"),
+	).build;
+	assert.equal(
+		config.afterPack,
+		"scripts/after-pack.mjs",
+		"the registered afterPack must be the hook that refuses a legacy alias, not the pruner alone",
+	);
+	// Every entry that applies to a macOS build, so a legacy name cannot come
+	// back in through the top-level block instead of the `mac` one.
+	const destinations = [];
+	for (const scope of [config, config.mac]) {
+		for (const entry of scope?.extraResources ?? []) destinations.push(entry.to);
+	}
+	assert.deepEqual(
+		destinations.filter((to) => LEGACY_RESOURCE_NAMES.includes(to)),
+		[],
+		"a macOS-applicable extraResources entry may not write a legacy resource name: it ships beside the seed, and the gate and the hook both refuse it",
+	);
+	assert.deepEqual(
+		(config.mac.extraResources ?? []).map((entry) => [entry.from, entry.to]),
+		[
+			["resources/python", seedResourceDir("x64")],
+			["resources/python_aarch64", seedResourceDir("arm64")],
+		],
+		"the mac build copies each checkout tree into the seed directory its architecture resolves",
+	);
+});
+
+test("the hook refuses a bundle that still carries a legacy alias, by name", async () => {
+	const { appOutDir, resources } = makePackagedApp(tempDir("lo-alias-"), {
+		trees: ["python_aarch64"],
+	});
+	await assert.rejects(
+		async () =>
+			seedAfterPack({
+				appOutDir,
+				arch: "arm64",
+				electronPlatformName: "darwin",
+				packager: { appInfo: { productFilename: "Local Operator" } },
+			}),
+		/legacy Python resource name\(s\): python_aarch64/,
+		"the hook fails the build rather than warning: an incumbent venv naming the old path can reach the new bundle through an alias",
+	);
+	assert.equal(
+		existsSync(join(resources, "python_aarch64")),
+		true,
+		"the hook does not delete the alias - the mapping is what has to stop producing it",
+	);
 });

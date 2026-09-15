@@ -72,7 +72,8 @@ renderer reducer or a runtime response validator**.
 The backend supports stable create/reopen, canonical owner admissions, all shared
 35 commands/8 aliases, history, ask/approval answers and authenticated SSE watch
 leases. Backend capability versions now include commands/catalogues/lifecycle/MCP/
-Radient; they are not a claim that this renderer is complete. Bare forms return
+Radient/diagnostics; they are not a claim that this renderer is complete. Bare
+forms return
 `native_action` with destination, fields and source/submit metadata rather than
 fake execution success. There is still no native picker UI in this transport slice.
 Team/agent attachment results carry an already-admitted consumed request under
@@ -136,6 +137,12 @@ The allowlist additionally provides:
 
 - `commands.list/entities`, `models.catalogue`, `usage.get`, `analytics.get`,
   `skills.list` (optional name for details), `sessions.failovers`.
+- `info.get`, `sessions.report`: the two read-only diagnostics behind the
+  `diagnostics` capability key (`/v1/desktop/info`, and
+  `/v1/desktop/sessions/{id}/report?recent_limit=`). They are gated on their own
+  key rather than on `catalogues`, so `/analytics` and `/failovers` keep working
+  against a backend that predates them; `analytics.get` additionally serves the
+  `session_names` and `session_parents` side attributes, which `asdict` drops.
 - `sessions.credential`: masked owner secret store/list/forget. Never send the
   value to `sessions.command` or echo it into composer/history/telemetry.
 - `sessions.fork`: canonical next-safe boundary and optional message, stable UUID.

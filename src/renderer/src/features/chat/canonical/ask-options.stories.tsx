@@ -117,6 +117,12 @@ const Frame = ({
 				transcript={transcriptWith(asked)}
 				gate={pending}
 				waiting={false}
+				/*
+				 * A story cannot admit a send, so the wait line is not in play here: the
+				 * branch this file's frame is about is the pending question, which
+				 * outranks the wait line anyway (`working-line-model.ts`).
+				 */
+				starting={false}
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}

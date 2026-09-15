@@ -1,4 +1,7 @@
 import { z } from "zod";
+// The feed's frame family lives beside the session stream's, so the two cannot
+// drift into disagreeing about the envelope they deliberately share.
+import type { DesktopFeedFrame } from "./desktop-session-contract";
 
 const id = z
 	.string()
@@ -110,6 +113,30 @@ const profileName = z
 const target = z
 	.object({ kind: z.enum(["agent", "team"]), name: profileName })
 	.strict();
+/**
+ * The model a NEW conversation will be born on, picked on the draft pane.
+ *
+ * Deliberately the same three fields, in the same spelling, that the canonical
+ * frontend state publishes for a session's model (`CanonicalModel` in
+ * `desktop-session-contract.ts`): the draft's chips and the session's chips are
+ * two readings of one fact, and a second spelling here would be the place the
+ * two came to disagree. `reasoning_effort` is `null` for "no rung chosen",
+ * which the backend resolves to the model's own default exactly as `/effort
+ * auto` does — never `"auto"`, which is a word the picker uses for a state
+ * rather than a level the model could be set to.
+ *
+ * Bounds mirror the rest of this contract's id-shaped fields: they exist to
+ * keep a malformed request off the wire, not to encode a catalogue.
+ */
+const modelSelection = z
+	.object({
+		provider: z.string().min(1).max(128),
+		model_id: z.string().min(1).max(512),
+		reasoning_effort: z.string().min(1).max(64).nullable(),
+	})
+	.strict();
+/** What a draft pane's chips record, and what the wire carries. */
+export type DesktopModelSelection = z.infer<typeof modelSelection>;
 const profileFields = z
 	.object({
 		kind: z.enum(["role", "specialist"]).optional(),
@@ -146,17 +173,96 @@ const chains = z.record(z.array(z.string().max(1024)).max(100));
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
 const scheduleUnit = z.enum(["minutes", "hours", "days"]);
+
 /**
- * An execution-variable key. Looser than `id` because these are user-named
- * Python identifiers rather than machine ids, but still no slashes, dots or
- * spaces -- the key goes into the PATH, so a permissive value would let the
- * renderer address a route it was never given an operation for.
+ * Whether a code-memory key addresses the route it is built into.
+ *
+ * The denylist above refuses the separators, the control characters and NUL -
+ * the characters that would let a key name a route segment of its own. This is
+ * the one shape that survives that rule and STILL does not address what it looks
+ * like it addresses: the transport fetches `new URL(target.path, backendUrl)`, so
+ * `..` and `.` are resolved away by the URL parser before the request leaves, and
+ * a PATCH built for the name `..` reaches the collection instead. A namespace
+ * may legally hold such a name (`globals()[".."] = 1` is ordinary memory, which
+ * is why this is a denylist at all), so the rule has to live here rather than in
+ * the backend's naming policy.
+ *
+ * Nothing is exploitable while no route lives at the resolved path; what this
+ * protects is the invariant the surrounding comment claims - a key addresses a
+ * route this op was given - so the next route added under `/variables/` does not
+ * inherit the reach. Exported because the panel asks the same question before it
+ * offers an Edit: `editable` is the backend's answer about the VALUE, and it
+ * cannot answer this (review round 1, C-03).
+ */
+export function isAddressableVariableKey(key: string): boolean {
+	return !/^\.+$/.test(key);
+}
+
+/**
+ * Whether this renderer's contract would let a write for `key` leave at all.
+ *
+ * The schema, asked directly, rather than a second copy of its rules. The panel
+ * needs this because `editable` is the BACKEND's judgement about the VALUE -
+ * could this text be coerced back into that type - and it says nothing about
+ * whether this renderer's own contract would accept the name: a key that is
+ * empty, longer than 128 characters, or carrying a control character is
+ * advertised as editable and then rejected by `desktopRequestSchema` before any
+ * request is built, which surfaces as "Invalid desktop operation." - a refusal
+ * the user cannot act on and cannot tell apart from a bug (backend PR #1101's
+ * MINOR-1). Asking the schema keeps the panel's offer and the write path's rule
+ * from drifting apart.
+ */
+export const isWritableVariableKey = (key: string): boolean =>
+	variableKey.safeParse(key).success;
+/**
+ * A session code-memory key.
+ *
+ * A key is a NAME in the session's eval namespace, and the worker reads it as a
+ * dict key rather than interpolating it into code, so a name that is not a
+ * Python identifier (`globals()["a b"] = 1`) is legal memory and has to stay
+ * addressable from the panel that lists it. That is why this is a denylist and
+ * not the identifier regex the legacy agent-variable ops used: the renderer
+ * must refuse exactly the characters that would let it address a route it was
+ * never given an operation for - the slash and backslash that separate route
+ * segments, the control characters and NUL no route can carry, and (below) the
+ * dot-only names `new URL()` would normalise out of the path. The
+ * backend applies the same rule plus its reserved-name list, which is the half
+ * that needs the namespace to answer.
  */
 const variableKey = z
 	.string()
 	.min(1)
 	.max(128)
-	.regex(/^[a-zA-Z0-9_-]+$/);
+	.refine((key) =>
+		[...key].every(
+			(character) =>
+				character.charCodeAt(0) >= 32 &&
+				character.charCodeAt(0) !== 127 &&
+				character !== "/" &&
+				character !== "\\",
+		),
+	)
+	.refine(isAddressableVariableKey);
+/**
+ * The writable code-memory types, as one table.
+ *
+ * Enumerated rather than free text so a typo is refused before it reaches the
+ * worker, and identical to the six names the worker's coercion table and the
+ * form's own select offer (see `VARIABLE_TYPES` in `session-variables-api.ts`).
+ * `str` is not `string`, and the form used to send `string` while the worker's
+ * table had no such row - the drift this freeze exists to end.
+ */
+const variableType = z.enum(["str", "int", "float", "bool", "list", "dict"]);
+/**
+ * A value crossing as TEXT, plus the type it should be coerced to.
+ *
+ * The worker builds the object from its own table; nothing the renderer sends
+ * is ever evaluated as code. 16 KiB is a transport bound only: the contract's
+ * real ceiling is the backend's 409 `too_large` at 4096 rendered characters,
+ * and pre-empting it here would answer "Invalid desktop operation." where the
+ * route would have named the limit.
+ */
+const variableValue = z.string().max(16384);
 // The fields create and edit have in common. Both extend it with their own
 // required/nullable variants of prompt, interval and unit, which differ because
 // create supplies defaults and edit sends only what changed.
@@ -254,6 +360,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			requestId,
 			cwd: z.string().min(1).max(4096),
 			target: target.optional(),
+			/*
+			 * OMITTED when the user never picked anything, so the body is the one
+			 * this op sent before the draft's chips could open: making them
+			 * actionable is strictly additive, and a `null` here would be a
+			 * different request for every caller that never asked.
+			 */
+			model: modelSelection.optional(),
 		})
 		.strict(),
 	/*
@@ -271,7 +384,9 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	 * disagree with the session the first send creates.
 	 *
 	 * Body and response mirror `sessions.create` deliberately: same `cwd`, same
-	 * optional `target`, same 422 for an unresolvable profile. The response is a
+	 * optional `target`, same `model` and same 422 for an unresolvable profile —
+	 * the pane is asking the question it will ask for real on the first send, so
+	 * the two bodies are derived from one selection. The response is a
 	 * `CanonicalFrontendSync` — the wire shape `sessions.watch` streams — whose
 	 * `snapshot.session_id` is EMPTY, because there is no session. The renderer
 	 * passes it to the strip and never into the canonical sessions store.
@@ -282,6 +397,10 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			requestId,
 			cwd: z.string().min(1).max(4096),
 			target: target.optional(),
+			/* Present only when the pane's chips were used: the preview then answers
+			   the reading the CHOSEN model gives, which is the ladder and window the
+			   first turn will actually get. */
+			model: modelSelection.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("sessions.get"), sessionId }).strict(),
@@ -339,6 +458,35 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			images: z.array(sessionImage).max(8).optional(),
 		})
 		.strict(),
+	/*
+	 * Point a LIVE session at another working directory (the desktop's `/move`).
+	 *
+	 * Its own op rather than an argument to `sessions.command`, and the reason is
+	 * where the work happens: the move is executed in the SERVER process against
+	 * the session's viewer (`POST
+	 * /v1/desktop/sessions/{id}/working-directory`), while the command endpoint
+	 * answers a `NativeAction | OwnerCommandResult` - the union's other member is
+	 * the RUNTIME's own slash answer, and a move produces neither. `/move`
+	 * therefore stays a presentation request in the backend's command catalogue
+	 * (`desktop_destination="session.move"`): a bare `/move` opens the picker,
+	 * and the argument form and the chip both call this op instead. The shape is
+	 * `sessions.warm`'s: a lifecycle operation on the session's runtime, with its
+	 * own receipt.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`): a
+	 * path is not prose, and claiming image-sized room for a 4 KB field would
+	 * spend the message budget on nothing. `cwd` carries the same bound as
+	 * `sessions.create`/`sessions.preview` because it reaches the same route
+	 * model, which refuses anything else.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.move"),
+			sessionId,
+			requestId,
+			cwd: z.string().min(1).max(4096),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.answer"),
@@ -385,6 +533,101 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	// 2-byte body, which is what lets the renderer issue it from a keystroke.
 	z
 		.object({ op: z.literal("sessions.warm"), sessionId })
+		.strict(),
+	/*
+	 * A session's code memory: the names the session's own cells have left in its
+	 * eval namespace.
+	 *
+	 * Session-addressed, because the runtime is what holds a namespace and the
+	 * kernel it lives in is keyed by session id. The legacy
+	 * `/v1/agents/{id}/execution-variables` route answered through the agent
+	 * registry instead, which resolves agent-directory UUIDs - so a canonical
+	 * session id could only ever 404 there, and the panel that taught "code
+	 * memory" never loaded once.
+	 */
+	z
+		.object({ op: z.literal("sessions.variables.list"), sessionId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.create"),
+			sessionId,
+			key: variableKey,
+			value: variableValue,
+			type: variableType,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.update"),
+			sessionId,
+			key: variableKey,
+			value: variableValue,
+			type: variableType,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.delete"),
+			sessionId,
+			key: variableKey,
+		})
+		.strict(),
+	// Machine-wide desktop presence. NOT a watch lease and deliberately not
+	// shaped like one: it names no session, because the fact it carries is
+	// "somebody is at this machine's screen and this app can raise a banner",
+	// which is a property of the app rather than of any conversation. The
+	// backend reads it to decide whether a BACKGROUND completion is worth a
+	// banner here at all (a session runtime with no surface to present on
+	// otherwise toasts on its own host, where nobody may be).
+	//
+	// `subscription_id` is the LIVE feed subscription the presence belongs to,
+	// not a per-session watch subscription: the server holds the lease against
+	// that socket, so a dropped feed revokes the claim without waiting for a
+	// heartbeat to go stale. That is the whole reason presence is a route on the
+	// feed rather than a local file - a desktop paired to a backend on another
+	// host cannot write to that host's disk.
+	z
+		.object({
+			op: z.literal("sessions.presence"),
+			subscriptionId: z.string().regex(/^[a-f0-9]{1,64}$/),
+			canNotify: z.boolean(),
+			/*
+			 * WHY THE CLAIM CARRIES MORE THAN "a desktop is connected".
+			 *
+			 * The backend's delivery lease answers two separate questions from
+			 * this one beat, and a claim that names neither is a claim that
+			 * delivers NOTHING:
+			 *
+			 * - `can_notify_kinds` is what `delivers(kind)` reads. Empty (the
+			 *   default for a client that forgot) means rung 2 is never eligible
+			 *   for any completion, so rung 4 raises the runtime's own banner —
+			 *   earlier, and its claim advances the read watermark, so the
+			 *   clickable banner this app exists to raise never composes.
+			 *   The backend's own test for this is
+			 *   `test_a_claim_with_no_kinds_claims_nothing`: an app that does not
+			 *   advertise must not win the rung.
+			 * - `window` (with `session_id`) is what `attended` reads. Without it
+			 *   this app counts as watching NOTHING, so a completion in the
+			 *   conversation on screen raises a banner — the inverse of rung 1,
+			 *   and a regression against the per-session flag it replaces.
+			 *
+			 * `window` is sent even when there is no window: a windowless app
+			 * (macOS, alive in the dock) can still raise a banner but cannot be
+			 * displaying anything, which is why `session_id` must be "" there
+			 * rather than the last conversation the closed window held.
+			 */
+			canNotifyKinds: z.array(z.enum(["complete", "error"])).max(4),
+			sessionId: z.string().regex(/^([a-f0-9]{12})?$/),
+			window: z
+				.object({
+					exists: z.boolean(),
+					focused: z.boolean(),
+					visible: z.boolean(),
+					minimized: z.boolean(),
+				})
+				.strict(),
+		})
 		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
 	// everything else. These routes are gated in managed mode (agent inventory,
@@ -522,38 +765,6 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
-	z
-		.object({ op: z.literal("legacy.agent.variables.list"), agentId: id })
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.create"),
-			agentId: id,
-			variable: z.record(z.unknown()),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.get"),
-			agentId: id,
-			key: variableKey,
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.update"),
-			agentId: id,
-			key: variableKey,
-			variable: z.record(z.unknown()),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.delete"),
-			agentId: id,
-			key: variableKey,
-		})
-		.strict(),
 	z.object({ op: z.literal("legacy.job.cancel"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
@@ -582,6 +793,26 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			sinceMs: z.number().int().nonnegative().optional(),
 			untilMs: z.number().int().nonnegative().optional(),
 			days: z.number().int().min(1).max(366).optional(),
+		})
+		.strict(),
+	/*
+	 * The two diagnostics reads. They ride their own capability key
+	 * (`diagnostics`) rather than the catalogue one, because `/analytics` and
+	 * `/failovers` must keep working against a backend that lacks these routes.
+	 */
+	z
+		.object({ op: z.literal("info.get") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.report"),
+			sessionId,
+			/*
+			 * 0..50, matching the route's own clamp. The client always sends it:
+			 * the number of rows the panel draws is a design decision made here, and
+			 * inheriting the route's default would let the two drift apart.
+			 */
+			recentLimit: z.number().int().min(0).max(50).optional(),
 		})
 		.strict(),
 	z
@@ -648,6 +879,37 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("mcp.credentials.store"),
+			sessionId,
+			name: z.string().min(1).max(256),
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// Field-level on purpose: a `.refine()` on the OBJECT would make this
+				// member a `ZodEffects`, which a discriminated union cannot take — it
+				// needs the `op` shape to discriminate on, so refining the whole
+				// object silently collapsed `DesktopRequest` to `unknown` and broke
+				// every `switch (request.op)` in this file.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					// Mirrors the owner's own bound (`local_operator/mcp/credentials.py`),
+					// so an oversized paste is refused as a sentence rather than
+					// serialized into a request the control budget rejects as an
+					// opaque 413.
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("mcp.control"),
@@ -998,7 +1260,32 @@ export type DesktopStreamEvent = {
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
+	/**
+	 * The HTTP status that refused this stream, when one did.
+	 *
+	 * A REFUSAL is not a transport failure and the difference is user-visible:
+	 * the desktop plane answers 404 for a session this machine does not have, and
+	 * the one path that reaches it without validating the id first is the
+	 * notification click (which deliberately does NOT spend a `sessions.get`
+	 * round trip on the latency path). Without the code, that case fell into the
+	 * generic `unavailable` branch and the reader got "The event stream was
+	 * refused (404)." — transport text, saying what happened and neither what it
+	 * means nor what to do.
+	 *
+	 * Optional because not every emitter has one: a socket that died mid-stream
+	 * and a frame-budget overflow are failures, not refusals.
+	 */
+	status?: number;
 };
+
+/**
+ * Whether the machine-wide feed socket is live, as the sidebar needs it.
+ *
+ * It lives in the contract rather than in `desktop-feed.ts` because it is a
+ * RENDERER-visible shape: the sidebar renders the disconnected line from it, so
+ * it travels over IPC and belongs with the other wire types.
+ */
+export type DesktopFeedState = { connected: boolean };
 
 export type DesktopStreamSubscription = {
 	streamId: Promise<string>;
@@ -1070,6 +1357,14 @@ export type DesktopAPI = {
 		visible: boolean;
 		focused: boolean;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Tell main this pane has stopped displaying `sessionId` (review round 2,
+	 * R2-4). Electron only, and optional: absent means the pre-fix behaviour, where
+	 * the claim stood until the window closed.
+	 */
+	releaseWatchHeartbeat?: (args: {
+		sessionId: string;
+	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
 	/** `/exit`: close this window. Detach-only; the backend keeps sessions
@@ -1083,6 +1378,45 @@ export type DesktopAPI = {
 			onEvent: (event: DesktopStreamEvent) => void,
 		) => DesktopStreamSubscription;
 	};
+	/**
+	 * The machine-wide desktop feed, held by MAIN and not by this window.
+	 *
+	 * Absent in browser development, where there is no relay and no native
+	 * delivery to be told about — a renderer with no `feed` must keep the polling
+	 * behaviour it has today rather than waiting for a stream that cannot exist.
+	 *
+	 * Subscribe is a VIEW subscription and nothing more: main opens the feed on
+	 * its own (gated on the backend's capability) and stays subscribed with no
+	 * window at all, which is the state the operator reported — app alive in the
+	 * dock, nothing on screen, and a completion announced to nobody.
+	 */
+	feed?: {
+		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
+		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
+	};
+	/**
+	 * The conversation main was launched to display, or null.
+	 *
+	 * A VALUE rather than an event, and that is the point (B3): the initial
+	 * session has to be readable before the renderer's first paint, because a
+	 * recreated window rehydrates its persisted `activeSessionId` and paints THAT
+	 * conversation first. Delivering the id as a post-load IPC instead showed the
+	 * user the wrong conversation and then swapped it, which reads as a click
+	 * that landed on the wrong row.
+	 */
+	initialSession?: string | null;
+	/**
+	 * Whether main created this window to open the CATALOGUE (review round 2,
+	 * R2-1), read from the same argv and resolved through the same reader.
+	 *
+	 * Additive and optional like every other post-contract field: absent means "no
+	 * catalogue intent", which is what an older main says, and that degrades to
+	 * the pre-fix behaviour (restore the last conversation) rather than to an
+	 * error. It is NOT the same claim as `initialSession: null`, and that
+	 * distinction is the finding: `null` is also an ordinary launch, whose
+	 * correct answer is "restore what you had open".
+	 */
+	initialCatalogue?: boolean;
 };
 
 export type DesktopCapabilities = {
@@ -1256,6 +1590,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
+					...(request.model ? { model: request.model } : {}),
 				},
 			};
 		case "sessions.preview":
@@ -1266,6 +1601,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
+					...(request.model ? { model: request.model } : {}),
 				},
 			};
 		case "sessions.get":
@@ -1349,6 +1685,38 @@ export function desktopEndpoint(request: DesktopRequest): {
 					can_notify: request.canNotify,
 				},
 			};
+		case "sessions.presence":
+			return {
+				path: "/v1/desktop/presence",
+				method: "POST",
+				body: {
+					subscription_id: request.subscriptionId,
+					// The three fields the delivery lease reads beside it. Sent
+					// snake_case like the route's own model, and always sent: a
+					// defaulted claim is what made this app ineligible.
+					can_notify_kinds: request.canNotifyKinds,
+					session_id: request.sessionId,
+					window: request.window,
+					// `can_notify` means "can ATTEMPT delivery", never "the user will
+					// be reached": `Notification.isSupported()` knows nothing about
+					// macOS Focus/DND, Windows Focus Assist or a denied permission.
+					// The backend's suppression reads it as eligibility to try, and a
+					// claim never advances the read watermark, so a suppressed banner
+					// still leaves the durable unseen mark intact.
+					can_notify: request.canNotify,
+				},
+			};
+		case "sessions.move":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/working-directory`,
+				method: "POST",
+				// `request_id` is the receipt key the route journals on, and it is what
+				// makes a retried move replay the first answer rather than retire the
+				// runtime a second time. `cwd` is sent as typed: resolving `~` and a
+				// relative path is the backend's job, because the base for a relative
+				// path is the SESSION's directory, which the renderer does not own.
+				body: { request_id: request.requestId, cwd: request.cwd },
+			};
 		case "sessions.warm":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/warm`,
@@ -1358,6 +1726,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// forbids extras but still wants a JSON OBJECT. An omitted body
 				// makes a legal call answer 422.
 				body: {},
+			};
+		case "sessions.variables.list":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
+				method: "GET",
+			};
+		case "sessions.variables.create":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
+				method: "POST",
+				// The route's own body shape, not the op's: `{key, value, type}` on
+				// create and `{value, type}` on update, because the key is in the path
+				// once the variable exists and is immutable after that.
+				body: { key: request.key, value: request.value, type: request.type },
+			};
+		case "sessions.variables.update":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables/${encodeURIComponent(request.key)}`,
+				method: "PATCH",
+				body: { value: request.value, type: request.type },
+			};
+		case "sessions.variables.delete":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables/${encodeURIComponent(request.key)}`,
+				method: "DELETE",
 			};
 		case "legacy.models": {
 			// The query the renderer's own listModels() built. Dropping it would
@@ -1475,33 +1868,6 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.download":
 			return { path: `/v1/agents/${request.agentId}/download`, method: "GET" };
-		case "legacy.agent.variables.list":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables`,
-				method: "GET",
-			};
-		case "legacy.agent.variables.create":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables`,
-				method: "POST",
-				body: request.variable,
-			};
-		case "legacy.agent.variables.get":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "GET",
-			};
-		case "legacy.agent.variables.update":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "PATCH",
-				body: request.variable,
-			};
-		case "legacy.agent.variables.delete":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "DELETE",
-			};
 		case "legacy.job.cancel":
 			return { path: `/v1/jobs/${request.jobId}`, method: "DELETE" };
 		case "commands.list":
@@ -1532,6 +1898,18 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.untilMs !== undefined)
 				query.set("until_ms", String(request.untilMs));
 			return { path: `/v1/desktop/analytics?${query}`, method: "GET" };
+		}
+		case "info.get":
+			/* No parameters: `/info` has exactly one answer per host. */
+			return { path: "/v1/desktop/info", method: "GET" };
+		case "sessions.report": {
+			const query = new URLSearchParams({
+				recent_limit: String(request.recentLimit ?? 12),
+			});
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/report?${query}`,
+				method: "GET",
+			};
 		}
 		case "skills.list":
 			return {
@@ -1600,6 +1978,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "GET",
+			};
+		case "mcp.credentials.store":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp/credentials`,
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					confirmed_replace: request.confirmedReplace,
+				},
 			};
 		case "mcp.control":
 			return {
@@ -1763,3 +2151,386 @@ export type ReadFileBytesResponse =
 			error: string;
 			sizeBytes?: number;
 	  };
+
+/* ---------------------------------------------------------------------------
+ * The diagnostics panels' response shapes (`docs/design/panel-views.md` §5).
+ *
+ * The request schemas above are the transport's closed vocabulary; these are
+ * the payloads two of those ops answer with. They live beside the requests
+ * because §5 is one contract: a field name that exists in one half and not the
+ * other is the drift that turns a panel's first frame into a 500. Nothing here
+ * validates at runtime — the routes are trusted to send what §5 says — so these
+ * are the renderer's declared reading of the wire, and a panel that reads a
+ * field absent from these types is reading something nobody promised.
+ *
+ * Conventions, restated because every field below depends on them:
+ *
+ * - **Money** is integer micro-USD (`cost_micro`), always paired with
+ *   `cost_known_calls`. `cost_known_calls < calls` means the figure is a LOWER
+ *   BOUND; `cost_known_calls === 0` means nothing in scope is priceable and the
+ *   client renders `—`, never `$0.00`.
+ * - **Tokens** are raw integers; abbreviation is the client's job.
+ * - **Time**: `ts_ms` is epoch milliseconds, `captured_at` epoch seconds.
+ * - **Unknown is not zero.** Every field that can be unmeasured is nullable and
+ *   the client renders the unknown spelling. Where the absence of a measurement
+ *   is a different fact from a zero (`tool_calls: null`, an unreadable ledger,
+ *   an unopenable store) the payload says so explicitly and the client MUST NOT
+ *   fold the two together.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * One usage aggregate: `dataclasses.asdict(UsageAggregate)`.
+ *
+ * `components` is exactly `COMPONENT_KEYS` (nine entries, all present);
+ * `by_provider` and `by_session` are always `{}` on `sessions.report`, which is
+ * the point of that op — one session's own figures, from one pinned read.
+ */
+export type DesktopUsageAggregate = {
+	calls: number;
+	ok_calls: number;
+	input_tokens: number;
+	output_tokens: number;
+	cache_read_tokens: number;
+	cache_write_tokens: number;
+	reasoning_tokens: number;
+	context_tokens: number;
+	cost_micro: number;
+	cost_known_calls: number;
+	components: Record<string, number>;
+	by_provider: Record<string, DesktopUsageAggregate>;
+	by_session: Record<string, DesktopUsageAggregate>;
+};
+
+/** One `usage_daily` rollup bucket, oldest-first across the series. */
+export type DesktopUsagePeriod = {
+	/** Local `YYYY-MM-DD`; `""` only for a totals row, which this route never sends. */
+	period: string;
+	/** `""` on the across-models series this route asks for. */
+	model: string;
+	input_tokens: number;
+	output_tokens: number;
+	cache_read_tokens: number;
+	cache_write_tokens: number;
+	reasoning_tokens: number;
+	context_tokens: number;
+	cost_micro: number;
+	cost_known_calls: number;
+	calls: number;
+};
+
+/**
+ * `analytics.get`'s `data`.
+ *
+ * `session_names` and `session_parents` are the store's two side attributes,
+ * which `dataclasses.asdict` drops; they are served explicitly here so the
+ * by-session table can label a row with a name and show the tree. Both are
+ * OPTIONAL on purpose: against a backend that predates them the panel renders
+ * the hex id as the label and no indentation, and says nothing about it — an id
+ * is a true label, so there is nothing to apologise for.
+ *
+ * The `aggregate` is per-session OWN figures and is never rolled up over
+ * children; `session_parents` is what lets a client re-partition, which is why
+ * the by-session section's meta has to say so.
+ */
+export type DesktopAnalyticsData = {
+	aggregate: DesktopUsageAggregate;
+	daily: DesktopUsagePeriod[];
+	daily_scope: string;
+	session_names?: Record<string, string>;
+	session_parents?: Record<string, string>;
+};
+
+/** Timing statistics for one phase of a request, across a session's samples. */
+export type DesktopTimingSummary = {
+	samples: number;
+	mean_ms: number | null;
+	min_ms: number | null;
+	max_ms: number | null;
+};
+
+/** One row of `sessions.report`'s recent-requests tail. */
+export type DesktopSessionRequest = {
+	request_id: string;
+	ts_ms: number;
+	provider: string;
+	model_id: string;
+	/** A label: `turn`, `compaction`, `aside`, `naming`, … or `unknown`. */
+	purpose: string;
+	/**
+	 * A LABEL — a provider finish reason or an exception class name — and never
+	 * the thing that decides failure. An older ledger reports every row as
+	 * `unknown`, so deriving failure from it painted an entire healthy session
+	 * as failed. Read `ok`.
+	 */
+	outcome: string;
+	usage_reported: boolean | null;
+	context_tokens: number;
+	output_tokens: number;
+	duration_ms: number | null;
+	ttft_ms: number | null;
+	preparation_ms: number | null;
+	/** `null` is unknown, and unknown is NEVER painted as a failure. */
+	ok: boolean | null;
+};
+
+/**
+ * Tool-call counters, already net of the faults the rates exclude.
+ *
+ * The two rates are NOT on the wire (they are Python properties), so the client
+ * derives them: `validity = 1 - model_faults/emitted` and
+ * `execution_error_rate = execution_faults/(emitted - model_faults)`, where
+ * `emitted = total - Σfaults[denied|aborted|skipped|gate_failed]`. Displaying
+ * them as neighbouring bars is wrong — they share no denominator.
+ *
+ * `null` on the report means no tool-call rows were ever recorded (a session
+ * predating the feature), which is the opposite of a zeroed counter.
+ */
+export type DesktopToolCallStats = {
+	/** MODEL-EMITTED calls, every fault included. */
+	total: number;
+	ok: number;
+	faults: Record<string, number>;
+	faults_by_tool: Record<string, number>;
+	nested_total: number;
+	nested_ok: number;
+	nested_excluded: number;
+};
+
+/**
+ * `sessions.report`'s `data`, from one `AnalyticsStore.session_report` read.
+ *
+ * Every number here comes from a single explicit read transaction, which is why
+ * `/session` reads this and not a second `analytics.get` — a differing query
+ * path would give a second aggregate.
+ */
+export type DesktopSessionReport = {
+	session_id: string;
+	/** `false` = the ledger could not be read. Nothing on the panel is then trustworthy. */
+	available: boolean;
+	/** OWN scope, exact session id. */
+	aggregate: DesktopUsageAggregate;
+	/** `null` = the subtree walk could not run. NOT "$0.00 of subagents". */
+	descendants_aggregate: DesktopUsageAggregate | null;
+	/** Nearest-first. */
+	descendant_ids: string[];
+	by_model: Array<{
+		provider: string;
+		model_id: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
+	/**
+	 * An ARRAY, like `by_model` and for the same reason: a `dict` reaches JSON as
+	 * a keyed object, which the client cannot order. The route converts it; when
+	 * it did not, the panel's `reportShapeProblem` names the field instead of
+	 * rendering a `.map` over an object, and the divergence is a cross-repo
+	 * finding rather than a shape this type tolerates.
+	 */
+	by_purpose: Array<{ purpose: string; aggregate: DesktopUsageAggregate }>;
+	by_purpose_outcome: Array<{
+		purpose: string;
+		outcome: string;
+		calls: number;
+	}>;
+	/** `usage_reported = 0`. */
+	missing_usage_calls: number;
+	/** `usage_reported IS NULL`. */
+	unknown_usage_calls: number;
+	timings: {
+		duration_ms: DesktopTimingSummary;
+		ttft_ms: DesktopTimingSummary;
+		preparation_ms: DesktopTimingSummary;
+	};
+	/** Newest first, at most `recent_limit` rows. */
+	recent: DesktopSessionRequest[];
+	first_ts_ms: number | null;
+	last_ts_ms: number | null;
+	tool_calls: DesktopToolCallStats | null;
+};
+
+/** One machine-locatable `lop` process, as `info.get` reports it. */
+export type DesktopInfoSessionLine = {
+	pid: number;
+	kind: string;
+	state: "live" | "wedged" | "stale" | "stored" | "";
+	session_id: string;
+	conversation_name: string;
+	model_label: string;
+	cwd: string;
+	uptime_s: number;
+	heartbeat_age_s: number;
+	rss_bytes: number | null;
+	footprint_bytes: number | null;
+	last_activity_s: number | null;
+	pending: string | null;
+	busy: boolean;
+	detached: boolean;
+	version: string;
+	source_ref: string;
+};
+
+/**
+ * `info.get`'s `data`.
+ *
+ * **The live half arrives as `null` and the client does not read it.** The route
+ * nulls these fields explicitly (`_unmeasure_live_half` in
+ * `server/routes/desktop_catalogues.py`) because `LiveState()` has no session
+ * attached: `agents.tree`/`running`/`queued`/`settled`/`max_running`/
+ * `at_capacity`/`max_depth`/`deeper`/`roster_unread`/`cross_session_known` and
+ * `env.mcp_configured`/`mcp_connected`/`mcp_failed`/`mcp_settling`/
+ * `mcp_failures`/`approval_mode`/`skills` are the dataclass DEFAULTS of a state
+ * nothing measured, and a `0`/`false`/`[]` is indistinguishable from a reading on
+ * the one screen whose job is to be believed (backend QA round on the sibling
+ * PR, which found this route shipping them as values). The `/info` panel renders
+ * subagents and MCP from `canonical.frontend` instead, and reads no field below
+ * from this block.
+ *
+ * They are typed `| null` on purpose: the desktop's route never attaches a
+ * session, so the nulls are the NORMAL payload, and a type that says `number`
+ * made `formatCount(null)` compile into a confident "0 skills" — the fixture
+ * typed to the old shape hid it. A later reader "fixing" the panel to read them
+ * would introduce a second source of truth for a live fact, which is why the
+ * fields are still typed here rather than dropped: demonstrably ignored, and now
+ * unable to read as measured.
+ */
+export type DesktopInfoData = {
+	install: {
+		/** `""` when the version could not be read. */
+		version: string;
+		kind: string;
+		prefix: string;
+		executable: string;
+		/** The package dir that ACTUALLY resolved, which may not be `prefix`'s. */
+		import_path: string;
+		import_path_foreign: boolean;
+		is_git_snapshot: boolean;
+		source_ref: string;
+		build_age_s: number | null;
+		/** Last PyPI answer ON DISK; `null` = never checked, a different fact from up to date. */
+		latest_known: string | null;
+		latest_age_s: number | null;
+		behind: boolean;
+		python_version: string;
+		python_implementation: string;
+		platform: string;
+		machine: string;
+	};
+	process: {
+		pid: number;
+		session_id: string;
+		conversation_name: string;
+		cwd: string;
+		model_label: string;
+		effective_model: string;
+		uptime_s: number | null;
+		config_dir: string;
+		config_dir_redirected: boolean;
+		agent_home: string;
+		agent_home_redirected: boolean;
+		cache_dir: string;
+		log_dir: string;
+		/** `null` = not listening; a port is not a measurement otherwise. */
+		control_port: number | null;
+		protocol: number | null;
+		kind: string;
+	};
+	sessions: {
+		lines: DesktopInfoSessionLine[];
+		total: number;
+		live: number;
+		wedged: number;
+		stale: number;
+		busy: number;
+		pending: number;
+		detached: number;
+		/** More than one distinct (version, source_ref) among LIVE rows. */
+		build_skew: boolean;
+		/** `false` = the memory probes returned nothing at all. */
+		usage_available: boolean;
+		/** `false` = the registry scan itself failed. */
+		available: boolean;
+		subagents_reporting: number;
+		subagents_unreported: number;
+		fleet_subagents_running: number;
+		fleet_subagents_queued: number;
+		fleet_session_trajectories: number;
+		fleet_trajectories: number;
+	};
+	agents: {
+		profiles: number;
+		teams: number;
+		tree: Array<{
+			job_id: string;
+			label: string;
+			status: string;
+			depth: number;
+			agent_role: string;
+			effort: string;
+			parent_job_id: string | null;
+			session_id: string | null;
+			live: boolean;
+		}> | null;
+		running: number | null;
+		queued: number | null;
+		settled: number | null;
+		max_running: number | null;
+		at_capacity: boolean | null;
+		max_depth: number | null;
+		deeper: number | null;
+		cross_session_known: boolean | null;
+		roster_unread: boolean | null;
+	};
+	env: {
+		mcp_configured: number | null;
+		mcp_connected: number | null;
+		mcp_failed: number | null;
+		mcp_settling: boolean | null;
+		/** `[server name, truncated message]`. */
+		mcp_failures: Array<[string, string]> | null;
+		approval_mode: string | null;
+		theme: string;
+		terminal_size: [number, number] | null;
+		term: string;
+		colorterm: string;
+		multiplexer: string;
+		is_tty: boolean;
+		browser_backend: string;
+		browser_name: string;
+		browser_paired: boolean;
+		mobile_installed: boolean;
+		mobile_healthy: boolean;
+		mobile_port: number | null;
+		/** NAMES ONLY — never a value, a length or a prefix. */
+		credential_keys: string[];
+		guides: number;
+		/** `null` on every desktop read: no session is attached, so nothing counted. */
+		skills: number | null;
+	};
+	/** `[field or block name, one-line reason]`. */
+	degraded: Array<[string, string]>;
+	/** Epoch SECONDS, not milliseconds. */
+	captured_at: number;
+};
+
+/**
+ * The numbers behind `/context`'s pre-formatted rows.
+ *
+ * Additive on an existing route: the rows themselves are `[label, "~12.3k"]`
+ * strings the owner built, and this is the dict they were built from, one line
+ * earlier in the same function. It is the only way a panel can draw a bar
+ * instead of parsing a human string, and it MUST NOT be reconstructed by
+ * parsing `items` — a formatter change would then silently move a chart.
+ *
+ * `cache_read` is `0` when there is no last usage; `context_window` is the
+ * EFFECTIVE model's window, not the selected one's.
+ */
+export type DesktopContextNumbers = {
+	instructions: number;
+	tool_inventory: number;
+	tool_schemas: number;
+	environment: number;
+	knowledge_mcp_goal: number;
+	messages: number;
+	context_window: number;
+	cache_read: number;
+	total: number;
+};

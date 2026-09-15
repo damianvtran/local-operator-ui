@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useEffect, useState } from "react";
+import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
 import { FloatingAlert } from "./floating-alert";
 import {
 	ProgressContainer,
@@ -43,7 +44,8 @@ const createEmptyUpdaterMethods = () => {
 			checkForUpdates: async () =>
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
 			checkForBackendUpdates: async () => Promise.resolve(null),
-			checkForAllUpdates: async () => Promise.resolve(),
+			checkForAllUpdates: async () =>
+				updateCheckVerdict({ app: "current", server: "current" }),
 			getLastInstallAttempt: async () => null,
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
@@ -84,7 +86,8 @@ const mockUpdaterApi = () => {
 				cancellationToken: {},
 			}),
 		checkForBackendUpdates: async () => Promise.resolve(null),
-		checkForAllUpdates: async () => Promise.resolve(),
+		checkForAllUpdates: async () =>
+			updateCheckVerdict({ app: "current", server: "current" }),
 		getLastInstallAttempt: async () => null,
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
@@ -290,6 +293,11 @@ const mockUpdaterApi = () => {
 				version: string | null;
 				message: string;
 				remedy: { text: string; url?: string; command?: string };
+				// Both optional and both over the wire: the panel's heading map is keyed
+				// by `code`, and one code covers the update-time refusal and the start-up
+				// one, which are not the same news (design D2, D3).
+				heading?: string | null;
+				dismissLabel?: string | null;
 				detail?: string;
 			}) => void,
 		) => {
@@ -300,6 +308,31 @@ const mockUpdaterApi = () => {
 					version: "0.18.0",
 					message:
 						"This install of Local Operator can't be updated in place, so the update to version 0.18.0 was stopped before the app quit.",
+					remedy: {
+						text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
+						url: "https://local-operator.com/download",
+					},
+					detail:
+						"/Applications/Local Operator.app: errSecCSBadBundleFormat: a sealed resource is missing or invalid",
+				});
+			}
+			// The start-up variant: the same code and remedy, no version, and a
+			// message that says what actually happened. Production builds this one in
+			// `installedBundleSealBlock(..., "startup")`; the drift guard in
+			// `scripts/update-robustness.test.mjs` asserts this string equals that one.
+			if (window.triggerUpdateInstallBlockedAtStartup) {
+				callback({
+					code: "installed-bundle-not-sealed",
+					version: null,
+					// The fact only; the remedy line below owns the instruction, and the
+					// heading says what the state is rather than answering an update
+					// question this user never asked (design D1, D2, D3). All three are
+					// asserted against `installedBundleSealBlock(..., "startup")` by the
+					// drift guard in `scripts/update-robustness.test.mjs`.
+					heading: "This copy of Local Operator needs replacing",
+					dismissLabel: "Not now",
+					message:
+						"This copy of Local Operator did not pass its integrity check, so it can't repair itself.",
 					remedy: {
 						text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
 						url: "https://local-operator.com/download",
@@ -423,6 +456,7 @@ declare global {
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
 		triggerBackendUpdateNonManaged?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
+		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallFailed?: boolean;
 		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
 		triggerUpdateInstallInFlight?: boolean;
@@ -462,6 +496,8 @@ const meta = {
 				window.triggerUpdateProgress = context.parameters.triggerUpdateProgress;
 				window.triggerUpdateInstallBlocked =
 					context.parameters.triggerUpdateInstallBlocked;
+				window.triggerUpdateInstallBlockedAtStartup =
+					context.parameters.triggerUpdateInstallBlockedAtStartup;
 				window.triggerUpdateInstallFailed =
 					context.parameters.triggerUpdateInstallFailed;
 				window.triggerBackendUpdateManualRequired =
@@ -477,6 +513,7 @@ const meta = {
 				context.parameters.triggerUpdateError,
 				context.parameters.triggerUpdateProgress,
 				context.parameters.triggerUpdateInstallBlocked,
+				context.parameters.triggerUpdateInstallBlockedAtStartup,
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
@@ -823,6 +860,7 @@ export const ErrorState: Story = {
 type UpdaterTriggerFlag =
 	| "triggerUpdateDownloaded"
 	| "triggerUpdateInstallBlocked"
+	| "triggerUpdateInstallBlockedAtStartup"
 	| "triggerUpdateInstallFailed"
 	| "triggerUpdateInstallFailedCancelledByRelaunch"
 	| "triggerUpdateInstallInFlight"
@@ -858,6 +896,19 @@ export const InstallBlocked: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerUpdateInstallBlocked: true },
 	render: () => <Triggered flag="triggerUpdateInstallBlocked" />,
+};
+
+/**
+ * The same refusal reached from the other side: the start-up pass found the
+ * running bundle already broken, with no update in play. It is a different
+ * message on purpose - telling a user an update "was stopped before the app
+ * quit" when they never asked for one describes an event that did not happen
+ * (review R2). Same heading, same remedy, different second clause.
+ */
+export const InstallBlockedAtStartup: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlockedAtStartup: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlockedAtStartup" />,
 };
 
 /**

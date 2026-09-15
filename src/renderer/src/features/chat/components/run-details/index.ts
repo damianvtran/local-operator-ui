@@ -18,6 +18,7 @@ export {
 	hasRunDetails,
 	hasUnseenFailure,
 	hasUnseenMcpProblem,
+	LABEL_SEAM,
 	mcpErrorTexts,
 	mcpProblemNames,
 	mcpServersAreCold,
@@ -32,6 +33,7 @@ export {
 	SUBAGENT_ROW_CAP,
 	subagentTally,
 	TODO_ITEM_CAP,
+	todoClause,
 	todoTally,
 	unseenFailures,
 	unseenMcpProblems,
@@ -64,3 +66,8 @@ export type { RunPanelProps } from "./run-panel";
 export { RunDetailsTrigger } from "./run-details-trigger";
 export type { RunDetailsTriggerProps } from "./run-details-trigger";
 export { useRunPanelMcpServers } from "./use-mcp-servers";
+export { useMcpRemedy } from "./use-mcp-remedy";
+export type {
+	McpRefusal,
+	McpRemedyControls,
+} from "./use-mcp-remedy";

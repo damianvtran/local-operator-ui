@@ -71,6 +71,17 @@ type InstallBlockedInfo = {
 	message: string;
 	remedy: UpdateRemedy;
 	detail?: string;
+	/**
+	 * The heading and dismiss label the main process chose for this refusal.
+	 *
+	 * The map below is keyed by `code`, and one code covers two situations that
+	 * are not the same news - an update that was refused, and a copy that is
+	 * damaged with no update in play. These carry the copy that knows which it is,
+	 * and fall back to the map so a caller that sets neither is unchanged
+	 * (design D2, D3).
+	 */
+	heading?: string | null;
+	dismissLabel?: string | null;
 };
 
 /** A previous install Squirrel never completed, reported on the next start. */
@@ -1074,7 +1085,8 @@ export const UpdateNotification = ({
 		return (
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
-					{INSTALL_BLOCK_HEADINGS[installBlocked.code] ??
+					{installBlocked.heading ??
+						INSTALL_BLOCK_HEADINGS[installBlocked.code] ??
 						"The update wasn't installed"}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
@@ -1090,7 +1102,7 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={() => setInstallBlocked(null)}
 					>
-						Update later
+						{installBlocked.dismissLabel ?? "Update later"}
 					</Button>
 					{installBlocked.remedy.url ? (
 						<Button

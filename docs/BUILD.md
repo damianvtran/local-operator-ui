@@ -143,12 +143,66 @@ of the Electron framework and both bundled interpreters, so half of every
 download is code the user's machine cannot run.
 
 `extraResources` is not architecture-aware and copies both interpreters into
-every build. `scripts/prune-python-resource.mjs` runs as `afterPack` and deletes
-the one the app cannot run — `backend-installer.ts` probes `python_aarch64` on
-arm64 and `python` on x64. It has to run before signing: the interpreter tree is
-code-sealed inside the `.app`, and removing a sealed file is a violation no
-update-time heal can repair. `pnpm verify-macos-artifacts` fails the release if
-an app bundle does not carry exactly the tree its architecture needs.
+every build, as inert data under `Contents/Resources/python-runtime-seed/<arch>`
+(`arm64`/`x64`) rather than under the old `python`/`python_aarch64` names. Two
+steps in `scripts/after-pack.mjs` - which `package.json` names as the single
+`afterPack` hook, and which is where anyone who followed an older revision of
+this paragraph to `prune-python-resource.mjs` should look now - run there:
+
+1. `scripts/prune-python-resource.mjs` deletes the tree the app cannot run, by
+the same mapping `backend-installer.ts` resolves at runtime.
+2. The hook refuses a bundle that still carries a legacy resource name, even a
+dangling one. The seed is never executed from the `.app`, but an incumbent
+install's venv still names `Contents/Resources/python[_aarch64]/bin` in its
+`pyvenv.cfg`, and a directory there would let it reach the new bundle's tree in
+the window between an update's swap and the app's first instruction.
+
+Both have to run before signing: removing a file from a code-sealed `.app` is a
+violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
+the release if a delivered bundle does not carry exactly the seed its
+architecture needs, or carries a legacy alias beside it.
+
+**One definition of that layout.** The names above are spelled nowhere else.
+`src/shared/bundled-python-layout.json` holds the seed namespace, both
+architectures, the checkout spellings and the retired names; the app imports it
+(`managed-python.ts`, `update-install.ts`) and the scripts read it through
+`scripts/bundled-python-layout.mjs`. That is not tidiness - the previous six
+spellings drifted apart in exactly one place (the heal's predicate kept the
+retired names while the release gate was updated), which made every bytecode
+violation on a bundle this branch builds unhealable by construction while the
+gate that shares its job was green.
+
+### What the app does with the seed at runtime
+
+`Contents/Resources/python-runtime-seed/<arch>` is never executed. On first run
+the app copies the complete tree to `~/Library/Application Support/Local
+Operator/managed-python/<packaged|dev>/runtimes/<seed identity>-<uuid>`, creates
+the venv at its final path under `environments/<seed identity>-<uuid>`, and only
+then runs any Python - so every interpreter, stdlib and native dependency an
+app-managed environment uses is outside every `.app`.
+
+Three details are load-bearing and are pinned by tests:
+
+- **The identity excludes bytecode caches.** It is the sha256 of the tree's
+  signed bytes; a `.pyc` beside them is derived data. Counting them on one side
+  and ignoring them on the other made a selection unusable the moment the seed
+  picked one up.
+- **A generation is addressed by identity AND a uuid.** A runtime whose bytes no
+  longer match its identity is therefore not a candidate rather than a repair
+  target, nothing is ever overwritten in place, and a broken runtime or
+  environment is rebuilt beside the old one - which is what makes Retry work.
+- **Superseded generations are reaped**, bounded: the selected one plus the most
+  recent other in each root, and staging trees older than the preparation lock.
+  Only names the module writes are considered, so nothing an operator or a later
+  version put there is touched.
+
+### macOS first-run
+
+A first run on macOS does not show the "First-Time Setup Required" consent
+prompt or the "Setup Complete" acknowledgement any more. The progress window
+that follows carries its own Cancel, it is the surface a user actually watches,
+and on macOS the preparation runs inside a lock a held-open modal would starve.
+Windows and Linux keep both dialogs and their cancel paths.
 
 ### Windows: the union installer is load-bearing
 

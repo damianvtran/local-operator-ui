@@ -1,0 +1,36 @@
+# The gates on this head, raw
+
+$ pnpm lint
+Diagnostics not shown: 13.
+Checked 507 files in 753ms. No fixes applied.
+Found 33 warnings.
+exit=0
+
+$ pnpm check-types
+
+exit=0
+
+$ pnpm check-themes
+themes.generated.css is up to date (12 themes).
+Contrast contract holds: 2303 assertions across 12 themes, 0 pinned exception(s).
+exit=0
+
+$ pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac --arm64 --publish never
+229:BUILD_EXIT=0
+269:PACK_EXIT=0
+No off-architecture bundled Python found for arm64 in /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac-arm64/Local Operator.app/Contents/Resources
+  • skipped macOS application code signing  reason=, see https://electron.build/code-signing CSC_IDENTITY_AUTO_DISCOVERY=false
+  • building        target=macOS zip arch=arm64 file=dist/local-operator-ui-0.22.3-arm64.zip
+  • building        target=DMG arch=arm64 file=dist/local-operator-ui-0.22.3-arm64.dmg
+Pruned bundled Python the x64 app cannot run: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac/Local Operator.app/Contents/Resources/python-runtime-seed/arm64
+  • skipped macOS application code signing  reason=, see https://electron.build/code-signing CSC_IDENTITY_AUTO_DISCOVERY=false
+  • building        target=macOS zip arch=x64 file=dist/local-operator-ui-0.22.3-x64.zip
+  • building        target=DMG arch=x64 file=dist/local-operator-ui-0.22.3-x64.dmg
+
+# appOutDir resources, arm64
+$ ls "dist/mac-arm64/Local Operator.app/Contents/Resources" | grep -i python
+python-runtime-seed
+$ ls "dist/mac-arm64/Local Operator.app/Contents/Resources/python-runtime-seed"
+arm64
+$ du -sh .../python-runtime-seed/arm64
+ 47M	dist/mac-arm64/Local Operator.app/Contents/Resources/python-runtime-seed/arm64

@@ -156,6 +156,93 @@ export const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 
+	/* Session incidents on their own rows — the operator's report that an error
+	  row read only `session incident` with the message behind a chevron. The
+	  rows are the PRODUCTION reducer's, over fourteen real persisted payloads
+	  (one per category the classifier emits, plus the three harness statements
+	  and a relayed `hub_message` as the bulky control), so the frame shows what
+	  the row is GIVEN rather than what a hand-written record can be made to
+	  say. Sized to the rows it holds (700), for the reason `working-labels`
+	  is: at 900 tall it is mostly ground, which crosses `check-evidence`'s
+	  uniformity ceiling. */
+	["chat-canonical-notices--session-incidents", 1280, 800],
+	/* The same rows in the narrow column, which is where the wrapped row's mark
+	   was measured wrong (design round 1, D1): at 560 the 17 rows wrap hardest
+	   and the danger markers must still form a column. Sized to its content. */
+	["chat-canonical-notices--session-incidents-narrow", 560, 1220],
+	/* The notice register's own length cases, which the `notice` branch's fix
+	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
+	   either side of the threshold, and a bulky one. */
+	["chat-canonical-notices--notice-lengths", 1280, 340],
+	/*
+	 * The three states a notification click can paint before the owner answers:
+	 * a cached paint with its caption, the skeleton for a first-ever open, and
+	 * the named state for a conversation this machine no longer has.
+	 *
+	 * `the-two-misses` exists because the pair a reader most needs to tell apart
+	 * is "this may be behind" against "this is gone" — two sentences, two
+	 * different next actions, and a frame that shows only one of them cannot be
+	 * judged for whether they are distinguishable.
+	 *
+	 * The narrow pass is the same caption in the narrowest chat column, where the
+	 * sentence is longer than the `Reconnecting` it shares a slot with.
+	 */
+	["chat-notification-feed-states--cached-paint", 1280, 600],
+	["chat-notification-feed-states--reconciled", 1280, 600],
+	/* These two are captured in a viewport SIZED TO THEM for the reason the
+	   `narrow` tool-row pass is: the vanished state is three lines and a button,
+	   and at 600px it is 99.45% one colour, which `check-evidence` rejects as
+	   "the story painted its ground and nothing else" — its judgement, and the
+	   right one. Sizing the frame to the state keeps it a picture of the state. */
+	["chat-notification-feed-states--conversation-gone", 720, 200],
+	["chat-notification-feed-states--the-two-misses", 760, 200],
+	["chat-notification-feed-states--cached-paint-narrow", 420, 600],
+	["chat-notification-feed-states--loading-first-open", 1280, 600],
+	/* The caption on a transcript TALLER than the pane, which is the ordinary
+	   cached paint rather than an edge (design review round 1, D1): the cache is
+	   only written for a conversation this pane has already shown, and the
+	   earlier five-row frame fit, so it could not show that the sentence was
+	   thousands of pixels above the fold. */
+	["chat-notification-feed-states--cached-paint-overflow", 1280, 600],
+	/* The gone state with the cached rows a real click arrives with — the half
+	   the committed empty-rows frame cannot cover (design review round 1, D2). */
+	["chat-notification-feed-states--conversation-gone-with-paint", 720, 260],
+
+	/* The composer's two refusals and the state a vanished conversation leaves
+	   it in (design review round 1, D3): the transcript stories above render the
+	   transcript alone, so the false "Agent is busy" placeholder and the missing
+	   colour step were never in a frame. Sized to the band, not to a window. */
+	["chat-composer-states--idle", 900, 160],
+	["chat-composer-states--busy", 900, 160],
+	["chat-composer-states--conversation-gone", 900, 160],
+
+	/* The browser feature's own surfaces, added with the round that remediated its
+	   review. This is the ONE part of the visible browser a browser tool can
+	   reach: the chrome band is ordinary DOM, while the native page view under it
+	   is not (U1). So these frames are the evidence for the consent band's copy
+	   and attribution (D2/D3) and for the panel a refused navigation now shows
+	   (D1) — and the sizes are tight to their content, because a band is short and
+	   a frame that is 99% ground crosses `check-evidence`'s uniformity ceiling. */
+	["browser-consent-bar--pending", 1280, 300],
+	["browser-consent-bar--attributed-and-queued", 1280, 300],
+	["browser-consent-bar--unnamed-requester-no-domain", 1280, 280],
+	["browser-consent-bar--an-agent", 1280, 300],
+	["browser-consent-bar--busy", 1280, 300],
+	["browser-load-failure--connection-refused", 1280, 420],
+	["browser-load-failure--name-not-resolved", 1280, 420],
+	["browser-load-failure--unmapped-code", 1280, 420],
+	/*
+	 * 1180 rather than 900 for the populated sheet, and the number is the fix for a
+	 * measured defect (review round 2, D8): the sheet is `h-full` of the VIEWPORT
+	 * with its own scroller, so at 900 the panel ended at a boundary rule with the
+	 * "Browsing data" section cut off inside it, while the empty frame showed that
+	 * section in full. A frame that claims to show the populated sheet has to
+	 * contain it. The capture floors the viewport at this number and grows it to the
+	 * content, so declaring it is what makes the whole panel photographable.
+	 */
+	["browser-sites-sheet--populated", 1280, 1180],
+	["browser-sites-sheet--empty", 1280, 760],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
@@ -196,6 +283,70 @@ export const STORIES = [
 	   its own content — one row and its body — because the marker's visibility at
 	   rest is the whole claim. */
 	["chat-tool-rows--diff-body-narrow-wrapped-cap", 560, 830],
+	/* The expanded detail: the operator's report was that it read as
+	   `JSON.stringify(args)` in one bordered box with the output in a second. The
+	   review question is a READING question — does the expansion read as one pane,
+	   with a labelled block per argument and the result under a label — so the
+	   frames are the evidence and the assertions are elsewhere (no JSON
+	   punctuation reaches the pane, no envelope reaches a receipt row: see the
+	   sections in `tool-row.test.mjs` and `transcript-reducer.test.mjs`, because
+	   an absence cannot be photographed). Heights are the stories' own, read off
+	   the rendered frame. */
+	["chat-tool-rows--expanded-detail", 1280, 760],
+	/* Three results side by side — a JSON object, a JSON array, and a result that
+	   only looks like JSON — because the boundary between "structured" and
+	   "printed verbatim" is the rule this surface can get wrong most quietly. */
+	["chat-tool-rows--expanded-json-result", 1280, 760],
+	/* The failed call, where the TUI keeps the arguments beside the error: a
+	   failure produces no diff, so the inputs are the only account of what was
+	   attempted. */
+	["chat-tool-rows--expanded-failed-edit", 1280, 420],
+	/* The two receipt rows on the shared ledger, with a collapsed peer row beside
+	   an expanded one — the pair that shows what the disclosure is FOR. */
+	["chat-tool-rows--receipt-rows", 1280, 560],
+	/* The cap, which no earlier frame exercised: every pane committed before this
+	   one had `scrollHeight == clientHeight`, so nothing showed that a long
+	   argument list pushed the result's label off the pane and that a scroll
+	   region's overflow is invisible at rest. Two viewports because the narrow
+	   column wraps the same script into more rows, and the report has to be a
+	   function of the content rather than of the wide layout. */
+	["chat-tool-rows--expanded-overflow", 1280, 1100],
+	["chat-tool-rows--expanded-overflow-narrow", 560, 1100],
+	/* The same narrow story with every capped section parked at its own END, the
+	   state the round-3 pages were measured at: 0.203px of the first section's last
+	   line and 0.469px of the second's stay outside the box at this width, because
+	   a non-composited scroller saturates on an integer offset, and the count read
+	   that residue as a whole line. It is a SECOND entry for one story rather than
+	   a second story because the difference is a scroll position, which is browser
+	   state a story cannot set — the reason `scrollToEnd` exists above. The at-rest
+	   frames stay in their own directory: the pair is the point, since the fix is
+	   that the count goes QUIET here while the box does not move. */
+	[
+		"chat-tool-rows--expanded-overflow-narrow",
+		560,
+		1100,
+		{
+			dir: "expanded-overflow-narrow-end",
+			scrollToEnd: "[data-detail-section] > div",
+		},
+	],
+	/* The two results that hold nothing, and the row that holds nothing to
+	   disclose. The third row is the readable half of the gate fix: a call whose
+	   arguments are an all-empty container and which printed nothing is a STATIC
+	   row here, where it used to offer a click onto an empty bordered box. */
+	["chat-tool-rows--expanded-empty-result", 1280, 420],
+	/* The hostile sender, built through the production `peerFields` so the frame
+	   is a picture of the app's own sanitiser output rather than of a hand-built
+	   sender the app cannot produce: a bidi override beside the pid, two control
+	   sequences, and a name long enough to be bounded. */
+	["chat-tool-rows--receipt-hostile-sender", 1280, 300],
+	/* Both row KINDS in ONE run — three tool calls with a peer receipt and a wake
+	   receipt between them — because every frame before it carried one kind at a
+	   time, so "the receipts share the tool rows' own name column" rested on the
+	   single `toolNameColumn` measurement rather than on a picture (design round 2
+	   stated that gap itself). Sized to the five rows it holds with every one of
+	   them opened, for the reason `working-labels` is. */
+	["chat-tool-rows--mixed-run", 1280, 830],
 	/* The spacing regression surfaces. `operator-spacing-cases` reproduces the
 	   three runs the operator screenshotted when he reported the rows as "much
 	   too wide" and "not very uniform"; `turn-boundary-and-working-line` is
@@ -316,12 +467,100 @@ export const STORIES = [
 	   shut; the story holds the shutter until the sequence has arrived. */
 	["chat-run-panel--mcp-dot-ack-acknowledged", 460, 220],
 	["chat-run-panel--mcp-dot-ack", 460, 220],
+	/* The remedy as a CONTROL, which is the change to § 7.2 (§ 4 of the design brief). The row's own frames
+	   above show it at rest (a link where the sentence used to be, and the words
+	   that survive on the states this surface cannot act on); these show the four
+	   states a press produces, and all four come from the FIXTURE's `operations`
+	   rather than from a handler, because that is where the row reads them. */
+	["chat-run-panel--mcp-grant-running", 1280, 700],
+	["chat-run-panel--mcp-grant-failed", 1280, 700],
+	["chat-run-panel--mcp-grant-cancelled-removed", 1280, 700],
+	/* One grant per session: the second problem row's control is disabled, in
+	   colour rather than opacity. */
+	["chat-run-panel--mcp-grant-locked", 1280, 700],
+	/* The dialog, opened by clicking the row's own link and held until it is on
+	   screen. Both consequences are in the copy because both are facts the reader
+	   would otherwise discover afterwards. */
+	["chat-run-panel--mcp-grant-confirm", 1280, 700],
+	/* The key remedy, for a server whose transport cannot complete a browser
+	   sign-in: the three decisions a payload makes (a stdio `env` name, an http
+	   header name with OAuth refused, nothing declared) in one frame, and the
+	   popout opened by the same click convention. The fields are the payload's own
+	   declared names, never a value. */
+	["chat-run-panel--mcp-key-auth", 1280, 700],
+	["chat-run-panel--mcp-key-popout", 1280, 700],
+	/* The settled-op state, which is where a remedy can vanish: two operations the
+	   backend finished earlier in the session beside servers that are problems
+	   again. Round 1's finding 1 was that this path blanked the row. */
+	["chat-run-panel--mcp-grant-settled", 1280, 700],
+	/* § 8's 64px shape: a grant line AND the runtime's own diagnosis under it. */
+	["chat-run-panel--mcp-grant-failed-diagnosis", 1280, 700],
+	/* The remedy link's hover ground and its `:focus-visible` ring. The pointer is
+	   the rig's own CDP input (`{ hover }`), the same mechanism the trigger's hover
+	   frames use; the ring is produced by the story, since a programmatic focus is
+	   not the same thing as keyboard focus. */
+	[
+		"chat-run-panel--mcp-remedy-hover",
+		1280,
+		700,
+		{ hover: '[data-mcp-remedy="grant"]' },
+	],
+	["chat-run-panel--mcp-remedy-focus", 1280, 700],
+	/* The two dialog states a click cannot reach: the write in flight, and the
+	   reconnect that came back without the credential taking. Captured at the size
+	   of the dialog in its window rather than at the pane's, because the dialog is
+	   portal-rendered and viewport-fixed (`check-evidence`'s uniformity ceiling is
+	   the other half of the number). */
+	["chat-run-panel--mcp-key-saving", 900, 620],
+	["chat-run-panel--mcp-key-error", 900, 620],
+	/* The pane's 320px floor with the longest action line it can hold. Round 1's D5
+	   measured `Sign-in cancelled` + the credential sentence + `Try again` at 369px
+	   in the 375px column a 420px pane gives, so the floor is where it has to wrap
+	   rather than ellipsise. 800x700 for the reason `narrow-800` uses it: the pane
+	   plus the chat column's own floor. */
+	["chat-run-panel--mcp-floor-320", 800, 700],
 	/* The window floor, and the two gated surfaces in one frame pair. */
 	["chat-run-panel--narrow-800", 800, 700],
 	["chat-run-panel--capability-absent", 1280, 700],
 	/* The pane's two animated glyphs with motion reduced: the running child's
 	   spinner and the MCP `connecting` mark. */
 	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
+	/*
+	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
+	 * that report was about — the deep link revealing a named server, an argument
+	 * that names nothing, the section's own search, and the borrow when no
+	 * conversation is open.
+	 *
+	 * Captured at 1000x860 rather than the 1280 default because the section is drawn
+	 * on the settings page's own column (`max-w-3xl`), so a wider viewport only adds
+	 * ground either side of it; 860 is tall enough that the search box, the note and
+	 * every row are in frame at once, which is what the search and borrow frames are
+	 * about (`check-evidence`'s uniformity ceiling is the other half of the choice).
+	 */
+	["settings-integrations--deep-link-hit", 1000, 860],
+	["settings-integrations--deep-link-verb-hit", 1000, 860],
+	/* The shadowed case, which is the one frame where the resolution RULE becomes
+	   visible: with a server named `login`, `/mcp login hubspo` resolves to `login`
+	   and the section says so instead of landing in silence (round-1 code review,
+	   finding 4). Recorded here so nobody re-shoots the frame above expecting a
+	   delta: `deep-link-verb-hit` (`reauth hubspot`) is byte-identical to
+	   `deep-link-hit` by DESIGN — the verb is a token that is not a server, it is
+	   dropped, and a resolution that had something else to say would be the bug. */
+	["settings-integrations--deep-link-verb-shadowed", 1000, 860],
+	["settings-integrations--deep-link-miss", 1000, 860],
+	["settings-integrations--no-session-fallback", 1000, 860],
+	["settings-integrations--filtered", 1000, 860],
+	["settings-integrations--filtered-empty", 1000, 860],
+	["settings-integrations--no-servers", 1000, 860],
+	/*
+	 * And the state this list deliberately does NOT carry, so the omission is a
+	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
+	 * section asked the roster and there is nothing to borrow), so it never clears
+	 * the ≥8-element "prepared" count this file asserts before a shutter, and the
+	 * paint guard below it would refuse a frame of one sentence on ground anyway.
+	 * Both guards are right. The story stays for review and QA; the frame would be
+	 * padding, so it is absent and this comment says why.
+	 */
 	/* `/usage`: the provider quota dialog, whose rules are a port of the TUI's
 	   `usage_panel.py`. Swept for the states that cannot be produced on demand
 	   live — an OAuth grant has to die, a provider has to go idle past its
@@ -384,6 +623,14 @@ export const STORIES = [
 	["chat-session-status-strip--context-tooltip", 860, 400],
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
+	/*
+	 * The sidebar's session-status mark, in the one place it can be photographed:
+	 * the sidebar itself has no story (see the note below), so the read/unread
+	 * specimen matrix is the surface that carries this mark's pixels. Added by
+	 * the receipt round, whose whole visible delta is one glyph's resting state
+	 * -- without a frame here, that change had no evidence anywhere.
+	 */
+	["chat-session-status--neighbours", 860, 600],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
@@ -393,8 +640,57 @@ export const STORIES = [
 	   populated session can be compared at one width. The tooltip story needs
 	   room for the panel above the trigger. */
 	["chat-session-status-strip--draft", 1000, 400],
+	/*
+	 * The SAME draft on a backend that can select for it. Captured beside `--draft`
+	 * so the pair is a like-for-like: the affordance is the only difference, and the
+	 * strip measures 92px in both, at every width this set declares, with only the
+	 * chips' ink differing (review round 1, R5). The pane is 1000 wide so the wide
+	 * reading and the 220px floor both fit in one board, at the same viewport the
+	 * inert draft uses. The boards differ in number by design: each story carries its
+	 * own empty state.
+	 */
+	["chat-session-status-strip--draft-actionable", 1000, 400],
 	["chat-session-status-strip--draft-tooltip", 1000, 520],
+	/*
+	 * The same tooltip and the same chip one capability apart, plus the hover the
+	 * control's affordance actually rests on: `--draft-actionable-tooltip` is the
+	 * accessible name of the chip that DOES open, and
+	 * `--draft-actionable-hovered` is that chip under the pointer, which the
+	 * harness performs and asserts (design round 1, D1).
+	 */
+	["chat-session-status-strip--draft-actionable-tooltip", 1000, 520],
+	[
+		"chat-session-status-strip--draft-actionable-hovered",
+		1000,
+		400,
+		{ hover: 'button[aria-label^="Model:"]' },
+	],
 	["chat-session-status-strip--commands-off", 1000, 300],
+	/* The composer's status row: the goal and the plan, above the box.
+	 *
+	 * Four frames, each carrying several bands so every claim has its control
+	 * beside it — the row's states in the record's own order, a goal that fits
+	 * above one that truncates, the collapsed row above its expanded form, and
+	 * that pair again at the column floor. A single band would be one number
+	 * with nothing to compare it to.
+	 *
+	 * Viewports are SIZED TO THE CONTENT for the reason the strip's frames are:
+	 * these are one line and a box, and at 1280x900 the frame would be almost
+	 * entirely ground, which crosses `check-evidence`'s uniformity ceiling.
+	 *
+	 * `states` opens with the band where the row renders NOTHING: that band is
+	 * the pre-change composer, so it is the "before" half of the pair whose
+	 * "after" is the same frame's fourth band. 900 is the composer's own column
+	 * width and 172 is the column floor with the canvas pane open — the width QA
+	 * measured on the built app, not the 220 this entry used to say, and the story
+	 * now derives the small-view step from its own band width so the floor's
+	 * numbers are the product's (design review round 1, D3). The two stories with
+	 * an expanded band are clicked open by the rig's own convention.
+	 */
+	["chat-composer-status-row--states", 1000, 880],
+	["chat-composer-status-row--long-goal", 1000, 360],
+	["chat-composer-status-row--expanded", 1000, 500],
+	["chat-composer-status-row--column-floor", 300, 620],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap
@@ -405,6 +701,35 @@ export const STORIES = [
 	["chat-tool-rows--prose-tool-alignment", 1024, 700],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The cold engage: a send the app has admitted and the owner has not answered
+	   yet - the operator's "I hit send and nothing happens for three seconds".
+	   Captured as a PAIR with its baseline, because the claim is a difference:
+	   the baseline is the same transcript with the wait line absent (what the app
+	   painted before this change), and the two frames differ by one quiet line at
+	   the foot. A single frame of the fixed state would not say what was wrong,
+	   and a single frame of the baseline would not say what replaced it. All four
+	   are swept together from design review round 1: the SMALL-VIEW wrapper is a
+	   different wrapper for the same rung (the 560px `narrow` entry above is a
+	   narrow column, not the small view), and `transport-down` is the rung's
+	   second clear, which the story could not express while its `status` was
+	   hardcoded to `live`. */
+	["chat-tool-rows--admitted-send-before-first-frame", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-baseline", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-small-view", 560, 300],
+	["chat-tool-rows--admitted-send-transport-down", 1024, 300],
+	/* The COMPOSER half of the same claim, and the head's. Design review round 2's
+	   D3: this change adds a sentence to the composer ("Waiting for the agent")
+	   and nothing committed showed it, so the round could not sign the string off.
+	   All four are at the rung frames' 1024 width on purpose - the two surfaces
+	   are read together, and a composer photographed at another width cannot be
+	   laid beside the pane it sits under. `awaiting-reply-transport-down` is the
+	   state D5 is about, taken AFTER the fix: the pane has withdrawn the line for
+	   a dead transport and the composer's hint goes with it, so this frame reads
+	   "Ask me for help" where the pre-fix app said "Waiting for the agent". */
+	["chat-message-input--idle", 1024, 300],
+	["chat-message-input--awaiting-reply", 1024, 300],
+	["chat-message-input--awaiting-reply-transport-down", 1024, 300],
+	["chat-message-input--awaiting-answer", 1024, 300],
 	/* The COMMON case, which had no standing frame until design review round 1
 	   (D4) asked for one: an answer mixing prose with a fenced code block, a
 	   table and a list. The alignment frames above are plain paragraphs, and
@@ -482,6 +807,42 @@ export const STORIES = [
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
 
+	/*
+	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
+	 * branch's evidence rather than an oversight.
+	 *
+	 * The five chip states and the two picker states this block used to declare
+	 * were withdrawn together with their committed frames - 84 `.webp`. Two
+	 * reasons, and the second is the one that decides it:
+	 *
+	 *  1. They were taken by driving a scripted browser (this script, over CDP),
+	 *     which is not an acceptable method for this feature's visual evidence.
+	 *  2. They photograph the PRE-remediation UI. The chip gained a spinner for
+	 *     the in-flight state, an at-rest chevron, a fixed path column, a
+	 *     measured-overflow tooltip and a new refusal/announcement path; the menu
+	 *     gained a bounded scrollable body. Frames of the old pixels under these
+	 *     filenames would describe a superseded control, whatever their
+	 *     provenance - which is why they were deleted rather than retained with a
+	 *     disclosure.
+	 *
+	 * The replacement frames ARE captured, and they are deliberately NOT here:
+	 * `docs/evidence/chat-cwd-move-live/` is a declared supplementary set of
+	 * fifteen browser-tool frames in eleven states across three themes
+	 * (`localOperatorLight`, `localOperatorDark` and `dracula`) with its own
+	 * README, `source` and `why` — the counts here name the set's own entry in
+	 * `docs/evidence/manifest.json`, which is where they are derived from and the
+	 * only place a reader should take them from (agent review round 3, R3-2). The method is the operator's own rule -
+	 * page interaction and screenshots go through the Local Operator browser tool,
+	 * never a scripted or downloaded engine - so the capture can neither be
+	 * produced nor reproduced by this file, and adding the stories back to STORIES
+	 * below would re-commit the very thing the withdrawal was about.
+	 *
+	 * The picker states are GONE rather than merely unphotographed, and that is a
+	 * product change: `/move` no longer mounts a dialog that hosts the chip (it
+	 * focuses the composer's own chip), so there is no picker left to photograph
+	 * and no story file left to sweep.
+	 */
+
 	/* The band's own half of U1: the model reading painted from the user's pick
 	   before the owner's frame confirms it. Two frames in one story, so the
 	   pending mark is judged against the same reading at full weight. */
@@ -496,6 +857,30 @@ export const STORIES = [
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
+
+	/*
+	 * Settings, Application updates and info, in the state the operator reported:
+	 * the app is current and the server trails, so one press of Check for updates
+	 * offers the server release. The story scripts the whole answer - both
+	 * channels' own events and the verdict the check returns - because the defect
+	 * is the panel and the snackbar disagreeing, and it is captured on two trees
+	 * (this one and a worktree at the pre-fix commit) so the pair shows the
+	 * contradiction rather than arguing it. Captured from a PRODUCTION Storybook
+	 * build, because the button does not check at all when import.meta.env.DEV is
+	 * true; see the story's own note.
+	 */
+	["settings-app-updates-section--server-update-offered", 900, 460],
+
+	/*
+	 * The other half of the same story: both channels proved current, so the
+	 * verdict carries the affirmation and no offer is raised. Captured here
+	 * because the sentence is new copy - the removed button stories drew their
+	 * own "latest version" alert from a channel event, which is a state the
+	 * shipped button can no longer produce, so the sweep had no frame of the
+	 * sentence the fix introduces. Not captured on a pre-fix tree: the
+	 * affirmation exists only on this one.
+	 */
+	["settings-app-updates-section--all-current", 900, 460],
 
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],
@@ -526,6 +911,36 @@ export const STORIES = [
 	["canvas-workspace--audio-viewer", 1280, 900],
 	["canvas-workspace--video-viewer", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
+	/* The other seven states the code-memory panel defines. They are separate
+	   stories rather than one story with a knob because each is a claim about
+	   what the panel SAYS when the backend answers differently - and two of them
+	   (no kernel, a draft) are claims about what it does not say, which a
+	   populated frame cannot show. */
+	["canvas-workspace--variables-empty-with-kernel", 1280, 900],
+	["canvas-workspace--variables-no-kernel", 1280, 900],
+	["canvas-workspace--variables-draft", 1280, 900],
+	["canvas-workspace--variables-busy", 1280, 900],
+	["canvas-workspace--variables-unsupported", 1280, 900],
+	["canvas-workspace--variables-backend-too-old", 1280, 900],
+	/* The refusal toast, driven through the real form by the story's play
+	   function: the only frame in this set whose subject is a control's
+	   outcome rather than a rest state. */
+	["canvas-workspace--variables-write-refused", 1280, 900],
+	/* The six states remediation round 1 added, each because a round named the
+	   claim it could not judge from the frames that existed (design D2/D3/D5,
+	   the backend's truncation edge, and the failure branch whose copy still
+	   carried the advice this PR retires). */
+	["canvas-workspace--variables-backend-unreachable", 1280, 900],
+	/*
+	 * The panel's FIRST question failing, as distinct from the read failing:
+	 * the capabilities query rejects, so the panel cannot say whether the
+	 * backend is old or absent and quotes the transport (design round 2, D4).
+	 */
+	["canvas-workspace--variables-capabilities-unreachable", 1280, 900],
+	["canvas-workspace--variables-truncated", 1280, 900],
+	["canvas-workspace--variables-row-actions", 1280, 900],
+	["canvas-workspace--variables-uneditable-row", 1280, 900],
+	["canvas-workspace--variables-delete-confirm", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
 
@@ -543,6 +958,10 @@ export const STORIES = [
 	// The install outcomes the 0.17.0 update never showed: a refusal with its
 	// remedy, and the next start admitting the install did not take.
 	["common-updatenotification--install-blocked", 1280, 900],
+	// The same refusal from the start-up pass, which is the other producer of it:
+	// the running bundle was already broken and no update was in play, so the copy
+	// has to describe that instead of an update that never happened (review R2).
+	["common-updatenotification--install-blocked-at-startup", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
 	// back (not a failure, and the one state whose action decides whether the
@@ -615,6 +1034,216 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/* `/`-completion: the composer's slash popup, in both of its phases.
+	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
+	   popup from wire-shaped fixtures — the rows the backend's
+	   `command-entities` route sends, shaped by the production `argumentRows`
+	   and ranked by the production `matchCommands`, so a frame here is evidence
+	   about a shape that really arrives rather than a hand-written list.
+
+	   Sized to the popup plus the composer box it anchors to, at the width the
+	   popup actually spans (the composer's, not the window's), because the
+	   numbers column's shed order is measured against THAT width: the narrow
+	   entry is a 330px composer, which is what the `@container/slash` query
+	   answers. A frame taken at 1280 would photograph a layout no composer has
+	   and hide the one rule this set exists to show. */
+	["chat-slash-completion--command-phase", 768, 460],
+	/* Two rows: `/tea` matches the primary and its alias, in registry order. */
+	["chat-slash-completion--command-phase-narrowed", 768, 220],
+	/* One row, found by SUBSEQUENCE — `/lgt` finds `logout` where the old
+	   prefix filter found nothing. */
+	["chat-slash-completion--command-phase-fuzzy", 768, 200],
+	/* Six teams, one marked current: the roster the word-completion opens. */
+	["chat-slash-completion--argument-phase-teams", 768, 340],
+	/* And the same list narrowed by the ARGUMENT, not by the command word. */
+	["chat-slash-completion--argument-phase-narrowed", 768, 200],
+	/* The price/window column: `free`, `usage-based`, a three-significant-
+	   figure pair, and a row nobody quoted (blank, never `free`). */
+	["chat-slash-completion--argument-phase-models", 908, 320],
+	/* The cold-owner empty list — "not reported yet", which is a different
+	   fact from "this model has none". */
+	["chat-slash-completion--argument-phase-empty", 768, 300],
+	/* The shed order under pressure: numbers dropped, name kept. */
+	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
+	/* A command typed into a sentence, the list above the prose. */
+	["chat-slash-completion--inline-mid-draft", 768, 340],
+	/* The state a name pick produces: list closed, caret after the space. */
+	["chat-slash-completion--name-list-completed", 768, 260],
+	/* A long list: the popup keeps its own scroll at its row cap. */
+	["chat-slash-completion--command-phase-scrolled", 768, 460],
+	/* The SIXTH inline source and the only renderer-local one: `/theme` lists the
+	   `@shared/themes` table its dialog reads. Added with the round-1 disclosure
+	   (R4) so the inline set has evidence for every source it claims. */
+	["chat-slash-completion--argument-phase-themes", 768, 340],
+	/* A query that matches nothing while the list HAS rows — its own sentence,
+	   not "not reported yet". */
+	["chat-slash-completion--argument-phase-no-match", 768, 200],
+	/* Loading and failure, the two transient states that had no frame (D5). */
+	["chat-slash-completion--argument-phase-loading-and-error", 768, 300],
+	/* The truncation HALF of the shed order at ~520px: numbers shown, name
+	   giving. The 330px frame shows numbers dropped and the 908px frame shows
+	   nothing squeezed, so this is the width where the question lives (D5). */
+	["chat-slash-completion--argument-phase-truncating-name", 768, 680],
+	/*
+	 * The five read-only diagnostic panels (`/analytics`, `/session`, `/info`,
+	 * `/context`, `/failovers`).
+	 *
+	 * One viewport family, because the panel shell is one geometry: `max-w-5xl`
+	 * (1024px) plus the scrim, so 1140 is the narrowest viewport in which the
+	 * dialog is its own shipped width rather than a responsive fallback. The
+	 * heights are sized PER STATE, and that is the same call `/usage`'s states
+	 * make: at a fixed 1100 tall, `empty`, `loading` and `gated` are mostly scrim
+	 * and cross `check-evidence`'s uniformity ceiling, which is that guard
+	 * working rather than a frame to argue with. `dense` is the one frame that
+	 * has to overhang: it exists to show the fold rule and the 20px fade over a
+	 * body that really does continue.
+	 *
+	 * `narrow` is 720 for the reason `/usage`'s is: the picker host is
+	 * portal-rendered and viewport-fixed, so the VIEWPORT is the only thing that
+	 * can produce the narrow layout. Every other entry is the dialog's own size.
+	 */
+	["panels-analytics--populated", 1140, 980],
+	["panels-analytics--refreshing", 1140, 980],
+	["panels-analytics--thirty-days", 1140, 1020],
+	["panels-analytics--this-session-only", 1140, 980],
+	["panels-analytics--unpriced", 1140, 980],
+	["panels-analytics--partial-cost", 1140, 980],
+	["panels-analytics--no-daily-rows", 1140, 980],
+	["panels-analytics--unnamed-sessions", 1140, 980],
+	["panels-analytics--empty", 1140, 460],
+	["panels-analytics--loading", 1140, 460],
+	["panels-analytics--unavailable", 1140, 400],
+	["panels-analytics--dense", 1140, 1100],
+	["panels-analytics--narrow", 720, 980],
+
+	["panels-session--populated", 1140, 1000],
+	["panels-session--tree-cost", 1140, 1000],
+	["panels-session--tree-cost-unmeasured", 1140, 1000],
+	["panels-session--no-tool-calls", 1140, 1000],
+	["panels-session--zero-samples", 1140, 1000],
+	["panels-session--unpriced", 1140, 1000],
+	["panels-session--empty", 1140, 520],
+	["panels-session--unavailable", 1140, 400],
+	["panels-session--loading", 1140, 460],
+	["panels-session--gated", 1140, 400],
+	["panels-session--dense", 1140, 1150],
+	["panels-session--narrow", 720, 1000],
+
+	/* The settings usage chart's frame over a fixture — the live settings
+	   surface needs a signed-in Radient tenant, so this is the honest half. */
+	["panels-settings--usage-chart-tokens", 1140, 560],
+	["panels-settings--usage-chart-credits", 1140, 560],
+	["panels-info--populated", 1140, 1040],
+	/* The live half null and nothing bound: the payload the desktop's own route
+	   always sends, with the three unknown spellings it must render. */
+	["panels-info--live-half-unmeasured", 1140, 1040],
+	["panels-info--behind", 1140, 1040],
+	["panels-info--never-checked", 1140, 1040],
+	["panels-info--build-skew", 1140, 1040],
+	["panels-info--roster-unread", 1140, 1040],
+	["panels-info--no-memory", 1140, 1040],
+	["panels-info--registry-unavailable", 1140, 1040],
+	["panels-info--nothing-read", 1140, 1040],
+	["panels-info--remote-host", 1140, 1040],
+	["panels-info--mcp-settling", 1140, 1040],
+	["panels-info--many-sessions", 1140, 1100],
+	["panels-info--dense", 1140, 1100],
+	["panels-info--unavailable", 1140, 760],
+	["panels-info--loading", 1140, 460],
+	["panels-info--gated", 1140, 400],
+	["panels-info--narrow", 720, 1040],
+
+	["panels-context--populated", 1140, 640],
+	["panels-context--no-numbers", 1140, 640],
+	["panels-context--frontend-unmeasured", 1140, 640],
+	["panels-context--estimated", 1140, 640],
+	["panels-context--dense", 1140, 700],
+	["panels-context--breakdown-unavailable", 1140, 520],
+	["panels-context--empty", 1140, 460],
+	["panels-context--loading", 1140, 400],
+	["panels-context--unavailable", 1140, 400],
+	["panels-context--narrow", 720, 640],
+
+	["panels-failovers--populated", 1140, 580],
+	["panels-failovers--failover-in-force", 1140, 580],
+	["panels-failovers--empty-chain", 1140, 620],
+	["panels-failovers--no-chains", 1140, 500],
+	["panels-failovers--empty", 1140, 500],
+	["panels-failovers--dense", 1140, 700],
+	["panels-failovers--loading", 1140, 400],
+	["panels-failovers--unavailable", 1140, 400],
+	["panels-failovers--narrow", 720, 580],
+
+	/* Settings: the version row, in the five states discovery can put it in.
+
+	   This is the surface the reported bug is ABOUT - the row that said
+	   "Unavailable" (or named a different install) while the operator's daemon was
+	   serving - and until now the sweep had no settings story at all, so no frame
+	   could contradict it. The row's value is a string, so the evidence is the five
+	   strings, one per state, and Storybook is the only instrument that can produce
+	   them: `detached` needs a daemon to exit, `degraded` needs two probes to fail
+	   on a live one, and neither can be asked for on demand without breaking the
+	   machine the capture runs on.
+
+	   Captured in the two `localOperator` palettes only, for the reason the
+	   reconnect-gap pair above is: the claim is the ink/ground relationship of one
+	   row's value, and the palette floors belong to `check-themes`, not to a
+	   seventy-frame sweep of five strings.
+
+	   Sized to the section rather than to a window, like the older-history-slot
+	   entries above: the section paints ~190px (a title, a description, five info
+	   rows and the updates card), and the story's own `min-h-screen` ground fills
+	   whatever else the viewport has. A 760-tall frame put 95% of its pixels on one
+	   colour - inside `check-evidence`'s ceiling but in the band its two nearest
+	   legitimate frames (96.3-97.0%) occupy, and mostly empty page that says nothing
+	   about the row. 320 leaves the whole section plus a strip of ground below it. */
+	["settings-app-updates-and-info--no-bridge", 980, 320],
+	["settings-app-updates-and-info--before-first-probe", 980, 320],
+	["settings-app-updates-and-info--attached-to-discovered-daemon", 980, 320],
+	["settings-app-updates-and-info--degraded-daemon", 980, 320],
+	["settings-app-updates-and-info--detached-daemon", 980, 320],
+	/* `replaced`, a live daemon whose record carries no version, and the daemon
+	   this app started itself: three states in the shipped union that the first
+	   round named as unphotographed, plus the suffix-and-muted-ink reading of
+	   `degraded` in the same crop so the two are comparable side by side. */
+	["settings-app-updates-and-info--replaced-daemon", 980, 320],
+	["settings-app-updates-and-info--attached-without-version", 980, 320],
+	["settings-app-updates-and-info--owned-daemon", 980, 320],
+	["settings-app-updates-and-info--wedged-daemon", 980, 320],
+	/* The value's tooltip, which is where the daemon's own sentence lives. Its own
+	   id because `:hover` cannot be a story state: the rig moves a real pointer at
+	   `[data-backend-version]` for this frame. `hoverSettleMs` is there because a
+	   tooltip opens on the shared `TooltipProvider`'s 400 ms delay rather than with
+	   the pointer - without it the frame is the unopened state under a name that
+	   claims the tooltip. */
+	[
+		"settings-app-updates-and-info--value-hover",
+		980,
+		320,
+		{ hover: "[data-backend-version]", hoverSettleMs: 900 },
+	],
+
+	/* The same section at a narrow width: the value now carries `version ·
+	   address`, `InfoGrid` is `repeat(auto-fit, minmax(160px, 1fr))`, and a narrow
+	   window is the only thing that proves the grid reflows rather than clipping,
+	   and shows which of the row's strings wraps first. */
+	["settings-app-updates-and-info-narrow--attached", 620, 360],
+	["settings-app-updates-and-info-narrow--no-version", 620, 360],
+	["settings-app-updates-and-info-narrow--degraded", 620, 360],
+
+	/* The connectivity banner, the app-wide surface whose trigger condition this
+	   work rewrote and which had NO frame anywhere in the tree: the neighbouring
+	   rigs only asserted its absence. Each entry is one state main can publish -
+	   and two of them (attached, degraded) are frames OF its absence, which is
+	   the claim: a missed probe is not an outage. */
+	["common-connectivity-banner--no-bridge", 1024, 300],
+	["common-connectivity-banner--attached", 1024, 300],
+	["common-connectivity-banner--degraded", 1024, 300],
+	["common-connectivity-banner--identity-failed", 1024, 300],
+	["common-connectivity-banner--no-spawn", 1024, 300],
+	["common-connectivity-banner--unclaimed", 1024, 300],
+	["common-connectivity-banner--stopped", 1024, 300],
+	["common-connectivity-banner--wedged", 1024, 300],
 
 	/* The unpacked-extension manager's sheet, whose four states are the ones the
 	   manager's projection can be in and three of which a reviewer cannot reach
@@ -744,6 +1373,32 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * JSON-RPC-ish: send {id, method, params}, receive {id, result|error} plus
  * unsolicited events. Only the three domains this script needs are used.
  */
+/**
+ * Whether a document that finished preparing is a story that DREW.
+ *
+ * Two numbers, both measured, and the reason this is a predicate rather than an
+ * inline comparison: the inline version read `n - 2 >= 8`, and 8 sat above the
+ * smallest thing this set legitimately paints. `chat-slash-completion--
+ * argument-phase-no-match` renders a three-line popup over the composer
+ * stand-in - 7 elements of its own inside a 9-element story root, once the
+ * decorator's 2 (theme wrapper + toast container, counted in the page code
+ * below) are subtracted. A story that draws NOTHING measures 0 after the same
+ * subtraction, and that is the failure this floor exists to reject; how much a
+ * drawn story paints is the paint guard's question (`assertFramePaints`), not
+ * this one. At 8 the poll reported a fully rendered story as "never finished
+ * preparing" for its full sixty seconds, so the frame could not be captured at
+ * all - a defect that reads as a Storybook hang and sends its reader to the
+ * story's source instead of to this line.
+ *
+ * Exported, and injected into the page verbatim through its own source text, so
+ * the predicate the browser runs and the one `capture-evidence.test.mjs` pins
+ * are the same function rather than two copies of one threshold. Its body must
+ * therefore stay self-contained - no identifier that only exists in this
+ * module - because the page evaluates it where none of them are defined; the
+ * test that evaluates the source text in a bare scope is what holds that.
+ */
+export const storyDrew = (counted) => counted - 2 >= 7;
+
 class Cdp {
 	constructor(ws) {
 		this.ws = ws;
@@ -787,7 +1442,22 @@ const teardown = () => {
 		chrome = null;
 	}
 	if (dataDir) {
-		rmSync(dataDir, { recursive: true, force: true });
+		/*
+		 * Retried, because `SIGKILL` above is asynchronous: Chrome's own children
+		 * can still hold the profile open for a moment after it, and a bare
+		 * `rmSync` then throws `ENOTEMPTY` out of the `finally` - which turns a
+		 * capture that wrote every frame and its manifest into a non-zero exit
+		 * with a Node stack trace, i.e. a complete run that reads as a failed one.
+		 * `maxRetries` only retries the races it is documented to retry
+		 * (`ENOTEMPTY`/`EBUSY`/`EPERM`); a profile that will not go is still loud,
+		 * and `sweepStaleProfiles` reaps it on the next run.
+		 */
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 20,
+			retryDelay: 50,
+		});
 		dataDir = null;
 	}
 };
@@ -911,7 +1581,12 @@ export function partialAddedFields(
 	at = new Date().toISOString(),
 ) {
 	return addedFrameCount > 0
-		? { addedFrames: addedFrameCount, addedSurfaces, addedAt: at, addedAtHead: head }
+		? {
+				addedFrames: addedFrameCount,
+				addedSurfaces,
+				addedAt: at,
+				addedAtHead: head,
+			}
 		: {};
 }
 
@@ -1022,7 +1697,7 @@ const main = async () => {
 	const PREFS_KEY = "ui-preferences-storage";
 	let seedScript = null;
 	let captured = 0;
-	for (const [story, width, height, options] of stories) {
+	for (const [story, width, height, options = {}] of stories) {
 		for (const theme of themes) {
 			/*
 			 * `prefers-reduced-motion` is a VIEWPORT state rather than a story
@@ -1108,6 +1783,34 @@ const main = async () => {
 					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); } catch {}`,
 				},
 			));
+
+			/*
+			 * PARK THE POINTER, then load the story.
+			 *
+			 * A `{ hover }` entry leaves the pointer where it stopped, and the pointer
+			 * outlives the document: the next story loads with the pointer already
+			 * inside whatever sits at those coordinates, so a TOOLTIP can open on a
+			 * frame that never asked for one - and, worse, only sometimes, because the
+			 * tooltip opens on a delay. Measured rather than theorised: the row's
+			 * `degraded-daemon` frame came back with two different hashes on two runs of
+			 * the same tree, and the `value-hover` entry the settings surface ends on
+			 * was the only difference between them.
+			 *
+			 * The bottom-right corner of the requested viewport is empty in every
+			 * story this file captures, and moving there before the navigation is what
+			 * makes a frame a function of its own story rather than of the previous
+			 * one.
+			 */
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: width - 2,
+				y: height - 2,
+				button: "none",
+				buttons: 0,
+				clickCount: 0,
+				modifiers: 0,
+				pointerType: "mouse",
+			});
 
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
@@ -1229,6 +1932,15 @@ const main = async () => {
 			// as real source - and the result was committed and would have
 			// thrown on the first story.
 			let prepared = false;
+			/*
+			 * The last probe's own numbers, kept so a timeout can say WHICH gate
+			 * held. Without them the failure reads as "Storybook never finished
+			 * preparing" whichever of the four it was, and the reader's next move
+			 * is a browser session - which is exactly how a one-element floor
+			 * error survived a diagnosis as "the story never reaches a rendered
+			 * state" while the story was rendering all along.
+			 */
+			let probe = null;
 			for (let i = 0; i < 300 && !prepared; i++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -1238,14 +1950,15 @@ const main = async () => {
 								".sb-preparing-story, .sb-preparing-docs, .sb-nopreview, .sb-loader",
 							),
 						].some((el) => el.getBoundingClientRect().height > 0);
-						if (loading) return false;
 						/* A story that needs a moment after mount - data from a
 						   stubbed query, then an interaction on the element it
 						   produced - sets this on mount and clears it when the
 						   frame is worth taking. Stories that never set it are
 						   unaffected, so this costs nothing for the other 37
 						   surfaces. */
-						if (document.documentElement.dataset.capturePending) return false;
+						const pending = Boolean(
+							document.documentElement.dataset.capturePending,
+						);
 						/* Webfonts must have resolved before the shutter.
 
 						   Chrome paints a fallback box for a glyph whose face is
@@ -1263,7 +1976,7 @@ const main = async () => {
 						   is what flips it. No backticks in this comment: the
 						   whole block is a template literal handed to
 						   Runtime.evaluate, and one would end it here. */
-						if (document.fonts.status !== "loaded") return false;
+						const fonts = document.fonts.status;
 						/* Count the STORY's elements, wherever they live.
 						   A plain body count passes on Storybook's own chrome,
 						   which is how a frame of pure ground - the right colour
@@ -1293,10 +2006,10 @@ const main = async () => {
 						   The body sweep's baseline is zero, but the story root's
 						   is not: the preview decorator always renders a theme
 						   wrapper and a toast container, so two elements are
-						   present before a story draws anything. The threshold
-						   below is set against that, and it is the number to
-						   change if the decorator gains furniture. */
-						const DECORATOR_ELEMENTS = 2;
+						   present before a story draws anything. That is the 2 the
+						   floor in storyDrew subtracts, and both of its numbers
+						   are there rather than here so the gate this poll applies
+						   is the one the test pins. */
 						const INERT = ["SCRIPT", "STYLE", "LINK", "TEMPLATE", "NOSCRIPT"];
 						let n = root ? root.querySelectorAll("*").length : 0;
 						if (docsRoot) n += docsRoot.querySelectorAll("*").length;
@@ -1306,15 +2019,24 @@ const main = async () => {
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;
 						}
-						return n - DECORATOR_ELEMENTS >= 8;
+						return {
+							drawn: !loading && !pending && fonts === "loaded" && (${storyDrew})(n),
+							counted: n,
+							loading,
+							pending,
+							fonts,
+						};
 					})()`,
 				});
-				prepared = result.value === true;
+				probe = result.value ?? probe;
+				prepared = probe?.drawn === true;
 				if (!prepared) await sleep(200);
 			}
 			if (!prepared) {
 				throw new Error(
-					`${story} @ ${theme}: Storybook never finished preparing the story (60s)`,
+					`${story} @ ${theme}: Storybook never finished preparing the story (60s). ` +
+						`Last probe: ${JSON.stringify(probe)}. ` +
+						"`counted` is the story's own elements with the decorator's two excluded, and `drawn` false with `loading`/`pending`/`fonts` clear means the element floor in `storyDrew` rejected it",
 				);
 			}
 			/*
@@ -1402,6 +2124,53 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
+				/*
+				 * A TOOLTIP IS NOT A `:hover` GROUND, and this is what tells the two apart.
+				 *
+				 * A colour step happens with the pointer; a tooltip opens on a TIMER
+				 * (`TooltipProvider`'s 400 ms delay), so a frame taken on the next paint
+				 * photographs the unopened state and files it under a name that claims the
+				 * tooltip. An entry that names a tooltip's trigger says how long the
+				 * shutter waits, which keeps the instrument the real pointer and keeps the
+				 * claim honest; entries without it are unchanged, byte for byte.
+				 */
+				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
+			}
+			/*
+			 * A SCROLL POSITION, for the frame whose claim is a section's END.
+			 *
+			 * Like `:hover` above, this is browser state rather than story state: no
+			 * story can scroll its own scroller, and a story that faked an offset
+			 * would be evidence about the fake. So the rig sets each matched element to
+			 * its own end before the shutter — `scrollTop = scrollHeight`, which the
+			 * browser clamps to the real maximum, so the frame holds the state a reader
+			 * reaches by scrolling rather than an offset this script chose.
+			 *
+			 * Two things THROW, for the hover's reason (the resting state and the
+			 * scrolled one are indistinguishable in a directory listing): a selector
+			 * that matches nothing, and a selector whose matches all sit at offset 0 —
+			 * which is a resting frame filed under a name that claims an end.
+			 */
+			if (options?.scrollToEnd) {
+				const { result: scrolled } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const els = [...document.querySelectorAll(${JSON.stringify(options.scrollToEnd)})];
+						for (const el of els) el.scrollTop = el.scrollHeight;
+						return els.map((el) => el.scrollTop);
+					})()`,
+				});
+				const offsets = scrolled.value ?? [];
+				if (offsets.length === 0) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollToEnd selector \`${options.scrollToEnd}\` matched nothing`,
+					);
+				}
+				if (!offsets.some((top) => top > 0)) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollToEnd selector \`${options.scrollToEnd}\` matched ${offsets.length} element(s) and none of them scrolls — the frame would be the resting state under a name that claims an end`,
+					);
+				}
 			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
@@ -1417,11 +2186,25 @@ const main = async () => {
 			 * so a sweep does not overwrite itself. Single-width stories keep the
 			 * plain path, which keeps every existing frame reference valid.
 			 */
-			const widths = STORIES.filter(([s]) => s === story);
+			/*
+			 * A story captured at several widths writes one directory per width,
+			 * so a sweep does not overwrite itself. Single-width stories keep the
+			 * plain path, which keeps every existing frame reference valid.
+			 *
+			 * An entry may name its own directory instead (`dir`), which is how a
+			 * story is captured in a SECOND state — a scroll position, where the
+			 * state is partial in a way the viewport cannot describe. Those entries
+			 * are excluded from the width count above, or adding one would rename
+			 * the frames of the state that was already there.
+			 */
+			const widths = STORIES.filter(
+				([s, , , entryOptions]) => s === story && !entryOptions?.dir,
+			);
 			const leaf =
-				widths.length > 1
+				options?.dir ??
+				(widths.length > 1
 					? `${story.split("--")[1]}@${width}`
-					: story.split("--")[1];
+					: story.split("--")[1]);
 			const dir = join(OUT, story.split("--")[0], leaf);
 			/*
 			 * Whether this directory existed BEFORE the run, recorded before
@@ -1645,7 +2428,11 @@ const main = async () => {
 						 * additions: keying it on the accumulated total would let a later commit of
 						 * the same pass re-stamp the citation for an earlier commit's frames.
 						 */
-						const added = partialAddedFields(addedFrames.length, addedSurfaces, head);
+						const added = partialAddedFields(
+							addedFrames.length,
+							addedSurfaces,
+							head,
+						);
 						/*
 						 * A pass that added nothing leaves the WHOLE added-pass record
 						 * alone, counts included. `addedFrames`/`addedSurfaces` describe
@@ -1660,10 +2447,14 @@ const main = async () => {
 								? {}
 								: {
 										addedFrames:
-											(sameHead ? (previous.partialCapture?.addedFrames ?? 0) : 0) +
-											addedFrames.length,
+											(sameHead
+												? (previous.partialCapture?.addedFrames ?? 0)
+												: 0) + addedFrames.length,
 										addedSurfaces: [
-											...new Set([...(sameHead ? priorSurfaces : []), ...addedSurfaces]),
+											...new Set([
+												...(sameHead ? priorSurfaces : []),
+												...addedSurfaces,
+											]),
 										],
 									};
 						const citationFields =

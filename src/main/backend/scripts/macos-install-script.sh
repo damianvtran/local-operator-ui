@@ -7,9 +7,28 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Configuration
 APP_NAME="Local Operator"
 VENV_NAME="local-operator-venv"
-APP_DATA_DIR="$HOME/Library/Application Support/$APP_NAME"
+APP_DATA_DIR="${LOCAL_OPERATOR_SUPPORT_PATH:-$HOME/Library/Application Support/$APP_NAME}"
 VENV_PATH="$APP_DATA_DIR/$VENV_NAME"
 LOG_FILE="$APP_DATA_DIR/backend-install.log"
+
+# Which environment this installs into. The path is the app's decision, not this
+# script's: a packaged install and an unpackaged one must not share an
+# environment (the venv is built on whatever interpreter the instance resolves,
+# and the installed bundle's stdlib lives inside the code-sealed .app), and only
+# the app knows which one it is. The app passes its answer in
+# (`LOCAL_OPERATOR_VENV_PATH`, set from `managedVenvPath` in
+# src/main/backend/venv-paths.ts).
+#
+# macOS REFUSES a standalone run rather than falling back, and the asymmetry with
+# the Linux and Windows scripts is deliberate. Their default is the packaged name,
+# which is harmless there; here it is the exact environment this split exists to
+# stop a second instance from writing into - the measured failure is a dev-venv
+# interpreter whose stdlib is `/Applications/Local Operator.app/Contents/
+# Resources/python_aarch64`, so a silent default would rebuild that venv and
+# `pip install` into it, which is what R1 of the review caught. A caller that
+# cannot name the environment is a caller that should not be installing into one.
+: "${LOCAL_OPERATOR_VENV_PATH:?Pass the resolved managed environment path (see venv-paths.ts); this script will not guess which instance it belongs to}"
+VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"
 
 # Keep CPython's bytecode cache out of the application bundle.
 #
@@ -33,71 +52,31 @@ LOG_FILE="$APP_DATA_DIR/backend-install.log"
 : "${PYTHONPYCACHEPREFIX:=$APP_DATA_DIR/python-bytecode-cache}"
 export PYTHONPYCACHEPREFIX
 
-# Determine CPU Architecture and Python Directory Name
-ARCH=$(uname -m)
-PYTHON_DIR_NAME="python" # Default for x86_64
-PYTHON_ARCH_NAME="x86_64" # For logging
+# And the refusal half of the same pair, so a standalone run of this script
+# cannot write bytecode into the bundle even where the redirect above does not
+# apply - a relative or unwritable prefix, or a child that drops the variable.
+# CPython reads the flag before its first import, so this script's own
+# `python -m venv`, its pip runs and the venv they create all compile without
+# writing a `__pycache__` anywhere. Measured on CPython: `0` and the empty
+# string are the two falsy spellings, so the value is set rather than merged
+# with whatever the caller had.
+export PYTHONDONTWRITEBYTECODE=1
 
-if [[ "$ARCH" == "x86_64" ]]; then
-  PYTHON_DIR_NAME="python"
-  PYTHON_ARCH_NAME="x86_64"
-elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then # arm64 is what uname -m returns on Apple Silicon
-  PYTHON_DIR_NAME="python_aarch64"
-  PYTHON_ARCH_NAME="aarch64"
-else
-  echo "Error: Unsupported CPU architecture: $ARCH"
-  exit 1
-fi
-echo "Detected CPU architecture: $ARCH, using Python directory name: $PYTHON_DIR_NAME"
+# The architecture block that used to live here computed and logged the name of
+# a directory for an in-bundle search this script no longer performs: every run
+# announced which architecture-named directory it was about to use, and then
+# installed from `PYTHON_BIN` anyway - the line stated the opposite of how the
+# script finds Python, and the names it computed were used nowhere else (review
+# N1). Which interpreter to build the environment with is the caller's decision,
+# checked immediately below.
 
-# Check if PYTHON_BIN is already set by the installer
-if [[ -n "$PYTHON_BIN" ]]; then
-  echo "Using Python executable provided by installer: $PYTHON_BIN"
-else
-  # Get the path to the bundled Python based on architecture
-  # Try multiple possible locations to find Python
-  POSSIBLE_PYTHON_PATHS=(
-    # From environment variable (set by the installer)
-    "$ELECTRON_RESOURCE_PATH/$PYTHON_DIR_NAME/bin/python3"
-    # Absolute paths for packaged app
-    "/Applications/Local Operator.app/Contents/Resources/$PYTHON_DIR_NAME/bin/python3"
-    "$HOME/Applications/Local Operator.app/Contents/Resources/$PYTHON_DIR_NAME/bin/python3"
-    # Development paths
-    "$(dirname "$0")/../../../resources/$PYTHON_DIR_NAME/bin/python3"
-    "$(pwd)/resources/$PYTHON_DIR_NAME/bin/python3"
-    # System Python as last resort (less ideal as it might not be the version we tested with)
-    "/usr/bin/python3"
-  )
-
-  # Find the first Python that exists
-  PYTHON_BIN=""
-  echo "Searching for Python in the following locations for $PYTHON_ARCH_NAME architecture (using directory $PYTHON_DIR_NAME):"
-  for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
-    echo "  - Checking $path"
-    if [[ -f "$path" && -x "$path" ]]; then
-      PYTHON_BIN="$path"
-      echo "Found Python at $path"
-      break
-    else
-      echo "    Not found or not executable."
-    fi
-  done
-
-  # If we couldn't find Python, try to use the system Python
-  if [[ -z "$PYTHON_BIN" ]]; then
-    echo "Bundled Python for $PYTHON_ARCH_NAME not found in directory $PYTHON_DIR_NAME. Attempting to use system Python..."
-    if command -v python3 &>/dev/null; then
-      PYTHON_BIN=$(command -v python3)
-      echo "Warning: Using system Python at $PYTHON_BIN. This may lead to unexpected behavior."
-    else
-      echo "Error: Could not find a suitable Python executable. Tried the following paths for $PYTHON_ARCH_NAME (expected in $PYTHON_DIR_NAME):"
-      for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
-        echo "  - $path (failed)"
-      done
-      exit 1
-    fi
-  fi
-fi
+# The app prepares a complete external runtime before invoking this script.
+# Searching /Applications here would reintroduce legacy-bundle execution during
+# migration. Standalone callers must make the same explicit path decision.
+: "${PYTHON_BIN:?Pass an external prepared Python executable}"
+case "$PYTHON_BIN" in
+  *.app/*) echo "Refusing to execute Python inside an application bundle" >&2; exit 1 ;;
+esac
 
 # Create app data directory if it doesn't exist
 mkdir -p "$APP_DATA_DIR"
@@ -125,6 +104,18 @@ if [ -f "$FFMPEG_BIN" ] && [ -x "$FFMPEG_BIN" ]; then
     echo "FFmpeg already installed at $FFMPEG_BIN. Skipping download."
 else
     echo "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
+
+    # The architecture, read here because this URL is the one place left that needs
+    # it: the environment is built on `PYTHON_BIN`, handed in above, so nothing
+    # else in this script derives anything from `uname -m`. The block that used to
+    # compute it at the top of the file was removed with the in-bundle interpreter
+    # search it existed for (review N1) - and that removal took this variable with
+    # it while this block still read it, so `$ARCH` was empty for every caller,
+    # including the app, and any install on a machine without a cached ffmpeg
+    # exited 1 here, before the venv was ever created. Measured: `bash
+    # src/main/backend/scripts/macos-install-script.sh` with `PYTHON_BIN` set stops
+    # on "Unsupported CPU architecture for FFmpeg download:".
+    ARCH=$(uname -m)
 
     FFMPEG_DOWNLOAD_URL=""
 
@@ -165,7 +156,6 @@ if [ ! -f "$PYTHON_BIN" ]; then
 fi
 
 # Make sure Python binary is executable
-chmod +x "$PYTHON_BIN"
 echo "Using bundled Python: $PYTHON_BIN"
 "$PYTHON_BIN" --version
 
@@ -184,10 +174,11 @@ echo "venv module is available"
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_PATH" ]; then
   echo "Creating virtual environment at $VENV_PATH..."
-  # Remove any potentially corrupted virtual environment
-  if [ -e "$VENV_PATH" ]; then
-    echo "Removing existing but potentially corrupted venv directory..."
-    rm -rf "$VENV_PATH"
+  # Never repair a path we did not create. Preparation allocates a fresh final
+  # pathname; a collision is evidence to preserve, not a reason to delete it.
+  if [ -e "$VENV_PATH" ] || [ -L "$VENV_PATH" ]; then
+    echo "Refusing to replace an existing environment path: $VENV_PATH" >&2
+    exit 1
   fi
   
   # Make sure parent directory exists and is writable

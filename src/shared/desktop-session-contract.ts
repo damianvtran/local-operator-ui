@@ -68,6 +68,56 @@ export type CompletionAttention = {
 	/** False for a live owner that has not negotiated completion receipts. */
 	supported?: boolean;
 };
+
+/**
+ * The backend's machine code for "your token is no longer the current one".
+ *
+ * The string is the BACKEND's, and the backend is its source of truth:
+ * `SUPERSEDED_TOKEN_CODE` in `local_operator/session/attention.py`, documented
+ * for clients in `docs/DESKTOP_API.md`. This copy exists because a renderer
+ * cannot import Python, and a copy cannot be bound automatically across two
+ * repositories -- each side's tests pin its own literal, so a change on one side
+ * lands green on the other. What makes that a maintenance step rather than a
+ * silent break is that this literal is asserted against the documented wire value
+ * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
+ * names the backend's value.
+ *
+ * Nothing in the renderer FORKS on this code, and that is deliberate rather than
+ * an omission: `use-completion-view.ts` sends every rejection -- this 409
+ * included -- to the one shared retry ladder, so a superseded token costs its
+ * attempt like any other failure and the re-arm comes from the projection naming
+ * a NEW token, not from a special case here. It is kept because it is part of
+ * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
+ * a client that does need to tell the refusal apart must not have to spell the
+ * string itself.
+ */
+export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
+
+/**
+ * Whether an acknowledgement may be taken as marking this conversation READ.
+ *
+ * `sessions.seen` answers with the resulting attention state, and `unseen` is the
+ * whole verdict: a 2xx is NOT a read. A backend that had already moved past the
+ * token answered with a 200 whose body still said `unseen: true`, and a client
+ * that latched on the resolved call stopped retrying -- leaving the completion's
+ * mark on forever, over a result the operator was looking at (the reported
+ * defect). Identity is part of the test rather than assumed: only a state about
+ * THIS conversation can settle this attempt.
+ */
+export function receiptSettled(
+	state: unknown,
+	sessionId: string,
+	token: string,
+): boolean {
+	if (!state || typeof state !== "object") return false;
+	const attention = state as Partial<CompletionAttention>;
+	return (
+		attention.unseen === false &&
+		attention.conversation_id === `session/${sessionId}` &&
+		attention.completion_token === token
+	);
+}
+
 export function mergeCompletionAttention(
 	current: CompletionAttention | undefined,
 	incoming: CompletionAttention | undefined,
@@ -89,6 +139,27 @@ export function mergeCompletionAttention(
 			incoming.revision[1] < current.revision[1])
 	)
 		return current;
+	// `supported` is OPTIONAL and its ABSENCE is not a value.
+	//
+	// Two producers reach this merge with different attention payloads. A
+	// session stream's attention comes from the live owner and carries
+	// `supported` (false = "this owner has not negotiated completion receipts");
+	// the catalogue's comes from `state_many`, which builds the state from the
+	// durable store alone and therefore never sets it. Replacing wholesale —
+	// which is what this merge is for, so a newer revision always wins — then
+	// DELETED the flag, and `useCompletionView` requires
+	// `attention.supported === true` before it will acknowledge a read. A
+	// catalogue refetch arriving after a snapshot silently disabled the read
+	// receipt for the conversation on screen, and nothing repainted the flag
+	// until the next snapshot: a completion stayed unread no matter how long
+	// the user looked at it.
+	//
+	// So an omitted flag INHERITS the last one we were actually told, and a
+	// present one is the producer's own answer and always wins — including an
+	// explicit `false`, which is the whole point of sending it.
+	if (incoming.supported === undefined && current?.supported !== undefined) {
+		return { ...incoming, supported: current.supported };
+	}
 	return incoming;
 }
 
@@ -206,6 +277,18 @@ export type PendingDesktopGate = {
  * See docs/design/descriptive-notifications.md 4.1 and 8.1 — these names are
  * the wire contract, not a local convenience.
  */
+/**
+ * The notification kinds this app can deliver over the MACHINE-WIDE FEED.
+ *
+ * Completions only, and it is narrower than `DesktopNotification["kind"]` on
+ * purpose: the feed publishes a completed or failed TURN, while a gate
+ * (`ask`/`approval`) travels the per-session bridge where it belongs to a
+ * conversation the user is already in. This is what the presence claim
+ * advertises — the backend's `delivers(kind)` reads it, and a claim that
+ * advertises nothing makes every completion someone else's to raise.
+ */
+export const FEED_NOTIFIABLE_KINDS = ["complete", "error"] as const;
+
 export type DesktopNotification = {
 	/** Payload shape version. 1 today; additive fields do not bump it. */
 	contract: number;
@@ -234,6 +317,45 @@ export type DesktopNotification = {
 	 * the bare body, which is exactly what it rendered before the flag existed.
 	 */
 	body_is_failure?: boolean;
+	/**
+	 * How many completions this frame stands for, when it is a BURST DIGEST.
+	 *
+	 * The backend caps per-tick banners and publishes one frame for the
+	 * remainder of a busy tick rather than one banner per session. Additive and
+	 * optional like `body_is_failure`: absent on a single conversation's frame,
+	 * and absent from a backend that predates the cap. A surface that ignored it
+	 * would still render the frame, but would route its click to whichever
+	 * overflow member `session_id` happens to name.
+	 */
+	burst_count?: number;
+	/**
+	 * The conversations a digest stands for, in the backend's own order.
+	 *
+	 * Present so a surface can say WHO finished (a count in a banner is only
+	 * half of "what happened") without a second request. Never trusted as a
+	 * routing target: a digest's click belongs on the catalogue, which is where
+	 * all of them are listed.
+	 */
+	session_ids?: string[];
+	/**
+	 * The members a burst digest stands for, as claimable completions.
+	 *
+	 * THE CROSS-SURFACE CONTRACT (review round 2, R2-5; backend #1116's R8). A
+	 * digest has no `completion_token` of its own — no single completion owns it —
+	 * so a surface's claim step skips it, and `session_ids` alone is not enough to
+	 * claim with: the backend's arbitration is per COMPLETION, not per session.
+	 * Without these pairs nothing ever marked a digest's members delivered, and an
+	 * individual frame for one of them could raise a second banner for a
+	 * completion this digest had already announced.
+	 *
+	 * The backend does NOT preclaim them: a member is the receiving surface's to
+	 * win, at the moment it is about to deliver, through the same
+	 * `sessions.notified` call a single frame uses. Additive and optional like
+	 * `burst_count`, so a backend that predates the fix degrades to the old
+	 * behaviour (the digest still renders, its members are simply not arbitrated)
+	 * rather than to an error.
+	 */
+	member_tokens?: { session_id: string; completion_token: string }[];
 	/** False when the privacy flag is off or the session has no stored name. */
 	title_is_session_name: boolean;
 	/**
@@ -436,6 +558,40 @@ export type DesktopSessionFrame =
 				job_trajectory_replacements: never[];
 			}
 	  >
+	/**
+	 * The desktop-only REPLACEMENT of the painted projection (remediation contract
+	 * § C), published synchronously by the bridge when an ACCEPTED move installs
+	 * local facade state.
+	 *
+	 * Deliberately not an `event` (a typed canonical AgentEvent the transcript
+	 * reducer paints) and deliberately not a `frontend.update`. A move changes the
+	 * facade's cwd WITHOUT touching the owner's clock, so a delta would carry the
+	 * owner's UNCHANGED epoch and sequence - and the shipped reducer rejects a
+	 * same-sequence update as stale, which is the measured defect this frame exists
+	 * to fix: a mounted viewer stayed on the old directory while the receipt said
+	 * the move had landed (backend review R4).
+	 *
+	 * It is ordered by the BRIDGE's own outer `seq` instead, and it carries no
+	 * `history` field: its job is replacing the frontend PAINT projection, not
+	 * resetting the conversation, so it neither creates a history gap nor
+	 * invalidates a history cursor. The `frontend` field is the whole bounded
+	 * `FrontendSync` (not just its `snapshot`) so the consumer also gets the owner's
+	 * true epoch and sequence, and it keeps the same shape as the bootstrap
+	 * snapshot's field.
+	 *
+	 * Additive and replay-exempt for the same reason `notification` is: an older
+	 * renderer negotiates no `frontend_replace` (see `acceptFrontendReplace`), the
+	 * backend refuses to move while such a viewer is mounted, and a frame that
+	 * somehow arrived anyway falls through every branch of an older frame loop and
+	 * paints nothing.
+	 */
+	| Receipt<
+			"frontend.replace",
+			{
+				frontend: CanonicalFrontendSync;
+				cold: boolean;
+			}
+	  >
 	| Receipt<"event", { type: string; [key: string]: unknown }>
 	// Additive and replay-exempt: an older renderer falls through every branch
 	// of the frame loop, advances its receipt cursor on `seq`, and paints
@@ -444,6 +600,120 @@ export type DesktopSessionFrame =
 	// is a field delta of persistent state — a notification is a one-shot edge.
 	| Receipt<"notification", DesktopNotification>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
+
+/**
+ * The machine-wide feed's frame family (`GET /v1/desktop/events`).
+ *
+ * It is a SECOND envelope rather than a reuse of `DesktopSessionFrame`, because
+ * the two streams answer different questions and the differences are the ones a
+ * careless alias would hide:
+ *
+ * - A feed frame is not scoped to one session. `session_id` is present only on
+ *   the types that concern one conversation (`attention`, `notification`), and
+ *   absent on `catalogue`, `heartbeat` and `gap` — so the session frame's
+ *   `Receipt` (which requires it) cannot describe them.
+ * - `open` carries no `gap` flag: there is no replay to gap on. A feed
+ *   subscription takes a BASELINE and announces nothing that predates it,
+ *   because the notification edge's whole value is timeliness. The feed's
+ *   `gap` is therefore an overflow signal on a live connection, not a hole in
+ *   a replay.
+ * - `attention.payload` is the same `CompletionAttention` the session stream
+ *   carries, and `notification.payload` is the SAME payload the bridge composes
+ *   — verbatim, including `dedupe_key`. That is what lets main's notifier
+ *   observe either source with one code path and one local dedupe map, so a
+ *   completion that reaches the app twice produces one banner.
+ *
+ * `seq` is a receipt cursor exactly as the session stream's is: monotonic per
+ * connection, and only meaningful for dedupe — never for deciding what is
+ * newer paint state.
+ */
+export type DesktopFeedFrame =
+	| {
+			epoch: string;
+			seq: number;
+			type: "open";
+			payload: {
+				subscription_id: string;
+				/** The backend's own beat cadence, which sizes the silence watchdog. */
+				heartbeat_seconds: number;
+				/** Presence lease the heartbeat must beat inside. */
+				lease_seconds: number;
+				watch_ttl_seconds: number;
+				catalogue_revision: number;
+			};
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "attention";
+			session_id: CanonicalSessionId;
+			payload: CompletionAttention;
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "notification";
+			session_id: CanonicalSessionId;
+			payload: DesktopNotification;
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "catalogue";
+			payload: { revision: number };
+	  }
+	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	| {
+			epoch: string;
+			seq: number;
+			type: "gap";
+			payload: { reason: string; subscription_id: string };
+	  };
+
+/** The outer bridge cursor a desktop frame carries, as the client records it. */
+export type DesktopStreamCursor = { epoch: string; seq: number };
+
+/**
+ * Whether a live `frontend.replace` may be applied over the painted projection.
+ *
+ * Four questions, and every one of them is a way a replacement must NOT land.
+ * Exported as a pure predicate rather than left inline in `use-canonical-session`
+ * because a predicate that exists only inside a React effect is a predicate no
+ * test can falsify, and this one is the whole acceptance rule of a contract seam
+ * (remediation contract § C, "Consumer").
+ *
+ *  - **Identity, on both halves of the wire.** The receipt names the session and
+ *    so does the `FrontendSync.snapshot` inside it. A replacement is a full
+ *    projection, so a payload belonging to another session would replace this
+ *    session's entire paint - the one mutation a mismatched frame must never make.
+ *  - **The cursor BEFORE this frame.** `priorCursor` is the outer bridge cursor
+ *    as it stood before the generic receipt branch advanced it. Comparing against
+ *    the value this very frame just wrote would reject every replacement, which is
+ *    why the caller reads it first; comparing it is what makes the frame ordered
+ *    against the deltas around it, since both ride one monotonically increasing
+ *    bridge cursor.
+ *  - **The outer epoch matches the active stream.** An epoch the current
+ *    subscription never served is a frame from a stream that has been replaced,
+ *    and its sequence says nothing about what this viewer has seen.
+ *  - **Strictly newer.** Equal or lower is a duplicate or an out-of-order
+ *    replay, and applying one would roll the paint back to an older projection.
+ *
+ * A replacement that arrives during the pre-snapshot replay needs no rule here:
+ * the call site only consults this predicate once the bootstrap snapshot has been
+ * applied, so a replayed frame stays subordinate to that snapshot, exactly as
+ * every other replayed frame does.
+ */
+export function acceptFrontendReplace(
+	priorCursor: DesktopStreamCursor | null | undefined,
+	sessionId: string,
+	frame: Extract<DesktopSessionFrame, { type: "frontend.replace" }>,
+): boolean {
+	if (frame.session_id !== sessionId) return false;
+	if (frame.payload.frontend.snapshot.session_id !== sessionId) return false;
+	if (!priorCursor) return false;
+	return priorCursor.epoch === frame.epoch && frame.seq > priorCursor.seq;
+}
+
 export type DesktopAdmission = {
 	status: "admitted";
 	command_id: string;
@@ -463,4 +733,35 @@ export type DesktopCommandReceipt = {
 				admission?: Omit<DesktopAdmission, "command_id"> | null;
 		  };
 	replayed?: boolean;
+};
+
+/**
+ * What a working-directory change did, and where it left the session.
+ *
+ * Mirrors the backend's `MoveReceipt` (`POST
+ * /v1/desktop/sessions/{id}/working-directory`). Both `cwd` and `label` are
+ * carried because they are different facts: `cwd` is the VALUE to compare
+ * against what the canonical `frontend` stream later reports (the chip holds
+ * its optimistic value until the two agree - see `useSessionMove`), and `label`
+ * is the backend's own home-aware spelling of it, printed rather than
+ * reformatted here because only the process that owns the session knows how to
+ * spell `~`. A client-side `~/` would print the CLIENT's home for a remote
+ * backend, which is a different directory with the same name.
+ *
+ * `outcome` is the viewer's own vocabulary plus one route-level value:
+ * `cold` and `rebound` are `set_working_directory`'s (`cold` = the field moved
+ * and nothing was running, `rebound` = the runtime was retired and a successor
+ * is owed), and `unchanged` is the already-there no-op.
+ *
+ * `will_wait` is a pre-call HINT (the TUI's own `move_will_wait`, sampled before
+ * the move) and deliberately NOT load-bearing here: a caller learns it after
+ * the move has already happened, so it cannot narrate anything with it. It is on
+ * the wire so a receipt reader can tell "the session restarted" from "the field
+ * moved under an engage that then failed".
+ */
+export type DesktopMoveReceipt = {
+	cwd: string;
+	label: string;
+	outcome: "cold" | "rebound" | "unchanged";
+	will_wait: boolean;
 };

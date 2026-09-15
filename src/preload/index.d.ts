@@ -1,5 +1,7 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { UpdateCheckVerdict } from "../main/update-check-verdict";
+import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type { BrowserExtensionsApi } from "../shared/browser-extensions";
 import type {
 	DesktopAPI,
@@ -58,6 +60,23 @@ declare global {
 					callback: (payload: { tabId: number; url: string }) => void,
 				) => () => void;
 			};
+			/**
+			 * The server-status signal, from the MAIN process.
+			 *
+			 * Not a health probe made by the renderer: main sends no Origin and holds
+			 * the bearer, so this answer cannot be turned into "server down" by a CORS
+			 * or allowlist decision (see `shared/backend-status.ts`).
+			 *
+			 * `reconnect` asks main to re-discover NOW (the connectivity banner's
+			 * Retry) and answers with the snapshot it ended on.
+			 */
+			backend: {
+				getStatus: () => Promise<DaemonStatusSnapshot>;
+				reconnect: () => Promise<DaemonStatusSnapshot>;
+				onStatusChange: (
+					callback: (snapshot: DaemonStatusSnapshot) => void,
+				) => () => void;
+			};
 			openFile: (filePath: string) => Promise<void>;
 			readFile: (
 				filePath: string,
@@ -103,7 +122,16 @@ declare global {
 					canManageUpdate?: boolean;
 					remedy?: string;
 				} | null>;
-				checkForAllUpdates: (options?: { manual?: boolean }) => Promise<void>;
+				// The aggregate check's own answer, and the ONLY source of the "up to
+				// date" affirmation: a value that says the whole check proved both
+				// channels current, never merely that one of them had nothing to
+				// offer. See `src/main/update-check-verdict.ts`. `silent` is the
+				// caller's own flag for suppressing this check's per-channel
+				// `*-not-available` events.
+				checkForAllUpdates: (options?: {
+					manual?: boolean;
+					silent?: boolean;
+				}) => Promise<UpdateCheckVerdict>;
 				/** The last install that did not complete, if the app recorded one. */
 				getLastInstallAttempt: () => Promise<{
 					targetVersion: string;

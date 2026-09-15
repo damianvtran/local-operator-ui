@@ -110,10 +110,105 @@ stays refused.
 Three consequences are visible in the shipped tree: the interpreter runs under
 `PYTHONPYCACHEPREFIX` in a userData cache directory (never inside the bundle),
 the build ships no bytecode at all, and the release gate fails on any `.pyc`
-under the bundled interpreter trees — the check that would have stopped 0.17.0
+underneath the private seed it packs (`Contents/Resources/python-runtime-seed/<arch>`;
+`app-no-bundled-bytecode`) — the check that would have stopped 0.17.0
 before upload. An install that is already broken in this way needs one manual
 reinstall; the three rewritten sealed `.pyc` in it cannot be restored by
 deleting anything, and the measurements say so rather than the prose.
+
+## The 2026-09-14 incident: the reproduced damage, and the claims that are NOT supported
+
+The operator updated local-operator-ui in-app from 0.22.1 to 0.22.2 and macOS then
+answered *"Local Operator" is damaged and can't be opened. You should move it to
+the Trash.* The investigation that followed produced both measurements and
+guesses, and the guesses were corrected the same day
+(`~/workspace/lo-update-audit-2026-09-14/README.md`). This section keeps the two
+apart deliberately, because the retracted half is the half a future reader is
+most likely to re-derive from the logs.
+
+### Retracted: three claims this record made and must not make again
+
+1. **"A specific process wrote the `.pyc`."** The writer is bounded to "a CPython
+   3.12 whose stdlib is the in-bundle tree", which means a process started from
+   `~/Library/Application Support/Local Operator/local-operator-venv`. The exact
+   pid and instance were never established; the unified log shows only
+   `python3.14` processes around the write timestamp.
+2. **"The in-app update produced a broken bundle."** Nothing here shows that.
+   `ShipIt_stderr.log` ends with a completed install and a launch at 09:50, and
+   the bytecode appeared at 10:11 - afterwards. The update is not implicated by
+   any measurement in this set.
+3. **"The bundle broke its seal a second time."** The probe that produced this ran
+   `codesign` against `/Applications/Local Operator.app` at a moment when no such
+   path existed, so it measured a missing file rather than an unsealed bundle. The
+   app was gone. For the same reason, nothing here identifies who removed or
+   reinstalled the app between attempts: the actor is **unknown**, and no process
+   snapshot, Trash entry or `fs_usage` trace named it.
+
+### Established, and reproduced
+
+- The installed bundle carried one file the shipped artifact does not:
+  `Contents/Resources/python_aarch64/lib/python3.12/__pycache__/webbrowser.cpython-312.pyc`,
+  against a bundle signed at 09:31:53 and that file's mtime at 10:11:29.
+- That file is the whole difference that matters: adding it to a copy of the
+  signed bundle takes `codesign --verify --deep` from exit 0 to
+  `file added: … / a sealed resource is missing or invalid`.
+- The interpreter trees the shipped 0.22.2 image carries are born writable - the
+  runtime seal that existed in that release is applied by the app at start-up, so
+  a freshly swapped-in bundle has no access-control entries yet. `ls -lde` on
+  `Contents/Resources/python_aarch64` and on `.../lib/python3.12` prints a bare
+  mode line, and a write succeeds at every level.
+- The app-managed venv resolved its stdlib from inside the installed bundle:
+  `~/Library/Application Support/Local Operator/local-operator-venv/pyvenv.cfg`
+  records `home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin`.
+  Anything that ran that venv's python, whoever started it, wrote into the
+  installed `.app`.
+- The pre-flight was not wrong when it passed at 09:48:42: it verifies the bundle
+  being replaced, and the break did not exist yet.
+
+### Not established, and stated as such
+
+The exact chain from a broken seal to the dialog the operator saw was not captured
+on this machine. The released 0.22.2 app and image verify correctly - `codesign
+--verify --deep` exits 0, `spctl -a -vvv -t exec` accepts, `xcrun stapler validate`
+passes for both - so the seal break is **a** sufficient explanation and not a
+measured one, and this record does not claim the release itself was bad. Method
+point that cost hours: `spctl -a -vvv -t exec` hangs on quarantined bundles on this
+machine (measured 30-300 s), while `codesign --verify` discriminates correctly, so
+`codesign` is the oracle every seal measurement here uses.
+
+[self-seal.txt](self-seal.txt) is the measurement set taken that day, and it ends
+with the field break reproduced on a copy of the signed image: one unguarded
+`python3 -c "import webbrowser"` inside it writes 32 `.pyc`, `codesign --verify
+--deep` goes from exit 0 to exit 1 with `file added: .../webbrowser.cpython-312.pyc`,
+and the app's own heal takes it back to `valid on disk`.
+
+**Read [self-seal.txt](self-seal.txt) as a record of the mechanism as it stood,
+not as a description of the fix.** Its second half measures a filesystem seal on
+the bundled interpreter trees, reached through `scripts/after-pack.mjs` and a gate
+check named `app-python-trees-sealed`. Neither exists any more: the seal could not
+be a correctness mechanism, because the ZIP Squirrel.Mac stages does not carry
+access-control entries, so the bundle an update lands in is unsealed by
+construction - the same window the incident sits in. The mechanism that replaced
+it is in [the managed-runtime record](../managed-python-runtime/README.md) and in
+`src/main/backend/managed-python.ts`.
+
+### What the fix does now
+
+- The interpreter ships as **inert data** under `Contents/Resources/python-runtime-seed/<arch>`,
+  and no `Contents/Resources/python` or `python_aarch64` path exists beside it -
+  not even a symlink. `scripts/after-pack.mjs` refuses a bundle that carries one,
+  because an incumbent install's `pyvenv.cfg` still names that path.
+- The app copies the complete seed to a versioned per-user runtime outside every
+  `.app` and creates the venv at its final external path against that runtime
+  before any Python runs, so nothing a user's machine executes resolves its stdlib
+  inside a signed bundle and no update can replace the tree an environment depends
+  on.
+- The gate asserts that layout on the delivered `.dmg` and `.zip`, not only on
+  electron-builder's unpacked `dist` output (`docs/CODE_SIGNING.md`).
+- An unpackaged instance uses its own runtime and venv and no longer acts on a
+  packaged app's install state. The one-time cost of that split is stated in
+  `src/main/backend/venv-paths.ts` rather than hidden.
+
 
 ## How the relaunch watchdog decides
 

@@ -9,7 +9,36 @@
  * keep it uniform.
  */
 
+import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
+
+/**
+ * A notice's body split into the line its row paints and the rest of it, if any.
+ *
+ * The two are returned together because the row and its disclosure must
+ * PARTITION the text. `rest` is null exactly when the opening line is the whole
+ * notice, and that is the case the row paints as a static line rather than as a
+ * trigger that discloses a byte-identical copy of itself (round 2's
+ * D7/Q5/R11/U14: a 404-character single-line notice painted all of itself and
+ * then repeated it behind the chevron, so the affordance promised material it
+ * did not add).
+ *
+ * It lives here rather than in the view for the reason this module exists: it is
+ * a rule with a right answer, asserted directly (`scripts/tool-row.test.mjs`)
+ * instead of eyeballed in a frame.
+ */
+export const splitFirstLine = (
+	text: string,
+): { headline: string; rest: string | null } => {
+	const lines = text.split("\n");
+	const at = lines.findIndex((line) => line.trim().length > 0);
+	if (at < 0) return { headline: text.trim(), rest: null };
+	const rest = lines
+		.slice(at + 1)
+		.join("\n")
+		.trim();
+	return { headline: lines[at].trim(), rest: rest || null };
+};
 
 export type Row = {
 	record: TranscriptRecord;
@@ -121,8 +150,33 @@ export function isTraceLike(record: TranscriptRecord): boolean {
 		record.kind === "tool" ||
 		record.kind === "notice" ||
 		record.kind === "compaction" ||
-		record.kind === "custom"
+		record.kind === "custom" ||
+		// A peer message and a wake delivery are receipts on the same ledger as
+		// the calls around them (the TUI draws both as ledger rows —
+		// `PeerMessageBlock` and `WakeBlock` in `tui/widgets/transcript.py`), so
+		// they take the ledger's gap tier rather than prose's air. A note that
+		// arrived mid-run belongs to the run.
+		record.kind === "peer" ||
+		record.kind === "wake"
 	);
+}
+
+/**
+ * The name this record paints in the ledger's shared name column, or `""` for a
+ * record that has no ledger row at all.
+ *
+ * The column is sized to the longest name ON SCREEN, so a `peer` or `wake` row
+ * that kept its name out of that set would break the column for every row around
+ * it. Its own name is its kind — the record carries no `toolName`, because these
+ * are not tool calls and a field that only ever repeats the kind would be a
+ * second way of saying one thing.
+ */
+export function ledgerName(record: TranscriptRecord): string {
+	if (record.kind === "tool") return displayName(record.toolName);
+	if (record.kind === "peer" || record.kind === "wake") {
+		return displayName(record.kind);
+	}
+	return "";
 }
 
 /**

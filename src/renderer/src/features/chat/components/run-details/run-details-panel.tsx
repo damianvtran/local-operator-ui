@@ -18,17 +18,22 @@
 
 import { Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { Fragment, type HTMLAttributes, type ReactNode } from "react";
+import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
 import { RunDetailMcp } from "./run-detail-mcp";
 import type { McpServerRow, RunDetails } from "./run-detail-model";
 import { hasRunDetails } from "./run-detail-model";
 import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
 import { useRunDetailsClock } from "./run-details-clock";
+import type { McpRemedyControls } from "./use-mcp-remedy";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
+	/** Whether the read carries an operation that is still running (`§ 7.2`). */
+	mcpGrantRunning: boolean;
+	/** The pane's MCP remedy controls: see `use-mcp-remedy.ts`. */
+	mcpRemedy: McpRemedyControls;
 	/** Whether a child's row can be opened (`§ 10.2`). */
 	childrenOpenable: boolean;
 	onOpenChild: (id: string) => void;
@@ -45,16 +50,28 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 * `tallyBudget`. One source, one reading.
 	 */
 	paneWidth: number;
+	/**
+	 * The To-dos section's element, for the pane's consume-once reveal request.
+	 *
+	 * Threaded through the body rather than read here: the request is the pane's
+	 * (`RunPanel` owns the effect and the store subscription), and this component
+	 * stays presentational — it renders the sections and decides nothing about
+	 * where the pane is looking.
+	 */
+	todosSectionRef?: Ref<HTMLElement>;
 };
 
 export const RunDetailsPanel = ({
 	details,
 	mcpServers,
+	mcpGrantRunning,
+	mcpRemedy,
 	childrenOpenable,
 	onOpenChild,
 	rosterExpanded,
 	onToggleRosterExpanded,
 	paneWidth,
+	todosSectionRef,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -94,14 +111,46 @@ export const RunDetailsPanel = ({
 			),
 		});
 	}
+	/*
+	 * The PHASE count here and the ITEM count at the composer's plan chip are two
+	 * spellings of one rule, and they are deliberately different.
+	 *
+	 * The pane is about phases: it renders their headers, their items and their
+	 * `+N more`, so it appears whenever there is a phase to render - including a
+	 * named phase with no items, which is a real state the backend publishes (the
+	 * checkpoint arrives with `todos: [{ name: "Foundation", items: [] }]`).
+	 * The chip is about work: `totalTodos` is the item count, so a plan that
+	 * arrived as an empty phase prints nothing at all rather than `0 to-dos open`,
+	 * which reads as a finished plan.
+	 *
+	 * `totalTodos > 0` implies `todos.length > 0`, so the two cannot disagree in a
+	 * reachable state; the note is here because this PR is what made the
+	 * distinction load-bearing, and "unifying" the two spellings would put the
+	 * chip back to claiming a plan it cannot count (agent review, round 1, N2).
+	 */
 	if (details.todos.length > 0) {
 		sections.push({
 			key: "todos",
-			body: <RunDetailTodos details={details} paneWidth={paneWidth} />,
+			body: (
+				<RunDetailTodos
+					details={details}
+					paneWidth={paneWidth}
+					sectionRef={todosSectionRef}
+				/>
+			),
 		});
 	}
 	if (mcpServers.length > 0) {
-		sections.push({ key: "mcp", body: <RunDetailMcp servers={mcpServers} /> });
+		sections.push({
+			key: "mcp",
+			body: (
+				<RunDetailMcp
+					servers={mcpServers}
+					grantRunning={mcpGrantRunning}
+					remedy={mcpRemedy}
+				/>
+			),
+		});
 	}
 
 	if (sections.length === 0) {

@@ -17,12 +17,14 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
 import {
 	type CompletionAttention,
 	type SessionBinding,
 	type SessionCatalogueStatus,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
+import type { LaunchTarget } from "../../../../shared/open-session";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -49,6 +51,22 @@ export type ChatDraft = {
 	createRequestId: string;
 	admissionRequestId: string;
 	sessionId?: string;
+	/**
+	 * The model the FIRST turn of this draft will be born on, or absent when the
+	 * user never picked one.
+	 *
+	 * DRAFT state, and deliberately nothing else: it is read by the pane's
+	 * `sessions.preview` (so the readings on screen are this model's) and by
+	 * `sessions.create` on send (so the first turn runs on it). It is never
+	 * written to the host's settings — choosing a model for one conversation must
+	 * not move the machine's default — which is why it lives on the row rather
+	 * than behind `settings.edit`.
+	 *
+	 * Absent and `null` mean the same thing to every reader here (`model == null`
+	 * in both), and `null` is what the store records when a choice is cleared so
+	 * that the row states the intent rather than the absence of a key.
+	 */
+	model?: DesktopModelSelection | null;
 	pending?: boolean;
 	error?: string;
 	errorCode?: string;
@@ -135,6 +153,118 @@ export const SESSION_UNVALIDATED_MESSAGE =
 	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
 
 /**
+ * A send refused because its text STARTS WITH A SLASH.
+ *
+ * The backend's own policy: `local_operator/server/routes/desktop_sessions.py`
+ * refuses any message whose text `lstrip().startswith("/")`, because a leading
+ * slash means "command" and a command travels on a different endpoint. A
+ * multi-line draft the planner correctly classified as PROSE (`/usage` on line
+ * one, the message on line two, caret at the end) therefore reaches the messages
+ * endpoint carrying that first line and is refused there — and no amount of
+ * resending can make it work: the same bytes meet the same rule forever (UX
+ * round 2, U13).
+ *
+ * A code rather than a match on the refusal's copy, for the same reason the two
+ * above are: the sentence is the transport's shared 422 string ("...invalid
+ * fields."), used by refusals this does not describe, and prose is expected to
+ * be reworded. The condition that identifies THIS refusal is the payload the
+ * store sent, which the store holds.
+ */
+export const LEADING_SLASH_CODE = "leading_slash_message";
+
+/**
+ * What a send refused for its leading slash says, in the composer's own row.
+ *
+ * The refusal's own copy is the transport's sentence about a malformed request,
+ * which names a cause the user cannot act on, and the composer's generic retry
+ * hint ("Send it again") points at the one action that can never succeed here.
+ * What is true is that the user's draft is still in the composer and has two
+ * fixes, both in front of them — so the sentence names them (branding section 8:
+ * what happened, what it means, what to do).
+ */
+export const LEADING_SLASH_MESSAGE =
+	"A message can't start with / — that is a command. Move it below your text, or send it on its own.";
+
+/**
+ * Whether a refused send is the leading-slash policy refusal.
+ *
+ * Keyed on the PAYLOAD the store sent rather than on the refusal's copy: the 422
+ * carries the transport's shared sentence, and matching prose would silently
+ * stop matching when it is reworded. `trimStart` mirrors the backend's `lstrip`.
+ * Restricted to 422 because that is the only status the policy raises — a
+ * leading-slash draft that failed for some OTHER reason (a lost response, a dead
+ * owner) has admitted nothing and may well succeed on a resend, so it must keep
+ * the generic hint.
+ *
+ * A 422 that ALREADY carries a code yields to it, and this is not a nicety: the
+ * leading-slash policy has no code on the wire (its `detail` is a plain string;
+ * see `LEADING_SLASH_CODE`), so a coded 422 is by construction a DIFFERENT,
+ * specific refusal the transport has already classified - an unknown command, an
+ * invalid cwd. Letting this general rule overwrite that swapped a precise
+ * diagnosis for a vague one that described a request we had not sent (round 5,
+ * R13). The two conditions are complementary: the stage gate at the call site
+ * says the message request failed, and this says the policy is the reason.
+ *
+ * The caller must still establish that the failing request WAS the message
+ * request - `sessions.create` shares that try and its 422 never carried this
+ * text anywhere. See the `inFlight` gate in `admitChatDraft`.
+ */
+export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 422 &&
+		error.code === undefined &&
+		text.trimStart().startsWith("/")
+	);
+}
+
+/**
+ * A send refused because an attachment it was carrying could not be read.
+ *
+ * The refusal itself is the renderer's own (`unreadableAttachmentRefusal`), and
+ * the sentence carries its own remedy, so what this code is FOR is the two
+ * decisions that must not be made from the copy: the composer withholds its
+ * generic "Send it again" hint for it (see `withholdsRetryHint`), and a code is
+ * how that survives a rewording.
+ *
+ * A code rather than a fact about the message for one more reason, and it is a
+ * defect this round measured (design round 4, D13): `chat-page` reads
+ * `activeError = sendError || draft.error` and
+ * `activeErrorCode = sendErrorCode ?? draft.errorCode`, so a refusal that leaves
+ * the code UNSET here inherits whatever code the draft was last left holding -
+ * an earlier leading-slash refusal, say - and the same sentence then renders
+ * with the hint in one session and without it in another. Setting the code at
+ * the refusal makes the alert's hint a function of the refusal instead of a
+ * function of the conversation's history.
+ */
+export const UNREADABLE_ATTACHMENT_CODE = "attachment_read_failed";
+
+/**
+ * Whether a refusal's remedy is anything OTHER than "send it again".
+ *
+ * The composer's generic retry hint is the alert's "what to do" half, and it is
+ * only ever rendered where it is true. Three refusals cannot be answered by
+ * resending the same bytes: the read window refuses every send for as long as
+ * its own notice is on screen, the leading-slash policy refuses this text
+ * forever, and an attachment that cannot be read is still unreadable on the
+ * next attempt - the same chip is still attached, so the retry is refused for
+ * the same reason until the chip is replaced or removed (UX round 3, U9; UX
+ * round 2, U13; design round 4, D13). Each carries its own statement of what to
+ * do instead, and the composer withholds the hint for all three.
+ *
+ * One function rather than two call-site comparisons, so the composer reads the
+ * rule instead of listing the codes, and so `scripts/canonical-chat.test.mjs`
+ * can execute it against the store that raises them.
+ */
+export function withholdsRetryHint(code: string | undefined): boolean {
+	return (
+		code === SESSION_UNVALIDATED_CODE ||
+		code === LEADING_SLASH_CODE ||
+		code === UNREADABLE_ATTACHMENT_CODE
+	);
+}
+
+/**
  * The one place a composer value becomes a send PAYLOAD.
  *
  * The unchanged-payload guard compares byte-for-byte, because a retry of a
@@ -216,17 +346,29 @@ export function draftIdentityFor(
 /**
  * What React keys the chat panel on, and therefore what makes it remount.
  *
- * The precedence is `id ?? draftKey` and NOT the reverse. A draft learns its
- * session id mid-send (the store patches it before the message POST), so
- * keying on the draft made admission a REMOUNT: the subscription opened during
- * the engage wait was discarded, a second SSE handshake was paid, and the
- * backend recomputed a full snapshot before the stream's first frame — all
- * landing exactly where the user expects to see the message they just sent.
- * The draft key and the session id name the same conversation from either side
- * of admission, so keying on the session makes the flip a no-op.
+ * The precedence is `id ?? draftKey` and NOT the reverse, because the two name
+ * the same conversation from either side of admission and the SESSION id is the
+ * durable one: a pane keyed by the session is the pane the stream, the composer
+ * and the echo registry all address, whether the reader reached it from the
+ * sidebar or staged it as a draft.
  *
- * The reverse direction still remounts, correctly: "New chat" stages a draft
- * with no session id, so `id` is undefined and the new draft key wins. That IS
+ * THE FLIP IS A REMOUNT, and that is load-bearing rather than incidental. A
+ * draft learns its session id mid-send (the store patches it before the message
+ * POST), so the key moves `draft:<uuid>` -> `<sessionId>` and the panel is
+ * unmounted and mounted again at exactly the moment the user is waiting for the
+ * message they just sent. The optimistic echo is therefore seeded into the NEW
+ * panel's first frame (`seedPendingEchoes` in `use-canonical-session.ts`): the
+ * delivery that follows arrives through a mount effect, one commit too late, and
+ * that gap is the one that file documents at length.
+ *
+ * AN EARLIER REVISION OF THIS COMMENT CLAIMED THE FLIP WAS A NO-OP. It is not,
+ * and the seeding above exists because of it: an answer that reads as "nothing
+ * happens here" is how a reader concludes the echo registry has no draft-path
+ * case to fix (review rounds 1 R6 and 2 R2-1, which is why the sentence is
+ * stated rather than removed).
+ *
+ * The reverse direction remounts as well, and correctly: "New chat" stages a
+ * draft with no session id, so `id` is undefined and the draft key wins. That IS
  * a different conversation and must not inherit the previous transcript.
  *
  * Extracted rather than inlined in the component for the same reason
@@ -273,6 +415,114 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 		(error instanceof UserFacingError &&
 			error.code === SESSION_UNVALIDATED_CODE)
 	);
+}
+
+/**
+ * Whether this row is one whose refusal owes the composer a payload BACK.
+ *
+ * ONE discriminator for BOTH halves of that payload - the text and the
+ * attachments (round 7, R17). They are written together, before the request
+ * (`admitChatDraft` stores `submittedText`, `submittedAttachments` and
+ * `submittedImages` in one update), so a second copy of this rule is how one
+ * half comes to be restored while the other is dropped in silence.
+ */
+function owesRefusedPayload(draft: ChatDraft | undefined): draft is ChatDraft {
+	if (!draft) return false;
+	return !draft.pending && !draft.admissionAttempted;
+}
+
+/**
+ * The text a refused send owes the composer, for the refusals that admitted
+ * nothing.
+ *
+ * `isRefusedBeforeAdmission` answers this question about the ERROR; this answers
+ * it about the RECORD the store kept of it, and the composer needs the second
+ * answer rather than the first: what it renders is the row, and the row outlives
+ * the component that issued the send.
+ *
+ * WHY THE ISSUING COMPONENT CANNOT ANSWER IT. The other consumer of a refusal is
+ * `use-message-input`'s restore, which writes the submitted text back into local
+ * composer state, and that suffices on the arm that names a session: there the
+ * draft's identity (`send:<id>`), the panel it is rendered in
+ * (`panelIdentityFor`) and the composer's own text key all exist before the send
+ * and are unchanged by it. It does NOT suffice on the arm a "New chat" uses. The
+ * session is created INSIDE the same call, `admitChatDraft` patches the row with
+ * its id one request before admission, and `panelIdentityFor`'s precedence is
+ * `id ?? draftKey` - so the identity that keys the panel flips from the draft key
+ * to the new session id MID-SEND. React answers a key change with an unmount, so
+ * the restore's `setInputValue` lands on a composer that is gone, and the
+ * composer that replaces it is seeded from its own per-conversation text state,
+ * which is empty for a conversation id that did not exist when the send began.
+ * The STORE loses nothing (`submittedText` is written before the request and the
+ * row, with `activeDraftKey`, survives a reload), but no route put it back in the
+ * box: the user was told to "move it below your text, or send it on its own" for
+ * text no longer on screen, with only "Discard unsent message" to act on. That is
+ * real loss of a two-line message, reported live (UX round 3 U14, QA round 3 Q7).
+ *
+ * So the retention record is the source and the composer adopts it, which is one
+ * definition of "this refusal owes the box this text" for BOTH arms rather than a
+ * restore that only works while the component that made it stays mounted. The box
+ * rule is `restoreSubmittedText`'s: only an EMPTY box is written, so text the user
+ * typed while the send was in flight is never overwritten.
+ *
+ * `admissionAttempted` is the whole discriminator, and it is this store's own
+ * un-latch rather than a second guess about the failure: a request that reached
+ * the message and was refused before admission carries `admissionAttempted: false`
+ * (see the catch in `admitChatDraft`), i.e. the text provably did not land. When
+ * it is TRUE the message may already be on the owner with its echo deliberately
+ * painted in the transcript, so the box must stay empty - that is the
+ * `heldText`/Restore path, a different answer to a different fact.
+ *
+ * `error` is deliberately NOT a term. Dismissing the alert (`onDismiss`) clears
+ * the copy and the code and keeps the payload: that is the user acknowledging the
+ * SENTENCE, not abandoning the message they typed, and a dismissal that silently
+ * made the text unreachable again would be this defect one keystroke later.
+ * Discard, a successful send and `releaseClaim` are what end the record.
+ *
+ * WHAT IT DOES NOT ANSWER (round 7, R23). It reports the row's LAST refused
+ * payload, not "the text this refusal owes". The read window's refusal is raised
+ * before the draft is touched at all (`admitChatDraft`'s first gate), so on that
+ * arm this returns `undefined` - or an older payload from a send that failed
+ * earlier and was never abandoned - while a refusal is on screen. Nothing
+ * misbehaves today (both of those arms leave the box non-empty, and a repeat of
+ * the same payload short-circuits the effect), which is exactly why the limit is
+ * written down here rather than left for the next reader to assume past.
+ */
+// The rule this text is put back THROUGH lives one layer up, in the composer
+// hook (`@shared/hooks/use-message-input`'s `restoreSubmittedText`): the store
+// owns which payload a refusal owes the box, and the composer owns the box.
+export function refusedBeforeAdmissionText(
+	draft: ChatDraft | undefined,
+): string | undefined {
+	if (!owesRefusedPayload(draft)) return undefined;
+	return draft.submittedText;
+}
+
+/**
+ * The attachments that same refusal owes the composer, on the same rule.
+ *
+ * WHY THEY NEED A ROUTE OF THEIR OWN. `submittedAttachments` is the user's file
+ * list, written before the request like the text - and the composer reads its
+ * chips from `inputByConversation[conversationId]`, which on the created-session
+ * arm were staged under the PRE-FLIP identity. So the chip row is empty after
+ * the flip and this field is the only survivor: pressing Send on the restored
+ * text sent the message WITHOUT the file, said nothing, and `finishDraft` then
+ * retired the row and the record with it. Silent and partial is the worst shape
+ * a failure can take, and it is the failure the composer's own comment promises
+ * cannot happen (`message-input.tsx`: "replies and attachments included" is true
+ * only while the composer that sent them survives) - round 7, R17.
+ *
+ * PATHS, not the encoded `submittedImages` beside them: the send re-encodes
+ * images from the composer's attachment paths (`encodeImageAttachments`), so a
+ * re-adopted path restores the exact payload the refused send carried - pasted
+ * images included, whose "path" is their own data URL. Re-adopting the encoded
+ * set as well would give one file two representations that can disagree.
+ */
+export function refusedBeforeAdmissionAttachments(
+	draft: ChatDraft | undefined,
+): string[] | undefined {
+	if (!owesRefusedPayload(draft)) return undefined;
+	return draft.submittedAttachments;
 }
 
 /**
@@ -414,13 +664,40 @@ export async function admitChatDraft(
 	// `draft` is the pre-send snapshot, so reading `draft.sessionId` there would
 	// miss a session this very call created and leave its echo unretractable.
 	let id = sessionId ?? draft.sessionId;
+	/*
+	 * WHICH REQUEST THE FAILURE CAME FROM, and the reason this is recorded rather
+	 * than inferred at the catch.
+	 *
+	 * The classification below asks one question - "was the user's message
+	 * refused for its leading slash?" - and only `sessions.message` can answer
+	 * it. `sessions.create` shares this try because a send to a NEW conversation
+	 * has to create one first, but its 422 is about the CREATE fields (`cwd`,
+	 * `target`), and the draft text it would be classified against never left the
+	 * renderer: the request ops were `['sessions.create']`. Classifying that
+	 * failure by the draft's shape told a user whose directory was invalid to
+	 * "move it below your text" - the app confidently naming the wrong cause,
+	 * which is the exact class of defect U13 exists to remove, so reintroducing
+	 * it on the display path we had just repaired would be worse than never
+	 * having repaired it (round 5, R13).
+	 *
+	 * Reaching the message request is therefore the PRECONDITION of the slash
+	 * classification, not the draft's shape - and this variable is the only thing
+	 * that can satisfy it. It is set immediately before the request it names, so
+	 * a failure raised anywhere earlier (including a create that "succeeded"
+	 * without returning an id) stays on the create side by default.
+	 */
+	let inFlight: "sessions.create" | "sessions.message" | null = null;
 	try {
 		if (!id) {
+			inFlight = "sessions.create";
 			id =
 				(await store.createSession(
 					input.cwd,
 					draft.target,
 					draft.createRequestId,
+					// The pane's own pick, or nothing at all: a draft that was never
+					// picked from omits the field from the create body entirely.
+					draft.model ?? null,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -470,6 +747,7 @@ export async function admitChatDraft(
 			})),
 			onEchoPainted,
 		);
+		inFlight = "sessions.message";
 		await desktopResult({
 			op: "sessions.message",
 			sessionId: id,
@@ -513,6 +791,10 @@ export async function admitChatDraft(
 		// actionable one (it sits on the text that failed and carries the
 		// remedies), so the send takes the message over and clears the other.
 		useCanonicalSessionsStore.setState({ error: null });
+		// Gated on the request that actually failed: a create-stage 422 is about the
+		// create fields and must keep its own diagnosis (round 5, R13).
+		const leadingSlash =
+			inFlight === "sessions.message" && isLeadingSlashRefusal(error, text);
 		store.updateDraft(key, {
 			pending: false,
 			// 413 and 422 on this path both mean the message was refused BEFORE
@@ -549,15 +831,35 @@ export async function admitChatDraft(
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
 			...(refusedBeforeAdmission ? { admissionAttempted: false } : {}),
-			errorCode:
-				error instanceof Error &&
-				"code" in error &&
-				typeof error.code === "string"
+			/*
+			 * A leading-slash refusal has no code of its own on the wire (the 422's
+			 * `detail` is a plain string), so it is classified from the payload we
+			 * sent, and it carries the product's own sentence rather than the
+			 * transport's. Every other refusal states itself as before.
+			 */
+			errorCode: leadingSlash
+				? LEADING_SLASH_CODE
+				: error instanceof Error &&
+						"code" in error &&
+						typeof error.code === "string"
 					? error.code
 					: undefined,
-			error: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
+			error: leadingSlash
+				? LEADING_SLASH_MESSAGE
+				: userFacingMessage(error, SEND_UNCONFIRMED_MESSAGE),
 		});
-		throw error;
+		// The caller's catch takes precedence over the persisted draft error in
+		// the composer. Carry the same classified sentence across that boundary,
+		// preserving 422 so its pre-admission retention path still restores text.
+		// Keeping the original as cause also preserves the transport diagnosis.
+		throw leadingSlash
+			? new DesktopControlError(
+					422,
+					LEADING_SLASH_MESSAGE,
+					error,
+					LEADING_SLASH_CODE,
+				)
+			: error;
 	}
 }
 type CanonicalSessionsState = {
@@ -630,6 +932,8 @@ type CanonicalSessionsState = {
 		cwd: string,
 		target?: ChatTarget,
 		requestId?: string,
+		/** The draft's own model pick, when it has one; omitted otherwise. */
+		model?: DesktopModelSelection | null,
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	/**
@@ -643,9 +947,37 @@ type CanonicalSessionsState = {
 	 * user is actually on.
 	 */
 	confirmSessionLive: (sessionId: string | null) => void;
+	/**
+	 * Merge one machine-wide `attention` frame into its row.
+	 *
+	 * This is the unseen mark's ARRIVAL path. It used to be a 5 s
+	 * `sessions.list` poll, which re-read a transcript-tail preview per row to
+	 * learn one boolean; the feed now carries the delta as it happens, so the
+	 * mark lands on the event instead of on a timer.
+	 *
+	 * A frame for a session the catalogue does not know is DROPPED rather than
+	 * inserted: the feed's frames are live-only and the catalogue's membership is
+	 * a separate question (a new session directory is what the `catalogue`
+	 * invalidation exists for). Inserting here would create a row with no title,
+	 * no binding and no status — a sidebar entry for something the user cannot
+	 * identify.
+	 */
+	applyAttention: (sessionId: string, attention: CompletionAttention) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
+	/**
+	 * Record — or clear — the model a NEW conversation will be born on.
+	 *
+	 * A dedicated action rather than a bare `updateDraft("model")` because of the
+	 * receipt: the server keys its at-most-once receipt on a hash of the WHOLE
+	 * create body (`desktop_receipts.py`), so re-sending the same
+	 * `createRequestId` with a different `model` is a 409 forever. A changed
+	 * selection is therefore a changed intent, and it gets a fresh request id —
+	 * scoped to the pre-session state, since once a session exists the create is
+	 * already behind us and its id must stay pinned for an idempotent replay.
+	 */
+	setDraftModel: (key: string, model: DesktopModelSelection | null) => void;
 	finishDraft: (key: string, sessionId: string) => void;
 	/**
 	 * Abandon a stuck send. The retained payload is the user's own text, so the
@@ -701,11 +1033,96 @@ export function replaceSessionRows(
 }
 let navigationGeneration = 0;
 let refreshGeneration = 0;
+
+/**
+ * What main asked THIS window to open, resolved through the shared reader.
+ *
+ * Read from the preload's `desktop.initialSession`/`initialCatalogue`, which come
+ * from THIS process's own argv (`webPreferences.additionalArguments`, set only
+ * when main created the window for a notification click). It is a VALUE rather
+ * than an event on purpose (B3): a recreated window rehydrates its persisted
+ * `activeSessionId` and paints that conversation in the first frame, so an id
+ * that arrives as a post-load IPC shows the user the wrong conversation and
+ * then swaps it — which reads as a click that landed on the wrong row.
+ *
+ * IT RESOLVES THREE INTENTS, NOT TWO (review round 2, R2-1). "Restore", "open
+ * this conversation" and "open the catalogue" are genuinely different answers,
+ * and the third used to be indistinguishable from the first: both arrived as
+ * `initialSession: null`, so a window created for a burst digest restored
+ * whatever was last read.
+ *
+ * Guarded because this module is imported in contexts with no `window` (the node
+ * test harness), where the answer is simply "no launch argument".
+ */
+function launchTarget(): LaunchTarget {
+	try {
+		const desktop = window.api?.desktop;
+		if (!desktop) return { kind: "restore" };
+		// A named conversation outranks the catalogue, the same precedence the
+		// argv reader applies: naming one is the more specific instruction.
+		if (desktop.initialSession) {
+			return { kind: "session", sessionId: desktop.initialSession };
+		}
+		if (desktop.initialCatalogue) return { kind: "catalogue" };
+		return { kind: "restore" };
+	} catch {
+		return { kind: "restore" };
+	}
+}
+
+/** The launched conversation's id, or null — which includes the catalogue. */
+function launchSession(): string | null {
+	const target = launchTarget();
+	return target.kind === "session" ? target.sessionId : null;
+}
+/**
+ * The launch argument OUTRANKS the persisted conversation.
+ *
+ * Main was asked for this conversation BY NAME, and the window exists to show
+ * it; the persisted id is merely what the user last read, which on a
+ * click-created window is exactly the wrong one. Overriding here rather than in
+ * an effect is what makes it true of the FIRST render — a layout effect would
+ * already have committed the wrong conversation to the DOM, and any effect
+ * after paint is the flash this exists to prevent (B3).
+ *
+ * THE CATALOGUE OUTRANKS IT TOO (review round 2, R2-1). `activeSessionId: null`
+ * is how this store models "no conversation selected", i.e. the list — so a
+ * window main created for a burst digest must land there rather than on the
+ * persisted conversation. Missing this branch is what made a windowless digest
+ * click restore the last conversation instead of opening the catalogue.
+ *
+ * Named and exported rather than inlined in the store's `persist` options
+ * because it is the rule B3 rests on: hydration is what would otherwise put the
+ * persisted id back, and no test can reach that path without a browser's
+ * storage. Called by `persist` exactly as before.
+ */
+export function mergePersistedSession(
+	persisted: unknown,
+	current: CanonicalSessionsState,
+): CanonicalSessionsState {
+	const merged = {
+		...current,
+		...(persisted as Partial<CanonicalSessionsState> | undefined),
+	};
+	const target = launchTarget();
+	if (target.kind === "session") {
+		return { ...merged, activeSessionId: target.sessionId };
+	}
+	if (target.kind === "catalogue") {
+		return { ...merged, activeSessionId: null };
+	}
+	return merged;
+}
+
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
-			activeSessionId: null,
+			// Seeded from the launch argument when there is one, so the very first
+			// render is already the requested conversation rather than the persisted
+			// one. `merge` below holds the same line against hydration, which would
+			// otherwise put the persisted id back.
+			activeSessionId: launchSession(),
 			activeDraftKey: null,
 			drafts: {},
 			sessionByAgent: {},
@@ -747,7 +1164,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						});
 				}
 			},
-			createSession: async (cwd, target, requestId = crypto.randomUUID()) => {
+			createSession: async (
+				cwd,
+				target,
+				requestId = crypto.randomUUID(),
+				model?: DesktopModelSelection | null,
+			) => {
 				try {
 					const result = await desktopResult<{
 						session_id: string;
@@ -757,6 +1179,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						requestId,
 						cwd,
 						...(target ? { target } : {}),
+						/*
+						 * Omitted, not nulled, when the user picked nothing: the wire body then
+						 * stays byte-identical to the one this app sent before the draft's chips
+						 * could open, which is what makes the capability additive for every
+						 * caller that never used it.
+						 */
+						...(model ? { model } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
@@ -792,6 +1221,28 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			confirmSessionLive: (sessionId) => {
 				if (sessionId && get().validatingSessionId === sessionId)
 					set({ validatingSessionId: null });
+			},
+			applyAttention: (sessionId, attention) => {
+				set((state) => {
+					const index = state.sessions.findIndex(
+						(row) => row.session_id === sessionId,
+					);
+					if (index < 0) return state;
+					const row = state.sessions[index];
+					// The same revision guard the catalogue merge uses, so a frame that
+					// arrives out of order can never un-read a row the user has seen.
+					const merged = mergeCompletionAttention(
+						row.attention,
+						attention,
+						sessionId,
+					);
+					// Identity, not equality: an unchanged merge must not re-render every
+					// row of a 500-row sidebar for a beat that carried nothing new.
+					if (merged === row.attention) return state;
+					const sessions = state.sessions.slice();
+					sessions[index] = { ...row, attention: merged };
+					return { ...state, sessions };
+				});
 			},
 			openSession: async (sessionId) => {
 				/*
@@ -1023,6 +1474,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					};
 				}),
+			setDraftModel: (key, model) =>
+				set((state) => {
+					/*
+					 * A pick on a pane whose row is gone records nothing: the pane was
+					 * discarded while the picker was open, and this must not resurrect it
+					 * (the same rule `updateDraft` states for a partial patch).
+					 */
+					const present = state.drafts[key];
+					if (!present) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...present,
+								model,
+								/*
+								 * A new at-most-once key for a changed create body, and only while there
+								 * is still no session: once one exists the create has already been made
+								 * and its id must stay pinned so a replay of that request stays an
+								 * idempotent replay rather than a second conversation. The admission id
+								 * is NOT re-minted here — it addresses the message, not the model, and
+								 * `admitChatDraft` owns when that becomes load-bearing.
+								 */
+								...(present.sessionId
+									? {}
+									: { createRequestId: crypto.randomUUID() }),
+							},
+						},
+					};
+				}),
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					const drafts = { ...state.drafts };
@@ -1125,6 +1606,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			merge: mergePersistedSession,
 			partialize: (state) => ({
 				sessionByAgent: state.sessionByAgent,
 				activeSessionId: state.activeSessionId,

@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import type { PersistedTab } from "./session-store";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
 /**
@@ -49,6 +50,21 @@ export interface TabRecord {
 	/** The session a user tab has been handed to (design 6.3), or null. */
 	handedTo: string | null;
 	restored: boolean;
+	/**
+	 * The `session.json` row a restored tab was allocated from, kept until the tab
+	 * has a history of its own.
+	 *
+	 * WHY the record carries it (review round 2, B2): a restored view has NO
+	 * history until its page commits, so a capture taken in that window — the
+	 * restore's own change notification, or a quit a second after launch — used to
+	 * find nothing for that tab and write a session file without it. The tab was
+	 * then dropped for good by the next write. `captureTabs` consults this row as
+	 * the fallback for a tab whose live history is not restorable yet, so no
+	 * capture can be a partial one. It is dropped with the record, and it holds
+	 * URLs and page state only: nothing here is authority (design 7.3 — a restored
+	 * tab has no nonce and never regains one).
+	 */
+	restoreRow?: PersistedTab;
 	createdAt: number;
 	lastUsedAt: number;
 	/** The navigation epoch refs are stamped with, and the current ref table for
@@ -56,6 +72,11 @@ export interface TabRecord {
 	 * another tab's click target (the extension's `state.ts` keeps refs per
 	 * surface for the same reason). */
 	epoch: number;
+	/** Same-document URL changes invalidate refs, not document-scoped consent. */
+	documentEpoch: number;
+	/** Mirrors what `applyLayout` last told the view. The capture path branches on
+	 * this because Electron's `View` has no visibility getter to read back. */
+	presented: boolean;
 	refs: Record<string, SnapshotRef>;
 	/** Ownership-journal linkage for the `owner_*` methods, empty for a tab
 	 * opened without an allocation. */
@@ -74,6 +95,15 @@ export interface TabRecord {
  * honest bound on those is memory, which `status` reports rather than a second
  * invented number. */
 export const MAX_AGENT_TABS = 8;
+
+/** Background rendering must not depend on a foreground route's measurement.
+ * The fleet cap and bounded viewport bound raster memory without activating views. */
+export const BACKGROUND_VIEWPORT: ContentRect = {
+	x: 0,
+	y: 0,
+	width: 1280,
+	height: 720,
+};
 
 /** How many nonce characters a redacted handle shows. Enough to prefix-match
  * your own token against a listing entry, far too few to reconstruct the 32-hex
@@ -154,6 +184,8 @@ export interface CreateTabOptions {
 	/** A tab whose URL is restored from `session.json`. Restored tabs are always
 	 * `user`-owned and never get a nonce, whatever they were before. */
 	restored?: boolean;
+	/** The row this tab is restored from, when it is one. See `TabRecord`. */
+	restoreRow?: PersistedTab;
 	allocationId?: string;
 }
 
@@ -200,15 +232,22 @@ export class TabRegistry {
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
 			restored,
+			restoreRow: options.restoreRow,
 			createdAt: Date.now(),
 			lastUsedAt: Date.now(),
 			epoch: 0,
+			documentEpoch: 0,
+			presented: false,
 			refs: {},
 			allocationId: options.allocationId ?? "",
 		};
 		this.tabs.set(tabId, record);
-		if (options.owner === "user" && !restored) this.activeTabId = tabId;
-		if (this.activeTabId === null) this.activeTabId = tabId;
+		// Only a USER tab may become the active one, including when nothing is active
+		// yet. The earlier `activeTabId === null` form activated whichever tab was
+		// created first — on a session with no user tab that is the agent's own, so the
+		// agent's background tab silently became the presented one and every other tab
+		// kept zero layout. The layout pass below reads this to decide presentation.
+		if (record.owner === "user") this.activeTabId = tabId;
 		this.applyLayout();
 		this.onChanged();
 		return record;
@@ -332,8 +371,8 @@ export class TabRegistry {
 		record.sessionId = sessionId;
 		record.handedTo = sessionId;
 		record.nonce = mintNonce();
-		record.epoch = 0;
-		record.refs = {};
+		record.allocationId = "";
+		this.bumpEpoch(record.tabId);
 		this.onChanged();
 	}
 
@@ -346,6 +385,8 @@ export class TabRegistry {
 		record.owner = "user";
 		record.sessionId = null;
 		record.handedTo = null;
+		record.allocationId = "";
+		this.bumpEpoch(record.tabId);
 		this.onChanged();
 	}
 
@@ -367,10 +408,11 @@ export class TabRegistry {
 	 * `element_not_found` instead of clicking whatever now occupies that
 	 * position.
 	 */
-	bumpEpoch(tabId: number): void {
+	bumpEpoch(tabId: number, newDocument = true): void {
 		const record = this.tabs.get(tabId);
 		if (!record) return;
 		record.epoch += 1;
+		if (newDocument) record.documentEpoch += 1;
 		// The refs are deliberately KEPT, not cleared. Clearing them would also make
 		// the old refs unusable, but it would do so by making them indistinguishable
 		// from a ref that never existed — and the more useful refusal is the one that
@@ -416,16 +458,18 @@ export class TabRegistry {
 
 	// ---- layout, visibility, activation --------------------------------------
 
-	/** The renderer owns layout (design 11.2): it measures its content area and
-	 * reports it, and this applies it to the ACTIVE tab only. Every other tab
-	 * keeps its own bounds but is hidden, so one rect authority serves N views.
+	/** The renderer owns presentation geometry, not whether a background renderer
+	 * has a viewport. Inactive views keep bounded default dimensions independently
+	 * of this rectangle, so agent actions never require a route or focus change.
 	 *
-	 * A NULL rect hides every view, and that is a correctness requirement rather
-	 * than a tidy-up: the browser surface is a ROUTE, so navigating away unmounts
-	 * the only thing that knows where the view belongs. Without this, the last rect
-	 * would stay applied and the native view would go on painting over the chat
-	 * route — the one failure mode that makes this feature look like a hijacked
-	 * window. Visiting the route again reports a fresh rect and restores it. */
+	 * A NULL rect still hides every view, and that is a correctness requirement
+	 * rather than a tidy-up: the browser surface is a ROUTE, so navigating away
+	 * unmounts the only thing that knows where the view belongs. Without this, the
+	 * last rect would stay applied and the native view would go on painting over
+	 * the chat route — the one failure mode that makes this feature look like a
+	 * hijacked window. Visiting the route again reports a fresh rect and restores
+	 * it. A null rect is also how the caller hides the view at teardown, so it must
+	 * never be swallowed on the way here (see `use-browser-chrome`). */
 	setContentRect(rect: ContentRect | null): void {
 		this.contentRect = rect;
 		this.applyLayout();
@@ -450,12 +494,11 @@ export class TabRegistry {
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
 			const isActive = record === active;
-			// `contentRect !== null` is the third conjunct and the route-away case:
-			// an unmounted surface has no rectangle, so there is nowhere to paint.
-			record.view.setVisible(
-				isActive && this.visible && this.contentRect !== null,
+			record.presented = isActive && this.visible && this.contentRect !== null;
+			record.view.setBounds(
+				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
 			);
-			if (isActive && this.contentRect) record.view.setBounds(this.contentRect);
+			record.view.setVisible(record.presented);
 		}
 	}
 
@@ -474,8 +517,21 @@ export class TabRegistry {
 		if (!record) return undefined;
 		this.tabs.delete(tabId);
 		if (this.activeTabId === tabId) {
-			this.activeTabId = this.list().at(-1)?.tabId ?? null;
+			// The successor must be a USER tab, for the same reason `create` only ever
+			// activates one (see above): `list().at(-1)` with no owner filter handed the
+			// presented surface to an AGENT tab as soon as the user closed their own
+			// active tab — active AND `presented`, laid out with the content rect — which
+			// is exactly the state the rule on `create` names as the bug (review round 1,
+			// R3). "Last" keeps the previous preference (most recently created) and the
+			// filter narrows it to the tabs that may hold presentation at all; with no
+			// user tab left nothing is presented and every agent tab stays a bounded
+			// background view.
+			this.activeTabId =
+				this.list()
+					.filter((candidate) => candidate.owner === "user")
+					.at(-1)?.tabId ?? null;
 		}
+		this.applyLayout();
 		this.onChanged();
 		return record;
 	}

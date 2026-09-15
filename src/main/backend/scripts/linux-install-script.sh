@@ -16,6 +16,13 @@ VENV_PATH="${APP_DATA_DIR}/${VENV_NAME}"
 LOG_FILE="${APP_DATA_DIR}/backend-install.log"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 
+# Which environment this installs into - the app's decision, handed in. See the
+# macOS script for why the script must not re-derive it (a packaged and an
+# unpackaged instance use different environments, and only the app knows which
+# it is); `LOCAL_OPERATOR_VENV_PATH` is set from `managedVenvPath`.
+: "${LOCAL_OPERATOR_VENV_PATH:=$VENV_PATH}"
+VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"
+
 # Keep CPython's bytecode cache out of the application directory.
 #
 # Same reason as the macOS script: an interpreter writing __pycache__/*.pyc
@@ -26,6 +33,13 @@ TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 # script must not disagree about where bytecode goes.
 : "${PYTHONPYCACHEPREFIX:=${APP_DATA_DIR}/python-bytecode-cache}"
 export PYTHONPYCACHEPREFIX
+
+# The refusal half of the pair, set rather than merged with whatever the caller
+# had: CPython reads the flag before its first import, so nothing this script
+# runs - `-m venv`, pip, the venv they create - can write a `__pycache__` at
+# all. Kept in step with the app's `withPythonBytecodeCache`, which sets both
+# variables on every python it spawns.
+export PYTHONDONTWRITEBYTECODE=1
 
 # Create app data directory if it doesn't exist
 if ! mkdir -p "${APP_DATA_DIR}"; then

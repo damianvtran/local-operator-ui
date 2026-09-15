@@ -44,6 +44,7 @@
 import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	CircleAlert,
 	Info,
@@ -68,22 +69,28 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
-import { ErrorBlock } from "../components/message-item/error-block";
 import {
 	AGENT_GUTTER,
 	MessageContainer,
 } from "../components/message-item/message-container";
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
-import { OutputBlock } from "../components/message-item/output-block";
 import {
 	AgentQuestion,
 	AskOptions,
 	DiffBlock,
 	TraceLine,
 } from "../components/trace";
+import {
+	peerHasDetail,
+	peerIdentityLine,
+	peerSummary,
+	wakePromptBody,
+	wakeReceiptHeadline,
+} from "../components/trace/receipt-row-model";
+import { ToolDetail } from "../components/trace/tool-detail";
+import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	displayName,
 	formatBytes,
 	isBareToolName,
 	isDiffBodyRow,
@@ -96,6 +103,7 @@ import { CanonicalImage } from "./canonical-image";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type CanonicalTranscriptStatus,
+	canonicalTranscriptSpeaks,
 	transcriptPaneCollapses,
 	transcriptPaneHoldsPlaceholder,
 } from "./transcript-pane";
@@ -105,9 +113,17 @@ import {
 	type TranscriptState,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
-import { GAP, type Row, buildRows, paintsSomething } from "./transcript-rows";
+import {
+	GAP,
+	type Row,
+	buildRows,
+	ledgerName,
+	paintsSomething,
+	splitFirstLine,
+} from "./transcript-rows";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useScrollPaging } from "./use-scroll-paging";
+import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
 
 /**
  * Opts the USER bubble into the reading measure defined in `markdown.css`.
@@ -128,6 +144,26 @@ export type CanonicalTranscriptProps = {
 	gate: PendingDesktopGate | null;
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
+	/**
+	 * A send from this conversation has been admitted and produced nothing yet.
+	 *
+	 * The one input here that is the APP's fact rather than the owner's: it is
+	 * true from the moment an admission request is issued. It exists because a
+	 * cold send spends seconds inside that request and the transcript used to
+	 * show the user's own bubble and then nothing, which reads as the message
+	 * having been dropped. See `working-line-model.ts` for the copy rule this
+	 * branch is held to.
+	 */
+	starting: boolean;
+	/**
+	 * The record this send painted, which the wait's clears measure from.
+	 *
+	 * Passed rather than looked up here because the anchor is the app's own
+	 * memory of its send, not a property of the transcript: see
+	 * `ownerAnswered` for why a clear scoped to the tail of the list is a
+	 * different (and wrong) rule.
+	 */
+	startingAfterId?: string | null;
 	loadingOlder: boolean;
 	/**
 	 * Fetch the next durable page. Resolving `false` rather than rejecting is
@@ -156,6 +192,29 @@ export type CanonicalTranscriptProps = {
 	 * `transcriptPaneHoldsPlaceholder`.
 	 */
 	hydrated: boolean;
+	/**
+	 * True while the rows below came from the local paint cache rather than from
+	 * the owner (M2).
+	 *
+	 * It is a rendered state, not a hint: rows stay at full `ink` (a cached row is
+	 * a real row, and opacity is banned as a state signal in this system), and
+	 * what says "this may be behind" is ONE caption in the pane's own status
+	 * slot — the same slot `Reconnecting` and the failure notice use. It is
+	 * present from the cached paint's first frame and goes in the same commit as
+	 * the reconciled rows, so the reader never sees reconciled rows labelled
+	 * "last saved" or the reverse.
+	 */
+	stale?: boolean;
+	/**
+	 * True when the backend says this conversation is not on this machine (M6).
+	 *
+	 * A distinct state rather than the failure notice, because that notice is
+	 * about a TRANSPORT that may recover; the path that reaches this one is the
+	 * notification click, which deliberately does not validate the id first and
+	 * therefore needs words for "this conversation is gone" with no round trip
+	 * spent to learn it.
+	 */
+	missing?: boolean;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -379,24 +438,12 @@ const ToolRow = memo(function ToolRow({
 		// and the error only makes sense beside them.
 		isDiffBodyRow(record) ? (
 			<DiffBlock diff={record.diff} />
-		) : record.output || record.args ? (
-			<>
-				{record.args && (
-					<pre
-						className={cn(
-							"mb-3 max-h-[240px] overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm",
-						)}
-					>
-						{JSON.stringify(record.args, null, 2)}
-					</pre>
-				)}
-				{record.output &&
-					(record.isError ? (
-						<ErrorBlock error={record.output} isUser={false} />
-					) : (
-						<OutputBlock output={record.output} isUser={false} />
-					))}
-			</>
+		) : hasDetail(record.args, record.output) ? (
+			<ToolDetail
+				args={record.args}
+				output={record.output}
+				isError={record.isError}
+			/>
 		) : undefined;
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
@@ -459,17 +506,69 @@ const NoticeRow = memo(function NoticeRow({
 	>;
 	isSmallView: boolean;
 }) {
+	// A custom row and a notice are two registers, and the difference is what
+	// the row is FOR.
+	//
+	// A custom row is a STATEMENT the harness made in the conversation -- a
+	// session incident, a model switch, a relayed message -- and its text IS the
+	// message. Painting its type name and hiding the text behind a chevron is
+	// what made 946 of the operator's own incidents read as the literal string
+	// "session incident": an error row in the info ink, its message visible only
+	// to someone who thought to click. The TUI has never done that
+	// (`tui/widgets/transcript.py::NoticeBlock` paints one wrapping line in the
+	// kind's ink, message in place), and the reducer now decides the level, the
+	// message and the supporting detail for every custom type -- so this row
+	// paints what it is given rather than re-deciding how long is too long.
+	if (record.kind === "custom") {
+		const Icon = record.level === "error" ? CircleAlert : MessageSquareText;
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<TraceLine
+					// The ledger pitch, so a run does not go ragged wherever a
+					// statement lands in it. The message wraps BELOW that pitch
+					// rather than truncating at it: a clipped sentence costs the
+					// reader the half that says what happened.
+					dense
+					// Keep an explicit statement label even when the payload repeats
+					// "job": omitting it selects the tool fallback, which replaces the
+					// glyph and clips narration even when there is no detail to open.
+					verbOverride={record.category ?? record.customType.replace(/_/g, " ")}
+					// The provider/model the incident names rides the ledger's
+					// machine-voice object column: it is an identifier, not prose, and
+					// "which provider died" is the decision-relevant half for an
+					// operator running several of them.
+					object={record.provider ?? undefined}
+					narration={record.headline}
+					failed={record.level === "error"}
+					wrap
+					glyph={<Icon />}
+					details={
+						/* No extra indent: the disclosure's content box already sits on
+						   the ledger's body edge (x250 in the 1280 column, the same as a
+						   tool row's args block), which was measured in the DOM rather
+						   than read off a frame — see the design round's D4 in the PR
+						   thread. Indenting the paragraph further put it at x270, off
+						   the edge it already shared. */
+						record.detail ? (
+							// `break-words` for the same reason the notice's tail carries
+							// it: `pre-wrap` alone leaves `overflow-wrap: normal`, and an
+							// errno string or a socket path is one unbreakable run.
+							<p className="whitespace-pre-wrap break-words text-body-sm text-ink-muted">
+								{record.detail}
+							</p>
+						) : undefined
+					}
+				/>
+			</MessageContainer>
+		);
+	}
 	const level = record.kind === "notice" ? record.level : ("info" as const);
 	const Icon =
 		level === "error"
 			? CircleAlert
 			: level === "warning"
 				? TriangleAlert
-				: record.kind === "custom"
-					? MessageSquareText
-					: Info;
-	const label =
-		record.kind === "custom" ? record.customType.replace(/_/g, " ") : undefined;
+				: Info;
 	// Notices are machine voice at the trace tier: one quiet line, the body
 	// (when genuinely long) behind the same disclosure idiom as a tool's output.
 	//
@@ -486,24 +585,38 @@ const NoticeRow = memo(function NoticeRow({
 	// chevron: a notice the user must ACT on should not require a click to
 	// read, and collapsing it merely trades a clipped sentence for an invisible
 	// one. The disclosure is kept for text that is actually bulky.
-	const long = record.text.length > 400 || record.text.includes("\n");
+	//
+	// And the disclosure carries the REST of the notice, never the notice again:
+	// `details={record.text}` disclosed a verbatim duplicate of the row above it
+	// whenever the opening line was the whole text (a long single-line notice) and
+	// re-read the first line whenever it was not (round 2's D7/Q5/R11/U14). A
+	// notice whose first line IS the whole text now has nothing to disclose and
+	// paints through the static branch, which is the honest affordance: a chevron
+	// that reveals the same bytes promises material it does not add.
+	const { headline, rest } = splitFirstLine(record.text);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
 				// Same column as the tool rows, so the same pitch: a notice must not
 				// be the row that makes a run look ragged.
-				dense={!long}
-				verbOverride={label ?? (long ? "Notice" : record.text)}
-				narration={label && !long ? record.text : undefined}
+				dense={!rest}
+				// The row states the notice's OWN opening line, not the word
+				// "Notice": a bulky notice used to render as the literal type name
+				// with the whole body behind the chevron, which is the defect the
+				// operator reported one register down.
+				verbOverride={headline}
 				failed={level === "error"}
-				// The row carries the whole message when it is not collapsed, so
-				// it must not be clipped to the rail width.
-				wrap={!long}
+				// The row carries the whole opening line when it is not collapsed,
+				// so it must not be clipped to the rail width.
+				wrap
 				glyph={<Icon />}
 				details={
-					long ? (
-						<p className="whitespace-pre-wrap text-body-sm text-ink-muted">
-							{record.text}
+					rest ? (
+						// `break-words` as well as `pre-wrap`: a notice's own tail can be
+						// an unbreakable run (D7 measured `scrollWidth` 2773 in an 840px
+						// box), and `pre-wrap` alone leaves `overflow-wrap: normal`.
+						<p className="whitespace-pre-wrap break-words text-body-sm text-ink-muted">
+							{rest}
 						</p>
 					) : undefined
 				}
@@ -512,6 +625,172 @@ const NoticeRow = memo(function NoticeRow({
 	);
 });
 
+// ------------------------------------------------------------- receipts
+
+/**
+ * An inbound cross-session message (`lop send` from another session).
+ *
+ * A ledger row rather than a card, because that is what the TUI draws
+ * (`PeerMessageBlock`, `tui/widgets/transcript.py`) and the mobile fold agrees
+ * (`mobile/projection.py`): `peer` in the shared name column, the inbound glyph,
+ * the sender as the summary. What it replaced was its own card type whose body
+ * was the model-facing envelope verbatim — `<peer-session-message from_pid=92064
+ * …>` and all.
+ *
+ * `peer` has no entry in `tool-row-model.CATEGORIES`, which is deliberate: the
+ * `plain` fallback gives the name column `text-ink-muted`, the same ink the
+ * TUI's own peer row paints it in. Giving it `meta` would buy it the accent and
+ * make a receipt louder than the calls around it.
+ *
+ * The disclosure is offered only when the expansion carries a fact the collapsed
+ * row cannot (`peerHasDetail`): a body, or the pid/model the identity line adds
+ * to the one-line summary. The TUI's `can_expand()` is unconditional, but it also
+ * states the rule this follows — an expansion that delivers nothing is worse than
+ * no expansion — and its sibling here already rules the same case static (a wake
+ * with no prompt). An all-absent sender used to expand to `another session`: the
+ * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
+ */
+const PeerRow = memo(function PeerRow({
+	record,
+	isSmallView,
+	showAvatar,
+	nameColumn,
+}: {
+	record: Extract<TranscriptRecord, { kind: "peer" }>;
+	isSmallView: boolean;
+	showAvatar: boolean;
+	nameColumn: number;
+}) {
+	const detail = peerHasDetail(record.sender, record.body);
+	if (!detail) {
+		return (
+			<MessageContainer
+				isUser={false}
+				isSmallView={isSmallView}
+				showAvatar={showAvatar}
+			>
+				<ToolLedgerRow
+					toolName="peer"
+					summary={peerSummary(record.sender, record.body)}
+					outcome="receipt"
+					durationS={null}
+					nameColumn={nameColumn}
+				/>
+			</MessageContainer>
+		);
+	}
+	return (
+		<MessageContainer
+			isUser={false}
+			isSmallView={isSmallView}
+			showAvatar={showAvatar}
+		>
+			<ToolLedgerRow
+				toolName="peer"
+				summary={peerSummary(record.sender, record.body)}
+				outcome="receipt"
+				durationS={null}
+				nameColumn={nameColumn}
+				details={
+					// `px-3` puts this body on the SAME text rail as the pane above it:
+					// a tool expansion's border sits on the glyph rail and its text is
+					// inset by the pane's own padding, so a receipt body left flush sat
+					// 11px left of every other expanded body in the ledger (design D2:
+					// 262 vs 251 at 1280, 112 vs 101 at 560). § 7: one left rail.
+					<div className={cn("flex flex-col gap-2 px-3")}>
+						{/*
+						 * Identity FIRST, body under it — the TUI's order, and it is the
+						 * header that justifies the expansion. `text-ink-muted` is the middle
+						 * step of the TUI's ramp for it (summary `dim` -> identity `muted` ->
+						 * body `fg`); at `dim` it was the same ink as the summary row above it
+						 * and read as a dimmer continuation of the headline rather than as the
+						 * header of the block below.
+						 */}
+						<p className={cn("text-body-sm text-ink-muted")}>
+							{peerIdentityLine(record.sender)}
+						</p>
+						{/*
+						 * The message as the peer wrote it: real newlines, prose ink, selectable
+						 * (nothing in this subtree sets `select-none`). Not rendered at all for
+						 * an empty body — the TUI drops trailing blanks and refuses to paint a
+						 * separator with nothing under it, because an expansion that promises
+						 * detail and delivers whitespace is worse than one that shows the
+						 * addressing facts alone.
+						 */}
+						{record.body ? (
+							<p
+								className={cn(
+									"whitespace-pre-wrap break-words text-body-sm text-ink",
+								)}
+							>
+								{record.body}
+							</p>
+						) : null}
+					</div>
+				}
+			/>
+		</MessageContainer>
+	);
+});
+
+/**
+ * A scheduled-wake delivery receipt.
+ *
+ * The row exists because a wake fires with no user keystroke: before it, a
+ * resumed session showed the agent answering a wake with no sign the wake ever
+ * fired. `wake` is already a `meta` category (it shares the TUI's clock glyph),
+ * and the headline is the TUI's `WakeBlock` headline — the delivery's envelope
+ * with the `(alarm)` marker, the `Scheduled wake` prefix and the cancel how-to
+ * stripped, so what the reader gets is WHICH wake fired (`w-9 (1, every 6h)`)
+ * rather than instructions addressed to the model.
+ *
+ * The disclosure is offered only when a prompt came with it. The TUI's blocks
+ * return `can_expand() == true` unconditionally, but it also has a stated rule
+ * against an expansion that delivers nothing (see `PeerMessageBlock`'s empty-body
+ * comment), and here the headline already carries every addressing fact there is
+ * — a wake id and its schedule — so an empty expansion would hold nothing at all.
+ */
+const WakeRow = memo(function WakeRow({
+	record,
+	isSmallView,
+	showAvatar,
+	nameColumn,
+}: {
+	record: Extract<TranscriptRecord, { kind: "wake" }>;
+	isSmallView: boolean;
+	showAvatar: boolean;
+	nameColumn: number;
+}) {
+	const prompt = wakePromptBody(record.text);
+	return (
+		<MessageContainer
+			isUser={false}
+			isSmallView={isSmallView}
+			showAvatar={showAvatar}
+		>
+			<ToolLedgerRow
+				toolName="wake"
+				summary={wakeReceiptHeadline(record.text)}
+				outcome="receipt"
+				durationS={null}
+				nameColumn={nameColumn}
+				details={
+					prompt ? (
+						// `px-3`: the same content rail as every other expanded body in the
+						// ledger — see `PeerRow` above for the measurement.
+						<p
+							className={cn(
+								"whitespace-pre-wrap break-words px-3 text-body-sm text-ink-dim",
+							)}
+						>
+							{prompt}
+						</p>
+					) : undefined
+				}
+			/>
+		</MessageContainer>
+	);
+});
 // ---------------------------------------------------------------- list
 
 /** Development row-render counter; read by the perf readout below. */
@@ -557,6 +836,26 @@ const TranscriptRow = memo(function TranscriptRow({
 				/>
 			);
 			break;
+		case "peer":
+			body = (
+				<PeerRow
+					record={record}
+					isSmallView={isSmallView}
+					showAvatar={row.showAvatar}
+					nameColumn={nameColumn}
+				/>
+			);
+			break;
+		case "wake":
+			body = (
+				<WakeRow
+					record={record}
+					isSmallView={isSmallView}
+					showAvatar={row.showAvatar}
+					nameColumn={nameColumn}
+				/>
+			);
+			break;
 		default:
 			body = <NoticeRow record={record} isSmallView={isSmallView} />;
 	}
@@ -582,11 +881,23 @@ const TranscriptRow = memo(function TranscriptRow({
 	);
 });
 
+/**
+ * How long a click's `lop:open:requested` mark stays usable as a trace origin.
+ *
+ * Between the click and the first painted row sit a window recreation, an IPC
+ * round trip and a history read; a minute is far longer than the worst honest
+ * sample and far shorter than "the user came back to this window later", which
+ * is the case that would otherwise be measured as a multi-second click.
+ */
+const OPEN_TRACE_MS = 60_000;
+
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	frontend,
 	transcript,
 	gate,
 	waiting,
+	starting,
+	startingAfterId,
 	loadingOlder,
 	onLoadOlder,
 	containerRef,
@@ -594,6 +905,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	failure,
 	hydrated,
+	stale = false,
+	missing = false,
 	attachmentScope,
 	onReconnect,
 	onAnswer,
@@ -734,15 +1047,82 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * `records` rather than `rows` because a record that renders to no row is still
 	 * nothing to scroll. The legacy twin (`MessagesView`) already does this with its
 	 * `collapsed` branch; the two paths change together so neither keeps the defect.
+
+	 * AND A SEND THIS PANE HAS ADMITTED, which is the case this change exists for
+	 * and the one row of the matrix the record list cannot express: the reader has
+	 * not been told what the conversation holds, there is nothing to scroll, and
+	 * the pane DOES have something of its own to say - the wait line the owner's
+	 * admission put in flight. So the placeholder stands down (it would be a
+	 * second, weaker claim: the load is not the thing the reader is waiting for
+	 * any more) and the pane still does not collapse, because the wait line is
+	 * rendered at this scroller's foot and had no height to paint in. Measured
+	 * before this term existed: the rung was in the DOM at t+258 ms and its first
+	 * painted pixel was at t+13.8 s (QA round 1, Q1) - exactly the dead air the
+	 * operator reported on the New-chat path.
 	 */
 	const paneView = {
 		status,
 		failure,
 		hydrated,
 		recordCount: transcript.records.length,
+		/*
+		 * A send this pane has admitted and the owner has not answered. The pane's
+		 * own fact rather than the stream's, and the one row of the matrix that no
+		 * record can express: see the term's rationale in `transcript-pane.ts`.
+		 */
+		admittedSend: starting,
+		// The two states a notification click can paint with no authoritative
+		// answer in hand. Both are statements of the pane's own, so it must not
+		// collapse out of the layout and the band must not offer the greeting over
+		// a conversation nobody has read; the rules and the reasoning live in
+		// `transcript-pane.ts`, which is the one authority for them.
+		missing,
+		stale,
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
+
+	/*
+	 * The END of the click-to-visible trace: the first commit that paints a
+	 * transcript row for this conversation.
+	 *
+	 * A LAYOUT effect rather than a passive one on purpose. A passive effect runs
+	 * after the browser could have painted, so it would measure when React
+	 * happened to schedule the callback rather than when the user could read a
+	 * row. Once per conversation: a mark per row would measure scrolling rather
+	 * than the click, and the point of the trace is the FIRST row. The sibling
+	 * mark is at the click (`app.tsx`), and `performance.measure` throws when
+	 * either mark is absent - the ordinary case for a conversation opened from
+	 * the sidebar - so it is guarded rather than caught.
+	 *
+	 * The requested mark is CONSUMED, and a stale one is refused (review round 1,
+	 * R1-5). It is written by the click and never expired, so measuring from it
+	 * whenever it exists means the next conversation opened from the sidebar
+	 * produces a measure running from the ORIGINAL click - phantom multi-second
+	 * samples in exactly the p50/p95 this trace is collected for. Clearing after
+	 * the measure keeps one click to one sample; the age gate covers a click
+	 * whose window never paints a row, which would otherwise poison the first
+	 * sample after the app returns to it.
+	 */
+	const tracedSession = useRef<string | null>(null);
+	useLayoutEffect(() => {
+		if (visible.length === 0) return;
+		const key = sessionId ?? "";
+		if (tracedSession.current === key) return;
+		tracedSession.current = key;
+		performance.mark("lop:open:first-row");
+		const requested = performance
+			.getEntriesByName("lop:open:requested", "mark")
+			.at(-1);
+		if (requested && performance.now() - requested.startTime <= OPEN_TRACE_MS) {
+			performance.measure(
+				"lop:open:to-first-row",
+				"lop:open:requested",
+				"lop:open:first-row",
+			);
+		}
+		performance.clearMarks("lop:open:requested");
+	}, [visible.length, sessionId]);
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -805,157 +1185,202 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return () => window.clearInterval(timer);
 	}, [visible.length]);
 
-	// The shared name column: sized to the longest tool name ON SCREEN, between
+	// The shared name column: sized to the longest ledger name ON SCREEN, between
 	// the TUI's 8ch floor and 24ch ceiling. Derived from the visible window
 	// rather than the whole transcript, so scrolling to a run of `bash` rows
 	// does not keep paying for an `mcp__…` name a thousand rows back.
+	//
+	// A receipt row (`peer`, `wake`) is part of that measurement, not exempt from
+	// it: it sits on the same spine as the calls around it, and a name left out
+	// of the set would shift every other row's summary rail when it scrolled into
+	// view. `ledgerName` is the one place that decides which records have a name
+	// column at all.
 	const nameColumn = useMemo(
 		() =>
 			toolNameColumn(
-				visible
-					.map((row) =>
-						row.record.kind === "tool" ? displayName(row.record.toolName) : "",
-					)
-					.filter(Boolean),
+				visible.map((row) => ledgerName(row.record)).filter(Boolean),
 			),
 		[visible],
 	);
 
 	const lastRecord = transcript.records[transcript.records.length - 1];
 
-	// What the working line says, and which phase it is timing.
-	//
-	// Every branch is a fact the backend actually sent. `intent` rides
-	// `tool_execution_start` and is already on the tool record; a streaming
-	// assistant record IS what "responding" means; and `thinking` is the default
-	// for a model call in flight with nothing on the ledger to show for it. The
-	// vocabulary is the harness's own (`harness/intent.py`), so a reader who
-	// learned it in the terminal does not learn it again here.
-	//
-	// The PHASE is coarser than the label on purpose: a batch of three calls is
-	// one phase however many times its phrase is re-derived as calls settle, so
-	// the clock keeps counting instead of resetting to `0s` under the reader.
-	const working = useMemo(() => {
-		if (!waiting || gate) return null;
-		const runningTools = transcript.records.filter(
-			(record) => record.kind === "tool" && record.phase === "running",
-		) as Extract<TranscriptRecord, { kind: "tool" }>[];
-		if (runningTools.length > 0) {
-			// One call states its own purpose; a batch states a COUNT. Presenting
-			// one call's intent as the whole batch's activity is a claim the rows
-			// above it immediately contradict, and the count is the one fact this
-			// line has that appears nowhere else on screen.
-			const activity =
-				runningTools.length === 1
-					? (runningTools[0].intent ??
-						`running ${displayName(runningTools[0].toolName)}`)
-					: `running ${runningTools.length} tools`;
-			return { activity, phase: "running" };
-		}
-		const composing = transcript.records.filter(
-			(record) => record.kind === "tool" && record.phase === "composing",
-		).length;
-		if (composing > 0) {
-			// The tool's NAME is deliberately absent: it arrives in fragments, and
-			// `composing wr` reads as a typo rather than as a state.
-			return {
-				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
-				phase: "composing",
-			};
-		}
-		const tail = transcript.records[transcript.records.length - 1];
-		if (tail?.kind === "assistant" && tail.streaming) {
-			// Only once prose is ACTUALLY streaming. `message_start` fires from a
-			// placeholder at the top of every provider call, before the first
-			// token, so flipping on it would claim the model is writing for the
-			// whole of every turn — which is why the record's own `text` is the
-			// trigger here, not its existence.
-			if (tail.text) return { activity: "responding", phase: "responding" };
-		}
-		return { activity: "thinking", phase: "thinking" };
-	}, [waiting, gate, transcript.records]);
+	// What the working line says, and which phase it is timing. The derivation
+	// (and its copy contract, including the one branch this app drives from its
+	// own admitted send rather than from a frame) lives in
+	// `working-line-model.ts`; this is only the memo that keeps it off the
+	// per-token path.
+	const working = useMemo(
+		() =>
+			// One input builder for this claim's two readers - this rung and the
+			// composer's hint - so the two cannot be handed different facts
+			// (`workingLineInputFor`, `working-line-model.ts`).
+			deriveWorkingLine(
+				workingLineInputFor({
+					waiting,
+					starting,
+					startingAfterId,
+					gate,
+					// One definition of "this pane is speaking for itself", shared with the
+					// band's own greeting decision rather than a second copy of "the
+					// transport is down": the failure notice and the reconnecting line are
+					// the only things on screen that say what happened, so the rung must
+					// not claim progress beside them.
+					//
+					// The four fields are spelled out rather than handed over as
+					// `paneView`: this is a memo, and a fresh object would make its deps
+					// depend on the view's identity instead of on the facts it reads.
+					unavailable: canonicalTranscriptSpeaks({
+						status,
+						failure,
+						missing,
+						stale,
+					}),
+					records: transcript.records,
+				}),
+			),
+		[
+			waiting,
+			starting,
+			startingAfterId,
+			gate,
+			status,
+			failure,
+			// The pane's two click-path states, because the predicate above reads them
+			// and a memo that missed them would keep a claim the pane has withdrawn.
+			missing,
+			stale,
+			transcript.records,
+		],
+	);
 
 	return (
+		/*
+		 * The pane COLUMN, and the scroll box is one child of it.
+		 *
+		 * Why the extra level: the stale caption has to sit OUTSIDE the scrolling
+		 * content (design review round 1, D1). It used to be the first child of the
+		 * measured content box inside a bottom-anchored `flex-col-reverse` scroller,
+		 * which put it at the visual TOP of the content - measured on a 36-row stale
+		 * transcript at 1280x600, its rect was top -2028 in a 560px viewport, i.e.
+		 * 2028px above the fold and unreachable without scrolling the whole
+		 * conversation. The cache is written on unmount, so it only ever holds
+		 * conversations taller than the pane, which makes that the COMMON case
+		 * rather than an edge, and the affordance M2 exists for (the pane is
+		 * distinguishable by being wrong) was invisible exactly when it was needed.
+		 *
+		 * `@container/chatcol` moves here with it: the caption uses the shared
+		 * measure, whose variants are written against this container, and a caption
+		 * that sat outside its own container would simply not see them.
+		 *
+		 * `collapsed` still owns the pane's height, one level down, and the wrapper
+		 * collapses with it so a collapsed pane cannot leave the caption behind as
+		 * a row of its own.
+		 */
 		<div
-			ref={containerRef}
-			data-lo-canonical-transcript={true}
-			/*
-			 * The transcript is a tab stop, and that is an accessibility fix rather
-			 * than a nicety.
-			 *
-			 * Paging responds to Home/PageUp/ArrowUp through a `keydown` listener on
-			 * THIS element, but a plain scrolling div is not in the tab order, so
-			 * nothing a keyboard reader could do would deliver those keys. Measured
-			 * on the previous head: 40 Tab presses never entered the transcript, and
-			 * in the state a reader arrives in it contained zero focusable elements
-			 * — so with the click-only button gone, older history was unreachable
-			 * without a pointer. A scrollable region is independently required to be
-			 * keyboard-operable (WCAG 2.1.1); this satisfies both at once.
-			 *
-			 * `role="log"` with a name is what makes the stop explicable when it is
-			 * announced, instead of an unlabelled group the reader has to probe.
-			 *
-			 * The stop is keyed on the ROWS, which is the only thing it is for: paging
-			 * acts on scrollable content, and a row-less pane has none, so Home/PageUp/
-			 * ArrowUp have no target there and a stop on it would be a focus trap with
-			 * nothing behind it (the notice's own control stays focusable, and the
-			 * statement stays in the reading order). Keying it on `collapsed ||
-			 * holdPlaceholder` was a proxy for "no rows" - both imply it - and the hold
-			 * no longer covers every row-less pane, because a pane with a statement of
-			 * its own paints that instead of the placeholder. The proxy stopped
-			 * agreeing with the property it stood for, so the property is read directly.
-			 */
-			tabIndex={transcript.records.length === 0 ? -1 : 0}
-			role="log"
-			aria-label="Conversation transcript"
-			// Only the `windowed` branch renders that id, so the description has to
-			// track the branch rather than the looser "history exists" condition it
-			// was derived from: `hasMore` with no hidden rows yields `idle`, whose
-			// button carries its own label, and pointing at an absent element makes
-			// the scroller's accessible description resolve to nothing at all — a
-			// worse outcome than omitting it, and invisible unless someone reads the
-			// tree while the slot happens to be idle.
-			aria-describedby={
-				slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
-			}
 			className={cn(
-				// `min-h-0`, not `h-full`: this is the flex child that must absorb
-				// the column's leftover height. `h-full` resolves its flex base to
-				// the FULL container height, so the base sum overshot the container
-				// by the header plus the composer and the deficit was taken out of
-				// the header - which is why the header rendered a different height
-				// depending on how tall the composer happened to be.
-				//
-				// `scrollbar-gutter: stable both-edges` because this is the scroll
-				// container and the composer below it is not. An 8px scrollbar takes
-				// its width off the right of THIS content box only, so `mx-auto`
-				// centred the transcript 4px left of the composer - a permanent
-				// misalignment between the two elements the eye most wants aligned.
-				// Reserving the gutter on both edges restores a symmetric content
-				// box: measured in the running app, the centre delta goes 4px -> 0.
-				// `stable` alone would reserve only the right edge and keep it.
 				CHAT_COLUMN_CONTAINER,
-				"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
-				collapsed
-					? "h-0 grow-0 overflow-hidden p-0"
-					: "min-h-0 grow overflow-auto p-4",
+				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
 			)}
 		>
-			{perf && (
-				<span data-lo-perf className="sr-only" aria-hidden="true">
-					{perf}
-				</span>
+			{stale && (
+				/*
+				 * Pinned to the pane's top edge, in the flow rather than over it: it
+				 * takes its own row and no row of the conversation is ever painted
+				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
+				 * the same horizontal inset as the scroller's own padding so the two
+				 * share a centre.
+				 */
+				<p
+					className={cn(
+						"shrink-0 px-4 pt-4 text-ink-dim text-meta",
+						CHAT_MEASURE,
+					)}
+				>
+					Showing the last saved view — checking for newer messages.
+				</p>
 			)}
 			<div
-				data-lo-transcript-content
-				className={cn("flex flex-col", CHAT_MEASURE)}
+				ref={containerRef}
+				data-lo-canonical-transcript={true}
+				/*
+				 * The transcript is a tab stop, and that is an accessibility fix rather
+				 * than a nicety.
+				 *
+				 * Paging responds to Home/PageUp/ArrowUp through a `keydown` listener on
+				 * THIS element, but a plain scrolling div is not in the tab order, so
+				 * nothing a keyboard reader could do would deliver those keys. Measured
+				 * on the previous head: 40 Tab presses never entered the transcript, and
+				 * in the state a reader arrives in it contained zero focusable elements
+				 * — so with the click-only button gone, older history was unreachable
+				 * without a pointer. A scrollable region is independently required to be
+				 * keyboard-operable (WCAG 2.1.1); this satisfies both at once.
+				 *
+				 * `role="log"` with a name is what makes the stop explicable when it is
+				 * announced, instead of an unlabelled group the reader has to probe.
+				 *
+				 * The stop is keyed on the ROWS, which is the only thing it is for: paging
+				 * acts on scrollable content, and a row-less pane has none, so Home/PageUp/
+				 * ArrowUp have no target there and a stop on it would be a focus trap with
+				 * nothing behind it (the notice's own control stays focusable, and the
+				 * statement stays in the reading order). Keying it on `collapsed ||
+				 * holdPlaceholder` was a proxy for "no rows" - both imply it - and the hold
+				 * no longer covers every row-less pane, because a pane with a statement of
+				 * its own paints that instead of the placeholder. The proxy stopped
+				 * agreeing with the property it stood for, so the property is read directly.
+				 */
+				tabIndex={transcript.records.length === 0 ? -1 : 0}
+				role="log"
+				aria-label="Conversation transcript"
+				// Only the `windowed` branch renders that id, so the description has to
+				// track the branch rather than the looser "history exists" condition it
+				// was derived from: `hasMore` with no hidden rows yields `idle`, whose
+				// button carries its own label, and pointing at an absent element makes
+				// the scroller's accessible description resolve to nothing at all — a
+				// worse outcome than omitting it, and invisible unless someone reads the
+				// tree while the slot happens to be idle.
+				aria-describedby={
+					slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
+				}
+				className={cn(
+					// `min-h-0`, not `h-full`: this is the flex child that must absorb
+					// the column's leftover height. `h-full` resolves its flex base to
+					// the FULL container height, so the base sum overshot the container
+					// by the header plus the composer and the deficit was taken out of
+					// the header - which is why the header rendered a different height
+					// depending on how tall the composer happened to be.
+					//
+					// `scrollbar-gutter: stable both-edges` because this is the scroll
+					// container and the composer below it is not. An 8px scrollbar takes
+					// its width off the right of THIS content box only, so `mx-auto`
+					// centred the transcript 4px left of the composer - a permanent
+					// misalignment between the two elements the eye most wants aligned.
+					// Reserving the gutter on both edges restores a symmetric content
+					// box: measured in the running app, the centre delta goes 4px -> 0.
+					// `stable` alone would reserve only the right edge and keep it.
+					"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+					collapsed
+						? "h-0 grow-0 overflow-hidden p-0"
+						: "min-h-0 grow overflow-auto p-4",
+				)}
 			>
-				{/* The state this element exists for: no rows yet, and the stream is
+				{perf && (
+					<span data-lo-perf className="sr-only" aria-hidden="true">
+						{perf}
+					</span>
+				)}
+				<div
+					data-lo-transcript-content
+					className={cn("flex flex-col", CHAT_MEASURE)}
+				>
+					{/* The state this element exists for: no rows yet, and the stream is
 				    still bringing them. Rendered inside the content column so it lands
 				    at the same inset and the same bottom anchor the rows will, rather
 				    than at the pane's centre in the composer band. */}
-				{holdPlaceholder && <TranscriptPlaceholder isSmallView={isSmallView} />}
-				{/* Older rows: durable pages, then the local window. One fixed-height
+					{holdPlaceholder && (
+						<TranscriptPlaceholder isSmallView={isSmallView} />
+					)}
+					{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
 				    row can never shift the conversation under the reader.
 				
@@ -968,192 +1393,272 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    at that moment. Keeping it mounted is what makes the end of
 				    history a statement instead of an absence, and costs nothing: the
 				    slot is one fixed-height row either way. */}
-				{transcript.records.length > 0 && (
-					<OlderHistorySlot
-						state={slotState}
-						hiddenRows={hidden}
-						// A retry cannot succeed while the transport is down, and the
-						// transcript's own notice below already explains why. The slot
-						// drops its gesture hint rather than stacking a second claim on
-						// top of that one.
-						transportDown={status !== "live"}
-						onLoadOlder={requestOlder}
-					/>
-				)}
-
-				{status === "unavailable" && failure && (
-					/*
-					 * One sentence and the one action that helps.
-					 *
-					 * The sentence is the PRODUCT's, not the transport's:
-					 * `failure.statement` is translated from the relay's machine detail by
-					 * `shared/desktop-stream-notice.ts`, so the packaged app and the
-					 * browser harness paint the same words for the same failure - which is
-					 * what was broken when the frame showed "The event stream ended." and
-					 * the shipped relay said "The event stream was refused (401)."
-					 * (design round 1, D1).
-					 *
-					 * It sits at the reading register the contract gives something the
-					 * reader must act on (D2): `text-meta` is the caption step, and this
-					 * was the bottom 4% of a 648px void. The block is edge-aligned with the
-					 * composer by sharing the column container above, and its bottom
-					 * margin is small so the notice reads as attached to the composer
-					 * rather than floating in the pane.
-					 *
-					 * The control is named for what it DOES (D4): the shell carries a
-					 * legacy banner whose "Retry" re-probes a different API, and two
-					 * controls with one accessible name and two actions reached a keyboard
-					 * user together. `action === null` means reconnecting cannot help, so
-					 * no control is painted rather than one that cannot work (Q-2).
-					 */
-					<div
-						data-lo-session-failure
-						className="mb-1 flex flex-wrap items-center gap-3"
-					>
-						<p className="text-body-sm text-danger">{failure.statement}</p>
-						{failure.action === "reconnect" && (
-							<Button variant="outline" size="sm" onClick={onReconnect}>
-								Reconnect
-							</Button>
-						)}
-					</div>
-				)}
-				{status === "reconnecting" && (
-					// Reading register, not the caption step: during the retry window
-					// this is the pane's only statement, and it has to be perceivable
-					// (design round 1, D3).
-					<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
-				)}
-
-				{visible.map((row) => (
-					<TranscriptRow
-						key={row.record.id}
-						row={row}
-						isSmallView={isSmallView}
-						nameColumn={nameColumn}
-						scope={mediaScope}
-					/>
-				))}
-
-				{working && (
-					// On the `item` tier, not a tier of its own: the working line is
-					// the foot of the run above it and shares that run's rhythm. It
-					// takes slightly more than `trace` because it is the one row that
-					// is not a completed action, and slightly less than a turn
-					// boundary because the turn has not ended.
-					<div
-						className={cn(
-							GAP.item[isSmallView ? 1 : 0],
-							!isSmallView && AGENT_GUTTER,
-						)}
-					>
-						<WorkingLine activity={working.activity} phase={working.phase} />
-					</div>
-				)}
-
-				{/* Tier 1: the pending gate is always last while it is actionable. */}
-				{gate && (
-					<div className={cn("mt-6", !isSmallView && AGENT_GUTTER)}>
-						<AgentQuestion
-							/*
-							 * The eyebrow says what is happening, and the options are disabled
-							 * for both halves of that: an answer on its way, and an answer this
-							 * gate already took (the hold). Binding the eyebrow to only the
-							 * second half of the options' own condition left the committed
-							 * in-flight story frame reading "Waiting for your answer" over a
-							 * card whose every option was disabled — two bindings, two
-							 * claims, one frame (design round 2, D7). The product switches
-							 * correctly on the live surface (UX round 2, U2, six samples over
-							 * a held window); the story drove `answering` and disagreed with
-							 * itself.
-							 */
-							busy={answering || Boolean(answer?.sending)}
-							content={
-								gate.detail ? `**${gate.title}**\n\n${gate.detail}` : gate.title
-							}
+					{/* NOT while the paint is cached: a cache entry carries no paging
+				    cursor (its rows are trimmed), which the slot reads as `exhausted`
+				    and says "Start of conversation" over a transcript that may be a
+				    thousand messages in. Measured on a captured frame, not inferred.
+				    The caption above already says the view is not authoritative. */}
+					{transcript.records.length > 0 && !stale && !missing && (
+						<OlderHistorySlot
+							state={slotState}
+							hiddenRows={hidden}
+							// A retry cannot succeed while the transport is down, and the
+							// transcript's own notice below already explains why. The slot
+							// drops its gesture hint rather than stacking a second claim on
+							// top of that one.
+							transportDown={status !== "live"}
+							onLoadOlder={requestOlder}
 						/>
-						{gate.kind === "ask" && (
-							<AskOptions
-								options={gate.options}
-								recommended={gate.recommended}
-								requestId={gate.request_id}
-								// One answer in flight at a time, and the card holds itself
-								// disabled after a press until the gate itself moves: `admitting`
-								// is the composer's shared flag, and `answer` is this panel's own
-								// record that it already answered this gate.
-								busy={answering || answer !== null}
-								onAnswer={(label) => onAnswer?.(label)}
-							/>
-						)}
-						<p className="mt-2 text-ink-dim text-meta">
-							{gate.kind === "approval"
-								? "Reply yes or no in the composer."
-								: /*
-									 * The hint names the new affordance first and keeps the
-									 * free-text path honest, because both are real: the
-									 * options are never guaranteed exhaustive (the terminal
-									 * card carries an explicit free-text row for exactly this
-									 * reason), and a `secret` ask renders no options at all,
-									 * where the composer is the only answer path.
-									 *
-									 * The digits are named because they work and nothing said
-									 * so: the card draws `1.` `2.` `3.` and typing one resolves
-									 * to that label, which is a shortcut a reader of the card
-									 * cannot otherwise discover. The TUI teaches its own
-									 * digits in a footer legend; this is the same sentence in
-									 * the one line this card has (UX round 1, U6).
-									 */
-									[
-										gate.question_total > 1
-											? `Question ${gate.question_index + 1} of ${gate.question_total}.`
-											: null,
-										/*
-										 * "type 1-9 and send", not "press 1-9": a digit on its own does
-										 * nothing. It is typed into the composer and only sending resolves
-										 * it, so the hint describes the two presses the shortcut actually
-										 * takes (UX round 2, U10).
-										 */
-										gate.options.length > 0
-											? "Choose an option, type 1-9 and send, or type your own answer below."
-											: "Type your answer below.",
-									]
-										.filter(Boolean)
-										.join(" ")}
-						</p>
-						{/*
-						 * A refused answer, on the card the press was made on.
-						 *
-						 * The round-1 finding was that a rejected press reported itself in
-						 * the composer's alert, in backend vocabulary ("this question is no
-						 * longer pending"), after the card it referred to had gone; and that
-						 * a second press repeated it because the card was still enabled
-						 * (QA round 1, Q3; UX round 1, U4). The sentence is outcome-first
-						 * and the card stays held, so there is nothing to press twice.
-						 *
-						 * `output`, not a `p` with `role="status"`: the element carries that
-						 * role implicitly, so the announcement survives without an ARIA
-						 * attribute restating what the tag already says.
-						 */}
-						{answer?.refused && (
-							<output className="mt-2 block text-body-sm text-danger">
-								{answer.refused}
-							</output>
-						)}
-					</div>
-				)}
+					)}
 
-				{/* No empty state here. The composer already owns it: it renders
+					{/*
+					 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
+					 * D10). It is hoisted above the scroller — see the `stale` paragraph near
+					 * the top of this component — and the second, legacy copy that used to sit
+					 * at this spot rendered the SAME sentence twice on every short pane: once
+					 * pinned to the pane's top edge, once immediately above the first bubble.
+					 * A long transcript hid it above the fold, which is why only the ordinary
+					 * and narrow fixtures showed the duplication while the overflowing one
+					 * passed.
+					 *
+					 * This surface's contract is ONE caption for one status, and a status the
+					 * reader has already read is not improved by being repeated, so the
+					 * in-scroll copy is the one that goes. The hoisted one is kept because it
+					 * survives not scrolled to the top, which was the original D1 defect.
+					 *
+					 * The loading skeleton is not rendered here either: it is
+					 * `TranscriptPlaceholder`, inside the content column above, because the
+					 * pane's own decision module (`transcript-pane.ts`) is the single
+					 * authority for when a row-less pane holds a placeholder — and because the
+					 * ground the old inline bars used (`sunken`, the weakest adjacent step in
+					 * most palettes) was measured against the pane's `canvas` and replaced
+					 * with `elevated` there.
+					 */}
+					{missing ? (
+						/*
+						 * The named state for a conversation this machine does not have,
+						 * and its way out. It replaces the whole status block rather than
+						 * sitting beside it: the failure notice and `Reconnecting` both
+						 * describe a TRANSPORT that may recover, and this is not that.
+						 *
+						 * The action clears the selection, which lands the reader on the
+						 * catalogue's own empty state — the only thing that can be done
+						 * about a conversation that no longer exists. It is NOT a retry:
+						 * retrying asks a question whose answer is about the session.
+						 */
+						<div
+							className={cn(
+								"mb-4 flex flex-col gap-2",
+								!isSmallView && AGENT_GUTTER,
+							)}
+						>
+							<p className="text-body-sm text-ink">
+								This conversation is no longer on this machine.
+							</p>
+							<p className="text-ink-dim text-meta">
+								It was deleted, or it belongs to a machine this app is not
+								connected to.
+							</p>
+							<Button
+								variant="outline"
+								size="sm"
+								className="self-start"
+								onClick={() => {
+									// Read at click time rather than subscribed: this component
+									// must not re-render every time the catalogue does.
+									useCanonicalSessionsStore.getState().setActiveSession(null);
+								}}
+							>
+								Start a new chat
+							</Button>
+						</div>
+					) : null}
+
+					{status === "unavailable" && failure && (
+						/*
+						 * One sentence and the one action that helps.
+						 *
+						 * The sentence is the PRODUCT's, not the transport's:
+						 * `failure.statement` is translated from the relay's machine detail by
+						 * `shared/desktop-stream-notice.ts`, so the packaged app and the
+						 * browser harness paint the same words for the same failure - which is
+						 * what was broken when the frame showed "The event stream ended." and
+						 * the shipped relay said "The event stream was refused (401)."
+						 * (design round 1, D1).
+						 *
+						 * It sits at the reading register the contract gives something the
+						 * reader must act on (D2): `text-meta` is the caption step, and this
+						 * was the bottom 4% of a 648px void. The block is edge-aligned with the
+						 * composer by sharing the column container above, and its bottom
+						 * margin is small so the notice reads as attached to the composer
+						 * rather than floating in the pane.
+						 *
+						 * The control is named for what it DOES (D4): the shell carries a
+						 * legacy banner whose "Retry" re-probes a different API, and two
+						 * controls with one accessible name and two actions reached a keyboard
+						 * user together. `action === null` means reconnecting cannot help, so
+						 * no control is painted rather than one that cannot work (Q-2).
+						 */
+						<div
+							data-lo-session-failure
+							className="mb-1 flex flex-wrap items-center gap-3"
+						>
+							<p className="text-body-sm text-danger">{failure.statement}</p>
+							{failure.action === "reconnect" && (
+								<Button variant="outline" size="sm" onClick={onReconnect}>
+									Reconnect
+								</Button>
+							)}
+						</div>
+					)}
+					{status === "reconnecting" && (
+						// Reading register, not the caption step: during the retry window
+						// this is the pane's only statement, and it has to be perceivable
+						// (design round 1, D3).
+						<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
+					)}
+
+					{/* Rows are suppressed for a conversation that is not there: the pane
+				    must not paint its last memory of a session the backend says is
+				    gone, because nothing on screen could then be trusted and there is
+				    no state to reconcile to. */}
+					{!missing &&
+						visible.map((row) => (
+							<TranscriptRow
+								key={row.record.id}
+								row={row}
+								isSmallView={isSmallView}
+								nameColumn={nameColumn}
+								scope={mediaScope}
+							/>
+						))}
+
+					{working && (
+						// On the `item` tier, not a tier of its own: the working line is
+						// the foot of the run above it and shares that run's rhythm. It
+						// takes slightly more than `trace` because it is the one row that
+						// is not a completed action, and slightly less than a turn
+						// boundary because the turn has not ended.
+						<div
+							className={cn(
+								GAP.item[isSmallView ? 1 : 0],
+								!isSmallView && AGENT_GUTTER,
+							)}
+						>
+							<WorkingLine activity={working.activity} phase={working.phase} />
+						</div>
+					)}
+
+					{/* Tier 1: the pending gate is always last while it is actionable. */}
+					{gate && (
+						<div className={cn("mt-6", !isSmallView && AGENT_GUTTER)}>
+							<AgentQuestion
+								/*
+								 * The eyebrow says what is happening, and the options are disabled
+								 * for both halves of that: an answer on its way, and an answer this
+								 * gate already took (the hold). Binding the eyebrow to only the
+								 * second half of the options' own condition left the committed
+								 * in-flight story frame reading "Waiting for your answer" over a
+								 * card whose every option was disabled — two bindings, two
+								 * claims, one frame (design round 2, D7). The product switches
+								 * correctly on the live surface (UX round 2, U2, six samples over
+								 * a held window); the story drove `answering` and disagreed with
+								 * itself.
+								 */
+								busy={answering || Boolean(answer?.sending)}
+								content={
+									gate.detail
+										? `**${gate.title}**\n\n${gate.detail}`
+										: gate.title
+								}
+							/>
+							{gate.kind === "ask" && (
+								<AskOptions
+									options={gate.options}
+									recommended={gate.recommended}
+									requestId={gate.request_id}
+									// One answer in flight at a time, and the card holds itself
+									// disabled after a press until the gate itself moves: `admitting`
+									// is the composer's shared flag, and `answer` is this panel's own
+									// record that it already answered this gate.
+									busy={answering || answer !== null}
+									onAnswer={(label) => onAnswer?.(label)}
+								/>
+							)}
+							<p className="mt-2 text-ink-dim text-meta">
+								{gate.kind === "approval"
+									? "Reply yes or no in the composer."
+									: /*
+										 * The hint names the new affordance first and keeps the
+										 * free-text path honest, because both are real: the
+										 * options are never guaranteed exhaustive (the terminal
+										 * card carries an explicit free-text row for exactly this
+										 * reason), and a `secret` ask renders no options at all,
+										 * where the composer is the only answer path.
+										 *
+										 * The digits are named because they work and nothing said
+										 * so: the card draws `1.` `2.` `3.` and typing one resolves
+										 * to that label, which is a shortcut a reader of the card
+										 * cannot otherwise discover. The TUI teaches its own
+										 * digits in a footer legend; this is the same sentence in
+										 * the one line this card has (UX round 1, U6).
+										 */
+										[
+											gate.question_total > 1
+												? `Question ${gate.question_index + 1} of ${gate.question_total}.`
+												: null,
+											/*
+											 * "type 1-9 and send", not "press 1-9": a digit on its own does
+											 * nothing. It is typed into the composer and only sending resolves
+											 * it, so the hint describes the two presses the shortcut actually
+											 * takes (UX round 2, U10).
+											 */
+											gate.options.length > 0
+												? "Choose an option, type 1-9 and send, or type your own answer below."
+												: "Type your answer below.",
+										]
+											.filter(Boolean)
+											.join(" ")}
+							</p>
+							{/*
+							 * A refused answer, on the card the press was made on.
+							 *
+							 * The round-1 finding was that a rejected press reported itself in
+							 * the composer's alert, in backend vocabulary ("this question is no
+							 * longer pending"), after the card it referred to had gone; and that
+							 * a second press repeated it because the card was still enabled
+							 * (QA round 1, Q3; UX round 1, U4). The sentence is outcome-first
+							 * and the card stays held, so there is nothing to press twice.
+							 *
+							 * `output`, not a `p` with `role="status"`: the element carries that
+							 * role implicitly, so the announcement survives without an ARIA
+							 * attribute restating what the tag already says.
+							 */}
+							{answer?.refused && (
+								<output className="mt-2 block text-body-sm text-danger">
+									{answer.refused}
+								</output>
+							)}
+						</div>
+					)}
+
+					{/* No empty state here. The composer already owns it: it renders
 				    "What can I help you with today?" with the suggestion grid on
 				    the same condition, so a cold conversation used to show a line
 				    saying it was empty directly above a block inviting you to
 				    start it -- two empty states for one empty state (design D6).
 				    The composer's version wins because it offers the action; this
 				    one only described the situation. */}
-				{lastRecord && (
-					<div className="mt-1 flex justify-end">
-						<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
-					</div>
-				)}
+					{/* Gated on `missing` for the same reason as the history slot: the
+				    failure path keeps the cached rows, so an ungated footer left a bare
+				    timestamp floating bottom-right under a state that says this
+				    conversation does not exist here (design review round 1, D2). */}
+					{lastRecord && !missing && (
+						<div className="mt-1 flex justify-end">
+							<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
+						</div>
+					)}
+				</div>
 			</div>
 		</div>
 	);

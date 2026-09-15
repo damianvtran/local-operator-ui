@@ -42,13 +42,16 @@ import type { Message } from "../../types/message";
 import { ChatHeader } from "../chat-header";
 import { MessageItem } from "../message-item";
 import { TraceGroup, TraceLine } from "../trace";
+import { McpKeyDialog } from "./mcp-key-dialog";
 import {
 	type RunDetailsInput,
 	deriveMcpServers,
 	deriveRunDetails,
 } from "./run-detail-model";
+import { mcpGrantInFlight } from "./run-detail-model";
 import * as fixtures from "./run-details.fixtures";
 import { RunPanel } from "./run-panel";
+import type { McpRemedyControls } from "./use-mcp-remedy";
 
 const at = (iso: string) => new Date(iso);
 
@@ -110,6 +113,37 @@ const TranscriptGround = () => (
 );
 
 /**
+ * The pane's remedy controls, as the app passes them.
+ *
+ * A still cannot carry a press, so every photographed story leaves these as
+ * no-ops — EXCEPT where the frame is about the control's own state, and there the
+ * state comes from the FIXTURE's `operations` rather than from a handler: the
+ * row's grant line is derived from the read, which is exactly the property those
+ * frames exist to show. `presses` is recorded so a play can assert that the
+ * confirm ran the operation rather than only opening.
+ */
+const presses: string[] = [];
+const mcpRemedy = (
+	overrides: Partial<McpRemedyControls> = {},
+): McpRemedyControls => ({
+	press: (row) => presses.push(row.name),
+	pressKey: async (row, values) => {
+		presses.push(`${row.name}:${Object.keys(values).sort().join(",")}`);
+		return true;
+	},
+	cancel: (operationId) => presses.push(`cancel:${operationId}`),
+	reload: async (row) => {
+		presses.push(`reload:${row.name}`);
+		return true;
+	},
+	pendingName: null,
+	failureFor: () => null,
+	clearFailure: () => undefined,
+	refusalFor: () => null,
+	...overrides,
+});
+
+/**
  * The pane, exactly as `chat-content.tsx` mounts it: a pinned-width wrapper with
  * the `border-l` seam, the shared divider (with its own label), and the real
  * `RunPanel` inside.
@@ -118,6 +152,8 @@ const RunPane = ({
 	details,
 	mcpServers = [],
 	mcpErrors = {},
+	mcpOperations = [],
+	remedy = mcpRemedy(),
 	childrenOpenable = true,
 	readerChildId = null,
 	previewPage = null,
@@ -129,6 +165,9 @@ const RunPane = ({
 	details: ReturnType<typeof deriveRunDetails>;
 	mcpServers?: readonly Record<string, unknown>[];
 	mcpErrors?: Readonly<Record<string, string>>;
+	/** The read's own `operations`, which is where a row's grant state comes from. */
+	mcpOperations?: readonly Record<string, unknown>[];
+	remedy?: McpRemedyControls;
 	childrenOpenable?: boolean;
 	readerChildId?: string | null;
 	previewPage?: DesktopChildTranscriptPage | null;
@@ -157,7 +196,9 @@ const RunPane = ({
 		>
 			<RunPanel
 				details={details}
-				mcpServers={deriveMcpServers(mcpServers, mcpErrors)}
+				mcpServers={deriveMcpServers(mcpServers, mcpErrors, mcpOperations)}
+				mcpGrantRunning={mcpGrantInFlight(mcpOperations)}
+				mcpRemedy={remedy}
 				sessionId={
 					(details.subagents.find((row) => row.childSessionId)
 						?.childSessionId as string | undefined) ?? "a1b2c3d4e5f6"
@@ -179,6 +220,8 @@ const ChatColumn = ({
 	details,
 	mcpServers = [],
 	mcpErrors = {},
+	mcpOperations = [],
+	remedy = mcpRemedy(),
 	childrenOpenable = true,
 	openPanel = false,
 	readerChildId = null,
@@ -195,6 +238,9 @@ const ChatColumn = ({
 	 * the remedy line.
 	 */
 	mcpErrors?: Readonly<Record<string, string>>;
+	/** The read's own `operations`, which is where a row's grant state comes from. */
+	mcpOperations?: readonly Record<string, unknown>[];
+	remedy?: McpRemedyControls;
 	childrenOpenable?: boolean;
 	openPanel?: boolean;
 	readerChildId?: string | null;
@@ -202,7 +248,7 @@ const ChatColumn = ({
 	pulses?: Record<string, number>;
 	width?: number;
 }) => {
-	const rows = deriveMcpServers(mcpServers, mcpErrors);
+	const rows = deriveMcpServers(mcpServers, mcpErrors, mcpOperations);
 	/*
 	 * The pane's open state lives in the STORE, not in this prop: the prop decides
 	 * whether the pane is drawn, and the store is what the trigger's pressed state,
@@ -240,6 +286,8 @@ const ChatColumn = ({
 					details={details}
 					mcpServers={mcpServers}
 					mcpErrors={mcpErrors}
+					mcpOperations={mcpOperations}
+					remedy={remedy}
 					childrenOpenable={childrenOpenable}
 					readerChildId={readerChildId}
 					previewPage={previewPage}
@@ -1425,6 +1473,355 @@ export const McpUnknownStatus: Story = {
 		<ChatColumn
 			details={deriveRunDetails(fixtures.bothInFlight())}
 			mcpServers={fixtures.mcpUnknownStatus()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The grant is under way: the row says what it is waiting on, and offers the one
+ * thing this surface can usefully do while it waits.
+ *
+ * The state comes from the FIXTURE's `operations`, not from a handler, and that
+ * is the property this frame exists to carry: the row is derived from the read the
+ * panel already polls, so a grant started in the TUI or another conversation
+ * renders here too. `Waiting for your browser` is a statement rather than a
+ * spinner because the runtime opens the browser itself.
+ */
+export const McpGrantRunning: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			mcpOperations={fixtures.mcpGrantRunning()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/** The grant came back failed: the row states it and offers the retry. */
+export const McpGrantFailed: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			mcpOperations={fixtures.mcpGrantFailed()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Cancelled, and the credential went with it.
+ *
+ * The one copy in this change worth a frame of its own: `credential_removed` is
+ * the only thing that distinguishes "cancelled, try again" from "cancelled, and
+ * your credential is gone" (`grants.py:168-175`), and getting it wrong sends the
+ * reader to a server that cannot connect.
+ */
+export const McpGrantCancelledRemoved: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			mcpOperations={fixtures.mcpGrantCancelledRemoved()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * One grant per session, so the OTHER problem row's control is disabled.
+ *
+ * Colour, not opacity (`branding.md` § 6). The lock is derived from the read's own
+ * `operations`, which is why a grant started elsewhere disables these controls too
+ * — the alternative is a live control whose every press refuses with the opaque
+ * 409 of `§ 3.3-2`.
+ */
+export const McpGrantLocked: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpTwoProblems()}
+			mcpOperations={fixtures.mcpGrantRunning()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The grant confirmation, reached by pressing the row's own grant link.
+ *
+ * Interactive rather than pre-opened, and the shutter is held with
+ * `data-capture-pending` until the dialog is on screen: a frame of a modal the
+ * story opened by hand would be a frame of a state the app reaches by a
+ * different route.
+ *
+ * **The confirmation is the SHARED flow as of the integration round**
+ * (`mcp-auth-dialog.tsx`), not a modal this section owns. That is the point of
+ * the change rather than a detail of it: the button that reaches this state is
+ * the row's own control, and the decision about WHICH transition to start is
+ * made by one owner that re-probes the named server, so a stale derived remedy
+ * can no longer start a browser grant for a server whose answer is a key
+ * (review R2-6). The frame therefore shows that flow's own confirmation step —
+ * the same one `/mcp reauth <name>` and Settings open — and the grant facts it
+ * states (the browser opens; a stored credential is replaced) are the reasons
+ * it still confirms at all.
+ */
+const GrantConfirmGround = () => {
+	useClickAndWait('[data-mcp-remedy="grant"]', '[role="dialog"]');
+	/*
+	 * The dialog resolves the transition from a live `probe`, so this story needs
+	 * the desktop bridge the capture environment provides — the same requirement
+	 * its sibling frames already have. In Storybook without a backend the dialog
+	 * honestly shows its "could not check this server" state, which is itself a
+	 * state worth seeing rather than one to fake.
+	 */
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			openPanel={true}
+		/>
+	);
+};
+
+export const McpGrantConfirm: Story = {
+	render: () => <GrantConfirmGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The key remedy: three rows, one per decision the payload makes.
+ *
+ * `google-workspace` (stdio, `env` name) and `slack` (http, header name, OAuth
+ * refused) both offer `Enter API key`; `legacy-stdio` declares nothing and keeps
+ * the sentence naming the surface that owns its configuration. The grant is not
+ * offered on ANY of them, which is the decision this frame carries: a transport
+ * that cannot complete a browser sign-in must not be given a browser control.
+ */
+export const McpKeyAuth: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpKeyAuth()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The key popout, reached by pressing the row's own `Enter API key` link.
+ *
+ * The fields are the payload's OWN declared names — one password input per name,
+ * seeded from `environment_keys`/`header_keys` — so the frame is about the form a
+ * real config produces rather than about a form this story invented. Interactive
+ * for the same reason the confirm frame is: the dialog is opened by the real
+ * control.
+ */
+const KeyPopoutGround = () => {
+	useClickAndWait('[data-mcp-remedy="key"]', '[role="dialog"]');
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpKeyAuth()}
+			openPanel={true}
+		/>
+	);
+};
+
+export const McpKeyPopout: Story = {
+	render: () => <KeyPopoutGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * An operation the backend FINISHED earlier in this session, beside a server that
+ * is a problem again.
+ *
+ * This is the frame for the settled-op path, which is where a remedy can vanish:
+ * `hubspot`'s credential expired after a successful grant and `slack`'s transport
+ * dropped after a successful connect, and both rows keep their control and show no
+ * grant line (code review round 1, finding 1). The backend holds settled
+ * operations for the rest of the session, so this — a grant that worked earlier
+ * and a server that is broken now — is the ordinary state, not a corner.
+ */
+export const McpGrantSettled: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpProblemAgain()}
+			mcpOperations={fixtures.mcpGrantSettled()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The 64px case: a grant line and the runtime's own diagnosis under it.
+ *
+ * § 8 budgets "up to 80px with the diagnosis" and no other frame paints that
+ * height — `mcp-grant-failed` carries no `errorText`, so it is the 48px two-line
+ * shape (design review round 1, D9). The diagnosis is the canonical projection's
+ * sentence for a server the RENDERED read already calls a problem, which is the
+ * only place the runtime states why.
+ */
+export const McpGrantFailedDiagnosis: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			mcpOperations={fixtures.mcpGrantFailed()}
+			mcpErrors={{
+				notion:
+					"[Errno 13] Permission denied: '/Users/o/.config/notion/token.json'",
+			}}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The remedy link's hover ground, which the rig produces by moving a real pointer
+ * at it (`scripts/capture-evidence.mjs`'s `{ hover: selector }`, the same CDP
+ * input the trigger's hover frames use).
+ */
+export const McpRemedyHover: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The remedy link with the keyboard's focus ring on it.
+ *
+ * `focus({ focusVisible: true })` rather than a bare `focus()`: a programmatic
+ * focus is not treated as keyboard focus by Chromium's heuristic, and the frame
+ * this story exists for is the `:focus-visible` ring (design review round 1, D6 —
+ * the reviewer could judge the ring from the CSS and from two sibling surfaces but
+ * not from a frame).
+ */
+const RemedyFocusGround = () => {
+	useEffect(() => {
+		document
+			.querySelector<HTMLButtonElement>('[data-mcp-remedy="grant"]')
+			?.focus({ focusVisible: true });
+	}, []);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			openPanel={true}
+		/>
+	);
+};
+
+export const McpRemedyFocus: Story = {
+	render: () => <RemedyFocusGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The key dialog while the write is in flight.
+ *
+ * Mounted directly rather than opened by a press, because `saving` is the state
+ * between the press and its answer and a story cannot hold a real credential write
+ * open. The dialog is the production component with the production props (design
+ * review round 1, D6's un-evidenced states).
+ */
+export const McpKeySaving: Story = {
+	render: () => (
+		<DialogGround>
+			<McpKeyDialog
+				open={true}
+				target={{
+					name: "google-workspace",
+					keyNames: ["GOOGLE_CLIENT_SECRET"],
+				}}
+				saving={true}
+				failure={null}
+				onCancel={() => undefined}
+				onOpenSettings={() => undefined}
+				onSave={() => undefined}
+			/>
+		</DialogGround>
+	),
+};
+
+/**
+ * The key dialog after the reconnect came back without the credential taking.
+ *
+ * The sentence is the outcome `pressKey` derives from the returned snapshot rather
+ * than from the request's status — `manager.reconnect_server` swallows failures, so
+ * a 2xx `connect` proves only that the request was accepted (code review round 1,
+ * finding 3).
+ */
+export const McpKeyError: Story = {
+	render: () => (
+		<DialogGround>
+			<McpKeyDialog
+				open={true}
+				target={{
+					name: "google-workspace",
+					keyNames: ["GOOGLE_CLIENT_SECRET"],
+				}}
+				saving={false}
+				failure={{
+					cause: "unknown",
+					detail: null,
+					message: "The key was saved, but the server still needs sign-in.",
+					phase: "reconnect",
+				}}
+				onCancel={() => undefined}
+				onOpenSettings={() => undefined}
+				onSave={() => undefined}
+			/>
+		</DialogGround>
+	),
+};
+
+/** The ground the two dialog frames stand on: the app's own canvas, so the frame
+ * is a picture of the dialog in its window rather than on the preview's default
+ * white. */
+const DialogGround = ({ children }: { children: ReactNode }) => (
+	<div className="flex min-h-screen items-center justify-center bg-canvas p-6">
+		{children}
+	</div>
+);
+
+/**
+ * The pane's 320px floor, with the longest action line it can hold.
+ *
+ * Round 1's D5 measured `Sign-in cancelled` + `The stored credential was removed.`
+ * + `Try again` at 369px inside the 375px column a 420px pane gives, so the floor
+ * is where the line has to do something — and the arithmetic said it would
+ * ellipsise two sentences beside a live control. The grant line wraps instead, and
+ * this frame is the evidence rather than the argument.
+ */
+export const McpFloor320: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.bothInFlight())}
+			mcpServers={fixtures.mcpAuthRequired()}
+			mcpOperations={fixtures.mcpGrantCancelledRemoved()}
+			mcpErrors={{
+				notion:
+					"[Errno 13] Permission denied: '/Users/o/.config/notion/token.json'",
+			}}
+			width={320}
 			openPanel={true}
 		/>
 	),

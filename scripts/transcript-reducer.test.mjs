@@ -1575,3 +1575,609 @@ test("removeRecord retracts exactly the echo it names", () => {
 	const pruned = removeRecord(state, "req-1");
 	assert.equal(pruned.index.get("req-2"), 0);
 });
+
+/* ------------------------------------------------------- receipt rows */
+
+/*
+ * A peer message and a wake delivery are `CustomMessage` rows whose
+ * `details.text` is markup addressed to the MODEL — a `<peer-session-message …>`
+ * provenance envelope, and `(alarm) Scheduled wake w-9 … — cancel with
+ * wake({op:"cancel",id:"w-9"})` — and the generic custom branch paints
+ * `details.text`, which is how both reached the screen verbatim.
+ *
+ * These assert the PROJECTION rather than the row: that the record a page
+ * produces carries the human fields and not the envelope, that the live
+ * `history_delta` path produces the SAME record as the durable page (they share
+ * `durableRecord`, and "they share it" is exactly the assumption worth testing
+ * rather than trusting), and that a replayed page does not rebuild a record it
+ * already has.
+ */
+
+const PEER_ENVELOPE =
+	"<peer-session-message from_pid=92064 conversation='review-agent' model='deepseek/deepseek-flash'>\n" +
+	"the tool row needs the same treatment\n" +
+	"</peer-session-message>";
+
+const PEER_SENDER = {
+	pid: 92064,
+	conversation_name: "review-agent",
+	cwd: "/Users/damian/local-operator-ui",
+	session_id: "01J8ZQ4K7XABCDEF",
+	model_label: "deepseek/deepseek-flash",
+};
+
+const peerMessage = (details) => ({
+	id: "p1",
+	custom_type: "peer_message",
+	attribution: "user",
+	details,
+});
+
+const pageOf = (entries) => ({
+	entries,
+	has_more: false,
+	cursor_missing: false,
+});
+
+const messageEntry = (id, ts, payload) => ({
+	id,
+	ts,
+	type: "message",
+	payload,
+});
+
+test("a peer message projects to its body and sender, never the envelope", () => {
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("p1", 5, {
+				kind: "custom",
+				...peerMessage({
+					text: PEER_ENVELOPE,
+					body: "the tool row needs the same treatment",
+					sender: PEER_SENDER,
+				}),
+			}),
+		]),
+	);
+	const [record] = state.records;
+	assert.equal(record.kind, "peer");
+	assert.equal(record.body, "the tool row needs the same treatment");
+	assert.equal(record.sender.pid, "92064");
+	assert.equal(record.sender.conversationName, "review-agent");
+	assert.equal(record.sender.cwd, "/Users/damian/local-operator-ui");
+	assert.equal(record.sender.sessionId, "01J8ZQ4K7XABCDEF");
+	assert.equal(record.sender.modelLabel, "deepseek/deepseek-flash");
+	// The rule the whole projection exists for. Asserted over the serialised
+	// record so it covers any field a later edit might add.
+	assert.ok(
+		!JSON.stringify(record).includes("peer-session-message"),
+		"the model-facing envelope must not reach the view",
+	);
+	assert.ok(!JSON.stringify(record).includes("from_pid"), "nor its attributes");
+});
+
+test("a peer row that carries only the envelope still names its sender", () => {
+	// The fallback path: a row written before `body`/`sender` existed, or by a
+	// delivery path that never learned about them. It still has to name the
+	// sender and still has to have something to say.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("p1", 5, {
+				kind: "custom",
+				...peerMessage({ text: PEER_ENVELOPE }),
+			}),
+		]),
+	);
+	const [record] = state.records;
+	assert.equal(record.kind, "peer");
+	assert.equal(record.body, "the tool row needs the same treatment");
+	assert.equal(record.sender.pid, "92064");
+	assert.equal(record.sender.conversationName, "review-agent");
+	assert.equal(record.sender.modelLabel, "deepseek/deepseek-flash");
+	// The two the envelope has no field for stay empty rather than invented.
+	assert.equal(record.sender.cwd, "");
+	assert.equal(record.sender.sessionId, "");
+});
+
+test("a peer row with an empty body is still a row", () => {
+	// An empty message is not an invisible record: the row still paints its
+	// sender, and the TUI's `can_expand()` returns True unconditionally on the
+	// same ground. Whether the DISCLOSURE is offered is a separate question, and
+	// `peerHasDetail` answers it false when the expansion would only restate the
+	// collapsed row (`{ pid: 42 }` with no body is exactly that case).
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("p1", 5, {
+				kind: "custom",
+				...peerMessage({
+					text: "",
+					body: "",
+					sender: { pid: 42, session_id: "01J8ZQ4K7X" },
+				}),
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].kind, "peer");
+	assert.equal(state.records[0].body, "");
+	assert.equal(state.records[0].sender.pid, "42");
+});
+
+test("the live path and the durable page produce the same receipt", () => {
+	const row = peerMessage({
+		text: PEER_ENVELOPE,
+		body: "the tool row needs the same treatment",
+		sender: PEER_SENDER,
+	});
+	const durable = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([messageEntry("p1", 5, { kind: "custom", ...row })]),
+	);
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "history_delta", messages: [row] },
+		5000,
+	);
+	assert.deepEqual(live.records, durable.records);
+
+	// And a replayed page that teaches nothing new returns the SAME state object,
+	// which is only true if the sender object is reused: the equality gate
+	// compares fields by reference, and a freshly built sender would report this
+	// row as changed on every reconnect (the bargain `extractImages` strikes).
+	const again = applyHistoryPage(
+		durable,
+		pageOf([messageEntry("p1", 5, { kind: "custom", ...row })]),
+	);
+	assert.equal(again, durable);
+});
+
+test("a wake delivery is a receipt, and the catch-up is not one", () => {
+	const delivery =
+		'(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})\n\ncheck the deploy';
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w1", 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				attribution: "user",
+				details: { wake_id: "w-9", occurrence: 1, text: delivery },
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].kind, "wake");
+	// The record holds what ARRIVED: the headline and the prompt are derived at
+	// paint time by the pure receipt model, so the state carries no rendering of
+	// its own.
+	assert.equal(state.records[0].text, delivery);
+
+	// The resume catch-up is not a receipt. It is user-attributed, and both
+	// shipping surfaces skip it on replay for that reason — replaying it "would
+	// put a raw '(alarm) The session resumed…' line in the transcript as if the
+	// user had typed it" — so a receipt row must not be minted from it either.
+	state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w2", 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				attribution: "user",
+				details: {
+					wake_catchup: true,
+					text: "(alarm) The session resumed after being closed; the following scheduled wake(s) came due while it was down.\n\n- w1 (due 12:00): missed while the session was down.",
+				},
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 0);
+
+	// A wake row with no text at all is nothing to show, so it stays dropped —
+	// the generic custom branch's own rule.
+	state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w3", 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				details: { wake_id: "w-3", text: "   " },
+			}),
+		]),
+	);
+	assert.equal(state.records.length, 0);
+});
+
+test("the new kinds do not change how other custom rows project", () => {
+	// The regression guard for the branch this change inserted in front of: a
+	// custom row that is neither a peer nor a wake still paints `details.text`,
+	// and the two kinds that were already silent stay silent.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("c1", 5, {
+				kind: "custom",
+				custom_type: "subagent_progress",
+				attribution: "agent",
+				details: { text: "the reviewer started" },
+			}),
+			messageEntry("c2", 6, {
+				kind: "custom",
+				custom_type: "hub_communication",
+				attribution: "agent",
+				details: { text: "parent words" },
+			}),
+			messageEntry("c3", 7, {
+				kind: "custom",
+				custom_type: "peer_message_summary",
+				attribution: "system",
+				details: { text: "1 peer message, 40 bytes" },
+			}),
+		]),
+	);
+	assert.deepEqual(
+		state.records.map((record) => [
+			record.id,
+			record.kind,
+			record.text ?? record.customType,
+		]),
+		[
+			["c1", "custom", "the reviewer started"],
+			["c3", "custom", "1 peer message, 40 bytes"],
+		],
+	);
+});
+// ---------------------------------------------------------------------------
+// Custom rows: the harness's own statements in the conversation.
+//
+// The operator's report was that an error row read only `session incident` and
+// the message that explained it was behind the chevron — 946 of his own rows,
+// i.e. the normal shape rather than an edge case. The row is now a projection of
+// the RECORD, so these tests pin the record: the level, the label, the message
+// and what is left for the disclosure.
+// ---------------------------------------------------------------------------
+
+/** A persisted `session_incident` row, exactly as the store writes one. */
+const incident = (id, { text, raw, token, ...rest }) => ({
+	id,
+	ts: 1_789_000_000,
+	type: "message",
+	payload: {
+		kind: "custom",
+		custom_type: "session_incident",
+		details: {
+			text,
+			...(raw === undefined ? {} : { raw }),
+			...(token ? { token } : {}),
+		},
+		...rest,
+	},
+});
+
+const custom = (id, custom_type, details) => ({
+	id,
+	ts: 1_789_000_000,
+	type: "message",
+	payload: { kind: "custom", custom_type, details },
+});
+
+const replay = (entries) =>
+	applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+
+/** The mcp row from session `32cc6288b38f`, quoted from the store. */
+const MCP_ROW = incident("801c032e12604b478ab44b3bedcbd503", {
+	text: "[session incident (openrouter/deepseek/deepseek-v4.1-flash)] mcp: MCP server 'notion': MCP authorization failed; run /mcp reauth notion — authorization expired\nsuggested action: An MCP server is unavailable: its tools are gone until it reconnects. Do not call its tools in a tight loop; say which server is down.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+	raw: "MCP server 'notion': MCP authorization failed; run /mcp reauth notion — authorization expired",
+});
+
+test("an incident row is an error row whose message is inline, not its type name", () => {
+	const [row] = replay([MCP_ROW]);
+	assert.equal(row.kind, "custom");
+	assert.equal(row.customType, "session_incident");
+	// The tier, which the view used to pin to `info` for every custom row.
+	assert.equal(row.level, "error", "an incident is a failure, not information");
+	// The label: what KIND of failure, so the row scans.
+	assert.equal(row.category, "mcp");
+	// The message: the vendor's own error, in place. The regression is that this
+	// was the literal string `session incident`.
+	assert.equal(
+		row.headline,
+		"MCP server 'notion': MCP authorization failed; run /mcp reauth notion — authorization expired",
+	);
+	assert.notEqual(row.headline, "session incident");
+	// The supporting half — the harness's advice and its tail sentence — is what
+	// the disclosure is for now, rather than the whole message.
+	assert.match(row.detail, /^suggested action: An MCP server is unavailable/);
+	assert.match(
+		row.detail,
+		/This is why the previous turn ended\. Take it into account before repeating the same request\.$/,
+	);
+});
+
+test("the message is `details.raw`, not the head line the renderer built from it", () => {
+	// The producer truncates the head at 500 characters and keeps the
+	// untruncated original in `raw`; the row must paint the original.
+	const long = "x".repeat(700);
+	const [row] = replay([
+		incident("truncated", {
+			text: `[session incident (p/m)] provider: ${long.slice(0, 500)}`,
+			raw: long,
+		}),
+	]);
+	assert.equal(row.headline, long, "the untruncated raw is the message");
+});
+
+test("the category is read off the head, and a `raw`-less row falls back to it", () => {
+	// Every row in the store carries a `raw`; a row persisted without one still
+	// has to say what happened, so the head line's remainder is the message.
+	const [older] = replay([
+		incident("older", {
+			text: "[session incident] cut-off: the runtime was terminated while this turn was running\nThis is why the previous turn ended.",
+		}),
+	]);
+	assert.equal(older.level, "error");
+	assert.equal(older.category, "cut-off");
+	assert.equal(
+		older.headline,
+		"the runtime was terminated while this turn was running",
+	);
+	assert.equal(older.detail, "This is why the previous turn ended.");
+
+	// A payload that is not a rendered incident is not given a category, and its
+	// own first line is the message rather than nothing at all.
+	const [opaque] = replay([
+		incident("opaque", { text: "something the classifier never rendered" }),
+	]);
+	assert.equal(opaque.category, null);
+	assert.equal(opaque.headline, "something the classifier never rendered");
+	assert.equal(opaque.detail, null, "nothing to disclose is a static row");
+});
+
+test("a harness statement paints its fact, and puts its instruction to the model behind the disclosure", () => {
+	// Both halves measured over the store: all 231 real model-switch rows carry
+	// the agent-directed tail in the same string, so painting the text whole put
+	// a 3-4 line instruction block in a one-line ledger.
+	const rows = replay([
+		custom("switch", "session_model_switch", {
+			text: "[model switch] You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).\nThis applies from now on. Capabilities, context window, and tone may differ from the previous model; act as the model you now are.",
+		}),
+		custom("recovery", "session_mcp_recovery", {
+			text: "[mcp recovery] MCP server 'gitlab' is connected again and 12 tools are available again. This supersedes the earlier session incident about this server: its tools are usable now, so call them normally and stop reporting it as unavailable.",
+		}),
+		custom("credential", "session_credential", {
+			text: "[session credential] DEPLOY_KEY was just stored by the operator. Its value is held in session memory and injected as the environment variable $DEPLOY_KEY into every bash command — use it there (a child process reads it), never echo, print, or write it.",
+		}),
+	]);
+	for (const row of rows) {
+		assert.equal(row.level, "info", `${row.customType} is not a failure`);
+		assert.notEqual(row.headline, row.customType.replace(/_/g, " "));
+		// The bracket repeats the row's own label, so the headline starts at the
+		// sentence: "session model switch: You are now running as …".
+		assert.ok(
+			!row.headline.includes("This applies from now on"),
+			`${row.customType}: the instruction to the model is not the headline`,
+		);
+		assert.match(row.detail, /^(This applies|This supersedes|Its value)/);
+	}
+	assert.equal(
+		rows[0].headline,
+		"You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5).",
+	);
+	assert.equal(
+		rows[1].headline,
+		"MCP server 'gitlab' is connected again and 12 tools are available again.",
+	);
+	assert.equal(rows[2].headline, "DEPLOY_KEY was just stored by the operator.");
+	// The tokeniser is a version, not a sentence end: `deepseek-v4.1-flash` must
+	// not split the headline in half.
+	assert.ok(rows[0].headline.includes("deepseek-v4.1-flash (was"));
+});
+
+test("a relayed payload keeps its body behind the disclosure but is not reduced to its type name", () => {
+	// Measured over the operator's store, these run to 18,259 characters, so the
+	// body stays one click away — and the first line that says something is on
+	// the row, stepping over the envelope tag both relays open with.
+	const body =
+		"<parent-message>\nThis is a note, not a question.\n\nCorrection: rebase onto the current origin/main.";
+	const [row] = replay([custom("hub", "hub_message", { text: body })]);
+	assert.equal(row.level, "info");
+	assert.equal(
+		row.headline,
+		"This is a note, not a question.",
+		"the envelope tag is not the headline",
+	);
+	assert.equal(row.detail, body, "the whole body is what the disclosure holds");
+});
+
+test("a long headline is bounded and cut on a word, so the column cannot be pushed out", () => {
+	const sentence = "word ".repeat(80).trim();
+	const [row] = replay([custom("long", "job_result", { text: sentence })]);
+	assert.ok(row.headline.length <= 161, `headline was ${row.headline.length}`);
+	assert.ok(row.headline.endsWith("…"));
+	assert.ok(
+		!row.headline.includes("wor…"),
+		"cut on a word boundary, not mid-word",
+	);
+	assert.equal(row.detail, sentence, "the payload itself is untouched");
+});
+
+test("an incident row that has said everything it has to say is a static line", () => {
+	// The classifier's hint is optional, so a category can arrive with no
+	// `suggested action` and no tail. `detail: null` is what makes the row a
+	// static line rather than a trigger that reveals nothing.
+	const [row] = replay([
+		incident("bare", {
+			text: "[session incident (p/m)] unknown: [Errno 28]",
+			raw: "[Errno 28]",
+		}),
+	]);
+	assert.equal(row.level, "error");
+	assert.equal(row.category, "unknown");
+	assert.equal(row.headline, "[Errno 28]");
+	assert.equal(row.detail, null);
+});
+
+test("a relayed payload's headline steps over both instruction lines the channel prepends", () => {
+	// Measured over the store: 411 hub rows open with the `note` line verbatim,
+	// so quoting it inline made every one of those rows read the same while the
+	// parent's actual words stayed behind the chevron. All three lines come from
+	// `harness/comms.py::TO_CHILD_INSTRUCTIONS`.
+	const instructions = [
+		"This is a note, not a question. No reply is needed unless it changes what you should do.",
+		"This changes your instructions. Apply it from now on, and drop work it makes pointless.",
+		"Answer it now with the `hub` tool — a short, direct reply — then carry on with what you were doing. Do not restructure your work around the question.",
+	];
+	const rows = replay(
+		instructions.map((instruction, index) =>
+			custom(`hub-${index}`, "hub_message", {
+				text: `<parent-message>\n${instruction}\n\nWhat the parent actually said ${index}.\n</parent-message>`,
+			}),
+		),
+	);
+	for (const [index, row] of rows.entries()) {
+		assert.equal(row.headline, `What the parent actually said ${index}.`);
+		// The instruction is not lost: it is the first thing the reader meets
+		// once the row is open, and the label already says the row is a relay.
+		assert.ok(row.detail.includes(instructions[index]));
+	}
+});
+
+test("an empty relay paints its envelope rather than its closing tag", () => {
+	// 34 real rows in the store are this shape: the description line is empty.
+	const [row] = replay([
+		custom("empty", "hub_message", {
+			text: "<subagent-message label='rollover-template-fix' job='5fb25794e06c'>\n\n</subagent-message>",
+		}),
+	]);
+	assert.equal(
+		row.headline,
+		"<subagent-message label='rollover-template-fix' job='5fb25794e06c'>",
+	);
+	assert.ok(!row.headline.startsWith("</"));
+	assert.equal(
+		row.headline.includes("subagent-message"),
+		true,
+		"the row still names the relay",
+	);
+});
+
+test("an incident carries the provider it names, and a row with nothing to say is not painted", () => {
+	const [row] = replay([
+		incident("with-provider", {
+			text: "[session incident (anthropic/claude-opus-5)] rate-limit: rate limit or quota exceeded\nsuggested action: Back off.\nThis is why the previous turn ended.",
+			raw: "rate limit or quota exceeded",
+		}),
+	]);
+	// The harness's own advice for a rate limit is "tell the user which provider
+	// hit the limit", so the row has to carry it.
+	assert.equal(row.provider, "anthropic/claude-opus-5");
+	// A no-provider incident says so by omission rather than by an empty string.
+	const state = replay([
+		incident("no-provider", {
+			text: "[session incident] cut-off: the runtime stopped\nThis is why the previous turn ended.",
+			raw: "the runtime stopped",
+		}),
+	]);
+	assert.equal(state[0].provider, null);
+
+	// A whitespace-only body is not a row: painting it would produce the empty
+	// headline the operator reported (a row that states nothing). No producer
+	// emits one; the gate is here so none can.
+	for (const blank of ["   ", " \n \n "]) {
+		assert.equal(
+			replay([custom("blank", "hub_message", { text: blank })]).length,
+			0,
+		);
+	}
+});
+
+test("a statement splits at the sentence end, not at an abbreviation or a list marker", () => {
+	// Round 2's R7: the bare "terminator followed by whitespace" rule split real
+	// text in half. Each case here is one the reviewer measured through the
+	// shipped reducer.
+	const cases = [
+		[
+			"You are now running as gpt-6 (approx. 200k ctx).",
+			"This applies from now on.",
+		],
+		[
+			"You are now running as gpt-6, e.g. the fast tier.",
+			"This applies from now on.",
+		],
+		["1. You are now running as gpt-6.", "This applies."],
+	];
+	for (const [fact, instruction] of cases) {
+		const [row] = replay([
+			custom("s", "session_model_switch", {
+				text: `[model switch] ${fact} ${instruction}`,
+			}),
+		]);
+		assert.equal(row.headline, fact);
+		assert.equal(row.detail, instruction);
+	}
+	// And the shapes that must keep splitting exactly as they did: a decimal, a
+	// version, a URL with a dotted version in it, and a question.
+	for (const [fact, instruction] of [
+		["Running at 0.5 units.", "This applies."],
+		[
+			"You are now running as deepseek/deepseek-v4.1-flash (was x).",
+			"This applies.",
+		],
+		["POST http://1.2.3.4:8000/v2.0 now.", "This applies."],
+		["Are you ready?", "This applies."],
+	]) {
+		const [row] = replay([
+			custom("s", "session_model_switch", {
+				text: `[model switch] ${fact} ${instruction}`,
+			}),
+		]);
+		assert.equal(row.headline, fact);
+	}
+});
+
+test("a relayed payload keeps its own words, a quoted wake-arming clause included", () => {
+	// Round 2's R9 scoped the wake-arming strip to a wake row so it could not edit
+	// a hub message that quoted the phrase. Round 7's R33 deleted the strip
+	// outright, because a wake row is upstream's receipt now and nothing this path
+	// paints is a wake's own words — so this pins the property the scoping existed
+	// for, which is the stronger one: the payload's words survive and the
+	// channel's manners above them do not.
+	const [hub] = replay([
+		custom("h", "hub_message", {
+			text: '<parent-message>\nThis is a note, not a question. No reply is needed unless it changes what you should do.\n\nWe cancelled w1 — cancel with wake({op:"cancel",id:"w1"}) once its goal is met.\n</parent-message>',
+		}),
+	]);
+	assert.ok(hub.headline.includes("cancel with wake("));
+	assert.ok(!hub.headline.startsWith("This is a note"));
+});
+
+test("a relayed row whose headline is its whole payload discloses nothing", () => {
+	// U16: once a heading is joined to its outcome, a two-line body IS the
+	// headline, and a chevron that reveals the same two lines promises material
+	// it does not add. Same rule the notice register needed (U14).
+	const [job] = replay([
+		custom("j", "job_result", {
+			text: "background job 'design849' failed:\n[Errno 28] No space left on device",
+		}),
+	]);
+	assert.equal(
+		job.headline,
+		"background job 'design849' failed: [Errno 28] No space left on device",
+	);
+	assert.equal(job.detail, null, "nothing left to disclose");
+
+	// A payload with more to say still keeps its body behind the disclosure.
+	const [long] = replay([
+		custom("j2", "job_result", {
+			text: "background job 'design849' failed:\n[Errno 28] No space left on device\nRetry once the volume is clear.",
+		}),
+	]);
+	assert.ok(long.detail?.includes("Retry once the volume is clear."));
+});
+

@@ -1,5 +1,10 @@
 import {
+	clearConsentAttention,
+	useConsentAttention,
+} from "@shared/browser-consent-attention";
+import {
 	useBrowserViewSuppressed,
+	useSuppressBrowserView,
 	useSuppressedOverlayIds,
 } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
@@ -20,6 +25,7 @@ import {
 import { BrowserConsentBar } from "./browser-consent-bar";
 import { BrowserExtensionsSheet } from "./browser-extensions-sheet";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
+import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserSitesSheet } from "./browser-sites-sheet";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import { BrowserUrlBar } from "./browser-url-bar";
@@ -153,7 +159,21 @@ export const BrowserPage: FC = () => {
 		}
 	}, []);
 
-	const pending = state?.pendingConsent?.[0] ?? null;
+	// A banner click names the request it was raised for, and the shell has already
+	// navigated here (see `shared/browser-consent-attention`). Two things follow: the
+	// band shows THAT request rather than the oldest, and the attention is dropped
+	// once it is no longer pending — answered, expired or cancelled — so a later
+	// request does not inherit an answer given to an earlier one (review round 1, R8).
+	const attention = useConsentAttention();
+	const pendingConsent = state?.pendingConsent ?? [];
+	const named = attention
+		? pendingConsent.find((entry) => entry.entryId === attention)
+		: undefined;
+	const pending = named ?? pendingConsent[0] ?? null;
+	useEffect(() => {
+		if (attention && !named) clearConsentAttention(attention);
+	}, [attention, named]);
+
 	// Which tabs are parked on an origin that is waiting for an answer. Matching on
 	// the URL's origin rather than on a tab id is deliberate: the prompt is raised
 	// by an agent's navigation, which may target a tab the user is not looking at.
@@ -166,6 +186,34 @@ export const BrowserPage: FC = () => {
 		.map((tab) => tab.tabId);
 
 	const currentOrigin = activeTab ? originOf(activeTab.url) : null;
+	// A failed load leaves Chromium's own surface in the view - blank, because
+	// Electron ships no error page - so the reason can only be painted here, and the
+	// view has to go away for this panel to be visible at all (design 11.3). That is
+	// the same hide-and-restore lever the overlay policy uses; the id says which
+	// reason applied, so a paused page is never mistaken for a broken one.
+	const navFailure = state?.navFailure ?? null;
+	const suppressionIds = suppressedBy ? suppressedBy.split(",") : [];
+	// WHICH OF THE TWO EXPLANATIONS THE USER GETS WHEN BOTH ARE TRUE.
+	//
+	// A dialog or the Sites sheet can be open over a tab whose last load failed, and
+	// the two states say different things: one is about something the user has just
+	// opened, the other about the page underneath. The overlay wins, because it is
+	// the user's own immediate action and its copy is a promise about what closing it
+	// does - a promise that stays true here, since closing the sheet reveals the
+	// failure panel. Letting the panel win instead left "close it to bring the page
+	// back" unreachable in exactly the state it was written for.
+	const overlaySuppressing = suppressionIds.some(
+		(id) => id && !id.startsWith("browser-load-failure:"),
+	);
+	const showingFailure =
+		navFailure !== null &&
+		state !== null &&
+		tabs.length > 0 &&
+		!overlaySuppressing;
+	// Registered for the failure whether or not the panel is the thing on screen:
+	// while an overlay is up the view is hidden anyway, and releasing the
+	// registration behind the sheet would restore a blank Chromium surface over it.
+	useSuppressBrowserView(navFailure !== null, "browser-load-failure");
 
 	if (!chrome.available) {
 		return (
@@ -215,6 +263,7 @@ export const BrowserPage: FC = () => {
 				<div aria-live="polite">
 					<BrowserConsentBar
 						pending={pending}
+						waitingBehind={pendingConsent.length - 1}
 						busy={busy}
 						onDecide={(entryId, decision) =>
 							void runBusy(() => chrome.respondToConsent(entryId, decision))
@@ -270,7 +319,10 @@ export const BrowserPage: FC = () => {
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Dismiss"
-						onClick={() => void chrome.refresh()}
+						// An explicit dismissal, rather than a `refresh()` that happened to
+						// succeed: a refusal is the user's to clear once they have read it,
+						// and re-reading the projection must not be able to erase it (R6).
+						onClick={() => chrome.dismissError()}
 					>
 						<X aria-hidden className="size-3.5" />
 					</Button>
@@ -287,6 +339,12 @@ export const BrowserPage: FC = () => {
 				ref={contentRef}
 				className="relative min-h-0 grow bg-canvas"
 				data-tour-tag="browser-content"
+				/* The suppression reason on the element that is always here, so a run — or a
+				   support session — reads WHY the page is hidden rather than inferring it
+				   from whatever happens to be on screen. The paused note carries the same
+				   attribute; the failure panel is a different element, and a reason that is
+				   only readable in one of the two states is the state that gets misread. */
+				data-suppressed-by={suppressedBy}
 			>
 				{!state && (
 					<div className="flex h-full items-center justify-center">
@@ -294,6 +352,13 @@ export const BrowserPage: FC = () => {
 					</div>
 				)}
 				{state && tabs.length === 0 && (
+					// ONE ACTION, ONE LABEL (design round 3, D19). This branch says `Open a
+					// tab` where the branch below says `New tab`, and both call
+					// `chrome.newTab()`; the strip's own `+` is `aria-label="New tab"`, so
+					// that is the label the feature already tells the user to look for.
+					// The EMPHASIS still differs - primary when there is nothing else to
+					// do, outline when the real next move is to pick a tab above - and
+					// that is deliberate rather than an inconsistency to iron out.
 					<div className="flex h-full flex-col items-center justify-center gap-3">
 						<Globe aria-hidden className="size-6 text-ink-dim" />
 						<p className="text-body text-ink-muted">No tabs are open.</p>
@@ -302,12 +367,31 @@ export const BrowserPage: FC = () => {
 							size="sm"
 							onClick={() => void chrome.newTab()}
 						>
-							Open a tab
+							New tab
 						</Button>
 					</div>
 				)}
-				{suppressed && state && tabs.length > 0 && (
-					<div
+				{state && tabs.length > 0 && !activeTab && (
+					// A tab can be closed while another is left (the agent's, typically) and the
+					// registry then has no active tab at all: without this the page area is
+					// blank with nothing saying why, and the only way out — pressing a tab in
+					// the strip — is something nothing suggests (review round 2, U4).
+					<div className="flex h-full flex-col items-center justify-center gap-3">
+						<Globe aria-hidden className="size-6 text-ink-dim" />
+						<p className="text-body text-ink-muted">
+							No tab is selected. Pick a tab above, or open a new one.
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => void chrome.newTab()}
+						>
+							New tab
+						</Button>
+					</div>
+				)}
+				{suppressed && overlaySuppressing && state && tabs.length > 0 && (
+					<output
 						className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center"
 						data-tour-tag="browser-paused"
 						data-suppressed-by={suppressedBy}
@@ -319,7 +403,13 @@ export const BrowserPage: FC = () => {
 							Paused while a dialog or panel is open — close it to bring the
 							page back.
 						</p>
-					</div>
+					</output>
+				)}
+				{showingFailure && navFailure && (
+					<BrowserLoadFailure
+						failure={navFailure}
+						onRetry={() => void chrome.reload()}
+					/>
 				)}
 			</div>
 

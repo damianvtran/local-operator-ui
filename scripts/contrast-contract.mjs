@@ -294,6 +294,41 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The same chip in its failed state: a tab whose main-frame load was refused
+		 * (design round 1, D1). The failure PANEL belongs to whichever tab the user is
+		 * looking at, so this chip is the only thing that carries the state on a
+		 * background tab — which makes it a component with its own fill and edge, and
+		 * by this file's own first rule that means a row here. The edge is
+		 * `borderControl` for the reason the waiting chip above records, and the row
+		 * was added this round because a green `check-themes` said nothing about a chip
+		 * nobody had listed (review round 2, D12). The designer measured it clearing
+		 * from the generated CSS (ink on `dangerWash` 8.62:1, edge 3.02:1 at worst
+		 * across the twelve themes); this row is what keeps that true.
+		 */
+		name: "browser failed marker chip",
+		on: ["surface", "elevated"],
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The strip's ACTIVE tab: `elevated` on the strip's own `sunken`, bounded by
+		 * `border-control` (design round 3, D18). It has its own fill and edge, so by
+		 * this file's first rule it has a row - and the row is the point: the ground
+		 * step alone is 1.11:1 in the dark palettes, which is a depth cue rather than
+		 * a marker, so `border-control` is what has to clear the 3:1 non-text floor.
+		 * It is asserted against BOTH grounds the edge borders: the strip's `sunken`
+		 * (in the gaps) and the neighbouring tab's `surface`.
+		 */
+		name: "browser active tab",
+		on: ["sunken", "surface"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The consent band: the surface the per-origin approval prompt renders on, in
 		 * the browser's chrome band. A control band rather than a callout, so its
 		 * boundary is `border-control` (design 11.2) and its ground is `surface` — see
@@ -515,6 +550,29 @@ const GRAPHICS = [
 		name: "usage unmeasured mark",
 		on: ["surface"],
 		fg: "inkDim",
+	},
+	/*
+	 * The panel share meter's fill, drawn inside the same `border-control` track
+	 * `/usage` uses (its geometry is a port of that meter, one primitive instead
+	 * of one per panel). It is a fill that carries meaning — the length IS the
+	 * datum — so it sits on the graphic-object floor rather than being read as
+	 * decoration.
+	 */
+	{
+		name: "panel proportion fill (accent)",
+		on: ["sunken"],
+		fg: "accent",
+	},
+	/*
+	 * The one chart hue. The frame draws bars on the panel's own ground (a chart
+	 * is a region, not a card), and `accent` is the only series colour the design
+	 * permits: a second series colour would need a semantic the contract has no
+	 * row for, which is why breakdowns are many rows of single-hue bars.
+	 */
+	{
+		name: "panel chart bar (accent)",
+		on: ["surface"],
+		fg: "accent",
 	},
 ];
 
@@ -754,7 +812,85 @@ const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
  *
  * @type {{theme: string, fg: string, bg: string, got: number, why: string}[]}
  */
-const EXCEPTIONS = [];
+const EXCEPTIONS = [
+	/*
+	 * `danger` as text on `elevated`, the three palettes that cannot clear 4.5:1
+	 * there. Measured from the shipped palettes, not argued: the pair is drawn by
+	 * the dialog required-mark and the danger-variant button's label, both of
+	 * which are shared components this file does not own. Every other palette
+	 * clears the floor (4.66 tokyoNight up to 6.19 iceberg) and is asserted
+	 * normally above.
+	 */
+	{
+		theme: "dracula",
+		fg: "danger",
+		bg: "elevated",
+		got: 3.81,
+		why: "the dialog required-mark and the danger button's label; a shared control's colour, recorded rather than changed here (design round 2, D3)",
+	},
+	{
+		theme: "monokai",
+		fg: "danger",
+		bg: "elevated",
+		got: 3.76,
+		why: "same pair as dracula; worst of the three",
+	},
+	{
+		theme: "neon",
+		fg: "danger",
+		bg: "elevated",
+		got: 4.43,
+		why: "same pair as dracula; 0.07 under the floor",
+	},
+	/*
+	 * The danger-variant control's border on a dialog ground, eight palettes
+	 * under the 3:1 a control's only edge is asked to clear. Same reasoning as
+	 * the text pair above: a shared control's colour, recorded where a reader
+	 * can find it rather than changed in a panel's PR.
+	 */
+	{ theme: "monokai", fg: "dangerBorder", bg: "elevated", got: 2.49, why: "the danger control's only edge on a dialog ground; worst of the eight" },
+	{ theme: "dracula", fg: "dangerBorder", bg: "elevated", got: 2.51, why: "same pair as monokai" },
+	{ theme: "radient", fg: "dangerBorder", bg: "elevated", got: 2.58, why: "same pair as monokai" },
+	{ theme: "synth", fg: "dangerBorder", bg: "elevated", got: 2.6, why: "same pair as monokai" },
+	{ theme: "obsidian", fg: "dangerBorder", bg: "elevated", got: 2.65, why: "same pair as monokai" },
+	{ theme: "tokyoNight", fg: "dangerBorder", bg: "elevated", got: 2.66, why: "same pair as monokai" },
+	{ theme: "neon", fg: "dangerBorder", bg: "elevated", got: 2.78, why: "same pair as monokai" },
+	{ theme: "dune", fg: "dangerBorder", bg: "elevated", got: 2.88, why: "same pair as monokai; 0.12 under the floor" },
+];
+
+/*
+ * The step between a CONTROL's ink and a READOUT's ink, measured in one row.
+ *
+ * A session's row has always put live chips (`inkMuted`) beside inert readings
+ * (`inkDim`), and a draft's row does now too: the two chips that open, next to
+ * the context reading that does not. That pair is the only at-rest colour cue
+ * separating a control from a readout, and in five palettes it is a smaller step
+ * than this file already demands of a comment against the code beside it
+ * (`SYNTAX_COMMENT_FLOOR`, 8).
+ *
+ * Pinned rather than fixed, deliberately. Lifting `inkDim` in those five
+ * palettes changes EVERY dim string in the app, because the pairing is the app's
+ * own vocabulary rather than this row's - so that fix is a palette-wide visual
+ * change owned by the design review for those palettes, not by the PR that made
+ * two draft readings clickable. What this file can do meanwhile is stop the
+ * numbers being a matter of opinion: each pin must still measure what it says,
+ * and a palette that has been lifted out of the floor FAILS until its pin is
+ * deleted, so the list cannot outlive the defect it records.
+ *
+ * It is a pin and not a blocker because the cue is not colour-only in the
+ * artifact: a control takes the pointer, carries a hover step, and is a plain
+ * button in the accessibility tree, while the inert label form is a button with
+ * `aria-disabled` and no hover step. The ink step is what a mouse user sees
+ * BEFORE approaching, and those are the measured facts this list records.
+ */
+const INK_STEP_PINNED = [
+	{ theme: "tokyoNight", got: 5.74 },
+	{ theme: "obsidian", got: 5.8 },
+	{ theme: "iceberg", got: 6.03 },
+	{ theme: "neon", got: 7.17 },
+	{ theme: "localOperatorLight", got: 7.93 },
+];
+const inkStepSeen = new Set();
 
 /* ---- 5. the run --------------------------------------------------------- */
 
@@ -899,6 +1035,11 @@ const SEPARABLE = ["success", "warning", "danger", "info"];
 const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info", "ink"];
 const SYNTAX_COMMENT_FLOOR = 8;
 const SEPARATION_FLOOR = 15;
+/* The ink step's floor is the comment floor: see `INK_STEP_PINNED` for why it is
+   the same number and for why five palettes are recorded below it instead of
+   being moved. Declared here rather than beside the list because `const` does
+   not hoist and the floor it names is declared at this point in the file. */
+const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
 
 /*
  * Two perceptual floors, because a field and a line are not the same problem.
@@ -1007,7 +1148,7 @@ for (const { id, palette: p } of palettes) {
 	 * there (`accent` 4.22 on dracula, `danger` 3.76 on monokai) and asserting
 	 * them would report failures against pairs nothing renders.
 	 *
-	 * This note is nevertheless the one place a tone ink IS drawn on `elevated`:
+	 * This note is one of TWO places a tone ink is drawn on `elevated`:
 	 * `models.catalogue` can answer with rows AND per-provider errors, and the
 	 * note about what is missing belongs above the list rather than instead of it
 	 * (design D4). `warning` is the role it renders in, so that is the pair
@@ -1021,6 +1162,53 @@ for (const { id, palette: p } of palettes) {
 		"elevated",
 		FLOOR.text,
 		"the picker's partial-listing note",
+	);
+
+	/*
+	 * The second place, and the one that used to be invisible to this file.
+	 *
+	 * `danger` is drawn as TEXT on `elevated` by two surfaces: the required-mark
+	 * asterisk beside every label in a dialog, and the danger-variant button's
+	 * label (the delete confirmation). Asserting the pair is what makes the
+	 * decision visible — three palettes are below the floor (monokai 3.76,
+	 * dracula 3.81, neon 4.43) and each is pinned below with its measured ratio.
+	 * The alternative was a design change to two shared components (a required
+	 * mark's colour, and a destructive control's variant on dialog grounds),
+	 * which is a decision for the whole app rather than for the code-memory
+	 * panel that surfaced it, so it is recorded here instead of made here
+	 * (design round 2, D3).
+	 *
+	 * The code-memory panel's OWN error sentences do not join this list: they
+	 * render in `ink` precisely so the panel does not add a third user
+	 * (`variable-form-dialog.tsx`).
+	 */
+	assertPair(
+		id,
+		p,
+		"danger",
+		"elevated",
+		FLOOR.text,
+		"danger as text on a dialog's ground",
+	);
+
+	/*
+	 * And the border that goes with it, because it is the whole boundary of the
+	 * control: the danger-variant button draws `border-danger-border` with no
+	 * fill until hover (`button.tsx`), so on a dialog the edge IS the control.
+	 *
+	 * Eight palettes are under 3:1 here (monokai 2.49 through dune 2.88, measured
+	 * from the palettes) and each is pinned below. Repainting a shared control's
+	 * variant is an app-wide decision and not this PR's to take; measuring it is
+	 * this PR's, because the delete-confirmation frame it adds is where the pair
+	 * is now drawn (design round 2, D3).
+	 */
+	assertPair(
+		id,
+		p,
+		"dangerBorder",
+		"elevated",
+		FLOOR.nonText,
+		"the danger control's only edge on a dialog's ground",
 	);
 
 	/* Component triples. */
@@ -1132,6 +1320,28 @@ for (const { id, palette: p } of palettes) {
 		if (got < SYNTAX_COMMENT_FLOOR) {
 			fail(
 				`${id}: syntax \`${role}\` ${p[role]} sits at ΔE00 ${r2(got)} from comment \`${p.inkDim}\` (need ${SYNTAX_COMMENT_FLOOR}) — a token the eye cannot separate from the comment beside it is not highlighted`,
+			);
+		}
+	}
+
+	/* The control/readout ink step: measured always, floored where it can be. */
+	if (isHex(p.inkMuted) && isHex(p.inkDim)) {
+		assertions++;
+		inkStepSeen.add(id);
+		const got = deltaE(p.inkMuted, p.inkDim);
+		const pin = INK_STEP_PINNED.find((e) => e.theme === id);
+		if (got < INK_STEP_FLOOR) {
+			if (!pin)
+				fail(
+					`${id}: the control ink \`inkMuted\` ${p.inkMuted} sits at ΔE00 ${r2(got)} from the readout ink \`inkDim\` ${p.inkDim} (need ${INK_STEP_FLOOR}) - a chip that opens cannot be told from a reading that does not`,
+				);
+			else if (Math.abs(pin.got - got) >= 0.01)
+				fail(
+					`${id}: INK_STEP_PINNED records ${pin.got} but \`inkMuted\`/\`inkDim\` now measure ${r2(got)} - re-measure and update the pin, so the recorded number stays the one in the palette`,
+				);
+		} else if (pin) {
+			fail(
+				`${id}: the ink step is pinned at ${pin.got} but now measures ${r2(got)}, clearing the ${INK_STEP_FLOOR} floor - delete the pin rather than leaving dead weight in the contract`,
 			);
 		}
 	}
@@ -1268,6 +1478,15 @@ if (callSiteFailures > 0) {
 	process.exit(1);
 }
 
+/* A pin for a palette that is gone is the same dead weight. */
+const staleInk = INK_STEP_PINNED.filter((e) => !inkStepSeen.has(e.theme));
+if (staleInk.length > 0) {
+	console.error(
+		`\nContrast contract FAILED: ${staleInk.length} pinned ink step(s) reference themes that no longer exist (${staleInk.map((e) => e.theme).join(", ")}).`,
+	);
+	process.exit(1);
+}
+
 /* An unpinned exception is dead weight that hides a fixed defect. */
 const stale = EXCEPTIONS.filter(
 	(e) => !palettes.some(({ id }) => id === e.theme),
@@ -1280,5 +1499,5 @@ if (stale.length > 0) {
 }
 
 console.log(
-	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s).`,
+	`Contrast contract holds: ${assertions} assertions across ${themeCount} themes, ${EXCEPTIONS.length} pinned exception(s), ${INK_STEP_PINNED.length} pinned ink step(s).`,
 );
