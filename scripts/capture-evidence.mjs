@@ -1104,6 +1104,22 @@ export const STORIES = [
 	 * can produce the narrow layout. Every other entry is the dialog's own size.
 	 */
 	["panels-analytics--populated", 1140, 980],
+	/*
+	 * The same payload with the pointer ON THE BAR, which is what this change is
+	 * about: recharts' own cursor for a `BarChart` is a full-height rectangle over
+	 * the category band, so before this branch the frame under the pointer showed
+	 * the whole COLUMN highlighted and the bar the question was about unchanged.
+	 * The story adds nothing (`panels-analytics--populated-hover`), because
+	 * `:hover` cannot be a story state; the rig's own CDP input is what puts the
+	 * pointer there. `hoverSettleMs` is the tooltip's 400 ms open delay — without
+	 * it the frame is the resting state under a name that claims a hover.
+	 */
+	[
+		"panels-analytics--populated-hover",
+		1140,
+		980,
+		{ hover: ".recharts-bar-rectangle .recharts-rectangle", hoverSettleMs: 900 },
+	],
 	["panels-analytics--refreshing", 1140, 980],
 	["panels-analytics--thirty-days", 1140, 1020],
 	["panels-analytics--this-session-only", 1140, 980],

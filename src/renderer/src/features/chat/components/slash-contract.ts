@@ -39,6 +39,15 @@ export type SlashKeyIntent =
 	| { kind: "move"; index: number }
 	/** Apply `matches[index]`; `run` is false when Enter may only complete. */
 	| { kind: "apply"; index: number; run: boolean }
+	/**
+	 * Replace the typed command word with `prefix` and leave the list open.
+	 *
+	 * The ambiguous-Enter path, and the one intent that does NOT act on a row: the
+	 * word grows to what every candidate agrees on and the user keeps narrowing.
+	 * Carries the prefix rather than an index because the answer is not one of the
+	 * rows — that is the whole point of the gesture.
+	 */
+	| { kind: "extend"; prefix: string }
 	| { kind: "close" }
 	| { kind: "pass" };
 
@@ -51,6 +60,15 @@ export type SlashKeyInput = {
 	matches: readonly RoutableRow[];
 	/** The argument typed so far, compared against the row's value by the gate. */
 	argumentQuery: string;
+	/**
+	 * The COMMAND word typed so far, without its slash.
+	 *
+	 * The command phase's own query, and the one the ambiguity gate reads there —
+	 * `_picker_query()` in the TUI. A sibling of `argumentQuery` rather than the
+	 * same field: the two phases compare different text against different values,
+	 * and the argument phase's field is empty while the command list is up.
+	 */
+	commandQuery: string;
 	/** The command word whose argument list is up, when in the argument phase. */
 	argumentCommand: string | null;
 	nameThenMessage: boolean;
@@ -79,6 +97,73 @@ export function slashRunAllowed(input: {
 		input.destructive,
 		input.chosenByHand,
 	);
+}
+
+/**
+ * Whether Enter may RUN the active COMMAND row rather than only complete it.
+ *
+ * The TUI's command-phase arm of `Editor._picker_choice_is_unambiguous`
+ * (`editor.py:7731-7765`), whose three answers are: the user arrowed onto the
+ * row, the typed word IS the row's label, or the row is the only match. Read
+ * through the same `isUnambiguous` the argument phase uses, so the two phases
+ * cannot drift — with `destructive` FALSE here on purpose: the danger flag
+ * protects a list of VALUES being deleted (`/logout`'s credentials), and the
+ * command phase is a list of NAMES (`_argument_is_destructive` has nothing to
+ * read before a list is open).
+ *
+ * WHY the command phase needs the gate at all, having had none: a bare `/mo`
+ * leaves one row today and two tomorrow, and "Enter runs whatever the matcher
+ * picked FIRST" is what the terminal's own comment calls out — `/lo` highlights
+ * `loop` while `login` and `logout` also match, so a reflex second keystroke
+ * could start autonomous work for a user reaching for login. The gate is what
+ * makes that keystroke complete to the shared prefix instead.
+ */
+export function commandChoiceUnambiguous(input: {
+	/** The typed command word, without its slash — the matcher's own query. */
+	query: string;
+	/** The active row's label: the name or alias that matched. */
+	label: string;
+	/** How many rows the query left, which is the single-survivor arm. */
+	total: number;
+	chosenByHand: boolean;
+}): boolean {
+	return isUnambiguous(
+		input.query,
+		input.label,
+		input.total,
+		false,
+		input.chosenByHand,
+	);
+}
+
+/**
+ * The prefix every candidate label agrees on, case-insensitively.
+ *
+ * A port of `Editor._extend_to_common_prefix` (`editor.py:8326-8345`), which is
+ * what an AMBIGUOUS Enter does: `names[0]` is trimmed against each later name
+ * until it is a prefix of all of them, and the result keeps the FIRST name's own
+ * casing because the query is matched case-insensitively (so the registry's
+ * spelling of a command is what lands in the composer, not the user's). An empty
+ * answer is a real one — `co` for `compact`/`context`/`commands`, but nothing at
+ * all for a bare `/` — and the caller grows to it, which for the empty case means
+ * the word does not move and the list stays up.
+ *
+ * The narrowness is the point rather than a limitation: the prefix cannot be the
+ * wrong command by construction, since it is the part every candidate agrees on,
+ * while completing to the highlighted row put the highest-blast-radius candidate
+ * in the buffer ready to run.
+ */
+export function sharedCommandPrefix(labels: readonly string[]): string {
+	const [first, ...rest] = labels;
+	if (!first) return "";
+	let shared = first;
+	for (const label of rest) {
+		while (shared && !label.toLowerCase().startsWith(shared.toLowerCase())) {
+			shared = shared.slice(0, -1);
+		}
+		if (!shared) return "";
+	}
+	return shared;
 }
 
 /**
@@ -184,10 +269,15 @@ export function pointerPickRuns(
 	return entry.kind !== "picker" || entry.inline === undefined;
 }
 
+/** The labels of a command-phase list, in the order the popup shows them. */
+const commandLabels = (rows: readonly RoutableRow[]): string[] =>
+	rows.flatMap((row) => (row.kind === "command" ? [row.label] : []));
+
 /**
  * Route one key press.
  *
- * Ported from `editor.py:_resolve_argument` / `:8060-8115` and pinned by
+ * Ported from `editor.py:_resolve_argument` / `:8060-8115`, `_picker_choice_is_unambiguous`
+ * / `:7731-7765` and `_extend_to_common_prefix` / `:8326-8345`, and pinned by
  * `slash-contract.test.mjs`, because this is the one place where a wrong answer
  * deletes a credential instead of completing a word.
  */
@@ -207,10 +297,55 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 		case "Tab": {
 			const row = input.matches[input.active];
 			if (!row) return { kind: "pass" };
-			// A command row COMPLETES only: sending here would submit a
-			// half-typed command word.
-			if (row.kind === "command")
-				return { kind: "apply", index: input.active, run: false };
+			if (row.kind === "command") {
+				/*
+				 * Tab is the completion key in BOTH phases: it takes the highlighted
+				 * row whatever the query says and never runs, which is what makes it
+				 * the safe key while a list is being narrowed
+				 * (`editor.py:3259`).
+				 */
+				if (input.key === "Tab")
+					return { kind: "apply", index: input.active, run: false };
+				/*
+				 * Enter NAMES a command, so it may also run it — but only when the
+				 * choice is unambiguous (`commandChoiceUnambiguous`). An ambiguous
+				 * one grows the word to the common prefix and leaves the list up, and
+				 * that is where the extra keystroke belongs: it appears exactly where
+				 * the intent genuinely is not clear. Completing to the HIGHLIGHTED
+				 * row instead put the highest-blast-radius candidate into the buffer
+				 * ready to run.
+				 *
+				 * `run` is the ROW's answer here; the DESTINATION's answer is applied by
+				 * the one adapter every pick passes through (`message-input.tsx`),
+				 * which gates a command row on `pointerPickRuns`. So a destination that
+				 * opens an inline list (`/model`, `/team`, `/theme`, `/agent`,
+				 * `/effort`, `/approvals`) still only completes and opens its list,
+				 * exactly as a click on that row does.
+				 */
+				const unambiguous = commandChoiceUnambiguous({
+					query: input.commandQuery,
+					label: row.label,
+					total: input.matches.length,
+					chosenByHand: input.chosenByHand,
+				});
+				if (!unambiguous) {
+					const prefix = sharedCommandPrefix(commandLabels(input.matches));
+					return {
+						kind: "extend",
+						/*
+						 * Never SHORTER than what is typed: `_extend_to_common_prefix`
+						 * returns having changed nothing when the word is already the common
+						 * prefix, and the key is consumed either way, so the caller is handed
+						 * the word it already holds.
+						 */
+						prefix:
+							prefix.length > input.commandQuery.length
+								? prefix
+								: input.commandQuery,
+					};
+				}
+				return { kind: "apply", index: input.active, run: true };
+			}
 			// A NAME+message list (`/team`, `/agent`) fills the name and nothing
 			// else: "a name is chosen" is "ready for the message", not "run it".
 			if (input.nameThenMessage)
@@ -319,6 +454,8 @@ export type EnterFooterInput = {
 	phase: "command" | "argument";
 	/** The command word whose argument list is up, without its slash. */
 	command: string | null;
+	/** The active COMMAND row's matched label (the alias that matched). */
+	label: string;
 	nameThenMessage: boolean;
 	runs: boolean;
 	/** The active row's value, and whether there is an active row at all. */
@@ -336,12 +473,23 @@ export type EnterFooterInput = {
  * left the user to remember it (UX round 1 U2). `stage` is deliberately absent:
  * staging happens on a composer Enter with the list already closed, and it is
  * announced there by its own note (see `message-input.tsx`, UX round 1 U7).
+ *
+ * The command phase used to have ONE line — "Enter completes the command." —
+ * which stopped being true the round Enter stopped being completion-only: it now
+ * runs the row when the choice is unambiguous, and grows the word to the common
+ * prefix when it is not. Both arms read the same two inputs the router decides
+ * from, so the line cannot promise a gesture the key does not perform.
  */
 export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
 	// ("Enter opens the full picker."), so the footer would only repeat it.
 	if (!input.matched) return null;
-	if (input.phase === "command") return "Enter completes the command.";
+	if (input.phase === "command")
+		return !input.unambiguous
+			? "Enter completes to the common prefix."
+			: input.runs
+				? `Enter runs /${input.label}.`
+				: `Enter completes /${input.label}.`;
 	if (input.nameThenMessage) return "Enter chooses this name.";
 	if (!input.runs) return "Enter completes the value.";
 	if (!input.unambiguous) return "Enter completes; Enter again runs.";
