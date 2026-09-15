@@ -1,5 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
+import { interruptNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
 import { MessageInput } from "./message-input";
@@ -256,5 +257,84 @@ export const CwdChipInRow: Story = {
 				</div>
 			))}
 		</div>
+	),
+};
+
+/*
+ * THE INTERRUPT'S OWN SURFACE: the control, its absence, and what a press that
+ * left work behind says.
+ *
+ * Three frames rather than one, because the change has three states a reader
+ * has to be able to tell apart and two of them are silent:
+ *
+ * - `StopControlWhileStreaming` is the affordance itself, on the same
+ *   `/chatcol` measure the cwd chip's row uses. It is the frame the reported
+ *   bug was about: this control used to post a catalogue command whose answer
+ *   was a presentation form, so it looked identical to this and stopped
+ *   nothing.
+ * - `StopControlWithoutCapability` is the fail-closed state. The backend
+ *   advertises no `session_interrupt`, so no control is rendered AT ALL - the
+ *   rejected alternatives were a fallback to `/stop` (which ends the session
+ *   this control does not promise to end) and today's silent no-op (which is
+ *   the lie being removed). Read against the frame above it, the difference is
+ *   the whole point of the pair.
+ * - `InterruptLeftWorkRunning` is the only one that speaks, and it is the copy
+ *   the shipped function produces rather than a transcription of it: a stopped
+ *   turn with nothing under it renders NOTHING (the notification bridge's own
+ *   exclusion of the `interrupted` kind), so the sentence exists only where
+ *   there is work the user cannot see the end of.
+ */
+const STOPPED_WITH_WORK_LEFT = interruptNotice({
+	status: "interrupted",
+	receipt: "stopping this turn",
+	children_running: 2,
+	background_jobs: 1,
+	replayed: false,
+});
+
+export const StopControlWhileStreaming: Story = {
+	render: () => (
+		<Frame label="streaming, with session_interrupt negotiated: the control is offered">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					canonicalStop={{ active: true, onStop: () => {} }}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+export const StopControlWithoutCapability: Story = {
+	render: () => (
+		<Frame label="streaming, backend without session_interrupt: no control is rendered">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+export const InterruptLeftWorkRunning: Story = {
+	render: () => (
+		<Frame label="stopped, with children and background jobs still running">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					interruptNotice={STOPPED_WITH_WORK_LEFT}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
 	),
 };
