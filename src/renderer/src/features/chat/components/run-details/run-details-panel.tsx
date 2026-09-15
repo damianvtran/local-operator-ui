@@ -25,6 +25,7 @@ import type { McpServerRow, RunDetails } from "./run-detail-model";
 import { hasRunDetails } from "./run-detail-model";
 import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
+import { RunDetailWakes } from "./run-detail-wakes";
 import { useRunDetailsClock } from "./run-details-clock";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 
@@ -63,14 +64,25 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	/**
 	 * The Subagents section's element, for the same request.
 	 *
-	 * Three refs rather than one because the request now names one of three
+	 * Four refs rather than one because the request now names one of four
 	 * destinations (`RunPanelSection`): the composer's plan chip, its subagents
-	 * chip and its jobs chip each point at their own section, and the pane resolves
-	 * the request through whichever ref that section owns.
+	 * chip, its jobs chip and its wake chip each point at their own section, and
+	 * the pane resolves the request through whichever ref that section owns —
+	 * through the `Record` in `run-panel.tsx`, so a destination added to the union
+	 * and missed here is a TYPE ERROR rather than a mis-scrolled pane.
 	 */
 	subagentsSectionRef?: Ref<HTMLElement>;
 	/** The Jobs section's element, for the same request. */
 	jobsSectionRef?: Ref<HTMLElement>;
+	/**
+	 * The Wakes section's element, for the same request.
+	 *
+	 * The fourth ref, and with it the fourth destination the composer's status row
+	 * can name (`RunPanelSection`): the wake chip opens the pane at this section
+	 * exactly as the plan chip opens it at the plan, and the pane resolves the
+	 * request through whichever ref that section owns.
+	 */
+	wakesSectionRef?: Ref<HTMLElement>;
 };
 
 export const RunDetailsPanel = ({
@@ -86,6 +98,7 @@ export const RunDetailsPanel = ({
 	todosSectionRef,
 	subagentsSectionRef,
 	jobsSectionRef,
+	wakesSectionRef,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -179,6 +192,33 @@ export const RunDetailsPanel = ({
 			),
 		});
 	}
+	/*
+	 * The Wakes section, and its gate is the same rule the composer's wake chip is
+	 * gated on: at least one ARMED schedule. A session whose only content is a wake
+	 * is one this pane has something to show for, which is why this section (and
+	 * not a widened `hasRunDetails`) is what keeps the QUIET STATE below out of
+	 * reach for it — see that branch's own note.
+	 *
+	 * It takes the UNTIMED model, like the plan above it and unlike the roster and
+	 * the jobs list: an armed wake carries an absolute local instant and a cadence,
+	 * neither of which is a function of when it is read, so a re-measure would
+	 * repaint the same pixels once a second. There is deliberately no relative form
+	 * ("in 42m") for the same reason.
+	 *
+	 * ORDER: after the tool jobs and before the MCP servers. `docs/run-sidebar.md`
+	 * § 7.2 FIXES the section order rather than reordering sections by state (its
+	 * own words: "takes the consequence by fixing the section order"), and it fixes
+	 * the MCP list as LAST — so a new section joins the end of the run's own lists,
+	 * where the jobs chips' own placement also came from. It is deliberately not
+	 * placed beside the composer's chip order, which is a different surface's
+	 * reading order (there the standing facts lead the live ones).
+	 */
+	if (details.wakes.length > 0) {
+		sections.push({
+			key: "wakes",
+			body: <RunDetailWakes details={details} sectionRef={wakesSectionRef} />,
+		});
+	}
 	if (mcpServers.length > 0) {
 		sections.push({
 			key: "mcp",
@@ -211,6 +251,18 @@ export const RunDetailsPanel = ({
 		 * panel today. It is written rather than asserted away because the copy
 		 * must never claim "nothing in flight" while something is outstanding, and
 		 * a silent fallthrough is exactly how it would.
+		 *
+		 * **A session whose only content is ARMED WAKES deliberately does NOT widen
+		 * `hasRunDetails`** (`docs/composer-wakes.md` states the decision and its
+		 * alternative). The wake chip points into this pane, so "Nothing to show
+		 * yet." must not be what a reader finds there — and it is not: the Wakes
+		 * section above renders at `wakes.length > 0`, which makes `sections.length`
+		 * non-zero and this whole branch UNREACHABLE for that session. Widening the
+		 * predicate would have been the other way to get there and is rejected on
+		 * the field's own meaning: it answers "is anything asking for something right
+		 * now" (`run-detail-model.ts`), and an armed wake is a FUTURE event that has
+		 * asked for nothing yet. A predicate widened to cover it would be answering
+		 * a different question under the same name at every one of its clauses.
 		 */
 		return (
 			<div className={cn("flex flex-col", className)} {...props}>

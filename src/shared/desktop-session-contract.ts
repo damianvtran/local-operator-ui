@@ -371,6 +371,38 @@ export type DesktopNotification = {
 	/** `when_unfocused` for completions; `always` for a gate. */
 	focus_policy: "when_unfocused" | "always";
 };
+/**
+ * One ARMED wake schedule, as the canonical frontend publishes it.
+ *
+ * Declared rather than reached through the index signature for the reason
+ * `last_usage` below states for itself: it is the field that decides whether a
+ * reading renders at all. A wake chip is gated on there being at least one of
+ * these, and the pane's Wakes section draws one row per entry — so an `as never`
+ * cast at the call site would let a rename on the wire (`WakeState`,
+ * `local_operator/session/frontend_state.py`) silently empty both surfaces with
+ * nothing to catch it.
+ *
+ * `next_due_at` is epoch MILLISECONDS, and the unit is spelled out because it is
+ * the trap: every other clock on this wire (`start_time`, `settled_at`) is epoch
+ * SECONDS and the run model divides those by 1000 before comparing. A wake's due
+ * instant is published in milliseconds and is used as milliseconds.
+ *
+ * `every_ms` is null for a one-shot schedule and `remaining` is null when the
+ * recurrence is unbounded; both are optional because a schedule created before
+ * either field existed simply does not carry it.
+ */
+export type CanonicalWakeState = {
+	id: string;
+	message: string;
+	/** The next fire instant, epoch MILLISECONDS. */
+	next_due_at: number;
+	created_at?: number;
+	/** The recurrence interval in milliseconds, or null for a single shot. */
+	every_ms?: number | null;
+	/** Deliveries left, or null when the schedule is not limit-bounded. */
+	remaining?: number | null;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -395,7 +427,13 @@ export type CanonicalFrontendState = {
 	queued_steering: Array<Record<string, unknown>>;
 	jobs: Array<Record<string, unknown>>;
 	todos: Array<Record<string, unknown>>;
-	wakes: Array<Record<string, unknown>>;
+	/**
+	 * The session's ARMED wake schedules. Absent or empty means no wakes, which
+	 * is the ordinary state: the composer's wake chip and the run pane's Wakes
+	 * section both render as ABSENCE at zero, so this list being empty is not a
+	 * state either surface draws.
+	 */
+	wakes: CanonicalWakeState[];
 	mcp_servers: Array<{
 		name: string;
 		status: string;

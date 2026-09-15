@@ -1,7 +1,7 @@
 /**
  * The composer's status row: the session's standing goal, and the size of the
- * run's plan (`docs/composer-status-tabs.md`, which is the design record this
- * implements).
+ * run's plan, and the session's armed wake schedules (`docs/composer-status-tabs.md`,
+ * `docs/composer-wakes.md`).
  *
  * One line, immediately above the composer box and OUTSIDE it. The placement is
  * the send-error alert's own recorded argument rather than a new one
@@ -11,7 +11,7 @@
  * Out here the box's own measured geometry does not move at all — the box only
  * shifts up by this row's height, which is the property the frames assert.
  *
- * The two ACTIVITY chips join them, and they are the same species as the plan
+ * The three COUNT chips join them, and they are the same species as the plan
  * chip rather than a third thing:
  *
  * - the SUBAGENTS chip counts the roster — the children this session has
@@ -20,15 +20,26 @@
  *   plan chip's own control box, both REVEAL their section of the pane, and both
  *   are gated on there being something to count (`docs/composer-activity-chips.md`,
  *   which is the design record and where the rejected alternatives live).
- * - they lead with a STATE MARK instead of the `Info` glyph, and that is the row's
- *   one piece of motion: `SubagentStateIcon` spins a running row and nothing else,
- *   so a chip moves exactly while the work it names is moving. `Info` stays the
- *   plan chip's mark so one glyph in this row still means one thing.
+ * - the WAKE chip counts the session's ARMED wake schedules and opens the pane at
+ *   its Wakes section (`docs/composer-wakes.md`). It is the one thing on this row
+ *   about the FUTURE rather than about work in flight or persisted state: a wake
+ *   fires with no keystroke, and without this the only place a session's autonomy
+ *   was visible was the delivery row after it had already happened.
+ * - the subagents and jobs chips lead with a STATE MARK instead of the `Info`
+ *   glyph, and that is the row's one piece of motion: `SubagentStateIcon` spins a
+ *   running row and nothing else, so a chip moves exactly while the work it names
+ *   is moving. The wake chip leads with `AlarmClock`, which is a mark and not a
+ *   state. `Info` stays the plan chip's mark so one glyph in this row still means
+ *   one thing.
  * - the count gate is the POINT rather than an optimisation: unlike the plan's
- *   `0 to-dos open`, these two answers are not about persisted state —
+ *   `0 to-dos open`, these answers are not about persisted state —
  *   `frontend.jobs` is swept minutes after a row settles, so a lingering
  *   `0 subagents running` would describe rows that are about to vanish, and it
  *   would put a chip above every composer on every session that never delegated.
+ *   The wake chip's gate is the same rule for its own reason: `frontend.wakes` is
+ *   empty on every session that has never armed a wake, which is nearly all of
+ *   them, so `0 wakes armed` would be a line of chrome above nearly every composer
+ *   in the app.
  *
  * Two controls, one species, and neither is a tab:
  *
@@ -65,7 +76,7 @@ import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Info } from "lucide-react";
+import { AlarmClock, Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
@@ -78,6 +89,7 @@ import {
 	childClause,
 	jobClause,
 	todoClause,
+	wakeClause,
 } from "./run-details";
 import { SubagentStateIcon } from "./run-details/run-detail-row-parts";
 
@@ -105,6 +117,16 @@ const PLAN_ACTION = "Open the plan in run details";
  */
 const SUBAGENT_ACTION = "Open the subagents in run details";
 const JOB_ACTION = "Open the jobs in run details";
+
+/**
+ * The wake chip's action, on the same rule as the three above it.
+ *
+ * The plural is the SECTION's own heading in the pane (`Wakes`), so the chip names
+ * the destination in the word the destination is labelled with. `Open` rather than
+ * `Show` for the plan chip's own reason: this moves the reader to a region rather
+ * than disclosing something in place.
+ */
+const WAKE_ACTION = "Open the wakes in run details";
 
 /**
  * The row's first-chip rule, owned by the ROW.
@@ -224,6 +246,18 @@ export const shouldRestoreComposerFocus = (
 	!previouslyFocused.isConnected &&
 	!rowHoldsFocus;
 
+/**
+ * The wake chip's tooltip and accessible name: ONE derived string, for
+ * `planChipLabel`'s reason.
+ *
+ * The count is `wakeClause`'s spelling and the same function the Wakes section's
+ * trailing tally prints, so the chip and the section it opens cannot state one
+ * number two ways — including the singular, which is the one a hand-written plural
+ * gets wrong.
+ */
+export const wakeChipLabel = (armed: number): string =>
+	`${WAKE_ACTION}${LABEL_SEAM}${wakeClause(armed)}`;
+
 export type ComposerStatusRowProps = {
 	/**
 	 * The canonical snapshot the readings strip also reads.
@@ -303,6 +337,26 @@ export const ComposerStatusRow = ({
 	 * be in the middle of.
 	 */
 	const showPlan = Boolean(runDetails && runDetails.totalTodos > 0);
+
+	/*
+	 * The wake chip's gate: at least one ARMED schedule, off the model's own list.
+	 *
+	 * The list itself is the gate, exactly as `showPlan` is the item count and not a
+	 * second tally: a count derived here would be a second opinion about a list the
+	 * pane is also reading, and `wakeClause` would then have two callers that could
+	 * disagree about it. `docs/composer-wakes.md` states why this gate is a COUNT gate
+	 * rather than the plan's "0 still renders" rule — `frontend.wakes` is empty on
+	 * every session that has never armed a wake, so a zero would be chrome above
+	 * nearly every composer in the app.
+	 *
+	 * The other half of the gate is `runDetails` being non-null, which it is not for a
+	 * legacy non-canonical chat: such a session has no pane model at all, so the chip
+	 * would point at a destination that cannot open. That is the plan chip's own gate
+	 * one clause up (`Boolean(runDetails && …)`) and it is why the state is read
+	 * through the model rather than off `frontend.wakes` directly.
+	 */
+	const wakes = runDetails?.wakes ?? [];
+	const showWakes = wakes.length > 0;
 
 	/*
 	 * The mirror FOLLOWS the control it describes, and this is what keeps that true
@@ -386,25 +440,37 @@ export const ComposerStatusRow = ({
 		previouslyFocused.current = focusedInRow;
 	});
 
-	if (!showGoal && !showPlan && !children && !jobs) return null;
+	if (!showGoal && !showPlan && !showWakes && !children && !jobs) return null;
 
 	const goalLabel = goalDisclosureLabel(goal, goalOpen);
 	const planLabel = runDetails ? planChipLabel(runDetails.openTodos) : "";
+	const wakeLabel = showWakes ? wakeChipLabel(wakes.length) : "";
 	const subagentLabel = children ? subagentChipLabel(children) : "";
 	const jobLabel = jobs ? jobChipLabel(jobs) : "";
 	/*
 	 * Whichever chip renders first cancels its own padding, and the count chips are
 	 * ONE GROUP now (see the group's own note below): the group is the row's first
 	 * item exactly when there is no goal, and inside it the leading chip is the
-	 * plan's when a plan renders and the subagents' otherwise.
+	 * plan's when a plan renders and the wake chip's otherwise.
+	 *
+	 * The wake chip sits AFTER the plan and BEFORE the two activity chips, because
+	 * that is where it belongs in what the row means: the goal, the plan and the
+	 * wakes are the session's STANDING facts — what it is set up to do — and the
+	 * subagents and jobs are what is moving right now. It is also the TUI dock's own
+	 * order, where the wake band renders directly above the plan band
+	 * (`wake_panel.WakePanel`). The alternative, appending the newest chip at the end
+	 * of the row, was rejected because it would read `2 subagents running 3 wakes
+	 * armed` — live work first, a schedule last — which is the reverse of how the two
+	 * groups relate.
 	 */
 	const groupIsFirst = !showGoal;
-	const subagentsFirst = !showGoal && !showPlan;
+	const wakesFirst = !showGoal && !showPlan;
+	const subagentsFirst = wakesFirst && !showWakes;
 	/*
-	 * ...and the jobs chip is first only when NEITHER of the two ahead of it
+	 * ...and the jobs chip is first only when NEITHER of the three ahead of it
 	 * rendered, which is a different question from "the subagents chip is not the
-	 * first": with no goal and no plan, a session holding only tool jobs puts the
-	 * jobs chip on the row's content edge and its siblings nowhere.
+	 * first": with no goal, no plan and no wakes, a session holding only tool jobs
+	 * puts the jobs chip on the row's content edge and its siblings nowhere.
 	 */
 	const jobsFirst = subagentsFirst && !children;
 
@@ -592,7 +658,7 @@ export const ComposerStatusRow = ({
 			 * it — and the group's flex-basis being its content is what makes the ROW
 			 * wrap it below the goal when the column cannot hold both.
 			 */}
-			{(showPlan || children || jobs) && (
+			{(showPlan || showWakes || children || jobs) && (
 				<div
 					className={cn(
 						"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5",
@@ -661,16 +727,69 @@ export const ComposerStatusRow = ({
 					)}
 
 					{/*
+					 * The WAKE chip: the session's armed schedules, between the plan and the two
+					 * activity chips — the row's standing facts first, then the work in flight
+					 * (see `wakesFirst` above).
+					 *
+					 * The same control box, the same reveal, the same absence of `aria-pressed`:
+					 * a mode toggle here would close the pane a reader had just opened, which is
+					 * the defect the plan chip's own record names.
+					 *
+					 * `AlarmClock` is a MARK and not a state, which is why it does not spin: this
+					 * row's one piece of motion is `SubagentStateIcon`'s, and it exists because a
+					 * child's state changes. A wake's does not — the list is armed until it is
+					 * not — so a moving mark here would claim activity the wire is not reporting.
+					 * The alternatives, and why each was rejected:
+					 *
+					 * - `Clock`: `SubagentStateIcon` already draws it for a capacity-QUEUED child
+					 *   on the chip beside this one, so one glyph would mean two states on one row.
+					 * - `CalendarClock`: the schedules surface's glyph for a recurring job
+					 *   (`features/schedules`), and a wake is not a schedule JOB — the two are
+					 *   different objects with different cancels.
+					 * - `Bell` / `BellRing`: the notification stack's, and a wake is not a
+					 *   notification — it is a trigger, which is exactly the distinction the
+					 *   operator's report turns on.
+					 * - `Info`: the plan chip's, and one glyph in this row means one thing.
+					 * - no mark (what the `Info` alternative above was rejected for on the plan
+					 *   chip): the count alone is plain muted text a reader has no way to tell from prose,
+					 *   and `docs/composer-status-tabs.md` § 6.1's D1 is the finding that put a mark on
+					 *   every count chip in this row.
+					 *
+					 * The Wakes SECTION rows wear this same glyph as their mark, so it means "wake"
+					 * on both surfaces rather than "press me" on one and "a wake row" on the other.
+					 */}
+					{showWakes && (
+						<Tooltip content={wakeLabel} side="top">
+							<button
+								type="button"
+								data-status-wakes=""
+								aria-label={wakeLabel}
+								onClick={() => revealPlan("wakes")}
+								className={cn(
+									CHIP_CONTROL,
+									wakesFirst ? FIRST_CHIP : undefined,
+								)}
+							>
+								<AlarmClock
+									aria-hidden={true}
+									className={cn("size-3.5 shrink-0")}
+								/>
+								{wakeClause(wakes.length)}
+							</button>
+						</Tooltip>
+					)}
+
+					{/*
 					 * The two ACTIVITY chips, in the operator's order: subagents, then jobs.
 					 *
 					 * They are the plan chip's own control (`CHIP_CONTROL`, imported rather than
 					 * restated), they REVEAL their section of the pane exactly as it does, and
 					 * they carry no `aria-pressed` and no pressed ground for its reason: a chip
 					 * that closed the pane when pressed while looking for the work would be one
-					 * control with two meanings. Two species of chip now share this row and the
-					 * grammar is one glyph one meaning: `Info` means "this opens the run pane"
-					 * and only the plan chip wears it, because the activity chips wear a STATE
-					 * MARK instead (below).
+					 * control with two meanings. Three species of chip now share this row and the
+					 * grammar is one glyph one meaning: `Info` means "this opens the run pane" and
+					 * only the plan chip wears it, the wake chip wears the wake's own mark, and the
+					 * activity chips wear a STATE MARK (below).
 					 *
 					 * The counts are the model's, spelled by its own clauses, and nothing here
 					 * tallies anything.

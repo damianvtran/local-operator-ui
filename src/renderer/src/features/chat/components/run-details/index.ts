@@ -16,7 +16,11 @@ export {
 	childStateLabel,
 	deriveMcpServers,
 	deriveRunDetails,
+	deriveWakes,
 	foldBrief,
+	formatWakeCadence,
+	formatWakeDue,
+	formatWakeDuration,
 	hasLiveChildClock,
 	hasRunDetails,
 	hasUnseenFailure,
@@ -45,6 +49,9 @@ export {
 	visibleFailures,
 	visibleSubagents,
 	visibleTodoPhases,
+	visibleWakes,
+	WAKE_ROW_CAP,
+	wakeClause,
 } from "./run-detail-model";
 export type {
 	ActivityTally,
@@ -59,6 +66,7 @@ export type {
 	TodoItemStatus,
 	TodoItemView,
 	TodoPhaseView,
+	WakeRow,
 } from "./run-detail-model";
 export { RunChildReader } from "./run-child-reader";
 export type { RunChildReaderProps } from "./run-child-reader";
@@ -66,6 +74,7 @@ export { RunDetailJobs } from "./run-detail-jobs";
 export { RunDetailMcp } from "./run-detail-mcp";
 export { RunDetailSubagents } from "./run-detail-subagents";
 export { RunDetailTodos } from "./run-detail-todos";
+export { RunDetailWakes } from "./run-detail-wakes";
 export { RunDetailsPanel } from "./run-details-panel";
 export type { RunDetailsPanelProps } from "./run-details-panel";
 export { RunPanel } from "./run-panel";
