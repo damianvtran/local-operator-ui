@@ -44,16 +44,22 @@ const bundle = await build({
 				ComposerStatusRow,
 				goalDisclosureLabel,
 				planChipLabel,
+				subagentChipLabel,
+				jobChipLabel,
 			} from "./src/renderer/src/features/chat/components/composer-status-row";
 			import {
+				activityTally,
 				deriveRunDetails,
 				todoClause,
+				childClause,
+				jobClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
+			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
-			export { goalDisclosureLabel, planChipLabel, deriveRunDetails, todoClause, useUiPreferencesStore };
+			export { goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -111,8 +117,14 @@ const {
 	renderRow,
 	goalDisclosureLabel,
 	planChipLabel,
+	subagentChipLabel,
+	jobChipLabel,
 	deriveRunDetails,
+	activityTally,
 	todoClause,
+	childClause,
+	jobClause,
+	scrollRegionToTop,
 	useUiPreferencesStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -138,6 +150,26 @@ const plan = (statuses) => [
 
 const detailsFor = (statuses) =>
 	deriveRunDetails({ jobs: [], todos: plan(statuses) });
+
+/**
+ * One wire job, with only the fields the partition and the fold read.
+ *
+ * `type` is the row's own word: `task` is a delegated child, `bash` a tool job
+ * (`harness/jobs.py:216`), and the two are the partition this suite is about.
+ */
+const wireJob = (id, type, status, label, queued = false) => ({
+	id,
+	type,
+	status,
+	queued,
+	label,
+	start_time: 1000,
+	settled_at: null,
+});
+
+/** The model over a plan and a job list, so the chips' gates can be driven. */
+const detailsWith = (jobs, statuses = []) =>
+	deriveRunDetails({ jobs, todos: statuses.length > 0 ? plan(statuses) : [] });
 
 const LONG_GOAL =
 	"Reconcile the March invoices against the payments ledger, group the unpaid rows by customer, confirm what 'pending' means with finance, then write reports/unpaid-march.md and publish the summary";
@@ -431,9 +463,302 @@ test("both chips, goal first in the DOM so paint order and tab order agree", () 
 	);
 });
 
+test("the row's chips are ordered goal, plan, subagents, jobs, in paint and tab order alike", () => {
+	/*
+	 * Four chips on one row and one DOM order, which the stacked arrangement at the
+	 * column floor inherits: the row is a `flex-col` there, so the vertical order IS
+	 * the DOM order. Both activity chips sit AFTER the plan chip, which is the
+	 * operator's placement ("in the same row as the todos") and the reason their
+	 * sections are `subagents` and `jobs` rather than a single activity control.
+	 */
+	const markup = renderRow({
+		frontend: frontend("Ship it"),
+		runDetails: detailsWith(
+			[
+				wireJob("c1", "task", "running", "Audit the invoices"),
+				wireJob("s1", "bash", "running", "bash: sleep 150"),
+			],
+			["pending", "done"],
+		),
+	});
+	const order = [
+		markup.indexOf("Goal:"),
+		markup.indexOf("data-status-plan"),
+		markup.indexOf("data-status-subagents"),
+		markup.indexOf("data-status-jobs"),
+	];
+	assert.ok(
+		order.every((at) => at > -1),
+		"all four chips render",
+	);
+	assert.deepEqual(
+		order,
+		[...order].sort((a, b) => a - b),
+		"the DOM order is the painted order",
+	);
+});
+
 /* ---------------------------------------------------------------- */
-/* The reveal request                                                */
+/* The two activity chips                                            */
 /* ---------------------------------------------------------------- */
+
+test("each activity chip appears only when its own list has something open", () => {
+	// A plan and nothing else: the row is the plan's, and no activity chip joins it.
+	const planOnly = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsFor(["pending"]),
+	});
+	assert.match(planOnly, /data-status-plan/);
+	assert.doesNotMatch(planOnly, /data-status-subagents/);
+	assert.doesNotMatch(planOnly, /data-status-jobs/);
+
+	/*
+	 * And a session whose rows have all SETTLED grows no chip either — which is the
+	 * one place this row departs from the plan chip's "0 still renders" rule ("§ 5):
+	 * `frontend.jobs` is swept minutes after a row settles, so `0 subagents running`
+	 * would describe rows that are about to vanish, and it would put a chip above
+	 * every composer on every session that has ever delegated anything.
+	 */
+	const settled = detailsWith([
+		wireJob("c1", "task", "done", "Audit the invoices"),
+		wireJob("s1", "bash", "completed", "bash: wc -l invoices/march.csv"),
+	]);
+	assert.equal(settled.openChildren, 0);
+	assert.equal(settled.openJobs, 0);
+	const settledMarkup = renderRow({
+		frontend: frontend(""),
+		runDetails: settled,
+	});
+	assert.equal(settledMarkup, "", "nothing to state, so nothing is stated");
+
+	/*
+	 * Each chip is gated on ITS OWN list, and the two are different lists: a child
+	 * with no tool job beside it must not put a jobs chip on the row, and a shell
+	 * job with no child must not put a subagents chip on it.
+	 */
+	const childOnly = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsWith([wireJob("c1", "task", "running", "Audit")]),
+	});
+	assert.match(childOnly, /data-status-subagents/);
+	assert.doesNotMatch(childOnly, /data-status-jobs/);
+
+	const jobOnly = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsWith([
+			wireJob("s1", "bash", "running", "bash: sleep 150"),
+		]),
+	});
+	assert.match(jobOnly, /data-status-jobs/);
+	assert.doesNotMatch(jobOnly, /data-status-subagents/);
+});
+
+test("the activity chips state the model's clause and name the section they open", () => {
+	const details = detailsWith(
+		[
+			wireJob("c1", "task", "running", "Audit the invoices"),
+			wireJob("c2", "task", "running", "Summarise the findings"),
+			wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+		],
+		["pending"],
+	);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.equal(details.openChildren, 2);
+	assert.equal(details.openJobs, 1);
+	// The visible count is the model's own clause, pluralised by the model, not here.
+	assert.match(markup, />2 subagents running</);
+	assert.match(markup, />1 job running</);
+	assert.equal(
+		childClause({ count: 2, mark: "running" }),
+		"2 subagents running",
+	);
+	assert.equal(jobClause({ count: 1, mark: "running" }), "1 job running");
+	// And the action leads the tooltip and the accessible name, one derived string.
+	assert.match(
+		markup,
+		/aria-label="Open the subagents in run details — 2 subagents running"/,
+	);
+	assert.match(
+		markup,
+		/aria-label="Open the jobs in run details — 1 job running"/,
+	);
+	assert.equal(
+		subagentChipLabel({ count: 2, mark: "running" }),
+		"Open the subagents in run details — 2 subagents running",
+	);
+	assert.equal(
+		jobChipLabel({ count: 1, mark: "running" }),
+		"Open the jobs in run details — 1 job running",
+	);
+	/*
+	 * Neither chip wears the plan chip's `Info`, and both wear the roster's state
+	 * mark instead: one glyph in this row still means one thing, and the plan chip is
+	 * still the only control whose glyph says "this opens the run pane".
+	 */
+	assert.match(markup, /lucide-info/);
+	assert.equal(
+		(markup.match(/lucide-info/g) ?? []).length,
+		1,
+		"the run pane's own mark is the plan chip's alone",
+	);
+});
+
+test("a running activity chip carries the roster's spin, and only the running state does", () => {
+	/*
+	 * The mark IS the animation while active, and no still can prove it: the capture
+	 * rig injects `animation: none !important` before every shutter
+	 * (`capture-evidence.mjs:1851-1855`), so the spin is pinned in the rendered class
+	 * string instead — where it is the roster's OWN contract,
+	 * `motion-safe:animate-spin` for `running` and nothing else, with reduced motion
+	 * leaving a shape that already distinguishes the state.
+	 */
+	const running = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsWith([
+			wireJob("c1", "task", "running", "Audit"),
+			wireJob("s1", "bash", "running", "bash: sleep 150"),
+		]),
+	});
+	assert.equal(
+		(running.match(/motion-safe:animate-spin/g) ?? []).length,
+		2,
+		"both chips spin while both lists are working",
+	);
+
+	/*
+	 * A QUEUED child says so, in the same word its mark shows, and that is design
+	 * review round 1's D1 — found from this branch's own frame, where a chip leading
+	 * with `Clock` said "1 subagent running" directly beneath it. The mark is
+	 * `aria-hidden`, so the sentence was not a second opinion but the only reading
+	 * assistive tech got: "running" for a child the capacity gate parked. Nothing
+	 * spins here either, because nothing is running.
+	 */
+	const queued = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsWith([wireJob("c1", "task", "running", "Parked", true)]),
+	});
+	assert.match(queued, />1 subagent queued</);
+	assert.match(queued, /lucide-clock/);
+	assert.doesNotMatch(queued, /motion-safe:animate-spin/);
+	assert.doesNotMatch(
+		queued,
+		/running</,
+		"a parked child is never spelled as work in progress",
+	);
+
+	/*
+	 * A PAUSED child, the other open state, and the assertion is the point of the
+	 * whole change: the word in the sentence is the word of the mark beside it, for
+	 * every state the ladder can return. Driven from the model rather than listed
+	 * here, so a state added to the ladder fails this test instead of escaping it.
+	 */
+	for (const [status, word, icon] of [
+		["running", "running", "lucide-loader-circle"],
+		["paused", "paused", "lucide-circle-pause"],
+	]) {
+		const rows = detailsWith([
+			wireJob("c1", "task", status, "Audit"),
+		]).subagents;
+		const tally = activityTally(rows);
+		assert.equal(tally?.mark, status);
+		assert.equal(childClause(tally), `1 subagent ${word}`);
+		assert.ok(
+			childClause(tally).endsWith(tally.mark),
+			"the clause's final word IS the mark's state, not a parallel claim",
+		);
+		const markup = renderRow({
+			frontend: frontend(""),
+			runDetails: detailsWith([wireJob("c1", "task", status, "Audit")]),
+		});
+		assert.match(markup, new RegExp(`>1 subagent ${word}<`));
+		assert.match(markup, new RegExp(icon));
+	}
+});
+
+test("the first chip cancels its own padding, whichever chip is first", () => {
+	/*
+	 * The row's alignment device, now ORDINAL: with four possible chips there are
+	 * four states of "which one is first", and a rule written as a single boolean
+	 * would put two chips' ink in the same 6px column the moment a session had an
+	 * activity chip and no goal. The assertion is over the rendered class string, so
+	 * it is the behaviour and not this file's belief about it.
+	 */
+	const firstClass = "-ml-1.5";
+	const count = (markup) => (markup.match(/-ml-1\.5/g) ?? []).length;
+
+	// No goal: the plan chip leads.
+	const planFirst = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsFor(["pending"]),
+	});
+	assert.equal(count(planFirst), 1);
+	assert.ok(
+		planFirst.indexOf("data-status-plan") < planFirst.indexOf(firstClass),
+		"the padding is cancelled on the chip that renders first",
+	);
+
+	// No goal and no plan: the subagents chip leads.
+	const subagentsFirst = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsWith([wireJob("c1", "task", "running", "Audit")]),
+	});
+	assert.equal(count(subagentsFirst), 1);
+	assert.ok(
+		subagentsFirst.indexOf(firstClass) >
+			subagentsFirst.indexOf("data-status-subagents"),
+	);
+	assert.ok(
+		subagentsFirst.indexOf(firstClass) < subagentsFirst.indexOf("</button>"),
+	);
+
+	// Only jobs open: the jobs chip leads.
+	const jobsFirst = renderRow({
+		frontend: frontend(""),
+		runDetails: detailsWith([wireJob("s1", "bash", "running", "bash: sleep")]),
+	});
+	assert.equal(count(jobsFirst), 1);
+	assert.ok(
+		jobsFirst.indexOf("data-status-jobs") < jobsFirst.indexOf(firstClass),
+	);
+
+	// All four: exactly one cancellation, on the goal.
+	const allFour = renderRow({
+		frontend: frontend("Ship it"),
+		runDetails: detailsWith(
+			[
+				wireJob("c1", "task", "running", "Audit"),
+				wireJob("s1", "bash", "running", "bash: sleep"),
+			],
+			["pending"],
+		),
+	});
+	assert.equal(count(allFour), 1);
+	assert.ok(allFour.indexOf(firstClass) < allFour.indexOf("data-status-plan"));
+
+	// And the values are in the accessible names, never in a visible label.
+	assert.ok(
+		planFirst.includes(
+			'aria-label="Open the plan in run details — 1 to-do open"',
+		),
+	);
+});
+
+test("the activity chips file their own section, and the store carries all three", () => {
+	const store = useUiPreferencesStore;
+	for (const section of ["subagents", "jobs"]) {
+		store.setState({
+			runPanelReveal: null,
+			isRunPanelOpen: false,
+			isCanvasOpen: true,
+		});
+		store.getState().revealRunPanelSection(section);
+		const after = store.getState();
+		assert.equal(after.runPanelReveal?.section, section);
+		assert.equal(after.isRunPanelOpen, true);
+		assert.equal(after.isCanvasOpen, false);
+	}
+	store.setState({ runPanelReveal: null });
+});
 
 test("the plan chip files a one-shot request that both opens the pane and clears the canvas", () => {
 	const store = useUiPreferencesStore;
@@ -484,6 +809,36 @@ test("the nonce makes two presses two requests, and a stale consumer cannot eat 
 /* ---------------------------------------------------------------- */
 /* Placement and geometry, on the shipped source                     */
 /* ---------------------------------------------------------------- */
+
+test("the trigger's dot is ONE mark in two inks, and the ink is the whole distinction", () => {
+	/*
+	 * The header trigger's dot gained a second fact, and this pins the shape of
+	 * that: one element, one position, one rule for whether it renders, and the
+	 * meaning carried by `bg-danger` against `bg-info` — which is the part no DOM
+	 * assertion can see and no still can check twice. The activity term is LIVE
+	 * state (`!listOnScreen && openChildren > 0`), never a third ledger, so the
+	 * assertion that matters most is the last one: there is no `seen`-set for it.
+	 */
+	const trigger = code(
+		"src/renderer/src/features/chat/components/run-details/run-details-trigger.tsx",
+	);
+	assert.equal(
+		(trigger.match(/data-run-panel-dot=""/g) ?? []).length,
+		1,
+		"one dot, not one per ledger",
+	);
+	assert.match(trigger, /aria-hidden=\{true\}\s*data-run-panel-dot=""/);
+	assert.match(trigger, /attention \|\| activity/);
+	assert.match(trigger, /attention \? "bg-danger" : "bg-info"/);
+	assert.match(
+		trigger,
+		/details !== null && !listOnScreen && details\.openChildren > 0/,
+	);
+	// The gate is the ledger's own term, which is what keeps this live state: the
+	// ink clears the moment the pane paints the list, with nothing to remember.
+	assert.match(trigger, /const activity =/);
+	assert.doesNotMatch(trigger, /seenActivity|unseenActivity|activitySeen/);
+});
 
 test("the row mounts inside the form, ABOVE the alert and therefore above the box", () => {
 	const source = code(COMPOSER);
@@ -562,8 +917,17 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 			`expected the row's source to carry ${names.join(", ")}`,
 		);
 
-	// One line above 240px of column, a column at or below it.
+	/*
+	 * One line above 240px of column, a column at or below it — and WRAP above it,
+	 * which the row needed the moment it could hold four chips: § 5.4 budgets ~168px
+	 * of a 204px content box for one chip, so three of them cannot share a line, and
+	 * the chips are `shrink-0`. The stacked arrangement turns wrap OFF in its own
+	 * query, because in a COLUMN container `wrap` would wrap items into extra
+	 * COLUMNS — horizontal overflow, the defect the wrap exists to remove.
+	 */
 	tokens("@max-[240px]/chatcol:flex-col");
+	tokens("@max-[240px]/chatcol:flex-nowrap");
+	tokens('"flex flex-wrap items-start gap-x-2 gap-y-0.5"');
 	// The goal item is the flexible one and can shrink to nothing (`min-w-0`).
 	tokens(
 		"min-w-0",
@@ -583,11 +947,49 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
-	 * applied by the row to whichever chip renders first, so the two states the row
-	 * can be in share one left edge.
+	 * applied by the row to whichever chip renders first, so every state the row can
+	 * be in shares one left edge. It is ORDINAL now that four chips can render —
+	 * each chip asks whether IT is the first one, and the plan chip's own term still
+	 * reads the same way it did with two chips.
 	 */
 	assert.match(source, /const FIRST_CHIP = "-ml-1\.5";/);
-	assert.match(source, /showGoal \? undefined : FIRST_CHIP/);
+	/*
+	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
+	 * first item whenever it renders, and the cancellation it wears is the same
+	 * constant applied under that name. The three count chips ask inside the group
+	 * (below), where "first" is a question about the group's own leading edge.
+	 */
+	assert.match(source, /groupIsFirst \? FIRST_CHIP : undefined/);
+	assert.match(source, /subagentsFirst \? FIRST_CHIP : undefined/);
+	assert.match(source, /jobsFirst \? FIRST_CHIP : undefined/);
+	/*
+	 * THE GROUP, which is design review round 1's D2: with the three count chips as
+	 * siblings of the goal, the row's wrap regime tore them — the goal's `flex-1`
+	 * box stretched the line it shared and pushed one chip to the right margin while
+	 * its siblings started a left column below, and the 172px floor read better than
+	 * the 240px band above it. As one item, the row wraps the goal's line and the
+	 * counts' line and the chips wrap among themselves, left-aligned, in a column
+	 * that cannot hold them.
+	 */
+	assert.match(
+		source,
+		/"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0\.5"/,
+	);
+	// `min-w-0` and NOT `shrink-0`: the group has to be able to shrink to a narrow
+	// column and wrap INSIDE it, which is what keeps the row free of overflow.
+	assert.doesNotMatch(
+		source,
+		/"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0\.5 shrink-0"/,
+	);
+	/*
+	 * The goal's floor, which is what makes the row wrap the whole group rather than
+	 * let the two share a squeezed line: flex resolves line breaking on each item's
+	 * hypothetical size, so a floor here is a layout rule and not a nicety.
+	 */
+	assert.match(source, /min-w-\[140px\] flex-1/);
+	assert.doesNotMatch(source, /cn\("min-w-0 flex-1", COLUMN_GOAL\)/);
+	assert.match(source, /const subagentsFirst = !showGoal && !showPlan;/);
+	assert.match(source, /const jobsFirst = subagentsFirst && !children;/);
 
 	/*
 	 * The two MEASURED overrides, byte-exact, because the numbers are the finding:
@@ -618,6 +1020,48 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens("import { Info } from", "<Info aria-hidden={true}", "size-3.5");
+	/*
+	 * The two ACTIVITY chips lead with the roster's state mark instead, taken from
+	 * the component that already owns the nine states' glyphs, inks and motion —
+	 * imported, so there is no second table for a state to lose its mark in. `Info`
+	 * stays the plan chip's alone: one glyph in this row still means one thing.
+	 */
+	assert.match(
+		source,
+		/import { SubagentStateIcon } from "\.\/run-details\/run-detail-row-parts"/,
+	);
+	assert.match(source, /<SubagentStateIcon status={children\.mark} \/>/);
+	assert.match(source, /<SubagentStateIcon status={jobs\.mark} \/>/);
+	assert.match(
+		source,
+		/const children = runDetails \? activityTally\(runDetails\.subagents\) : null;/,
+	);
+	assert.match(
+		source,
+		/const jobs = runDetails \? activityTally\(runDetails\.jobs\) : null;/,
+	);
+	/*
+	 * The counts are the MODEL's, and nothing here tallies: these two clauses are the
+	 * same functions the trigger's tooltip prints, and the numbers are the model's
+	 * own fields.
+	 */
+	assert.match(source, /childClause\(children\)/);
+	assert.match(source, /jobClause\(jobs\)/);
+	/*
+	 * And the clause cannot be handed a bare number, which is what makes the D1
+	 * defect unrepeatable rather than merely fixed: there is no `count`-shaped
+	 * argument in the row at all, so a sentence built here has a state by
+	 * construction.
+	 */
+	assert.doesNotMatch(source, /childClause\(runDetails\./);
+	assert.doesNotMatch(source, /jobClause\(runDetails\./);
+	/*
+	 * And nothing here counts: no filtering to an open slice, no status word compared
+	 * to "running", no length turned into a number. The row chooses which of the
+	 * model's functions to print, which is the rule the plan chip already follows.
+	 */
+	assert.doesNotMatch(source, /\.filter\(/);
+	assert.doesNotMatch(source, /=== "running"/);
 });
 
 test("the expanded body caps itself, keeps the author's breaks, and carries its own tab stop", () => {
@@ -713,7 +1157,53 @@ test("the pane consumes the request: leave a reader, scroll the plan in, retire 
 		source,
 		/if \(openChildId\) \{\s*onReaderChildChange\(null\);\s*return;\s*\}/,
 	);
-	assert.match(source, /target\.scrollIntoView\(\{ block: "start" \}\)/);
+	assert.match(source, /scrollRegionToTop\(region, target\)/);
+	/*
+	 * And NOT `scrollIntoView`, which is the whole point of the change: its default
+	 * `container: "all"` walks every scrolling ancestor, and in this layout the chat
+	 * column's slot row is scrollable at the widths where the pane does not fit
+	 * beside the column — measured 108px of slide at 1024x673 and 221px at 800x600,
+	 * with this branch adding two more triggers for it (agent review round 1, M1).
+	 * The helper assigns the region's own `scrollTop` instead
+	 * (`shared/lib/scroll.ts`). Pinned as an ABSENCE as well as a presence, because
+	 * the defect is one call away from returning.
+	 */
+	assert.doesNotMatch(source, /scrollIntoView/);
+	assert.match(source, /const region = bodyRef\.current;/);
+	assert.match(source, /ref=\{bodyRef\}/);
+	/*
+	 * The target is resolved through a SECTION→REF map rather than a chain of
+	 * ternaries (agent review round 1, m2): as a chain the last arm was a catch-all,
+	 * so a fourth `RunPanelSection` member would have compiled and silently scrolled
+	 * the JOBS section for a destination that has none. A `Record` over the union
+	 * makes that omission a type error, which is the guarantee this case is here for.
+	 */
+	assert.match(
+		source,
+		/const sectionRefs: Record<\s*RunPanelSection,\s*RefObject<HTMLElement \| null>\s*> = \{/,
+	);
+	assert.match(
+		source,
+		/const target = sectionRefs\[revealRequest\.section\]\.current;/,
+	);
+	assert.match(source, /todos: todosSectionRef,/);
+	assert.match(source, /subagents: subagentsSectionRef,/);
+	assert.match(source, /jobs: jobsSectionRef,/);
+	assert.doesNotMatch(source, /revealRequest\.section === /);
+	assert.match(
+		source,
+		/const todosSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
+	assert.match(
+		source,
+		/const subagentsSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
+	assert.match(
+		source,
+		/const jobsSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
+	assert.match(source, /subagentsSectionRef=\{subagentsSectionRef\}/);
+	assert.match(source, /jobsSectionRef=\{jobsSectionRef\}/);
 	assert.match(source, /clearReveal\(revealRequest\.nonce\)/);
 	assert.match(
 		source,
@@ -721,17 +1211,151 @@ test("the pane consumes the request: leave a reader, scroll the plan in, retire 
 	);
 	// Focus is never taken: no `.focus()` on this path, and no `scroll-behavior`
 	// animation either.
-	assert.doesNotMatch(source, /scrollIntoView\(\{ block: "start", behavior/);
+	/*
+	 * Focus is never taken and nothing animates, and both are read off the REVEAL
+	 * ITSELF rather than off the file: this pane restores focus on its own Escape
+	 * ladder (`:265`), so a file-wide absence assertion would either fail or, worse,
+	 * be written loosely enough to pass while the reveal did move focus.
+	 */
+	const reveal = source.slice(
+		source.indexOf("const sectionRefs"),
+		source.indexOf("clearReveal(revealRequest.nonce)"),
+	);
+	assert.doesNotMatch(reveal, /\.focus\(/, "focus is never taken by a reveal");
+	assert.doesNotMatch(reveal, /behavior/, "a reveal never animates the scroll");
 });
 
-test("the todos section is the node the request scrolls to", () => {
-	const todos = code(
-		"src/renderer/src/features/chat/components/run-details/run-detail-todos.tsx",
+test("the reveal moves ONE region, and its arithmetic is the region's own", () => {
+	/*
+	 * `scrollRegionToTop` is pinned as arithmetic rather than only as a call site
+	 * (agent review round 1, M1). The defect it exists to delete is a reveal that
+	 * moved the FRAME: `scrollIntoView`'s `container: "all"` default walks every
+	 * scrolling ancestor, and this layout's chat-column slot row is scrollable at the
+	 * widths where the pane does not fit beside the column, so the assertion that
+	 * matters is that the function touches exactly one element's `scrollTop` and
+	 * derives the offset from rects.
+	 *
+	 * The fakes MODEL the scroll rather than pinning a rect: a target's viewport
+	 * position is a function of where the region is scrolled to, and that is the
+	 * whole reason the assignment is idempotent. A region whose border box starts at
+	 * y=100 with 10px of border, holding a target 760px into its scroll content:
+	 *
+	 *   target viewport top = 100 + 10 + (760 - scrollTop)
+	 *   offset = scrollTop + targetTop - regionTop - clientTop = 760
+	 *
+	 * which is the target's own position in the content — the section landing at the
+	 * region's head, whatever the region's scroll position was when the press
+	 * arrived.
+	 */
+	const region = {
+		scrollTop: 120,
+		clientTop: 10,
+		getBoundingClientRect: () => ({ top: 100 }),
+	};
+	const target = {
+		getBoundingClientRect: () => ({ top: 870 - region.scrollTop }),
+	};
+	scrollRegionToTop(region, target);
+	assert.equal(region.scrollTop, 760);
+
+	/*
+	 * IDEMPOTENT, and this is the assertion that makes the comment above a property:
+	 * calling it again lands the same section at the head instead of adding the
+	 * offset twice, which matters because a re-mounted request re-runs this effect.
+	 */
+	scrollRegionToTop(region, target);
+	assert.equal(region.scrollTop, 760);
+
+	// A target above the region's own scroll origin never sends the region negative.
+	region.scrollTop = 120;
+	target.getBoundingClientRect = () => ({ top: -50 });
+	scrollRegionToTop(region, target);
+	assert.equal(region.scrollTop, 0);
+});
+
+test("the row hands focus back to the composer when a chip unmounts under it", () => {
+	/*
+	 * UX round 1's U1, observed live: `active=BUTTON/jobs` then `active=BODY/None`
+	 * when the last running row settles. The row cannot restore focus itself — the
+	 * composer's textarea is the parent's ref — so the parent passes the target in,
+	 * and the assertion is that BOTH halves are wired: the conditional refocus in the
+	 * row, and the parent's own `textareaRef` behind it.
+	 */
+	const row = code(ROW);
+	assert.match(
+		row,
+		/if \(shrank && rowHeldFocus\.current && !holdsFocus\) onFocusComposer\?\.\(\);/,
 	);
+	// The condition's first half: only a SHRINKING row can have lost the chip.
+	assert.match(row, /const shrank = chipCount < previousChipCount\.current;/);
+	// Its second half: the row must have HELD focus last commit, because by the time
+	// the effect runs the browser has already moved it to `<body>` and the evidence
+	// is gone. Without this half every settle would yank focus mid-sentence.
+	assert.match(row, /rowHeldFocus\.current = holdsFocus;/);
+	// And the prop is optional, so a story that renders the row alone need not
+	// invent a focus target.
+	assert.match(row, /onFocusComposer\?: \(\) => void;/);
+
+	const composer = code(MESSAGE_INPUT);
+	assert.match(
+		composer,
+		/onFocusComposer=\{\(\) => textareaRef\.current\?\.focus\(\)\}/,
+	);
+});
+
+test("each section is the node its own request resolves to", () => {
+	const dir = "src/renderer/src/features/chat/components/run-details/";
+	const todos = code(`${dir}run-detail-todos.tsx`);
 	assert.match(todos, /<section ref=\{sectionRef\}/);
-	const panel = code(
-		"src/renderer/src/features/chat/components/run-details/run-details-panel.tsx",
-	);
+	const subagents = code(`${dir}run-detail-subagents.tsx`);
+	assert.match(subagents, /<section ref=\{sectionRef\}/);
+	const jobs = code(`${dir}run-detail-jobs.tsx`);
+	assert.match(jobs, /<section ref=\{sectionRef\}/);
+	const panel = code(`${dir}run-details-panel.tsx`);
 	assert.match(panel, /sectionRef=\{todosSectionRef\}/);
 	assert.match(panel, /todosSectionRef\?: Ref<HTMLElement>/);
+	assert.match(panel, /sectionRef=\{subagentsSectionRef\}/);
+	assert.match(panel, /subagentsSectionRef\?: Ref<HTMLElement>/);
+	assert.match(panel, /sectionRef=\{jobsSectionRef\}/);
+	assert.match(panel, /jobsSectionRef\?: Ref<HTMLElement>/);
+});
+
+test("the Jobs section draws the partition's rows, and nothing in it is pressable", () => {
+	/*
+	 * The section the jobs chip points at, and the reason it has to exist at all: the
+	 * roster is a filter on `task`, so a chip pointing there would open a section
+	 * that cannot show its own rows.
+	 */
+	const jobs = code(
+		"src/renderer/src/features/chat/components/run-details/run-detail-jobs.tsx",
+	);
+	/*
+	 * The slice is the MODEL's predicate, not a local status comparison, so the
+	 * section and `openJobs` — the chip's number and the panel's gate — cannot come
+	 * to different answers about which rows are still running.
+	 */
+	assert.match(jobs, /details\.jobs\.filter\(isOpenRow\)/);
+	/*
+	 * A QUIET row: an `li` with the shared row body and no control of any kind. A
+	 * tool row has no `session_id`, so `childOpenable` is false for every one of
+	 * them and there is no reader to open — a lit row that opens nothing is worse
+	 * than a quiet one.
+	 */
+	assert.match(jobs, /<li[\s\S]*?data-run-panel-row=\{row\.id\}/);
+	assert.match(jobs, /<SubagentRowBody row=\{row\} \/>/);
+	assert.doesNotMatch(jobs, /<button/);
+	assert.doesNotMatch(jobs, /onClick/);
+	assert.doesNotMatch(jobs, /childOpenable/);
+	assert.doesNotMatch(jobs, /use-child-transcript/);
+	/*
+	 * And the row body itself is ONE component now, shared with the roster, so the
+	 * two lists cannot come to two row heights (`run-detail-row-parts.tsx`).
+	 */
+	const roster = code(
+		"src/renderer/src/features/chat/components/run-details/run-detail-subagents.tsx",
+	);
+	assert.match(
+		roster,
+		/<SubagentRowBody row=\{row\} detail=\{<DetailLine row=\{row\} \/>\} \/>/,
+	);
 });

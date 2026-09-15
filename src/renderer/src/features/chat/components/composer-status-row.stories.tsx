@@ -36,7 +36,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import { cn } from "@shared/lib/utils";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
@@ -81,6 +81,75 @@ const RESOLVED = detailsOf(["done", "done", "done"]);
 
 /** In flight: two done, two pending, one blocked — five items, three open. */
 const IN_FLIGHT = detailsOf(["done", "pending", "blocked", "done", "pending"]);
+
+/**
+ * One wire job, with only the fields the partition and the fold read.
+ *
+ * `type` is the row's own word: `task` is a delegated child, `bash` a tool job —
+ * and the two are the partition the activity chips are about, so a fixture that
+ * left it out would test one list twice.
+ */
+const wireJob = (
+	id: string,
+	type: string,
+	status: string,
+	label: string,
+	queued = false,
+): Record<string, unknown> => ({
+	id,
+	type,
+	status,
+	queued,
+	label,
+	start_time: 1_000,
+	settled_at: null,
+});
+
+/**
+ * The model over a job list and a plan, off the real derivation.
+ *
+ * The counts in these frames are therefore the model's own, exactly as they are
+ * in the app: the chips read `openChildren`/`openJobs`, and a story that built a
+ * `RunDetails` by hand could show a number the derivation would never produce.
+ */
+const detailsWith = (
+	jobs: Array<Record<string, unknown>>,
+	statuses: string[] = [],
+): RunDetails =>
+	deriveRunDetails({
+		jobs,
+		todos: statuses.length > 0 ? planOf(statuses) : [],
+	});
+
+/** Two children and one tool job: both activity chips, with counts that differ. */
+const BOTH_ACTIVITY = detailsWith(
+	[
+		wireJob("c1", "task", "running", "Audit the March invoices"),
+		wireJob("c2", "task", "running", "Summarise the findings"),
+		wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+	],
+	["pending"],
+);
+
+/** One tool job and nothing else: the jobs chip alone, at the row's start. */
+const JOBS_ONLY = detailsWith([
+	wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+]);
+
+/** A parked child: open, so the chip renders — and its mark is the Clock. */
+const PARKED = detailsWith([wireJob("c1", "task", "running", "Parked", true)]);
+
+/**
+ * Settled work: no chip at all, which is the state the count gate exists for.
+ *
+ * `frontend.jobs` keeps a row for a few minutes after it settles, so this is a
+ * session the wire is still describing and the row deliberately says nothing
+ * about (`docs/composer-activity-chips.md` § 5).
+ */
+const SETTLED_ACTIVITY = detailsWith([
+	wireJob("c1", "task", "done", "Audit the March invoices"),
+	wireJob("s1", "bash", "completed", "bash: wc -l invoices/march.csv"),
+]);
 
 /** A goal that fits: the control for the truncation claim beside `LONG_GOAL`. */
 const SHORT_GOAL = "Reconcile the March invoices";
@@ -294,6 +363,22 @@ export const LongGoal: Story = {
 				frontend={frontend(LONG_GOAL)}
 				runDetails={IN_FLIGHT}
 			/>
+			{/*
+			 * Design review round 1's D4: the set photographed a long goal before this
+			 * change and never after, so the width the goal now YIELDS beside the two
+			 * activity chips was unmeasured. The four chips take ~379px of a 900px
+			 * column and the goal is the item that gives, so this band prints the goal
+			 * item's own box against its text's `clientWidth`/`scrollWidth` — the
+			 * truncation is readable as a number and not only as an ellipsis.
+			 */}
+			<RowFacts>
+				<Band
+					width={900}
+					label="The same 300-character goal with all four chips: the goal is what yields"
+					frontend={frontend(LONG_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
 		</div>
 	),
 };
@@ -372,4 +457,224 @@ export const ColumnFloor: Story = {
 			</div>
 		);
 	},
+};
+
+/**
+ * A band that MEASURES the row it contains and prints the numbers into the frame.
+ *
+ * The row's width behaviour is a claim about boxes, and this is the only instrument
+ * in this set that can make it checkable in a still: `check-evidence` validates the
+ * image, and a reader of the image cannot measure it. The caption is therefore part
+ * of the frame — the row's height in pixels, its horizontal overflow
+ * (`scrollWidth - clientWidth`, which must be 0 at every width) and how many chips
+ * it managed to render.
+ *
+ * It measures AFTER `document.fonts.ready` and two animation frames, for the reason
+ * the rig waits for the same gate: Chrome paints a fallback box for a glyph whose
+ * face is still loading, and a height measured before that arrives is a caption
+ * that disagrees with the pixels beside it. `data-capture-pending` holds the
+ * shutter until the measurement lands, which is this set's own convention.
+ */
+const RowFacts = ({ children }: { children: React.ReactNode }) => {
+	const host = useRef<HTMLDivElement>(null);
+	const [facts, setFacts] = useState("measuring…");
+	useEffect(() => {
+		let second = 0;
+		let cancelled = false;
+		document.documentElement.dataset.capturePending = "1";
+		const settle = () => {
+			const row = host.current?.querySelector<HTMLElement>(
+				"[data-composer-status-row]",
+			);
+			if (row && !cancelled) {
+				/*
+				 * The row's OWN width is the column under test: the row is `w-full` inside
+				 * the band's `@container/chatcol` box, which is what the two container
+				 * queries resolve against. Measuring the probe's own host instead would
+				 * report the STORY's width and print the same number in every band.
+				 */
+				/*
+				 * The GOAL's own numbers, when the band has a goal (design review round
+				 * 1's D4): the item's box against its snippet's `clientWidth` against the
+				 * text's `scrollWidth`. The four chips take ~379px of a 900px column and
+				 * the goal is the item that yields, so the width it now gets is the change
+				 * — and a reader of a still cannot measure a box in it. `clientWidth <
+				 * scrollWidth` is the truncation, as a number.
+				 */
+				const goalItem = row.querySelector<HTMLElement>("[aria-expanded]");
+				const goalText = goalItem?.querySelector<HTMLElement>("span.truncate");
+				const goal =
+					goalItem && goalText
+						? ` · goal ${Math.round(
+								goalItem.getBoundingClientRect().width,
+							)}px (text ${goalText.clientWidth}/${goalText.scrollWidth})`
+						: "";
+				setFacts(
+					`${Math.round(
+						row.getBoundingClientRect().width,
+					)}px column · row ${Math.round(
+						row.getBoundingClientRect().height,
+					)}px tall · overflowX ${row.scrollWidth - row.clientWidth}px · ${
+						row.querySelectorAll("button").length
+					} chips${goal}`,
+				);
+			}
+			if (!cancelled) {
+				document.documentElement.removeAttribute("data-capture-pending");
+			}
+		};
+		document.fonts.ready.then(() => {
+			requestAnimationFrame(() => {
+				second = requestAnimationFrame(settle);
+			});
+		});
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(second);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return (
+		<div ref={host} className={cn("flex flex-col")}>
+			{children}
+			<p data-row-facts="" className={cn("pt-1 text-ink-dim text-meta")}>
+				{facts}
+			</p>
+		</div>
+	);
+};
+
+/**
+ * The two activity chips, one state per band, with the state they must NOT render
+ * for as the last one.
+ *
+ * Band 4 is the gate's whole justification rather than a state anyone asked for:
+ * a session whose rows have all settled grows no chip, because `frontend.jobs`
+ * keeps those rows for a few minutes and `0 subagents running` would describe rows
+ * that are about to vanish (`docs/composer-activity-chips.md` § 5). Read it against
+ * band 1, which is the same row with a live child in it.
+ */
+export const ActivityChips: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="Both lists in flight: the subagents chip leads with the spin, the jobs chip with its own"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={BOTH_ACTIVITY}
+			/>
+			<Band
+				label="Jobs alone, at the row's start: no goal, no plan, so the first-chip rule falls to it"
+				frontend={frontend("")}
+				runDetails={JOBS_ONLY}
+			/>
+			<Band
+				label="A parked child: open, so the chip renders — and nothing spins, because nothing is running"
+				frontend={frontend("")}
+				runDetails={PARKED}
+			/>
+			<Band
+				label="Settled work: the rows are still on the wire and no chip is drawn for them"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={SETTLED_ACTIVITY}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The stacked arrangement at the 240px boundary: the row's edges where they
+ * actually differ, and where three chips once tore away from the goal.
+ *
+ * Design review round 1's D2 is the arrangement this story exists to keep honest
+ * (the goal's line, then the counts as one left-aligned group), and its D5 is the
+ * two states no still in the set covered in THIS arrangement: a chip's hover
+ * ground, and the keyboard focus ring. Both are browser state rather than story
+ * state, so both are the rig's own input — `{ hover }` moves a real pointer,
+ * `{ tabTo }` presses the real Tab key — and neither is a class this story fakes.
+ */
+export const ActivityStacked: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240: the goal keeps the line, the three counts share the next one as a group"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The running mark with motion LIVE, and it is the set's one deliberate exception
+ * (`capture-evidence.mjs`'s `{ liveMotion }`). Two tuples capture this one story a
+ * rotation apart, which is the only way any frame in this repository can show the
+ * spin at all: the rig's default injects `animation: none !important` before every
+ * shutter, and the reduced-motion frame proves the shape's RESTING visibility, not
+ * the motion. The README says which of the two claims each frame carries.
+ */
+export const ActivityMarkMotion: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="A child running: the mark spins"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={BOTH_ACTIVITY}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The width story, because the row is at its budget and four chips cannot share a
+ * line.
+ *
+ * `docs/composer-status-tabs.md` § 5.4 budgets ~168px of a 204px content box for
+ * ONE count chip; this row now holds a goal and three of them. The three widths are
+ * the ones the record and the frames argue about:
+ *
+ * - 900, the composer's own column width, where all four share a line;
+ * - 240, `CHAT_CHIP_ICON_ONLY_PX`, the boundary where the composer's chrome stops
+ *   sharing one line — and where the row is still a line, so the chips must WRAP
+ *   rather than paint past the column;
+ * - 172, the app's real floor with the canvas open (QA round 1, measured), where
+ *   the row stacks: the goal takes the row's width, the chips follow it, and there
+ *   is no wrap to do because there is no line to wrap out of.
+ *
+ * Every band prints its own numbers (`RowFacts`), and the one that matters is
+ * `overflowX 0` at all three. The heights are the other half: the row's height
+ * changes when a chip appears, when a chip wraps, and when it stacks — which is
+ * the cost this design accepts rather than hides.
+ */
+export const ActivityWidths: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					width={900}
+					label="900: goal, plan, subagents and jobs on one line (the app's own column width)"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240 (CHAT_CHIP_ICON_ONLY_PX): the chips that do not fit take the next line"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the column floor): the row stacks, and the chips follow the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+		</div>
+	),
 };

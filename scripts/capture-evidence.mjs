@@ -527,6 +527,17 @@ export const STORIES = [
 	/* The pane's two animated glyphs with motion reduced: the running child's
 	   spinner and the MCP `connecting` mark. */
 	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
+	/* The JOBS section, which is the pane's third live list: two running tool rows
+	   and one settled row that is on the wire and deliberately not drawn, with a
+	   child above them. The pair with `jobs-only` is the difference `openJobs`
+	   makes — one section and its rows, or a quiet line. */
+	["chat-run-panel--jobs-in-flight", 1280, 700],
+	["chat-run-panel--jobs-only", 1280, 700],
+	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
+	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
+	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
+	   and a still is the only instrument for it. */
+	["chat-run-panel--trigger-activity-dot", 1280, 700],
 	/*
 	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
 	 * that report was about — the deep link revealing a named server, an argument
@@ -690,9 +701,88 @@ export const STORIES = [
 	 * an expanded band are clicked open by the rig's own convention.
 	 */
 	["chat-composer-status-row--states", 1000, 880],
-	["chat-composer-status-row--long-goal", 1000, 360],
+	/* Three bands now: the two goal lengths, plus the long goal beside all four
+	   chips (design review round 1, D4) — the width the goal YIELDS is the change
+	   and it was unmeasured, so the band prints the goal item's box against its
+	   text's `clientWidth`/`scrollWidth`. */
+	["chat-composer-status-row--long-goal", 1000, 560],
 	["chat-composer-status-row--expanded", 1000, 500],
 	["chat-composer-status-row--column-floor", 300, 620],
+	/* The two ACTIVITY chips, one band per state, with the state they must not
+	   render for as the last one — a session whose rows have all settled, where
+	   `frontend.jobs` still holds the rows and the row says nothing about them.
+	   Sized to content for the reason the four above are. */
+	["chat-composer-status-row--activity-chips", 1000, 1000],
+	/* The width story, and the only frame that can carry the numbers: each band
+	   prints its own row height and `overflowX` into the picture, because a reader
+	   of a still cannot measure the boxes in it. 900 is the composer's own column,
+	   240 is `CHAT_CHIP_ICON_ONLY_PX`, and 172 is the floor QA measured on the built
+	   app — the three widths at which the row behaves differently. */
+	["chat-composer-status-row--activity-widths", 1000, 1000],
+	/* The activity mark with motion reduced, which is the OTHER half of the paint
+	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
+	   0.01ms rather than cancelling anything, so the frame has to show that the
+	   mark lands on a visible end state and that the shape still reads as the
+	   state it stands for. A second entry with its own `dir` because the state is a
+	   viewport feature, which a story cannot set. */
+	[
+		"chat-composer-status-row--activity-chips",
+		1000,
+		1000,
+		{ dir: "activity-chips-reduced-motion", reducedMotion: true },
+	],
+	/* The 240px arrangement, which is where the row's edges differ (design review
+	   round 1, D2/D5): the goal's line, then the counts as one group. Three tuples
+	   of ONE story, differing only in the browser state the rig applies — at rest,
+	   with a real pointer on the goal's trigger, and with the real Tab key having
+	   walked to a chip. `:hover` and `:focus-visible` are both browser state, so
+	   neither can be a story prop, and a story that faked the class would be a
+	   picture of the fake. */
+	["chat-composer-status-row--activity-stacked", 260, 320],
+	[
+		"chat-composer-status-row--activity-stacked",
+		260,
+		320,
+		{ dir: "activity-stacked-hovered", hover: "[aria-expanded]" },
+	],
+	[
+		"chat-composer-status-row--activity-stacked",
+		260,
+		320,
+		{ dir: "activity-stacked-focused", tabTo: "[data-status-subagents]" },
+	],
+	/* The SECOND hover, on a count chip rather than the goal, because one frame can
+	   hold one pointer: the pair is what shows that the goal's ground (the row's
+	   leading chip, `-ml-1.5`) starts at the row's own edge and the stacked chips'
+	   grounds start at theirs. A hovered frame carries no tooltip, which is why this
+	   pair is the clean way to compare two grounds. */
+	[
+		"chat-composer-status-row--activity-stacked",
+		260,
+		320,
+		{ dir: "activity-stacked-chip-hovered", hover: "[data-status-jobs]" },
+	],
+	/* THE MOTION PAIR, and the only frames in this repository captured with live
+	   animation: the rig's default injects `animation: none !important` before every
+	   shutter, so no two stills of one story could ever differ by a spin. These two
+	   are the same story, the same theme and the same rig, a rotation angle apart -
+	   the composer's running-state mark actually turning. They prove the mark animates
+	   in the built stylesheet; they do NOT prove the mark's resting visibility under
+	   reduced motion (that is the `-reduced-motion` tuple) and they are not a live
+	   app: the wire is a fixture. `docs/evidence/chat-composer-status-row/README.md`
+	   states both limits. */
+	[
+		"chat-composer-status-row--activity-mark-motion",
+		1000,
+		220,
+		{ dir: "activity-motion-1", liveMotion: true, phaseMs: 0 },
+	],
+	[
+		"chat-composer-status-row--activity-mark-motion",
+		1000,
+		220,
+		{ dir: "activity-motion-2", liveMotion: true, phaseMs: 500 },
+	],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap
@@ -1957,13 +2047,61 @@ const main = async () => {
 			 * Hiding it costs nothing: the caret says the input has focus, and
 			 * the focus ring already says that in a frame nobody is typing in.
 			 */
-			await cdp.send("Runtime.evaluate", {
-				expression: `(() => {
-					const s = document.createElement("style");
-					s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
-					document.head.appendChild(s);
-				})()`,
-			});
+			/*
+			 * `{ liveMotion: true }` is the ONE exception to that rule, and it exists
+			 * because exactly one claim in this repository is about motion itself: the
+			 * composer's running-state mark spins (`motion-safe:animate-spin`), and with
+			 * the blanket override above no pair of frames can ever show it - two
+			 * shutters of one story are byte-identical by construction. A tuple that
+			 * asks for live motion therefore gets NO override, and the two tuples that
+			 * take it differ only in WHEN the shutter opened: same story, same theme,
+			 * same rig, a rotation angle apart.
+			 *
+			 * It is deliberately not a general option: every other frame here WANTS the
+			 * settled state (a half-faded paragraph reads as a contrast defect, and the
+			 * caret blink cost a review round). A tuple that sets this is asserting "the
+			 * motion is the subject", and its README entry has to say what the pair
+			 * proves and what it does not.
+			 */
+			if (!options?.liveMotion) {
+				await cdp.send("Runtime.evaluate", {
+					expression: `(() => {
+						const s = document.createElement("style");
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						document.head.appendChild(s);
+					})()`,
+				});
+			} else if (typeof options?.phaseMs === "number") {
+				/*
+				 * ...and `{ phaseMs }` HOLDS that live animation at a chosen point of its
+				 * own timeline, because a phase SAMPLED from a running clock is not
+				 * reproducible evidence: measured, three consecutive live captures of one
+				 * story produced two distinct rotations and one repeat, so a committed
+				 * pair could regenerate identical and quietly turn its own README claim
+				 * false. A negative `animation-delay` with the animation paused renders
+				 * the element at that point of the shipped keyframes
+				 * (`animate-spin` is Tailwind's `spin 1s linear infinite`, so -500ms is
+				 * half a turn), and re-running the sweep lands on the same angle every
+				 * time.
+				 */
+				/*
+				 * The wait is load-bearing, and it is this option's own cost: with no
+				 * blanket override the row's ENTRANCE fade is still in flight, and a
+				 * shutter inside it renders the text at an alpha the other frame of the
+				 * pair does not share — measured, the two frames then differ across every
+				 * glyph on the row (491 pixels, x48-919) and the pair says nothing about
+				 * the mark. Sleeping past the longest entrance (300ms in this system)
+				 * leaves the ONLY live animation the mark's own spin.
+				 */
+				await sleep(700);
+				await cdp.send("Runtime.evaluate", {
+					expression: `(() => {
+						const s = document.createElement("style");
+						s.textContent = '[data-composer-status-row] .animate-spin,[data-composer-status-row] .animate-spin *{animation-play-state:paused !important;animation-delay:-${options.phaseMs}ms !important}*{caret-color:transparent !important}';
+						document.head.appendChild(s);
+					})()`,
+				});
+			}
 			await sleep(120);
 			/* Assert the capture is of a rendered story, not Storybook's own
 			   error page. A screenshot of "Configuration validation failed" is
@@ -2238,6 +2376,49 @@ const main = async () => {
 			 * that matches nothing, and a selector whose matches all sit at offset 0 —
 			 * which is a resting frame filed under a name that claims an end.
 			 */
+			/*
+			 * A KEYBOARD FOCUS RING, for the frames whose claim is one.
+			 *
+			 * `:focus-visible` is browser state like `:hover`, and it is stricter: a
+			 * programmatic `element.focus()` does not match it in Blink unless the last
+			 * interaction was the keyboard, so a story that focused a control on mount
+			 * would photograph the resting state and be filed under a ring. The rig
+			 * therefore presses the real Tab key (`Input.dispatchKeyEvent`) until the
+			 * named element holds focus, and throws rather than photographing the
+			 * unfocused state if it never does.
+			 *
+			 * Bounded, because a selector that matches nothing must fail loudly instead
+			 * of walking every focusable in Storybook's own chrome; the walk passes
+			 * through those on the way, which is what a keyboard user does too.
+			 */
+			if (options?.tabTo) {
+				const focused = async () =>
+					(
+						await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `document.activeElement?.matches(${JSON.stringify(options.tabTo)}) === true`,
+						})
+					).result.value === true;
+				let reached = false;
+				for (let i = 0; i < 24 && !reached; i++) {
+					for (const type of ["rawKeyDown", "keyUp"]) {
+						await cdp.send("Input.dispatchKeyEvent", {
+							type,
+							key: "Tab",
+							code: "Tab",
+							windowsVirtualKeyCode: 9,
+							nativeVirtualKeyCode: 9,
+						});
+					}
+					await sleep(40);
+					reached = await focused();
+				}
+				if (!reached) {
+					throw new Error(
+						`${story} @ ${theme}: the tabTo selector \`${options.tabTo}\` never took focus in 24 Tab presses`,
+					);
+				}
+			}
 			if (options?.scrollToEnd) {
 				const { result: scrolled } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
