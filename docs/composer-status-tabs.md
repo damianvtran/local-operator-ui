@@ -236,6 +236,27 @@ and `box.y` are four of its keys.
 | absent | present | the plan count alone, at the row's start | 24px + gap |
 | present | present | goal chip first, count second | 24px + gap |
 | present, expanded | either | the chips' line, plus the goal's body beneath | up to 160px |
+| any of the above | any | **plus up to two ACTIVITY chips**, after the plan chip: subagents, then jobs (`docs/composer-activity-chips.md`) | see below |
+
+The activity chips are the row's second change, and they are the reason the last
+row of that table can no longer be described as "24px + gap" in the general case:
+four chips do not share a line at any column the app renders, so the row WRAPS.
+Measured on the frames (`docs/evidence/chat-composer-status-row/activity-widths/`,
+which prints its own numbers into the picture):
+
+| Column | Chips rendered | Row height | `overflowX` |
+|---|---|---|---|
+| 900px (the app's own column) | 4, one line | 32px | 0 |
+| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 4, wrapped | 80px | 0 |
+| 172px (the app's floor with the canvas open) | 4, stacked | 106px | 0 |
+
+That height is the cost this row accepts rather than hides, and it is the same
+cost § 2.3 already records for the stacked arrangement, one chip further: the row
+changes height when a chip appears, when a chip wraps, and when it stacks. What it
+never does is paint past its column — the chips are `shrink-0` (§ 5.4's rule that a
+bounded count is never cut) and the row is `flex-wrap` above the floor, with the
+stacked arrangement turning wrap back OFF in its own query because a column
+container wraps into COLUMNS, which is horizontal overflow.
 
 **The plan's gate is the ITEM count (`totalTodos > 0`), and this table used to say
 `details.todos.length === 0`.** `RunDetails.todos` holds PHASES, and the model
@@ -590,6 +611,31 @@ of padding, so `122 + 12 + 8 + 26 ≤ 204` holds with a snippet left over. **Tha
 arithmetic is why the row never wraps above the 240px switch, and it is
 arithmetic, not a frame** — the frames are what confirm it (§ 9).
 
+### 5.5 The two activity chips, and the one refusal this document owes them
+
+**They are `docs/composer-activity-chips.md`'s subject, not this one's** — that
+document argues the shape (a state mark instead of a count's `Info`, the motion
+that comes with a running row, the `count > 0` gate, the wrap rule) — but two
+sentences here are what the *plan chip's* reader needs:
+
+- **Same control box, same reveal, one more destination.** The chips import
+  `CHIP_CONTROL` from `session-status-strip.tsx` exactly as § 5.1's count chip
+does, they carry no `aria-pressed` and no pressed ground for § 5.2's reason, and
+  they file the same one-shot, nonce'd request with `section: "subagents"` /
+  `"jobs"`. The pane resolves whichever section the request names through that
+  section's own ref (`run-panel.tsx`'s section→ref lookup), retires it if the
+  section is not on screen, and does not move focus — all three of § 5.2's
+  properties, over three destinations instead of one.
+- **A refusal, recorded because this document is where it was written.** § 7's
+  "no live region, no spinner, no dot" now has a NAMED exception, and the shape of
+  that exception is `docs/composer-activity-chips.md` § 5: the PLAN count still
+  has no spinner and no live region, and the failure dot is still
+  `run-details-trigger.tsx`'s alone — but an activity chip LEADS WITH THE ROSTER'S
+  STATE MARK, which spins while the work it names is running. The distinction that
+  keeps the refusal meaningful is that the mark is the roster's existing
+  nine-state vocabulary, unchanged and unauthored here, and not a decorative pulse
+  invented for the composer. `animate-pulse-visible` remains the skeleton's alone.
+
 ---
 
 ## 6. The trigger icon
@@ -722,10 +768,14 @@ attention dot are all still right and are not part of this change.
 - **No live region, no spinner, no dot.** The count changes as a plan
   progresses, and announcing every change from the composer would talk over the
   agent's own output; the pane is where the plan is read. And the header
-  trigger's `danger` dot is deliberately **not** duplicated here: it is a
+  trigger's dot is deliberately **not** duplicated here: it is a
   two-ledger acknowledgement with its own seen-state
   (`docs/run-sidebar.md` § 3.4), so a second copy in the composer would be a
   second ledger for one fact, with the acknowledgement state of neither.
+  **Deliberately overruled once, for the activity chips and only in the SHAPE
+  they take** (`docs/composer-activity-chips.md` § 5, and § 5.5 below): those two
+  lead with the roster's own state mark, which is motion while a row is running —
+  no live region and still no dot, and nothing invented for the composer.
 - **Reduced motion**: no motion to cap; the body mounts rather than animating
   (`branding.md` § 5's `styles/index.css` cap is untouched).
 - **A crash here must not cost the ability to type.** The row renders inside an
