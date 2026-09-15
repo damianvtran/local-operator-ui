@@ -301,9 +301,10 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 		"the quit backstop",
 		/if \(windowLaunch\.mode === "headless"\) \{ launcherWatch\?\.stop\(\); armHeadlessExitDeadline\("the app is quitting"\); \}/,
 	);
+	// Prefixed like its siblings (round 2, D8): the prefix is what a rig greps.
 	wired(
 		"the window-close path",
-		/All windows closed in a headless run, quitting/,
+		/\[window-mode\] all windows closed in a headless run; quitting/,
 	);
 	// And the signal path is not wired into the shipped app.
 	assert.doesNotMatch(
