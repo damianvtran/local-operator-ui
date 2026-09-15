@@ -866,6 +866,20 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 				{hasList && (
 					<div className="px-5 pt-4">
+						{/*
+						 * The search field is rendered for every list, including a four- or
+						 * five-row static ladder where it cannot help (design D9). Kept knowingly,
+						 * for two reasons that are properties of this host rather than of any one
+						 * picker. It is the dialog's FOCUS TARGET and the element that owns
+						 * `aria-activedescendant`: the arrow/Enter contract, the live announcement
+						 * of the active row and the Escape return all hang off this input, so
+						 * hiding it on a short list would fork the keyboard and assistive-tech
+						 * behaviour of one dialog on a property - row count - that changes with
+						 * the DATA rather than with the surface: the effort ladder is the model's
+						 * own list, four rungs on one model and five or more on another, so the
+						 * same dialog would gain and lose its field as the user changes model. A
+						 * threshold here buys nothing and costs a second keyboard path.
+						 */}
 						<div className="relative">
 							<Search
 								className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim"

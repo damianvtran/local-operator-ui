@@ -73,6 +73,18 @@ export type DesktopFeature =
 	 * already claimed the next `session_catalogue` version.
 	 */
 	| "draft_preview"
+	/**
+	 * `sessions.preview` and `sessions.create` accepting a `model` selection: the
+	 * draft pane's model and effort chips can be PICKED, not merely read.
+	 *
+	 * Its own key rather than a bump of `draft_preview`, for the same reason
+	 * `draft_preview` has one: the inert draft strip is useful on its own, so a
+	 * backend that can preview but cannot birth a conversation on a choice must
+	 * leave the chips inert rather than dead — the copy says the model is used,
+	 * and a control that opens a picker whose pick cannot reach the session the
+	 * first send creates is the dead affordance R20 forbids.
+	 */
+	| "draft_selection"
 	| "lifecycle"
 	| "mcp"
 	/**

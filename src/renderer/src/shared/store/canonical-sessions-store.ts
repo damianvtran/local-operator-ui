@@ -17,6 +17,7 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
 import {
 	type CompletionAttention,
 	type SessionBinding,
@@ -49,6 +50,22 @@ export type ChatDraft = {
 	createRequestId: string;
 	admissionRequestId: string;
 	sessionId?: string;
+	/**
+	 * The model the FIRST turn of this draft will be born on, or absent when the
+	 * user never picked one.
+	 *
+	 * DRAFT state, and deliberately nothing else: it is read by the pane's
+	 * `sessions.preview` (so the readings on screen are this model's) and by
+	 * `sessions.create` on send (so the first turn runs on it). It is never
+	 * written to the host's settings — choosing a model for one conversation must
+	 * not move the machine's default — which is why it lives on the row rather
+	 * than behind `settings.edit`.
+	 *
+	 * Absent and `null` mean the same thing to every reader here (`model == null`
+	 * in both), and `null` is what the store records when a choice is cleared so
+	 * that the row states the intent rather than the absence of a key.
+	 */
+	model?: DesktopModelSelection | null;
 	pending?: boolean;
 	error?: string;
 	errorCode?: string;
@@ -433,6 +450,9 @@ export async function admitChatDraft(
 					input.cwd,
 					draft.target,
 					draft.createRequestId,
+					// The pane's own pick, or nothing at all: a draft that was never
+					// picked from omits the field from the create body entirely.
+					draft.model ?? null,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -642,6 +662,8 @@ type CanonicalSessionsState = {
 		cwd: string,
 		target?: ChatTarget,
 		requestId?: string,
+		/** The draft's own model pick, when it has one; omitted otherwise. */
+		model?: DesktopModelSelection | null,
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	/**
@@ -658,6 +680,18 @@ type CanonicalSessionsState = {
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
+	/**
+	 * Record — or clear — the model a NEW conversation will be born on.
+	 *
+	 * A dedicated action rather than a bare `updateDraft("model")` because of the
+	 * receipt: the server keys its at-most-once receipt on a hash of the WHOLE
+	 * create body (`desktop_receipts.py`), so re-sending the same
+	 * `createRequestId` with a different `model` is a 409 forever. A changed
+	 * selection is therefore a changed intent, and it gets a fresh request id —
+	 * scoped to the pre-session state, since once a session exists the create is
+	 * already behind us and its id must stay pinned for an idempotent replay.
+	 */
+	setDraftModel: (key: string, model: DesktopModelSelection | null) => void;
 	finishDraft: (key: string, sessionId: string) => void;
 	/**
 	 * Abandon a stuck send. The retained payload is the user's own text, so the
@@ -759,7 +793,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						});
 				}
 			},
-			createSession: async (cwd, target, requestId = crypto.randomUUID()) => {
+			createSession: async (
+				cwd,
+				target,
+				requestId = crypto.randomUUID(),
+				model?: DesktopModelSelection | null,
+			) => {
 				try {
 					const result = await desktopResult<{
 						session_id: string;
@@ -769,6 +808,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						requestId,
 						cwd,
 						...(target ? { target } : {}),
+						/*
+						 * Omitted, not nulled, when the user picked nothing: the wire body then
+						 * stays byte-identical to the one this app sent before the draft's chips
+						 * could open, which is what makes the capability additive for every
+						 * caller that never used it.
+						 */
+						...(model ? { model } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
@@ -1032,6 +1078,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						drafts: {
 							...state.drafts,
 							[key]: { ...state.drafts[key], ...patch },
+						},
+					};
+				}),
+			setDraftModel: (key, model) =>
+				set((state) => {
+					/*
+					 * A pick on a pane whose row is gone records nothing: the pane was
+					 * discarded while the picker was open, and this must not resurrect it
+					 * (the same rule `updateDraft` states for a partial patch).
+					 */
+					const present = state.drafts[key];
+					if (!present) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...present,
+								model,
+								/*
+								 * A new at-most-once key for a changed create body, and only while there
+								 * is still no session: once one exists the create has already been made
+								 * and its id must stay pinned so a replay of that request stays an
+								 * idempotent replay rather than a second conversation. The admission id
+								 * is NOT re-minted here — it addresses the message, not the model, and
+								 * `admitChatDraft` owns when that becomes load-bearing.
+								 */
+								...(present.sessionId
+									? {}
+									: { createRequestId: crypto.randomUUID() }),
+							},
 						},
 					};
 				}),
