@@ -3,6 +3,7 @@
  * Drive the app's own renderer, headless, and photograph what it paints.
  *
  *     node scripts/renderer-driver.mjs --scene states --out /tmp/frames
+ *     node scripts/renderer-driver.mjs --scene new-chat --out /tmp/frames
  *     node scripts/renderer-driver.mjs --gate-check
  *
  * ## What problem this solves, measured
@@ -1131,6 +1132,221 @@ async function sceneStates(cdp) {
 	return frames;
 }
 
+// ---- the keyboard scene ------------------------------------------------------
+
+/**
+ * The modifier bits `Input.dispatchKeyEvent` takes.
+ *
+ * CDP's own mask (Alt 1, Ctrl 2, Meta 4, Shift 8), which is a different spelling
+ * of the DOM's `metaKey`/`shiftKey` booleans a listener reads back — the point of
+ * sending it this way is that the renderer produces those booleans itself.
+ */
+const MODIFIER = { alt: 1, ctrl: 2, meta: 4, shift: 8 };
+
+/**
+ * One chord, dispatched the way a keyboard sends one.
+ *
+ * `Input.dispatchKeyEvent` rather than a `KeyboardEvent` built inside the page:
+ * a synthetic event proves only that SOME listener is registered and skips
+ * everything between the key and the listener, which is the half of the claim a
+ * shortcut has to earn. This goes through Chromium's input pipeline, so what the
+ * renderer receives is what the platform sends — the same reason
+ * `mentioned-files-app-proof.mjs` drives its Escape this way.
+ *
+ * `keyUp` follows every press, because a held key is a different case the app
+ * answers differently (`repeat`) and a chord left down would leak into the next
+ * step's reading.
+ */
+async function pressChord(cdp, { key, code, virtualKeyCode, modifiers = 0 }) {
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key,
+			code,
+			modifiers,
+			windowsVirtualKeyCode: virtualKeyCode,
+			nativeVirtualKeyCode: virtualKeyCode,
+		});
+	}
+}
+
+/**
+ * The draft the session store has staged, read from the store's OWN persistence.
+ *
+ * `canonical-sessions-storage` is where `stageDraft` lands (`activeDraftKey` and
+ * `drafts` are both in the persisted slice), so this reads the app's state rather
+ * than this harness's idea of it — and it does so without adding a verb, which is
+ * the difference between observing the app and widening the surface it exposes.
+ */
+function stagedDraft(cdp) {
+	return cdp.evaluate(`(() => {
+		try {
+			const raw = localStorage.getItem("canonical-sessions-storage");
+			return raw ? (JSON.parse(raw)?.state?.activeDraftKey ?? null) : null;
+		} catch {
+			return "(unreadable)";
+		}
+	})()`);
+}
+
+/**
+ * Wait for the app's route to become `route`, and hand back where it actually is.
+ *
+ * A condition rather than a fixed sleep: `navigate("/chat")` lands in the
+ * press's own frame, but the router committing it is a render, and a scene that
+ * slept would either be slower than it needs to be or wrong on a loaded machine.
+ * The answer is returned rather than asserted, so the failing case reports the
+ * route the app is really on.
+ */
+async function waitForRoute(cdp, route, timeoutMs = 5000) {
+	const started = Date.now();
+	for (;;) {
+		const state = await verb(cdp, "state");
+		const waited = Date.now() - started;
+		if (state.route === route || waited > timeoutMs)
+			return { route: state.route, waited };
+		await wait(50);
+	}
+}
+
+/**
+ * `new-chat`: the app-wide `⌘N`, and the presses that are deliberately not it.
+ *
+ * WHY THIS SCENE EXISTS, and why it is not a Storybook frame. `⌘N` starts a new
+ * chat from anywhere in the app. Two things about that cannot be read off the
+ * source: that the binding is REGISTERED on the built app's document at all — a
+ * listener that never mounts is the failure mode a unit test cannot see, because
+ * the unit test calls the predicate directly — and that the chord reaches it
+ * through the platform's own input path rather than only through a synthetic
+ * event. Both are properties of the running app.
+ *
+ * The app's state is read from the store's own persistence (`stagedDraft`) and
+ * from what the router is showing (`state.route`), so the scene asserts the two
+ * things the row's click does: a FRESH draft is staged, and the app lands on the
+ * chat route.
+ *
+ * The negatives get the same treatment as the positive, and for the same reason:
+ * `⌘⇧N` is another app's chord and a bare `n` belongs to whatever text field has
+ * focus, so a binding that answered either would be wrong in a way a passing
+ * positive case cannot see.
+ *
+ * WHAT IT CANNOT SHOW, and this is the limit a reader should hold it to: the
+ * scene starts on a route that is not the chat route so that "it started a chat"
+ * is visible, and that route is one of the BACKEND-GATED ones this harness
+ * documents (no backend here), so the before frame is the app's offline surface
+ * rather than a reviewed screen. The chat route it lands on is the same kind of
+ * frame. What the frames are evidence about is the ROUTE the chord moved, not the
+ * two screens it moved between; the row and its key caps are photographed
+ * against a real backend in `docs/evidence/new-chat-shortcut/`.
+ */
+async function sceneNewChat(cdp) {
+	/*
+	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
+	 * shortcut does, and a press that started from `/chat` would leave the same
+	 * screen behind. `/agent-hub` is a rail item the gate's own scene already
+	 * presses, so the route is one the app really has.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const before = await verb(cdp, "state");
+	const beforeDraft = await stagedDraft(cdp);
+	note("state before the press", JSON.stringify(before));
+	check(
+		"the scene starts on a route that is not the chat route",
+		before.route === "/agent-hub",
+		`route is ${before.route}`,
+	);
+	check(
+		"no draft is staged before the press",
+		beforeDraft === null,
+		`activeDraftKey is ${JSON.stringify(beforeDraft)}`,
+	);
+	const beforeFrame = await captureSettled(cdp, "before-cmd-n");
+	note("frame", JSON.stringify(beforeFrame));
+
+	// The chord itself: `⌘N` on macOS, and CDP's Meta bit is the same key on
+	// every platform this harness runs on (Ctrl is `MODIFIER.ctrl`).
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const afterDraft = await stagedDraft(cdp);
+	check(
+		"⌘N moved the app to the chat route",
+		landed.route === "/chat",
+		`route is ${landed.route} after ${landed.waited}ms`,
+	);
+	check(
+		"⌘N staged a fresh draft, which is what the New chat row stages",
+		typeof afterDraft === "string" && afterDraft.startsWith("draft:"),
+		`activeDraftKey is ${JSON.stringify(afterDraft)} (was ${JSON.stringify(beforeDraft)})`,
+	);
+	const afterFrame = await captureSettled(cdp, "after-cmd-n");
+	note("frame", JSON.stringify(afterFrame));
+
+	/*
+	 * The three presses that must NOT start a chat, each against a route the
+	 * positive case just proved it can leave — so a refusal here cannot be a
+	 * route that happened not to be listening.
+	 */
+	const refusals = [
+		{
+			name: "⌘⇧N",
+			press: { key: "N", modifiers: MODIFIER.meta | MODIFIER.shift },
+		},
+		{
+			name: "a bare n",
+			press: { key: "n", modifiers: 0 },
+		},
+	];
+	for (const refusal of refusals) {
+		await verb(cdp, "navigate", "/agent-hub");
+		const stagedBefore = await stagedDraft(cdp);
+		await pressChord(cdp, {
+			key: refusal.press.key,
+			code: "KeyN",
+			virtualKeyCode: 78,
+			modifiers: refusal.press.modifiers,
+		});
+		await wait(300);
+		const settled = await verb(cdp, "state");
+		const stagedAfter = await stagedDraft(cdp);
+		check(
+			`${refusal.name} does not start a new chat`,
+			settled.route === "/agent-hub" && stagedAfter === stagedBefore,
+			`route ${settled.route}, activeDraftKey ${JSON.stringify(stagedBefore)} -> ${JSON.stringify(stagedAfter)}`,
+		);
+	}
+
+	const frames = [beforeFrame, afterFrame];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width === frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height === frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map((f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`)
+			.join(" | "),
+	);
+	return frames;
+}
+
 // ---- gate-check --------------------------------------------------------------
 
 /**
@@ -1611,6 +1827,7 @@ async function main() {
 				note("isolation probe unavailable", probe.detail);
 			}
 			if (SCENE === "states") await sceneStates(cdp);
+			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
