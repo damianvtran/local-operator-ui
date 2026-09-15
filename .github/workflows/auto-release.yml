@@ -280,7 +280,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          release_id="$(gh release view "$TAG" --json id --jq .id)"
+          # The id this dispatch carries is the NUMERIC release id, resolved through
+          # the same REST path `validate-release.mjs` reads, because that is the
+          # spelling the other end pins and the spelling both of its consumers
+          # require (`release-state.mjs` and `upload-release.mjs` each match
+          # /^[1-9]\d*$/ on it).
+          #
+          # Do NOT use `gh release view --json id` here. It prints the GraphQL NODE
+          # id (`RE_kwDOOCmy184XNSAc`) under the key `id`, while the REST object the
+          # validator reads spells this same release's database id numerically
+          # (`389357596`). That mismatch is what skipped every job of v0.24.2's first
+          # automatic release after its tag and Release had already been created.
+          # `--json databaseId` is numeric too, but the API read below mirrors the
+          # validator's own `/releases/tags/<tag>` lookup, so the two ends cannot
+          # drift about which spelling "the release id" means.
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .id)"
+          # And the shape is refused here rather than dispatched: an event whose pin
+          # the publish workflow can only reject costs a confusing failed run and a
+          # release with no assets, which is the outcome this whole step exists to
+          # avoid. Fail while this run can still say what went wrong.
+          if ! [[ "$release_id" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error title=Release id is not numeric::$TAG resolved to release id '$release_id', which is not the numeric database id the publish validator pins; refusing to dispatch it"
+            exit 1
+          fi
           gh api -X POST "repos/$GITHUB_REPOSITORY/dispatches" \
             -f event_type=release-published \
             -f "client_payload[release_tag]=$TAG" \

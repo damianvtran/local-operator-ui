@@ -75,6 +75,13 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name || github.event.client_payload.release_tag || inputs.release_tag }}
           EXPECTED_SOURCE_SHA: ${{ github.event.client_payload.source_sha || (github.event_name == 'workflow_dispatch' && inputs.expected_source_sha) || '' }}
           IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          # The ID pin arrives in one of two spellings of the same release:
+          # `github.event.release.id` is the numeric REST id, and a dispatch
+          # payload carries whatever its producer sent -- `auto-release.yml` sends
+          # the numeric id, and did not always. `validate-release.mjs` accepts
+          # either spelling of THIS release and emits the numeric id downwards; the
+          # note at the top of that script says which spelling is which and why only
+          # one is ever passed on.
           EXPECTED_RELEASE_ID: ${{ github.event.release.id || github.event.client_payload.release_id || '' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/validate-release.mjs
