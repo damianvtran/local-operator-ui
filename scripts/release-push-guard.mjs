@@ -63,7 +63,8 @@
  *    that lands nothing while content is unreleased still owes a release.
  */
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { isVersionOnlyChange } from "./apply-release-bump.mjs";
 import { fetchReleases, selectVersionAnchor } from "./release-baseline.mjs";
 
@@ -252,6 +253,39 @@ function main() {
 	}
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/** A path as it physically is, or as it was spelled when it cannot be resolved: a
+ * path that does not exist is not this module anyway, and throwing here would
+ * replace a readable verdict with a stack trace. */
+const physical = (path) => {
+	try {
+		return realpathSync(path);
+	} catch {
+		return path;
+	}
+};
+
+/**
+ * Whether this module is the process's ENTRY POINT, compared by physical path.
+ *
+ * WHY NOT `import.meta.url === pathToFileURL(process.argv[1]).href`. The two sides
+ * are written by different parties and only one of them is resolved: Node loads
+ * this module through its real path, so `import.meta.url` is physical, while
+ * `process.argv[1]` is whatever the caller typed. Through a symlinked directory
+ * they disagree — and the disagreement is SILENT: the file loads, `main()` never
+ * runs, nothing is printed and the process exits 0. macOS makes that the ordinary
+ * case rather than an exotic one, because `/tmp` is a symlink to `private/tmp`, so
+ * `node /tmp/<checkout>/scripts/release-push-guard.mjs` did nothing at all — and
+ * the workflow's `jq -r .skip` then read the empty file as "not a skip" and
+ * carried on WITHOUT the guard. That is the guard failing to run on the one path
+ * where it exists to stop a duplicate release, so both sides are resolved here
+ * before they are compared, whatever spelling the caller used. The workflow side
+ * of the same defect — treating an empty result as an answer — is refused in
+ * `auto-release.yml`, and `release-push-guard.test.mjs` drives both.
+ */
+const isEntryPoint = () =>
+	Boolean(process.argv[1]) &&
+	physical(fileURLToPath(import.meta.url)) === physical(process.argv[1]);
+
+if (isEntryPoint()) {
 	main();
 }

@@ -95,6 +95,20 @@ jobs:
           # shape. Measured on that release: `git diff --name-only 8f80697c8^ 8f80697c8`
           # is `package.json`, one line.
           node scripts/release-push-guard.mjs --json > push-guard.json
+          # An unreadable verdict is a REFUSAL, never a fall-through. The guard exits
+          # non-zero when it refuses and `set -e` stops the run on that, but the two
+          # ways it can leave NO readable answer both exit 0: it declining to run at
+          # all (reached through a symlinked path, which was a silent no-op until the
+          # guard resolved its own path) and a truncated write. `jq -r .skip` on an
+          # empty file prints nothing and exits 0, so comparing THAT against `true`
+          # reads "not a skip" and carries on into the derivation WITHOUT the guard
+          # having run — the one outcome this guard exists to prevent, on the one
+          # path where it decides whether a release happens at all. So the file has
+          # to carry a verdict before anything acts on it.
+          if ! jq -e '(.skip | type) == "boolean" and (.message | type) == "string"' push-guard.json > /dev/null 2>&1; then
+            echo "::error title=Loop guard produced no verdict::push-guard.json is empty or malformed, so this push was never checked for being this workflow's own release commit. Refusing to derive an unguarded release."
+            exit 1
+          fi
           if [ "$(jq -r .skip push-guard.json)" = true ]; then
             echo "release=false" >> "$GITHUB_OUTPUT"
             {

@@ -137,13 +137,14 @@ test("this workflow's own release commit is not a release input", () => {
  * only property is the answer under test, and a stub derivation that records
  * whether it was called at all.
  */
-function runDeriveStep({ skip }) {
+function runDeriveStep({ skip, guardScript }) {
 	const dir = mkdtempSync(join(tmpdir(), "auto-release-step-"));
 	mkdirSync(join(dir, "scripts"), { recursive: true });
 	const derived = join(dir, "derivation-ran");
 	writeFileSync(
 		join(dir, "scripts", "release-push-guard.mjs"),
-		`console.log(JSON.stringify({ skip: ${skip}, message: "stub guard: ${skip ? "nothing to release" : "content"}" }));\n`,
+		guardScript ??
+			`console.log(JSON.stringify({ skip: ${skip}, message: "stub guard: ${skip ? "nothing to release" : "content"}" }));\n`,
 	);
 	writeFileSync(
 		join(dir, "scripts", "derive-release.mjs"),
@@ -204,6 +205,31 @@ test("a push with content reaches the derivation and its outputs", () => {
 	assert.match(run.output, /^base=v0\.24\.0$/m);
 	assert.match(run.summary, /### Derivation: minor -> v9\.9\.9/);
 	assert.equal(run.derivationRan, true);
+});
+
+test("a guard that leaves no verdict stops the run instead of deriving without it", () => {
+	// The shape that matters, and it exits 0: the guard printing NOTHING and
+	// succeeding, which is what reaching it through a symlinked path used to do
+	// (`/tmp` is a symlink to `private/tmp` on macOS). `jq -r .skip` on the empty
+	// file prints nothing and exits 0, so a bare comparison against `true` reads
+	// "not a skip" and the run derives a release having never consulted the guard.
+	const run = runDeriveStep({ guardScript: "" });
+	assert.notEqual(run.status, 0, "the step must fail, not derive");
+	assert.equal(run.derivationRan, false);
+	assert.doesNotMatch(run.output, /^release=true$/m);
+});
+
+test("a guard that emits malformed JSON is refused as well", () => {
+	// Truncated mid-document, and the stub EXITS 0 — the shape a half-written or
+	// half-read verdict has. Note the stub has to be valid JavaScript that writes
+	// invalid JSON: a stub that failed to parse would fail the step by crashing,
+	// and would pass this test without the step ever refusing anything.
+	const run = runDeriveStep({
+		guardScript: `process.stdout.write('{"skip": fal');\n`,
+	});
+	assert.notEqual(run.status, 0, "the step must fail, not derive");
+	assert.equal(run.derivationRan, false);
+	assert.doesNotMatch(run.output, /^release=true$/m);
 });
 
 test("a dry run cannot reach the release job, and a push always can", () => {

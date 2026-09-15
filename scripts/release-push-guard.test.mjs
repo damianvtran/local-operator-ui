@@ -23,19 +23,22 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { PushGuardError, pushVerdict } from "./release-push-guard.mjs";
 
 /** The script as the workflow runs it, not an import of its internals.
  *
- * The URL the module loader reports is already resolved to a physical path, which
- * matters here: reached through a symlinked checkout (`/tmp` on macOS) the script's
- * own `import.meta.url === argv[1]` guard disagrees with itself and does nothing at
- * all — silently, which is the one failure a guard test must not paper over. */
+ * Resolved through `fileURLToPath` to the module loader's own URL, which is already
+ * a PHYSICAL path — deliberately, because the guard compares its entry point by
+ * physical path too. Reached through a symlinked directory (`/tmp` on macOS) its
+ * `import.meta.url` and `process.argv[1]` used to disagree, and it did nothing at
+ * all: silently, exit 0, no output. `the guard runs when it is reached through a
+ * symlinked path` below drives exactly that invocation.
+ */
 const GUARD = fileURLToPath(
 	new URL("./release-push-guard.mjs", import.meta.url),
 );
@@ -290,16 +293,68 @@ test("a commit that changes package.json without the version line is content", (
 	});
 });
 
-test("a push that lands nothing while content is unreleased still releases", () => {
+test("an empty commit is not a release commit: the content behind it still releases", () => {
 	withScratch(({ dir, git, land }) => {
 		land(208, "fix/thing", "file.txt", "fix(mcp): a real fix");
 		git("commit", "--quiet", "--allow-empty", "-m", "ci: an empty housekeeping commit");
 		// Landing nothing is not the same as landing the version line: the fix above
 		// is still owed a release, and a guard that read an empty diff as "the release
 		// commit" would stall it.
+		//
+		// The empty landing is asserted rather than assumed, because a guard that
+		// never read one (`previous` null) answers identically here and would pass
+		// this test for the wrong reason.
+		assert.notEqual(verdict(dir).previous, null);
+		assert.equal(git("diff", "--name-only", "HEAD^", "HEAD").trim(), "");
 		const result = verdict(dir);
-		assert.equal(result.skip, false);
+		assert.notEqual(result.shape, "release-commit");
 		assert.equal(result.shape, "content");
+		assert.equal(result.skip, false);
+	});
+});
+
+test("an empty commit with nothing unreleased behind it has nothing to release", () => {
+	withScratch(({ dir, git }) => {
+		// The released tree itself, plus a commit that lands nothing: the push is
+		// empty on both readings and no version may be derived from it.
+		git("commit", "--quiet", "--allow-empty", "-m", "ci: an empty housekeeping commit");
+		assert.notEqual(verdict(dir).previous, null);
+		assert.equal(git("diff", "--name-only", "HEAD^", "HEAD").trim(), "");
+		const result = verdict(dir);
+		assert.equal(result.skip, true);
+		assert.equal(result.shape, "nothing-unreleased");
+		// Named, not merely implied by the skip: an empty landing must never be read
+		// as this workflow's own release commit, which is the header's claim.
+		assert.notEqual(result.shape, "release-commit");
+	});
+});
+
+test("the guard runs when it is reached through a symlinked path", () => {
+	withScratch(({ dir, bump }) => {
+		bump();
+		// Node loads the module through its PHYSICAL path while `process.argv[1]`
+		// keeps the caller's spelling, so compared raw the two disagree through any
+		// symlinked directory — silently: `main()` never runs, nothing is printed and
+		// the exit status is 0. `/tmp` is a symlink to `private/tmp` on macOS, so this
+		// is an ordinary invocation rather than an exotic one, and the workflow's
+		// `jq -r .skip` reads the empty output as "not a skip" and carries on without
+		// the guard.
+		const link = join(dir, "linked-scripts");
+		symlinkSync(dirname(GUARD), link);
+		assert.notEqual(link, dirname(GUARD));
+		const out = execFileSync(
+			process.execPath,
+			[
+				join(link, "release-push-guard.mjs"),
+				"--json",
+				"--released-tag",
+				"v0.24.0",
+			],
+			{ cwd: dir, encoding: "utf8" },
+		);
+		const result = JSON.parse(out);
+		assert.equal(result.skip, true);
+		assert.equal(result.shape, "version-line-only");
 	});
 });
 
