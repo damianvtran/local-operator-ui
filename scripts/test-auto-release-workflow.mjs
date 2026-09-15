@@ -30,8 +30,12 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { test } from "node:test";
+// The other end of the dispatch contract: the validator the publish workflow runs
+// is imported here so the identifier this workflow sends can be handed to the
+// function that will actually pin it, rather than to a restatement of it.
+import { validateRelease } from "./validate-release.mjs";
 
 const require = createRequire(import.meta.url);
 const builderRequire = createRequire(
@@ -466,6 +470,225 @@ test("the publish workflow is dispatched explicitly, because the Release event c
 	assert.equal(
 		validate.env.IS_MANUAL_DISPATCH,
 		"${{ github.event_name == 'workflow_dispatch' }}",
+	);
+});
+
+/**
+ * v0.24.2's release as GitHub itself reported it: the numbers and the node id in
+ * the incident report, so a failure here reads against the real release. The REST
+ * object spells one release twice -- `.id` is the numeric database id and
+ * `.node_id` is the GraphQL global id -- and `gh release view --json id` answers
+ * with the NODE one under the key `id`, which is the whole bug.
+ */
+const RELEASE_ID = 389357596;
+const NODE_ID = "RE_kwDOOCmy184XNSAc";
+const RELEASE_SHA = "35a043d3a913a645668491e035e76da12a52c1be";
+const RELEASE_TAG = "v0.24.2";
+/**
+ * The line this step shipped before the fix. Kept here because the test below
+ * mutates the SHIPPED step body with it: the mutation has to be the historical
+ * spelling, not a paraphrase of it, or the test proves something about a string
+ * nobody ever ran.
+ */
+const PRE_FIX_RESOLUTION =
+	'release_id="$(gh release view "$TAG" --json id --jq .id)"';
+
+/**
+ * The dispatch step's `run:` block, executed as the runner executes it, with a
+ * stub `gh` that answers the way the real one does.
+ *
+ * WHY THIS IS DRIVEN RATHER THAN READ. The test above asserts the payload key
+ * NAMES -- that `client_payload[release_id]` is sent and that `publish.yml` reads
+ * `client_payload.release_id` -- and both were true while v0.24.2's first
+ * automatic release died in `validate-release.mjs`: this end sent the GraphQL
+ * node id, that end compared it against the numeric database id, and no test
+ * anywhere asked whether the two ends agreed about what the value MEANS. The stub
+ * answers per argv the way the CLI does (node id for `--json id`, the numeric id
+ * for `--json databaseId`, and for the REST path whichever of `.id`/`.node_id`
+ * the step's own `--jq` asks for), so the step under test is the shipped one and
+ * the check is on the identifier it produces rather than on its text.
+ */
+function runDispatchStep({ resolution = null } = {}) {
+	const dir = mkdtempSync(join(tmpdir(), "auto-release-dispatch-"));
+	const shipped = runStep(
+		autoRelease,
+		"release",
+		"repos/$GITHUB_REPOSITORY/dispatches",
+	);
+	let script = shipped;
+	if (resolution !== null) {
+		// Mutating the shipped body in place, and asserting the substitution landed:
+		// a regex that stopped matching would silently run the real step and let the
+		// mutation test pass without having mutated anything.
+		const mutated = shipped.replace(
+			/^\s*release_id=".*$/m,
+			`          ${resolution}`,
+		);
+		assert.notEqual(mutated, shipped, "the resolution line must be mutated");
+		script = mutated;
+	}
+	// A stub `gh` as the only one on the child's PATH: a fallback to the real CLI
+	// would dispatch a live event at the operator's repository.
+	writeFileSync(
+		join(dir, "gh"),
+		`#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
+const args = process.argv.slice(2);
+appendFileSync(process.env.CALLS_FILE, JSON.stringify(args) + '\\n');
+const nodeId = ${JSON.stringify(NODE_ID)};
+const numericId = ${JSON.stringify(String(RELEASE_ID))};
+if (args[0] === 'release' && args[1] === 'view') {
+  process.stdout.write(args.includes('databaseId') ? numericId : nodeId);
+  process.exit(0);
+}
+if (args[0] === 'api') {
+  if (args.some((a) => a.endsWith('/dispatches'))) process.exit(0);
+  const path = args.find((a) => a.startsWith('repos/')) ?? '';
+  if (!path.includes('/releases/tags/')) {
+    process.stderr.write('unexpected path ' + path + '\\n');
+    process.exit(1);
+  }
+  process.stdout.write(
+    args[args.indexOf('--jq') + 1] === '.node_id' ? nodeId : numericId,
+  );
+  process.exit(0);
+}
+process.stderr.write('unexpected argv ' + JSON.stringify(args) + '\\n');
+process.exit(1);
+`,
+		{ mode: 0o755 },
+	);
+	const calls = join(dir, "calls");
+	// The step's summary block reads the bump out of the derivation document the
+	// earlier step wrote, so it has to exist for the step to reach its end.
+	writeFileSync(join(dir, "derivation.json"), JSON.stringify({ bump: "patch" }));
+	const summary = join(dir, "summary");
+	writeFileSync(summary, "");
+	let status = 0;
+	let stderr = "";
+	let stdout = "";
+	try {
+		stdout = execFileSync("bash", ["-c", script], {
+			cwd: dir,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "pipe"],
+			env: {
+				...process.env,
+				PATH: `${dir}:${dirname(process.execPath)}:/usr/bin:/bin`,
+				CALLS_FILE: calls,
+				GITHUB_REPOSITORY: "damianvtran/local-operator-ui",
+				GITHUB_STEP_SUMMARY: summary,
+				TAG: RELEASE_TAG,
+				SOURCE_SHA: RELEASE_SHA,
+				GH_TOKEN: "stubbed",
+			},
+		});
+	} catch (error) {
+		status = error.status;
+		stdout = error.stdout ?? "";
+		stderr = error.stderr ?? "";
+	}
+	const payload = {};
+	for (const line of existsSync(calls)
+		? readFileSync(calls, "utf8").trim().split("\n")
+		: []) {
+		if (!line) continue;
+		for (const arg of JSON.parse(line)) {
+			const found = /^client_payload\[(\w+)\]=(.*)$/.exec(arg);
+			if (found) payload[found[1]] = found[2];
+		}
+	}
+	const dispatched = { status, stdout, stderr, payload };
+	rmSync(dir, { recursive: true, force: true });
+	return dispatched;
+}
+
+/**
+ * The validator, driven with the identifier the dispatch sent -- the other half of
+ * the contract, at the function the publish run actually calls.
+ */
+function validateDispatchedPin(dispatchedId) {
+	const api = (path) => {
+		if (path === `/git/ref/tags/${RELEASE_TAG}`)
+			return {
+				ref: `refs/tags/${RELEASE_TAG}`,
+				object: { type: "commit", sha: RELEASE_SHA },
+			};
+		if (path === `/releases/tags/${RELEASE_TAG}`)
+			return {
+				id: RELEASE_ID,
+				node_id: NODE_ID,
+				tag_name: RELEASE_TAG,
+				draft: false,
+				prerelease: true,
+				published_at: "2026-09-15T00:00:00Z",
+			};
+		if (path === `/contents/package.json?ref=${RELEASE_SHA}`)
+			return {
+				content: Buffer.from(
+					JSON.stringify({
+						name: "local-operator-ui",
+						version: RELEASE_TAG.slice(1),
+					}),
+				).toString("base64"),
+			};
+		throw new Error(`unmocked path: ${path}`);
+	};
+	return validateRelease(api, RELEASE_TAG, RELEASE_SHA, false, dispatchedId);
+}
+
+/**
+ * The invariant, in one place, over the real ends: the identifier this workflow
+ * dispatches must identify the same release the publish workflow's validator
+ * pins, AND it must be the numeric spelling, because that is the only spelling
+ * the validator can pass on -- `upload-release.mjs` and `release-state.mjs` each
+ * require `/^[1-9]\d*$/` of the pin they are handed.
+ */
+function assertDispatchedPinIsUsable(dispatchedId) {
+	// The spelling first, so this helper's verdict on a node-id dispatch does not
+	// depend on which end is being changed: it is the one assertion both ends have
+	// to satisfy, and the mutation test below reads its message.
+	assert.match(
+		String(dispatchedId),
+		/^[1-9]\d*$/,
+		`the dispatched release id must be the numeric database id, got ${dispatchedId}`,
+	);
+	const pinned = validateDispatchedPin(dispatchedId);
+	assert.equal(String(pinned.release_id), String(RELEASE_ID));
+	return pinned;
+}
+
+test("the dispatch and the validator agree about which release the id names", () => {
+	const run = runDispatchStep();
+	assert.equal(run.status, 0, run.stderr);
+	// The other two payload fields are asserted here too, because a release id the
+	// validator would reject is no better than a tag it would reject.
+	assert.equal(run.payload.release_tag, RELEASE_TAG);
+	assert.equal(run.payload.source_sha, RELEASE_SHA);
+	const pinned = assertDispatchedPinIsUsable(run.payload.release_id);
+	assert.equal(pinned.release_tag, RELEASE_TAG);
+	assert.equal(pinned.source_sha, RELEASE_SHA);
+});
+
+test("the check bites on the resolution this step shipped before the fix", () => {
+	// The mutation, as a permanent test rather than a manual experiment: put
+	// `gh release view --json id` back on this end -- the spelling that shipped, and
+	// the one whose name reads like the numeric id -- and the run refuses it while
+	// it can still say what went wrong, instead of dispatching an event the publish
+	// workflow can only reject after the tag and the Release already exist. Against
+	// the unfixed workflow this run exits 0 and dispatches `RE_kwDOOCmy184XNSAc`,
+	// which is the production failure reproduced.
+	const run = runDispatchStep({ resolution: PRE_FIX_RESOLUTION });
+	assert.notEqual(run.status, 0, "a node-id resolution must not dispatch");
+	assert.match(run.stdout, /::error title=Release id is not numeric::/);
+	assert.equal(run.payload.release_id, undefined);
+	// The refusal does not rest on that one shape check: the node id is also not a
+	// pin this contract can use, so a producer that reached the dispatch anyway --
+	// with the check removed, or from a workflow this repository does not own --
+	// still cannot satisfy it.
+	assert.throws(
+		() => assertDispatchedPinIsUsable(NODE_ID),
+		/numeric database id/,
 	);
 });
 
