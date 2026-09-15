@@ -37,8 +37,9 @@
  * Usage: node scripts/mentioned-files-app-proof.mjs <session-id> [out-dir]
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
@@ -77,12 +78,33 @@ for (const key of Object.keys(childEnv)) {
  */
 withNotificationsOff(childEnv);
 
+/*
+ * THE APP ITSELF IS SPAWNED, NOT `node_modules/.bin/electron`, and this file was
+ * the last one in `scripts/` still doing it the other way.
+ *
+ * THAT SHIM IS A NODE SCRIPT (`electron/cli.js`) whose child is the app, so the
+ * pid a teardown holds belongs to the shim: signal it and the app is re-parented
+ * to launchd, keeps its `--remote-debugging-port`, and keeps holding the app's
+ * SINGLE-INSTANCE LOCK - which is global rather than per `--user-data-dir`, so
+ * the next run in the same scratch tree dies with "Another instance is already
+ * running" and this rig reports its own teardown as a failed measurement.
+ * `require("electron")` is the package's own documented answer and returns the
+ * executable path, which is what makes `app.pid` the app's main process - the
+ * same resolution `browser-chrome-proof.mjs`, `browser-host-proof.mjs`,
+ * `renderer-driver.mjs` and `session-cookie-restart-proof.mjs` already use.
+ */
+const ELECTRON_BIN = createRequire(join(process.cwd(), "package.json"))(
+	"electron",
+);
+/* Spelled once: the spawn and `thisRunsProfile` below must name the same profile. */
+const USER_DATA = join(OUT, "user-data");
+
 const app = spawn(
-	"./node_modules/.bin/electron",
+	ELECTRON_BIN,
 	[
 		".",
 		`--remote-debugging-port=${PORT}`,
-		`--user-data-dir=${OUT}/user-data`,
+		`--user-data-dir=${USER_DATA}`,
 		// The app's own default, stated rather than inherited: the grid geometry
 		// this run measures is the U1 regression check, and it is only meaningful
 		// at the size the app opens at for a user who has never resized it.
@@ -101,12 +123,108 @@ const app = spawn(
 			LOCAL_OPERATOR_DESKTOP_TOKEN: process.env.LO_PROOF_TOKEN ?? undefined,
 		},
 		stdio: ["ignore", "pipe", "pipe"],
+		// Own the whole tree. Electron spawns helpers (GPU, renderer, utility), so a
+		// signal to the direct child alone is not a stop: `detached` puts the app in
+		// its own process group and `stopApp` below signals that group.
+		detached: true,
 	},
 );
 app.stdout.on("data", (d) => log.push(`[app] ${d}`));
 app.stderr.on("data", (d) => log.push(`[app:err] ${d}`));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** One `ps` row, split into pid, parent and command line. */
+const PS_ROW = /^(\d+)\s+(\d+)\s+(.*)$/;
+
+/**
+ * Every process whose command line names THIS run's profile, with its parent.
+ *
+ * DETECTION ONLY; the callers kill the pids this returns, one at a time. The path
+ * carries this run's own pid, so a match cannot be another session's app or the
+ * operator's. The boundary is explicit rather than incidental - `set-a/user-data`
+ * is a prefix of `set-b/user-data`, and Electron's own helpers repeat the flag -
+ * so the match is anchored on the flag and closed by whitespace or end of line.
+ * Returns null when `ps` could not be read, which is NOT the same as clean.
+ */
+function thisRunsProfile() {
+	const ps = spawnSync("ps", ["-eo", "pid,ppid,command"], { encoding: "utf8" });
+	if (ps.error || ps.status !== 0) return null;
+	const pattern = new RegExp(
+		`(?:^|\\s)--user-data-dir=${USER_DATA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`,
+	);
+	return ps.stdout
+		.split("\n")
+		.slice(1)
+		.map((line) => line.trim().match(PS_ROW))
+		.filter((match) => match && pattern.test(match[3]))
+		.map((match) => ({ pid: Number(match[1]), ppid: Number(match[2]) }));
+}
+
+/**
+ * The stop: the process GROUP first, and a reap by profile as the backstop.
+ *
+ * The group is what the normal case needs, and signalling it is the whole point
+ * of spawning the binary detached - see the launch helper for why the shim made
+ * this rig leak. The backstop covers the case the group cannot: an app
+ * re-parented out of it answers to no pid this run holds, and only its command
+ * line still names it. Kills there stay by EXACT PID, never a pattern pkill, and
+ * the caller exits non-zero when this returns false, so a leak fails the run it
+ * made rather than the next one.
+ */
+async function stopApp() {
+	let exited = app.exitCode !== null || app.signalCode !== null;
+	if (!exited) {
+		app.once("exit", () => {
+			exited = true;
+		});
+		const killGroup = (signal) => {
+			try {
+				process.kill(-app.pid, signal);
+			} catch {
+				/* the group has already gone away */
+			}
+		};
+		killGroup("SIGTERM");
+		const deadline = Date.now() + 5000;
+		while (!exited && Date.now() < deadline) await sleep(100);
+		if (!exited) {
+			killGroup("SIGKILL");
+			await sleep(500);
+		}
+	}
+	await sleep(500);
+	const found = thisRunsProfile();
+	if (found === null) {
+		console.error(
+			"teardown: `ps` could not be read, so the backstop did not run; the group signal is all this run has",
+		);
+		return true;
+	}
+	for (const entry of found) {
+		console.error(
+			`teardown: ${entry.pid} outlived the group signal${
+				entry.ppid === 1
+					? " with ppid 1 (a root this run had already lost)"
+					: ` (ppid ${entry.ppid})`
+			}; reaping by exact pid`,
+		);
+		try {
+			process.kill(entry.pid, "SIGKILL");
+		} catch {
+			/* already gone */
+		}
+	}
+	if (found.length > 0) await sleep(500);
+	const survivors = thisRunsProfile() ?? [];
+	if (survivors.length > 0) {
+		console.error(
+			`teardown: ${survivors.length} process(es) still name this run's profile (${survivors.map((entry) => entry.pid).join(", ")})`,
+		);
+		return false;
+	}
+	return true;
+}
 
 async function targets() {
 	try {
@@ -225,6 +343,10 @@ while (Date.now() < deadline) {
 }
 if (!page) {
 	console.error(`no renderer target appeared; log:\n${log.join("")}`);
+	// Stopped before exiting, the way every other exit in this file is: a boot
+	// that failed to come up is exactly when an app is left running, and the
+	// single-instance lock it holds is global rather than per profile.
+	await stopApp();
 	process.exit(1);
 }
 
@@ -235,7 +357,7 @@ if (!process.env.LO_PROOF_TOKEN) {
 	console.error(
 		"LO_PROOF_TOKEN is unset, so this instance would hold no bearer and no session would load. See the header for how to read it from the running backend.",
 	);
-	app.kill("SIGKILL");
+	await stopApp();
 	process.exit(2);
 }
 
@@ -261,7 +383,7 @@ if (!String(capabilities).includes('"desktop_available":true')) {
 		`the app is not paired with the backend (capabilities: ${capabilities}); nothing below would be meaningful`,
 	);
 	ws.close();
-	app.kill("SIGKILL");
+	await stopApp();
 	process.exit(3);
 }
 
@@ -459,10 +581,7 @@ if (GEOMETRY_ONLY) {
 	writeFileSync(`${OUT}/report-geometry.json`, JSON.stringify(report, null, 2));
 	console.log(JSON.stringify(report, null, 2));
 	ws.close();
-	app.kill("SIGTERM");
-	await sleep(1000);
-	app.kill("SIGKILL");
-	process.exit(0);
+	process.exit((await stopApp()) ? 0 : 1);
 }
 
 await cdp.evaluate(
@@ -572,6 +691,4 @@ writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report, null, 2));
 
 ws.close();
-app.kill("SIGTERM");
-await sleep(1000);
-app.kill("SIGKILL");
+process.exit((await stopApp()) ? 0 : 1);
