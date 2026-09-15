@@ -97,12 +97,12 @@ function backendSpawnEnv(source) {
 	// one every serve spawn calls.
 	let depth = 0;
 	let i = source.indexOf("{", start);
-	const body = i;
+	const bodyStart = i;
 	for (; i < source.length; i += 1) {
 		if (source[i] === "{") depth += 1;
 		else if (source[i] === "}" && (depth -= 1) === 0) break;
 	}
-	return source.slice(body, i + 1);
+	return source.slice(bodyStart, i + 1);
 }
 
 test("the backend spawn env resolves the switch from the launch, after the shell env", () => {
