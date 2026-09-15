@@ -53,16 +53,33 @@ function nextFrame(): Promise<void> {
  * holding the old palette's colour. A committed evidence frame has to be a state
  * the app settles into, not a blend no user sees and no later run can reproduce.
  *
+ * Why ONE clean frame was still not enough (`SETTLED_FRAMES` below), and this is
+ * also measured rather than defensive: the theme action makes React re-render the
+ * rail and the sidebar, so some of their transitions start a frame or two after
+ * the ones the class change began, and a single clean check can land in the gap
+ * between the two. Two `--scene states` runs on Electron 44.3.0 differed in
+ * `chat-light.png` — and only there — by the rail's active pill (srgb(122,133,124))
+ * and the banner's `Retry` (srgb(132,129,123)), each about 46% of the way from the
+ * dark values (srgb(26,40,30) / srgb(29,26,21)) to the settled light ones
+ * (srgb(233,241,233) / srgb(250,248,242)): one shared transition, caught
+ * half-way, in a run whose settle reported `timedOut: false` after 175ms.
+ *
  * Only `CSSTransition` counts. The app animates other things (pulses, spinners,
  * layout), and waiting on those would mean a scene whose timing is decided by an
  * animation that never ends — which is why the loop also gives up after
  * `timeoutMs` and reports it rather than spinning: a caller that gets
- * `timedOut: true` knows the frame may be mid-flight, and says so.
+ * `timedOut: true` knows the frame may be mid-flight, and the driver FAILS the
+ * scene on that answer rather than noting it beside the frame.
  */
+
+/** Consecutive quiet frames that count as settled; three span roughly 50ms. */
+const SETTLED_FRAMES = 3;
+
 async function settleCssTransitions(
 	timeoutMs = 1000,
 ): Promise<{ waitedMs: number; timedOut: boolean }> {
 	const started = performance.now();
+	let quiet = 0;
 	for (;;) {
 		await nextFrame();
 		const waitedMs = Math.round(performance.now() - started);
@@ -73,7 +90,8 @@ async function settleCssTransitions(
 					animation instanceof CSSTransition &&
 					animation.playState === "running",
 			);
-		if (running.length === 0) return { waitedMs, timedOut: false };
+		quiet = running.length === 0 ? quiet + 1 : 0;
+		if (quiet >= SETTLED_FRAMES) return { waitedMs, timedOut: false };
 		if (waitedMs > timeoutMs) return { waitedMs, timedOut: true };
 	}
 }
