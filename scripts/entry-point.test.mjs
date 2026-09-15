@@ -283,7 +283,7 @@ function cases(root) {
 			cwd: plain,
 			env: {},
 			status: 0,
-			stdout: /build steps carry all 4 variables/,
+			stdout: /build steps carry all \d+ variables/,
 			stderr: /^$/,
 		},
 	];

@@ -383,7 +383,10 @@ jobs:
           # these four in all five of its steps that build or pack the app, and
           # `scripts/check-build-env.mjs` now fails the release contracts in
           # `ci.yml` for any build step that omits one, so the omission cannot come
-          # back one step at a time.
+          # back one step at a time. The names matter as much as the presence: a
+          # mistyped `secrets.*` resolves to the empty string and is the same
+          # `is not set` failure by another route, so the check fails a binding
+          # that disagrees with what the rest of the tree binds too.
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
