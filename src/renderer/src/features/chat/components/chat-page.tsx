@@ -497,10 +497,10 @@ function SessionPanel({
 	 * ONE declaration for two readers, which is what the merge has to settle rather
 	 * than what either side wrote: `main` added this call for the draft-preview
 	 * readings below, and this branch added its own for the reader's capability
-	 * negotiation above. Both are the same hook on the same component, so the one
-	 * declaration higher up serves both — two would be a redeclaration, and biome
-	 * reads the earlier USE as a use-before-declaration (the rebase left exactly
-	 * that pair here, and `pnpm check-types` reported it as TS2451).
+	 * negotiation above. Both are the same hook on the same component, so the single
+	 * declaration BELOW this block serves both — two would be a redeclaration, and
+	 * biome reads the earlier USE as a use-before-declaration (the rebase left
+	 * exactly that pair here, and `pnpm check-types` reported it as TS2451).
 	 */
 	/*
 	 * The readings a NEW conversation WILL start with, resolved by the backend
