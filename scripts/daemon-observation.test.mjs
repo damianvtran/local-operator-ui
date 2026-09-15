@@ -181,7 +181,21 @@ async function waitFor(check, describe) {
  * candidate), a real loopback daemon answering like one, and the live process
  * its record names - so `pidLiveness` has a real process to lose.
  */
-async function daemonScene({ instanceId, version = "0.55.2" }) {
+async function daemonScene({
+	instanceId,
+	version = "0.55.2",
+	publishRecord = true,
+	/** The bearer this daemon accepts; `claimKey: ""` is an env-governed one. */
+	acceptedBearer = CLAIM_KEY,
+	claimKey = CLAIM_KEY,
+	/**
+	 * The status `/health` answers. Not 200 models a daemon that is starting up,
+	 * unhealthy or shutting down - and, from the spawn gate's side, ANY listener
+	 * holding the socket, because a status is not an identity but it is an
+	 * occupant (review round 1, F-2).
+	 */
+	healthStatus = 200,
+}) {
 	const root = mkdtempSync(join(tmpdir(), `daemon-observation-${instanceId}-`));
 	const runDir = join(root, "run", "serve");
 	mkdirSync(runDir, { recursive: true });
@@ -203,6 +217,13 @@ async function daemonScene({ instanceId, version = "0.55.2" }) {
 			res.end(JSON.stringify(body));
 		};
 		if (path === "/health") {
+			if (healthStatus !== 200) {
+				// No identity: the real daemon answers a status without one while it is
+				// not ready, which is exactly what makes this case invisible to an
+				// identity check.
+				json(healthStatus, { detail: "not ready" });
+				return;
+			}
 			json(200, {
 				status: 200,
 				message: "ok",
@@ -229,9 +250,11 @@ async function daemonScene({ instanceId, version = "0.55.2" }) {
 				"Bearer ",
 				"",
 			);
-			// The bearer is the record's own claim key: a 200 here is what makes
+			// The bearer this daemon accepts: the record's own claim key for a
+			// key-governed daemon, and the token its spawner passed in the environment
+			// for one governed that way (`claim_key: ""`). A 200 here is what makes
 			// this daemon adoptable at all (an unauthenticated 200 is not).
-			if (presented !== CLAIM_KEY) {
+			if (presented !== acceptedBearer) {
 				json(401, { detail: "Unauthorized" });
 				return;
 			}
@@ -250,24 +273,32 @@ async function daemonScene({ instanceId, version = "0.55.2" }) {
 	const port = server.address().port;
 
 	const now = Date.now() / 1000;
-	writeFileSync(
-		join(runDir, `${child.pid}.json`),
-		JSON.stringify({
-			pid: child.pid,
-			host: "127.0.0.1",
-			port,
-			instance_id: instanceId,
-			version,
-			source_ref: "",
-			prefix: "/tmp/observation-prefix",
-			install_kind: "uv-tool",
-			desktop: false,
-			claim_key: CLAIM_KEY,
-			started_at: now - 10,
-			heartbeat_at: now - 1,
-		}),
-		{ mode: 0o600 },
-	);
+	/*
+	 * `publishRecord: false` is the operator's own 09:17 shape: a daemon is
+	 * serving the configured address, and the record directory holds nothing
+	 * describing it (`[discovery] no valid daemon among 0 record(s)`). Discovery
+	 * therefore reports "nothing to attach to", which is exactly the answer that
+	 * used to be read as "the port is free".
+	 */
+	if (publishRecord)
+		writeFileSync(
+			join(runDir, `${child.pid}.json`),
+			JSON.stringify({
+				pid: child.pid,
+				host: "127.0.0.1",
+				port,
+				instance_id: instanceId,
+				version,
+				source_ref: "",
+				prefix: "/tmp/observation-prefix",
+				install_kind: "uv-tool",
+				desktop: false,
+				claim_key: claimKey,
+				started_at: now - 10,
+				heartbeat_at: now - 1,
+			}),
+			{ mode: 0o600 },
+		);
 
 	const stopChild = async () => {
 		if (child.exitCode !== null || child.signalCode !== null) return;
@@ -287,6 +318,18 @@ async function daemonScene({ instanceId, version = "0.55.2" }) {
 		address: `http://127.0.0.1:${port}`,
 		pid: child.pid,
 		seen,
+		/**
+		 * The daemon stops accepting connections while its PROCESS stays alive.
+		 *
+		 * This is the shape the transport-evidence rule exists for, and the only one
+		 * that isolates it: a refused socket on a live pid is the ordinary evidence of
+		 * absence, so the state machine is allowed to act on three of them - unless
+		 * this app's own request was answered recently. `die()` cannot test that,
+		 * because it kills the pid too and a gone pid bypasses the gate deliberately.
+		 */
+		async fallSilent() {
+			await closeServer();
+		},
 		/**
 		 * The daemon dies the way it died in the report: its process is gone and
 		 * nothing answers on its port any more. Both halves matter - the pid is
@@ -449,6 +492,251 @@ test("the banner's Retry corrects a stale attachment instead of returning it (Q-
 		);
 		await manager.stop(false);
 	} finally {
+		await scene.dispose();
+	}
+});
+
+/*
+ * The operator's 09:17 sequence: a daemon serving the configured address, no
+ * record describing it, and an app that answered by starting another one.
+ *
+ *   [discovery] rejected http://127.0.0.1:1111: identity-mismatch (...)
+ *   [discovery] no valid daemon among 0 record(s)
+ *   Backend stderr: Error: cannot bind http://127.0.0.1:1111: [Errno 48] Address already in use
+ *
+ * Every child of that storm died with EADDRINUSE and was left an orphan, and
+ * the pair repeated every ~10 s while the daemon on that port answered the
+ * app's own reads. Discovery's answer ("nothing I may attach to") was being
+ * read as the spawner's question ("this port is free"), and they are not the
+ * same question.
+ */
+
+test("a daemon answering the configured origin is never spawned over (EADDRINUSE storm)", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-occupied-port",
+		publishRecord: false,
+	});
+	globalThis.__testConfiguredUrl = scene.address;
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	try {
+		const started = await manager.start({ quiet: true });
+		assert.equal(
+			started,
+			false,
+			"this app may not claim a daemon it holds no credential for, and it may not start a second one on that port",
+		);
+		assert.equal(
+			manager.getOwnedPid(),
+			null,
+			"no child was spawned: the port answers, so a spawn could only die with EADDRINUSE",
+		);
+		const snapshot = manager.getStatusSnapshot();
+		assert.equal(
+			snapshot.state,
+			"wedged",
+			"a daemon IS running: this is not `detached`, which is what the banner renders as offline",
+		);
+		assert.match(
+			snapshot.detail,
+			new RegExp(`A Local Operator daemon is running at ${scene.address}`),
+			"the copy names the address it actually observed",
+		);
+		assert.match(
+			snapshot.detail,
+			new RegExp(`pid ${scene.pid}`),
+			"and the pid, when the answer published one",
+		);
+		assert.match(
+			snapshot.detail,
+			/no serve record this app can read describes that address/,
+			"and which path into the state this was, not a generic failure",
+		);
+		assert.doesNotMatch(snapshot.detail, /VITE_DISABLE_BACKEND_MANAGER/);
+		assert.equal(
+			manager.isUsingExternalBackend(),
+			false,
+			"nothing was adopted, so nothing is pretending to be the backend",
+		);
+	} finally {
+		await manager.stop(false);
+		await scene.dispose();
+	}
+});
+
+test("an address that answers a status other than 200 is OCCUPIED, not free (F-2)", async () => {
+const scene = await daemonScene({
+	instanceId: "instance-unready-port",
+	publishRecord: false,
+	healthStatus: 503,
+});
+globalThis.__testConfiguredUrl = scene.address;
+const manager = new BackendServiceManager();
+managers.add(manager);
+try {
+	const started = await manager.start({ quiet: true });
+	assert.equal(
+		started,
+		false,
+		"a listener that answers 503 holds the socket, so a child started there could only die with EADDRINUSE - and the token minted before the spawn would already have overwritten the credential for whatever is serving",
+	);
+	assert.equal(
+		manager.getOwnedPid(),
+		null,
+		"nothing was started over that answer",
+	);
+	const snapshot = manager.getStatusSnapshot();
+	assert.match(
+		snapshot.detail,
+		new RegExp(`did not prove itself free`),
+		"the copy states the fact it observed rather than naming a daemon it could not identify",
+	);
+	assert.match(snapshot.detail, new RegExp(scene.address));
+	/*
+	 * `degraded`, not `detached`: an address that answered is not evidence of
+	 * absence either, so this is the usable state and never the banner.
+	 */
+	assert.equal(snapshot.state, "degraded");
+} finally {
+	await manager.stop(false);
+	await scene.dispose();
+}
+});
+
+test("an unanswered desktop call is not evidence the daemon answered (F-1)", async () => {
+/*
+ * The pair, measured at the CALL SITE rather than at the state machine: three
+ * refused probes against a live pid are the ordinary evidence of absence, and
+ * whether the app may act on them is decided by whether one of its own
+ * requests was answered recently.
+ *
+ * The failing arm uses a call the transport refuses BEFORE it opens a socket
+ * (an unknown op fails the schema), which is the shape the review reproduced:
+ * `requestDesktop` RESOLVES for that, so a `.then()` alone - the old call site -
+ * counted a request the daemon never saw as "the daemon answered a request 0s
+ * ago", which held the state at `degraded`. `checkBackendHealth` only recovers
+ * from `detached`/`wedged`, so that was also the state nothing recovers from.
+ */
+const failing = await daemonScene({ instanceId: "instance-unanswered-call" });
+globalThis.__testConfiguredUrl = failing.address;
+const first = await adoptAtStartup(failing);
+try {
+	assert.equal(first.manager.getStatusSnapshot().state, "attached");
+	const refused = await first.manager.requestDesktop({});
+	assert.equal(
+		refused.status,
+		422,
+		"the fixture for this arm is a call the transport refuses locally",
+	);
+	await failing.fallSilent();
+	for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+		await first.manager.checkBackendHealth();
+	}
+	const detached = first.manager.getStatusSnapshot();
+	assert.equal(
+		detached.state,
+		"detached",
+		"a request that was never sent may not hold the connection open against three refused probes",
+	);
+	assert.doesNotMatch(
+		detached.detail,
+		/answered a request/,
+		"and the sentence must not claim a daemon answered a request it never saw",
+	);
+} finally {
+	await first.manager.stop(false);
+	await failing.dispose();
+}
+
+/* The control: the same three probes, with one ANSWERED call before them. */
+const answering = await daemonScene({ instanceId: "instance-answered-call" });
+globalThis.__testConfiguredUrl = answering.address;
+const second = await adoptAtStartup(answering);
+try {
+	const answered = await second.manager.requestDesktop({ op: "capabilities" });
+	assert.equal(answered.status, 200, "the fixture answers this one");
+	await answering.fallSilent();
+	for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
+		await second.manager.checkBackendHealth();
+	}
+	const held = second.manager.getStatusSnapshot();
+	assert.equal(
+		held.state,
+		"degraded",
+		"a daemon that answered a request seconds ago is serving, whatever the probes could not read",
+	);
+	assert.match(held.detail, /answered a request/);
+} finally {
+	await second.manager.stop(false);
+	await answering.dispose();
+}
+});
+
+test("a launch re-attaches to the daemon the previous run left running, via the persisted credential", async () => {
+	const token = "a".repeat(64);
+	const tokenFile = join(HOME, "userData", "desktop-token");
+	// The daemon the previous run spawned: env-governed from birth, so its record
+	// publishes NO claim key and the spawner's token is the only credential that
+	// can ever open it.
+	const scene = await daemonScene({
+		instanceId: "instance-reattach",
+		claimKey: "",
+		acceptedBearer: token,
+	});
+	globalThis.__testConfiguredUrl = scene.address;
+	rmSync(tokenFile, { force: true });
+	const withoutToken = new BackendServiceManager();
+	managers.add(withoutToken);
+	let reattaching;
+	try {
+		/*
+		 * The BEFORE half: no persisted credential, which is what every launch had
+		 * before this change. The daemon answers, the record names it, and the app
+		 * still declines it - so `src/main/index.ts` starts a second one.
+		 */
+		assert.equal(
+			await withoutToken.checkExistingBackend(),
+			false,
+			"with no token there is nothing this app can open an env-governed daemon with",
+		);
+		assert.equal(
+			withoutToken.getStatusSnapshot().state,
+			"connecting",
+			"and a capability refusal moves no state: the daemon is running",
+		);
+
+		// The AFTER half: the credential the previous run persisted. The token is read
+		// at CONSTRUCTION, which is the whole point - `src/main/index.ts` asks whether
+		// there is a daemon to adopt before it ever considers starting one.
+		mkdirSync(join(HOME, "userData"), { recursive: true });
+		writeFileSync(tokenFile, token, { mode: 0o600 });
+		reattaching = new BackendServiceManager();
+		managers.add(reattaching);
+		assert.equal(
+			await reattaching.checkExistingBackend(),
+			true,
+			"the daemon this app spawned and left running must be adopted on the next launch",
+		);
+		assert.equal(reattaching.getStatusSnapshot().state, "attached");
+		assert.equal(
+			reattaching.getStatusSnapshot().owned,
+			false,
+			"a re-attached daemon is discovered, not a child of this process",
+		);
+		assert.equal(
+			reattaching.getOwnedPid(),
+			null,
+			"and nothing was spawned onto its port",
+		);
+		assert.ok(
+			scene.seen.filter((entry) => entry.path === "/v1/desktop/sessions").length >
+				0,
+			"the daemon was read through, not merely probed",
+		);
+	} finally {
+		rmSync(tokenFile, { force: true });
+		await withoutToken.stop(false);
+		await reattaching?.stop(false).catch(() => {});
 		await scene.dispose();
 	}
 });

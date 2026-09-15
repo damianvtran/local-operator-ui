@@ -41,6 +41,8 @@ const snapshot = (
 	desktopAvailable: true,
 	failures: 0,
 	capabilityStatus: null,
+	unanswered: 0,
+	lastTransportAt: null,
 	detail:
 		"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
 	updatedAt: Date.now(),
@@ -289,8 +291,18 @@ export const Stopped: Story = {
 };
 
 /**
- * A daemon whose process is alive and whose heartbeat stopped: it is running,
- * this app did not attach to it, and neither of those facts is "offline".
+ * A daemon is running on this machine and this app did not attach to it.
+ *
+ * Two producers reach this state and this story carries the first: a record
+ * whose process is alive while its published heartbeat stopped. The second -
+ * a daemon answering the configured address that this app holds no credential
+ * for - is `Unattachable` below.
+ *
+ * The assertion is on the TITLE and the detail separately, and that split is
+ * the point: the title states the connection fact, which is true of every path
+ * into the state, while the detail states which path was taken. The title used
+ * to assert the heartbeat, which is false of the other producer - a daemon
+ * whose key this app may not read is running perfectly well.
  */
 export const Wedged: Story = {
 	decorators: [
@@ -310,5 +322,38 @@ export const Wedged: Story = {
 			}),
 		),
 	],
-	play: waitForCopy("stopped publishing its own heartbeat"),
+	play: waitForCopy(
+		/A Local Operator server is running on this machine and this app is not attached to it\. Nothing was started over it\./,
+	),
+};
+
+/**
+ * The other producer: a Local Operator daemon is serving the address this app is
+ * configured for, and this app holds no credential for it (no serve record it
+ * can read describes that address).
+ *
+ * This is the copy the operator's report asks for: it names the address, the pid
+ * when the daemon published one, and the path into the state, and it says what
+ * was NOT done about it. The daemon is serving throughout - nothing here may
+ * render as "offline".
+ */
+export const Unattachable: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "wedged",
+				url: "http://127.0.0.1:1111",
+				instanceId: null,
+				pid: 42411,
+				version: "0.55.6",
+				prefix: null,
+				installKind: "uv-tool",
+				desktopAvailable: false,
+				failures: 0,
+				detail:
+					"A Local Operator daemon is running at http://127.0.0.1:1111 (pid 42411, v0.55.6) and no serve record this app can read describes that address, so this app holds no credential for it. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and starts a daemon there as soon as the address is free; attaching to the daemon already there needs a serve record describing it, which only that daemon can publish.",
+			}),
+		),
+	],
+	play: waitForCopy(/pid 42411/),
 };
