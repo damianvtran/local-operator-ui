@@ -62,11 +62,16 @@ round to judge on pixels rather than on prose.
 
 ## Every frame, with the state it claims
 
-tokyoNight for every state, plus the three that a light palette is worth seeing
-in. Window requested `1380x900` in `headless` mode; the app reports a **1380x868
-CSS viewport at devicePixelRatio 2**, so every frame is **2760x1736 pixels** and
-is committed as a lossless WebP (each one round-trip decoded and compared against
-the PNG the app wrote: 0 differing pixels). Theme per the file name.
+tokyoNight for every state, plus the ones a light palette is worth seeing in.
+Window requested `1380x900` in `headless` mode; the app reports a **1380x868 CSS
+viewport at devicePixelRatio 2**, so those frames are **2760x1736 pixels**. The two
+`after-settings-rail-collapsed` frames are the exception and the README states it
+rather than leaving it to be measured: they were taken in a **`1000x900`** window
+(a **1000x868** viewport, **2000x1736 pixels**), because the settings rail's two
+layouts are separated by a viewport query — `(min-width: 1040px)` — and the width
+IS the state (round 2, design D6). Every frame is committed as a lossless WebP
+(each one round-trip decoded and compared against the PNG the app wrote: 0
+differing pixels). Theme per the file name.
 
 | State | Before (`origin/main` @ `f14a98d08`) | After (this branch) |
 | --- | --- | --- |
@@ -79,7 +84,8 @@ the PNG the app wrote: 0 differing pixels). Theme per the file name.
 | The same conversation as a **nested** row (`pl-7`) under its entity | [`before-nested-current`](before-nested-current/tokyoNight.webp) | [`after-nested-current`](after-nested-current/tokyoNight.webp) |
 | An **entity row** staging a targeted draft, at rest | [`before-entity-draft`](before-entity-draft/tokyoNight.webp) — tokyoNight, [light](before-entity-draft/localOperatorLight.webp) | [`after-entity-draft`](after-entity-draft/tokyoNight.webp) — tokyoNight, [light](after-entity-draft/localOperatorLight.webp) |
 | …and under the pointer | [`before-entity-draft-hover`](before-entity-draft-hover/tokyoNight.webp) | [`after-entity-draft-hover`](after-entity-draft-hover/tokyoNight.webp) |
-| The **settings rail's** current section (`#/settings`) | [`before-settings-rail`](before-settings-rail/tokyoNight.webp) | [`after-settings-rail`](after-settings-rail/tokyoNight.webp) |
+| The **settings rail's** current section (`#/settings`), LABELLED rows | [`before-settings-rail`](before-settings-rail/tokyoNight.webp) — tokyoNight | [`after-settings-rail`](after-settings-rail/tokyoNight.webp) — tokyoNight, [light](after-settings-rail/localOperatorLight.webp) |
+| …in the **collapsed 48px rail** (`1000x900`) | — | [`after-settings-rail-collapsed`](after-settings-rail-collapsed/tokyoNight.webp) — tokyoNight, [light](after-settings-rail-collapsed/localOperatorLight.webp) |
 | The alternative ground — **not shipped** | — | [`comparison-accent-tint`](comparison-accent-tint/tokyoNight.webp) |
 
 Route `#/chat/b3b3b3b3b3b3` for every state except `settings-rail` (`#/settings`)
@@ -169,6 +175,26 @@ against 5.95) and it is the one that survives the pointer; the wash's 5.95 was
 never the problem here, which is the whole reason the fix is a per-call-site
 ground rather than a palette edit.
 
+**THE SETTINGS RAIL'S OTHER TWO CASES**, both captured for round 2 and both read
+from their own page at capture time:
+
+| Case | Rail ground | Current row | ΔE00 | Note |
+| --- | --- | --- | --- | --- |
+| labelled rows, localOperatorLight | `#faf8f1` | `#efe9db` | **4.40** | the second-weakest step of the twelve (iceberg 3.75 is the weakest), which is why the design round asked for this frame by name |
+| collapsed 48px rail, tokyoNight | `#24283b` | `#14141b` | **8.68** | `1000x900` window — below the `(min-width: 1040px)` step the rail itself reads |
+| collapsed 48px rail, localOperatorLight | `#faf8f1` | `#efe9db` | **4.40** | same step, same palette |
+
+The collapsed case is the one where the ground is **the only signal the current
+row has** (the rows carry no label there), and it is why the state was worth
+photographing rather than signing off: the mark is a `rounded-sm` tile one step
+INTO the panel around a 16px accent glyph — `srgb(20,20,26)` on the rail's
+`srgb(37,40,58)` in `after-settings-rail-collapsed/tokyoNight.webp`, with the glyph
+itself at `srgb(119,147,219)` — while every other state that answers the pointer in
+this app is the RAISED step (`elevated`). A user who has learned "raised means the
+pointer is here" therefore reads the recessed tile as where they ARE, which is the
+same reading the labelled rail and the app rail carry; the two are not the same
+signal on the same row.
+
 **The four marks share a box, with one pre-existing difference.** Measured from
 the page in CSS pixels (devicePixelRatio 2):
 
@@ -240,14 +266,27 @@ hover-carrying element all fail.
 
 ## What is not in this set
 
-- No `All chats` list with a nested row inside it (the nested state is captured
-  under its entity only, which is where it is drawn).
+- **The collapsed rail has no `before` half.** The two
+  `after-settings-rail-collapsed` frames are the only new state without a twin on
+  the base tree: the state was added to the set in round 2 (design D6), the design
+  round asked for the capture rather than a pair, and the base tree's own collapsed
+  rail is the same wash-on-`surface` pair the labelled pair already shows
+  (`before-settings-rail/tokyoNight.webp`) in the same class on the same element —
+  the layouts differ in `justify-*` and `px-3` only. A `before` twin would be a
+  second file for a fact that is already framed, so it was not taken.
+- **No frame puts the pointer on either 24px control of a current entity row**
+  (design D7's question): the chevron and the `⋯` lose their hover ground there by
+  design — a second ground on a current row IS round 1's MAJOR — and what is left
+  is the label colour of the `⋯`, which is a class, not a state this set
+  photographs.
 - No hovered NESTED row: the pointer frames are the flat row, the entity row and a
   neighbour. The nested row's ground is the same class string and the same reading
   as the flat one (8.68), which is why it was not given its own hover frame.
-- No `localOperatorDark` pass this round. It was in the previous set and is
-  deliberately replaced by the light palette, which is the palette that answers
-  the design round's question; the twelve-palette table above carries its numbers.
+- No `All chats` list with a nested row inside it (the nested state is captured
+  under its entity only, which is where it is drawn).
+- No `localOperatorDark` pass: it was in the previous set and is deliberately
+  replaced by the light palette, which is the palette that answers the design
+  round's question; the twelve-palette table above carries its numbers.
 - The alternative ground's frame is one state on the selected row, not a second
   system; the shipped role is `sunken` and the comparison is labelled as not
   shipped wherever it appears.

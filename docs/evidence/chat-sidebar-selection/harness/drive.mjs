@@ -615,7 +615,59 @@ if (!rail?.active) {
 		`no current section in the settings rail: ${JSON.stringify(seen)}`,
 	);
 }
-await record("settings-rail", await capture(`${PREFIX}-settings-rail`));
+/*
+ * The state's NAME comes from the layout the PAGE reports, not from the size the
+ * caller asked for: `(min-width: 1040px)` is the query the rail itself reads to
+ * decide between labelled rows and icon-only ones, and a frame that filed itself
+ * as labelled while the page drew icons would be a picture arguing for the wrong
+ * state. Below that step the rail is a 48px column where the ground is the ONLY
+ * signal the current row carries (round 2, design D6).
+ */
+const railLayout = await evaluate(
+	`matchMedia("(min-width: 1040px)").matches ? "labelled" : "collapsed"`,
+);
+const railState =
+	railLayout === "labelled" ? "settings-rail" : "settings-rail-collapsed";
+await record(railState, await capture(`${PREFIX}-${railState}`));
+
+/*
+ * A second theme in the SAME boot when asked for, because the theme is one driver
+ * call and this rail is the state the twelve-palette table's second-weakest step
+ * belongs to (localOperatorLight, ΔE00 4.40 — round 2, design D5).
+ */
+const secondTheme = process.env.SIDEBAR_RAIL_SECOND_THEME;
+/** The second theme's own rail reading, so its frame has numbers from its page. */
+let railSecond = null;
+if (secondTheme) {
+	const themed = await evaluate(
+		`window.__loDevDriver.call("setTheme", ${JSON.stringify(secondTheme)})`,
+	);
+	if (themed.dataTheme !== secondTheme)
+		throw new Error(
+			`asked for ${secondTheme}, the document reports ${themed.dataTheme}`,
+		);
+	await wait(600);
+	let again = null;
+	for (let i = 0; i < 40; i += 1) {
+		await wait(250);
+		again = await tryEval(RAIL_PROBE);
+		if (again?.active) break;
+	}
+	if (!again?.active)
+		throw new Error(
+			`no current section in the settings rail after switching to ${secondTheme}`,
+		);
+	railSecond = await tryEval(RAIL_PROBE);
+	await record(
+		`${railState}-${secondTheme}`,
+		/*
+		 * The driver's frame label accepts lowercase letters, digits, dash and
+		 * underscore only, so the theme goes in slugged and the README states which
+		 * palette each file is; a rejected label costs a whole pass (it did, once).
+		 */
+		await capture(`${PREFIX}-${railState}-${secondTheme.toLowerCase()}`),
+	);
+}
 
 const panelGround = hex(selectedProbe.panel.background);
 /*
@@ -749,6 +801,18 @@ const report = {
 	},
 	entityDraft: entitySide(entityDraft),
 	entityDraftHover: entitySide(entityDraftHover),
+	settingsRailSecond:
+		railSecond === null
+			? null
+			: {
+					theme: secondTheme ?? null,
+					rail: hex(railSecond.rail.background),
+					active: hex(railSecond.active.background),
+					label: railSecond.active.label,
+					deltaE: r2(
+						deltaE(hex(railSecond.active.background), hex(railSecond.rail.background)),
+					),
+				},
 	settingsRail: {
 		rail: rail.rail ? hex(rail.rail.background) : null,
 		active: rail.active ? hex(rail.active.background) : null,
