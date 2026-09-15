@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ShieldAlert } from "lucide-react";
@@ -206,45 +207,53 @@ export const BrowserConsentBar: FC<BrowserConsentBarProps> = ({
 				>
 					Don't allow
 				</Button>
+				{busy && (
+					// Every choice is disabled while a decision is in flight, which on its own
+					// reads as an inert band rather than a working one: nothing on screen said
+					// the click had landed (review round 2, D11). The words are the cue, and
+					// they carry it even under `prefers-reduced-motion`, where the ring is
+					// frozen (see `spinner.tsx`).
+					<span
+						className="flex items-center gap-1.5 text-meta text-ink-muted"
+						data-tour-tag="browser-consent-busy"
+					>
+						<Spinner size="sm" />
+						Recording your choice…
+					</span>
+				)}
 			</div>
 			{/* What each choice actually persists, next to the choice. A single
 			    lifetime sentence cannot be true of five different scopes, and the
 			    shared-across-conversations half is the part a user cannot infer from
 			    a button's label (D3). */}
+			{/* Two COLUMNS, with the `dt`/`dd` pairs as direct children: the previous
+			    form wrapped each pair in its own flex row, so `gap-x-4` never applied and
+			    the five glosses started at five different x positions — ragged in exactly
+			    the text whose job is to be compared row against row (review round 2, D7). */}
 			<dl
-				className="ml-6 grid gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+				className="ml-6 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
 				data-tour-tag="browser-consent-scopes"
 			>
-				<div className="flex gap-1.5">
-					<dt className="shrink-0 text-ink-muted">Allow once</dt>
-					<dd>one navigation, for that conversation, up to ten minutes</dd>
-				</div>
-				<div className="flex gap-1.5">
-					<dt className="shrink-0 text-ink-muted">Allow until the app quits</dt>
-					<dd>this site, for this run only, and for every conversation</dd>
-				</div>
-				<div className="flex gap-1.5">
-					<dt className="shrink-0 text-ink-muted">Always allow this site</dt>
-					<dd>kept until you revoke it, and shared with every conversation</dd>
-				</div>
+				<dt className="text-ink-muted">Allow once</dt>
+				<dd>one navigation, for that conversation, up to ten minutes</dd>
+				<dt className="text-ink-muted">Allow until the app quits</dt>
+				<dd>this site, for this run only, and for every conversation</dd>
+				<dt className="text-ink-muted">Always allow this site</dt>
+				<dd>kept until you revoke it, and shared with every conversation</dd>
 				{pending.broad && (
-					<div className="flex gap-1.5">
-						<dt className="shrink-0 text-ink-muted">
-							Allow all of {pending.broad.key}
-						</dt>
+					<>
+						<dt className="text-ink-muted">Allow all of {pending.broad.key}</dt>
 						<dd>
 							every site under {pending.broad.key}, kept until you revoke it,
 							shared with every conversation
 						</dd>
-					</div>
+					</>
 				)}
-				<div className="flex gap-1.5">
-					<dt className="shrink-0 text-ink-muted">Don't allow</dt>
-					<dd>
-						the agent stops asking about this site until you revoke the denial
-						in Sites
-					</dd>
-				</div>
+				<dt className="text-ink-muted">Don't allow</dt>
+				<dd>
+					the agent stops asking about this site until you revoke the denial in
+					Sites
+				</dd>
 			</dl>
 			{waitingBehind > 0 && (
 				<p className="ml-6 text-meta text-ink-dim">

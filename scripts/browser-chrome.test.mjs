@@ -260,11 +260,11 @@ class FakeView {
 	}
 }
 
-function makeRegistry() {
+function makeRegistry(history) {
 	const views = new Map();
 	const registry = new TabRegistry(
 		(_options, tabId) => {
-			const view = new FakeView();
+			const view = new FakeView(history);
 			views.set(tabId, view);
 			return view;
 		},
@@ -439,6 +439,84 @@ test("a capture reads the LIVE history, and skips a view that is already gone", 
 	assert.equal(captureTabs(registry.list(), first.tabId).length, 1);
 });
 
+// ---- a capture is never partial (review round 2, B2) ------------------------
+
+/*
+ * The round-2 BLOCKER, at the level it was found: a RESTORED tab has no history
+ * until its page commits, and the restore fires a change capture before that — so
+ * the capture was empty by construction and OVERWROTE the file the restore was
+ * reading. Both assertions below are the property that was false: a capture taken
+ * in the loading window still carries the tab, and the moment the tab has history
+ * of its own the live stack wins.
+ */
+
+test("a restored tab with no history yet is captured from the row it was restored from", () => {
+	// `[]` is what Electron answers for a page that has not committed: the state a
+	// restored tab is in for as long as its load takes.
+	const { registry } = makeRegistry([]);
+	const row = {
+		owner: "user",
+		active: false,
+		entries: [{ url: "https://restored.example/page", title: "Restored" }],
+		activeIndex: 0,
+	};
+	registry.create({ owner: "user", restored: true, restoreRow: row });
+	// A tab with nothing to restore from is still skipped: the fallback is the row
+	// the tab came from, not a guess about a blank page.
+	const fresh = registry.create({ owner: "user" });
+
+	const captured = captureTabs(registry.list(), fresh.tabId);
+	assert.deepEqual(
+		captured.map((tab) => tab.entries[0].url),
+		["https://restored.example/page"],
+		"the restored row is re-emitted, and the blank tab is still not",
+	);
+	assert.equal(
+		captured[0].owner,
+		"user",
+		"a restored tab is the user's, whatever the file said",
+	);
+	assert.equal(
+		captured[0].active,
+		false,
+		"the active flag comes from the strip, not from the row",
+	);
+});
+
+test("the moment a restored tab has history of its own, the live stack replaces the recorded row", () => {
+	const { registry, views } = makeRegistry([]);
+	const record = registry.create({
+		owner: "user",
+		restored: true,
+		restoreRow: {
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://restored.example/page" }],
+			activeIndex: 0,
+		},
+	});
+	// The page commits and the user navigates on: the tab's own history is the truth
+	// from then on, and a capture that kept re-emitting the old row would be a
+	// session that lags every navigation for the life of the tab.
+	const contents = views.get(record.tabId).webContents;
+	contents.historyEntries = [
+		{ url: "https://restored.example/page", title: "Restored" },
+		{ url: "https://live.example/after", title: "After" },
+	];
+	contents.activeIndex = 1;
+
+	const captured = captureTabs(registry.list(), record.tabId);
+	assert.deepEqual(captured[0].entries.map((entry) => entry.url), [
+		"https://restored.example/page",
+		"https://live.example/after",
+	]);
+	assert.equal(
+		captured[0].activeIndex,
+		1,
+		"and the entry the user is on is the live one",
+	);
+});
+
 test("a null content rect hides every view, so leaving the route cannot leave a page painted over chat", () => {
 	const { registry, views } = makeRegistry();
 	const record = registry.create({ owner: "user" });
@@ -518,6 +596,126 @@ test("a denial clears a session grant, and a per-origin revoke removes it", () =
 	assert.equal(third.revokeOrigin(other.origin) > 0, true);
 	assert.equal(third.originAllowed(other), false);
 	assert.equal(third.grants().length, 0);
+});
+
+test("a per-origin revoke takes the unspent once grant, its receipts and any in-flight admission (review round 2, B1)", () => {
+	const url = safeHttpUrl("https://once.example/");
+	/*
+	 * The once-grant limb. `respond('once')` writes authority that is NOT a durable
+	 * row, so a revoke that only retired rows and session grants left it live: the
+	 * store still answered `{allowed: true, viaOnceGrant: true}`, and the Sites sheet
+	 * reported "0 approvals revoked" for a revoke that had left the agent able to
+	 * drive the origin.
+	 */
+	const once = storeIn("approvals-revoke-once");
+	const pending = once.requestAccess(url.href, "session:a", "async", "req-1");
+	once.respond(pending.entry_id, "once");
+	assert.equal(
+		once.originAllowed(url),
+		false,
+		"a once grant is not a durable approval",
+	);
+	assert.equal(
+		once.revokeOrigin(url.origin) > 0,
+		true,
+		"an unspent once grant is live authority, so the revoke must report it",
+	);
+	assert.throws(
+		() => once.ensureTopLevelAccess(url, "session:a"),
+		(error) => error.code === "origin_not_allowed",
+		"and the next action on that origin must be refused",
+	);
+
+	/*
+	 * The in-flight limb. `admit` is captured ONCE at command entry, so an
+	 * asynchronous navigation admitted a moment before the revoke used to stay
+	 * approved across it — the revision its closure compares had not moved. Bumping
+	 * the global `revision` is NOT the fix (the next test says why), so the ORIGIN's
+	 * epoch moves and the closure compares that.
+	 */
+	const inflight = storeIn("approvals-revoke-inflight");
+	const askedOnce = inflight.requestAccess(url.href, "session:a", "async", "req-1");
+	inflight.respond(askedOnce.entry_id, "once");
+	const admission = inflight.admit(url, "session:a");
+	assert.equal(
+		admission.viaOnceGrant,
+		true,
+		"the probe's starting state: a live consumed grant",
+	);
+	inflight.revokeOrigin(url.origin);
+	assert.equal(inflight.originAllowed(url), false);
+	assert.equal(
+		admission.approved(url),
+		false,
+		"an admission granted before the revoke must not still be approved after it",
+	);
+
+	// The receipt limb, which is round 1's original read-after-revocation bypass.
+	const receipts = storeIn("approvals-revoke-receipt");
+	const privateUrl = safeHttpUrl("https://receipt.example/private");
+	const asked = receipts.requestAccess(
+		privateUrl.href,
+		"session:a",
+		"async",
+		"req-1",
+	);
+	receipts.respond(asked.entry_id, "site");
+	const token = "ui:1:tok";
+	receipts.rememberDocument(
+		token,
+		privateUrl,
+		"session:a",
+		7,
+		receipts.admit(privateUrl, "session:a").approved,
+	);
+	assert.equal(receipts.documentAllowed(token, privateUrl, "session:a", 7), true);
+	receipts.revokeOrigin(privateUrl.origin);
+	assert.equal(receipts.originAllowed(privateUrl), false);
+	assert.equal(
+		receipts.documentAllowed(token, privateUrl, "session:a", 7),
+		false,
+		"a receipt outliving the revoke is the agent still reading a page the user withdrew",
+	);
+});
+
+test("a per-origin revoke leaves another origin's approvals and receipts alone", () => {
+	// WHY the fix is a per-origin epoch and not a bump of the global `revision`:
+	// the global one belongs to the bulk revoke, and moving it here would refuse a
+	// read the user never withdrew, on an origin they never touched.
+	const store = storeIn("approvals-revoke-scoped");
+	const kept = safeHttpUrl("https://kept.example/private");
+	const gone = safeHttpUrl("https://gone.example/");
+	for (const [url, id] of [
+		[kept, "req-keep"],
+		[gone, "req-gone"],
+	]) {
+		const asked = store.requestAccess(url.href, "session:a", "async", id);
+		store.respond(asked.entry_id, "site");
+	}
+	const token = "ui:9:tok";
+	store.rememberDocument(
+		token,
+		kept,
+		"session:a",
+		7,
+		store.admit(kept, "session:a").approved,
+	);
+	const keptAdmission = store.admit(kept, "session:a");
+
+	store.revokeOrigin(gone.origin);
+
+	assert.equal(
+		store.originAllowed(kept),
+		true,
+		"the untouched origin keeps its approval",
+	);
+	assert.equal(
+		store.documentAllowed(token, kept, "session:a", 7),
+		true,
+		"and keeps its receipt: a revoke is scoped to the site the user chose",
+	);
+	assert.equal(keptAdmission.approved(kept), true);
+	assert.equal(store.originAllowed(gone), false);
 });
 
 test("'revoke all' clears the durable set and the session set in one action", () => {

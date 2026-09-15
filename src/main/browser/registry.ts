@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import type { PersistedTab } from "./session-store";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
 /**
@@ -49,6 +50,21 @@ export interface TabRecord {
 	/** The session a user tab has been handed to (design 6.3), or null. */
 	handedTo: string | null;
 	restored: boolean;
+	/**
+	 * The `session.json` row a restored tab was allocated from, kept until the tab
+	 * has a history of its own.
+	 *
+	 * WHY the record carries it (review round 2, B2): a restored view has NO
+	 * history until its page commits, so a capture taken in that window — the
+	 * restore's own change notification, or a quit a second after launch — used to
+	 * find nothing for that tab and write a session file without it. The tab was
+	 * then dropped for good by the next write. `captureTabs` consults this row as
+	 * the fallback for a tab whose live history is not restorable yet, so no
+	 * capture can be a partial one. It is dropped with the record, and it holds
+	 * URLs and page state only: nothing here is authority (design 7.3 — a restored
+	 * tab has no nonce and never regains one).
+	 */
+	restoreRow?: PersistedTab;
 	createdAt: number;
 	lastUsedAt: number;
 	/** The navigation epoch refs are stamped with, and the current ref table for
@@ -168,6 +184,8 @@ export interface CreateTabOptions {
 	/** A tab whose URL is restored from `session.json`. Restored tabs are always
 	 * `user`-owned and never get a nonce, whatever they were before. */
 	restored?: boolean;
+	/** The row this tab is restored from, when it is one. See `TabRecord`. */
+	restoreRow?: PersistedTab;
 	allocationId?: string;
 }
 
@@ -214,6 +232,7 @@ export class TabRegistry {
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
 			restored,
+			restoreRow: options.restoreRow,
 			createdAt: Date.now(),
 			lastUsedAt: Date.now(),
 			epoch: 0,

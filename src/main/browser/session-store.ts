@@ -340,6 +340,17 @@ export function readSession(
  * `destroyed` handler's own cleanup would otherwise be written as a blank tab,
  * which on the next launch is a tab the user never opened.
  *
+ * THE ONE FALLBACK, and why it is not a skip (review round 2, B2): a tab that
+ * was RESTORED from this same file has no history until its page commits, so a
+ * capture taken during that window holds nothing for it. Writing that capture
+ * would drop the tab — and, because a capture is taken at the start of a restore
+ * and again on every quit, the loss is permanent: the row that could have brought
+ * it back is what got overwritten. So a tab that has no restorable history of its
+ * own falls back to the row it was restored from (`TabRecord.restoreRow`), which
+ * is the same information re-emitted rather than a guess. The fallback is only
+ * consulted while the tab has nothing of its own, so a commit, a user navigation
+ * or an agent navigation replaces it with live state on the very next capture.
+ *
  * `activeTabId` is passed in rather than read off each record because the
  * registry's active tab is one per window: "which tab was the user looking at"
  * is a property of the strip, and a per-record flag would let two records claim
@@ -354,22 +365,34 @@ export function captureTabs(
 		const contents = record.view.webContents;
 		if (contents.isDestroyed()) continue;
 		const history = contents.navigationHistory;
-		// No history API means nothing to snapshot: a fake view in a test has none,
-		// and writing an empty stack for it would record a blank tab the user never
-		// opened.
-		if (!history?.getAllEntries || !history.getActiveIndex) continue;
-		const entries = history.getAllEntries().map((entry) => ({
-			url: entry.url,
-			title: entry.title,
-			...(entry.pageState ? { pageState: entry.pageState } : {}),
-		}));
-		if (!entries.some(restorable)) continue;
-		captured.push({
-			owner: record.owner,
-			active: record.tabId === activeTabId,
-			entries,
-			activeIndex: Math.max(0, history.getActiveIndex()),
-		});
+		// No history API means nothing to snapshot yet: a fake view in a test has
+		// none, and a real view that has not committed has an empty stack.
+		const entries =
+			history?.getAllEntries && history.getActiveIndex
+				? history.getAllEntries().map((entry) => ({
+						url: entry.url,
+						title: entry.title,
+						...(entry.pageState ? { pageState: entry.pageState } : {}),
+					}))
+				: [];
+		if (entries.some(restorable)) {
+			captured.push({
+				owner: record.owner,
+				active: record.tabId === activeTabId,
+				entries,
+				activeIndex: Math.max(0, history?.getActiveIndex?.() ?? 0),
+			});
+			continue;
+		}
+		const restored = record.restoreRow;
+		if (restored) {
+			captured.push({
+				owner: record.owner,
+				active: record.tabId === activeTabId,
+				entries: restored.entries,
+				activeIndex: restored.activeIndex,
+			});
+		}
 	}
 	return captured;
 }
