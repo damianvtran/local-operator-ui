@@ -243,6 +243,83 @@ test("the browse order is the constant the view renders from", () => {
 	assert.deepEqual(ranks, [...ranks].sort((a, b) => a - b));
 });
 
+test("clipped means the list dropped rows, not that a cap was consulted", () => {
+	/*
+	 * What the footer's "showing the best N of M" is built from, in the two states
+	 * round 1 (R-3) got wrong: the flag was set by any branch that touched a cap,
+	 * so a list that fitted exactly printed "showing the best 48 of 48".
+	 */
+	const fits = searchPalette({ items, raw: "" });
+	assert.equal(fits.clipped, false, `everything fits: ${names(fits).join(", ")}`);
+
+	/*
+	 * The exact fit itself: a scoped query whose two groups fill `TOTAL_CAP`
+	 * precisely, twenty-four rows each. Every cap is consulted on the way and not
+	 * one row is dropped, which is the case the old flag misreported.
+	 */
+	const pages = Array.from({ length: 24 }, (_, index) => ({
+		id: `page-${index}`,
+		name: `Retention page ${index}`,
+		path: `/page-${index}`,
+		icon: "chat",
+	}));
+	const commands = Array.from({ length: 24 }, (_, index) => ({
+		id: `bulk-${index}`,
+		name: `Retention action ${index}`,
+		icon: "plus",
+		keywords: [],
+		command: "new-chat",
+		verb: "Run",
+	}));
+	/*
+	 * A query WITH terms, not a bare scope: a bare glyph browses, and the browse
+	 * layout shows only featured rows. `>` puts both groups in the scope, whose
+	 * cap is twenty-four each.
+	 */
+	const exactly = searchPalette({
+		items: [
+			...buildNavigationItems(pages),
+			...buildActionItems(commands),
+		],
+		raw: ">retention",
+	});
+	assert.equal(names(exactly).length, TOTAL_CAP);
+	assert.equal(exactly.clipped, false, "nothing was dropped, so nothing is clipped");
+
+	// One row past the total is reported rather than silently missing.
+	const doubled = [
+		...pages,
+		{ id: "page-extra", name: "Retention page extra", path: "/page-x", icon: "chat" },
+	];
+	const over = searchPalette({
+		items: [...buildNavigationItems(doubled), ...buildActionItems(commands)],
+		raw: ">retention",
+	});
+	assert.equal(names(over).length, TOTAL_CAP);
+	assert.equal(over.clipped, true);
+
+	/*
+	 * A group cap that bites with room left in the total: twelve matching actions
+	 * against a group cap of six. A query rather than the browse list, because
+	 * actions are browsable only when they are `featured`.
+	 */
+	const many = searchPalette({
+		items: buildActionItems(
+			Array.from({ length: 12 }, (_, index) => ({
+				id: `many-${index}`,
+				name: `Many action ${index}`,
+				icon: "plus",
+				keywords: [],
+				command: "new-chat",
+				verb: "Run",
+			})),
+		),
+		raw: "many",
+	});
+	assert.equal(names(many).length, 6);
+	assert.equal(many.clipped, true);
+});
+
 /* ------------------------------------------------------------------ *
  * Search
  * ------------------------------------------------------------------ */
@@ -517,7 +594,12 @@ test("a panel row names the destination the chat pane presents", () => {
 	assert.deepEqual(row.target, { type: "panel", destination: "info" });
 	assert.equal(row.group, "panels");
 	assert.equal(row.verb, "Open");
-	assert.equal(row.featured, undefined);
+	/*
+	 * Featured, so the group is browsable: a panel is a place a user may not know
+	 * exists, unlike a registry key, which is only ever wanted by name (UX round 1,
+	 * U6). The call site decides whether the rows exist at all.
+	 */
+	assert.equal(row.featured, true);
 });
 
 test("panels answer to the command scope, so >usage finds one", () => {

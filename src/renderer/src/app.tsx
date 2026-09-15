@@ -110,14 +110,13 @@ const App: FC = () => {
 	};
 
 	/*
-	 * The palette's keyboard door (Cmd/Ctrl+K).
+	 * The palette's keyboard doors (Cmd/Ctrl+K here, Cmd/Ctrl+P over IPC).
 	 *
 	 * Mounted here rather than inside `CommandPalette`, which returns null while
-	 * it is closed: the listener has to exist for the gesture that opens it. It
-	 * used to arrive as an IPC message from the main process's Cmd/Ctrl+P hook;
-	 * see `use-command-palette-shortcut.ts` for why the renderer owns the newer
-	 * gesture (a canvas editor can claim it) and why the older one stays where it
-	 * is.
+	 * it is closed: the listeners have to exist for the gesture that opens it.
+	 * Both live in that hook so the two halves cannot drift — main's Cmd/Ctrl+P
+	 * hook keeps sending whichever subscription the renderer has, so a dropped
+	 * one is a chord that does nothing and says nothing.
 	 */
 	useCommandPaletteShortcut();
 

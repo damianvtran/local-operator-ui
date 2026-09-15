@@ -1192,6 +1192,16 @@ async function scenePalette(cdp) {
 	 * could not show.
 	 */
 	const before = await captureSettled(cdp, "palette-rail-dark");
+	/*
+	 * The same row in a LIGHT theme, because it is the one treatment in this
+	 * change the twelve-theme story sweep cannot reach: the rail's chord is plain
+	 * monospace on a `sunken` ground rather than the panel's key caps, and a
+	 * contrast question about it is only answerable in more than one ground
+	 * (design round 1, D4).
+	 */
+	await verb(cdp, "setTheme", "localOperatorLight");
+	const railLight = await captureSettled(cdp, "palette-rail-light");
+	await verb(cdp, "setTheme", "localOperatorDark");
 
 	// The open itself: a real pointer sequence at the row's painted centre, the
 	// same element a user clicks. `press` reports what it hit, and the scene fails
@@ -1292,7 +1302,7 @@ async function scenePalette(cdp) {
 		JSON.stringify(offline),
 	);
 
-	const frames = [before, browse, filtered, dismissed];
+	const frames = [before, railLight, browse, filtered, dismissed];
 	check(
 		"every capture is a frame the app held still for, with no toast on it",
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),
