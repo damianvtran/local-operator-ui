@@ -165,3 +165,34 @@ export const AwaitingAnswer: Story = {
 		</Frame>
 	),
 };
+
+/**
+ * A conversation this machine no longer has (M6): the composer refuses input and
+ * says WHY, rather than naming a turn nobody is running.
+ *
+ * The ONE story this branch contributes to a set main now owns. The gone state is
+ * this change's — `unavailable` folds into `isInputDisabled`, and before the fix
+ * the only text in the composer over a vanished conversation read "Agent is busy",
+ * which is the false statement the transcript's own gone state was already fixed
+ * for (design round 1, D3). The colour step is the branding contract's: a disabled
+ * control changes COLOUR, never opacity.
+ *
+ * The other states this branch used to carry here (`Busy`, a second `Idle`) are
+ * NOT re-added. Main's own header states the rule they broke: `isLoading` is false
+ * throughout this set on purpose, because `currentJobId` is null on the canonical
+ * path and the "Agent is busy" branch is unreachable there — a frame of it would
+ * photograph a state no user can be in.
+ */
+export const ConversationGone: Story = {
+	render: () => (
+		<Frame label="conversation gone (M6): refuses input, and says which state">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story"
+				unavailable={true}
+				onSendMessage={async () => true}
+			/>
+		</Frame>
+	),
+};

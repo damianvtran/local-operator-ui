@@ -111,6 +111,7 @@ const bundle = await build({
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -155,7 +156,12 @@ const bundle = await build({
 const hook = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { useCanonicalSessionStream, admitChatDraft, useCanonicalSessionsStore } = hook;
+const {
+	useCanonicalSessionStream,
+	admitChatDraft,
+	useCanonicalSessionsStore,
+	__resetPaintCache,
+} = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
 const SESSION_B = "bbbbbbbbbbbb";
@@ -437,6 +443,15 @@ const settle = async () => {
 const ids = (transcript) => transcript.records.map((record) => record.id);
 
 function reset({ transcript, historyFaults = [] }) {
+	/*
+	 * The paint cache is process-global by design — it is this WINDOW's memory of
+	 * what it has shown, keyed by session — and every case in this file reuses
+	 * `SESSION_A`. Left alone, one case's paint seeds the next one's first frame
+	 * and the rows a claim is made about are another case's fixture. The cache
+	 * ships its own reset for exactly this reason; the harness just has to own
+	 * the state its own cases share.
+	 */
+	__resetPaintCache();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
@@ -772,4 +787,80 @@ test("a refused tail read is retried once, and the absent rows still land", asyn
 			painted.includes(recordId),
 			`${recordId} lands even though its first read was refused`,
 		);
+});
+
+/*
+ * UX round 1, U2 — the walked defect, at the level the composer's claim is
+ * decided. The walk: the backend goes down while a conversation is selected, the
+ * pane shows "Could not load this conversation's history — reconnect to try
+ * again." with a **Reconnect**, and pressing it makes the failure AND its action
+ * vanish into "What can I help you with today?" — an unknown history painted as
+ * an empty conversation.
+ *
+ * The composer is allowed to say a conversation is empty only when it KNOWS, and
+ * `hydrated` is that knowledge. It was being granted by a snapshot whose history
+ * page carried no entries: the page was applied (or rather, merged as nothing)
+ * and `cursor_missing: false` was read as "the durable tail is complete". That is
+ * the shape the walked session had — a minimal directory whose journal is empty
+ * — and it is exactly the case the one authoritative read exists to settle.
+ */
+test("a snapshot's EMPTY page does not stand in for a history nobody read", async () => {
+	const empty = makeTranscript([]);
+	reset({ transcript: empty, historyFaults: [...Array(50).keys()] });
+
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r0",
+			entries: [],
+			liveEvents: [],
+			streaming: false,
+		}),
+	);
+	await pump();
+
+	assert.equal(handle.transcript.records.length, 0, "nothing is painted to claim");
+	assert.equal(
+		handle.hydrated,
+		false,
+		"an empty snapshot page is not proof the conversation is empty",
+	);
+	assert.equal(handle.status, "live", "the stream itself is up; it is the read that is owed");
+	// The retry is scheduled rather than run: this harness owns the clock, and
+	// what it asserts is the state the reader is left in while the read is owed.
+
+	// THE CONTROL, so a fix cannot pass by never hydrating at all: a read that
+	// SUCCEEDS and answers with an empty tail is authoritative, and it is what
+	// lets the greeting stand.
+	reset({ transcript: empty });
+	const second = makeRuntime();
+	let recovered;
+	second.render = () => {
+		recovered = useCanonicalSessionStream(SESSION_A, true);
+		return recovered;
+	};
+	second.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r0",
+			entries: [],
+			liveEvents: [],
+			streaming: false,
+		}),
+	);
+	await pump();
+	assert.equal(
+		recovered.hydrated,
+		true,
+		"a read that resolved is proof, applied-or-empty alike",
+	);
 });
