@@ -3,6 +3,7 @@
  * Drive the app's own renderer, headless, and photograph what it paints.
  *
  *     node scripts/renderer-driver.mjs --scene states --out /tmp/frames
+ *     node scripts/renderer-driver.mjs --scene new-chat --out /tmp/frames
  *     node scripts/renderer-driver.mjs --gate-check
  *
  * ## What problem this solves, measured
@@ -100,6 +101,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+	copyFileSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
@@ -189,6 +191,65 @@ function argValue(name, fallback = null) {
 
 const SCENE = argValue("--scene", "states");
 const OUT_ARG = argValue("--out", null);
+/**
+ * A live, ISOLATED backend this run owns, if it was given one.
+ *
+ * Absent is the default and the harness's historical shape: the app is pointed
+ * at a port this script picked and verified dead, so a scene captures an app with
+ * no reachable backend and every frame is publishable by construction.
+ *
+ * Set, the app's OWN transport is pointed at that backend (`writeAppCwdEnv`) and
+ * two things become checkable that the dead-port shape can only assert by proxy:
+ * that the app really reaches a backend at all, and that it reaches ONLY this
+ * one. It exists for changes whose subject IS the backend's answer — a surface
+ * gated on a capability cannot be driven at all while the capability is
+ * unreachable, and "the gate holds with no backend" and "the surface works with
+ * one" are two different claims that need two different runs.
+ *
+ * THE RENDERER MUST HAVE BEEN BUILT AGAINST THIS URL, which the run asserts
+ * rather than trusts: the renderer's own copy of the address is inlined at build
+ * time (`VITE_LOCAL_OPERATOR_API_URL`), so a tree built for the default would
+ * leave the renderer talking to the operator's own backend at 1111 while main
+ * talked to this run's. Build with it —
+ *
+ *     VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:<port> pnpm build
+ *
+ * — and the token
+ * is read from `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment, never
+ * from argv (a token in a command line lands in the shell's history).
+ */
+const BACKEND = argValue("--backend", null);
+/**
+ * The serve records the `--backend` daemon wrote for itself.
+ *
+ * The app does not attach to a daemon it cannot prove is its own:
+ * `src/main/backend/discovery.ts` reads `<config root>/run/serve/*.json`, dials
+ * the address each record names, and requires the answering process to report
+ * the SAME identity — instance id, pid, version, prefix — before the daemon is
+ * admitted. A live daemon that no record describes is rejected
+ * (`identity-mismatch`), and the app then behaves as if it had no backend at all:
+ * `desktop_available` stays false and every capability-gated surface stays
+ * closed, which is the state `--backend` exists to leave.
+ *
+ * So the run hands the app the records the run's OWN backend wrote, by copying
+ * them into the scratch config root the app reads. That is not a bypass of the
+ * check: it is the check, fed the file the daemon itself publishes, which is how
+ * a daemon announces itself to every instance on the machine. Point it at the
+ * backend's `config/run/serve` directory (the `LOCAL_OPERATOR_CONFIG_DIR` that
+ * daemon was started with).
+ */
+const BACKEND_RECORDS = argValue("--backend-records", null);
+/**
+ * Seed the profile as an EXISTING user before the scene runs.
+ *
+ * With `--backend` the app is a first-run user by definition — fresh profile,
+ * fresh backend, no provider connected — and the six-step wizard that follows is a
+ * modal: it covers the rail, it fails the hit tests, and it owns the keyboard
+ * while it is up. See `seedOnboardingComplete` for what the run writes.
+ */
+const SEED_ONBOARDING_COMPLETE = process.argv.includes(
+	"--seed-onboarding-complete",
+);
 const GATE_CHECK = process.argv.includes("--gate-check");
 const KEEP = process.argv.includes("--keep");
 const CLEAN = process.argv.includes("--clean");
@@ -223,6 +284,14 @@ const LOG_DIR = join(SCRATCH, "logs");
 /** The app's cwd. Outside the checkout on purpose: this is where dotenv looks. */
 const APP_CWD = join(SCRATCH, "cwd");
 const FRAMES = OUT_ARG ? resolve(OUT_ARG) : join(SCRATCH, "frames");
+
+/**
+ * The address the app would use if nobody redirected it: the renderer's own
+ * default, inlined into the bundle when no `VITE_LOCAL_OPERATOR_API_URL` was set
+ * at build time. Named here so a `--backend` run can assert the app is NOT
+ * talking to it — the operator's real backend listens there on this machine.
+ */
+const OPERATOR_BACKEND_URL = "http://localhost:1111";
 
 /**
  * The dead backend URL this run points the app at.
@@ -656,28 +725,52 @@ class CdpClient {
 		});
 	}
 
-	static async attach(port, targetUrlPart) {
-		const list = await (
-			await fetch(`http://127.0.0.1:${port}/json/list`)
-		).json();
-		const target = list.find(
-			(entry) => entry.type === "page" && entry.url.includes(targetUrlPart),
-		);
-		if (!target) {
-			throw new Error(
-				`no renderer target for ${targetUrlPart} on port ${port}: ` +
-					JSON.stringify(list.map((e) => ({ type: e.type, url: e.url }))),
+	/**
+	 * Attach to the app's renderer page, WAITING for it to exist.
+	 *
+	 * `waitForDevtools` only proves the browser endpoint is up
+	 * (`/json/version`), which happens before the app has created its window;
+	 * the page target appears later, and how much later is not constant: a
+	 * launch that has a daemon to validate — `--backend`, where the app dials the
+	 * discovered daemon and checks its identity before painting — reaches
+	 * `/json/list` with an EMPTY list for a stretch, measured on this machine as
+	 * three runs in a row failing `no renderer target …: []` against runs with no
+	 * backend to validate, which attached on the first query.
+	 *
+	 * So the wait belongs here rather than being inferred from a longer
+	 * `waitForDevtools`: the thing being waited FOR is a target, and the same
+	 * call that reads the list is the one that has to retry. The timeout keeps
+	 * the failure mode the harness had — a clear message naming the port and the
+	 * targets it did see — instead of hanging.
+	 */
+	static async attach(port, targetUrlPart, timeoutMs = 60_000) {
+		const started = Date.now();
+		for (;;) {
+			const list = await (
+				await fetch(`http://127.0.0.1:${port}/json/list`)
+			).json();
+			const target = list.find(
+				(entry) => entry.type === "page" && entry.url.includes(targetUrlPart),
 			);
+			if (target) {
+				const socket = new WebSocket(target.webSocketDebuggerUrl);
+				await new Promise((resolveOpen, rejectOpen) => {
+					socket.addEventListener("open", resolveOpen, { once: true });
+					socket.addEventListener("error", rejectOpen, { once: true });
+				});
+				const client = new CdpClient(socket);
+				client.send("Runtime.enable").catch(() => {});
+				client.send("Page.enable").catch(() => {});
+				return client;
+			}
+			if (Date.now() - started > timeoutMs) {
+				throw new Error(
+					`no renderer target for ${targetUrlPart} on port ${port} after ${timeoutMs}ms: ` +
+						JSON.stringify(list.map((e) => ({ type: e.type, url: e.url }))),
+				);
+			}
+			await wait(250);
 		}
-		const socket = new WebSocket(target.webSocketDebuggerUrl);
-		await new Promise((resolveOpen, rejectOpen) => {
-			socket.addEventListener("open", resolveOpen, { once: true });
-			socket.addEventListener("error", rejectOpen, { once: true });
-		});
-		const client = new CdpClient(socket);
-		client.send("Runtime.enable").catch(() => {});
-		client.send("Page.enable").catch(() => {});
-		return client;
 	}
 
 	send(method, params = {}) {
@@ -1131,6 +1224,274 @@ async function sceneStates(cdp) {
 	return frames;
 }
 
+// ---- the keyboard scene ------------------------------------------------------
+
+/**
+ * The modifier bits `Input.dispatchKeyEvent` takes.
+ *
+ * CDP's own mask (Alt 1, Ctrl 2, Meta 4, Shift 8), which is a different spelling
+ * of the DOM's `metaKey`/`shiftKey` booleans a listener reads back — the point of
+ * sending it this way is that the renderer produces those booleans itself.
+ */
+const MODIFIER = { alt: 1, ctrl: 2, meta: 4, shift: 8 };
+
+/**
+ * One chord, dispatched the way a keyboard sends one.
+ *
+ * `Input.dispatchKeyEvent` rather than a `KeyboardEvent` built inside the page:
+ * a synthetic event proves only that SOME listener is registered and skips
+ * everything between the key and the listener, which is the half of the claim a
+ * shortcut has to earn. This goes through Chromium's input pipeline, so what the
+ * renderer receives is what the platform sends — the same reason
+ * `mentioned-files-app-proof.mjs` drives its Escape this way.
+ *
+ * `keyUp` follows every press, because a held key is a different case the app
+ * answers differently (`repeat`) and a chord left down would leak into the next
+ * step's reading.
+ */
+async function pressChord(cdp, { key, code, virtualKeyCode, modifiers = 0 }) {
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key,
+			code,
+			modifiers,
+			windowsVirtualKeyCode: virtualKeyCode,
+			nativeVirtualKeyCode: virtualKeyCode,
+		});
+	}
+}
+
+/**
+ * The draft the session store has staged, read from the store's OWN persistence.
+ *
+ * `canonical-sessions-storage` is where `stageDraft` lands (`activeDraftKey` and
+ * `drafts` are both in the persisted slice), so this reads the app's state rather
+ * than this harness's idea of it — and it does so without adding a verb, which is
+ * the difference between observing the app and widening the surface it exposes.
+ */
+function stagedDraft(cdp) {
+	return cdp.evaluate(`(() => {
+		try {
+			const raw = localStorage.getItem("canonical-sessions-storage");
+			return raw ? (JSON.parse(raw)?.state?.activeDraftKey ?? null) : null;
+		} catch {
+			return "(unreadable)";
+		}
+	})()`);
+}
+
+/**
+ * Wait for the app's route to become `route`, and hand back where it actually is.
+ *
+ * A condition rather than a fixed sleep: `navigate("/chat")` lands in the
+ * press's own frame, but the router committing it is a render, and a scene that
+ * slept would either be slower than it needs to be or wrong on a loaded machine.
+ * The answer is returned rather than asserted, so the failing case reports the
+ * route the app is really on.
+ */
+async function waitForRoute(cdp, route, timeoutMs = 5000) {
+	const started = Date.now();
+	for (;;) {
+		const state = await verb(cdp, "state");
+		const waited = Date.now() - started;
+		if (state.route === route || waited > timeoutMs)
+			return { route: state.route, waited };
+		await wait(50);
+	}
+}
+
+/**
+ * `new-chat`: the app-wide `⌘N`, and the presses that are deliberately not it.
+ *
+ * WHY THIS SCENE EXISTS, and why it is not a Storybook frame. `⌘N` starts a new
+ * chat from anywhere in the app. Two things about that cannot be read off the
+ * source: that the binding is REGISTERED on the built app's document at all — a
+ * listener that never mounts is the failure mode a unit test cannot see, because
+ * the unit test calls the predicate directly — and that the chord reaches it
+ * through the platform's own input path rather than only through a synthetic
+ * event. Both are properties of the running app.
+ *
+ * The app's state is read from the store's own persistence (`stagedDraft`) and
+ * from what the router is showing (`state.route`), so the scene asserts the two
+ * things the row's click does: a FRESH draft is staged, and the app lands on the
+ * chat route.
+ *
+ * The negatives get the same treatment as the positive, and for the same reason:
+ * `⌘⇧N` is another app's chord and a bare `n` belongs to whatever text field has
+ * focus, so a binding that answered either would be wrong in a way a passing
+ * positive case cannot see.
+ *
+ * TWO RUNS, TWO CLAIMS, and the scene asserts whichever one the run is in. The
+ * shortcut takes the New chat row's own gate — the session catalogue — so a run
+ * with `--backend` present proves the FEATURE (the press stages a fresh draft and
+ * lands on the chat route, and the modified chords are refused there), while a
+ * run without one proves the GATE (the same press changes nothing, because the
+ * app is in exactly the state that gate exists for). Neither run can prove the
+ * other's claim, which is why both are quoted in the evidence README.
+ *
+ * WHAT IT CANNOT SHOW: the screens it moves between. The before route is one of
+ * the BACKEND-GATED ones this harness documents, and with no backend the chat
+ * route it lands on is the app's offline surface; what the frames are evidence
+ * about is the ROUTE the chord moved and the state of the store, not those two
+ * screens. The row and its key caps are photographed against a real backend in
+ * `docs/evidence/new-chat-shortcut/`.
+ */
+/**
+ * Write the onboarding completion flags into the profile, then reload.
+ *
+ * WHY, precisely: `decideFirstTimeUser` (`shared/hooks/first-time-user.ts`)
+ * answers "returning" when the onboarding store says the modal was completed, and
+ * otherwise asks the provider census — which an isolated backend answers "nothing
+ * connected", so every `--backend` run opens the six-step wizard. That wizard is a
+ * modal with the window to itself, and a scene that needs to press a document
+ * chord after the app has settled cannot run behind it.
+ *
+ * `Page.addScriptToEvaluateOnNewDocument` is what makes this safe AFTER the app
+ * has booted: the script is registered on the page's own session and runs before
+ * every subsequent document's scripts, so the store's `persist` rehydrates from
+ * the seeded value rather than racing the write. Reloading gives the app one clean
+ * boot with the flag present; clicking through six wizard screens instead would be
+ * six presses of UI the scene is not about. This is the state a real user of the
+ * feature is in — the wizard is a one-time surface, the shortcut is not.
+ */
+async function seedOnboardingComplete(cdp) {
+	await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
+		source:
+			'try { localStorage.setItem("onboarding-storage", JSON.stringify({ state: { isModalComplete: true, isTourComplete: true, currentStep: "create_agent" }, version: 0 })); } catch (error) { /* a profile without storage is not a reason to fail the boot */ }',
+	});
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+}
+
+async function sceneNewChat(cdp) {
+	/*
+	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
+	 * shortcut does, and a press that started from `/chat` would leave the same
+	 * screen behind. `/agent-hub` is a rail item the gate's own scene already
+	 * presses, so the route is one the app really has.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const before = await verb(cdp, "state");
+	const beforeDraft = await stagedDraft(cdp);
+	note("state before the press", JSON.stringify(before));
+	check(
+		"the scene starts on a route that is not the chat route",
+		before.route === "/agent-hub",
+		`route is ${before.route}`,
+	);
+	check(
+		"no draft is staged before the press",
+		beforeDraft === null,
+		`activeDraftKey is ${JSON.stringify(beforeDraft)}`,
+	);
+	const beforeFrame = await captureSettled(cdp, "before-cmd-n");
+	note("frame", JSON.stringify(beforeFrame));
+
+	// The chord itself: `⌘N` on macOS, and CDP's Meta bit is the same key on
+	// every platform this harness runs on (Ctrl is `MODIFIER.ctrl`).
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const afterDraft = await stagedDraft(cdp);
+	/*
+	 * WHAT THIS PRESS IS ASSERTED TO DO depends on whether the run has a backend,
+	 * and the difference is the point rather than a convenience. The shortcut takes
+	 * the New chat row's own gate — the session catalogue — so with `--backend`
+	 * absent the app is in the state that gate exists for, and the claim is that
+	 * the chord is INERT there rather than quietly staging a draft the UI says it
+	 * cannot start. With a backend, the same press is the feature.
+	 */
+	if (BACKEND) {
+		check(
+			"⌘N moved the app to the chat route",
+			landed.route === "/chat",
+			`route is ${landed.route} after ${landed.waited}ms`,
+		);
+		check(
+			"⌘N staged a fresh draft, which is what the New chat row stages",
+			typeof afterDraft === "string" && afterDraft.startsWith("draft:"),
+			`activeDraftKey is ${JSON.stringify(afterDraft)} (was ${JSON.stringify(beforeDraft)})`,
+		);
+	} else {
+		check(
+			"with no backend ⌘N is inert, exactly as the New chat row is disabled on the same capability",
+			landed.route === "/agent-hub" && afterDraft === beforeDraft,
+			`route ${landed.route} after ${landed.waited}ms, activeDraftKey ${JSON.stringify(beforeDraft)} -> ${JSON.stringify(afterDraft)}`,
+		);
+	}
+	const afterFrame = await captureSettled(cdp, "after-cmd-n");
+	note("frame", JSON.stringify(afterFrame));
+
+	/*
+	 * The presses that must NOT start a chat, each against a route the positive case
+	 * just proved it can leave — so a refusal here cannot be a route that happened
+	 * not to be listening. Skipped without a backend, where EVERY press is refused
+	 * by the gate above and a refusal assertion would prove nothing about the
+	 * modifiers it names.
+	 */
+	if (BACKEND) {
+		const refusals = [
+			{
+				name: "⌘⇧N",
+				press: { key: "N", modifiers: MODIFIER.meta | MODIFIER.shift },
+			},
+			{
+				name: "a bare n",
+				press: { key: "n", modifiers: 0 },
+			},
+		];
+		for (const refusal of refusals) {
+			await verb(cdp, "navigate", "/agent-hub");
+			const stagedBefore = await stagedDraft(cdp);
+			await pressChord(cdp, {
+				key: refusal.press.key,
+				code: "KeyN",
+				virtualKeyCode: 78,
+				modifiers: refusal.press.modifiers,
+			});
+			await wait(300);
+			const settled = await verb(cdp, "state");
+			const stagedAfter = await stagedDraft(cdp);
+			check(
+				`${refusal.name} does not start a new chat`,
+				settled.route === "/agent-hub" && stagedAfter === stagedBefore,
+				`route ${settled.route}, activeDraftKey ${JSON.stringify(stagedBefore)} -> ${JSON.stringify(stagedAfter)}`,
+			);
+		}
+	}
+
+	const frames = [beforeFrame, afterFrame];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width === frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height === frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map((f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`)
+			.join(" | "),
+	);
+	return frames;
+}
+
 // ---- gate-check --------------------------------------------------------------
 
 /**
@@ -1482,9 +1843,38 @@ async function main() {
 	// operator's backend, because main loads `.env` from cwd with `override: true`.
 	// Written per boot by `writeAppCwdEnv`, which the gate's `.env` cases vary.
 	const deadApiPort = await pickFreePort();
-	const apiUrl = `http://127.0.0.1:${deadApiPort}`;
+	const deadApiUrl = `http://127.0.0.1:${deadApiPort}`;
+	/*
+	 * A named backend REPLACES the dead port in the scratch `.env` — the app's own
+	 * transport then uses it — and the run refuses to start without the bearer the
+	 * backend was started with, rather than booting an app that answers "offline"
+	 * for a reason the run would have to guess.
+	 */
+	const apiUrl = BACKEND ?? deadApiUrl;
+	if (BACKEND && !process.env.LOCAL_OPERATOR_DESKTOP_TOKEN) {
+		say(
+			"--backend needs LOCAL_OPERATOR_DESKTOP_TOKEN in this script's environment: export it from the backend this run started, and never pass it as an argument",
+		);
+		process.exit(2);
+	}
 	APP_API_URL = apiUrl;
 	writeAppCwdEnv();
+	if (BACKEND_RECORDS) {
+		const records = join(CONFIG_DIR, "run", "serve");
+		mkdirSync(records, { recursive: true });
+		let copied = 0;
+		for (const entry of readdirSync(BACKEND_RECORDS)) {
+			if (!entry.endsWith(".json")) continue;
+			copyFileSync(
+				join(BACKEND_RECORDS, entry),
+				join(records, entry),
+			);
+			copied += 1;
+		}
+		say(
+			`  serve records ${copied} copied from ${BACKEND_RECORDS}   (the app admits a daemon only when a record describes it)`,
+		);
+	}
 
 	say("local-operator-ui renderer driver");
 	say(`  repo          ${ROOT}`);
@@ -1492,7 +1882,9 @@ async function main() {
 	say(`  frames        ${FRAMES}`);
 	say(`  app cwd       ${APP_CWD}   (scratch: the repo's .env is not read)`);
 	say(
-		`  backend url   ${apiUrl}   (dead port; the run cannot reach a backend)`,
+		BACKEND
+			? `  backend url   ${apiUrl}   (--backend: a live isolated backend this run owns)`
+			: `  backend url   ${apiUrl}   (dead port; the run cannot reach a backend)`,
 	);
 
 	/*
@@ -1600,17 +1992,64 @@ async function main() {
 					.join(" / ") || `${installerLog} is missing or names no log path`,
 			);
 			const hello = await verb(cdp, "hello");
-			const probe = await connectionsTo(handle.pid, hello.apiBaseUrl);
-			if (probe.measured) {
+			if (BACKEND) {
+				/*
+				 * With a live backend the isolation claim is stated DIRECTLY instead of by
+				 * proxy. The dead-port shape asserts "no connection to the URL the renderer
+				 * was built with", which is only an isolation claim because that URL is
+				 * the operator's own backend; here the renderer's built URL is this run's
+				 * backend, so the two halves are asked separately: the app DOES reach the
+				 * backend this run started, and it reaches NOTHING else — least of all the
+				 * operator's default address, which is what a careless build would leave
+				 * inlined.
+				 */
 				check(
-					`the app holds no connection to the renderer's built API URL (${hello.apiBaseUrl})`,
-					probe.matches.length === 0,
-					probe.matches.join("\n") || "no connection",
+					"the renderer was built against the backend this run started",
+					hello.apiBaseUrl === BACKEND,
+					`the renderer reports ${hello.apiBaseUrl}, --backend is ${BACKEND} — build with VITE_LOCAL_OPERATOR_API_URL=${BACKEND}`,
 				);
+				const mine = await connectionsTo(handle.pid, BACKEND);
+				const theirs = await connectionsTo(handle.pid, OPERATOR_BACKEND_URL);
+				if (mine.measured && theirs.measured) {
+					check(
+						`the app holds a connection to this run's backend (${BACKEND})`,
+						mine.matches.length > 0,
+						mine.matches.join("\n") ||
+							"no connection: the app's transport is not reaching the backend this run started",
+					);
+					check(
+						`the app holds NO connection to the operator's own backend (${OPERATOR_BACKEND_URL})`,
+						theirs.matches.length === 0,
+						theirs.matches.join("\n") || "no connection",
+					);
+				} else {
+					note(
+						"isolation probe unavailable",
+						mine.measured ? theirs.detail : mine.detail,
+					);
+				}
 			} else {
-				note("isolation probe unavailable", probe.detail);
+				const probe = await connectionsTo(handle.pid, hello.apiBaseUrl);
+				if (probe.measured) {
+					check(
+						`the app holds no connection to the renderer's built API URL (${hello.apiBaseUrl})`,
+						probe.matches.length === 0,
+						probe.matches.join("\n") || "no connection",
+					);
+				} else {
+					note("isolation probe unavailable", probe.detail);
+				}
+			}
+			if (SEED_ONBOARDING_COMPLETE) {
+				await seedOnboardingComplete(cdp);
+				await waitForBridge(cdp);
+				note(
+					"profile seeded",
+					"onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one",
+				);
 			}
 			if (SCENE === "states") await sceneStates(cdp);
+			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

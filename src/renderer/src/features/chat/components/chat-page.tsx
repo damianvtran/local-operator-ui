@@ -1901,6 +1901,31 @@ export function ChatPage() {
 			void store.openSession(id);
 	}, [enabled, routeIdentity]);
 	/*
+	 * A staged draft is a navigation, and the banner the user's LAST navigation
+	 * raised has no business surviving it — `stage()` and `select()` below clear
+	 * it by hand for their own paths. The New chat shortcut is a third way to
+	 * move, bound in the shell (`app.tsx`) because it has to work on every route,
+	 * so it cannot reach this component's state: the draft key is what tells this
+	 * component the user has moved on. Keyed on the DRAFT rather than on the
+	 * route, because `/chat` and `/chat/:agentId` hold one mounted component and
+	 * a state blob left over from the previous route is precisely what made a
+	 * deep link to a deleted chat read as two different failures.
+	 *
+	 * ONLY A CHANGE CLEARS IT, and the ref is what makes that true. The store
+	 * persists `activeDraftKey`, so on a cold start this effect can see a draft on
+	 * its FIRST pass — and the legacy-link effect above runs before it in the same
+	 * commit, so clearing there would erase the sentence that effect had just
+	 * written for a deep link this machine no longer has. A mount is not a
+	 * navigation; a key that moved is.
+	 */
+	const settledDraftKey = useRef(draftKey);
+	useEffect(() => {
+		if (settledDraftKey.current === draftKey) return;
+		settledDraftKey.current = draftKey;
+		if (!draftKey) return;
+		setRouteError(null);
+	}, [draftKey]);
+	/*
 	 * The keyboard abort for a switch is gone with the pending banner it belonged
 	 * to. The switch has no cancellable phase to abort any more: the commit IS the
 	 * navigation, it lands in the click's own frame, and the only wait left is the

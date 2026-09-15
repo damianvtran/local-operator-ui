@@ -8,6 +8,7 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
@@ -44,6 +45,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
+import { newChatShortcutCap } from "../new-chat-shortcut";
 
 type Props = {
 	selectedConversation?: string;
@@ -992,6 +994,29 @@ export function ChatSidebar({
 						>
 							<MessageSquarePlus className="size-4" />
 							<span className="flex-1 text-left">New chat</span>
+							{/*
+							 * The chord this row is the visible half of, as caps — the same
+							 * `KeyboardShortcut` the inline editor's footer prints, so the two
+							 * spellings of "a shortcut" in this app cannot diverge.
+							 *
+							 * It is the TRAILING element, where the All chats row above carries
+							 * its count: both rows end in the column that says what the row will
+							 * give you, and the label's own `flex-1` is what holds it there.
+							 *
+							 * Platform read the way `chat-header.tsx` reads it, from
+							 * `navigator.platform`: the capability hook's answer is async, and a
+							 * row that painted `⌘N` before it arrived would flash the wrong cap
+							 * on Windows. `newChatShortcutCap` takes the platform as an argument
+							 * for that reason — it is asserted in
+							 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
+							 *
+							 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
+							 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
+							 * attribute would announce the same chord twice.
+							 */}
+							<KeyboardShortcut
+								shortcut={newChatShortcutCap(navigator.platform)}
+							/>
 						</button>
 					</section>
 					{all ? (
