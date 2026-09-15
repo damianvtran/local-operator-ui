@@ -151,7 +151,7 @@ let headlessExitDeadline: NodeJS.Timeout | null = null;
 function armHeadlessExitDeadline(why: string): void {
 	if (headlessExitDeadline) return;
 	const deadline = setTimeout(() => {
-		const line = `${why} and the quit had not finished within ${LAUNCHER_EXIT_DEADLINE_MS} ms; exiting`;
+		const line = `${why}; the quit did not finish within ${LAUNCHER_EXIT_DEADLINE_MS} ms, exiting`;
 		logger.error(`[window-mode] ${line}`, LogFileType.BACKEND);
 		console.log(`[window-mode] ${line}`);
 		app.exit(0);
@@ -171,16 +171,22 @@ function endHeadlessRun(why: string, detail?: string): void {
 	logger.info(`[window-mode] ${why}; quitting`, LogFileType.BACKEND);
 	console.log(`[window-mode] ${why}; quitting`);
 	/*
-	 * The mechanism on its OWN line, and only in the log.
+	 * The mechanism on its OWN line, at file level.
 	 *
-	 * Round 2 (D7): the logger mirrors to stdout, so folding the observation into
-	 * the same string put the parenthetical on the operator's terminal beside the
-	 * plain sentence — the split existed but did not reach the reader. Two lines,
-	 * one of them `console.log` only, is what actually keeps `pid 1` out of the
-	 * line a person reads while a post-mortem still gets the observation.
+	 * Round 2 (D7) asked for the outcome/mechanism split to reach the terminal, and
+	 * round 3 (R7) caught that my first attempt only renamed the problem: the
+	 * logger mirrors to stdout, so folding the observation into the message put the
+	 * parenthetical beside the plain sentence anyway. `debug` is the file channel —
+	 * the console transport is level `info` — so the mechanism lands in the log and
+	 * the line a person reads stays about the outcome. In a `pnpm dev` run the
+	 * console is at `debug` and will show this too, which is the right way round:
+	 * whoever is running the dev app is the one who wants to know why it left.
 	 */
 	if (detail) {
-		logger.info(`[window-mode] launcher probe: ${detail}`, LogFileType.BACKEND);
+		logger.debug(
+			`[window-mode] launcher probe: ${detail}`,
+			LogFileType.BACKEND,
+		);
 	}
 	armHeadlessExitDeadline(why);
 	app.quit();
