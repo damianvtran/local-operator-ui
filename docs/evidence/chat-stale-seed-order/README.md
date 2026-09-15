@@ -24,6 +24,16 @@ the last row of a finished conversation." The session was `f91fbda61750`
 - **`after-seam/`** — the same twelve refused: absent, not greyed and not
   captioned.
 
+A reader of the count should note that these are **three distinct pictures, not
+four**: `after-arrival` and `after-seam` are pixel-identical apart from the
+caption line. Measured on the committed bytes in both `localOperator` palettes,
+the only rows differing by more than 16/255 are y 28..40 — the caption box — the
+whole 685px pane below them is identical row for row, and the residual ~5% of
+differing pixels sits at 1-2 levels of lossy-WebP noise. Both frames are honest
+about what they show (the seam's twelve rows are not painted either way), but
+Arrival-against-Seam is not a second before/after pair, and `after-seam` should
+not be re-taken in the expectation that a delta will appear.
+
 ## These are ONE TREE's frames, not a base/head pair
 
 Both orders are built by the **shipped** reducer from this branch's own fixture,
