@@ -33,6 +33,7 @@ const bundle = await build({
 const {
 	DEFAULT_WINDOW_HEIGHT,
 	DEFAULT_WINDOW_WIDTH,
+	LAUNCHER_KEEP_ALIVE_ENV,
 	WINDOW_MAX_EDGE,
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
@@ -41,6 +42,7 @@ const {
 	describeWindowLaunch,
 	parseWindowMode,
 	parseWindowSize,
+	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
@@ -78,6 +80,8 @@ test("no input is the shipped behaviour: a focused 1380x900 window", () => {
 	assert.equal(resolved.backgroundThrottling, true);
 	assert.equal(resolved.width, DEFAULT_WINDOW_WIDTH);
 	assert.equal(resolved.height, DEFAULT_WINDOW_HEIGHT);
+	// The shipped app is a window somebody starts and finds in the Dock.
+	assert.equal(resolved.hideDock, false);
 	assert.deepEqual(resolved.problems, []);
 });
 
@@ -91,6 +95,12 @@ test("headless creates the window and never shows it, unfocusable and unthrottle
 	assert.equal(resolved.show, "never");
 	assert.equal(resolved.focusable, false);
 	assert.equal(resolved.backgroundThrottling, false);
+	/*
+	 * And no Dock tile. A headless run is the one mode this app is launched in
+	 * tens of times over on one machine, and every tile is an icon that leads
+	 * nowhere: the operator's Dock is where the accumulation was noticed.
+	 */
+	assert.equal(resolved.hideDock, true);
 });
 
 test("inactive shows the window without activating the app", () => {
@@ -101,6 +111,8 @@ test("inactive shows the window without activating the app", () => {
 	// into, so refusing focus permanently would be the wrong half-measure.
 	assert.equal(resolved.focusable, true);
 	assert.equal(resolved.backgroundThrottling, false);
+	// Visible on purpose, so it keeps the tile that makes it findable.
+	assert.equal(resolved.hideDock, false);
 });
 
 test("the mode is read case- and whitespace-insensitively", () => {
@@ -194,11 +206,70 @@ test("the startup line cannot describe the wrong behaviour", () => {
 	assert.match(headless, /never shown/);
 	assert.match(headless, /1380x900/);
 	assert.match(headless, /throttling off/);
-	assert.match(
-		describeWindowLaunch(plan({ env: { [WINDOW_MODE_ENV]: "inactive" } })),
-		/without activating/,
+	// The two properties a rig cannot see for itself: no tile, and a life tied
+	// to the launcher. Both are named rather than left to be inferred.
+	assert.match(headless, /no Dock tile/);
+	assert.match(headless, /quits when its launcher goes/);
+	const inactive = describeWindowLaunch(
+		plan({ env: { [WINDOW_MODE_ENV]: "inactive" } }),
 	);
+	assert.match(inactive, /without activating/);
+	assert.doesNotMatch(inactive, /no Dock tile/);
+	assert.doesNotMatch(inactive, /quits when its launcher goes/);
 	assert.match(describeWindowLaunch(plan()), /shown and focused/);
+});
+
+test("only a headless run with a launcher watches that launcher", () => {
+	const watch = (input) => resolveLauncherWatchPlan(input);
+
+	// The default: an app a person started, in the Dock, closed by them.
+	const normal = watch({ mode: "normal", launcherPid: 4242 });
+	assert.equal(normal.watch, false);
+	assert.equal(normal.launcherPid, null);
+	assert.match(normal.reason, /not launcher-bound/);
+
+	// `inactive` is a run somebody may be watching, so it is not bound either.
+	assert.equal(watch({ mode: "inactive", launcherPid: 4242 }).watch, false);
+
+	// The case this exists for: a harness booted the app and may go away.
+	const headless = watch({ mode: "headless", launcherPid: 4242 });
+	assert.equal(headless.watch, true);
+	assert.equal(headless.launcherPid, 4242);
+	assert.match(headless.reason, /pid 4242/);
+
+	// A run that detached on purpose has no launcher to watch, and is not
+	// guessed at: `ppid 1` is the launcher being absent, not a launcher that
+	// died, and only the second one is a leak.
+	for (const pid of [0, 1, -1, 4242.5, Number.NaN]) {
+		const detached = watch({ mode: "headless", launcherPid: pid });
+		assert.equal(detached.watch, false, `pid ${pid}`);
+		assert.equal(detached.launcherPid, null, `pid ${pid}`);
+		assert.match(detached.reason, /already detached/, `pid ${pid}`);
+	}
+});
+
+test("the keep-alive opt-out is read tightly, and only for headless runs", () => {
+	const withEnv = (value) =>
+		resolveLauncherWatchPlan({
+			mode: "headless",
+			launcherPid: 4242,
+			env: { [LAUNCHER_KEEP_ALIVE_ENV]: value },
+		});
+	for (const value of ["1", "true", "TRUE", " yes ", "On"]) {
+		const opted = withEnv(value);
+		assert.equal(opted.watch, false, value);
+		assert.match(opted.reason, /outlives its launcher/, value);
+	}
+	// Anything else — including a value that merely looks like a falsy one —
+	// leaves the default in place, because the default is the one that does not
+	// accumulate instances and a typo must not choose the leaky branch.
+	for (const value of ["0", "false", "", "  ", "no", "maybe"]) {
+		assert.equal(withEnv(value).watch, true, value);
+	}
+	assert.equal(
+		resolveLauncherWatchPlan({ mode: "headless", launcherPid: 4242 }).watch,
+		true,
+	);
 });
 
 test("the raise policy is the only thing that decides how a window comes forward", () => {
