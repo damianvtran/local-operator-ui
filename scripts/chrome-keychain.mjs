@@ -42,8 +42,10 @@
  *     Chrome.app' for authorization created by '/Applications/Google
  *     Chrome.app'` - Chrome, finding no login keychain, trying to CREATE one.
  *     That authorization is the alert on screen.
- *   - Five such launches inside two minutes (17:27-17:29, from two sessions'
- *     rigs) is why it "kept popping up" rather than appearing once.
+ *   - Two such denials two minutes apart (17:29:36 and 17:31:42, from two
+ *     sessions' rigs), inside a window the same log shows five Chrome processes
+ *     reaching the Security framework in (17:27:40-17:29:35), is why it "kept
+ *     popping up" rather than appearing once.
  *
  * THE SWITCH. `--use-mock-keychain` makes Chromium's `KeychainPassword` return
  * a constant mock password instead of calling Keychain Services, so OSCrypt
