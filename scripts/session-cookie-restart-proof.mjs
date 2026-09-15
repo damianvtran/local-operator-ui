@@ -50,6 +50,7 @@ import { join } from "node:path";
 // The real Electron binary, not the `node_modules/.bin` shim: the shim is a
 // shell -> node -> Electron chain, so a pid held from it is the shim's.
 import electronPath from "electron";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
 const KEEP = process.argv.includes("--keep");
@@ -172,7 +173,13 @@ async function freeDevtoolsPort() {
 
 /** Launch the built app, headless, against the scratch profile. */
 async function launch(siteOrigin) {
-	const env = {
+	/*
+	 * `withNotificationsOff`: this rig boots the real app, and a backend it spawns
+	 * reaches macOS through `osascript` when a session parks on a gate — a banner
+	 * in the operator's real Notification Center, from a harness run. See
+	 * `notifications-off.mjs`.
+	 */
+	const env = withNotificationsOff({
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
@@ -181,7 +188,7 @@ async function launch(siteOrigin) {
 		// in this scratch HOME — a pip install and a dialog that have nothing to do
 		// with cookie persistence.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
-	};
+	});
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
