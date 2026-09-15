@@ -18,28 +18,49 @@ import { build } from "esbuild";
  * seed row the page does not name is painted after the page's tail whatever
  * time it really belongs to.
  *
- * THE FIXTURE IS THE REAL SESSION, not a hand-made one. Both halves are derived
+ * THE FIXTURE IS THE REAL SESSION, not a hand-made one. Every half is derived
  * from the journal of `~/.local-operator/sessions/f91fbda61750/transcript.jsonl`
- * (1477 entries, "Runtimes interrupted by updates"):
+ * (1,477 entries, "Runtimes interrupted by updates"). Windows are named by
+ * JOURNAL LINE, 1-based, because that is how the journal is read; the fixture's
+ * own indices are 0-based from there:
  *
- *   - `page` is entries 1377..1476 — the last 100, which is what the snapshot's
- *     `through_id=<history_cursor>` read returns, ending at the final assistant
- *     message `320f69f0aa1543a2aa2b0393148d873f` at 12:56:16;
+ *   - `page` is lines 1378..1477 — the last 100, which is what the snapshot's
+ *     `through_id=<history_cursor>` read returns. Its last row is the
+ *     `completion_attention` custom row `ed8e34ebf8df4a53bcac9d4e86a1cbe0`
+ *     (kind `complete`, so it projects to nothing, as the app paints it); the
+ *     last row that PAINTS is the final assistant message
+ *     `320f69f0aa1543a2aa2b0393148d873f` at 12:56:16, two lines before it;
+ *   - `older` is lines 1244..1377 — the 134 entries immediately behind the
+ *     page, which is the rest of what the client's reconcile read returns (see
+ *     below). Without it the read cannot be asserted at all: the refusal's
+ *     whole argument is that the read brings those rows back, and a stub that
+ *     answers it with the same page proves nothing;
  *   - `live_events` is the newest 100 `tool_execution_end` rows of the journal
- *     (entries 1171..1473, 04:30:40..12:56:02) in journal order — the shape the
+ *     (lines 1172..1474, 04:30:40..12:56:02) in journal order — the shape the
  *     runtime serves, because its seed retains at most
  *     `LIVE_EVENT_END_ROWS_MAX` (100) settled calls per turn and that session's
  *     turn ran for over eight hours, so the window reaches hours past the page.
- *     Every id, timestamp, call id, tool name and duration is verbatim; tool
- *     output text is truncated to 60 characters and long argument objects are
- *     dropped, because only identity and order are asserted here.
+ *
+ * THE TRANSFORMS APPLIED TO THE JOURNAL, all of them, because a file presented
+ * as the journal verbatim has to say what it changed: ids, `ts`, entry `type`,
+ * roles, tool call ids, tool names, `stop_reason`, `duration_s` and order are
+ * untouched. Text blocks have newlines collapsed to single spaces and are
+ * truncated to 60 characters; a `tool_calls` argument member whose JSON is
+ * longer than 60 characters is dropped (the argument OBJECT is kept, its long
+ * strings are not); `provider_payload` is narrowed to `duration_s`; `usage` is
+ * dropped; `type: "custom"` rows are verbatim, payload included. Only identity
+ * and order are asserted, and neither depends on any of it.
  *
  * The derivation is checkable against the arithmetic the app itself produced:
  * 33 of the seed's calls are named by an assistant row inside the page, so 67
  * are not — and the backend log of the operator's own open
  * (`.../sessions/f91fbda61750/history?limit=234`) is exactly
  * `reconcileLimit(67) = 100 + 2 * 67`, the read the client fires for the calls
- * a seed names and the transcript cannot label.
+ * a seed names and the transcript cannot label. That read is a TAIL read of 234
+ * entries, i.e. lines 1244..1477, which is `older` and `page` together: it
+ * reaches the naming rows of 43 of the 67, and the 24 older ones come back only
+ * through the reader's own `load older` (QA counted 41 of the 62 it could
+ * locate). The test asserts both halves — the reach, and the limit of it.
  *
  * WHAT THIS PROVES: the painted ORDER the reducer ends up with for that real
  * page and that real seed, through the shipped hook (frames -> flush ->
@@ -47,7 +68,10 @@ import { build } from "esbuild";
  * clicking back into a finished session. WHAT IT DOES NOT PROVE: that the
  * runtime still served that seed at the moment the operator clicked (the
  * runtime in question is his live one and was not attached to), and nothing
- * about the pixels — `docs/evidence/seed-placement/` carries the frames.
+ * about the pixels — `docs/evidence/chat-stale-seed-order/` carries the
+ * rendered pair, captured with this repo's own `scripts/capture-evidence.mjs`
+ * from `stale-seed-order.stories.tsx`, which renders both orders over this same
+ * fixture.
  *
  * React's scheduler, the transport and the clock are the only substitutions;
  * the reducer, the hook's flush loop and the paint cache are the shipped
@@ -55,7 +79,10 @@ import { build } from "esbuild";
  */
 
 const fixture = JSON.parse(
-	readFileSync(new URL("./fixtures/stale-seed-order.json", import.meta.url), "utf8"),
+	readFileSync(
+		new URL("./fixtures/stale-seed-order.json", import.meta.url),
+		"utf8",
+	),
 );
 
 /** The final assistant row of the real conversation (journal entry 1474). */
@@ -72,6 +99,28 @@ const unlabelledCalls = (() => {
 		.map((event) => event.tool_call_id)
 		.filter((callId) => !labelled.has(callId));
 })();
+
+/*
+ * The durable tail the client's own reconcile read returns: `older` and `page`
+ * together, which is `reconcileLimit(67) = 234` entries off the end of the
+ * journal, exactly as the backend log of the operator's open recorded it.
+ */
+const durableTail = [...fixture.older.entries, ...fixture.page.entries];
+
+/** The instant a call's own durable row states, in the reducer's milliseconds. */
+const durableInstant = new Map(
+	durableTail
+		.filter((entry) => entry.payload.tool_call_id)
+		.map((entry) => [entry.payload.tool_call_id, Math.round(entry.ts * 1000)]),
+);
+
+/** The refused calls that read reaches, and the ones older than it. */
+const reachable = unlabelledCalls.filter((callId) =>
+	durableInstant.has(callId),
+);
+const beyondTheRead = unlabelledCalls.filter(
+	(callId) => !durableInstant.has(callId),
+);
 
 // `zustand/middleware` reaches for localStorage at import time.
 const store = new Map();
@@ -141,7 +190,11 @@ globalThis.__seedRequest = async (request) => {
 		}
 		const end = rows.findIndex((entry) => entry.id === request.beforeId);
 		const start = Math.max(0, (end < 0 ? rows.length : end) - request.limit);
-		return { entries: rows.slice(start, end < 0 ? undefined : end), has_more: start > 0, cursor_missing: false };
+		return {
+			entries: rows.slice(start, end < 0 ? undefined : end),
+			has_more: start > 0,
+			cursor_missing: false,
+		};
 	}
 	return {};
 };
@@ -166,6 +219,7 @@ const bundle = await build({
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
+			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -210,8 +264,13 @@ const bundle = await build({
 const hook = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { useCanonicalSessionStream, useCanonicalSessionsStore, __resetPaintCache } =
-	hook;
+const {
+	useCanonicalSessionStream,
+	useCanonicalSessionsStore,
+	__resetPaintCache,
+	EMPTY_TRANSCRIPT,
+	applyHistoryPage,
+} = hook;
 
 const SESSION = "f91fbda61750";
 
@@ -400,7 +459,8 @@ async function pump() {
 }
 
 const settle = async () => {
-	for (let i = 0; i < 4; i++) await new Promise((resolve) => setImmediate(resolve));
+	for (let i = 0; i < 4; i++)
+		await new Promise((resolve) => setImmediate(resolve));
 };
 
 const ids = (transcript) => transcript.records.map((record) => record.id);
@@ -448,6 +508,8 @@ test("a seed that arrives with the turn over paints nothing after the last messa
 		// calls, 67 of them older than the page's own first row.
 		liveEvents: fixture.seed.live_events,
 		streaming: false,
+		// What the backend holds behind the page when the read-back happens.
+		durable: durableTail,
 	});
 
 	assert.ok(unlabelledCalls.length > 0, "the fixture still carries the gap");
@@ -456,25 +518,82 @@ test("a seed that arrives with the turn over paints nothing after the last messa
 		FINAL_MESSAGE,
 		"the conversation still ends where the conversation ended",
 	);
-	for (const callId of unlabelledCalls) {
+	const instants = handle.transcript.records.map((record) => record.ts);
+	assert.deepEqual(
+		instants,
+		[...instants].sort((a, b) => a - b),
+		"every painted row is in time order, which is the rule the page states",
+	);
+	/*
+	 * Nothing is painted that no durable row stands behind. That is the whole
+	 * claim in one loop: the seed contributes no row of its own, so no row can be
+	 * sitting at the reader's arrival.
+	 */
+	for (const record of handle.transcript.records) {
+		if (record.kind !== "tool") continue;
 		assert.ok(
-			!ids(handle.transcript).includes(`tool:${callId}`),
-			`no row is painted for ${callId}, which the page never named`,
+			durableInstant.has(record.toolCallId),
+			`tool:${record.toolCallId} is painted without a durable row naming it`,
 		);
 	}
-
 	/*
-	 * The whole assertion, stated as the reader's own comparison: opening the
-	 * finished conversation paints what opening it without a seed paints. The
-	 * seed cannot move a row, and cannot add one, because every row it names is
-	 * already durable somewhere the page or the reader's paging owns.
+	 * And the stronger reading of the same thing: the painted conversation IS the
+	 * durable tail's own paint, row for row, so the refused seed added nothing
+	 * and moved nothing. This compares against the tail rather than against an
+	 * open with no seed at all, because the seed is what SIZES the read
+	 * (`reconcileLimit`) — the two opens legitimately differ, which is the point
+	 * of refusing the rows rather than dropping them.
 	 */
-	const plain = await open({ entries: page, liveEvents: [], streaming: false });
 	assert.deepEqual(
 		ids(handle.transcript),
-		ids(plain.handle.transcript),
-		"the seed does not change the painted conversation",
+		ids(
+			applyHistoryPage(EMPTY_TRANSCRIPT, {
+				entries: durableTail,
+				has_more: false,
+				cursor_missing: false,
+			}),
+		),
+		"the refused seed adds no row and moves none",
 	);
+
+	/*
+	 * The read the refusal rests on, asserted rather than described: ONE tail
+	 * read (no `before_id`, so it is the end of the journal), sized for exactly
+	 * the calls the page cannot label — `reconcileLimit(67) = 100 + 2 * 67`.
+	 */
+	const reads = requests.filter((request) => request.op === "sessions.history");
+	assert.equal(reads[0]?.beforeId, undefined, "the read is the journal's tail");
+	assert.equal(reads[0]?.limit, 100 + 2 * unlabelledCalls.length);
+
+	/*
+	 * And what that read is WORTH, in both directions: a tail read is bounded, so
+	 * an eight-hour turn's seed reaches deeper than `reconcileLimit` does.
+	 * Everything it reaches is painted at its own durable instant; nothing it
+	 * cannot reach is painted at all, and those rows come back only through the
+	 * reader's own `load older`.
+	 */
+	assert.ok(reachable.length > 0, "the fixture still carries a reachable half");
+	assert.ok(
+		beyondTheRead.length > 0,
+		"and an unreachable half, which is what bounds the claim",
+	);
+	for (const callId of reachable) {
+		const record = handle.transcript.records.find(
+			(entry) => entry.id === `tool:${callId}`,
+		);
+		assert.ok(record, `${callId} is reachable by the read and is painted`);
+		assert.equal(
+			record.ts,
+			durableInstant.get(callId),
+			`${callId} is painted at its own durable instant, not at the arrival`,
+		);
+	}
+	for (const callId of beyondTheRead) {
+		assert.ok(
+			!ids(handle.transcript).includes(`tool:${callId}`),
+			`${callId} is older than the read and is not painted`,
+		);
+	}
 });
 
 test("the snapshot's seed is refused again on every later snapshot", async () => {
@@ -574,7 +693,11 @@ test("a settling frame for a call the page already names lands at the call's own
 		streaming: false,
 		durable: withoutResults,
 	});
-	const complete = await open({ entries: full, liveEvents: [], streaming: false });
+	const complete = await open({
+		entries: full,
+		liveEvents: [],
+		streaming: false,
+	});
 	assert.deepEqual(
 		ids(handle.transcript),
 		ids(complete.handle.transcript),

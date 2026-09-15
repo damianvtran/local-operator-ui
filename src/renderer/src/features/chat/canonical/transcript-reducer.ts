@@ -530,28 +530,39 @@ function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
 /**
  * The same records in TIME order, ties broken by the position each already had.
  *
- * The rule the durable page is ordered by, extracted so the live seed can use
- * the SAME rule rather than a second one: a row the seed places from a truthful
+ * The rule the durable page is ordered by, shared so the live seed places a row
+ * by the SAME rule rather than a second one: a row the seed dates from a real
  * clock belongs where that time belongs, and `upsert` appends an unknown id —
  * right for a row arriving now, wrong for one the seed itself dated to hours
- * ago. Ties keep the order they already had, so this can never reshuffle two
- * rows that state the same instant while the reader is looking at them (the
- * property `applyHistoryPage` gives this rule where it merges pages).
+ * ago.
  *
- * The positions come from the list being sorted, which is the merged list on
- * the page path: a record that was already painted keeps its old position and a
- * row arriving with the merge keeps its arrival order among the new ones — the
- * two maps `applyHistoryPage` used to build separately, for the same reason.
+ * WHERE THE PAGE ALREADY USED THIS RULE, and what changed when it became shared:
+ * the sort this replaced read a position from `base.records` and fell back to
+ * one from the INCOMING page, so for an exact-millisecond tie between a painted
+ * row and an arriving page row it compared two different index spaces (`base`
+ * position against page position) and could sort the arriving row ABOVE the row
+ * already on screen — the opposite of what that sort's own comment promised.
+ * Reading every position from the list being sorted is what makes "an existing
+ * row cannot be displaced by an arriving page row" true, so sharing the rule is
+ * a deliberate, one-case behaviour change in the page merge rather than the pure
+ * refactor this originally read as. A probe against the reducer at main shows
+ * `a1,a2,b1,a3` where this produces `a1,a2,a3,b1`, and
+ * `scripts/transcript-reducer.test.mjs` pins the order this produces.
+ *
+ * Ties keep the order they already had, so this can never reshuffle two rows
+ * that state the same instant while the reader is looking at them. No lookup and
+ * no fallback: every record's position is the one it arrives with, which is what
+ * makes an unknown id unrepresentable here rather than something to default.
  */
-function withTimeOrder(state: TranscriptState): TranscriptState {
-	const prior = new Map(
-		state.records.map((record, position) => [record.id, position]),
-	);
-	const records = [...state.records].sort((a, b) => {
-		if (a.ts !== b.ts) return a.ts - b.ts;
-		return (prior.get(a.id) ?? 0) - (prior.get(b.id) ?? 0);
-	});
-	return { ...state, records, index: withIndex(records) };
+function withTimeOrder(records: TranscriptRecord[]): TranscriptRecord[] {
+	return records
+		.map((record, position) => ({ record, position }))
+		.sort((a, b) =>
+			a.record.ts !== b.record.ts
+				? a.record.ts - b.record.ts
+				: a.position - b.position,
+		)
+		.map((entry) => entry.record);
 }
 
 function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
@@ -1308,14 +1319,13 @@ export function applyHistoryPage(
 	}
 	if (!changed && state.hasMore === page.has_more) return state;
 
-	// Stable order: by timestamp, ties broken by prior position so a page
-	// that lands out of order cannot reshuffle rows the user is reading. The
-	// merged list IS the prior order (base rows first, the page's new rows
-	// after them), which is what `withTimeOrder` reads its positions from.
-	const records = withTimeOrder({
-		...base,
-		records: [...byId.values()],
-	}).records;
+	// Durable rows first, then this page's new rows, in TIME order with ties
+	// broken by the position each already had — so a page that lands out of order
+	// cannot reshuffle rows the user is reading, and an arriving page row can no
+	// longer tie itself ABOVE a painted one (the change `withTimeOrder` documents,
+	// pinned in `transcript-reducer.test.mjs`). It is built from the merged list
+	// and the index is derived from the sorted records, once, here.
+	const records = withTimeOrder([...byId.values()]);
 	// The paging cursor is the first entry of the OLDEST page received: a
 	// newer page (the snapshot's tail after a history_delta) must not move it
 	// forward, or the next "load older" request would skip rows.
@@ -1489,6 +1499,10 @@ export function applyEvent(
 			const page: DesktopHistoryPage = {
 				entries: rows.map((row) => ({
 					id: String(row.id ?? ""),
+					// The frame carries no entry time, so the reader's arrival second is
+					// the only stamp it can be given here. Dating these rows needs the
+					// entry `ts` on the wire — the PR's "not addressed" section names
+					// this producer and the two others beside it in the runtime.
 					ts: now / 1000,
 					type: "message",
 					payload: { kind: row.custom_type ? "custom" : "message", ...row },
@@ -1496,7 +1510,21 @@ export function applyEvent(
 				has_more: state.hasMore,
 				cursor_missing: false,
 			};
-			return applyHistoryPage(state, page);
+			// `reset` is the producer stating that this replay REPLACES the viewport
+			// rather than extending it (`HistoryDeltaEvent.reset`, "a replay-changing
+			// generation cannot be appended to the old viewport"), and two of the
+			// three producers send the WHOLE history that way: the legacy-owner and
+			// reset paths in `session/attached.py`. Merging those rows as a page
+			// would paint the full transcript at the reader's arrival SECOND — after
+			// every row already on screen — which is the ordering defect this module
+			// exists to prevent, arriving through a different door. Honouring the
+			// flag is the honest reading of the frame and costs one clause; the third
+			// producer (the genuine reconnect gap) leaves `reset` false and keeps
+			// merging, where the arrival stamp is the gap's own time rather than
+			// hours of history mistaken for it.
+			return applyHistoryPage(state, page, {
+				replace: event.reset === true,
+			});
 		}
 		case "tool_call_compose": {
 			const callId = String(event.tool_call_id ?? "");
@@ -1820,9 +1848,14 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
 	const callId = seededCallId(event);
 	if (!callId) return null;
 	const anchoredAt = state.argsByCall.get(callId)?.anchoredAt;
-	return typeof anchoredAt === "number" && Number.isFinite(anchoredAt)
-		? anchoredAt
-		: null;
+	// `> 0`, for the reason `epochMs` refuses a non-positive epoch rather than
+	// returning one: `applyHistoryPage` anchors a call at its entry's instant, so
+	// an entry whose `ts` is missing or zero would anchor every call it names at
+	// EPOCH 0 — and a settling frame dated 1970 is not a weak position, it is a
+	// fabricated one, sorted to the HEAD of the conversation by `withTimeOrder`
+	// the moment it paints. An unusable anchor is no anchor: the frame falls back
+	// to the rule a call nothing states gets (refused when the turn is over).
+	return typeof anchoredAt === "number" && anchoredAt > 0 ? anchoredAt : null;
 }
 
 /**
@@ -1851,13 +1884,24 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
  * frame that would CREATE a row and states no time is refused outright when no
  * turn is in flight: its only remaining time is the viewer's arrival, and
  * appending it paints `wait`/`hub`/`task` rows from hours earlier under a
- * conversation whose last message is the one the reader expects to be last.
- * Refusing loses nothing: every row such a seed names is durable on the backend,
- * the page or an older page owns it, and the client already fires a read sized
- * for exactly these unlabelled calls (`reconcileLimit`) — which brings them back
- * as durable rows with their real times, in their real places. A frame whose
- * record is ALREADY painted is folded onto it whatever the clock, because that
- * settles a card the reader can see without moving any row.
+ * conversation whose last message is the one the reader expects to be last. A
+ * frame whose record is ALREADY painted is folded onto it whatever the clock,
+ * because that settles a card the reader can see without moving any row — so a
+ * viewer that PAINTED the seed live (the mid-turn join this seed exists for)
+ * and then lost the transport keeps those rows where they were painted; the
+ * guarantee here is about a frame that would create a row, not about one that
+ * finds its row on screen.
+ *
+ * Refusing loses nothing, but it does not return everything at once: every row
+ * such a seed names is durable on the backend and the client fires a read sized
+ * for exactly these unlabelled calls (`reconcileLimit`), and that read is ONE
+ * tail read — bounded, so a very long turn reaches deeper than it does. Measured
+ * on the session this rule was written for (`f91fbda61750`, `reconcileLimit(67)
+ * = 234` entries): the read spans journal lines 1244-1477 and therefore brings
+ * back the naming rows of 43 of the 67 refused calls (QA, counting only the 62
+ * it could locate, measured 41 of 62), while the older ones — an 8-hour turn's
+ * earliest work — come back only through the reader's own `load older`. They are
+ * not lost (the page stays `has_more`), but this does not promise them at once.
  */
 export function applyLiveSeed(
 	state: TranscriptState,
@@ -1886,7 +1930,9 @@ export function applyLiveSeed(
 		}
 		next = applyEvent(next, event, clock);
 	}
-	return placed ? withTimeOrder(next) : next;
+	if (!placed) return next;
+	const records = withTimeOrder(next.records);
+	return { ...next, records, index: withIndex(records) };
 }
 
 /**
