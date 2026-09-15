@@ -12,7 +12,7 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * asks the same properties - one question, two readers.
  *
  * THE WHOLE MATRIX, NOT ONE CASE PER DISCOVERED BUG. A row-less pane has exactly
- * one claim to make, and that claim is a function of four values, so the rule is
+ * one claim to make, and that claim is a function of five values, so the rule is
  * stated once, over all of them, rather than patched where a defect was last
  * found:
  *
@@ -23,15 +23,25 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  *   and it is deliberately not `status`.
  * - `recordCount`: is there anything to scroll? Records rather than rendered
  *   rows, because a record that renders to no row is still nothing to scroll.
+ * - `admittedSend` (added with the wait line): has this pane admitted a send the
+ *   owner has not answered yet? The pane's own fact, and the only one of the
+ *   five that no record can carry - the optimistic echo is not durable history,
+ *   and on the New-chat path the identity flip lands before the owner's first
+ *   frame, so the record list is legitimately empty for the whole engage.
  *
  * Which gives, for a pane with no rows:
  *
  * - `speaks` -> the statement alone (the failure notice, or "Reconnecting"). The
  *   scroller still grows for it; see `collapsed` below.
- * - `!speaks && !hydrated` -> the placeholder: nothing has told the reader what
- *   this conversation holds, and the pane has nothing of its own to say.
- * - `!speaks && hydrated` -> nothing at all: the pane collapses, and the band may
- *   claim the conversation is empty because the read proved it.
+ * - `!speaks && admittedSend` -> the wait line alone: the reader has just sent
+ *   and is waiting on the turn, which outranks the placeholder (see
+ *   `transcriptPaneHoldsPlaceholder`). The scroller grows for the line, which is
+ *   what makes it paintable at all.
+ * - `!speaks && !admittedSend && !hydrated` -> the placeholder: nothing has told
+ *   the reader what this conversation holds, and the pane has nothing of its own
+ *   to say.
+ * - `!speaks && !admittedSend && hydrated` -> nothing at all: the pane collapses,
+ *   and the band may claim the conversation is empty because the read proved it.
  *
  * A pane WITH rows paints them and holds nothing. A statement may stand above
  * them, which is not a contradiction: rows are the conversation's own content
@@ -70,9 +80,9 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * statement is never clipped and the placeholder was buying nothing.
  *
  * Keyed this way, the pane holds exactly while the reader has not been told what
- * the conversation holds, there is nothing to scroll, AND the pane has nothing
- * of its own to say - and the collapse happens exactly in the single row where
- * none of the three is true.
+ * the conversation holds, there is nothing to scroll, no send of this pane's is
+ * in flight, AND the pane has nothing of its own to say - and the collapse
+ * happens exactly in the single row where none of the terms is true.
  */
 
 /** Where the transcript's stream is. The union the component renders against. */
@@ -118,6 +128,18 @@ export type TranscriptPaneView = {
 	hydrated: boolean;
 	/** How many records the transcript holds, painted or not. */
 	recordCount: number;
+	/**
+	 * Has this pane admitted a send the owner has not answered yet? The pane's
+	 * own fact rather than the stream's, and the fifth term the matrix needs:
+	 * a cold send has no records to speak of - the optimistic echo is not durable
+	 * history and, on the New-chat path, the identity flip lands before the
+	 * owner's first frame - so without this term a row-less pane with an admitted
+	 * send is indistinguishable from a row-less pane with nothing happening,
+	 * and the wait line rendered at this scroller's foot has no height to paint
+	 * in (measured before the term existed: in the DOM at t+258 ms, first painted
+	 * pixel at t+13.8 s - the dead air the operator reported).
+	 */
+	admittedSend: boolean;
 };
 
 /**
@@ -125,13 +147,25 @@ export type TranscriptPaneView = {
  *
  * The one row-less state where nothing else is being claimed: the reader has not
  * been told what the conversation holds, and the pane has no statement of its
- * own. See the matrix at the head of this file for the other two.
+ * own. See the matrix at the head of this file for the other three.
+ *
+ * ITS THIRD EXCLUSION IS THE ADMITTED SEND, and it is a ruling rather than a
+ * convenience: a row-less pane makes ONE claim, and while a send is admitted the
+ * claim that matters is the wait line ("the app is waiting for the agent"), not
+ * the placeholder ("the conversation's history is still being read"). Both are
+ * true, and the placeholder is the weaker one - the reader who just pressed
+ * Enter is waiting on the turn, and the history of a session they created
+ * seconds ago is nothing they are waiting for. Keeping both would also put two
+ * loading claims in one column, which is the shape `#150` exists to remove.
  */
 export function transcriptPaneHoldsPlaceholder(
 	view: TranscriptPaneView,
 ): boolean {
 	return (
-		view.recordCount === 0 && !view.hydrated && !canonicalTranscriptSpeaks(view)
+		view.recordCount === 0 &&
+		!view.hydrated &&
+		!view.admittedSend &&
+		!canonicalTranscriptSpeaks(view)
 	);
 }
 
@@ -139,13 +173,19 @@ export function transcriptPaneHoldsPlaceholder(
  * Does the pane collapse out of the layout?
  *
  * Only when it has nothing to paint at all: no rows, no placeholder, no
- * statement. That is the single row where the band is allowed to take the free
- * height for the greeting, because it is the single row where the read has
- * proved the conversation empty.
+ * statement, and no send of this pane's in flight. That last term is not implied
+ * by the placeholder standing down - it is the INVERSE case, and reading it off
+ * the placeholder is how an earlier pass of this change collapsed the pane
+ * exactly while the wait line was being rendered into it, which is the dead air
+ * the term exists to remove (QA round 1's Q1, and again in the live app once
+ * this matrix was introduced). That is the single row where the band is allowed
+ * to take the free height for the greeting, because it is the single row where
+ * the read has proved the conversation empty and nothing is on its way.
  */
 export function transcriptPaneCollapses(view: TranscriptPaneView): boolean {
 	return (
 		view.recordCount === 0 &&
+		!view.admittedSend &&
 		!transcriptPaneHoldsPlaceholder(view) &&
 		!canonicalTranscriptSpeaks(view)
 	);

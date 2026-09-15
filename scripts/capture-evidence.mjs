@@ -513,6 +513,35 @@ export const STORIES = [
 	["chat-tool-rows--prose-tool-alignment", 1024, 700],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The cold engage: a send the app has admitted and the owner has not answered
+	   yet - the operator's "I hit send and nothing happens for three seconds".
+	   Captured as a PAIR with its baseline, because the claim is a difference:
+	   the baseline is the same transcript with the wait line absent (what the app
+	   painted before this change), and the two frames differ by one quiet line at
+	   the foot. A single frame of the fixed state would not say what was wrong,
+	   and a single frame of the baseline would not say what replaced it. All four
+	   are swept together from design review round 1: the SMALL-VIEW wrapper is a
+	   different wrapper for the same rung (the 560px `narrow` entry above is a
+	   narrow column, not the small view), and `transport-down` is the rung's
+	   second clear, which the story could not express while its `status` was
+	   hardcoded to `live`. */
+	["chat-tool-rows--admitted-send-before-first-frame", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-baseline", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-small-view", 560, 300],
+	["chat-tool-rows--admitted-send-transport-down", 1024, 300],
+	/* The COMPOSER half of the same claim, and the head's. Design review round 2's
+	   D3: this change adds a sentence to the composer ("Waiting for the agent")
+	   and nothing committed showed it, so the round could not sign the string off.
+	   All four are at the rung frames' 1024 width on purpose - the two surfaces
+	   are read together, and a composer photographed at another width cannot be
+	   laid beside the pane it sits under. `awaiting-reply-transport-down` is the
+	   state D5 is about, taken AFTER the fix: the pane has withdrawn the line for
+	   a dead transport and the composer's hint goes with it, so this frame reads
+	   "Ask me for help" where the pre-fix app said "Waiting for the agent". */
+	["chat-message-input--idle", 1024, 300],
+	["chat-message-input--awaiting-reply", 1024, 300],
+	["chat-message-input--awaiting-reply-transport-down", 1024, 300],
+	["chat-message-input--awaiting-answer", 1024, 300],
 	/* The COMMON case, which had no standing frame until design review round 1
 	   (D4) asked for one: an answer mixing prose with a fenced code block, a
 	   table and a list. The alignment frames above are plain paragraphs, and

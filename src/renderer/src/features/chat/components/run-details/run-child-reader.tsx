@@ -518,6 +518,13 @@ export const RunChildReader = ({
 						transcript={painted}
 						gate={null}
 						waiting={false}
+						/*
+						 * False by construction rather than by omission: this reader renders a
+						 * subagent's transcript from its own file, so there is no send of ITS
+						 * to wait on. The admitted-send rung belongs to the pane that issued the
+						 * send, and a child reader can never be that pane.
+						 */
+						starting={false}
 						loadingOlder={loadingOlder}
 						onLoadOlder={loadOlder}
 						containerRef={containerRef}

@@ -216,17 +216,29 @@ export function draftIdentityFor(
 /**
  * What React keys the chat panel on, and therefore what makes it remount.
  *
- * The precedence is `id ?? draftKey` and NOT the reverse. A draft learns its
- * session id mid-send (the store patches it before the message POST), so
- * keying on the draft made admission a REMOUNT: the subscription opened during
- * the engage wait was discarded, a second SSE handshake was paid, and the
- * backend recomputed a full snapshot before the stream's first frame — all
- * landing exactly where the user expects to see the message they just sent.
- * The draft key and the session id name the same conversation from either side
- * of admission, so keying on the session makes the flip a no-op.
+ * The precedence is `id ?? draftKey` and NOT the reverse, because the two name
+ * the same conversation from either side of admission and the SESSION id is the
+ * durable one: a pane keyed by the session is the pane the stream, the composer
+ * and the echo registry all address, whether the reader reached it from the
+ * sidebar or staged it as a draft.
  *
- * The reverse direction still remounts, correctly: "New chat" stages a draft
- * with no session id, so `id` is undefined and the new draft key wins. That IS
+ * THE FLIP IS A REMOUNT, and that is load-bearing rather than incidental. A
+ * draft learns its session id mid-send (the store patches it before the message
+ * POST), so the key moves `draft:<uuid>` -> `<sessionId>` and the panel is
+ * unmounted and mounted again at exactly the moment the user is waiting for the
+ * message they just sent. The optimistic echo is therefore seeded into the NEW
+ * panel's first frame (`seedPendingEchoes` in `use-canonical-session.ts`): the
+ * delivery that follows arrives through a mount effect, one commit too late, and
+ * that gap is the one that file documents at length.
+ *
+ * AN EARLIER REVISION OF THIS COMMENT CLAIMED THE FLIP WAS A NO-OP. It is not,
+ * and the seeding above exists because of it: an answer that reads as "nothing
+ * happens here" is how a reader concludes the echo registry has no draft-path
+ * case to fix (review rounds 1 R6 and 2 R2-1, which is why the sentence is
+ * stated rather than removed).
+ *
+ * The reverse direction remounts as well, and correctly: "New chat" stages a
+ * draft with no session id, so `id` is undefined and the draft key wins. That IS
  * a different conversation and must not inherit the previous transcript.
  *
  * Extracted rather than inlined in the component for the same reason
