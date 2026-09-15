@@ -98,6 +98,7 @@ const Frame = ({
 				transcript={transcriptOf(records)}
 				gate={null}
 				waiting={false}
+				starting={false}
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}

@@ -252,6 +252,7 @@ const InTranscript = ({
 				)}
 				gate={null}
 				waiting={false}
+				starting={false}
 				loadingOlder={loadingOlder}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
