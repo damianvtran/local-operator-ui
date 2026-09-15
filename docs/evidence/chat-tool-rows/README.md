@@ -8,7 +8,8 @@ Two capture surfaces, and the difference matters when reading them:
 
 - **Storybook frames** (`states`, `names-and-fallbacks`, `narrow`, `working`,
   `working-labels`, `operator-spacing-cases`, `turn-boundary-and-working-line`,
-  `joined-mid-turn`) render the **production `CanonicalTranscript`**
+  `joined-mid-turn`, `admitted-send-before-first-frame` and its three siblings
+  below) render the **production `CanonicalTranscript`**
   from fixture `TranscriptRecord`s. They cover the states that are slow or
   awkward to produce live: an interrupted call needs a turn stopped at exactly
   the right moment, an `mcp__*` row needs a server connected, a narrow row needs
@@ -46,6 +47,10 @@ Two capture surfaces, and the difference matters when reading them:
 | [`turn-boundary-and-working-line`](turn-boundary-and-working-line/) | The hierarchy that survives the tightening: two ledger rows, a user turn, an agent reply, and a running row with the working line under it. Tightening a run is only correct if the reader can still see where a turn began. (The older `turn-boundary/` frames were removed: they came from a story title that no longer exists, so no sweep could refresh them.) |
 | [`prose-tool-alignment@1024`](prose-tool-alignment@1024/), [`@1440`](prose-tool-alignment@1440/) | Agent prose and the ledger sharing ONE left rail and ONE right edge, with prose both BETWEEN tool rows and as a final answer. The operator reported the answer as inset and narrower than the tool calls; it was capped at a reading measure and then centred inside the row it owns. Measured here, the answer and the tool row now span the same 102..962 at 1024 and 310..1170 at 1440 — left and right deltas both 0, where they were 156.6px each before. Two widths because a max-width cap only binds on a wide column, so one narrow capture would photograph the defect as absent. The user bubble is in frame as the control: it keeps its own narrower measure. |
 | [`streaming-before-first-token`](streaming-before-first-token/) | The gap between `message_start` and the first token. The claim is an ABSENCE: no "Writing" row above the working line, which used to state the same fact a second time in the answer's own register. What must still be here is the liveness — the working line, spinning, reading `thinking`. Losing the row and the signal together would be a regression, not a fix. |
+| [`admitted-send-before-first-frame`](admitted-send-before-first-frame/) | The cold engage: a send the app has admitted and the owner has not answered. One quiet line at the foot, `waiting for the agent`, in the ladder's own register and on its `thinking` phase — the same rail, ink and typeface as every other rung, and the only liveness element on screen. This is the state the operator reported as dead air ("I hit send and nothing happens for three seconds"), so the frame's job is to show that the wait is now ON SCREEN: built by the real `appendPendingUser` echo, nothing hand-written. |
+| [`admitted-send-before-first-frame-baseline`](admitted-send-before-first-frame-baseline/) | The AFTER half's own control, and the reason the pair exists: the same transcript with `starting={false}`, which is exactly the old behaviour — the user's bubble and then nothing until the owner's first frame. The two frames differ by one line and by nothing else, which is what makes the claim checkable rather than asserted. |
+| [`admitted-send-before-first-frame-small-view`](admitted-send-before-first-frame-small-view/) | The same rung in the small-view wrapper (no `AGENT_GUTTER`, the tighter `GAP.item`), which no other frame in this set could show: `narrow` varies the viewport WIDTH rather than the `isSmallView` flag (design round 1, D2). Same records as the frame above, so the difference between them is the wrapper alone. |
+| [`admitted-send-transport-down`](admitted-send-transport-down/) | The wait's other clear: the stream is unavailable, so the transcript renders the failure and the rung is NOT painted beside it. A line claiming progress next to "the connection was lost" would be a claim the transport is not making. The state was not expressible before this (the story hardcoded `status="live"`), and the derivation behind it is asserted in `scripts/tool-row.test.mjs`. |
 
 > **How the headline frame was proven to be a real reading.** A frame showing
 > no blanks is worthless if the instrument could not have shown blanks, so the
@@ -287,12 +292,14 @@ that indistinguishability is why the defect survived a review round.
   compare — and on this surface a difference of that size and in that band is
   the clock, not the change under review. Pre-existing, and not something the
   hairline touched.
-- **That the small-view tier is what the code says.** No frame can show it: the
-  story `Frame` renders `isSmallView={false}`, and `narrow` varies the viewport
-  WIDTH rather than that flag. `GAP.trace` carries the same `mt-0.5` in both
-  indices, so the two views are provably identical by construction — which also
-  means no pair of frames could ever distinguish them. `scripts/tool-row.test.mjs`
-  asserts the pair; that assertion, not a picture, is the evidence.
+- **That the whole small-view tier is what the code says.** One state now has a
+  frame in that wrapper (`admitted-send-before-first-frame-small-view`), which
+  shows the wrapper and the tighter item gap the rung is rendered with there;
+  the rest of the tier still rests on construction rather than on pictures,
+  because `GAP.trace` carries the same `mt-0.5` in both indices, so no pair of
+  frames could distinguish the two views for the rows that do not change.
+  `scripts/tool-row.test.mjs` asserts the pair; that assertion, not a picture,
+  is the evidence for the rows.
 
 ## Declared, not swept
 
