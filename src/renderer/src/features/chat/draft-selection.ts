@@ -201,14 +201,16 @@ export type EffortCarry = {
 	confirmation: (selector: string) => string;
 };
 
-export function effortCarry(carried: string, target: EffortTarget): EffortCarry {
+export function effortCarry(
+	carried: string,
+	target: EffortTarget,
+): EffortCarry {
 	const wanted = carried.trim();
 	if (!wanted)
 		return {
 			checked: true,
 			rung: null,
-			confirmation: (selector) =>
-				`This conversation will run ${selector}.`,
+			confirmation: (selector) => `This conversation will run ${selector}.`,
 		};
 	if (!target.ladderKnown)
 		return {
