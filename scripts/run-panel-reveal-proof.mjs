@@ -5,7 +5,28 @@
  *     LOCAL_OPERATOR_DESKTOP_TOKEN=<token> LOCAL_OPERATOR_CONFIG_DIR=<isolated> \
  *       node scripts/run-panel-reveal-proof.mjs --session=<12 hex> \
  *       [--backend=http://127.0.0.1:1111] [--width=1380] [--height=900] \
- *       [--theme=<ThemeName>] [--out=<dir>]
+ *       [--theme=<ThemeName>] [--out=<dir>] [--expect=region-only] [--rail=collapsed] \
+ *       [--reader=first]
+ *
+ * `--expect=region-only` is the CLAIM, checked rather than printed: the run exits
+ * non-zero if any box outside `[data-run-panel-region]` changed `scrollLeft` or
+ * `scrollTop` across the press, or if the To-dos section did not land at the top
+ * of that region. Leave it off for a `before-fix` run, where a mover outside the
+ * pane is the whole point.
+ *
+ * `--rail=collapsed|expanded` sets the icon rail's state before anything is
+ * measured or captured, because the pane's fit depends on it (220px expanded,
+ * 48px collapsed, out of the same row).
+ *
+ * Why this stands beside the supported dev driver instead of inside it:
+ * `docs/agent-driver.md`'s `renderer-driver.mjs` is the house way through, and its
+ * `press` verb is the press this file uses (hit-test the painted centre, dispatch
+ * a real pointer sequence). What it deliberately refuses is a generic `eval` on
+ * the page, which is exactly what this proof needs - every scrolling box in the
+ * chip's and the section's ancestor chains, read before and after. Adding a
+ * geometry verb to the shared driver to serve one proof would widen a tool whose
+ * value is that it cannot be scripted into anything; a second rig that says so is
+ * the smaller cost, and this note is that "says so".
  *
  * Why this is a committed script rather than a throwaway rig: the claim it
  * checks - "pressing the plan chip moves the pane's own reading position and
@@ -35,7 +56,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -58,8 +79,47 @@ const WIDTH = Number(args.get("width") ?? 1380);
 const HEIGHT = Number(args.get("height") ?? 900);
 const THEME = args.get("theme") ?? "";
 const OUT = resolve(args.get("out") ?? "out/run-panel-reveal");
-const REPO = resolve(args.get("repo") ?? ".");
+/*
+ * REALpath, not the path as typed. The app compares the frame it was asked to
+ * load against its own trusted path by RESOLVED path (`desktop-transport.ts`),
+ * and on macOS `/tmp` is a symlink to `/private/tmp` - so `--repo=/tmp/...` loads
+ * nothing, and the first thing the run then misses is the chip, which it reported
+ * as "seed a session with a To-dos plan": a fixture accused of a security
+ * refusal. Node's `cwd` is already physical, which is why the documented
+ * invocation never hit it.
+ */
+const REPO = realpathSync(resolve(args.get("repo") ?? "."));
 const PORT = Number(args.get("port") ?? 9451);
+const EXPECT = args.get("expect") ?? "";
+/**
+ * Which rail state to measure in: "collapsed", "expanded", or empty for whatever
+ * the profile opens with.
+ *
+ * The pane's fit is RAIL-DEPENDENT - the rail is 220px expanded and 48px
+ * collapsed, on a row that also holds the chat list and the column's own 220px
+ * floor - so a frame set that shows one state cannot say whether the pane is
+ * clipped in general or clipped HERE. The toggle is reached the way a user reaches
+ * it: the control is `opacity-0 pointer-events-none` until the rail is hovered.
+ */
+const RAIL = args.get("rail") ?? "";
+/**
+ * "first" opens the first openable roster row's reader before the press, so the
+ * measured gesture is the reveal's READER-FIRST branch rather than its plain one.
+ */
+const READER = args.get("reader") ?? "";
+/**
+ * A CSS selector inside the pane to FOCUS, reporting every ancestor's scroll
+ * offsets across the focus. `--focus-probe=[data-run-panel-row]:last-child button`
+ * is round 1's M1: `focus()` without `preventScroll` does its own
+ * scroll-into-view through the SAME ancestor chain `scrollIntoView` walks, so a
+ * row whose right edge is in the clipped strip could move a box outside the pane.
+ * It is a probe rather than a press because the reader-first state (a plan chip
+ * AND an openable roster in one session) is not reachable with a seeded fixture:
+ * the plan needs an engaged runtime and the engage replaces the job store the
+ * roster rows come from. It therefore drives the app's own DOM in the geometry
+ * the concern names, and says so rather than claiming the full gesture.
+ */
+const FOCUS = args.get("focus-probe") ?? "";
 
 const TOKEN = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ?? "";
 if (!SESSION || !TOKEN) {
@@ -82,6 +142,7 @@ const MEASURE = `(() => {
 		const rect = node.getBoundingClientRect();
 		return {
 			name: node.tagName.toLowerCase() + (node.id ? "#" + node.id : "") + "|" + String(node.className || "").split(" ").slice(0, 3).join("."),
+			isRegion: node.hasAttribute("data-run-panel-region"),
 			overflowY: style.overflowY,
 			overflowX: style.overflowX,
 			scrollTop: node.scrollTop,
@@ -136,12 +197,68 @@ const MEASURE = `(() => {
 	add("composerBand", document.querySelector("[data-lo-composer-band]"));
 	add("runPane", document.querySelector("[data-run-panel-pane]"));
 	add("todosSection", todos);
+	/*
+	 * The pane's FIT, which is the other half of the reported defect (round 1,
+	 * D1/U1): a reveal that does not move the frame still has to reveal something
+	 * readable. clipPx is how much of the pane is outside the viewport, the close
+	 * control is read AND hit-tested (its centre may sit inside the viewport while
+	 * an overlay owns the point), and truncatingRows counts the pane's own text
+	 * that its layout cannot fit - the state the round measured as characters cut
+	 * mid-word with no ellipsis.
+	 */
+	const paneEl = document.querySelector("[data-run-panel-pane]");
+	const closeEl = document.querySelector('[aria-label="Close run details"]');
+	const acceptance = { clipPx: null, closeControl: null, closeControlHit: null, elidedRows: 0, cutRows: 0 };
+	if (paneEl) {
+		const paneRect = paneEl.getBoundingClientRect();
+		acceptance.clipPx = Math.max(0, Math.round(paneRect.right - window.innerWidth));
+		/*
+		 * Truncation is two different things and only one of them is a defect. A row
+		 * whose text-overflow is an ellipsis and that fits INSIDE the viewport is the
+		 * design working: the reader sees the three dots. The same row with its
+		 * elision point outside the viewport is the failure the round measured - the
+		 * pane's right edge is past the window, so the text ends at a hard screen edge
+		 * with no ellipsis anywhere on screen.
+		 */
+		for (const node of paneEl.querySelectorAll("*")) {
+			if (node.clientWidth <= 0 || node.scrollWidth <= node.clientWidth + 1) continue;
+			const rect = node.getBoundingClientRect();
+			if (rect.right > window.innerWidth) acceptance.cutRows += 1;
+			else acceptance.elidedRows += 1;
+		}
+	}
+	if (closeEl) {
+		const rect = closeEl.getBoundingClientRect();
+		const x = rect.left + rect.width / 2;
+		const y = rect.top + rect.height / 2;
+		acceptance.closeControl = {
+			left: Math.round(rect.left * 100) / 100,
+			right: Math.round(rect.right * 100) / 100,
+			insideViewport: rect.left >= 0 && rect.right <= window.innerWidth,
+		};
+		const hit = document.elementFromPoint(x, y);
+		acceptance.closeControlHit = Boolean(
+			hit && (hit === closeEl || closeEl.contains(hit)),
+		);
+	}
+	const region = document.querySelector("[data-run-panel-region]");
+	const todosOffsetInRegion =
+		todos && region
+			? Math.round(
+					(todos.getBoundingClientRect().top -
+						region.getBoundingClientRect().top -
+						region.clientTop) *
+						100,
+				) / 100
+			: null;
 	return {
 		viewport: [window.innerWidth, window.innerHeight, window.devicePixelRatio],
 		paneOpen: Boolean(document.querySelector("[data-run-panel-pane]")),
 		dialog: Boolean(document.querySelector("div[role='dialog']")),
 		documentScrollTop: document.documentElement.scrollTop,
 		bodyScrollTop: document.body.scrollTop,
+		todosOffsetInRegion,
+		acceptance,
 		scrollBoxes,
 		surfaces,
 	};
@@ -332,10 +449,23 @@ try {
 			},
 			body: "{}",
 		}).catch(() => {});
-	for (let attempt = 0; attempt < 8; attempt++) {
-		await warm();
-		for (let tick = 0; tick < 10; tick++) {
-			await wait(1500);
+	/*
+	 * The plan chip is the subject of a press run. The focus probe needs the COLD
+	 * projection instead (its roster is the one with openable rows), so it skips the
+	 * engage and the chip entirely.
+	 */
+	if (!FOCUS) {
+		for (let attempt = 0; attempt < 8; attempt++) {
+			await warm();
+			for (let tick = 0; tick < 10; tick++) {
+				await wait(1500);
+				if (
+					await app.evaluate(
+						`Boolean(document.querySelector("[data-status-plan]"))`,
+					)
+				)
+					break;
+			}
 			if (
 				await app.evaluate(
 					`Boolean(document.querySelector("[data-status-plan]"))`,
@@ -343,12 +473,6 @@ try {
 			)
 				break;
 		}
-		if (
-			await app.evaluate(
-				`Boolean(document.querySelector("[data-status-plan]"))`,
-			)
-		)
-			break;
 	}
 
 	if (
@@ -358,6 +482,7 @@ try {
 			"the app is showing a modal (unconfigured backend); the press would be swallowed",
 		);
 	if (
+		!FOCUS &&
 		!(await app.evaluate(
 			`Boolean(document.querySelector("[data-status-plan]"))`,
 		))
@@ -366,43 +491,177 @@ try {
 			"the session has no plan chip: seed a session with a To-dos plan",
 		);
 
-	// A known closed pane, so the press is the whole change. The pane's own close
-	// control first; Escape is the ladder's own rung for a window too narrow for
-	// the chrome to be on screen (measured at 800x600), and it needs the press's
-	// target to be `body`, hence the blur.
-	for (let attempt = 0; attempt < 3; attempt++) {
-		if (
-			!(await app.evaluate(
-				`Boolean(document.querySelector("[data-run-panel-pane]"))`,
-			))
-		)
-			break;
-		if (!(await app.click('[aria-label="Close run details"]'))) {
-			await app.evaluate(
-				"document.activeElement instanceof HTMLElement && document.activeElement.blur()",
+	/*
+	 * The rail state, set BEFORE anything is measured or captured: the pane's
+	 * available width is the row minus the rail, minus the chat list, minus the
+	 * column's own floor, so the same window can show a pane that fits and a pane
+	 * that does not. Hovering first is not politeness - the toggle is
+	 * `opacity-0 pointer-events-none` until the rail is hovered, so a press without
+	 * it lands on whatever is beneath and the state silently never changes.
+	 */
+	if (RAIL === "collapsed" || RAIL === "expanded") {
+		const want = RAIL === "collapsed" ? "Collapse sidebar" : "Expand sidebar";
+		const railWidth = () =>
+			app.evaluate(
+				`Math.round(document.querySelector("nav.group")?.getBoundingClientRect().width ?? 0)`,
 			);
-			for (const type of ["keyDown", "keyUp"])
-				await app.send("Input.dispatchKeyEvent", {
-					type,
-					key: "Escape",
-					code: "Escape",
-					windowsVirtualKeyCode: 27,
-					nativeVirtualKeyCode: 27,
-				});
-		}
-		await wait(700);
+		const railBefore = await railWidth();
+		const railPoint = await app.evaluate(`(() => {
+			const node = document.querySelector("nav.group");
+			if (!node) return null;
+			const rect = node.getBoundingClientRect();
+			return { x: rect.left + rect.width / 2, y: rect.top + 120 };
+		})()`);
+		if (!railPoint) throw new Error(`no rail to set to ${RAIL}`);
+		await app.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: railPoint.x,
+			y: railPoint.y,
+		});
+		await wait(500);
+		if (!(await app.click(`[aria-label="${want}"]`)))
+			throw new Error(
+				`the rail's "${want}" control is not on screen; the rail is at ${railBefore}px`,
+			);
+		await wait(900);
+		const railAfter = await railWidth();
+		if (Math.abs(railAfter - railBefore) < 4)
+			throw new Error(
+				`the rail did not ${RAIL}: it was ${railBefore}px and is ${railAfter}px, so the press would be measured in the other state`,
+			);
+		console.error(`[rail] ${RAIL}: ${railBefore}px -> ${railAfter}px`);
+	} else if (RAIL !== "") {
+		throw new Error(`unknown --rail=${RAIL}; use collapsed or expanded`);
 	}
-	if (
-		await app.evaluate(
-			`Boolean(document.querySelector("[data-run-panel-pane]"))`,
-		)
-	)
-		throw new Error("could not close the pane before the press");
 
-	const before = await app.evaluate(MEASURE);
-	await app.screenshot(join(outDir, `${theme}-before.png`));
+	/*
+	 * The reader-first branch of the reveal (round 1, M1): the press has to LEAVE a
+	 * child reader and then bring the plan in, in one request. That branch is the
+	 * one the review could not reach without a fixture whose roster rows are
+	 * openable (`--openable` on the seeder), and it is the branch where a
+	 * `focus()` on a roster row inside a clipped pane could move something outside
+	 * the pane again.
+	 */
+	if (FOCUS) {
+		/*
+		 * Open the pane by its trigger (the chip is not on screen in this mode) and
+		 * focus one element inside it, reporting every ancestor's scroll offsets
+		 * across the focus. `focus()` without `preventScroll` performs its own
+		 * scroll-into-view, through the same ancestor chain `scrollIntoView` walks,
+		 * so an element in the pane's clipped strip is the condition under test.
+		 */
+		if (!(await app.click("[data-run-panel-trigger]")))
+			throw new Error("no header trigger to open the pane with");
+		await wait(1500);
+		const probe = await app.evaluate(`(() => {
+			const target = document.querySelector(${JSON.stringify(FOCUS)});
+			if (!target) return { error: "no element matches " + ${JSON.stringify(FOCUS)} };
+			const boxes = () => {
+				const rows = [];
+				for (let node = target; node; node = node.parentElement)
+					rows.push({
+						name:
+							node.tagName.toLowerCase() +
+							"|" +
+							String(node.className || "").split(" ").slice(0, 2).join("."),
+						scrollTop: node.scrollTop,
+						scrollLeft: node.scrollLeft,
+					});
+				return rows;
+			};
+			const rect = target.getBoundingClientRect();
+			const before = boxes();
+			target.focus();
+			const after = boxes();
+			return {
+				selector: ${JSON.stringify(FOCUS)},
+				viewport: [window.innerWidth, window.innerHeight],
+				targetRect: {
+					left: Math.round(rect.left * 100) / 100,
+					right: Math.round(rect.right * 100) / 100,
+					top: Math.round(rect.top * 100) / 100,
+					bottom: Math.round(rect.bottom * 100) / 100,
+				},
+				fullyInsideViewport:
+					rect.left >= 0 &&
+					rect.right <= window.innerWidth &&
+					rect.top >= 0 &&
+					rect.bottom <= window.innerHeight,
+				activeIsTarget: document.activeElement === target,
+				movers: after.filter(
+					(row, index) =>
+						row.scrollTop !== before[index].scrollTop ||
+						row.scrollLeft !== before[index].scrollLeft,
+				),
+				ancestors: after,
+			};
+		})()`);
+		console.log(JSON.stringify(probe, null, 2));
+	} else {
+		if (READER === "first") {
+			if (!(await app.click("[data-run-panel-trigger]")))
+				throw new Error("no header trigger to open the pane with");
+			await wait(1200);
+			const rosterState = await app.evaluate(`(() => ({
+			pane: Boolean(document.querySelector("[data-run-panel-pane]")),
+			rows: document.querySelectorAll("[data-run-panel-row]").length,
+			buttons: document.querySelectorAll("[data-run-panel-row] button").length,
+			sections: [...document.querySelectorAll("[data-run-panel-pane] section")].map((node) => (node.textContent || "").trim().slice(0, 24)),
+		}))()`);
+			if (!(await app.click("[data-run-panel-row] button")))
+				throw new Error(
+					`no openable roster row: ${JSON.stringify(rosterState)} - a row is a control only when the wire gives it a child session (seed the session with \`--openable\`)`,
+				);
+			await wait(1500);
+			if (
+				await app.evaluate(
+					`Boolean(document.querySelector("[data-run-panel-row]"))`,
+				)
+			)
+				throw new Error(
+					"the roster is still on screen: the row press did not open a reader",
+				);
+		} else if (READER !== "") {
+			throw new Error(`unknown --reader=${READER}; the only value is first`);
+		} else {
+			// A known closed pane, so the press is the whole change. The pane's own close
+			// control first; Escape is the ladder's own rung for a window too narrow for
+			// the chrome to be on screen (measured at 800x600), and it needs the press's
+			// target to be `body`, hence the blur.
+			for (let attempt = 0; attempt < 3; attempt++) {
+				if (
+					!(await app.evaluate(
+						`Boolean(document.querySelector("[data-run-panel-pane]"))`,
+					))
+				)
+					break;
+				if (!(await app.click('[aria-label="Close run details"]'))) {
+					await app.evaluate(
+						"document.activeElement instanceof HTMLElement && document.activeElement.blur()",
+					);
+					for (const type of ["keyDown", "keyUp"])
+						await app.send("Input.dispatchKeyEvent", {
+							type,
+							key: "Escape",
+							code: "Escape",
+							windowsVirtualKeyCode: 27,
+							nativeVirtualKeyCode: 27,
+						});
+				}
+				await wait(700);
+			}
+			if (
+				await app.evaluate(
+					`Boolean(document.querySelector("[data-run-panel-pane]"))`,
+				)
+			)
+				throw new Error("could not close the pane before the press");
+		}
 
-	const chip = await app.evaluate(`(() => {
+		const before = await app.evaluate(MEASURE);
+		await app.screenshot(join(outDir, `${theme}-before.png`));
+
+		const chip = await app.evaluate(`(() => {
 		const node = document.querySelector("[data-status-plan]");
 		const rect = node.getBoundingClientRect();
 		const x = rect.left + rect.width / 2;
@@ -416,73 +675,111 @@ try {
 			owner: at ? at.tagName.toLowerCase() + "." + String(at.className || "").split(" ")[0] : null,
 		};
 	})()`);
-	if (!chip.hit)
-		throw new Error(
-			`the plan chip is not hit-testable at its centre: ${chip.owner} owns it`,
-		);
+		if (!chip.hit)
+			throw new Error(
+				`the plan chip is not hit-testable at its centre: ${chip.owner} owns it`,
+			);
 
-	await app.send("Input.dispatchMouseEvent", {
-		type: "mouseMoved",
-		x: chip.x,
-		y: chip.y,
-	});
-	for (const type of ["mousePressed", "mouseReleased"]) {
 		await app.send("Input.dispatchMouseEvent", {
-			type,
+			type: "mouseMoved",
 			x: chip.x,
 			y: chip.y,
-			button: "left",
-			buttons: type === "mousePressed" ? 1 : 0,
-			clickCount: 1,
 		});
-	}
-	await wait(500);
-	await app.evaluate(
-		"new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 300))))",
-	);
-	const after = await app.evaluate(MEASURE);
-	await app.screenshot(join(outDir, `${theme}-after.png`));
-
-	const movers = [];
-	const names = new Set(after.scrollBoxes.map((row) => row.name));
-	for (const name of names) {
-		const first = before.scrollBoxes.find((row) => row.name === name);
-		const second = after.scrollBoxes.find((row) => row.name === name);
-		if (!second) continue;
-		if (
-			second.scrollTop !== (first?.scrollTop ?? 0) ||
-			second.scrollLeft !== (first?.scrollLeft ?? 0)
-		)
-			movers.push({
-				name,
-				scrollTop: [first?.scrollTop ?? 0, second.scrollTop],
-				scrollLeft: [first?.scrollLeft ?? 0, second.scrollLeft],
+		for (const type of ["mousePressed", "mouseReleased"]) {
+			await app.send("Input.dispatchMouseEvent", {
+				type,
+				x: chip.x,
+				y: chip.y,
+				button: "left",
+				buttons: type === "mousePressed" ? 1 : 0,
+				clickCount: 1,
 			});
+		}
+		await wait(500);
+		await app.evaluate(
+			"new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 300))))",
+		);
+		const after = await app.evaluate(MEASURE);
+		await app.screenshot(join(outDir, `${theme}-after.png`));
+
+		const movers = [];
+		const names = new Set(after.scrollBoxes.map((row) => row.name));
+		for (const name of names) {
+			const first = before.scrollBoxes.find((row) => row.name === name);
+			const second = after.scrollBoxes.find((row) => row.name === name);
+			if (!second) continue;
+			if (
+				second.scrollTop !== (first?.scrollTop ?? 0) ||
+				second.scrollLeft !== (first?.scrollLeft ?? 0)
+			)
+				movers.push({
+					name,
+					region: Boolean(second.isRegion),
+					scrollTop: [first?.scrollTop ?? 0, second.scrollTop],
+					scrollLeft: [first?.scrollLeft ?? 0, second.scrollLeft],
+				});
+		}
+		const report = {
+			session: SESSION,
+			backend: BACKEND,
+			viewport: before.viewport,
+			press: chip.label,
+			paneOpen: [before.paneOpen, after.paneOpen],
+			movers,
+			before,
+			after,
+		};
+		writeFileSync(
+			join(outDir, `${theme}.json`),
+			JSON.stringify(report, null, 2),
+		);
+		console.log(
+			JSON.stringify(
+				{
+					viewport: before.viewport,
+					press: chip.label,
+					paneOpen: [before.paneOpen, after.paneOpen],
+					movers,
+					todosOffsetInRegion: after.todosOffsetInRegion,
+				},
+				null,
+				2,
+			),
+		);
+		console.log(`frames and readings in ${outDir}`);
+		/*
+		 * The claim, checked rather than printed. `region-only` says the press may move
+		 * the pane's own reading position and nothing else; a mover that is not the
+		 * region is the defect this repository shipped once already (the slot row
+		 * sliding 108px sideways with the whole frame). Without this the numbers were
+		 * re-derivable only by a human reading JSON, and a run that moved everything
+		 * still exited 0.
+		 */
+		if (EXPECT === "region-only") {
+			const stray = movers.filter((mover) => !mover.region);
+			if (stray.length > 0)
+				throw new Error(
+					`expected only the pane's own region to move, but ${stray.length} other box(es) moved: ${JSON.stringify(stray)}`,
+				);
+			/*
+			 * The other half of the claim: the press actually got somewhere. A run that
+			 * moved nothing at all would pass the check above while proving nothing, so
+			 * the section's offset inside the region is asserted to be flush with its top
+			 * (both when the reveal had to scroll and when the section was already there).
+			 * A mover list is allowed to be empty - the region at 0 with the section first
+			 * has nothing to move - but the section's POSITION is not optional.
+			 */
+			const offset = after.todosOffsetInRegion;
+			if (offset === null || Math.abs(offset) > 1)
+				throw new Error(
+					`expected the To-dos section at the top of the pane's own region, but its offset in that region is ${offset}`,
+				);
+		} else if (EXPECT !== "") {
+			throw new Error(
+				`unknown --expect=${EXPECT}; the only value is region-only`,
+			);
+		}
 	}
-	const report = {
-		session: SESSION,
-		backend: BACKEND,
-		viewport: before.viewport,
-		press: chip.label,
-		paneOpen: [before.paneOpen, after.paneOpen],
-		movers,
-		before,
-		after,
-	};
-	writeFileSync(join(outDir, `${theme}.json`), JSON.stringify(report, null, 2));
-	console.log(
-		JSON.stringify(
-			{
-				viewport: before.viewport,
-				press: chip.label,
-				paneOpen: [before.paneOpen, after.paneOpen],
-				movers,
-			},
-			null,
-			2,
-		),
-	);
-	console.log(`frames and readings in ${outDir}`);
 } finally {
 	app.socket.close();
 	app.child.kill("SIGTERM");
