@@ -3,6 +3,15 @@ name: Build and Publish
 on:
   release:
     types: [published]
+  # The automated release path. `auto-release.yml` creates the Release with the
+  # repository's `GITHUB_TOKEN`, and an event created by that token starts no
+  # workflow run — which is GitHub's anti-recursion rule, and it covers the
+  # `release` event above and the tag's `push` alike. `repository_dispatch` is one
+  # of the two documented exceptions, so the automated publication arrives here.
+  # The payload names the tag, its commit and the release ID; `validate-release`
+  # proves all three against the API before anything is built.
+  repository_dispatch:
+    types: [release-published]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -16,7 +25,7 @@ on:
 
 # Serialize normal publishing and manual repairs for the same release tag.
 concurrency:
-  group: publish-${{ github.event.release.tag_name || inputs.release_tag }}
+  group: publish-${{ github.event.release.tag_name || github.event.client_payload.release_tag || inputs.release_tag }}
   cancel-in-progress: false
 
 env:
@@ -49,10 +58,16 @@ jobs:
       - name: Validate release target
         id: validate
         env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
-          EXPECTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_source_sha || '' }}
+          # One resolution for three triggers: the `release` event carries the tag
+          # in its payload, the automated publication arrives as a
+          # `repository_dispatch` carrying it in `client_payload`, and a manual
+          # repair names it as an input. The commit and the release ID are pinned
+          # the same way, so a Release replaced or recreated between the dispatch
+          # and this validation is refused rather than published.
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.event.client_payload.release_tag || inputs.release_tag }}
+          EXPECTED_SOURCE_SHA: ${{ github.event.client_payload.source_sha || (github.event_name == 'workflow_dispatch' && inputs.expected_source_sha) || '' }}
           IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
-          EXPECTED_RELEASE_ID: ${{ github.event_name == 'release' && github.event.release.id || '' }}
+          EXPECTED_RELEASE_ID: ${{ github.event.release.id || github.event.client_payload.release_id || '' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/validate-release.mjs
 
@@ -166,14 +181,21 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
+      # The npm channel is part of a publication, and only a manual repair is not
+      # one. These four steps used to be keyed on `github.event_name == 'release'`,
+      # which was the same set of events only while the `release` event was the
+      # only way in: the automated publication arrives as a `repository_dispatch`,
+      # and under the old spelling it would have shipped installers while silently
+      # skipping npm. The discriminator is therefore "this is not a repair", which
+      # is the same thing `IS_MANUAL_DISPATCH` means to `release-state.mjs`.
       - name: Ensure npm supports trusted publishing
-        if: github.event_name == 'release'
+        if: github.event_name != 'workflow_dispatch'
         run: |
           npm install -g npm@^11.5.1
           npm --version
 
       - name: Install dependencies
-        if: github.event_name == 'release'
+        if: github.event_name != 'workflow_dispatch'
         run: pnpm install --frozen-lockfile
 
       - name: Check if version already published
@@ -209,7 +231,7 @@ jobs:
       # after this step would rebuild and publish an artifact nothing checked.
       - name: Pack and assert the tarball ships no V8 bytecode
         id: pack
-        if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
+        if: github.event_name != 'workflow_dispatch' && steps.check_version.outputs.published == 'false'
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -227,7 +249,7 @@ jobs:
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm
-        if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
+        if: github.event_name != 'workflow_dispatch' && steps.check_version.outputs.published == 'false'
         run: npm publish "${TARBALL}" --provenance
         env:
           TARBALL: ${{ steps.pack.outputs.tarball }}
@@ -532,6 +554,48 @@ jobs:
           EXPECTED_RELEASE_ID: ${{ needs.validate-release.outputs.release_id }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node workflow/scripts/upload-release.mjs
+
+  # The signed-update verification, started once this release's assets are
+  # attached. It is a separate workflow on purpose: it is an audit of the built
+  # candidate rather than part of publishing it — it builds a signed candidate from
+  # the released commit and drives the unmodified incumbent's updater against it on
+  # a disposable macOS VM — and its verdict (PASS / FAIL / BLOCKED) belongs on its
+  # own run page rather than in this pipeline's colour.
+  #
+  # Why it is dispatched rather than triggered by `workflow_run` on this workflow:
+  # the automated publication is itself started by a `repository_dispatch`, and a
+  # run started from a `GITHUB_TOKEN` event is not documented to produce a
+  # `workflow_run` event. A verification that silently never fires is worse than
+  # no verification at all, because it reads as success; an explicit dispatch fails
+  # this run loudly if it cannot be made.
+  #
+  # Declared before `finalize-release` deliberately: nothing may depend on the
+  # promotion, so a failed promotion stays terminal and no later job's success can
+  # paper over it.
+  dispatch-signed-verification:
+    name: Dispatch the signed-update verification
+    runs-on: ubuntu-latest
+    needs: [validate-release, attach-to-release]
+    if: ${{ needs.validate-release.result == 'success' && needs.attach-to-release.result == 'success' }}
+
+    steps:
+      # No `if: github.event_name == 'release'` here: a manual repair that ends with
+      # the assets attached is a publication too, and the verification derives its
+      # own inputs from the release it is told about, so it is equally meaningful
+      # for a repaired older release.
+      - name: Dispatch the verification for this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          # `repository_dispatch` is the documented exception to the rule that
+          # `GITHUB_TOKEN`-created events start no run, which is why the chain
+          # works at all here. The payload names the release; the verification
+          # resolves the candidate commit and the incumbent tag itself.
+          gh api -X POST "repos/$GITHUB_REPOSITORY/dispatches" \
+            -f event_type=verify-signed-update \
+            -f "client_payload[release_tag]=$RELEASE_TAG"
 
   # Closes the window opened above, and is the only step that may put a release
   # back into /releases/latest. It runs after the assets are attached and checks
