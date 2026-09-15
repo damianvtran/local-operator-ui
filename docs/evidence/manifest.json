@@ -1,17 +1,17 @@
 {
-  "head": "9f2f399328f4942581b3db35fa335551bac396bb",
-  "headNote": "Sync merge of `origin/main` `8e2f67b1c` (#170, nine commits on from the v0.22.5 release this branch already carried) and the re-stamp that follows it, WITHOUT RECAPTURE: main's pass wrote these frames, and this branch's own narrowed passes are recorded under `partialCapture`. `head` names the commit this stamp was re-derived at, and `srcTree`/`scriptsTree` are that commit's trees, since the gate accepts nothing else in those fields. `capturedAt` is main's full-sweep instant and is left as main's, because no sweep ran here. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is the full sweep's - main's pass was clean - while this branch's narrowed passes ran on a dirty tree and say so under `partialCapture`. Both sides of the merge are preserved: the two conflicts took main's side for this block and, for `partialCapture`, the union of two records of ONE pass rather than either one (see its note). Re-stamped once more at the round-2 review remediation (`9f2f39932`), which edited `src/main/backend/{managed-python,backend-installer}.ts` and the tests, so `srcTree`/`scriptsTree` moved again; `frames`, `surfaces` and `themes` did not, and no frame was re-taken or added - the change reaches no rendered surface.",
-  "srcTree": "2b0aeba63c809f61075147766e608b2c8cadae0b",
-  "scriptsTree": "8358161de81d4302e51874f9106812f284cd2e18",
+  "head": "18f359ffaf5aa4b98f7d400cdc69d21122a10449",
+  "headNote": "MERGE NOTE, RE-DERIVED (no re-capture): normal merge of `origin/main` `93f57894a` (#182, the 0.22.6 release bump, over #170 and #179) into this PR's reviewed head `38b6f84f6`. Two files conflicted - this manifest and `package.json` (resolved to main's version `0.22.6` with the UNION of both sides' `test:desktop` entries, so every upstream file stays registered and this PR's `scripts/update-affirmation.test.mjs` joins them); `capture-evidence.mjs` auto-merged its additive `STORIES` entries, and no upstream story is dropped by the resolution. No image was captured, modified or re-stamped by this merge, and the merge is not relabelled as visual validation of anything. `srcTree`/`scriptsTree` are the MERGED trees (`git rev-parse HEAD:src` / `HEAD:scripts` at this commit), because that is what `check-evidence.mjs` asserts them against; they therefore do NOT describe `head`'s trees, and `head`, `capturedAt`, `partialCapture`, `captureOrigin` and `upstreamComposerCapture` are main's own pass records kept verbatim rather than restated as this merge's - their own `srcTree`/`scriptsTree` fields describe those passes, not this one. The counts are recomputed from the MERGED disk: 1601 committed WebP files = 1230 swept + 371 in the 34 declared sets, which are main's 32 - its two cold-send sets included - plus this PR's two affirmation sets, each declaration preserved whole. This PR's own capture is not restated at the top level: its six declared frames carry their own `capturedAt` and `capturedAtHead` (`c3a6c2c4a`) inside those two sets, its earlier lineage note remains at `38b6f84f6:docs/evidence/manifest.json`, and its own partial-capture total (310 frames refreshed in the `0f19ae5e2`-era pass) is deliberately NOT carried into `partialCapture`, which stays main's. UPSTREAM NOTE, kept verbatim (its `srcTree`/`scriptsTree` sentence describes main's own stamp pass, not this merge's re-derivation): Sync merge of `origin/main` `56800cb1e` (#179, three commits on from the head the round-8 review pinned) and the re-stamp that follows it, WITHOUT RECAPTURE - which is main's pass, and this branch then re-captured the one surface it owns at its rebased head. `head` names the commit this stamp was re-derived at, and `srcTree`/`scriptsTree` are that commit's trees, since the gate accepts nothing else in those fields: `0b3351a4b`, the merge commit whose re-derivation set the counts below, and `18f359ffa`, this branch's rebased head and the parent of this stamp commit, at which the narrowed re-capture recorded under `partialCapture` ran. `capturedAt` is main's pass and is left as main's. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is this stamping pass's, and the tree was clean and committed: only this branch's own surface was re-taken (`--only=chat-session-status--neighbours`, twelve frames over the twelve themes, byte-identical to the frames the branch already committed), every other frame and citation is still main's, and the capture the older frames came from is recorded in `captureOrigin`, beside main's own record of its pass in `upstreamComposerCapture`. The sets this branch owns are declared as supplementary; the uncovered part of the delta is named in `captureOrigin.note` rather than implied.",
+  "srcTree": "7f9c1d5c72e7c6aa25d7b5682348495804cb5248",
+  "scriptsTree": "e1e6da964a91dc122905049dda6d236ae6597c1b",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T00:21:21.000000Z",
-  "frames": 1228,
-  "surfaces": 188,
+  "frames": 1230,
+  "surfaces": 189,
   "themes": 12,
   "countsMean": {
-    "frames": "1593 committed WebP files minus 365 in 32 declared supplementary sets = 1228 sweep frames. File counts on the merged disk, not a newly completed full sweep: this branch's 1581 plus main's twelve chat-session-status frames. Re-derived at the merge commit rather than carried from either side, because each side's count described a tree the other did not have.",
-    "surfaces": "188 entries in the merged capture-evidence.mjs STORIES literal by the gate method: this branch's 187 plus main's `chat-session-status--neighbours`, which this side's list did not carry. Both sides are preserved.",
-    "themes": "The merged capturer retains 12 THEMES entries; no palette or theme is added by this merge."
+    "frames": "1601 committed WebP files minus 371 in 34 declared supplementary sets = 1230 sweep frames. Counts taken from the MERGED disk rather than carried over: main's 1591 outside 365 in its 32 sets (1226 swept), plus this PR's ten frames - six declared in its two affirmation sets and four under `settings-app-updates-section` in the swept set. Both sides' own accounting is preserved in substance.",
+    "surfaces": "189 entries in the MERGED `capture-evidence.mjs` STORIES literal by the gate method: main's 183, its three `chat-canonical-notices` stories and its `chat-session-status` matrix (main's own 187), plus this PR's `settings-app-updates-section--server-update-offered` and `--all-current`. No story from either side is dropped.",
+    "themes": "The capturer retains 12 THEMES entries; no palette or theme is added by this merge."
   },
   "partialCapture": {
     "refreshedAt": "2026-09-15T01:18:21.921Z",
@@ -444,6 +444,26 @@
       "themes": 2,
       "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures",
       "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."
+    },
+    {
+      "path": "update-check-affirmation-before",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "the same story on a tree WITHOUT the fix: a scratch worktree at ef40c81e2 (this branch's base before its rebases) with app-updates-section.stories.tsx and its STORIES entry copied in unchanged, pnpm build-storybook there, and the repo's own scripts/capture-evidence.mjs against that static build on its own port (--only=settings-app-updates-section --themes=localOperatorDark,localOperatorLight --allow-backend). The story contains none of the fix, so the two halves are one script on two trees.",
+      "why": "The pair IS the reported defect, and a sweep of THIS tree cannot re-derive the before half: the affirmation these frames show - the server offer with 'You are up to date' under it - is exactly what the branch removes, so only a tree without the fix can produce them. Declaring them keeps the sweep's own count, head and srcTree describing frames it did take.",
+      "capturedAt": "2026-09-14T15:10:59.000Z",
+      "capturedAtHead": "ef40c81e287697ae749efa694d47eeda4a02fe17"
+    },
+    {
+      "path": "update-check-affirmation-superseded",
+      "frames": 4,
+      "surfaces": 2,
+      "themes": 2,
+      "source": "the browser tool (Local Operator extension), not the repository capturer and not a CDP script, against a controlled runtime on 127.0.0.1:6035 that served the production storybook-static build of settings-app-updates-section--all-current unchanged and replaced only the preload bridge, while bundling the REAL UpdateService from this tree, serving a real loopback /health and answering through the registered check-for-all-updates handler. The section's own Check for updates is pressed, then either pressed again with the harness's `Arm current then server` queued or followed by its `Background server offer` control. Captured as PNG and converted with `magick -quality 88`, the quality capture-evidence.mjs writes; no cropping or retouching. Commands, the fixture/product boundary, and the two things in the frames that belong to the harness are in the set's README.",
+      "why": "QA round 1's Q1 is about a claim's LIFETIME, which no single-state sweep can photograph: the sentence in first-check-affirmation/ is correct and must be ABSENT in superseded-by-offer/. A sweep of this tree produces neither state, because each needs an event the capturer never sends - a second press of the section's own button, or a background {silent:true} server check - and it presses once per story.",
+      "capturedAt": "2026-09-14T17:54:00.000Z",
+      "capturedAtHead": "c3a6c2c4a857139ba7d81b85048c5d520d7aded5"
     }
   ],
   "captureOrigin": {
