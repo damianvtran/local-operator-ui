@@ -22,6 +22,10 @@ jobs:
           mkdir -p ~/.config/local-operator
           echo "Running installation script sanity check for Linux"
       
+      # No environment is named here on purpose: the Linux script defaults
+      # `LOCAL_OPERATOR_VENV_PATH` to the packaged name, which its own comment
+      # explains is harmless on this platform. The macOS job cannot do the same -
+      # see there for why the asymmetry is deliberate.
       - name: Run Linux installation script
         run: |
           chmod +x src/main/backend/scripts/linux-install-script.sh
@@ -52,6 +56,10 @@ jobs:
           New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
           Write-Output "Running installation script sanity check for Windows"
       
+      # Like Linux, no environment is named here: the Windows script keeps its own
+      # default (`$env:APPDATA\Local Operator\local-operator-venv`, the pre-split
+      # layout) when `LOCAL_OPERATOR_VENV_PATH` is absent, and the script documents
+      # why that default is safe on this platform.
       - name: Run Windows installation script
         shell: pwsh
         run: |
@@ -86,7 +94,10 @@ jobs:
       
       - name: Setup Python
         run: |
-          # Create a simple Python installation to simulate the bundled Python
+          # Create a simple Python installation to simulate the bundled Python, in
+          # the two trees a packaged build ships. The script no longer searches
+          # them (the in-bundle search is gone), so these are the trees the job
+          # names as `PYTHON_BIN` below rather than directories the script picks.
           mkdir -p resources/python/bin
           mkdir -p resources/python_aarch64/bin
           ln -s $(which python3) resources/python/bin/python3
@@ -96,6 +107,31 @@ jobs:
       
       - name: Run macOS installation script
         run: |
+          # The two names the script will not guess, both of them the application's
+          # decision rather than the script's own.
+          #
+          # LOCAL_OPERATOR_VENV_PATH: this script REFUSES a standalone run without
+          # it, and that refusal is deliberate - it is the fix for a measured
+          # failure, a dev venv built here on the installed bundle's interpreter
+          # whose stdlib lives inside the code-sealed `.app` (see the script's own
+          # comment, and R1 of the review). So this job names the instance it is
+          # testing rather than leaning on a default: the pre-split
+          # `local-operator-venv` layout under the runner's own `$HOME`, which is
+          # what the verification step below activates and the same layout the
+          # Windows job models. The path is the runner's to write to, and a real
+          # install never sees it: the packaged app names a selection-derived path
+          # under `managed-python/` instead (see `venv-paths.ts`).
+          #
+          # Do not replace this with a default inside the script. A value that
+          # satisfies the refusal without meaning anything would turn this check
+          # into one that proves nothing about the environment the app hands over.
+          #
+          # PYTHON_BIN: the script builds the environment on the interpreter it is
+          # given and refuses a path inside an `.app`, so the job names the tree
+          # the app would ship for this runner's architecture.
+          if [ "$(uname -m)" = "arm64" ]; then PYTHON_DIR="python_aarch64"; else PYTHON_DIR="python"; fi
+          export PYTHON_BIN="${GITHUB_WORKSPACE}/resources/${PYTHON_DIR}/bin/python3"
+          export LOCAL_OPERATOR_VENV_PATH="$HOME/Library/Application Support/Local Operator/local-operator-venv"
           chmod +x src/main/backend/scripts/macos-install-script.sh
           bash src/main/backend/scripts/macos-install-script.sh
       
