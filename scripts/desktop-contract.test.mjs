@@ -1499,6 +1499,98 @@ test("sessions.warm reaches the warm route with an empty body on the control bud
 	assert.equal(seen.length, count + 1, "no malformed warm reached the network");
 });
 
+test("sessions.interrupt reaches the interrupt route with request_id only", async () => {
+	/*
+	 * The op the composer's Stop control and its Escape accelerator fire. It
+	 * carries no text and no images, so it is NOT a `MESSAGE_OPS` member: a
+	 * message-tier budget on a 36-byte body would widen what an untrusted
+	 * renderer can push for nothing in return.
+	 *
+	 * The body is the point of the whole change and is asserted exactly. The
+	 * control used to post `{op: "sessions.command", command: "stop"}`, which the
+	 * backend answers with a PRESENTATION FORM - HTTP 200 and a `native_action`
+	 * asking the client to open the session-stop picker - while the turn kept
+	 * streaming. A route reached with the wrong body is indistinguishable from a
+	 * stop that worked, so this test pins the body to `{request_id}` alone and the
+	 * path to the interrupt route, and never `.../stop`, which is the kill switch.
+	 */
+	const sessionId = "123456abcdef";
+	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+	assert.equal(
+		desktopRequestByteBudget("sessions.interrupt"),
+		desktopRequestByteBudget("capabilities"),
+		"the interrupt op takes the control budget, so it must not be a MESSAGE_OPS member",
+	);
+	const count = seen.length;
+	const response = await requestDesktop(
+		{ op: "sessions.interrupt", sessionId, requestId },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(seen.length, count + 1, "exactly one request reached HTTP");
+	const last = seen.at(-1);
+	assert.equal(last.path, `/v1/desktop/sessions/${sessionId}/interrupt`);
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	assert.deepEqual(JSON.parse(last.body), { request_id: requestId });
+
+	/*
+	 * There is no `confirmed` field, and its ABSENCE is a decision rather than an
+	 * omission: an interrupt destroys nothing - the session and its process keep
+	 * running - so requiring a confirmation would make Escape useless on the one
+	 * path where a second press is not available.
+	 */
+	const confirmed = await requestDesktop(
+		{ op: "sessions.interrupt", sessionId, requestId, confirmed: true },
+		url,
+		token,
+	);
+	assert.equal(confirmed.status, 422, "an interrupt is not confirmable");
+
+	/*
+	 * `sessions.interrupt` is now the LONGEST op literal in the vocabulary (18
+	 * characters against `sessions.command`'s 16), which is the fact
+	 * `MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES` is sized from. Asserted rather than
+	 * asserted-in-a-comment: the widest possible envelope this op can produce has
+	 * to fit the allowance the streaming proxy adds on top of the body budget, or
+	 * the proxy truncates a request `requestDesktop` and the backend both accept.
+	 */
+	for (const op of ["sessions.interrupt", "sessions.command"]) {
+		const envelope = Buffer.byteLength(
+			JSON.stringify({ op, sessionId, requestId }),
+		);
+		const body = Buffer.byteLength(JSON.stringify({ request_id: requestId }));
+		assert.ok(
+			envelope - body <= MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES,
+			`the ${op} envelope exceeds the proxy's overhead allowance`,
+		);
+	}
+
+	// The closed vocabulary still refuses an interrupt that tries to carry
+	// payload, address something that is not a session id, or drop the receipt
+	// key the route's idempotency is built on.
+	for (const bad of [
+		{ op: "sessions.interrupt" },
+		{ op: "sessions.interrupt", sessionId },
+		{ op: "sessions.interrupt", sessionId, requestId: "not-a-uuid" },
+		{ op: "sessions.interrupt", sessionId: "../config", requestId },
+		{ op: "sessions.interrupt", sessionId, requestId, command: "stop" },
+	]) {
+		const refused = await requestDesktop(bad, url, token);
+		assert.equal(
+			refused.status,
+			422,
+			`${JSON.stringify(bad)} must not reach HTTP`,
+		);
+	}
+	assert.equal(
+		seen.length,
+		count + 1,
+		"no malformed interrupt reached the network",
+	);
+});
+
 /*
  * ---------------------------------------------------------------------------
  * The code-memory read path, through the SHIPPING renderer module.
