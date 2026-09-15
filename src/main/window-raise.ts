@@ -115,23 +115,24 @@ const MODE_OF_SHOW: Record<WindowShow, string> = {
  * against the focus they just lost. `pid`/`cwd` are printed only when the
  * requester declared them, so a line without them means "this process asked".
  */
+function requesterFields(context: RaiseContext): string[] {
+	const who = context.requester;
+	return [
+		who?.pid === undefined ? null : `pid=${who.pid}`,
+		who?.cwd === undefined ? null : `cwd=${who.cwd}`,
+	].filter((field) => field !== null);
+}
+
 function raiseLine(
 	context: RaiseContext,
 	requested: WindowShow,
 	applied: readonly string[],
 ): string {
-	const who = context.requester;
-	const by = [
-		who?.pid === undefined ? null : `pid=${who.pid}`,
-		who?.cwd === undefined ? null : `cwd=${who.cwd}`,
-	]
-		.filter((field) => field !== null)
-		.join(" ");
 	return [
 		`trigger=${context.trigger}`,
 		`mode=${MODE_OF_SHOW[requested]}`,
 		`requested=${requested}`,
-		...(by === "" ? [] : [by]),
+		...requesterFields(context),
 		`applied=${applied.join("+")}`,
 	].join(" ");
 }
@@ -193,6 +194,43 @@ export function canCreateWindowFor(show: WindowShow): boolean {
 }
 
 /**
+ * The plan the OPERATOR'S OWN request presents under — a Dock click, the menu's
+ * open, a launch they made themselves.
+ *
+ * NOT the process's own launch plan, deliberately (UX review round 2, U6). The
+ * window mode is a promise about the LAUNCH: an agent's run must not grab focus
+ * by starting. `app.on("activate")` is the other direction — a person clicking the
+ * Dock icon of an app that has no window — and answering that with a window nobody
+ * can see is the worse failure: for a `headless`-plan process `presentWindow(...,
+ * "never")` shows nothing, so the window would be real, invisible, and holding the
+ * parked conversation the queue had just handed it. The operator asked; the window
+ * comes forward.
+ */
+export const OPERATOR_SHOW: WindowShow = "focus";
+
+/**
+ * Report that a request was PARKED rather than delivered or raised.
+ *
+ * Why a park is not silent like `never`: the request asked for something that has
+ * not happened yet, and the losing launch was told so. Without this line the log's
+ * answer to "what happened to what I asked for" is nothing at all — the winner
+ * creates no window and raises nothing, so there is no other line to find (UX
+ * review round 2, U5). `parked=<session>` is the conversation that is waiting.
+ */
+export function reportParked(session: string, context: RaiseContext): void {
+	context.report?.(
+		[
+			`trigger=${context.trigger}`,
+			`mode=${MODE_OF_SHOW.never}`,
+			"requested=never",
+			`parked=${session}`,
+			...requesterFields(context),
+			"applied=parked",
+		].join(" "),
+	);
+}
+
+/**
  * What a second launch or a clicked notification banner asks for: bring this
  * window to the operator.
  *
@@ -235,7 +273,18 @@ export function raiseWindow(
 	if (show === "never") return;
 	const applied: string[] = [];
 	if (show === "inactive") {
-		if (window.isMinimized()) return;
+		if (window.isMinimized()) {
+			/*
+			 * DECLINED, AND SAID SO (review round 2, MINOR-1). The behaviour is right —
+			 * an `inactive` request must not un-minimise — but returning silently made a
+			 * request that was declined indistinguishable from one that never arrived,
+			 * and the loser had been told the running app "may order its window forward".
+			 * `never` stays silent: that is the documented promise of a mode that raises
+			 * nothing, and there is no declined request in it.
+			 */
+			context.report?.(raiseLine(context, show, ["skipped", "minimised"]));
+			return;
+		}
 		window.showInactive();
 		applied.push("showInactive");
 	} else {

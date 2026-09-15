@@ -437,6 +437,33 @@ export interface WindowIntent {
 	cwd?: string;
 }
 
+/** The longest declared path this build will print, in characters. */
+const MAX_DECLARED_CWD = 200;
+
+/**
+ * A DECLARED field, made safe to print on a line-oriented log.
+ *
+ * Untrusted input even though nothing is decided from it: control characters are
+ * flattened to spaces (a newline would otherwise forge a second log line) and the
+ * value is capped, so one raise is one line whatever the requester declares. An
+ * empty result is absence, not an empty field, so the line omits it rather than
+ * printing `cwd=` with nothing after it.
+ */
+function declaredField(value: unknown): string | undefined {
+	if (typeof value !== "string" || value === "") return undefined;
+	const flat = value
+		.split("")
+		.map((character) =>
+			character < " " || character === "\u007f" ? " " : character,
+		)
+		.join("")
+		.trim();
+	if (flat === "") return undefined;
+	return flat.length > MAX_DECLARED_CWD
+		? `${flat.slice(0, MAX_DECLARED_CWD)}...`
+		: flat;
+}
+
 /**
  * The intent a second launch carried, or null when it carried none this build
  * understands. Null is the ordinary case rather than an error: an older release
@@ -464,10 +491,20 @@ export function readWindowIntent(additionalData: unknown): WindowIntent | null {
 	if (mode === null) return null;
 	return {
 		mode,
-		...(typeof fields.pid === "number" ? { pid: fields.pid } : {}),
-		...(typeof fields.cwd === "string" && fields.cwd !== ""
-			? { cwd: fields.cwd }
+		/*
+		 * A pid is a safe integer or it is not a pid. The DECLARED fields are made
+		 * safe for a line-oriented log (review round 2, NIT-2): the payload is
+		 * whatever the losing process chose to say about itself, and a `cwd` with a
+		 * newline in it — legal on POSIX — would forge a second `[window-raise]` line.
+		 * Nothing is ever DECIDED from either field, which is why the validation is
+		 * about the log rather than about trust.
+		 */
+		...(typeof fields.pid === "number" && Number.isSafeInteger(fields.pid)
+			? { pid: fields.pid }
 			: {}),
+		...(declaredField(fields.cwd) === undefined
+			? {}
+			: { cwd: declaredField(fields.cwd) }),
 	};
 }
 

@@ -69,11 +69,13 @@ const raise = await import(
 	).toString("base64")}`
 );
 const {
+	OPERATOR_SHOW,
 	applySecondLaunch,
 	canCreateWindowFor,
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
+	reportParked,
 } = raise;
 
 const plan = (input) => resolveWindowLaunchPlan(input);
@@ -223,6 +225,38 @@ test("a request that must not be shown may not CREATE a window, so its conversat
 	);
 });
 
+test("a parked request is reported, and the operator's own request can show", () => {
+	/*
+	 * U5 (UX round 2): the winner creates no window and raises nothing for a
+	 * `headless` request, so without this line a request that is WAITING has no
+	 * account anywhere — and the losing launch was told its conversation would be
+	 * delivered. The line has to say the conversation, so a reader can answer "what
+	 * happened to what I asked for" with the id it asked about.
+	 */
+	const lines = [];
+	reportParked("b1c2d3e4f5a6", {
+		trigger: "second-instance",
+		requester: { pid: 42, cwd: "/tmp/x" },
+		report: (line) => lines.push(line),
+	});
+	assert.deepEqual(lines, [
+		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6 pid=42 cwd=/tmp/x applied=parked",
+	]);
+
+	// A reporter is optional, and a park with none is silent rather than a crash.
+	reportParked("b1c2d3e4f5a6", { trigger: "second-instance" });
+
+	/*
+	 * U6 (UX round 2): the Dock click is the OPERATOR asking, so the plan it
+	 * presents under must be able to show — a `headless`-plan process answering it
+	 * with `never` would leave a real, invisible window holding the parked
+	 * conversation, with the queue emptied into it. `canCreateWindowFor` is the same
+	 * property read from the other end.
+	 */
+	assert.equal(OPERATOR_SHOW, "focus");
+	assert.equal(canCreateWindowFor(OPERATOR_SHOW), true);
+});
+
 test("a window created for a request is presented under THAT request's plan", () => {
 	/*
 	 * THE REVIEW-ROUND-1 MAJOR, pinned where it actually lives. The policy in
@@ -243,11 +277,68 @@ test("a window created for a request is presented under THAT request's plan", ()
 		.replace(/\/\/[^\n]*/g, " ")
 		.replace(/\s+/g, " ");
 
-	// No present site may reach for the process's own plan any more. This is the
-	// assertion that fails on the pre-remediation head.
-	assert.doesNotMatch(flat, /presentWindow\([^)]*windowLaunch\.show/);
-	assert.match(flat, /presentWindow\( ?mainWindow, request\.show,/);
-	assert.match(flat, /presentWindow\( ?window, held\.request\.show,/);
+	/*
+	 * No raise site may reach for the process's own launch plan. THE PROPERTY, NOT A
+	 * SPELLING (review round 2, NIT-1): the previous form matched
+	 * `presentWindow(...windowLaunch.show` literally, which a reach under another
+	 * name — `ownLaunchRequest().show`, a local alias — satisfies while
+	 * reintroducing round 1's MAJOR. So every call's ARGUMENTS are extracted and
+	 * checked for the launch plan by ANY name, and the allow-list of what a raise
+	 * may be given is stated positively. The live evidence in the PR thread is what
+	 * holds the behaviour; this holds the shape that produced it.
+	 */
+	const callArgs = (name) => {
+		const found = [];
+		let at = flat.indexOf(`${name}(`);
+		while (at !== -1) {
+			let depth = 0;
+			for (let i = at + name.length; i < flat.length; i += 1) {
+				if (flat[i] === "(") depth += 1;
+				else if (flat[i] === ")") {
+					depth -= 1;
+					if (depth === 0) {
+						found.push(flat.slice(at + name.length + 1, i));
+						break;
+					}
+				}
+			}
+			at = flat.indexOf(`${name}(`, at + 1);
+		}
+		return found;
+	};
+	/*
+	 * THE PROPERTY IS ABOUT PRESENT SITES (windows this process CREATES), which is
+	 * where round 1's MAJOR lived. A `raiseWindow` site may legitimately use this
+	 * process's own plan — the banner click and the viewer's `focus_window` are
+	 * requests this process made to itself — so the assertion is not spread over
+	 * both functions; a window that is CREATED must be presented as far as its
+	 * REQUEST asked, and never as far as this process's launch plan does.
+	 */
+	const presentSites = callArgs("presentWindow");
+	assert.ok(presentSites.length >= 2, `found ${presentSites.length} present sites`);
+	for (const args of presentSites) {
+		assert.doesNotMatch(
+			args,
+			/windowLaunch|ownLaunchRequest/,
+			`a present site reached for this process's own launch plan: ${args.slice(0, 90)}`,
+		);
+	}
+	for (const args of presentSites.filter((a) => !a.includes("show:"))) {
+		assert.match(
+			args,
+			/(request\.show|held\.request\.show)/,
+			`a present site is missing the request's plan: ${args.slice(0, 90)}`,
+		);
+	}
+	// The delivery path's raise is the request's too: that is the second-instance
+	// branch, where a `headless` plan must not raise.
+	const deliveryRaises = callArgs("raiseWindow").filter((a) =>
+		a.includes("request.show"),
+	);
+	assert.ok(
+		deliveryRaises.length >= 1,
+		`expected the request's plan on the delivery path, found ${deliveryRaises.length}`,
+	);
 
 	// And the request travels all the way from the second-instance branch to those
 	// two sites: into the create call, into `createWindow`, and into the hold.
@@ -280,7 +371,32 @@ test("a window created for a request is presented under THAT request's plan", ()
 		"openSessionInWindow not found in src/main/index.ts",
 	);
 	assert.match(open, /if \(!canCreateWindowFor\(request\.show\)\) \{/);
-	assert.match(open, /queuedLaunch = \{ session: sessionId, request \}/);
+	assert.match(open, /parkedLaunches\.push\(\{ session: sessionId, request \}\)/);
+	assert.match(open, /reportParked\(sessionId, \{/);
+	/*
+	 * AND THE QUEUE IS A QUEUE. The single slot this replaced (`queuedLaunch`)
+	 * overwrote silently, which is MAJOR-1 of round 2 — so the assertion is that the
+	 * identifier is GONE (an overwrite cannot come back unnoticed) and that the
+	 * drain takes every entry rather than one.
+	 */
+	assert.doesNotMatch(flat, /queuedLaunch/);
+	assert.match(flat, /parkedLaunches\.splice\(0, parkedLaunches\.length\)/);
+	assert.match(flat, /for \(const queued of waiting\) \{/);
+	/*
+	 * One present per window (both review streams measured two identical
+	 * `[window-raise]` lines for one window, the `ready-to-show` handler having
+	 * fired twice), and the Dock click presents under a plan that can show (U6).
+	 */
+	assert.match(flat, /let presentHandled = false;/);
+	assert.ok(
+		flat.indexOf("let presentHandled = false;") <
+			flat.indexOf("presentWindow(mainWindow, request.show,"),
+		"the one-shot guard must be in place before the present it guards",
+	);
+	assert.match(
+		flat,
+		/setupMainWindowWithUpdateService\(null, false, \{ show: OPERATOR_SHOW,/,
+	);
 	assert.ok(
 		open.indexOf("canCreateWindowFor(request.show)") <
 			open.indexOf(
@@ -572,6 +688,31 @@ test("the raise policy is the only thing that decides how a window comes forward
 		["inactive", []],
 		["never", []],
 	]);
+
+	/*
+	 * AND THE DECLINED REQUEST IS REPORTED (review round 2, MINOR-1). Returning
+	 * silently made a request that was declined indistinguishable from one that
+	 * never arrived — while the losing launch had been told the running app "may
+	 * order its window forward". `never` stays silent: that is the documented
+	 * promise of a mode that raises nothing, and there is no declined request in it.
+	 */
+	const declined = [];
+	raiseWindow(fakeWindow({ minimized: true }), "inactive", {
+		trigger: "second-instance",
+		requester: { pid: 7, cwd: "/tmp/x" },
+		report: (line) => declined.push(line),
+	});
+	assert.deepEqual(declined, [
+		"trigger=second-instance mode=inactive requested=inactive pid=7 cwd=/tmp/x applied=skipped+minimised",
+	]);
+
+	// The `never` promise, re-asserted beside it so the two cannot drift.
+	const silentNever = [];
+	raiseWindow(fakeWindow({ minimized: true }), "never", {
+		trigger: "second-instance",
+		report: (line) => silentNever.push(line),
+	});
+	assert.deepEqual(silentNever, []);
 });
 
 /**
@@ -816,6 +957,44 @@ test("the requester's identity is read for the log and cannot become a decision"
 		show: "never",
 		requester: { pid: 4242, cwd: "/tmp/elsewhere" },
 	});
+
+	/*
+	 * A DECLARED FIELD IS A LINE-ORIENTED LOG'S INPUT (review round 2, NIT-2): a
+	 * `cwd` is legal on POSIX with a newline in it, and printing it verbatim forges
+	 * a second `[window-raise]` line. Control characters become spaces and the value
+	 * is capped; an all-control value is absence, not an empty field.
+	 */
+	assert.deepEqual(
+		readWindowIntent(
+			windowIntentPayload("headless", { cwd: "/tmp/one\n[window-raise] forged" }),
+		),
+		{ mode: "headless", cwd: "/tmp/one [window-raise] forged" },
+	);
+	// Each control character becomes a space, so the forged line break cannot
+	// survive whatever it is spelled with (CR, LF, BEL, DEL, the C0 run).
+	assert.deepEqual(
+		readWindowIntent(windowIntentPayload("headless", { cwd: "/tmp/\u0007bell\r\nx" })),
+		{ mode: "headless", cwd: "/tmp/ bell  x" },
+	);
+	assert.deepEqual(
+		readWindowIntent(windowIntentPayload("headless", { cwd: "\n\n" })),
+		{ mode: "headless" },
+	);
+	const long = "a".repeat(400);
+	const capped = readWindowIntent(windowIntentPayload("headless", { cwd: long }))?.cwd;
+	assert.ok(
+		capped?.startsWith("a".repeat(200)) && capped.length <= 204,
+		`cwd not capped to 200 characters plus a marker: ${capped?.length}`,
+	);
+	// A pid that is not a safe integer is not a pid.
+	assert.deepEqual(
+		readWindowIntent(windowIntentPayload("headless", { pid: Number.MAX_VALUE })),
+		{ mode: "headless" },
+	);
+	assert.deepEqual(
+		readWindowIntent(windowIntentPayload("headless", { pid: 1.5 })),
+		{ mode: "headless" },
+	);
 
 	// An older launch attaches nothing: the working directory Electron reports is
 	// still worth printing, and no pid is invented for it.
