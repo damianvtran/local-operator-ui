@@ -201,6 +201,7 @@ export type RejectionReason =
 	| "undialable-address"
 	| "unreachable"
 	| "identity-mismatch"
+	| "unready-answer"
 	| "not-a-daemon";
 
 export interface DiscoveryRejection {
@@ -903,8 +904,19 @@ export async function probeUnidentified(
 			signal: AbortSignal.timeout(options.timeoutMs ?? PROBE_TIMEOUT_MS),
 		});
 		if (response.status !== 200) {
+			/*
+			 * Its own reason, and NOT `not-a-daemon`: this arm is what let a daemon
+			 * that is starting up, unhealthy or shutting down - and a proxy fronting
+			 * one - be read as "the port is free", because `not-a-daemon` is the one
+			 * answer the spawn gate passes through (review round 1, F-2). A status
+			 * is not an identity, but it IS an occupant: the socket is bound, so a
+			 * child spawned onto it dies on `[Errno 48]` and the credential for
+			 * whatever is serving there has already been overwritten by the time it
+			 * does. `not-a-daemon` keeps its own, narrower meaning - a 200 that names
+			 * no instance - which stays passable on purpose.
+			 */
 			return {
-				reason: "not-a-daemon",
+				reason: "unready-answer",
 				detail: `${HEALTH_PATH} answered ${response.status} and no record describes this address`,
 			};
 		}
