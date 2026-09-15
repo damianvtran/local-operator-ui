@@ -38,4 +38,22 @@ jobs:
           # script: a PR title is attacker-controlled text, and inlining it
           # directly would let a crafted title inject shell.
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: node scripts/version-bump-guard.mjs
+        run: |
+          # The verdict IS the output: every path that decides anything prints at
+          # least one line, and the guard exits on the verdict. So an exit of 0 with
+          # NOTHING printed is not a pass - it is the shape a guard that never ran
+          # takes, which is exactly what reaching the script through a symlinked
+          # directory used to produce (`scripts/entry-point.mjs` fixes that at the
+          # source: nothing was printed and the status was 0, so this job went green
+          # having checked nothing). The status is captured rather than left to
+          # `set -e` because the two facts have to be told apart: a refusal prints
+          # its reason, a silence does not.
+          set -uo pipefail
+          verdict="$(node scripts/version-bump-guard.mjs)"
+          status=$?
+          printf '%s\n' "$verdict"
+          if [ "$status" -eq 0 ] && [ -z "$verdict" ]; then
+            echo "::error title=Version bump guard produced no verdict::the guard exited 0 without printing one, so this pull request was never checked for a version bump. Refusing to pass a diff no guard read."
+            exit 1
+          fi
+          exit "$status"

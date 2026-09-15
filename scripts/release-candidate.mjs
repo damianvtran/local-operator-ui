@@ -23,7 +23,7 @@
  * tag that cannot be installed would report a failure about the VM rather than
  * about the release.
  */
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 import {
 	fetchReleases,
 	selectIncumbentAnchor,
@@ -104,9 +104,6 @@ function main() {
 	}
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	main();
 }

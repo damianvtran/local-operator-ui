@@ -171,6 +171,18 @@ jobs:
             # return first.
             [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
             node scripts/release-candidate.mjs --release-tag "$RELEASE_TAG" > candidate.json
+            # The refusal the two `auto-release.yml` consumers of a derived document
+            # also make: `jq -r` on an EMPTY file prints nothing and exits 0, so a
+            # candidate that was never resolved writes a `candidate.json` this step
+            # then reads as an answer - an empty `source_sha` in `$GITHUB_OUTPUT`,
+            # which is what `actions/checkout` falls back to the event ref for. The
+            # jobs downstream refuse a candidate that is not a 40-character SHA, so
+            # nothing is built from it; this refuses where the emptiness is produced
+            # and names it, rather than leaving a `Candidate commit | |` row behind.
+            if ! jq -e '(.source_sha | type) == "string" and (.incumbent_tag | type) == "string"' candidate.json > /dev/null 2>&1; then
+              echo "::error title=Candidate produced no answer::candidate.json is empty or malformed, so no candidate commit was ever resolved. Refusing to carry an empty pin into the signing jobs."
+              exit 1
+            fi
             {
               jq -r '"source_sha=\(.source_sha)", "incumbent_tag=\(.incumbent_tag)"' candidate.json
               echo "origin=release $RELEASE_TAG"
