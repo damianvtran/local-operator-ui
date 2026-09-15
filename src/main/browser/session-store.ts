@@ -518,7 +518,22 @@ export class BrowserSessionStore {
 	 *
 	 * WHAT IT DOES NOT DO: it does not read the capture's CONTENT, and it does not
 	 * compare it against the durable rows. The rule is `stopSnapshotDecision`'s and
-	 * is deliberately one-sided on a COUNT (see its comment). */
+	 * is deliberately one-sided on a COUNT (see its comment).
+	 *
+	 * TWO INSTRUMENTS MEASURED THE DEFECT AND THEY DISAGREED ON SEVERITY, which is
+	 * worth keeping beside the fix. The reviewer drove the shipped classes and got
+	 * DATA LOSS - `durableRows 3 / atStop 1 / decision write false`, ONE row on disk,
+	 * the durable three gone. The independent QA pass drove six stop cases and lost
+	 * NO session across any of them, and called the same defect a write that should
+	 * not have happened: "the stop logs `the record is kept`, then `flush()` writes
+	 * the pending refused capture". Both descriptions are of ONE mechanism, and the
+	 * difference between them is the LENGTH CONDITION: the loss needs a staged
+	 * capture SHORTER than the durable record - a restored tab with no history of
+	 * its own yet, or a page that never committed - which is exactly the scenario
+	 * the guard exists for and not one that QA's six cases happened to open. A guard
+	 * that holds only when the two lengths agree is not a guard, so this is a fix
+	 * rather than a note, and the test beside it drives the length condition
+	 * explicitly instead of a representative sequence. */
 	commitStopCapture(rows: PersistedTab[]): { write: boolean; reason: string } {
 		const decision = stopSnapshotDecision(
 			rows.length,
