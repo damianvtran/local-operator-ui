@@ -1,8 +1,8 @@
 ### the app's own renderer is on the debugging port and the host published its state file
 
 ```
-[PASS] renderer file:///Users/damian/local-operator-ui-worktrees/browser-chrome/out/renderer/index.html#/chat
-state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-33090/config/run/ui-browser/host.json mode 600
+[PASS] renderer file:///Users/damian/local-operator-ui-worktrees/browser-chrome/out/renderer/index.html
+state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-76550/config/run/ui-browser/host.json mode 600
 ```
 
 ### the browser is reachable from the app's own navigation
@@ -42,7 +42,7 @@ state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-pr
 ```
 {
   "present": true,
-  "text": "This app is not paired with the running Local Operator serve",
+  "text": "The server is offline. The interface will not function prope",
   "banner": {
     "top": 0,
     "height": 53
@@ -58,28 +58,23 @@ state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-pr
 ### the tab strip is present in the layout, and the banner that covers it (by its own z-index comment) was measured before being hidden for the frames
 
 ```
-[PASS] banner {"top":0,"height":53} (This app is not paired with the running Local Operator serve), tab strip {"top":0,"height":43}, overlaps true
+[PASS] banner {"top":0,"height":53} (The server is offline. The interface will not function prope), tab strip {"top":0,"height":43}, overlaps true
 ```
 
 ### the toast over the browser surface
 
 ```
 {
-  "toastPresent": true,
-  "text": "List agents request failed: 503",
-  "toast": {
-    "x": 1000,
-    "y": 800,
-    "right": 1356,
-    "bottom": 844
-  },
+  "toastPresent": false,
+  "text": null,
+  "toast": null,
   "content": {
     "x": 220,
     "y": 84,
     "right": 1380,
     "bottom": 868
   },
-  "overlapsContent": true,
+  "overlapsContent": null,
   "paused": false
 }
 ```
@@ -87,13 +82,25 @@ state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-pr
 ### every fixed-position element on screen over the browser route
 
 ```
-[]
+[
+ {
+  "tag": "div",
+  "cls": "fixed inset-x-0 top-0 z-2100 w-full",
+  "box": {
+   "top": 0,
+   "left": 0,
+   "w": 1380,
+   "h": 53
+  },
+  "text": "The Local Operator  erver i  not an wering. Provid"
+ }
+]
 ```
 
 ### a toast overlaps the content area and is deliberately NOT registered: the page stays up, and the overlap is recorded rather than hidden
 
 ```
-[PASS] toast "List agents request failed: 503" overlaps the content rect: true; paused: false
+[PASS] no toast was raised within 20s in this run, so the trade is not exercised here; the dialog, sheet and band cases below are
 ```
 
 ### a control in the chrome band does not hide the view (the band is outside the rectangle)
@@ -105,7 +112,7 @@ state file /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-pr
 ### a first launch opens exactly one blank tab, owned by the user
 
 ```
-[PASS] [{"tabId":1,"title":"about:blank","url":"about:blank","owner":"user","active":true,"restored":false,"handedOver":false}]
+[PASS] [{"tabId":1,"title":"about:blank","url":"about:blank","owner":"user","active":true,"restored":false,"handedOver":false,"failed":false}]
 ```
 
 ### the empty case renders the address bar and an empty field rather than the string about:blank
@@ -123,13 +130,13 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### a URL typed into the address bar navigates the active tab
 
 ```
-[PASS] typed http://127.0.0.1:53473/slow and pressed Enter
+[PASS] typed http://127.0.0.1:55079/slow and pressed Enter
 ```
 
 ### while loading, reload becomes stop and the field says both what the tab shows (nothing yet) and what was asked for
 
 ```
-[PASS] {"stop":true,"reload":false,"spinnerInField":true,"value":"","placeholder":"http://127.0.0.1:53473/slow","addressFields":[{"value":"","placeholder":"http://127.0.0.1:53473/slow"}],"title":"about:blank"}
+[PASS] {"stop":true,"reload":false,"spinnerInField":true,"value":"","placeholder":"http://127.0.0.1:55079/slow","addressFields":[{"value":"","placeholder":"http://127.0.0.1:55079/slow"}],"title":"about:blank"}
 ```
 
 ### page capture loading-page
@@ -141,7 +148,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the strip's title comes from the DOCUMENT, and the address bar shows the live URL
 
 ```
-[PASS] title "Slow page", url http://127.0.0.1:53473/slow
+[PASS] title "Slow page", url http://127.0.0.1:55079/slow
 ```
 
 ### the blank document a tab starts on is a history entry, so back is available after one navigation
@@ -159,7 +166,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the back control navigates the tab back through its own history
 
 ```
-[PASS] url http://127.0.0.1:53473/slow, canGoForward true
+[PASS] url http://127.0.0.1:55079/slow, canGoForward true
 ```
 
 ### a navigation that cannot connect leaves the tab on the URL it asked for, rather than reporting success
@@ -174,10 +181,33 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","message":"that browser tab is gone; dropped the handle. Use 'open' with a URL to get a new tab","data":{"reason":"malformed_handle"}}}
 ```
 
+### a refused navigation says why, in the app's own chrome, with the raw code and the address it tried
+
+```
+[PASS] {
+  "panel": "Couldn't load this page\n\nThe page could not be loaded. Try again, or correct the address in the bar above — it is still yours to edit.\n\nERR_UNSAFE_PORT http://127.0.0.1:9/\n\nTry again",
+  "retry": true,
+  "band": "Error: ERR_UNSAFE_PORT (-312) loading 'http://127.0.0.1:9/'",
+  "suppressedBy": "browser-load-failure::rg:"
+}
+```
+
+### and the native view is hidden for it, so the panel is the thing on screen
+
+```
+[PASS] data-suppressed-by="browser-load-failure::rg:"
+```
+
+### the action's own refusal is still in the band after the state read that follows it
+
+```
+[PASS] band: "Error: ERR_UNSAFE_PORT (-312) loading 'http://127.0.0.1:9/'"
+```
+
 ### an agent's navigation to an unapproved origin fails early with origin_not_allowed
 
 ```
-[PASS] {"code":"origin_not_allowed","message":"the user has not approved http://127.0.0.1:53473 for agent access","data":{"origin":"http://127.0.0.1:53473","authority":"127.0.0.1:53473","reason":"unapproved"}}
+[PASS] {"code":"origin_not_allowed","message":"the user has not approved http://127.0.0.1:55079 for agent access","data":{"origin":"http://127.0.0.1:55079","authority":"127.0.0.1:55079","reason":"unapproved"}}
 ```
 
 ### the user's typed navigation to that SAME origin works, because the user typing it is the consent
@@ -186,16 +216,32 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 [PASS] the tab is still on the typed URL while the agent is refused on the site's origin
 ```
 
+### a successful navigation clears the failure panel and restores the page
+
+```
+[PASS] {
+  "panel": false,
+  "suppressedBy": "",
+  "url": "http://127.0.0.1:55079/index.html"
+}
+```
+
+### page capture recovered-page
+
+```
+FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","message":"that browser tab is gone; dropped the handle. Use 'open' with a URL to get a new tab","data":{"reason":"malformed_handle"}}}
+```
+
 ### an agent's request_access raises a pending entry and returns immediately
 
 ```
-[PASS] {"origin":"http://127.0.0.1:53473","state":"pending","entry_id":"261f0a4fbe4d41839c0e78f253dbd03e","authority":"127.0.0.1:53473","expires_at":1789409354658,"broad":{"scope":"host","key":"127.0.0.1"}}
+[PASS] {"origin":"http://127.0.0.1:55079","state":"pending","entry_id":"16c1ce9ccd3d4a5b863ed5a401585a9d","authority":"127.0.0.1:55079","expires_at":1789446537118,"broad":{"scope":"host","key":"127.0.0.1"}}
 ```
 
-### the projection carries the origin and the broad option, and NOT the requester
+### the projection carries the origin and the broad option, and the requester only as a session id
 
 ```
-[PASS] {"entryId":"261f0a4fbe4d41839c0e78f253dbd03e","origin":"http://127.0.0.1:53473","authority":"127.0.0.1:53473","broad":{"scope":"host","key":"127.0.0.1"},"expiresAt":1789409354658}
+[PASS] {"entryId":"16c1ce9ccd3d4a5b863ed5a401585a9d","origin":"http://127.0.0.1:55079","authority":"127.0.0.1:55079","broad":{"scope":"host","key":"127.0.0.1"},"expiresAt":1789446537118,"requesterSessionId":"proof"}
 ```
 
 ### the consent bar renders in the chrome band, names the origin, and offers the five scopes
@@ -203,10 +249,10 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ```
 [PASS] {
   "present": true,
-  "text": "An agent wants to open 127.0.0.1:53473. Approving lets the agent act as you on this site, using this app's browser profile, until you revoke it. You can open it yourself either way — this only controls what the agent may reach. Allow once Allow for this session Always allow this site Allow all of 127.0.0.1 Don't allow",
+  "text": "The agent in conversation proof wants to open 127.0.0.1:55079. This browser keeps sign-ins across conversations and app restarts, so an agent you approve here can use those signed-in accounts on the sites you allow it. You can open this site yourself either way — this only controls what the agent may reach. Allow once Allow until the app quits Always allow this site Allow all of 127.0.0.1 Don't allow Allow once one navigation, for that conversation, up to ten minutes Allow until the app quits this site, for this run only, and for every conversation Always allow this site kept until you revoke it, and shared with every conversation Allow all of 127.0.0.1 every site under 127.0.0.1, kept until you revoke it, shared with every conversation Don't allow the agent stops asking about this site until you revoke the denial in Sites",
   "actions": [
     "Allow once",
-    "Allow for this session",
+    "Allow until the app quits",
     "Always allow this site",
     "Allow all of 127.0.0.1",
     "Don't allow"
@@ -223,13 +269,13 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the tab strip's menu opens on a real press and offers the hand-over
 
 ```
-[PASS] menu opened by a real mouse press; items ["Switch to this tab","Let an agent use this tab…","Close tab"]; picked: clicked
+[PASS] menu opened by a dispatched pointerdown on the trigger; items ["Switch to this tab","Let an agent use this tab…","Close tab"]; picked: clicked
 ```
 
 ### opening a dialog over the mounted browser surface hides the native view and shows the paused state
 
 ```
-[PASS] {"dialog":true,"paused":true,"pageTitleInPaused":"127.0.0.1:9\n\nPaused while a dialog or panel is open — close it to bring the page back.","pausedBeforeOverlay":false}
+[PASS] {"dialog":true,"paused":true,"pageTitleInPaused":"Proof page one\n\nPaused while a dialog or panel is open — close it to bring the page back.","pausedBeforeOverlay":false}
 ```
 
 ### the dialog closes from its own Cancel action
@@ -265,13 +311,13 @@ capture refused: (none) — a user tab holds no handle (design 6.3), so its page
 ### approving writes a durable exact-origin grant, visible in the approvals list
 
 ```
-[PASS] [{"origin":"http://127.0.0.1:53473","scope":"origin","grantedAt":1789408779383}]
+[PASS] [{"origin":"http://127.0.0.1:55079","scope":"origin","grantedAt":1789445940294}]
 ```
 
 ### the requesting session's await_access now reports allowed
 
 ```
-[PASS] {"origin":"http://127.0.0.1:53473","state":"allowed"}
+[PASS] {"origin":"http://127.0.0.1:55079","state":"allowed"}
 ```
 
 ### page capture approved-page
@@ -283,7 +329,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the agent's open now succeeds on the approved origin and returns a handle
 
 ```
-[PASS] "ui:2:9cdddbc9172cb66cb2c46b52729c2a5a"
+[PASS] "ui:2:ce3c1784e647586ec8e3fdf87e973862"
 ```
 
 ### the strip holds a user tab and an agent tab, and the agent's open did NOT steal the active tab
@@ -297,7 +343,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ```
 [PASS] {
   "tabs": [
-    "127.0.0.1:9",
+    "Proof page one",
     "Proof page two Agent"
   ],
   "agentMarkers": 1,
@@ -314,19 +360,19 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the agent's goto still drives that tab after the user took over, and settles on what it reached
 
 ```
-[PASS] "http://127.0.0.1:53473/second"
+[PASS] "http://127.0.0.1:55079/second"
 ```
 
 ### the populated frame carries the page layer (the composite has a page image, not a hole)
 
 ```
-[PASS] page layer: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-33090/out/agent-populated-page.png
+[PASS] page layer: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-76550/out/agent-populated-page.png
 ```
 
 ### a failed load reports the failure to the agent and does not leave the tab stuck loading
 
 ```
-[PASS] agent goto -> {"code":"nav_failed","message":"ERR_EMPTY_RESPONSE","data":{"error_code":-324}}; tab url http://127.0.0.1:53473/broken (the last page it COMMITTED, which is the live url); loading false
+[PASS] agent goto -> {"code":"nav_failed","message":"ERR_EMPTY_RESPONSE","data":{"error_code":-324}}; tab url http://127.0.0.1:55079/broken (the last page it COMMITTED, which is the live url); loading false
 ```
 
 ### the deny action is offered and answers the prompt
@@ -338,7 +384,7 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### a denial is recorded as a durable row so the Sites list can show it
 
 ```
-[PASS] [{"origin":"http://127.0.0.1:53473","scope":"origin","grantedAt":1789408779383},{"origin":"http://127.0.0.1:1","scope":"deny","grantedAt":1789408851038}]
+[PASS] [{"origin":"http://127.0.0.1:55079","scope":"origin","grantedAt":1789445940294},{"origin":"http://127.0.0.1:1","scope":"deny","grantedAt":1789445953503}]
 ```
 
 ### the Sites sheet answers 'which sites can an agent act on as me' in one click, with the revocation affordances
@@ -374,16 +420,16 @@ FAILED: 200 {"id":"proof-screenshot","ok":false,"error":{"code":"tab_closed","me
 ### the app's own process never became the frontmost application (probe P12, sampled once a second)
 
 ```
-[PASS] app pid 33324; 158 samples; frontmost was Arc|847, Electron|30235; the app was frontmost in 0 of them
+[PASS] app pid 76680; 59 samples; frontmost was ghostty|838; the app was frontmost in 0 of them
 ```
 
 ### frontmost application, sampled through the run
 
 ```
-before: Arc|847
-after: Arc|847
-samples: Arc|847, Electron|30235
-the app's pid (33324) was frontmost in 0 of 158 samples
+before: ghostty|838
+after: ghostty|838
+samples: ghostty|838
+the app's pid (76680) was frontmost in 0 of 59 samples
 ```
 
 ### tabs at quit
@@ -392,21 +438,23 @@ the app's pid (33324) was frontmost in 0 of 158 samples
 [
   {
     "tabId": 1,
-    "title": "127.0.0.1:9",
-    "url": "http://127.0.0.1:9/",
+    "title": "Proof page one",
+    "url": "http://127.0.0.1:55079/index.html",
     "owner": "user",
     "active": false,
     "restored": false,
-    "handedOver": false
+    "handedOver": false,
+    "failed": false
   },
   {
     "tabId": 2,
-    "title": "127.0.0.1:53473/broken",
-    "url": "http://127.0.0.1:53473/broken",
+    "title": "127.0.0.1:55079/broken",
+    "url": "http://127.0.0.1:55079/broken",
     "owner": "agent",
     "active": true,
     "restored": false,
-    "handedOver": false
+    "handedOver": false,
+    "failed": true
   }
 ]
 ```
@@ -414,7 +462,7 @@ the app's pid (33324) was frontmost in 0 of 158 samples
 ### stopping the host writes the tab list, 0600, with no nonce anywhere in it
 
 ```
-[PASS] /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-33090/userdata/browser/session.json mode 600
+[PASS] /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-browser-chrome-proof-76550/userdata/browser/session.json mode 600
 {
   "version": 1,
   "tabs": [
@@ -425,7 +473,7 @@ the app's pid (33324) was frontmost in 0 of 158 samples
         {
           "url": "about:blank",
           "title": "about:blank",
-          "pageState": "eAIAACEAAABwAgAAGAAAAAAAAAAQAAAAAAAAABAAAAAAAAAACAAAAAAAAACQAAAABgAAAIgAAAAAAAAAAAAAAAAAAACoAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAABgAAAKgAAAAAAAAAtHPDLXVbBgC1c8MtdVsGABgBAAAAAAAAMAEAAAAAAAAAAAAAAAAAACg
+          "pageState": "eAIAACEAAABwAgAAGAAAAAAAAAAQAAAAAAAAABAAAAAAAAAACAAAAAAAAACQAAAABgAAAIgAAAAAAAAAAAAAAAAAAACoAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAABgAAAKgAAAAAAAAAvH14131bBgC9fXjXfVsGABgBAAAAAAAAMAEAAAAAAAAAAAAAAAAAACg
 ```
 
 ### both tabs are back, in the same order, and both are the USER's
@@ -434,21 +482,23 @@ the app's pid (33324) was frontmost in 0 of 158 samples
 [PASS] [
   {
     "tabId": 1,
-    "title": "127.0.0.1:9",
-    "url": "http://127.0.0.1:9/",
+    "title": "Proof page one",
+    "url": "http://127.0.0.1:55079/index.html",
     "owner": "user",
     "active": false,
     "restored": true,
-    "handedOver": false
+    "handedOver": false,
+    "failed": false
   },
   {
     "tabId": 2,
-    "title": "127.0.0.1:53473/broken",
-    "url": "http://127.0.0.1:53473/broken",
+    "title": "127.0.0.1:55079/broken",
+    "url": "http://127.0.0.1:55079/broken",
     "owner": "user",
     "active": true,
     "restored": true,
-    "handedOver": false
+    "handedOver": false,
+    "failed": true
   }
 ]
 ```
@@ -456,8 +506,8 @@ the app's pid (33324) was frontmost in 0 of 158 samples
 ### the restored tabs are FRESH navigations to the same URLs (no POST replay, no revived process)
 
 ```
-[PASS] http://127.0.0.1:9/
-http://127.0.0.1:53473/broken
+[PASS] http://127.0.0.1:55079/index.html
+http://127.0.0.1:55079/broken
 ```
 
 ### a restored tab does NOT satisfy an agent's stale handle: it gets tab_closed, the ordinary recovery
@@ -475,11 +525,11 @@ http://127.0.0.1:53473/broken
 ### the agent's designed recovery still works: open re-creates a tab and hands out a new handle
 
 ```
-[PASS] new handle ui:3:0548cff… (old ui:2:9cdddbc…)
+[PASS] new handle ui:3:975be92… (old ui:2:ce3c178…)
 ```
 
 ### the banner after the restart
 
 ```
-{"present":true,"height":53,"text":"This app is not paired with the running Local Oper"}
+{"present":true,"height":53,"text":"The server is offline. The interface will not func"}
 ```
