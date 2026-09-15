@@ -1,0 +1,8 @@
+--- legacy alias reintroduced (/tmp/lo183-negative/mutated-legacy-alias-reintroduced-arm64.zip) ---
+PASS app-one-bundled-python: the bundled python interpreter tree this architecture needs
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+FAIL app-private-python-seed: Legacy Python resource or alias exists: python_aarch64
+--- seed removed (/tmp/lo183-negative/mutated-seed-removed-arm64.zip) ---
+FAIL app-one-bundled-python: the arm64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/arm64
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+FAIL app-private-python-seed: ENOENT: no such file or directory, scandir '/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-0w7sE2/extracted/Local Operator.app/Contents/Resources/python-runtime-seed'

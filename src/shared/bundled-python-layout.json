@@ -1,0 +1,9 @@
+{
+	"seedNamespace": "python-runtime-seed",
+	"architectures": ["arm64", "x64"],
+	"legacyResourceNames": ["python", "python_aarch64"],
+	"checkoutSeedNames": {
+		"arm64": "python_aarch64",
+		"x64": "python"
+	}
+}
