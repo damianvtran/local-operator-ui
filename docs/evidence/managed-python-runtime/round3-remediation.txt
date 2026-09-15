@@ -1,0 +1,103 @@
+# Round-3 findings: the output of what answered each one
+
+Head before this round `eb043ca24`; the round-3 review, design and QA reports were taken on
+`2a98d58b6`. Every command is shown with its output.
+
+## Q1 - a full disk with an identity-broken published runtime
+
+The pre-copy reap protected the published runtime unconditionally, so a runtime that is itself
+broken stopped the reap reclaiming the space its own replacement needs. Both directions were
+run against the SAME test, with one expression of source between them.
+
+The keep set the round-2 fix introduced (what QA reproduced):
+
+```
+$ node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+✖ a full disk with an identity-broken published runtime is repaired by reclaiming it (2958.113583ms)
+  Error: Command failed: /usr/bin/ditto --noacl <seed> <support>/runtimes/.preparing-6j2pir
+  ditto: <support>/runtimes/.preparing-6j2pir/ballast.bin: No space left on device
+ℹ tests 23
+ℹ pass 22
+ℹ fail 1
+```
+
+The keep set after this round (the published runtime only while its bytes still hash to the
+seed):
+
+```
+$ node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+✔ a full disk with an identity-broken published runtime is repaired by reclaiming it (3019.801792ms)
+✔ a full disk with a reusable published runtime repairs by reuse, with no copy at all (3250.010375ms)
+ℹ tests 23
+ℹ pass 23
+ℹ fail 0
+```
+
+What the test does, and why it is the conjunction QA had to build an image for: it creates a
+16 MB HFS+ image with `hdiutil`, provisions into it, plants a SECOND runtime generation that is
+newer than the published one (the retention rule keeps a root's newest generation, so the
+published tree is only reapable while something else is more recent - the shape QA's fixture
+had), breaks the published runtime's bytes out of band and gives it 4 MB of ballast, then fills
+the volume to a 256 KB reserve. Both tests ASSERT the free space is below the copy's size
+rather than assuming it, because each one is vacuous otherwise:
+
+```
+$ node -e ...   # in-test assertion, printed on failure
+the volume must have less room than the copy needs, or this test proves nothing: N bytes
+```
+
+The fixture is 4 MB against QA's 120 MB image and 40 MB runtime; the conjunction is the same one
+at a scale the suite can afford, and `ditto` is what decides it either way.
+
+The mirror case - the win QA says must survive - is the second test: an intact published runtime
+on a full volume repairs by reuse, asserted as ONE generation in the runtimes root, so no copy
+was made at all. It passes with the fix and passed with the round-2 code, which is what makes it
+a guard rather than a reproduction.
+
+## The queued review minor - `published` is required
+
+The `missing` verdict now carries `published: ManagedSelection` rather than `published?`, so a
+call site cannot construct one without the record the reaper has to judge. The same class as N4:
+the optional property was how a call site could lose that protection silently.
+
+```
+$ pnpm check-types
+TYPES_EXIT=0
+```
+
+## The sync
+
+`main` released 0.23.0 (#188) and restored the top-level `check-themes` script a panel
+reconciliation had dropped (#189) while this round was written, and GitHub reported the PR
+CONFLICTING - which is no `pull_request` runs at all. Merged, never rebased, as the five syncs
+before it.
+
+```
+$ git range-diff c9a9c6196..2a98d58b6 680cffa9f..<merge>
+rows: 108 | identical (=): 40 | changed (!): 0 | dropped (<): 68 | new (>): 1
+$ # every dropped row is upstream's own commit, below the new range's boundary
+dropped rows: 68 | not upstream: 0
+
+$ # added/removed LINE SETS per file, one base, before vs after the sync
+files: 99 -> 99 | identical line sets: 99 | differ: 0
+
+$ # and none of this branch's added lines is missing from the merged delta
+src/main/backend/managed-python.ts: our added lines 912 | missing 0
+```
+
+One conflict, `package.json`'s `test:desktop` list again: main's entries plus this branch's
+`scripts/managed-python.test.mjs`, 58 entries, no duplicates, nothing from either side dropped,
+and the edit is that one line against this branch's side so the merge carries no reformatting of
+the rest of the file.
+
+## Gates on the final head
+
+```
+$ pnpm lint          -> LINT_EXIT=0      (35 warnings, none in the files touched here)
+$ pnpm check-types   -> TYPES_EXIT=0
+$ pnpm check-themes  -> THEMES_EXIT=0    (Contrast contract holds: 2327 assertions across 12 themes)
+$ pnpm test:desktop  -> tests 1160 | pass 1160 | fail 0 | skipped 0
+```
+
+The two tests added this round are among the 1160, and the four container tests (negative
+direction included) pass with them.

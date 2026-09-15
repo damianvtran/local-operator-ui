@@ -648,7 +648,13 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			ipcMain: { handle: (_, f) => (handler = f) },
 			logger: { info() {}, error() {} },
 			LogFileType: { UPDATE_SERVICE: "update" },
-			app: { getVersion: () => "9.9.8" },
+			/*
+			 * `isPackaged` is read in this same slice by the guard that keeps an
+			 * unpackaged instance out of the shared marker the packaged app reads, and
+			 * this handoff only ever runs in a packaged app - so the context has to
+			 * answer it, or the handler returns before the cleanup this test is about.
+			 */
+			app: { getVersion: () => "9.9.8", isPackaged: true },
 			writePendingInstallMarker: (_, marker) => {
 				actions.push("marker");
 				return marker;
@@ -755,7 +761,7 @@ const probeStub = {
 		builder.onLoad({ filter: /.*/, namespace: "probe" }, () => ({
 			loader: "js",
 			contents:
-				'export { exec, spawnSync } from "node:child_process"; export function spawn(command,args,options){globalThis.__probeCalls.push({command,args,options});return globalThis.__probeChild(globalThis.__probeResults.shift());}',
+				'export { exec, execFile, spawnSync } from "node:child_process"; export function spawn(command,args,options){globalThis.__probeCalls.push({command,args,options});return globalThis.__probeChild(globalThis.__probeResults.shift());}',
 		}));
 	},
 };
@@ -1296,6 +1302,7 @@ test("a start whose own cleanup cannot confirm exit reports instead of rejecting
 				loader: "js",
 				contents: `
 export function exec(command, options, callback) { const done = typeof options === "function" ? options : callback; done(null, { stdout: "", stderr: "" }); }
+export function execFile(file, args, options, callback) { const done = typeof options === "function" ? options : callback; done(null, { stdout: "", stderr: "" }); }
 export function spawn(command, args, options) { globalThis.__spawnCalls.push({ command, args, options }); if (args.includes("serve")) return globalThis.__spawned; globalThis.__probeCalls.push({ command, args, options }); return globalThis.__probeChild(globalThis.__probeResults.shift()); }
 export function spawnSync() { return { status: 0, stdout: "" }; }
 `,

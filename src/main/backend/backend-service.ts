@@ -36,6 +36,8 @@ import { requestDesktop } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
+import { isLegacyManagedCommand } from "./managed-python";
+import { managedVenvPath } from "./venv-paths";
 
 import {
 	consoleInterpreter,
@@ -289,26 +291,15 @@ export class BackendServiceManager {
 			);
 		}
 
-		// Set platform-specific virtual environment path
-		if (process.platform === "win32") {
-			this.venvPath = join(this.appDataPath, "local-operator-venv");
-		} else if (process.platform === "darwin") {
-			this.venvPath = join(
-				app.getPath("home"),
-				"Library",
-				"Application Support",
-				"Local Operator",
-				"local-operator-venv",
-			);
-		} else {
-			// Linux
-			this.venvPath = join(
-				app.getPath("home"),
-				".config",
-				"local-operator",
-				"local-operator-venv",
-			);
-		}
+		// The app-managed venv for THIS instance - a packaged install and an
+		// unpackaged one must not share it, or the dev instance's backend imports its
+		// stdlib out of the installed, code-sealed bundle (see `managedVenvPath`).
+		this.venvPath = managedVenvPath({
+			platform: process.platform,
+			home: app.getPath("home"),
+			appDataPath: this.appDataPath,
+			packaged: app.isPackaged,
+		});
 
 		// Load shell environment variables
 		this.loadShellEnvironment();
@@ -628,6 +619,24 @@ export class BackendServiceManager {
 			});
 
 			if (stdout.trim()) {
+				if (
+					process.platform === "darwin" &&
+					isLegacyManagedCommand(
+						stdout.trim().split("\n")[0],
+						join(
+							app.getPath("home"),
+							"Library",
+							"Application Support",
+							"Local Operator",
+						),
+					)
+				) {
+					logger.info(
+						"The PATH command belongs to a legacy managed environment; preparing a separate backend instead",
+						LogFileType.BACKEND,
+					);
+					return false;
+				}
 				logger.info(
 					`local-operator command found at: ${stdout.trim()}`,
 					LogFileType.BACKEND,
@@ -835,6 +844,14 @@ export class BackendServiceManager {
 		// its own child: by then `this.ownedServe` may name a successor.
 		let captured: OwnedServe | null = null;
 		try {
+			// Installation can select a new generation after this manager is built.
+			// Once started, this instance pins that generation until its next start.
+			this.venvPath = managedVenvPath({
+				platform: process.platform,
+				home: app.getPath("home"),
+				appDataPath: this.appDataPath,
+				packaged: app.isPackaged,
+			});
 			const globalInstall = await this.checkLocalOperatorExists();
 			const env = this.backendSpawnEnv();
 			/*
