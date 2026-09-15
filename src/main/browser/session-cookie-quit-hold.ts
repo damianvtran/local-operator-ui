@@ -36,9 +36,11 @@
  * running — this run's session cookies lost, and the next start reporting a crash
  * that never happened, which is the same misattribution an unavailable channel
  * used to produce. Two things make it a defect rather than a trade-off: the
- * second quit is the expected reflex exactly when the app looks stuck (QA
- * measured stops of 68-8776 ms, the window the budget exists for), and nothing in
- * the log distinguished "quit twice" from "crashed".
+ * second quit is the expected reflex exactly when the app looks stuck — and the
+ * budget is not what answers that reflex, because the hold is cheap when the host
+ * answers: round 1's 68-8776 ms is process-EXIT latency, while the hold this
+ * module owns measured 13-29 ms over six quits in round 2 — and nothing in the log
+ * distinguished "quit twice" from "crashed".
  */
 
 export interface QuitHoldDeps {
@@ -62,11 +64,22 @@ export interface QuitHoldDeps {
  * session-cookie snapshot inside it.
  *
  * WHY A BUDGET, measured rather than assumed: the snapshot reads the cookie jar
- * over CDP, so the stop's duration is the host's to inflate. Independent QA
- * measured clean quits of 68-8776 ms on a loaded 14-core host against 47-70 ms
- * on the control tree, and one further clean quit that had not exited after 30 s.
- * A quit is user-visible, so the wait is capped; past the budget the app quits
- * anyway and this run's snapshot is abandoned.
+ * over CDP, so the stop's duration is the host's to inflate. What this bound
+ * governs is the HOLD, and the hold is cheap whenever the host answers: round 2
+ * measured 13-29 ms from SIGTERM to `host stopped` over six quits, with this
+ * budget never firing. Round 1's 68-8776 ms against 47-70 ms on the control tree
+ * is a different phase — process-EXIT latency — which this bound neither bounds
+ * nor claims to. It exists for the host that withholds the CDP read, the case QA
+ * constructed by SIGSTOPping the network service: there the stop never settles,
+ * and without a bound the quit waits on the transport's own 15 s per-call ceiling.
+ *
+ * WHAT THE EXPIRY IS, and is not: it RELEASES the hold and asks for the quit
+ * again — the log line says "quitting anyway" — and it is not an exit. Nothing in
+ * a frozen teardown can promise one: QA's SIGSTOPped run logged the abandonment,
+ * released the hold, and the process was still alive 42 s later, which is the
+ * pre-existing teardown stall this host exposes rather than anything this hold
+ * does. What the expiry guarantees is what the hold exists for: the user's quit is
+ * no longer waiting on the snapshot, and this run's snapshot is abandoned.
  *
  * WHAT MAKES THAT SAFE: the marker rule, unchanged. The marker is written when a
  * run starts browsing and removed only after a complete snapshot, so a run whose
@@ -75,10 +88,12 @@ export interface QuitHoldDeps {
  * fall back to plaintext — it falls back to losing this run's session cookies,
  * which is the outcome the crash path already handles.
  *
- * WHY 1500 ms: the whole healthy stop measured 24 ms on a loaded host, 21 ms of
- * it the snapshot, so this sits more than an order of magnitude above the cost it
- * is bounding and only fires on a host that is genuinely hostile to the CDP read
- * — where the alternative is the 8.8 s worst case QA measured. The abandoned
+ * WHY 1500 ms: the hold's own cost is about 20 ms when the host answers — 24 ms
+ * for the whole stop on a loaded host, 21 ms of it the snapshot, and 13-29 ms
+ * across round 2's six app quits — so this sits more than an order of magnitude
+ * above the cost it is bounding and only fires on a host that is genuinely hostile
+ * to the CDP read, where the alternative is waiting on the transport's 15 s
+ * per-call ceiling. The abandoned
  * stop is NOT cancelled: it keeps running while the app tears down, and if it
  * completes before the process is gone the snapshot lands anyway (the write is
  * atomic, so the file is either the new sealed one or the previous one).
