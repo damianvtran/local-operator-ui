@@ -151,5 +151,13 @@ teardown() {
 }
 trap teardown EXIT
 
+# The window's SIZE comes from the caller, because the rail this set photographs
+# has two layouts and the step between them is a viewport query:
+# `(min-width: 1040px)` labels the rows, and below it the rail is a 48px column of
+# icon-only rows. A 1000x900 launch is a different STATE of the same panel rather
+# than a different frame of the same one, and this set carries it because below
+# that step the ground is the only signal the current row has (round 2, D6).
+export SIDEBAR_SIZE="${SIDEBAR_SIZE:-1380x900}"
+
 bash "$HARNESS/../../window-mode/harness/run.sh" \
-  "$TREE" "$LABEL-$THEME" headless 1380x900 "#/chat/b3b3b3b3b3b3"
+  "$TREE" "$LABEL-$THEME" headless "$SIDEBAR_SIZE" "#/chat/b3b3b3b3b3b3"
