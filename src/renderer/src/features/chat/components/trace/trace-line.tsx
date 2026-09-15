@@ -25,7 +25,8 @@
  */
 
 import type { ActionType } from "@shared/api/local-operator/types";
-import { Disclosure } from "@shared/components/ui/disclosure";
+import { Disclosure, FIRST_LINE_MARK } from "@shared/components/ui/disclosure";
+import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { cn } from "@shared/lib/utils";
 import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
@@ -115,14 +116,26 @@ const TraceRow = ({
 	wrap?: boolean;
 }) => (
 	<span
-		className="flex min-w-0 items-center gap-2"
+		className={cn(
+			"flex min-w-0 gap-2",
+			// A one-line summary takes the row's own centre; a summary that IS a
+			// message and wraps takes the first line, so the row's kind stays
+			// findable on the line that carries the label instead of floating
+			// into the middle of the paragraph (see `FIRST_LINE_MARK`).
+			wrap ? "items-start" : "items-center",
+		)}
 		// On the row rather than on a branch wrapper, so a step announces itself
 		// as busy whether or not it has detail to disclose. It used to sit on the
 		// no-detail container, which meant a running step with output — the
 		// common case in the live stream — announced nothing.
 		aria-busy={running || undefined}
 	>
-		<TraceGlyph className={failed ? "text-danger" : "text-ink-dim"}>
+		<TraceGlyph
+			className={cn(
+				failed ? "text-danger" : "text-ink-dim",
+				wrap && FIRST_LINE_MARK,
+			)}
+		>
 			{icon}
 		</TraceGlyph>
 		{/* One inline run, so the 12px monospace label and the 13px prose share
@@ -138,9 +151,19 @@ const TraceRow = ({
 				wrap ? "min-w-0 whitespace-pre-wrap break-words" : "truncate",
 			)}
 		>
+			{/*
+			 * `TEXT_SURFACE_PROPS` marks the parts of a row that ARE text, and
+			 * `select-text` opts them out of the trigger's `select-none`. Both spans
+			 * carry it, so a drag across a row copies the whole row — including the
+			 * label that says what it is, which a drag used to drop because the label
+			 * was the one span that was not selectable (round 3's U17). The marker is
+			 * also what the trigger's click guard reads, and it comes from one shared
+			 * constant for exactly that reason (round 4's R22).
+			 */}
 			<span
+				{...TEXT_SURFACE_PROPS}
 				className={cn(
-					"font-mono text-mono-sm",
+					"select-text font-mono text-mono-sm",
 					running ? "text-ink-muted" : "text-ink-dim",
 					failed && "text-danger",
 				)}
@@ -149,10 +172,37 @@ const TraceRow = ({
 				{narration ? ":" : null}
 			</span>
 			{object ? (
-				<span className="font-mono text-ink-muted text-mono-sm"> {object}</span>
+				/*
+				 * `select-text` for the same reason the narration carries it: on an
+				 * incident row this slot holds the `provider/model` that died, which is
+				 * a fact a reader may have to paste somewhere (round 2's U9 — the
+				 * trigger is `select-none`, so without this the one fact D2 added to
+				 * the row would be the one fact on it that cannot be copied).
+				 */
+				<span
+					{...TEXT_SURFACE_PROPS}
+					className="select-text font-mono text-ink-muted text-mono-sm"
+				>
+					{" "}
+					{object}
+				</span>
 			) : null}
 			{narration ? (
-				<span className="text-body-sm text-ink-muted"> {narration}</span>
+				/*
+				 * `select-text` is the one exception to the trigger's `select-none`,
+				 * and it is deliberate: for a notice or an incident the narration IS
+				 * the message, and the one thing a reader does with an error string —
+				 * a server name, a `/mcp reauth notion` command — is paste it
+				 * somewhere. The primitive's click guard keeps a selection-ending
+				 * mouseup from toggling the row it was selecting.
+				 */
+				<span
+					{...TEXT_SURFACE_PROPS}
+					className="select-text text-body-sm text-ink-muted"
+				>
+					{" "}
+					{narration}
+				</span>
 			) : null}
 		</span>
 	</span>
@@ -191,6 +241,11 @@ export const TraceLine = ({
 		/>
 	);
 
+	// A wrapped summary is a message rather than a label, so both marks take the
+	// first line; a one-line summary keeps the row's own centre. One decision,
+	// used by both branches below and by `TraceRow`'s glyph.
+	const summaryAlign = wrap ? "firstLine" : "center";
+
 	// No detail: the line is complete information on its own, so it is a static
 	// row rather than a button that reveals nothing. `disabled` is the same box
 	// as the trigger — same height, same reserved chevron gutter — so a running
@@ -201,6 +256,7 @@ export const TraceLine = ({
 			<Disclosure
 				disabled
 				summary={row}
+				summaryAlign={summaryAlign}
 				className={className}
 				rowClassName={dense ? DENSE_ROW : undefined}
 			/>
@@ -211,6 +267,7 @@ export const TraceLine = ({
 		<Disclosure
 			summary={row}
 			chevron="leading"
+			summaryAlign={summaryAlign}
 			defaultOpen={defaultOpen}
 			className={className}
 			rowClassName={dense ? DENSE_ROW : undefined}

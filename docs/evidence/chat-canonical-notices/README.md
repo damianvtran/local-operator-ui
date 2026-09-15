@@ -1,0 +1,452 @@
+# Session incidents, and the harness's other statements, on their own rows
+
+The operator's report:
+
+> Can you make sure errors actually display their message instead of just
+> "Session incident" that you need to expand to see in local-operator-ui
+
+946 rows in his own transcripts are `session_incident` custom messages — 639 of
+them an MCP authorization that expired — and every one of them painted as the
+single literal string `session incident`, in the info ink, with the whole
+message behind the disclosure chevron. Why a turn died was therefore a click
+away, or invisible.
+
+## What produced these frames
+
+Storybook, driving the **production components**: the story renders
+`CanonicalTranscript`, and its rows are built by the **production
+`applyHistoryPage` reducer** from persisted payloads quoted verbatim out of
+`~/.local-operator/sessions/…/transcript.jsonl` — one per category the
+classifier emits (`mcp`, `auth`, `rate-limit`, `context-length`, `provider`,
+`network`, `unknown`, `cut-off`), the three harness statements
+(`session_model_switch`, `session_mcp_recovery`, `session_credential`), a
+`raw`-less row for the fallback path, and a relayed `hub_message` as the bulky
+control. They are the same records the app paints, so the frame judges what the
+row is GIVEN as well as what it paints.
+
+Captured over raw CDP by `scripts/capture-evidence.mjs` (private headless
+Chrome on a fresh user-data-dir, killed on exit), narrowed the sanctioned way:
+
+```
+node scripts/capture-evidence.mjs http://localhost:6044 \
+  --only=session-incidents --themes=localOperatorDark,localOperatorLight \
+  --allow-backend
+```
+
+**`--allow-backend` is honest here and load-bearing for the claim's scope:**
+another agent's backend was listening on the configured port during the run.
+Nothing in this story calls out — its records are fixtures and its
+`onLoadOlder` is a stub — so no frame is a function of that backend.
+
+**The local workaround the early passes needed is GONE, and this is now stated in
+both directions.** Storybook could not build the preview at this branch's first
+base at all: the TypeScript 7 toolchain removed the JS compiler API, and
+`react-docgen-typescript` 2.2.2 reads it (`Cannot read properties of undefined
+(reading 'React')`), so the build failed before any story rendered — with these
+changes reverted too. The frames captured before main landed `6a952c469`
+(`build(storybook): use the JSX docgen, which the TypeScript 7 move left
+working`) were therefore taken with `typescript.reactDocgen: false` set in
+`.storybook/main.ts` **in the working tree only**, and the file is committed
+unchanged in every commit. Main's fix removed the need for that override. The
+manifest preserved at `8e8660808` records `dirtyWorkingTree: true`, not a clean
+capture: its stamp must be read with that limitation (Q21/R31). Removing scratch
+files later does not retroactively make the capture clean. Round-5 remediation
+captures and gate results are recorded separately in the PR with their source
+head and timestamp; they do not relabel the historical capture.
+
+## The pair
+
+| Directory | Tree | What it shows |
+| --- | --- | --- |
+| [`session-incidents`](session-incidents/) | this change | The fixed rows: danger glyph and category label, the provider the incident names, the vendor's message in place and wrapping, the harness's advice behind the disclosure. |
+| [`session-incidents-narrow`](session-incidents-narrow/) | this change | The same 17 rows at 560, where a row wraps hardest — the width the wrapped-mark defect was measured at. |
+| [`notice-lengths`](notice-lengths/) | this change | The notice register's own length cases, including the bulky one that used to render as the literal word "Notice". |
+| [`../session-incident-rows-before`](../session-incident-rows-before/) | unmodified `origin/main` (`73977340a`) | The defect, from the same story and the same payloads: ten rows reading `session incident`, the info ink, no message anywhere but behind the chevrons. |
+
+The pair is same-viewport (1280x700), same story, same themes, and the only
+difference between the two runs is the two renderer files — the story and its
+fixtures sat unchanged in both. `before` is declared `supplementary` because a
+sweep cannot produce it: it needs a tree that no longer exists in the
+repository.
+
+**One row of `session-incidents` is a row upstream owns now, and the set is
+labelled rather than recaptured (round 7's D15).** The six frames in these three
+sets are the round-2 capture, unchanged since `0af821f67`, so the wake row in
+`session-incidents` and `session-incidents-narrow` is painted the way this
+branch painted it then (`wake prompt: (alarm) Scheduled wake w1 (1/16, every
+1h30m)`). At this head the identical record paints through upstream's receipt
+model instead: the name column reads `wake`, with the ledger's clock glyph and
+the cadence as the headline (`w1 (1/16, every 1h30m)`), which is the shape
+upstream's own `chat-tool-rows/receipt-rows` frame shows, because a `wake_prompt`
+(and a `peer_message`) record is projected to its own kind before this branch's
+relay path runs. So the picture is a historical capture of one row rather than a
+stale claim about it, and the pair's other rows — the incidents, the statements,
+the relayed payloads — are what this branch still paints. Labelled and not
+recaptured: a fresh sweep would rewrite both sets to photograph a row this branch
+no longer owns. `notice-lengths` carries no wake or peer row and is unaffected.
+
+## What to look for
+
+- **The message is the row.** `mcp`, `cut-off`, `rate-limit`, `auth`,
+  `network`, `provider` and `unknown` each carry the vendor's own error text
+  inline, wrapping rather than truncating. The `context-length` row is the wrap
+  case: 217 characters of raw error, in two lines, tail readable.
+- **Kind is carried twice, never by colour alone.** The failure is a
+  `circle-alert` glyph plus its category label in the danger ink; a statement is
+  the `message-square-text` glyph in the ledger's dim ink.
+- **The disclosure is for the supporting half.** The opened row shows what the
+  harness tells the MODEL — the suggested action and the "this is why the
+  previous turn ended" sentence — which is the reason the incident exists and is
+  not what a reader needs in order to know what happened.
+- **The `unknown` row without a hint discloses nothing** and is a static line
+  with a reserved chevron gutter, not a hole.
+- **A relayed payload is not reduced to its type name either.** The
+  `hub message` row states the first line that says something — stepping over
+  the envelope tag both relays open with — and keeps its 1.5 kB body behind the
+  disclosure.
+- **One rail, one pitch.** Every row's text starts at the same x, and the rows
+  sit on the ledger pitch, so a run does not go ragged where one appears.
+
+## Measured, not eyeballed
+
+Read out of the live DOM in the same story, in `localOperatorDark`:
+
+| | before (`73977340a`) | after |
+| --- | --- | --- |
+| incident row text | `session incident` | `mcp: MCP server 'notion': MCP authorization failed; run /mcp reauth notion — authorization expired` |
+| row height, one-line incident | 26px | 22px |
+| row height, wrapped incident | 26px (one line: the message was not painted) | 43px (the message, wrapped in place) |
+| label ink | `rgb(145, 139, 125)` (dim) | `rgb(239, 128, 120)` (danger) |
+| glyph | `message-square-text`, ink-dim | `circle-alert`, danger ink |
+| statement row text | `session model switch` | `session model switch: You are now running as openrouter/deepseek/deepseek-v4.1-flash (was anthropic/claude-opus-5). …` |
+| text rail (every row) | x=250 | x=250 |
+
+The pitch moved from 26px to 22px because the rows now take the ledger's dense
+height instead of the comfortable one — the same 22px a run of tool rows
+measures with its hairline, which is what "not ragged" means here.
+
+The reducer was also replayed over **every persisted incident in the store**,
+955 rows across the operator's `~/.local-operator/sessions`, through the shipped
+`applyHistoryPage`:
+
+```
+persistedRows 955   records 950
+level=error 950     category parsed 950     headline non-empty 950
+headline !== "session incident" 950
+categories: mcp 639, cut-off 172, rate-limit 58, unknown 50, provider 24,
+            network 5, auth 1, context-length 1
+```
+
+That is the broader claim one screenful cannot make: not that this fixture
+renders, but that every row of this shape in the operator's own store now says
+what happened.
+
+## Round 2: what the review rounds changed here
+
+The four round-1 reports are on the PR. The frames above are the round-2 set; what
+moved in them, and what did not:
+
+- **The wrapped row's marks (design D1).** A 14px mark was vertically centred over
+  the whole wrapped block, so a multi-line row carried its kind on line 2 — or, at
+  420px, nowhere on line 1 at all. `Disclosure` gained one mode
+  (`summaryAlign: "firstLine"`) and the offset it applies is exported
+  (`FIRST_LINE_MARK`) so the row's glyph and the trigger's chevron take the same
+  number. Measured in the DOM at 1280: every row's chevron and glyph sit 3.0px
+  above the first line's box centre, wrapped rows included
+  (`context-length` cy 185.8 with `rate-limit` cy 252.8), where the before-frame
+  put the chevron *between* the two lines. `session-incidents-narrow` is the same
+  claim at the width it was measured wrong.
+- **The tool rows did not move.** All 32 registered `chat-tool-rows` frames were
+  re-captured through the same command. 21 came back byte-identical; the 11 that
+  differ differ **only** in bands this rig cannot make deterministic, and that is
+  measured rather than assumed: a second capture of `working-labels` at the *same*
+  tree differs from the first by 5,986 pixels in the same `292x148+32+32` box (the
+  working line's animated spinner), and `states` differs from its committed frame
+  by 399 pixels in an `18x29` box that is the running row's live clock reading
+  `16s` where the committed frame reads `13s`. Those 11 frames were left at their
+  committed bytes rather than carry capture noise; the pass's own
+  `refreshedFrames` counts them as written.
+- **The provider is back on the row (design D2).** `anthropic/claude-opus-5`
+  rides the ledger's machine-voice object column, so the row reads
+  `mcp: anthropic/claude-opus-5 MCP server 'notion': …`. Measured over the store,
+  789 of 968 incident rows name a provider; the rest are the no-provider
+  `cut-off` shape, which states that by omission.
+- **The message is selectable again (UX U1).** The trigger is `select-none`, so
+  the narration span opts back in and the primitive ignores a click that ended a
+  selection. Exercised against the real component over CDP: selecting the row's
+  message yields 82 characters, a click while that selection is live leaves
+  `aria-expanded` at `false`, the selection survives, and the next click with no
+  selection opens the row.
+- **A relay states its message, not the envelope's manners (UX U3 / design D3 /
+  review R1).** The channel's three fixed instruction lines are matched and
+  skipped. Over the store AT THE 2026-09-14 SCAN (these are counts of a store that
+  grows as the operator works, so they carry the day they were taken): 0 of 4,389
+  `hub_message` headlines are boilerplate now, where 411 hub rows opened with the
+  same sentence, and the 34 empty relays state their envelope
+  (`<subagent-message label='…' job='…'>`) instead of a closing tag. Two counters
+  this bullet used to carry are **retired rather than re-derived**, and they are
+  named here so a reader who saw them is not left wondering whether they still
+  hold: "0 of 4,424 `peer_message` headlines are boilerplate" and "0 of 951 wake
+  rows lead with the cancellation call". Since this branch's rebase onto current
+  `main`, `durableRecord` projects `peer_message` to its own `peer` kind and
+  `wake_prompt` to `wake` **before** the relay path runs, so neither row has a
+  custom-row headline at all and the metric those two counts were made of does not
+  exist at this head. From there on both rows are upstream's: `receipt-row-model`,
+  painted by `PeerRow`/`WakeRow` in the transcript and pinned by
+  `scripts/tool-row.test.mjs`.
+- **A statement states its fact, not its instruction (UX U2).** The three
+  statement types split at the first sentence, so a model switch reads
+  `You are now running as X (was Y).` on the row and the agent-directed tail is
+  behind the chevron. Measured: all 227 real model-switch rows carried that tail
+  inline before.
+- **A long notice states its own first line (design D5).** The `notice` branch
+  used to paint the literal word "Notice" for anything over 400 characters or one
+  line; `notice-lengths` is the frame that judges it, and the `notice` row's pitch
+  and wrap are otherwise unchanged.
+- **Not changed, and why (design D4).** The finding asked for `ml-5` on the
+  detail paragraph. Measured in the live DOM at 1280, the disclosure's content box
+  already sits at x250 — the same edge as a tool row's args block (x250) — and
+  the paragraph shares it; `ml-5` moved it to x270, off the edge it already had.
+  Reverted, with the numbers in the PR thread.
+
+The reducer rules above are pinned by tests (`scripts/transcript-reducer.test.mjs`,
+**55 tests at this head**; the 47 cited here before was that file's own count when
+the sentence was written, and the number moves with main's receipt-row tests as
+much as with this branch's) and measured store-wide through the shipped
+`applyHistoryPage` over
+every persisted custom row in `~/.local-operator/sessions`: 10,997 records, 0 with
+an empty headline, 0 whose headline is its type name.
+
+## Round 3: the guard the first remediation added, and the notice's repeat
+
+Round 2's UX stream found two MAJORs in the guard round 1 introduced, and the
+code reviewer found the same root cause independently: the guard asked
+`window.getSelection()` on a plain `onClick`, which is page-global. `select-none`
+chrome never clears a selection, so the state that suppressed the click was
+preserved by the suppression itself — with any live selection the row swallowed
+every click on its chrome **and** every keypress, for as long as the selection
+lived. The comment above it claimed the keyboard was unaffected, which was false.
+
+**Every line of the required behaviour was then exercised with real dispatched
+gestures** — `Input.dispatchMouseEvent` press/move/release and
+`Input.dispatchKeyEvent`, never `element.click()`, which is what produced the
+first version's wrong claim — and all of it passes:
+
+```
+PASS  5 plain click on the label toggles
+PASS  1 drag does not toggle the row
+PASS  1 the selection survives the mouseup
+PASS  3 click on the gutter with a selection live toggles
+PASS  3 and again to collapse
+PASS  4 Enter toggles with a selection live
+PASS  4 Space toggles with a selection live
+PASS  4 the selection survived the keys
+PASS  4 Escape clears the selection
+PASS  2 double-click leaves the row as it found it
+PASS  2 double-click selects a word
+PASS  2 double-click on an OPEN row leaves it open
+PASS  6 the click did not toggle the row
+PASS  6 the selection it cleared is gone
+PASS  7 no tool-row summary keeps text selectable, so the guard cannot fire there
+PASS  7 a click on a tool row's label with a selection live still toggles
+MATRIX: all rows pass
+```
+
+Two of those rows are the ones the first attempt got wrong in opposite
+directions: a double-click used to end with one net toggle, and `Enter` did
+nothing at all while a selection lived. The trace the probe records with the
+verdict is Chrome's own. Quoted from `matrix-round2.txt`, for the closed row:
+`mousedown:1, mouseup:1, click:1, mousedown:2, mouseup:2, click:2, dblclick:2`;
+and for the open row, whose first press was followed by a second one before the
+multi-click began: `mousedown:1, mouseup:1, click:1, mousedown:1, mouseup:1,
+click:1, mousedown:2, mouseup:2, click:2, dblclick:2`. The `mouseup`'s `detail`
+is not guaranteed by Chrome and differs between runs — the round-3 review read
+`mouseup:1` in the same row — which is why the revert keys on the **press**
+(`mousedown` with `detail > 1`), the event that decides what gesture this is.
+
+**The frame deltas this round are measured, not eyeballed.** The two incident
+surfaces were re-captured and differ from the previous head's frames per THEME
+— the earlier version of this paragraph mixed one theme's count with the
+other's, and quoted the date stamp's own ink box rather than the extent of the
+change. Measured with `magick compare -metric AE` against the frames at the
+round-2 head, and reproduced at this head:
+
+| surface | theme | pixels | changed-pixel box |
+| --- | --- | --- | --- |
+| 1280 | `localOperatorDark` | 891 | `74x18+1030+706` |
+| 1280 | `localOperatorLight` | 748 | `73x18+1031+707` |
+| 560 | `localOperatorDark` | 937 | `65x17+463+1119` |
+| 560 | `localOperatorLight` | 807 | `64x25+464+1119` |
+
+Every one of those boxes is the transcript's own date stamp (`56x13` and `56x15`
+are the stamp's ink, not the extent of change: the box is larger because the
+changed stamp text at the two viewports is wider than the glyphs that moved).
+Nothing on a row moved. The notice surface changed by **85,554 pixels**, which is
+the fix: the long single-line notice now paints as a static line instead of a row
+that repeated itself behind its own chevron.
+
+**What moved where, in one list**
+
+- the guard is scoped to the gesture (a press on text the summary keeps
+  selectable), the keyboard path is not gated at all (`detail === 0` is the
+  click Enter and Space synthesise), and `Escape` now clears a selection this
+  trigger owns — the only keyboard exit a reader with a selection had, and one a
+  focused button does not get from the browser;
+- the notice row and its disclosure **partition** the text, and a notice whose
+  opening line is the whole of it paints through the static branch rather than
+  growing a chevron that reveals the same bytes; both detail bodies gain
+  `break-words`, because `pre-wrap` alone leaves `overflow-wrap: normal` and an
+  unbreakable run measured `scrollWidth` 2773 in an 840px box;
+- a relayed row joins a heading to its outcome (`background job 'design849'
+  failed: [Errno 28] …`, 37 of the store's 39 job rows at the 2026-09-14 scan;
+  the population grows as the operator works, so this is a count with a date on it,
+  not a property);
+- **two wake rules that stood in this list are superseded, and the code is deleted
+  rather than left disabled (round 7's R33 — see the Round 4 entry below):** "a
+  one-shot wake states its goal rather than its arming line, which carries no
+  cadence" (counted in one pass at the 2026-09-15 scan of the operator's
+  transcripts: of 1,028 wake rows, 806 open with an arming line that does state a
+  cadence, 130 with one that states none and carries a goal line below it — the
+  population the rule rewrote — and 92 with the payload's own preamble, where no
+  arming line is the row's own line at all; 806 + 130 + 92 = 1,028, and the
+  "202 of 967 : 766 keep one" pair this replaces summed to 968) and "the
+  wake-arming clause is stripped only from a wake row, so a hub message that
+  quotes the phrase keeps its own words". A `wake_prompt` record is projected to
+  its own `wake` kind before the relay path that implemented them, so neither rule
+  can fire; the clause is stripped from nothing at all now, which is why a hub
+  message that quotes it keeps its words;
+- the first-sentence scan requires a capital after the terminator and rejects a
+  leading `digits.`, so `approx.`, `e.g.` and `1.` no longer split a headline —
+  without a table of abbreviations to keep in step with English;
+- the provider the incident names is selectable like the message beside it, and
+  `summaryAlign` no longer restates the default `items-center`, so the tool rows'
+  TRIGGER carries the class string it had before this branch (round 2's Q4 — the
+  row as a whole still differs from base by one reordered class on the chevron
+  `mark` span, which predates this branch: round 3's Q13).
+
+**The honest gap this register still has.** There are no persisted `notice`
+records in the store to replay (type counts over the operator's transcripts at the
+2026-09-14 scan: message 108,140, custom 3,326, prune 846, compaction 30), so the
+notice surface's
+long path has a fixture and a frame behind it rather than a store-wide replay.
+The designer recorded that in round 2 and it is unchanged by this fix.
+
+## Round 4: the revert, the text marker, and the two wake shapes
+
+> **Superseded in round 7 (R33/D15).** Both wake shapes are deleted from the
+> reducer, and the claims below are corrected in place rather than rewritten: the
+> wake row is upstream's receipt now, which is why a rule that could not fire is
+> gone rather than left looking live.
+
+Round 3's review found no blocker or major in the pixels and one MAJOR in the
+merge state (`docs/evidence/manifest.json`, resolved by rebasing and letting
+main's own repair of that field stand). What it found in the code is here.
+
+- **The multi-click take-back is reachable for text (R12/R18).**
+  The handler that could not fire is deleted rather than left documenting a bug
+  it did not fix. Chrome dispatches the second press as a `mousedown` with
+  `detail` 2 even when the release lands outside the trigger, and `dblclick`
+  fires only when the whole gesture stays inside, so the revert moved to the
+  press. What that closes and what it does not (R18 corrected this sentence, which
+  said "covered by construction"): the take-back runs when the SECOND PRESS lands
+  on a marked text surface, so the case round 3 measured — a double-click in the
+  message whose release misses the trigger — is closed. A second press on the
+  row's non-text chrome whose release lands outside the trigger still leaves one
+  net toggle, because that press is not on text and the trigger never receives the
+  `click`/`dblclick` that would follow. If that second chrome release stays inside
+  the trigger instead, the second click toggles again: net zero, with a visible
+  open-to-close flicker (R29). Loosening the condition to catch it would
+  break the intended "two chrome toggles cancel out" case, so the residual is
+  stated here rather than traded for a worse one.
+- **The guard's discriminator is no longer `user-select` (U17, and the reason it
+  was wrong).** The question is "is this part of the summary something a reader
+  can select and copy?", and a computed style answered a different one: `text`
+  for the narration and `none` for the label beside it. That is how a drag across
+  a row copied everything except the label that says what the row IS. `TraceLine`
+  now marks its text surfaces (`data-text-surface`) and selects them all, label
+  included; the guard reads the marker. Making the label selectable is therefore
+  safe — it cannot re-open U7, because suppression no longer keys on the select
+  behaviour at all.
+- **A wake keeps its own preamble (D8) and its goal loses its bullet (U15) —
+  SUPERSEDED in round 7, and deleted rather than left in place.** The rule fired
+  on the ARMING line only, which was the one predicate between the two shapes, and
+  it is what the frames of that day show. It cannot fire at this head: a
+  `wake_prompt` record is projected to its own `wake` kind before the custom path
+  that carried it, so a wake row has no custom-row headline to shape. Reproduced
+  through the shipped reducer: a one-shot paints `w1 (1/1).`, a bulleted goal
+  paints `w1 (1/1).`, an own preamble paints `Session resumed after a restart.
+  (alarm) Scheduled wake w1 (1/1).`, and the cadence case paints `w1 (1/16, every
+  1h30m)`. The preamble is still kept, but as part of upstream's headline — the
+  whole first paragraph, its generated markers stripped — rather than instead of
+  the generated line; the two goal claims are not shipped in any form. The counter
+  that measured them (**0** headlines lead with a bullet, from 79) is retired with
+  the rule, because no custom-row headline is left to count.
+- **A relayed row whose joined headline is its whole payload discloses nothing
+  (U16).** Same rule the notice register took in round 2: at the 2026-09-14 scan,
+  4 of the store's 39 job results were re-reading themselves behind their own chevron. Measured over
+  the store with the shipped reducer: `selfRepeat` is now 0 on every custom type.
+- **The five branch-added regex literals are module constants (Q9/R27).**
+  The round-5 reviewer measured zero diagnostics for `transcript-reducer.ts` at
+  both `8e8660808` and base `915928a18`; the earlier claim of one was incorrect.
+
+**Corrected from round 3's reports, because the numbers did not reproduce.** The
+per-theme frame deltas and changed-pixel boxes above (R14); the event trace and
+the fact that its `mouseup` detail varies run to run (R15); "194 declared" and
+"121 of 955 wake rows", which are 205 and 202 of 967 at the head the round-3
+reports were written against (U18, Q10). Both terms move with main's own evidence
+activity, which is why the numbers below carry the head they were counted at
+rather than being carried forward: at the head this paragraph was written for, the
+manifest declared **339** frames across **28** supplementary sets out of **1,509**
+on disk, and the arithmetic to check is always that sum against the directory
+itself, not against this paragraph. The tool-row claim is true of the trigger
+rather than of the row (Q13). **Desktop suite evidence is head-specific.**
+On 2026-09-14, CI run `34873984750`, Desktop Tests job `104076512595`, at
+`8e86608083171428c02ecd85fa357ff186dee824` reported 950 tests, 935 passed,
+0 failed and 15 skipped. Independent QA's local run at that same head reported
+950 tests, 950 passed, 0 failed. Neither result is a claim about a later head;
+new local and CI results belong in timestamped PR comments, separately (R26/Q22).
+The earlier unqualified 840 and 891 counts are superseded, as is the unsupported
+claim that earlier failures reproduced at the pre-branch base.
+**Decided, not deferred:** D10 suppression is reverted in round 5. Job rows keep
+an explicit `job result` label so the full message and statement glyph remain
+intact; duplicated job wording is an accepted cosmetic tradeoff. There is no new
+payload parsing or label API (D11–D14/Q20/R28). **Deferred with reason:** R16 (the sentence scan still
+cannot separate `Step one: 1. Do the thing.` or `Dr. Smith` from a sentence end;
+0 of the store's statements carry either shape, so hardening it further would be
+built for a producer that does not exist).
+
+## What these frames do not prove
+
+- **Two themes, not twelve.** The committed set is a narrowed capture
+  (`manifest.json`'s `partialCapture`): `localOperatorDark` and
+  `localOperatorLight`, at 1280 and (for the narrow claim) 560. The twelve-theme
+  sweep was not re-run — it would rewrite 400+ frames nobody is reviewing. It can
+  be re-run at this head since main fixed the docgen build (`6a952c469`); it is a
+  choice not to, and the design round rendered five palettes from its own probe
+  and cleared contrast at token level for the other seven.
+- **Not the live app.** The rows, the reducer and the transcript are the shipped
+  ones, but the frames are not a screenshot of the Electron app against a live
+  session; the story is the pinning surface and the reducer probe above is the
+  breadth. A live-app pass is worth having and is what the next full sweep
+  provides.
+- **The expansion is one row, clicked, not a keyboard walk.** The story opens
+  the mcp row through its own trigger (`data-capture-pending` holds the shutter
+  until it is open); keyboard reachability of the trigger is the
+  `Disclosure` primitive's, unchanged by this work.
+
+## Re-capturing
+
+The three story ids are registered in `scripts/capture-evidence.mjs`'s `STORIES`
+(`chat-canonical-notices--session-incidents` 1280x800,
+`--session-incidents-narrow` 560x1220 and `--notice-lengths` 1280x340), so the
+next full sweep covers them in all twelve themes:
+
+```
+pnpm storybook                                  # :6006
+node scripts/capture-evidence.mjs http://localhost:6006 --only=session-incidents
+node scripts/capture-evidence.mjs http://localhost:6006 --only=notice-lengths
+```
+
+The `before` frames cannot be re-derived from this tree; they live in
+`../session-incident-rows-before/` and are declared as a supplementary set for
+that reason.

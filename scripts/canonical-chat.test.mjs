@@ -524,6 +524,99 @@ test("an issued admission refuses an edited resend and names itself so the compo
 	);
 });
 
+test("an admitted send is observable while it is in flight, and gone once it settles", async () => {
+	reset();
+	/*
+	 * The working line's admitted-send rung reads the DRAFT ROW, not component
+	 * state, because the New-chat path remounts the panel on the identity flip
+	 * (`panelIdentityFor`) and local state does not survive that. So the row has
+	 * to carry the state for exactly as long as the request is unanswered: this
+	 * pins both halves - observable while `sessions.message` is held open, and
+	 * gone the moment it settles - because a row that outlived the request
+	 * would leave the line claiming work after the turn had answered.
+	 */
+	let release;
+	const held = new Promise((resolve) => {
+		release = () => resolve({ status: "admitted" });
+	});
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "333333333333",
+				binding: { agent: null, team: null },
+			};
+		if (request.op === "sessions.message") return held;
+		return {};
+	};
+	const settle = async (predicate) => {
+		for (let i = 0; i < 50; i++) {
+			if (predicate()) return;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+		assert.fail("the message request never reached the transport");
+	};
+	const key = store.getState().stageDraft();
+	const send = admitChatDraft(key, input);
+	await settle(() =>
+		calls.some((request) => request.op === "sessions.message"),
+	);
+	const inFlight = store.getState().drafts[key];
+	assert.equal(inFlight.sessionId, "333333333333");
+	assert.equal(inFlight.pending, true);
+	assert.equal(inFlight.admissionAttempted, true);
+	// The panel keyed on the session is the one that mounts here, and the row it
+	// looks its draft up by is the same `draft:<uuid>` the send was staged under.
+	assert.equal(panelIdentityFor(key, inFlight.sessionId), "333333333333");
+	assert.equal(
+		store.getState().drafts[draftIdentityFor(key, inFlight.sessionId)],
+		inFlight,
+	);
+	release();
+	await send;
+	assert.equal(store.getState().drafts[key], undefined);
+});
+
+test("an existing session's in-flight send is found under its own key, and a failure clears it", async () => {
+	reset();
+	/*
+	 * The other half of the same rule, on the path where the panel does NOT
+	 * remount: a send into a session the user already has is keyed `send:<id>`
+	 * by `draftIdentityFor`, and that key is what the panel reads. `pending` must
+	 * be true while the request is unanswered and false - with the failure
+	 * recorded - when it throws, so the working line cannot linger over a send
+	 * the user has been told failed.
+	 */
+	let reject;
+	const held = new Promise((_resolve, rejectPromise) => {
+		reject = () => rejectPromise(new Error("provider unavailable"));
+	});
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.message") return held;
+		return {};
+	};
+	const sessionId = "111111111111";
+	const key = draftIdentityFor(null, sessionId);
+	assert.equal(key, `send:${sessionId}`);
+	const send = admitChatDraft(key, input, sessionId);
+	for (let i = 0; i < 50; i++) {
+		if (store.getState().drafts[key]?.pending) break;
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	}
+	const inFlight = store.getState().drafts[key];
+	assert.equal(inFlight.pending, true);
+	assert.equal(inFlight.admissionAttempted, true);
+	reject();
+	await assert.rejects(send, /provider unavailable/);
+	const failed = store.getState().drafts[key];
+	assert.equal(failed.pending, false);
+	// A raw throw is reported through the shared unconfirmed-send copy rather
+	// than as the exception text, which is the store's own rule; what matters
+	// here is that the row records a failure and is no longer pending.
+	assert.match(failed.error, /could not be confirmed/);
+});
+
 test("a landed send retires the page-level error the failed one recorded", async () => {
 	reset();
 	// F2/F3: `createSession` sets store `error` AND rethrows, so the same

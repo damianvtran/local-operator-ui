@@ -26,6 +26,10 @@ import type {
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
+import {
+	workingLineClaimed,
+	workingLineInputFor,
+} from "../canonical/working-line-model";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -153,6 +157,22 @@ type ChatContentProps = {
 		view: CanonicalSessionHandle;
 		busy: boolean;
 		admitting?: boolean;
+		/**
+		 * A send this conversation has admitted and that has produced nothing yet.
+		 *
+		 * Distinct from `admitting`, which is the composer-side window in which a
+		 * send is being issued and the text is still the user's. This one spans the
+		 * whole wait, from the send until the owner paints something, so it covers
+		 * the cold engage the user actually waits through — and it is what the
+		 * transcript's working line, the pane's own emptiness and the composer's
+		 * placeholder all read. See `working-line-model.ts` for the copy rule.
+		 */
+		starting?: boolean;
+		/**
+		 * The record this send painted, which every clear measures from. Null only
+		 * when no send is admitted.
+		 */
+		startingAfterId?: string | null;
 		onStop: () => void;
 		/**
 		 * Answer the pending `ask` gate with an option's label.
@@ -578,6 +598,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											transcript={canonical.view.transcript}
 											gate={canonical.view.frontend?.pending_gate ?? null}
 											waiting={canonical.busy}
+											starting={canonical.starting === true}
+											startingAfterId={canonical.startingAfterId ?? null}
 											loadingOlder={canonical.view.loadingOlder}
 											onLoadOlder={canonical.view.loadOlder}
 											containerRef={messagesContainerRef}
@@ -632,12 +654,54 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onSendMessage={onSendMessage}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-								isLoading={canonical ? Boolean(canonical.admitting) : isLoading}
+								isLoading={
+									canonical
+										? Boolean(canonical.admitting || canonical.starting)
+										: isLoading
+								}
+								/*
+								 * Derived from the same expression the transcript's own line is, so
+								 * the two surfaces cannot disagree about whether work is being
+								 * claimed: a pending question and a dead transport both retire
+								 * this hint with the line (review round 2, R2-3; design round
+								 * 2, D5). Reading the latch directly is what let the composer
+								 * keep saying "Waiting for the agent" 46px below a pane that had
+								 * withdrawn exactly that claim.
+								 */
+								awaitingReply={Boolean(
+									canonical &&
+										workingLineClaimed(
+											workingLineInputFor({
+												waiting: canonical.busy,
+												starting: canonical.starting === true,
+												startingAfterId: canonical.startingAfterId ?? null,
+												gate: canonical.view.frontend?.pending_gate ?? null,
+												unavailable: canonicalSpeaking(canonical),
+												records: canonical.view.transcript.records,
+											}),
+										),
+								)}
 								conversationId={agentId}
 								messages={
 									canonical
-										? canonical.view.transcript.records.length > 0 ||
-											canonicalSpeaking(canonical)
+										? /*
+											 * A send this pane has admitted counts as content here, and that is
+											 * a correction rather than a nicety: with zero records the
+											 * greeting's branch renders into the column and the transcript is
+											 * left no height at all (`canonical-transcript.tsx`'s `collapsed`),
+											 * so the rung existed in the DOM through the whole cold engage and
+											 * never painted a pixel — the operator's dead-air window, unchanged
+											 * (QA round 1, Q1). The pane is not empty once a message is on its
+											 * way: "What can I help you with today?" and the suggestion chips
+											 * are claims about a conversation that has already started.
+											 *
+											 * `canonicalSpeaking` is the other half of the same question, for
+											 * the states where the pane speaks for itself (a failure notice, a
+											 * reconnect) rather than answering anybody.
+											 */
+											canonical.view.transcript.records.length > 0 ||
+											canonicalSpeaking(canonical) ||
+											canonical.starting
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
 												? messages
@@ -675,6 +739,33 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									canonical
 										? !canonical.view.hydrated && !canonicalSpeaking(canonical)
 										: false
+								}
+								/*
+								 * U8: a pending question is answered in this box, so the box
+								 * says so instead of inviting a message. The card above owns the
+								 * question and the reply it expects; this only stops the
+								 * composer reading "Ask me for help" over a turn that is waiting
+								 * on the user (UX round 2, U8).
+								 */
+								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								/*
+								 * U3: the held-claim sentence offers the transcript as proof
+								 * that the message exists somewhere ("its copy is in the
+								 * transcript above"), which is only true when a copy is
+								 * actually painted. On the draft path the pane held no rows at
+								 * all, so the sentence pointed at a greeting (UX round 2, U3).
+								 * Answered from the records this pane renders rather than
+								 * assumed; `undefined` (no canonical stream, nothing held)
+								 * leaves the clause out.
+								 */
+								heldCopyOnScreen={
+									canonical && sendError?.heldText
+										? canonical.view.transcript.records.some(
+												(record) =>
+													record.kind === "user" &&
+													record.text === sendError.heldText,
+											)
+										: undefined
 								}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}

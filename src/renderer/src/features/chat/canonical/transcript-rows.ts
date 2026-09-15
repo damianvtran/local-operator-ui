@@ -12,6 +12,34 @@
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 
+/**
+ * A notice's body split into the line its row paints and the rest of it, if any.
+ *
+ * The two are returned together because the row and its disclosure must
+ * PARTITION the text. `rest` is null exactly when the opening line is the whole
+ * notice, and that is the case the row paints as a static line rather than as a
+ * trigger that discloses a byte-identical copy of itself (round 2's
+ * D7/Q5/R11/U14: a 404-character single-line notice painted all of itself and
+ * then repeated it behind the chevron, so the affordance promised material it
+ * did not add).
+ *
+ * It lives here rather than in the view for the reason this module exists: it is
+ * a rule with a right answer, asserted directly (`scripts/tool-row.test.mjs`)
+ * instead of eyeballed in a frame.
+ */
+export const splitFirstLine = (
+	text: string,
+): { headline: string; rest: string | null } => {
+	const lines = text.split("\n");
+	const at = lines.findIndex((line) => line.trim().length > 0);
+	if (at < 0) return { headline: text.trim(), rest: null };
+	const rest = lines
+		.slice(at + 1)
+		.join("\n")
+		.trim();
+	return { headline: lines[at].trim(), rest: rest || null };
+};
+
 export type Row = {
 	record: TranscriptRecord;
 	showAvatar: boolean;
