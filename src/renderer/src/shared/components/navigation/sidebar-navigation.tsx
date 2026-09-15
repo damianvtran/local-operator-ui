@@ -254,10 +254,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		>
 			<Search size={16} aria-hidden="true" className="shrink-0" />
 			<span className="truncate">Search</span>
-			{/* Decorative: the accessible name above already carries the chord. */}
+			{/*
+			 * Decorative: the accessible name above already carries the chord.
+			 *
+			 * Plain monospace rather than the app's key cap, because a cap is
+			 * `bg-sunken` and this rail IS `sunken`: the cap's own ground would
+			 * vanish into the row and leave a boxless glyph. The panel's footer
+			 * prints the same chips on `elevated`, where a cap is visible; the two
+			 * idioms are one decision and `docs/command-palette.md` records it. One
+			 * ink step up from the row's label, so the chord reads as a chord rather
+			 * than as fine print (design round 1, D6).
+			 */}
 			<span
 				aria-hidden="true"
-				className="ml-auto font-mono text-ink-dim text-mono-sm"
+				className="ml-auto font-mono text-ink-muted text-mono-sm"
 			>
 				{paletteShortcutCaps(isMac)}
 			</span>

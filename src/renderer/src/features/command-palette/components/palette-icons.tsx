@@ -73,6 +73,12 @@ export const PaletteIcon: FC<{ name: PaletteIconName }> = ({ name }) => {
 	// The Radient account row keeps the brand's own outline glyph, which is drawn
 	// on lucide's grid and takes the row's ink like the rest.
 	if (name === "account") return <RadientMark size={16} />;
-	const Icon = LUCIDE[name] ?? SquarePen;
+	/*
+	 * No fallback, deliberately: the table is a total `Record` over every name but
+	 * `account`, so a `?? Pen` here could never fire and would only invite a name
+	 * to be added to the union without a glyph. A missing entry is a type error at
+	 * the table, which is where it should be caught.
+	 */
+	const Icon = LUCIDE[name];
 	return <Icon size={16} aria-hidden="true" />;
 };

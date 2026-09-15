@@ -59,9 +59,16 @@ const KIND_VERBS: Record<PaletteItem["kind"], string> = {
 
 /**
  * How long the query is left to settle before the palette writes it back to the
- * store. The store's copy is persisted and read when the palette reopens, so it
- * has to end up current; it does not have to be current on every keystroke, and
- * a persisted write per character is work nobody asked for.
+ * store.
+ *
+ * The store's copy is what a REMOUNT of the view reads — a route change
+ * re-mounts it, the tour and the Storybook stories drive it — and the write-back
+ * is what keeps that copy current while the palette is open. It is deliberately
+ * NOT a value that survives the surface: `closeCommandPalette` clears it and
+ * `toggleCommandPalette` clears it on the way in, so reopening always starts from
+ * an empty box, which is what a palette's users expect (UX round 1, U5 — this
+ * comment used to promise persistence the store does not provide, and the code
+ * was right).
  */
 const QUERY_WRITE_BACK_MS = 200;
 
@@ -405,6 +412,17 @@ export const CommandPalette: FC = () => {
 			 */
 			if (isClearConfirmationOpen || isCreateAgentDialogOpen) return;
 			/*
+			 * ...and stand down for anything else focused inside the dialog.
+			 *
+			 * Tab reaches the Clear button beside the field, and from there Enter
+			 * belongs to the BUTTON - running a row instead is how a focused control
+			 * became unreachable by keyboard (UX round 1, U2) - while
+			 * Shift/Alt+Arrow belongs to the caret or to the OS rather than to the
+			 * list (U3). Only the field's own keys are this listener's business; the
+			 * dialog's Escape is Radix's, not this handler's.
+			 */
+			if ((event.target as HTMLElement | null)?.id !== INPUT_ID) return;
+			/*
 			 * Modulo by zero is NaN, and a NaN index leaves every row unselected
 			 * with no way back — reachable by typing a query that matches nothing
 			 * and pressing Down.
@@ -479,7 +497,15 @@ export const CommandPalette: FC = () => {
 				<DialogContent
 					data-tour-tag="command-palette-dialog"
 					showClose={false}
-					className="w-160 max-w-[90vw] gap-0 overflow-hidden p-0"
+					/*
+					 * `z-[2300]` clears the app's connection banner (`z-2200`), which is
+					 * `fixed inset-x-0 top-0` and 68px tall. The dialog is centred, so at a
+					 * window under ~638 CSS px tall it passed under the banner and the
+					 * banner painted over the query field: the user typed into a field they
+					 * could not see (UX round 1, U1). A modal owns the screen, and the
+					 * banner's own remedy is waiting behind it either way.
+					 */
+					className="z-[2300] w-160 max-w-[90vw] gap-0 overflow-hidden p-0"
 					/*
 					 * Focus goes to the query field and stays there. The rows are
 					 * driven by `aria-activedescendant` rather than by moving focus,
@@ -604,6 +630,25 @@ export const CommandPalette: FC = () => {
 									))}
 								</Fragment>
 							))}
+							{/*
+							 * The fold, said out loud.
+							 *
+							 * The list is cut wherever `max-h-96` lands, and a cut can orphan a
+							 * group heading — the browse frame showed `Settings` with no row
+							 * under it — which reads as a rendering fault rather than as
+							 * content below the fold. A `sticky` inset inside the scroll
+							 * container is the viewport's own edge rather than a decoration
+							 * that scrolls away with the content, so whatever the fold lands
+							 * on fades as continued; at the end of the list it is the
+							 * breathing room under the last row. `pointer-events-none` keeps
+							 * it out of the way of the row underneath it, and `-mx-2` cancels
+							 * the container's own inset so the fade spans the panel
+							 * (design round 1, D1).
+							 */}
+							<div
+								aria-hidden="true"
+								className="pointer-events-none sticky bottom-0 -mx-2 h-6 bg-gradient-to-t from-elevated to-transparent"
+							/>
 						</div>
 					) : (
 						/*
@@ -648,8 +693,9 @@ export const CommandPalette: FC = () => {
 					)}
 					{hasTerms && !chats.overLong && chats.unavailable && (
 						<p className="px-4 pt-2 text-ink-dim text-meta">
-							Searching chat names only. Update Local Operator to search inside
-							conversations.
+							{chats.unreachable
+								? "Conversation search is unavailable while the backend is unreachable, so chats are matched by name."
+								: "Chats are matched by name. Update Local Operator to search inside conversations."}
 						</p>
 					)}
 
@@ -684,12 +730,18 @@ export const CommandPalette: FC = () => {
 									<Key>↵</Key>
 									to run
 								</span>
-								<span className="ml-auto flex items-center gap-1.5">
+								<span className="flex items-center gap-1.5">
 									{outcome.clipped && (
-										<span>{`showing the best ${matchCount} of ${outcome.total}`}</span>
+										<span>{`showing the best ${matchCount} of ${outcome.total} matches`}</span>
 									)}
 								</span>
-								<span className="flex items-center gap-1.5">
+								{/*
+								 * `ml-auto` is on the escape affordance, not on the count: the count
+								 * belongs beside the movement keys it qualifies, and two unrelated
+								 * statements sharing one right-aligned slot read as one sentence
+								 * (design round 1, D5).
+								 */}
+								<span className="ml-auto flex items-center gap-1.5">
 									<Key>esc</Key>
 									to close
 								</span>

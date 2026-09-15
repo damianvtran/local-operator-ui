@@ -23,6 +23,37 @@ a user who never learns `Cmd+K` would use the palette once, if at all. The row i
 the only control the rail carries besides the account row, it is on screen on
 every route, and it prints the chord so the rail teaches it without being asked.
 
+**The chord is printed two ways, and that is one decision, not an
+inconsistency.** The panel's footer draws its keys as the app's key cap
+(`bg-sunken`); the rail draws `⌘+K` as plain monospace at one ink step above the
+row's label. A cap is `sunken`, and the rail IS `sunken`, so a cap there would
+have no ground of its own and would read as a boxless glyph; the panel sits on
+`elevated`, where a cap does have one. Two grounds, two treatments — recorded
+here rather than "fixed" in either direction (design round 1, D6).
+
+## What the palette says about itself
+
+Four strings carry a decision, and each is easy to "tidy" into being wrong:
+
+- **The degraded-search line names the state, not the only remedy.** "Conversation
+  search is unavailable while the backend is unreachable, so chats are matched by
+  name." and "Chats are matched by name. Update Local Operator to search inside
+  conversations." are two sentences because they are two facts: `unavailable`
+  means the capability was read and is absent, while an unreachable backend was
+  never read at all. Telling someone to update an app that cannot reach its
+  backend is a remedy that cannot work (design round 1, D2).
+- **Rows do not repeat their group heading.** A settings SECTION row carries no
+  hint; a registry KEY row names the section it lives in, which is the one thing
+  its own name cannot say (design round 1, D3).
+- **The clipped count is a sentence with a noun** — "showing the best 7 of 9
+  matches" — and it sits beside the movement keys it qualifies, with the escape
+  affordance taking the right edge. Two unrelated statements in one right-aligned
+  slot read as one sentence (design round 1, D5).
+- **The list fades at the fold.** The scroll container carries a `sticky` inset,
+  so whatever the height cap lands on reads as continued rather than as a
+  rendering fault; a cut that orphaned a group heading is the frame that prompted
+  it (design round 1, D1).
+
 ## What a query means
 
 A query is a **scope** and some **terms**.

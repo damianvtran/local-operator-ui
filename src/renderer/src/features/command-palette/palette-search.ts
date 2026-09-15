@@ -712,19 +712,23 @@ export function searchPalette({
 
 	const sections: PaletteSection[] = [];
 	let rendered = 0;
-	let clipped = false;
 	for (const [group, matches] of ordered) {
 		matches.sort((a, b) => b.score - a.score || byOrder(a.item, b.item));
 		const cap = capFor(group);
 		const room = Math.max(0, Math.min(cap, TOTAL_CAP - rendered));
-		if (matches.length > room) clipped = true;
 		if (room === 0) continue;
 		sections.push({ group, items: matches.slice(0, room) });
 		rendered += sections[sections.length - 1].items.length;
-		if (rendered >= TOTAL_CAP) clipped = true;
+		if (rendered >= TOTAL_CAP) break;
 	}
-
-	return { sections, scope, terms, total, clipped };
+	/*
+	 * `clipped` is a statement about the LIST, so it is read off the list rather
+	 * than set by any branch that happened to touch a cap: with an exact fit every
+	 * cap test passes, and the footer printed "showing the best 48 of 48" — a
+	 * sentence that contradicts itself, produced by a flag that meant "a cap was
+	 * consulted" (round 1, R-3).
+	 */
+	return { sections, scope, terms, total, clipped: rendered < total };
 }
 
 function bestScore(matches: PaletteMatch[]): number {
@@ -863,7 +867,14 @@ export function buildSettingsSectionItems(
 			name: section.label,
 			icon: meta?.icon ?? "settings",
 			keywords: meta?.keywords,
-			hint: "Settings section",
+			/*
+			 * No per-row hint, deliberately (design round 1, D3). Every row in this
+			 * builder is a settings SECTION and the group heading above them already
+			 * says so, so the hint repeated its own heading six times down the list
+			 * while costing a third text column on every row. A REGISTRY key keeps
+			 * its hint, because there the hint distinguishes: it names the section
+			 * the key lives in, which is the one thing the row's name cannot say.
+			 */
 			target: {
 				type: "path" as const,
 				path: `/settings?section=${section.id}`,
@@ -944,11 +955,13 @@ export function buildActionItems(
 /**
  * A panel the chat pane presents, addressed by picker destination.
  *
- * Not `featured`: these are things a user asks for BY NAME ("usage", "info"),
- * and a browse list that also listed every reading the app can draw would be a
- * list of everything, which is a list of nothing. The gates live at the call
- * site (`use-palette-sources.ts`), because whether a panel can be opened is a
- * fact about the pane on screen, not about the row.
+ * FEATURED, unlike the registry keys, and the difference is what the two groups
+ * are for: a settings key is only ever wanted by name, while a panel is a place a
+ * user may not know exists — the rail's own door taught the palette once, and this
+ * group is what teaches these four (`/info`, `/usage`, `/analytics`, `/session`).
+ * They appear in the browse layout only when the pane can present them, and an
+ * empty group renders nothing, so the browse list gains nothing it cannot deliver
+ * (UX round 1, U6).
  */
 export function buildPanelItems(
 	panels: {
@@ -971,6 +984,7 @@ export function buildPanelItems(
 		verb: "Open",
 		target: { type: "panel" as const, destination: panel.destination },
 		order: index,
+		featured: true,
 	}));
 }
 

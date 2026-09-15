@@ -127,6 +127,17 @@ export type PaletteChatState = {
 	/** The negotiated backend cannot search conversations at all. */
 	unavailable: boolean;
 	/**
+	 * WHICH "cannot": the capability could not be read at all, rather than being
+	 * read and found absent.
+	 *
+	 * The two reach the same `unavailable`, and they need different sentences: a
+	 * backend that is unreachable will not start searching conversations because
+	 * the user updated the app, and telling them to is a remedy that cannot work
+	 * (design round 1, D2). `capabilities.isSuccess` is the distinction, and it is
+	 * the same read the gate itself is built from.
+	 */
+	unreachable: boolean;
+	/**
 	 * The query is longer than the store's search accepts, so no request was
 	 * made. Carried rather than swallowed: a search box that silently stops
 	 * searching is worse than one that says why it cannot.
@@ -266,11 +277,20 @@ export function usePaletteItems({
 				/*
 				 * The backend's tier, which is what makes the store's answer ORDER
 				 * the list: a conversation the store knows by content outranks one
-				 * whose title merely contains the letters. A local label match is
-				 * the same tier as a name match, which is what the sidebar's own
-				 * join concludes.
+				 * whose title merely contains the letters.
+				 *
+				 * `Math.min` and not `??`, because the two readings are PEERS and the
+				 * better one is the row's: a local label hit is the same tier as a
+				 * backend name hit, so a row the backend placed at tier 3 whose title
+				 * matches exactly keeps tier 1 here - exactly what the sidebar's own
+				 * join does (`chat-search.ts`). Preferring the backend's number dimmed
+				 * a row in the palette that the sidebar highlighted, for the same
+				 * query and the same conversation (round 1, R-2).
 				 */
-				tier: hit?.rank ?? (labelMatch ? SESSION_RANK_LABEL : undefined),
+				tier: Math.min(
+					hit?.rank ?? SESSION_RANK_LABEL,
+					labelMatch ? SESSION_RANK_LABEL : Number.POSITIVE_INFINITY,
+				),
 				/*
 				 * The catalogue's own preview is context, not a name: a row that matched
 				 * only inside it belongs in the list, at the bottom of its group, which is
@@ -549,6 +569,7 @@ export function usePaletteItems({
 				!search.isError &&
 				search.data?.query !== terms,
 			unavailable: wantsChats && terms.length > 0 && !chatSearchSupported,
+			unreachable: !capabilities.isSuccess,
 			overLong: search.refused,
 		},
 	};
