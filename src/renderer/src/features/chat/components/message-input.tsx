@@ -7,6 +7,7 @@ import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
 	SEND_HELD,
 	type SendOutcome,
+	restoreSubmittedText,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import {
@@ -121,6 +122,22 @@ export type ComposerSendError = {
 	 * screen, which is not something a user can reproduce by hand.
 	 */
 	heldText?: string;
+	/**
+	 * The payload a refusal that admitted NOTHING owes the box, when the store is
+	 * still holding it (`refusedBeforeAdmissionText` in the canonical store).
+	 *
+	 * A separate field from `heldText` because they are opposite answers to
+	 * opposite facts: a claim must stay OUT of the box (the message may be on the
+	 * owner and its echo is painted), this one belongs back IN it.
+	 *
+	 * It has to be handed over rather than restored by the composer that sent it,
+	 * which is what the local restore in `use-message-input` does: on the arm a
+	 * "New chat" uses, the session is created inside the send and the panel is
+	 * re-keyed onto the id that send minted, so the restoring composer is already
+	 * unmounted and the one that replaces it has no copy of the text. The store's
+	 * row is the surviving copy, and this is how it reaches the box.
+	 */
+	refusedText?: string;
 	/** Retire the alert after the held text has been restored into the box. */
 	onRestoreHeld?: () => void;
 	/** Drop the claim AND the draft. The message is finished with. */
@@ -645,6 +662,59 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			pendingCaret.current = null;
 			field.setSelectionRange(at, at);
 		}, [newMessage, textareaRef]);
+
+		/*
+		 * THE BOX TAKES BACK A REFUSED SEND'S TEXT FROM THE STORE.
+		 *
+		 * `useMessageInput` already restores a refused send by writing the submitted
+		 * text into its own state, and that is enough only while the composer that
+		 * sent it is still mounted. It is NOT, on the arm a "New chat" uses: the send
+		 * creates the session inside its own call, the page re-keys this panel onto
+		 * the id that send minted, and React unmounts the composer whose state held
+		 * the text. The replacement mounts empty, because the text is per-conversation
+		 * local state and this conversation did not exist when the send began - so the
+		 * refusal's own instruction ("move it below your text") pointed at text that
+		 * was no longer anywhere on screen, and the only control left was Discard
+		 * (UX round 3 U14, QA round 3 Q7).
+		 *
+		 * So the store's retained row supplies it (`refusedBeforeAdmissionText`) and
+		 * this adopts it - the same rule, and the same `restoreSubmittedText`, that the
+		 * local restore applies, now applied to a box that can be newly mounted: on a
+		 * remount the refusal is adopted again, which is also what makes the text
+		 * reachable after a reload instead of sitting in a persisted row no route
+		 * renders. Only an EMPTY box is written, so anything typed while the send was
+		 * in flight is never overwritten.
+		 *
+		 * The caret goes to the END of the restored text, which is where the user's
+		 * was when they pressed Send - and it is not cosmetic here. The planner reads
+		 * the token AT THE CARET (`slash-submit.ts`), so a newly mounted composer left
+		 * at position 0 reads a leading `/usage` line as the command to RUN and the
+		 * next Send splices it out instead of attempting the message: the refusal's
+		 * own remedy would be the thing that swallowed it. At the end of the draft the
+		 * text reads as prose, exactly as it did on the arm that never re-mounted, and
+		 * the popup the box had opened at position 0 closes with it.
+		 *
+		 * Guarded on the payload already being handed over, once per distinct payload
+		 * and never twice for the same one: without that, emptying the box on purpose
+		 * would re-fill it on the next render, and a dismissal - which keeps the
+		 * payload and clears only the sentence - would do the same.
+		 */
+		const refusedText = sendError?.refusedText;
+		const adoptedRefusedTextRef = useRef<string | undefined>(undefined);
+		useEffect(() => {
+			if (
+				refusedText === undefined ||
+				adoptedRefusedTextRef.current === refusedText
+			)
+				return;
+			adoptedRefusedTextRef.current = refusedText;
+			const restored = restoreSubmittedText(newMessage, refusedText);
+			// The user's own text is what the box holds, so it keeps the caret too.
+			if (restored === newMessage) return;
+			pendingCaret.current = restored.length;
+			setCaret(restored.length);
+			setNewMessage(restored);
+		}, [refusedText, newMessage, setNewMessage]);
 
 		/*
 		 * What Enter should do with this draft, decided by the pure planner — the ONLY
