@@ -1,0 +1,413 @@
+# The self-seal invariant, the field break, and every repair
+
+> **SUPERSEDED MECHANISM - read the measurements, not the remedy.**
+>
+> The second half of this file measures a filesystem seal applied to the bundled
+> interpreter trees, reached through `scripts/after-pack.mjs` and asserted by a gate
+> check named `app-python-trees-sealed`. **Neither the step nor the check exists any
+> more**, and the sections that describe them as the fix (3 and 5, and the gate run
+> in 6) are kept only as the record of what was measured and why it was not enough.
+> The seal could not be a correctness mechanism: the ZIP Squirrel.Mac stages does
+> not carry access-control entries, so the bundle an in-place update lands in is
+> unsealed by construction - the window the incident sits in. The shipped mechanism
+> ships the interpreter as inert data under a private resource namespace and runs a
+> copied runtime outside every `.app`; see
+> [../managed-python-runtime/README.md](../managed-python-runtime/README.md).
+>
+> Everything measured here about the FIELD state, the shipped artifact and the
+> reproduction of the break still holds and is still depended on.
+
+Measured on this machine, 2026-09-14, against the signed 0.22.2 disk image mounted
+at `/Volumes/Local Operator 0.22.2-arm64` (source
+`~/Downloads/local-operator-ui-0.22.2-arm64.dmg`) and copies taken out of it, plus
+a locally packaged build of this branch. Every block below is a command and its own
+output, in the order it was run.
+
+What it establishes, in the same order:
+
+1. the operator's machine state, read-only: the venv that is built on the
+   installed bundle, the marker the 0.22.2 install left, and the log lines that
+   say no packaged instance ever came back;
+2. the shipped artifact is born writable, and one unguarded interpreter run in it
+   breaks its seal exactly as the field install broke - including the same
+   `webbrowser.cpython-312.pyc`;
+3. the app's own heal takes that break back to `valid on disk`, at the cost
+   measured for the start-up probe (the build-step seal this section then treats as
+   the remedy is **superseded** - see the banner above);
+4. the app-managed venv is built on the interpreter inside the installed bundle,
+   which is the propagation path - the finding the shipped fix is built on;
+5. the release gate, as it stood, failed the shipped artifact and passed a build of
+   this branch - by a check that has since been replaced by the structural one in
+   `docs/CODE_SIGNING.md`;
+6. the contract tests fail when the guards are removed, and for a new spawn site
+   that omits them.
+
+What this file does **not** establish, and does not claim: which process wrote the
+bytecode, that the in-app update broke the bundle, or that the bundle broke twice.
+See the retractions in [README.md](README.md).
+
+## 1. The operator's machine, read-only
+
+The installed copy was removed by hand during the repair of this incident, so the
+artifact side of every measurement below is a copy taken out of the signed image.
+The log and userData state it left behind is untouched.
+
+```
+# The operator's machine, read-only, 2026-09-14T15:29:22Z
+
+$ ls -d "/Applications/Local Operator.app"
+ls: /Applications/Local Operator.app: No such file or directory
+(absent: the installed copy was removed by hand during today's repair, so every measurement below is read from the log and from the copy taken out of the signed image)
+
+$ cat "~/Library/Application Support/Local Operator/local-operator-venv/pyvenv.cfg"
+home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin
+include-system-site-packages = false
+version = 3.12.10
+executable = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin/python3.12
+command = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin/python3 -m venv /Users/damian/Library/Application Support/Local Operator/local-operator-venv
+
+$ ls -l ".../local-operator-venv/bin/python3"
+lrwxr-xr-x@ 1 damian  staff  78 May  2 11:06 /Users/damian/Library/Application Support/Local Operator/local-operator-venv/bin/python3 -> /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin/python3
+
+$ cat "/Users/damian/Library/Application Support/Local Operator/pending-update-install.json"
+{
+  "targetVersion": "0.22.2",
+  "artifactPath": "/Users/damian/Library/Caches/local-operator-ui-updater/pending/local-operator-ui-0.22.2-arm64.zip",
+  "startedAt": "2026-09-14T13:48:43.239Z",
+  "watchdogPid": 77355
+}
+
+$ grep -n 'sealed against bytecode' logs/backend-installer.log | tail -12
+3525:[2026-09-13 22:32:00.240] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+3532:[2026-09-13 22:36:58.928] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+3539:[2026-09-13 22:39:20.686] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+3607:[2026-09-13 23:15:55.219] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4503:[2026-09-14 03:18:03.467] [info]  Bundled interpreter trees sealed against bytecode writes: (none present); 0 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4510:[2026-09-14 03:18:57.882] [info]  Bundled interpreter trees sealed against bytecode writes: (none present); 0 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4523:[2026-09-14 03:20:58.217] [info]  Bundled interpreter trees sealed against bytecode writes: (none present); 0 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4530:[2026-09-14 03:21:50.767] [info]  Bundled interpreter trees sealed against bytecode writes: (none present); 0 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4642:[2026-09-14 08:37:24.056] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4650:[2026-09-14 08:38:23.609] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4688:[2026-09-14 09:03:28.071] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+4714:[2026-09-14 09:32:10.153] [info]  Bundled interpreter trees sealed against bytecode writes: /Applications/Local Operator.app/Contents/Resources/python_aarch64; 134 directory path(s) selected and now refusing new entries, 0 bytecode file(s) selected and now refusing rewrites
+
+$ grep -n 'Update service initialized' logs/update-service.log | awk '$0 >= "[2026-09-14 09:32"'  (the ones at and after the 0.22.2 update)
+44937:[2026-09-14 09:32:11.774] [info]  Update service initialized. Dev mode: false, NPX install: false
+47312:[2026-09-14 09:50:41.994] [info]  Update service initialized. Dev mode: true, NPX install: false
+47321:[2026-09-14 09:51:26.795] [info]  Update service initialized. Dev mode: true, NPX install: false
+47326:[2026-09-14 09:57:11.880] [info]  Update service initialized. Dev mode: true, NPX install: false
+47335:[2026-09-14 09:57:40.471] [info]  Update service initialized. Dev mode: true, NPX install: false
+47344:[2026-09-14 09:57:58.263] [info]  Update service initialized. Dev mode: true, NPX install: false
+47349:[2026-09-14 10:02:23.568] [info]  Update service initialized. Dev mode: true, NPX install: false
+47358:[2026-09-14 10:03:14.742] [info]  Update service initialized. Dev mode: true, NPX install: false
+47363:[2026-09-14 10:04:34.154] [info]  Update service initialized. Dev mode: true, NPX install: false
+47372:[2026-09-14 10:05:23.438] [info]  Update service initialized. Dev mode: true, NPX install: false
+47381:[2026-09-14 10:06:16.877] [info]  Update service initialized. Dev mode: true, NPX install: false
+47386:[2026-09-14 10:06:58.188] [info]  Update service initialized. Dev mode: true, NPX install: false
+47395:[2026-09-14 10:08:26.673] [info]  Update service initialized. Dev mode: true, NPX install: false
+47409:[2026-09-14 10:19:53.897] [info]  Update service initialized. Dev mode: true, NPX install: false
+47414:[2026-09-14 10:20:48.782] [info]  Update service initialized. Dev mode: true, NPX install: false
+47423:[2026-09-14 10:21:55.748] [info]  Update service initialized. Dev mode: true, NPX install: false
+47426:[2026-09-14 10:23:19.541] [info]  Update service initialized. Dev mode: true, NPX install: false
+47437:[2026-09-14 10:23:23.216] [info]  Update service initialized. Dev mode: true, NPX install: false
+47446:[2026-09-14 10:25:48.543] [info]  Update service initialized. Dev mode: true, NPX install: false
+47460:[2026-09-14 10:35:09.684] [info]  Update service initialized. Dev mode: true, NPX install: false
+47476:[2026-09-14 10:37:05.016] [info]  Update service initialized. Dev mode: true, NPX install: false
+47485:[2026-09-14 10:39:51.752] [info]  Update service initialized. Dev mode: true, NPX install: false
+47501:[2026-09-14 10:44:18.952] [info]  Update service initialized. Dev mode: true, NPX install: false
+47510:[2026-09-14 10:46:10.583] [info]  Update service initialized. Dev mode: true, NPX install: false
+47521:[2026-09-14 10:49:16.295] [info]  Update service initialized. Dev mode: true, NPX install: false
+47544:[2026-09-14 10:53:24.928] [info]  Update service initialized. Dev mode: true, NPX install: false
+47553:[2026-09-14 10:54:12.026] [info]  Update service initialized. Dev mode: true, NPX install: false
+47580:[2026-09-14 10:57:05.469] [info]  Update service initialized. Dev mode: true, NPX install: false
+47603:[2026-09-14 11:02:39.597] [info]  Update service initialized. Dev mode: true, NPX install: false
+47619:[2026-09-14 11:04:22.654] [info]  Update service initialized. Dev mode: true, NPX install: false
+47632:[2026-09-14 11:05:48.924] [info]  Update service initialized. Dev mode: true, NPX install: false
+47658:[2026-09-14 11:09:41.153] [info]  Update service initialized. Dev mode: true, NPX install: false
+47697:[2026-09-14 11:15:02.864] [info]  Update service initialized. Dev mode: true, NPX install: false
+47709:[2026-09-14 11:16:56.897] [info]  Update service initialized. Dev mode: true, NPX install: false
+47716:[2026-09-14 11:17:06.364] [info]  Update service initialized. Dev mode: true, NPX install: false
+47748:[2026-09-14 11:19:32.201] [info]  Update service initialized. Dev mode: true, NPX install: false
+47844:[2026-09-14 11:26:32.812] [info]  Update service initialized. Dev mode: true, NPX install: false
+```
+
+## 2. The shipped artifact is born writable, and its own interpreter breaks its seal
+
+A copy of the app out of the signed image, the gate's own write probe run against
+it, one unguarded interpreter run inside it (`bin/python3 -c "import webbrowser"`),
+the app's own heal, and then the build step's seal. `codesign --verify
+--verbose=2`'s `--prepared:`/`--validated:` progress lines are dropped: one line
+per nested helper, and nothing about the seal.
+
+```
+== 1. the artifact as it ships ==
+$ codesign --verify --deep "/tmp/seal-evidence/unsealed/Shipped.app"; echo $?   -> 0
+gate (as shipped): FAIL - 134 of 134 path(s) accept a...
+
+$ ls -lde .../python_aarch64/lib/python3.12
+drwxr-xr-x@ 202 damian  staff  6464 Sep 14 11:20 /tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12
+
+== 2. an unguarded python runs inside it (the field break) ==
+$ "/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/bin/python3" -c "import webbrowser"   -> exit 0, stdout "webbrowser", stderr ""
+  .pyc under the tree: 0 before, 32 after (32 written)
+$ codesign --verify --deep "/tmp/seal-evidence/unsealed/Shipped.app"; echo $?   -> 1
+  file added: /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/aliases.cpython-312.pyc
+  file added: /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc
+  file added: /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc
+
+== 3. the app's own heal (`healPythonBytecode`) ==
+$ parseSealViolations(probe.stdout) -> ["added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added","added"]
+heal: healable=true removed=32 reason="32 bytecode file(s) added after signing"
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/aliases.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/_compression.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/copyreg.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/functools.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/contextlib.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/operator.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/shlex.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/threading.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/_weakrefset.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/reprlib.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/signal.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/keyword.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/bz2.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/warnings.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/enum.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/types.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/selectors.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/fnmatch.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/lzma.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/locale.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/shutil.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/subprocess.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/__pycache__/webbrowser.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/collections/__pycache__/abc.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/collections/__pycache__/__init__.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/re/__pycache__/_compiler.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/re/__pycache__/_constants.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/re/__pycache__/__init__.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/re/__pycache__/_casefix.cpython-312.pyc
+  removed /private/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12/re/__pycache__/_parser.cpython-312.pyc
+$ codesign --verify --deep "/tmp/seal-evidence/unsealed/Shipped.app"; echo $?   -> 0
+gate (healed but not sealed): FAIL - 138 of 138 path(s) accept a...
+
+== 4. the build step seals it (`scripts/after-pack.mjs`) ==
+Sealed the bundled interpreter trees against bytecode writes: /tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64; 138 directory path(s) now refuse new entries and 0 bytecode file(s) are refused a rewrite
+$ codesign --verify --deep "/tmp/seal-evidence/unsealed/Shipped.app"; echo $?   -> 0
+gate (sealed by the build): PASS - 138 path(s) under Contents/Resources/python[/_aarch64] refuse a...
+$ ls -lde .../python_aarch64/lib/python3.12
+drwxr-xr-x@ 203 damian  staff  6496 Sep 14 11:20 /tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/lib/python3.12
+ 0: group:everyone deny add_file,add_subdirectory
+
+== 5. the same unguarded python runs again, on the sealed artifact ==
+$ "/tmp/seal-evidence/unsealed/Shipped.app/Contents/Resources/python_aarch64/bin/python3" -c "import webbrowser"   -> exit 0, stdout "webbrowser", stderr ""
+  .pyc under the tree: 0 before, 0 after (0 written)
+$ codesign --verify --deep "/tmp/seal-evidence/unsealed/Shipped.app"; echo $?   -> 0
+
+== 6. the write the field break consisted of, attempted directly ==
+  write refused: EACCES
+```
+
+## 3. What the start-up probe costs
+
+The probe the start-up repair pass runs is the same `codesign --verify --deep` the
+pre-flight runs, over the whole bundle, so it is deferred 15 s past window creation
+and unref'd rather than run in the launch path.
+
+```
+$ time codesign --verify --deep --verbose=2 "/tmp/seal-evidence/unsealed/Shipped.app"   (the shipped 0.22.2 app, sealed by this branch's build step)
+/tmp/seal-evidence/unsealed/Shipped.app: valid on disk
+real 4.06
+/tmp/seal-evidence/unsealed/Shipped.app: valid on disk
+real 4.31
+
+$ du -sh "/tmp/seal-evidence/unsealed/Shipped.app"
+378M	/tmp/seal-evidence/unsealed/Shipped.app
+```
+
+## 4. The app-managed venv is built on the interpreter inside the installed bundle
+
+The propagation path: a venv created by the bundle's own interpreter, then run by
+a process the app never spawned, before and after the app writes its guard into
+that venv. `added`/`rewritten` are decided by path AND mtime, so "0 rewritten"
+means the tree really did not change.
+
+```
+== the app-managed venv, built the way the install script builds it ==
+$ "/tmp/seal-evidence/venvtest/python_aarch64/bin/python3" -m venv /tmp/seal-evidence/venvtest/venv   -> exit 0
+$ cat /tmp/seal-evidence/venvtest/venv/pyvenv.cfg
+home = /tmp/seal-evidence/venvtest/python_aarch64/bin
+include-system-site-packages = false
+version = 3.12.10
+executable = /private/tmp/seal-evidence/venvtest/python_aarch64/bin/python3.12
+command = /tmp/seal-evidence/venvtest/python_aarch64/bin/python3 -m venv /tmp/seal-evidence/venvtest/venv
+$ ls -l /tmp/seal-evidence/venvtest/venv/bin/python3
+lrwxr-xr-x@ 1 damian  wheel  54 Sep 14 11:30 /tmp/seal-evidence/venvtest/venv/bin/python3 -> /tmp/seal-evidence/venvtest/python_aarch64/bin/python3
+  (that one command wrote 168 .pyc into the interpreted tree)
+
+== the operator's case: a process nobody's app started, running that venv ==
+$ "/tmp/seal-evidence/venvtest/venv/bin/python3" -c "import sys, webbrowser"   -> exit 0, dont_write_bytecode=False
+  unguarded: 168 .pyc before, 169 after -> 1 added, 0 rewritten
+    added     lib/python3.12/__pycache__/webbrowser.cpython-312.pyc
+
+== the same run, after the app's own guard is written into the venv ==
+ensureVenvBytecodeGuard: written=true path=/tmp/seal-evidence/venvtest/venv/lib/python3.12/site-packages/sitecustomize.py
+  /tmp/seal-evidence/venvtest/venv/lib/python3.12/site-packages/sitecustomize.py now sets sys.dont_write_bytecode for every process using this venv
+$ "/tmp/seal-evidence/venvtest/venv/bin/python3" -c "import sys, webbrowser"   -> exit 0, dont_write_bytecode=True
+  guarded: 169 .pyc before, 169 after -> 0 added, 0 rewritten
+
+(the guard's limit - the interpreter's own startup imports, which run before `site` imports this file - is measured in 05-guard-limit.txt)
+```
+
+## 5. The limit of the guard, which is why a guard alone was not the answer
+
+Superseded in its conclusion: the half that would have been missing was going to be
+filled by the tree seal, and the seal could not hold. What the measurement below
+still establishes, and is still the finding the shipped fix rests on, is that a
+guard cannot cover an interpreter that is never started through the app - which is
+why the shipped answer removes the in-bundle interpreter from the resolution path
+entirely instead of guarding it harder.
+
+`site` imports `sitecustomize` after `site.py`'s own startup imports, so a guarded
+python still writes those. Two fresh trees off the shipped image, the same import
+in each; the control run has no guard on `PYTHONPATH`, the guarded one has the
+app's own guard file.
+
+```
+== a fresh interpreter tree, no bytecode, no seal, no env guard ==
+$ python3 -c "import sys, webbrowser" -> dont_write_bytecode=False   (32 .pyc added)
+    lib/python3.12/__pycache__/_compression.cpython-312.pyc
+    lib/python3.12/__pycache__/_weakrefset.cpython-312.pyc
+    lib/python3.12/__pycache__/bz2.cpython-312.pyc
+    lib/python3.12/__pycache__/contextlib.cpython-312.pyc
+    lib/python3.12/__pycache__/copyreg.cpython-312.pyc
+    lib/python3.12/__pycache__/enum.cpython-312.pyc
+    lib/python3.12/__pycache__/fnmatch.cpython-312.pyc
+    lib/python3.12/__pycache__/functools.cpython-312.pyc
+    lib/python3.12/__pycache__/keyword.cpython-312.pyc
+    lib/python3.12/__pycache__/locale.cpython-312.pyc
+    lib/python3.12/__pycache__/lzma.cpython-312.pyc
+    lib/python3.12/__pycache__/operator.cpython-312.pyc
+    lib/python3.12/__pycache__/reprlib.cpython-312.pyc
+    lib/python3.12/__pycache__/selectors.cpython-312.pyc
+    lib/python3.12/__pycache__/shlex.cpython-312.pyc
+    lib/python3.12/__pycache__/shutil.cpython-312.pyc
+    lib/python3.12/__pycache__/signal.cpython-312.pyc
+    lib/python3.12/__pycache__/subprocess.cpython-312.pyc
+    lib/python3.12/__pycache__/threading.cpython-312.pyc
+    lib/python3.12/__pycache__/types.cpython-312.pyc
+    lib/python3.12/__pycache__/warnings.cpython-312.pyc
+    lib/python3.12/__pycache__/webbrowser.cpython-312.pyc
+    lib/python3.12/collections/__pycache__/__init__.cpython-312.pyc
+    lib/python3.12/collections/__pycache__/abc.cpython-312.pyc
+    lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc
+    lib/python3.12/encodings/__pycache__/aliases.cpython-312.pyc
+    lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc
+    lib/python3.12/re/__pycache__/__init__.cpython-312.pyc
+    lib/python3.12/re/__pycache__/_casefix.cpython-312.pyc
+    lib/python3.12/re/__pycache__/_compiler.cpython-312.pyc
+    lib/python3.12/re/__pycache__/_constants.cpython-312.pyc
+    lib/python3.12/re/__pycache__/_parser.cpython-312.pyc
+
+== the same tree, with the app's guard on PYTHONPATH ==
+$ PYTHONPATH=<guard> python3 -c "import sys, webbrowser" -> dont_write_bytecode=True   (3 .pyc added)
+    lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc
+    lib/python3.12/encodings/__pycache__/aliases.cpython-312.pyc
+    lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc
+
+control added 32; guarded added 3; the guard removed 29 of them
+every file the guard still allowed is a startup import: true
+```
+
+## 6. The release gate: FAIL on the shipped artifact, PASS on a build of this branch
+
+**Superseded as a description of the gate.** The check this section runs
+(`pythonTreeSealCheck`, `app-python-trees-sealed`) has been removed with the
+mechanism it asserted, and the gate's checks are now the structural ones in
+`docs/CODE_SIGNING.md`. What the block below still records, and the reason it is
+kept, is the shipped artifact being refused by a gate that reads the artifact
+rather than the build output - the property the current gate keeps, on the
+delivered `.dmg` and `.zip`.
+
+The first block is the gate's seal check against the shipped copy. The second is
+`node scripts/verify-macos-artifacts.mjs` against a real `pnpm build` +
+`electron-builder --dir --arm64` output of this branch, whose `afterPack` sealed
+134 directories - the same count the field log reports for the installed 0.22.2.
+The three signing checks fail because this machine has no Developer ID identity;
+that is the local state, not this change, and the seal check is the one under test.
+
+```
+$ node -e '...import pythonTreeSealCheck...'   # the gate's seal check, on the shipped copy
+gate (as shipped): FAIL - 134 of 134 path(s) accept a new file: ...
+  (the full line is section 2's first block; the check refuses the artifact)
+```
+```
+Checking app: dist/mac-arm64/Local Operator.app
+Checking disk image: /Users/damian/Downloads/local-operator-ui-0.22.2-arm64.dmg
+FAIL app-codesign: codesign --verify --deep --strict on the app -> dist/mac-arm64/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-spctl: spctl -a -vvv -t exec on the app -> dist/mac-arm64/Local Operator.app: code has no resources but signature indicates they must be present
+FAIL app-stapler: stapler validate on the app -> Processing: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac-arm64/Local Operator.app | Local Operator.app does not have a ticket stapled to it.
+PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+PASS app-one-bundled-python: the bundled python interpreter tree this architecture needs
+PASS app-python-trees-sealed: the bundled python trees refuse bytecode writes
+PASS dmg-spctl: spctl -a -vvv -t open on the disk image
+PASS dmg-stapler: stapler validate on the disk image
+
+3 of 8 artifact checks failed. The release must not be published until every check above passes.
+```
+
+## 7. The contract tests fail without the guards, and for a new spawn site
+
+Both demonstrations are one temporary edit, reverted immediately after the run;
+the sources committed here are the ones the tests pass against.
+
+```
+$ (demonstration A) the refusal removed from withPythonBytecodeCache, then: node scripts/run-desktop-tests.mjs scripts/python-bytecode-cache.test.mjs
+
+✖ the refusal is set beside the redirect, and overrides a stale falsy value (0.574ms)
+✖ every backend spawn carries the prefix even with the shell-env load unresolved (235.434708ms)
+✖ the belt: shellEnv is corrected after the rc files have been sourced (100.827292ms)
+✖ the installer's script spawn carries the prefix into the venv it creates (11.999875ms)
+✖ the update service's python probe runs with the guards in the child's own environment (241.548958ms)
+ℹ tests 27
+ℹ pass 22
+ℹ fail 5
+✖ failing tests:
+✖ the refusal is set beside the redirect, and overrides a stale falsy value (0.574ms)
+✖ every backend spawn carries the prefix even with the shell-env load unresolved (235.434708ms)
+✖ the belt: shellEnv is corrected after the rc files have been sourced (100.827292ms)
+✖ the installer's script spawn carries the prefix into the venv it creates (11.999875ms)
+✖ the update service's python probe runs with the guards in the child's own environment (241.548958ms)
+```
+```
+$ (demonstration B) a NEW spawn site added to src/main/update-service.ts that runs python without the guards, then:
+$ node scripts/run-desktop-tests.mjs scripts/python-bytecode-cache.test.mjs
+
+✖ every child-process spawn site is enumerated, and the python ones carry the guards (199.026125ms)
+ℹ tests 27
+ℹ pass 26
+ℹ fail 1
+✖ failing tests:
+✖ every child-process spawn site is enumerated, and the python ones carry the guards (199.026125ms)
+  AssertionError [ERR_ASSERTION]: every spawn site must be named in SPAWN_SITES - either with the guarded environment it passes (runsPython), or with the command it starts and the reason no interpreter runs under it (runsCommand/passThrough). A new site fails here on purpose: that is the site most likely to have forgotten the guard.
+  +   'src/main/update-service.ts:1720 spawn #2: "sh", ["-c", plan.script], { detached: true, stdio: "ignore", env: { ...process.'
+    actual: [ 'src/main/update-service.ts:1720 spawn #2: "sh", ["-c", plan.script], { detached: true, stdio: "ignore", env: { ...process.' ],
+```
+
+## What could not be produced here, and where it is covered
+
+- There is no Developer ID identity on this machine (`security find-identity -v -p
+  codesigning` -> `0 valid identities found`), so a locally packaged build cannot
+  pass the three signing checks in section 5; they fail with `code has no
+  resources but signature indicates they must be present`, which is what an
+  unsigned local build looks like. The positive direction on real signed artifacts
+  runs in `publish.yml`.
+- The failure is not only the UI's: recorded from a read-only trace of the
+  operator's wake job (`com.local-operator.wakes`), the installed app's broken
+  seal plus its quarantine attribute made the OS refuse to load
+  `Contents/Resources/python_aarch64/lib/libpython3.12.dylib` ("library load
+  disallowed by system policy"), which took that job's sessions out for the
+  morning. It is recorded rather than reproduced here: the installed copy it was
+  about no longer exists on this machine.
