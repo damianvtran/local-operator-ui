@@ -1,0 +1,229 @@
+{
+  "backend": "http://127.0.0.1:1131",
+  "out": "/tmp/interrupt-live-proof-r4",
+  "steps": [
+    {
+      "step": "bridge",
+      "present": true
+    },
+    {
+      "step": "firstRun.dialogBefore",
+      "present": false
+    },
+    {
+      "step": "firstRun.seeded",
+      "stored": "{\"state\":{\"isModalComplete\":true,\"isTourComplete\":true,\"currentStep\":0},\"version\":0}"
+    },
+    {
+      "step": "firstRun.settled",
+      "cleared": true,
+      "stored": "{\"state\":{\"isModalComplete\":true,\"isTourComplete\":true,\"currentStep\":\"connect_provider\"},\"version\":0}"
+    },
+    {
+      "step": "capabilities",
+      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":1,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"lifecycle\":1,\"completion_ack\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1}}"
+    },
+    {
+      "step": "turn1.admit",
+      "status": 200,
+      "detail": "prompt admitted"
+    },
+    {
+      "step": "turn1.streaming",
+      "streaming": true,
+      "outcome": ""
+    },
+    {
+      "step": "turn1.control",
+      "present": true
+    },
+    {
+      "step": "turn1.pressed",
+      "x": 1287,
+      "y": 819,
+      "rect": {
+        "w": 32,
+        "h": 32,
+        "top": 803,
+        "left": 1271
+      },
+      "target": "button[aria-label=\"Stop\"]",
+      "attempts": [
+        {
+          "x": 1287,
+          "y": 819,
+          "owner": "button[aria-label=\"Stop\"]",
+          "hit": true
+        }
+      ]
+    },
+    {
+      "step": "turn1.settled",
+      "streaming": false,
+      "outcome": "aborted"
+    },
+    {
+      "step": "turn1.controlAfter",
+      "present": false
+    },
+    {
+      "step": "slot.clusterIdle",
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ]
+    },
+    {
+      "step": "slot.repress",
+      "point": {
+        "x": 1287,
+        "y": 819
+      },
+      "owner": "div|not-reserved",
+      "after": {
+        "recording": false,
+        "mic": true
+      }
+    },
+    {
+      "step": "slot.clusterAfterRepress",
+      "boxes": [
+        {
+          "label": "Start recording",
+          "x": 1235,
+          "w": 32,
+          "centre": 1251
+        },
+        {
+          "label": "reserved-slot",
+          "x": 1271,
+          "w": 32,
+          "centre": 1287
+        },
+        {
+          "label": "Send message",
+          "x": 1307,
+          "w": 32,
+          "centre": 1323
+        }
+      ]
+    },
+    {
+      "step": "turn2.admit",
+      "status": 200,
+      "detail": "prompt admitted"
+    },
+    {
+      "step": "turn2.streaming",
+      "streaming": true,
+      "outcome": "aborted"
+    },
+    {
+      "step": "turn2.control",
+      "present": true
+    },
+    {
+      "step": "turn2.settled",
+      "streaming": false,
+      "outcome": "aborted"
+    },
+    {
+      "step": "turn2.controlAfter",
+      "present": false
+    },
+    {
+      "step": "session.survived",
+      "status": 200,
+      "detail": "prompt admitted"
+    },
+    {
+      "step": "session.survivedStreaming",
+      "streaming": true,
+      "outcome": "aborted"
+    },
+    {
+      "step": "session.cleanup",
+      "status": 200,
+      "body": {
+        "status": 200,
+        "message": "Desktop session result.",
+        "result": {
+          "status": "interrupted",
+          "receipt": "stopping this turn",
+          "children_running": 0,
+          "background_jobs": 0,
+          "replayed": false
+        }
+      }
+    },
+    {
+      "step": "pane.opened",
+      "opened": true
+    },
+    {
+      "step": "pane.turn",
+      "status": 200,
+      "detail": "prompt admitted"
+    },
+    {
+      "step": "pane.streaming",
+      "streaming": true,
+      "outcome": "aborted"
+    },
+    {
+      "step": "pane.escape",
+      "openBefore": true,
+      "openAfter": false,
+      "streamingAfter": true
+    },
+    {
+      "step": "pane.cleanup",
+      "status": 200,
+      "body": {
+        "status": 200,
+        "message": "Desktop session result.",
+        "result": {
+          "status": "interrupted",
+          "receipt": "stopping this turn",
+          "children_running": 0,
+          "background_jobs": 0,
+          "replayed": false
+        }
+      }
+    },
+    {
+      "step": "idle.streaming",
+      "streaming": false,
+      "outcome": "aborted"
+    },
+    {
+      "step": "idle.control",
+      "present": false
+    },
+    {
+      "step": "idle.escape",
+      "draftBefore": "a draft the interrupt must not clear",
+      "draftAfter": "a draft the interrupt must not clear",
+      "untouched": true,
+      "noticeElements": 0
+    }
+  ],
+  "session": "a286880cf094",
+  "viewport": "{\"w\":1380,\"h\":868,\"dpr\":2}"
+}
