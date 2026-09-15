@@ -59,26 +59,41 @@ const rowStyle =
  * agent or team an untargeted-vs-targeted draft names.
  *
  * WHY THE STEP IS `sunken` AND NOT THE ACCENT WASH. This panel is `bg-surface`
- * (:686), and `accentWash` is ΔE00 **1.05** from `surface` in tokyoNight
- * (#262B3F on #24283B) — the operator's own report, "you can't tell from the
- * sidebar which one is selected", measured. Hover is louder than selection in
- * that theme (the `elevated` step those rows already carry, ΔE00 4.58), so the
- * pointer read as the current row while the current row did not. The wash is
- * not broken everywhere — the app rail and the settings rail draw it on
- * `canvas`, where it measures 6.45 in tokyoNight — which is why this is a
- * per-call-site ground and NOT a palette change: strengthening `accentWash` for
- * this one panel would make every hover tint in the app louder.
+ * (the `nav aria-label="Chats"` root), and `accentWash` is ΔE00 **1.05** from
+ * `surface` in tokyoNight (#262B3F on #24283B) — the operator's own report, "you
+ * can't tell from the sidebar which one is selected", measured. Hover is louder
+ * than selection in that theme (the `elevated` step those rows already carry,
+ * ΔE00 4.58), so the pointer read as the current row while the current row did
+ * not. The wash is not broken everywhere — the app rail paints it on `sunken`,
+ * where it measures 9.6 — which is why this is a per-call-site ground and NOT a
+ * palette change: strengthening `accentWash` for the panels that draw it on
+ * `surface` would make every hover tint in the app louder. (The SETTINGS rail
+ * was the other `surface` panel and is fixed with this one, by the same swap:
+ * `features/settings/components/settings-sidebar.tsx`.)
  *
  * `sunken` is a step off `surface` in every one of the twelve palettes, and the
  * step is already gated as a pair: `contrast-contract.mjs` asserts `surface`
  * against `sunken` and `sunken` against `elevated` at the field floor of ΔE00
- * 2.0. The measured worst case is **3.75** (iceberg), against the wash's 1.05;
- * `elevated` was the other candidate and is rejected at 2.15 in that same
- * palette — a margin of 0.15 over a floor is not a fix. The step also keeps
- * selection and hover on OPPOSITE sides of the panel ground (recessed vs
+ * 2.0. The measured worst case is **3.75** (iceberg), against the wash's 1.05,
+ * which is below that floor in **one** of the twelve palettes (the next lowest is
+ * dracula at 3.28); `elevated` was the other candidate and is rejected at 2.15 in
+ * that same palette — a margin of 0.15 over a floor is not a fix. The step also
+ * keeps selection and hover on OPPOSITE sides of the panel ground (recessed vs
  * raised), so the two can never be confused, and only the ground carries the
  * fact: ground plus mark plus text for one state is what docs/branding.md § 2
  * rules out.
+ *
+ * AND WHY IT IS ON TWO ELEMENTS OF THE ENTITY ROW. The mark cannot be carried by
+ * one class there: the name button inside the row carries `rowStyle`, so its
+ * `hover:bg-elevated` paints over the wrapper's ground and the pointer replaced
+ * the mark across the whole row (round 1, the MAJOR this file's entity row was
+ * changed for). The wrapper paints the ground — it fills the gaps and the rounded
+ * corners the 24px controls leave — the name button paints it too, because its
+ * own `hover:` half is the only thing that beats the step it inherits, and the
+ * two 24px controls drop their hover step while the row is current. That is one
+ * state spread over three elements by the DOM, not three decisions;
+ * `scripts/chat-sidebar-selection.test.mjs` resolves each expression through the
+ * shipped `cn` for that reason rather than looking for a name.
  *
  * WHY THE HOVER OVERRIDE IS IN THIS STRING. `rowStyle` carries
  * `hover:bg-elevated`, and a hover variant outranks a bare background in the
@@ -493,17 +508,25 @@ export function ChatSidebar({
 		)
 			return null;
 		const Icon = kind === "team" ? Users : Bot;
+		/*
+		 * Whether THIS entity is the row a staged draft belongs to.
+		 *
+		 * Named because three elements need it, and the reason is the defect round 1
+		 * found here: the ground used to be on the wrapper `div` alone while the name
+		 * button inside it carries `rowStyle` — whose `hover:bg-elevated` a CHILD
+		 * paints over its parent's background, so the pointer replaced the mark across
+		 * the whole row. The ground therefore goes on the wrapper (it fills the gaps
+		 * and the rounded corners the 24px controls do not cover) AND on the name
+		 * button, where `rowCurrent`'s `hover:` half is what beats the inherited hover
+		 * step; and the two 24px controls drop the hover step while they sit on it.
+		 */
+		const staged = draft?.target?.kind === kind && draft.target.name === name;
 		return (
 			<div key={key} data-entity>
 				<div
 					className={cn(
 						"group flex h-8 items-center gap-1 rounded-md",
-						// The same current-row ground as the rows below it: an entity whose
-						// draft is staged is where the reader is, and on this panel the
-						// wash that used to mark it is ΔE00 1.05 from the ground.
-						draft?.target?.kind === kind &&
-							draft.target.name === name &&
-							rowCurrent,
+						staged && rowCurrent,
 					)}
 				>
 					<button
@@ -511,7 +534,10 @@ export function ChatSidebar({
 						data-disclosure
 						aria-label={`${open ? "Collapse" : "Expand"} ${name} chats`}
 						aria-expanded={open}
-						className="flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-elevated"
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md",
+							!staged && "hover:bg-elevated",
+						)}
 						onClick={() => toggle(key)}
 					>
 						{open ? (
@@ -535,7 +561,7 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
-						className={cn(rowStyle, "flex-1 text-left")}
+						className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
 						// pressing it does. The accessible name states the action and still
@@ -582,7 +608,10 @@ export function ChatSidebar({
 						// Stepped down from `ink` so the row's own action outranks it.
 						// This is the secondary control on the row and it is visible at
 						// rest, which was enough to make it dominate the reveal.
-						className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:bg-elevated hover:text-ink-muted"
+						className={cn(
+							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
+							!staged && "hover:bg-elevated",
+						)}
 						aria-label={`Manage ${name}`}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
