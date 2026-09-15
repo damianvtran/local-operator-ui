@@ -354,8 +354,14 @@ jobs:
       # at: `check-runtime-deps.mjs` guards what may be declared, and this guards
       # that the declared closure actually reached app.asar. Nothing here needs a
       # display or a signature - it reads the archive.
+      #
+      # Run through `require-report.sh` rather than bare `node`, because this step
+      # reads an exit status and nothing else: reached through a path spelling the
+      # script could not resolve it exited 0 having printed nothing, and that was a
+      # PASS. The helper refuses an empty success instead (see
+      # `scripts/require-report.sh` for why that shape has to be red).
       - name: Assert the packaged app carries its whole runtime closure
-        run: node scripts/check-packaged-closure.mjs --dist dist
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
       # The app inside the image is signed and notarized by electron-builder
       # and afterSign, but the image itself was not: `dmg.sign` defaults to
@@ -367,7 +373,14 @@ jobs:
       # computed as the artifact is created, so stapling afterwards makes it
       # stale, and the update metadata has to describe the file we ship.
       - name: Notarize and staple the disk images
-        run: pnpm notarize-dmg
+        # Wrapped for the same reason as the closure check above: a silent exit 0
+        # would read as "nothing to notarize" on the one step whose product is the
+        # staple. `pnpm --silent` because pnpm's own banner (`> local-operator-ui@...
+        # notarize-dmg`) is output too, and it would satisfy the emptiness check on
+        # behalf of a script that printed nothing — measured against an empty module
+        # in the script's place: a bare `pnpm notarize-dmg` passed, `pnpm --silent`
+        # and a direct `node` invocation both refused it.
+        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -382,7 +395,12 @@ jobs:
       # bundle and every image the build produced is asserted, so both
       # architectures are covered rather than the first of each.
       - name: Verify macOS artifacts
-        run: pnpm verify-macos-artifacts
+        # Wrapped for the same reason as the closure check above: this is the gate
+        # that decides whether a release is promotable, and its consumer is the exit
+        # status. `pnpm --silent` for the reason given on the notarization step — the
+        # banner would otherwise stand in for the report a gate that never ran
+        # cannot produce.
+        run: bash scripts/require-report.sh "macOS artifact verification" pnpm --silent verify-macos-artifacts
 
       # `*.blockmap` is what makes an update a delta rather than a 350 MB
       # download: electron-updater fetches `<artifact>.blockmap` for the version
@@ -459,7 +477,11 @@ jobs:
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
 
       - name: Assert the packaged app carries its whole runtime closure
-        run: node scripts/check-packaged-closure.mjs --dist dist
+        # `shell: bash` because this job's default shell is pwsh and
+        # `require-report.sh` is a bash helper (Git Bash is on PATH on that image);
+        # wrapped on the same argument as the macOS step of this name.
+        shell: bash
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -509,7 +531,8 @@ jobs:
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
 
       - name: Assert the packaged app carries its whole runtime closure
-        run: node scripts/check-packaged-closure.mjs --dist dist
+        # Wrapped on the same argument as the macOS step of this name.
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
 
       # The `*.blockmap` glob is kept here for symmetry and forward
       # compatibility, and currently matches nothing: none of the Linux targets

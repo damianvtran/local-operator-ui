@@ -38,8 +38,11 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
 	chmodSync,
+	lstatSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
+	readFileSync,
 	realpathSync,
 	rmSync,
 	symlinkSync,
@@ -154,12 +157,20 @@ function scratchRepo(root, { tip }) {
 }
 
 /**
- * The nine scripts, and for each: an invocation that decides something without a
- * forge or a network, and what the PHYSICAL run of it does.
+ * The scripts this file drives, and for each: an invocation that decides something
+ * without a forge or a network, and what the PHYSICAL run of it does.
  *
  * The invocation matters as much as the assertion. Every one of these either
  * succeeds with a line only that script prints, or refuses in its own words —
  * both of which prove the script RAN, rather than merely that a process exited.
+ *
+ * The last four are the gates a WORKFLOW runs with nothing but an exit status to
+ * read, which is why they are here rather than only in the release tables: QA
+ * reproduced a genuinely failing gate becoming a passing one by reaching
+ * `check-packaged-closure.mjs` and `verify-macos-artifacts.mjs` through a symlinked
+ * spelling, and `ci.yml`'s Runtime Dependencies job read `check-runtime-deps.mjs`'s
+ * silence the same way. `scripts/require-report.sh` now refuses that shape in the
+ * steps themselves; this table is what proves the scripts can no longer produce it.
  */
 function cases(root) {
 	const featRepo = scratchRepo(root, { tip: "feat" });
@@ -167,6 +178,11 @@ function cases(root) {
 	const plain = join(root, "plain");
 	mkdirSync(plain, { recursive: true });
 	writeFileSync(join(plain, "package.json"), packageJson("0.24.1"));
+	// An empty build output: what a gate sees when the packaging step that should
+	// have filled `dist` did not run. Each of the three build gates below must refuse
+	// it rather than report success over an artifact set that is not there.
+	const emptyDist = join(root, "empty-dist");
+	mkdirSync(emptyDist, { recursive: true });
 	return [
 		{
 			// The next command in the workflow's own `run:` block, and the one whose
@@ -250,14 +266,65 @@ function cases(root) {
 			stderr: /PR_TITLE is not set/,
 		},
 		{
-			// The guard that was fixed alone, kept in the table so the refactor onto
-			// `entry-point.mjs` is covered the same way as the eight beside it.
+			// The published gate the guard was fixed alone in #204 for: kept in the table
+			// so the refactor onto `entry-point.mjs` is covered the same way as the eight
+			// beside it.
 			script: "release-push-guard.mjs",
 			args: ["--json", "--released-tag", "v0.24.0"],
 			cwd: bumpRepo,
 			env: {},
 			status: 0,
 			stdout: /"skip": true/,
+			stderr: /^$/,
+		},
+		{
+			// `publish.yml` runs this three times and `signed-update-candidate.yml`
+			// once, over the artifact set the build produced; an empty `dist` is the
+			// refusal every one of those steps must see rather than a silent pass.
+			script: "check-packaged-closure.mjs",
+			args: ["--dist", emptyDist],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /no app\.asar under/,
+		},
+		{
+			// The same gate over the same empty output: `publish.yml` and
+			// `signed-update-candidate.yml` both call it through `pnpm
+			// verify-macos-artifacts`, whose consumer is the exit status.
+			script: "verify-macos-artifacts.mjs",
+			args: ["--dist", emptyDist],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /No packaged app found under/,
+			stderr: /^$/,
+		},
+		{
+			// `pnpm notarize-dmg` in both release workflows. On a macOS runner with no
+			// `NOTARIZE=true` and no `.env.build` it skips loudly, which is the line
+			// that keeps `require-report.sh` from reading a skip as a silence; on the
+			// Linux runner this file's contract step uses, it skips for not being macOS.
+			// Either way it ANSWERS, which is the property this table is about.
+			script: "notarize-artifacts.mjs",
+			args: ["--dist", emptyDist],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /Skipping disk image notarization/,
+			stderr: /^$/,
+		},
+		{
+			// `ci.yml`'s Runtime Dependencies job. Reads this repository's own manifest
+			// through an absolute path derived from its module URL, so the answer is the
+			// allowlist summary whatever the working directory is.
+			script: "check-runtime-deps.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /production dependencies, all on the runtime allowlist/,
 			stderr: /^$/,
 		},
 	];
@@ -334,6 +401,40 @@ test("every release script runs when it is reached through a symlinked path", ()
 	}
 });
 
+test("a script reached through a symlinked NAME answers too, not just a symlinked directory", () => {
+	// The other spelling of the same defect, and the one the table above does not
+	// cover: `ln -s scripts/check-runtime-deps.mjs /tmp/alias.mjs && node
+	// /tmp/alias.mjs`. Node loads the module through its REAL path while
+	// `process.argv[1]` is the alias, so a lexical comparison disagrees for the same
+	// reason a symlinked directory makes it disagree — measured on the commit this
+	// branch starts from: exit 0, no output, against 610 bytes of allowlist summary
+	// when the same script is reached by its own name.
+	const root = mkdtempSync(join(tmpdir(), "release-entry-point-alias-"));
+	try {
+		const bin = stubBin(root);
+		const target = join(SCRIPTS, "check-runtime-deps.mjs");
+		const alias = join(root, "aliased-check-runtime-deps.mjs");
+		symlinkSync(target, alias);
+		assert.equal(
+			lstatSync(alias).isSymbolicLink(),
+			true,
+			"the fixture has to be a symlink, or this case exercises nothing",
+		);
+		const kase = { script: "check-runtime-deps.mjs", args: [], cwd: root, env: {} };
+		const byName = run(target, kase, bin, root);
+		const byAlias = run(alias, kase, bin, root);
+		assert.match(
+			byAlias.stdout,
+			/production dependencies, all on the runtime allowlist/,
+			"the aliased invocation has to produce the script's own answer",
+		);
+		assert.equal(byAlias.status, byName.status);
+		assert.equal(byAlias.stdout, byName.stdout);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test("a script this file drives produces its answer, not a silent zero", () => {
 	// The defect's signature is exit 0 with NO output, and the table above is only
 	// meaningful while that signature remains impossible for a script that ran. So
@@ -353,5 +454,156 @@ test("a script this file drives produces its answer, not a silent zero", () => {
 		}
 	} finally {
 		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// The class, rather than the instances
+// ---------------------------------------------------------------------------
+
+/** A script's lines with its comment-only lines dropped.
+ *
+ * WHY SUITES AND COMMENTS ARE OUT OF SCOPE. A `*.test.mjs` file is not a gate: no
+ * consumer reads its exit status as a verdict, and a suite has to be able to NAME
+ * the comparison it is about (this is the second one that does). So the scan covers
+ * the scripts a consumer runs, and, inside those, only code: the suites that
+ * describe this defect quote the old comparison in prose, and so does
+ * `entry-point.mjs` itself (`WHY NOT \`import.meta.url === pathToFileURL(process.argv[1]).href\``)
+ * along with the two scripts whose guards now name the spelling they moved away
+ * from. A rule that could not tell a quotation from a comparison would be turned
+ * off the first time somebody wrote about it; the cost is that a comment naming the
+ * comparison has to sit on its own line, which is where the prose in these files
+ * keeps it. */
+function codeLines(source) {
+	return source
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(
+			(line) =>
+				line !== "" &&
+				!line.startsWith("//") &&
+				!line.startsWith("*") &&
+				!line.startsWith("/*"),
+		);
+}
+
+/** Every `scripts/*.mjs` a checked-in workflow invokes... */
+const INVOCATION = /\bnode\s+(?:[\w./-]*\/)?scripts\/([\w.-]+\.m?js)/g;
+const WORKFLOWS = join(SCRIPTS, "..", ".github", "workflows");
+
+/**
+ * The scripts the workflows actually run, direct or one hop away.
+ *
+ * WHY ONE HOP. `publish.yml` runs `pnpm verify-macos-artifacts` and
+ * `pnpm notarize-dmg`, which are `node scripts/...` in `package.json` — a scan of
+ * the workflow text alone would not see the two scripts that carry the release's
+ * artifact gate, which is exactly the pair QA reproduced a failing-to-passing flip
+ * in. WHY A TEXT SCAN AND NOT A YAML PARSE. The property being asserted is "this
+ * name is here and the script behind it is covered"; a parse would be the better
+ * tool if the list were the product, and it is not (see
+ * `scripts/verify-signed-update.mjs`, which the checked-out payload supplies).
+ */
+function workflowInvokedScripts() {
+	const scripts = new Set();
+	const pnpmScripts = new Set();
+	for (const file of readdirSync(WORKFLOWS).sort()) {
+		if (!/\.ya?ml$/.test(file)) continue;
+		const text = readFileSync(join(WORKFLOWS, file), "utf8");
+		for (const match of text.matchAll(INVOCATION)) scripts.add(match[1]);
+		for (const match of text.matchAll(/\bpnpm\s+([\w:.-]+)/g))
+			pnpmScripts.add(match[1]);
+	}
+	const pkg = JSON.parse(readFileSync(join(SCRIPTS, "..", "package.json"), "utf8"));
+	for (const name of pnpmScripts) {
+		const body = pkg.scripts?.[name];
+		if (typeof body !== "string") continue;
+		for (const match of body.matchAll(INVOCATION)) scripts.add(match[1]);
+	}
+	return [...scripts].sort();
+}
+
+/**
+ * A workflow-invoked script that carries no entry-point comparison at all, and
+ * therefore cannot take the silent-zero shape: it runs at import. Every entry is
+ * asserted below to be exactly that, so this list cannot become a place to hide.
+ */
+const NO_ENTRY_POINT_COMPARISON = {
+	"check-edit-diffs.mjs": "`pnpm check-edit-diffs`; runs at import, and exits on its own result",
+	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",
+	"run-desktop-tests.mjs": "`pnpm test:desktop`'s runner; runs at import",
+	"verify-signed-update.mjs": "`signed-update-candidate.yml`; runs at import",
+};
+
+test("no script anywhere resolves its own entry point by anything but the shared helper", () => {
+	// The rule that would have caught this class in one pass instead of one script
+	// per round: the comparison lives in `entry-point.mjs` or nowhere. A script whose
+	// top level runs unconditionally is fine — it has no comparison to get wrong —
+	// and this says nothing about it; a script that compares `process.argv[1]`
+	// itself, in any of the four spellings this repository has now written, fails
+	// here. That is how `release-push-guard.mjs`, then the eight beside it, then
+	// three more, then four more were each found separately.
+	const offenders = readdirSync(SCRIPTS)
+		.sort()
+		.filter((name) => /\.m?js$/.test(name) && name !== "entry-point.mjs")
+		.filter((name) => !name.endsWith(".test.mjs") && !name.startsWith("test-"))
+		.filter((name) =>
+			codeLines(readFileSync(join(SCRIPTS, name), "utf8")).some((line) =>
+				line.includes("process.argv[1]"),
+			),
+		);
+	assert.deepEqual(
+		offenders,
+		[],
+		`these scripts resolve their own entry point instead of using scripts/entry-point.mjs: ${offenders.join(", ")}`,
+	);
+});
+
+test("every script a workflow invokes is driven here, or says why it needs no entry-point", () => {
+	// The enumeration that used to have to be rebuilt by hand every round, asserted
+	// rather than described: a workflow-invoked script is either one of the cases
+	// above (driven through BOTH spellings, with its physical answer pinned) or named
+	// in `NO_ENTRY_POINT_COMPARISON` with a reason. A new workflow that reaches a new
+	// script fails here until somebody answers that question for it — which is the
+	// point, because "found one script at a time for three rounds" is the history this
+	// file exists to end.
+	const root = mkdtempSync(join(tmpdir(), "release-entry-point-roster-"));
+	const driven = new Set();
+	const covered = [];
+	const unaccounted = [];
+	try {
+		for (const kase of cases(root)) driven.add(kase.script);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+	for (const script of workflowInvokedScripts()) {
+		// A `node --test` file is a suite, not a gate: it has no CLI to resolve and
+		// no verdict to print, and the rule above already covers its source.
+		const isSuite = script.endsWith(".test.mjs") || script.startsWith("test-");
+		if (driven.has(script) || isSuite) covered.push(script);
+		else if (script in NO_ENTRY_POINT_COMPARISON) covered.push(script);
+		else unaccounted.push(script);
+	}
+	assert.ok(
+		covered.length >= 10,
+		`only ${covered.length} workflow-invoked scripts found; the scan has stopped seeing them`,
+	);
+	assert.deepEqual(
+		unaccounted,
+		[],
+		`workflow-invoked, not driven by this file's table and not a script that runs at import: ${unaccounted.join(", ")} — add a case above, or an entry in NO_ENTRY_POINT_COMPARISON with the reason`,
+	);
+	// The exemption list is only an exemption while it is true: each named script
+	// must genuinely carry no entry-point comparison of its own.
+	for (const name of Object.keys(NO_ENTRY_POINT_COMPARISON)) {
+		assert.ok(
+			readdirSync(SCRIPTS).includes(name),
+			`${name} is exempt in this file but no longer exists`,
+		);
+		assert.ok(
+			!codeLines(readFileSync(join(SCRIPTS, name), "utf8")).some((line) =>
+				line.includes("process.argv[1]"),
+			),
+			`${name} is exempt here as a script with nothing to resolve, but it compares process.argv[1] itself`,
+		);
 	}
 });
