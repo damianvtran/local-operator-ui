@@ -523,9 +523,19 @@ test("the adapter wires the decisions the tests above pin", () => {
 	 * D14: the in-flight copy names the change. Asserted on the props the adapter
 	 * passes, because the words live in the host's defaults for every other
 	 * destination.
+	 *
+	 * A DRAFT's engine is a RESOLUTION rather than a switch — nothing is running
+	 * yet — so the sentence may not promise a switch that has not happened. Both
+	 * halves are asserted, so neither can drift into the other's meaning.
 	 */
-	assert.match(picker, /busyText="Switching the model…"/);
-	assert.match(picker, /busyLabel="Switching the model"/);
+	assert.match(
+		picker,
+		/busyText=\{draft \? "Resolving the model…" : "Switching the model…"\}/,
+	);
+	assert.match(
+		picker,
+		/busyLabel=\{draft \? "Resolving the model" : "Switching the model"\}/,
+	);
 
 	/*
 	 * UX U1's invariant has two halves, and this is the second: a CLICK moves the
@@ -563,12 +573,21 @@ test("one binding answers which model the session is on", () => {
 	 * defect stated as a negative: a class edit or a refactor that re-derives
 	 * either call site from `selected_model` alone has to delete the binding
 	 * first, and that is the defect coming back.
+	 *
+	 * A DRAFT pane reads the backend's own `sessions.preview` answer for the same
+	 * reason: there is no owner frame to reconcile against, so the alternative to
+	 * that resolution is not "the owner's field" but nothing at all.
 	 */
 	const picker = source("features/chat/pickers/destination-pickers.tsx");
 	assert.match(
 		picker,
-		/const shownSelector = pickedCurrent \?\? currentSelector/,
+		/const shownSelector = draft[\s\S]{0,200}?: \(pickedCurrent \?\? currentSelector\)/,
 		"the picker's one answer to which model this session is on",
+	);
+	assert.match(
+		picker,
+		/modelSelector\(bandReadings\(draftFrontend, null\)\.identity\)/,
+		"and a draft's answer is read through the SAME binding the strip prints, rather than a second precedence over the same two fields (review round 1, R4)",
 	);
 	const options = picker.slice(picker.indexOf("const options = useMemo"));
 	assert.match(
@@ -578,8 +597,18 @@ test("one binding answers which model the session is on", () => {
 	);
 	assert.match(
 		picker,
-		/description=\{\s*shownSelector\s*\?\s*`This session runs \$\{shownSelector\}/,
-		"and so does the header sentence",
+		/description=\{\s*draft\s*\?\s*shownSelector\s*\?\s*`This conversation starts on \$\{shownSelector\}/,
+		// Round 4's D10: the sentence names the CONVERSATION the draft becomes, not
+		// one message of it - the pick rides `sessions.create` and the backend pins
+		// the session to it, so "the first message only" was a scope the system does
+		// not implement. It still must not call a session that does not exist a
+		// session, which is what the draft register is for.
+		"a draft's header sentence names the conversation the draft becomes, scope included",
+	);
+	assert.match(
+		picker,
+		/:\s*shownSelector\s*\?\s*`This session runs \$\{shownSelector\}/,
+		"and a session's keeps the sentence that names its scope",
 	);
 	assert.doesNotMatch(
 		picker,
