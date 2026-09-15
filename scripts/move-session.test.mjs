@@ -484,6 +484,71 @@ test("both `/move` forms ask the pane's readiness, not the capability alone (age
 	assert.match(MOVE_NOT_READY_REASON, /still starting/);
 });
 
+test("the latch's ref is written synchronously, before the state update (agent review R3-4, F4-4)", () => {
+	/*
+	 * The docblock two screens above promises that a second caller in the same task
+	 * sees the first one's request without waiting for React, and only the
+	 * synchronous write gives that: the updater's write happens when React evaluates
+	 * the updater, which is an engine detail rather than a property of `moveTo`.
+	 *
+	 * This is pinned because it is unpinned otherwise: deleting the five synchronous
+	 * lines leaves every other test in this file green (agent review round 4, F4-4),
+	 * which is how a documented invariant quietly becomes a claim about React's
+	 * scheduler again.
+	 */
+	assert.match(
+		moveSource,
+		/pendingRef\.current = updatePendingMoves\(\s*pendingRef\.current,\s*sessionId,\s*\(\) => committed,?\s*\)/,
+		"the ref is assigned in moveTo itself, not only inside the updater",
+	);
+	const syncAt = moveSource.indexOf("pendingRef.current = updatePendingMoves(");
+	const setAt = moveSource.indexOf("setMoves((current) => {");
+	assert.ok(
+		syncAt > 0 && setAt > syncAt,
+		"and it is written BEFORE the state update, which is what closes the same-task window",
+	);
+});
+
+test("the chip's accessible name carries the phrase its label slot paints (R3-1, F4-5)", () => {
+	/*
+	 * WCAG 2.5.3 (label in name) wants the visible text inside the accessible name,
+	 * and in flight the visible phrase is "Moving session:" rather than "Working
+	 * directory:". The only other assertion of that lived in a story `play`, and no
+	 * gate runs a `play` (agent review round 3, R3-N2) - so the two phrases are
+	 * pinned against each other here, on the shipped source.
+	 */
+	const chip = read(
+		"src/renderer/src/features/chat/components/directory-indicator.tsx",
+	);
+	assert.match(
+		chip,
+		/aria-label=\{`\$\{pending \? "Moving session" : "Working directory"\}: \$\{shown\}`\}/,
+		"the name is built from the same condition the slot paints",
+	);
+	assert.match(
+		chip,
+		/\{pending \? "Moving session:" : "Working directory:"\}/,
+		"and the slot paints the phrase the name carries",
+	);
+	/*
+	 * The phrases are COMPARED rather than counted: a count moves whenever an
+	 * unrelated edit adds a third mention, while what label-in-name actually needs
+	 * is that the name contains the label. Both are read out of the shipped source
+	 * and asked directly.
+	 */
+	const painted = chip.match(/\{pending \? "(Moving session:)" : "(Working directory:)"\}/);
+	const named = chip.match(
+		/aria-label=\{`\$\{pending \? "(Moving session)" : "(Working directory)"\}/,
+	);
+	assert.ok(painted && named, "both the slot and the name must be found to be compared");
+	assert.equal(
+		named[1],
+		painted[1].replace(/:$/, ""),
+		"the in-flight label the user reads is the phrase the accessible name carries",
+	);
+	assert.equal(named[2], painted[2].replace(/:$/, ""));
+});
+
 test("the chip re-measures its overflow when the PATH changes (agent review R-1, R3-N2)", () => {
 	/*
 	 * The measured-overflow tooltip's effect depends on `shown` as well as on its

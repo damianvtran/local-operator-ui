@@ -52,6 +52,24 @@ import {
 } from "./destination-pickers";
 import { McpPicker } from "./mcp-picker";
 
+/**
+ * How a destination answers a command that CARRIES arguments.
+ *
+ * `present` (every entry but one): mount the picker (or run the direct action)
+ * and let it consume the args - `/model gpt-5` opens the picker preselected, and
+ * the user still confirms.
+ *
+ * `execute`: the args ARE the action, so they run through `runArgs` instead of
+ * opening anything. `/move <path>` is the only case, and it is the TUI's rule in
+ * the same words (`_cmd_move` applies the argument form and only opens the
+ * chooser for the bare form). Carried on every member of the union below rather
+ * than only on the picker kind, because the ONE entry that uses it is a `direct`
+ * one: the real `/move` presents by focusing the composer's chip, and its
+ * argument form still has to execute. `runArgs` lives on the entry rather than in
+ * a name check in `slash-dispatch` so this table stays the one place that
+ * answers "what does this destination mean", which is the stated reason it is
+ * keyed by destination at all.
+ */
 type ArgsBehavior = {
 	argsBehavior?: "present" | "execute";
 	runArgs?: (context: MoveRunContext) => Promise<void>;
