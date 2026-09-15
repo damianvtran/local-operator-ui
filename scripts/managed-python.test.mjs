@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, linkSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, statfsSync, symlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -10,7 +10,7 @@ import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
 
 const result = await build({ stdin: { contents: 'export * from "./src/main/backend/managed-python";', resolveDir: process.cwd() }, bundle: true, platform: "node", format: "esm", write: false });
 const runtime = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
-const { runtimeManifest, runtimeId, runtimeIdentity, readManagedSelection, inspectManagedSelection, managedSelectionReady, prepareManagedPython, reapSupersededGenerations, managedPythonRoot, isLegacyManagedCommand, PYTHON_SEED_NAMESPACE } = runtime;
+const { runtimeManifest, runtimeId, runtimeIdentity, readManagedSelection, inspectManagedSelection, managedSelectionReady, prepareManagedPython, reapSupersededGenerations, managedPythonRoot, runtimesRoot, isLegacyManagedCommand, PYTHON_SEED_NAMESPACE } = runtime;
 function fixture(t) {
 	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-test-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -404,7 +404,7 @@ function signedMachO(destination) {
  * no signed binary is not a seed" rule is satisfied by the same check a shipped
  * seed passes. `cache` plants the stray bytecode QA Q1 measured.
  */
-function seedFixture(resources, arch, { cache = false } = {}) {
+function seedFixture(resources, arch, { cache = false, ballast = 0 } = {}) {
 	const seed = join(resources, "python-runtime-seed", arch);
 	mkdirSync(join(seed, "bin"), { recursive: true });
 	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
@@ -415,6 +415,11 @@ function seedFixture(resources, arch, { cache = false } = {}) {
 		mkdirSync(join(seed, "lib", "python3.12", "encodings", "__pycache__"));
 		writeFileSync(join(seed, "lib", "python3.12", "encodings", "__pycache__", "__init__.cpython-312.pyc"), "stray bytecode\n");
 	}
+	if (ballast > 0)
+		// Makes the copy the repair has to make a size a full volume can refuse,
+		// which is what the disk-full tests below assert about (not a Mach-O, so
+		// `verifyMachO` walks past it).
+		writeFileSync(join(seed, "ballast.bin"), Buffer.alloc(ballast, 0x62));
 	return seed;
 }
 
@@ -550,6 +555,180 @@ test("a selected runtime older than an unselected generation survives the repair
 		"and it is REUSED rather than re-copied from the seed",
 	);
 	assert.notEqual(rebuilt.venv, first.venv);
+});
+
+/*
+ * A volume with almost nothing left on it, which no assertion can reach without
+ * one: `ditto` asks the filesystem rather than this code, and what is under test
+ * is WHAT THE REAP FREED BEFORE THE COPY (QA round 3, Q1).
+ *
+ * The image is 16 MB and the fixture's seed is 4 MB against QA's real 120 MB
+ * interpreter and 40 MB runtime; the conjunction is the same one at a scale the
+ * suite can afford, and `freeBytes` is asserted in both tests rather than assumed,
+ * because each one is vacuous if the volume still has room for the copy.
+ */
+function mountedVolume(t, megabytes = 16) {
+	// Its own directory rather than `fixture`'s, because the cleanup has to detach
+	// BEFORE it removes the tree: a mounted volume under a directory makes that
+	// directory non-empty, and the two hooks would otherwise race.
+	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-volume-"));
+	const image = join(root, "volume.dmg");
+	const mount = join(root, "mnt");
+	mkdirSync(mount, { recursive: true });
+	const created = spawnRunner("/usr/bin/hdiutil", [
+		"create",
+		"-size",
+		`${megabytes}m`,
+		"-fs",
+		"HFS+",
+		"-volname",
+		"lo-full-volume",
+		"-quiet",
+		image,
+	]);
+	assert.equal(created.status, 0, `hdiutil could not create the volume: ${created.stdout}${created.stderr}`);
+	const attached = spawnRunner("/usr/bin/hdiutil", [
+		"attach",
+		"-quiet",
+		"-nobrowse",
+		"-mountpoint",
+		mount,
+		image,
+	]);
+	assert.equal(attached.status, 0, `hdiutil could not attach the volume: ${attached.stdout}${attached.stderr}`);
+	t.after(() => {
+		spawnRunner("/usr/bin/hdiutil", ["detach", "-force", "-quiet", mount]);
+		rmSync(root, { recursive: true, force: true });
+	});
+	return mount;
+}
+
+function freeBytes(path) {
+	const stats = statfsSync(path);
+	return stats.bavail * stats.bsize;
+}
+
+/** Remove the free space, keeping `reserve` for the writes a repair makes around
+ * the copy (a venv's config, the records) - and keeping it BELOW the copy's size,
+ * which is the whole point of the fixture's ballast. */
+function fillVolume(mount, reserve = 256 * 1024) {
+	const target = freeBytes(mount) - reserve;
+	assert.ok(target > 0, `the volume has no space to take: ${freeBytes(mount)} bytes free`);
+	const filler = openSync(join(mount, "filler.bin"), "w");
+	try {
+		const chunk = Buffer.alloc(256 * 1024, 0x61);
+		let written = 0;
+		while (written < target) {
+			const size = Math.min(chunk.length, target - written);
+			writeSync(filler, chunk, 0, size);
+			written += size;
+		}
+	} finally {
+		closeSync(filler);
+	}
+}
+
+const COPY_BYTES = 4 * 1024 * 1024;
+
+/** A second runtime generation, newer than the published one and not selected.
+ * The retention rule keeps the NEWEST generation of a root, so the published tree
+ * is only reapable at all while something else is more recent - the shape QA's
+ * fixture had, and the reason the pre-fix code could reclaim it. */
+function plantNewerGeneration(opts, first) {
+	const other = join(
+		managedPythonRoot(opts),
+		"runtimes",
+		`${"b".repeat(64)}-55555555-5555-4555-8555-555555555555`,
+	);
+	mkdirSync(other, { recursive: true });
+	writeFileSync(join(other, "python3"), "a different seed's runtime\n");
+	const now = Date.now();
+	utimesSync(first.runtime, new Date(now - 600_000), new Date(now - 600_000));
+	utimesSync(other, new Date(now - 60_000), new Date(now - 60_000));
+}
+
+function provisioningHarness(t, support, { ballast = 0 } = {}) {
+	const resources = fixture(t);
+	const arch = MACHINE_ARTIFACT_ARCH;
+	seedFixture(resources, arch, { ballast });
+	const state = { installs: 0 };
+	const install = async (venv, python) => {
+		state.installs++;
+		standInInstaller(venv, python);
+		return true;
+	};
+	return { opts: { support, resources, packaged: true, arch }, state, install };
+}
+
+/*
+ * QA round 3's FAIL, which the N4 fix introduced: the pre-copy reap protected the
+ * published runtime UNCONDITIONALLY, so when that runtime was itself broken the
+ * reap freed nothing, `ditto` had nowhere to put the copy, and every retry failed
+ * the same way - a state the pre-fix code completed, because a keep-less reap
+ * reclaimed the unusable tree. The published runtime belongs in the keep set only
+ * while a repair can reuse it.
+ */
+test("a full disk with an identity-broken published runtime is repaired by reclaiming it", async (t) => {
+	if (skipUnlessDarwin(t, `${MACOS_SEED_TOOLCHAIN}, and the full volume is a mounted image (hdiutil)`)) return;
+	const mount = mountedVolume(t);
+	const { opts, state, install } = provisioningHarness(t, join(mount, "support"), { ballast: COPY_BYTES });
+	const first = await prepareManagedPython(opts, install);
+	plantNewerGeneration(opts, first);
+
+	// Broken out of band, and given ballast so the space it holds is larger than
+	// the copy that replaces it - the volume is sized so the copy cannot fit
+	// without it.
+	writeFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "changed out of band\n");
+	writeFileSync(join(first.runtime, "ballast.bin"), Buffer.alloc(COPY_BYTES, 0x63));
+	const broken = first.runtime;
+	const verdict = inspectManagedSelection(opts);
+	assert.equal(verdict.kind, "missing");
+	assert.equal(verdict.published.runtime, broken, "the verdict names the tree the reap has to judge");
+	assert.match(verdict.detail, /no longer the runtime that was published/);
+
+	fillVolume(mount);
+	assert.ok(
+		freeBytes(mount) < COPY_BYTES,
+		`the volume must have less room than the copy needs, or this test proves nothing: ${freeBytes(mount)} bytes`,
+	);
+
+	const repaired = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2);
+	assert.notEqual(repaired.runtime, broken, "an identity-broken runtime is not reusable, so the seed is copied");
+	assert.equal(existsSync(broken), false, "and reclaiming it is what made room - protecting it is the Q1 failure");
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+});
+
+/*
+ * The other half of the same conjunction, and the win that must survive the fix:
+ * an INTACT published runtime on a full volume repairs by reuse, with no copy at
+ * all. The copy is what a full volume cannot fit, so this test distinguishes reuse
+ * from a re-copy by measurement rather than by intent.
+ */
+test("a full disk with a reusable published runtime repairs by reuse, with no copy at all", async (t) => {
+	if (skipUnlessDarwin(t, `${MACOS_SEED_TOOLCHAIN}, and the full volume is a mounted image (hdiutil)`)) return;
+	const mount = mountedVolume(t);
+	const { opts, state, install } = provisioningHarness(t, join(mount, "support"), { ballast: COPY_BYTES });
+	const first = await prepareManagedPython(opts, install);
+
+	// The ordinary repair: the environment is gone, the runtime is intact.
+	rmSync(first.venv, { recursive: true, force: true });
+	assert.equal(inspectManagedSelection(opts).kind, "missing");
+	fillVolume(mount);
+	assert.ok(
+		freeBytes(mount) < COPY_BYTES,
+		`the volume must have less room than the copy needs, or this test proves nothing: ${freeBytes(mount)} bytes`,
+	);
+
+	const repaired = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2);
+	assert.equal(repaired.runtime, first.runtime, "the published runtime is reusable, so the reap protects it");
+	assert.equal(
+		readdirSync(runtimesRoot(opts)).filter((name) => /^[a-f0-9]{64}-/.test(name)).length,
+		1,
+		"one generation, so no copy was made at all",
+	);
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
 });
 
 test("a selected runtime that was removed is reprinted from the seed", async (t) => {
