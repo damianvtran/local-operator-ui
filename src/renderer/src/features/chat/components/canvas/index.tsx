@@ -19,6 +19,7 @@ import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
+import { pressBelongsToCanvas } from "./canvas-shortcut-scope";
 import {
 	CANVAS_DOCUMENT_PANEL_ID,
 	CANVAS_SELECTED_TAB_ID,
@@ -302,7 +303,24 @@ const CanvasComponent: FC<CanvasProps> = ({
 				event.preventDefault();
 				handleOpenFile();
 			}
-			if ((event.metaKey || event.ctrlKey) && event.key === "n") {
+			/*
+			 * `⌘N` is the ONE chord this pane shares with the app at large: the sidebar's
+			 * New chat row wears the same cap, and this binding is on the WINDOW, so
+			 * without a scope test one press from anywhere in the window would raise
+			 * this pane's create-file dialog AND stage a new chat behind it.
+			 * `pressBelongsToCanvas` is the same rule the app-level binding asks, and
+			 * the canvas's own tree carries the marker it reads
+			 * (`canvas-shortcut-scope.ts`), so the two halves cannot drift apart.
+			 *
+			 * The `⌘O` branch above keeps NO such test, and the asymmetry is deliberate:
+			 * nothing else claims `⌘O`, so a scope test there would only take a working
+			 * shortcut away from a user whose focus happens to be in the sidebar.
+			 */
+			if (
+				(event.metaKey || event.ctrlKey) &&
+				event.key === "n" &&
+				pressBelongsToCanvas(event.target)
+			) {
 				event.preventDefault();
 				setCreateFileDialogOpen(true);
 			}
@@ -451,6 +469,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 		<section
 			aria-label="Canvas"
 			data-tour-tag="canvas-container"
+			/*
+			 * The boundary the canvas's own `⌘N` is scoped to
+			 * (`canvas-shortcut-scope.ts`): a press from inside this element is the
+			 * pane's, and one from the dock's resize divider or the sidebar beside
+			 * it is the page's. It sits on the pane's own root rather than on the
+			 * dock wrapper so the divider — chrome, not a document action — is
+			 * outside it.
+			 */
+			data-canvas-shortcuts
 			className={cn("flex h-full flex-col bg-surface")}
 		>
 			{/*

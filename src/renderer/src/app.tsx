@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
+import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
@@ -188,6 +189,44 @@ const App: FC = () => {
 		});
 		return () => unsubscribe?.();
 	}, [navigate]);
+
+	/*
+	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other
+	 * half of the promise the sidebar's New chat row prints as a key cap.
+	 *
+	 * ON THE DOCUMENT, and on the SHELL, for the reason the two halves have:
+	 * `document` is where a press lands whatever has focus, including the
+	 * composer, and the shell is the only component mounted on every route, so a
+	 * cap that advertises "New chat" is not a claim about the chat page while
+	 * the user is somewhere else. Which presses are NOT this shortcut's — the
+	 * canvas's own `⌘N`, an open dialog or menu — is decided in
+	 * `features/chat/new-chat-shortcut.ts`, so the rule is assertable without a
+	 * DOM and the canvas's half of it shares one source with this one.
+	 *
+	 * `stageDraft(undefined, true)` and `navigate("/chat")`: exactly the two steps
+	 * the sidebar row performs through the chat page's `stage`, and the same
+	 * pair the agents page stages an entity chat with. Read through
+	 * `getState()` rather than a selector so this listener is not re-registered
+	 * by a re-render it has no use for.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			/*
+			 * The first-run wizard owns the window until it is answered, and it is a
+			 * modal whose focus lands on its first control one frame after it opens.
+			 * A press in that frame has `<body>` for a target, so the rule's own
+			 * modal check cannot see it — and a draft staged behind a wizard the
+			 * user has not finished would be waiting when they closed it.
+			 */
+			if (isOnboardingActive) return;
+			if (!shouldStartNewChat(event)) return;
+			event.preventDefault();
+			useCanonicalSessionsStore.getState().stageDraft(undefined, true);
+			navigate("/chat");
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [isOnboardingActive, navigate]);
 
 	return (
 		<OnboardingProvider>
