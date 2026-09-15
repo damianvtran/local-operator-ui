@@ -1,0 +1,243 @@
+# The #185 sync: the conflicted head, its resolutions, and the proof it changed nothing
+
+Branch `fix/managed-python-runtime`, PR #183. Pre-sync head 336835d84, base a8f6bc4b9;
+`origin/main` c9a9c6196 (v0.22.5, PR #185, on top of #179 and #149). Merged, not rebased.
+Every block below is a command and its own output.
+
+## Why a merge
+
+GitHub reported the PR CONFLICTING / DIRTY. A conflicted PR gets no `pull_request`
+workflow runs, so no round could be taken against the head while it stood. The repo's
+own convention for this is a merge commit - `0b3351a4b` "chore(sync): merge main (#179)
+to unblock the conflicted head" is the precedent, and it was followed by a
+re-stamp commit - because a rebase would re-spell every reviewed head the round
+citations name.
+
+## The two conflicts
+
+$ git merge --no-commit --no-ff origin/main
+  Auto-merging docs/evidence/manifest.json
+  CONFLICT (content): Merge conflict in docs/evidence/manifest.json
+  Auto-merging package.json
+  CONFLICT (content): Merge conflict in package.json
+  (no other file conflicted; 78 files came in from main)
+
+### package.json - union on the one line both sides touch
+
+The only conflicting text is `scripts.test:desktop`. main's 51 entries plus this
+branch's `scripts/managed-python.test.mjs`, inserted where this branch had it.
+
+$ node -p "require('./package.json').version"
+  0.22.5
+
+$ git diff origin/main..HEAD -- package.json | grep -c version
+  0
+
+Every leaf of the merged file audited against both sides: nothing invented, and the
+only values overridden from main are the two this branch owns (and one deliberate
+removal, which is this branch's move):
+
+  main leaves missing from the merge:
+    build.extraResources[0..1]  <- the branch moved the copy list into per-platform
+                                   blocks under python-runtime-seed/<arch>
+  main leaves the merge overrode:
+    scripts.test:desktop   (the union)
+    build.afterPack        scripts/after-pack.mjs, this branch's single hook
+  leaves that come from neither side: none
+
+The top-level `build.extraResources` removal is worth naming because the merge made
+it silently: base and main are identical on that block, so the three-way merge takes
+this branch's move instead of resurrecting a top-level block that would ship the
+legacy `python`/`python_aarch64` names beside the seed - which `afterPack` refuses.
+Dependencies, devDependencies, optionalDependencies and `pnpm` are byte-identical to
+main's, so `pnpm-lock.yaml` is unchanged (verified, not assumed).
+
+### docs/evidence/manifest.json - two hunks, resolved oppositely on purpose
+
+  - the TOP-LEVEL stamp block takes main's side, because it is re-derived on the
+    merged tree in `de81f6036` (the sequence every sync merge on this branch uses);
+  - `partialCapture`'s `addedAt`/`addedAtHead`/`note` take THIS BRANCH's side: main's
+    side of those fields is byte-identical to the merge base (it never touched them),
+    and this branch's `note` is main's note plus its own round-1 paragraph, so taking
+    ours loses nothing of main's.,
+
+Re-derived on the merged disk:
+
+  frames   1214 -> 1216   (1581 committed .webp minus 365 in the 32 declared sets)
+  surfaces  186 -> 187   (the merged capturer's STORIES length, by the gate's method)
+  themes         12
+
+## The sync changed nothing of this branch's
+
+$ git range-diff a8f6bc4b9..336835d84 c9a9c6196..684509891
+
+   1:  fe4e1fde0 =  1:  fe4e1fde0 fix(update): stop every python we start, and the venv we manage, writing into a bundle
+   2:  fefab4b55 =  2:  fefab4b55 fix(build): ship the interpreter trees write-sealed, and refuse an artifact that can write
+   3:  194be51b2 =  3:  194be51b2 fix(update): repair a broken bundle seal at start-up, and leave the packaged app's install state to the packaged app
+   4:  21ab48d85 =  4:  21ab48d85 docs(evidence): the self-seal invariant, the field break, and every repair
+   5:  136c742f7 =  5:  136c742f7 fix(test): derive the installer's venv path from the platform, not from the macOS spelling
+   6:  5f3a5fa00 =  6:  5f3a5fa00 fix(update): run the backend from a managed Python outside the app bundle
+   7:  445d08124 =  7:  445d08124 build(mac): ship the interpreter as inert data, and refuse legacy aliases
+   8:  cd35366be =  8:  cd35366be test(update): cover the managed runtime, the private seed and the refusal copy
+   9:  81543cc16 =  9:  81543cc16 docs(build): name the hook that exists, and what the seed is now
+  10:  2378eda6a = 10:  2378eda6a docs(evidence): capture the start-up refusal, and re-stamp at this head
+  11:  bc95cd228 = 11:  bc95cd228 docs(evidence): re-stamp the manifest at the head that carries the capture
+  12:  cae04dc00 = 12:  cae04dc00 ci(mac): refuse a credential-bearing VM as BLOCKED, not as a product failure
+  13:  ce724b36b = 13:  ce724b36b fix(update): report the pre-split environments instead of saying nothing
+  14:  7aa9c0439 = 14:  7aa9c0439 fix(release): check the app inside the delivered containers, for their architecture
+  15:  d1affb427 = 15:  d1affb427 fix(ci): say BLOCKED where the signed-update proof cannot be taken here
+  16:  82b5c8e07 = 16:  82b5c8e07 docs(evidence): retract the unsupported claims, and record the delivered layout
+  17:  c735733f6 = 17:  c735733f6 docs(update): say what the install scripts do when the app is not there
+  18:  fb0a47d89 = 18:  fb0a47d89 docs(evidence): re-stamp the manifest at the head that carries the change
+  19:  71a33f35e = 19:  71a33f35e test(update): assert the guarded environment, not the property's name
+  20:  6931363c7 = 20:  6931363c7 docs(evidence): re-stamp the manifest at the head that carries the R6 fix
+  21:  e850f8f25 = 21:  e850f8f25 docs(evidence): the gates and the suite on this head, and the artifacts' provenance
+  22:  483a21da8 = 22:  483a21da8 docs(evidence): re-stamp the manifest at the head that carries the final evidence
+  23:  83a615ab1 = 23:  83a615ab1 fix(update): work the round-1 review, QA and design findings in one pass
+  24:  7aedf357c = 24:  7aedf357c docs(evidence): the round-1 findings, their raw output, and the re-captured frames
+  25:  035094031 = 25:  035094031 docs(evidence): re-stamp the manifest at the head that carries the round-1 work
+  26:  c32c01dbb = 26:  c32c01dbb fix(test): carry the start-up payload's heading and dismiss label in the story fixture's type
+  27:  9b8a05e9c = 27:  9b8a05e9c docs(evidence): re-stamp the manifest at the head that carries the story fixture's type
+  28:  05ef40788 = 28:  05ef40788 docs(evidence): state which head each block of the round-1 output was taken on
+  29:  336835d84 = 29:  336835d84 docs(evidence): re-stamp the manifest at the head that carries the provenance note
+
+All 29 commits read `=`: the same SHAs on both sides, so nothing was rewritten and no
+patch moved.
+
+$ # added/removed LINE SETS, branch delta before the sync vs after it
+$ git diff a8f6bc4b9 336835d84          > delta-old.diff    # pre-sync
+$ git diff c9a9c6196 684509891          > delta-new.diff    # post-sync
+  pre-sync  +5991 / -1010
+  post-sync +5985 / -1004
+  lines added  in the pre-sync delta only: 7   <- the manifest stamp block (6) + test:desktop
+  lines added  in the post-sync delta only: 1  <- test:desktop (the union itself)
+  lines removed in the pre-sync delta only: 8  <- the stamp block (6) + note + test:desktop
+  lines removed in the post-sync delta only: 2 <- note + test:desktop
+
+So the two deltas differ by exactly the conflict resolutions, and by nothing else. The
+decisive form of that for this PR: every file under `src/` and `scripts/` in the branch
+delta was compared per file between the two deltas - 26 files - and every one has an
+identical added/removed line set. `scripts/capture-evidence.mjs`'s `index` line differs
+only because the blob around this branch's added story ids is main's now, which is what
+a merge is for.
+
+## Gates on the merged head (`de81f6036`, one docs commit on from the merge)
+
+$ pnpm lint ; pnpm check-types ; pnpm check-themes
+  LINT_EXIT=0
+  TYPES_EXIT=0
+  THEMES_EXIT=0
+
+$ pnpm test:desktop
+  ℹ tests 1080
+  ℹ pass 1080
+  ℹ fail 0
+  DESKTOP_EXIT=0
+
+  (main brought 73 more tests: this head is 1080 against the pre-sync head's 1007, and
+   the merged suite is 1080/1080 with no failure.)
+
+$ pnpm build ; CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac --publish never
+  BUILD_EXIT=0
+  PACK_EXIT=0
+  Pruned bundled Python the arm64 app cannot run: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac-arm64/Local Operator.app/Contents/Resources/python-runtime-seed/x64
+  Pruned bundled Python the x64 app cannot run: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac/Local Operator.app/Contents/Resources/python-runtime-seed/arm64
+
+$ node scripts/verify-macos-artifacts.mjs --dist dist
+     6 FAIL app-codesign
+     6 FAIL app-spctl
+     6 FAIL app-stapler
+     2 FAIL dmg-spctl
+     2 FAIL dmg-stapler
+     6 PASS app-no-bundled-bytecode
+     6 PASS app-one-bundled-python
+     6 PASS app-private-python-seed
+     1 PASS final-artifact-metadata
+  22 of 41 artifact checks failed. The release must not be published until every check above passes.
+
+  Every failure is a codesign/spctl/stapler row - this host has no Developer ID, the
+  BLOCKED class the CI rule names. The rows this change owns pass on all six app
+  instances (2 unpacked + 4 containers) for both architectures.
+
+## The submit-latency flake, re-confirmed rather than asserted
+
+It did not fire in the merged-head full suite (`ℹ fail 0` above). It fires when the
+host is loaded, and it is not this branch's - it fails identically at the current base:
+
+$ node scripts/submit-latency.test.mjs   # in a detached worktree at origin/main (c9a9c6196)
+  ✖ M1/M2/M3: the warm removes the engage from the send, and the control proves it
+    AssertionError: a cold session's first warm must START one rather than report it
+    already warm - 'warm' !== 'warming'
+  ℹ tests 4 / pass 3 / fail 1
+
+  load averages at that moment: 92.45 106.37 93.07
+
+It spawns a real external python backend and asserts a warm-race outcome, so it is a
+measurement of the machine. Same assertion, same file, at `a8f6bc4b9` in the previous
+round and at `c9a9c6196` here.
+
+## DEFERRED, not skipped
+
+$ pnpm check-evidence
+  Evidence check DEFERRED: another sweep (or its image child) holds the machine lease;
+  retry after it finishes. No frames checked. Do not delete the lock file.
+  CHECK_EXIT=75
+
+The machine lease is another session's sweep, and the gate's own message says to retry
+rather than delete the lock, so the lock was left alone and this was retried once.
+The half it shares with the fast gate is green on this head:
+`node --test scripts/evidence-manifest.test.mjs` -> 15/15.
+
+## CI on the merged head - and the reason it is red
+
+The sync is what let CI run at all: a conflicted PR gets no `pull_request` workflow
+runs, so nothing had been executed against this branch's own newest code before it.
+
+```
+$ gh pr checks 183          # on 6dcf0d825
+Lint                     pass   26s
+Runtime Dependencies     pass   10s
+Type Checking            pass   29s
+Security Audit           pass   24s
+Version Bump Guard       pass   13s
+NPX Sanity Check (macos-latest)  pass   1m35s
+NPX Sanity Check (ubuntu-latest) pass   53s
+Desktop Tests            fail   1m59s
+
+$ # Desktop Tests, ubuntu-latest, verbatim
+# tests 1080   # pass 1055   # fail 10   # skipped 15
+```
+
+All ten failures are in THIS BRANCH'S OWN test files, and all ten are macOS-only
+tooling running on a Linux runner (`ci.yml`'s Desktop Tests job is `ubuntu-latest`).
+Two causes, listed with the file and line CI reported:
+
+```
+scripts/managed-python.test.mjs
+  202, 218, 230, 243   container tests        lipo could not thin the fixture binary:
+                                                 spawnSync /usr/bin/lipo ENOENT
+                                 (one of the four instead fails on `ditto`'s exit status)
+  347, 363, 373, 383, 395   the recovery fixtures   spawnSync /usr/bin/lipo ENOENT
+                                                 (via signedMachO -> seedFixture -> provisioned)
+
+scripts/python-bytecode-cache.test.mjs
+  1885   the pre-split environment report   The input did not match the regular expression
+                                             /built on the interpreter inside \/Applications\/Local Operator\.app/
+```
+
+The first eight are the same defect: `/usr/bin/lipo`, `/usr/bin/hdiutil`,
+`/usr/bin/ditto` and `/usr/bin/codesign` do not exist on the Linux runner. Four of
+them came in with `7aa9c0439` (the container gate) on the pre-sync head; the five
+recovery fixtures came from the round-1 remediation pass and pass locally on macOS.
+
+The tenth is different and worth stating plainly because it is worse than it looks:
+the fixture in that test asserts the "still built on the installed bundle" direction by
+naming `/Applications/Local Operator.app`, which EXISTS on this machine - it is the
+operator's live app - and does not exist on a runner. The test passed locally for a
+reason that is not in the repository.
+
+Left as found, not fixed here: this is a sync, and the manager asked for findings
+reported rather than remediated. The fix direction for the eight is that these files
+are macOS-only and need a platform guard (the suite runs on ubuntu-latest); the fix
+direction for the tenth is a fixture bundle created inside the temp directory rather
+than a path to the operator's installed app.

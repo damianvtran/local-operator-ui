@@ -1,0 +1,102 @@
+# Round-1 findings: the output of what answered each one
+
+Head: the tests, the gate and the frame capture below were run on 83a615ab1; the
+container block was re-run after a later commit changed the walk's own success
+line (it names the four trees it walks now, read from the shared definition).
+Every command is shown with its output, uncut.
+
+## R8 - a runtime or environment that is gone or changed is rebuilt
+
+$ node scripts/run-desktop-tests.mjs scripts/managed-python.test.mjs
+
+  Replaced an unusable managed Python selection: The selected Python runtime is no longer the runtime that was published (lib/python3.12/stray.py was added); a fresh runtime will be published beside it
+  ✔ a selected runtime that changed out of band is rebuilt beside the old one (1755.051375ms)
+  Replaced an unusable managed Python selection: The selected environment is not there any more (/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-managed-python-test-xoaTnm/managed-python/packaged/environments/1213d1a7d1ac174973274e48a2a40984d39c1f7e46f44612ef31f73dad5c119b-dc28b505-72d9-48fe-b024-e0bd881cbd5b): ENOENT: no such file or directory, lstat '/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-managed-python-test-xoaTnm/managed-python/packaged/environments/1213d1a7d1ac174973274e48a2a40984d39c1f7e46f44612ef31f73dad5c119b-dc28b505-72d9-48fe-b024-e0bd881cbd5b'
+  ✔ a selected environment that was removed is rebuilt, and the runtime is reused (1536.306041ms)
+  Replaced an unusable managed Python selection: The selected Python runtime is not there any more (/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-managed-python-test-AfI6i6/managed-python/packaged/runtimes/1213d1a7d1ac174973274e48a2a40984d39c1f7e46f44612ef31f73dad5c119b-2242cf46-aedb-4f24-a268-68dd183f7528): ENOENT: no such file or directory, lstat '/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-managed-python-test-AfI6i6/managed-python/packaged/runtimes/1213d1a7d1ac174973274e48a2a40984d39c1f7e46f44612ef31f73dad5c119b-2242cf46-aedb-4f24-a268-68dd183f7528'
+  ✔ a selected runtime that was removed is reprinted from the seed (1468.540459ms)
+  Replaced an unusable managed Python selection: The selected Python runtime is not there any more (/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-managed-python-test-aF7sWh/managed-python/packaged/runtimes/1213d1a7d1ac174973274e48a2a40984d39c1f7e46f44612ef31f73dad5c119b-3c0ce85a-6eb2-43a7-b558-af31a8961091): ENOENT: no such file or directory, lstat '/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-managed-python-test-aF7sWh/managed-python/packaged/runtimes/1213d1a7d1ac174973274e48a2a40984d39c1f7e46f44612ef31f73dad5c119b-3c0ce85a-6eb2-43a7-b558-af31a8961091'
+  ✔ a published selection whose runtime and environment are both gone is recoverable (1518.447792ms)
+  ✔ a seed that carries bytecode still yields a selection that stays usable (776.330292ms)
+  ✔ the reaper removes abandoned staging and superseded generations, and nothing else (4.20675ms)
+  ℹ tests 18
+  ℹ pass 18
+  ℹ fail 0
+
+The four fixtures the review drove, in order, each asserting that the install
+callback ran a second time: runtime changed out of band, environment removed,
+runtime removed, both removed. The 'Replaced an unusable managed Python
+selection' lines are the module's own log, and they name what mismatched -
+'lib/python3.12/stray.py was added', not 'the runtime has changed'.
+
+## Q1 - the identity counts signed bytes, not caches
+
+  test: 'a seed that carries bytecode still yields a selection that stays usable'
+  (same run as above; it plants a stray .pyc in the seed, publishes, and asserts
+  the SECOND start reuses it and the third call does not reinstall)
+
+## R7 - the pre-split environments are reported from paths that exist
+
+  test: 'the pre-split environments are reported from the paths that actually exist'
+  (drives legacyEnvironmentReport with a real <support>/local-operator-venv whose
+  pyvenv.cfg names Contents/Resources/python_aarch64/bin, and records that both
+  managedVenvPath answers resolve to {kind:none} - the input the old report used)
+
+## N1 - the macOS installer no longer claims to have chosen a directory
+
+  test: 'the macOS installer no longer claims to have chosen a Python directory'
+  (runs the shipped script under a temp HOME with PYTHON_BIN unset and asserts
+  stderr carries no 'Detected CPU architecture' line and still refuses with
+  'Pass an external prepared Python executable', exit 1)
+
+## D4 - the setup failure dialog
+
+  test: 'the setup failure dialog says what happened before what was recorded'
+  (asserts the plain sentence first, the raw message under 'The app recorded:',
+  and that an internal-sounding error is not the line the user reads)
+
+## D5 - the Details line's contrast, measured
+
+$ node -e '<palette source + WCAG maths, scripts/palette-source.mjs>'
+  localOperatorDark    inkDim #918b7d on elevated #282318 -> 4.61:1
+  localOperatorLight   inkDim #6c675c on elevated #fffefb -> 5.58:1
+
+  Token level: inkDim on elevated is 4.61:1 dark and 5.58:1 light. The rendered
+  3.9:1 / 4.3:1 the design round measured are densest-glyph pixels at 12px
+  monospace, i.e. antialiasing below the token colour, on a surface this change
+  does not touch (PanelDetails). Confirmed pre-existing; left alone.
+
+## The container gate, both architectures, on this head's own build
+
+$ pnpm setup-python && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac --publish never
+  BUILD_EXIT=0
+  PACK_EXIT=0
+  Pruned bundled Python the arm64 app cannot run: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac-arm64/Local Operator.app/Contents/Resources/python-runtime-seed/x64
+  Pruned bundled Python the x64 app cannot run: /Users/damian/local-operator-ui-worktrees/update-seal/dist/mac/Local Operator.app/Contents/Resources/python-runtime-seed/arm64
+
+$ node scripts/verify-macos-artifacts.mjs --dist dist
+     6 PASS app-no-bundled-bytecode: no .pyc/.pyo in the bundled python trees
+     6 PASS app-one-bundled-python: the bundled python interpreter tree this architecture needs
+     6 PASS app-private-python-seed: complete private Python seed with no legacy aliases
+     1 PASS final-artifact-metadata: release metadata describes exact delivered bytes
+
+  22 of 41 artifact checks failed. The release must not be published until every check above passes.
+  Every one of those failures is a codesign/spctl/stapler row: this host has no
+  Developer ID, which is the BLOCKED class the CI rule names rather than a
+  product failure. The six app instances (2 unpacked + 4 containers) pass all
+  three seeded rows, for both architectures.
+
+## The negative direction, on the real arm64 archive
+
+$ node /tmp/lo183-neg/negative.mjs dist-alias dist-seed-gone
+  (each is the ZIP this tree built, mutated: a legacy python_aarch64 symlink
+  added, and the seed removed; the SHIPPED finalContainerChecks + app checks
+  are driven over the real container)
+  == /tmp/lo183-neg/dist-alias/local-operator-ui-0.22.3-arm64.zip
+  {"id":"app-no-bundled-bytecode","scope":"app","target":"/tmp/lo183-neg/dist-alias/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app","description":"no .pyc/.pyo in the bundled python trees","passed":true,"output":"no bytecode under Contents/Resources/python, python_aarch64, python-runtime-seed/arm64, python-runtime-seed/x64"}
+  {"id":"app-one-bundled-python","scope":"app","target":"/tmp/lo183-neg/dist-alias/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app","description":"the bundled python interpreter tree this architecture needs","passed":true,"output":"arm64 app ships only Contents/Resources/python-runtime-seed/arm64"}
+  {"id":"app-private-python-seed","target":"/tmp/lo183-neg/dist-alias/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app","description":"complete private Python seed with no legacy aliases","passed":false,"output":"Legacy Python resource or alias exists: python_aarch64"}
+  == /tmp/lo183-neg/dist-seed-gone/local-operator-ui-0.22.3-arm64.zip
+  {"id":"app-no-bundled-bytecode","scope":"app","target":"/tmp/lo183-neg/dist-seed-gone/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app","description":"no .pyc/.pyo in the bundled python trees","passed":true,"output":"no bytecode under Contents/Resources/python, python_aarch64, python-runtime-seed/arm64, python-runtime-seed/x64"}
+  {"id":"app-one-bundled-python","scope":"app","target":"/tmp/lo183-neg/dist-seed-gone/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app","description":"the bundled python interpreter tree this architecture needs","passed":false,"output":"the arm64 app ships Contents/Resources/none, but it resolves Contents/Resources/python-runtime-seed/arm64"}
+  {"id":"app-private-python-seed","target":"/tmp/lo183-neg/dist-seed-gone/local-operator-ui-0.22.3-arm64.zip :: Local Operator.app","description":"complete private Python seed with no legacy aliases","passed":false,"output":"ENOENT: no such file or directory, scandir '/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/local-operator-artifact-nthcom/extracted/Local Operator.app/Contents/Resources/python-runtime-seed'"}
