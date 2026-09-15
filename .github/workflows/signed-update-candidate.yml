@@ -368,6 +368,29 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # The four variables the vite plugin requires, taken from the same
+          # repository secrets every release build uses. They are not decoration:
+          # `scripts/vite-plugins/replace-backend-config.ts` throws
+          # `Error: VITE_GOOGLE_CLIENT_ID is not set` (and the same for each of the
+          # other three) from `loadConfig`, before a single module is compiled, so
+          # this step could not complete while these lines were absent - which is
+          # what every dispatch of this workflow did. Runs 35009147986, 35011068051,
+          # 35016174653, 35021403386 and 35027593846 failed exactly here
+          # (`failed to load config from electron.vite.config.js`), so the
+          # `exact-update` job this workflow exists for - the unmodified incumbent
+          # updater driving itself onto the candidate's exact signed bytes - has
+          # never run once since the workflow was added. `publish.yml` declares
+          # these four in all five of its steps that build or pack the app, and
+          # `scripts/check-build-env.mjs` now fails the release contracts in
+          # `ci.yml` for any build step that omits one, so the omission cannot come
+          # back one step at a time. The names matter as much as the presence: a
+          # mistyped `secrets.*` resolves to the empty string and is the same
+          # `is not set` failure by another route, so the check fails a binding
+          # that disagrees with what the rest of the tree binds too.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
         run: |
           pnpm build
           # The arch flags are pinned here even though `main`'s build.mac.target

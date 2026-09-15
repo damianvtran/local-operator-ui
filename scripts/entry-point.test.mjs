@@ -274,6 +274,18 @@ function cases(root) {
 			stdout: /production dependencies, all on the runtime allowlist/,
 			stderr: /^$/,
 		},
+		{
+			// `ci.yml`'s release contracts step. Derives the workflows directory, the
+			// plugin's guard list and the script table from its own module URL, so the
+			// answer is the same summary whatever the working directory is.
+			script: "check-build-env.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /build steps carry all \d+ variables/,
+			stderr: /^$/,
+		},
 	];
 }
 
