@@ -2185,17 +2185,21 @@ async function main() {
 		 * nothing selected (design 7.3), and closing that one too is the state with
 		 * no tabs at all. This is `D16`'s third tab doing a second job.
 		 */
-		let expectedTabs = beforeQuit.tabs.length;
+		// Counted from the strip as it is HERE rather than taken from `beforeQuit`:
+		// after the restart the strip holds the restored tabs AND the agent's fresh
+		// one from the recovery check above, so a count from before the quit is a tab
+		// short. The wait asks for the count to FALL rather than for a number, so a
+		// strip that changes shape again does not turn into a timeout.
 		let closes = 0;
 		let noTabState = await chromeState();
 		while (noTabState.activeTabId !== null && closes < 5) {
-			expectedTabs -= 1;
+			const before = noTabState.tabs.length;
 			if ((await closeActiveTab()) !== "clicked") break;
 			closes += 1;
 			noTabState = await waitFor(
 				async () => {
 					const current = await chromeState();
-					return current.tabs.length === expectedTabs ? current : null;
+					return current.tabs.length < before ? current : null;
 				},
 				`the strip to settle after close ${closes}`,
 			);
