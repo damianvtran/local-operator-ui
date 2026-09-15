@@ -6,6 +6,8 @@
  * does not.
  */
 
+import { scrollRegionToTop } from "@shared/lib/scroll";
+
 /**
  * Bring a panel section into view, by its heading.
  *
@@ -24,6 +26,13 @@
  * `document.body`, outside the story's canvas element. Everything is a no-op when
  * the region or the heading is missing, so a story whose fixture fails to render
  * shows the top of its panel instead of throwing inside a capture sweep.
+ *
+ * `scrollRegionToTop` rather than `scrollIntoView`, and the comment here used to
+ * claim the opposite of the truth: `scrollIntoView` does NOT "walk up to the
+ * scrollable region and stop there". Its default walks EVERY scrolling box in the
+ * chain to the viewport, `overflow: hidden` boxes included, which is how the same
+ * call in the run panel's reveal came to shift the whole app frame (see that
+ * helper for the measurements). A capture harness gets the region it named.
  */
 export const scrollPanelToSection = (title: string): void => {
 	const region = document.querySelector<HTMLElement>(
@@ -33,11 +42,11 @@ export const scrollPanelToSection = (title: string): void => {
 	const heading = [...region.querySelectorAll("h3")].find((node) =>
 		(node.textContent ?? "").includes(title),
 	);
+	if (!heading) return;
 	/*
-	 * `block: "start"` puts the section's own heading at the top of the body,
-	 * which is the heading a reviewer needs in order to know what they are
-	 * looking at; `scrollIntoView` walks up to the scrollable region and stops
-	 * there, so the dialog itself does not move.
+	 * `block: "start"` semantics: the section's own heading at the top of the
+	 * body, which is the heading a reviewer needs in order to know what they are
+	 * looking at — and the dialog around it does not move.
 	 */
-	heading?.scrollIntoView({ block: "start" });
+	scrollRegionToTop(region, heading);
 };

@@ -42,6 +42,7 @@
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -428,6 +429,13 @@ export const RunPanel = ({
 		(state) => state.clearRunPanelReveal,
 	);
 	const todosSectionRef = useRef<HTMLElement | null>(null);
+	/*
+	 * The pane's own scroll region, which is the ONLY box a reveal may move
+	 * (`docs/composer-status-tabs.md` § 5.2, step 3: "bring the To-dos section
+	 * into view IN THE PANE'S SCROLL REGION"). See `scrollRegionToTop` for what a
+	 * `scrollIntoView` did instead, and for why that moved the whole frame.
+	 */
+	const bodyRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
 		if (!revealRequest) return;
@@ -443,16 +451,24 @@ export const RunPanel = ({
 			return;
 		}
 		const target = todosSectionRef.current;
-		if (target) {
+		const region = bodyRef.current;
+		if (target && region) {
 			/*
-			 * `block: "start"` and no `behavior`, so the reveal is instant rather than a
-			 * smooth scroll: `branding.md` § 5 reserves motion for entrances, and a pane
-			 * that animated its own scroll under a user who is reading would move text
-			 * they are already looking at. Focus deliberately does NOT move (`§ 9`: a
-			 * pane is part of the page, and the user pressing this chip is in the
-			 * composer, usually mid-sentence) — `scrollIntoView` takes no focus with it.
+			 * Instant, never smooth: `branding.md` § 5 reserves motion for entrances,
+			 * and a pane that animated its own scroll under a user who is reading
+			 * would move text they are already looking at. Focus deliberately does NOT
+			 * move (`§ 9`: a pane is part of the page, and the user pressing this chip
+			 * is in the composer, usually mid-sentence) — setting `scrollTop` on the
+			 * region takes no focus with it.
+			 *
+			 * The region is the pane's OWN body, not whatever box a browser would pick
+			 * while walking up from this section: the pane does not fit beside the chat
+			 * column at narrow windows, so that walk reached the slot row and slid the
+			 * column, the transcript and the composer sideways — the view shift the
+			 * operator reported. `scrollRegionToTop` is the one spelling of "move the
+			 * pane's reading position and nothing else".
 			 */
-			target.scrollIntoView({ block: "start" });
+			scrollRegionToTop(region, target);
 		}
 		/*
 		 * Retired either way: a request whose section is not in this pane (todos that
@@ -748,6 +764,7 @@ export const RunPanel = ({
 				 * one because it pages on keydown, and this one does not page at all.
 				 */
 				<div
+					ref={bodyRef}
 					className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
 				>
 					{/*
