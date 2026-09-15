@@ -313,6 +313,37 @@ export function runtimesRoot(options: ManagedPythonOptions): string {
 export function environmentsRoot(options: ManagedPythonOptions): string {
 	return join(managedPythonRoot(options), "environments");
 }
+/**
+ * Whether the runtime a published selection names is still one a repair reuses.
+ *
+ * Why the caller has to ask: the pre-copy reap protects the path it is given, and
+ * protecting a runtime `prepareRuntime` will NOT reuse is what makes a full disk
+ * unrecoverable - the repair needs ~47 MB for the copy, the reap reclaims nothing
+ * while an unusable tree of the same size sits protected, and every retry fails
+ * the same way (QA round 3, Q1). This is the same test `prepareRuntime` applies,
+ * so protection cannot drift from the reuse it is meant to preserve.
+ *
+ * Compared against the SEED's identity rather than the pointer's own `runtimeId`:
+ * an app update replaces the seed, and a runtime copied from the previous one is
+ * no longer what a repair would reuse even though its own bytes still match what
+ * was published then.
+ */
+function publishedRuntimeIsReusable(
+	options: ManagedPythonOptions,
+	published: ManagedSelection,
+): boolean {
+	try {
+		return (
+			runtimeIdentity(published.runtime, options.arch) ===
+			runtimeIdentity(seedPath(options), options.arch)
+		);
+	} catch {
+		// An unreadable seed or runtime is not reusable. `prepareRuntime` runs the
+		// strict walk next, which is what raises the error naming what is wrong.
+		return false;
+	}
+}
+
 /** The generation-name shape this module writes, and the only one it will reap. */
 const GENERATION_NAME = /^[a-f0-9]{64}-[0-9a-f-]{8,}$/;
 
@@ -409,15 +440,16 @@ export type ManagedSelectionState =
 	 * What was published is gone, unreadable or not the published bytes.
 	 *
 	 * `published` is the record the pointer names, whatever is wrong with it, and
-	 * exactly one caller needs it: the reaper must not delete the generation a
-	 * repair is about to reuse. "Not the published bytes" is not the same statement
-	 * as "stale" - a downgrade, or any two generations copied from two seeds,
-	 * leaves the SELECTED generation older by mtime than one that is not selected,
-	 * and the retention rule is about what is selected rather than what is newest
-	 * (review round 2, N4). Absent only where the pointer itself is unusable,
-	 * which is `unprepared`, with nothing published to preserve.
+	 * exactly one caller needs it: the reaper has to know what a repair can still
+	 * reuse. "Not the published bytes" is not the same statement as "stale" - a
+	 * downgrade, or any two generations copied from two seeds, leaves the SELECTED
+	 * generation older by mtime than one that is not selected, and the retention
+	 * rule is about what is selected rather than what is newest (review round 2,
+	 * N4). Required rather than optional, for the same reason: a verdict that could
+	 * be built without it lets a call site lose that protection silently, which is
+	 * the bug class N4 was (review round 3).
 	 */
-	| { kind: "missing"; detail: string; published?: ManagedSelection };
+	| { kind: "missing"; detail: string; published: ManagedSelection };
 
 function describe(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -632,7 +664,12 @@ const PREPARATION_LOCK_MS = 120_000;
  * not necessarily the selected one, so such a call can delete the generation a
  * repair was about to reuse and turn a recoverable state into a re-copy of the
  * seed (review round 2, N4). Every caller states what it protects; a caller with
- * nothing published passes an empty object deliberately. Only names this module
+ * nothing published passes an empty object deliberately.
+ *
+ * What a caller may protect is "what the repair can still USE", not "what is
+ * published": the two differ exactly when the published tree is itself broken, and
+ * protecting that is what stops this reclaiming the space the repair's own copy
+ * needs (QA round 3, Q1). Only names this module
  * writes are ever considered - `[0-9a-f]{64}-<uuid>` and `.preparing-*` - so a
  * file an operator or a future version put here is left alone, and nothing
  * outside `managedPythonRoot` is read, walked or removed. Never a machine-wide
@@ -862,14 +899,23 @@ export async function prepareManagedPython(
 		const root = managedPythonRoot(options);
 		/*
 		 * Reclaim BEFORE the copy, which is worth ~47 MB on the disk-full path this
-		 * branch writes user copy for - but never the published generation: a
-		 * selection that is `missing` is not necessarily superseded, and the venv
-		 * removed is the ordinary case where its runtime is the very tree the reuse
-		 * below is about to find. `unprepared` has nothing published to keep.
+		 * branch writes user copy for - and protect only what the repair can still
+		 * USE. The published RUNTIME, while its bytes still hash to the seed, is the
+		 * tree `prepareRuntime` reuses, so protecting it is what lets a state that
+		 * only lost its environment repair with no copy at all (review N4). An
+		 * identity-broken runtime is NOT protected: the repair copies the seed
+		 * instead, so protecting it only competes with its own copy for space, which
+		 * on a full disk made the state unrecoverable (QA round 3, Q1). The
+		 * published ENVIRONMENT is not protected either - a repair always creates a
+		 * new one at a new path, so nothing there is reusable, and the retention
+		 * rule already keeps that root's newest generation as the fallback.
+		 * `unprepared` has nothing published at all.
 		 */
 		reapSupersededGenerations(options, {
-			runtime: published?.runtime,
-			venv: published?.venv,
+			runtime:
+				published && publishedRuntimeIsReusable(options, published)
+					? published.runtime
+					: undefined,
 		});
 		const { runtime, id } = await prepareRuntime(options);
 		await mkdir(environmentsRoot(options), { recursive: true, mode: 0o700 });
