@@ -20,7 +20,7 @@ Storybook story cannot answer any of them:
 
 | frame | what it is for |
 |---|---|
-| `03-surface-populated.webp` | the strip over a real page, a tab the user typed and a tab an agent opened |
+| `03-surface-populated.webp` | the strip over the USER's own tab, whose page has no handle to composite — chrome and the content rectangle only. The "over a real page" claim is carried by `12` and `18`, and the "user tab beside an agent tab" claim by `12`, `17` and `18`; this frame is here for the strip's own grammar |
 | `12-approvals-queue.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
 | `17-tab-actions-in-band.webp` | the tab actions row and the badge in situ (D3, D4) |
 | `18-approvals-dock.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
@@ -39,3 +39,13 @@ format the rest of this directory uses, and committed because the scratch direct
 temporary. A full `capture-evidence.mjs` sweep does not produce them and does not
 overwrite them: they are declared as a supplementary set in `manifest.json`, which is
 what keeps the sweep's own frame count honest.
+
+## A deferred re-shoot, stated
+
+These four frames were taken at `cd6769521` and show the code as it stood there. The
+round that followed re-shaped four browser surfaces — the tab strip's overlaid chrome
+cluster, the band's busy cue, the dock's notice sentence and waiting row, and the URL
+bar's label reserve — and those frames are **not** re-photographed here: the re-shoot is
+deferred behind machine memory pressure rather than quietly implied. `manifest.json`'s
+`partialCapture.roundTwoRecapture` says the same thing, with the two commands that
+settle it.

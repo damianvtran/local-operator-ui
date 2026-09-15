@@ -2044,7 +2044,8 @@ async function main() {
 
 		const beforeWide = await measureTitles();
 		const beforeState = await chromeState();
-		const activeBeforeCrowding = beforeState.tabs.find((tab) => tab.active)?.tabId ?? null;
+		const activeBeforeCrowding =
+			beforeState.tabs.find((tab) => tab.active)?.tabId ?? null;
 		for (let index = 0; index < 9; index += 1) {
 			await evaluate(
 				`window.api.browser.newTab().then(() => "ok").catch(() => "refused")`,
@@ -2146,7 +2147,7 @@ async function main() {
 				JSON.stringify(trayDom.chips) === JSON.stringify(["1", "2"]) &&
 				JSON.stringify(trayDom.selected) === JSON.stringify(["1"]) &&
 				trayDom.chipNames[1] ===
-				"Request 2 from The agent in conversation other: queued-second.example" &&
+					"Request 2 from The agent in conversation other: queued-second.example" &&
 				trayDom.card.includes("queued-first.example"),
 			JSON.stringify(
 				{
@@ -2666,8 +2667,7 @@ async function main() {
 			withdrawal.json?.result?.state === "cancelled" &&
 				!beforeWithdrawal.rows.some((row) => row.includes("dropped.example")) &&
 				afterWithdrawal !== null &&
-				Number(afterWithdrawal.badge) ===
-					Number(beforeWithdrawal.badge) - 1 &&
+				Number(afterWithdrawal.badge) === Number(beforeWithdrawal.badge) - 1 &&
 				afterWithdrawal.rows.some(
 					(row) =>
 						row.includes("dropped.example") &&
