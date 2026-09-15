@@ -32,6 +32,13 @@ export interface BrowserTabView {
 	/** This tab's last top-level navigation was refused by the network. Marked in
 	 * the strip, because a background tab's blank page says nothing on its own. */
 	failed: boolean;
+	/** THIS tab is loading right now.
+	 *
+	 * Per tab rather than only for the active one, and it is what makes an agent's
+	 * work legible at all: an agent tab is created non-active, only the active tab
+	 * occupies the content rectangle, so the strip's spinner is the only signal a
+	 * parked tab can give (docs/design/browser-approval-ux.md 8.1, 8.3). */
+	loading: boolean;
 }
 
 /** A pending per-origin approval request (design 9.2). */

@@ -1,7 +1,14 @@
-import { Button, Input, Tooltip } from "@shared/components/ui";
+import { Badge, Button, Input, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { ArrowLeft, ArrowRight, Loader2, RotateCw, X } from "lucide-react";
-import type { FC, KeyboardEvent } from "react";
+import {
+	ArrowLeft,
+	ArrowRight,
+	Loader2,
+	RotateCw,
+	ShieldCheck,
+	X,
+} from "lucide-react";
+import type { FC, KeyboardEvent, Ref } from "react";
 import { useState } from "react";
 
 /**
@@ -28,8 +35,23 @@ import { useState } from "react";
  * who can reach a site the agent cannot does not read it as a broken agent.
  *
  * Non-`http(s)` input is refused by the HOST, not by a second check here
- * (design 6.1's "mirroring `_BROWSER_URL_SCHEMES`"): one implementation of the
+ * (design 6.1's "mirroring `_BROWSER_SCHEMES`"): one implementation of the
  * scheme rule, and its refusal is what the band shows.
+ *
+ * THE APPROVALS CONTROL, and what it replaced (browser-approval-ux.md 4.3, 5).
+ * The old control was a bare `Sites` label carrying a count of records with
+ * `scope !== "deny"` — the number of things already GRANTED, which says nothing
+ * about what is WAITING and is the wrong number to make a demand of. It becomes
+ * an icon plus the label `Approvals`, `variant="outline" size="sm"` unchanged
+ * (the "outline control" contrast row already covers the button itself), and the
+ * number it carries is the live request count, drawn as the numbered badge of §5.
+ * The approved count moves into the dock's header ("4 sites approved"), which is
+ * where a fact that is not a demand belongs.
+ *
+ * The badge is a SIBLING rather than a child of the button, so the control's own
+ * label is untouched and the number sits in the corner the operator asked for
+ * ("at the corner of the button"). `aria-label` carries the same number as words,
+ * so a screen reader hears "Approvals, 3 waiting" rather than a stranded digit.
  */
 
 export interface BrowserUrlBarProps {
@@ -46,9 +68,14 @@ export interface BrowserUrlBarProps {
 	onForward: () => void;
 	onReload: () => void;
 	onStop: () => void;
-	onOpenSites: () => void;
-	/** How many sites an agent may act on as the user, for the Sites button. */
-	approvalCount: number;
+	onOpenApprovals: () => void;
+	/** How many requests are waiting for an answer. Zero draws no badge at all —
+	 * the honest rendering of "nothing is being asked" (§3.3). */
+	waitingCount: number;
+	/** The Approvals control itself, so the dock can return focus to it when Escape
+	 * closes the dock. A ref rather than a callback because the surface owns both
+	 * ends of that exchange. */
+	triggerRef?: Ref<HTMLButtonElement>;
 }
 
 /** `about:blank` is what a new tab starts on and is what a browser shows as an
@@ -70,8 +97,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onForward,
 	onReload,
 	onStop,
-	onOpenSites,
-	approvalCount,
+	onOpenApprovals,
+	waitingCount,
+	triggerRef,
 }) => {
 	const [draft, setDraft] = useState<string | null>(null);
 	/**
@@ -203,20 +231,45 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				)}
 			</div>
 			{/* No tooltip here: the button already carries a visible label, and a tooltip
-			    repeating it is noise rather than help. The sheet it opens explains what
+			    repeating it is noise rather than help. The dock it opens explains what
 			    the count means. */}
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={onOpenSites}
-				disabled={disabled}
-				data-tour-tag="browser-sites"
-			>
-				Sites
-				{approvalCount > 0 && (
-					<span className="text-ink-dim">{approvalCount}</span>
+			<div className="relative shrink-0">
+				<Button
+					ref={triggerRef}
+					variant="outline"
+					size="sm"
+					onClick={onOpenApprovals}
+					disabled={disabled}
+					// `pr-4` so the badge, which sits over the control's top-right corner,
+					// never covers the label (§5.1).
+					className="pr-4"
+					aria-label={
+						waitingCount > 0
+							? `Approvals, ${waitingCount} waiting`
+							: "Approvals"
+					}
+					data-tour-tag="browser-approvals"
+				>
+					<ShieldCheck aria-hidden className="size-3.5" />
+					Approvals
+				</Button>
+				{waitingCount > 0 && (
+					// Position is the operator's own words — "at the corner of the button" —
+					// expressed as the spec's `-translate-y-1/2 translate-x-1/2` half-step out
+					// of the control. `rounded-full` and `tabular-nums` so the count does not
+					// change width as it is decided down.
+					<span className="pointer-events-none absolute -top-1 -right-1 -translate-y-1/2 translate-x-1/2">
+						<Badge
+							variant="attention"
+							shape="pill"
+							className="h-4 min-w-4 justify-center px-1 tabular-nums"
+							data-tour-tag="browser-approvals-badge"
+						>
+							{waitingCount}
+						</Badge>
+					</span>
 				)}
-			</Button>
+			</div>
 		</div>
 	);
 };
