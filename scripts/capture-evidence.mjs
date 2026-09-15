@@ -1087,6 +1087,77 @@ export const STORIES = [
 	["panels-failovers--loading", 1140, 400],
 	["panels-failovers--unavailable", 1140, 400],
 	["panels-failovers--narrow", 720, 580],
+
+	/* Settings: the version row, in the five states discovery can put it in.
+
+	   This is the surface the reported bug is ABOUT - the row that said
+	   "Unavailable" (or named a different install) while the operator's daemon was
+	   serving - and until now the sweep had no settings story at all, so no frame
+	   could contradict it. The row's value is a string, so the evidence is the five
+	   strings, one per state, and Storybook is the only instrument that can produce
+	   them: `detached` needs a daemon to exit, `degraded` needs two probes to fail
+	   on a live one, and neither can be asked for on demand without breaking the
+	   machine the capture runs on.
+
+	   Captured in the two `localOperator` palettes only, for the reason the
+	   reconnect-gap pair above is: the claim is the ink/ground relationship of one
+	   row's value, and the palette floors belong to `check-themes`, not to a
+	   seventy-frame sweep of five strings.
+
+	   Sized to the section rather than to a window, like the older-history-slot
+	   entries above: the section paints ~190px (a title, a description, five info
+	   rows and the updates card), and the story's own `min-h-screen` ground fills
+	   whatever else the viewport has. A 760-tall frame put 95% of its pixels on one
+	   colour - inside `check-evidence`'s ceiling but in the band its two nearest
+	   legitimate frames (96.3-97.0%) occupy, and mostly empty page that says nothing
+	   about the row. 320 leaves the whole section plus a strip of ground below it. */
+	["settings-app-updates-and-info--no-bridge", 980, 320],
+	["settings-app-updates-and-info--before-first-probe", 980, 320],
+	["settings-app-updates-and-info--attached-to-discovered-daemon", 980, 320],
+	["settings-app-updates-and-info--degraded-daemon", 980, 320],
+	["settings-app-updates-and-info--detached-daemon", 980, 320],
+	/* `replaced`, a live daemon whose record carries no version, and the daemon
+	   this app started itself: three states in the shipped union that the first
+	   round named as unphotographed, plus the suffix-and-muted-ink reading of
+	   `degraded` in the same crop so the two are comparable side by side. */
+	["settings-app-updates-and-info--replaced-daemon", 980, 320],
+	["settings-app-updates-and-info--attached-without-version", 980, 320],
+	["settings-app-updates-and-info--owned-daemon", 980, 320],
+	["settings-app-updates-and-info--wedged-daemon", 980, 320],
+	/* The value's tooltip, which is where the daemon's own sentence lives. Its own
+	   id because `:hover` cannot be a story state: the rig moves a real pointer at
+	   `[data-backend-version]` for this frame. `hoverSettleMs` is there because a
+	   tooltip opens on the shared `TooltipProvider`'s 400 ms delay rather than with
+	   the pointer - without it the frame is the unopened state under a name that
+	   claims the tooltip. */
+	[
+		"settings-app-updates-and-info--value-hover",
+		980,
+		320,
+		{ hover: "[data-backend-version]", hoverSettleMs: 900 },
+	],
+
+	/* The same section at a narrow width: the value now carries `version ·
+	   address`, `InfoGrid` is `repeat(auto-fit, minmax(160px, 1fr))`, and a narrow
+	   window is the only thing that proves the grid reflows rather than clipping,
+	   and shows which of the row's strings wraps first. */
+	["settings-app-updates-and-info-narrow--attached", 620, 360],
+	["settings-app-updates-and-info-narrow--no-version", 620, 360],
+	["settings-app-updates-and-info-narrow--degraded", 620, 360],
+
+	/* The connectivity banner, the app-wide surface whose trigger condition this
+	   work rewrote and which had NO frame anywhere in the tree: the neighbouring
+	   rigs only asserted its absence. Each entry is one state main can publish -
+	   and two of them (attached, degraded) are frames OF its absence, which is
+	   the claim: a missed probe is not an outage. */
+	["common-connectivity-banner--no-bridge", 1024, 300],
+	["common-connectivity-banner--attached", 1024, 300],
+	["common-connectivity-banner--degraded", 1024, 300],
+	["common-connectivity-banner--identity-failed", 1024, 300],
+	["common-connectivity-banner--no-spawn", 1024, 300],
+	["common-connectivity-banner--unclaimed", 1024, 300],
+	["common-connectivity-banner--stopped", 1024, 300],
+	["common-connectivity-banner--wedged", 1024, 300],
 ];
 
 /**
@@ -1237,7 +1308,22 @@ const teardown = () => {
 		chrome = null;
 	}
 	if (dataDir) {
-		rmSync(dataDir, { recursive: true, force: true });
+		/*
+		 * Retried, because `SIGKILL` above is asynchronous: Chrome's own children
+		 * can still hold the profile open for a moment after it, and a bare
+		 * `rmSync` then throws `ENOTEMPTY` out of the `finally` - which turns a
+		 * capture that wrote every frame and its manifest into a non-zero exit
+		 * with a Node stack trace, i.e. a complete run that reads as a failed one.
+		 * `maxRetries` only retries the races it is documented to retry
+		 * (`ENOTEMPTY`/`EBUSY`/`EPERM`); a profile that will not go is still loud,
+		 * and `sweepStaleProfiles` reaps it on the next run.
+		 */
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 20,
+			retryDelay: 50,
+		});
 		dataDir = null;
 	}
 };
@@ -1564,6 +1650,34 @@ const main = async () => {
 				},
 			));
 
+			/*
+			 * PARK THE POINTER, then load the story.
+			 *
+			 * A `{ hover }` entry leaves the pointer where it stopped, and the pointer
+			 * outlives the document: the next story loads with the pointer already
+			 * inside whatever sits at those coordinates, so a TOOLTIP can open on a
+			 * frame that never asked for one - and, worse, only sometimes, because the
+			 * tooltip opens on a delay. Measured rather than theorised: the row's
+			 * `degraded-daemon` frame came back with two different hashes on two runs of
+			 * the same tree, and the `value-hover` entry the settings surface ends on
+			 * was the only difference between them.
+			 *
+			 * The bottom-right corner of the requested viewport is empty in every
+			 * story this file captures, and moving there before the navigation is what
+			 * makes a frame a function of its own story rather than of the previous
+			 * one.
+			 */
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: width - 2,
+				y: height - 2,
+				button: "none",
+				buttons: 0,
+				clickCount: 0,
+				modifiers: 0,
+				pointerType: "mouse",
+			});
+
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
 			});
@@ -1857,6 +1971,17 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
+				/*
+				 * A TOOLTIP IS NOT A `:hover` GROUND, and this is what tells the two apart.
+				 *
+				 * A colour step happens with the pointer; a tooltip opens on a TIMER
+				 * (`TooltipProvider`'s 400 ms delay), so a frame taken on the next paint
+				 * photographs the unopened state and files it under a name that claims the
+				 * tooltip. An entry that names a tooltip's trigger says how long the
+				 * shutter waits, which keeps the instrument the real pointer and keeps the
+				 * claim honest; entries without it are unchanged, byte for byte.
+				 */
+				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
 			}
 			/*
 			 * A SCROLL POSITION, for the frame whose claim is a section's END.

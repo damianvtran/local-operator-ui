@@ -54,8 +54,6 @@ import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { VideoAttachment } from "./video-attachment";
 
-const localOperatorClient = createLocalOperatorClient(apiConfig.baseUrl);
-
 /**
  * Props for the MessageItem component
  */
@@ -201,9 +199,19 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		 * a file list).
 		 */
 
-		// Get the URL for an attachment
+		/*
+		 * Built HERE, at click time, rather than at module load.
+		 *
+		 * `apiConfig.baseUrl` follows the daemon MAIN is attached to, which is only
+		 * known after discovery; a client constructed at import captured the
+		 * configured origin for the life of the window, so this component would have
+		 * dialled a different server than main is streaming from - the "two clients
+		 * of two servers" case `api-config.ts` exists to prevent. Its siblings in
+		 * this folder read the getter the same way.
+		 */
 		const getUrl = useCallback(
-			(path: string) => getAttachmentUrl(localOperatorClient, path),
+			(path: string) =>
+				getAttachmentUrl(createLocalOperatorClient(apiConfig.baseUrl), path),
 			[],
 		);
 
