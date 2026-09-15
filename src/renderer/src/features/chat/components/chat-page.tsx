@@ -31,7 +31,14 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import {
@@ -60,6 +67,7 @@ import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
 import {
 	interruptNotice,
 	interruptTurn,
+	interruptUnavailableNotice,
 	sessionInterruptEnabled,
 } from "../interrupt-turn";
 import {
@@ -1249,7 +1257,15 @@ function SessionPanel({
 		if (next) next.focus();
 		else input.current?.focusInput();
 	}, [gateKey]);
-	const stop = () => {
+	/*
+	 * `useCallback` rather than a fresh closure per render (reviewer round 1, NIT
+	 * 2): this identity is an effect DEPENDENCY of the Escape hook, and the panel
+	 * re-renders on every streaming delta - so an unstable `stop` unsubscribed and
+	 * re-subscribed the window keydown listener several times a second for no
+	 * reason. Both orders were measured safe, which is why this is churn rather
+	 * than a defect: the predicate is unchanged, and the setter pair is stable.
+	 */
+	const stop = useCallback(() => {
 		if (!sessionId || !interruptAvailable) return;
 		/*
 		 * A NEW press retires the previous notice before it can be overtaken by a
@@ -1266,7 +1282,7 @@ function SessionPanel({
 				// still on screen and `busy` is still true, which is the honest state.
 				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
 			);
-	};
+	}, [sessionId, interruptAvailable]);
 	/*
 	 * The notice describes the LAST interrupt, so a turn that starts afterwards
 	 * retires it: the sentence says a turn was stopped, and the next turn is not
@@ -1897,7 +1913,19 @@ function SessionPanel({
 						startingAfterId: admitted.current?.requestId ?? null,
 						onStop: stop,
 						stopAvailable: interruptAvailable,
-						stopNotice,
+						/*
+						 * The band carries ONE sentence, and which one is a fact about
+						 * this build's pairing: a press that happened
+						 * (`interruptNotice(receipt)`), or a turn that cannot be pressed
+						 * at all because the paired backend predates the control
+						 * (`interruptUnavailableNotice(busy, interruptAvailable)` - UX
+						 * round 1's U4). They cannot both apply: no press is possible
+						 * without the capability, so there is never a receipt to report
+						 * beside a skew line.
+						 */
+						stopNotice:
+							stopNotice ??
+							interruptUnavailableNotice(busy, interruptAvailable),
 						onAnswer: (label: string) => void answerWithOption(label),
 						answer: answerForThisGate,
 					}}

@@ -1,6 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { interruptNotice } from "../interrupt-turn";
+import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
 import { MessageInput } from "./message-input";
@@ -300,7 +300,126 @@ export const StopControlWhileStreaming: Story = {
 					isLoading={false}
 					messages={NONEMPTY}
 					conversationId="story"
+					/*
+					 * `awaitingReply` is what the APP pairs this control with (design
+					 * round 1, N1): the control exists only while `busy`, and `busy` is
+					 * the same fact that paints "Waiting for the agent". Photographed
+					 * without it the frame read "Ask me for help" - the idle string -
+					 * under a caption that said streaming, which is a state the app
+					 * cannot be in.
+					 */
+					awaitingReply={true}
 					canonicalStop={{ active: true, onStop: () => {} }}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+/*
+ * THE RESERVED SLOT, which is the fix for the round's MAJOR and has to be
+ * visible to be judged. Between turns on a capable backend the row holds an
+ * invisible box where the control renders, so the dictation control never slides
+ * into the centre a reflex second press lands on (UX round 1's U1, QA's Q1).
+ * Captured against the frame above, the pair shows the cluster is the same shape
+ * in both states; against `StopControlWithoutCapability` below, it shows a
+ * backend that cannot interrupt reserves nothing.
+ */
+export const StopSlotReserved: Story = {
+	render: () => (
+		<Frame label="idle between turns, session_interrupt negotiated: the control's box is held">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					canonicalStopAvailable={true}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+export const StopSlotReservedSmallView: Story = {
+	render: () => (
+		<Frame label="small view: the reservation tracks the rung, and the tightened notice fits">
+			<div className={cn("@container/chatcol")} style={{ width: 440 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					isSmallView={true}
+					canonicalStopAvailable={true}
+					interruptNotice={STOPPED_WITH_WORK_LEFT}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+export const InterruptLeftChildrenOnly: Story = {
+	render: () => (
+		<Frame label="stopped, with subagents still running and no background jobs">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					interruptNotice={interruptNotice({
+						status: "interrupted",
+						receipt: "stopping this turn",
+						children_running: 2,
+						background_jobs: 0,
+						replayed: false,
+					})}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+export const InterruptLeftJobsOnly: Story = {
+	render: () => (
+		<Frame label="stopped, with a background job still running and no children">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					interruptNotice={interruptNotice({
+						status: "interrupted",
+						receipt: "stopping this turn",
+						children_running: 0,
+						background_jobs: 1,
+						replayed: false,
+					})}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
+/*
+ * The version-skew line (UX round 1, U4): no control, no Escape, and now a
+ * sentence saying why and naming the lever that does work. It renders through the
+ * same band as the notice, which is the point - the composer has one place to be
+ * told something about stopping, whatever the reason.
+ */
+export const InterruptUnavailableOldBackend: Story = {
+	render: () => (
+		<Frame label="streaming, backend predating session_interrupt: no control, and the reason">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					awaitingReply={true}
+					interruptNotice={interruptUnavailableNotice(true, false)}
 					onSendMessage={async () => true}
 				/>
 			</div>

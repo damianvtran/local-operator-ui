@@ -915,6 +915,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										? { active: canonical.busy, onStop: canonical.onStop }
 										: undefined
 								}
+								/*
+								 * The capability itself, not just its busy half: the composer
+								 * reserves the control's SLOT whenever the backend negotiates
+								 * it, so the dictation control cannot slide into the centre a
+								 * reflex second press lands on (UX round 1's U1 / QA's Q1).
+								 * Without the capability the slot is not reserved either - a
+								 * gap that nothing will ever fill is not a reservation.
+								 */
+								canonicalStopAvailable={canonical?.stopAvailable ?? false}
 								interruptNotice={canonical?.stopNotice ?? null}
 								isFarFromBottom={isFarFromBottom}
 								hasNewActivity={hasNewActivity}
