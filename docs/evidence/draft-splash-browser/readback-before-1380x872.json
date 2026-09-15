@@ -16,7 +16,7 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 43748,
+  "at": 52939,
   "viewport": "1380x872",
   "active": "TEXTAREA",
   "stack": null,
@@ -46,19 +46,19 @@
     "all": false
   },
   "settlement": {
-    "now": 28948,
-    "reads": 21,
+    "now": 45934,
+    "reads": 39,
     "layoutChanges": 1,
-    "lastChangeAt": 5023,
-    "stableForMs": 23925,
+    "lastChangeAt": 11955,
+    "stableForMs": 33979,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": false,
     "states": [
       {
-        "at": 1637,
-        "lastSeenAt": 1942,
-        "reads": 3,
+        "at": 4073,
+        "lastSeenAt": 9764,
+        "reads": 4,
         "columnWidth": null,
         "bandY": null,
         "bandHeight": null,
@@ -80,9 +80,9 @@
         }
       },
       {
-        "at": 5023,
-        "lastSeenAt": 28948,
-        "reads": 18,
+        "at": 11955,
+        "lastSeenAt": 45934,
+        "reads": 35,
         "columnWidth": 1100,
         "bandY": 736,
         "bandHeight": 136,

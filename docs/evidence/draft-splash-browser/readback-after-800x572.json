@@ -16,7 +16,7 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 147724,
+  "at": 179326,
   "viewport": "800x572",
   "active": "TEXTAREA",
   "stack": null,
@@ -46,19 +46,19 @@
     "all": true
   },
   "settlement": {
-    "now": 66614,
-    "reads": 44,
+    "now": 164335,
+    "reads": 106,
     "layoutChanges": 2,
-    "lastChangeAt": 54403,
-    "stableForMs": 12211,
+    "lastChangeAt": 104908,
+    "stableForMs": 59427,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": true,
     "states": [
       {
-        "at": 2080,
-        "lastSeenAt": 3654,
-        "reads": 4,
+        "at": 268,
+        "lastSeenAt": 383,
+        "reads": 3,
         "columnWidth": null,
         "bandY": null,
         "bandHeight": null,
@@ -80,9 +80,9 @@
         }
       },
       {
-        "at": 6666,
-        "lastSeenAt": 29890,
-        "reads": 24,
+        "at": 1345,
+        "lastSeenAt": 104758,
+        "reads": 42,
         "columnWidth": 520,
         "bandY": 104,
         "bandHeight": 468,
@@ -93,20 +93,20 @@
         "greeting": 1,
         "skeleton": 0,
         "chipLabels": [],
-        "rowsLaidOut": 6,
+        "rowsLaidOut": 5,
         "rowsInside": 4,
         "boundaryInGap": true,
         "claims": {
-          "placeholders": 1,
-          "outsideBand": 1,
-          "shimmerBars": 3,
-          "captionVisible": true
+          "placeholders": 0,
+          "outsideBand": 0,
+          "shimmerBars": 0,
+          "captionVisible": false
         }
       },
       {
-        "at": 54403,
-        "lastSeenAt": 66614,
-        "reads": 16,
+        "at": 104908,
+        "lastSeenAt": 164335,
+        "reads": 61,
         "columnWidth": 520,
         "bandY": 104,
         "bandHeight": 468,
