@@ -118,10 +118,12 @@ const slashCommand = (
  * completes and opens its list, and an ambiguous word grows instead of running.
  *
  * It is a SUBSET rather than the whole registry, and the omissions are chosen
- * rather than incidental: `login` and `logout` are the whole `l` family here, so
- * `/l` has exactly two candidates and its common prefix is `log` — the growth
- * case — where a fixture carrying `loop` too would share only `lo` and grow
- * nothing.
+ * rather than incidental: the `l` family here is `login`, `logout` and `loop`,
+ * which is the WHOLE family in the real registry (`local_operator/slash_commands.py`)
+ * - so `/l` grows to `lo`, the prefix all three agree on, exactly as it does in
+ * the app. Review round 1 (F3) found this fixture carrying only `login` and
+ * `logout`, which made the frame show `log`: a number the real registry cannot
+ * produce, and an ambiguity case easier than the one users meet.
  */
 const SLASH_COMMANDS: SlashCommandMeta[] = [
 	slashCommand(
@@ -172,6 +174,12 @@ const SLASH_COMMANDS: SlashCommandMeta[] = [
 	slashCommand("logout", "Remove stored provider credentials", "auth.logout", {
 		arguments: "optional",
 	}),
+	slashCommand(
+		"loop",
+		"Loop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancel",
+		"session.loop",
+		{ arguments: "required" },
+	),
 ];
 
 /*
@@ -453,7 +461,7 @@ export const CwdChipInRow: Story = {
  * any instrument the repository had — the bundled contract test executes the
  * decision, this executes the gesture. Driven by `scripts/slash-enter-proof.mjs`
  * with real key events, which is where the frames under
- * `docs/evidence/slash-enter-live/` come from.
+ * `docs/evidence/chat-slash-enter-gestures/` come from.
  */
 const SlashGestureHarness = () => {
 	const [ran, setRan] = useState<string[]>([]);

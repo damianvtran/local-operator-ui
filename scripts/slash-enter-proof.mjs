@@ -110,10 +110,19 @@ const CASES = [
 	},
 	{
 		name: "ambiguous-enter-grows-the-prefix",
-		why: "`/l` leaves `login` and `logout`, so Enter grows the word to their common prefix `log` and leaves the list up.",
+		why: "`/l` leaves the whole `l` family (`login`, `logout`, `loop` — the real registry's own set), so Enter grows the word to their common prefix `lo` and leaves the list up.",
 		word: "l",
 		key: "Enter",
-		expect: { ran: "none", draft: "/log", list: "Slash commands" },
+		expect: { ran: "none", draft: "/lo", list: "Slash commands" },
+	},
+	{
+		name: "ambiguous-enter-keeps-the-written-message",
+		why: "The same growth on a draft that has a message after the word — the shape review round 1 (F1) found the separator being deleted from, turning `/l hello` into `/lohello`.",
+		word: "l",
+		trailing: " hello",
+		caretLefts: 6,
+		key: "Enter",
+		expect: { ran: "none", draft: "/lo hello", list: "Slash commands" },
 	},
 	{
 		name: "click-runs-analytics",
@@ -279,7 +288,7 @@ async function reset() {
 }
 
 /** Focus the composer the way a user does, then type the word. */
-async function typeWord(word) {
+async function typeWord(word, trailing = "", caretLefts = 0) {
 	const point = await evaluate(`(() => {
 		const field = document.querySelector("textarea");
 		if (!field) return null;
@@ -337,7 +346,17 @@ async function typeWord(word) {
 	 * is what makes the token a command — and the cases carry the WORD, the way
 	 * the query the matcher reads does.
 	 */
-	await send("Input.insertText", { text: `/${word}` });
+	await send("Input.insertText", { text: `/${word}${trailing}` });
+	/*
+	 * A draft with a message after the word needs its caret INSIDE the word, and
+	 * these are real arrow presses rather than a `setSelectionRange`: the composer
+	 * keeps its own caret state (`onSelect`), so a selection written straight into
+	 * the DOM would leave React reading the old position and the list would never
+	 * open. Six Lefts from the end of `/l hello` land right after the `l`.
+	 */
+	for (let i = 0; i < caretLefts; i += 1) {
+		await press("ArrowLeft", "ArrowLeft", 37);
+	}
 	/* The popup opens on the query's own render, not on a timer, but the list's
 	   rows come from the fixture's query — wait for the box rather than a fixed
 	   sleep, so a slow first render cannot be read as "no list". */
@@ -442,7 +461,7 @@ try {
 		await reset();
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(THEME)} }, version: 0 })); } catch {}`,
-		});		await typeWord(testCase.word);
+		});		await typeWord(testCase.word, testCase.trailing, testCase.caretLefts);
 		const before = await evaluate(READ_STATE);
 		const beforeFrame = await shoot(`${testCase.name}-before`);
 		if (testCase.click) {
