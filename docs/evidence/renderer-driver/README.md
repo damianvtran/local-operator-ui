@@ -41,7 +41,7 @@ and nothing else different between them that a reviewer has to explain away.
 ## The run's own output
 
 The scene asserts as it goes and prints each check. From the run these frames
-came from (`node scripts/renderer-driver.mjs --scene states --out <dir>`, 17
+came from (`node scripts/renderer-driver.mjs --scene states --out <dir>`, 18
 checks, all passing):
 
 ```
@@ -52,6 +52,8 @@ checks, all passing):
 [PASS] the window never has focus
 [PASS] the requested window size is the size that exists      1380x900
 [PASS] the content area is smaller than the window by the platform's chrome only
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+        [2026-09-15 01:04:39.109] [info]  Log path: …/lo-renderer-driver-76314/logs
 [note] theme change settled before the frame
         116ms
 [PASS] the theme action changed the app's own theme state     localOperatorDark -> localOperatorLight
