@@ -24,7 +24,12 @@ import {
 } from "../shared/desktop-contract";
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
-import { OPEN_SESSION_FLAG, readOpenSessionArgv } from "../shared/open-session";
+import {
+	OPEN_CATALOGUE_FLAG,
+	OPEN_SESSION_FLAG,
+	readLaunchTarget,
+	readOpenSessionArgv,
+} from "../shared/open-session";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -266,7 +271,10 @@ function createApplicationMenu(): void {
 	Menu.setApplicationMenu(menu);
 }
 
-function createWindow(initialSession: string | null = null): BrowserWindow {
+function createWindow(
+	initialSession: string | null = null,
+	openCatalogue = false,
+): BrowserWindow {
 	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say
 	 * how it wants the window to behave: `headless` (created, never shown) and
@@ -330,10 +338,13 @@ function createWindow(initialSession: string | null = null): BrowserWindow {
 			 * Omitted entirely rather than set to an empty value on an ordinary
 			 * launch: the preload parses a flag out of argv, and an empty one would
 			 * be a value it then has to decide means "no session".
+			 *
+			 * `openCatalogue` is the THIRD intent (R2-1): a burst digest's click has
+			 * no single conversation to name, and "no flag at all" already means
+			 * "restore what you had open" — so it needs a flag of its own rather than
+			 * sharing that absence.
 			 */
-			...(initialSession
-				? { additionalArguments: [`${OPEN_SESSION_FLAG}=${initialSession}`] }
-				: {}),
+			...launchArgumentFlags(initialSession, openCatalogue),
 		},
 	});
 
@@ -493,6 +504,27 @@ function createWindow(initialSession: string | null = null): BrowserWindow {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
 
+	/*
+	 * THE BROWSER HOST IS PART OF CREATING A WINDOW (review round 2, R2-2; moved
+	 * here in round 3, R3-5). It used to be attached by the startup path, so every
+	 * OTHER way a window comes into existence — a notification click, a viewer
+	 * resume, a second instance — recreated chat without the capability, and the
+	 * dock handler could not repair it because it is gated on zero windows.
+	 * Attaching it here is what makes the fix unconditional: there is one place a
+	 * window is built, so there is no call site left to forget, and the
+	 * source-shape guard that stood in for it asserts the shape rather than a
+	 * caller's diligence.
+	 *
+	 * Through `attachBrowserHostToWindow` rather than directly, because the host's
+	 * own state lives inside `whenReady` and this factory is at module scope; the
+	 * pointer is set before the first window is built. Not awaited, and it does
+	 * not need to be: the host needs the window to exist, nothing after this call
+	 * needs the host, and it owns its own teardown (its `closed` listener stops
+	 * it). It reports its own failures and never rejects, so a browser capability
+	 * that cannot start is a logged line rather than a reason the app does not
+	 * come up.
+	 */
+	attachBrowserHostToWindow?.(mainWindow);
 	return mainWindow;
 }
 
@@ -580,7 +612,36 @@ let activeUpdateService: UpdateService | null = null;
  * load, so the renderer can paint THIS conversation in its first frame instead
  * of rehydrating the last one it had open and then swapping (B3).
  */
-const launchSession = readOpenSessionArgv(process.argv);
+const launchTarget = readLaunchTarget(process.argv);
+const launchSession =
+	launchTarget.kind === "session" ? launchTarget.sessionId : null;
+/**
+ * Whether THIS launch asked for the catalogue rather than a conversation.
+ *
+ * A separate flag from `launchSession`'s absence, because the two are different
+ * intents (review round 2, R2-1): no flag means "restore the last conversation",
+ * and `--open-catalogue` means "open the list". The windowless half of a burst
+ * digest's click is the case that needed the second one.
+ */
+const launchCatalogue = launchTarget.kind === "catalogue";
+
+/**
+ * The argv a renderer process is created with, resolved once for every caller.
+ *
+ * `{}` on an ordinary launch rather than an empty array: the preload parses a
+ * flag out of argv, and a value it then has to decide means "no session" is a
+ * second spelling of absence to keep in step.
+ */
+function launchArgumentFlags(
+	initialSession: string | null,
+	openCatalogue: boolean,
+): { additionalArguments?: string[] } {
+	if (initialSession) {
+		return { additionalArguments: [`${OPEN_SESSION_FLAG}=${initialSession}`] };
+	}
+	if (openCatalogue) return { additionalArguments: [OPEN_CATALOGUE_FLAG] };
+	return {};
+}
 
 /**
  * A conversation a SECOND launch asked for before this process could open it.
@@ -610,6 +671,21 @@ let viewerEndpoint: ViewerEndpoint | null = null;
  */
 let openConversationInWindow: ((sessionId: string | null) => void) | null =
 	null;
+
+/**
+ * Attach the browser host to a freshly created window. Assigned once
+ * `whenReady` has the host's own state in scope; `null` before that.
+ *
+ * The SAME SEAM AS `openConversationInWindow` ABOVE, and for the same reason: the
+ * host cannot start before the app is ready (it needs `app.getVersion()`,
+ * `app.getPath("userData")` and the resolved renderer URL, all of which exist
+ * only inside the ready callback), while the window is built by a module-scope
+ * factory. Wiring it here rather than inside the factory's caller is what makes
+ * R2-2 unconditional: every way a window comes into existence — a notification
+ * click, a viewer resume, a second instance, the dock — goes through
+ * `createWindow`, so none of them can forget the host (review round 3, R3-5).
+ */
+let attachBrowserHostToWindow: ((window: BrowserWindow) => void) | null = null;
 
 /**
  * How long a click-created window may stay hidden waiting for the renderer to
@@ -991,6 +1067,7 @@ app
 			() => backendService.getStreamRelay(),
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 			desktopNotifier,
+			(sessionId) => viewerRecord?.releaseSession(sessionId),
 		);
 
 		// Add IPC handlers for opening files and URLs
@@ -1417,10 +1494,29 @@ app
 		// --- Helper to manage main window and update service lifecycle ---
 		let updateService: UpdateService | null = null;
 
+		/*
+		 * Create the window AND attach everything that window's lifetime owns.
+		 *
+		 * THE BROWSER HOST IS PART OF CREATING A WINDOW, not a step the startup path
+		 * happens to take next (review round 2, R2-2). It used to be started at two
+		 * call sites — the initial launch and the dock ``activate`` — while the
+		 * click/viewer/second-instance path in ``openSessionInWindow`` created a
+		 * window and started nothing. After the last window closed, a notification
+		 * click therefore recreated chat with the browser capability silently
+		 * missing, and activating the now-existing window could not repair it
+		 * because the dock handler is gated on zero windows.
+		 *
+		 * Starting it HERE is what makes every creation path share the contract
+		 * rather than duplicating #160's registration: there is one place a window
+		 * comes into existence, so there is one place the host attaches to it. The
+		 * host owns its own teardown (its ``closed`` listener stops it), which is why
+		 * nothing here has to unwind it.
+		 */
 		function setupMainWindowWithUpdateService(
 			initialSession: string | null = null,
+			openCatalogue = false,
 		) {
-			mainWindow = createWindow(initialSession);
+			mainWindow = createWindow(initialSession, openCatalogue);
 			// The `webContents` id this window's watch state is keyed on, captured
 			// here because `mainWindow` is null by the time `closed` runs.
 			const windowId = mainWindow.webContents.id;
@@ -1585,9 +1681,11 @@ app
 		 *
 		 * `null` is the CATALOGUE, not a missing value: a burst digest's click
 		 * names several conversations, so the window it recreates must open on the
-		 * list rather than on one of them (R1-2). The create branch already
-		 * distinguishes "no conversation" from a conversation by omitting the argv
-		 * flag, which is exactly this state.
+		 * list rather than on one of them (R1-2). The CREATE branch has to say so
+		 * explicitly (review round 2, R2-1): omitting the argv flag is what an
+		 * ordinary launch does, and the renderer's rule for that case is "restore
+		 * the last conversation" — so `null` travels to `createWindow` as the
+		 * catalogue intent rather than as an absent value.
 		 */
 		function openSessionInWindow(sessionId: string | null): void {
 			const window = mainWindow;
@@ -1599,22 +1697,28 @@ app
 				raiseWindow(window, windowLaunch.show);
 				return;
 			}
-			setupMainWindowWithUpdateService(sessionId);
+			setupMainWindowWithUpdateService(sessionId, sessionId === null);
 		}
 		openConversationInWindow = openSessionInWindow;
+		// The host's state is in scope from here, and this runs before the first
+		// window is built below — as `openConversationInWindow` must be too.
+		attachBrowserHostToWindow = (window) => {
+			void startBrowserHostForWindow(window);
+		};
 
 		/*
-		 * Initial window + update service setup, with #160's browser host attached to
-		 * whatever window that created.
+		 * Initial window + update service setup. The browser host is attached by
+		 * `createWindow`, because that is the one place a
+		 * window comes into existence (review round 2, R2-2).
 		 *
-		 * The order is load-bearing in one direction only: the browser host needs a
-		 * window to hang its views on, and the queued launch is a session id that
-		 * arrived before such a window existed — so the window is created first, the
-		 * host attaches to it, and only then does the queue flush. A queue flush
-		 * before either would have nowhere to send the conversation.
+		 * The remaining order is load-bearing in one direction only: the queued launch
+		 * is a session id that arrived before a window existed, so the window is
+		 * created first and only then does the queue flush. A queue flush before it
+		 * would have nowhere to send the conversation, and the flush does NOT wait on
+		 * the browser host: the host is a capability hanging off the window, not a
+		 * dependency of naming a conversation in it.
 		 */
-		setupMainWindowWithUpdateService(launchSession);
-		if (mainWindow) await startBrowserHostForWindow(mainWindow);
+		setupMainWindowWithUpdateService(launchSession, launchCatalogue);
 		// A second launch that arrived before there was a window to send to.
 		if (queuedSession) {
 			const queued = queuedSession;
@@ -1624,10 +1728,12 @@ app
 
 		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
-			// dock icon is clicked and there are no other windows open.
+			// dock icon is clicked and there are no other windows open. The browser
+			// host comes with the window (see `setupMainWindowWithUpdateService`),
+			// so there is nothing to attach here — and attaching it a second time
+			// would be the duplicate registration R2-2 ruled out.
 			if (BrowserWindow.getAllWindows().length === 0) {
 				setupMainWindowWithUpdateService();
-				if (mainWindow) void startBrowserHostForWindow(mainWindow);
 			}
 		});
 	})
@@ -1727,9 +1833,9 @@ app.on("will-quit", (event) => {
 	 * cleanup below re-enters this handler, so both calls are reached twice. Neither
 	 * is damaged by that - `ViewerEndpoint.close` null-guards its server and
 	 * `ViewerRecord.stop` clears its timer - and the alternative reading, that the
-	 * old handler's global `pkill` cleanup should come back with them, is not one
-	 * this rebase takes: #180 replaced that block with the owned-cleanup path
-	 * deliberately (review round 4, the quit-path rebase).
+	 * replaced handler's global process-killing cleanup should come back with them,
+	 * is not one this rebase takes: #180 replaced that block with the owned-cleanup
+	 * path deliberately (review round 4, the quit-path rebase).
 	 */
 	viewerEndpoint?.close();
 	viewerRecord?.stop();

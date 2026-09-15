@@ -788,3 +788,79 @@ test("a refused tail read is retried once, and the absent rows still land", asyn
 			`${recordId} lands even though its first read was refused`,
 		);
 });
+
+/*
+ * UX round 1, U2 — the walked defect, at the level the composer's claim is
+ * decided. The walk: the backend goes down while a conversation is selected, the
+ * pane shows "Could not load this conversation's history — reconnect to try
+ * again." with a **Reconnect**, and pressing it makes the failure AND its action
+ * vanish into "What can I help you with today?" — an unknown history painted as
+ * an empty conversation.
+ *
+ * The composer is allowed to say a conversation is empty only when it KNOWS, and
+ * `hydrated` is that knowledge. It was being granted by a snapshot whose history
+ * page carried no entries: the page was applied (or rather, merged as nothing)
+ * and `cursor_missing: false` was read as "the durable tail is complete". That is
+ * the shape the walked session had — a minimal directory whose journal is empty
+ * — and it is exactly the case the one authoritative read exists to settle.
+ */
+test("a snapshot's EMPTY page does not stand in for a history nobody read", async () => {
+	const empty = makeTranscript([]);
+	reset({ transcript: empty, historyFaults: [...Array(50).keys()] });
+
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r0",
+			entries: [],
+			liveEvents: [],
+			streaming: false,
+		}),
+	);
+	await pump();
+
+	assert.equal(handle.transcript.records.length, 0, "nothing is painted to claim");
+	assert.equal(
+		handle.hydrated,
+		false,
+		"an empty snapshot page is not proof the conversation is empty",
+	);
+	assert.equal(handle.status, "live", "the stream itself is up; it is the read that is owed");
+	// The retry is scheduled rather than run: this harness owns the clock, and
+	// what it asserts is the state the reader is left in while the read is owed.
+
+	// THE CONTROL, so a fix cannot pass by never hydrating at all: a read that
+	// SUCCEEDS and answers with an empty tail is authoritative, and it is what
+	// lets the greeting stand.
+	reset({ transcript: empty });
+	const second = makeRuntime();
+	let recovered;
+	second.render = () => {
+		recovered = useCanonicalSessionStream(SESSION_A, true);
+		return recovered;
+	};
+	second.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r0",
+			entries: [],
+			liveEvents: [],
+			streaming: false,
+		}),
+	);
+	await pump();
+	assert.equal(
+		recovered.hydrated,
+		true,
+		"a read that resolved is proof, applied-or-empty alike",
+	);
+});

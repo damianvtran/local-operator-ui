@@ -24,6 +24,7 @@ import {
 	type SessionCatalogueStatus,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
+import type { LaunchTarget } from "../../../../shared/open-session";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -765,25 +766,45 @@ let navigationGeneration = 0;
 let refreshGeneration = 0;
 
 /**
- * The conversation main launched this window to show, or null.
+ * What main asked THIS window to open, resolved through the shared reader.
  *
- * Read from the preload's `desktop.initialSession`, which comes from THIS
- * process's own argv (`webPreferences.additionalArguments`, set only when main
- * created the window for a notification click). It is a VALUE rather than an
- * event on purpose (B3): a recreated window rehydrates its persisted
+ * Read from the preload's `desktop.initialSession`/`initialCatalogue`, which come
+ * from THIS process's own argv (`webPreferences.additionalArguments`, set only
+ * when main created the window for a notification click). It is a VALUE rather
+ * than an event on purpose (B3): a recreated window rehydrates its persisted
  * `activeSessionId` and paints that conversation in the first frame, so an id
  * that arrives as a post-load IPC shows the user the wrong conversation and
  * then swaps it — which reads as a click that landed on the wrong row.
  *
- * Guarded because this module is imported in contexts with no `window` (the
- * node test harness), where the answer is simply "no launch argument".
+ * IT RESOLVES THREE INTENTS, NOT TWO (review round 2, R2-1). "Restore", "open
+ * this conversation" and "open the catalogue" are genuinely different answers,
+ * and the third used to be indistinguishable from the first: both arrived as
+ * `initialSession: null`, so a window created for a burst digest restored
+ * whatever was last read.
+ *
+ * Guarded because this module is imported in contexts with no `window` (the node
+ * test harness), where the answer is simply "no launch argument".
  */
-function launchSession(): string | null {
+function launchTarget(): LaunchTarget {
 	try {
-		return window.api?.desktop?.initialSession ?? null;
+		const desktop = window.api?.desktop;
+		if (!desktop) return { kind: "restore" };
+		// A named conversation outranks the catalogue, the same precedence the
+		// argv reader applies: naming one is the more specific instruction.
+		if (desktop.initialSession) {
+			return { kind: "session", sessionId: desktop.initialSession };
+		}
+		if (desktop.initialCatalogue) return { kind: "catalogue" };
+		return { kind: "restore" };
 	} catch {
-		return null;
+		return { kind: "restore" };
 	}
+}
+
+/** The launched conversation's id, or null — which includes the catalogue. */
+function launchSession(): string | null {
+	const target = launchTarget();
+	return target.kind === "session" ? target.sessionId : null;
 }
 /**
  * The launch argument OUTRANKS the persisted conversation.
@@ -794,6 +815,12 @@ function launchSession(): string | null {
  * an effect is what makes it true of the FIRST render — a layout effect would
  * already have committed the wrong conversation to the DOM, and any effect
  * after paint is the flash this exists to prevent (B3).
+ *
+ * THE CATALOGUE OUTRANKS IT TOO (review round 2, R2-1). `activeSessionId: null`
+ * is how this store models "no conversation selected", i.e. the list — so a
+ * window main created for a burst digest must land there rather than on the
+ * persisted conversation. Missing this branch is what made a windowless digest
+ * click restore the last conversation instead of opening the catalogue.
  *
  * Named and exported rather than inlined in the store's `persist` options
  * because it is the rule B3 rests on: hydration is what would otherwise put the
@@ -808,8 +835,14 @@ export function mergePersistedSession(
 		...current,
 		...(persisted as Partial<CanonicalSessionsState> | undefined),
 	};
-	const launch = launchSession();
-	return launch ? { ...merged, activeSessionId: launch } : merged;
+	const target = launchTarget();
+	if (target.kind === "session") {
+		return { ...merged, activeSessionId: target.sessionId };
+	}
+	if (target.kind === "catalogue") {
+		return { ...merged, activeSessionId: null };
+	}
+	return merged;
 }
 
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(

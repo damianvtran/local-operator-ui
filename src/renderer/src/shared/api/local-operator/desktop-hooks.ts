@@ -113,9 +113,7 @@ export type DesktopFeature =
 	 * routes — a bumped shared key would gate the working panels behind an
 	 * update they do not need.
 	 */
-	| "diagnostics";
-	| "radient"
-
+	| "diagnostics"
 	/**
 	 * The machine-wide feed: `GET /v1/desktop/events` and `POST
 	 * /v1/desktop/presence`, with their frame and lease shapes. The consumer gate

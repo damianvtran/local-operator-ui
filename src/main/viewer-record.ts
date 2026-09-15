@@ -209,6 +209,37 @@ export class ViewerRecordPublisher {
 		this.publish();
 	}
 
+	/**
+	 * Withdraw the report that THIS conversation is on screen, because the pane
+	 * that made it has left it (QA round 2, Q1).
+	 *
+	 * `current_session` is the record's answer to "which conversation should a
+	 * banner click land on", so leaving it naming a conversation the user has
+	 * navigated away from is not a stale label — it is a wrong destination the
+	 * backend then confirms: `needs_switch` is false for a match, so the click is
+	 * answered with a raise, that branch reports success, and no later rung of the
+	 * click ladder is tried. The user gets whatever the window happens to show
+	 * (the catalogue, Settings) instead of the conversation they were called back
+	 * to, and this branch's own presence withdrawal is what makes that click
+	 * `focus_policy: "always"` — the case the feature exists for.
+	 *
+	 * IDENTITY-SAFE, like the notifier's own `releaseWatch` and for the same
+	 * reason: the release runs from a renderer cleanup, after the pane has already
+	 * changed, so an unconditional clear would wipe a session a DEEPER pane has
+	 * since reported. An EMPTY id withdraws nothing — `""` is this record's own
+	 * "nothing is on screen" value, so a caller sending it is not naming a
+	 * conversation to leave.
+	 *
+	 * Losing the report is self-healing rather than lossy: a pane that still holds
+	 * the conversation re-asserts it on its next heartbeat, which is the same
+	 * 15 s beat that wrote it.
+	 */
+	releaseSession(sessionId: string): void {
+		if (!sessionId || this.record.current_session !== sessionId) return;
+		this.record.current_session = "";
+		this.publish();
+	}
+
 	/** Stamp the focus GAIN edge only. A blur carries no routing information. */
 	noteFocused(): void {
 		this.record.focused_at = Date.now() / 1000;

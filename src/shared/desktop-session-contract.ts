@@ -337,6 +337,25 @@ export type DesktopNotification = {
 	 * all of them are listed.
 	 */
 	session_ids?: string[];
+	/**
+	 * The members a burst digest stands for, as claimable completions.
+	 *
+	 * THE CROSS-SURFACE CONTRACT (review round 2, R2-5; backend #1116's R8). A
+	 * digest has no `completion_token` of its own — no single completion owns it —
+	 * so a surface's claim step skips it, and `session_ids` alone is not enough to
+	 * claim with: the backend's arbitration is per COMPLETION, not per session.
+	 * Without these pairs nothing ever marked a digest's members delivered, and an
+	 * individual frame for one of them could raise a second banner for a
+	 * completion this digest had already announced.
+	 *
+	 * The backend does NOT preclaim them: a member is the receiving surface's to
+	 * win, at the moment it is about to deliver, through the same
+	 * `sessions.notified` call a single frame uses. Additive and optional like
+	 * `burst_count`, so a backend that predates the fix degrades to the old
+	 * behaviour (the digest still renders, its members are simply not arbitrated)
+	 * rather than to an error.
+	 */
+	member_tokens?: { session_id: string; completion_token: string }[];
 	/** False when the privacy flag is off or the session has no stored name. */
 	title_is_session_name: boolean;
 	/**

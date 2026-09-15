@@ -32,7 +32,7 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { OPEN_SESSION_FLAG, readOpenSessionArgv } from "./src/shared/open-session";
+			export { OPEN_SESSION_FLAG, OPEN_CATALOGUE_FLAG, readLaunchTarget, readOpenSessionArgv } from "./src/shared/open-session";
 			export { mergePersistedSession, useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 		`,
 		resolveDir: process.cwd(),
@@ -84,16 +84,31 @@ const bundle = await build({
 const module_ = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { OPEN_SESSION_FLAG, readOpenSessionArgv, mergePersistedSession, useCanonicalSessionsStore } =
-	module_;
+const {
+	OPEN_SESSION_FLAG,
+	OPEN_CATALOGUE_FLAG,
+	readLaunchTarget,
+	readOpenSessionArgv,
+	mergePersistedSession,
+	useCanonicalSessionsStore,
+} = module_;
 
 /** The id shape the whole path validates on: 12 lowercase hex characters. */
 const SESSION = "a1b2c3d4e5f6";
 const OTHER = "0f0e0d0c0b0a";
 
-function withLaunchArgument(value, run) {
+/**
+ * Stand in for the preload's two launch fields, as `window.api.desktop`.
+ *
+ * TWO fields and not one, because that is the fix: `initialSession: null` is
+ * what an ordinary launch looks like, so the catalogue intent needs its own
+ * field to travel in (review round 2, R2-1).
+ */
+function withLaunchArgument(value, run, { catalogue = false } = {}) {
 	const previous = globalThis.window;
-	globalThis.window = { api: { desktop: { initialSession: value } } };
+	globalThis.window = {
+		api: { desktop: { initialSession: value, initialCatalogue: catalogue } },
+	};
 	try {
 		return run();
 	} finally {
@@ -190,4 +205,87 @@ test("a windowless import reads as no launch argument rather than throwing", () 
 	// argument" - not an exception that would take the module down at import.
 	assert.equal(globalThis.window, undefined);
 	assert.equal(useCanonicalSessionsStore.getState().activeSessionId, null);
+});
+
+
+test("readLaunchTarget resolves three intents, with the named one outranking the catalogue", () => {
+	// The bug this type exists to prevent was two intents sharing a VALUE, so the
+	// three are asserted as three distinct answers rather than as truthiness.
+	assert.deepEqual(readLaunchTarget(["electron", "."]), { kind: "restore" });
+	assert.deepEqual(readLaunchTarget([OPEN_SESSION_FLAG, SESSION]), {
+		kind: "session",
+		sessionId: SESSION,
+	});
+	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG]), { kind: "catalogue" });
+	// Naming a conversation is the more specific instruction, so a launcher that
+	// passes both lands on the conversation rather than on the list.
+	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG, OPEN_SESSION_FLAG, SESSION]), {
+		kind: "session",
+		sessionId: SESSION,
+	});
+	// A malformed id counts as ABSENT rather than as a session, and the catalogue
+	// flag beside it is then the surviving instruction - a bad launch degrades to
+	// the list rather than to a broken start.
+	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG, OPEN_SESSION_FLAG, "nope"]), {
+		kind: "catalogue",
+	});
+});
+
+test("a catalogue launch clears the persisted conversation instead of restoring it", () => {
+	/*
+	 * REVIEW ROUND 2, R2-1, as the reviewer reproduced it: `openSessionInWindow(null)`
+	 * created a window with no argv flag, preload reported `initialSession: null`,
+	 * and `mergePersistedSession` treated that as an ordinary launch and restored
+	 * the persisted `activeSessionId` - so a burst digest's click reopened the last
+	 * conversation instead of the catalogue the banner named.
+	 *
+	 * A persisted NON-NULL conversation is the whole point of the case: with
+	 * nothing persisted there is no difference to observe, which is why the
+	 * original notifier test (which stops at a mocked `reopen(null)`) could not
+	 * detect it.
+	 */
+	const current = { ...useCanonicalSessionsStore.getState(), activeSessionId: null };
+	const persisted = { activeSessionId: OTHER };
+	assert.equal(
+		withLaunchArgument(null, () => mergePersistedSession(persisted, current).activeSessionId, {
+			catalogue: true,
+		}),
+		null,
+		"the catalogue intent did not survive hydration",
+	);
+	// ...and it is still ONE field: the rest of the persisted state comes through.
+	const restored = withLaunchArgument(
+		null,
+		() => mergePersistedSession({ activeSessionId: OTHER, cwd: "/tmp/from-storage" }, current),
+		{ catalogue: true },
+	);
+	assert.equal(restored.cwd, "/tmp/from-storage");
+	// The default that an ordinary launch keeps: no flag, no catalogue, persisted
+	// conversation restored. Asserted beside the case above because the fix must
+	// not have turned every windowless launch into a catalogue landing.
+	assert.equal(
+		withLaunchArgument(null, () => mergePersistedSession(persisted, current).activeSessionId),
+		OTHER,
+	);
+	// A named conversation still outranks the persisted one, catalogue or not.
+	assert.equal(
+		withLaunchArgument(
+			SESSION,
+			() => mergePersistedSession(persisted, current).activeSessionId,
+			{ catalogue: true },
+		),
+		SESSION,
+	);
+});
+
+test("the initial render already reflects a catalogue launch", () => {
+	// `persist` hydrates after the store is created, so the store's own initial
+	// value is the first frame a recreated window paints. For a catalogue launch
+	// that must be "no active session" rather than a stale persisted id.
+	assert.equal(
+		withLaunchArgument(null, () => useCanonicalSessionsStore.getState().activeSessionId, {
+			catalogue: true,
+		}),
+		null,
+	);
 });

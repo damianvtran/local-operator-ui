@@ -291,8 +291,10 @@ const canonicalSpeaking = (
 			canonicalTranscriptSpeaks({
 				status: canonical.view.status,
 				failure: canonical.view.failure,
-				hydrated: canonical.view.hydrated,
-				recordCount: canonical.view.transcript.records.length,
+				// The two states a click can paint, which are the band's business for
+				// the same reason they are the pane's: a cached or vanished conversation
+				// must not have the greeting offered over it. The rest of the pane's view
+				// is not this predicate's question, so it is not handed over.
 				stale: canonical.view.stale,
 				missing: canonical.view.missing,
 			}),
