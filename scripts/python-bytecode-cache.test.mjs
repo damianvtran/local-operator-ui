@@ -668,6 +668,19 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			manager.checkLocalOperatorExists = async () => globalInstall;
 			manager.resolveGlobalConsole = async () => "/fixture/local-operator";
 			manager.checkHealth = async () => true;
+			/*
+			 * The spawn gate probes the configured origin to refuse to bind onto a port a
+			 * Local Operator daemon is already serving, and the configured origin here is
+			 * the machine's own default (`http://127.0.0.1:1111`), because this suite
+			 * stubs every other transport call for exactly that reason. Left real, the
+			 * gate would answer "occupied" on any developer's machine that is running a
+			 * daemon - which is the whole point of the gate, and not what this test is
+			 * about: the subject here is the spawn ENVIRONMENT. "The port is free" is
+			 * stubbed the way `checkHealth` and the discovery call above already are,
+			 * and the gate has its own coverage in `daemon-health-state`,
+			 * `daemon-observation` and `session-stream-token`.
+			 */
+			manager.configuredOriginOccupancy = async () => null;
 
 			assert.equal(
 				manager.shellEnv.PYTHONPYCACHEPREFIX,

@@ -48,7 +48,9 @@ const discovery = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	HEALTH_PATH,
 	classifyRecord,
+	classifyUnreachable,
 	claimDesktopPlane,
 	compareVersions,
 	configRoot,
@@ -58,6 +60,7 @@ const {
 	parseRecord,
 	pidLiveness,
 	probeIdentity,
+	probeUnidentified,
 	rankCandidates,
 	reapStaleRecords,
 	readDesktopAvailable,
@@ -792,4 +795,96 @@ test("addresses are normalised so an address comparison is exact", () => {
 	assert.equal(normaliseAddress("not a url"), null);
 	assert.equal(normaliseAddress(""), null);
 	assert.equal(normaliseAddress(null), null);
+});
+
+/*
+ * A probe that did not ANSWER is not a probe that was REFUSED.
+ *
+ * WHY these two cases exist side by side. The app's liveness rule counts failed
+ * probes, and before the cause was carried this far both of the cases below
+ * arrived at the state machine as the same observation - so a daemon in the
+ * middle of one long turn, which is the operator's ordinary condition, was
+ * reported offline after three probes while it answered every real request.
+ * Only one of these two facts justifies saying a server is gone.
+ */
+
+test("a listener that cannot answer in budget is `timeout`, never `refused`", async () => {
+	const hung = createServer(() => {
+		/* accepts the connection and never replies */
+	});
+	await new Promise((resolve) => hung.listen(0, "127.0.0.1", resolve));
+	const address = `http://127.0.0.1:${hung.address().port}`;
+	const probe = await probeIdentity(address, "whatever", { timeoutMs: 500 });
+	assert.equal(probe.outcome, "unreachable");
+	assert.equal(
+		probe.cause,
+		"timeout",
+		"something IS listening; the budget is what expired",
+	);
+	assert.equal(
+		classifyUnreachable({ name: "TimeoutError" }),
+		"timeout",
+		"an AbortSignal.timeout rejection classifies by its own name",
+	);
+	await new Promise((resolve) => hung.close(resolve));
+});
+
+test("a closed port is `refused`: that IS evidence of absence", async () => {
+	/*
+	 * Bind and immediately close, so the port is one nothing is listening on -
+	 * the same shape as a daemon that has exited.
+	 */
+	const closed = createServer(() => {});
+	await new Promise((resolve) => closed.listen(0, "127.0.0.1", resolve));
+	const port = closed.address().port;
+	await new Promise((resolve) => closed.close(resolve));
+	const probe = await probeIdentity(`http://127.0.0.1:${port}`, "whatever", {
+		timeoutMs: 2_000,
+	});
+	assert.equal(probe.outcome, "unreachable");
+	assert.equal(
+		probe.cause,
+		"refused",
+		"the OS refused the connection: nothing is accepting on that port",
+	);
+	assert.equal(
+		classifyUnreachable({ cause: { code: "ECONNREFUSED" } }),
+		"refused",
+		"undici nests the errno on the cause, so both spellings are read",
+	);
+	assert.equal(classifyUnreachable({ code: "ENOTFOUND" }), "unresolved");
+	assert.equal(classifyUnreachable(new Error("something else")), "other");
+});
+
+test("a daemon answering an address no record describes is reported WITH its identity", async () => {
+	const daemon = createServer((request, response) => {
+		if (request.url !== HEALTH_PATH) {
+			response.writeHead(404).end();
+			return;
+		}
+		response.writeHead(200, { "Content-Type": "application/json" });
+		response.end(
+			JSON.stringify({
+				result: {
+					instance_id: "identity-from-the-answer",
+					pid: 42411,
+					version: "0.55.6",
+					prefix: "/Users/x/.local/share/uv/tools/local-operator",
+					install_kind: "uv-tool",
+				},
+			}),
+		);
+	});
+	await new Promise((resolve) => daemon.listen(0, "127.0.0.1", resolve));
+	const address = `http://127.0.0.1:${daemon.address().port}`;
+	const probe = await probeUnidentified(address, { timeoutMs: 2_000 });
+	assert.equal(probe.reason, "identity-mismatch");
+	/*
+	 * The spawn gate is the caller, and it has to NAME what it found: the copy it
+	 * produces carries the pid, and probing a second time to learn it would be a
+	 * second chance to disagree with the first answer.
+	 */
+	assert.equal(probe.identity?.pid, 42411);
+	assert.equal(probe.identity?.version, "0.55.6");
+	await new Promise((resolve) => daemon.close(resolve));
 });
