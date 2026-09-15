@@ -49,6 +49,24 @@ is not a blocker. The historical report recorded these capabilities:
 | `draft-at-rest.png` | A New chat with architect pane, also reading `gpt-5` and `auto`, with focus in the composer. This still does not prove a successful pick. |
 | `picker-open.png` | A populated model dialog over that architect draft, with the first-message explanation and search focus. No row-selection result is captured. |
 
+## Two things this directory must not be read as
+
+**The committed frames are pre-delta.** The round-4 remediation changes copy and
+state handling only - no image blob in this repository moved with it - so every
+committed frame that shows the draft chips' sentences, and the three PNGs here,
+render the **previous** wording. The copy they show is history; the sentences the
+code now prints are in `destination-pickers.tsx` and `session-status-strip.tsx`,
+and the states the delta adds (the pending and failed resolution rows) have no
+frame anywhere.
+
+**The after-send pair is one frame.** `29-after-send-immediate.png` and
+`30-after-send-settled.png` in QA round 3's out-of-repo set (see above) are
+byte-identical - `sha256 f7db10911b77aa15...`, zero differing pixels - so the pair
+proves nothing about settling and the no-shift claim rests on `28` against a
+single post-send state, which design round 3 measured and confirmed. That set is
+not in this directory; when a browser round can run again, it should drop one file
+or capture a genuinely distinct settled frame (design D8).
+
 There is **no `numbers.json` in this committed directory**. No per-frame DOM
 geometry or event trace is claimed. Design D3's unresolved Choose a model entry
 is shown only by the existing Storybook `chat-session-status-strip/draft-actionable`

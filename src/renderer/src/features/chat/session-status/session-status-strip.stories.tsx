@@ -884,10 +884,11 @@ export const Draft: Story = {
  *   first message."; the sentence the old draft copy used ("The first message
  *   will use it. Change it once the conversation starts.") is gone, because it is
  *   no longer true.
- * - The effort chip says "Change it. It applies to the first message." — the
- *   control's own sentence, one step before a session's, carrying the same scope
- *   clause (UX U2: the scope must survive the chip becoming actionable, which is
- *   the moment it used to stop being said).
+ * - The effort chip says "Change it. It applies to this conversation." — the
+ *   control's own sentence, one step before a session's, carrying the scope clause
+ *   UX U2 asked for and design round 4 (D10) corrected: the pick becomes the
+ *   conversation's own selection, so the clause names the conversation rather
+ *   than a single message.
  * - The context chip is UNCHANGED: still the inert label, still focusable.
  * - Geometry: the strip measures 92px in BOTH boards at every width this set
  *   declares (900, the 220px floor and the 1000px capture viewport), and only
@@ -1019,7 +1020,7 @@ export const DraftTooltip: Story = {
  *
  * The pair of `DraftTooltip`: same chip, same focus, one capability apart. A draft
  * that can open gets the control's sentence ("Click to choose a different model.
- * It applies to the first message.") and a draft that cannot gets the
+ * It applies to this conversation.") and a draft that cannot gets the
  * fact-plus-reason one, and the only way to see
  * that the two frames say different things is to photograph both (design round 1,
  * D1). The tooltip is the button's `aria-label` content, so this frame is the

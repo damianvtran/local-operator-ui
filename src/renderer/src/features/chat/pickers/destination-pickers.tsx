@@ -51,10 +51,12 @@ import { messageText } from "../canonical/transcript-reducer";
 import type { SlashCommandMeta } from "../components/slash-commands";
 import {
 	type DraftSelectionTarget,
+	type EffortCarry,
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
 	effortCarry,
 	selectionFromModel,
+	selectionSelector,
 } from "../draft-selection";
 import {
 	bandReadings,
@@ -161,6 +163,26 @@ type CatalogueRow = DesktopModelCatalogue["models"][number] & {
 /** The row's own selector, in the one spelling the wire and the rows share. */
 function selectorOf(row: CatalogueRow): string {
 	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
+}
+
+/**
+ * The selector a resolution answered with, or the fallback its caller holds.
+ *
+ * The resolution is the authority - it may have resolved a fallback route rather
+ * than the row asked for - but it need not name one, and a sentence that prints
+ * an empty selector names nothing at all. `fallback` is the catalogue row's own
+ * label for a pick, and the recorded selection for the draft hook, which is the
+ * one spelling both the pane and the wire agree on.
+ */
+function selectorOfResolution(
+	resolved: CanonicalFrontendSync,
+	fallback: string,
+): string {
+	return (
+		modelSelector(
+			resolved.snapshot.selected_model ?? resolved.snapshot.effective_model,
+		) || fallback
+	);
 }
 
 /**
@@ -283,6 +305,31 @@ function useDraftPick(
 				 * tells the user to re-check the one thing that is still correct.
 				 */
 				refused: string;
+				/**
+				 * The effort level the pane's own pick holds, when this pick changes the
+				 * MODEL and that level must not be discarded in silence (UX U1; design
+				 * D7/D11).
+				 *
+				 * It is checked HERE rather than by the caller, and that placement is the
+				 * fix rather than a tidy-up, for two reasons the round-4 review named:
+				 *
+				 *   - `setBusy(true)` is the only guard this dialog has (`picker-host`
+				 *     refuses a second row while it is set) and it is set below, so a probe
+				 *     that ran BEFORE the call left the whole first half of a carry pick
+				 *     unguarded AND unwitnessed: two clicks inside that window both
+				 *     committed, and the pane and the strip could end up naming different
+				 *     models (F2), while a click that answers nothing is the exact failure
+				 *     this feature exists to remove (design D13).
+				 *   - What the check CANNOT establish has to refuse the pick rather than
+				 *     fall through to a rung-less one. A caller-side `catch` left the
+				 *     decision at its pre-probe value, which records
+				 *     `reasoning_effort: null` under a sentence naming no level - U1's own
+				 *     silence on a narrower path (F1). Inside `pick`, an unreadable ladder
+				 *     is `checked: false` and the pick is refused out loud.
+				 */
+				carry?: string;
+				/** What a refused carry-check says, before the transport's own words. */
+				carryUnchecked?: string;
 			},
 		) => {
 			if (!draft) return;
@@ -295,12 +342,48 @@ function useDraftPick(
 			setBusy(true);
 			setResult(null);
 			try {
+				/*
+				 * The carry check, when this pick changes the model on a pane that has a
+				 * level in force: one resolution of the NEW model with no rung, which is
+				 * also the KEY the pick itself reads when the level is not carried - so
+				 * clearing costs no extra call and carrying costs one.
+				 */
+				let carry: EffortCarry | null = null;
+				// A blank level is no question: there is nothing to check, so no probe runs.
+			if (reading.carry) {
+					const probe = await queryClient.fetchQuery(
+						draftPreviewQuery({ ...draft.target, model: next }),
+					);
+					const offered = bandReadings(probe.snapshot, null).effort;
+					const decision = effortCarry(reading.carry, {
+						ladder: effortLadder(offered),
+						ladderKnown: Array.isArray(offered?.reasoning_efforts),
+						level: effortState(offered)?.label ?? null,
+					});
+					if (!decision.checked) {
+						refuse(
+							`${reading.carryUnchecked ?? reading.refused} The effort levels could not be checked, so nothing was changed.`,
+						);
+						return;
+					}
+					carry = decision;
+				}
+				const chosen: DesktopModelSelection = carry?.rung
+					? { ...next, reasoning_effort: carry.rung }
+					: next;
 				const resolved = await queryClient.fetchQuery(
-					draftPreviewQuery({ ...draft.target, model: next }),
+					draftPreviewQuery({ ...draft.target, model: chosen }),
 				);
-				draft.select(next);
-				setPicked(next);
-				setResult({ tone: "success", text: reading.describe(resolved) });
+				draft.select(chosen);
+				setPicked(chosen);
+				setResult({
+					tone: "success",
+					text: carry
+						? carry.confirmation(
+								selectorOfResolution(resolved, selectionSelector(chosen) ?? ""),
+							)
+						: reading.describe(resolved),
+				});
 			} catch (error) {
 				/*
 				 * Said twice on purpose, and it is the same sentence both times: the
@@ -496,15 +579,6 @@ export const ModelPicker: FC<PickerContext> = ({
 		async (value: string, option: PickerOption) => {
 			const [provider, ...rest] = value.split("/");
 			const modelId = rest.join("/");
-			/*
-			 * A DRAFT pane's pick is not a command and has no owner to switch.
-			 *
-			 * The rung is cleared because it belonged to the previous model's ladder:
-			 * carrying `high` onto a model that does not offer it is a request the
-			 * backend would have to drop silently, and the wire cannot say "keep the
-			 * old value" — `null` is "no rung chosen", which resolves to the new
-			 * model's own default exactly as `/effort auto` does.
-			 */
 			if (draft) {
 				/*
 				 * A DRAFT pane's pick is not a command and has no owner to switch.
@@ -518,54 +592,23 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * - told them the pick had simply succeeded (UX U1, design D7: the same
 				 * defect read from the copy side).
 				 *
-				 * The backend IS able to answer the only question that matters - does the
-				 * new model offer that level - so it is asked before the pick is recorded
-				 * rather than guessed at after it: resolve the new model once without a
-				 * rung, then carry the chosen level onto it, or clear it and SAY so, naming
-				 * the level the first message will actually run. Silence is the one outcome
-				 * this may not produce. The probe is the same query the pick itself will
-				 * read, by the same key, so carrying costs one extra resolution and clearing
-				 * is served from the probe.
+				 * The check itself lives in `pick`, deliberately: it has to be inside the
+				 * dialog's busy window and it has to be able to REFUSE the pick, neither
+				 * of which a caller can arrange (see `reading.carry`). What this call
+				 * states is the question - the level the pane's own pick holds - and what
+				 * a check that cannot be made says.
 				 */
 				const carried =
 					typeof draft.target.model?.reasoning_effort === "string"
-						? draft.target.model.reasoning_effort.trim()
+						? draft.target.model.reasoning_effort
 						: "";
-				const next: DesktopModelSelection = {
-					provider,
-					model_id: modelId,
-					reasoning_effort: null,
-				};
-				const selectorOfResolution = (resolved: CanonicalFrontendSync) =>
-					modelSelector(
-						resolved.snapshot.selected_model ??
-							resolved.snapshot.effective_model,
-					) || option.label;
-				let carry = effortCarry("", [], "");
-				if (carried) {
-					try {
-						const probe = await queryClient.fetchQuery(
-							draftPreviewQuery({ ...draft.target, model: next }),
-						);
-						const offered = bandReadings(probe.snapshot, null).effort;
-						carry = effortCarry(
-							carried,
-							effortLadder(offered),
-							effortState(offered)?.label ?? "its own default",
-						);
-					} catch {
-						/*
-						 * The probe is the resolution the pick itself needs, so a failure here is
-						 * reported by the pick's own refusal path rather than twice: the sentence
-						 * is the plain one, which claims no level.
-						 */
-					}
-				}
 				await draftPick.pick(
-					carry.rung ? { ...next, reasoning_effort: carry.rung } : next,
+					{ provider, model_id: modelId, reasoning_effort: null },
 					{
 						describe: (resolved) =>
-							carry.confirmation(selectorOfResolution(resolved)),
+							`This conversation will run ${selectorOfResolution(resolved, option.label)}.`,
+						carry: carried,
+						carryUnchecked: "The model was not changed.",
 						refused: "The model was not changed.",
 					},
 				);
@@ -741,8 +784,8 @@ export const ModelPicker: FC<PickerContext> = ({
 			description={
 				draft
 					? shownSelector
-						? `The first message will run ${shownSelector}. Choosing another changes what this conversation starts on; your default is unchanged.`
-						: "Choose the model the first message will run on. This changes the first message only; your default is unchanged."
+						? `This conversation starts on ${shownSelector} and keeps running on it. Choosing another changes that; your default is unchanged.`
+						: "Choose the model this conversation starts on and keeps running on. It is not your default, which is unchanged."
 					: shownSelector
 						? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
 						: "Choose the model for this session."
@@ -930,7 +973,7 @@ export const EffortPicker: FC<PickerContext> = ({
 							? `${label} has no adjustable effort. Pick another model.`
 							: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
 					: draft
-						? `Effort levels ${label} supports. Applies to the first message.`
+						? `Effort levels ${label} supports. This sets the level this conversation starts on and keeps running on; your default is unchanged.`
 						: `Effort levels ${label} supports. Applies to this session.`
 			}
 			options={options}
@@ -959,7 +1002,7 @@ export const EffortPicker: FC<PickerContext> = ({
 				void draftPick.pick(
 					selection ? { ...selection, reasoning_effort: value } : null,
 					{
-						describe: () => `Effort for the first message: ${value}.`,
+						describe: () => `Effort for this conversation: ${value}.`,
 						refused: "The effort was not changed.",
 					},
 				);

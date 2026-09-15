@@ -30,7 +30,6 @@ import {
 	workingLineClaimed,
 	workingLineInputFor,
 } from "../canonical/working-line-model";
-import type { DraftPickerDestination } from "../draft-selection";
 import type {
 	DraftPickerDestination,
 	DraftResolution,

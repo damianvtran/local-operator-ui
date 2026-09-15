@@ -459,18 +459,18 @@ const COMMANDS_OFF =
  * never the value.
  *
  * UX U2 added the draft's own scope to the OPENABLE sentence rather than to the
- * inert one. Before it, the scope was stated in exactly one place - the dialog's
- * subtitle - and the moment a chip could open, the pane's sentence became the
- * session's, so a pane whose pick is first-message-only stopped saying so the
- * instant the pick existed. The fact does not stop being true because the chip
- * became actionable: on a draft it is the only thing the control can affect, so
- * the openable sentence carries it too, and "did I just change a global
- * default?" is answerable without remembering a dialog.
+ * inert one: before it, the scope was stated in exactly one place - the dialog's
+ * subtitle - so a chip stopped saying what it would change the instant it could
+ * be clicked, and "did I just change a global default?" was answerable only by
+ * remembering a dialog. Design round 4 (D10) then corrected WHAT that clause
+ * says: the pick rides `sessions.create` and the backend pins the session to it,
+ * so the scope is the conversation this pane becomes, not one message of it -
+ * the copy may only assert a scope the system implements.
  */
 function modelReason(draft: boolean, openable: boolean): string {
 	if (openable)
 		return draft
-			? "Click to choose a different model. It applies to the first message."
+			? "Click to choose a different model. It applies to this conversation."
 			: "Click to choose a different model";
 	if (draft)
 		return "The first message will use it. Change it once the conversation starts.";
@@ -502,7 +502,7 @@ function effortReason(
 ): string | null {
 	if (!adjustable) return null;
 	if (openable)
-		return draft ? "Change it. It applies to the first message." : "Change it.";
+		return draft ? "Change it. It applies to this conversation." : "Change it.";
 	if (draft) return DRAFT_EFFORT_LINE;
 	return COMMANDS_OFF;
 }
@@ -797,12 +797,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 */}
 			{chooseModel && (
 				<Reading
-					label="Model: none resolved yet. Choose the model the first message will run on."
+					label="Model: none resolved yet. Choose the model this conversation will run on."
 					tooltip={
 						<TooltipLines
 							lines={[
 								"No model resolved yet",
-								"Choose the model the first message will run on",
+								"Choose the model this conversation will run on",
 							]}
 						/>
 					}
@@ -828,21 +828,21 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={
 						draftResolution.status === "failed"
-							? "Model: the first message's model was not resolved. Retry."
-							: "Model: resolving the model the first message will run on."
+							? "Model: this conversation's model was not resolved. Retry."
+							: "Model: resolving the model this conversation will run on."
 					}
 					tooltip={
 						<TooltipLines
 							lines={
 								draftResolution.status === "failed"
 									? [
-											"The first message's model was not resolved",
-											"The backend did not answer the preview",
+											"This conversation's model was not resolved",
+											"No model is set for it yet",
 											"Retry",
 										]
 									: [
 											"Resolving",
-											"Asking the backend which model the first message will run on",
+											"Working out which model this conversation will run on",
 										]
 							}
 						/>
@@ -865,7 +865,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					{draftResolution.status === "pending" && (
 						<Spinner
 							size="xs"
-							label="Resolving the model the first turn will run on"
+							label="Resolving the model this conversation will run on"
 						/>
 					)}
 				</Reading>
