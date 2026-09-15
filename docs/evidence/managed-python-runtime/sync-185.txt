@@ -187,3 +187,57 @@ The machine lease is another session's sweep, and the gate's own message says to
 rather than delete the lock, so the lock was left alone and this was retried once.
 The half it shares with the fast gate is green on this head:
 `node --test scripts/evidence-manifest.test.mjs` -> 15/15.
+
+## CI on the merged head - and the reason it is red
+
+The sync is what let CI run at all: a conflicted PR gets no `pull_request` workflow
+runs, so nothing had been executed against this branch's own newest code before it.
+
+```
+$ gh pr checks 183          # on 6dcf0d825
+Lint                     pass   26s
+Runtime Dependencies     pass   10s
+Type Checking            pass   29s
+Security Audit           pass   24s
+Version Bump Guard       pass   13s
+NPX Sanity Check (macos-latest)  pass   1m35s
+NPX Sanity Check (ubuntu-latest) pass   53s
+Desktop Tests            fail   1m59s
+
+$ # Desktop Tests, ubuntu-latest, verbatim
+# tests 1080   # pass 1055   # fail 10   # skipped 15
+```
+
+All ten failures are in THIS BRANCH'S OWN test files, and all ten are macOS-only
+tooling running on a Linux runner (`ci.yml`'s Desktop Tests job is `ubuntu-latest`).
+Two causes, listed with the file and line CI reported:
+
+```
+scripts/managed-python.test.mjs
+  202, 218, 230, 243   container tests        lipo could not thin the fixture binary:
+                                                 spawnSync /usr/bin/lipo ENOENT
+                                 (one of the four instead fails on `ditto`'s exit status)
+  347, 363, 373, 383, 395   the recovery fixtures   spawnSync /usr/bin/lipo ENOENT
+                                                 (via signedMachO -> seedFixture -> provisioned)
+
+scripts/python-bytecode-cache.test.mjs
+  1885   the pre-split environment report   The input did not match the regular expression
+                                             /built on the interpreter inside \/Applications\/Local Operator\.app/
+```
+
+The first eight are the same defect: `/usr/bin/lipo`, `/usr/bin/hdiutil`,
+`/usr/bin/ditto` and `/usr/bin/codesign` do not exist on the Linux runner. Four of
+them came in with `7aa9c0439` (the container gate) on the pre-sync head; the five
+recovery fixtures came from the round-1 remediation pass and pass locally on macOS.
+
+The tenth is different and worth stating plainly because it is worse than it looks:
+the fixture in that test asserts the "still built on the installed bundle" direction by
+naming `/Applications/Local Operator.app`, which EXISTS on this machine - it is the
+operator's live app - and does not exist on a runner. The test passed locally for a
+reason that is not in the repository.
+
+Left as found, not fixed here: this is a sync, and the manager asked for findings
+reported rather than remediated. The fix direction for the eight is that these files
+are macOS-only and need a platform guard (the suite runs on ubuntu-latest); the fix
+direction for the tenth is a fixture bundle created inside the temp directory rather
+than a path to the operator's installed app.
