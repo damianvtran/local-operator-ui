@@ -986,6 +986,16 @@ export const STORIES = [
 	],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
+	/*
+	 * Two more than the set had, and both for a reason: `--filtered` is the only
+	 * frame that shows what a QUERY does to the list (the heading that changes
+	 * group, the dimmed hint, the key legend replacing the scope legend), and
+	 * `--settings-scope` is the only one that shows a prefix doing its job —
+	 * `,theme` finds a row the settings rail calls Appearance.
+	 */
+	["command-palette-commandpalette--filtered", 1280, 800],
+	["command-palette-commandpalette--settings-scope", 1280, 800],
+	["command-palette-commandpalette--commands-scope", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 
 	["onboarding-onboardingmodal--default", 1280, 900],
