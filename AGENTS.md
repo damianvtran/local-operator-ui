@@ -249,9 +249,12 @@ bounds they already had.
   reparented (`process.ppid` no longer naming the launcher) counts as the same
   fact seen from the child's side. `app.quit()` goes first; if the process is
   still alive 10 s later it exits anyway. **An escalated exit is still status
-  0** — it is a run ending because the thing watching it went away, not a
-  failure — so a harness must not read the exit status as the signal; the
-  `[window-mode]` line is what says which path ended it.
+  0**, on all three paths, for the reason each of them is legitimate: the
+  launcher path is a run ending because the thing watching it went away, a signal
+  or a closed window is a run the caller asked to end, and in every case the
+  deadline says only that the graceful descent did not finish in time. So a
+  harness must not read the exit status as the signal; the `[window-mode]` line
+  (or the `launcher probe` line in the log) is what says which path ended it.
 - **A signal ends it too.** `SIGTERM`/`SIGINT` are handled in `headless` only
   (never on the shipped app: Ctrl-C must not change meaning for a person), which
   turns Chromium's shutdown — it closes the window and then leaves the process
