@@ -445,6 +445,16 @@ process.on("SIGTERM", () => void reapLiveBoots({ code: 143, why: "SIGTERM" }));
  * this run holds, but it still carries the run's tag in `--user-data-dir`. The
  * kills in this file stay exact-pid; a sibling agent's pattern-derived kill on
  * this machine matched eleven orphaned apps from runs that had already finished.
+ *
+ * THE TAG IS MATCHED WITH A TRAILING `/`, and that is not cosmetic: a bare
+ * `lo-renderer-driver-647` is a PREFIX of `lo-renderer-driver-6479`, so two runs
+ * whose pids happened to share a prefix would each see the other's apps and report
+ * a survivor that is not theirs. It fails in the safe direction (a spurious FAIL
+ * of the "nothing outlived its boot" check, and `--clean` then keeps a tree that
+ * held nothing), but a red that names a process the run never started is the kind
+ * of unexplained evidence that gets a real orphan dismissed later. Every path this
+ * tag appears in is a path — the profile is `--user-data-dir=${USER_DATA}-${tag}`
+ * under the scratch tree — so the separator is always there to match on.
  */
 function thisRunsProcesses() {
 	const ps = spawnSync("ps", ["-eo", "pid,ppid,etime,command"], {
@@ -457,9 +467,10 @@ function thisRunsProcesses() {
 			detail: ps.error?.message ?? `ps exited ${ps.status}`,
 		};
 	}
+	const needle = `${SCRATCH_TAG}/`;
 	const lines = String(ps.stdout)
 		.split("\n")
-		.filter((line) => line.includes(SCRATCH_TAG));
+		.filter((line) => line.includes(needle));
 	return { measured: true, lines, detail: `${lines.length} process(es)` };
 }
 
@@ -1005,7 +1016,7 @@ async function sceneStates(cdp) {
 		"the theme change settled before the frame",
 		themeAction.settleTimedOut === false &&
 			Number.isFinite(themeAction.settledAfterMs),
-		`${themeAction.settledAfterMs}ms${themeAction.settleTimedOut ? " — TIMED OUT: this frame is mid-transition and is not evidence" : ""}`,
+		`${themeAction.settledAfterMs}ms${themeAction.settleTimedOut ? ` — TIMED OUT: this frame is mid-transition and is not evidence. Still running when the bound expired: ${(themeAction.settlePending ?? []).join(" | ") || "(the renderer named none)"}` : ""}`,
 	);
 	check(
 		"the theme action changed the app's own theme state",
@@ -1495,11 +1506,36 @@ async function main() {
 	const runtime = electronRuntime();
 	say(`  electron      ${runtime.installed}   (${ELECTRON_BIN})`);
 	say(`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`);
-	check(
+	const onThePinnedRuntime = check(
 		"the harness is driving the Electron this branch pins",
 		runtime.installed === runtime.pinned,
 		`installed ${runtime.installed} at ${ELECTRON_BIN}, pinned ${runtime.pinned}`,
 	);
+	/*
+	 * AND IT STOPS HERE, before the first boot, when the answer is no.
+	 *
+	 * WHY A FAILING CHECK WAS NOT ENOUGH: a FAIL increments the counter and the run
+	 * carried on, so a worktree on a stale shared `node_modules` still booted, still
+	 * captured and still left a pair in `--out` — it simply exited non-zero. That is
+	 * the defect the pin exists to prevent wearing the fix's clothes: the frames in
+	 * the directory look exactly like evidence, and whoever reached for them is
+	 * looking at a directory, not at an exit code. Committed frames are only
+	 * reproducible on the runtime that made them (a 35.x build renders this window as
+	 * a 1380x872 viewport against 44.3.0's 1380x868, and every pixel hash differs), so
+	 * the strong property is that an unpinned tree cannot populate a frames directory
+	 * AT ALL. Nothing has booted at this point, so refusing costs nothing but the
+	 * scratch tree this run just created.
+	 */
+	if (!onThePinnedRuntime) {
+		say(
+			`\n[refusing] this tree is not on the pinned runtime (${runtime.installed} installed, ${runtime.pinned} pinned).`,
+		);
+		say("            Nothing was booted and no frame was captured. Reinstall with");
+		say("            `pnpm install --frozen-lockfile` and run this again.");
+		if (CLEAN && !KEEP) rmSync(SCRATCH, { recursive: true, force: true });
+		else say(`            scratch: ${SCRATCH}`);
+		process.exit(1);
+	}
 
 	const dead = await isListening(deadApiPort);
 	check(
