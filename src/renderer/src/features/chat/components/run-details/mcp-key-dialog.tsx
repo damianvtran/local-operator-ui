@@ -11,10 +11,11 @@ import {
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
-import { DialogDescription, Input, Label } from "@shared/components/ui";
+import { Button, DialogDescription, Input, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
+import { MCP_SETTINGS_ACTION_LABEL, type McpFailure } from "./mcp-failure";
 
 /** The server this dialog is for, and the field names its config declares. */
 export type McpKeyTarget = {
@@ -27,9 +28,21 @@ export type McpKeyDialogProps = {
 	target: McpKeyTarget | null;
 	/** True while the credentials are being written and the server reconnected. */
 	saving: boolean;
-	/** The backend's own sentence for a failed write, or `null`. */
-	error: string | null;
+	/**
+	 * The classified failure for this server, or `null`.
+	 *
+	 * Classified rather than raw (`mcp-failure.ts`), so a refused write reached
+	 * this form as a sentence in the user's terms — and with the row's remaining
+	 * remedies beside it — instead of as the backend's own wording about a control
+	 * it refused.
+	 */
+	failure: McpFailure | null;
 	onCancel: () => void;
+	/**
+	 * Leave this form for the server's row, where the controls this form does not
+	 * own live: the declared references, `Remove` with its scope, the setup prompt.
+	 */
+	onOpenSettings: () => void;
 	/**
 	 * Write these credentials and reconnect the server.
 	 *
@@ -47,8 +60,9 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 	open,
 	target,
 	saving,
-	error,
+	failure,
 	onCancel,
+	onOpenSettings,
 	onSave,
 }) => {
 	const [values, setValues] = useState<Record<string, string>>({});
@@ -143,10 +157,33 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 						/>
 						Replace existing values for these shared keys.
 					</label>
-					{error ? (
-						<p className="text-body-sm text-danger" role="alert">
-							{error}
-						</p>
+					{failure ? (
+						<>
+							<p className="text-body-sm text-danger" role="alert">
+								{failure.message}
+							</p>
+							{failure.detail ? (
+								<p
+									className="font-mono text-ink-dim text-mono-sm"
+									title={failure.detail}
+								>
+									{failure.detail}
+								</p>
+							) : null}
+							{/* The form keeps what was typed — a refusal never discards the values —
+							    so the remedy that failed is not offered again here: `Save and
+							    reconnect` IS that retry. What is offered is the route to the row,
+							    which owns every control this form cannot reach. */}
+							<Button
+								variant="link"
+								size="sm"
+								className="self-start"
+								data-mcp-failure-action="settings"
+								onClick={onOpenSettings}
+							>
+								{MCP_SETTINGS_ACTION_LABEL}
+							</Button>
+						</>
 					) : null}
 				</div>
 			</DialogDescription>

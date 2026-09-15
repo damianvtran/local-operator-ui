@@ -132,8 +132,13 @@ const mcpRemedy = (
 		return true;
 	},
 	cancel: (operationId) => presses.push(`cancel:${operationId}`),
+	reload: async (row) => {
+		presses.push(`reload:${row.name}`);
+		return true;
+	},
 	pendingName: null,
-	keyErrorFor: () => null,
+	failureFor: () => null,
+	clearFailure: () => undefined,
 	refusalFor: () => null,
 	...overrides,
 });
@@ -1747,8 +1752,9 @@ export const McpKeySaving: Story = {
 					keyNames: ["GOOGLE_CLIENT_SECRET"],
 				}}
 				saving={true}
-				error={null}
+				failure={null}
 				onCancel={() => undefined}
+				onOpenSettings={() => undefined}
 				onSave={() => undefined}
 			/>
 		</DialogGround>
@@ -1773,8 +1779,14 @@ export const McpKeyError: Story = {
 					keyNames: ["GOOGLE_CLIENT_SECRET"],
 				}}
 				saving={false}
-				error="The key was saved, but the server still needs sign-in."
+				failure={{
+					cause: "unknown",
+					detail: null,
+					message: "The key was saved, but the server still needs sign-in.",
+					phase: "reconnect",
+				}}
 				onCancel={() => undefined}
+				onOpenSettings={() => undefined}
 				onSave={() => undefined}
 			/>
 		</DialogGround>
