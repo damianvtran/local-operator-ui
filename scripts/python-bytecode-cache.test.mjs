@@ -72,6 +72,8 @@ const {
 	DEV_VENV_DIR_NAME,
 	PACKAGED_VENV_DIR_NAME,
 	VENV_PATH_ENV,
+	isUnpreparedVenvPath,
+	legacyEnvironmentReport,
 	managedVenvPath,
 	venvInterpreter,
 } = venvPaths;
@@ -1793,11 +1795,17 @@ test("a packaged and an unpackaged instance never share a venv", () => {
 		const dev = managedVenvPath({ ...input, packaged: false });
 		assert.notEqual(packaged, dev);
 		if (platform === "darwin") {
-			assert.match(packaged, /managed-python[/]packaged[/]unprepared$/);
-			assert.match(dev, /managed-python[/]dev[/]unprepared$/);
+			// Nothing is published in this fixture, so both answers are the sentinel -
+			// and it is spelled so a reader cannot mistake it for a directory
+			// (review N3).
+			assert.match(packaged, /managed-python[/]packaged[/]no-environment-selected$/);
+			assert.match(dev, /managed-python[/]dev[/]no-environment-selected$/);
+			assert.ok(isUnpreparedVenvPath(packaged));
+			assert.ok(isUnpreparedVenvPath(dev));
 		} else {
 			assert.ok(packaged.endsWith(PACKAGED_VENV_DIR_NAME));
 			assert.ok(dev.endsWith(DEV_VENV_DIR_NAME));
+			assert.ok(!isUnpreparedVenvPath(packaged));
 		}
 	}
 });
@@ -1869,4 +1877,105 @@ test("constructing the macOS installer does not edit a legacy venv", async () =>
 	writeFileSync(userGuard, "# unknown user work\n");
 	new BackendInstaller();
 	assert.equal(readFileSync(userGuard, "utf8"), "# unknown user work\n");
+});
+
+// ---------------------------------------------------------------------------
+// What the rounds asked for, pinned where the copy lives
+
+test("the pre-split environments are reported from the paths that actually exist", (t) => {
+	// Review R7: the start-up report was written for the environment an install
+	// from before this change built, and it handed `managedVenvPath`'s answer to
+	// `venvInterpreter`. On darwin that answer is either the post-split selection
+	// venv - whose `pyvenv.cfg` names the external runtime by construction - or the
+	// sentinel, so both iterations took the `continue` and nothing was ever logged
+	// for the one state the function exists to describe.
+	const home = mkdtempSync(join(tmpdir(), "lo-legacy-venv-"));
+	t.after(() => rmSync(home, { recursive: true, force: true }));
+	const support = join(home, "Library", "Application Support", "Local Operator");
+	const legacy = join(support, "local-operator-venv");
+	mkdirSync(join(legacy, "bin"), { recursive: true });
+	writeFileSync(
+		join(legacy, "pyvenv.cfg"),
+		"home = /Applications/Local Operator.app/Contents/Resources/python_aarch64/bin\n",
+	);
+
+	// The input the old report used, for the record: neither answer resolves
+	// anything, which is the whole bug.
+	for (const packaged of [true, false]) {
+		const answer = managedVenvPath({
+			platform: "darwin",
+			home,
+			appDataPath: USER_DATA,
+			packaged,
+		});
+		assert.notEqual(answer, legacy);
+		assert.equal(venvInterpreter(answer).kind, "none", answer);
+	}
+
+	const lines = legacyEnvironmentReport(support);
+	assert.equal(lines.length, 1);
+	assert.match(lines[0], /pre-split environment at .*local-operator-venv/);
+	assert.match(lines[0], /built on the interpreter inside \/Applications\/Local Operator\.app/);
+	assert.match(lines[0], /left exactly as it is/);
+
+	// The bundle gone is a DIFFERENT fact, and it is stated as one.
+	writeFileSync(
+		join(legacy, "pyvenv.cfg"),
+		"home = /Applications/Gone.app/Contents/Resources/python_aarch64/bin\n",
+	);
+	const afterReplacement = legacyEnvironmentReport(support);
+	assert.equal(afterReplacement.length, 1);
+	assert.match(afterReplacement[0], /names an interpreter bundle that is not on disk/);
+	assert.match(afterReplacement[0], /\/Applications\/Gone\.app/);
+
+	// And a machine with no pre-split environment says nothing at all.
+	assert.deepEqual(legacyEnvironmentReport(join(home, "elsewhere")), []);
+});
+
+test("the setup failure dialog says what happened before what was recorded", async () => {
+	// Design D4: `detail: error.message` handed the user a raw internals string -
+	// `Runtime directory escaped its managed root`, `ENOENT: … lstat '…'`. The
+	// plain sentence now comes first, the app's own message follows under a label,
+	// and the support root is named rather than whichever internal path failed.
+	const { backendSetupFailureDetail } = await loadMainProcess();
+	const support = "/Users/someone/Library/Application Support/Local Operator";
+
+	const full = backendSetupFailureDetail(
+		new Error("ditto: /Users/x/Library/Application Support/Local Operator/managed-python/packaged/runtimes/.preparing-a/b: No space left on device"),
+		support,
+	);
+	assert.match(full, /^What happened: This Mac ran out of disk space/);
+	assert.match(full, /The app recorded: ditto: /);
+	assert.match(full, /Where its environment lives: .*managed-python$/);
+
+	const concurrent = backendSetupFailureDetail(
+		new Error("Another Local Operator instance is preparing its backend"),
+		support,
+	);
+	assert.match(concurrent, /^What happened: Another copy of Local Operator is setting up/);
+
+	// An internal-sounding error is not shown as the user's situation, and the raw
+	// string it came from is still there for the support thread.
+	const internal = backendSetupFailureDetail(
+		new Error("Runtime directory escaped its managed root"),
+		support,
+	);
+	assert.doesNotMatch(internal.split("\n")[0], /escaped its managed root/);
+	assert.match(internal, /The app recorded: Runtime directory escaped its managed root/);
+	assert.doesNotMatch(internal, /\.app/);
+});
+
+test("the macOS installer no longer claims to have chosen a Python directory", async () => {
+	// Review N1: every run printed `Detected CPU architecture: arm64, using Python
+	// directory name: python_aarch64` for an in-bundle search this script does not
+	// perform - it installs from `PYTHON_BIN`. The line stated the opposite of how
+	// the script finds Python.
+	const { macosInstallScript } = await loadInstallScripts();
+	assert.doesNotMatch(macosInstallScript, /PYTHON_DIR_NAME/);
+	assert.doesNotMatch(macosInstallScript, /using Python directory name/);
+	const run = runMacosInstallScript(macosInstallScript, { PYTHON_BIN: undefined });
+	assert.doesNotMatch(`${run.stdout}${run.stderr}`, /Detected CPU architecture/);
+	// The refusal it does make is untouched: the caller must say which interpreter.
+	assert.equal(run.status, 1);
+	assert.match(run.stderr, /Pass an external prepared Python executable/);
 });

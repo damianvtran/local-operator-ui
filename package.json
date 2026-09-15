@@ -232,21 +232,21 @@
     "afterPack": "scripts/after-pack.mjs",
     "mac": {
       "extraResources": [
-      {
-        "from": "resources/python",
-        "to": "python-runtime-seed/x64",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "resources/python_aarch64",
-        "to": "python-runtime-seed/arm64",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
+        {
+          "from": "resources/python",
+          "to": "python-runtime-seed/x64",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "resources/python_aarch64",
+          "to": "python-runtime-seed/arm64",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
       "notarize": false,
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
@@ -291,22 +291,22 @@
       }
     },
     "win": {
-    "extraResources": [
-      {
-        "from": "resources/python",
-        "to": "python",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "resources/python_aarch64",
-        "to": "python_aarch64",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
+      "extraResources": [
+        {
+          "from": "resources/python",
+          "to": "python",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "resources/python_aarch64",
+          "to": "python_aarch64",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
       "target": [
         {
           "target": "nsis",
@@ -327,22 +327,22 @@
       "multiLanguageInstaller": true
     },
     "linux": {
-    "extraResources": [
-      {
-        "from": "resources/python",
-        "to": "python",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "resources/python_aarch64",
-        "to": "python_aarch64",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
+      "extraResources": [
+        {
+          "from": "resources/python",
+          "to": "python",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "resources/python_aarch64",
+          "to": "python_aarch64",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
       "category": "ArtificialIntelligence",
       "icon": "build/",
       "target": [

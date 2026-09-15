@@ -62,22 +62,13 @@ export PYTHONPYCACHEPREFIX
 # with whatever the caller had.
 export PYTHONDONTWRITEBYTECODE=1
 
-# Determine CPU Architecture and Python Directory Name
-ARCH=$(uname -m)
-PYTHON_DIR_NAME="python" # Default for x86_64
-PYTHON_ARCH_NAME="x86_64" # For logging
-
-if [[ "$ARCH" == "x86_64" ]]; then
-  PYTHON_DIR_NAME="python"
-  PYTHON_ARCH_NAME="x86_64"
-elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then # arm64 is what uname -m returns on Apple Silicon
-  PYTHON_DIR_NAME="python_aarch64"
-  PYTHON_ARCH_NAME="aarch64"
-else
-  echo "Error: Unsupported CPU architecture: $ARCH"
-  exit 1
-fi
-echo "Detected CPU architecture: $ARCH, using Python directory name: $PYTHON_DIR_NAME"
+# The architecture block that used to live here computed and logged the name of
+# a directory for an in-bundle search this script no longer performs: every run
+# announced which architecture-named directory it was about to use, and then
+# installed from `PYTHON_BIN` anyway - the line stated the opposite of how the
+# script finds Python, and the names it computed were used nowhere else (review
+# N1). Which interpreter to build the environment with is the caller's decision,
+# checked immediately below.
 
 # The app prepares a complete external runtime before invoking this script.
 # Searching /Applications here would reintroduce legacy-bundle execution during

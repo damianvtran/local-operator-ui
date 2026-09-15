@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter, dirname, join } from "node:path";
+import BUNDLED_PYTHON_LAYOUT from "../shared/bundled-python-layout.json";
 
 /**
  * Pure helpers behind the application update path.
@@ -170,6 +171,17 @@ export type InstallBlock = {
 	remedy: UpdateRemedy;
 	/** Raw command output or numbers, for the log and the detail line. */
 	detail: string;
+	/**
+	 * Override for the panel's heading, when one code covers two situations.
+	 *
+	 * The heading map is keyed by `code`, and `installed-bundle-not-sealed` is
+	 * reachable from two contexts that are not the same news: an update that was
+	 * refused, and a copy that is damaged with no update in play. The map cannot
+	 * express that, so the copy that knows the difference says so (design D2).
+	 */
+	heading?: string;
+	/** The dismiss control's label, when the default would misdescribe it (D3). */
+	dismissLabel?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -286,9 +298,21 @@ export function installedBundleSealBlock(
 	version?: string | null,
 	context: SealBlockContext = "update",
 ): InstallBlock {
+	/*
+	 * Two contexts, two pieces of news, and the start-up one is not about an
+	 * update at all: the user asked for nothing, and what they have is a copy that
+	 * cannot repair itself. It therefore says the fact and stops - the remedy line
+	 * owns the instruction - and it carries its own heading and dismiss label, so
+	 * the panel does not answer a question the user never asked and does not offer
+	 * to defer an update that is not coming (design D1, D2, D3).
+	 *
+	 * What it still does NOT say: that macOS will refuse the next launch. The app
+	 * is running with the break, so it cannot know that, and the suite holds a
+	 * negative guard on exactly this copy.
+	 */
 	const message =
 		context === "startup"
-			? "This copy of Local Operator did not pass its integrity check and cannot update itself. Download a fresh copy and replace the app in Applications."
+			? "This copy of Local Operator did not pass its integrity check, so it can't repair itself."
 			: version
 				? `This install of Local Operator can't be updated in place, so the update to version ${version} was stopped before the app quit.`
 				: "This install of Local Operator can't be updated in place, so the update was stopped before the app quit.";
@@ -300,6 +324,12 @@ export function installedBundleSealBlock(
 			url: DOWNLOAD_PAGE_URL,
 		},
 		detail: `${appBundlePath}: ${detail}`,
+		...(context === "startup"
+			? {
+					heading: "This copy of Local Operator needs replacing",
+					dismissLabel: "Not now",
+				}
+			: {}),
 	};
 }
 
@@ -386,8 +416,26 @@ function canonicalPath(path: string): string {
 	}
 }
 
-/** Directory names of the bundled interpreters, under `Contents/Resources`. */
-const BUNDLED_PYTHON_DIRS = ["python", "python_aarch64"];
+/**
+ * The directory names of the bundled interpreters, under `Contents/Resources`.
+ *
+ * Read from the ONE definition of this layout rather than spelled again here.
+ * It used to be a local `["python", "python_aarch64"]`, which was right for the
+ * layout the app shipped before this change and wrong for the one it ships now:
+ * the interpreter moved to `python-runtime-seed/<arch>`, the release gate's twin
+ * list was updated with it, and this predicate stayed behind - so on a bundle
+ * this branch builds, every `.pyc` violation was unhealable by construction and
+ * the user got the reinstall refusal for a file the heal exists to delete
+ * (review R10 / QA Q2). Both sides now read `bundled-python-layout.json`, so the
+ * two lists cannot diverge again, and the legacy names stay in it because a
+ * bundle being *replaced* may still be the old layout.
+ */
+const BUNDLED_PYTHON_DIRS = [
+	...BUNDLED_PYTHON_LAYOUT.legacyResourceNames,
+	...BUNDLED_PYTHON_LAYOUT.architectures.map(
+		(arch) => `${BUNDLED_PYTHON_LAYOUT.seedNamespace}/${arch}`,
+	),
+];
 
 /**
  * Whether a path is bytecode this application itself wrote into its own bundle.

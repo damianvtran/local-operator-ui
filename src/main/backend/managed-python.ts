@@ -4,8 +4,17 @@ import fs from "node:fs";
 import { mkdir, mkdtemp, rename, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+	basename,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+	sep,
+} from "node:path";
 import { promisify } from "node:util";
+import BUNDLED_PYTHON_LAYOUT from "../../shared/bundled-python-layout.json";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 
 const execute = promisify(execFile);
@@ -36,7 +45,7 @@ const LOCK_OWNER = /^\s*\d+\s*$/;
 /** A legacy in-bundle interpreter path, in a launcher or a shebang. */
 const LEGACY_BUNDLE_PYTHON_PATH =
 	/\.app\/Contents\/Resources\/python(?:_aarch64)?\//;
-export const PYTHON_SEED_NAMESPACE = "python-runtime-seed";
+export const PYTHON_SEED_NAMESPACE = BUNDLED_PYTHON_LAYOUT.seedNamespace;
 const FORMAT = 1;
 const READY = "environment-ready.json";
 const POINTER = "selected-environment.json";
@@ -156,6 +165,49 @@ export function runtimeManifest(
 export function runtimeId(manifest: RuntimeManifest): string {
 	return createHash("sha256").update(JSON.stringify(manifest)).digest("hex");
 }
+
+/**
+ * The identity of a Python tree: the bytes it was SIGNED with.
+ *
+ * ONE definition, and that is the point. Bytecode caches are derived data, never
+ * a signed byte, so they are excluded everywhere - and there used not to be a
+ * "everywhere": the id published at provisioning was computed with caches
+ * COUNTED, while every later comparison recomputed the tree's id with caches
+ * IGNORED. On a seed carrying even one `.pyc` no comparison could ever hold, so
+ * the published selection became permanently unusable and the user was told the
+ * runtime had CHANGED (QA Q1). The seed's completeness and structure are
+ * asserted separately by `runtimeManifest` without `allowCaches`, which is what
+ * rejects a hardlink, a special file or an escaping link.
+ */
+export function runtimeIdentity(root: string, arch: string): string {
+	return runtimeId(runtimeManifest(root, arch, true));
+}
+
+/**
+ * The first entry two manifests disagree about, in the order a reader can act on.
+ *
+ * Exists so a mismatch names the file rather than the verdict: "the runtime has
+ * changed" sends nobody anywhere, while "`lib/python3.12/os.py` does not match
+ * the seed" says which tree is wrong (QA Q1).
+ */
+function firstDifference(
+	expected: RuntimeManifest,
+	actual: RuntimeManifest,
+): string {
+	const expectedByPath = new Map(expected.entries.map((e) => [e.path, e]));
+	const actualByPath = new Map(actual.entries.map((e) => [e.path, e]));
+	for (const [path, entry] of expectedByPath) {
+		const other = actualByPath.get(path);
+		if (!other) return `${path} is missing`;
+		if (other.kind !== entry.kind)
+			return `${path} is a ${other.kind}, not a ${entry.kind}`;
+		if ((other.value ?? "") !== (entry.value ?? ""))
+			return `${path} does not match the seed`;
+	}
+	for (const path of actualByPath.keys())
+		if (!expectedByPath.has(path)) return `${path} was added`;
+	return "the two trees differ in a way this message cannot name";
+}
 export function managedPythonRoot(options: ManagedPythonOptions): string {
 	outsideApp(options.support);
 	return join(
@@ -165,11 +217,16 @@ export function managedPythonRoot(options: ManagedPythonOptions): string {
 	);
 }
 function seedPath(options: ManagedPythonOptions): string {
+	// The names come from the layout definition the release gate, the pack hook and
+	// the heal's predicate also read, so the seed's spelling cannot drift from any
+	// of them again (review R10 / QA Q2).
 	return options.packaged
 		? join(options.resources, PYTHON_SEED_NAMESPACE, options.arch)
 		: join(
 				options.resources,
-				options.arch === "arm64" ? "python_aarch64" : "python",
+				(BUNDLED_PYTHON_LAYOUT.checkoutSeedNames as Record<string, string>)[
+					options.arch
+				],
 			);
 }
 function pythonPath(runtime: string): string {
@@ -234,32 +291,81 @@ async function verifyMachO(
 		throw new Error("Python seed contains no signed Mach-O binaries");
 }
 
+/*
+ * A runtime is addressed as `runtimes/<seed identity>-<uuid>`, one directory per
+ * PROVISIONING GENERATION rather than one per seed.
+ *
+ * Why the generation in the name: the alternative is one directory per seed, and
+ * then a runtime whose bytes no longer match its identity can only be repaired by
+ * writing over a tree a live backend may be executing. The seeded path baked that
+ * in - `prepareRuntime` threw "the runtime has changed" and left the app with a
+ * published selection that could never be used again, while the installer offered
+ * a Retry button that re-threw forever and nothing told the user to delete the
+ * directory (review R8). With a generation in the name, a runtime that is missing,
+ * unreadable or no longer the published bytes is simply not a candidate: nothing
+ * is overwritten, the old bytes stay exactly where they were, and a fresh copy is
+ * published beside it. It is the same shape `environments/<id>-<uuid>` already
+ * had.
+ */
+export function runtimesRoot(options: ManagedPythonOptions): string {
+	return join(managedPythonRoot(options), "runtimes");
+}
+export function environmentsRoot(options: ManagedPythonOptions): string {
+	return join(managedPythonRoot(options), "environments");
+}
+/** The generation-name shape this module writes, and the only one it will reap. */
+const GENERATION_NAME = /^[a-f0-9]{64}-[0-9a-f-]{8,}$/;
+
+/**
+ * A runtime generation of this seed that still hashes to `id`, if one is there.
+ *
+ * The identity is the whole test: a generation carrying extra cache files still
+ * matches (caches are not signed bytes), and one whose bytes were changed does
+ * not - it is skipped rather than refused, which is what makes a corrupted
+ * runtime recoverable.
+ */
+function usableRuntimeGeneration(
+	options: ManagedPythonOptions,
+	id: string,
+): string | null {
+	let names: string[];
+	try {
+		names = fs.readdirSync(runtimesRoot(options));
+	} catch {
+		return null;
+	}
+	for (const name of names.sort()) {
+		if (!name.startsWith(`${id}-`)) continue;
+		const candidate = join(runtimesRoot(options), name);
+		try {
+			if (runtimeIdentity(candidate, options.arch) === id) return candidate;
+		} catch {
+			/* Not a readable runtime tree; not a candidate. */
+		}
+	}
+	return null;
+}
+
 async function prepareRuntime(
 	options: ManagedPythonOptions,
 ): Promise<{ runtime: string; id: string }> {
 	const seed = seedPath(options);
+	// The strict walk first: it is what rejects a hardlink, a special file or a
+	// link escaping the seed, and it enumerates every file the copy must contain.
 	const manifest = runtimeManifest(seed, options.arch);
-	const id = runtimeId(manifest);
-	const runtime = join(managedPythonRoot(options), "runtimes", id);
-	if (fs.existsSync(runtime)) {
-		if (runtimeId(runtimeManifest(runtime, options.arch, true)) !== id)
-			throw new Error(
-				"The selected Python runtime has changed. It was preserved, not overwritten.",
-			);
-		await verifyMachO(runtime, manifest);
-		return { runtime, id };
-	}
+	const id = runtimeIdentity(seed, options.arch);
+	const existing = usableRuntimeGeneration(options, id);
+	if (existing) return { runtime: existing, id };
 	await verifyMachO(seed, manifest);
-	await mkdir(dirname(runtime), { recursive: true, mode: 0o700 });
-	realDirectory(dirname(runtime));
+	const root = runtimesRoot(options);
+	await mkdir(root, { recursive: true, mode: 0o700 });
+	realDirectory(root);
 	if (
-		!inside(
-			fs.realpathSync(managedPythonRoot(options)),
-			fs.realpathSync(dirname(runtime)),
-		)
+		!inside(fs.realpathSync(managedPythonRoot(options)), fs.realpathSync(root))
 	)
 		throw new Error("Runtime directory escaped its managed root");
-	const staging = await mkdtemp(join(dirname(runtime), ".preparing-"));
+	const runtime = join(root, `${id}-${randomUUID()}`);
+	const staging = await mkdtemp(join(root, ".preparing-"));
 	// ditto copies the complete signed runtime, preserving relative symlinks and
 	// modes. The private staging tree is never executed or selected, even on failure.
 	await execute("/usr/bin/ditto", ["--noacl", seed, staging], {
@@ -268,7 +374,7 @@ async function prepareRuntime(
 	// ditto preserves descendants but leaves an existing mkdtemp root at 0700.
 	// Match the seed root before hashing; the parent remains private at 0700.
 	fs.chmodSync(staging, fs.lstatSync(seed).mode & 0o777);
-	if (runtimeId(runtimeManifest(staging, options.arch)) !== id)
+	if (runtimeIdentity(staging, options.arch) !== id)
 		throw new Error("The Python runtime copy did not match its signed seed");
 	for (const entry of manifest.entries) {
 		if (entry.kind !== "file") continue;
@@ -282,64 +388,280 @@ async function prepareRuntime(
 	return { runtime, id };
 }
 
+/**
+ * A published selection, as a verdict rather than an exception.
+ *
+ * Why not an exception, which is what this used to be: `prepareManagedPython`
+ * short-circuits on `managedSelectionReady`, and that read the selection FIRST -
+ * so once a pointer existed, a runtime or environment that had gone missing, or
+ * one whose bytes no longer matched, threw out of the read and made the re-copy
+ * arm unreachable. Every retry walked the same path, the dialog offered a Retry
+ * button that could not succeed, and the only recovery was deleting
+ * `selected-environment.json` by hand - for states a backup restore, a disk
+ * cleaner or a cautious `rm -rf` of an old runtime reach without asking
+ * (review R8). "Not usable" is a verdict the caller acts on; it is not an error.
+ */
+export type ManagedSelectionState =
+	| { kind: "ready"; selection: ManagedSelection }
+	/** Nothing usable is published; preparing one is the answer. */
+	| { kind: "unprepared"; detail: string }
+	/** What was published is gone, unreadable or not the published bytes. */
+	| { kind: "missing"; detail: string };
+
+function describe(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+/** Every structural rule the pointer must satisfy before anything is trusted. */
+function selectionIsWellFormed(
+	root: string,
+	selection: ManagedSelection,
+): boolean {
+	return (
+		selection.format === FORMAT &&
+		RUNTIME_ID.test(selection.runtimeId) &&
+		selection.runtime === join(root, "runtimes", selection.runtimeId)
+	);
+}
+
+/**
+ * The generation-keyed counterpart of the check above.
+ *
+ * The pointer names one generation, so the path must be inside `runtimes/` and
+ * carry the identity it claims - the same shape the environment path is held to.
+ */
+function selectionMatchesGeneration(
+	root: string,
+	selection: ManagedSelection,
+): boolean {
+	return (
+		selection.format === FORMAT &&
+		RUNTIME_ID.test(selection.runtimeId) &&
+		dirname(selection.runtime) === join(root, "runtimes") &&
+		GENERATION_NAME.test(basename(selection.runtime)) &&
+		selection.runtime.startsWith(
+			join(root, "runtimes", `${selection.runtimeId}-`),
+		) &&
+		dirname(selection.venv) === join(root, "environments") &&
+		selection.venv.startsWith(
+			join(root, "environments", `${selection.runtimeId}-`),
+		)
+	);
+}
+
+export function inspectManagedSelection(
+	options: ManagedPythonOptions,
+): ManagedSelectionState {
+	const root = managedPythonRoot(options);
+	const pointer = join(root, POINTER);
+	let raw: string;
+	try {
+		raw = fs.readFileSync(pointer, "utf8");
+	} catch {
+		return {
+			kind: "unprepared",
+			detail: `No environment is published for this instance (${pointer})`,
+		};
+	}
+	let selection: ManagedSelection;
+	try {
+		selection = JSON.parse(raw) as ManagedSelection;
+	} catch {
+		return {
+			kind: "unprepared",
+			detail: `The published environment pointer is not readable: ${pointer}`,
+		};
+	}
+	if (
+		!selectionIsWellFormed(root, selection) &&
+		!selectionMatchesGeneration(root, selection)
+	)
+		return {
+			kind: "unprepared",
+			detail: `The published environment pointer does not describe a managed environment: ${pointer}`,
+		};
+	for (const [what, path] of [
+		["Python runtime", selection.runtime],
+		["environment", selection.venv],
+	] as const) {
+		try {
+			realDirectory(path);
+		} catch (error) {
+			return {
+				kind: "missing",
+				detail: `The selected ${what} is not there any more (${path}): ${describe(error)}`,
+			};
+		}
+	}
+	try {
+		const ready = JSON.parse(
+			fs.readFileSync(join(selection.venv, READY), "utf8"),
+		);
+		if (JSON.stringify(ready) !== JSON.stringify(selection))
+			return {
+				kind: "missing",
+				detail: `The selected environment does not match the record published with it: ${selection.venv}`,
+			};
+	} catch (error) {
+		return {
+			kind: "missing",
+			detail: `The selected environment is not complete (${selection.venv}): ${describe(error)}`,
+		};
+	}
+	if (!fs.existsSync(join(selection.venv, "bin", "local-operator")))
+		return {
+			kind: "missing",
+			detail: `The selected environment has no backend installed: ${selection.venv}`,
+		};
+	let home: string | undefined;
+	try {
+		home = PYVENV_HOME.exec(
+			fs.readFileSync(join(selection.venv, "pyvenv.cfg"), "utf8"),
+		)?.[1]?.trim();
+	} catch (error) {
+		return {
+			kind: "missing",
+			detail: `The selected environment has no readable pyvenv.cfg (${selection.venv}): ${describe(error)}`,
+		};
+	}
+	if (home !== join(selection.runtime, "bin"))
+		return {
+			kind: "missing",
+			detail: `The selected environment does not belong to its external Python runtime (${selection.venv} names ${home ?? "no runtime"})`,
+		};
+	let identity: string;
+	try {
+		identity = runtimeIdentity(selection.runtime, options.arch);
+	} catch (error) {
+		return {
+			kind: "missing",
+			detail: `The selected Python runtime could not be read (${selection.runtime}): ${describe(error)}`,
+		};
+	}
+	if (identity !== selection.runtimeId) {
+		let reason: string;
+		try {
+			reason = firstDifference(
+				runtimeManifest(seedPath(options), options.arch, true),
+				runtimeManifest(selection.runtime, options.arch, true),
+			);
+		} catch {
+			reason = "the two trees could not be compared";
+		}
+		return {
+			kind: "missing",
+			detail: `The selected Python runtime is no longer the runtime that was published (${reason}); a fresh runtime will be published beside it`,
+		};
+	}
+	return { kind: "ready", selection };
+}
+
+/**
+ * The published selection, or null when there is not a usable one.
+ *
+ * Kept for the callers that only want a path, and now built on the verdict: a
+ * broken selection answers null instead of throwing, which is what lets the
+ * preparation path repair it (review R8).
+ */
 export function readManagedSelection(
 	options: ManagedPythonOptions,
 ): ManagedSelection | null {
-	const root = managedPythonRoot(options);
-	const pointer = join(root, POINTER);
-	if (!fs.existsSync(pointer)) return null;
-	const selection = JSON.parse(
-		fs.readFileSync(pointer, "utf8"),
-	) as ManagedSelection;
-	if (
-		selection.format !== FORMAT ||
-		!RUNTIME_ID.test(selection.runtimeId) ||
-		selection.runtime !== join(root, "runtimes", selection.runtimeId) ||
-		dirname(selection.venv) !== join(root, "environments") ||
-		!selection.venv.startsWith(
-			join(root, "environments", `${selection.runtimeId}-`),
-		)
-	) {
-		throw new Error(
-			"Invalid managed Python selection; existing files were left untouched",
-		);
-	}
-	realDirectory(selection.runtime);
-	realDirectory(selection.venv);
-	const ready = JSON.parse(
-		fs.readFileSync(join(selection.venv, READY), "utf8"),
-	);
-	if (
-		JSON.stringify(ready) !== JSON.stringify(selection) ||
-		!fs.existsSync(join(selection.venv, "bin", "local-operator"))
-	) {
-		throw new Error("The selected backend environment is not ready");
-	}
-	const home = PYVENV_HOME.exec(
-		fs.readFileSync(join(selection.venv, "pyvenv.cfg"), "utf8"),
-	)?.[1]?.trim();
-	if (home !== join(selection.runtime, "bin"))
-		throw new Error(
-			"The selected backend does not belong to its external Python runtime",
-		);
-	return selection;
+	const state = inspectManagedSelection(options);
+	return state.kind === "ready" ? state.selection : null;
 }
+
+/**
+ * Whether the published selection can be used right now.
+ *
+ * Deliberately cheap, and deliberately not a signature audit: the identity in the
+ * pointer already pins the runtime's bytes, the generation is never mutated after
+ * it is published, and `verifyMachO`'s per-Mach-O `codesign`+`otool` pair cost
+ * ~100 subprocesses on a path `index.ts` awaited BEFORE creating the window -
+ * measured at 2214/2262 ms for a 50-Mach-O tree (review R11). Mach-O verification
+ * is a property of provisioning, where it still runs against the seed, the staged
+ * copy and every candidate generation; a tree that no longer hashes to what was
+ * published is refused by the identity check below whatever its signatures say.
+ */
 export async function managedSelectionReady(
 	options: ManagedPythonOptions,
 ): Promise<boolean> {
-	const selection = readManagedSelection(options);
-	if (!selection) return false;
-	const manifest = runtimeManifest(seedPath(options), options.arch);
-	if (runtimeId(manifest) !== selection.runtimeId) return false;
-	if (
-		runtimeId(runtimeManifest(selection.runtime, options.arch, true)) !==
-		selection.runtimeId
-	)
-		throw new Error(
-			"The selected Python runtime has changed; no existing environment was modified",
-		);
-	await verifyMachO(selection.runtime, manifest);
-	return true;
+	return inspectManagedSelection(options).kind === "ready";
+}
+
+/** How long a preparation may hold the lock before another gives up on it. Also
+ * the age at which an abandoned staging tree is no longer possibly live: the
+ * reaper runs INSIDE the lock, so a `.preparing-*` tree older than this cannot
+ * belong to a preparation anything is still running. */
+const PREPARATION_LOCK_MS = 120_000;
+
+/**
+ * Reclaim what a previous preparation left behind, inside this root and bounded.
+ *
+ * Why: every failed-and-retried setup left its `.preparing-*` staging tree (the
+ * successful path renames it, a failure does not), every pip failure left an
+ * `environments/<id>-<uuid>` behind, and every Python revision the seed changes
+ * added a new ~47 MB runtime while the one before it stayed forever. Nothing
+ * owned any of them, and there was no stated bound (review R12).
+ *
+ * The retention rule, deliberately narrow: the selected generation and the most
+ * recently modified other generation in each root survive, so a restart or a
+ * rollback mid-switch still has something to fall back to; a staging tree older
+ * than the lock deadline is abandoned by construction. Only names this module
+ * writes are ever considered - `[0-9a-f]{64}-<uuid>` and `.preparing-*` - so a
+ * file an operator or a future version put here is left alone, and nothing
+ * outside `managedPythonRoot` is read, walked or removed. Never a machine-wide
+ * sweep, never a path we did not create.
+ */
+export function reapSupersededGenerations(
+	options: ManagedPythonOptions,
+	keep: { runtime?: string; venv?: string } = {},
+	now = Date.now(),
+): string[] {
+	const removed: string[] = [];
+	for (const [root, kept] of [
+		[runtimesRoot(options), keep.runtime],
+		[environmentsRoot(options), keep.venv],
+	] as const) {
+		let names: string[];
+		try {
+			names = fs.readdirSync(root);
+		} catch {
+			continue;
+		}
+		const survivors = new Set(kept ? [kept] : []);
+		const generations: Array<{ path: string; mtimeMs: number }> = [];
+		for (const name of names) {
+			const path = join(root, name);
+			if (name.startsWith(".preparing-")) {
+				try {
+					if (now - fs.statSync(path).mtimeMs < PREPARATION_LOCK_MS) continue;
+					fs.rmSync(path, { recursive: true, force: true });
+					removed.push(path);
+				} catch {
+					/* Left for the next start rather than reported as removed. */
+				}
+				continue;
+			}
+			if (!GENERATION_NAME.test(name) || survivors.has(path)) continue;
+			try {
+				generations.push({ path, mtimeMs: fs.statSync(path).mtimeMs });
+			} catch {
+				/* Not a readable generation. */
+			}
+		}
+		generations.sort((a, b) => b.mtimeMs - a.mtimeMs);
+		// One previous generation, and only one: the bound is the point.
+		if (generations.length > 0) survivors.add(generations[0].path);
+		for (const generation of generations.slice(1)) {
+			try {
+				fs.rmSync(generation.path, { recursive: true, force: true });
+				removed.push(generation.path);
+			} catch {
+				/* Left for the next start rather than reported as removed. */
+			}
+		}
+	}
+	return removed;
 }
 
 /** Only use OS process liveness for the small preparation lock, never for backend
@@ -361,7 +683,7 @@ async function locked<T>(root: string, work: () => Promise<T>): Promise<T> {
 		await mkdir(root, { recursive: true, mode: 0o700 });
 		realDirectory(root);
 		outsideApp(fs.realpathSync(root));
-		const deadline = Date.now() + 120_000;
+		const deadline = Date.now() + PREPARATION_LOCK_MS;
 		while (!acquired) {
 			if (
 				fs.existsSync(path) &&
@@ -496,15 +818,27 @@ export async function prepareManagedPython(
 	install: (venv: string, python: string) => Promise<boolean>,
 ): Promise<ManagedSelection> {
 	return locked(managedPythonRoot(options), async () => {
-		if (await managedSelectionReady(options))
-			return readManagedSelection(options) as ManagedSelection;
-		const { runtime, id } = await prepareRuntime(options);
+		/*
+		 * The verdict, not an exception, and this is what makes a broken install
+		 * recoverable: a published selection whose runtime or environment is gone,
+		 * unreadable or no longer the published bytes answers `missing`, and the
+		 * answer is a FRESH generation published beside it - never an overwrite of
+		 * whatever is there. `unprepared` (nothing published yet) takes the same
+		 * path. Before this, the read threw and the re-copy below was unreachable, so
+		 * every retry re-threw and the only recovery was deleting the pointer by hand
+		 * (review R8).
+		 */
+		const state = inspectManagedSelection(options);
+		if (state.kind === "ready") return state.selection;
+		const superseded = state.kind === "missing" ? state.detail : null;
 		const root = managedPythonRoot(options);
-		await mkdir(join(root, "environments"), { recursive: true, mode: 0o700 });
-		realDirectory(join(root, "environments"));
+		reapSupersededGenerations(options);
+		const { runtime, id } = await prepareRuntime(options);
+		await mkdir(environmentsRoot(options), { recursive: true, mode: 0o700 });
+		realDirectory(environmentsRoot(options));
 		// This is the FINAL venv pathname. Never rename an installed venv: pip
 		// entrypoints and activation scripts embed absolute paths into their bytes.
-		const venv = join(root, "environments", `${id}-${randomUUID()}`);
+		const venv = join(environmentsRoot(options), `${id}-${randomUUID()}`);
 		if (!(await install(venv, pythonPath(runtime))))
 			throw new Error(
 				"Backend preparation did not complete. Your previous environment and data were preserved.",
@@ -523,6 +857,13 @@ export async function prepareManagedPython(
 		const temporary = join(root, `.selection-${randomUUID()}.json`);
 		await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
 		await rename(temporary, join(root, POINTER));
+		// Only now, with the new generation published, is it safe to reclaim what
+		// this one replaces: the pointer names the survivor.
+		reapSupersededGenerations(options, { runtime, venv });
+		if (superseded)
+			console.warn(
+				`Replaced an unusable managed Python selection: ${superseded}`,
+			);
 		return selection;
 	});
 }

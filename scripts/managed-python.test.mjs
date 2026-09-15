@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { chmodSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { artifactArch, privatePythonSeedCheck, finalContainerChecks, finalMetadataChecks } from "./python-artifact-layout.mjs";
@@ -9,7 +10,7 @@ import { bundledPythonCheck, spawnRunner } from "./verify-macos-artifacts.mjs";
 
 const result = await build({ stdin: { contents: 'export * from "./src/main/backend/managed-python";', resolveDir: process.cwd() }, bundle: true, platform: "node", format: "esm", write: false });
 const runtime = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`);
-const { runtimeManifest, runtimeId, readManagedSelection, managedPythonRoot, isLegacyManagedCommand } = runtime;
+const { runtimeManifest, runtimeId, runtimeIdentity, readManagedSelection, inspectManagedSelection, managedSelectionReady, prepareManagedPython, reapSupersededGenerations, managedPythonRoot, isLegacyManagedCommand } = runtime;
 function fixture(t) {
 	const root = mkdtempSync(join(tmpdir(), "lo-managed-python-test-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -69,13 +70,18 @@ test("seed traversal rejects escaping links, hardlinks, special roots and invali
 	assert.equal(readFileSync(join(root, "outside"), "utf8"), "user data");
 });
 
-test("packaged/dev selections are disjoint and missing readiness never adopts an executable", (t) => {
+test("packaged/dev selections are disjoint, and a pointer nobody can trust is 'unprepared' rather than an error", (t) => {
 	const support = fixture(t);
 	assert.notEqual(managedPythonRoot(options(support)), managedPythonRoot(options(support, false)));
 	assert.equal(readManagedSelection(options(support)), null);
 	const root = managedPythonRoot(options(support)); mkdirSync(root, { recursive: true });
 	writeFileSync(join(root, "selected-environment.json"), JSON.stringify({ format: 1, runtimeId: "a".repeat(64), runtime: "/tmp/not-owned", venv: "/tmp/not-owned", backendVersion: "0" }));
-	assert.throws(() => readManagedSelection(options(support)), /Invalid managed/);
+	// A pointer naming paths outside this root is not usable, and it is not a
+	// refusal either: the preparation path republishes over it (review R8). The
+	// old contract threw here, which is what made every retry re-throw.
+	assert.equal(readManagedSelection(options(support)), null);
+	assert.equal(inspectManagedSelection(options(support)).kind, "unprepared");
+	assert.match(inspectManagedSelection(options(support)).detail, /does not describe a managed environment/);
 	assert.equal(readManagedSelection(options(support, false)), null);
 	assert.throws(() => managedPythonRoot(options(join(support, "Unsafe.app", "state"))), /outside every/);
 });
@@ -258,4 +264,205 @@ test("the disk image path is exercised by mounting the real image, not by assert
 	assert.ok(attach, "the image must be mounted, not read in place");
 	assert.ok(attach.args.includes("-readonly") && attach.args.includes("-nobrowse"), "the mount is read-only and must not appear in anyone's Finder");
 	assert.equal(attach.input, "Y\n", "the attach must answer the shipped image's license agreement, or the app inside it is never verified");
+});
+
+// ---------------------------------------------------------------------------
+// Retry has to be able to repair: review R8, QA Q1, review R12
+
+/** A real, ad-hoc-signed Mach-O for this machine's architecture. */
+function signedMachO(destination) {
+	execFileSync("/usr/bin/lipo", ["-thin", MACHINE_LIPO_ARCH, "-output", destination, "/usr/bin/true"]);
+	chmodSync(destination, 0o755);
+	execFileSync("/usr/bin/codesign", ["-s", "-", "-f", destination], { stdio: "ignore" });
+	execFileSync("/usr/bin/codesign", ["--verify", "--strict", destination]);
+}
+
+/**
+ * A seed tree the provisioning path accepts.
+ *
+ * One signed Mach-O (a thinned, ad-hoc signed `/usr/bin/true`) plus the two files
+ * that prove the tree is a complete interpreter, so `verifyMachO`'s "a seed with
+ * no signed binary is not a seed" rule is satisfied by the same check a shipped
+ * seed passes. `cache` plants the stray bytecode QA Q1 measured.
+ */
+function seedFixture(resources, arch, { cache = false } = {}) {
+	const seed = join(resources, "python-runtime-seed", arch);
+	mkdirSync(join(seed, "bin"), { recursive: true });
+	mkdirSync(join(seed, "lib", "python3.12", "encodings"), { recursive: true });
+	signedMachO(join(seed, "bin", "python3.12"));
+	writeFileSync(join(seed, "bin", "python3"), "fixture launcher\n");
+	writeFileSync(join(seed, "lib", "python3.12", "encodings", "__init__.py"), "pass\n");
+	if (cache) {
+		mkdirSync(join(seed, "lib", "python3.12", "encodings", "__pycache__"));
+		writeFileSync(join(seed, "lib", "python3.12", "encodings", "__pycache__", "__init__.cpython-312.pyc"), "stray bytecode\n");
+	}
+	return seed;
+}
+
+/**
+ * A stand-in for the shipped install script.
+ *
+ * Why not the real one: `prepareManagedPython` ends in `smokeEnvironment`, which
+ * runs the environment's python and then the backend itself, so the real script
+ * would make these cases depend on a downloaded 47 MB interpreter, a network
+ * `pip install` and a working backend - none of which is what R8 is about. The
+ * two processes it does start are stood in for the same way: a shim that answers
+ * the two `-c` calls with a version, and a shim that serves `/health` on the port
+ * it is handed. The real end-to-end path is `scripts/verify-managed-python.mjs`.
+ */
+const STAND_IN_PYTHON = `#!/bin/sh\n# Stand-in for the venv interpreter; smokeEnvironment's only two calls are\n# \`-c\` ones, and the second one's stdout becomes the selection's version.\necho "0.0.0-fixture"\n`;
+function standInInstaller(venv, python) {
+	mkdirSync(join(venv, "bin"), { recursive: true });
+	writeFileSync(join(venv, "bin", "python"), STAND_IN_PYTHON, { mode: 0o755 });
+	writeFileSync(
+		join(venv, "bin", "local-operator"),
+		`#!/bin/sh\nport=""\nprev=""\nfor a in "$@"; do\n  if [ "$prev" = "--port" ]; then port="$a"; fi\n  prev="$a"\ndone\nPORT="$port" exec "${process.execPath}" -e 'require("node:http").createServer((q,s)=>s.end("ok")).listen(Number(process.env.PORT),"127.0.0.1");'\n`,
+		{ mode: 0o755 },
+	);
+	writeFileSync(
+		join(venv, "pyvenv.cfg"),
+		`home = ${dirname(python)}\ninclude-system-site-packages = false\nversion = 3.12.10\n`,
+	);
+}
+
+/** Provision once, then hand the caller a way to break it and retry. */
+async function provisioned(t) {
+	const support = fixture(t);
+	const resources = fixture(t);
+	const arch = MACHINE_ARTIFACT_ARCH;
+	seedFixture(resources, arch);
+	const opts = { support, resources, packaged: true, arch };
+	const state = { installs: 0 };
+	const install = async (venv, python) => {
+		state.installs++;
+		standInInstaller(venv, python);
+		return true;
+	};
+	const first = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 1);
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+	return { opts, install, state, first };
+}
+
+test("a selected runtime that changed out of band is rebuilt beside the old one", async (t) => {
+	const { opts, install, state, first } = await provisioned(t);
+	writeFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "changed out of band\n");
+	const verdict = inspectManagedSelection(opts);
+	assert.equal(verdict.kind, "missing");
+	// The message names the file rather than the verdict (QA Q1).
+	assert.match(verdict.detail, /stray\.py was added/);
+	const rebuilt = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2, "the retry arm must run rather than refuse forever");
+	assert.notEqual(rebuilt.runtime, first.runtime);
+	assert.notEqual(rebuilt.venv, first.venv);
+	// Nothing was overwritten: the changed generation is still exactly there.
+	assert.equal(readFileSync(join(first.runtime, "lib", "python3.12", "stray.py"), "utf8"), "changed out of band\n");
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+});
+
+test("a selected environment that was removed is rebuilt, and the runtime is reused", async (t) => {
+	const { opts, install, state, first } = await provisioned(t);
+	rmSync(first.venv, { recursive: true, force: true });
+	assert.equal(inspectManagedSelection(opts).kind, "missing");
+	const rebuilt = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2);
+	assert.equal(rebuilt.runtime, first.runtime, "an intact runtime of the same identity is a candidate, so the 47 MB copy is not repeated");
+	assert.notEqual(rebuilt.venv, first.venv);
+});
+
+test("a selected runtime that was removed is reprinted from the seed", async (t) => {
+	const { opts, install, state, first } = await provisioned(t);
+	rmSync(first.runtime, { recursive: true, force: true });
+	assert.equal(inspectManagedSelection(opts).kind, "missing");
+	const rebuilt = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2);
+	assert.notEqual(rebuilt.runtime, first.runtime);
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+});
+
+test("a published selection whose runtime and environment are both gone is recoverable", async (t) => {
+	const { opts, install, state, first } = await provisioned(t);
+	rmSync(first.runtime, { recursive: true, force: true });
+	rmSync(first.venv, { recursive: true, force: true });
+	assert.equal(readManagedSelection(opts), null);
+	assert.equal(inspectManagedSelection(opts).kind, "missing");
+	const rebuilt = await prepareManagedPython(opts, install);
+	assert.equal(state.installs, 2);
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+	assert.equal(rebuilt.backendVersion, "0.0.0-fixture");
+});
+
+test("a seed that carries bytecode still yields a selection that stays usable", async (t) => {
+	// QA Q1: the published id counted cache files while every later comparison
+	// ignored them, so one stray `.pyc` in the seed - which the unpackaged path's
+	// `resources/python_aarch64` acquires from any python run over it - made the
+	// selection permanently unusable and blamed the runtime.
+	const support = fixture(t);
+	const resources = fixture(t);
+	const arch = MACHINE_ARTIFACT_ARCH;
+	seedFixture(resources, arch, { cache: true });
+	const opts = { support, resources, packaged: true, arch };
+	assert.equal(runtimeIdentity(join(resources, "python-runtime-seed", arch), arch), runtimeIdentity(join(resources, "python-runtime-seed", arch), arch));
+	let installs = 0;
+	const install = async (venv, python) => {
+		installs++;
+		standInInstaller(venv, python);
+		return true;
+	};
+	const first = await prepareManagedPython(opts, install);
+	assert.equal(installs, 1);
+	assert.equal(await managedSelectionReady(opts), true, "the second start must reuse it, not refuse it");
+	assert.equal(inspectManagedSelection(opts).kind, "ready");
+	// And the same seed still reuses rather than re-provisioning.
+	const second = await prepareManagedPython(opts, () => {
+		throw new Error("Reuse must not reinstall");
+	});
+	assert.deepEqual(second, first);
+	// A byte the seed really does sign still changes the identity.
+	writeFileSync(join(resources, "python-runtime-seed", arch, "lib", "python3.12", "encodings", "__init__.py"), "changed\n");
+	assert.notEqual(runtimeIdentity(join(resources, "python-runtime-seed", arch), arch), first.runtimeId);
+});
+
+test("the reaper removes abandoned staging and superseded generations, and nothing else", (t) => {
+	const support = fixture(t);
+	const opts = { support, resources: "", packaged: true, arch: "arm64" };
+	const runtimes = join(managedPythonRoot(opts), "runtimes");
+	const environments = join(managedPythonRoot(opts), "environments");
+	mkdirSync(runtimes, { recursive: true });
+	mkdirSync(environments, { recursive: true });
+	const id = "a".repeat(64);
+	const generation = (root, suffix) => {
+		const path = join(root, `${id}-${suffix}`);
+		mkdirSync(path, { recursive: true });
+		return path;
+	};
+	const selectedRuntime = generation(runtimes, "11111111");
+	const previousRuntime = generation(runtimes, "22222222");
+	const olderRuntime = generation(runtimes, "33333333");
+	const selectedVenv = generation(environments, "11111111");
+	const previousVenv = generation(environments, "22222222");
+	// Order by mtime explicitly: the retention rule is "the selected one plus the
+	// most recent other one", never "whatever the directory order happened to be".
+	const now = Date.now();
+	const at = (path, secondsAgo) => utimesSync(path, new Date(now - secondsAgo * 1000), new Date(now - secondsAgo * 1000));
+	at(selectedRuntime, 10); at(previousRuntime, 20); at(olderRuntime, 30);
+	at(selectedVenv, 10); at(previousVenv, 20);
+	// Not ours: an operator's or a future version's directory must survive.
+	const foreignRuntime = join(runtimes, "keep-me");
+	mkdirSync(foreignRuntime, { recursive: true });
+	// An abandoned staging tree, and one that is young enough to be a live
+	// preparation (this runs inside the lock, so only the old one is abandoned).
+	const abandoned = join(runtimes, ".preparing-abandoned");
+	mkdirSync(abandoned, { recursive: true });
+	at(abandoned, 600);
+	const live = join(runtimes, ".preparing-live");
+	mkdirSync(live, { recursive: true });
+
+	const removed = reapSupersededGenerations(opts, { runtime: selectedRuntime, venv: selectedVenv }, now);
+	assert.deepEqual(removed.sort(), [abandoned, olderRuntime].sort());
+	assert.ok(existsSync(selectedRuntime) && existsSync(selectedVenv), "the selected generation is never reaped");
+	assert.ok(existsSync(previousRuntime) && existsSync(previousVenv), "one previous generation survives the switch");
+	assert.ok(existsSync(live), "a staging tree young enough to belong to a live preparation is left alone");
+	assert.ok(existsSync(foreignRuntime), "a name this module did not write is never removed");
+	assert.deepEqual(readdirSync(runtimes).sort(), [`.preparing-live`, `${id}-11111111`, `${id}-22222222`, "keep-me"].sort());
 });

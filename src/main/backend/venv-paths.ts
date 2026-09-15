@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { readManagedSelection } from "./managed-python";
 
 /**
@@ -36,6 +36,47 @@ import { readManagedSelection } from "./managed-python";
  */
 export const PACKAGED_VENV_DIR_NAME = "local-operator-venv";
 export const DEV_VENV_DIR_NAME = "local-operator-venv-dev";
+
+/**
+ * What `managedVenvPath` answers with when nothing has been published yet.
+ *
+ * A SENTINEL, not a directory: nothing creates it, and no code should read it as
+ * state. It used to be spelled `.../managed-python/<scope>/unprepared`, which is a
+ * plausible-looking path - it was logged as one, and `BackendServiceManager.getVenvPath`
+ * fed it to the pip-upgrade path, where the resulting error named a directory the
+ * user could go looking for (review N3). The name now says what it is, and
+ * `isUnpreparedVenvPath` is what a consumer asks.
+ */
+export const NO_SELECTION_DIR_NAME = "no-environment-selected";
+
+/** Whether a `managedVenvPath` answer is the sentinel rather than an environment. */
+export function isUnpreparedVenvPath(path: string): boolean {
+	return path.endsWith(`${sep}${NO_SELECTION_DIR_NAME}`);
+}
+
+/** The macOS application-support root these environments live under. */
+export function managedSupportRoot(home: string): string {
+	return join(home, "Library", "Application Support", "Local Operator");
+}
+
+/**
+ * The PRE-SPLIT environments, by their names on disk.
+ *
+ * Why this exists separately from `managedVenvPath`: that function answers "which
+ * environment belongs to THIS instance", which after the split is the selected
+ * generation venv or the sentinel - never the `local-operator-venv` an install
+ * from before this change built. The start-up report was written for that legacy
+ * environment and handed `managedVenvPath`'s answer to it, so on darwin it
+ * inspected either a venv whose `pyvenv.cfg` names the external runtime by
+ * construction or a sentinel that does not exist, and the promised line never
+ * fired for the one state it describes (review R7).
+ */
+export function legacyVenvPaths(support: string): string[] {
+	return [
+		join(support, PACKAGED_VENV_DIR_NAME),
+		join(support, DEV_VENV_DIR_NAME),
+	];
+}
 
 /**
  * The variable the app hands its resolved venv path to the install scripts in.
@@ -91,37 +132,25 @@ export function managedVenvPath(input: {
 		return join(input.appDataPath, name);
 	}
 	if (input.platform === "darwin") {
-		const support = join(
-			input.home,
-			"Library",
-			"Application Support",
-			"Local Operator",
-		);
-		try {
-			return (
-				readManagedSelection({
-					support,
-					resources: "",
-					packaged: input.packaged,
-					arch: process.arch,
-				})?.venv ??
-				join(
-					support,
-					"managed-python",
-					input.packaged ? "packaged" : "dev",
-					"unprepared",
-				)
-			);
-		} catch {
-			// Readiness reports a corrupt selection through setup's error UI. A
-			// constructor must not crash before that UI can explain what happened.
-			return join(
+		const support = managedSupportRoot(input.home);
+		// A selection that is unusable answers null rather than throwing, so there
+		// is nothing to catch here: "not published yet" and "published but gone"
+		// are the same answer to this caller - the instance has no environment of
+		// its own to name yet, and setup is what publishes one.
+		return (
+			readManagedSelection({
+				support,
+				resources: "",
+				packaged: input.packaged,
+				arch: process.arch,
+			})?.venv ??
+			join(
 				support,
 				"managed-python",
 				input.packaged ? "packaged" : "dev",
-				"unprepared",
-			);
-		}
+				NO_SELECTION_DIR_NAME,
+			)
+		);
 	}
 	return join(input.home, ".config", "local-operator", name);
 }
@@ -166,4 +195,29 @@ export function venvInterpreter(venvPath: string): VenvInterpreter {
 	return existsSync(bundle)
 		? { kind: "bundled", bundle }
 		: { kind: "missing", bundle };
+}
+
+/**
+ * The log lines the pre-split environments deserve, as a pure function of the
+ * disk - so the reporting the method claims to do is something a test can drive.
+ *
+ * Two facts, and they are not the same one: a venv whose interpreter is inside an
+ * installed `.app` is still built on a tree that a replacement destroys, and one
+ * whose bundle is already gone resolves nothing at all. Silence made them look
+ * like the same healthy state, which is what R7 and Q3 were about. Neither is
+ * repaired here: those environments are left byte-identical on purpose, so a
+ * rollback to an older build still finds what it built.
+ */
+export function legacyEnvironmentReport(support: string): string[] {
+	const lines: string[] = [];
+	for (const venv of legacyVenvPaths(support)) {
+		const resolution = venvInterpreter(venv);
+		if (resolution.kind === "none") continue;
+		lines.push(
+			resolution.kind === "missing"
+				? `The pre-split environment at ${venv} names an interpreter bundle that is not on disk (${resolution.bundle}); it is left exactly as it is.`
+				: `The pre-split environment at ${venv} is built on the interpreter inside ${resolution.bundle}; it is left exactly as it is, and this instance does not use it.`,
+		);
+	}
+	return lines;
 }

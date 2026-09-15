@@ -25,7 +25,11 @@ import type { BackendServiceManager } from "./backend/backend-service";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
-import { managedVenvPath, venvInterpreter } from "./backend/venv-paths";
+import {
+	isUnpreparedVenvPath,
+	legacyEnvironmentReport,
+	managedSupportRoot,
+} from "./backend/venv-paths";
 import { withPythonBytecodeCache } from "./python-bytecode-cache";
 import {
 	type BytecodeHealResult,
@@ -561,6 +565,11 @@ export class UpdateService {
 			message: block.message,
 			remedy: block.remedy,
 			detail: block.detail,
+			// Both optional, and both must travel: the payload is built field by
+			// field, so a copy the main process owns and this builder forgets is a
+			// panel that renders the default heading (design D2, D3).
+			heading: block.heading ?? null,
+			dismissLabel: block.dismissLabel ?? null,
 		};
 	}
 
@@ -1417,24 +1426,23 @@ export class UpdateService {
 	 * interpreter" are different facts, and silence makes them look like the same
 	 * healthy one. Neither is repaired: those environments are left byte-identical,
 	 * deliberately, so a rollback to an older build still finds what it built.
+	 *
+	 * Darwin only, and by construction rather than by choice: what is reported is a
+	 * venv built on the interpreter inside a code-sealed `.app`, and no other
+	 * platform has one (`BUNDLED_INTERPRETER_HOME` requires the `.app` component).
+	 *
+	 * It reads `legacyVenvPaths`, NOT `managedVenvPath`. That was the bug: on darwin
+	 * `managedVenvPath` answers with the post-split selection venv - whose
+	 * `pyvenv.cfg` names the external runtime by construction - or with the
+	 * `no-environment-selected` sentinel, so both iterations took the `continue` and
+	 * nothing was ever logged for the state this exists to describe (review R7).
 	 */
 	private reportLegacyVenvInterpreters(): void {
-		for (const packaged of [true, false]) {
-			const venv = managedVenvPath({
-				platform: process.platform,
-				home: app.getPath("home"),
-				appDataPath: app.getPath("userData"),
-				packaged,
-			});
-			const resolution = venvInterpreter(venv);
-			if (resolution.kind === "none") continue;
-			logger.info(
-				resolution.kind === "missing"
-					? `The pre-split environment at ${venv} names an interpreter bundle that is not on disk (${resolution.bundle}); it is left exactly as it is.`
-					: `The pre-split environment at ${venv} is built on the interpreter inside ${resolution.bundle}; it is left exactly as it is, and this instance does not use it.`,
-				LogFileType.UPDATE_SERVICE,
-			);
-		}
+		if (process.platform !== "darwin") return;
+		for (const line of legacyEnvironmentReport(
+			managedSupportRoot(app.getPath("home")),
+		))
+			logger.info(line, LogFileType.UPDATE_SERVICE);
 	}
 
 	/**
@@ -3205,7 +3213,12 @@ export class UpdateService {
 
 			if (!pythonPath || !existsSync(pythonPath)) {
 				logger.error(
-					`Cannot update the bundled backend: no Python at ${pythonPath || "an unknown path"}`,
+					// `managedVenvPath` answers with a sentinel when no environment has
+					// been published, and "no Python at …/no-environment-selected" sent a
+					// reader to a directory-shaped path that nothing creates (review N3).
+					isUnpreparedVenvPath(venvPath ?? "")
+						? "Cannot update the bundled backend: no environment has been selected for this instance yet"
+						: `Cannot update the bundled backend: no Python at ${pythonPath || "an unknown path"}`,
 					LogFileType.UPDATE_SERVICE,
 				);
 				await this.restartBackendAfterFailedUpgrade();

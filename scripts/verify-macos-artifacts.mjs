@@ -22,6 +22,7 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { BYTECODE_TREE_NAMES, seedResourceDir } from "./bundled-python-layout.mjs";
 import { finalContainerChecks, finalMetadataChecks, privatePythonSeedCheck } from "./python-artifact-layout.mjs";
 
 const CODESIGN = "/usr/bin/codesign";
@@ -105,8 +106,14 @@ export function artifactChecks({ appPath, dmgPath }) {
 	return checks;
 }
 
-/** The directory names the two bundled interpreters occupy, in app resources. */
-const BUNDLED_PYTHON_TREES = ["python-runtime-seed/x64", "python-runtime-seed/arm64"];
+/** The directory names the bundled interpreters occupy, in app resources.
+ *
+ * Both namespaces, from the app's own layout definition: the legacy pair is what
+ * a bundle being REPLACED carries, and the seed directories are what a bundle
+ * this branch builds carries. A predicate that names only one of them is how the
+ * heal drifted from the gate (review R10 / QA Q2).
+ */
+const BUNDLED_PYTHON_TREES = BYTECODE_TREE_NAMES;
 
 /**
  * The bundled-interpreter trees a packaged app actually carries.
@@ -141,7 +148,10 @@ const LIPO = "/usr/bin/lipo";
  * case where the answer should be someone looking at this file rather than a
  * guess that happens to pass.
  */
-const INTERPRETER_BY_ARCH = { arm64: "python-runtime-seed/arm64", x86_64: "python-runtime-seed/x64" };
+const INTERPRETER_BY_ARCH = {
+	arm64: seedResourceDir("arm64"),
+	x86_64: seedResourceDir("x64"),
+};
 
 /**
  * A `lipo` architecture name as the artifact filename spells it.

@@ -559,6 +559,47 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 	}
 });
 
+test("the heal knows the namespace the interpreter actually ships in", async () => {
+	// Review R10 / QA Q2: this predicate keyed on the retired `python` and
+	// `python_aarch64` names while the release gate's twin list had been updated to
+	// the seed namespace, so on a bundle this branch builds every `.pyc` violation
+	// was unhealable by construction and the user was sent to reinstall for a file
+	// the app is entitled to delete. Both sides now read one definition, and this
+	// asserts the two namespaces AND that the gate's list is that same definition.
+	const bundle = "/Applications/Local Operator.app";
+	const layout = JSON.parse(
+		readFileSync(join(process.cwd(), "src/shared/bundled-python-layout.json"), "utf8"),
+	);
+	for (const name of [
+		"python",
+		"python_aarch64",
+		...layout.architectures.map((arch) => `${layout.seedNamespace}/${arch}`),
+	]) {
+		const path = `${bundle}/Contents/Resources/${name}/lib/python3.12/encodings/__pycache__/__init__.cpython-312.pyc`;
+		assert.equal(isPythonBytecodePath(bundle, path), true, path);
+		const plan = planPythonBytecodeHeal(bundle, [{ kind: "added", path }]);
+		assert.equal(plan.healable, true, plan.reason);
+	}
+	// Nothing else gained the entitlement: the seed's own namespace is only
+	// healable for bytecode, not for a source file beside it.
+	assert.equal(
+		isPythonBytecodePath(
+			bundle,
+			`${bundle}/Contents/Resources/${layout.seedNamespace}/arm64/lib/python3.12/encodings/__init__.py`,
+		),
+		false,
+	);
+	const gate = readFileSync(
+		join(process.cwd(), "scripts/verify-macos-artifacts.mjs"),
+		"utf8",
+	);
+	assert.match(
+		gate,
+		/const BUNDLED_PYTHON_TREES = BYTECODE_TREE_NAMES;/,
+		"the gate must walk the shared definition rather than a second spelling of its own",
+	);
+});
+
 test("the heal removes exactly what was reported, through an injectable remover", () => {
 	const bundle = "/Applications/Local Operator.app";
 	const path =
@@ -1099,23 +1140,30 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	const cancelled = installFailurePayload(marker, "0.19.4", {
 		cancelledByRelaunch: true,
 	});
+	const startup = installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		"errSecCSBadBundleFormat: a sealed resource is missing or invalid",
+		null,
+		"startup",
+	);
 	for (const [what, text] of [
 		["the in-flight message", inFlight.message],
 		["the cancelled-by-relaunch message", cancelled.message],
 		["the cancelled-by-relaunch remedy", cancelled.remedy.text],
 		// The start-up refusal, which is the R2 copy: the story has to carry the
-		// builder's own string, or the frame the design round looks at is a
-		// fixture that drifted from what the app sends.
-		[
-			"the start-up refusal message",
-			installedBundleSealBlock(
-				"/Applications/Local Operator.app",
-				"errSecCSBadBundleFormat: a sealed resource is missing or invalid",
-				null,
-				"startup",
-			).message,
-		],
+		// builder's own strings, or the frame the design round looks at is a
+		// fixture that drifted from what the app sends. All four, because D1-D3
+		// changed the message AND gave the state its own heading and dismiss label,
+		// and a fixture that carried only the message would look current while the
+		// panel rendered the update-time wording it replaced.
+		["the start-up refusal message", startup.message],
+		["the start-up refusal heading", startup.heading],
+		["the start-up refusal dismiss label", startup.dismissLabel],
 	]) {
+		assert.ok(
+			text,
+			`${what} is missing from the payload the app sends`,
+		);
 		assert.ok(
 			stories.includes(text),
 			`${what} is not in the story fixtures verbatim - the fixture has drifted from the payload the app sends:\n  expected: ${text}`,
@@ -1130,14 +1178,32 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	// And the promise the start-up copy must not make: macOS refusing to open the
 	// app is what an unhealed break leads to, not something this pass can assert
 	// about a bundle it has only just measured (review R2).
-	const startup = installedBundleSealBlock(
-		"/Applications/Local Operator.app",
-		"errSecCSBadBundleFormat",
-		null,
-		"startup",
-	);
 	assert.doesNotMatch(startup.message, /will refuse/);
 	assert.doesNotMatch(startup.message, /the next time you start it/);
+	// The remedy is stated ONCE, by the remedy line. D1: the message used to end
+	// with the same instruction, 7px above the line that repeats it - measured, so
+	// the two paragraphs read as one run and the first telling was the incomplete
+	// one (it omitted "Quit Local Operator, then").
+	assert.doesNotMatch(startup.message, /download a fresh copy/i);
+	assert.doesNotMatch(startup.message, /replace the app/i);
+	// D2 and D3: the panel does not answer an update question the user never
+	// asked, and does not offer to defer an update that is not coming.
+	assert.doesNotMatch(startup.heading, /update/i);
+	assert.notEqual(startup.heading, installedBundleSealBlock(
+		"/Applications/Local Operator.app",
+		"errSecCSBadBundleFormat",
+		"0.19.5",
+	).heading, "the two contexts must not share a heading");
+	assert.equal(startup.dismissLabel, "Not now");
+	assert.equal(
+		installedBundleSealBlock(
+			"/Applications/Local Operator.app",
+			"errSecCSBadBundleFormat",
+			"0.19.5",
+		).dismissLabel,
+		undefined,
+		"the update-time panel keeps its own label, which is honest there",
+	);
 });
 
 /**
