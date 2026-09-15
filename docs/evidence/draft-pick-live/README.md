@@ -17,6 +17,18 @@ this set's D5 as fixed in documentation. Nothing in this directory changed for
 that: the pixels here stay historical, and the frames that carry the interaction
 claim are the ones QA drove.
 
+**That is no longer the whole record, and nothing here is blocked by tooling.**
+An earlier revision of this file said the states this delta's own rounds changed
+- the pending and the failed resolution rows - had "no frame anywhere". They do
+now: QA round 7 ran the live click pass with the harness browser tool on the
+pre-rebase head `f6ba4c712` (26 frames, out of tree at `/tmp/qa-ui154-r7/frames/`
+with `MATRIX.md` and `wire.log` beside them) and design round 7 judged those
+pixels as rendered and signed the rendered gate off, terminal, on that head. The
+rebase that followed moved the head without moving any product or pixel content,
+which is why the sign-off still describes this branch. The frames remain outside
+the repository by this branch's convention, and **nothing in this directory owes
+a re-capture** for any of it.
+
 Historical method (not permission to repeat it): `scripts/draft-pick-evidence.vite.mjs`
 serves this page under Vite with `desktopProxyPlugin()` — the same plugin
 `electron.vite.config.js` registers — so the shipped `desktopRequest` takes its
@@ -57,15 +69,20 @@ committed frame that shows the draft chips' sentences, and the three PNGs here,
 render the **previous** wording. The copy they show is history; the sentences the
 code now prints are in `destination-pickers.tsx` and `session-status-strip.tsx`,
 and the states the delta adds (the pending and failed resolution rows) have no
-frame anywhere.
+frame *in this directory* - they were driven out of tree by QA round 7 on the
+pre-rebase head, cited above, which is a gap here rather than a tooling block.
 
 **The after-send pair is one frame.** `29-after-send-immediate.png` and
 `30-after-send-settled.png` in QA round 3's out-of-repo set (see above) are
 byte-identical - `sha256 f7db10911b77aa15...`, zero differing pixels - so the pair
 proves nothing about settling and the no-shift claim rests on `28` against a
 single post-send state, which design round 3 measured and confirmed. That set is
-not in this directory; when a browser round can run again, it should drop one file
-or capture a genuinely distinct settled frame (design D8).
+not in this directory, and design D8's ask - drop one file, or capture a genuinely
+distinct settled frame - is discharged out of tree rather than here: QA round 7's
+`16`/`17` are distinct after-send states, which design round 7 measured as 88,868
+differing pixels between them in the transcript column. The round-3 pair stays
+what it always was - one frame stored twice, historical, not a settling claim -
+and nothing in this directory was re-captured for it.
 
 There is **no `numbers.json` in this committed directory**. No per-frame DOM
 geometry or event trace is claimed. Design D3's unresolved Choose a model entry
@@ -141,9 +158,19 @@ picked pair, a sibling draft left on the machine default, and the capability-off
 negative control at rest and on click. The frames are QA's, at
 `/tmp/qa-ui154-r3/evidence/`; the round's disclosures bound them — the browser
 transport rather than Electron IPC, and no captured outbound provider body.
+- **The delta's own states are covered too, by later rounds, and also outside
+  this directory.** QA round 7's live click pass on the pre-rebase head
+`f6ba4c712` (`/tmp/qa-ui154-r7/frames/`, 26 frames with `MATRIX.md` and
+`wire.log`) drove the pending, refused and failed resolution rows the strip
+gained beside the pick-before-send, carry, clear-and-say and capability-off
+cells, and design round 7 signed the rendered gate off on those pixels. Both
+sets are out of tree; what is missing from THIS directory is historical pixels,
+not a permission.
 - **Design scope:** design round 3 is terminal on its head for the live picker,
-  picked, after-send and inert states, with no blocker or major finding, and its
-  D6-D9 remaining as recorded follow-ups. Its three unrendered items stay
-  unrendered: the longest catalogue selector, the in-dialog refusal (unreachable by
-  product design), and the mid-transition frames for D6. Existing pixels in THIS
-  directory still do not establish any of it.
+  picked, after-send and inert states, and design round 7 is the terminal
+  rendered round for this delta's own states - no blocker and no major on either,
+  with D2 pinned and D6/D8/D25-D27 recorded as follow-ups or satisfied. Design
+  round 3's three unrendered items stay unrendered: the longest catalogue
+  selector, the in-dialog refusal (unreachable by product design), and the
+  mid-transition frames for D6. Existing pixels in THIS directory still do not
+  establish any of it.
