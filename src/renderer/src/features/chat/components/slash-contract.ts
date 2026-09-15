@@ -20,6 +20,7 @@
  */
 import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
+import { slashContext } from "./slash-token";
 
 /**
  * The minimum a row must say for routing, copy and list identity to be decided.
@@ -167,6 +168,53 @@ export function sharedCommandPrefix(labels: readonly string[]): string {
 }
 
 /**
+ * The buffer and caret an AMBIGUOUS Enter produces: the command word grows to
+ * `prefix` and nothing else moves.
+ *
+ * The same span arithmetic as `completionFor` and deliberately NOT that
+ * function, in TWO ways that review round 1 measured:
+ *
+ * 1. It splices the WORD SPAN itself, the way the terminal does
+ *    (`_extend_to_common_prefix`, `editor.py:8350-8359`:
+ *    `f"{text[:context.start]}/{shared}{text[context.end:]}"`). `replaceSpan`
+ *    must NOT be reused here: it carries a separator-absorbing rule for a
+ *    non-empty replacement that begins at index 0
+ *    (`slash-token.ts:301-303`), which exists because a COMPLETION writes
+ *    `/<label> ` WITH its own trailing space — absorbing the separator after the
+ *    word keeps one space instead of two. An extension carries no trailing space
+ *    (it is a prefix of the word, not a whole command), so the same rule deleted
+ *    the separator and welded the next word on: `/lo hello` became `/loghello`
+ *    and `/lo\nwrite a poem` became `/logwrite a poem`.
+ *
+ * 2. It refuses to write at all when the result would not GROW the word — the
+ *    reference's own guard (`len(shared) <= len(context.query): return`,
+ *    `editor.py:8347-8349`), which is why the comparison is by LENGTH rather
+ *    than equality: the shared prefix can also come out SHORTER than what the
+ *    user typed (a fuzzy query that no candidate extends), and shortening a word
+ *    the user is still typing is a mutation no keystroke asked for. `null` is the
+ *    no-op answer, and the caller's contract makes it one: `handleSlashExtend`
+ *    returns without touching the draft, the caret or the store.
+ *
+ * The caret lands at the new end of the word rather than at the end of the draft,
+ * so a user narrowing a command in front of a written message keeps typing where
+ * they were.
+ */
+export function extensionFor(
+	draft: string,
+	caret: number,
+	prefix: string,
+	commands: ReadonlySet<string>,
+): { text: string; caret: number } | null {
+	const word = slashContext(draft, caret, commands);
+	if (!word) return null;
+	if (prefix.length <= word.query.length) return null;
+	return {
+		text: `${draft.slice(0, word.start)}/${prefix}${draft.slice(word.end)}`,
+		caret: word.start + 1 + prefix.length,
+	};
+}
+
+/**
  * Whether the active row's list is destructive IN THIS HOST.
  *
  * The row's own `alert` is one arm and the command word is the other, because
@@ -269,8 +317,14 @@ export function pointerPickRuns(
 	return entry.kind !== "picker" || entry.inline === undefined;
 }
 
-/** The labels of a command-phase list, in the order the popup shows them. */
-const commandLabels = (rows: readonly RoutableRow[]): string[] =>
+/**
+ * The labels of a command-phase list, in the order the popup shows them.
+ *
+ * Exported because the POPUP's footer needs the same set the router extends to
+ * (the ambiguous line names the prefix these produce), and a second copy of the
+ * filter would be a second answer to "what is in this list".
+ */
+export const commandLabels = (rows: readonly RoutableRow[]): string[] =>
 	rows.flatMap((row) => (row.kind === "command" ? [row.label] : []));
 
 /**
@@ -462,6 +516,20 @@ export type EnterFooterInput = {
 	value: string;
 	matched: boolean;
 	unambiguous: boolean;
+	/**
+	 * The command phase's ambiguous arm: the word typed so far, and the prefix
+	 * every candidate shares (both without the slash).
+	 *
+	 * Here because the ambiguous line has THREE outcomes rather than one, and only
+	 * the caller can tell them apart: the word GROWS to `prefix` when the prefix is
+	 * longer than what was typed, and the keystroke is a no-op — the reference's own
+	 * guard, `editor.py:8347-8349` — when it is not. The two no-op cases have
+	 * different reasons and therefore different copy: the word is already the
+	 * prefix, or the candidates share nothing at all. Measured in review round 1
+	 * (N2): the single line promised a change in both.
+	 */
+	query: string;
+	prefix: string;
 };
 
 /**
@@ -484,12 +552,24 @@ export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
 	// ("Enter opens the full picker."), so the footer would only repeat it.
 	if (!input.matched) return null;
-	if (input.phase === "command")
-		return !input.unambiguous
-			? "Enter completes to the common prefix."
-			: input.runs
+	if (input.phase === "command") {
+		if (input.unambiguous)
+			return input.runs
 				? `Enter runs /${input.label}.`
 				: `Enter completes /${input.label}.`;
+		/*
+		 * Ambiguous, so Enter narrows rather than acts — and it narrows only where
+		 * there is somewhere further to go. `sharedCommandPrefix` answers "" for a
+		 * list with nothing in common, and a word that already IS the prefix cannot
+		 * grow either; naming which of the two applies is the difference between a
+		 * promise and a description.
+		 */
+		if (input.prefix.length === 0)
+			return "Enter cannot narrow this: these commands share no prefix.";
+		if (input.prefix.length <= input.query.length)
+			return "Enter keeps the word: it is already the common prefix.";
+		return `Enter completes to ${input.prefix}.`;
+	}
 	if (input.nameThenMessage) return "Enter chooses this name.";
 	if (!input.runs) return "Enter completes the value.";
 	if (!input.unambiguous) return "Enter completes; Enter again runs.";

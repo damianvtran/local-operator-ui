@@ -43,6 +43,7 @@ const {
 	chosenByHandSurvives,
 	clickFooter,
 	enterFooter,
+	extensionFor,
 	matchChoices,
 	phaseLabel,
 	pointerPickRuns,
@@ -254,6 +255,57 @@ test("an ambiguous Enter grows the word to the common prefix and runs nothing", 
 		route({ matches: commandRows("usage", "team"), commandQuery: "" }),
 		{ kind: "extend", prefix: "" },
 	);
+});
+
+/*
+ * The ambiguous Enter's SPLICE, executed on the shipped function.
+ *
+ * Review round 1 (F1) found that `extensionFor` had no assertion of any kind, and
+ * that every gesture in `scripts/slash-enter-proof.mjs` types into a CLEARED
+ * draft — so the one shape the frames never exercised was a command word with a
+ * written message after it, which is the shape the function's own caller names as
+ * its design case. Three facts are pinned here: the separator after the word
+ * survives, a newline survives, and a word that cannot GROW is not touched at
+ * all.
+ */
+test("an extension splices the word and leaves the text after it alone", () => {
+	const commands = new Set([
+		"analytics",
+		"log",
+		"login",
+		"logout",
+		"loop",
+		"model",
+	]);
+	// The frames' own shape: nothing but the word, so nothing to preserve.
+	assert.deepEqual(extensionFor("/lo", 3, "log", commands), {
+		text: "/log",
+		caret: 4,
+	});
+	// The defect: `replaceSpan`'s separator rule absorbed the space, and the
+	// newline with it, welding the written message onto the command word.
+	assert.deepEqual(extensionFor("/lo hello", 3, "log", commands), {
+		text: "/log hello",
+		caret: 4,
+	});
+	assert.deepEqual(extensionFor("/lo\nwrite a poem", 3, "log", commands), {
+		text: "/log\nwrite a poem",
+		caret: 4,
+	});
+	// A word that cannot GROW is a NO-OP rather than a rewrite: the reference
+	// returns before writing, and `null` is this side's no-op. The second case is
+	// the one review round 1 measured deleting the separator: the typed word IS
+	// already the shared prefix (`/lo` over login/logout/loop), so the keystroke
+	// must leave the buffer exactly as it found it.
+	assert.equal(extensionFor("/log hello", 4, "log", commands), null);
+	assert.equal(extensionFor("/lo hello", 3, "lo", commands), null);
+	assert.equal(extensionFor("/log", 4, "log", commands), null);
+	// The caret lands at the new end of the WORD, not at the end of the draft, so
+	// typing continues where it was.
+	assert.deepEqual(extensionFor("/lo hello", 3, "login", commands), {
+		text: "/login hello",
+		caret: 6,
+	});
 });
 
 test("the common prefix keeps the registry's own casing", () => {
@@ -472,6 +524,10 @@ test("the footer says what Enter will do, in each state", () => {
 		value: "openai/gpt-5",
 		matched: true,
 		unambiguous: true,
+		/* The ambiguous arm's own two inputs: the typed word and the prefix the
+		   candidates share. `lo` -> `log` is the growth case (login, logout). */
+		query: "lo",
+		prefix: "log",
 	};
 	/*
 	 * The command phase has THREE answers now, and they are read off the same two
@@ -489,7 +545,32 @@ test("the footer says what Enter will do, in each state", () => {
 	);
 	assert.equal(
 		enterFooter({ ...base, phase: "command", unambiguous: false }),
-		"Enter completes to the common prefix.",
+		"Enter completes to log.",
+	);
+	/*
+	 * The two states where Enter cannot narrow at all, and the copy has to say so
+	 * rather than promise a change (review round 1, N2): the word already IS the
+	 * shared prefix, or the candidates share nothing.
+	 */
+	assert.equal(
+		enterFooter({
+			...base,
+			phase: "command",
+			unambiguous: false,
+			query: "log",
+			prefix: "log",
+		}),
+		"Enter keeps the word: it is already the common prefix.",
+	);
+	assert.equal(
+		enterFooter({
+			...base,
+			phase: "command",
+			unambiguous: false,
+			query: "",
+			prefix: "",
+		}),
+		"Enter cannot narrow this: these commands share no prefix.",
 	);
 	assert.equal(
 		enterFooter({ ...base, nameThenMessage: true, runs: false }),
@@ -708,6 +789,11 @@ test("the two footer lines cannot disagree about the active row", () => {
 				value: "",
 				matched: true,
 				unambiguous: true,
+				/* Both inputs belong to the AMBIGUOUS arm; the unambiguous one ignores
+				   them, and they are carried so this call is the same shape the popup
+				   makes rather than a partial literal. */
+				query: "lo",
+				prefix: "log",
 			});
 			assert.equal(
 				enter.includes("runs"),
@@ -724,6 +810,8 @@ test("the two footer lines cannot disagree about the active row", () => {
 					value: "",
 					matched: true,
 					unambiguous: false,
+					query: "lo",
+					prefix: "log",
 				}).includes("runs"),
 				false,
 				"an ambiguous Enter runs nothing, so it cannot say it does",

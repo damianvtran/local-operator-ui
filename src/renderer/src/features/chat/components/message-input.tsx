@@ -80,11 +80,16 @@ import {
 	type CompletionRow,
 	SlashSuggestionsPopup,
 	completionFor,
-	extensionFor,
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
-import { pointerPickRuns } from "./slash-contract";
+/*
+ * `extensionFor` comes from the CONTRACT module rather than from the popup
+ * component: the ambiguous Enter's splice is a pure function of the draft, the
+ * caret and the word span, and living there is what lets
+ * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
+ */
+import { extensionFor, pointerPickRuns } from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to

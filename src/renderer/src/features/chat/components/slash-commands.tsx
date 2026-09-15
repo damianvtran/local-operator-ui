@@ -69,10 +69,12 @@ import {
 	chosenByHandSurvives,
 	clickFooter,
 	commandChoiceUnambiguous,
+	commandLabels,
 	enterFooter,
 	phaseLabel,
 	pointerPickRuns,
 	rowId,
+	sharedCommandPrefix,
 	slashDestructive,
 	slashKeyIntent,
 	slashRunAllowed,
@@ -684,6 +686,14 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 						chosenByHand: state.chosenByHand,
 					})
 				: false,
+		/*
+		 * The ambiguous line's two inputs: the word typed and the prefix the
+		 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
+		 * the copy cannot claim a growth the key will not make (it is a no-op when
+		 * the word is already the prefix, and when the candidates share nothing).
+		 */
+		query: state.commandQuery,
+		prefix: sharedCommandPrefix(commandLabels(state.matches)),
 	});
 	const click = clickFooter({
 		phase: argument ? "argument" : "command",
@@ -1003,26 +1013,10 @@ export function completionFor(
 	};
 }
 
-/**
- * The buffer and caret an AMBIGUOUS Enter produces: the command word grows to
- * `prefix` and nothing else moves.
- *
- * The same span arithmetic as `completionFor` and deliberately NOT that
- * function: a completion writes `/<label> ` WITH a trailing space, which
- * terminates the word and closes the list, while this keeps the word OPEN — the
- * list has to stay up for the user to keep narrowing, which is the entire
- * difference between the two gestures (`_extend_to_common_prefix`,
- * `editor.py:8326-8345`). A draft's trailing inline message therefore survives
- * untouched, and the caret lands at the new end of the word rather than at the
- * end of the draft.
+/*
+ * `extensionFor` lived here and was MOVED to `slash-contract.ts` in review round
+ * 1: it is a pure function of the draft, the caret and the word span, which is
+ * exactly the contract module's remit, and it is what lets
+ * `scripts/slash-contract.test.mjs` bundle and execute the shipped splice rather
+ * than trusting it by eye. Find it there.
  */
-export function extensionFor(
-	draft: string,
-	caret: number,
-	prefix: string,
-	commands: ReadonlySet<string>,
-): { text: string; caret: number } | null {
-	const word = slashContext(draft, caret, commands);
-	if (!word) return null;
-	return replaceSpan(draft, word.start, word.end, `/${prefix}`);
-}
