@@ -535,6 +535,34 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: role,
 	})),
+	...["danger", "info"].map((role) => ({
+		/*
+		 * The run pane's trigger dot, which gained a second ink
+		 * (`docs/composer-activity-chips.md` § 5): `danger` for the failure ledgers,
+		 * `info` for a session working while the pane does not show it. It hangs off a
+		 * ghost button in the chat header, and that button has TWO grounds: it paints
+		 * none at rest, and it fills with `accentWash` while pressed
+		 * (`run-details-trigger.tsx`).
+		 *
+		 * Both are asserted, and the second one arrived with a review finding rather
+		 * than with the ink (agent review round 1, n1): the dot's `-top-0.5 -right-0.5`
+		 * leaves about 6 of its 8px inside the button's box, so the pressed state — the
+		 * state where `info` is actually drawn, because a pressed trigger means the
+		 * pane is open over a live child — put the ink on the wash, not on the canvas.
+		 * The first version of this row named `canvas` alone and was therefore blind
+		 * exactly where the new ink lives.
+		 *
+		 * Listed because it was NOT: `AGENTS.md` is explicit that green output about
+		 * an unlisted component is not evidence about that component, and this object
+		 * has carried `danger` since the pane was a popover with no row here — so the
+		 * file was blind to both inks and this change would have added a second
+		 * unmeasured one. The two are separate rows for the reason the usage dots are:
+		 * a set of semantics that passes on average is not a set of semantics.
+		 */
+		name: `run panel trigger dot (${role})`,
+		on: ["canvas", "accentWash"],
+		fg: role,
+	})),
 	{
 		/*
 		 * The dot for an unmeasurable window, and the dotted rule beside it.
@@ -848,14 +876,62 @@ const EXCEPTIONS = [
 	 * the text pair above: a shared control's colour, recorded where a reader
 	 * can find it rather than changed in a panel's PR.
 	 */
-	{ theme: "monokai", fg: "dangerBorder", bg: "elevated", got: 2.49, why: "the danger control's only edge on a dialog ground; worst of the eight" },
-	{ theme: "dracula", fg: "dangerBorder", bg: "elevated", got: 2.51, why: "same pair as monokai" },
-	{ theme: "radient", fg: "dangerBorder", bg: "elevated", got: 2.58, why: "same pair as monokai" },
-	{ theme: "synth", fg: "dangerBorder", bg: "elevated", got: 2.6, why: "same pair as monokai" },
-	{ theme: "obsidian", fg: "dangerBorder", bg: "elevated", got: 2.65, why: "same pair as monokai" },
-	{ theme: "tokyoNight", fg: "dangerBorder", bg: "elevated", got: 2.66, why: "same pair as monokai" },
-	{ theme: "neon", fg: "dangerBorder", bg: "elevated", got: 2.78, why: "same pair as monokai" },
-	{ theme: "dune", fg: "dangerBorder", bg: "elevated", got: 2.88, why: "same pair as monokai; 0.12 under the floor" },
+	{
+		theme: "monokai",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.49,
+		why: "the danger control's only edge on a dialog ground; worst of the eight",
+	},
+	{
+		theme: "dracula",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.51,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "radient",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.58,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "synth",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.6,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "obsidian",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.65,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "tokyoNight",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.66,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "neon",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.78,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "dune",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.88,
+		why: "same pair as monokai; 0.12 under the floor",
+	},
 ];
 
 /*

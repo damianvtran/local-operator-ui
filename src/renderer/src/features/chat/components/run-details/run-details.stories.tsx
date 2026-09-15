@@ -546,9 +546,21 @@ const whenState = (
  * is the production `ChatHeader` (and therefore the production trigger and its
  * two ledgers) with the same props `chat-page.tsx` passes, and the rows and their
  * words come from the same fixtures the single-state frames use.
+ *
+ * **The run here is `idle()`, and the sequence used to run on `bothInFlight()`.**
+ * That fixture carries two RUNNING children, and the trigger's dot gained a second
+ * fact at that point in the record: `!listOnScreen && openChildren > 0` draws the
+ * dot in `info` (`docs/composer-activity-chips.md` § 5). So step 2 — "closed,
+ * still broken, dot OFF: the acknowledgement HOLDS" — stopped being true, and not
+ * because the MCP ledger broke: with the pane shut and a child running the dot is
+ * SUPPOSED to be up. Two facts, one mark, and this story is about the MCP one, so
+ * it runs on the fixture where the other fact is absent. `idle()` also makes the
+ * frame say exactly what it is about: the pane's only section is the MCP list, so
+ * every dot state here has one possible cause, and the run-side blip has its own
+ * frame (`trigger-activity-dot`).
  */
 const DotAckGround = ({ stop }: { stop: "acknowledged" | "rearmed" }) => {
-	const details = useMemo(() => deriveRunDetails(fixtures.bothInFlight()), []);
+	const details = useMemo(() => deriveRunDetails(fixtures.idle()), []);
 	const [raw, setRaw] = useState(() => fixtures.mcpAuthRequired());
 	const [open, setOpen] = useState(false);
 	const [step, setStep] = useState(0);
@@ -900,6 +912,60 @@ export const BothInFlight: Story = {
 			details={deriveRunDetails(fixtures.bothInFlight())}
 			openPanel={true}
 		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The JOBS section, which is the pane's third live list and the section the
+ * composer's jobs chip points at (`docs/composer-activity-chips.md` § 4).
+ *
+ * Two running tool rows and one settled one, with a child above them: the settled
+ * row is on the wire and is deliberately NOT drawn, so this frame is also the
+ * slice's evidence. The rows are quiet by construction — a `bash` row has no
+ * `session_id`, so there is no reader to open — and what a reader sees is the
+ * label, the state mark, the state in words and the elapsed clock.
+ */
+export const JobsInFlight: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.jobsInFlight())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The jobs ALONE: no child and no plan, so the Jobs section is the only section
+ * the pane has to draw — and the composer's own row, in the same state, holds one
+ * chip. The pair with `panel-empty` above is the whole difference `openJobs` makes
+ * to the pane: one section and its rows instead of a quiet line.
+ */
+export const JobsOnly: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.jobsOnly())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The trigger's activity blip: the pane is CLOSED and a child is running, so the
+ * dot is drawn in `info` (`docs/composer-activity-chips.md` § 5).
+ *
+ * The pair is `trigger-idle` above, which is the same button with nothing to say,
+ * and `panel-empty`, where the pane is open and the activity ink is deliberately
+ * absent — the dot says "there is something in the pane you are not looking at",
+ * so a frame of it over an open pane would be the statement that rule removes. The
+ * failure ink is a different frame (`trigger-failed`), and the two are told apart
+ * by colour alone.
+ */
+export const TriggerActivityDot: Story = {
+	render: () => (
+		<ChatColumn details={deriveRunDetails(fixtures.jobsInFlight())} />
 	),
 	decorators: [withCanvasClosed],
 };
