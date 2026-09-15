@@ -666,20 +666,33 @@ test("records beat the hold: an unhydrated pane with rows paints no placeholder"
  * THE WHOLE MATRIX.
  *
  * A row-less pane has exactly one claim to make, and which one is a function of
- * four values: the status, whether a failure is published, whether the durable
- * history has been read, and whether there are any records. Every combination is
- * below. `failure` present or absent, `hydrated` read or not, `records` zero or
- * non-zero (2 is a stand-in; the rule reads only the zero test), and `claim` is
- * the single thing the pane is then allowed to show:
+ * five values: the status, whether a failure is published, whether the durable
+ * history has been read, whether there are any records, and whether this pane has
+ * ADMITTED a send the owner has not answered. Every combination is below.
+ * `failure` present or absent, `hydrated` read or not, `records` zero or
+ * non-zero (2 is a stand-in; the rule reads only the zero test), `admittedSend`
+ * on or off, and `claim` is the single thing the pane is then allowed to show:
  *
  *   rows             the conversation's own rows, and nothing else
  *   rows+notice      rows with the failure notice above them
  *   rows+reconnect   rows with the "Reconnecting" line above them
+ *   rows+waitline    rows with the wait line under them (a follow-up send)
  *   notice           the failure notice alone - no placeholder beside it
  *   reconnect        the "Reconnecting" line alone - no placeholder beside it
+ *   waitline         the wait line alone: the pane has just admitted a send, the
+ *                    placeholder would be a second and weaker claim, and the
+ *                    column stays open because the line is rendered into it
  *   placeholder      the pulsing "Loading conversation…" placeholder alone
  *   empty            nothing: the pane collapses, and the band may claim the
  *                    conversation is empty because the read proved it
+ *
+ * The rung itself is `deriveWorkingLine`'s (`working-line-model.ts`, asserted in
+ * `tool-row.test.mjs`); what this table reads is that the pane's geometry and its
+ * placeholder obey the same fact, which is the half that lived in the component
+ * and could not be tested (review round 2's R2-2, and QA round 2's Q1 in the
+ * opposite direction: an earlier revision of these two functions suppressed the
+ * placeholder WITHOUT standing the collapse down, so the wait line was rendered
+ * into a zero-height box - the dead air again).
  *
  * The `reachable` column is the store's own invariant, not a rendering fact, and
  * it is asserted rather than trusted: `failure` is published only WITH
@@ -696,73 +709,112 @@ const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
 /** Any non-null notice: the rule reads its presence, not its prose. */
 const FAILURE = { statement: "unreadable", action: "reconnect" };
 const MATRIX = [
-	// status, failure, hydrated, records, reachable, claim
-	["connecting", null, false, 0, true, "placeholder"],
-	["connecting", null, false, 2, true, "rows"],
-	["connecting", null, true, 0, true, "empty"],
-	["connecting", null, true, 2, true, "rows"],
-	["connecting", FAILURE, false, 0, false, "placeholder"],
-	["connecting", FAILURE, false, 2, false, "rows"],
-	["connecting", FAILURE, true, 0, false, "empty"],
-	["connecting", FAILURE, true, 2, false, "rows"],
-	["live", null, false, 0, true, "placeholder"],
-	["live", null, false, 2, true, "rows"],
-	["live", null, true, 0, true, "empty"],
-	["live", null, true, 2, true, "rows"],
-	["live", FAILURE, false, 0, false, "placeholder"],
-	["live", FAILURE, false, 2, false, "rows"],
-	["live", FAILURE, true, 0, false, "empty"],
-	["live", FAILURE, true, 2, false, "rows"],
-	["reconnecting", null, false, 0, true, "reconnect"],
-	["reconnecting", null, false, 2, true, "rows+reconnect"],
-	["reconnecting", null, true, 0, true, "reconnect"],
-	["reconnecting", null, true, 2, true, "rows+reconnect"],
-	["reconnecting", FAILURE, false, 0, false, "reconnect"],
-	["reconnecting", FAILURE, false, 2, false, "rows+reconnect"],
-	["reconnecting", FAILURE, true, 0, false, "reconnect"],
-	["reconnecting", FAILURE, true, 2, false, "rows+reconnect"],
-	["unavailable", null, false, 0, false, "placeholder"],
-	["unavailable", null, false, 2, false, "rows"],
-	["unavailable", null, true, 0, false, "empty"],
-	["unavailable", null, true, 2, false, "rows"],
-	["unavailable", FAILURE, false, 0, true, "notice"],
-	["unavailable", FAILURE, false, 2, true, "rows+notice"],
-	["unavailable", FAILURE, true, 0, true, "notice"],
-	["unavailable", FAILURE, true, 2, true, "rows+notice"],
+	["connecting", null, false, 0, false, true, "placeholder"],
+	["connecting", null, false, 2, false, true, "rows"],
+	["connecting", null, true, 0, false, true, "empty"],
+	["connecting", null, true, 2, false, true, "rows"],
+	["connecting", FAILURE, false, 0, false, false, "placeholder"],
+	["connecting", FAILURE, false, 2, false, false, "rows"],
+	["connecting", FAILURE, true, 0, false, false, "empty"],
+	["connecting", FAILURE, true, 2, false, false, "rows"],
+	["live", null, false, 0, false, true, "placeholder"],
+	["live", null, false, 2, false, true, "rows"],
+	["live", null, true, 0, false, true, "empty"],
+	["live", null, true, 2, false, true, "rows"],
+	["live", FAILURE, false, 0, false, false, "placeholder"],
+	["live", FAILURE, false, 2, false, false, "rows"],
+	["live", FAILURE, true, 0, false, false, "empty"],
+	["live", FAILURE, true, 2, false, false, "rows"],
+	["reconnecting", null, false, 0, false, true, "reconnect"],
+	["reconnecting", null, false, 2, false, true, "rows+reconnect"],
+	["reconnecting", null, true, 0, false, true, "reconnect"],
+	["reconnecting", null, true, 2, false, true, "rows+reconnect"],
+	["reconnecting", FAILURE, false, 0, false, false, "reconnect"],
+	["reconnecting", FAILURE, false, 2, false, false, "rows+reconnect"],
+	["reconnecting", FAILURE, true, 0, false, false, "reconnect"],
+	["reconnecting", FAILURE, true, 2, false, false, "rows+reconnect"],
+	["unavailable", null, false, 0, false, false, "placeholder"],
+	["unavailable", null, false, 2, false, false, "rows"],
+	["unavailable", null, true, 0, false, false, "empty"],
+	["unavailable", null, true, 2, false, false, "rows"],
+	["unavailable", FAILURE, false, 0, false, true, "notice"],
+	["unavailable", FAILURE, false, 2, false, true, "rows+notice"],
+	["unavailable", FAILURE, true, 0, false, true, "notice"],
+	["unavailable", FAILURE, true, 2, false, true, "rows+notice"],
+	["connecting", null, false, 0, true, true, "waitline"],
+	["connecting", null, false, 2, true, true, "rows+waitline"],
+	["connecting", null, true, 0, true, true, "waitline"],
+	["connecting", null, true, 2, true, true, "rows+waitline"],
+	["connecting", FAILURE, false, 0, true, false, "waitline"],
+	["connecting", FAILURE, false, 2, true, false, "rows+waitline"],
+	["connecting", FAILURE, true, 0, true, false, "waitline"],
+	["connecting", FAILURE, true, 2, true, false, "rows+waitline"],
+	["live", null, false, 0, true, true, "waitline"],
+	["live", null, false, 2, true, true, "rows+waitline"],
+	["live", null, true, 0, true, true, "waitline"],
+	["live", null, true, 2, true, true, "rows+waitline"],
+	["live", FAILURE, false, 0, true, false, "waitline"],
+	["live", FAILURE, false, 2, true, false, "rows+waitline"],
+	["live", FAILURE, true, 0, true, false, "waitline"],
+	["live", FAILURE, true, 2, true, false, "rows+waitline"],
+	["reconnecting", null, false, 0, true, true, "reconnect"],
+	["reconnecting", null, false, 2, true, true, "rows+reconnect"],
+	["reconnecting", null, true, 0, true, true, "reconnect"],
+	["reconnecting", null, true, 2, true, true, "rows+reconnect"],
+	["reconnecting", FAILURE, false, 0, true, false, "reconnect"],
+	["reconnecting", FAILURE, false, 2, true, false, "rows+reconnect"],
+	["reconnecting", FAILURE, true, 0, true, false, "reconnect"],
+	["reconnecting", FAILURE, true, 2, true, false, "rows+reconnect"],
+	["unavailable", null, false, 0, true, false, "waitline"],
+	["unavailable", null, false, 2, true, false, "rows+waitline"],
+	["unavailable", null, true, 0, true, false, "waitline"],
+	["unavailable", null, true, 2, true, false, "rows+waitline"],
+	["unavailable", FAILURE, false, 0, true, true, "notice"],
+	["unavailable", FAILURE, false, 2, true, true, "rows+notice"],
+	["unavailable", FAILURE, true, 0, true, true, "notice"],
+	["unavailable", FAILURE, true, 2, true, true, "rows+notice"],
 ];
 
-const key = (status, failure, hydrated, records) =>
-	`${status}|${failure ? "failure" : "none"}|${hydrated ? "read" : "unread"}|${records === 0 ? 0 : "rows"}`;
+
+const key = (status, failure, hydrated, records, admitted) =>
+	`${status}|${failure ? "failure" : "none"}|${hydrated ? "read" : "unread"}|${records === 0 ? 0 : "rows"}|${admitted ? "admitted" : "quiet"}`;
 
 test("the pane's single claim, over every combination of the rule's inputs", async (t) => {
 	const seen = new Set(
-		MATRIX.map(([status, failure, hydrated, records]) =>
-			key(status, failure, hydrated, records),
+		MATRIX.map(([status, failure, hydrated, records, admitted]) =>
+			key(status, failure, hydrated, records, admitted),
 		),
 	);
-	assert.equal(MATRIX.length, 32, "a combination is missing from the table");
-	assert.equal(seen.size, 32, "a combination is listed twice");
+	assert.equal(MATRIX.length, 64, "a combination is missing from the table");
+	assert.equal(seen.size, 64, "a combination is listed twice");
 	for (const status of STATUSES) {
 		for (const failure of [null, FAILURE]) {
 			for (const hydrated of [false, true]) {
 				for (const records of [0, 2]) {
-					assert.ok(
-						seen.has(key(status, failure, hydrated, records)),
-						`${key(status, failure, hydrated, records)} is not in the table`,
-					);
+					for (const admitted of [false, true]) {
+						assert.ok(
+							seen.has(key(status, failure, hydrated, records, admitted)),
+							`${key(status, failure, hydrated, records, admitted)} is not in the table`,
+						);
+					}
 				}
 			}
 		}
 	}
 
-	for (const [status, failure, hydrated, records, reachable, claim] of MATRIX) {
-		const name = `${key(status, failure, hydrated, records)} -> ${claim}`;
+	for (const [status, failure, hydrated, records, admitted, reachable, claim] of MATRIX) {
+		const name = `${key(status, failure, hydrated, records, admitted)} -> ${claim}`;
 		await t.test(name, () => {
-			const view = { status, failure, hydrated, recordCount: records };
+			const view = { status, failure, hydrated, recordCount: records, admittedSend: admitted };
 			const shows = [];
 			if (records > 0) shows.push("rows");
 			if (speaks(view))
 				shows.push(status === "unavailable" ? "notice" : "reconnect");
+			else if (admitted)
+				// The rung: the pane's own claim while a send of its own is in
+				// flight, and the reason the placeholder stands down and the
+				// collapse does not happen.
+				shows.push("waitline");
 			if (holdsPlaceholder(view)) shows.push("placeholder");
 			const painted = shows.length === 0 ? "empty" : shows.join("+");
 			assert.equal(painted, claim, `${name}: the pane would paint ${painted}`);

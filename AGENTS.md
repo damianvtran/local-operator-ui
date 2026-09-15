@@ -87,6 +87,22 @@ ground where it does not.
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
 
+`pnpm check-evidence` admits **one sweep per machine**, across worktrees and
+isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
+and uses the permanent `/tmp/local-operator-ui-check-evidence.lock` file. A busy
+lease exits **75** with `DEFERRED` and checks no frames; retry after the owner
+finishes, rather than waiting inside the command. The image child inherits the
+lease, so a killed sweep cannot admit another while that child is still alive.
+Dead holders recover automatically when the last descriptor closes: **never
+delete the lock file** or reclaim it by PID/age, which splits the lock inode.
+Missing locking support or a file owned by another OS user fails closed. The
+worker and image children inherit niceness of at least 10 where permitted; a
+priority failure warns without disabling admission. This bounds the full sweep,
+not independent capture scripts importing the single-frame predicate. Run
+`node --test --test-concurrency=1 scripts/evidence-run-guard.test.mjs` for the
+lightweight subprocess/CLI contract tests; they use isolated synthetic evidence,
+not the committed image set.
+
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual

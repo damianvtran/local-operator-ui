@@ -25,6 +25,10 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
+import {
+	type SessionFailureNotice,
+	streamFailureNotice,
+} from "../../../../../shared/desktop-stream-notice";
 import "../../../styles/index.css";
 import { peerFields } from "../components/trace/receipt-row-model";
 import { WorkingLine } from "../components/trace/working-line";
@@ -33,6 +37,7 @@ import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptRecord,
 	type TranscriptState,
+	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
 	dropLiveRecords,
@@ -81,6 +86,20 @@ const Frame = ({
 	width = "100%",
 	height = 300,
 	waiting = false,
+	starting = false,
+	startingAfterId = null,
+	status = "live",
+	failure = null,
+	isSmallView = false,
+	/*
+	 * A fixture of rows handed in rather than read: the reader's question is
+	 * answered `true` by default, and the hold cannot fire (it needs zero
+	 * records). The admitted-send stories pass `false` deliberately - a pane whose
+	 * history has not been read is the row of the pane matrix where the wait line
+	 * must outrank the loading placeholder, and the New-chat path the operator
+	 * reported is exactly that row (`transcript-pane.ts`).
+	 */
+	hydrated = true,
 	openRows = false,
 	keepClosed,
 }: {
@@ -96,6 +115,21 @@ const Frame = ({
 	 */
 	height?: number;
 	waiting?: boolean;
+	/**
+	 * A send this conversation has admitted and that has produced nothing yet —
+	 * the cold-engage window, before the owner's first frame.
+	 */
+	starting?: boolean;
+	/** The echo record that send painted; the clears measure from it. */
+	startingAfterId?: string | null;
+	/** The stream's own state, so the clears this rung has can be photographed. */
+	status?: "connecting" | "live" | "reconnecting" | "unavailable";
+	/** The published failure notice, as the stream hands it over. */
+	failure?: SessionFailureNotice | null;
+	/** Has this conversation's durable history been read? */
+	hydrated?: boolean;
+	/** The small-view wrapper of the same transcript. */
+	isSmallView?: boolean;
 	/**
 	 * Click every row's trigger after mount, the way a reader opens one.
 	 *
@@ -143,17 +177,21 @@ const Frame = ({
 				transcript={transcriptOf(records)}
 				gate={null}
 				waiting={waiting}
+				starting={starting}
+				startingAfterId={startingAfterId}
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
-				isSmallView={false}
-				status="live"
-				failure={null}
+				isSmallView={isSmallView}
+				status={status}
+				failure={failure}
 				/*
-				 * A fixture of rows handed in rather than read: the reader's question is
-				 * answered `true`, and the hold cannot fire here (it needs zero records).
+				 * The admitted-send stories pass `false` and the rest take the default:
+				 * see `Frame`'s own note. A row-less pane whose history has not been read
+				 * is the row where the wait line has to outrank the placeholder, and that
+				 * is the state the operator's New-chat report is in.
 				 */
-				hydrated={true}
+				hydrated={hydrated}
 				onReconnect={() => {}}
 			/>
 		</div>
@@ -883,6 +921,145 @@ export const StreamingBeforeFirstToken: Story = {
 					error: false,
 				},
 			]}
+		/>
+	),
+};
+
+/**
+ * The window an accepted send spends waiting to be admitted: the user's own
+ * bubble is in the transcript and the owner has produced nothing yet.
+ *
+ * This is the state the operator reported as dead air - "I hit send, the frame
+ * shows my message, and then nothing for a good three seconds". On a cold
+ * session those seconds are the runtime spawning inside the message request
+ * (`use-warm-session.ts`), and the New-chat pane cannot warm before the send
+ * because it has neither a session id nor a bridge to hold the warm with.
+ *
+ * What the frame has to show is one quiet line at the foot saying the app is
+ * waiting, in the ledger's own register - not a card, not a spinner beside it
+ * (§ 7: one liveness element per turn, and it is the working line), and named
+ * without claiming anything the renderer cannot check. The echo is built
+ * through the real `appendPendingUser` rather than hand-written, so the row in
+ * the picture is the row the store actually paints.
+ *
+ * `height={220}` because the frame must show the transcript's FOOT: at 160 it
+ * clipped the message time under the rung, so the pair read as two differences
+ * rather than as the one added line it claims (design round 1, D1; the measured
+ * scroll height of the content is 219).
+ */
+export const AdmittedSendBeforeFirstFrame: Story = {
+	render: () => (
+		<Frame
+			starting
+			startingAfterId="s1"
+			hydrated={false}
+			height={220}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
+		/>
+	),
+};
+
+/**
+ * The same admitted send, in the SMALL-VIEW wrapper.
+ *
+ * The rung is rendered by a different wrapper in the small view (no
+ * `AGENT_GUTTER`, a tighter `GAP.item`), so the narrow entry in the sweep - a
+ * narrow COLUMN at `isSmallView={false}` - was never a picture of it (design
+ * round 1, D2). Same records as the frame above, so the difference between the
+ * two is the wrapper alone.
+ */
+export const AdmittedSendBeforeFirstFrameSmallView: Story = {
+	render: () => (
+		<Frame
+			starting
+			startingAfterId="s1"
+			hydrated={false}
+			isSmallView
+			height={220}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
+		/>
+	),
+};
+
+/**
+ * The rung's other clear: the stream has died, so the app is no longer waiting.
+ *
+ * `deriveWorkingLine` refuses the rung while `unavailable`, because the
+ * transcript is about to render the failure itself and a line claiming progress
+ * beside it is a claim the transport is not making. The clear had no frame
+ * before this (the story's `status` was hardcoded to `live`), which is a review
+ * surface rather than a behaviour - the derivation is asserted in
+ * `scripts/tool-row.test.mjs` - so the same admitted send is photographed with
+ * the transport gone: the error is on screen and the rung is not.
+ */
+export const AdmittedSendTransportDown: Story = {
+	render: () => (
+		<Frame
+			starting
+			startingAfterId="s1"
+			hydrated={false}
+			status="unavailable"
+			failure={streamFailureNotice(null)}
+			height={220}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
+		/>
+	),
+};
+
+/**
+ * The same admitted send with the wait line absent: the BEFORE frame.
+ *
+ * Deliberately the same records as the story above and nothing else changed, so
+ * the pair isolates the one thing this change adds. What it shows is what the
+ * app painted while the operator was waiting - the user's bubble, and then dead
+ * air until the first frame from the owner - which is the state reported as "I
+ * hit send and nothing happens for three seconds". `starting={false}` is
+ * exactly the old behaviour: nothing is waiting on the app's own send state, so
+ * the working line has no rung to stand on until `frontend.streaming` flips.
+ *
+ * The same `height={220}` as its pair, and that is the point: a pair whose
+ * halves are cropped differently cannot show that one line is the difference.
+ */
+export const AdmittedSendBeforeFirstFrameBaseline: Story = {
+	render: () => (
+		<Frame
+			height={220}
+			/*
+			 * The same row of the pane matrix as its pair (`hydrated={false}`), so the
+			 * two frames differ by the added line and by nothing else: with the
+			 * default the baseline would also differ in which claim the pane's own
+			 * hold makes, and the pair would no longer isolate the change.
+			 */
+			hydrated={false}
+			records={
+				appendPendingUser(
+					EMPTY_TRANSCRIPT,
+					"s1",
+					"Summarise what failed in the last test run.",
+					[],
+				).records
+			}
 		/>
 	),
 };
