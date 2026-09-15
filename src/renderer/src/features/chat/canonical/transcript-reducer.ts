@@ -1855,7 +1855,11 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
 	// fabricated one, sorted to the HEAD of the conversation by `withTimeOrder`
 	// the moment it paints. An unusable anchor is no anchor: the frame falls back
 	// to the rule a call nothing states gets (refused when the turn is over).
-	return typeof anchoredAt === "number" && anchoredAt > 0 ? anchoredAt : null;
+	return typeof anchoredAt === "number" &&
+		Number.isFinite(anchoredAt) &&
+		anchoredAt > 0
+		? anchoredAt
+		: null;
 }
 
 /**

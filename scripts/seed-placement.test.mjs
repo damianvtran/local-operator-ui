@@ -48,8 +48,14 @@ import { build } from "esbuild";
  * truncated to 60 characters; a `tool_calls` argument member whose JSON is
  * longer than 60 characters is dropped (the argument OBJECT is kept, its long
  * strings are not); `provider_payload` is narrowed to `duration_s`; `usage` is
- * dropped; `type: "custom"` rows are verbatim, payload included. Only identity
- * and order are asserted, and neither depends on any of it.
+ * dropped; CUSTOM ROWS ARE VERBATIM, payload included, and a custom row is any
+ * row whose payload says so — `type: "custom"` (the session's own markers,
+ * `session_spend.v1` among them) AND a `message` whose `kind` is `custom` (the
+ * `peer_message` rows, which paint a `peer` row). Round 2 found the second kind
+ * flattened to an empty message, which cost the page one painted row and made
+ * the page-only count this PR quotes read 65 instead of 66; carrying both kinds
+ * verbatim is what the rule above always meant. Only identity, order and the
+ * reconcile read are asserted, and none of them depends on the truncation.
  *
  * The derivation is checkable against the arithmetic the app itself produced:
  * 33 of the seed's calls are named by an assistant row inside the page, so 67
@@ -85,7 +91,7 @@ const fixture = JSON.parse(
 	),
 );
 
-/** The final assistant row of the real conversation (journal entry 1474). */
+/** The final assistant row of the real conversation (journal line 1475). */
 const FINAL_MESSAGE = "320f69f0aa1543a2aa2b0393148d873f";
 
 /** The operator's report, as an id: rows painted after this one are the defect. */

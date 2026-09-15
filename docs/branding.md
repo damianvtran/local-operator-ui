@@ -379,9 +379,10 @@ equally important**, and the interface must not present them as though they are.
   per-message equivalent.
 - **A row may only claim a position it can justify, and a finished conversation
   ends at its own last row.** Rows are placed by the time they carry, never by
-  the moment the reader happened to see them: a replayed or seeded row that
-  cannot state a truthful time of its own is not painted at the reader's arrival,
-  and nothing is appended under a conversation that has already answered. Where
+  the moment the reader happened to see them: a replayed or seeded row the seed
+  can attribute — one naming a call or a message — and that states no truthful
+  time of its own is not painted at the reader's arrival, and nothing is appended
+  under a conversation that has already answered. Where
   the row is already on screen, a late frame settles it in place rather than
   moving it. The failure this rule exists for is the one reported on 2026-09-15:
   a finished session whose lowest rows were `wait`/`bash` ledger lines from the
