@@ -109,11 +109,13 @@ export class ConsentNotifier {
 		const oldest = pending[0];
 		if (!oldest) return;
 		try {
-			const notification = (create ?? ((options) => new Notification(options)))({
-				title: CONSENT_TITLE,
-				body: consentBody(count, oldest.origin),
-				silent: false,
-			});
+			const notification = (create ?? ((options) => new Notification(options)))(
+				{
+					title: CONSENT_TITLE,
+					body: consentBody(count, oldest.origin),
+					silent: false,
+				},
+			);
 			notification.on("click", () => this.options.onAttention(oldest.entryId));
 			// Electron's own banner API on a `Notification`, not a window:
 			// `scripts/window-mode.test.mjs` allow-lists this exact call.
