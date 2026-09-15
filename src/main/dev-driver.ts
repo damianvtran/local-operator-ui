@@ -113,11 +113,13 @@ export interface DevDriverArming {
 type OptIn = { asked: false; value: null } | { asked: true; value: string };
 
 /**
- * ONE way in: the environment variable. There is deliberately no launch flag as
- * well — `--window-mode` needs one because a person types it at a terminal, while
- * the driver is started by a script. Two spellings of one opt-in is one more
- * thing for the gate to get wrong, and `scripts/dev-driver-gate.test.mjs` asserts
- * that no argv can arm it.
+ * ONE way in: the environment variable, and no launch flag beside it.
+ *
+ * `--window-mode` needs a flag because a person types it at a terminal; the
+ * driver is started by a script. Two spellings of one opt-in is one more thing
+ * for the gate to get wrong, so `resolveDevDriverArming` does not take an argv at
+ * all — there is no command line it could be talked into by, which
+ * `scripts/dev-driver-gate.test.mjs` relies on being true of the signature.
  */
 function readOptIn(env: Record<string, string | undefined>): OptIn {
 	const raw = env[DEV_DRIVER_ENV];

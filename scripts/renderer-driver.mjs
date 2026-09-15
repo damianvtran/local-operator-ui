@@ -76,8 +76,9 @@
  *   --out <dir>            where frames go; copied out of the scratch tree when given
  *   --gate-check           measure the fail-closed gate on two real boots
  *   --window-size <WxH>    the window to request (default 1380x900)
- *   --keep                 keep the scratch directory even when --out was given
- *   --clean                remove the scratch directory at the end
+ *   --keep                 keep the scratch directory even with --clean
+ *   --clean                remove the scratch directory at the end; frames given
+ *                          with --out live outside it and survive
  */
 
 import { spawn } from "node:child_process";
@@ -460,10 +461,10 @@ function capture(cdp, label) {
 /**
  * The bridge's own methods, which are NOT scene verbs: `facts()` (window facts
  * from main) and `capture()` live on `window.__loDevDriver` itself, while the
- * verbs this app registered are reached through `call(name)`. Calling `facts`
- * as a verb is a mistake this harness made once, and the error it produced —
- * `no dev driver verb "facts" (have: hello, navigate, ...)` — is the bridge
- * listing what actually exists, which is why the verb table is enumerable.
+ * verbs the app registers are reached through `call(name)`. The two surfaces are
+ * deliberately separate — `capture` and `facts` are main's, and the verbs are the
+ * app's — which is also why a scene verb table is enumerable: calling one that
+ * does not exist answers with what does.
  */
 function factsOf(cdp) {
 	return cdp.evaluate("window.__loDevDriver.facts()");
@@ -898,15 +899,20 @@ async function main() {
 	say(`frames directory: ${FRAMES}`);
 	say(`app log: ${join(SCRATCH, GATE_CHECK ? "app-armed.log" : "app-scene.log")}`);
 
-	if (OUT_ARG) {
-		say(`(the scratch tree is kept: ${SCRATCH})`);
-	} else if (CLEAN) {
+	/*
+	 * Two flags, one decision, and the frames are never the casualty: `--out`
+	 * writes them outside the scratch tree, so `--clean` can remove the tree
+	 * without removing the evidence. `--keep` is for an agent debugging a run that
+	 * wants the profile, the app log and the scratch `.env` to still be there.
+	 */
+	if (CLEAN && !KEEP) {
 		rmSync(SCRATCH, { recursive: true, force: true });
 		say("scratch removed (--clean)");
 	} else {
-		say(`scratch kept: ${SCRATCH}`);
+		say(
+			`scratch kept: ${SCRATCH}${OUT_ARG ? " (the frames are also in --out)" : ""}`,
+		);
 	}
-	if (KEEP && CLEAN) say("--keep wins over --clean");
 
 	say(
 		`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`,
