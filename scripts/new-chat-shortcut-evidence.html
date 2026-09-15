@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Evidence harness: the REAL chat sidebar in a browser, against a real backend.
+
+  What this exists to photograph: the `⌘N` / `Ctrl+N` cap beside the sidebar's
+  New chat row. It is a claim about a rendered row — that the cap is there, in
+  the trailing column the All chats count occupies, legible on the sidebar's own
+  ground in more than one palette — and that is a fact about pixels.
+
+  It cannot be photographed against a mock. The row only exists while the
+  session catalogue is READY (`ready = desktopFeatureEnabled(capabilities.data,
+  "session_catalogue", 2)`, and `showList = ready || stale`), so the capability
+  answer has to come from a real backend; and the caps' `sunken` ground only
+  resolves through the app's own stylesheet. So this mounts the SHIPPED
+  `ChatPage` and lets the SHIPPED `desktopRequest` take its same-origin
+  `/__desktop` branch, through the dev desktop proxy, to a real, isolated
+  `local-operator serve`. Nothing on the path to this row is stubbed.
+
+  Why a browser at all: `app.tsx` reaches for `window.electron.ipcRenderer`
+  unguarded at mount and dies without a preload, so the app cannot be booted in
+  a plain browser. This harness mounts `ChatPage` under its own minimal shell
+  instead. NOT the packaged app and NOT Electron's window: there is no main
+  process here and no IPC hop. See docs/evidence/new-chat-shortcut/README.md for
+  exactly what these frames do and do not prove.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>New chat shortcut — real chat sidebar</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./new-chat-shortcut-evidence.tsx"></script>
+	</body>
+</html>
