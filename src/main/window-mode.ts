@@ -10,8 +10,20 @@
  * runs happen without the grab: `headless` creates the window and never shows
  * it, `inactive` shows it without activating the app.
  *
+ * Naming no mode is not the same as naming `normal`. A launch carrying one of
+ * `AGENT_LAUNCH_FLAGS` — a scratch `--user-data-dir`, a
+ * `--remote-debugging-port` — has said that it is a run rather than a person
+ * using the app, so it resolves to `headless` and the startup line reports the
+ * assumption. A launch that says nothing at all is still the operator's own
+ * app, and still `normal`.
+ *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
- * `--window-mode=<mode>` argument (the flag wins). `--window-size=WxH` or
+ * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
+ * must be the environment the process was LAUNCHED with, not `process.env`
+ * after `./backend/config` has folded in a `.env` from the working directory —
+ * a window mode decides whether the operator's focus is taken, so a file in the
+ * checkout must not be able to set one. `src/main/index.ts` passes the
+ * `launchEnv` snapshot for exactly that reason. `--window-size=WxH` or
  * `LOCAL_OPERATOR_UI_WINDOW_SIZE` sets the size, which is what makes a headless
  * capture the same shape as a shown window: at 1380x900 the content area is
  * 1380x872 either way, and `capturePage` returns the same 2760x1744 pixels at
@@ -35,6 +47,26 @@ export const WINDOW_MODE_ENV = "LOCAL_OPERATOR_UI_WINDOW_MODE";
 export const WINDOW_SIZE_ENV = "LOCAL_OPERATOR_UI_WINDOW_SIZE";
 export const WINDOW_MODE_FLAG = "--window-mode";
 export const WINDOW_SIZE_FLAG = "--window-size";
+
+/**
+ * The switches that mark a launch as agent-driven rather than the operator's,
+ * and so as one that must not take their focus.
+ *
+ * `--user-data-dir` is the strong one: the operator's own app runs on the
+ * default profile, while every rig, desktop test and evidence script names a
+ * scratch profile so it cannot touch theirs. `--remote-debugging-port` is the
+ * weaker of the two, and knowingly so: attaching DevTools to your own app is a
+ * normal thing for a person to do, and that launch resolves `headless` as well.
+ * `--window-mode=inactive` is the mode for watching a run like that — visible,
+ * never activated. The asymmetry is deliberate, and it is the same one the
+ * module argues elsewhere: a window hidden from a launch that says it is a run
+ * is recoverable and announces itself on stdout, while the focus grab is the
+ * interruption this whole default exists to prevent.
+ */
+export const AGENT_LAUNCH_FLAGS = [
+	"--user-data-dir",
+	"--remote-debugging-port",
+] as const;
 
 /**
  * The opt-out from the launcher watch below, for a run that MEANS to detach.
@@ -87,6 +119,17 @@ export const DEFAULT_WINDOW_HEIGHT = 900;
 export interface WindowLaunchPlan {
 	/** Resolved mode: the documented value, never the raw input. */
 	mode: WindowMode;
+	/**
+	 * Why the mode was ASSUMED rather than named, or null when the caller said
+	 * what it wanted and `problems` is the only thing worth reporting.
+	 *
+	 * Non-null exactly when the launch named no mode at all and one of
+	 * `AGENT_LAUNCH_FLAGS` was present, which is what makes `headless` the
+	 * default there. The reason travels with the plan so the startup line can
+	 * say the run was headless *because* of the scratch profile it named,
+	 * rather than leaving a reader to guess whether a mode was typed.
+	 */
+	assumed: string | null;
 	/** What `ready-to-show` does: raise and focus, raise without focusing, or nothing. */
 	show: WindowShow;
 	/** `BrowserWindow` `focusable`. False only in `headless`. */
@@ -229,18 +272,85 @@ export function resolveWindowLaunchPlan(
 	const problems: string[] = [];
 
 	const modeFlag = readFlag(argv, WINDOW_MODE_FLAG);
-	const modeRaw = modeFlag.found ? modeFlag.value : env[WINDOW_MODE_ENV];
+	const modeValue = modeFlag.found ? modeFlag.value : env[WINDOW_MODE_ENV];
+	/*
+	 * A value that names NOTHING is not a named mode. `LOCAL_OPERATOR_UI_WINDOW_MODE=""`
+	 * is what a shell with an unset variable produces (`env MODE="$MODE" …`) and
+	 * what a harness env block with an empty default produces; reading it as
+	 * "somebody chose normal" puts the focus grab this change removes back
+	 * through the side door, in a spelling no reader would recognise as a
+	 * choice. A whitespace-only value is the same nothing wearing a wart, so
+	 * both are folded back to absent before anything decides. A TYPO is not the
+	 * same nothing — see the report below, which still tells the caller.
+	 */
+	const modeRaw =
+		typeof modeValue === "string" && modeValue.trim() === ""
+			? undefined
+			: modeValue;
 	const parsedMode = parseWindowMode(modeRaw);
+	/*
+	 * Nobody named a mode and this is an agent-driven launch, so the mode is
+	 * `headless` rather than `normal`.
+	 *
+	 * Why the default flips here and nowhere else. `normal` stays the default
+	 * for a launch that says nothing at all, because that launch is the
+	 * operator's own app and hiding its window would be the worse failure. But
+	 * a launch that names a scratch profile or a devtools port has already
+	 * said, in the only vocabulary a launch has, that it is a run and not a
+	 * person — and AGENTS.md's rule that no agent run may take the operator's
+	 * focus is enforced only by every caller remembering it, which is a rule
+	 * that fails on the next rig somebody writes in a hurry. Measured on this
+	 * machine: an afternoon of parallel QA rigs left nine Electron windows in
+	 * the dock and took the operator's focus repeatedly, every one of them a
+	 * launch that had simply not named a mode.
+	 *
+	 * A caller who reached for the flag always wins, including with a typo:
+	 * `--window-mode` with no value, `--window-mode=` with an empty one, and an
+	 * unparsable value each keep the historical `normal` fallback and a report,
+	 * because a mistyped `normal` must not become a window somebody cannot find
+	 * — and a caller who reached for the flag is asking to be TOLD, not
+	 * defaulted. Only a launch that named nothing at all — no flag, and an
+	 * environment variable that is absent, empty or blank — is read as "a rig".
+	 *
+	 * `readFlag(...).found` asks whether the switch is PRESENT, not whether it
+	 * is well-formed, so a token that is not really a switch (a value that
+	 * happens to be `--user-data-dir`, anything after a `--` separator) counts
+	 * and resolves the launch headless. That looseness is deliberate: the false
+	 * positive hides a window from a launch that says it is a run — recoverable
+	 * by naming a mode, and printed on stdout — while the false negative is the
+	 * focus grab this block exists to stop. The asymmetry is the point.
+	 */
+	const agentFlag =
+		!modeFlag.found && modeRaw === undefined
+			? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
+			: undefined;
+	const assumed = agentFlag
+		? `${agentFlag} marks an agent-driven launch, and no window mode was named`
+		: null;
 	if (modeFlag.found && modeFlag.value === undefined) {
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
+		);
+	} else if (modeValue !== undefined && modeRaw === undefined) {
+		/*
+		 * Empty and blank name nothing, so the report says exactly that:
+		 * `LOCAL_OPERATOR_UI_WINDOW_MODE=""` is a caller mistake worth a line.
+		 *
+		 * The outcome is stated only when the assumption did NOT take over. On the
+		 * rig-shaped path a message ending "using normal" would be a lie, since
+		 * that launch resolves `headless`; on the plain path there is no assumption
+		 * to explain the silence, so the caller is told the outcome they were told
+		 * before this change and the line stays useful rather than merely true.
+		 */
+		problems.push(
+			`${modeFlag.found ? WINDOW_MODE_FLAG : WINDOW_MODE_ENV} names no mode (empty value)${assumed ? "" : "; using normal"}`,
 		);
 	} else if (parsedMode === null && modeRaw !== undefined) {
 		problems.push(
 			`${modeFlag.found ? WINDOW_MODE_FLAG : WINDOW_MODE_ENV}="${modeRaw}" is not one of ${WINDOW_MODES.join("|")}; using normal`,
 		);
 	}
-	const mode = parsedMode ?? "normal";
+	const mode = parsedMode ?? (assumed ? "headless" : "normal");
 
 	const sizeFlag = readFlag(argv, WINDOW_SIZE_FLAG);
 	const sizeRaw = sizeFlag.found ? sizeFlag.value : env[WINDOW_SIZE_ENV];
@@ -276,6 +386,7 @@ export function resolveWindowLaunchPlan(
 
 	return {
 		mode,
+		assumed,
 		...WINDOW_BEHAVIOUR[mode],
 		width,
 		height,
@@ -400,9 +511,17 @@ export function describeWindowLaunch(
 			: plan.show === "inactive"
 				? "window shown without activating the app"
 				: "window shown and focused";
+	/*
+	 * Both suffixes ride on the same sentence, because a reader needs both facts
+	 * at once: WHICH mode this is and whether it was assumed (the mode alone
+	 * cannot say) reads as the subject, and the Dock clause is what the mac
+	 * window does about it. The Dock claim stays mac-only -- `hideDock` is an
+	 * `app.dock` call -- while the assumption is platform-independent.
+	 */
+	const assumption = plan.assumed ? ` (assumed: ${plan.assumed})` : "";
 	const extras = [
 		plan.hideDock && platform === "darwin" ? "no Dock tile" : null,
 	].filter((part): part is string => part !== null);
 	const suffix = extras.length === 0 ? "" : `, ${extras.join(", ")}`;
-	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}`;
+	return `window mode ${plan.mode}${assumption}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}`;
 }

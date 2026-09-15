@@ -83,7 +83,12 @@ jobs:
           node-version: '22'
 
       - name: Check the runtime dependency allowlist
-        run: node scripts/check-runtime-deps.mjs
+        # Wrapped in `scripts/require-report.sh` because this step reads an exit
+        # status and nothing else: reached through a path spelling the script could
+        # not resolve it exited 0 having printed nothing, and the job went green
+        # having checked nothing. The helper refuses an empty success instead.
+        # `check-runtime-deps.test.mjs` drives that case for real.
+        run: bash scripts/require-report.sh "Runtime dependency allowlist" node scripts/check-runtime-deps.mjs
 
   check-types:
     name: Type Checking
@@ -114,14 +119,37 @@ jobs:
         run: pnpm check-edit-diffs
 
       # The release-contract scripts: the immutable-recovery pair, the publish
-      # workflow's graph and inline gates, and the version-bump guard that keeps
-      # a feature PR from consuming a version number nobody released. A guard
-      # nothing runs is indistinguishable from no guard, which is why the last of
-      # those is executed here as well as in its own PR-triggered workflow.
+      # workflow's trigger set, graph and inline gates, the pre-release window's
+      # writeup gate, and the version-bump guard that keeps a feature PR from
+      # consuming a version number nobody released. A guard nothing runs is
+      # indistinguishable from no guard, which is why the last of those is
+      # executed here as well as in its own PR-triggered workflow. The automatic
+      # release's own contracts went with the workflow: a derivation and a push
+      # guard existed because nobody chose the bump.
+      #
+      # The window's own tools are here for the same reason. Releasing is a
+      # decision a person makes now: the owner derives the release from the
+      # window's commits, tags it and publishes a Release, and that Release is the
+      # only trigger the pipeline has. The events a release can arrive by are
+      # asserted rather than described, and the anchors that decision rests on
+      # (`release-baseline.mjs`), the incumbent a signed update upgrades from
+      # (`release-candidate.mjs`) and the writeup the Release is announced with
+      # are rules rather than habits, so these run with the rest of the contracts
+      # rather than only when somebody remembers them.
+      #
+      # `entry-point.test.mjs` and `require-report.test.mjs` are the two halves of the
+      # same guarantee, listed on the third line of the step below: every gate script
+      # resolves its own entry point physically, and every step that reads nothing but
+      # a gate's exit status runs it through `scripts/require-report.sh`, so a gate
+      # that exits 0 without printing is refused rather than read as a pass. A release
+      # script that resolved its own path lexically did nothing at all through a
+      # symlinked directory - no output, exit 0 - and every consumer in these workflows
+      # reads an exit status as "it ran".
       - name: Check release contracts
         run: |
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
+          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,

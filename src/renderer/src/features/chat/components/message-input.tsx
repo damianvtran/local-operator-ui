@@ -7,6 +7,8 @@ import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
 	SEND_HELD,
 	type SendOutcome,
+	adoptRefusedPayload,
+	refusedSplitNotice,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import {
@@ -36,6 +38,7 @@ import {
 	useCallback,
 	useEffect,
 	useImperativeHandle,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -57,22 +60,42 @@ import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "../draft-selection";
+import { MOVE_UNAVAILABLE_REASON } from "../move-session";
+import { DESTINATIONS } from "../pickers/picker-registry";
 import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { ComposerStatusRow } from "./composer-status-row";
-import { DirectoryIndicator } from "./directory-indicator";
+import {
+	DirectoryIndicator,
+	type DirectoryIndicatorHandle,
+	type DirectoryWritePath,
+} from "./directory-indicator";
+import { MeasuredSuggestionStack } from "./measured-suggestion-stack";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import {
-	type SlashCommandMeta,
+	type CompletionRow,
 	SlashSuggestionsPopup,
-	completeSlashToken,
+	completionFor,
 	handleSlashKeyDown,
-	useSlashCommands,
+	useSlashCompletion,
 } from "./slash-commands";
+import { pointerPickRuns } from "./slash-contract";
+/*
+ * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
+ * spliced command line to the page's dispatcher and must know whether it ran to
+ * decide what the box holds afterwards, but it must not own any part of how the
+ * command runs.
+ */
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import { planSlashSubmission } from "./slash-submit";
+import type {
+	SlashCommandInvocation,
+	SlashSubmissionPlan,
+} from "./slash-submit";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -110,6 +133,34 @@ export type ComposerSendError = {
 	 * screen, which is not something a user can reproduce by hand.
 	 */
 	heldText?: string;
+	/**
+	 * The payload a refusal that admitted NOTHING owes the box, when the store is
+	 * still holding it (`refusedBeforeAdmissionText` in the canonical store).
+	 *
+	 * A separate field from `heldText` because they are opposite answers to
+	 * opposite facts: a claim must stay OUT of the box (the message may be on the
+	 * owner and its echo is painted), this one belongs back IN it.
+	 *
+	 * It has to be handed over rather than restored by the composer that sent it,
+	 * which is what the local restore in `use-message-input` does: on the arm a
+	 * "New chat" uses, the session is created inside the send and the panel is
+	 * re-keyed onto the id that send minted, so the restoring composer is already
+	 * unmounted and the one that replaces it has no copy of the text. The store's
+	 * row is the surviving copy, and this is how it reaches the box.
+	 */
+	refusedText?: string;
+	/**
+	 * The attachments that same refusal owes the box, from the row that survives
+	 * the composer the send unmounted (`refusedBeforeAdmissionAttachments`).
+	 *
+	 * Handed over with the text rather than restored from the composer's own
+	 * store because they are one payload: the chips live in
+	 * `inputByConversation[conversationId]` under the PRE-FLIP identity, so after
+	 * the flip the composer that mounts has an empty chip row and no way to learn
+	 * what the refused send carried. Restoring the text without them is a send
+	 * that silently loses the user's file (round 7, R17).
+	 */
+	refusedAttachments?: string[];
 	/** Retire the alert after the held text has been restored into the box. */
 	onRestoreHeld?: () => void;
 	/** Drop the claim AND the draft. The message is finished with. */
@@ -239,13 +290,43 @@ type MessageInputProps = {
 	/**
 	 * Working directory for this conversation, and the way to change it.
 	 *
-	 * `onChangeCwd` is present only while the session is still a draft: a cwd is
-	 * fixed at `sessions.create` and the backend exposes no way to move a live
-	 * one, so the chip renders read-only once the session exists rather than
-	 * offering a control that cannot succeed.
+	 * `cwdWritePath` describes the write path, and it is one value rather than a
+	 * callback plus a flag because its two kinds answer differently and the chip
+	 * must not be able to mix them: a DRAFT stages the directory
+	 * `sessions.create` will use, and a LIVE session with `session_move` moved
+	 * (see `useSessionMove`). Absent means the chip renders read-only, with
+	 * `cwdReadOnlyReason` saying why - the honest state for an older backend or a
+	 * session still being created, rather than a control whose every use fails.
 	 */
 	cwd?: string;
-	onChangeCwd?: (cwd: string) => void;
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * Why the chip is read-only here. Supplied per cause rather than assumed:
+	 * `MOVE_UNAVAILABLE_REASON` is false on a session that is merely still being
+	 * created, and the composer is the layer that knows which of the two it is
+	 * looking at (agent review m1).
+	 */
+	cwdReadOnlyReason?: string;
+	/**
+	 * A directory move for this session has not been confirmed yet.
+	 *
+	 * Reaches the chip as `DirectoryIndicatorProps.pending`. It does change the
+	 * chip's pixels - the folder glyph becomes the app's spinner, the tooltip and
+	 * the live region carry the two pending sentences - because the state has to be
+	 * visible on the surface the user is looking at rather than behind a hover
+	 * (design review D2); the remaining anatomy is unchanged, so this is the app's
+	 * existing in-flight treatment and not a new one.
+	 */
+	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight.
+	 *
+	 * The chip's two pending sentences make different claims: the first is true from
+	 * the commit, the second is a statement about what the backend did. Timed, the
+	 * second could announce a restart on a slow refusal; driven by the receipt, it
+	 * cannot (UX review round 2, U3).
+	 */
+	cwdPendingAccepted?: boolean;
 	isSmallView?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
@@ -276,7 +357,7 @@ type MessageInputProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -302,6 +383,33 @@ type MessageInputProps = {
 		 */
 		draftResolution?: DraftResolution;
 	};
+	/**
+	 * Run the command the composer's planner pulled out of the draft, and report
+	 * what happened to it.
+	 *
+	 * The SAME dispatcher the chips use, so a command cannot take a second route
+	 * with its own outcome mapping. The composer owns the restore/splice decision
+	 * afterwards because it is the only place that knows what it held before; when
+	 * absent (the legacy chat path has no command dispatcher), nothing is ever
+	 * spliced and the draft sends as prose.
+	 *
+	 * It is handed the planner's answer — a `SlashCommandInvocation` — rather than
+	 * the draft: the decision about WHAT a draft submits is the planner's alone
+	 * (see `slash-submit.ts`), and this signature is what makes a second such
+	 * decision impossible.
+	 */
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
+	/**
+	 * Say something in the composer's own note idiom.
+	 *
+	 * The dispatcher already owns that surface (`useSlashDispatch`'s `note`), so
+	 * the composer borrows it rather than growing a second one. Used for the two
+	 * outcomes a user cannot read off the box: a mid-draft name-list command
+	 * whose list cannot answer, and a staged reassembly that did NOT send.
+	 */
+	onSlashNote?: (text: string) => void;
 	/**
 	 * The run's derived model, for the status row's plan count.
 	 *
@@ -405,6 +513,16 @@ export const composerHoldsFocusUntouched = (): boolean =>
  */
 export type MessageInputHandle = {
 	focusInput: () => void;
+	/**
+	 * Focus the working-directory chip and open its menu.
+	 *
+	 * The bare `/move` form's whole effect: the destination resolves in the
+	 * composer's own control rather than in a dialog, so the command has to be able
+	 * to reach it. A no-op when the chip is not mounted (no directory is known) or
+	 * is read-only, which is why the dispatch branch checks the capability before
+	 * asking.
+	 */
+	openWorkingDirectoryMenu: () => void;
 };
 
 /*
@@ -462,11 +580,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			initialSuggestions,
 			agentData,
 			cwd,
-			onChangeCwd,
+			cwdWritePath,
+			cwdReadOnlyReason,
+			cwdPending,
+			cwdPendingAccepted,
 			isSmallView = false,
 			isHydrating = false,
 			unavailable = false,
 			sessionStatus,
+			onSlashCommand,
+			onSlashNote,
 			runDetails,
 		},
 		ref,
@@ -475,7 +598,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * The canonical session's cwd is the answer where there is one; the legacy
 		 * agent record is the fallback so the old backend path keeps its chip.
 		 */
-		const cwdToShow = cwd ?? agentData?.current_working_directory;
+		/*
+		 * The canonical session's cwd is the answer where there is one; the legacy
+		 * store's value is the fallback below it.
+		 *
+		 * The AGENT RECORD is a fallback only where the chip has no live write path.
+		 * A live move commits against the SESSION, so the value it displays has to come
+		 * from the session's own canonical source: falling back to the agent record
+		 * would put a directory the session may not be in on an editable chip, one menu
+		 * row away from being the path a move commits to (agent review n2). A draft is
+		 * the case the backstop is for - its staged cwd starts from the agent's own
+		 * default, so the two agree by construction - and the read-only chip keeps it
+		 * for the same reason: it displays, and cannot commit.
+		 */
+		const cwdToShow =
+			cwd ??
+			(cwdWritePath?.kind === "move"
+				? undefined
+				: agentData?.current_working_directory);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -542,6 +682,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const [abandonNotice, setAbandonNotice] = useState<string | null>(null);
 		/*
+		 * What the refusal's own adoption could not hand back.
+		 *
+		 * Set by the adoption effect below and only when the halves of the refused
+		 * payload part - one owed half back, the other held out by content the user
+		 * put in that slot themselves. A draft showing one half of the payload its
+		 * alert is still describing reads exactly like a draft showing all of it, and
+		 * that is the class of defect this branch exists to remove (round 8,
+		 * MINOR-2). Muted ink like `heldNotice`: nothing failed here, the composer is
+		 * stating what it did and did not restore.
+		 */
+		const [refusedNotice, setRefusedNotice] = useState<string | null>(null);
+		/*
 		 * A second Enter refused while the first send is still unacknowledged.
 		 *
 		 * The refusal itself is deliberate and the typed text is kept - the store
@@ -595,6 +747,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			const shuffled = [...initialSuggestions].sort(() => Math.random() - 0.5);
 			return shuffled.slice(0, MAX_SUGGESTIONS);
 		}, [initialSuggestions]);
+
+		// Node-valued callback refs follow conditional splash remounts; a stable
+		// suggestion sample does not imply that the measured DOM is still alive.
+		const [band, setBand] = useState<HTMLDivElement | null>(null);
+		const [splash, setSplash] = useState<HTMLDivElement | null>(null);
 
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
@@ -659,21 +816,362 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// Slash completion reads the caret position, so it lives above the
 		// textarea's own onChange rather than deriving position from the value.
 		const [caret, setCaret] = useState(0);
-		const slash = useSlashCommands(newMessage, caret);
-		const slashListId = slash.listId;
-		const handleSlashPick = useCallback(
-			(command: SlashCommandMeta) => {
-				setNewMessage(
-					completeSlashToken(
-						newMessage,
-						slash.tokenEnd,
-						command.name,
-						command.arguments,
-					),
-				);
-				slash.close();
+		/*
+		 * The live session this composer addresses, or undefined for a draft.
+		 *
+		 * `sessionStatus` is supplied by the page only when a canonical session
+		 * exists, and in that case `conversationId` IS its id (the page opens the
+		 * stream on the identity it passes down). So this is the one argument the
+		 * argument list's entity source needs, and its ABSENCE is the honest
+		 * "needs an open conversation" state rather than a query against a draft
+		 * key that could only fail.
+		 */
+		const slashSessionId = sessionStatus ? conversationId : undefined;
+		const slash = useSlashCompletion({
+			inputValue: newMessage,
+			selectionStart: caret,
+			sessionId: slashSessionId,
+			activeProfile: {
+				team: sessionStatus?.frontend?.active_team,
+				agent: sessionStatus?.frontend?.active_agent,
 			},
-			[newMessage, slash, setNewMessage],
+		});
+
+		/*
+		 * A caret a programmatic edit asked for, written to the DOM once the new
+		 * value has rendered.
+		 *
+		 * `setCaret` alone only moves a shadow of the position: the textarea's own
+		 * selection stays where the browser left it, so a completion made under an
+		 * IME or by a click would leave the caret at the old cell and the next
+		 * keystroke would land in the middle of the completed word.
+		 */
+		const pendingCaret = useRef<number | null>(null);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the value is the trigger, the ref is what is written
+		useLayoutEffect(() => {
+			const field = textareaRef.current;
+			const at = pendingCaret.current;
+			if (!field || at === null) return;
+			pendingCaret.current = null;
+			field.setSelectionRange(at, at);
+		}, [newMessage, textareaRef]);
+
+		/*
+		 * THE BOX TAKES BACK A REFUSED SEND'S TEXT FROM THE STORE.
+		 *
+		 * `useMessageInput` already restores a refused send by writing the submitted
+		 * text into its own state, and that is enough only while the composer that
+		 * sent it is still mounted. It is NOT, on the arm a "New chat" uses: the send
+		 * creates the session inside its own call, the page re-keys this panel onto
+		 * the id that send minted, and React unmounts the composer whose state held
+		 * the text. The replacement mounts empty, because the text is per-conversation
+		 * local state and this conversation did not exist when the send began - so the
+		 * refusal's own instruction ("move it below your text") pointed at text that
+		 * was no longer anywhere on screen, and the only control left was Discard
+		 * (UX round 3 U14, QA round 3 Q7).
+		 *
+		 * So the store's retained row supplies it (`refusedBeforeAdmissionText`) and
+		 * this adopts it - the same rule, and the same `restoreSubmittedText`, that the
+		 * local restore applies, now applied to a box that can be newly mounted: on a
+		 * remount the refusal is adopted again, which is also what makes the text
+		 * reachable after a reload instead of sitting in a persisted row no route
+		 * renders. Only an EMPTY box is written, so anything typed while the send was
+		 * in flight is never overwritten.
+		 *
+		 * THE CHIPS COME BACK WITH THE TEXT, on that same rule and for the same
+		 * reason (`refusedBeforeAdmissionAttachments`). The user's files are staged in
+		 * the conversation-input store under the PRE-FLIP identity, so the composer
+		 * that mounts here has an empty chip row while the store's row still holds the
+		 * list - and a resend of the adopted text therefore went out with the wording
+		 * and WITHOUT the file, silently, and retired the row that recorded it (round
+		 * 7, R17). Adopting the paths is what makes the restored draft send exactly
+		 * what it shows: the chip row and the payload the next Send carries are the
+		 * same list, and images are re-encoded from those paths by the send itself.
+		 *
+		 * BOTH HALVES GO THROUGH ONE DECISION (`adoptRefusedPayload`), not through the
+		 * pair's two rules read independently: the chip write used to sit below the
+		 * TEXT rule's early return, so on the arm where the two rules disagree - the
+		 * box holds text the user typed, the chip row is empty - the refusal's file
+		 * was dropped with nothing said, and a later edit to the text rule would have
+		 * changed which refusals restore files without anything failing (round 8,
+		 * MINOR-2). The decision adopts each half into its own empty slot - what a
+		 * slot that already holds the user's own content keeps, the user keeps - and
+		 * answers `withheld` when it had to hold one half back while taking the other.
+		 * That answer is SAID on screen below, because a draft carrying one half of a
+		 * refused payload looks exactly like a draft carrying all of it.
+		 *
+		 * The caret goes to the END of the restored text, which is where the user's
+		 * was when they pressed Send - and it is not cosmetic here. The planner reads
+		 * the token AT THE CARET (`slash-submit.ts`), so a newly mounted composer left
+		 * at position 0 reads a leading `/usage` line as the command to RUN and the
+		 * next Send splices it out instead of attempting the message: the refusal's
+		 * own remedy would be the thing that swallowed it. At the end of the draft the
+		 * text reads as prose, exactly as it did on the arm that never re-mounted, and
+		 * the popup the box had opened at position 0 closes with it.
+		 *
+		 * A LAYOUT effect, because the adoption belongs to this commit's paint rather
+		 * than to the one after it: as a passive effect the remounted composer painted
+		 * an EMPTY box - with the refusal's copy already above it - for one frame
+		 * before the text landed (round 7, R20). The caret write it feeds is a layout
+		 * effect for the same reason.
+		 *
+		 * Guarded on the payload already being handed over, once per distinct payload
+		 * and never twice for the same one: without that, emptying the box on purpose
+		 * would re-fill it on the next render, and a dismissal - which keeps the
+		 * payload and clears only the sentence - would do the same. The marker is
+		 * therefore named for what it is: it records that this composer has CONSIDERED
+		 * this payload, which on the arm where the box already holds the user's own
+		 * text happens without the write landing. A marker claiming the write instead
+		 * would have to move below the early return, and that placement is the re-fill
+		 * above (round 7, R22).
+		 */
+		const refusedText = sendError?.refusedText;
+		const refusedAttachments = sendError?.refusedAttachments;
+		const consideredRefusedTextRef = useRef<string | undefined>(undefined);
+		useLayoutEffect(() => {
+			if (
+				refusedText === undefined ||
+				consideredRefusedTextRef.current === refusedText
+			)
+				return;
+			consideredRefusedTextRef.current = refusedText;
+			/*
+			 * One call decides both halves of the payload, so neither can be restored
+			 * on the other's outcome. `chips: null` when this composer has no
+			 * conversation: then there is no row to write, and the decision must not
+			 * report the files as adopted - the sentence below would be false.
+			 */
+			const adoption = adoptRefusedPayload(
+				newMessage,
+				conversationId ? attachments : null,
+				{ text: refusedText, attachments: refusedAttachments },
+			);
+			if (conversationId)
+				for (const path of adoption.paths)
+					addAttachment(conversationId, { id: uuidv4(), path });
+			/*
+			 * A split is said out loud, once per payload, on the same commit as the
+			 * adoption: the user is looking at a draft that carries ONE half of a
+			 * message they sent, and nothing else on screen distinguishes that from
+			 * a draft that carries both.
+			 *
+			 * The sentence names the FILES THE DRAFT IS NOT CARRYING
+			 * (`adoption.missingFiles`), not every file the refusal owed. On the arm
+			 * where the chip row still holds the file the refused send carried - a
+			 * named session, where nothing cleared that row - the draft carries all
+			 * of them, so there is nothing to say and no sentence is rendered at all
+			 * (UX round 5 U17, QA round 4 Q8: the notice claimed a file had been
+			 * withheld while its chip sat in the row and the very next send carried
+			 * `images: 1`).
+			 */
+			setRefusedNotice(
+				refusedSplitNotice(
+					adoption.withheld,
+					refusedAttachments,
+					adoption.missingFiles,
+				),
+			);
+			// The user's own text is what the box holds, so it keeps the caret too.
+			if (adoption.text === newMessage) return;
+			pendingCaret.current = adoption.text.length;
+			setCaret(adoption.text.length);
+			setNewMessage(adoption.text);
+		}, [
+			refusedText,
+			refusedAttachments,
+			newMessage,
+			attachments,
+			conversationId,
+			addAttachment,
+			setNewMessage,
+		]);
+		/*
+		 * The sentence describes the draft this composer is showing, so it retires
+		 * with the record it came from: a refusal the user has discarded or sent
+		 * past owes this box nothing, and a split adoption for a payload that is no
+		 * longer held is a sentence about a state that ended. The pair travels as one
+		 * field-wise payload, so either half going is the record ending.
+		 */
+		useEffect(() => {
+			if (refusedText === undefined && refusedAttachments === undefined)
+				setRefusedNotice(null);
+		}, [refusedText, refusedAttachments]);
+
+		/*
+		 * What Enter should do with this draft, decided by the pure planner — the ONLY
+		 * place that answers it (see `slash-submit.ts`'s "one decision" note).
+		 *
+		 * Both halves of `enabled` matter: a command needs the feature ON and
+		 * somewhere to hand it. With neither, the planner answers `send`, so nothing
+		 * is ever spliced on a path that could not run it.
+		 */
+		const planFor = useCallback(
+			(draft: string, at: number) =>
+				planSlashSubmission({
+					draft,
+					caret: at,
+					commandNames: slash.commandNames,
+					promptCommands: slash.promptCommands,
+					nameListCommands: slash.nameListCommands,
+					enabled: slash.available && Boolean(onSlashCommand),
+				}),
+			[
+				slash.commandNames,
+				slash.promptCommands,
+				slash.nameListCommands,
+				slash.available,
+				onSlashCommand,
+			],
+		);
+
+		/**
+		 * Carry out a plan that is not a plain send, and decide what the box holds
+		 * afterwards.
+		 *
+		 * EVERY non-`send` plan lands here, `whole` included: a whole-draft command is
+		 * a consequence of the caret rule, not a different route, and giving it one
+		 * (a submit that re-examined the raw text one layer down) is exactly how a
+		 * two-line draft was dispatched as `/usage` with line 2 as its argument (QA
+		 * round 2, Q4). The command is handed on as the planner parsed it, so nothing
+		 * here can disagree with the planner about what the draft is.
+		 *
+		 * The outcome contract is the dispatcher's, unchanged: `consumed` means the
+		 * command ran, so the token is gone and whatever survives it stays;
+		 * `retained` and `not-a-command` mean it did NOT run, so the ORIGINAL draft
+		 * comes back in full, token included. Restoring rather than deleting is the
+		 * whole point — a splice that produced no note and no run would be a silent
+		 * deletion of text the user typed.
+		 */
+		const applyPlan = useCallback(
+			async (
+				plan: Exclude<SlashSubmissionPlan, { kind: "send" }>,
+				draft: string,
+				at: number,
+			) => {
+				/*
+				 * A non-`send` plan only exists with a dispatcher (`planFor` answers
+				 * `send` without one), so this is a wiring guard rather than a runtime
+				 * case: an optional call here would make a missing prop read as a
+				 * refusal that restores the draft (round 1 NIT-3).
+				 */
+				const runSlashCommand = onSlashCommand;
+				if (!runSlashCommand) return;
+				if (plan.kind === "list-open") {
+					// The roster owns the next Enter — but only while it can give a row.
+					// While the list is up with rows in it, nothing is submitted and
+					// nothing is rewritten: the TUI's own exception
+					// (`editor.py:8219-8222`), the name is picked from the autofill
+					// first. Dismissed or empty, the same plan was a DEAD Enter —
+					// nothing ran, nothing sent, no note — so say what the key is
+					// waiting for (round 1 UX U5).
+					if (slash.open && slash.matches.length > 0) return;
+					onSlashNote?.(
+						`Type a name after /${plan.command.name}, or choose one from the list.`,
+					);
+					return;
+				}
+				if (plan.kind === "unrecognised") {
+					// Reported through the SAME dispatch that owns the "did you mean"
+					// note, then the ORIGINAL draft comes back whole: the misspelling
+					// is the thing the user has to fix, so consuming it removes the
+					// only copy of it (round 1 UX U8).
+					await runSlashCommand(plan.command);
+					pendingCaret.current = at;
+					setNewMessage(draft);
+					setCaret(at);
+					return;
+				}
+				if (plan.kind === "reassemble") {
+					// Staged, never submitted: the user reads the assembled line and
+					// sends it themselves. The box changing IS the guard against
+					// guessing which trailing words are a name — but a user who pressed
+					// Enter twice has no other signal that their sentence MOVED and the
+					// key did not send, so say it (round 1 UX U7).
+					pendingCaret.current = plan.caret;
+					setNewMessage(plan.text);
+					setCaret(plan.caret);
+					onSlashNote?.(`Staged ${plan.text.trim()}. Enter again runs it.`);
+					return;
+				}
+				const outcome = await runSlashCommand(plan.command);
+				if (outcome === "consumed") {
+					const text = plan.kind === "whole" ? "" : plan.text;
+					const next = plan.kind === "whole" ? 0 : plan.caret;
+					pendingCaret.current = next;
+					setNewMessage(text);
+					setCaret(next);
+					return;
+				}
+				pendingCaret.current = at;
+				setNewMessage(draft);
+				setCaret(at);
+			},
+			[
+				onSlashCommand,
+				onSlashNote,
+				setNewMessage,
+				slash.open,
+				slash.matches.length,
+			],
+		);
+
+		const handleSlashPick = useCallback(
+			async (row: CompletionRow, disposition: { run: boolean }) => {
+				const completion = completionFor(
+					newMessage,
+					caret,
+					row,
+					slash.commandNames,
+					slash.argumentWords,
+					slash.inline?.nameThenMessage ?? false,
+				);
+				if (!completion) return;
+				slash.close();
+				pendingCaret.current = completion.caret;
+				setNewMessage(completion.text);
+				setCaret(completion.caret);
+				/*
+				 * RUN, when the pick named a row that runs and the gate let it through.
+				 * The ambiguity gate is applied by `handleSlashKeyDown` for the keyboard
+				 * and deliberately waived for a pointer click (`editor.py:8040`);
+				 * `runs: false` is honoured here so no `/team` name can ever be run on
+				 * the keystroke that chose it.
+				 *
+				 * The two row kinds answer "does a pick run this?" from different places,
+				 * because they are different questions. An ARGUMENT row's own list
+				 * declares it (`slash.inline.runs`: `/model` runs its choice, `/team` and
+				 * `/theme` never do). A COMMAND row's DESTINATION declares it
+				 * (`pointerPickRuns`), which is the rule that lets a click open a panel
+				 * instead of only completing the word. The keyboard never runs a command
+				 * row - `handleSlashKeyDown` hands every one of them `run: false` - so
+				 * that half is the pointer path only.
+				 */
+				const shouldRun =
+					disposition.run &&
+					(row.kind === "command"
+						? pointerPickRuns(
+								row.command.destination,
+								DESTINATIONS[row.command.destination],
+							)
+						: (slash.inline?.runs ?? false)) &&
+					Boolean(onSlashCommand);
+				if (!shouldRun) return;
+				// Run through the SAME plan a submit takes, so a command picked
+				// mid-draft splices out and leaves the prose, and a whole-draft
+				// command reports its outcome exactly as typing it would.
+				const plan = planFor(completion.text, completion.caret);
+				if (plan.kind === "send") return;
+				await applyPlan(plan, newMessage, caret);
+			},
+			[
+				newMessage,
+				caret,
+				slash,
+				setNewMessage,
+				onSlashCommand,
+				planFor,
+				applyPlan,
+			],
 		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
@@ -708,10 +1206,52 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					event.preventDefault();
 					return;
 				}
+				/*
+				 * Enter is the submit key, and the planner is the only thing that decides
+				 * what this draft submits: a command typed into a sentence is spliced out
+				 * and run, a whole-draft command is run here too, and a free-text command
+				 * is reassembled and STAGED. Only `send` falls through to the message
+				 * path, which is the ONE answer that means "this is prose" — so a command
+				 * can never be quietly turned back into prose by a later re-read of the
+				 * text, and a draft the planner called prose can never be claimed by a
+				 * command (QA round 2, Q4).
+				 */
+				if (
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					const plan = planFor(newMessage, caret);
+					if (plan.kind !== "send") {
+						event.preventDefault();
+						void applyPlan(plan, newMessage, caret);
+						return;
+					}
+				}
 				handleKeyDown(event);
 			},
-			[slash, handleSlashPick, handleKeyDown, newMessage],
+			[
+				slash,
+				handleSlashPick,
+				handleKeyDown,
+				planFor,
+				applyPlan,
+				newMessage,
+				caret,
+			],
 		);
+
+		/*
+		 * The chip's own ref, so the composer can be asked to open it.
+		 *
+		 * A bare `/move` focuses this chip and opens its menu instead of mounting a
+		 * dialog that hosted a copy of it (design § 5.2, settled by the measured menu
+		 * clipping inside the dialog): one control, one write path. The composer is the
+		 * owner of the chip, so the request travels through its handle rather than
+		 * through a store or an event, which keeps the "only one chip" rule true by
+		 * construction.
+		 */
+		const cwdChipRef = useRef<DirectoryIndicatorHandle>(null);
 
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
@@ -722,6 +1262,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				composerPointerTouched = false;
 				textareaRef.current?.focus();
+			},
+			openWorkingDirectoryMenu: () => {
+				cwdChipRef.current?.openMenu();
 			},
 		}));
 
@@ -928,6 +1471,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
 			if (!newMessage.trim() && attachments.length === 0) return;
+			/*
+			 * The SAME planner the Enter key consults, so the Send button and the
+			 * key cannot disagree about whether a draft is a command — and every
+			 * non-`send` verdict is applied here, so the message path below is only
+			 * ever reached for prose. It does not re-examine the text: that is what
+			 * turned `/usage` on line 1 into a command that claimed line 2.
+			 */
+			const plan = planFor(newMessage, caret);
+			if (plan.kind !== "send") {
+				void applyPlan(plan, newMessage, caret);
+				return;
+			}
 			submitMessage();
 		};
 
@@ -1154,6 +1709,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					/>
 				</ErrorBoundary>
 				{(abandonNotice ||
+					refusedNotice ||
 					(!sendError && heldNotice) ||
 					(sendError && (composerAlert.message || composerAlert.showHeld))) && (
 					/*
@@ -1205,12 +1761,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							// escape is CONFIRMED where the problem was reported. Muted ink
 							// and no icon: this is the resolved state, not a failure.
 							<p className="text-ink-muted">{abandonNotice}</p>
-						)}
-						{!abandonNotice && !sendError && heldNotice && (
-							// Muted ink on purpose: the region as a whole is the danger
-							// register, and nothing has failed here - the box is one message
-							// ahead of the conversation, which is a fact about the wait.
-							<p className="text-ink-muted">{heldNotice}</p>
 						)}
 						{!abandonNotice && composerAlert.message && (
 							/*
@@ -1425,6 +1975,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									)}
 								</div>
 							)}
+						{/*
+						 * THE MUTED CONTEXT COMES LAST, AFTER THE FAILURE AND ITS CONTROLS.
+						 *
+						 * The region caps itself and scrolls internally (see the region's own
+						 * note on `max-h`), so its children are ranked in the only way a capped
+						 * block can rank them: by what survives when they no longer all fit.
+						 * The order was the notice first, and that is wrong in the one
+						 * direction that costs a user something. Measured in the column the
+						 * canvas pane leaves at a 1440px window: 388px of content in a 120px
+						 * window, where the muted notice's seven wrapped lines filled the
+						 * window on their own and the sentence naming the file that failed -
+						 * and the remedy for it - began at offset 144, with not one line of it
+						 * visible short of finding the region's thin internal scrollbar
+						 * (design round 4, D12).
+						 *
+						 * So the failure, the state it is in and the controls that answer it
+						 * render first, and what the composer did with the refused draft
+						 * renders after them: the user's next action depends on the first and
+						 * not on the second. The cap is untouched - it is what keeps the
+						 * composer's top border and the send control on screen, measured at CSS
+						 * y=540 in every state at 892px - so the fix is the order and never the
+						 * height. `scripts/canonical-chat.test.mjs` pins the order;
+						 * `scripts/composer-alert-geometry.mjs` measures what it buys at the
+						 * narrowest reached width.
+						 */}
+						{!abandonNotice && refusedNotice && (
+							// Also muted, and for the same reason: the refusal's own alert
+							// above is the failure, and this line says what the composer did
+							// with the payload that failure left behind - including, when the
+							// halves part, which half is not in the draft.
+							<p className="text-ink-muted">{refusedNotice}</p>
+						)}
+						{!abandonNotice && !sendError && heldNotice && (
+							// Muted ink on purpose: the region as a whole is the danger
+							// register, and nothing has failed here - the box is one message
+							// ahead of the conversation, which is a fact about the wait.
+							<p className="text-ink-muted">{heldNotice}</p>
+						)}
 					</div>
 				)}
 				<div
@@ -1457,11 +2045,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * composer band did (round 2, R1). Keep every bound between here
 					 * and the band on the popup's SIBLINGS, never on its ancestors.
 					 */}
-					<SlashSuggestionsPopup
-						state={slash}
-						onPick={handleSlashPick}
-						anchorRef={textareaRef}
-					/>
+					<SlashSuggestionsPopup state={slash} onPick={handleSlashPick} />
 					{(replies.length > 0 || attachments.length > 0) && (
 						/*
 						 * The previews carry their own bound, on a SIBLING of the popup
@@ -1591,12 +2175,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							aria-label="Message"
 							role="combobox"
 							aria-expanded={slash.open}
-							aria-controls={slash.open ? slashListId : undefined}
-							aria-activedescendant={
-								slash.open && slash.matches[slash.active]
-									? `${slashListId}-${slash.matches[slash.active].name}`
-									: undefined
-							}
+							aria-controls={slash.open ? slash.listId : undefined}
+							aria-activedescendant={slash.activeDescendantId ?? undefined}
 						/>
 					)}
 
@@ -1770,12 +2350,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 */}
 								{cwdToShow !== undefined && (
 									<DirectoryIndicator
+										ref={cwdChipRef}
 										currentWorkingDirectory={cwdToShow}
-										onChangeDirectory={onChangeCwd}
+										writePath={cwdWritePath}
+										pending={cwdPending}
+										pendingAccepted={cwdPendingAccepted}
 										readOnlyReason={
-											onChangeCwd
+											cwdWritePath
 												? undefined
-												: "Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
+												: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
 										}
 									/>
 								)}
@@ -1917,20 +2500,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * what they are — examples, not the primary action. Raycast and
 						 * Linear's command palettes hold suggestions at exactly this
 						 * weight. */}
-						<div className="flex flex-wrap justify-center gap-2">
-							{suggestions.map((suggestion) => (
-								<Button
-									key={suggestion}
-									variant="outline"
-									size="sm"
-									className="h-auto max-w-full whitespace-normal break-words px-3 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"
-									onClick={() => handleSuggestionClick(suggestion)}
-									disabled={isInputDisabled || isRecording || isTranscribing}
-								>
-									{suggestion}
-								</Button>
-							))}
-						</div>
+						<MeasuredSuggestionStack
+							band={band}
+							splash={splash}
+							suggestions={suggestions}
+							disabled={isInputDisabled || isRecording || isTranscribing}
+							onSelect={handleSuggestionClick}
+							focusComposer={() => textareaRef.current?.focus()}
+						/>
 					</div>
 				)}
 			</form>
@@ -2028,6 +2605,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
 				data-lo-composer-band={true}
+				ref={setBand}
 			>
 				{/*
 				 * ONE wrapper at every state, and only its CLASSES change.
@@ -2050,8 +2628,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * what keeps this neutral - the band is a centred flex COLUMN, and a plain
 				 * unwidthed wrapper would shrink to its content instead of filling the column
 				 * the way `inputContent`'s own `w-full` did.
+				 *
+				 * The splash ref the suggestion cap measures sits on THIS element, which
+				 * is why the two halves compose rather than conflict: the prompt classes
+				 * are the splash wrapper's own, so the node the cap measures, its
+				 * geometry and its children are exactly what the ternary used to mount -
+				 * the same node, now surviving a column crossing instead of being
+				 * replaced by it. The cap's guard is unaffected: it also requires the
+				 * stack node, which only exists with the prompt, so a wrapper that is
+				 * non-null in every other state cannot arm the measurement.
 				 */}
 				<div
+					ref={setSplash}
 					className={cn(
 						showEmptyChatPrompt
 							? "flex w-full flex-col items-center justify-center gap-6 py-4"

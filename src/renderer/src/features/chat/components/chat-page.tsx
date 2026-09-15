@@ -18,12 +18,16 @@ import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
 	UNCONFIRMED_SEND_CODE,
+	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	draftIdentityFor,
 	isRefusedBeforeAdmission,
 	isSessionUnvalidated,
 	panelIdentityFor,
+	refusedBeforeAdmissionAttachments,
+	refusedBeforeAdmissionText,
 	useCanonicalSessionsStore,
+	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,8 +56,15 @@ import {
 	type DraftSelectionTarget,
 	draftPreviewQuery,
 } from "../draft-selection";
+import {
+	MOVE_NOT_READY_REASON,
+	MOVE_UNAVAILABLE_REASON,
+	sessionMoveEnabled,
+	useSessionMove,
+} from "../move-session";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
+import { unreadableAttachmentRefusal } from "../utils/attachment-read";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
 import { canvasDocumentForPath } from "../utils/canvas-document";
 import {
@@ -62,6 +73,7 @@ import {
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type MessageInputHandle,
 	composerHoldsFocusUntouched,
@@ -69,9 +81,11 @@ import {
 import {
 	deriveRunDetails,
 	mcpErrorTexts,
+	useMcpRemedy,
 	useRunPanelMcpServers,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 
@@ -120,6 +134,16 @@ const FILE_SCHEME = /^file:\/\//;
 
 async function encodeImageAttachments(attachments: string[], text: string) {
 	const images: WireImage[] = [];
+	/*
+	 * The paths this send identified as images but could NOT read.
+	 *
+	 * Returned rather than dropped, because a dropped one is a file the user
+	 * believes is in the message and is not - and on a draft restored from a
+	 * refusal that file is one they already sent once. The send refuses before
+	 * admission on a non-empty list (`unreadableAttachmentRefusal`), where the
+	 * chip is still removable (code review round 8, MINOR-1).
+	 */
+	const unreadable: string[] = [];
 	for (const attachment of attachments) {
 		const dataUrl = IMAGE_DATA_URL.exec(attachment);
 		if (dataUrl) {
@@ -131,22 +155,32 @@ async function encodeImageAttachments(attachments: string[], text: string) {
 		}
 		const ext = attachment.split(".").pop()?.toLowerCase() ?? "";
 		const mime = IMAGE_MIME_BY_EXT[ext];
+		// Two skips that are NOT this send's failure, so neither is reported here: a
+		// path that is not one of the four image types the runtime accepts is left
+		// out of the body by design, for every send; and a renderer with no
+		// `window.api.readFile` bridge cannot read any file at all, which is a fact
+		// about the context rather than about this attachment (`attachment-read.ts`
+		// states both limits where the sentence is built).
 		if (!mime || !window.api?.readFile) continue;
 		const read = await window.api.readFile(
 			attachment.replace(FILE_SCHEME, ""),
 			"base64",
 		);
 		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
+		else unreadable.push(attachment);
 	}
 	// Bound per image first, then check the TOTAL and step the whole set down
 	// until the message fits. Several individually legal screenshots that do not
 	// collectively fit is the common case, and it is not visible to a per-image
 	// rule.
-	return boundImagesForBudget(
-		images.slice(0, 8),
-		DESKTOP_MESSAGE_BUDGET_BYTES,
-		(candidate) => messageBodyBytes(text, candidate),
-	);
+	return {
+		images: await boundImagesForBudget(
+			images.slice(0, 8),
+			DESKTOP_MESSAGE_BUDGET_BYTES,
+			(candidate) => messageBodyBytes(text, candidate),
+		),
+		unreadable,
+	};
 }
 
 /** Each displayed identity owns its stream and composer. A candidate open is
@@ -354,30 +388,38 @@ function SessionPanel({
 	 * to someone already looking at that section — which is the failure the operator
 	 * reported, not the fix.
 	 */
-	const mcpServers = useRunPanelMcpServers({
-		sessionId,
-		/*
-		 * The accelerator (`§ 7.4`): a string that changes when the canonical
-		 * `mcp_servers` projection changes. It is a SIGNAL and never a rendering
-		 * source — the projection cannot build this section's row (no `tool_count`, no
-		 * `owned_scope`) and can be minutes stale on an idle session — so it only
-		 * invalidates the query when the backend PUBLISHES a transition, which is what
-		 * makes a startup settle or a reconnect land in about a frame rather than
-		 * within the next 15 s tick. `null` means "no canonical frontend", which
-		 * disables the read entirely: a legacy chat grows no trigger and therefore no
-		 * dot, so a poll there would be pure waste.
-		 */
-		accelerator: canonical.frontend
-			? JSON.stringify(canonical.frontend.mcp_servers ?? null)
-			: null,
-		/*
-		 * And the ONE field of that projection this pane renders: the runtime's own
-		 * failure text, which the rendered read does not carry at all (`§ 7.2`; round
-		 * 1, U1-8). `mcpErrorTexts` narrows it to the names that carry one, and the
-		 * derivation only ever uses it on a row the rendered read calls a problem.
-		 */
-		errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
-	});
+	const { servers: mcpServers, grantRunning: mcpGrantRunning } =
+		useRunPanelMcpServers({
+			sessionId,
+			/*
+			 * The accelerator (`§ 7.4`): a string that changes when the canonical
+			 * `mcp_servers` projection changes. It is a SIGNAL and never a rendering
+			 * source — the projection cannot build this section's row (no `tool_count`, no
+			 * `owned_scope`) and can be minutes stale on an idle session — so it only
+			 * invalidates the query when the backend PUBLISHES a transition, which is what
+			 * makes a startup settle or a reconnect land in about a frame rather than
+			 * within the next 15 s tick. `null` means "no canonical frontend", which
+			 * disables the read entirely: a legacy chat grows no trigger and therefore no
+			 * dot, so a poll there would be pure waste.
+			 */
+			accelerator: canonical.frontend
+				? JSON.stringify(canonical.frontend.mcp_servers ?? null)
+				: null,
+			/*
+			 * And the ONE field of that projection this pane renders: the runtime's own
+			 * failure text, which the rendered read does not carry at all (`§ 7.2`; round
+			 * 1, U1-8). `mcpErrorTexts` narrows it to the names that carry one, and the
+			 * derivation only ever uses it on a row the rendered read calls a problem.
+			 */
+			errors: mcpErrorTexts(canonical.frontend?.mcp_servers),
+		});
+	/*
+	 * The panel's MCP remedies, taken HERE for the same reason the list is: this is
+	 * the component that owns the session identity, and a press has to write the
+	 * operation's result into the one cache entry both the trigger and the section
+	 * read. The section receives them as props and stays presentational.
+	 */
+	const mcpRemedy = useMcpRemedy({ sessionId });
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
@@ -388,6 +430,75 @@ function SessionPanel({
 		capabilities.data,
 		"subagent_transcript",
 	);
+	/*
+	 * Moving a LIVE session's directory, which is the one composer control whose
+	 * write path is a lifecycle operation rather than a draft field.
+	 *
+	 * `canMove` is the whole gate and it is deliberately three questions rather
+	 * than one: a session must exist (a draft has its own staged-cwd write path),
+	 * the pane must not still be a draft (`draftKey` is the store's own answer to
+	 * "is this conversation created yet", and during admission the create is in
+	 * flight, so a move would race the directory it is creating), and the backend
+	 * must advertise the move CONTRACT this renderer implements - `session_move`
+	 * at 2 (the exclusivity fence) AND `frontend_replace` (the replacement frame a
+	 * move publishes to a viewer that is already mounted). `sessionMoveEnabled` is
+	 * that pair, stated once and shared with the hook and the typed `/move` form.
+	 *
+	 * Against a backend that advertises less, the chip keeps the read-only branch
+	 * it has always rendered. That is not merely politeness about a missing route:
+	 * the cold half of a move publishes its accepted directory ONLY through the
+	 * replacement frame, so a renderer that could not consume it would show the
+	 * old directory beside a receipt claiming the move landed.
+	 *
+	 * `useSessionMove` owns the optimistic value and the per-session latch behind
+	 * it; the chip reads `cwd` from here so that the value it PAINTS and the value
+	 * the stream reports can never disagree about which is in force (see the
+	 * hook's three rules).
+	 */
+	const canMove =
+		Boolean(sessionId) && !draftKey && sessionMoveEnabled(capabilities.data);
+	const live = useSessionMove({
+		sessionId,
+		canonical,
+		capabilities: capabilities.data,
+	});
+	/*
+	 * The chip's write path, which is one value because the two kinds answer
+	 * differently: a draft STAGES the directory `sessions.create` will use, and a
+	 * live session on a capable backend MOVES one, so what the chip may announce or
+	 * remember follows the receipt rather than a client-side guess
+	 * (`DirectoryWritePath`).
+	 */
+	const cwdWritePath: DirectoryWritePath | undefined = useMemo(
+		() =>
+			draftKey && !draft?.sessionId && !admitting
+				? { kind: "stage", commit: setCwd }
+				: canMove
+					? { kind: "move", commit: live.moveTo }
+					: undefined,
+		// `live.moveTo` is a stable callback (the chip's own callbacks key off this
+		// value, so rebuilding it per render would rebuild them per render).
+		[draftKey, draft?.sessionId, admitting, canMove, setCwd, live.moveTo],
+	);
+	/*
+	 * And the sentence for the case where there is none, PER CAUSE (agent review
+	 * m1).
+	 *
+	 * `MOVE_UNAVAILABLE_REASON` is about the backend, so it is only true where the
+	 * backend is the reason. The second case is a pane whose session is being
+	 * created: `draftKey` survives admission by design (the pane is keyed on the
+	 * session identity so it does not remount), and for that window a move would
+	 * race the very directory `sessions.create` is creating - so the chip is
+	 * read-only, but telling its user the backend cannot move a live session, that
+	 * they should start a new chat and that updating would help would be three
+	 * false statements at once.
+	 */
+	const cwdReadOnlyReason =
+		draftKey && (Boolean(draft?.sessionId) || admitting)
+			? MOVE_NOT_READY_REASON
+			: canMove
+				? undefined
+				: MOVE_UNAVAILABLE_REASON;
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		void useCanonicalSessionsStore
@@ -471,10 +582,10 @@ function SessionPanel({
 	 * ONE declaration for two readers, which is what the merge has to settle rather
 	 * than what either side wrote: `main` added this call for the draft-preview
 	 * readings below, and this branch added its own for the reader's capability
-	 * negotiation above. Both are the same hook on the same component, so the one
-	 * declaration higher up serves both — two would be a redeclaration, and biome
-	 * reads the earlier USE as a use-before-declaration (the rebase left exactly
-	 * that pair here, and `pnpm check-types` reported it as TS2451).
+	 * negotiation above. Both are the same hook on the same component, so the single
+	 * declaration BELOW this block serves both — two would be a redeclaration, and
+	 * biome reads the earlier USE as a use-before-declaration (the rebase left
+	 * exactly that pair here, and `pnpm check-types` reported it as TS2451).
 	 */
 	/*
 	 * The readings a NEW conversation WILL start with, resolved by the backend
@@ -571,30 +682,60 @@ function SessionPanel({
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
 	 */
-	const { dispatch, dispatchFromControl, picker, openDraftPicker } =
-		useSlashDispatch({
-			sessionId,
-			canonical,
-			rebind,
-			addMessage: (message) => canonical.addNote(message.message ?? ""),
-			focusComposer: () => input.current?.focusInput(),
-			/*
-			 * The pane's own selection, handed to the dispatcher only where a pick can
-			 * be honoured — and only once the preview has answered, because the
-			 * pickers read the selection the pane is showing rather than a second
-			 * resolution of their own.
-			 */
-			draftPicker:
-				draftPickable && draftIdentity && preview.data
-					? {
-							target: draftTarget,
-							select: (selection) =>
-								useCanonicalSessionsStore
-									.getState()
-									.setDraftModel(draftIdentity, selection),
-						}
-					: undefined,
-		});
+	const {
+		dispatch,
+		dispatchFromControl,
+		picker,
+		openDraftPicker,
+		note: slashNote,
+	} = useSlashDispatch({
+		sessionId,
+		canonical,
+		rebind,
+		addMessage: (message) => canonical.addNote(message.message ?? ""),
+		focusComposer: () => input.current?.focusInput(),
+		/*
+		 * Where a bare `/move` lands. The destination resolves in the composer's own
+		 * chip rather than in a dialog that hosted a copy of it - one control, one
+		 * write path, and no popper inside a dialog (design § 5.2, settled by the
+		 * measured menu clipping). Both this and `draftPicker` below are options on
+		 * ONE dispatcher: the rebase onto `main` kept main's draft-picker hook and
+		 * this branch's chip focus rather than choosing between them, because they
+		 * answer different commands.
+		 */
+		focusCwdChip: () => input.current?.openWorkingDirectoryMenu(),
+		moveSession: live.moveTo,
+		/*
+		 * Whether a move can be asked for AT ALL on this pane, which is the chip's own
+		 * readiness rather than the backend's (agent review round 2, R-3).
+		 *
+		 * `canMove` is the chip's whole gate: a session, not a draft, and the
+		 * capability pair. The typed `/move <path>` form and the bare form used to
+		 * consult only the capability, so in the admission window - `draftKey` still
+		 * set while `draft.sessionId` is already populated - the chip was read-only
+		 * and said "its working directory can be moved as soon as it is live" while
+		 * the typed form posted a move for the same session. One predicate, both
+		 * surfaces.
+		 */
+		moveReady: !draftKey,
+
+		/*
+		 * The pane's own selection, handed to the dispatcher only where a pick can
+		 * be honoured — and only once the preview has answered, because the
+		 * pickers read the selection the pane is showing rather than a second
+		 * resolution of their own.
+		 */
+		draftPicker:
+			draftPickable && draftIdentity && preview.data
+				? {
+						target: draftTarget,
+						select: (selection) =>
+							useCanonicalSessionsStore
+								.getState()
+								.setDraftModel(draftIdentity, selection),
+					}
+				: undefined,
+	});
 	useEffect(() => {
 		if (draftKey) input.current?.focusInput();
 	}, [draftKey]);
@@ -719,14 +860,17 @@ function SessionPanel({
 		setSendError(null);
 		setSendErrorCode(undefined);
 		try {
-			// Three outcomes, not two. `consumed` retires the draft the way a sent
-			// message does; `retained` means the line WAS a command and was refused
-			// before it ran, so the composer must keep the text - returning false
-			// here is what `use-message-input.ts:172` reads to leave it in place
-			// (round 2, Q-7). Only `not-a-command` falls through to the model path.
-			const dispatched = await dispatch(content);
-			if (dispatched === "consumed") return true;
-			if (dispatched === "retained") return false;
+			/*
+			 * No command check here, deliberately. The composer's planner already
+			 * decided what this draft submits — whole-draft command, spliced command,
+			 * prose — with the CARET in hand, and it runs every non-`send` verdict
+			 * itself (`message-input.tsx:applyPlan`). Asking again, here or anywhere
+			 * below, is the second decision this path used to make: a
+			 * `SLASH_SUBMISSION` test against the RAW text read the newline in
+			 * `/usage\nhello` as the command/argument separator, so line 1 claimed
+			 * line 2, the box was emptied on `consumed` and nothing reached the model
+			 * (QA round 2, Q4). Prose is prose: it goes to the model.
+			 */
 			if (!draftKey && !sessionId) return false;
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
@@ -761,7 +905,30 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const images = await encodeImageAttachments(attachments, content);
+			const { images, unreadable } = await encodeImageAttachments(
+				attachments,
+				content,
+			);
+			/*
+			 * An attachment the send could not read, reported before admission for the
+			 * same reason as the budget refusal below: the file is not in the message
+			 * the user thinks they are sending, and here the composer is still
+			 * editable so the chip can be re-attached or removed (round 8, MINOR-1).
+			 *
+			 * The CODE travels with it and is what the composer's alert reads: this
+			 * refusal cannot be answered by resending the same bytes, so the generic
+			 * "Send it again" hint must not sit under a sentence whose remedy is
+			 * "replace or remove the chip". Leaving the code unset would leave the hint
+			 * to whatever `draft.errorCode` the conversation was last holding, which is
+			 * how the same sentence was measured both with and without it (design
+			 * round 4, D13; the predicate is `withholdsRetryHint`).
+			 */
+			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			if (unreadableRefusal) {
+				setSendError(unreadableRefusal);
+				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
+				return false;
+			}
 			// Refuse BEFORE admission, where the sizes are still known and the
 			// composer is still editable. A refusal from the transport arrives after
 			// the draft has latched, so its "send it again" advice is then refused by
@@ -1243,13 +1410,36 @@ function SessionPanel({
 		draft?.admissionAttempted && !draft.pending
 			? draft.submittedText
 			: undefined;
+	/*
+	 * The text a PRE-ADMISSION refusal owes the box.
+	 *
+	 * Its own field rather than `heldText`, because the two are opposite answers
+	 * to opposite facts: `heldText` means the message may already be on the owner
+	 * and the box must stay empty, this one means it provably never left the
+	 * renderer and belongs back in the box. The composer puts this one back
+	 * (`refusedBeforeAdmissionText` carries the why); what matters here is that the
+	 * page cannot supply it from local state, because the refusal outlives the
+	 * composer that sent it - on the created-session arm the panel is remounted
+	 * under the id that very send minted, and the row is the only surviving copy
+	 * (UX round 3 U14, QA round 3 Q7).
+	 */
+	const refusedText = refusedBeforeAdmissionText(draft);
+	/*
+	 * The other half of the same payload, carried the same way and for the same
+	 * reason: the composer's chips live under the identity the send was made from,
+	 * so the composer that mounts after the flip cannot reconstruct the file list
+	 * the refused send was carrying. Restoring the text without it is a send that
+	 * silently drops the user's file, and the row that recorded it is retired by
+	 * the very resend that lost it (round 7, R17).
+	 */
+	const refusedAttachments = refusedBeforeAdmissionAttachments(draft);
 	const releaseHeld = () => {
 		if (draftIdentity)
 			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
 		clearError();
 	};
 	const composerSendError =
-		activeError || heldText !== undefined
+		activeError || heldText !== undefined || refusedText !== undefined
 			? {
 					message: activeError ?? undefined,
 					// The "what to do" half of the error contract travels with the
@@ -1257,14 +1447,16 @@ function SessionPanel({
 					// unreachable registry needs the agents page. Any other code has no
 					// specific remedy, so it offers none rather than a generic button.
 					/*
-					 * The read window's refusal carries its own "what to do" half, so the
-					 * composer's generic retry hint is withheld for it: the notice lives
-					 * exactly as long as the window does, and the window refuses the retry for
-					 * that same span, which makes "Send it again" an instruction to do the one
-					 * thing that cannot succeed yet (UX round 3, U9). The sentence states the
-					 * wait and its end instead.
+					 * The composer's generic retry hint is withheld for the refusals a resend
+					 * cannot answer, which is what `withholdsRetryHint` names. Both carry their
+					 * own "what to do" half instead: the read window's notice lives exactly as
+					 * long as the window does and the window refuses the retry for that same
+					 * span (UX round 3, U9), and the leading-slash policy refuses this text
+					 * forever (UX round 2, U13). The predicate rather than a call-site list of
+					 * codes, because a second place for that rule is a second place for it to
+					 * drift.
 					 */
-					withholdRetryHint: activeErrorCode === SESSION_UNVALIDATED_CODE,
+					withholdRetryHint: withholdsRetryHint(activeErrorCode),
 					actions:
 						// The unconfirmed-send guard's remedies are Restore and the abandon
 						// control, both rendered by the composer from `heldText`. It must
@@ -1276,11 +1468,11 @@ function SessionPanel({
 								? [
 										{
 											label: "Choose agent",
-											onClick: () => void dispatch("/agent"),
+											onClick: () => void dispatch({ name: "agent", args: "" }),
 										},
 										{
 											label: "Choose team",
-											onClick: () => void dispatch("/team"),
+											onClick: () => void dispatch({ name: "team", args: "" }),
 										},
 									]
 								: activeErrorCode === "profile_registry_unavailable"
@@ -1300,6 +1492,26 @@ function SessionPanel({
 					 * unchanged" from an instruction into a control.
 					 */
 					heldText,
+					/*
+					 * The payload a PRE-ADMISSION refusal owes the box, on the same grounds as
+					 * `heldText` above: the composer cannot reconstruct text it never kept, and
+					 * on the created-session arm it is not even the same composer any more.
+					 * The box rule that consumes it (`restoreSubmittedText`) only writes an
+					 * EMPTY box, so the user's own typing still wins.
+					 *
+					 * Carried independently of `message`, which is why the payload also exists
+					 * when `refusedText` is the only term: dismissing the alert clears the copy
+					 * and the code, and a dismissal must not be what makes a two-line message
+					 * unreachable again - the record ends when the draft does.
+					 */
+					refusedText,
+					/*
+					 * The files that go back with it. Same terms as `refusedText` above - the
+					 * composer's own chip row is per-identity and was staged under the identity
+					 * the flip replaced - and on the same refusal row, so the two arrive and are
+					 * dropped together.
+					 */
+					refusedAttachments,
 					onRestoreHeld:
 						heldText !== undefined ? () => clearError() : undefined,
 					/*
@@ -1389,7 +1601,7 @@ function SessionPanel({
 							className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
 							onClick={() => {
 								setOptions(false);
-								void dispatch(`/${command}`);
+								void dispatch({ name: command, args: "" });
 							}}
 						>
 							{command === "agent"
@@ -1427,11 +1639,38 @@ function SessionPanel({
 								 * the instant of the send - the constraint the designer set on
 								 * this fix, since a second line that disappears at that moment
 								 * is a reflow the reader watches happen.
+								 *
+								 * A THIRD state on the same slot: the send created its session
+								 * and the refusal then stopped it before admission, so a session
+								 * exists while nothing has been admitted into it. The instruction
+								 * is false there, and visibly so - the composer's own footer on
+								 * that very screen says the working directory is fixed BECAUSE
+								 * the session has started, one line below a header announcing
+								 * that it has not (UX round 4, U16), and the roster already
+								 * lists the session. So the head describes the conversation that
+								 * now exists, by its directory: the identity this header already
+								 * falls back to for a live chat, and the one the TUI names a
+								 * session by before it has a name (`cwd_label` - the terminal
+								 * never asserts that a session has not started, because there one
+								 * always has). The directory is also the exact thing the footer
+								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
 								? (loadedTarget ?? "Starting the session")
-								: "The session starts when you send your first message."
-							: canonical.frontend?.cwd || "Canonical chat")
+								: draft?.sessionId
+									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									: "The session starts when you send your first message."
+							: /*
+								 * LIVE: the value the chip paints, not `canonical.frontend?.cwd`.
+								 *
+								 * The header is the second surface a user reads to answer "where am I",
+								 * and while a move is in flight it is the chip that holds the pending
+								 * value; reading the canonical stream here made the two disagree for the
+								 * whole restart - the header on the old directory while the receipt in the
+								 * transcript said the session had moved (UX review U3). `live.cwd` is
+								 * `pending ?? stream`, so the two surfaces cannot disagree by construction.
+								 */
+								live.cwd || "Canonical chat")
 					}
 					descriptionPending={identityPending}
 					onOpenOptions={() => setOptions((value) => !value)}
@@ -1441,13 +1680,35 @@ function SessionPanel({
 					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to
-					 * `sessions.create`. Live: the directory the session actually runs
-					 * in, reported by the canonical stream. `onChangeCwd` is supplied
-					 * only in the first case, which is what makes the chip read-only
-					 * once the session exists - there is no backend route that moves a
-					 * live session, so an editable chip there would always fail.
+					 * `sessions.create`. Live: the directory the session actually runs in,
+					 * reported by the canonical stream - or, while a move is in flight, the
+					 * value that move is settling on (`live.cwd` reads
+					 * `pending ?? canonical.frontend?.cwd`).
+					 *
+					 * `cwdWritePath` is supplied in two cases, and the second one is the
+					 * point of the capability gate: a draft stages a directory, and a live
+					 * session on a backend that advertises `session_move` moves one. Every
+					 * other combination leaves the chip read-only with a reason, which is
+					 * what keeps a backend without the route inert rather than broken.
+					 *
+					 * `main` grew a draft-only `onChangeCwd` prop in parallel with this
+					 * branch's single `cwdWritePath` value; the rebase keeps ONE, and it is
+					 * this one, because it covers the draft case through its `stage` kind
+					 * (the same `setCwd` write) and the live case through `move`. Two props
+					 * for one write path is the defect the rebase would otherwise ship.
 					 */
-					cwd={draftKey ? cwd : canonical.frontend?.cwd}
+					/*
+					 * `live.cwd` rather than `canonical.frontend?.cwd`: it IS the stream's
+					 * directory with this session's in-flight move on top of it
+					 * (`pending.target ?? pending.path ?? streamCwd`), which is the whole
+					 * point of the chip - a value the backend has not confirmed yet has to
+					 * be paintable, or the user watches a move they made not happen. The
+					 * rebase onto `main` kept main's `sessionId` prop beside it; both are
+					 * wanted and neither subsumes the other.
+					 */
+					cwd={draftKey ? cwd : live.cwd}
+					cwdWritePath={cwdWritePath}
+					cwdReadOnlyReason={cwdReadOnlyReason}
 					/*
 					 * The session the code-memory panel reads, passed as the identity the
 					 * backend knows. It is NOT the same as `agentId` above, which is
@@ -1456,9 +1717,13 @@ function SessionPanel({
 					 * memory by draft key or by agent id is the bug this fixes.
 					 */
 					sessionId={sessionId}
-					onChangeCwd={
-						draftKey && !draft?.sessionId && !admitting ? setCwd : undefined
-					}
+					cwdPending={canMove && live.busy}
+					/*
+					 * Whether the backend has ACCEPTED the move in flight, so the chip's second
+					 * pending sentence is the receipt's arrival rather than a clock (UX review
+					 * round 2, U3). `live.accepted` is written only by `pendingAfterReceipt`.
+					 */
+					cwdPendingAccepted={canMove && live.accepted}
 					messages={[]}
 					isLoading={false}
 					isLoadingMessages={false}
@@ -1469,6 +1734,15 @@ function SessionPanel({
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={send}
+					/*
+					 * The SAME dispatcher the chips use, handed the planner's own answer (an
+					 * invocation, never the draft) with its outcome handed back: the composer
+					 * must know whether the command ran before deciding what the box holds
+					 * afterwards, and a failure must report through this path's own note
+					 * rather than a second copy of its sentence (round 2, Q-7's contract).
+					 */
+					onSlashCommand={dispatchFromControl}
+					onSlashNote={slashNote}
 					sendError={composerSendError}
 					/*
 					 * The session's readings, straight off the canonical stream, and
@@ -1504,7 +1778,8 @@ function SessionPanel({
 									 * does, so an unconsumed outcome has to be surfaced here
 									 * rather than dropped into a `void` (round 1, U2).
 									 */
-									onCommand: (line: string) => void dispatchFromControl(line),
+									onCommand: (invocation: SlashCommandInvocation) =>
+										void dispatchFromControl(invocation),
 									/*
 									 * The SAME query `EffortPicker` renders from, by the
 									 * same key, so React Query serves both from one cache
@@ -1561,6 +1836,8 @@ function SessionPanel({
 					 */
 					onComposerInput={warm}
 					mcpServers={mcpServers}
+					mcpGrantRunning={mcpGrantRunning}
+					mcpRemedy={mcpRemedy}
 					childrenOpenable={childrenOpenable}
 					pulses={canonical.subagentPulses}
 					canonical={{

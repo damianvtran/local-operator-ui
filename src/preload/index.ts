@@ -2,6 +2,12 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { BackendUpdateInfo } from "../main/update-service";
+import {
+	BACKEND_RECONNECT_CHANNEL,
+	BACKEND_STATUS_CHANNEL,
+	BACKEND_STATUS_EVENT,
+	type DaemonStatusSnapshot,
+} from "../shared/backend-status";
 import type {
 	DesktopMediaRequest,
 	DesktopRequest,
@@ -10,6 +16,7 @@ import type {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
 const api = {
@@ -189,6 +196,38 @@ const api = {
 	systemInfo: {
 		getAppVersion: () => ipcRenderer.invoke("get-app-version"),
 		getPlatformInfo: () => ipcRenderer.invoke("get-platform-info"),
+	},
+
+	/**
+	 * The server-status signal, answered by the MAIN process.
+	 *
+	 * The renderer used to read `/health` from its own document; from the
+	 * packaged app that is a `file://` origin, so a CORS decision (and, on a
+	 * claimed daemon, the origin allowlist) decided whether a live server looked
+	 * online. Main sends no Origin and holds the bearer, so it answers the
+	 * question the renderer actually has - and it is the only process that knows
+	 * whether the daemon it attached to is still the daemon it attached to.
+	 *
+	 * `getStatus` is the pull, `onStatusChange` the push; both carry the same
+	 * snapshot, so a window that opens between transitions is never stale.
+	 *
+	 * `reconnect` is the third verb, and it is the difference between a control
+	 * that retries and one that only re-reads: main owns the re-discovery timer,
+	 * so only main can be asked to try NOW.
+	 */
+	backend: {
+		getStatus: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_STATUS_CHANNEL),
+		reconnect: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_RECONNECT_CHANNEL),
+		onStatusChange: (callback: (snapshot: DaemonStatusSnapshot) => void) => {
+			const handler = (_event: unknown, snapshot: DaemonStatusSnapshot) =>
+				callback(snapshot);
+			ipcRenderer.on(BACKEND_STATUS_EVENT, handler);
+			return () => {
+				ipcRenderer.removeListener(BACKEND_STATUS_EVENT, handler);
+			};
+		},
 	},
 
 	// Add methods for auto-updater
@@ -447,9 +486,15 @@ const api = {
 			ipcRenderer.invoke("browser-revoke-hand-over", tabId),
 		respondToConsent: (
 			entryId: string,
-			decision: "once" | "site" | "domain" | "deny",
+			decision: "once" | "session" | "site" | "domain" | "deny",
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-consent-respond", entryId, decision),
+		revokeApproval: (origin: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-revoke-approval", origin),
+		revokeAllApprovals: (): Promise<unknown> =>
+			ipcRenderer.invoke("browser-revoke-all-approvals"),
+		forgetSite: (origin: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-forget-site", origin),
 		clearData: (what: "cookies" | "cache" | "everything"): Promise<unknown> =>
 			ipcRenderer.invoke("browser-clear-data", what),
 		onStateChanged: (callback: () => void): (() => void) => {
@@ -464,6 +509,21 @@ const api = {
 			ipcRenderer.on("browser-consent-changed", handler);
 			return () => {
 				ipcRenderer.removeListener("browser-consent-changed", handler);
+			};
+		},
+		/** A consent banner was clicked. Navigation only — it never raises the
+		 * window, because `window-raise.ts` is the only module that may. */
+		onConsentAttention: (
+			callback: (payload: { entryId: string }) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, payload: { entryId?: unknown }) => {
+				if (typeof payload?.entryId === "string") {
+					callback({ entryId: payload.entryId });
+				}
+			};
+			ipcRenderer.on("browser-consent-attention", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-consent-attention", handler);
 			};
 		},
 		onPopupBlocked: (
@@ -559,3 +619,16 @@ if (process.contextIsolated) {
 	// @ts-ignore (define in dts)
 	window.api = api;
 }
+
+/*
+ * The renderer dev driver, exposed only in an armed launch.
+ *
+ * Asked AFTER the app's own namespaces: it is a test surface, and a failure in
+ * it must never be able to take the real bridge down with it (the calls above
+ * are the app's; this one is a harness's). `installDevDriverBridge` answers
+ * false — and exposes nothing at all — when main was not asked for the driver,
+ * which is every normal launch. The decision lives in `src/main/dev-driver.ts`
+ * and is measured on a real boot by `node scripts/renderer-driver.mjs
+ * --gate-check`.
+ */
+installDevDriverBridge();

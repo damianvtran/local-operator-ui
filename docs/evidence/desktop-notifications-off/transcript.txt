@@ -1,0 +1,50 @@
+=== 1. the same call with the switch ABSENT (the pre-fix environment) ===
+$ env -u LOCAL_OPERATOR_NO_NOTIFICATIONS "$LO_PYTHON" "$LO_PROBE_SCRIPT"
+    osascript resolves to: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lo-notifications-off.9iCzSY/bin/osascript
+    LOCAL_OPERATOR_NO_NOTIFICATIONS=None
+    notifications_enabled()=True
+    osascript invocations for this call: 1
+    detached_notify() returned: True
+  osascript log:
+    -e display notification "Waiting for approval" with title "Scratch session"
+
+=== 1b. the same call with the switch PRESENT but EMPTY (the shape a stale export leaves) ===
+$ LOCAL_OPERATOR_NO_NOTIFICATIONS= "$LO_PYTHON" "$LO_PROBE_SCRIPT"
+    osascript resolves to: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lo-notifications-off.9iCzSY/bin/osascript
+    LOCAL_OPERATOR_NO_NOTIFICATIONS=''
+    notifications_enabled()=True
+    osascript invocations for this call: 1
+    detached_notify() returned: True
+  osascript log:
+    -e display notification "Waiting for approval" with title "Scratch session"
+    -e display notification "Waiting for approval" with title "Scratch session"
+
+=== 2. the same call through the suite's own runner (the fix) ===
+$ node scripts/run-desktop-tests.mjs "$SCRATCH/probe.test.mjs"
+desktop tests: 1 file, concurrency 4 (memory budget 0.9 GB of 3.9 GB available at 192 MB per worker; cpu share would allow 7)
+    osascript resolves to: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lo-notifications-off.9iCzSY/bin/osascript
+    LOCAL_OPERATOR_NO_NOTIFICATIONS='1'
+    notifications_enabled()=False
+    osascript invocations for this call: 0
+    detached_notify() returned: False
+    osascript resolves to: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lo-notifications-off.9iCzSY/bin/osascript
+    LOCAL_OPERATOR_NO_NOTIFICATIONS=None
+    notifications_enabled()=True
+    osascript invocations for this call: 1
+    detached_notify() returned: True
+✔ the suite's environment silences the backend's notification path (1266.576167ms)
+✔ and the same call banners once the switch is removed (the control) (1404.972666ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2770.986584
+
+=== 3. the osascript log, whole: every invocation this run recorded ===
+  lines 1 and 2 are case 1's and case 1b's banners; case 2's control is line 3; nothing else may appear
+     1	-e display notification "Waiting for approval" with title "Scratch session"
+     2	-e display notification "Waiting for approval" with title "Scratch session"
+     3	-e display notification "Waiting for approval" with title "Scratch session"

@@ -94,6 +94,7 @@ export type DesktopFeature =
 	| "draft_selection"
 	| "lifecycle"
 	| "mcp"
+	| "mcp_auth"
 	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
@@ -122,7 +123,36 @@ export type DesktopFeature =
 	 * verbatim, and when this app is old enough not to open the feed nothing on
 	 * the backend changes either. Neither skew can double-toast.
 	 */
-	| "desktop_feed";
+	| "desktop_feed"
+	/**
+	 * `sessions.move`: moving a LIVE session's working directory
+	 * (`POST /v1/desktop/sessions/{id}/working-directory`).
+	 *
+	 * Its OWN key rather than a bump of `commands` or `session_catalogue`, on the
+	 * rule `session_search` and `draft_preview` state above: an EXISTING surface
+	 * must keep working against a backend that lacks the new route. Here the
+	 * existing surface is the working-directory chip, which is exactly what a
+	 * renderer that sees no `session_move` keeps rendering - read-only, with a
+	 * sentence that says why. Bumping `commands` would be the wrong lever twice
+	 * over: a client renders the command palette perfectly well without this
+	 * route, and `/move`'s presentation already exists on older backends (it
+	 * answers its `native_action` today), so the chip is the only surface this
+	 * negotiation actually protects.
+	 */
+	| "session_move"
+	/**
+	 * `frontend.replace`: the desktop-only replacement frame that carries an
+	 * accepted move's directory to an already-mounted viewer.
+	 *
+	 * Its OWN key, and it must gate INDEPENDENTLY of `session_move`, because the
+	 * two are independently useful: a backend can accept a move (so the route
+	 * works) while a viewer that cannot repaint is mounted next to it, and a move
+	 * whose accepted directory no mounted viewer can render is exactly the
+	 * stale-paint defect the frame exists to fix. The move controls therefore
+	 * require `session_move >= 2` AND `frontend_replace >= 1` - see
+	 * `sessionMoveEnabled`, which is the ONE place that pair is written down.
+	 */
+	| "frontend_replace";
 
 /**
  * Resolve whether a negotiated feature surface may be offered.

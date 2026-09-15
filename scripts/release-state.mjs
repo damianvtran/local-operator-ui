@@ -39,13 +39,36 @@
  * SHA that tag must resolve to -- so they can only edit the release they were
  * triggered for.
  *
+ * The release-writeup gate, and why its ORDER matters as much as its answer.
+ * `open` also reads the Release's body, because the notes on a release this
+ * repository cuts are hand-written from `.github/RELEASE_TEMPLATE.md` and a
+ * body GitHub drafted for us (`## What's Changed`, or nothing at all) is the
+ * shape that rule forbids. The refusal is a hard one -- the run stops before
+ * anything is built OR published, because every job that can ship something (the
+ * npm publish, the three installers, the promote) declares the window job as a
+ * dependency rather than gating on `validate-release` alone -- and it is
+ * deliberately made AFTER the hold, not before it. A full Release with a body the gate refuses must already be out of
+ * `/releases/latest` when the run dies; refusing first would leave an
+ * asset-less Release at the head of the feed, which is the outage class this
+ * whole script exists to prevent (see the window note above). So the order is:
+ * hold, then judge the writeup. It applies to the release path only: a repair
+ * must never be blocked by the body of an old Release, so the gate stands down
+ * with the rest of the mutations when IS_MANUAL_DISPATCH is set.
+ *
+ * Recovery from a refused writeup is a body edit plus a re-run of the failed
+ * run, and nothing else: `gh run rerun` replays the release event and this
+ * script re-reads the Release, so a corrected body passes on the same commit.
+ * A fix to this file's own code is NOT picked up that way -- a re-run replays
+ * the event against the workflow version it ran with -- so a code fix needs a
+ * new event, not a re-run.
+ *
  * The flip does not re-trigger this workflow. publish.yml subscribes to
  * `release: published`, which fires when a release or pre-release is published;
  * a pre-release flag edit surfaces as `edited` and a pre-release converted into
  * a release as `released`, and neither is in `on:`.
  */
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 import {
 	PLATFORM_INSTALLERS,
 	PLATFORM_UPDATE_METADATA,
@@ -278,12 +301,98 @@ function pinnedRelease(api, tag, expectedSha, expectedReleaseId) {
 }
 
 /**
+ * GitHub's own draft heading.
+ *
+ * Pinned to the bare heading rather than to "the body looks generated": the
+ * Templates API writes `## What's Changed` and nothing else on this repository's
+ * releases, and a fuzzy rule here would refuse a hand-written body that happens to
+ * quote a commit subject or link a PR. A gate that blocks a legitimate release is
+ * worse than the draft it was aimed at.
+ */
+const GENERATED_NOTES_RE = /^## What's Changed\s*$/m;
+
+/**
+ * The two things every hand-written body in this repository carries.
+ *
+ * The heading match is case-insensitive on purpose. It is pinned to the heading
+ * LINE rather than loosened into prose matching - the shape being checked is
+ * "somebody wrote a What's New section" - but the case is not part of that shape:
+ * six of this repository's own recent hand-written releases (v0.23.1 through
+ * v0.24.0) announce themselves under `## What's new`, and a case-sensitive match
+ * annotated six perfectly good writeups for a lower-case letter. An annotation
+ * cannot block a release, which is exactly why it must not cry wolf either.
+ */
+const TEMPLATE_NEW_HEADING_RE = /^## What's new\s*$/im;
+const COMPARE_LINK_RE = /Full Changelog/;
+
+/**
+ * What a Release body says about whether a person wrote it.
+ *
+ * Pure, so it is unit-testable without a forge and so its answer cannot depend on
+ * a second read of the Release: `open` already holds the object this reads. Both
+ * fields are always present, so a caller cannot read `warnings` on one branch and
+ * find it undefined on another: `refusal` is `null` or the reason a release must
+ * not be published, and `warnings` is empty or the annotations to print.
+ *
+ * Two verdicts, deliberately different in kind:
+ *
+ *  - `refusal` is fatal and names a body that is NOT a writeup at all - GitHub's
+ *    generated draft, or nothing (absent and whitespace-only alike). Both are the
+ *    shapes that mean nobody wrote the notes the release is announced with, and
+ *    both are recoverable without a re-release: fix the body, re-run the failed
+ *    run.
+ *  - `warnings` are the shape check that cannot be fatal. A body carrying neither
+ *    of the template's shapes is unusual, but it is still somebody's prose, and
+ *    refusing it would make this gate a style police that blocks releases. It is
+ *    emitted as an annotation so the run page says so either way.
+ */
+export function releaseNotesVerdict(body) {
+	const text = typeof body === "string" ? body.trim() : "";
+	if (text === "")
+		return {
+			refusal:
+				"the Release body is empty, so the notes nobody wrote are the notes this release would ship with",
+			warnings: [],
+		};
+	if (GENERATED_NOTES_RE.test(text))
+		return {
+			refusal:
+				"the Release body is GitHub's generated-notes draft (`## What's Changed`), which is refused by rule: write the notes by hand from .github/RELEASE_TEMPLATE.md",
+			warnings: [],
+		};
+	const warnings = [];
+	// The conjunction, not either half: a body carrying one of the template's shapes
+	// is still somebody's writeup with a heading missing, and the annotation exists to
+	// point at a body that looks like it was never written from the template at all.
+	if (!TEMPLATE_NEW_HEADING_RE.test(text) && !COMPARE_LINK_RE.test(text))
+		warnings.push(
+			"the Release body has neither a `## What's New` heading nor a `Full Changelog` compare link; see .github/RELEASE_TEMPLATE.md for the shape every release here is announced with",
+		);
+	return { refusal: null, warnings };
+}
+
+/** Apply the verdict above: annotations for what is wrong, a refusal for what is not a writeup. */
+function assertReleaseNotes(tag, body) {
+	const { refusal, warnings } = releaseNotesVerdict(body);
+	for (const warning of warnings)
+		console.log(`::warning title=Release notes look incomplete::${tag}: ${warning}`);
+	if (refusal) throw new ValidationError(`Refusing to publish ${tag}: ${refusal}`);
+}
+
+/**
  * Close the window: take a release that cannot be offered yet out of
  * `/releases/latest`.
  *
  * No-op when the release already carries its assets -- a complete release is
  * never hidden, which is what makes a duplicate or re-run event harmless -- and
  * no-op when it is already a pre-release.
+ *
+ * The writeup gate runs here too, after the hold and before the return, so a run
+ * that is about to build installers is the run that checks the notes they will be
+ * announced with. A complete release is exempt, deliberately: it is a re-run of a
+ * release that has already been offered and nothing is being published by it, so
+ * refusing one would fail a green re-run over prose while changing nothing a user
+ * sees. See the header for why the gate cannot run before the hold.
  *
  * There is deliberately no recency gate here, unlike the promote: holding back a
  * release that is not the newest can only remove an offer that could not be
@@ -316,16 +425,21 @@ export function openReleaseWindow({
 		);
 		return { action: "skipped", reason: "release is already asset-complete" };
 	}
-	if (release.prerelease) {
+	if (release.prerelease)
 		console.log(
 			`Release ${tag} (id ${release.release_id}) is already a pre-release; still building (${missing.join(", ")}).`,
 		);
-		return { action: "skipped", reason: "already a pre-release" };
+	else {
+		// FIRST the hold, THEN the writeup gate below. Reversing these two would fail
+		// the run while the release is still in `/releases/latest` with no assets.
+		setFlag(release.release_id, { prerelease: true });
+		console.log(
+			`Release ${tag} (id ${release.release_id}) held as a pre-release until it is asset-complete; missing: ${missing.join(", ")}.`,
+		);
 	}
-	setFlag(release.release_id, { prerelease: true });
-	console.log(
-		`Release ${tag} (id ${release.release_id}) held as a pre-release until it is asset-complete; missing: ${missing.join(", ")}.`,
-	);
+	assertReleaseNotes(tag, release.body);
+	if (release.prerelease)
+		return { action: "skipped", reason: "already a pre-release" };
 	return { action: "held", release_id: release.release_id, missing };
 }
 
@@ -401,10 +515,7 @@ const MODES = {
 	finalize: finalizeRelease,
 };
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	const mode = process.argv[2];
 	try {
 		if (!Object.hasOwn(MODES, mode))

@@ -10,6 +10,8 @@ import fs from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import electronLog, { type ElectronLog } from "electron-log";
+import { launchEnv } from "./launch-env";
+import { LOG_DIR_ENV, logDirOverride } from "./log-dir";
 
 /**
  * Log file types
@@ -31,29 +33,47 @@ export class Logger {
 	private loggers: Map<LogFileType, ElectronLog>;
 
 	/**
-	 * Private constructor to enforce singleton pattern
+	 * The app's own log directory, unchanged: the platform's user-level location
+	 * for this app's data. Split out of the constructor so that the launch's
+	 * override (`LOG_DIR_ENV`, see `./log-dir`) is the ONE thing that can move it,
+	 * and so the path is composed the same way whichever branch the platform takes.
 	 */
-	private constructor() {
-		// Set up log path based on platform
+	private static defaultLogPath(): string {
 		if (process.platform === "win32") {
-			this.logPath = join(app.getPath("userData"), "logs");
-		} else if (process.platform === "darwin") {
-			this.logPath = join(
+			return join(app.getPath("userData"), "logs");
+		}
+		if (process.platform === "darwin") {
+			return join(
 				app.getPath("home"),
 				"Library",
 				"Application Support",
 				"Local Operator",
 				"logs",
 			);
-		} else {
-			// Linux
-			this.logPath = join(
-				app.getPath("home"),
-				".config",
-				"local-operator",
-				"logs",
-			);
 		}
+		// Linux
+		return join(app.getPath("home"), ".config", "local-operator", "logs");
+	}
+
+	/**
+	 * Private constructor to enforce singleton pattern
+	 */
+	private constructor() {
+		// A directory the launch asked for wins; otherwise this is the path the app
+		// has always used. An agent or QA run sets the override so that its lines do
+		// not land in the operator's own log files — see `./log-dir` for why the
+		// scratch HOME cannot do it.
+		//
+		// Read from `launchEnv` (the pre-dotenv snapshot of how this process was
+		// LAUNCHED) rather than from `process.env`, and not only because every other
+		// launch fact is resolved that way: `process.env` here happened to be
+		// pre-fold because this module is evaluated before `backend/config.ts`'s
+		// dotenv call, so a cwd `.env` could not move the log directory today but a
+		// later refactor to a lazy `getInstance()` would have let it — and the read
+		// that decides where logs land is the one thing standing between a harness
+		// run and the operator's own log files.
+		this.logPath =
+			logDirOverride(launchEnv[LOG_DIR_ENV]) ?? Logger.defaultLogPath();
 
 		// Ensure log directory exists
 		if (!fs.existsSync(this.logPath)) {
