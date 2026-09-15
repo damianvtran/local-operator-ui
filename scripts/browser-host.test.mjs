@@ -2722,3 +2722,116 @@ test("owner_* without a proof is refused with the extension's own answer", async
 	);
 	assert.deepEqual(recovered, { ownership_version: 1, state: "unresolved" });
 });
+
+/**
+ * The body of the first function whose declaration contains `signature`.
+ *
+ * Brace matching rather than a regex because this file asserts about SCOPE: the
+ * question is which function a call sits inside, and a regex cannot ask that.
+ */
+function functionBody(source, signature) {
+	const start = source.indexOf(signature);
+	assert.notEqual(start, -1, `${signature} is gone from src/main/index.ts`);
+	const open = source.indexOf("{", start);
+	let depth = 0;
+	for (let index = open; index < source.length; index += 1) {
+		const character = source[index];
+		if (character === "{") depth += 1;
+		else if (character === "}") {
+			depth -= 1;
+			if (depth === 0) return source.slice(open, index + 1);
+		}
+	}
+	throw new Error(`unbalanced braces after ${signature}`);
+}
+
+test("the browser host is attached inside the window factory, so every creation path gets it", () => {
+	/*
+	 * REVIEW ROUND 2, R2-2; STRENGTHENED IN ROUND 3, R3-5.
+	 *
+	 * The browser host used to be started at two call sites — the initial launch
+	 * and the dock `activate` — while the click/viewer/second-instance path in
+	 * `openSessionInWindow` created a window and started nothing. After the last
+	 * window closed, a notification click therefore recreated chat with the
+	 * browser capability silently missing, and activating the now-existing window
+	 * could not repair it because the dock handler is gated on zero windows.
+	 *
+	 * Round 2 attached it in `setupMainWindowWithUpdateService`, which is where
+	 * the two callers happened to converge — but round 3's review found that a
+	 * chat window constructed any other way still would have passed this test,
+	 * because the assertion was about the setup function's body rather than about
+	 * the window. The host is now attached where the window is BUILT, so the
+	 * property is "every window this file creates gets a host" rather than
+	 * "whoever builds a window is expected to remember".
+	 *
+	 * A source assertion, deliberately: `index.ts` is the Electron entry point and
+	 * boots the app, which this suite must never do (its own module docstring's
+	 * rule). What it still cannot prove is that a real window comes up with a
+	 * working host — that is the native lifecycle evidence, and this records the
+	 * shape the code must keep for it.
+	 */
+	const source = readFileSync(new URL("../src/main/index.ts", import.meta.url), "utf8");
+
+	const createCalls = source.match(/=\s*createWindow\(/g) ?? [];
+	assert.equal(
+		createCalls.length,
+		1,
+		`${createCalls.length} window-creation call sites; every one must go through the factory so the host is attached`,
+	);
+
+	/*
+	 * COUNT THE CONSTRUCTION, NOT THE CALL SHAPE (review round 4, R4-4). The
+	 * assertion above counts assignment-shaped calls to the factory, so a second
+	 * window built with `new BrowserWindow(...)` somewhere else would satisfy it
+	 * AND the factory assertion below — and ship exactly the R2-2 defect this
+	 * test exists to catch, because that window would have no host. Every
+	 * construction in this file is asserted to be the factory's own.
+	 */
+	const constructions = source.match(/new BrowserWindow\(/g) ?? [];
+	assert.equal(
+		constructions.length,
+		1,
+		`${constructions.length} windows are constructed in this file; a window built outside the factory would have no browser host`,
+	);
+	assert.match(
+		functionBody(source, "function createWindow("),
+		/new BrowserWindow\(/,
+		"the factory no longer constructs the window, so the one construction above belongs to something else",
+	);
+
+	const factory = functionBody(source, "function createWindow(");
+	assert.match(
+		factory,
+		/attachBrowserHostToWindow\?\.\(/,
+		"the window factory no longer attaches the browser host — a window built by it has no browser capability",
+	);
+
+	// The seam itself has to be ASSIGNED, and assigned inside the ready path: the
+	// host's state (version, userData path, renderer URL) only exists there, and a
+	// pointer left null would attach nothing while this file's factory assertion
+	// above still passed.
+	assert.match(
+		source,
+		/attachBrowserHostToWindow = \(window\) => \{\s*\n\s*void startBrowserHostForWindow\(window\);/,
+		"the browser host seam is never assigned, so the factory's attach calls nothing",
+	);
+
+	// The setup must NOT attach: that is the shape round 2 had, and it is what let
+	// a differently-built window through. Asserted in the negative so a later
+	// re-introduction of the old arrangement fails here.
+	const setup = functionBody(source, "function setupMainWindowWithUpdateService(");
+	assert.doesNotMatch(
+		setup,
+		/startBrowserHostForWindow\(/,
+		"the shared setup attaches the host again; the attach belongs to the window factory, not to one caller of it",
+	);
+
+	// ONE invocation and one declaration: a second invocation elsewhere is the
+	// duplicate registration #160 warned about.
+	const hostUses = source.match(/startBrowserHostForWindow\(/g) ?? [];
+	assert.equal(
+		hostUses.length,
+		2,
+		"expected the declaration plus exactly one call site, the seam assignment in the ready path",
+	);
+});

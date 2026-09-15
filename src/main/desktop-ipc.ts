@@ -97,6 +97,7 @@ export function registerDesktopIPC(
 		bytes: Uint8Array<ArrayBuffer> | null,
 	) => Promise<DesktopMediaResponse>,
 	notifier?: DesktopNotifier,
+	noteLeftSession?: (sessionId: string) => void,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -167,6 +168,40 @@ export function registerDesktopIPC(
 				visible: args.visible,
 				focused: args.focused,
 			});
+		});
+		/*
+		 * The renderer's pane has LEFT this conversation (review round 2, R2-4).
+		 *
+		 * A withdrawal, not a lease: the pane's watch stopped and its stream was
+		 * unsubscribed, but the window is still open, so nothing else would ever
+		 * clear the state that says this conversation is on screen. Checked as a
+		 * SHAPE for the same reason the heartbeat is — this is the second entry point
+		 * to the map the machine-wide presence reads.
+		 *
+		 * No round trip to the backend: the presence the backend sees is published by
+		 * main's own feed beat, which reads this map, so clearing it here is enough
+		 * and it cannot fail on a backend that is down (which is exactly when a pane
+		 * navigates away to the catalogue).
+		 */
+		ipcMain.handle("desktop-watch-release", (event, input: unknown) => {
+			authorize(event);
+			const args = input as { sessionId?: unknown };
+			if (typeof args?.sessionId !== "string") {
+				throw new Error("Invalid watch release.");
+			}
+			notifier.releaseWatch(event.sender.id, args.sessionId);
+			/*
+			 * ...AND THE ROUTING RECORD, not only the presence (QA round 2, Q1).
+			 * The presence map answers "may a banner interrupt this window"; the
+			 * viewer record answers "which conversation should a click land on", and
+			 * the withdrawal above only cleared the first. A click after navigating
+			 * away from A was therefore answered with a raise: the record still named
+			 * A, the backend read that as "already displayed", skipped
+			 * `resume_session`, and reported success, so no later rung corrected it.
+			 * Identity-safe and empty-id-safe on the record's side, so the deeper
+			 * pane's report survives this cleanup.
+			 */
+			noteLeftSession?.(args.sessionId);
 		});
 	}
 	// Binary/multipart media relay. Bytes arrive as a structured-clone
