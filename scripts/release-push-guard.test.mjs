@@ -23,7 +23,13 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	lstatSync,
+	mkdtempSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -301,12 +307,22 @@ test("an empty commit is not a release commit: the content behind it still relea
 		// is still owed a release, and a guard that read an empty diff as "the release
 		// commit" would stall it.
 		//
-		// The empty landing is asserted rather than assumed, because a guard that
-		// never read one (`previous` null) answers identically here and would pass
-		// this test for the wrong reason.
-		assert.notEqual(verdict(dir).previous, null);
-		assert.equal(git("diff", "--name-only", "HEAD^", "HEAD").trim(), "");
+		// The empty landing is asserted rather than assumed, and asserted on the reading
+		// the VERDICT was decided from (`landed`, which `main()` reads once and both
+		// passes to `pushVerdict` and prints), against git's own answer for the same
+		// range. What that does and does not catch is worth stating rather than
+		// implying: a guard that dropped the landing reading fails here, while a guard
+		// that dropped it from the verdict alone answers IDENTICALLY in this scenario —
+		// "content with an empty landing" and "content with no landing read at all"
+		// are the same verdict — so that mutation is caught instead by the tests where
+		// the shape does depend on the reading, which are the three release-commit ones
+		// (the two shapes above and the documented limit: with the reading dropped, a
+		// release commit reads as content). This line used to assert `previous != null`,
+		// a different reading that could never fail for the reason its comment claimed.
 		const result = verdict(dir);
+		assert.notEqual(result.landed, null);
+		assert.deepEqual(result.landed.files, []);
+		assert.equal(git("diff", "--name-only", "HEAD^", "HEAD").trim(), "");
 		assert.notEqual(result.shape, "release-commit");
 		assert.equal(result.shape, "content");
 		assert.equal(result.skip, false);
@@ -318,9 +334,14 @@ test("an empty commit with nothing unreleased behind it has nothing to release",
 		// The released tree itself, plus a commit that lands nothing: the push is
 		// empty on both readings and no version may be derived from it.
 		git("commit", "--quiet", "--allow-empty", "-m", "ci: an empty housekeeping commit");
-		assert.notEqual(verdict(dir).previous, null);
-		assert.equal(git("diff", "--name-only", "HEAD^", "HEAD").trim(), "");
 		const result = verdict(dir);
+		// The same reading, on the other side of the same question: the landing is
+		// present AND empty, which is what makes "nothing unreleased" and "nothing
+		// landed" two facts rather than one (see the note on the test above for what
+		// this can and cannot catch).
+		assert.notEqual(result.landed, null);
+		assert.deepEqual(result.landed.files, []);
+		assert.equal(git("diff", "--name-only", "HEAD^", "HEAD").trim(), "");
 		assert.equal(result.skip, true);
 		assert.equal(result.shape, "nothing-unreleased");
 		// Named, not merely implied by the skip: an empty landing must never be read
@@ -341,7 +362,14 @@ test("the guard runs when it is reached through a symlinked path", () => {
 		// the guard.
 		const link = join(dir, "linked-scripts");
 		symlinkSync(dirname(GUARD), link);
-		assert.notEqual(link, dirname(GUARD));
+		// Asserted, not assumed, and assertable: the whole point of this invocation is
+		// that the path the process is HANDED is not the physical one, and the symlink
+		// is what makes it so. Replacing `symlinkSync` with a copy of the directory
+		// would leave every assertion below passing while exercising nothing, so the
+		// link itself is checked. This replaces `assert.notEqual(link, dirname(GUARD))`,
+		// which compared two constants that could never be equal and so could never
+		// fail.
+		assert.equal(lstatSync(link).isSymbolicLink(), true);
 		const out = execFileSync(
 			process.execPath,
 			[

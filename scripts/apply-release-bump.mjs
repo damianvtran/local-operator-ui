@@ -20,7 +20,7 @@
  * before anything is committed, rather than trusted to a later `git diff`.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 /** The version line, quoted-only: an unquoted `version` key is not JSON and is
  * not a shape this file ever wrote. */
@@ -116,9 +116,6 @@ function main() {
 	}
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	main();
 }

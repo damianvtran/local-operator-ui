@@ -137,7 +137,7 @@ test("this workflow's own release commit is not a release input", () => {
  * only property is the answer under test, and a stub derivation that records
  * whether it was called at all.
  */
-function runDeriveStep({ skip, guardScript }) {
+function runDeriveStep({ skip, guardScript, derivationScript }) {
 	const dir = mkdtempSync(join(tmpdir(), "auto-release-step-"));
 	mkdirSync(join(dir, "scripts"), { recursive: true });
 	const derived = join(dir, "derivation-ran");
@@ -148,7 +148,8 @@ function runDeriveStep({ skip, guardScript }) {
 	);
 	writeFileSync(
 		join(dir, "scripts", "derive-release.mjs"),
-		`import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(derived)}, "ran");\nconsole.log(JSON.stringify({ release: true, version: "9.9.9", bump: "minor", windowBase: "v0.24.0", reason: "stubbed derivation", notes: "# stubbed", unclassified: [] }));\n`,
+		derivationScript ??
+			`import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(derived)}, "ran");\nconsole.log(JSON.stringify({ release: true, version: "9.9.9", bump: "minor", windowBase: "v0.24.0", reason: "stubbed derivation", notes: "# stubbed", unclassified: [] }));\n`,
 	);
 	const output = join(dir, "github-output");
 	const summary = join(dir, "github-summary");
@@ -232,6 +233,132 @@ test("a guard that emits malformed JSON is refused as well", () => {
 	assert.doesNotMatch(run.output, /^release=true$/m);
 });
 
+/**
+ * The other half of the same defect, one command later: the DERIVATION's own
+ * document.
+ *
+ * `release-push-guard.mjs` was the only script in this step that resolved its own
+ * path physically; `derive-release.mjs` — the next command in this very block —
+ * did not, so reaching it through a symlinked directory printed NOTHING and exited
+ * 0. The step then read the empty file as `release != true`, wrote `### No release`
+ * with an empty reason and exited 0 successfully: a push carrying content silently
+ * skipped behind a green run. The scripts now resolve their own path
+ * (`scripts/entry-point.mjs`), which removes that cause; these two tests pin the
+ * step's side of it, because an empty or truncated document is a shape a fixed
+ * script can still produce and a consumer must never read as an answer.
+ */
+test("a derivation that leaves no answer stops the run instead of reporting no release", () => {
+	// An EMPTY module: valid JavaScript, exits 0, prints nothing. That is the exact
+	// signature the symlinked invocation produced — and, as the round-3 review noted
+	// of a similar stub, a stub that crashed would fail this step for the wrong
+	// reason and prove nothing about the refusal.
+	const run = runDeriveStep({ skip: false, derivationScript: "" });
+	assert.notEqual(run.status, 0, "the step must fail, not report a release");
+	assert.doesNotMatch(run.output, /^release=false$/m);
+	assert.doesNotMatch(run.output, /^release=true$/m);
+	assert.doesNotMatch(run.summary, /### No release/);
+});
+
+test("a derivation whose release flag is a STRING is refused, not read as a release", () => {
+	// `jq` parses this, so `set -e` does not catch it: `jq -r .release` prints
+	// `true`, the step's `[ "$release" != true ]` compares a string against the word
+	// and agrees, and the run then publishes `version=null` — a release derived from
+	// nothing, which is the direction that spends a version. The shape check is what
+	// refuses it, and this test fails without one.
+	const run = runDeriveStep({
+		skip: false,
+		derivationScript: `process.stdout.write(JSON.stringify({ release: "true", reason: "stringly typed", version: null, bump: null, windowBase: null, notes: "", unclassified: [] }));\n`,
+	});
+	assert.notEqual(run.status, 0, "the step must fail, not announce a release");
+	assert.doesNotMatch(run.output, /^release=true$/m);
+	assert.doesNotMatch(run.summary, /### Derivation/);
+});
+
+test("a derivation that emits malformed JSON is refused as well", () => {
+	// Truncated mid-document and exiting 0. This shape is refused by `jq`'s own exit
+	// status under `set -e` and would be refused with the shape check removed too,
+	// which is stated rather than implied: what the check adds here is the message a
+	// reader acts on. It stays because the property is about the STEP, and a step
+	// that ever wrapped this read in `|| true` would fall through to the same silent
+	// "no release" — which is exactly what this test would catch.
+	const run = runDeriveStep({
+		skip: false,
+		derivationScript: `process.stdout.write('{"release": fal');\n`,
+	});
+	assert.notEqual(run.status, 0, "the step must fail, not report a release");
+	assert.doesNotMatch(run.output, /^release=false$/m);
+	assert.doesNotMatch(run.summary, /### No release/);
+});
+
+/**
+ * The release job's re-derivation step, executed as the runner executes it with a
+ * stub `derive-release.mjs`, so what is under test is the YAML's own reads — the
+ * derivation has its own suite.
+ */
+function runRederiveStep({ derivationScript }) {
+	const dir = mkdtempSync(join(tmpdir(), "auto-release-rederive-"));
+	mkdirSync(join(dir, "scripts"), { recursive: true });
+	writeFileSync(
+		join(dir, "scripts", "derive-release.mjs"),
+		derivationScript ??
+			`console.log(JSON.stringify({ release: true, version: "9.9.9", bump: "minor", windowBase: "v0.24.0", reason: "stubbed derivation", notes: "# stubbed", unclassified: [] }));\n`,
+	);
+	const output = join(dir, "github-output");
+	writeFileSync(output, "");
+	let status = 0;
+	let stdout = "";
+	try {
+		stdout = execFileSync(
+			"bash",
+			["-c", runStep(autoRelease, "release", "node scripts/derive-release.mjs")],
+			{
+				cwd: dir,
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "pipe"],
+				env: {
+					...process.env,
+					GITHUB_OUTPUT: output,
+					BASE: "v0.24.0",
+					EXPECTED_VERSION: "9.9.9",
+					GH_TOKEN: "stubbed",
+				},
+			},
+		);
+	} catch (error) {
+		status = error.status;
+		// A step's `::error` line is echoed to STDOUT, which is where the runner
+		// reads it from; capturing it from stderr would assert on nothing.
+		stdout = error.stdout ?? "";
+	}
+	const result = {
+		status,
+		stdout,
+		notesWritten: existsSync(join(dir, "release-notes.md")),
+	};
+	rmSync(dir, { recursive: true, force: true });
+	return result;
+}
+
+test("a re-derivation that leaves no answer names that, not a repository that moved", () => {
+	// This step already refused an empty document, but it did so through the version
+	// comparison and told the reader the repository had moved — a different fact,
+	// and one that sends them to look at `main` rather than at the run. The shape
+	// check is what makes the refusal name what happened, so the assertion is on the
+	// message a reader acts on and not merely on the exit status.
+	const run = runRederiveStep({ derivationScript: "" });
+	assert.notEqual(run.status, 0, "the step must fail, not tag");
+	assert.match(run.stdout, /::error title=Derivation produced no answer::/);
+	assert.doesNotMatch(run.stdout, /Version changed/);
+	assert.equal(run.notesWritten, false);
+});
+
+test("a re-derivation that answers is written out as the notes", () => {
+	// The control for the test above: the same step, same harness, an answer.
+	const run = runRederiveStep({});
+	assert.equal(run.status, 0, run.stdout);
+	assert.equal(run.notesWritten, true);
+});
+
 test("a dry run cannot reach the release job, and a push always can", () => {
 	const guard = autoRelease.jobs.release.if;
 	const reachable = (event, dryRun, release = "true") =>
@@ -305,6 +432,15 @@ test("the notes are re-derived against the tagged commit, and a moved repository
 	// a release nothing derived.
 	assert.match(rederive, /EXPECTED_VERSION/);
 	assert.match(rederive, /::error title=Version changed::/);
+	// And the document it reads all of that out of is asserted to be readable BEFORE
+	// the first read, in the same shape the derive job requires: without this, an
+	// empty `derivation.json` is reported as a repository that moved.
+	assert.match(rederive, /::error title=Derivation produced no answer::/);
+	assert.ok(
+		rederive.indexOf("Derivation produced no answer") <
+			rederive.indexOf("version=\"$(jq -r .version"),
+		"the shape check has to come before the first read of derivation.json",
+	);
 });
 
 test("the publish workflow is dispatched explicitly, because the Release event cannot be", () => {
@@ -358,6 +494,128 @@ test("the verification is started by the publish run, not by workflow_run", () =
 		),
 	);
 	assert.equal(Object.keys(publish.jobs).at(-1), "finalize-release");
+});
+
+/**
+ * The signed-update workflow's candidate step, executed as the runner executes it
+ * with a stub `release-candidate.mjs`.
+ *
+ * It is here because it is the third consumer of a document a release script
+ * prints, and the only one outside `auto-release.yml`: an empty `candidate.json`
+ * put an empty `source_sha` into `$GITHUB_OUTPUT`, which `actions/checkout` treats
+ * as "no ref" and resolves to the event's — the input a signing job must never
+ * guess at.
+ */
+function runCandidateStep({ candidateScript }) {
+	const dir = mkdtempSync(join(tmpdir(), "signed-update-candidate-"));
+	mkdirSync(join(dir, "scripts"), { recursive: true });
+	writeFileSync(
+		join(dir, "scripts", "release-candidate.mjs"),
+		candidateScript ??
+			`process.stdout.write(JSON.stringify({ source_sha: "${SOURCE_SHA}", incumbent_tag: "v0.24.0" }));\n`,
+	);
+	const output = join(dir, "github-output");
+	const summary = join(dir, "github-summary");
+	writeFileSync(output, "");
+	writeFileSync(summary, "");
+	let status = 0;
+	let stdout = "";
+	try {
+		stdout = execFileSync(
+			"bash",
+			[
+				"-c",
+				runStep(
+					signedUpdate,
+					"derive",
+					"node scripts/release-candidate.mjs",
+				),
+			],
+			{
+				cwd: dir,
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "pipe"],
+				env: {
+					...process.env,
+					GITHUB_OUTPUT: output,
+					GITHUB_STEP_SUMMARY: summary,
+					EVENT: "repository_dispatch",
+					RELEASE_TAG: "v0.24.0",
+					GH_TOKEN: "stubbed",
+				},
+			},
+		);
+	} catch (error) {
+		status = error.status;
+		stdout = error.stdout ?? "";
+	}
+	const result = {
+		status,
+		stdout,
+		output: readFileSync(output, "utf8"),
+		summary: readFileSync(summary, "utf8"),
+	};
+	rmSync(dir, { recursive: true, force: true });
+	return result;
+}
+
+/** A 40-character SHA, because the jobs downstream refuse anything that is not one. */
+const SOURCE_SHA = "a".repeat(40);
+
+test("a candidate that leaves no answer is refused before it can become an empty pin", () => {
+	// An empty module: valid JavaScript, exit 0, no output. Without the shape check
+	// this step wrote NO `source_sha=` line at all and exited 0, and the signing job
+	// then saw an empty pin — which `actions/checkout` resolves to the event ref.
+	const run = runCandidateStep({ candidateScript: "" });
+	assert.notEqual(run.status, 0, "the step must fail, not carry an empty pin");
+	assert.match(run.stdout, /::error title=Candidate produced no answer::/);
+	assert.doesNotMatch(run.output, /^source_sha=/m);
+	assert.doesNotMatch(run.summary, /Candidate commit/);
+});
+
+test("a candidate that answers is passed on as the pin", () => {
+	const run = runCandidateStep({});
+	assert.equal(run.status, 0, run.stdout);
+	assert.match(run.output, new RegExp(`^source_sha=${SOURCE_SHA}$`, "m"));
+	assert.match(run.output, /^incumbent_tag=v0\.24\.0$/m);
+	assert.match(run.summary, /Candidate commit/);
+});
+
+/**
+ * The transitive set of `scripts/...` modules a script imports, read from the
+ * source.
+ *
+ * The signed-update checkout lists its modules BY HAND, so a module one of them
+ * imports — directly, or through another module it imports — but the list omits
+ * fails the job at IMPORT time. That is what adding `scripts/entry-point.mjs`
+ * would have done to this workflow silently: every script it checks out now
+ * resolves its own entry point through that module, and nothing in the file says
+ * so. `test-publish-workflow.mjs` derives the same closure for `publish.yml`; this
+ * is the same question asked of the other sparse checkout in the release path.
+ */
+function localImports(file, seen = new Set()) {
+	if (seen.has(file)) return [];
+	seen.add(file);
+	const found = [
+		...readFileSync(new URL(`../${file}`, import.meta.url), "utf8").matchAll(
+			/from "\.\/([\w.-]+)"/g,
+		),
+	].map((match) => `scripts/${match[1]}`);
+	return [...found, ...found.flatMap((module) => localImports(module, seen))];
+}
+
+test("the signed-update checkout carries every module the derivation imports", () => {
+	const checkout = steps(signedUpdate, "derive").find(
+		(step) => step.with?.["sparse-checkout"],
+	);;
+	assert.ok(checkout, "the derive job checks out its scripts");
+	const listed = checkout.with["sparse-checkout"];
+	for (const module of localImports("scripts/release-candidate.mjs"))
+		assert.match(
+			listed,
+			new RegExp(`^\\s*${module.replace(/\./g, "\\.")}\\s*$`, "m"),
+			`${module} missing from the derive job's checkout`,
+		);
 });
 
 test("the verification derives its own inputs and needs no approval", () => {
