@@ -18,10 +18,13 @@
  * headless Electron trees alive - `/tmp/hop/user-data-before` and `-after`, eight
  * processes each, every root reporting `ppid 1` - while the transcript could
  * honestly say the app "is killed by exact pid afterwards". The next launch in the
- * same tree also inherits the app's SINGLE-INSTANCE LOCK, which is global rather
- * than per `--user-data-dir`, so a leaked tree turns the following run into
- * "Another instance is already running" - a failure the rig reports as its own
- * measurement. It is the third instance of this class in this repo:
+ * same tree then collides with the leaked one on the app's SINGLE-INSTANCE LOCK,
+ * which is PER `--user-data-dir` rather than machine-wide (`renderer-driver.mjs`
+ * measures the same lock: two boots on different profiles coexist) - the rigs read
+ * it as a global exclusion only because a run reuses one profile path. So the
+ * following run dies with "Another instance is already running" and the rig reports
+ * its own leak as its own measurement. It is the third instance of this class in
+ * this repo:
  * `scripts/browser-chrome-proof.mjs::launchApp` and `scripts/renderer-driver.mjs`
  * both carry the same lesson in their own comments.
  *
@@ -40,7 +43,8 @@
  * THE REAP-BY-PROFILE BACKSTOP, and why it is not a pattern kill. An app that
  * escaped the group no longer answers to any pid this run holds; the only way to
  * SEE it is its command line, which names this run's own `--user-data-dir`. So the
- * profile path is matched for DETECTION (`thisRunsProfile` below), and every
+ * profile path is matched for DETECTION (`thisRunProfile` in `app-tree-teardown.mjs`,
+ * which also owns the group kill and the reap), and every
  * process it names is then killed by EXACT PID - never `pkill`, and never a bare
  * pattern. The path contains this run's pid, so a match cannot belong to the
  * operator's own app or to another session, and that is the property that makes
@@ -56,7 +60,7 @@
  *   on exit unless `--keep` is given, so the operator's own profile and app are not
  *   reachable from this run.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -68,6 +72,12 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	alreadyGone,
+	onInterrupted,
+	reapOnExit,
+	stopAppTree,
+} from "./app-tree-teardown.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
@@ -191,6 +201,9 @@ const child = spawn(
 		detached: true,
 	},
 );
+// The last resort, registered the moment there is a tree to lose: see
+// `reapOnExit` for the paths neither the handlers nor the `finally` can reach.
+reapOnExit({ pid: child.pid, userData: USER_DATA });
 const stream = [];
 child.stdout.on("data", (chunk) => stream.push(chunk.toString()));
 child.stderr.on("data", (chunk) => stream.push(chunk.toString()));
@@ -203,44 +216,16 @@ child.on("exit", (code) => {
 	child.exitCode = code;
 });
 
-/**
- * Every process whose command line names THIS run's profile, with its parent.
- *
- * DETECTION ONLY, in the sense the header states: the callers below kill the pids
- * this returns, one at a time. The path carries this run's pid, so a match cannot
- * be another session's app - which is the only reason a pattern may be used to ask
- * the question at all. The boundary is explicit rather than incidental:
- * `--user-data-dir=/tmp/x/user-data` is a PREFIX of `--user-data-dir=/tmp/x/user-data-2`,
- * and Electron's own helper processes repeat the flag, so the match is anchored on
- * the flag and closed by whitespace or end-of-line.
- */
-function thisRunsProfile() {
-	const ps = spawnSync("ps", ["-eo", "pid,ppid,command"], { encoding: "utf8" });
-	if (ps.error || ps.status !== 0) return null;
-	const pattern = new RegExp(
-		`(?:^|\\s)--user-data-dir=${USER_DATA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`,
-	);
-	return ps.stdout
-		.split("\n")
-		.slice(1)
-		.map((line) => line.trim().match(PS_ROW))
-		.filter((match) => match && pattern.test(match[3]))
-		.map((match) => ({ pid: Number(match[1]), ppid: Number(match[2]) }));
-}
-
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** One `ps` row, split into pid, parent and command line. */
-const PS_ROW = /^(\d+)\s+(\d+)\s+(.*)$/;
-
-const alreadyGone = (pid) => {
-	try {
-		process.kill(pid, 0);
-		return false;
-	} catch {
-		return true;
-	}
-};
+/*
+ * The profile scan and the stop itself live in `app-tree-teardown.mjs`, shared with
+ * the other rig that boots the app. Their two copies had already drifted in ways
+ * neither file showed: one failed OPEN on an unreadable `ps` while the other failed
+ * closed, and only one of them registered the interruption signals - so an
+ * interrupted run of the other left its app running. What stays here is this rig's
+ * reporting and its exit code.
+ */
 
 /**
  * The stop: the process GROUP first, then the profile backstop.
@@ -253,90 +238,98 @@ const alreadyGone = (pid) => {
  */
 async function stop() {
 	say("\n=== teardown ===");
-	const killGroup = (signal) => {
-		try {
-			process.kill(-child.pid, signal);
-			return true;
-		} catch {
-			return false;
-		}
-	};
-	killGroup("SIGTERM");
-	const deadline = Date.now() + 5000;
-	while (!child.exited && Date.now() < deadline) await wait(100);
-	if (!child.exited) {
-		killGroup("SIGKILL");
-		await wait(500);
-	}
+	const result = await stopAppTree({
+		pid: child.pid,
+		userData: USER_DATA,
+		isExited: () => child.exited === true,
+	});
 	say(
-		`group SIGTERM${child.exited ? "" : " then SIGKILL"}: app ${child.exited ? "exited" : "did not exit"}`,
+		`group SIGTERM${result.escalated ? " then SIGKILL" : ""}: app ${result.groupExited ? "exited" : "did not exit"}`,
 	);
 
-	await wait(500);
-	const found = thisRunsProfile();
-	if (found === null) {
+	if (result.profileUnreadable) {
 		say(
 			"by profile:  ps failed, so the backstop could not run; the group signal is all this run has",
 		);
 		return 1;
 	}
-	if (found.length === 0) {
+	if (result.reaped.length === 0) {
 		say("by profile:  0 processes still name this run's profile");
 		say(
 			`by pid:      ${alreadyGone(child.pid) ? "no process at the app's own pid" : "STILL ALIVE"}`,
 		);
-		return alreadyGone(child.pid) ? 0 : 1;
+		return result.clean ? 0 : 1;
 	}
 	say(
-		`by profile:  ${found.length} process(es) outlived the group signal, reaping by exact pid:`,
+		`by profile:  ${result.reaped.length} process(es) outlived the group signal, reaping by exact pid:`,
 	);
-	const reparented = found.filter((entry) => entry.ppid === 1);
-	for (const entry of found) {
-		try {
-			process.kill(entry.pid, "SIGKILL");
-			say(`  killed ${entry.pid} (ppid ${entry.ppid})`);
-		} catch {
-			say(`  ${entry.pid} had already gone`);
-		}
-	}
-	if (reparented.length > 0)
+	for (const entry of result.reaped)
 		say(
-			`  ${reparented.length} of them reported ppid 1, i.e. a root the run had already lost - the signature this rig exists to stop`,
+			entry.killed
+				? `  killed ${entry.pid} (ppid ${entry.ppid})`
+				: `  ${entry.pid} had already gone`,
 		);
-	await wait(500);
-	const survivors = thisRunsProfile() ?? [];
-	say(`by profile, after the reap: ${survivors.length} process(es) remain`);
-	return survivors.length === 0 ? 0 : 1;
+	if (result.reparented > 0)
+		say(
+			`  ${result.reparented} of them reported ppid 1, i.e. a root the run had already lost - the signature this rig exists to stop`,
+		);
+	say(
+		`by profile, after the reap: ${result.survivors.length} process(es) remain`,
+	);
+	return result.clean ? 0 : 1;
 }
 
-let reaping = false;
-for (const signal of ["SIGINT", "SIGTERM"]) {
-	process.on(signal, async () => {
-		if (reaping) return;
-		reaping = true;
-		// A run stopped by hand gets the same teardown as one that finishes, because
-		// the interruption is exactly when a tree is left behind.
-		const code = await stop();
-		cleanup();
-		process.exit(code === 0 ? 0 : 1);
-	});
+/*
+ * ONE teardown, whichever path reaches it.
+ *
+ * A run stopped by hand gets the same teardown as one that finishes, because the
+ * interruption is exactly when a tree is left behind - and `detached: true` above is
+ * what put the app out of reach of the group signal this rig itself receives, so
+ * this handler is the only thing that reaches it. `teardown()` memoises the stop, so
+ * a signal landing while the normal path is already stopping cannot signal the group
+ * a second time.
+ */
+let stopping = null;
+function teardown() {
+	stopping ??= stop();
+	return stopping;
 }
 
+let cleaned = false;
 function cleanup() {
+	if (cleaned) return;
+	cleaned = true;
 	if (!KEEP) rmSync(SCRATCH, { recursive: true, force: true });
 	else say(`kept: ${SCRATCH}`);
 }
 
-say(`\n=== the app, headless, for ${SETTLE_SECONDS}s (pid ${child.pid}) ===`);
-await wait(SETTLE_SECONDS * 1000);
-say(`--- ${HOP_LOG} ---`);
-say(
-	readFileSync(HOP_LOG, "utf8").trimEnd() ||
-		"(nothing recorded: the probe never loaded)",
-);
-say(`--- app log: ${APP_LOG} ---`);
-flush();
+onInterrupted(async () => {
+	const code = await teardown();
+	cleanup();
+	return code;
+});
 
-const code = await stop();
-cleanup();
-process.exit(code);
+try {
+	say(`\n=== the app, headless, for ${SETTLE_SECONDS}s (pid ${child.pid}) ===`);
+	await wait(SETTLE_SECONDS * 1000);
+	say(`--- ${HOP_LOG} ---`);
+	say(
+		readFileSync(HOP_LOG, "utf8").trimEnd() ||
+			"(nothing recorded: the probe never loaded)",
+	);
+	say(`--- app log: ${APP_LOG} ---`);
+	flush();
+
+	const code = await teardown();
+		cleanup();
+		process.exit(code);
+} finally {
+	/*
+	 * The THROW path: an exception after the spawn used to exit with the app still
+	 * running, which is the same leak by its second route. The normal and the
+	 * error exits above stop the app themselves, because `process.exit` does not run
+	 * this block.
+	 */
+	await teardown();
+	cleanup();
+}
