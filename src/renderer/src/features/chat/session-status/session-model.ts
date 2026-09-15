@@ -213,6 +213,61 @@ export function bandReadings(
 	return { identity: pendingModel ?? inForce, effort: inForce };
 }
 
+/**
+ * The rungs a spec carries, in the spec's own order, or an empty list when it
+ * carries none.
+ *
+ * Deliberately NOT `effortState`: that answers "what does the chip read",
+ * including the metadata-absent branch that synthesises `unknown` for a cold
+ * snapshot. This answers "which rows can a picker offer", which for a DRAFT pane
+ * must be the wire's own list and nothing else — a draft's picker is a pure read
+ * of the preview, so it cannot offer a rung the resolution did not name (R5 of
+ * the wire contract). One definition, so the chip and the dialog agree about
+ * what the ladder is.
+ */
+export function effortLadder(
+	model: CanonicalModel | null | undefined,
+): string[] {
+	if (!Array.isArray(model?.reasoning_efforts)) return [];
+	return model.reasoning_efforts.filter(
+		(rung): rung is string => typeof rung === "string" && rung !== "",
+	);
+}
+
+/**
+ * The level a spec REPORTS it will run with no rung chosen, or `null` when it
+ * reports none.
+ *
+ * Deliberately NOT `effortState`'s `label`, for the reason `effortLadder` gives
+ * for not being `effortState` either: that function answers "what does the chip
+ * read", where a synthesised category word IS the honest answer - `auto` for a
+ * model with a ladder and no level in force, `reasoning` for a reasoning model
+ * that exposes no rungs, `unknown` for a snapshot carrying no metadata at all.
+ * A sentence that NAMES a level a conversation will run at cannot use any of
+ * them: they are states of a reading, not levels, and one in a level slot is
+ * the category noun the strip's own copy already refuses (`effortState`'s
+ * `auto` branch records that history). Only the two fields that carry a level
+ * are read here, so a spec that reports neither gets `null` - which the caller
+ * answers with "No effort level is set on it" rather than a word nobody chose
+ * (review round 4 F4's residual slot, filed again in round 5).
+ *
+ * Lowercased and trimmed, matching `effortState`: this is prose about a level,
+ * not a value the wire will be asked about, so it needs no ladder spelling.
+ */
+export function effortLevel(
+	model: CanonicalModel | null | undefined,
+): string | null {
+	if (!model) return null;
+	for (const field of [
+		model.reasoning_effort,
+		model.reasoning_default_effort,
+	]) {
+		if (typeof field === "string" && field.trim())
+			return field.trim().toLowerCase();
+	}
+	return null;
+}
+
 export type EffortState = {
 	/** The word the chip prints. */
 	label: string;
