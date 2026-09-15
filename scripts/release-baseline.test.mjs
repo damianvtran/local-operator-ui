@@ -102,9 +102,9 @@ test("a tag no user could reach is not an incumbent anchor", () => {
 	// v0.23.2 is the trap: it is the second newest tag in the list and no user
 	// ever had it, so an incumbent taken from it would be an install that never
 	// existed and the update exercise would have nothing to upgrade from. (The
-	// derivation RANGE is bounded by the version anchor instead: see the module
-	// note in `release-baseline.mjs`, and the two cases in
-	// `derive-release.test.mjs` that pin it across a publish window.)
+	// release window's own range is bounded by the version anchor instead -- the
+	// release owner derives it from `<the newest tag>..origin/main`, see AGENTS.md,
+	// and the version-anchor cases below pin the anchor that range rests on.)
 	assert.equal(
 		selectIncumbentAnchor(RELEASES, { exclude: "v0.24.0", below: "0.23.4" }).tag,
 		"v0.23.3",

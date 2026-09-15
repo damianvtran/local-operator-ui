@@ -119,23 +119,23 @@ jobs:
         run: pnpm check-edit-diffs
 
       # The release-contract scripts: the immutable-recovery pair, the publish
-      # workflow's graph and inline gates, and the version-bump guard that keeps
-      # a feature PR from consuming a version number nobody released. A guard
-      # nothing runs is indistinguishable from no guard, which is why the last of
-      # those is executed here as well as in its own PR-triggered workflow.
+      # workflow's trigger set, graph and inline gates, the pre-release window's
+      # writeup gate, and the version-bump guard that keeps a feature PR from
+      # consuming a version number nobody released. A guard nothing runs is
+      # indistinguishable from no guard, which is why the last of those is
+      # executed here as well as in its own PR-triggered workflow. The automatic
+      # release's own contracts went with the workflow: a derivation and a push
+      # guard existed because nobody chose the bump.
       #
-      # `release-push-guard.test.mjs` is the loop guard's contract, and it belongs
-      # in this list for the same reason: the guard that stops the release workflow
-      # from releasing its own bump was asserted TEXTUALLY for one round and was
-      # wrong for every release this repository ever cut (its bumps land as merge
-      # commits). It is executed over each of those shapes here.
-      #
-      # The second line is the automatic release: the derivation the workflow
-      # applies (a pure function, driven by fixtures and by a real scratch
-      # repository), the anchors it derives a version and an incumbent from, and
-      # the shape of the two workflows that carry it. A release nobody decides by
-      # hand is exactly the one whose rules have to be executable, so these run
-      # with the rest of the contracts rather than only when someone remembers.
+      # The window's own tools are here for the same reason. Releasing is a
+      # decision a person makes now: the owner derives the release from the
+      # window's commits, tags it and publishes a Release, and that Release is the
+      # only trigger the pipeline has. The events a release can arrive by are
+      # asserted rather than described, and the anchors that decision rests on
+      # (`release-baseline.mjs`), the incumbent a signed update upgrades from
+      # (`release-candidate.mjs`) and the writeup the Release is announced with
+      # are rules rather than habits, so these run with the rest of the contracts
+      # rather than only when somebody remembers them.
       #
       # `entry-point.test.mjs` and `require-report.test.mjs` are the two halves of the
       # same guarantee, listed on the third line of the step below: every gate script
@@ -149,7 +149,7 @@ jobs:
         run: |
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
-          node --test scripts/derive-release.test.mjs scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/test-auto-release-workflow.mjs scripts/release-push-guard.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,

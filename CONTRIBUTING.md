@@ -184,8 +184,8 @@ Release covering every PR merged since the previous tag, cut by a single
 a merged PR that has not been released yet is the normal state of `main`, not a
 problem to fix — and whoever owns a PR merges it as soon as its review rounds are
 clean and fresh and CI is green. There is no release queue and no reserved
-version number. The full doctrine, including how a window is claimed and locked
-and how the bump is chosen by materiality rather than by commit type, is in
+version number. The full doctrine, including how a window is claimed by its one
+owner and how the bump is chosen by materiality rather than by commit type, is in
 `AGENTS.md` § "Releasing: one owner per window, and no version bumps inside
 feature PRs".
 
@@ -198,11 +198,30 @@ The release owner's procedure, in short:
 3. Land a one-commit PR titled `chore(release): bump version to X.Y.Z`, touching
    `package.json` only. It is still an agent-authored PR, so it still needs an
    independent review round; a bump commit that also carries code is a defect.
-4. Tag and publish in one step, on that bump's merge commit:
+4. Write the notes by hand, from the committed template. GitHub has no native
+   release template, so this is a file you copy and edit outside the repository:
+
+   ```bash
+   cp .github/RELEASE_TEMPLATE.md /tmp/vX.Y.Z.md
+   $EDITOR /tmp/vX.Y.Z.md
+   ```
+
+   `.github/RELEASE_TEMPLATE.md` carries the rules and the shape: a two-to-four
+   sentence `## What's New` written as prose about what a user gets, one bullet per
+   significant change with its constraint or trade-off, an `## Impact` section, every
+   PR in the window under `## PRs`, and the compare link last. **Never
+   `gh release create --generate-notes`, and never the web UI's "Generate release
+   notes".** The GitHub draft is refused rather than published: `publish.yml`'s second
+   job reads the Release body and fails the run on an empty body or on GitHub's
+   `## What's Changed` heading. That refusal is recoverable without re-releasing —
+   edit the Release body and re-run the failed run, which replays the release event
+   and re-reads the Release — but a fix to the workflow's own code is not picked up
+   by a re-run.
+5. Tag and publish in one step, on that bump's merge commit:
 
    ```bash
    gh release create vX.Y.Z --target <bump-merge-sha> \
-     --prerelease --title 'X.Y.Z: <theme>' --notes-file <notes-file>
+     --prerelease --title 'X.Y.Z: <theme>' --notes-file /tmp/vX.Y.Z.md
    ```
 
    `--target` creates the tag on exactly that SHA, and it is *publishing the
@@ -215,7 +234,12 @@ The release owner's procedure, in short:
    one's installers exist. Publishing the Release as a full release first is what
    once told every running app it was up to date while a newer version was
    already out.
-5. Post the tag and the Release URL on every PR in the window.
+
+   Publishing the Release is the last manual step: `publish.yml` validates the tag,
+   holds the Release out of `/releases/latest`, publishes to npm, builds and attaches
+   every platform's artifacts, dispatches the signed-update verification and promotes
+   the Release — with nothing to start, approve or finish by hand on the pipeline.
+6. Post the tag and the Release URL on every PR in the window.
 
 **For pre-release versions**: use an `alpha` or `beta` suffix (for example
 `v0.2.0-alpha.1`), which the publish workflow builds and never promotes into
