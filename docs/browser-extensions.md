@@ -57,16 +57,17 @@ this surface sits inside it rather than being exempt from it.
 
 The alternative, considered and deliberately not taken: seal each row with a key
 held in the OS keychain (`safeStorage`) and refuse a row that does not open,
-which is what review round 1 (R1) proposed. The reason it is not here is
-measured rather than aesthetic. With `HOME` redirected to a scratch directory —
-what `browser-extensions-proof.mjs` must do, and what any isolated run does —
-`safeStorage.isEncryptionAvailable()` never returns on macOS: it raises a
-Keychain authorization prompt on the machine's screen and waits for a human.
-A launch that had to decrypt its registry to know what to load would inherit
-that, so a locked keychain or a Linux session with no keyring would hang the app
-instead of failing closed, to move the bar from "same user" to "same user with
-keychain access". The reproduction and the full reasoning are on #192, recorded
-there as a deferred item rather than a fixed one.
+which is what review round 1 (R1) proposed. It is not here because the keychain
+read has no failure mode this app can use. Measured on macOS: with the real home
+directory the call returns in milliseconds, but with `HOME` redirected — which
+`browser-extensions-proof.mjs` must do to isolate itself, and which is the same
+shape as a locked keychain or a Linux session with no keyring —
+`safeStorage.isEncryptionAvailable()` never returns at all: it raises a Keychain
+authorization prompt on the machine's screen and waits for a human. A launch that
+had to decrypt its registry before it knew what to load would therefore hang
+where it should have failed closed, and the binding would trade the boundary
+stated above for "same user with keychain access". The reproduction and the full
+reasoning are on #192, recorded there as a deferred item rather than a fixed one.
 
 ## The capability matrix
 
