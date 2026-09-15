@@ -37,14 +37,24 @@ app.setPath("userData", process.env.SC_USER_DATA);
 /** The battery, chosen so each hard case is present: a session cookie with
  * unspecified SameSite, one set over http with Secure, an HttpOnly one the page
  * cannot see, a path-scoped one, a partitioned (CHIPS) one, a non-default source
- * port, and a persistent cookie that must NOT be the vault's business. */
+ * port, and a persistent cookie that must NOT be the vault's business.
+ *
+ * THE VALUES ARE LONG AND HYPHENATED ON PURPOSE. The battery asserts that the
+ * stored snapshot carries no cookie value in the clear, which is a substring scan
+ * over the file — and a two-character value cannot be evidence either way, because
+ * it occurs inside ciphertext bytes or inside framing by chance. Measured: the
+ * original `srv_http=sh` collided with the literal `sha256=` in the snapshot's own
+ * integrity digest, and `srv_chips=sc` collided with ciphertext bytes on a later
+ * run, so that assertion was failing on material carrying no cookie material at
+ * all. Every value here is now long enough (and carries a hyphen, which neither
+ * the digest's hex nor base64 framing can spell) for a hit to mean a real leak. */
 const PAGE = `<!doctype html><html><body><script>
-document.cookie = "plain_session=ps; Path=/";
-document.cookie = "strict_path=sp; Path=/deep; SameSite=Strict";
-document.cookie = "secure_over_http=soh; Path=/; Secure";
-document.cookie = "chips_part=cp; Path=/; SameSite=None; Secure; Partitioned";
-document.cookie = "persistent_a=pa; Path=/; Max-Age=3600";
-document.cookie = "high_priority=hp; Path=/";
+document.cookie = "plain_session=plain-session-value; Path=/";
+document.cookie = "strict_path=strict-path-value; Path=/deep; SameSite=Strict";
+document.cookie = "secure_over_http=secure-http-value; Path=/; Secure";
+document.cookie = "chips_part=chips-part-value; Path=/; SameSite=None; Secure; Partitioned";
+document.cookie = "persistent_a=persistent-value; Path=/; Max-Age=3600";
+document.cookie = "high_priority=high-priority-value; Path=/";
 </script></body></html>`;
 
 /**
@@ -67,8 +77,8 @@ document.cookie = "high_priority=hp; Path=/";
  * the same statement and were once written as if they were.
  */
 const FRAME = `<!doctype html><html><body><script>
-document.cookie = "chips_3p=c3p; Path=/; SameSite=None; Secure; Partitioned";
-document.cookie = "plain_3p=p3p; Path=/; SameSite=None; Secure";
+document.cookie = "chips_3p=chips-third-party-value; Path=/; SameSite=None; Secure; Partitioned";
+document.cookie = "plain_3p=plain-third-party-value; Path=/; SameSite=None; Secure";
 fetch("/frame-view?seen=" + encodeURIComponent(document.cookie), { credentials: "include" });
 </script></body></html>`;
 
@@ -102,8 +112,8 @@ function batteryServer(frameUrl) {
 		res.writeHead(200, {
 			"content-type": "text/html",
 			"set-cookie": [
-				"srv_http=sh; Path=/; HttpOnly; SameSite=Strict",
-				"srv_chips=sc; Path=/; Secure; SameSite=None; Partitioned; HttpOnly",
+				"srv_http=srv-http-value; Path=/; HttpOnly; SameSite=Strict",
+				"srv_chips=srv-chips-value; Path=/; Secure; SameSite=None; Partitioned; HttpOnly",
 			],
 		});
 		res.end(page);

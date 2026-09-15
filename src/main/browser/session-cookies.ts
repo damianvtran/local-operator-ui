@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
 	closeSync,
 	existsSync,
@@ -10,6 +10,7 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { PRIVATE_DIR_MODE, PRIVATE_FILE_MODE } from "./atomic-json";
 import type { ClearWhat } from "./profile";
@@ -51,7 +52,7 @@ import { CDP_DEADLINE_MS, deadline } from "./vendor/driver/deadline";
  *     partitioned cookie and a new unpartitioned twin of the same name, and the
  *     page's own `document.cookie` then listed the cookie twice: the isolation
  *     was gone and a duplicate appeared (this is the failure mode the guard in
- *     `refuseStoredCookie`/`partitionKeyForWrite` exists to prevent, and
+ *     `partitionKeyForWrite` exists to prevent, and
  *     `session-cookies.test.mjs` asserts it against a real jar);
  *   - CDP over the in-process debugger DOES carry and restore that identity:
  *     `Network.setCookie` stores exactly the `partitionKey` it is given, but the
@@ -77,16 +78,28 @@ import { CDP_DEADLINE_MS, deadline } from "./vendor/driver/deadline";
  *
  * WHAT THE AT-REST GUARANTEE ACTUALLY IS, stated so it is not read as more than
  * it is: ciphertext in a 0600 file inside a 0700 directory, with every failure
- * path refusing rather than falling back to plaintext. It is NOT authenticated
- * encryption. `safeStorage`'s macOS path wraps the payload with no integrity
- * check — measured in the pinned runtime: a bit-flip inside the snapshot does
- * not make `decryptString` throw, it returns a string whose head is still the
- * plaintext prefix — so the refusal on a damaged file comes from `JSON.parse`
- * and the shape check in `readSnapshot`, not from a MAC. A targeted rewrite that
- * stays parseable would be restored as a valid-but-altered snapshot; that needs
- * write access to a 0600 file in a directory the attacker would already own,
- * which is why no MAC is added here. "Corrupt ciphertext fails closed" is true
- * of corruption and is NOT a claim that tampering is detected.
+ * path refusing rather than falling back to plaintext — and, because a damaged
+ * `safeStorage` payload is not self-evidently damaged, an integrity digest over
+ * that ciphertext, verified before it is decrypted. `safeStorage`'s macOS path
+ * wraps the payload with no integrity check — measured in the pinned runtime: a
+ * bit-flip inside the snapshot does not make `decryptString` throw, it returns a
+ * string whose head is still the plaintext prefix — so refusing on `JSON.parse`
+ * alone would accept any rewrite that stays parseable and restore it as
+ * valid-but-altered credential material. `sealSnapshotCiphertext` closes that by
+ * writing a domain-separated SHA-256 of the ciphertext beside it, and
+ * `openSnapshotCiphertext` checks that digest before anything else looks at the
+ * bytes: a mismatch is a refusal on the same path as any other unreadable
+ * snapshot, never a partial restore and never plaintext.
+ *
+ * That digest is a checksum, NOT a MAC. It carries no secret, so it detects
+ * accidental corruption and every rewrite that does not recompute it (a
+ * bit-flip, a truncation, a splice) — which is exactly the silent failure the
+ * reviewer measured — and it cannot detect a rewrite that recomputes it. Who can
+ * read the material is unchanged either way: reading it still needs the OS
+ * keychain, and rewriting the file still needs write access to a 0600 file in a
+ * 0700 directory the attacker already owns. So "corrupt ciphertext fails closed"
+ * is a claim about corruption, now backed by a guard rather than by JSON
+ * validity, and is still not a claim that tampering is detected.
  *
  * WHAT IS DELIBERATELY NOT DONE HERE: the snapshot never reaches the renderer,
  * the agent RPC surface, the app's JSON config or any log line — only the
@@ -424,7 +437,29 @@ const sameSiteShape = (value: string | null | undefined): string =>
  * changed — can be denied the old item. That arrives here as a `decrypt` throw,
  * which is handled as corruption: the snapshot is discarded, the user logs in
  * again, and nothing is silently restored.
+ *
+ * WHAT THE FIRST BULLET COSTS, and why the cheap questions come first: asking
+ * `safeStorage` can BLOCK the main thread. Measured in Electron 44.3.0 with a bare
+ * scratch home — the shape an isolated harness forces — `isEncryptionAvailable()`
+ * took 7785 ms and returned false, and a 50 ms heartbeat did not tick ONCE while
+ * it ran, so nothing in this process could have timed it out. Under other keychain
+ * states it waits on a SecurityAgent prompt that an unattended launch can never
+ * answer. So the questions that cost nothing are asked first — whether the macOS
+ * login keychain file is there at all, and which backend a Linux session selected
+ * — and a refusal from either leaves the snapshot in place rather than destroying
+ * it, with the marker's rule deciding what the next start trusts.
  */
+/**
+ * The macOS keychain file `safeStorage` reads its item out of, or `null` on a
+ * platform with no such file to check (Linux's secret-service keyring, Windows's
+ * credential store — neither has a keychain file, and the Linux backend question
+ * below is the cheap precondition on that side).
+ */
+const loginKeychainPath = (platform: NodeJS.Platform): string | null =>
+	platform === "darwin"
+		? join(homedir(), "Library", "Keychains", "login.keychain-db")
+		: null;
+
 export function createSafeStorageCipher(
 	backend: {
 		isEncryptionAvailable(): boolean;
@@ -433,6 +468,9 @@ export function createSafeStorageCipher(
 		getSelectedStorageBackend?(): string;
 	},
 	platform: NodeJS.Platform = process.platform,
+	/** Injectable so a test can state the premise instead of inheriting the
+	 * machine's own keychain. */
+	keychainExists: (path: string) => boolean = existsSync,
 ): VaultCipher {
 	const LINUX_GOOD_BACKENDS = [
 		"gnome_libsecret",
@@ -442,14 +480,28 @@ export function createSafeStorageCipher(
 	];
 	return {
 		availability() {
-			try {
-				if (!backend.isEncryptionAvailable()) {
-					return { ok: false, reason: "the OS keychain is not available" };
-				}
-			} catch (error) {
+			// CHEAP PRECONDITIONS FIRST, because the question below can BLOCK the main
+			// thread. Measured in Electron 44.3.0 with a bare scratch home (the shape
+			// every isolated harness has, and the same shape as a severed or locked
+			// keychain): `isEncryptionAvailable()` took 7785 ms and returned false, and
+			// a 50 ms heartbeat did not tick ONCE while it ran — so the main process was
+			// frozen for those seconds and no timer of ours could have bounded them.
+			// Under other keychain states the call waits on a SecurityAgent prompt
+			// instead, which an unattended launch can never answer. A hang is worse than
+			// a refusal for credential-at-rest material, so it is asked only when what
+			// it needs is actually there:
+			//   - a macOS session with no login keychain file has no item to read, and
+			//     the answer is already known (measured false) — refuse without asking;
+			//   - on Linux the selected backend can be read without disturbing the
+			//     keyring, so a backend that cannot protect a credential is a refusal
+			//     before the keyring is touched at all.
+			// Neither is a downgrade: the snapshot is left in place, and the marker's
+			// rule decides whether the next start discards it.
+			const keychain = loginKeychainPath(platform);
+			if (keychain !== null && !keychainExists(keychain)) {
 				return {
 					ok: false,
-					reason: `the OS keychain could not be queried: ${String(error)}`,
+					reason: `the macOS login keychain is not at ${keychain}, so the stored session cookies cannot be read`,
 				};
 			}
 			if (platform === "linux") {
@@ -467,6 +519,16 @@ export function createSafeStorageCipher(
 						reason: `the Linux keyring backend is ${selected ?? "unknown"}, which does not protect a stored credential`,
 					};
 				}
+			}
+			try {
+				if (!backend.isEncryptionAvailable()) {
+					return { ok: false, reason: "the OS keychain is not available" };
+				}
+			} catch (error) {
+				return {
+					ok: false,
+					reason: `the OS keychain could not be queried: ${String(error)}`,
+				};
 			}
 			return { ok: true };
 		},
@@ -540,6 +602,86 @@ export function removeDurable(path: string): void {
 		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 	}
 	fsyncDir(dirname(path));
+}
+
+/**
+ * The snapshot's on-disk wrapper: the ciphertext, then an integrity digest of it.
+ *
+ * WHY THIS EXISTS: `safeStorage`'s macOS path does not authenticate what it
+ * encrypts — measured in the pinned runtime, a bit-flip inside the payload does
+ * not make `decryptString` throw, it returns a string whose head is still the
+ * intact plaintext prefix. So a damaged snapshot used to be caught by nothing
+ * but `JSON.parse` and the shape check, and a targeted rewrite that stays
+ * parseable was restored as a valid-but-altered document: credential material
+ * silently wrong, which is the one outcome the rest of this module refuses. The
+ * digest makes that refusal structural, and it covers the WHOLE ciphertext — so
+ * the document's version, its generation, and every cookie identity and
+ * attribute it asserts are covered transitively. There is deliberately no
+ * out-of-band metadata that is trusted before the digest: the payload is the
+ * only input, and it is not decrypted until the digest over it matches.
+ *
+ * WHAT IT IS NOT: a MAC. It carries no secret, so it detects corruption and any
+ * rewrite that does not recompute it, and not a rewrite that does (see the
+ * module header for why that is stated rather than engineered around).
+ *
+ * The format is the ciphertext followed by a fixed-size ASCII suffix,
+ * `\nsha256=` plus 64 lowercase hex digits. Fixed-length and textual on purpose:
+ * the boundary needs no parser to find, the ciphertext stays byte-for-byte the
+ * prefix of the file, and a file too short to hold the suffix, or whose suffix
+ * is not exactly that shape — a snapshot written before the digest existed, or
+ * by a future scheme — is refused rather than guessed at. Refusing an old file
+ * costs one login after an upgrade; trusting one unverified would put a file no
+ * one can check on the same path as a checked one.
+ */
+/**
+ * The suffix that carries the digest: a delimiter that cannot occur inside the
+ * encoded payload, then the digest's own algorithm name. The length is derived
+ * from it rather than written a second time, so the two cannot drift apart.
+ */
+const DIGEST_PREFIX = "\nsha256=";
+const DIGEST_SUFFIX_BYTES = DIGEST_PREFIX.length + 64;
+/** Bound into the digest so that a digest of this file's bytes cannot be replayed
+ * as the digest of some other file's bytes, or of another scheme's. */
+const DIGEST_DOMAIN = "local-operator/session-cookies/v1\n";
+const digestOf = (ciphertext: Buffer): string =>
+	createHash("sha256").update(DIGEST_DOMAIN).update(ciphertext).digest("hex");
+
+/** Append this file's integrity digest to the ciphertext that is going on disk. */
+function sealSnapshotCiphertext(ciphertext: Buffer): Buffer {
+	return Buffer.concat([
+		ciphertext,
+		Buffer.from(`${DIGEST_PREFIX}${digestOf(ciphertext)}`),
+	]);
+}
+
+/**
+ * Verify a stored snapshot and return the ciphertext it wraps. Throws — the same
+ * refusal as any other unreadable snapshot — when the file carries no digest of
+ * the expected shape or when the digest disagrees with the bytes, so a caller
+ * never gets unverified bytes to decrypt.
+ */
+function openSnapshotCiphertext(stored: Buffer): Buffer {
+	if (stored.length <= DIGEST_SUFFIX_BYTES) {
+		throw new Error("the snapshot is too short to carry an integrity digest");
+	}
+	const suffix = stored
+		.subarray(stored.length - DIGEST_SUFFIX_BYTES)
+		.toString("ascii");
+	if (!suffix.startsWith(DIGEST_PREFIX)) {
+		throw new Error(
+			"the snapshot carries no integrity digest of the expected shape",
+		);
+	}
+	const ciphertext = stored.subarray(0, stored.length - DIGEST_SUFFIX_BYTES);
+	// A plain comparison, deliberately not constant-time: the digest holds no
+	// secret, so its timing leaks nothing a reader of this file does not already
+	// have in full.
+	if (suffix.slice(DIGEST_PREFIX.length) !== digestOf(ciphertext)) {
+		throw new Error(
+			"the snapshot's integrity digest does not match its ciphertext, so it is corrupt or was rewritten",
+		);
+	}
+	return ciphertext;
 }
 
 /**
@@ -707,12 +849,13 @@ export class SessionCookieVault {
 			try {
 				snapshot = this.readSnapshot();
 			} catch (error) {
-				// Corrupt ciphertext, or a key that no longer decrypts it (an app
-				// re-signed with a different identity does exactly this). Fail closed
-				// and remove the file rather than retrying it every launch. The refusal
-				// itself is `JSON.parse` plus the shape check in `readSnapshot`, since
-				// `safeStorage` does not authenticate what it encrypted (see the module
-				// header).
+				// Corrupt ciphertext, a digest that disagrees with it, or a key that no
+				// longer decrypts it (an app re-signed with a different identity does exactly
+				// this). Fail closed and remove the file rather than retrying it every launch.
+				// An error thrown out of `readSnapshot` means nothing was decrypted and
+				// nothing was applied: the digest is checked first, then `JSON.parse` and the
+				// shape check, because `safeStorage` does not authenticate what it encrypted
+				// (see the module header).
 				this.log(
 					`session cookies: the stored snapshot could not be read (${String(error)}); discarding it`,
 				);
@@ -927,7 +1070,12 @@ export class SessionCookieVault {
 			try {
 				writeFileDurable(
 					this.options.snapshotPath,
-					this.options.cipher.encrypt(JSON.stringify(document)),
+					// Sealed, not raw ciphertext: the digest is written in the same atomic
+					// replace as the bytes it covers, so there is no window in which a
+					// published snapshot and its digest disagree.
+					sealSnapshotCiphertext(
+						this.options.cipher.encrypt(JSON.stringify(document)),
+					),
 				);
 			} catch (error) {
 				report.reason = String(error);
@@ -1062,14 +1210,18 @@ export class SessionCookieVault {
 	}
 
 	private readSnapshot(): CookieSnapshot | null {
-		let raw: Buffer;
+		let stored: Buffer;
 		try {
-			raw = readFileSync(this.options.snapshotPath);
+			stored = readFileSync(this.options.snapshotPath);
 		} catch {
 			return null;
 		}
+		// The digest is verified here, before the ciphertext is handed to the
+		// cipher: a mismatch throws out of this method as an unreadable snapshot, so
+		// the caller refuses and discards it instead of decrypting bytes nothing has
+		// vouched for.
 		const parsed = JSON.parse(
-			this.options.cipher.decrypt(raw),
+			this.options.cipher.decrypt(openSnapshotCiphertext(stored)),
 		) as CookieSnapshot;
 		if (
 			!parsed ||

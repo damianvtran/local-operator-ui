@@ -470,6 +470,99 @@ test("a corrupt or truncated snapshot is refused and removed, never half-applied
 	assert.match(lines.join("\n"), /could not be read/);
 });
 
+/**
+ * Rewrite the stored snapshot's document in place, leaving everything the file
+ * carries around it — the encoding's own framing, and the integrity digest —
+ * exactly as it was. The result is as well-formed as the file it replaces: it is
+ * the *content* that changed, which is the shape a targeted corruption takes when
+ * it must stay parseable. Deliberately written so it works on a sealed snapshot
+ * and on an unsealed one alike, because what the test below is about is WHICH
+ * guard refuses the rewrite, not what the format happens to be.
+ */
+const rewriteStoredValue = (path, from, to) => {
+	const text = readFileSync(path).toString("latin1");
+	const start = "cipher:".length;
+	assert.ok(
+		text.startsWith("cipher:"),
+		"the snapshot is not in the encoded shape this test tampers",
+	);
+	// The encoded document runs to the first byte that cannot be part of it. Any
+	// bytes after it are framing the rewrite must preserve untouched.
+	const boundary = text.indexOf("\n", start);
+	const end = boundary === -1 ? text.length : boundary;
+	const document = JSON.parse(
+		Buffer.from(text.slice(start, end), "base64").toString("utf8"),
+	);
+	const target = document.cookies.find((cookie) => cookie.value === from);
+	assert.ok(target, `the stored document carries no cookie valued ${from}`);
+	target.value = to;
+	writeFileSync(
+		path,
+		Buffer.from(
+			`cipher:${Buffer.from(JSON.stringify(document)).toString("base64")}${text.slice(end)}`,
+			"latin1",
+		),
+	);
+};
+
+test("a rewrite that keeps the document parseable is refused by the integrity digest, not by JSON validity", async () => {
+	// First the control this test is worthless without, in its own directory: the
+	// digest must not refuse what the writer itself just wrote. A guard that
+	// rejected everything would look identical from the refusal below alone.
+	const honest = dirFor("digest-honest");
+	const honestLog = collector();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), honest, honestLog.log);
+	const honestJar = fakeJar([cookiesFor()[2]]);
+	const restored = await makeVault(
+		honestJar,
+		fakeCipher(),
+		honest,
+		honestLog.log,
+	).restore();
+	assert.equal(restored.outcome, "restored");
+	assert.equal(restored.restored, 2);
+	assert.equal(
+		honestJar.cookies.find((cookie) => cookie.name === "session_plain")?.value,
+		"v1",
+		"a snapshot the writer sealed itself must restore its own values",
+	);
+
+	// Now the failure the reviewer measured in the pinned runtime, where
+	// `safeStorage` does not authenticate what it encrypted and the refusal used to
+	// be `JSON.parse`: a rewrite whose document stays parseable, so every check
+	// after the cipher would accept it and the ALTERED value would be written back
+	// as if it were the credential the user's session had.
+	const paths = dirFor("digest-rewrite");
+	const { lines, log } = collector();
+	await savedSnapshot(fakeJar(cookiesFor()), fakeCipher(), paths, log);
+	// The wrapper's shape, pinned here rather than only implied by the refusal: the
+	// ciphertext stays the prefix of the file and the digest is a fixed suffix, so a
+	// reader can find the boundary without a parser (and so the tamper below, which
+	// preserves everything after that boundary, is tampering with a well-formed
+	// file).
+	assert.match(
+		readFileSync(paths.snapshotPath).toString("latin1"),
+		/^cipher:[A-Za-z0-9+/]+={0,2}\nsha256=[0-9a-f]{64}$/,
+	);
+	rewriteStoredValue(paths.snapshotPath, "v1", "v1-rewritten");
+
+	const jar = fakeJar([cookiesFor()[2]]);
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(
+		report.outcome,
+		"unreadable",
+		"a document that parses but disagrees with its digest must be refused, not trusted",
+	);
+	assert.equal(report.restored, 0);
+	assert.deepEqual(
+		jar.writes,
+		[],
+		"nothing from a rewritten document may be applied",
+	);
+	assert.equal(existsSync(paths.snapshotPath), false);
+	assert.match(lines.join("\n"), /integrity digest does not match/);
+});
+
 test("an interrupted write leaves the previous snapshot intact, not a truncated one", async () => {
 	const paths = dirFor("interrupted");
 	const { log } = collector();
@@ -562,9 +655,14 @@ test("a Linux basic_text or unknown keyring backend is refused; a real keyring i
 		true,
 	);
 	// macOS and Windows have no such backend to ask about; availability alone is
-	// the answer there.
+	// the answer there. The keychain premise is stated rather than inherited: on a
+	// machine with no login keychain file the answer below is a refusal by design
+	// (see the next test), so a test that means to exercise the backend question
+	// must say that the keychain is there.
+	const keychainPresent = () => true;
 	assert.equal(
-		createSafeStorageCipher(backend("basic_text"), "darwin").availability().ok,
+		createSafeStorageCipher(backend("basic_text"), "darwin", keychainPresent)
+			.availability().ok,
 		true,
 	);
 	const missing = {
@@ -573,8 +671,70 @@ test("a Linux basic_text or unknown keyring backend is refused; a real keyring i
 		decryptString: () => "",
 	};
 	assert.equal(
-		createSafeStorageCipher(missing, "darwin").availability().ok,
+		createSafeStorageCipher(missing, "darwin", keychainPresent).availability()
+			.ok,
 		false,
+	);
+});
+
+test("the keychain question is not asked when its answer is already known, because asking it can freeze the launch", () => {
+	// Measured in Electron 44.3.0 with a bare scratch home, which is the shape any
+	// isolated harness has: `isEncryptionAvailable()` took 7785 ms and returned
+	// false, and a 50 ms heartbeat did not tick once while it ran — the main
+	// process was frozen for those seconds, so no timer of this process could have
+	// bounded it. The absence of the file the item would live in is knowable for
+	// free, and its answer is the one we already measured.
+	let asked = 0;
+	const backend = {
+		isEncryptionAvailable: () => {
+			asked++;
+			return true;
+		},
+		encryptString: (text) => Buffer.from(text),
+		decryptString: (buffer) => buffer.toString(),
+	};
+	const availability = createSafeStorageCipher(
+		backend,
+		"darwin",
+		() => false,
+	).availability();
+	assert.equal(availability.ok, false);
+	assert.match(availability.reason, /login keychain is not at/);
+	assert.equal(
+		asked,
+		0,
+		"the keychain was asked a question whose answer costs a frozen main thread",
+	);
+
+	// The control: with the keychain file there, the backend question is the one
+	// that decides, so this precondition cannot be refusing everything.
+	const present = createSafeStorageCipher(backend, "darwin", () => true);
+	assert.equal(present.availability().ok, true);
+	assert.equal(asked, 1, "a present keychain must still be asked about");
+
+	// And on the platforms with no keychain file to check, the precondition is not
+	// consulted at all: the Linux backend question below is that side's cheap
+	// precondition instead (driven by the test above).
+	const linuxAsked = [];
+	const linux = createSafeStorageCipher(
+		{
+			...backend,
+			isEncryptionAvailable: () => {
+				linuxAsked.push("asked");
+				return true;
+			},
+			getSelectedStorageBackend: () => "basic_text",
+		},
+		"linux",
+		() => {
+			throw new Error("no keychain file question exists on linux");
+		},
+	).availability();
+	assert.equal(linux.ok, false);
+	assert.deepEqual(
+		linuxAsked,
+		[],
+		"a plaintext backend must be refused before the keyring is disturbed",
 	);
 });
 
@@ -1053,6 +1213,44 @@ test("the hold engages once per quit, and only while a host stop is owed", async
 		false,
 	);
 	assert.deepEqual(idleCalls, [], "an idle quit is left alone");
+});
+
+test("a stop that never settles is released at the budget instead of holding the quit", async () => {
+	const calls = [];
+	const lines = [];
+	const budgetMs = 120;
+	const holder = createSessionCookieQuitHold({
+		isPending: () => true,
+		// Never settles: a stop waiting on a CDP read the host is not answering, which
+		// is what independent QA measured as 68-8776 ms per quit and once past 30 s.
+		stop: () => new Promise(() => {}),
+		quit: () => calls.push("quit"),
+		log: (message) => lines.push(message),
+		budgetMs,
+	});
+	const started = Date.now();
+	const held = await holder({
+		preventDefault: () => calls.push("preventDefault"),
+	});
+	const elapsed = Date.now() - started;
+
+	assert.equal(held, true);
+	assert.deepEqual(calls, ["preventDefault", "quit"]);
+	assert.ok(
+		elapsed >= budgetMs,
+		`the budget is what released the quit, not luck: ${elapsed} ms`,
+	);
+	// Generous, but decisive: the only bound this code has without the budget is
+	// the CDP layer's 15 s per-call ceiling, so an assertion of "under 15 s" would
+	// pass with the budget removed entirely.
+	assert.ok(
+		elapsed < 2_000,
+		`the quit waited ${elapsed} ms on a stop that never settles`,
+	);
+	// The consequence is stated, not silent: the user's session cookies are this
+	// run's loss, and the marker rule is what makes that safe on the next start.
+	assert.match(lines.join("\n"), /did not stop within 120 ms/);
+	assert.match(lines.join("\n"), /discard what is on disk/);
 });
 
 test("removeDurable treats an absent file as done and anything else as a failure", () => {
