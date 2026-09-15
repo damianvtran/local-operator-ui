@@ -223,6 +223,28 @@ to the backend log: a typo like `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falls
 back to `normal`, which is the difference between a headless run and an
 interruption, and it must be visible to whoever launched it.
 
+### An agent-driven run does not banner either
+
+`headless` silences the **app's** own notification (`window-mode.ts` feeds
+`DesktopNotifier`) and has no reach into the **backend's**, which the app spawns
+with its own environment (`backendSpawnEnv`): a session parking on a gate
+announces itself from `session/runtime/serving.py::_announce_pending` through
+`local_operator/tui/notify.py`, and on macOS that ends at `osascript -e 'display
+notification'` — a banner in the operator's ACTUAL Notification Center, wearing
+Script Editor's identity. That is how ~46 of them arrived in six minutes from a
+single `pnpm test:desktop` run.
+
+`scripts/notifications-off.mjs` is that switch applied to a child environment,
+and every path in this repo that spawns the app or the suite sets it:
+`run-desktop-tests.mjs`, the app-proof rigs (`browser-chrome-proof`,
+`renderer-driver`, `browser-host-proof`, `mentioned-files-app-proof`,
+`session-cookie-restart-proof`) and the `app:headless` / `dev:headless` scripts.
+An **explicit** value is honoured — `LOCAL_OPERATOR_NO_NOTIFICATIONS=0` in your
+shell keeps your own banners on — and the deliberate exceptions
+(`notification-evidence.mjs`, interactive `pnpm dev` / `pnpm start`) are named in
+that module. `docs/evidence/desktop-notifications-off/` carries the before/after
+proof, stood on a shim `osascript` so neither case can touch the real one.
+
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
 That is what makes it usable as evidence rather than only as a way to stay out

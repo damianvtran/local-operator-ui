@@ -42,6 +42,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const SESSION = process.argv[2] ?? "225326399eed";
 const OUT = process.argv[3] ?? "/tmp/lo-producer-proof";
@@ -66,6 +67,13 @@ const childEnv = { ...process.env };
 for (const key of Object.keys(childEnv)) {
 	if (key.startsWith("CMUX_")) delete childEnv[key];
 }
+/*
+ * The kill switch goes on for the same reason the cmux variables come off: this
+ * rig boots the app, and a backend announcing a parked gate ends at `osascript`
+ * on macOS, whose banner lands in the operator's real Notification Center. See
+ * `notifications-off.mjs`.
+ */
+withNotificationsOff(childEnv);
 
 const app = spawn(
 	"./node_modules/.bin/electron",

@@ -53,6 +53,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
 /**
@@ -197,13 +198,21 @@ async function stopApp({ graceful = true } = {}) {
 }
 
 async function launchApp() {
-	const env = {
+	/*
+	 * `withNotificationsOff` first: this harness boots the real app, and the app
+	 * spawns the backend whose parked-gate announcement reaches macOS through
+	 * `osascript` — a banner in the operator's Notification Center, from a test
+	 * run. Headless window mode silences the APP's own banner and cannot silence
+	 * the backend's, which is why the switch has to be in the environment this
+	 * child is handed. See `notifications-off.mjs`.
+	 */
+	const env = withNotificationsOff({
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
-	};
+	});
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
