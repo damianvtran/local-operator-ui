@@ -10,14 +10,25 @@ is the swept set, this is the state it replaced.
 | --- | --- | --- |
 | `populated/` | `panels-analytics--populated` | Both tables WITHOUT the `Cache hit` column: `Provider / Calls / Tokens / Cost` is the whole header, and the cache rate exists only as the window-wide `Cache read` stat card above them. The after frame adds the column, read per row. |
 | `populated-hover/` | `panels-analytics--populated-hover` | The pointer ON the first bar, under recharts' default cursor: a full-height rectangle over the category band, drawn over the marks, so what the pointer highlights is the COLUMN and the bar itself is greyed out under it. The after frame highlights the bar and leaves the band alone. |
+| `populated-hover-shallow/` | `panels-analytics--populated-hover-shallow` | The same, with the first day carrying 60k against the same 1.9M peak — a bar a few pixels tall. Design review round 1 (D7) asked for it: a fill step has almost no area to read at that size, and `obsidian` and `monokai` are the two palettes where the answer is not obvious. |
 
 ## Themes
 
 `localOperatorDark` (the app's own), plus the two the hover role is judged on:
-**`obsidian`** (accent near-white, `accent-hover` dimmer — the subtle end) and
-**`iceberg`** (`accent-hover` darker than the accent). Three of twelve, because
-this set exists to make a colour comparison readable rather than to be a swept
-pass; the after half of both changes is in the swept set in all twelve.
+**`obsidian`** (whose accent is its brightest value, so its whole ramp walks
+downwards) and **`iceberg`** (light ground, so the hover step goes darker).
+Three of twelve, because this set exists to make a colour comparison readable
+rather than to be a swept pass; the after half of both changes is in the swept
+set in all twelve.
+
+What the after half uses is no longer `accent-hover` but `chart-bar-hover`, the
+role added in design review round 1 (D1): `accent-hover` is the primary button's
+own ramp step, and on obsidian's plot ground it moves TOWARD the ground, so the
+bar the pointer was on receded (16.97:1 at rest, 13.96:1 hovered). Obsidian's
+value is therefore not a lightness step at all — there is no headroom above
+`#FAFAFA` — but a low-chroma step into the hue its own `warning` already owns,
+which is why its frame in `panels-analytics/populated-hover/` is worth comparing
+against this one.
 
 ## How these were taken
 

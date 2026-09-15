@@ -23,16 +23,31 @@ mounting a picker).
 | `enter-runs-analytics` | Enter after `/analytics` | `draft: "/analytics "`, `ran: none` — the reported defect: the word is completed and nothing runs | `draft: ""`, `ran: /analytics` |
 | `enter-completes-a-list-command` | Enter after `/model` | `draft: "/model "`, list opens on **Models**, `ran: none` | unchanged |
 | `tab-never-runs` | Tab after `/analytics` | `draft: "/analytics "`, `ran: none` | unchanged |
-| `ambiguous-enter-grows-the-prefix` | Enter after `/l` | `draft: "/login "`, list **closed** — the highlighted row was completed and run-ready | `draft: "/log"`, list still open on **Commands**, `ran: none` |
+| `ambiguous-enter-grows-the-prefix` | Enter after `/l` | `draft: "/login "`, list **closed** — the highlighted row was completed and run-ready | `draft: "/lo"`, list still open on **Commands**, `ran: none` |
+| `ambiguous-enter-keeps-the-written-message` | Enter after `/l hello` | `draft: "/login hello"` — `origin/main` completes to the highlighted row, and carries its own trailing space | `draft: "/lo hello"`, caret after the word |
 | `click-runs-analytics` | click on the `/analytics` row after `/ana` | `ran: /analytics` | unchanged |
 
 So the pointer arm was **already working** (last row: identical on both trees),
 and the keyboard arm was the one that needed two Enters — which is what the fix
 is, and what the `origin-main/` frames record rather than assert.
 
-`/log` in row four is the two candidates' longest common prefix (`login`,
-`logout`), which cannot be the wrong command by construction; `origin/main`
-completed to the highlighted row instead, putting a run-ready word in the box.
+``/lo` in row four is the longest common prefix of the `l` family **as the real
+registry has it** — `login`, `logout` and `loop`
+(`local_operator/slash_commands.py`) — which cannot be the wrong command by
+construction; `origin/main` completed to the highlighted row instead, putting a
+run-ready word in the box. Review round 1 (F3) found this fixture carrying only
+`login` and `logout`, so the frame showed `log`: a number the real registry
+cannot produce, and an ambiguity case easier than the one users meet.
+
+Row five is the case that proves the splice (review round 1, F1): a word with a
+written message after it. Note what its two cells say, because the pair is not a
+straight before/after of one function: `origin/main` has no extension path at all
+(it completes to the highlighted row, and a completion carries its own trailing
+space), while the branch's NEW `extensionFor` deleted the separator instead and
+produced `/loghello` — measured, not read, and fixed in this round. So the frame
+is the regression test for a defect this branch introduced and this branch
+closes, and the `origin/main` cell is what that gesture did before the feature
+existed.
 
 ## Reproducing it
 

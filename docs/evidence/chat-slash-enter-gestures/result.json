@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/slash-enter-proof.mjs",
-  "at": "2026-09-15T20:51:34.840Z",
+  "at": "2026-09-15T23:25:56.812Z",
   "cases": [
     {
       "name": "enter-runs-analytics",
@@ -106,11 +106,11 @@
     },
     {
       "name": "ambiguous-enter-grows-the-prefix",
-      "why": "`/l` leaves `login` and `logout`, so Enter grows the word to their common prefix `log` and leaves the list up.",
+      "why": "`/l` leaves the whole `l` family (`login`, `logout`, `loop` — the real registry's own set), so Enter grows the word to their common prefix `lo` and leaves the list up.",
       "gesture": "Enter after typing \"/l\"",
       "expect": {
         "ran": "none",
-        "draft": "/log",
+        "draft": "/lo",
         "list": "Slash commands"
       },
       "before": {
@@ -119,24 +119,64 @@
         "phase": "Commands",
         "rows": [
           "/loginAuthenticate a providervalue?",
-          "/logoutRemove stored provider credentialsvalue?"
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/loginAuthenticate a providervalue?",
         "ran": "none"
       },
       "after": {
-        "draft": "/log",
+        "draft": "/lo",
         "list": "Slash commands",
         "phase": "Commands",
         "rows": [
           "/loginAuthenticate a providervalue?",
-          "/logoutRemove stored provider credentialsvalue?"
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/loginAuthenticate a providervalue?",
         "ran": "none"
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-grows-the-prefix-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-grows-the-prefix-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "ambiguous-enter-keeps-the-written-message",
+      "why": "The same growth on a draft that has a message after the word — the shape review round 1 (F1) found the separator being deleted from, turning `/l hello` into `/lohello`.",
+      "gesture": "Enter after typing \"/l\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/lo hello",
+        "list": "Slash commands"
+      },
+      "before": {
+        "draft": "/l hello",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
+        ],
+        "active": "/loginAuthenticate a providervalue?",
+        "ran": "none"
+      },
+      "after": {
+        "draft": "/lo hello",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
+        ],
+        "active": "/loginAuthenticate a providervalue?",
+        "ran": "none"
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-keeps-the-written-message-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-keeps-the-written-message-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
