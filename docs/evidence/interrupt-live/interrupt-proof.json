@@ -1,6 +1,6 @@
 {
   "backend": "http://127.0.0.1:1131",
-  "out": "/tmp/interrupt-live-proof-r3",
+  "out": "/tmp/interrupt-live-proof-r4",
   "steps": [
     {
       "step": "bridge",
@@ -224,6 +224,6 @@
       "noticeElements": 0
     }
   ],
-  "session": "abd1a1b7afa8",
+  "session": "a286880cf094",
   "viewport": "{\"w\":1380,\"h\":868,\"dpr\":2}"
 }
