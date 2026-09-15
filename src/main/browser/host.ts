@@ -28,9 +28,10 @@ import { permittedScheme } from "./settle";
 
 /**
  * The actions whose result describes the CURRENT document, and therefore must be
- * authorized against it — twice, and against one document epoch (see
- * `authorizedPerform`). Narrower than `TAB_SCOPED`: `close` and `retitle` address
- * a tab but say nothing about its document.
+ * authorized against it — on entry and again on the result (see
+ * `authorizedPerform`, and `NAVIGATION_ACTIONS` for the one thing the two
+ * families of action answer differently). Narrower than `TAB_SCOPED`: `close` and
+ * `retitle` address a tab but say nothing about its document.
  */
 const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"read",
@@ -53,9 +54,10 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
  * there is no agent-initiated hop for the gate to decide, while its Document-stage
  * interception also fails the PAGE's own subresource and third-party-iframe loads
  * with `BlockedByClient` — a side effect on the page the user is watching that the
- * page can observe. Their protection is the double authorization in
- * `authorizedPerform` (entry and result, held to one `documentEpoch`), which is
- * exactly what refuses a page-initiated escape (review round 1, R5).
+ * page can observe. Their protection is the entry and result authorization in
+ * `authorizedPerform` — where the result is authorized against the document it
+ * actually came from — together with this per-hop gate, which is what refuses a
+ * page-initiated escape before it is fetched (review round 1, R5).
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
 
@@ -135,38 +137,61 @@ export class BrowserHost implements BrowserActionContext {
 		const token = String(params.tab ?? "");
 		const record = this.registry.requireSurface(token);
 		const requester = requesterOf(params, requestId);
-		// THE DOCUMENT THIS CALL STARTED ON, captured before anything can await.
+		// THE DOCUMENT THE CHECKS BELOW ARE MADE AGAINST, and the one thing the two
+		// families of document-scoped action answer differently.
+		//
 		// A URL check alone cannot say "the same document throughout": a page can
 		// leave for an unapproved origin and come straight back, and the return check
 		// would then see the approved URL again while the result in hand came from the
-		// other one (review round 1, R4 — reproduced with the isolated-world call
-		// running on the unapproved document and the URL restored before the check).
-		// Every top-level navigation bumps `documentEpoch`, so requiring it unchanged
-		// is what makes the pair of URL checks mean what they claim.
-		const enteredOn = record.documentEpoch;
+		// other one (review round 1, R4). Every top-level navigation bumps
+		// `documentEpoch`, so that is the fact that says which document is current,
+		// and this baseline is what the pair of URL checks is measured against.
+		//
+		// For the NON-NAVIGATING read family the baseline is the document the call
+		// entered on and must not move: they cannot change which document is current,
+		// so a change underneath one means it raced a navigation it did not cause, and
+		// nothing they hold may be described as coming from the document they entered
+		// on.
+		//
+		// `click`/`type` are the opposite case and must NOT be held to it: a document
+		// change is the EXPECTED consequence of the action — following a link or
+		// submitting a form IS the action — and the navigation the action itself
+		// performed bumps the same epoch, so holding them to the entry epoch refused
+		// every link-following click and form submit on an approved origin and
+		// reported a failure that contradicted the state it described (QA round 2,
+		// Q2). What they must hold instead is that the document the RESULT comes from
+		// is authorized for this action: the baseline follows a navigation, and the
+		// authorization below is then applied to the document they landed on — so an
+		// unapproved landing fails the same check a read on that page fails, and,
+		// being gated `NAVIGATION_ACTIONS`, fails before the hop is fetched rather
+		// than after it arrives.
+		let authorizedOn = record.documentEpoch;
 		const assertDocument = (): URL => {
 			const url = new URL(record.view.webContents.getURL() || "about:blank");
-			if (record.documentEpoch !== enteredOn) {
-				// The document this action is authorized against is gone, so nothing it
-				// returns may be described as coming from it. Refused with the code the
-				// session already branches on, and a `reason` that names what happened
-				// rather than blaming a URL that may well be approved — the round trip is
-				// exactly the case whose URL is.
-				this.registry.bumpEpoch(record.tabId);
-				throw new BrowserHostError(
-					"origin_not_allowed",
-					"the page navigated while this action was running; its result was discarded",
-					{ origin: url.origin, url: url.href, reason: "changed" },
-				);
+			if (record.documentEpoch !== authorizedOn) {
+				if (!NAVIGATION_ACTIONS.has(method)) {
+					// The document this action is authorized against is gone, so nothing it
+					// returns may be described as coming from it. Refused with the code the
+					// session already branches on, and a `reason` that names what happened
+					// rather than blaming a URL that may well be approved — the round trip is
+					// exactly the case whose URL is.
+					this.registry.bumpEpoch(record.tabId);
+					throw new BrowserHostError(
+						"origin_not_allowed",
+						"the page navigated while this action was running; its result was discarded",
+						{ origin: url.origin, url: url.href, reason: "changed" },
+					);
+				}
+				// The action's own navigation, adopted BEFORE it is authorized so every
+				// check either side of `perform` judges the document the result actually
+				// describes rather than one that no longer exists. Adopting the epoch is
+				// not an exemption from the authorization below, which is why an action
+				// that lands somewhere unapproved still fails it.
+				authorizedOn = record.documentEpoch;
 			}
 			if (
 				!permittedScheme(url) ||
-				!this.approvals.documentAllowed(
-					token,
-					url,
-					requester,
-					record.documentEpoch,
-				)
+				!this.approvals.documentAllowed(token, url, requester, authorizedOn)
 			) {
 				this.registry.bumpEpoch(record.tabId);
 				this.approvals.refuseDocument(url);

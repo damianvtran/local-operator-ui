@@ -1409,6 +1409,246 @@ test("a document round trip cannot return the unapproved document's text", async
 	);
 });
 
+/**
+ * Arm the three DOM answers a `click` needs, and let the caller reproduce what
+ * Electron does once the click's own handler has run and the navigation it
+ * started commits: the document moves and `did-navigate` bumps the tab's epoch.
+ * Those two facts are the ones the guard has to tell apart from a navigation the
+ * PAGE started on its own.
+ */
+function installClickFixture(cdp, onNavigate) {
+	const answers = {
+		"DOM.getDocument": { root: { nodeId: 1 } },
+		"DOM.querySelector": { nodeId: 2 },
+		"DOM.resolveNode": { object: { objectId: "obj-1" } },
+	};
+	const send = cdp.send;
+	cdp.send = async (contents, method, params) => {
+		if (method in answers) {
+			cdp.calls.push({ method, params });
+			return answers[method];
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes("pointerover")
+		) {
+			onNavigate();
+		}
+		return send(contents, method, params);
+	};
+}
+
+test("a click that follows an approved link reports the page it landed on", async () => {
+	// QA round 2, Q2. `click` and `type` are document-scoped AND the actions that
+	// navigate, so a link-following click bumps the very `documentEpoch` the guard
+	// compared against: every such click on an approved origin was refused with
+	// `reason:"changed"` while the page had in fact navigated. The baseline follows
+	// the action's own navigation, and the document it landed on is authorized in
+	// place of the one it left.
+	const { host, cdp, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/sameonly",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	installClickFixture(cdp, () => {
+		record.view.webContents.url = "https://approved.example/next";
+		registry.bumpEpoch(record.tabId);
+	});
+	const result = await host.dispatch(
+		"click",
+		{ ...params, tab: opened.tab, selector: "#gosame" },
+		"click",
+	);
+	assert.equal(result.navigated, true, "the navigation was not reported");
+	assert.equal(
+		result.url,
+		"https://approved.example/next",
+		"the result did not describe the page the click landed on",
+	);
+});
+
+test("a form submit on the approved origin reports the page it landed on", async () => {
+	// The same defect through the form path QA measured (`type` into a field, then
+	// click the submit control): the submit is the click's own navigation.
+	const { host, cdp, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/sameform",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	installClickFixture(cdp, () => {
+		record.view.webContents.url = "https://approved.example/after?q=qa";
+		registry.bumpEpoch(record.tabId);
+	});
+	const typed = await host.dispatch(
+		"type",
+		{ ...params, tab: opened.tab, selector: "#q", text: "qa" },
+		"type",
+	);
+	assert.equal(typed.url, "https://approved.example/sameform");
+	const submitted = await host.dispatch(
+		"click",
+		{ ...params, tab: opened.tab, selector: "#fsubsame" },
+		"submit",
+	);
+	assert.equal(submitted.navigated, true, "the submit was not reported");
+	assert.equal(submitted.url, "https://approved.example/after?q=qa");
+});
+
+test("a click that would reach an unapproved origin fails the hop before it is fetched", async () => {
+	// The refusal half of the same cut, and the one thing that must not change:
+	// adopting the landing document is not an exemption from authorizing it. The
+	// per-hop gate fails the Document request before it leaves, so nothing reaches
+	// the unapproved origin and the document the result describes is still the
+	// authorized one. (The envelope for a hop the gate refused is whatever the gate
+	// produced before this guard existed — `withOriginGate` only re-labels an
+	// error — so this test pins the mechanism and the state, not a code that the
+	// action was already answering.)
+	const { host, cdp, registry } = makeHost();
+	// The gate subscribes per webContents; holding the handler is how the test
+	// drives the hop a real page would attempt.
+	let hop = null;
+	cdp.subscribe = (_contentsId, handler) => {
+		hop = handler;
+		return () => {
+			hop = null;
+		};
+	};
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	installClickFixture(cdp, () => {
+		assert.ok(hop, "the navigation gate was not armed around the click");
+		hop("Fetch.requestPaused", {
+			requestId: "hop-1",
+			request: { url: "https://forbidden.example/" },
+		});
+	});
+	const result = await host.dispatch(
+		"click",
+		{ ...params, tab: opened.tab, selector: "#escape" },
+		"click",
+	);
+	const failed = cdp.calls.filter(
+		(call) => call.method === "Fetch.failRequest",
+	);
+	assert.equal(failed.length, 1, "the refused hop was not failed");
+	assert.equal(failed[0].params.requestId, "hop-1");
+	assert.equal(failed[0].params.errorReason, "BlockedByClient");
+	assert.deepEqual(
+		cdp.calls.filter(
+			(call) =>
+				call.method === "Fetch.continueRequest" &&
+				call.params.requestId === "hop-1",
+		),
+		[],
+		"the unapproved hop was allowed to reach its origin",
+	);
+	assert.equal(
+		record.view.webContents.url,
+		"https://approved.example/",
+		"the refused hop navigated anyway",
+	);
+	assert.equal(
+		result.url,
+		"https://approved.example/",
+		"the result described a document the action was not authorized for",
+	);
+});
+
+test("a click whose document lands on an unapproved origin still fails the result check", async () => {
+	// The other half of the same cut, and the reason adopting the epoch is not a
+	// blanket pass: if the document the result comes from is not authorized, the
+	// result is refused — by the same check that refuses a read on that page.
+	const { host, cdp, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	installClickFixture(cdp, () => {
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+	});
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"click",
+				{ ...params, tab: opened.tab, selector: "#escape" },
+				"click",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.reason === "unapproved",
+	);
+});
+
+test("a document change under any non-navigating action discards its result", async () => {
+	// QA round 2 measured that the epoch guard was covered for `read` only, and
+	// that gap is why a blocker inside it passed the suite. The page's own round
+	// trip (review round 1, R4) is replayed for every member of the family, at the
+	// one point they all pass through — `perform` — so the hook is the action's own
+	// in-flight window rather than one action's implementation detail.
+	const { host, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	record.view.webContents.isolatedResult = "hello";
+	// `screenshot` refuses a zero-area view before it captures anything, so the
+	// view needs the page area the app's chrome reports in a real run.
+	record.view.setBounds({ x: 0, y: 0, width: 1280, height: 720 });
+	const perform = host.perform.bind(host);
+	host.perform = async (method, methodParams, requestId) => {
+		const result = await perform(method, methodParams, requestId);
+		// The page leaves for an unapproved origin and returns, leaving an approved
+		// URL for the result check to see — the shape a URL-only check cannot catch.
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+		record.view.webContents.url = "https://approved.example/";
+		return result;
+	};
+	for (const [method, extra] of [
+		["read", { selector: "body" }],
+		["snapshot", {}],
+		["screenshot", {}],
+		["scroll", { direction: "down" }],
+		["logs", {}],
+	]) {
+		await assert.rejects(
+			() =>
+				host.dispatch(
+					method,
+					{ ...params, tab: opened.tab, ...extra },
+					method,
+				),
+			(error) =>
+				error.code === "origin_not_allowed" &&
+				error.data.reason === "changed",
+			`${method} returned a result from a document it did not authorize`,
+		);
+	}
+});
+
 test("the per-hop gate is armed for the actions that can navigate, and only those", async () => {
 	// Review round 1, R5, as a RULING: `Fetch.enable` intercepts the page's own
 	// Document-stage loads too, so arming it around an action that cannot change
