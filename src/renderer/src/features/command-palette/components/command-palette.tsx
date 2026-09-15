@@ -429,9 +429,18 @@ export const CommandPalette: FC = () => {
 			 */
 			const count = matches.length;
 			if (event.key === "ArrowDown") {
+				/*
+				 * A MODIFIED arrow is not the list's: Shift+Arrow is the caret
+				 * extending a selection and Alt+Arrow is the OS's (word-jump on this
+				 * platform, history elsewhere). The comment below has always said so;
+				 * the branch did not check, which is how the modifier arrived with the
+				 * caret frozen (UX round 2, U3).
+				 */
+				if (event.shiftKey || event.altKey) return;
 				event.preventDefault();
 				if (count > 0) setSelectedIndex((current) => (current + 1) % count);
 			} else if (event.key === "ArrowUp") {
+				if (event.shiftKey || event.altKey) return;
 				event.preventDefault();
 				if (count > 0) {
 					setSelectedIndex((current) => (current - 1 + count) % count);
@@ -504,8 +513,15 @@ export const CommandPalette: FC = () => {
 					 * banner painted over the query field: the user typed into a field they
 					 * could not see (UX round 1, U1). A modal owns the screen, and the
 					 * banner's own remedy is waiting behind it either way.
+					 *
+					 * The SCRIM clears it too (`overlayClassName`), and that is the other
+					 * half of the same decision: at `z-50` the scrim left the banner's strip
+					 * undimmed between itself and this panel, showing the banner's sentence
+					 * sliced in half by the dialog (UX round 2, U7). Dimming the banner is
+					 * what "the modal owns the screen" looks like.
 					 */
 					className="z-[2300] w-160 max-w-[90vw] gap-0 overflow-hidden p-0"
+					overlayClassName="z-[2300]"
 					/*
 					 * Focus goes to the query field and stays there. The rows are
 					 * driven by `aria-activedescendant` rather than by moving focus,
