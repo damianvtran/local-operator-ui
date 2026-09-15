@@ -514,6 +514,17 @@ export class BrowserHost implements BrowserActionContext {
 		return title === "about:blank" ? "" : title;
 	}
 
+	/** Whether a tab is loading right now, false for a tab that is gone or whose
+	 * webContents has already been destroyed. Guarded the same way `snapshot()`
+	 * guards its reads: a read that lands between destruction and the
+	 * `destroyed` handler would otherwise throw "Object has been destroyed" out of
+	 * an IPC handler and blank the whole strip instead of dropping one tab. */
+	tabLoading(tabId: number): boolean {
+		const record = this.registry.get(tabId);
+		if (!record || record.view.webContents.isDestroyed()) return false;
+		return record.view.webContents.isLoading();
+	}
+
 	chromeState(): Record<string, unknown> {
 		// `active` is dropped when its webContents is already dead: `snapshot()`
 		// guards each read the same way, and a read that landed between destruction
@@ -540,6 +551,15 @@ export class BrowserHost implements BrowserActionContext {
 				// refused has no other way to say so - its page area is blank and the
 				// band belongs to the active tab - so the strip carries the mark.
 				failed: this.loadFailures.has(entry.tabId),
+				// PER TAB, and it is the one projection field this feature adds. The strip
+				// could only ever see the ACTIVE tab's loading state before (`loading`
+				// below), so a background agent tab that is loading a page showed nothing
+				// at all - and since an agent tab is created non-active and only the active
+				// tab occupies the content rect (`registry.ts:492-503`), "nothing at all"
+				// was the whole of what the user saw of an agent's work. Read from the
+				// record rather than the snapshot: `snapshot()` is the diagnostic
+				// projection shared with `status`/`tabs`, and this field is chrome.
+				loading: this.tabLoading(entry.tabId),
 			})),
 			activeTabId: activeRecord?.tabId ?? null,
 			url: active ? active.view.webContents.getURL() : "",
