@@ -1245,10 +1245,11 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 
-	/* The unpacked-extension manager's sheet, whose four states are the ones the
-	   manager's projection can be in and three of which a reviewer cannot reach
+	/* The unpacked-extension manager's sheet, whose states are the ones the
+	   manager's projection can be in and several of which a reviewer cannot reach
 	   on demand: an empty registry, a loaded extension, a manifest that changed
-	   after approval, and a registry that could not be read. Swept rather than
+	   after approval, a registry that could not be read, the destructive
+	   confirmation, and the wait while a native dialog is up. Swept rather than
 	   declared supplementary because the frames come from the ordinary Storybook
 	   story (`browser-extensions-sheet.stories.tsx`) over a stubbed transport,
 	   so a recapture re-derives every one of them. What they do NOT evidence is
@@ -1256,7 +1257,15 @@ export const STORIES = [
 	   `scripts/browser-extensions-proof.mjs`, quoted in the PR and in the
 	   compatibility matrix beside it.
 
-	   1280x900 for all five: the sheet is capped at `max-w-lg`, so a wider
+	   `remove-confirm` and `busy` are here because design round 1 (D1) found the
+	   frame set was all passive PROJECTIONS of the manager's state: the two states
+	   where the user decides and where the user waits existed in the component and
+	   in no frame. Neither is reachable from a prop — the first is reached by
+	   clicking its own `Remove` control and the second needs a transport whose
+	   calls never settle — so both are reached from the story's own decorators and
+	   stub.
+
+	   1280x900 for all seven: the sheet is capped at `max-w-lg`, so a wider
 	   viewport only adds ground, and the panel is a full-height `overflow-y-auto`
 	   drawer, so a taller one only scrolls. The dominant colour of each frame is
 	   therefore the ground behind a 512px panel, well inside the uniformity
@@ -1266,6 +1275,17 @@ export const STORIES = [
 	["browser-extensions-sheet--warnings", 1280, 900],
 	["browser-extensions-sheet--refused", 1280, 900],
 	["browser-extensions-sheet--registry-unreadable", 1280, 900],
+	["browser-extensions-sheet--remove-confirm", 1280, 900],
+	["browser-extensions-sheet--busy", 1280, 900],
+
+	/* The chrome control that OPENS that sheet (design round 1, D1): the url bar
+	   row, where the `Extensions` ghost button sits beside `Sites` and its count
+	   badge. This is the only frame in the set of the surface a user reaches the
+	   extensions work FROM, and the pair it shows is a hierarchy claim — a
+	   bordered control carrying state next to a bare label — that only pixels can
+	   settle. 1280x108 is the row plus a little ground beneath it: the band is
+	   ~40px tall, so the frame is neither a letterbox nor mostly ground. */
+	["browser-url-bar--extensions-entry", 1280, 108],
 ];
 
 /**
