@@ -200,8 +200,10 @@ part of what this harness has to get right:
   rm -rf "${TMPDIR:-/tmp}/lo-renderer-driver-<pid>"   # the path the run printed
   ```
 
-  A run that refuses on the pin check leaves one too, but only when `--keep` asked
-  for it — otherwise that path removes it before exiting.
+  A run that refuses on the pin check leaves one too, and prints its path: that
+  path removes the tree only when `--clean` was passed without `--keep`. With the
+  default flags — neither `--clean` nor `--keep` — it prints `scratch: <path>` and
+  keeps the tree, so a refused run needs the same `rm -rf` an interrupted one does.
 
 ## The verbs
 
