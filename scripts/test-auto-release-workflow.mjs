@@ -581,6 +581,43 @@ test("a candidate that answers is passed on as the pin", () => {
 	assert.match(run.summary, /Candidate commit/);
 });
 
+/**
+ * The transitive set of `scripts/...` modules a script imports, read from the
+ * source.
+ *
+ * The signed-update checkout lists its modules BY HAND, so a module one of them
+ * imports — directly, or through another module it imports — but the list omits
+ * fails the job at IMPORT time. That is what adding `scripts/entry-point.mjs`
+ * would have done to this workflow silently: every script it checks out now
+ * resolves its own entry point through that module, and nothing in the file says
+ * so. `test-publish-workflow.mjs` derives the same closure for `publish.yml`; this
+ * is the same question asked of the other sparse checkout in the release path.
+ */
+function localImports(file, seen = new Set()) {
+	if (seen.has(file)) return [];
+	seen.add(file);
+	const found = [
+		...readFileSync(new URL(`../${file}`, import.meta.url), "utf8").matchAll(
+			/from "\.\/([\w.-]+)"/g,
+		),
+	].map((match) => `scripts/${match[1]}`);
+	return [...found, ...found.flatMap((module) => localImports(module, seen))];
+}
+
+test("the signed-update checkout carries every module the derivation imports", () => {
+	const checkout = steps(signedUpdate, "derive").find(
+		(step) => step.with?.["sparse-checkout"],
+	);;
+	assert.ok(checkout, "the derive job checks out its scripts");
+	const listed = checkout.with["sparse-checkout"];
+	for (const module of localImports("scripts/release-candidate.mjs"))
+		assert.match(
+			listed,
+			new RegExp(`^\\s*${module.replace(/\./g, "\\.")}\\s*$`, "m"),
+			`${module} missing from the derive job's checkout`,
+		);
+});
+
 test("the verification derives its own inputs and needs no approval", () => {
 	const build = signedUpdate.jobs.build;
 	// The pin that still protects the signing key: the tree that receives it must

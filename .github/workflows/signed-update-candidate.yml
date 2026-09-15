@@ -142,7 +142,11 @@ jobs:
           # The workflow's own reviewed commit, as everywhere else that checks out
           # tooling rather than a payload.
           ref: ${{ github.workflow_sha }}
+          # `scripts/entry-point.mjs` is here for the same reason as in
+          # `publish.yml`: `validate-release.mjs` resolves its own entry point through
+          # it, so a list without it fails this job at import time.
           sparse-checkout: |
+            scripts/entry-point.mjs
             scripts/validate-release.mjs
             scripts/release-candidate.mjs
             scripts/release-baseline.mjs
