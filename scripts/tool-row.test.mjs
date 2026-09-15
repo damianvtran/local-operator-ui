@@ -1781,3 +1781,400 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 	assert.equal(wakeIsCatchup({}), false);
 	assert.equal(wakeIsCatchup({ wake_catchup: 0 }), false);
 });
+
+/* ------------------------------------------------------ the working line */
+
+/*
+ * The aggregate working line's ladder, and the one rung on it the app drives
+ * from its own state rather than from a frame the owner sent.
+ *
+ * That rung covers the operator's own report: an accepted send on a cold
+ * session spends seconds inside the message request spawning its runtime, and
+ * until the first frame landed the transcript painted the user's own bubble and
+ * then nothing at all. So the rung must exist, must sit on the ladder's own
+ * phase (one wait, one clock), and — the half a story cannot pin — must CLEAR.
+ * A line that lingers is a claim that outlives the work it names, so every
+ * clear is asserted here rather than eyeballed in a frame.
+ *
+ * The module imports two runtime values (`displayName`, `paintsSomething`)
+ * besides its types, so this bundle is not free — it is small and side-effect
+ * free, which is why the assertions can live here rather than in a browser.
+ */
+const workingLineBundle = await build({
+	stdin: {
+		contents:
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	deriveWorkingLine,
+	ADMITTED_SEND_ACTIVITY,
+	admittedSendFor,
+	ownerAnswered,
+	turnStopped,
+	stoppedAfterAdmission,
+	workingLineClaimed,
+	workingLineInputFor,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
+);
+
+test("frame-only stopped outcomes retire only the send they follow", () => {
+	// The real refusal frame may contain no completion_attention transcript
+	// entry at all. The pane synthesizes its visible incident from this record;
+	// a fixture containing only a raw notice cannot cover that production path.
+	for (const kind of ["error", "interrupted"]) {
+		const attention = { anchor_id: "completion-new", kind, unseen: true };
+		assert.equal(stoppedAfterAdmission(attention, null), true);
+		assert.equal(stoppedAfterAdmission(attention, "completion-old"), true);
+		assert.equal(
+			stoppedAfterAdmission({ ...attention, unseen: false }, null),
+			true,
+		);
+		assert.equal(stoppedAfterAdmission(attention, "completion-new"), false);
+	}
+	assert.equal(stoppedAfterAdmission(null, null), false);
+	assert.equal(stoppedAfterAdmission({ kind: "error" }, null), false);
+	assert.equal(
+		stoppedAfterAdmission(
+			{ anchor_id: "completion-new", kind: "success" },
+			null,
+		),
+		false,
+	);
+});
+
+const userRow = (id, text) => ({ kind: "user", id, ts: 1, text, images: [] });
+const assistantRow = (id, text) => ({
+	kind: "assistant",
+	id,
+	ts: 1,
+	text,
+	streaming: true,
+	stopReason: null,
+	error: false,
+});
+const runningToolRow = (id) => ({
+	kind: "tool",
+	id,
+	ts: 1,
+	toolCallId: id,
+	toolName: "bash",
+	intent: null,
+	args: null,
+	phase: "running",
+	argumentBytes: 0,
+	output: null,
+	isError: false,
+	durationS: null,
+	startedAt: 1,
+	images: [],
+	added: 0,
+	removed: 0,
+	diff: null,
+	stopped: false,
+});
+const noticeRow = (id) => ({
+	kind: "notice",
+	id,
+	ts: 1,
+	text: "Cleared the conversation",
+	level: "info",
+});
+/*
+ * A durable completion marker, which the reducer writes on a `notice` for
+ * exactly two outcomes - "Stopped with an error" and "Interrupted" - and never
+ * for its own renderer notes. The `complete` field is the marker; the text is
+ * copied from `transcript-reducer.ts` only so a reader can see what it is.
+ */
+const incidentRow = (id, level = "error") => ({
+	kind: "notice",
+	id,
+	ts: 2,
+	complete: true,
+	text: level === "error" ? "Stopped with an error" : "Interrupted",
+	level,
+});
+
+/** A send this pane admitted, with its echo painted under the anchor id. */
+const ECHO = "admission-1";
+const admitted = (records, over = {}) =>
+	deriveWorkingLine({
+		waiting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		gate: false,
+		unavailable: false,
+		records: [userRow(ECHO, "go"), ...records],
+		...over,
+	});
+
+test("an admitted send that has painted nothing yet says the app is waiting", () => {
+	// The echo IS the transcript at this point: the user's own row, and no
+	// assistant or tool row after it. Before this rung the frame showed the
+	// bubble and then dead air for the length of the cold engage.
+	assert.deepEqual(admitted([]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+});
+
+test("the wait sits on the ladder's own phase, so one wait keeps one clock", () => {
+	// Phases are what the clock is keyed to (`working-line.tsx`). A phase of its
+	// own would restart the count at 0s the moment the first frame arrived,
+	// which is the "restarting the clock on every label change" defect the line
+	// is documented against — the engage and the model call that follows are one
+	// wait to the reader.
+	const plainWaiting = deriveWorkingLine({
+		waiting: true,
+		starting: false,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.equal(admitted([]).phase, plainWaiting.phase);
+});
+
+test("a painted answer after the echo ends the wait, wherever it sits", () => {
+	// The clear sweeps EVERY record after the send's own echo, which is the rule
+	// `buildRows` and `AssistantRow` use. Scoped to the tail (the first cut) it
+	// re-asserted the rung over an answer already on screen whenever the last
+	// record happened to paint nothing — measured: painted prose followed by an
+	// empty `message_start` placeholder (review round 1, R3).
+	assert.equal(admitted([assistantRow("a1", "Here is the answer")]), null);
+	assert.equal(admitted([runningToolRow("t1")]), null);
+	assert.equal(
+		admitted([assistantRow("a1", "Here is the answer"), assistantRow("a2", "")]),
+		null,
+		"a placeholder after the answer must not bring the rung back",
+	);
+	// A placeholder on its own is not an answer: `message_start` opens one at
+	// the top of every provider call, before a token exists, and that record
+	// paints no row.
+	assert.deepEqual(admitted([assistantRow("a1", "")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+	// A notice is not the agent answering either — it is the app's own receipt
+	// sitting at the foot of the column.
+	assert.deepEqual(admitted([noticeRow("n1")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+});
+
+test("records BEFORE the echo are another turn's business", () => {
+	// An existing conversation's own history sits above the send. Anchored on
+	// the echo, none of it can pass for an answer to this send — which the tail
+	// rule could read as one whenever the echo had not painted yet.
+	const records = [
+		userRow("u-old", "earlier question"),
+		assistantRow("a-old", "earlier answer"),
+		userRow(ECHO, "go"),
+	];
+	assert.deepEqual(admitted([], { records }), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+});
+
+test("a question for the user outranks the wait, and a dead stream suspends it", () => {
+	// Branding § 7: a pending question is the only thing on screen that needs a
+	// decision, so the working line yields to it — the same rule the ladder's
+	// own branches obey.
+	assert.equal(admitted([], { gate: true }), null);
+	// An unrecoverable stream renders the error in the transcript; a working
+	// line beside it would claim progress the transport is not making.
+	assert.equal(admitted([], { unavailable: true }), null);
+});
+
+test("the rung only shows when nothing the owner drove has taken over", () => {
+	// A turn the owner IS generating still reads the ladder, with the admitted
+	// send true alongside it: the first frame wins as soon as it arrives.
+	assert.deepEqual(
+		admitted([runningToolRow("t1")], {
+			waiting: true,
+			records: [userRow(ECHO, "go"), runningToolRow("t1")],
+		}),
+		{ activity: "running bash", phase: "running" },
+	);
+	assert.deepEqual(
+		admitted([], {
+			waiting: true,
+			records: [userRow(ECHO, "go"), assistantRow("a1", "Streaming")],
+		}),
+		{ activity: "responding", phase: "responding" },
+	);
+	// And with no send in flight at all, nothing is claimed.
+	assert.equal(
+		deriveWorkingLine({
+			waiting: false,
+			starting: false,
+			gate: false,
+			unavailable: false,
+			records: [userRow("u1", "go")],
+		}),
+		null,
+	);
+});
+
+/* ------------------------------------------- which send is "admitted" */
+
+/*
+ * The one rule that decides whether the rung appears at all (`chat-page.tsx`).
+ *
+ * It is a derivation over the store's draft row, so it is asserted here the way
+ * `draftIdentityFor` and `panelIdentityFor` are: swapping it for the composer's
+ * local `admitting` state, or dropping the `sessionId` conjunct, restores the
+ * operator's dead-air report while every other test stays green. The row's own
+ * lifetime is pinned against the real store in `canonical-chat.test.mjs`.
+ */
+test("a send is admitted only when the request was actually issued", () => {
+	const row = {
+		pending: true,
+		admissionAttempted: true,
+		admissionRequestId: ECHO,
+	};
+	assert.deepEqual(admittedSendFor("111111111111", row), { requestId: ECHO });
+
+	// Before admission there is nothing to wait on: the composer still holds
+	// the user's text, and the store has not issued a request it cannot take
+	// back. On that hop the pane is legitimately empty.
+	assert.equal(
+		admittedSendFor("111111111111", { ...row, admissionAttempted: false }),
+		null,
+	);
+	// A settled or failed send: the request is no longer in flight.
+	assert.equal(admittedSendFor("111111111111", { ...row, pending: false }), null);
+	// No session yet: the New-chat hop, where the create has not returned and
+	// the owner has no conversation to answer on.
+	assert.equal(admittedSendFor(undefined, row), null);
+	// A row with no identity cannot anchor a clear, so it cannot carry a rung.
+	assert.equal(
+		admittedSendFor("111111111111", { ...row, admissionRequestId: undefined }),
+		null,
+	);
+	assert.equal(admittedSendFor("111111111111", undefined), null);
+});
+
+test("the anchored clear is the transcript's own predicate, swept", () => {
+	assert.equal(ownerAnswered([userRow(ECHO, "go")], ECHO), false);
+	assert.equal(
+		ownerAnswered([userRow(ECHO, "go"), assistantRow("a1", "hi")], ECHO),
+		true,
+	);
+	assert.equal(
+		ownerAnswered(
+			[userRow(ECHO, "go"), assistantRow("a1", "hi"), assistantRow("a2", "")],
+			ECHO,
+		),
+		true,
+	);
+	// Without an anchor in the list — an evicted echo, a transcript replaced by
+	// `/clear` — the fallback falls back to the tail. `true` here IS the clear
+	// (it is what makes `deriveWorkingLine` return null); what the fallback
+	// withholds is the RUNG, in the case below where nothing paints.
+	assert.equal(ownerAnswered([assistantRow("a1", "hi")], "missing-anchor"), true);
+	assert.equal(ownerAnswered([userRow("u1", "go")], "missing-anchor"), false);
+});
+
+test("the admitted-send copy claims nothing the renderer cannot check", () => {
+	// The one rung that is not a fact the owner sent, so it is held to the
+	// weaker rule: name the waiting, never the mechanism. The renderer cannot
+	// tell a session whose runtime is still spawning from one that is warm and
+	// merely slow to answer, so "starting the session" (considered, and
+	// rejected) or the ladder's own `thinking` — which means "a model call is in
+	// flight" — would assert something it has no way to check. If a later change
+	// wants a mechanism word here, it has to make it checkable first.
+	assert.equal(ADMITTED_SEND_ACTIVITY, "waiting for the agent");
+	assert.doesNotMatch(ADMITTED_SEND_ACTIVITY, /runtime|model|session|start|think/i);
+});
+
+test("a turn that dies before it paints retires the wait, and a renderer note does not", () => {
+	/*
+	 * The regression QA round 2 measured (Q4): with the round-1 clear set an
+	 * incident retires nothing, because the owner never painted a row and the
+	 * transport is still live. The line was still up at t+55s beside "Stopped
+	 * with an error", and the composer's hint stayed on "Waiting for the agent"
+	 * underneath it - a stuck claim about work that has stopped and then failed,
+	 * which is worse than the dead air this whole change removed.
+	 */
+	const records = [userRow(ECHO, "go"), incidentRow("stop-1")];
+	assert.equal(admitted([incidentRow("stop-1")]), null);
+	assert.equal(turnStopped(records, ECHO), true);
+	// "Interrupted" is the same marker: a turn the USER stopped has also ended.
+	assert.equal(admitted([incidentRow("stop-2", "warning")]), null);
+
+	/*
+	 * THE OTHER DIRECTION, which is what keeps this from retiring the rung
+	 * mid-turn: the reducer writes plenty of notices with no marker - a retry
+	 * line, a harness recovery notice, a subagent failure - and none of them is
+	 * the turn being over.
+	 */
+	assert.equal(turnStopped([userRow(ECHO, "go"), noticeRow("note-1")], ECHO), false);
+	assert.deepEqual(admitted([noticeRow("note-1")]), {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+	});
+	// A marker BEFORE the echo belongs to an earlier turn (the anchor rule).
+	assert.equal(turnStopped([incidentRow("stop-0"), userRow(ECHO, "go")], ECHO), false);
+	// And with no anchor in the list the fallback reads the tail, so a marker
+	// there retires rather than holding a rung over a finished turn.
+	assert.equal(turnStopped([incidentRow("stop-1")], "missing-anchor"), true);
+});
+
+test("the composer's hint is the rung's own derivation, not a second condition", () => {
+	/*
+	 * Review round 2's R2-3 and design round 2's D5 are one defect: the composer
+	 * asked the latch directly (`awaitingReply={canonical.starting}`), so it went
+	 * on saying "Waiting for the agent" in the states the line deliberately
+	 * yields in - a pending question, and a dead transport - 46px below a pane
+	 * that had withdrawn the claim. Both surfaces now call this module; the
+	 * property worth pinning is that they cannot disagree, so each case asserts
+	 * the pair.
+	 */
+	const pane = (over = {}) =>
+		workingLineInputFor({
+			waiting: false,
+			starting: true,
+			startingAfterId: ECHO,
+			gate: false,
+			unavailable: false,
+			records: [userRow(ECHO, "go")],
+			...over,
+		});
+	// The cold window: both claim it.
+	assert.notEqual(deriveWorkingLine(pane()), null);
+	assert.equal(workingLineClaimed(pane()), true);
+	// A pending question outranks the wait (branding § 7): neither claims it.
+	assert.equal(deriveWorkingLine(pane({ gate: true })), null);
+	assert.equal(workingLineClaimed(pane({ gate: true })), false);
+	// A dead transport: neither.
+	assert.equal(workingLineClaimed(pane({ unavailable: true })), false);
+	// A stopped turn: neither, on the same derivation.
+	assert.equal(workingLineClaimed(pane({ records: [userRow(ECHO, "go"), incidentRow("s1")] })), false);
+	// A painted answer: neither.
+	assert.equal(
+		workingLineClaimed(
+			pane({ records: [userRow(ECHO, "go"), assistantRow("a1", "hi")] }),
+		),
+		false,
+	);
+	// The ladder is a claim too, so the hint stays up through the hand-off
+	// instead of swapping a true sentence for "Ask me for help" while the agent
+	// is demonstrably writing.
+	assert.equal(
+		workingLineClaimed(pane({ waiting: true, records: [userRow(ECHO, "go")] })),
+		true,
+	);
+	// Nothing happening at all: neither.
+	assert.equal(
+		workingLineClaimed(pane({ starting: false, records: [userRow("u1", "go")] })),
+		false,
+	);
+});
