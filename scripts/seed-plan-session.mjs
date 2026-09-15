@@ -3,7 +3,15 @@
  * Seed a real backend session that has a To-dos plan, for the run-panel
  * evidence and for QA of the reveal.
  *
- *     node scripts/seed-plan-session.mjs <config-dir> [items] [roster]
+ *     node scripts/seed-plan-session.mjs <config-dir> [items] [roster] [--openable]
+ *
+ * `--openable` gives every roster job a `session_id` and writes that child's own
+ * session directory, which is what makes a row a CONTROL rather than a member:
+ * the reader's key is `(session_id, child_id)` and a job the wire leaves without
+ * one is deliberately not openable (`childOpenable`, `run-detail-model.ts`). It
+ * exists because the reveal's reader-first branch - press the chip WHILE a child
+ * reader is open - is the one path the round-1 review could not reach: a plain
+ * fixture has a plan and no openable rows, a warmed one loses its roster.
  *
  * Why a seeder rather than a real conversation, the same reasoning as
  * `scripts/seed-paging-session.mjs`: the run-details pane reads the plan off
@@ -34,6 +42,11 @@ import { join, resolve } from "node:path";
 const CONFIG = process.argv[2];
 const ITEMS = Number(process.argv[3] ?? 8);
 const ROSTER = Number(process.argv[4] ?? 0);
+/**
+ * Whether each roster job gets a child session the reader can actually open.
+ * See the usage note: without it the rows are members, not controls.
+ */
+const OPENABLE = process.argv.includes("--openable");
 
 if (!CONFIG) {
 	console.error("usage: seed-plan-session.mjs <config-dir> [items] [roster]");
@@ -124,6 +137,56 @@ writeFileSync(
  * reads its roster back from.
  */
 if (ROSTER > 0) {
+	/*
+	 * Each job's child session, when the caller asked for openable rows: a real
+	 * session directory with its own transcript, because the reader's read is a
+	 * real route against the backend's own reader rather than a projection this
+	 * script could fake.
+	 */
+	const childIds = Array.from({ length: ROSTER }, () =>
+		OPENABLE ? randomBytes(6).toString("hex") : "",
+	);
+	if (OPENABLE) {
+		for (const [index, childId] of childIds.entries()) {
+			const childDir = join(root, "sessions", childId);
+			mkdirSync(childDir, { recursive: true });
+			const childLines = [
+				JSON.stringify({
+					id: id(),
+					ts: now - 700 + index * 5,
+					type: "message",
+					payload: {
+						kind: "message",
+						role: "user",
+						content: [{ text: `Child job ${index + 1}: check the reveal's target.` }],
+					},
+				}),
+				JSON.stringify({
+					id: id(),
+					ts: now - 690 + index * 5,
+					type: "message",
+					payload: {
+						kind: "message",
+						role: "assistant",
+						content: [{ text: "Read the section, measured the region." }],
+					},
+				}),
+			];
+			writeFileSync(
+				join(childDir, "transcript.jsonl"),
+				`${childLines.join("\n")}\n`,
+			);
+			writeFileSync(join(childDir, "created_at.json"), JSON.stringify(now - 800));
+			writeFileSync(
+				join(childDir, "desktop.json"),
+				JSON.stringify({ cwd: process.env.HOME ?? homedir(), origin: "subagent" }),
+			);
+			writeFileSync(
+				join(childDir, "title.json"),
+				JSON.stringify({ title: `Child job ${index + 1}` }),
+			);
+		}
+	}
 	const LABELS = [
 		"Check the reveal effect's scroll target",
 		"Verify the pane's scroll region owner",
@@ -137,6 +200,7 @@ if (ROSTER > 0) {
 			generation: 1,
 			jobs: Array.from({ length: ROSTER }, (_, index) => ({
 				id: `job${String(index).padStart(13, "0")}`,
+				session_id: childIds[index] || undefined,
 				type: "task",
 				status: "done",
 				start_time: now - 800 + index * 20,
@@ -162,7 +226,7 @@ if (ROSTER > 0) {
 
 console.log(
 	JSON.stringify(
-		{ sessionId, items: items.length, roster: ROSTER, dir },
+		{ sessionId, items: items.length, roster: ROSTER, openable: OPENABLE, dir },
 		null,
 		2,
 	),
