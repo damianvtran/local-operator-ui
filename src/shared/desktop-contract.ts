@@ -170,17 +170,96 @@ const chains = z.record(z.array(z.string().max(1024)).max(100));
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
 const scheduleUnit = z.enum(["minutes", "hours", "days"]);
+
 /**
- * An execution-variable key. Looser than `id` because these are user-named
- * Python identifiers rather than machine ids, but still no slashes, dots or
- * spaces -- the key goes into the PATH, so a permissive value would let the
- * renderer address a route it was never given an operation for.
+ * Whether a code-memory key addresses the route it is built into.
+ *
+ * The denylist above refuses the separators, the control characters and NUL -
+ * the characters that would let a key name a route segment of its own. This is
+ * the one shape that survives that rule and STILL does not address what it looks
+ * like it addresses: the transport fetches `new URL(target.path, backendUrl)`, so
+ * `..` and `.` are resolved away by the URL parser before the request leaves, and
+ * a PATCH built for the name `..` reaches the collection instead. A namespace
+ * may legally hold such a name (`globals()[".."] = 1` is ordinary memory, which
+ * is why this is a denylist at all), so the rule has to live here rather than in
+ * the backend's naming policy.
+ *
+ * Nothing is exploitable while no route lives at the resolved path; what this
+ * protects is the invariant the surrounding comment claims - a key addresses a
+ * route this op was given - so the next route added under `/variables/` does not
+ * inherit the reach. Exported because the panel asks the same question before it
+ * offers an Edit: `editable` is the backend's answer about the VALUE, and it
+ * cannot answer this (review round 1, C-03).
+ */
+export function isAddressableVariableKey(key: string): boolean {
+	return !/^\.+$/.test(key);
+}
+
+/**
+ * Whether this renderer's contract would let a write for `key` leave at all.
+ *
+ * The schema, asked directly, rather than a second copy of its rules. The panel
+ * needs this because `editable` is the BACKEND's judgement about the VALUE -
+ * could this text be coerced back into that type - and it says nothing about
+ * whether this renderer's own contract would accept the name: a key that is
+ * empty, longer than 128 characters, or carrying a control character is
+ * advertised as editable and then rejected by `desktopRequestSchema` before any
+ * request is built, which surfaces as "Invalid desktop operation." - a refusal
+ * the user cannot act on and cannot tell apart from a bug (backend PR #1101's
+ * MINOR-1). Asking the schema keeps the panel's offer and the write path's rule
+ * from drifting apart.
+ */
+export const isWritableVariableKey = (key: string): boolean =>
+	variableKey.safeParse(key).success;
+/**
+ * A session code-memory key.
+ *
+ * A key is a NAME in the session's eval namespace, and the worker reads it as a
+ * dict key rather than interpolating it into code, so a name that is not a
+ * Python identifier (`globals()["a b"] = 1`) is legal memory and has to stay
+ * addressable from the panel that lists it. That is why this is a denylist and
+ * not the identifier regex the legacy agent-variable ops used: the renderer
+ * must refuse exactly the characters that would let it address a route it was
+ * never given an operation for - the slash and backslash that separate route
+ * segments, the control characters and NUL no route can carry, and (below) the
+ * dot-only names `new URL()` would normalise out of the path. The
+ * backend applies the same rule plus its reserved-name list, which is the half
+ * that needs the namespace to answer.
  */
 const variableKey = z
 	.string()
 	.min(1)
 	.max(128)
-	.regex(/^[a-zA-Z0-9_-]+$/);
+	.refine((key) =>
+		[...key].every(
+			(character) =>
+				character.charCodeAt(0) >= 32 &&
+				character.charCodeAt(0) !== 127 &&
+				character !== "/" &&
+				character !== "\\",
+		),
+	)
+	.refine(isAddressableVariableKey);
+/**
+ * The writable code-memory types, as one table.
+ *
+ * Enumerated rather than free text so a typo is refused before it reaches the
+ * worker, and identical to the six names the worker's coercion table and the
+ * form's own select offer (see `VARIABLE_TYPES` in `session-variables-api.ts`).
+ * `str` is not `string`, and the form used to send `string` while the worker's
+ * table had no such row - the drift this freeze exists to end.
+ */
+const variableType = z.enum(["str", "int", "float", "bool", "list", "dict"]);
+/**
+ * A value crossing as TEXT, plus the type it should be coerced to.
+ *
+ * The worker builds the object from its own table; nothing the renderer sends
+ * is ever evaluated as code. 16 KiB is a transport bound only: the contract's
+ * real ceiling is the backend's 409 `too_large` at 4096 rendered characters,
+ * and pre-empting it here would answer "Invalid desktop operation." where the
+ * route would have named the limit.
+ */
+const variableValue = z.string().max(16384);
 // The fields create and edit have in common. Both extend it with their own
 // required/nullable variants of prompt, interval and unit, which differ because
 // create supplies defaults and edit sends only what changed.
@@ -423,6 +502,45 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("sessions.warm"), sessionId })
 		.strict(),
+	/*
+	 * A session's code memory: the names the session's own cells have left in its
+	 * eval namespace.
+	 *
+	 * Session-addressed, because the runtime is what holds a namespace and the
+	 * kernel it lives in is keyed by session id. The legacy
+	 * `/v1/agents/{id}/execution-variables` route answered through the agent
+	 * registry instead, which resolves agent-directory UUIDs - so a canonical
+	 * session id could only ever 404 there, and the panel that taught "code
+	 * memory" never loaded once.
+	 */
+	z
+		.object({ op: z.literal("sessions.variables.list"), sessionId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.create"),
+			sessionId,
+			key: variableKey,
+			value: variableValue,
+			type: variableType,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.update"),
+			sessionId,
+			key: variableKey,
+			value: variableValue,
+			type: variableType,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.variables.delete"),
+			sessionId,
+			key: variableKey,
+		})
+		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
 	// everything else. These routes are gated in managed mode (agent inventory,
 	// cwd paths, job history and conversation content are the same tenant's data
@@ -559,38 +677,6 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
-	z
-		.object({ op: z.literal("legacy.agent.variables.list"), agentId: id })
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.create"),
-			agentId: id,
-			variable: z.record(z.unknown()),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.get"),
-			agentId: id,
-			key: variableKey,
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.update"),
-			agentId: id,
-			key: variableKey,
-			variable: z.record(z.unknown()),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("legacy.agent.variables.delete"),
-			agentId: id,
-			key: variableKey,
-		})
-		.strict(),
 	z.object({ op: z.literal("legacy.job.cancel"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
@@ -1418,6 +1504,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// makes a legal call answer 422.
 				body: {},
 			};
+		case "sessions.variables.list":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
+				method: "GET",
+			};
+		case "sessions.variables.create":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
+				method: "POST",
+				// The route's own body shape, not the op's: `{key, value, type}` on
+				// create and `{value, type}` on update, because the key is in the path
+				// once the variable exists and is immutable after that.
+				body: { key: request.key, value: request.value, type: request.type },
+			};
+		case "sessions.variables.update":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables/${encodeURIComponent(request.key)}`,
+				method: "PATCH",
+				body: { value: request.value, type: request.type },
+			};
+		case "sessions.variables.delete":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/variables/${encodeURIComponent(request.key)}`,
+				method: "DELETE",
+			};
 		case "legacy.models": {
 			// The query the renderer's own listModels() built. Dropping it would
 			// silently widen every provider-filtered model list to the whole
@@ -1534,33 +1645,6 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.download":
 			return { path: `/v1/agents/${request.agentId}/download`, method: "GET" };
-		case "legacy.agent.variables.list":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables`,
-				method: "GET",
-			};
-		case "legacy.agent.variables.create":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables`,
-				method: "POST",
-				body: request.variable,
-			};
-		case "legacy.agent.variables.get":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "GET",
-			};
-		case "legacy.agent.variables.update":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "PATCH",
-				body: request.variable,
-			};
-		case "legacy.agent.variables.delete":
-			return {
-				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
-				method: "DELETE",
-			};
 		case "legacy.job.cancel":
 			return { path: `/v1/jobs/${request.jobId}`, method: "DELETE" };
 		case "commands.list":

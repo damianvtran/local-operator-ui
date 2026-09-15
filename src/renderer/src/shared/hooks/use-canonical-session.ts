@@ -108,6 +108,17 @@ export type CanonicalSessionView = {
 	/** Terminal event observed for the current turn; clears the wait latch. */
 	terminal: string | null;
 	/**
+	 * How many `turn_end` / `agent_end` events this viewer has applied.
+	 *
+	 * A counter rather than an event name because consecutive endings can have
+	 * the same name. The code-memory panel uses each observed ending to request
+	 * a fresh reading; these are completion pulses, not unique logical turns
+	 * (a run can emit both endings). Starts and steering only clear the wait
+	 * latch and must not trigger extra reads. A late join counts from that join,
+	 * not from the session's history.
+	 */
+	turnsCompleted: number;
+	/**
 	 * Set on an unrecoverable stream failure: the ONE sentence the reader sees,
 	 * and the one action that helps. A structured notice rather than a transport
 	 * `detail` string, because the two transports name the same failure in
@@ -553,6 +564,7 @@ export function useCanonicalSessionStream(
 		ownerEpoch: null,
 		receipt: null,
 		terminal: null,
+		turnsCompleted: 0,
 		failure: null,
 		/*
 		 * SEEDED, and only here. A panel mounted while its own echo is already
@@ -1120,7 +1132,15 @@ export function useCanonicalSessionStream(
 					if (frame.type === "event") {
 						const eventType = String(frame.payload.type ?? "");
 						if (TERMINAL_EVENTS.has(eventType)) {
-							next = { ...next, terminal: eventType };
+							next = {
+								...next,
+								terminal: eventType,
+							};
+						}
+						if (DURABLE_ROUND_ENDINGS.has(eventType)) {
+							// Separate from the wait latch: starts/steering end a wait,
+							// not a round whose namespace consumers need to re-read.
+							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
 						const transcript = applyEvent(next.transcript, frame.payload, now);
 						if (transcript !== next.transcript) {
@@ -1390,6 +1410,15 @@ export function useCanonicalSessionStream(
 			pendingModel: null,
 			history: null,
 			terminal: null,
+			/*
+			 * The completion counter shares the transcript's lifetime, so it is kept
+			 * under the same rule. It is a monotonic count the code-memory panel
+			 * compares against its own last reading, and resetting it on a remount
+			 * that deliberately keeps the transcript would describe a turn this
+			 * viewer never saw end. A genuine session change still restarts it — the
+			 * previous conversation's endings say nothing about the new one.
+			 */
+			turnsCompleted: sameSession ? current.turnsCompleted : 0,
 			transcript: sameSession ? current.transcript : EMPTY_TRANSCRIPT,
 			status: "connecting",
 			// A different session's children are different children, and a pulse
