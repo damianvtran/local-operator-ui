@@ -26,9 +26,12 @@
  * interactive or native command returns a `native_action` presentation
  * request. That request is resolved through `pickers/picker-registry`: a
  * picker adapter mounts in the host, a navigate destination routes to the
- * existing settings surface, and the two direct actions (`/clear` view-only,
- * `/exit` detach-only) run here. An unknown command names the closest matches
- * so the user can fix the typo rather than guess.
+ * existing settings surface, and the direct actions run here (`/clear`
+ * view-only, `/exit` detach-only, and a bare `/move` focusing the composer's
+ * own working-directory chip - resolved locally rather than by mounting a
+ * dialog, because the control it opens already exists in the composer). An
+ * unknown command names the closest matches so the user can fix the typo
+ * rather than guess.
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
@@ -45,6 +48,12 @@ import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
 import type { DraftPickerDestination } from "../draft-selection";
+import {
+	MOVE_NOT_READY_REASON,
+	MOVE_UNAVAILABLE_REASON,
+	type MoveCommitOutcome,
+	sessionMoveEnabled,
+} from "../move-session";
 import type {
 	DraftPickerSession,
 	PickerContext,
@@ -82,6 +91,30 @@ type SlashDispatchOptions = {
 	 * pane's selection instead of a session's.
 	 */
 	draftPicker?: DraftPickerSession;
+	/**
+	 * Focus the composer's working-directory chip and open its menu.
+	 *
+	 * The bare `/move` form's effect, and the reason the destination entry is
+	 * `direct` rather than a picker: the chip IS the chooser, so a dialog hosting a
+	 * second one nested a dropdown inside a modal and lost two of its three ways to
+	 * choose (UX U2's measurement), and the user reached the same control by typing
+	 * `/move` as by clicking it.
+	 */
+	focusCwdChip?: () => void;
+	/** Shares the composer's request latch, receipt and eval-history state. */
+	moveSession: (path: string) => Promise<MoveCommitOutcome>;
+	/**
+	 * Whether a move can be asked for on this pane AT ALL, as the chip decides it.
+	 *
+	 * `sessionMoveEnabled` answers a question about the BACKEND; the chip's gate is
+	 * that answer AND a session that is not still a draft. Both surfaces of this one
+	 * write path have to ask the same two questions, or the chip can refuse with
+	 * "its working directory can be moved as soon as it is live" while the typed form
+	 * posts a move for the same session (agent review round 2, R-3). Absent means
+	 * `true`, so a caller that has no pane readiness to report is not silently
+	 * downgraded to the read-only answer.
+	 */
+	moveReady?: boolean;
 };
 
 /**
@@ -188,10 +221,32 @@ export function useSlashDispatch({
 	rebind,
 	focusComposer,
 	draftPicker,
+	focusCwdChip,
+	moveSession,
+	moveReady,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	const commandsEnabled = desktopFeatureEnabled(capabilities.data, "commands");
+	/*
+	 * Whether a move can be executed at all against this backend.
+	 *
+	 * Read here rather than inside the runner because the ANSWER changes what the
+	 * user is told, not merely whether a request succeeds: with the route absent, a
+	 * typed `/move <path>` must report the same thing the read-only chip does
+	 * instead of spending a round trip to learn 404. The catalogue deliberately
+	 * still offers `/move` on such a backend - the catalogue is the backend's own
+	 * (`desktop_commands.command_catalogue`), and filtering it renderer-side would
+	 * be a second source of truth about what a destination can do.
+	 */
+	const canMove = sessionMoveEnabled(capabilities.data);
+	/*
+	 * The pane's half of the gate: the capability says the backend can move a live
+	 * session, `moveReady` says THIS session is live enough to move. "Not ready" is
+	 * a different sentence from "cannot", and the difference is the whole of R-3.
+	 */
+	const paneReady = moveReady ?? true;
+
 	const commandsQuery = useQuery({
 		queryKey: desktopKeys.commands,
 		queryFn: () =>
@@ -251,6 +306,51 @@ export function useSlashDispatch({
 		[addMessage, canonical.addNote, canonical.status, sessionId],
 	);
 
+	/**
+	 * Bare `/move`: hand the choice to the composer's own chip.
+	 *
+	 * Three things it does NOT do, each of them measured or decided rather than
+	 * assumed:
+	 *
+	 *  - it does not post to the command endpoint. The request would only ask the
+	 *    backend to ask this surface to open something it already owns, and the
+	 *    destination table is the one place that answers "what does this mean".
+	 *  - it does not mount a dialog. The picker that used to is gone: it hosted this
+	 *    same chip, and inside its modal the chip's menu opened 620px tall at
+	 *    `y=-192` with `overflow-y: hidden`, putting two of the three choosing
+	 *    affordances out of pointer reach and the focused row out of sight (UX U2).
+	 *  - it does not stay silent. A focus change with no words is a command that
+	 *    appears to do nothing, so one line says where the choice happens - and it
+	 *    names the argument form too, which is the shortcut for a user who already
+	 *    knows the path.
+	 */
+	const presentCwdChip = useCallback(
+		(command: string) => {
+			if (!sessionId) {
+				note(`/${command} needs an open conversation. Start one first.`, true);
+				return;
+			}
+			if (!canMove) {
+				// The same sentence the read-only chip carries, from the same constant:
+				// a user who types the command and a user who clicks the chip are told
+				// the same thing about the same backend.
+				note(MOVE_UNAVAILABLE_REASON, true);
+				return;
+			}
+			if (!paneReady) {
+				// The chip's other refusal, for the same reason: its read-only reason is
+				// MOVE_NOT_READY_REASON while the session is being created, and a typed
+				// `/move` in that window must not do what the chip refuses (R-3).
+				note(MOVE_NOT_READY_REASON, true);
+				return;
+			}
+			note(
+				"Choose the folder in the working directory chip above, or type /move <path> to move straight there.",
+			);
+			focusCwdChip?.();
+		},
+		[canMove, focusCwdChip, paneReady, note, sessionId],
+	);
 	const dispatch = useCallback(
 		async (
 			invocation: SlashCommandInvocation,
@@ -275,9 +375,66 @@ export function useSlashDispatch({
 
 			const entry = DESTINATIONS[spec.destination];
 
+			// A destination whose ARGUMENTS are the action runs them rather than opening
+			// anything. `/move <path>` is the only one, and it is the TUI's own rule for
+			// the same command (`_cmd_move` applies the argument form and only opens the
+			// chooser for the bare form). Resolving the destination BEFORE posting saves
+			// a round trip whose only answer would be "please now do the thing", and it
+			// is why a path is never sent to the command endpoint - there, the runtime's
+			// own slash dispatcher would answer `move` with its "run it from a
+			// terminal" refusal, which is false about this command on this surface.
+			//
+			// This branch sits ABOVE the direct/navigate ones because it is about the
+			// ARGUMENTS rather than about the kind: `/move <path>` executes even though
+			// its destination is a `direct` entry, and testing the kind first would send
+			// the path to the bare form's handler and drop it.
+			if (entry && entry.argsBehavior === "execute" && args) {
+				if (!sessionId) {
+					note(
+						`/${spec.name} needs an open conversation. Start one first.`,
+						true,
+					);
+					return "consumed";
+				}
+				if (!canMove) {
+					note(MOVE_UNAVAILABLE_REASON, true);
+					return "consumed";
+				}
+				if (!paneReady) {
+					// The chip's own refusal for this window, asked here too: `/move <path>`
+					// used to consult the capability alone, so it posted a move for a session
+					// the chip beside it was refusing to touch (agent review round 2, R-3).
+					note(MOVE_NOT_READY_REASON, true);
+					return "consumed";
+				}
+				if (entry.runArgs) {
+					await entry.runArgs({
+						sessionId,
+						cwd: args,
+						canonical,
+						note,
+						moveTo: moveSession,
+					});
+				} else {
+					// Unreachable: the registry's one `execute` entry always carries its
+					// runner. Named rather than silently dropped, because a destination that
+					// says it executes and then does nothing is exactly the silent dead end
+					// this table exists to make loud.
+					note(
+						`/${spec.name} is not available in the desktop app yet. Run it in the terminal with local-operator.`,
+						true,
+					);
+				}
+				return "consumed";
+			}
+
 			// Direct and navigate destinations need no owner round trip; the
 			// backend's native_action for them carries no fields either.
 			if (entry?.kind === "direct") {
+				if (entry.action === "focus-cwd-chip") {
+					presentCwdChip(spec.name);
+					return "consumed";
+				}
 				if (entry.action === "clear") {
 					// View-only by contract: history on disk is untouched.
 					canonical.clearView();
@@ -367,6 +524,15 @@ export function useSlashDispatch({
 						navigate(target.route(action.args, sessionId));
 						return "consumed";
 					}
+					if (target?.kind === "direct" && target.action === "focus-cwd-chip") {
+						// A backend that still presents `/move` as a native_action lands in the
+						// same place as the locally resolved form: the destination table decides
+						// what a destination MEANS, so both entry points reach one control. A
+						// `picker` entry would be mounted here instead, which is why this is a
+						// branch and not a name check in the table.
+						presentCwdChip(spec.name);
+						return "consumed";
+					}
 					if (!target) {
 						// Names the command and the next action, never the routing id
 						// behind it: "radient.mobile" is not something a user can act
@@ -442,6 +608,10 @@ export function useSlashDispatch({
 			canonical,
 			rebind,
 			closePicker,
+			canMove,
+			paneReady,
+			moveSession,
+			presentCwdChip,
 		],
 	);
 

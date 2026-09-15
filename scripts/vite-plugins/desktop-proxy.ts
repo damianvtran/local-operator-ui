@@ -70,6 +70,8 @@ export function desktopProxyPlugin(): Plugin {
 						return;
 					}
 					const epoch = requestUrl.searchParams.get("epoch") ?? "";
+					const frontendReplace =
+						requestUrl.searchParams.get("frontend_replace") ?? "";
 					if (epoch && !/^[a-zA-Z0-9_-]{1,128}$/.test(epoch)) {
 						res.statusCode = 422;
 						res.setHeader("Content-Type", "application/json");
@@ -104,6 +106,17 @@ export function desktopProxyPlugin(): Plugin {
 					const query = new URLSearchParams();
 					if (epoch) query.set("epoch", epoch);
 					if (afterSeq > 0) query.set("after_seq", String(afterSeq));
+					/*
+					 * FORWARDED, not invented. `frontend_replace=1` is the renderer's own
+					 * statement that its reducer consumes the `frontend.replace` frame
+					 * (remediation contract § C), so this proxy must not claim it on the
+					 * renderer's behalf: a renderer serving a stale bundle through this same
+					 * dev server would then be negotiated a frame it cannot paint, which is
+					 * the stale-directory defect the flag exists to prevent. Anything other
+					 * than the literal `1` is left off, so an older backend sees the same
+					 * request shape it always did.
+					 */
+					if (frontendReplace === "1") query.set("frontend_replace", "1");
 					const suffix = query.size > 0 ? `?${query}` : "";
 					try {
 						const upstream = await fetch(

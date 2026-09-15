@@ -49,7 +49,10 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { mergeCompletionAttention } from "../../../../shared/desktop-session-contract";
+import {
+	acceptFrontendReplace,
+	mergeCompletionAttention,
+} from "../../../../shared/desktop-session-contract";
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
@@ -1055,6 +1058,12 @@ export function useCanonicalSessionStream(
 						continue;
 					}
 					// From here the frame is a receipt with an epoch/seq cursor.
+					//
+					// The cursor as it stood BEFORE this frame is read first and kept
+					// beside the assignment, because `frontend.replace` below is ordered
+					// against it: checking the value this very frame is about to write
+					// would reject every replacement (remediation contract § C).
+					const priorCursor = receiptRef.current;
 					if (frame.type === "open" || "seq" in frame) {
 						receiptRef.current = { epoch: frame.epoch, seq: frame.seq };
 						next = { ...next, receipt: receiptRef.current };
@@ -1209,6 +1218,53 @@ export function useCanonicalSessionStream(
 									),
 									sequence: update.sequence,
 								},
+							};
+						}
+						continue;
+					}
+					if (frame.type === "frontend.replace") {
+						/*
+						 * An accepted move's own authoritative repaint, and the reason it is
+						 * not a delta.
+						 *
+						 * A move rewrites the facade's cwd without moving the owner's clock,
+						 * so the bridge publishes this explicit replacement rather than a
+						 * same-sequence `frontend.update` - which the rule just above would
+						 * (and must) reject as stale, leaving a mounted viewer on the
+						 * directory the session has already left (backend review R4).
+						 *
+						 * It replaces the PAINT PROJECTION and nothing else: `history`,
+						 * `transcript`, the durable rows, hydration and the subscription id
+						 * all survive, because this spreads them rather than rebuilding the
+						 * view. `cold` comes from the frame too - it is the facade's ACTUAL
+						 * cold status at publish time, which is what a cold move changes.
+						 *
+						 * Attention still goes through the receipt-revision helper: the paint
+						 * copy inside a replacement can be older than attention the stream has
+						 * already delivered, and attention may only ever rise.
+						 *
+						 * The `frontend.update` rule above is left exactly as it was. This
+						 * branch is only about ACCEPTING the replacement: the next real owner
+						 * delta at sequence N+1 must still apply over a replacement at N, and
+						 * an ordinary stale delta must still be rejected.
+						 */
+						if (
+							next.frontend &&
+							acceptFrontendReplace(priorCursor, sessionId, frame)
+						) {
+							const replaced = frame.payload.frontend;
+							next = {
+								...next,
+								frontend: {
+									...replaced.snapshot,
+									attention: mergeCompletionAttention(
+										next.frontend.attention,
+										replaced.snapshot.attention,
+										sessionId,
+									),
+								},
+								ownerEpoch: replaced.epoch,
+								cold: frame.payload.cold,
 							};
 						}
 						continue;
