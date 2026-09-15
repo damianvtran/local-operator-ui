@@ -904,6 +904,21 @@
       "source": "headless Chrome over CDP, driven by `node scripts/diff-body-evidence.mjs`: the shipped `applyHistoryPage` reducer and the shipped `CanonicalTranscript` over a real durable history page read from one real session's `transcript.jsonl` in the local store (`--session` and `--anchor` are required arguments; the id is deliberately not committed)",
       "why": "The story renders a TranscriptRecord this repository built, so it proves the component. This set starts one layer earlier, at the bytes `/v1/desktop/sessions/{id}/history` serves — the stored rows, serialised verbatim by `read_transcript_page` — and runs them through the shipped reducer, which is what proves the payload reaches pixels: the durable row's own encoding, the extraction of `provider_payload.details.diff`, the identity gate and the args-drop rule. It cannot be re-derived by the sweep, and the payload itself is deliberately NOT committed: the harness writes it to a temp file and deletes it. Re-run with `node scripts/diff-body-evidence.mjs --session=<id> --anchor=<row id>` (see docs/evidence/write-edit-diff/README.md).",
       "capturedAt": "2026-09-12T09:20:00Z"
+    },
+    {
+      "path": "run-panel-reveal",
+      "frames": 10,
+      "surfaces": 6,
+      "themes": 2,
+      "source": "The BUILT app (`pnpm build` + `npx electron .`, `LOCAL_OPERATOR_UI_WINDOW_MODE=headless`, its own `--user-data-dir` under the OS temp dir, every inherited `CMUX_*` stripped) driven over raw CDP by the committed `scripts/run-panel-reveal-proof.mjs`, against a real `local_operator` backend on an isolated `LOCAL_OPERATOR_CONFIG_DIR` whose session was seeded by the committed `scripts/seed-plan-session.mjs`. The press is a real `Input.dispatchMouseEvent` at the chip's painted centre; CDP focus emulation is enabled (a window that is never shown cannot be focused, and Escape - the pane's own ladder - is dropped without it), which is why every frame shows the composer's focus ring. Frames are lossless WebP of the app's own window at devicePixelRatio 2.",
+      "why": [
+        "The defect is a MOVEMENT, and a movement is what a moving picture would show - these are stills of the frame before and after one real press of the composer's plan chip. `before-fix` is the BUILT app of unmodified origin/main (8f80697c8, the v0.24.0 the operator runs); `after-fix` is this branch's build of the same tree plus the container-scoped scroll. Both are the same window sizes, the same seeded session and the same gesture.",
+        "One fact is written in the readme beside this set rather than into a frame, because no frame carries it: the vertical axis of the operator's report is NOT reproduced. No ancestor of the pane ever had vertical scrollable overflow (scrollHeight - clientHeight was 0 for every box outside the pane at 1380x900, 1024x673 and 800x600, in both builds), so the walk could not scroll the frame vertically. What moved is the chat column's slot row, horizontally: 108px at the operator's own 1024x673 and 221px at 800x600, taking the column, the transcript and the composer with it.",
+        "The 800x600 and 1380x900 pairs are not decoration. 800x600 is the app's own window floor, where the same walk moves the column 221px; 1380x900 is the default window the app opens in, where NOTHING moved in either build, because the row fits there - which is why a defect that only appears at a narrower window survived every frame this repository had.",
+        "A set no sweep can re-derive: a sweep photographs Storybook stories with `scripts/capture-evidence.mjs`, and this claim is about the app's whole frame in a real window at three sizes, over a real backend. The readme beside the frames names the three commands that stand the rig up, and the proof driver (`scripts/run-panel-reveal-proof.mjs`) is committed beside them.",
+        "What these frames do NOT show: the pane's own fit. With the walk removed the pane sits at left: 721 and is clipped at 1024, exactly as it is when opened from the header trigger on unmodified origin/main - so the reveal was masking that clipping, not causing it. Making the pane fit is a separate layout decision and is not this change."
+      ],
+      "capturedAt": "2026-09-15, from the base build at 8f80697c8 and this branch's build in one sitting"
     }
   ],
   "remediationRecord": {
