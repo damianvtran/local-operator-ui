@@ -39,6 +39,66 @@ function nextFrame(): Promise<void> {
 	});
 }
 
+/** Consecutive quiet frames that count as settled; three span roughly 50ms. */
+const SETTLED_FRAMES = 3;
+
+/**
+ * How long the settle is given before a frame is declared not-evidence.
+ *
+ * WHY A FRAME-COUNT WAIT NEEDS A TIME BOUND AT ALL: the loop below waits for
+ * `SETTLED_FRAMES` consecutive frames with no running transition, which is a count
+ * of FRAMES and not a duration — so how long it takes is set by this machine's
+ * frame interval rather than by the app. On an idle box that interval is ~16ms and
+ * the wait costs the transition it follows (`--duration-fast: 120ms` here) plus
+ * those three frames; measured on this machine at load average 109, five
+ * `--scene states` runs settled in 150-167ms. The tail can be longer, and the
+ * failure it would cause is the expensive kind: a settle that gives up FAILS the
+ * scene (`renderer-driver.mjs` refuses the frame on `settleTimedOut`), so a slow
+ * moment on a loaded machine would be reported as a product defect.
+ *
+ * So the bound is deliberately LOOSE — ~20x the settle measured above and 25x the
+ * app's own longest transition — and its only cost is that an animation which
+ * genuinely never ends is declared after three seconds instead of one. Widened
+ * from 1000ms for exactly that reason: this figure is a headroom decision, not a
+ * measurement of the app. What the bound must NOT do is stay silent about what it
+ * caught, which is what `describeRunningTransition` below is for.
+ */
+const SETTLE_TIMEOUT_MS = 3000;
+
+/** A running `CSSTransition` and nothing else — see the note on the loop below. */
+function isRunningTransition(animation: Animation): animation is CSSTransition {
+	return (
+		animation instanceof CSSTransition && animation.playState === "running"
+	);
+}
+
+/**
+ * Say WHICH element did not settle and what it looked like when we gave up.
+ *
+ * WHY THIS EXISTS: the bound above used to report only that it had expired, which
+ * leaves a reader unable to tell a product defect (something animating forever)
+ * from a machine that was simply busy, and unable to find the element at all. The
+ * transition's own property and the target's computed value for it are what make
+ * the next step possible — they are the same two facts a person would read off the
+ * frame, except they are available even when the animation moved between the
+ * capture and the complaint.
+ *
+ * Property names come from the animation registry, so the value is only read for a
+ * plain property name; anything else (a shorthand CSSOM cannot resolve, or a target
+ * that has left the document) is reported as unreadable rather than guessed at.
+ */
+function describeRunningTransition(animation: CSSTransition): string {
+	const effect = animation.effect;
+	const target = effect instanceof KeyframeEffect ? effect.target : null;
+	const property = animation.transitionProperty;
+	const readable = /^[a-z-]+$/.test(property);
+	const value =
+		readable && target instanceof Element
+			? getComputedStyle(target).getPropertyValue(property).trim() || "(empty)"
+			: "(unreadable)";
+	return `${property || "(unnamed property)"} on ${describeElement(target) ?? "an element no longer in the document"} = ${value}`;
+}
+
 /**
  * Wait for the app's own CSS transitions to finish, and say how long that took.
  *
@@ -53,7 +113,7 @@ function nextFrame(): Promise<void> {
  * holding the old palette's colour. A committed evidence frame has to be a state
  * the app settles into, not a blend no user sees and no later run can reproduce.
  *
- * Why ONE clean frame was still not enough (`SETTLED_FRAMES` below), and this is
+ * Why ONE clean frame was still not enough (`SETTLED_FRAMES` above), and this is
  * also measured rather than defensive: the theme action makes React re-render the
  * rail and the sidebar, so some of their transitions start a frame or two after
  * the ones the class change began, and a single clean check can land in the gap
@@ -67,32 +127,32 @@ function nextFrame(): Promise<void> {
  * Only `CSSTransition` counts. The app animates other things (pulses, spinners,
  * layout), and waiting on those would mean a scene whose timing is decided by an
  * animation that never ends — which is why the loop also gives up after
- * `timeoutMs` and reports it rather than spinning: a caller that gets
- * `timedOut: true` knows the frame may be mid-flight, and the driver FAILS the
- * scene on that answer rather than noting it beside the frame.
+ * `SETTLE_TIMEOUT_MS` and reports it rather than spinning. A caller that gets
+ * `timedOut: true` knows the frame may be mid-flight AND which transitions were
+ * still running (each with the target and that property's computed value at that
+ * moment, `describeRunningTransition`); the driver FAILS the scene on that answer
+ * and prints them, rather than noting it beside the frame.
  */
-
-/** Consecutive quiet frames that count as settled; three span roughly 50ms. */
-const SETTLED_FRAMES = 3;
-
 async function settleCssTransitions(
-	timeoutMs = 1000,
-): Promise<{ waitedMs: number; timedOut: boolean }> {
+	timeoutMs = SETTLE_TIMEOUT_MS,
+): Promise<{ waitedMs: number; timedOut: boolean; pending: string[] }> {
 	const started = performance.now();
 	let quiet = 0;
 	for (;;) {
 		await nextFrame();
 		const waitedMs = Math.round(performance.now() - started);
-		const running = document
-			.getAnimations()
-			.filter(
-				(animation) =>
-					animation instanceof CSSTransition &&
-					animation.playState === "running",
-			);
+		const running = document.getAnimations().filter(isRunningTransition);
 		quiet = running.length === 0 ? quiet + 1 : 0;
-		if (quiet >= SETTLED_FRAMES) return { waitedMs, timedOut: false };
-		if (waitedMs > timeoutMs) return { waitedMs, timedOut: true };
+		if (quiet >= SETTLED_FRAMES) {
+			return { waitedMs, timedOut: false, pending: [] };
+		}
+		if (waitedMs > timeoutMs) {
+			return {
+				waitedMs,
+				timedOut: true,
+				pending: running.map(describeRunningTransition),
+			};
+		}
 	}
 }
 
@@ -265,6 +325,13 @@ export function installDevDriver(): string[] {
 				dataTheme: applied,
 				settledAfterMs: settled.waitedMs,
 				settleTimedOut: settled.timedOut,
+				/*
+				 * The transitions still running when the bound expired, named — the
+				 * driver prints these beside its FAIL so a timed-out settle says which
+				 * element did not settle and what it looked like rather than only that
+				 * something did not. Empty on every settled answer.
+				 */
+				settlePending: settled.pending,
 			};
 		},
 

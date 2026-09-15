@@ -40,6 +40,18 @@ scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**The run refuses before its first boot if the tree is not on the Electron this
+branch pins** (`package.json` `optionalDependencies.electron`, the version
+`pnpm install --frozen-lockfile` gives and `build.electronVersion` moves with).
+It prints `[refusing] this tree is not on the pinned runtime …` and exits 1 with
+nothing booted and no frame written, so a worktree inheriting a stale shared
+`node_modules` cannot populate a frames directory at all — which is what makes
+the pin worth stating: a committed frame is only reproducible on the runtime that
+produced it (a 35.x build renders this window as a 1380x872 viewport against
+44.3.0's 1380x868, and every pixel hash differs). With `--keep` the scratch tree
+is named rather than removed; otherwise the refusal removes the tree it had just
+created, since nothing has run in it.
+
 The frames below came from exactly that command —
 `docs/evidence/renderer-driver/`:
 
@@ -175,6 +187,21 @@ part of what this harness has to get right:
   pid>` and cannot match another session). `--clean` deletes the scratch tree only
   after that check passes: an app still running re-creates the profile directory
   under it the moment it is removed.
+- **An INTERRUPTED run leaves its scratch tree, and reclaiming it is yours to
+  do.** `SIGINT` and `SIGTERM` go straight to `process.exit` after the reaper
+  stops the apps this run started, so `--clean`'s removal never runs and the tree
+  stays at `$TMPDIR/lo-renderer-driver-<pid>` — about 1.9 MB holding a dead
+  profile and the app's own log, which is the file you want after an interrupt.
+  Nothing else reclaims it: `--out` frames live outside it and survive, and a
+  later run uses a different pid, so a tree left by run 4711 is never touched by
+  run 4712. Delete it when you are done with the log:
+
+  ```bash
+  rm -rf "${TMPDIR:-/tmp}/lo-renderer-driver-<pid>"   # the path the run printed
+  ```
+
+  A run that refuses on the pin check leaves one too, but only when `--keep` asked
+  for it — otherwise that path removes it before exiting.
 
 ## The verbs
 
