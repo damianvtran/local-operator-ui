@@ -150,8 +150,8 @@ export const CommandPalette: FC = () => {
 	 * Measured from the elements themselves: the content's height against the
 	 * scroller's box, so the end spacer below cannot feed back into the answer.
 	 */
-	const listRef = useRef<HTMLDivElement | null>(null);
 	const listContentRef = useRef<HTMLDivElement | null>(null);
+	const listObserver = useRef<ResizeObserver | null>(null);
 	const [listOverflows, setListOverflows] = useState(false);
 	const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
 
@@ -405,22 +405,41 @@ export const CommandPalette: FC = () => {
 	}, [deferredQuery, isCommandPaletteOpen]);
 
 	/*
-	 * Keep the fold's answer current: re-measure whenever the list's content or
-	 * its box changes, which is every query, every scrollbar-heavy theme change,
-	 * and every window resize. A ResizeObserver on both elements is what makes
-	 * this a measurement rather than a guess about which dependency to list.
+	 * The fold's answer, measured from the elements themselves.
+	 *
+	 * A `useEffect` cannot do this job here, and the three cuts it took to learn
+	 * that are worth recording: this component returns `null` while it is closed,
+	 * so an effect with `[]` deps found no elements and never ran again; an effect
+	 * keyed on `[isCommandPaletteOpen, outcome]` ran on the render that opened the
+	 * palette, and RADIX DEFERS ITS PORTAL BY ONE COMMIT, so it still found no
+	 * elements and — the deps not changing again — never re-ran. The fade was
+	 * absent in production through both (design round 4).
+	 *
+	 * A callback ref is the fix: it runs when the node actually attaches, whatever
+	 * commit that is, and returns a `ResizeObserver` comparing the CONTENT against
+	 * the scroll box. The padding counts because the container's own inset scrolls
+	 * with the content, and `scrollHeight` cannot be used because it includes the
+	 * end spacer, which would feed back into its own condition. Measured rather
+	 * than inferred from `clipped`, which is a statement about the result cap and
+	 * is false on the commonest overflowing list there is, the browse layout.
 	 */
-	useEffect(() => {
-		const list = listRef.current;
-		const content = listContentRef.current;
-		if (!list || !content) return;
-		const measure = () =>
-			setListOverflows(content.offsetHeight > list.clientHeight + 1);
+	const observeList = useCallback((node: HTMLDivElement | null) => {
+		listObserver.current?.disconnect();
+		listContentRef.current = node;
+		if (!node?.parentElement) return;
+		const list = node.parentElement;
+		const measure = () => {
+			const styles = getComputedStyle(list);
+			const padding =
+				Number.parseFloat(styles.paddingTop) +
+				Number.parseFloat(styles.paddingBottom);
+			setListOverflows(node.offsetHeight + padding > list.clientHeight + 1);
+		};
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(list);
-		observer.observe(content);
-		return () => observer.disconnect();
+		observer.observe(node);
+		listObserver.current = observer;
 	}, []);
 
 	/*
@@ -670,7 +689,6 @@ export const CommandPalette: FC = () => {
 								/>
 							)}
 							<div
-								ref={listRef}
 								// biome-ignore lint/a11y/useSemanticElements: `select`/`option` is a native popup control, not a listbox whose rows are browsed by aria-activedescendant while focus stays in a text field.
 								role="listbox"
 								id={LIST_ID}
@@ -681,7 +699,7 @@ export const CommandPalette: FC = () => {
 								className="max-h-96 overflow-y-auto p-2"
 							>
 								{/* The measured half: everything the scrollbar actually scrolls. */}
-								<div ref={listContentRef}>
+								<div ref={observeList}>
 									{outcome.sections.map((section, sectionIndex) => (
 										<Fragment key={section.group}>
 											<div
