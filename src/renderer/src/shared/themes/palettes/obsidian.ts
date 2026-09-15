@@ -54,6 +54,13 @@ export const obsidian: ThemeDefinition = {
 		// Both still clear 15:1 for `accentHover` used as a link ink.
 		accentHover: "#E4E4E7",
 		accentActive: "#D4D4D8",
+		// The one palette whose accent is its brightest value, so this role cannot
+		// be a lightness step at all: it is a CHROMA step into the hue the palette
+		// already owns (`warning` #CBAF7E, lightened to the edge of visibility), which
+		// keeps the ground ratio (17.03:1 against the accent's 16.97:1) while still
+		// measuring ΔE00 10.0 from it. The window is narrow by construction: brighter is
+		// ΔE00 1.0 away, and more chroma falls below the accent's own ground ratio.
+		chartBarHover: "#FCFCE4",
 		accentWash: "#262628",
 		onAccent: "#09090B",
 
