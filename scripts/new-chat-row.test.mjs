@@ -139,9 +139,17 @@ const BORDER_ROLE = /\bborder(-|\b)/;
 /** The 1-step margin that separates the row from the split below it. */
 const MB_1 = /\bmb-1\b/;
 
-/** The row's current-draft predicate, which `aria-current` has to agree with. */
+/**
+ * The row's current-draft predicate, which `aria-current` has to agree with.
+ *
+ * Re-pointed from `"bg-accent-wash"` to `rowCurrent` when the sidebar's
+ * current-row ground moved off the wash: on this `bg-surface` panel the wash is
+ * ΔE00 1.05 from the ground in tokyoNight, so the state it marked was invisible.
+ * The PREDICATE is what this regex is for and it is unchanged — the ground it
+ * paints is now the shared one, pinned in `chat-sidebar-selection.test.mjs`.
+ */
 const CURRENT_DRAFT_PREDICATE =
-	/Boolean\(activeDraftKey\)\s*&&\s*!draft\?\.target\s*&&\s*"bg-accent-wash"/;
+	/Boolean\(activeDraftKey\)\s*&&\s*!draft\?\.target\s*&&\s*rowCurrent/;
 
 const ARIA_CURRENT_PAGE = /aria-current=\{[\s\S]*?"page"[\s\S]*?\}/;
 

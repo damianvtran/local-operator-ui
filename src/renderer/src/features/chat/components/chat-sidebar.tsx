@@ -53,6 +53,47 @@ type Props = {
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
+/**
+ * The ground of the row this panel is currently ON — the selected conversation,
+ * the All chats filter, the New chat row staging an untargeted draft, and the
+ * agent or team an untargeted-vs-targeted draft names.
+ *
+ * WHY THE STEP IS `sunken` AND NOT THE ACCENT WASH. This panel is `bg-surface`
+ * (:686), and `accentWash` is ΔE00 **1.05** from `surface` in tokyoNight
+ * (#262B3F on #24283B) — the operator's own report, "you can't tell from the
+ * sidebar which one is selected", measured. Hover is louder than selection in
+ * that theme (the `elevated` step those rows already carry, ΔE00 4.58), so the
+ * pointer read as the current row while the current row did not. The wash is
+ * not broken everywhere — the app rail and the settings rail draw it on
+ * `canvas`, where it measures 6.45 in tokyoNight — which is why this is a
+ * per-call-site ground and NOT a palette change: strengthening `accentWash` for
+ * this one panel would make every hover tint in the app louder.
+ *
+ * `sunken` is a step off `surface` in every one of the twelve palettes, and the
+ * step is already gated as a pair: `contrast-contract.mjs` asserts `surface`
+ * against `sunken` and `sunken` against `elevated` at the field floor of ΔE00
+ * 2.0. The measured worst case is **3.75** (iceberg), against the wash's 1.05;
+ * `elevated` was the other candidate and is rejected at 2.15 in that same
+ * palette — a margin of 0.15 over a floor is not a fix. The step also keeps
+ * selection and hover on OPPOSITE sides of the panel ground (recessed vs
+ * raised), so the two can never be confused, and only the ground carries the
+ * fact: ground plus mark plus text for one state is what docs/branding.md § 2
+ * rules out.
+ *
+ * WHY THE HOVER OVERRIDE IS IN THIS STRING. `rowStyle` carries
+ * `hover:bg-elevated`, and a hover variant outranks a bare background in the
+ * cascade, so every row here replaced its selection ground with the hover
+ * ground under the pointer — in obsidian those two collapsed to ΔE00 0.77.
+ * Stating the ground again at `hover:` is what stops that, and `cn` is what
+ * makes it hold: tailwind-merge resolves the two `hover:bg-*` in favour of the
+ * later one, so the inherited step is dropped rather than landing second.
+ * `scripts/chat-sidebar-selection.test.mjs` asserts that resolution through the
+ * shipped `cn`, and `contrast-contract.mjs` pins this string — a bare
+ * `bg-accent-wash` here is invisible in tokyoNight and no palette assertion can
+ * see a class.
+ */
+const rowCurrent = "bg-sunken text-ink hover:bg-sunken";
+
 import { ChatSessionStatus } from "./chat-session-status";
 
 /**
@@ -350,7 +391,7 @@ export function ChatSidebar({
 					nested && "pl-7",
 					selectedConversation === row.session_id &&
 						!activeDraftKey &&
-						"bg-accent-wash text-ink",
+						rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
 					// mark arrived, re-truncating text under the reader's cursor;
@@ -457,9 +498,12 @@ export function ChatSidebar({
 				<div
 					className={cn(
 						"group flex h-8 items-center gap-1 rounded-md",
+						// The same current-row ground as the rows below it: an entity whose
+						// draft is staged is where the reader is, and on this panel the
+						// wash that used to mark it is ΔE00 1.05 from the ground.
 						draft?.target?.kind === kind &&
 							draft.target.name === name &&
-							"bg-accent-wash",
+							rowCurrent,
 					)}
 				>
 					<button
@@ -906,7 +950,7 @@ export function ChatSidebar({
 						<button
 							type="button"
 							data-chat-row
-							className={cn(rowStyle, "w-full", all && "bg-accent-wash")}
+							className={cn(rowStyle, "w-full", all && rowCurrent)}
 							aria-pressed={all}
 							onClick={() => setAll((value) => !value)}
 						>
@@ -946,8 +990,9 @@ export function ChatSidebar({
 						    stages a chat, and which matches the glyph the entity rows
 						    reveal for the same outcome; the `mb-1` margin that separates
 						    it from the Active/Previous split below; `rowStyle`'s
-						    `hover:bg-elevated` colour step; and `bg-accent-wash` while an
-						    untargeted draft is staged.
+						    `hover:bg-elevated` colour step; and the `rowCurrent`
+						    ground (recessed from the panel, and hover-proof) while
+						    an untargeted draft is staged.
 
 						    `border-control` is therefore RETIRED on this row by the
 						    operator's own instruction, not merely unused: re-adding it puts
@@ -982,7 +1027,7 @@ export function ChatSidebar({
 								// carrying a target belongs to its entity row, which is
 								// already highlighting itself, and two rows claiming the
 								// same draft would misreport where the user is.
-								Boolean(activeDraftKey) && !draft?.target && "bg-accent-wash",
+								Boolean(activeDraftKey) && !draft?.target && rowCurrent,
 							)}
 							aria-current={
 								activeDraftKey && !draft?.target ? "page" : undefined
