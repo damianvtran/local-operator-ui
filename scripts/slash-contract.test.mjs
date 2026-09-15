@@ -47,6 +47,7 @@ const {
 	phaseLabel,
 	pointerPickRuns,
 	rowId,
+	sharedCommandPrefix,
 	slashKeyIntent,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -149,12 +150,17 @@ const route = (over = {}) =>
 		active: 0,
 		matches: [commandRow],
 		argumentQuery: "",
+		commandQuery: "",
 		argumentCommand: "model",
 		nameThenMessage: false,
 		runs: true,
 		chosenByHand: false,
 		...over,
 	});
+
+/** A command-phase list, in the order the popup would show it. */
+const commandRows = (...labels) =>
+	labels.map((label) => ({ kind: "command", label }));
 
 test("keys are only routed while the list is up and not composing", () => {
 	assert.deepEqual(route({ open: false }), { kind: "pass" });
@@ -184,17 +190,104 @@ test("the arrows move the marker and clamp at both ends", () => {
 	);
 });
 
-test("a command row completes and never runs", () => {
-	// Criterion: Enter on a half-typed command word opens its argument list; a
-	// run here would submit a command the user has not finished naming.
-	assert.deepEqual(route({ matches: [commandRow, commandRow], active: 1 }), {
-		kind: "apply",
-		index: 1,
-		run: false,
-	});
+test("Enter runs a command row when the choice is unambiguous", () => {
+	/*
+	 * The reported defect: `/analytics` + Enter completed the word and needed a
+	 * second Enter before the panel opened. The rule is the terminal's own
+	 * (`_picker_choice_is_unambiguous`, `editor.py:7731-7765`), read through the
+	 * desktop's existing `isUnambiguous`.
+	 */
+	// Typed in full: the user NAMED the command rather than accepting a guess.
+	assert.deepEqual(
+		route({ matches: commandRows("analytics"), commandQuery: "analytics" }),
+		{ kind: "apply", index: 0, run: true },
+	);
+	// The single survivor of a short word is unambiguous too, which is the arm
+	// that makes `/ana` behave the way the terminal does.
+	assert.deepEqual(
+		route({ matches: commandRows("analytics"), commandQuery: "an" }),
+		{ kind: "apply", index: 0, run: true },
+	);
+	// An arrow press is the explicit choice, whatever the query left.
+	assert.deepEqual(
+		route({
+			matches: commandRows("analytics", "agents"),
+			commandQuery: "a",
+			active: 1,
+			chosenByHand: true,
+		}),
+		{ kind: "apply", index: 1, run: true },
+	);
 	// A list with no row at the marker completes nothing and is not a key the
 	// popup consumed.
 	assert.deepEqual(route({ matches: [] }), { kind: "pass" });
+});
+
+test("an ambiguous Enter grows the word to the common prefix and runs nothing", () => {
+	/*
+	 * `/cm` fuzzy-matches `commands` and `compact`, so nothing is applied: the word
+	 * grows to what every candidate agrees on and the list stays up
+	 * (`_extend_to_common_prefix`, `editor.py:8326-8345`). Completing to the
+	 * HIGHLIGHTED row instead put the highest-blast-radius candidate in the buffer
+	 * ready to run.
+	 */
+	assert.deepEqual(
+		route({
+			matches: commandRows("commands", "compact"),
+			commandQuery: "cm",
+		}),
+		{ kind: "extend", prefix: "com" },
+	);
+	// The word is never SHORTER than what is typed: when the query already IS the
+	// shared prefix the terminal returns having changed nothing, and this key is
+	// consumed either way rather than falling through to a submit.
+	assert.deepEqual(
+		route({
+			matches: commandRows("commands", "compact"),
+			commandQuery: "com",
+		}),
+		{ kind: "extend", prefix: "com" },
+	);
+	// Nothing shared at all — a bare `/` shows the whole registry — so the word
+	// does not move and the list stays open.
+	assert.deepEqual(
+		route({ matches: commandRows("usage", "team"), commandQuery: "" }),
+		{ kind: "extend", prefix: "" },
+	);
+});
+
+test("the common prefix keeps the registry's own casing", () => {
+	// Case-insensitive matching, the FIRST label's spelling inserted — the
+	// terminal's own rule, so a user typing `/MOD` gets `/model` rather than
+	// `/MODel`.
+	assert.equal(sharedCommandPrefix(["Model", "model"]), "Model");
+	assert.equal(sharedCommandPrefix(["Commands", "compact"]), "Com");
+	assert.equal(sharedCommandPrefix(["usage"]), "usage");
+	// Nothing to grow to is a real answer: `co` keeps only what every candidate
+	// agrees on, and a list with nothing in common at all holds the word still.
+	assert.equal(sharedCommandPrefix(["usage", "team"]), "");
+	assert.equal(sharedCommandPrefix([]), "");
+});
+
+test("Tab completes a command row and never runs it, ambiguous or not", () => {
+	// Tab is the completion key: it takes the highlighted row whatever the query
+	// says, which is what makes it the safe key while a list is narrowed.
+	assert.deepEqual(
+		route({
+			key: "Tab",
+			matches: commandRows("analytics"),
+			commandQuery: "analytics",
+		}),
+		{ kind: "apply", index: 0, run: false },
+	);
+	assert.deepEqual(
+		route({
+			key: "Tab",
+			matches: commandRows("commands", "compact"),
+			commandQuery: "cm",
+		}),
+		{ kind: "apply", index: 0, run: false },
+	);
 });
 
 test("a name-list row fills the name and never runs", () => {
@@ -373,15 +466,30 @@ test("the footer says what Enter will do, in each state", () => {
 	const base = {
 		phase: "argument",
 		command: "model",
+		label: "model",
 		nameThenMessage: false,
 		runs: true,
 		value: "openai/gpt-5",
 		matched: true,
 		unambiguous: true,
 	};
+	/*
+	 * The command phase has THREE answers now, and they are read off the same two
+	 * inputs the router decides from: unambiguous + a running destination RUNS,
+	 * unambiguous + a list-bearing destination completes (the word opens the list),
+	 * and an ambiguous query grows the word instead.
+	 */
 	assert.equal(
-		enterFooter({ ...base, phase: "command" }),
-		"Enter completes the command.",
+		enterFooter({ ...base, phase: "command", label: "usage" }),
+		"Enter runs /usage.",
+	);
+	assert.equal(
+		enterFooter({ ...base, phase: "command", runs: false }),
+		"Enter completes /model.",
+	);
+	assert.equal(
+		enterFooter({ ...base, phase: "command", unambiguous: false }),
+		"Enter completes to the common prefix.",
 	);
 	assert.equal(
 		enterFooter({ ...base, nameThenMessage: true, runs: false }),
@@ -400,6 +508,67 @@ test("the footer says what Enter will do, in each state", () => {
 	);
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
+});
+
+/*
+ * The composition the two halves above live in, pinned as SOURCE because that is
+ * where it is written: the intent says "the keyboard named this command", and the
+ * one adapter both pick paths share then asks the destination. A reviewer reading
+ * these cases should be able to see the `&&` they mirror rather than take a
+ * restatement of it on trust.
+ */
+const MESSAGE_INPUT = readFileSync(
+	"src/renderer/src/features/chat/components/message-input.tsx",
+	"utf8",
+);
+
+test("an unambiguous Enter still asks the destination before it runs", () => {
+	assert.match(
+		MESSAGE_INPUT,
+		/disposition\.run\s*&&\s*\(\s*row\.kind === "command"\s*\?\s*pointerPickRuns\(/,
+		"the pick path no longer gates a command row's run on its destination",
+	);
+	/*
+	 * What the two rules compose to, for the ids the REAL registry carries: the
+	 * panels and the navigate destinations run on the first Enter, and every
+	 * destination whose pick opens an inline list completes and opens it.
+	 */
+	const enterRuns = (id, label) => {
+		const intent = route({ matches: commandRows(label), commandQuery: label });
+		return intent.kind === "apply" && intent.run && pickRuns(id);
+	};
+	for (const [id, label] of [
+		["analytics", "analytics"],
+		["info", "info"],
+		["session.diagnostics", "session"],
+		["settings", "settings"],
+	]) {
+		assert.equal(enterRuns(id, label), true, id);
+	}
+	for (const [id, label] of [
+		["session.model", "model"],
+		["session.effort", "effort"],
+		["session.approvals", "approvals"],
+		["appearance", "theme"],
+		["session.team", "team"],
+		["session.agent", "agent"],
+	]) {
+		assert.equal(enterRuns(id, label), false, `${id} opens a list`);
+	}
+	/*
+	 * The three ids a POINTER pick must never run keep their TWO-Enter path: the
+	 * predicate that protects them is the one both paths read, so a single Enter
+	 * neither detaches the app nor clears the transcript view — the behaviour
+	 * `/exit`, `/clear` and `/compact` already had, and Enter's second press is
+	 * still what runs them.
+	 */
+	for (const [id, label] of [
+		["window.close", "exit"],
+		["transcript.clear", "clear"],
+		["session.compact", "compact"],
+	]) {
+		assert.equal(enterRuns(id, label), false, id);
+	}
 });
 
 	/*
@@ -522,22 +691,42 @@ test("the two footer lines cannot disagree about the active row", () => {
 		});
 		assert.ok(click, `${row.label} has a pointer line`);
 		// "Acting" is the word `runs`: it appears in the pointer line exactly when
-		// the pick runs, and the Enter line never claims a run in the command
-		// phase, where Enter only ever completes.
+		// the pick runs.
 		assert.equal(click.includes("runs"), row.runs, `${row.label}: ${click}`);
 		if (row.phase === "command") {
+			/*
+			 * Enter's own line claims a run exactly when BOTH halves hold — the choice
+			 * is unambiguous and the destination runs — which is the pair the router
+			 * computes (`commandChoiceUnambiguous` and `pickRuns`).
+			 */
+			const enter = enterFooter({
+				phase: "command",
+				command: null,
+				label: row.label,
+				nameThenMessage: false,
+				runs: row.runs,
+				value: "",
+				matched: true,
+				unambiguous: true,
+			});
+			assert.equal(
+				enter.includes("runs"),
+				row.runs,
+				`${row.label}: an unambiguous Enter follows its destination — ${enter}`,
+			);
 			assert.equal(
 				enterFooter({
 					phase: "command",
 					command: null,
+					label: row.label,
 					nameThenMessage: false,
-					runs: true,
+					runs: row.runs,
 					value: "",
 					matched: true,
-					unambiguous: true,
+					unambiguous: false,
 				}).includes("runs"),
 				false,
-				"Enter never runs a command row, so it cannot say it does",
+				"an ambiguous Enter runs nothing, so it cannot say it does",
 			);
 		}
 	}
