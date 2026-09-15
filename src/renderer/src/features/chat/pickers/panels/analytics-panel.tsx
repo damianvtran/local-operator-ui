@@ -96,6 +96,28 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			numeric: true,
 			cell: (row) => row.cost,
 		},
+		/*
+		 * The last column, like the terminal's own row suffix
+		 * (`analytics_panel.py:1856`), and read from the row's OWN aggregate: the
+		 * section meta already says the totals here include subagents, so a rate
+		 * taken from the panel's headline aggregate would be a different claim
+		 * about the same row.
+		 *
+		 * `title` because the cell is otherwise a bare `97%` beside a call count:
+		 * the column header names it for a screen reader (a real `<table>` with
+		 * `scope="col"` is this table's existing mechanism), and the title spells
+		 * out WHAT the percentage measures for a reader looking at the number.
+		 */
+		{
+			key: "cache",
+			header: "Cache hit",
+			numeric: true,
+			cell: (row) => (
+				<span title="Share of read context served from cache">
+					{percentageOf(row.cacheHit)}
+				</span>
+			),
+		},
 	];
 	return (
 		<DataTable<(typeof rows)[number]>
@@ -158,6 +180,17 @@ const SessionTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			header: "Cost",
 			numeric: true,
 			cell: (row) => row.cost,
+		},
+		/* Same column, same rule, one row per session (see `ProviderTable`). */
+		{
+			key: "cache",
+			header: "Cache hit",
+			numeric: true,
+			cell: (row) => (
+				<span title="Share of read context served from cache">
+					{percentageOf(row.cacheHit)}
+				</span>
+			),
 		},
 	];
 	return (
