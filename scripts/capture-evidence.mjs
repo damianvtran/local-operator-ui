@@ -230,6 +230,10 @@ export const STORIES = [
 	["browser-consent-bar--unnamed-requester-no-domain", 1280, 300],
 	["browser-consent-bar--an-agent", 1280, 300],
 	["browser-consent-bar--busy", 1280, 300],
+	/* The PRESSED state of the same card: `busy` alone renders the trailing cue, so
+	   this story presses a control through `play` and is the only frame that can show
+	   the cue MOVED (design round 3, D12; review round 3, MAJOR on evidence). */
+	["browser-consent-bar--busy-pressed", 1280, 300],
 	/* The queued band's own states, which the round that built the queue added: the
 	   numbered chips (the operator's "numbered badge callout"), the third request
 	   selected rather than the first, and the two ways a request leaves without an

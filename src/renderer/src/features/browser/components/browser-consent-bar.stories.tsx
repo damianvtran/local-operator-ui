@@ -1,7 +1,8 @@
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent } from "@storybook/test";
 import type { ComponentProps, FC, ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ApprovalRequestInput } from "../model/approval-queue-model";
 import { approvalRows } from "../model/approval-queue-model";
 import { BrowserConsentBar } from "./browser-consent-bar";
@@ -66,6 +67,29 @@ const WithSessions: FC<{
 		});
 	}, [titles]);
 	return <div className="bg-canvas p-6">{children}</div>;
+};
+
+/**
+ * The band with the SURFACE's own busy wiring: the route sets `busy` when a decision
+ * goes in flight (`browser-surface.tsx`'s `runBusy`), so a story that starts at
+ * `busy: true` cannot be pressed - every control is disabled, the click is a no-op,
+ * and the card can only ever render the trailing cue. Compatible with the real
+ * sequence, the press has to be what makes it busy: this wrapper holds that flag and
+ * flips it on `onDecide`, exactly as the route does. Without it the frame cannot show
+ * the cue's position, which is the whole of design round 3's D12.
+ */
+const PressedBusy: FC<ComponentProps<typeof BrowserConsentBar>> = (props) => {
+	const [busy, setBusy] = useState(false);
+	return (
+		<BrowserConsentBar
+			{...props}
+			busy={busy}
+			onDecide={(entryId, decision) => {
+				setBusy(true);
+				props.onDecide?.(entryId, decision);
+			}}
+		/>
+	);
 };
 
 /** The tray's own props are the band's states; every story here renders the band
@@ -182,6 +206,36 @@ export const Busy: Story = {
 			<BrowserConsentBar {...args} />
 		</div>
 	),
+};
+
+/**
+ * THE PRESSED STATE, WHICH `Busy` CANNOT SHOW AND THE ROUND-3 FINDING IS ABOUT
+ * (design round 3, D12; review round 3, MAJOR on evidence).
+ *
+ * `Busy` sets the flag without a press, so it renders the TRAILING form - the one
+ * kept for a decision this card did not originate - and its frame is therefore
+ * byte-identical across the change that moved the cue. That is what the reviewer
+ * measured: the frame could not have shown the fix, so the claim rested on code.
+ *
+ * `pressed` is the component's own state, set by the user's click, so the only
+ * honest way to photograph it is to press: this story clicks the site control
+ * through `play`, and the frame then shows the cue where the finger was - directly
+ * after `Always allow this site` rather than at the far end of a 1280px row.
+ */
+export const BusyPressed: Story = {
+	args: bar([LIVE]),
+	render: (args) => (
+		<div className="bg-canvas p-6">
+			<PressedBusy {...args} />
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		const site = canvasElement.querySelector(
+			'[data-tour-tag="browser-consent-site"]',
+		);
+		if (!site) throw new Error("the band's site control is not on screen");
+		await userEvent.click(site);
+	},
 };
 
 /**
