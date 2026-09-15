@@ -51,8 +51,10 @@ export interface LauncherGone {
 
 export interface LauncherWatch {
 	/**
-	 * Ask once, now: is the launcher gone? Returns true when it has fired.
-	 * Exposed so a test can step the machine without a clock.
+	 * Ask once, now: has the launcher gone? Returns true only on the call that
+	 * FIRES it — a watch that already fired answers false, and so does a stopped
+	 * one (round 2, N5: one value, one meaning). Exposed so a test can step the
+	 * machine without a clock.
 	 */
 	poll(): boolean;
 	/**
@@ -86,9 +88,15 @@ export function createLauncherWatch(input: {
 	const threshold = input.missesBeforeGone ?? LAUNCHER_MISSES_BEFORE_GONE;
 	let misses = 0;
 	let fired = false;
+	let stopped = false;
 	return {
 		poll: () => {
-			if (fired) return true;
+			/*
+			 * `true` means "this call fired the watch", not "this watch is finished"
+			 * (round 2, N5): an already-fired watch and a stopped one both answer false,
+			 * because neither is firing now.
+			 */
+			if (fired || stopped) return false;
 			const parent = input.parentPid();
 			const reparented = parent !== input.launcherPid;
 			misses = reparented || !input.isAlive(input.launcherPid) ? misses + 1 : 0;
@@ -103,7 +111,7 @@ export function createLauncherWatch(input: {
 			return true;
 		},
 		stop: () => {
-			fired = true;
+			stopped = true;
 		},
 	};
 }

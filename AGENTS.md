@@ -227,8 +227,11 @@ interruption, and it must be visible to whoever launched it.
 Two things `headless` does differently from every other mode, both of them about
 not accumulating on the operator's machine. The behaviour is in
 `src/main/window-mode.ts` (`hideDock`, `resolveLauncherWatchPlan`), applied in
-`src/main/index.ts`, and the watch itself is `src/main/launcher-watch.ts`. Every
-way a headless run can end goes through `armHeadlessExitDeadline`.
+`src/main/index.ts`, and the watch itself is `src/main/launcher-watch.ts`. The
+three ends a harness can set off — its window closing, its launcher going, a
+signal — all funnel through `endHeadlessRun`/`armHeadlessExitDeadline`; the app's
+other quit descents (the smoke-test exit, the update-install path) keep the
+bounds they already had.
 
 - **No Dock tile (macOS).** A headless run is an app nobody is using — the
   window is never shown, so the tile leads nowhere — and it is the mode this
@@ -259,8 +262,10 @@ way a headless run can end goes through `armHeadlessExitDeadline`.
 
 What a rig can read: every mode but `normal` prints the mode line and then the
 launcher policy — `window mode headless: 1380x900, window created and never
-shown, page throttling off, no Dock tile`, then `headless run launched by pid N;
-it quits when that process goes` (or the reason it is *not* launcher-bound).
+shown, page throttling off, no Dock tile` (the tile clause is macOS-only, and a
+Linux or Windows rig sees the same line without it), then `headless run launched
+by pid N; it quits when that process goes` (or the reason it is *not*
+launcher-bound).
 `normal` prints neither, so a harness waiting for a policy line on a `normal`
 boot waits forever. The mode line deliberately says nothing about the launcher:
 it is printed before that policy is resolved and would be wrong in exactly the
@@ -289,9 +294,11 @@ What this does NOT cover, stated because it is easy to over-read:
   is **gone**, so a driver that stops the wrapper and stays alive itself holds
   its app until the driver exits.
 - `stopApp()` in `scripts/renderer-driver.mjs` signals the launcher rather than
-  the app; that file's own fix (kill the app pid, TERM then KILL) is tracked on
-  PR #190. Either way a harness must stop by **pid**: a `pkill` by pattern takes
-  the operator's own running app with it.
+  the app, so the app is never signalled; that file's own fix — spawn the app
+  binary, kill the app pid, TERM then KILL, reap on the runner's exit — is in
+  flight on PR #190, whose review round names the same defect from its side.
+  Either way a harness must stop by **pid**: a `pkill` by pattern takes the
+  operator's own running app with it.
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 

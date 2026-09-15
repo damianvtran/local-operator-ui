@@ -234,12 +234,15 @@ test("the startup line cannot describe the wrong behaviour", () => {
 		),
 		/no Dock tile/,
 	);
-	assert.match(
+	// The mac line names the tile; asserted as the whole sentence, because an
+	// alternation with a word the renderer never emits cannot fail on its own
+	// (round 2, N8).
+	assert.equal(
 		describeWindowLaunch(
 			plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
 			"darwin",
 		),
-		/hideDock|no Dock tile/,
+		"window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
 	);
 });
 

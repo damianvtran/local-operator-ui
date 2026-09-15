@@ -134,8 +134,9 @@ test("consecutive misses fire once, and say it in plain words", () => {
 	);
 	assert.match(state.gone[0].detail, /pid 4242 is gone/);
 	assert.doesNotMatch(state.gone[0].message, /pid 1|reparent/);
-	// Firing is terminal: no second callback however long it keeps polling.
-	for (let i = 0; i < 5; i += 1) assert.equal(watch.poll(), true);
+	// Firing is terminal, and it is the CALL that fires that answers true: an
+	// already-fired watch answers false, because nothing is firing now.
+	for (let i = 0; i < 5; i += 1) assert.equal(watch.poll(), false);
 	assert.equal(state.gone.length, 1);
 });
 
@@ -157,7 +158,9 @@ test("stop() is idempotent, and a stopped watch never fires", () => {
 	watch.stop();
 	watch.stop();
 	state.alive = false;
-	assert.equal(watch.poll(), true, "a stopped watch answers without asking");
+	// `poll()` answers "has this watch fired" (round 2, N5), so a stopped one
+	// answers false however the launcher is doing — it never asked again.
+	assert.equal(watch.poll(), false);
 	assert.deepEqual(state.gone, []);
 });
 
