@@ -62,9 +62,11 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
+
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const OUT = process.argv[2] ?? "/tmp/lo-interrupt-proof";
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
@@ -190,6 +192,29 @@ const freePort = async () => {
 };
 const port = Number(process.env.LO_PROOF_CDP_PORT) || (await freePort());
 
+/*
+ * The child's environment, built by the merged guard helper (#206) rather than by
+ * restating the kill switch here. `notification-spawn-sites.test.mjs` enumerates
+ * every Electron spawn site in `scripts/` and requires each one to be named with
+ * how it is guarded, because a rig is the site most likely to hand the app an
+ * environment that banners the operator - this rig forces the switch for the same
+ * reason `run-desktop-tests.mjs` does it for every child it spawns.
+ */
+const spawnEnv = withNotificationsOff({
+	...childEnv,
+	HOME: HOME_DIR,
+	LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+	LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+	// This run's backend is already listening; the app must not spawn or kill one -
+	// and in a scratch HOME it would otherwise try to install and start one.
+	VITE_DISABLE_BACKEND_MANAGER: "true",
+	// Read at RUNTIME by `src/main/backend/config.ts` (it dotenv-loads and
+	// validates `process.env`), so the app can be pointed at this run's backend
+	// without rebuilding it.
+	VITE_LOCAL_OPERATOR_API_URL: BACKEND,
+	LOCAL_OPERATOR_DESKTOP_TOKEN: TOKEN,
+});
+
 const app = spawn(
 	"./node_modules/.bin/electron",
 	[
@@ -206,26 +231,7 @@ const app = spawn(
 		"--window-mode=headless",
 	],
 	{
-		env: {
-			...childEnv,
-			HOME: HOME_DIR,
-			LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
-			LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-			// This run's backend is already listening; the app must not spawn or
-			// kill one - and in a scratch HOME it would otherwise try to install
-			// and start one.
-			VITE_DISABLE_BACKEND_MANAGER: "true",
-			// Read at RUNTIME by `src/main/backend/config.ts` (it dotenv-loads and
-			// validates `process.env`), so the app can be pointed at this run's
-			// backend without rebuilding it.
-			VITE_LOCAL_OPERATOR_API_URL: BACKEND,
-			LOCAL_OPERATOR_DESKTOP_TOKEN: TOKEN,
-			// The banners the backend would otherwise post on the operator's
-			// desktop, for the reason `run-desktop-tests.mjs` forces these on
-			// every child it spawns.
-			LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-			LOCAL_OPERATOR_NO_TERMINAL_TITLE: "1",
-		},
+		env: spawnEnv,
 		cwd: process.cwd(),
 		stdio: ["ignore", "pipe", "pipe"],
 		// Own the whole tree: Electron spawns helpers (GPU, renderer, utility), so a
