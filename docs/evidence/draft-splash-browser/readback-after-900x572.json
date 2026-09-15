@@ -16,12 +16,12 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 121890,
+  "at": 52575,
   "viewport": "900x572",
   "active": "TEXTAREA",
   "stack": {
     "height": 179.5,
-    "scrollHeight": 217,
+    "scrollHeight": 180,
     "clientHeight": 180
   },
   "chips": [
@@ -35,7 +35,7 @@
       "bottom": 382.75
     },
     {
-      "label": "Make me a space invaders game",
+      "label": "Do a technical analysis on NVDA over the last year",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -44,7 +44,7 @@
       "bottom": 382.75
     },
     {
-      "label": "Look up interest rate trends and make a projection for the next 5 years",
+      "label": "Search for quantum computing papers and download interesting ones to read later",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -53,7 +53,7 @@
       "bottom": 420.25
     },
     {
-      "label": "Make me a GDPR compliant privacy policy",
+      "label": "What's the latest news?",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -62,7 +62,16 @@
       "bottom": 457.75
     },
     {
-      "label": "Download some recent papers on cancer research",
+      "label": "Organize my documents folder",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 428.25,
+      "bottom": 457.75
+    },
+    {
+      "label": "What stocks are trending right now?",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
@@ -71,22 +80,13 @@
       "bottom": 495.25
     },
     {
-      "label": "Fetch the MNIST dataset and train a good classifier",
+      "label": "Make me a research report on the latest trends in AI",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
       "top": 503.25,
       "bottom": 532.75
-    },
-    {
-      "label": "Do a buy/hold/sell and fundamentals analysis of Apple",
-      "disabled": true,
-      "ariaHidden": "true",
-      "visibility": "hidden",
-      "focused": false,
-      "top": 540.75,
-      "bottom": 570.25
     }
   ],
   "observed": {
@@ -94,9 +94,9 @@
     "greeting": 1,
     "smallView": false,
     "chipsLaidOut": 7,
-    "chipsPainted": 6,
-    "chipsInert": 1,
-    "rowsLaidOut": 6,
+    "chipsPainted": 7,
+    "chipsInert": 0,
+    "rowsLaidOut": 5,
     "rowsPainted": 5
   },
   "expected": {
@@ -114,18 +114,18 @@
     "all": true
   },
   "settlement": {
-    "now": 66899,
-    "reads": 9,
+    "now": 47459,
+    "reads": 49,
     "layoutChanges": 1,
-    "lastChangeAt": 28832,
-    "stableForMs": 38067,
+    "lastChangeAt": 1491,
+    "stableForMs": 45968,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": true,
     "states": [
       {
-        "at": 23147,
-        "lastSeenAt": 23992,
+        "at": 74,
+        "lastSeenAt": 144,
         "reads": 3,
         "columnWidth": null,
         "bandY": null,
@@ -140,17 +140,12 @@
         "rowsLaidOut": null,
         "rowsInside": null,
         "boundaryInGap": null,
-        "claims": {
-          "placeholders": 0,
-          "outsideBand": 0,
-          "shimmerBars": 0,
-          "captionVisible": false
-        }
+        "claims": null
       },
       {
-        "at": 28832,
-        "lastSeenAt": 66899,
-        "reads": 6,
+        "at": 1491,
+        "lastSeenAt": 47459,
+        "reads": 46,
         "columnWidth": 620,
         "bandY": 104,
         "bandHeight": 468,
@@ -161,7 +156,7 @@
         "greeting": 1,
         "skeleton": 0,
         "chipLabels": [],
-        "rowsLaidOut": 6,
+        "rowsLaidOut": 5,
         "rowsInside": 5,
         "boundaryInGap": true,
         "claims": {
@@ -175,5 +170,5 @@
     "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
   },
   "pageProbe": null,
-  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string; this reader's output budget cut it on four of the eight reads, and it is not transcribed on the other four so that the eight files describe the same thing. Every field the table, the settlement record and the D2 check use is a top-level field of this file (`frame`, `observed`, `expected`, `holds`, `settlement.states`, `chips`); the inner page's own probe text, which duplicates them, is the only loss."
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string, and this reader's output budget cut it on two of the eight reads; rather than ship some files with it and some without, all eight carry null and every field this set's table, its D2 check or its settlement record uses is a top-level field of the file below. The one reading that lived only there is `store.activeDraftKey`: `draft:17fadb82-8a2f-4dbf-8baf-9f2e1ff65b9b` on the after origin and `draft:6bbef56d-fe60-4b58-b308-280a0f1691dc` on the before origin, each with `activeSessionId: null`."
 }

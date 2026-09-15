@@ -16,68 +16,23 @@
     "scrollX": 0,
     "scrollY": 0
   },
-  "at": 41869,
+  "at": 47650,
   "viewport": "1380x872",
   "active": "TEXTAREA",
   "stack": {
-    "height": 104.5,
-    "scrollHeight": 105,
-    "clientHeight": 105
+    "height": 142,
+    "scrollHeight": 142,
+    "clientHeight": 142
   },
   "chips": [
     {
-      "label": "Fetch the MNIST dataset and train a good classifier",
+      "label": "Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
       "disabled": false,
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 524.75,
-      "bottom": 554.25
-    },
-    {
-      "label": "Search for quantum computing papers and download interesting ones to read later",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 524.75,
-      "bottom": 554.25
-    },
-    {
-      "label": "Make me a research report on the latest trends in AI",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 562.25,
-      "bottom": 591.75
-    },
-    {
-      "label": "Download some recent papers on cancer research",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 562.25,
-      "bottom": 591.75
-    },
-    {
-      "label": "Go to my downloads folder",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 562.25,
-      "bottom": 591.75
-    },
-    {
-      "label": "What are the trending stocks on WallStreetBets?",
-      "disabled": false,
-      "ariaHidden": null,
-      "visibility": "visible",
-      "focused": false,
-      "top": 599.75,
-      "bottom": 629.25
+      "top": 506,
+      "bottom": 535.5
     },
     {
       "label": "Look up interest rate trends and make a projection for the next 5 years",
@@ -85,8 +40,53 @@
       "ariaHidden": null,
       "visibility": "visible",
       "focused": false,
-      "top": 599.75,
-      "bottom": 629.25
+      "top": 543.5,
+      "bottom": 573
+    },
+    {
+      "label": "Find me a royalty free gif of a cute cat",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 543.5,
+      "bottom": 573
+    },
+    {
+      "label": "Make me a brick breaker game",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "What's the latest news?",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "Create a presentation outline on climate change",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 581,
+      "bottom": 610.5
+    },
+    {
+      "label": "What stocks are trending right now?",
+      "disabled": false,
+      "ariaHidden": null,
+      "visibility": "visible",
+      "focused": false,
+      "top": 618.5,
+      "bottom": 648
     }
   ],
   "observed": {
@@ -96,8 +96,8 @@
     "chipsLaidOut": 7,
     "chipsPainted": 7,
     "chipsInert": 0,
-    "rowsLaidOut": 3,
-    "rowsPainted": 3
+    "rowsLaidOut": 4,
+    "rowsPainted": 4
   },
   "expected": {
     "columnPx": 1100,
@@ -114,18 +114,18 @@
     "all": true
   },
   "settlement": {
-    "now": 34957,
-    "reads": 38,
+    "now": 44911,
+    "reads": 47,
     "layoutChanges": 1,
-    "lastChangeAt": 1020,
-    "stableForMs": 33937,
+    "lastChangeAt": 1897,
+    "stableForMs": 43014,
     "settleWindowMs": 3000,
     "settled": true,
     "noLoadingClaimInAnyState": true,
     "states": [
       {
-        "at": 266,
-        "lastSeenAt": 305,
+        "at": 479,
+        "lastSeenAt": 514,
         "reads": 3,
         "columnWidth": null,
         "bandY": null,
@@ -140,29 +140,24 @@
         "rowsLaidOut": null,
         "rowsInside": null,
         "boundaryInGap": null,
-        "claims": {
-          "placeholders": 0,
-          "outsideBand": 0,
-          "shimmerBars": 0,
-          "captionVisible": false
-        }
+        "claims": null
       },
       {
-        "at": 1020,
-        "lastSeenAt": 34957,
-        "reads": 35,
+        "at": 1897,
+        "lastSeenAt": 44911,
+        "reads": 44,
         "columnWidth": 1100,
         "bandY": 104,
         "bandHeight": 768,
-        "composerY": 388.8,
-        "composerHeight": 240.5,
-        "stackTop": 524.8,
-        "stackHeight": 104.5,
+        "composerY": 370,
+        "composerHeight": 278,
+        "stackTop": 506,
+        "stackHeight": 142,
         "greeting": 1,
         "skeleton": 0,
         "chipLabels": [],
-        "rowsLaidOut": 3,
-        "rowsInside": 3,
+        "rowsLaidOut": 4,
+        "rowsInside": 4,
         "boundaryInGap": true,
         "claims": {
           "placeholders": 0,
@@ -175,5 +170,5 @@
     "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
   },
   "pageProbe": null,
-  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string; this reader's output budget cut it on four of the eight reads, and it is not transcribed on the other four so that the eight files describe the same thing. Every field the table, the settlement record and the D2 check use is a top-level field of this file (`frame`, `observed`, `expected`, `holds`, `settlement.states`, `chips`); the inner page's own probe text, which duplicates them, is the only loss."
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string, and this reader's output budget cut it on two of the eight reads; rather than ship some files with it and some without, all eight carry null and every field this set's table, its D2 check or its settlement record uses is a top-level field of the file below. The one reading that lived only there is `store.activeDraftKey`: `draft:17fadb82-8a2f-4dbf-8baf-9f2e1ff65b9b` on the after origin and `draft:6bbef56d-fe60-4b58-b308-280a0f1691dc` on the before origin, each with `activeSessionId: null`."
 }
