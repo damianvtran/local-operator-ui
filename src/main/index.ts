@@ -1266,18 +1266,42 @@ app.on("window-all-closed", () => {
 
 // Electron does not await async listeners. Prevent the first quit, await the
 // same owned cleanup the updater uses, then retry without replacing any hooks.
+/*
+ * ...and never leave the user without a way out.
+ *
+ * Every step the retry waits on is bounded only by its own timers - the resolver
+ * may still be proving an interpreter (<= the shared probe budget) and the owned
+ * stop escalates over grace plus force - so a quit that arrives during a slow
+ * first start would otherwise leave a windowless process with no failsafe at
+ * all, which is exactly what the pre-remediation handler armed here (review
+ * round 1 F5, round 2 F10: 45 s of probe budget + 8 s of stop escalation + the
+ * readiness poll's last interval, rounded up).
+ */
+const QUIT_CLEANUP_FAILSAFE_MS = 60_000;
 let backendQuitPending = false;
 app.on("will-quit", (event) => {
 	if (backendService.isOwnedCleanupComplete()) return;
 	event.preventDefault();
 	if (backendQuitPending) return;
 	backendQuitPending = true;
+	const failsafe = setTimeout(() => {
+		logger.error(
+			`Owned backend cleanup did not finish within ${QUIT_CLEANUP_FAILSAFE_MS} ms; exiting with failure`,
+			LogFileType.BACKEND,
+		);
+		app.exit(1);
+	}, QUIT_CLEANUP_FAILSAFE_MS);
+	// It must not be a reason for the process to stay alive by itself: the cleanup
+	// it is watching is what holds the loop.
+	failsafe.unref();
 	void backendService
 		.stop(false)
 		.then(() => {
+			clearTimeout(failsafe);
 			app.quit();
 		})
 		.catch((error) => {
+			clearTimeout(failsafe);
 			logger.error(
 				"Owned backend cleanup failed; exiting with failure",
 				LogFileType.BACKEND,

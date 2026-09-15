@@ -135,7 +135,8 @@ async function buildFixture(plugins) {
 }
 
 const bundle = await buildFixture([isolatedMain()]);
-const { BackendServiceManager, ownedServeLaunch, consoleInterpreter } = bundle;
+const { BackendServiceManager, ownedServeLaunch, consoleInterpreter, windowsInterpreterCandidates } =
+	bundle;
 BackendServiceManager.prototype.loadShellEnvironment = async () => {};
 const managers = [];
 const children = [];
@@ -191,7 +192,7 @@ async function manager(mode = "") {
  */
 async function sentinel() {
 	const port = await freePort();
-	const plan = await ownedServeLaunch(python, port, env);
+	const plan = await ownedServeLaunch([python], port, env);
 	// The marker rides in an ARGUMENT rather than argv[0]: a macOS framework
 	// python rewrites its own argv[0] to the resolved interpreter path, so an
 	// `exec -a` spelling is not what the process table ends up showing. `ps` and
@@ -442,7 +443,7 @@ test("healthy endpoint replacement after owned exit is not termination authority
 	const m = await manager();
 	assert.equal(await m.start(), true);
 	await m.stop(true);
-	const plan = await ownedServeLaunch(python, m.port, env);
+	const plan = await ownedServeLaunch([python], m.port, env);
 	const replacement = spawn(plan.command, plan.args, {
 		env: plan.env,
 		stdio: "ignore",
@@ -462,13 +463,15 @@ test("opaque launcher rejected; cli:main entrypoint works without __main__", asy
 	// exercised the same console entrypoint used by the shipped launcher.
 });
 
-test("index quit preserves listeners, waits cleanup, exits nonzero on failure", async () => {
+test("index quit preserves listeners, waits cleanup, bounds itself and exits nonzero on failure", async () => {
 	const source = readFileSync("src/main/index.ts", "utf8");
-	const start = source.indexOf("let backendQuitPending");
+	// Sliced from the failsafe constant, so the bound the handler arms is inside
+	// the code under test rather than assumed from the file above it.
+	const start = source.indexOf("const QUIT_CLEANUP_FAILSAFE_MS");
 	const end = source.indexOf("// Handle before-quit", start);
 	const code = (await transform(source.slice(start, end), { loader: "ts" }))
 		.code;
-	for (const failed of [false, true]) {
+	for (const outcome of ["ok", "failed", "stuck"]) {
 		const app = new EventEmitter();
 		let quit = 0,
 			exit = null,
@@ -492,11 +495,23 @@ test("index quit preserves listeners, waits cleanup, exits nonzero on failure", 
 				return pending;
 			},
 		};
+		// The handler's failsafe is the only timer it arms, so a recorder is enough
+		// to drive it: `stuck` is the cleanup that never settles, and the bound is
+		// what stops it leaving a windowless app behind (round 1 F5, round 2 F10).
+		const timers = [];
+		const cleared = [];
+		const errors = [];
 		vm.runInNewContext(code, {
 			app,
 			backendService,
-			logger: { error() {} },
+			logger: { error: (message) => errors.push(String(message)) },
 			LogFileType: { BACKEND: "backend" },
+			setTimeout: (fn, ms) => {
+				const timer = { fn, ms, unref: () => {} };
+				timers.push(timer);
+				return timer;
+			},
+			clearTimeout: (timer) => cleared.push(timer),
 		});
 		let prevented = 0;
 		app.emit("will-quit", {
@@ -514,14 +529,32 @@ test("index quit preserves listeners, waits cleanup, exits nonzero on failure", 
 		assert.equal(prevented, 2);
 		assert.ok(app.listeners("before-quit").includes(hooks));
 		assert.ok(app.listeners("will-quit").includes(hooks));
-		if (failed) reject(Error("cleanup"));
-		else {
+		assert.equal(timers.length, 1, "the quit armed exactly one bound");
+		assert.ok(timers[0].ms > 0 && timers[0].ms <= 60_000, `bound is ${timers[0].ms} ms`);
+		if (outcome === "failed") reject(Error("cleanup"));
+		else if (outcome === "ok") {
 			done = true;
 			resolve();
 		}
+		if (outcome === "stuck") {
+			await new Promise((r) => setImmediate(r));
+			assert.equal(exit, null, "nothing exits while the cleanup is still running");
+			timers[0].fn();
+			assert.equal(exit, 1, "the bound exits rather than leaving the app windowless");
+			assert.match(
+				errors.join("\n"),
+				/Owned backend cleanup did not finish within \d+ ms/,
+			);
+			continue;
+		}
 		await new Promise((r) => setImmediate(r));
-		assert.equal(quit, failed ? 0 : 1);
-		assert.equal(exit, failed ? 1 : null);
+		assert.equal(quit, outcome === "ok" ? 1 : 0);
+		assert.equal(exit, outcome === "ok" ? null : 1);
+		assert.equal(
+			cleared.length,
+			1,
+			"a settled cleanup puts its bound out rather than leaving it to fire",
+		);
 	}
 });
 
@@ -606,11 +639,59 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
  * reasoned from CPython's documented venv layout and remains unverified without
  * a Windows host, as the PR thread says.
  */
+/**
+ * The probe now runs its own child - it has to be able to escalate its kill -
+ * so the seam in these fixture bundles is `spawn`, not `execFile`.
+ *
+ * Each queued outcome is one answer: an identity array, `{ spawnError }` for a
+ * candidate that is not there, `{ exit: { code, stderr } }` for one that ran and
+ * failed, or `{ hang: true }` for one that never answers - which is how the
+ * ceiling, the retry and the escalation are exercised without waiting out a real
+ * 30 s ceiling. A `hang` child answers SIGKILL the way a real process does, and
+ * records the signals it was sent, so the escalation is asserted rather than
+ * assumed.
+ */
+function probeChild(outcome) {
+	// An exhausted queue means the probe answered nothing useful, which is a child
+	// that never answers - the same shape as `hang`.
+	const answer = outcome ?? { hang: true };
+	const child = new EventEmitter();
+	child.pid = 40000 + Math.floor(Math.random() * 1000);
+	child.stdout = new EventEmitter();
+	child.stderr = new EventEmitter();
+	child.signals = [];
+	(globalThis.__probeChildren ??= []).push(child);
+	child.kill = (signal) => {
+		child.signals.push(signal);
+		if (signal === "SIGKILL") setImmediate(() => child.emit("close", null, signal));
+		return true;
+	};
+	setImmediate(() => {
+		if (answer.hang) return;
+		if (answer.spawnError) {
+			const error = new Error(answer.spawnError);
+			error.code = answer.spawnError;
+			child.emit("error", error);
+			return;
+		}
+		if (answer.exit) {
+			if (answer.exit.stderr)
+				child.stderr.emit("data", Buffer.from(answer.exit.stderr));
+			child.emit("close", answer.exit.code, null);
+			return;
+		}
+		child.stdout.emit("data", Buffer.from(JSON.stringify(answer)));
+		child.emit("close", 0, null);
+	});
+	return child;
+}
+globalThis.__probeChild = probeChild;
+
 const probeStub = {
 	name: "interpreter-probe",
 	setup(builder) {
-		// Only `execFile` is replaced, and only for the modules under test: every
-		// other child_process export keeps working, so the bundle stays real.
+		// Only `spawn` is replaced, and only for the modules under test: every other
+		// child_process export keeps working, so the bundle stays real.
 		builder.onResolve({ filter: /^node:child_process$/ }, (args) =>
 			args.namespace === "probe"
 				? { path: "node:child_process", external: true }
@@ -619,7 +700,7 @@ const probeStub = {
 		builder.onLoad({ filter: /.*/, namespace: "probe" }, () => ({
 			loader: "js",
 			contents:
-				'export { exec, spawn, spawnSync } from "node:child_process"; export function execFile(command,args,options,callback){globalThis.__probeCalls.push({command,args,options});const next=globalThis.__probeResults.shift();callback(next instanceof Error?next:null,{stdout:JSON.stringify(next),stderr:""});}',
+				'export { exec, spawnSync } from "node:child_process"; export function spawn(command,args,options){globalThis.__probeCalls.push({command,args,options});return globalThis.__probeChild(globalThis.__probeResults.shift());}',
 		}));
 	},
 };
@@ -643,7 +724,7 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		["/base/python.exe", "/base/python.exe", true, ["/base/Lib/site-packages"]],
 	];
 	const plan = await fixture.ownedServeLaunch(
-		"/venv/Scripts/python.exe",
+		["/venv/Scripts/python.exe"],
 		12345,
 		env,
 		"win32",
@@ -679,7 +760,7 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		["/base/python.exe", "/base/python.exe", true, ["/base/Lib/site-packages"]],
 	];
 	const direct = await fixture.ownedServeLaunch(
-		"/base/python.exe",
+		["/base/python.exe"],
 		12345,
 		env,
 		"win32",
@@ -694,7 +775,12 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		["/other/python.exe", "/other/python.exe", true, []],
 	];
 	await assert.rejects(
-		fixture.ownedServeLaunch("/venv/Scripts/python.exe", 12345, env, "win32"),
+		fixture.ownedServeLaunch(
+			["/venv/Scripts/python.exe"],
+			12345,
+			env,
+			"win32",
+		),
 		/reported itself as \/other\/python\.exe/,
 	);
 
@@ -705,8 +791,34 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 		["/base/python.exe", "/base/python.exe", false, []],
 	];
 	await assert.rejects(
-		fixture.ownedServeLaunch("/venv/Scripts/python.exe", 12345, env, "win32"),
+		fixture.ownedServeLaunch(
+			["/venv/Scripts/python.exe"],
+			12345,
+			env,
+			"win32",
+		),
 		/cannot import local_operator\.cli even with the venv's own import paths/,
+	);
+
+	// A candidate that is not there is one rejected claim, not the end of the
+	// search: the next claim gets its own probe and can win (review round 2, F8).
+	globalThis.__probeCalls = [];
+	globalThis.__probeResults = [
+		{ spawnError: "ENOENT" },
+		["/venv/Scripts/python.exe", "/base/python.exe", true, ["/venv/Lib"]],
+		["/base/python.exe", "/base/python.exe", true, []],
+	];
+	const afterMissing = await fixture.ownedServeLaunch(
+		["/gone/python.exe", "/venv/Scripts/python.exe"],
+		12345,
+		env,
+		"win32",
+	);
+	assert.equal(afterMissing.command, "/base/python.exe");
+	assert.deepEqual(
+		globalThis.__probeCalls.map((call) => call.command),
+		["/gone/python.exe", "/venv/Scripts/python.exe", "/base/python.exe"],
+		"the absent candidate is probed first, rejected, and the next one takes over",
 	);
 
 	// POSIX is unchanged: the same plan shape, and the environment untouched.
@@ -714,46 +826,205 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 	globalThis.__probeResults = [
 		["/python/python", "/python/python", true, ["/python/lib"]],
 	];
-	const posix = await fixture.ownedServeLaunch("/python/python", 12345, env);
+	const posix = await fixture.ownedServeLaunch(
+		["/python/python"],
+		12345,
+		env,
+	);
 	assert.equal(posix.command, "bash");
 	assert.equal(posix.env, env, "the POSIX plan passes its environment through");
 	delete globalThis.__probeResults;
 	delete globalThis.__probeCalls;
 });
 
-test("a slow first probe is retried, and a stuck interpreter is reported not swallowed", async () => {
+test("a slow first probe is retried, and a stuck interpreter is killed and reported", async () => {
 	const fixture = await buildFixture([isolatedMain(), probeStub]);
-	const timedOut = () =>
-		Object.assign(new Error("Command failed: identity probe"), {
-			killed: true,
-			signal: "SIGTERM",
-		});
+	// Milliseconds, so the ceiling, the retry and the escalation are measured
+	// rather than waited out; production uses the module's own defaults.
+	const tight = { totalMs: 4_000, attemptMs: 300, graceMs: 60, slackMs: 60 };
+	globalThis.__probeCalls = [];
+	globalThis.__probeChildren = [];
 	// The probe pays a cold import of the CLI. Failing closed on the first slow
 	// attempt turned a loaded machine's first run into a blocking modal with no
 	// retry in that launch (QA round 2, observation 2), so a timeout is retried
 	// once - the attempt that timed out warmed the bytecode cache.
-	globalThis.__probeCalls = [];
 	globalThis.__probeResults = [
-		timedOut(),
+		{ hang: true },
 		["/python/python", "/python/python", true, []],
 	];
-	const plan = await fixture.ownedServeLaunch("/python/python", 4321, env);
+	const plan = await fixture.ownedServeLaunch(
+		["/python/python"],
+		4321,
+		env,
+		"darwin",
+		tight,
+	);
 	assert.equal(globalThis.__probeCalls.length, 2, "a timeout is retried once");
 	assert.deepEqual(plan.args.slice(-2), ["--port", "4321"]);
 
+	// A stuck interpreter: the first attempt is escalated - SIGTERM, then SIGKILL
+	// when it does not die - the retry is spent, and the failure names the ceiling
+	// instead of hanging the start path. `execFile`'s single signal is what left
+	// this promise pending for good (review round 2, F9).
 	globalThis.__probeCalls = [];
-	globalThis.__probeResults = [timedOut(), timedOut()];
+	globalThis.__probeChildren = [];
+	globalThis.__probeResults = [{ hang: true }, { hang: true }];
+	const started = Date.now();
 	await assert.rejects(
-		fixture.ownedServeLaunch("/python/python", 4321, env),
-		/did not answer an identity probe within 30000 ms on 2 attempts: \/python\/python/,
+		fixture.ownedServeLaunch(["/python/python"], 4321, env, "darwin", tight),
+		/did not answer an identity probe within 300 ms/,
+	);
+	assert.ok(
+		Date.now() - started < 3_000,
+		"both attempts and their escalation fit inside the budget",
 	);
 	assert.equal(
 		globalThis.__probeCalls.length,
 		2,
 		"a stuck interpreter is not retried forever",
 	);
+	assert.deepEqual(
+		globalThis.__probeChildren.map((child) => child.signals),
+		[
+			["SIGTERM", "SIGKILL"],
+			["SIGTERM", "SIGKILL"],
+		],
+		"each attempt escalates past a SIGTERM the interpreter ignored",
+	);
 	delete globalThis.__probeResults;
 	delete globalThis.__probeCalls;
+	delete globalThis.__probeChildren;
+});
+
+test("interpreter candidates are claims: a later one is admitted when an earlier one is not there", async () => {
+	// The real probe path with real children. The first claim cannot be probed at
+	// all, the second is this suite's fixture interpreter, which really does import
+	// the fixture `local_operator.cli` - so a wrong guess about where an interpreter
+	// lives costs one probe instead of the app (review round 2, F8).
+	const missing = join(home, "not-an-interpreter", "python");
+	const plan = await ownedServeLaunch([missing, python], await freePort(), env);
+	assert.equal(plan.command, "bash");
+	assert.equal(
+		plan.args[3],
+		python,
+		"the plan names the candidate that proved itself, not the first one offered",
+	);
+
+	await assert.rejects(
+		ownedServeLaunch(
+			[missing, join(home, "also-missing-python")],
+			await freePort(),
+			env,
+			"darwin",
+			{ totalMs: 2_000, attemptMs: 500, graceMs: 60, slackMs: 60 },
+		),
+		/No backend interpreter could be proven[\s\S]*not-an-interpreter[\s\S]*uv tool install local-operator/,
+	);
+
+	// No claims at all is its own message rather than a probe against nothing.
+	await assert.rejects(
+		ownedServeLaunch([], await freePort(), env),
+		/No backend interpreter was resolved/,
+	);
+});
+
+test("Windows candidates cover the layouts an installer can produce, and drop what is not there", async () => {
+	const uvRoot = join(home, "uv", "tools");
+	const pipxRoot = join(home, "pipx-venvs");
+	const siblingDir = join(home, "windows-bin");
+	mkdirSync(join(uvRoot, "local-operator", "Scripts"), { recursive: true });
+	mkdirSync(join(pipxRoot, "venvs", "local-operator", "Scripts"), {
+		recursive: true,
+	});
+	mkdirSync(siblingDir, { recursive: true });
+	for (const file of [
+		join(siblingDir, "python.exe"),
+		join(uvRoot, "local-operator", "Scripts", "python.exe"),
+		join(pipxRoot, "venvs", "local-operator", "Scripts", "python.exe"),
+	])
+		writeFileSync(file, "");
+	const candidates = await windowsInterpreterCandidates(
+		join(siblingDir, "local-operator.exe"),
+		{ ...env, UV_TOOL_DIR: uvRoot, PIPX_HOME: pipxRoot },
+	);
+	assert.deepEqual(candidates, [
+		join(siblingDir, "python.exe"),
+		join(uvRoot, "local-operator", "Scripts", "python.exe"),
+		join(pipxRoot, "venvs", "local-operator", "Scripts", "python.exe"),
+	]);
+	// `where`/`py` do not exist on this host, so the two PATH-side entries are the
+	// part of this list no test here exercises - the PR thread says so rather than
+	// implying coverage.
+	const absent = await windowsInterpreterCandidates(
+		join(home, "nothing-here", "local-operator.exe"),
+		{ ...env, UV_TOOL_DIR: join(home, "no-such-tools") },
+	);
+	assert.deepEqual(
+		absent,
+		[],
+		"claims that do not exist are not offered to a probe",
+	);
+});
+
+test("a probe against an interpreter that ignores SIGTERM is killed and reported, not left pending", async () => {
+	// A REAL child that ignores SIGTERM - the shape `execFile`'s single signal left
+	// pending for good (review round 2, F9). The shim execs into python, so the PID
+	// it records is the interpreter the probe signalled.
+	const pidFile = join(home, "stubborn.pid");
+	const stubborn = join(home, "bin", "stubborn-python");
+	writeFileSync(
+		stubborn,
+		`#!/bin/sh\nexec ${JSON.stringify(python)} -c "import os, signal, time; open(os.environ['STUBBORN_PID_FILE'], 'w').write(str(os.getpid())); signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)" "$@"\n`,
+	);
+	chmodSync(stubborn, 0o700);
+	const started = Date.now();
+	await assert.rejects(
+		ownedServeLaunch(
+			[stubborn],
+			1234,
+			{ ...env, STUBBORN_PID_FILE: pidFile },
+			"darwin",
+			{ totalMs: 1_200, attemptMs: 900, graceMs: 150, slackMs: 150 },
+		),
+		/did not answer an identity probe within 900 ms/,
+	);
+	const elapsed = Date.now() - started;
+	assert.ok(elapsed < 5_000, `the escalation bounded the attempt (${elapsed} ms)`);
+	const pid = Number(readFileSync(pidFile, "utf8"));
+	assert.ok(pid > 0, "the fixture recorded its interpreter pid");
+	assert.throws(
+		() => process.kill(pid, 0),
+		"the interpreter that ignored SIGTERM is gone, not abandoned",
+	);
+});
+
+test("the probe budget bounds the whole resolution, however many candidates there are", async () => {
+	// Review round 2, F10: without a shared budget the bounds multiply per
+	// candidate, and a quit that lands mid-start waits on all of them.
+	const fixture = await buildFixture([isolatedMain(), probeStub]);
+	globalThis.__probeCalls = [];
+	globalThis.__probeChildren = [];
+	globalThis.__probeResults = [];
+	const started = Date.now();
+	await assert.rejects(
+		fixture.ownedServeLaunch(
+			["/one/python", "/two/python", "/three/python", "/four/python"],
+			4321,
+			env,
+			"darwin",
+			{ totalMs: 700, attemptMs: 300, graceMs: 60, slackMs: 60 },
+		),
+		/No backend interpreter could be proven/,
+	);
+	const elapsed = Date.now() - started;
+	assert.ok(elapsed < 2_000, `the resolution stayed inside its budget (${elapsed} ms)`);
+	assert.ok(
+		globalThis.__probeCalls.length <= 4,
+		"candidates are not probed past the budget",
+	);
+	delete globalThis.__probeResults;
+	delete globalThis.__probeCalls;
+	delete globalThis.__probeChildren;
 });
 
 test("a start whose own cleanup cannot confirm exit reports instead of rejecting", async () => {
@@ -772,8 +1043,7 @@ test("a start whose own cleanup cannot confirm exit reports instead of rejecting
 				loader: "js",
 				contents: `
 export function exec(command, options, callback) { const done = typeof options === "function" ? options : callback; done(null, { stdout: "", stderr: "" }); }
-export function execFile(command, args, options, callback) { globalThis.__probeCalls.push({ command, args, options }); const next = globalThis.__probeResults.shift(); callback(next instanceof Error ? next : null, { stdout: JSON.stringify(next), stderr: "" }); }
-export function spawn(command, args, options) { globalThis.__spawnCalls.push({ command, args, options }); return globalThis.__spawned; }
+export function spawn(command, args, options) { globalThis.__spawnCalls.push({ command, args, options }); if (args.includes("serve")) return globalThis.__spawned; globalThis.__probeCalls.push({ command, args, options }); return globalThis.__probeChild(globalThis.__probeResults.shift()); }
 export function spawnSync() { return { status: 0, stdout: "" }; }
 `,
 			}));
