@@ -1,6 +1,7 @@
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { Message } from "../types/message";
+import type { DirectoryWritePath } from "./directory-indicator";
 import { MessageInput } from "./message-input";
 
 /*
@@ -76,6 +77,25 @@ window.electron = {
  * help you with today?" over a conversation that has already started, which is
  * the claim this whole change removes.
  */
+/**
+ * The write path the chip needs to be EDITABLE - the same shape the chip's own
+ * story file uses, and a no-op because this frame is about the row's geometry
+ * rather than about a move (design review round 2, D13).
+ */
+const MOVING_CWD: DirectoryWritePath = {
+	kind: "move",
+	commit: async () => ({
+		kind: "settled",
+		receipt: {
+			cwd: "/Users/you/Downloads",
+			label: "~/Downloads",
+			outcome: "cold",
+			will_wait: false,
+		},
+		sentence: "moved to ~/Downloads",
+	}),
+};
+
 const NONEMPTY: Message[] = [
 	{ id: "canonical", role: "system", timestamp: new Date(0) },
 ];
@@ -163,5 +183,78 @@ export const AwaitingAnswer: Story = {
 				onSendMessage={async () => true}
 			/>
 		</Frame>
+	),
+};
+
+/**
+ * A conversation this machine no longer has (M6): the composer refuses input and
+ * says WHY, rather than naming a turn nobody is running.
+ *
+ * The ONE story this branch contributes to a set main now owns. The gone state is
+ * this change's — `unavailable` folds into `isInputDisabled`, and before the fix
+ * the only text in the composer over a vanished conversation read "Agent is busy",
+ * which is the false statement the transcript's own gone state was already fixed
+ * for (design round 1, D3). The colour step is the branding contract's: a disabled
+ * control changes COLOUR, never opacity.
+ *
+ * The other states this branch used to carry here (`Busy`, a second `Idle`) are
+ * NOT re-added. Main's own header states the rule they broke: `isLoading` is false
+ * throughout this set on purpose, because `currentJobId` is null on the canonical
+ * path and the "Agent is busy" branch is unreachable there — a frame of it would
+ * photograph a state no user can be in.
+ */
+export const ConversationGone: Story = {
+	render: () => (
+		<Frame label="conversation gone (M6): refuses input, and says which state">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story"
+				unavailable={true}
+				onSendMessage={async () => true}
+			/>
+		</Frame>
+	),
+};
+
+/**
+ * The composed row WITH a live cwd chip in it, at the composer's own width and at
+ * the width its container queries call the floor (design review round 2, D13).
+ *
+ * Why this story exists. Round 1's D7 asked for "a stable width OR render the
+ * composed row once", and the fixed path column answered the first half; the
+ * second half was still the one state nobody had photographed, so the chip's
+ * pairing with the readings cluster in a real row was geometry rather than a
+ * frame. `Idle` above cannot show it: without a known directory the chip does
+ * not mount at all (`cwdToShow !== undefined` is the gate).
+ *
+ * The two widths are in ONE frame on purpose. The chip's wide and floor variants
+ * are behind `@min-[620px]/chatcol` / `@max-[240px]/chatcol`, so each row carries
+ * its own `@container/chatcol` - the named container the queries resolve against
+ * - and a reader sees the pair, and the fact that the row's own layout does not
+ * change between them, in one picture. Only props differ from `Idle`; no product
+ * code is involved.
+ */
+export const CwdChipInRow: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-6 bg-canvas p-4")}>
+			{[1024, 240].map((width) => (
+				<div key={width} className={cn("flex flex-col gap-2")}>
+					<span className={cn("font-mono text-ink-dim text-mono-sm")}>
+						{`composed row with a live cwd chip, ${width}px chat column`}
+					</span>
+					<div className={cn("@container/chatcol")} style={{ width }}>
+						<MessageInput
+							isLoading={false}
+							messages={NONEMPTY}
+							conversationId="story"
+							cwd="/Users/you/src/project"
+							cwdWritePath={MOVING_CWD}
+							onSendMessage={async () => true}
+						/>
+					</div>
+				</div>
+			))}
+		</div>
 	),
 };

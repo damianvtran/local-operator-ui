@@ -1,4 +1,7 @@
 import { z } from "zod";
+// The feed's frame family lives beside the session stream's, so the two cannot
+// drift into disagreeing about the envelope they deliberately share.
+import type { DesktopFeedFrame } from "./desktop-session-contract";
 
 const id = z
 	.string()
@@ -455,6 +458,35 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			images: z.array(sessionImage).max(8).optional(),
 		})
 		.strict(),
+	/*
+	 * Point a LIVE session at another working directory (the desktop's `/move`).
+	 *
+	 * Its own op rather than an argument to `sessions.command`, and the reason is
+	 * where the work happens: the move is executed in the SERVER process against
+	 * the session's viewer (`POST
+	 * /v1/desktop/sessions/{id}/working-directory`), while the command endpoint
+	 * answers a `NativeAction | OwnerCommandResult` - the union's other member is
+	 * the RUNTIME's own slash answer, and a move produces neither. `/move`
+	 * therefore stays a presentation request in the backend's command catalogue
+	 * (`desktop_destination="session.move"`): a bare `/move` opens the picker,
+	 * and the argument form and the chip both call this op instead. The shape is
+	 * `sessions.warm`'s: a lifecycle operation on the session's runtime, with its
+	 * own receipt.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`): a
+	 * path is not prose, and claiming image-sized room for a 4 KB field would
+	 * spend the message budget on nothing. `cwd` carries the same bound as
+	 * `sessions.create`/`sessions.preview` because it reaches the same route
+	 * model, which refuses anything else.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.move"),
+			sessionId,
+			requestId,
+			cwd: z.string().min(1).max(4096),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.answer"),
@@ -539,6 +571,62 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.variables.delete"),
 			sessionId,
 			key: variableKey,
+		})
+		.strict(),
+	// Machine-wide desktop presence. NOT a watch lease and deliberately not
+	// shaped like one: it names no session, because the fact it carries is
+	// "somebody is at this machine's screen and this app can raise a banner",
+	// which is a property of the app rather than of any conversation. The
+	// backend reads it to decide whether a BACKGROUND completion is worth a
+	// banner here at all (a session runtime with no surface to present on
+	// otherwise toasts on its own host, where nobody may be).
+	//
+	// `subscription_id` is the LIVE feed subscription the presence belongs to,
+	// not a per-session watch subscription: the server holds the lease against
+	// that socket, so a dropped feed revokes the claim without waiting for a
+	// heartbeat to go stale. That is the whole reason presence is a route on the
+	// feed rather than a local file - a desktop paired to a backend on another
+	// host cannot write to that host's disk.
+	z
+		.object({
+			op: z.literal("sessions.presence"),
+			subscriptionId: z.string().regex(/^[a-f0-9]{1,64}$/),
+			canNotify: z.boolean(),
+			/*
+			 * WHY THE CLAIM CARRIES MORE THAN "a desktop is connected".
+			 *
+			 * The backend's delivery lease answers two separate questions from
+			 * this one beat, and a claim that names neither is a claim that
+			 * delivers NOTHING:
+			 *
+			 * - `can_notify_kinds` is what `delivers(kind)` reads. Empty (the
+			 *   default for a client that forgot) means rung 2 is never eligible
+			 *   for any completion, so rung 4 raises the runtime's own banner —
+			 *   earlier, and its claim advances the read watermark, so the
+			 *   clickable banner this app exists to raise never composes.
+			 *   The backend's own test for this is
+			 *   `test_a_claim_with_no_kinds_claims_nothing`: an app that does not
+			 *   advertise must not win the rung.
+			 * - `window` (with `session_id`) is what `attended` reads. Without it
+			 *   this app counts as watching NOTHING, so a completion in the
+			 *   conversation on screen raises a banner — the inverse of rung 1,
+			 *   and a regression against the per-session flag it replaces.
+			 *
+			 * `window` is sent even when there is no window: a windowless app
+			 * (macOS, alive in the dock) can still raise a banner but cannot be
+			 * displaying anything, which is why `session_id` must be "" there
+			 * rather than the last conversation the closed window held.
+			 */
+			canNotifyKinds: z.array(z.enum(["complete", "error"])).max(4),
+			sessionId: z.string().regex(/^([a-f0-9]{12})?$/),
+			window: z
+				.object({
+					exists: z.boolean(),
+					focused: z.boolean(),
+					visible: z.boolean(),
+					minimized: z.boolean(),
+				})
+				.strict(),
 		})
 		.strict(),
 	// The legacy surface, reached through the same authenticated vocabulary as
@@ -791,6 +879,37 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("mcp.credentials.store"),
+			sessionId,
+			name: z.string().min(1).max(256),
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// Field-level on purpose: a `.refine()` on the OBJECT would make this
+				// member a `ZodEffects`, which a discriminated union cannot take — it
+				// needs the `op` shape to discriminate on, so refining the whole
+				// object silently collapsed `DesktopRequest` to `unknown` and broke
+				// every `switch (request.op)` in this file.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					// Mirrors the owner's own bound (`local_operator/mcp/credentials.py`),
+					// so an oversized paste is refused as a sentence rather than
+					// serialized into a request the control budget rejects as an
+					// opaque 413.
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("mcp.control"),
@@ -1141,7 +1260,32 @@ export type DesktopStreamEvent = {
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
+	/**
+	 * The HTTP status that refused this stream, when one did.
+	 *
+	 * A REFUSAL is not a transport failure and the difference is user-visible:
+	 * the desktop plane answers 404 for a session this machine does not have, and
+	 * the one path that reaches it without validating the id first is the
+	 * notification click (which deliberately does NOT spend a `sessions.get`
+	 * round trip on the latency path). Without the code, that case fell into the
+	 * generic `unavailable` branch and the reader got "The event stream was
+	 * refused (404)." — transport text, saying what happened and neither what it
+	 * means nor what to do.
+	 *
+	 * Optional because not every emitter has one: a socket that died mid-stream
+	 * and a frame-budget overflow are failures, not refusals.
+	 */
+	status?: number;
 };
+
+/**
+ * Whether the machine-wide feed socket is live, as the sidebar needs it.
+ *
+ * It lives in the contract rather than in `desktop-feed.ts` because it is a
+ * RENDERER-visible shape: the sidebar renders the disconnected line from it, so
+ * it travels over IPC and belongs with the other wire types.
+ */
+export type DesktopFeedState = { connected: boolean };
 
 export type DesktopStreamSubscription = {
 	streamId: Promise<string>;
@@ -1213,6 +1357,14 @@ export type DesktopAPI = {
 		visible: boolean;
 		focused: boolean;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Tell main this pane has stopped displaying `sessionId` (review round 2,
+	 * R2-4). Electron only, and optional: absent means the pre-fix behaviour, where
+	 * the claim stood until the window closed.
+	 */
+	releaseWatchHeartbeat?: (args: {
+		sessionId: string;
+	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
 	/** `/exit`: close this window. Detach-only; the backend keeps sessions
@@ -1226,6 +1378,45 @@ export type DesktopAPI = {
 			onEvent: (event: DesktopStreamEvent) => void,
 		) => DesktopStreamSubscription;
 	};
+	/**
+	 * The machine-wide desktop feed, held by MAIN and not by this window.
+	 *
+	 * Absent in browser development, where there is no relay and no native
+	 * delivery to be told about — a renderer with no `feed` must keep the polling
+	 * behaviour it has today rather than waiting for a stream that cannot exist.
+	 *
+	 * Subscribe is a VIEW subscription and nothing more: main opens the feed on
+	 * its own (gated on the backend's capability) and stays subscribed with no
+	 * window at all, which is the state the operator reported — app alive in the
+	 * dock, nothing on screen, and a completion announced to nobody.
+	 */
+	feed?: {
+		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
+		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
+	};
+	/**
+	 * The conversation main was launched to display, or null.
+	 *
+	 * A VALUE rather than an event, and that is the point (B3): the initial
+	 * session has to be readable before the renderer's first paint, because a
+	 * recreated window rehydrates its persisted `activeSessionId` and paints THAT
+	 * conversation first. Delivering the id as a post-load IPC instead showed the
+	 * user the wrong conversation and then swapped it, which reads as a click
+	 * that landed on the wrong row.
+	 */
+	initialSession?: string | null;
+	/**
+	 * Whether main created this window to open the CATALOGUE (review round 2,
+	 * R2-1), read from the same argv and resolved through the same reader.
+	 *
+	 * Additive and optional like every other post-contract field: absent means "no
+	 * catalogue intent", which is what an older main says, and that degrades to
+	 * the pre-fix behaviour (restore the last conversation) rather than to an
+	 * error. It is NOT the same claim as `initialSession: null`, and that
+	 * distinction is the finding: `null` is also an ordinary launch, whose
+	 * correct answer is "restore what you had open".
+	 */
+	initialCatalogue?: boolean;
 };
 
 export type DesktopCapabilities = {
@@ -1494,6 +1685,38 @@ export function desktopEndpoint(request: DesktopRequest): {
 					can_notify: request.canNotify,
 				},
 			};
+		case "sessions.presence":
+			return {
+				path: "/v1/desktop/presence",
+				method: "POST",
+				body: {
+					subscription_id: request.subscriptionId,
+					// The three fields the delivery lease reads beside it. Sent
+					// snake_case like the route's own model, and always sent: a
+					// defaulted claim is what made this app ineligible.
+					can_notify_kinds: request.canNotifyKinds,
+					session_id: request.sessionId,
+					window: request.window,
+					// `can_notify` means "can ATTEMPT delivery", never "the user will
+					// be reached": `Notification.isSupported()` knows nothing about
+					// macOS Focus/DND, Windows Focus Assist or a denied permission.
+					// The backend's suppression reads it as eligibility to try, and a
+					// claim never advances the read watermark, so a suppressed banner
+					// still leaves the durable unseen mark intact.
+					can_notify: request.canNotify,
+				},
+			};
+		case "sessions.move":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/working-directory`,
+				method: "POST",
+				// `request_id` is the receipt key the route journals on, and it is what
+				// makes a retried move replay the first answer rather than retire the
+				// runtime a second time. `cwd` is sent as typed: resolving `~` and a
+				// relative path is the backend's job, because the base for a relative
+				// path is the SESSION's directory, which the renderer does not own.
+				body: { request_id: request.requestId, cwd: request.cwd },
+			};
 		case "sessions.warm":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/warm`,
@@ -1755,6 +1978,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "GET",
+			};
+		case "mcp.credentials.store":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp/credentials`,
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					confirmed_replace: request.confirmedReplace,
+				},
 			};
 		case "mcp.control":
 			return {

@@ -44,6 +44,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -52,6 +53,9 @@ import {
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { SlashDispatchOutcome } from "./slash-dispatch";
+import type { SlashCommandInvocation } from "./slash-submit";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -150,7 +154,25 @@ type ChatContentProps = {
 	 */
 	turnTerminal?: number;
 	/** Present only while the session is a draft; see `MessageInputProps`. */
-	onChangeCwd?: (cwd: string) => void;
+	/** How the chip's commit is applied; see `MessageInputProps.cwdWritePath`. */
+	cwdWritePath?: DirectoryWritePath;
+	/**
+	 * A working-directory move is in flight for this session; see
+	 * `MessageInputProps.cwdPending`.
+	 *
+	 * Threaded through here rather than read from a store because this component
+	 * is a pure pass-through for the composer's props: the value belongs to the
+	 * session pane that owns the move, and a second reader of it would be a second
+	 * answer to "is this session's chip settled".
+	 */
+	cwdPending?: boolean;
+	/**
+	 * Whether the backend has accepted the move in flight; see
+	 * `MessageInputProps.cwdPendingAccepted`.
+	 */
+	cwdPendingAccepted?: boolean;
+	/** Why the chip is read-only here, per cause; see `MessageInputProps`. */
+	cwdReadOnlyReason?: string;
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
@@ -159,7 +181,7 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
-		onCommand?: (line: string) => void;
+		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -180,6 +202,20 @@ type ChatContentProps = {
 		 */
 		draftResolution?: DraftResolution;
 	};
+	/**
+	 * The command dispatcher the composer splices an inline command into, with
+	 * its outcome handed back. Forwarded verbatim; see
+	 * `MessageInputProps.onSlashCommand` for why the outcome matters.
+	 */
+	onSlashCommand?: (
+		invocation: SlashCommandInvocation,
+	) => Promise<SlashDispatchOutcome>;
+	/**
+	 * The dispatcher's own note surface, borrowed by the composer so a staged
+	 * reassembly and an unanswerable name list can say what happened. Forwarded
+	 * verbatim; see `MessageInputProps.onSlashNote`.
+	 */
+	onSlashNote?: (text: string) => void;
 	/**
 	 * Present when the conversation is a canonical backend session: the
 	 * transcript is painted from the canonical stream and the legacy
@@ -243,6 +279,26 @@ type ChatContentProps = {
 	 */
 	mcpServers?: readonly McpServerRow[];
 	/**
+	 * Whether the read carries an operation that is still running.
+	 *
+	 * Threaded from the page (`use-mcp-servers.ts`) so the section can disable every
+	 * other row's control while the backend's one grant runs. It comes off the
+	 * document's `operations` rather than off the folded rows on purpose: a row
+	 * exists only where the read carries a server, so an operation for a server that
+	 * was removed or renamed still holds the lock while no row would show it (code
+	 * review round 1, finding 5).
+	 */
+	mcpGrantRunning?: boolean;
+	/**
+	 * The panel's MCP remedy controls (`use-mcp-remedy.ts`).
+	 *
+	 * Read by the page, like the server list itself, and threaded down rather than
+	 * taken inside the section: the controls address the ACTIVE session and write
+	 * into the one query the trigger and the panel both read, so the page is the
+	 * level that owns both facts.
+	 */
+	mcpRemedy: McpRemedyControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -291,6 +347,12 @@ const canonicalSpeaking = (
 			canonicalTranscriptSpeaks({
 				status: canonical.view.status,
 				failure: canonical.view.failure,
+				// The two states a click can paint, which are the band's business for
+				// the same reason they are the pane's: a cached or vanished conversation
+				// must not have the greeting offered over it. The rest of the pane's view
+				// is not this predicate's question, so it is not handed over.
+				stale: canonical.view.stale,
+				missing: canonical.view.missing,
 			}),
 	);
 
@@ -337,12 +399,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwd,
 		sessionId,
 		turnTerminal,
-		onChangeCwd,
+		cwdWritePath,
+		cwdPending,
+		cwdPendingAccepted,
+		cwdReadOnlyReason,
 		sendError,
 		sessionStatus,
+		onSlashCommand,
+		onSlashNote,
 		canonical,
 		runDetails,
 		mcpServers = [],
+		mcpGrantRunning = false,
+		mcpRemedy,
 		childrenOpenable = false,
 		pulses,
 	}) => {
@@ -657,6 +726,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											// card holds itself disabled after an answer instead of
 											// coming back live against a gate the owner already took.
 											answer={canonical.answer ?? null}
+											// The two states a notification click paints before the
+											// owner answers: the rows may be this window's memory of
+											// the conversation rather than the owner's, or the
+											// conversation may not be on this machine at all.
+											stale={canonical.view.stale}
+											missing={canonical.view.missing}
 										/>
 									) : (
 										<MessagesView
@@ -801,6 +876,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											)
 										: undefined
 								}
+								// A conversation the backend says is gone is a KNOWN
+								// answer, so the composer refuses input rather than
+								// accepting a message that can only 404. The pane above
+								// carries the sentence and the way out (M6); this only
+								// refuses the keystroke.
+								unavailable={Boolean(canonical?.view.missing)}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
@@ -813,9 +894,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
 								cwd={cwd}
-								onChangeCwd={onChangeCwd}
+								cwdWritePath={cwdWritePath}
+								cwdPending={cwdPending}
+								cwdPendingAccepted={cwdPendingAccepted}
+								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
+								onSlashCommand={onSlashCommand}
+								onSlashNote={onSlashNote}
 								/*
 								 * The SAME derived model the header trigger and the pane read, handed
 								 * to the composer so its status row states the plan's size without a
@@ -917,6 +1003,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<RunPanel
 								details={runDetails}
 								mcpServers={mcpServers}
+								mcpGrantRunning={mcpGrantRunning}
+								mcpRemedy={mcpRemedy}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}

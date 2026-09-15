@@ -4,7 +4,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useConversationInputStore } from "../store/conversation-input-store";
+// The one filename rule, rather than a second copy of it: the sentence this
+// module builds names a file, and every other surface that names one goes
+// through here. A RELATIVE specifier across the same boundary, because the
+// `@features` alias is a tsconfig path that some of the suites bundling this
+// module by hand do not declare - and a unit of the renderer should not become
+// unbundleable by a test just because it needed a filename.
+import { getFileName } from "../../features/chat/utils/get-file-name";
+import {
+	type Attachment,
+	useConversationInputStore,
+} from "../store/conversation-input-store";
 
 /**
  * A failed send whose text must NOT be put back in the composer.
@@ -46,6 +56,197 @@ export const restoreSubmittedText = (
 	current: string,
 	submitted: string,
 ): string => (current === "" ? submitted : current);
+
+/**
+ * Put a refused send's ATTACHMENTS back, on the same rule as its text.
+ *
+ * The chip row a restored draft shows and the payload its next Send carries are
+ * the same list, so an attachment the restored draft does not re-adopt is a file
+ * the user believes they are sending and are not - the silent partial send of
+ * round 7's R17. Restoring the PATHS is enough for that payload to come back
+ * whole: the send re-encodes images from them (`encodeImageAttachments` in
+ * `chat-page.tsx`).
+ *
+ * The rule is `restoreSubmittedText`'s, and it is the same rule for the same
+ * reason: only into an EMPTY slot. A composer that already holds chips is
+ * holding files the user just picked, and overwriting those is loss - on the
+ * named-session arm that is exactly the state (`conversationId` never changes,
+ * so the chips were never cleared and there is nothing to restore). Empty answer
+ * means "adopt nothing", never "clear what is there".
+ *
+ * Exported and pure so the composer's own adoption can be pinned by a test
+ * rather than argued from its call site, exactly as the two transitions above
+ * are (`clearSubmittedText`'s own note).
+ */
+export const restoreSubmittedAttachments = (
+	current: readonly Attachment[],
+	submitted: readonly string[] | undefined,
+): readonly string[] =>
+	current.length === 0 && submitted ? submitted : EMPTY_PATHS;
+
+/**
+ * One instance, so the rule's negative answer is a stable value rather than a
+ * fresh array on every render - the composer adopts on a render-synchronous
+ * effect and an identity that changes per call is a re-run waiting to happen.
+ */
+const EMPTY_PATHS: readonly string[] = [];
+
+/** The half of a refused payload a composer's own content kept out of the box. */
+export type RefusedPayloadHalf = "text" | "files";
+
+/** What one adoption of a refused payload does, and what it could not do. */
+export type RefusedPayloadAdoption = {
+	/** What the box holds once this adoption has run. */
+	text: string;
+	/** The chip paths to write to the composer's own row; empty when it took none. */
+	paths: readonly string[];
+	/**
+	 * The owed files the draft is NOT carrying once this adoption has run.
+	 *
+	 * Owed paths that this adoption did not write AND that the composer's row does
+	 * not already hold. Empty does not mean "this call restored every file" - see
+	 * the decision below, where the named-session arm holds the file already - it
+	 * means "the draft carries every file the refusal owed", which is the only
+	 * question the sentence about them is allowed to answer.
+	 */
+	missingFiles: readonly string[];
+	/** The owed half this composer's own content kept out, or null when none was. */
+	withheld: RefusedPayloadHalf | null;
+};
+
+/**
+ * ONE decision for BOTH halves of a refused payload, so they cannot part in
+ * silence.
+ *
+ * The store answers "does this refusal owe the composer a payload" once
+ * (`owesRefusedPayload`), and every field of that payload is written in one
+ * pre-request update - so the text and the attachments arrive together and are
+ * ONE thing. The composer used to undo that at its own call site: it gated the
+ * chip write on the TEXT rule's outcome, so on the arm where the two rules
+ * disagree it dropped the user's file with nothing said, and a later edit to
+ * `restoreSubmittedText`'s empty-slot rule would silently have changed which
+ * refusals restore files (code review round 8, MINOR-2). Both halves are
+ * therefore decided here, by one call, from one payload.
+ *
+ * The pair is NOT adopted all-or-nothing - each half goes in through its own
+ * empty-slot rule above, and a half whose slot already holds the user's own
+ * content is left out, because overwriting that is loss. What changes is that
+ * the composer is TOLD when the halves disagree: `withheld` names the owed half
+ * the composer's own content kept out, and the composer says so (round 8's
+ * MINOR-2 was precisely "a restored draft showing one half of the refused
+ * payload without the other, and nothing on screen saying which").
+ *
+ * A "half" is owed only when the payload really carried it: an attachment-only
+ * refusal owes no text, and a text-only refusal owes no files. That is why an
+ * empty list is not a withheld half - there would be nothing to say.
+ *
+ * A HALF IS HELD ONLY WHEN THE DRAFT IS NOT CARRYING IT, which is not the same
+ * question as "did this call write it" (UX round 5's U17, QA round 4's Q8). On a
+ * NAMED session the composer is never remounted and its
+ * chip row is never cleared, so the row already holds the very file the refused
+ * send carried: the empty-slot rule above adopts nothing, and the first version
+ * of this decision read that as "the file was withheld", printing a sentence
+ * that told the user to attach a file that was on screen one line below it and
+ * already in the next payload (`images: 1` on the wire). The rule the sentence
+ * needs is about the DRAFT, not about this function's write, so the owed paths
+ * are compared against what the row holds afterwards.
+ */
+export const adoptRefusedPayload = (
+	box: string,
+	/**
+	 * The composer's own chip row, or `null` when it has none to write to (a
+	 * composer with no conversation reads no attachments at all).
+	 *
+	 * The distinction is load-bearing rather than tidiness: with no row, a
+	 * returned path is not adopted anywhere, and the files half counts as HELD -
+	 * a sentence claiming the file came back would be false, and saying nothing
+	 * would leave a restored text with no mention of the file it arrived with.
+	 */
+	chips: readonly Attachment[] | null,
+	refusal: {
+		text: string | undefined;
+		attachments: readonly string[] | undefined;
+	},
+): RefusedPayloadAdoption => {
+	const owedText = refusal.text ?? "";
+	const text = restoreSubmittedText(box, owedText);
+	const paths =
+		chips === null
+			? EMPTY_PATHS
+			: restoreSubmittedAttachments(chips, refusal.attachments);
+	const owedFiles = (refusal.attachments?.length ?? 0) > 0;
+	const textOwed = owedText !== "";
+	// What the draft carries ONCE THIS ADOPTION HAS RUN: what it wrote, plus what
+	// the row already held - the named-session arm above, where the chip the
+	// refusal names is the chip the composer never lost.
+	const carried = new Set([
+		...(chips ?? []).map((chip) => chip.path),
+		...paths,
+	]);
+	const missingFiles = (refusal.attachments ?? EMPTY_PATHS).filter(
+		(path) => !carried.has(path),
+	);
+	// Held, not merely unchanged: the half was owed and the adoption took it
+	// nowhere, which happens exactly when the slot held the user's own content -
+	// or, for the files, when this composer has no slot to offer at all, or when
+	// the slot had to keep the user's own chips out of the way of the owed one.
+	const textHeld = textOwed && text === box;
+	const filesHeld = owedFiles && missingFiles.length > 0;
+	/*
+	 * Only a SPLIT is news. Both halves owed and exactly one held back is the
+	 * state a user can misread as "the refused message came back" while it came
+	 * back in part; a half held on its own is the ordinary empty-slot rule doing
+	 * its job, and one half withheld beside another that was never owed is not a
+	 * pair at all.
+	 */
+	const withheld =
+		textOwed && owedFiles && textHeld !== filesHeld
+			? textHeld
+				? "text"
+				: "files"
+			: null;
+	return { text, paths, missingFiles, withheld };
+};
+
+/**
+ * The sentence for a split adoption, or null when there was nothing to say.
+ *
+ * It names the half the user is NOT getting back and the half they are, and
+ * names the files by the same helper every other surface uses - "the file came
+ * back" is only checkable against a name. Past tense on purpose: the sentence
+ * records what the adoption DID, so removing the restored chip afterwards does
+ * not turn it into a lie.
+ *
+ * `owed` and `missing` are both needed because the two arms name different
+ * lists: the text arm names the files that came BACK (every owed one), and the
+ * files arm names the ones the draft is not carrying. Naming the owed list in
+ * the files arm told the user to re-attach a file that was already in the row
+ * and in the payload (round 4, Q8/U17) - the same lie, one sentence over.
+ *
+ * "No free slot" was the first version's reason, and it is gone (round 4, D14):
+ * it was the region's only machine noun, it described the row's internal shape
+ * rather than the user's situation, and the helper's other arm already says the
+ * ordinary thing in ordinary words. The files arm now names the reason the app
+ * does teach: the composer is holding files the user picked.
+ */
+export const refusedSplitNotice = (
+	withheld: RefusedPayloadHalf | null,
+	owed: readonly string[] | undefined,
+	missing: readonly string[] | undefined,
+): string | null => {
+	if (withheld === null) return null;
+	// The two arms name different lists: the text arm names the files that came
+	// BACK (every owed one), and the files arm names the ones the draft is not
+	// carrying. `?? owed` so a caller that passes only the owed list still gets a
+	// sentence rather than a trailing blank.
+	const named = withheld === "text" ? owed : (missing ?? owed);
+	const names = (named ?? []).map(getFileName);
+	const one = names.length === 1;
+	const list = names.join(", ");
+	if (withheld === "text")
+		return `The ${one ? "file" : "files"} ${list} from your refused message ${one ? "is" : "are"} attached again; its text was left out because the box already holds text you typed.`;
+	return `The text of your refused message was restored, but not its ${one ? "file" : "files"} ${list} — the composer already holds files you picked, so attach ${one ? "it" : "them"} again if you still need ${one ? "it" : "them"}.`;
+};
 
 /**
  * Options for the useMessageInput hook

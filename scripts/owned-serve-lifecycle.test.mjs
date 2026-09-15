@@ -513,6 +513,11 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			reject = j;
 		});
 		let stops = 0;
+		// The window-side teardown this branch adds to the same handler reads these
+		// two module-scope handles, so the sandbox supplies them. They record rather
+		// than assert here: what is asserted is below, beside the handler.
+		const viewerEndpointStub = { closed: 0, close() { this.closed++; } };
+		const viewerRecordStub = { stopped: 0, stop() { this.stopped++; } };
 		const backendService = {
 			isOwnedCleanupComplete: () => done,
 			stop: () => {
@@ -529,6 +534,8 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		vm.runInNewContext(code, {
 			app,
 			backendService,
+			viewerEndpoint: viewerEndpointStub,
+			viewerRecord: viewerRecordStub,
 			logger: { error: (message) => errors.push(String(message)) },
 			LogFileType: { BACKEND: "backend" },
 			// The derivation's terms, as the module under test imports them.
@@ -560,6 +567,45 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		assert.ok(app.listeners("before-quit").includes(hooks));
 		assert.ok(app.listeners("will-quit").includes(hooks));
 		assert.equal(timers.length, 1, "the quit armed exactly one bound");
+		// The branch's teardown sits ABOVE the owned-cleanup guard, so it runs on the
+		// early-return path too — the case where there is no owned backend to stop and
+		// the record would otherwise be left advertising a port nothing listens on.
+		// Without the stubs above this path threw `viewerEndpoint is not defined`
+		// (review round 4's rebase); with them it is asserted rather than assumed.
+		assert.ok(
+			viewerEndpointStub.closed >= 1,
+			"the viewer endpoint is closed on the quit path",
+		);
+		assert.ok(
+			viewerRecordStub.stopped >= 1,
+			"the viewer record is removed on the quit path",
+		);
+		/*
+		 * ...AND ITS PLACEMENT IS OBSERVED, NOT JUST ITS EFFECT (review round 5,
+		 * R5-3). The two assertions above are satisfied wherever the teardown sits,
+		 * because the two emissions before them both run it — so moving it BELOW the
+		 * guard left every case green while the comment claimed otherwise. This third
+		 * emission is the early-return path itself: `done` is true, so the guard
+		 * returns without stopping anything (asserted by `prevented` not moving), and
+		 * only a teardown placed above that return runs.
+		 */
+		done = true;
+		const stoppedBeforeEarlyReturn = viewerRecordStub.stopped;
+		const preventedBeforeEarlyReturn = prevented;
+		app.emit("will-quit", {
+			preventDefault() {
+				prevented++;
+			},
+		});
+		assert.equal(
+			prevented,
+			preventedBeforeEarlyReturn,
+			"the owned-cleanup guard returned early, so this pass prevented nothing",
+		);
+		assert.ok(
+			viewerRecordStub.stopped > stoppedBeforeEarlyReturn,
+			"the viewer record is removed on the early-return path too, so the teardown must sit above the guard",
+		);
 		// Pinned to the derivation, not to a literal (round 3, F12): the bound must
 		// cover every step the quit waits on, and it must not be an order of
 		// magnitude above them either. Asserting a bare `<= 60_000` is what forbade
@@ -751,8 +797,10 @@ globalThis.__probeChild = probeChild;
 const probeStub = {
 	name: "interpreter-probe",
 	setup(builder) {
-		// Only `spawn` is replaced, and only for the modules under test: every other
-		// child_process export keeps working, so the bundle stays real.
+		// Only `spawn` is replaced - plus `execFileSync` with a live, non-zombie
+		// answer for the `ps -o state=` probe discovery spends on a quiet record -
+		// and only for the modules under test: every other child_process export
+		// keeps working, so the bundle stays real.
 		builder.onResolve({ filter: /^node:child_process$/ }, (args) =>
 			args.namespace === "probe"
 				? { path: "node:child_process", external: true }
@@ -761,7 +809,7 @@ const probeStub = {
 		builder.onLoad({ filter: /.*/, namespace: "probe" }, () => ({
 			loader: "js",
 			contents:
-				'export { exec, execFile, spawnSync } from "node:child_process"; export function spawn(command,args,options){globalThis.__probeCalls.push({command,args,options});return globalThis.__probeChild(globalThis.__probeResults.shift());}',
+				'export { exec, execFile, spawnSync } from "node:child_process"; export function execFileSync() { return "S"; } export function spawn(command,args,options){globalThis.__probeCalls.push({command,args,options});return globalThis.__probeChild(globalThis.__probeResults.shift());}',
 		}));
 	},
 };
@@ -1305,6 +1353,12 @@ export function exec(command, options, callback) { const done = typeof options =
 export function execFile(file, args, options, callback) { const done = typeof options === "function" ? options : callback; done(null, { stdout: "", stderr: "" }); }
 export function spawn(command, args, options) { globalThis.__spawnCalls.push({ command, args, options }); if (args.includes("serve")) return globalThis.__spawned; globalThis.__probeCalls.push({ command, args, options }); return globalThis.__probeChild(globalThis.__probeResults.shift()); }
 export function spawnSync() { return { status: 0, stdout: "" }; }
+/* The zombie probe discovery.ts makes on macOS, and the only reason this stub
+ * needs an answer for it: it asks the host's process table about a pid in order
+ * to tell a wedged record from a corpse. "S" is a live, non-zombie state, which
+ * is the answer the real probe gives on any doubt - so the manager's own logic
+ * stays the subject here rather than this fixture's idea of a process table. */
+export function execFileSync() { return "S"; }
 `,
 			}));
 		},
