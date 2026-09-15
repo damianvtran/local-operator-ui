@@ -746,6 +746,36 @@ export const STORIES = [
 	["canvas-workspace--audio-viewer", 1280, 900],
 	["canvas-workspace--video-viewer", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
+	/* The other seven states the code-memory panel defines. They are separate
+	   stories rather than one story with a knob because each is a claim about
+	   what the panel SAYS when the backend answers differently - and two of them
+	   (no kernel, a draft) are claims about what it does not say, which a
+	   populated frame cannot show. */
+	["canvas-workspace--variables-empty-with-kernel", 1280, 900],
+	["canvas-workspace--variables-no-kernel", 1280, 900],
+	["canvas-workspace--variables-draft", 1280, 900],
+	["canvas-workspace--variables-busy", 1280, 900],
+	["canvas-workspace--variables-unsupported", 1280, 900],
+	["canvas-workspace--variables-backend-too-old", 1280, 900],
+	/* The refusal toast, driven through the real form by the story's play
+	   function: the only frame in this set whose subject is a control's
+	   outcome rather than a rest state. */
+	["canvas-workspace--variables-write-refused", 1280, 900],
+	/* The six states remediation round 1 added, each because a round named the
+	   claim it could not judge from the frames that existed (design D2/D3/D5,
+	   the backend's truncation edge, and the failure branch whose copy still
+	   carried the advice this PR retires). */
+	["canvas-workspace--variables-backend-unreachable", 1280, 900],
+	/*
+	 * The panel's FIRST question failing, as distinct from the read failing:
+	 * the capabilities query rejects, so the panel cannot say whether the
+	 * backend is old or absent and quotes the transport (design round 2, D4).
+	 */
+	["canvas-workspace--variables-capabilities-unreachable", 1280, 900],
+	["canvas-workspace--variables-truncated", 1280, 900],
+	["canvas-workspace--variables-row-actions", 1280, 900],
+	["canvas-workspace--variables-uneditable-row", 1280, 900],
+	["canvas-workspace--variables-delete-confirm", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
 
@@ -763,6 +793,10 @@ export const STORIES = [
 	// The install outcomes the 0.17.0 update never showed: a refusal with its
 	// remedy, and the next start admitting the install did not take.
 	["common-updatenotification--install-blocked", 1280, 900],
+	// The same refusal from the start-up pass, which is the other producer of it:
+	// the running bundle was already broken and no update was in play, so the copy
+	// has to describe that instead of an update that never happened (review R2).
+	["common-updatenotification--install-blocked-at-startup", 1280, 900],
 	["common-updatenotification--install-failed", 1280, 900],
 	// The 2026-09-13 outcomes: an install that is STILL RUNNING when the app comes
 	// back (not a failure, and the one state whose action decides whether the

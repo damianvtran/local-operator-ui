@@ -21,6 +21,8 @@ import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 import { useUiPreferencesStore } from "@renderer/shared/store/ui-preferences-store";
 // @ts-ignore Path aliases don't work for Storybook root
 import "@renderer/styles/index.css";
+// @ts-ignore Path aliases don't work for Storybook root
+import { defaultQueryOptions } from "@renderer/shared/api/query-client";
 import {
 	DEFAULT_THEME,
 	applyThemeToDocument,
@@ -33,7 +35,11 @@ import type { ThemeName } from "@renderer/shared/themes";
 // @ts-ignore Path aliases don't work for Storybook root
 import { ThemedToastContainer } from "@shared/components/common/themed-toast-container";
 import type { Preview } from "@storybook/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+	QueryClient,
+	QueryClientProvider,
+	focusManager,
+} from "@tanstack/react-query";
 import { PostHogProvider } from "posthog-js/react";
 import React, { type ReactNode, useLayoutEffect } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -202,7 +208,7 @@ const preview: Preview = {
 	args: { theme: DEFAULT_THEME },
 	decorators: [
 		(Story, context) => {
-			const queryClient = new QueryClient();
+			const queryClient = queryClientFor(context.id);
 			const theme = (context.args.theme as ThemeName) ?? DEFAULT_THEME;
 			const muiTheme = getTheme(theme).theme;
 
@@ -228,7 +234,9 @@ const preview: Preview = {
 										<ThemeFrame theme={theme}>
 											<Story />
 										</ThemeFrame>
-										<ThemedToastContainer />
+										<ThemedToastContainer
+											duration={context.parameters.toastDuration}
+										/>
 									</MuiThemeProvider>
 								</AuthProviders>
 							</FeatureFlagProvider>
@@ -238,6 +246,91 @@ const preview: Preview = {
 			);
 		},
 	],
+};
+
+/**
+ * The fixture's React Query environment, built from the policy the app SHIPS
+ * and stated in the two places a capture rig differs from a window.
+ *
+ * Design round 4 (D1) measured the refusal story as a submit that never
+ * settles: `Saving…` for minutes, an empty toast region, no field marker, no
+ * rejection in the console. Driven with the real library (React Query 5.73.3,
+ * the story's own 409 envelope, the real `createSessionVariable`), the ways a
+ * mutation comes to rest are these - and a mutation that is PAUSED never rests
+ * at all: `onError` never runs, so the hook's toast never appears, and the
+ * caller's `await onSubmit(...)` never returns, so the dialog's own catch - the
+ * sentence beside the Name field - never runs either. That is the measured
+ * shape, symptom for symptom.
+ *
+ * ```
+ * client                          environment              result
+ * bare `new QueryClient()`        online, hidden tab       rejects (1 op issued)
+ * bare `new QueryClient()`        offline blip, hidden tab NEVER SETTLES (0 ops)
+ * bare `new QueryClient()`        offline blip, visible    rejects (1 op)
+ * the shipped policy              online, hidden tab       NEVER SETTLES (1 op)
+ * the shipped policy              offline blip, hidden tab NEVER SETTLES (1 op)
+ * the shipped policy              focus stated, offline    rejects (2 ops)
+ * ```
+ *
+ * Two independent causes, and the fixture has to remove both.
+ *
+ * 1. `networkMode`. The client used to be `new QueryClient()`, whose defaults
+ *    are React Query's, not the app's. `query-client.ts` says in its own words
+ *    why that is not a neutral choice - "a verification surface has to be able
+ *    to CONSTRUCT this policy rather than approximate it" - and the one that
+ *    matters here is `mutations.networkMode: "always"`. React Query's default
+ *    is `"online"`, which parks a mutation - without so much as issuing the
+ *    request: 0 ops above - while `onlineManager` reports offline.
+ *    `onlineManager` follows real `online`/`offline` window events, so a blip
+ *    of the host's own network stack parks it, which is also why the symptom
+ *    appeared in a different pair of themes each round.
+ *
+ * 2. Focus, which is not about the client at all - and this is the part that
+ *    makes cause 1's correction necessary rather than sufficient. The only
+ *    thing that lifts a paused mutation is
+ *
+ *        focusManager.isFocused() && (networkMode === "always" || online)
+ *
+ *    (`retryer.canContinue`), and `isFocused()` is `document.visibilityState
+ *    !== "hidden"` unless it was set. A capture tab is a background tab by
+ *    construction (UX round 4, M1), so it reads UNFOCUSED - while the app ships
+ *    `mutations.retry: 1`, so every refusal is retried after a one-second sleep
+ *    that checks exactly that condition first. Under the shipped policy in this
+ *    rig the fixture's single 409 therefore parks on its own retry, for the
+ *    page's life: the "online, hidden tab -> NEVER SETTLES" row above, with the
+ *    request already issued and the response already parsed. Production never
+ *    sees it, because a window the user is looking at is visible.
+ *
+ *    So the fixture states the one environment fact the rig cannot provide and
+ *    production always has. AGENTS.md already asks for this on live harnesses
+ *    - "force focus with CDP `Emulation.setFocusEmulationEnabled(true)` - and
+ *    say which you did" - and this is that statement for the Storybook rig,
+ *    made at import time so it is in place before any story mounts. It moves
+ *    React Query's own signal only: no CSS `:focus`, no rendering. It is also
+ *    what keeps `refetchOnWindowFocus` from firing on the manager tab's
+ *    visibility changes, which the rig can otherwise deliver mid-frame and
+ *    which no production window does while a dialog is open.
+ *
+ * The client is keyed by the story's own id rather than built inside the
+ * decorator's render, because React Query binds a mutation to the cache that
+ * created it: a client rebuilt on a decorator re-render - Storybook re-invokes
+ * the render on context and arg updates - leaves every in-flight mutation and
+ * refetch on a cache nothing is observing any more, and the promise
+ * `mutateAsync()` handed back belongs to the abandoned one. One client per
+ * story is stable across those re-renders and two stories still cannot see each
+ * other's cache, which is the isolation the per-render client was accidentally
+ * providing.
+ */
+focusManager.setFocused(true);
+
+const queryClients = new Map<string, QueryClient>();
+const queryClientFor = (storyId: string): QueryClient => {
+	let client = queryClients.get(storyId);
+	if (!client) {
+		client = new QueryClient({ defaultOptions: defaultQueryOptions });
+		queryClients.set(storyId, client);
+	}
+	return client;
 };
 
 export default preview;

@@ -19,9 +19,11 @@ import { spawnSync } from "node:child_process";
  * Usage: node scripts/verify-macos-artifacts.mjs [--dist dist] [--app path] [--dmg path]
  * Exit: 0 when every check passes, 1 otherwise (including when an artifact is missing).
  */
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { BYTECODE_TREE_NAMES, seedResourceDir } from "./bundled-python-layout.mjs";
+import { finalContainerChecks, finalMetadataChecks, privatePythonSeedCheck } from "./python-artifact-layout.mjs";
 
 const CODESIGN = "/usr/bin/codesign";
 const SPCTL = "/usr/sbin/spctl";
@@ -104,8 +106,14 @@ export function artifactChecks({ appPath, dmgPath }) {
 	return checks;
 }
 
-/** The directory names the two bundled interpreters occupy, in app resources. */
-const BUNDLED_PYTHON_TREES = ["python", "python_aarch64"];
+/** The directory names the bundled interpreters occupy, in app resources.
+ *
+ * Both namespaces, from the app's own layout definition: the legacy pair is what
+ * a bundle being REPLACED carries, and the seed directories are what a bundle
+ * this branch builds carries. A predicate that names only one of them is how the
+ * heal drifted from the gate (review R10 / QA Q2).
+ */
+const BUNDLED_PYTHON_TREES = BYTECODE_TREE_NAMES;
 
 /**
  * The bundled-interpreter trees a packaged app actually carries.
@@ -123,7 +131,7 @@ export function bundledPythonTrees(appPath, { listDir = readdirSync } = {}) {
 	if (!existsSync(resources)) return [];
 	let entries = [];
 	try {
-		entries = listDir(resources);
+		entries = listDir(join(resources, "python-runtime-seed")).map((name) => `python-runtime-seed/${name}`);
 	} catch {
 		return [];
 	}
@@ -140,7 +148,23 @@ const LIPO = "/usr/bin/lipo";
  * case where the answer should be someone looking at this file rather than a
  * guess that happens to pass.
  */
-const INTERPRETER_BY_ARCH = { arm64: "python_aarch64", x86_64: "python" };
+const INTERPRETER_BY_ARCH = {
+	arm64: seedResourceDir("arm64"),
+	x86_64: seedResourceDir("x64"),
+};
+
+/**
+ * A `lipo` architecture name as the artifact filename spells it.
+ *
+ * `lipo` says `x86_64` and `mac.artifactName` says `x64`; translating in one
+ * place is what keeps the comparison in `bundledPythonCheck` from having to
+ * know both spellings. An unrecognised name is passed through unchanged, so it
+ * fails the comparison with both values named rather than matching by accident.
+ */
+const ARTIFACT_ARCH_NAMES = { x86_64: "x64" };
+function toArtifactArch(arch) {
+	return ARTIFACT_ARCH_NAMES[arch] ?? arch;
+}
 
 /**
  * The architecture a packaged app runs as, read from the bundle itself.
@@ -184,6 +208,11 @@ export function bundleArchitectures(appPath, { run = spawnRunner } = {}) {
 export function bundledPythonCheck(appPath, options = {}) {
 	const trees = bundledPythonTrees(appPath, options);
 	const { archs, error } = bundleArchitectures(appPath, options);
+	// The architecture the container's own NAME claims, which is the only place
+	// that statement exists: an artifact whose app disagrees with its filename is
+	// wrong for whichever machines the name was meant to serve, and nothing inside
+	// the app can tell. `null` (an unpacked `dist` app) asks for no cross-check.
+	const expectArch = options.expectArch ?? null;
 	const describe = (trees.length === 0 ? ["none"] : trees)
 		.map((name) => `Contents/Resources/${name}`)
 		.join(", ");
@@ -203,6 +232,10 @@ export function bundledPythonCheck(appPath, options = {}) {
 	if (!Object.hasOwn(INTERPRETER_BY_ARCH, archs[0]))
 		return fail(
 			`the app is ${archs[0]}, which no bundled interpreter matches; mac.target builds arm64 and x64`,
+		);
+	if (expectArch != null && toArtifactArch(archs[0]) !== expectArch)
+		return fail(
+			`the artifact names ${expectArch} but the app inside it is ${archs[0]}; it installs on the build machine and cannot start on the one it was built for`,
 		);
 	const expected = INTERPRETER_BY_ARCH[archs[0]];
 	if (trees.length !== 1 || trees[0] !== expected)
@@ -277,10 +310,22 @@ export function bundledBytecodeCheck(appPath, options = {}) {
 		passed: found.length === 0,
 		output:
 			found.length === 0
-				? "no bytecode under Contents/Resources/python[/_aarch64]"
+				? `no bytecode under Contents/Resources/${BUNDLED_PYTHON_TREES.join(", ")}`
 				: `${found.length} stale bytecode file(s): ${found.slice(0, 4).join(", ")}${found.length > 4 ? ` (and ${found.length - 4} more)` : ""}`,
 	};
 }
+
+/*
+ * The bundled-interpreter seal check that used to live here is gone with the
+ * mechanism it asserted. It was a write probe over `Contents/Resources/python
+ * [/_aarch64]`, and it could not hold: `ditto` carries an access-control entry
+ * but the ZIP Squirrel stages does not, so the bundle a user updates *into* is
+ * unsealed by construction. The invariant that replaces it is structural and
+ * checkable on any container - the interpreter ships as inert data under
+ * `python-runtime-seed/<arch>` and no legacy resource name exists beside it
+ * (`privatePythonSeedCheck` in `python-artifact-layout.mjs`), so there is no
+ * tree in the bundle for a venv to resolve into.
+ */
 
 /** Run each check with the given runner and judge it. */
 export function runChecks({ appPath, dmgPath, run }) {
@@ -323,6 +368,7 @@ export function summarize(results) {
 export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 	const apps = [];
 	const dmgs = [];
+	const zips = [];
 	const errors = [];
 	if (!existsSync(distDir)) return { apps, dmgs, errors };
 
@@ -335,6 +381,7 @@ export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 	}
 
 	for (const entry of entries) {
+		if (entry.endsWith(".zip")) { zips.push(join(distDir, entry)); continue; }
 		if (entry.endsWith(".dmg")) {
 			dmgs.push(join(distDir, entry));
 			continue;
@@ -359,7 +406,7 @@ export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 			errors.push(`${candidate}: ${error.message ?? String(error)}`);
 		}
 	}
-	return { apps, dmgs, errors };
+	return { apps, dmgs, zips, errors };
 }
 
 /** The first packaged app inside a `dist` directory, if the build produced one. */
@@ -371,9 +418,15 @@ export function discoverDmg(distDir, options = {}) {
 	return discoverArtifacts(distDir, options).dmgs[0] ?? null;
 }
 
-/** `spawnSync` runner: the real thing, used by the CLI. */
-export function spawnRunner(command, args) {
-	const result = spawnSync(command, args, { encoding: "utf8" });
+/** `spawnSync` runner: the real thing, used by the CLI.
+ *
+ * `input` exists for one caller - the disk image's license agreement, which
+ * `hdiutil` reads from stdin and refuses to mount without - and is threaded
+ * through rather than worked around with a `yes |` shell, so the checker keeps
+ * spawning the tool it names and nothing else.
+ */
+export function spawnRunner(command, args, input = undefined) {
+	const result = spawnSync(command, args, { encoding: "utf8", input });
 	return {
 		status: result.status ?? 1,
 		stdout: result.stdout ?? "",
@@ -418,8 +471,17 @@ export function verifyArtifacts({
 	 * Every image is asserted, and the app checks run against each app bundle:
 	 * the whole point of this gate is that no artifact reaches a release without
 	 * having been asked the questions a user's Gatekeeper asks.
+	 *
+	 * `arch` is what the container's filename claims (see `artifactArch`), so the
+	 * app extracted from a `-x64.zip` is held to being an x64 app; it is `null`
+	 * for an unpacked `dist` app, whose own architecture is the only statement
+	 * there is.
 	 */
 	const results = [];
+	const checkApp = (path, arch = null) => [
+		...runChecks({ appPath: path, dmgPath: null, run }),
+		bundledBytecodeCheck(path), bundledPythonCheck(path, { run, expectArch: arch }), privatePythonSeedCheck(path, { expectArch: arch }),
+	];
 	for (const appPath of appPaths) {
 		if (!existsSync(appPath)) {
 			log(`No packaged app at ${appPath}`);
@@ -427,11 +489,12 @@ export function verifyArtifacts({
 		}
 		log(`Checking app: ${appPath}`);
 		results.push(...runChecks({ appPath, dmgPath: null, run }));
-		// Neither of the next two is a `codesign` question: both are about what the
+		// Neither of the next three is a `codesign` question: all are about what the
 		// build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
+		results.push(privatePythonSeedCheck(appPath));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -440,6 +503,12 @@ export function verifyArtifacts({
 		}
 		log(`Checking disk image: ${dmgPath}`);
 		results.push(...runChecks({ appPath: null, dmgPath, run }));
+		results.push(...finalContainerChecks(dmgPath, { run, checkApp }));
+	}
+	for (const zip of discovered.zips ?? []) results.push(...finalContainerChecks(zip, { run, checkApp }));
+	if (!app && !dmg) {
+		if (!(discovered.zips?.length)) results.push({ id: "final-zip-required", passed: false, description: "in-app update ZIP exists", output: "No ZIP found" });
+		results.push(...finalMetadataChecks(dist, [...dmgPaths, ...(discovered.zips ?? [])]));
 	}
 
 	for (const result of results) {
