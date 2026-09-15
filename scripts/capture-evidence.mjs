@@ -156,6 +156,25 @@ export const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 
+	/* Session incidents on their own rows — the operator's report that an error
+	  row read only `session incident` with the message behind a chevron. The
+	  rows are the PRODUCTION reducer's, over fourteen real persisted payloads
+	  (one per category the classifier emits, plus the three harness statements
+	  and a relayed `hub_message` as the bulky control), so the frame shows what
+	  the row is GIVEN rather than what a hand-written record can be made to
+	  say. Sized to the rows it holds (700), for the reason `working-labels`
+	  is: at 900 tall it is mostly ground, which crosses `check-evidence`'s
+	  uniformity ceiling. */
+	["chat-canonical-notices--session-incidents", 1280, 800],
+	/* The same rows in the narrow column, which is where the wrapped row's mark
+	   was measured wrong (design round 1, D1): at 560 the 17 rows wrap hardest
+	   and the danger markers must still form a column. Sized to its content. */
+	["chat-canonical-notices--session-incidents-narrow", 560, 1220],
+	/* The notice register's own length cases, which the `notice` branch's fix
+	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
+	   either side of the threshold, and a bulky one. */
+	["chat-canonical-notices--notice-lengths", 1280, 340],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
@@ -494,6 +513,35 @@ export const STORIES = [
 	["chat-tool-rows--prose-tool-alignment", 1024, 700],
 	["chat-tool-rows--prose-tool-alignment", 1440, 900],
 	["chat-tool-rows--streaming-before-first-token", 1024, 620],
+	/* The cold engage: a send the app has admitted and the owner has not answered
+	   yet - the operator's "I hit send and nothing happens for three seconds".
+	   Captured as a PAIR with its baseline, because the claim is a difference:
+	   the baseline is the same transcript with the wait line absent (what the app
+	   painted before this change), and the two frames differ by one quiet line at
+	   the foot. A single frame of the fixed state would not say what was wrong,
+	   and a single frame of the baseline would not say what replaced it. All four
+	   are swept together from design review round 1: the SMALL-VIEW wrapper is a
+	   different wrapper for the same rung (the 560px `narrow` entry above is a
+	   narrow column, not the small view), and `transport-down` is the rung's
+	   second clear, which the story could not express while its `status` was
+	   hardcoded to `live`. */
+	["chat-tool-rows--admitted-send-before-first-frame", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-baseline", 1024, 300],
+	["chat-tool-rows--admitted-send-before-first-frame-small-view", 560, 300],
+	["chat-tool-rows--admitted-send-transport-down", 1024, 300],
+	/* The COMPOSER half of the same claim, and the head's. Design review round 2's
+	   D3: this change adds a sentence to the composer ("Waiting for the agent")
+	   and nothing committed showed it, so the round could not sign the string off.
+	   All four are at the rung frames' 1024 width on purpose - the two surfaces
+	   are read together, and a composer photographed at another width cannot be
+	   laid beside the pane it sits under. `awaiting-reply-transport-down` is the
+	   state D5 is about, taken AFTER the fix: the pane has withdrawn the line for
+	   a dead transport and the composer's hint goes with it, so this frame reads
+	   "Ask me for help" where the pre-fix app said "Waiting for the agent". */
+	["chat-message-input--idle", 1024, 300],
+	["chat-message-input--awaiting-reply", 1024, 300],
+	["chat-message-input--awaiting-reply-transport-down", 1024, 300],
+	["chat-message-input--awaiting-answer", 1024, 300],
 	/* The COMMON case, which had no standing frame until design review round 1
 	   (D4) asked for one: an answer mixing prose with a fenced code block, a
 	   table and a list. The alignment frames above are plain paragraphs, and

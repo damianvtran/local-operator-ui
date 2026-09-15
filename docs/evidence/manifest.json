@@ -1,38 +1,101 @@
 {
-  "head": "aad5accb134ab342cca952218f590d1f023f212a",
-  "headNote": "Retained predecessor capture at 2a24d3fafbd7ab3ab4b7c3cc966c029b2b139883 (U10/U11/U13 remediation). The 180 slash-story frames were already dirty when recovery began; they were preserved, not recaptured by the recovery agent. The predecessor used capture-evidence.mjs against its private Storybook on port 6070, contrary to the required browser-tool-only capture procedure. Its log reports 180 frames at this SHA and the image timestamps agree. This is attributed historical evidence, not a claim of browser-tool capture or independent QA. srcTree/scriptsTree identify those capture inputs; no claim is made that unrelated historical frames were refreshed. Required rebase: GitHub reported DIRTY. Replayed once onto 915928a18a1d55fbe501c41cf6f68e6b8daa60ad. head/srcTree/scriptsTree now identify the post-rebase verification tree, NOT a new 180-frame capture: range-diff maps 2a24d3faf to 692b33fe5 with =; branch src/scripts +/- line sequences are byte-identical before/after replay; all 52 regenerated slash-story closure files including the stylesheet are byte-identical to the capture input. Two representative new PNGs were captured using the browser tool at this post-rebase tree (RECOVERY.md). refreshedAtHead names the equivalent reachable remediation commit; the original capture SHA remains recorded in this note. Non-slash historical sets were not refreshed. Final live correction aad5accb1: a real browser send revealed that the composer catch replaced the classified store copy with the generic transport sentence. This commit propagates the classified DesktopControlError, retaining status 422 and original cause; its regression failed before and passed after. Top-level stamps identify this verified source. The only slash-story closure delta since e8e8b8ad1 is the store error propagation, not the fixture popup DOM or stylesheet; the historical WebPs and the two popup PNGs remain attributed to their earlier capture inputs. Live refusal was recaptured via browser tool after a full reload, and its final actionable copy and retained full draft were read directly. No full set recapture is claimed. Normal merge integration of composer-tabs #175: origin/main 8d019993eb8b54913d89fa5288aafbaf88f293d3 merged into 4cf1ec477, preserving both histories. head remains the prior slash source/capture-verification citation; srcTree/scriptsTree identify the integrated source, not a new capture. Upstream status-row and run-panel frames are imported byte-for-byte with their original provenance at origin/main:docs/evidence/manifest.json and docs/evidence/chat-composer-status-row/README.md. Slash U10/U11/U13 source remains byte-identical; no broad recapture. The regenerated unique slash-story closure has 51 paths (the previous 52 counted the stylesheet twice); only ui-preferences-store.ts changes, for upstream run-pane reveal state, not popup DOM/style. Existing frames remain historical; integrated composer seam is separately exercised and recorded in MERGE-175.md. Recovery integration: normal merge of origin/main 8d019993eb8b54913d89fa5288aafbaf88f293d3 (#175) into c1ae238376eb64e046187998d4e9bc3dd3db35bf (#158). Only this manifest conflicted; capture-evidence.mjs auto-merged its additive STORIES entries. The top-level srcTree/scriptsTree stamps describe the integrated source, not a new capture. No image was captured or modified by the integration, and capturedAt/head/partialCapture retain upstream historical capture provenance rather than inventing a new run. The full prior trace capture record remains at c1ae238376eb64e046187998d4e9bc3dd3db35bf:docs/evidence/manifest.json (twenty frames reported at merge 9ca9fd021, with its existing limitations); its supplementary trace-legibility-baseline declaration is preserved here alongside every upstream declaration. Upstream partialCapture remains unchanged, including its own range and previousRefresh; it does not claim a newly executed trace pass. The countsMean fields are re-derived from the merged tree. Browser-tool recovery on c1ae23837 is recorded in PR #158 comment 5669894601, not relabeled as visual validation of this newer integrated source. The shared disclosure upstream changes require a separate bounded convergence check; no feature behavior is authored in this resolution. package.json keeps upstream version 0.22.3. Normal merge integration for review round 5: origin/main a8f6bc4b9e0c1f2f0ad0c8d6c1e2a4b7d9f3a5c1 (#158 tool-trace-legibility, 22 commits on from the #175 base) merged into e2f615ef349f367a82b1f14933343c5540766d4d to clear a DIRTY merge state; no rebase and no forced update. Only this file conflicted, and BOTH sides' top-level declarations are retained here rather than one being discarded: the slash-parity record above, and the upstream integration record, whose own `head` 0f19ae5e271fc4cde0a4709bc8102be4dc4ff519 and its c1ae238376eb64e046187998d4e9bc3dd3db35bf citation are preserved verbatim. Top-level `head` remains the slash record's, because the frames this branch added are that record's and nothing here recaptured them; `head` names a commit or a capture that produced frames, not the newest integration. The stamps are re-derived for the MERGED tree, which is the only honest description of the union this merge ships: srcTree 0bd958fe102adb219ed311975266148dfe37f110 and scriptsTree 2968a6ddf0671b603f7840ed4b3540062c2e2c64 are git rev-parse of the merged tree's src/ and scripts/, `surfaces` 190 is the story count of the merged scripts/capture-evidence.mjs, and `frames` 1372 is the `.webp` frames on disk outside the 28 declared supplementary sets. No capture was run for any of these numbers and no image was written by this merge. The supplementary declarations are the union: upstream's 28 sets are a superset of this branch's 27, so the trace-legibility-baseline declaration and every slash declaration survive together, and nothing was dropped by the auto-merge. Review round 5's source remediation (e2f615ef3) is source and regression only: it narrows the leading-slash classification to the message request and stops a coded 422 being overwritten - it captures no frame, changes no story and changes no theme, so every attribution above stands and no freshness claim is made. Nothing in this file asserts that the R13 boundary was verified against a rendered app; that live check belongs to the independent QA/UX streams on this head.",
-  "srcTree": "0bd958fe102adb219ed311975266148dfe37f110",
-  "scriptsTree": "2968a6ddf0671b603f7840ed4b3540062c2e2c64",
-  "dirtyWorkingTree": false,
-  "capturedAt": "2026-09-13T11:13:12.499634Z",
-  "frames": 1372,
-  "surfaces": 190,
+  "head": "0b3351a4b39de5f878b5bb50b12c91d29de3bb54",
+  "headNote": "Sync merge of `origin/main` `56800cb1e` (#179, three commits on from the head the round-8 review pinned) and the re-stamp that follows it, WITHOUT RECAPTURE. `head`/`capturedAt` name the commit and time this re-derivation was taken at - the merge commit `0b3351a4b`, whose `src`/`scripts` trees this stamp commit does not move, because it touches `docs/` only - and `srcTree`/`scriptsTree` are those trees, since the gate accepts nothing else in those fields. The counts are re-derived rather than restated: `frames` is the committed `.webp` outside every declared set, `surfaces` the merged capturer's own STORIES length, `themes` its THEMES length. `dirtyWorkingTree` is the CAPTURE's and not this pass's: no frame was re-taken, nothing behind these counts was re-captured or re-swept, and the capture the older frames came from is recorded in `captureOrigin`, beside main's own record of its pass in `upstreamComposerCapture`. The sets this branch owns are declared as supplementary; the uncovered part of the delta is named in `captureOrigin.note` rather than implied. Normal merge integration for review round 5's U14 remediation: origin/main c9a9c6196 (release 0.22.5, itself carrying #179's canonical-notices work and the cold-send captures) merged into 079c37698645d2b323039e42780fe081f57c3ce2 to clear a DIRTY merge state; no rebase and no forced update. Only this file and package.json conflicted; package.json keeps upstream's version 0.22.5 and the union of both sides' desktop suites (this branch's five slash suites plus every upstream suite, including canonical-notice and evidence-run-guard). Nothing was dropped here: every one of this branch's 28 supplementary declarations is ALREADY present in upstream's 32, so the union is upstream's list and the slash declarations survive as members of it rather than as a second copy. The aggregate fields are re-derived for the MERGED tree, which is the only honest description of the union: srcTree/scriptsTree are git rev-parse of the merged src/ and scripts/, `surfaces` 201 is the story count of the merged scripts/capture-evidence.mjs by the gate's own method (upstream's 186 plus this branch's 15 slash-completion entries), and `frames` 1394 is the `.webp` files on disk outside the 32 declared sets. `head`, `capturedAt`, `dirtyWorkingTree`, `partialCapture` and `captureOrigin` retain upstream's capture provenance and are not re-stamped: no capture was run for any of these numbers, no image was written or modified by this merge, and the slash frames keep the attribution recorded in docs/evidence/chat-slash-completion/RECOVERY.md and MERGE-175.md. Round 5's source change (079c37698, the U14 refusal retention fix) captures no frame, changes no story and changes no theme; its live before/after stills are PNGs, not sweep frames, and are recorded in docs/evidence/chat-slash-completion/ROUND3-U14.md.",
+  "srcTree": "b1358dc69e0bb863a629022f95d33b9845899589",
+  "scriptsTree": "e1db2c48bc3d75e431a407edb54ffcb4f5ce3520",
+  "dirtyWorkingTree": true,
+  "capturedAt": "2026-09-15T00:21:21.000000Z",
+  "frames": 1394,
+  "surfaces": 201,
   "themes": 12,
   "countsMean": {
-    "frames": "Tree accounting after this merge: 1717 committed `.webp` frames minus the 345 inside the 28 declared supplementary sets = 1372 sweep frames. Re-derived from the merged disk; this is inventory arithmetic, not a claim of recapture.",
-    "surfaces": "The merged capture-evidence.mjs STORIES literal has 190 entries by the gate method: this branch's entries plus every upstream entry. Both sides are preserved and capture automation was not executed.",
+    "frames": "1759 committed WebP files minus 365 in the 32 declared supplementary sets = 1394 sweep frames. File counts on the merged disk after this merge, not a newly completed full sweep.",
+    "surfaces": "201 entries in the merged capture-evidence.mjs STORIES literal by the gate method: upstream's 186 plus this branch's 15 slash-completion stories. Both sides are preserved and capture automation was not executed.",
     "themes": "The capturer retains 12 THEMES entries; no palette or theme is added by this merge."
   },
   "partialCapture": {
-    "note": "Retained UX round-2 slash-popup capture: 15 stories × 12 themes = 180 frames. Existing dirty WebP files show the new click footer and were preserved during recovery. The prior note claiming byte-identical frames described an older run and does not apply to these changed images. No whole-set recapture was run during recovery. Normal-merge addition: composer-status-row states, long-goal, expanded, column-floor (eight frames in the two brand themes), and upstream run-panel refreshes, are imported from 8d019993e unchanged. Their capture citation and complete historical partialCapture record remain in that commit's manifest; this slash partialCapture still describes only the retained slash pass, not a new combined run.",
-    "addedFrames": 12,
-    "addedAt": "2026-09-13T09:34:54.495Z",
-    "addedAtHead": "e8ebe5c6d189ed07dc69515e351d9576b35a8d6d",
-    "addedSurfaces": [
-      "canvas-workspace/files-scan-stopped-empty"
+    "refreshedAt": "2026-09-14T18:10:25.667Z",
+    "refreshedAtHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
+    "refreshedFrames": 310,
+    "refreshedStories": [
+      "chat-ask-options--options",
+      "chat-ask-options--single-option",
+      "chat-ask-options--many-options",
+      "chat-ask-options--wrapping-labels",
+      "chat-ask-options--multi-question",
+      "chat-ask-options--answer-in-flight",
+      "chat-ask-options--secret-ask",
+      "chat-ask-options--approval-unchanged",
+      "chat-composer-status-row--states",
+      "chat-composer-status-row--long-goal",
+      "chat-composer-status-row--expanded",
+      "chat-composer-status-row--column-floor",
+      "chat-run-panel--trigger-idle",
+      "chat-run-panel--trigger-hover",
+      "chat-run-panel--trigger-open-hover",
+      "chat-run-panel--panel-empty",
+      "chat-run-panel--settled-history",
+      "chat-run-panel--roster-only",
+      "chat-run-panel--roster-members",
+      "chat-run-panel--todos-only",
+      "chat-run-panel--both-in-flight",
+      "chat-run-panel--roster-capped",
+      "chat-run-panel--roster-capped-expanded",
+      "chat-run-panel--todos-phased",
+      "chat-run-panel--todos-implicit-phase",
+      "chat-run-panel--swap-canvas-open",
+      "chat-run-panel--swap-run-open",
+      "chat-run-panel--reader-live",
+      "chat-run-panel--reader-settled",
+      "chat-run-panel--reader-failed",
+      "chat-run-panel--reader-nested",
+      "chat-run-panel--reader-child-controls",
+      "chat-run-panel--reader-resumed",
+      "chat-run-panel--reader-brief",
+      "chat-run-panel--reader-pending",
+      "chat-run-panel--reader-gone",
+      "chat-run-panel--reader-unaddressed",
+      "chat-run-panel--reader-image",
+      "chat-run-panel--reader-deep-floor",
+      "chat-run-panel--mcp-all-connected",
+      "chat-run-panel--mcp-auth-required-closed",
+      "chat-run-panel--mcp-auth-required",
+      "chat-run-panel--mcp-disconnected",
+      "chat-run-panel--mcp-unknown-status",
+      "chat-run-panel--mcp-cold",
+      "chat-run-panel--mcp-connecting",
+      "chat-run-panel--mcp-dot-ack-acknowledged",
+      "chat-run-panel--mcp-dot-ack",
+      "chat-run-panel--narrow-800",
+      "chat-run-panel--capability-absent",
+      "chat-run-panel--reduced-motion"
     ],
-    "addedBySweptRefresh": 0,
-    "addedDirectories": [],
-    "provenanceNote": "Predecessor provenance: /tmp/slash-parity-capture.log reports \"Captured 180 frames ... at 2a24d3faf\"; /tmp/slash-parity-sb.log identifies Storybook localhost:6070. partialCapture.refreshedAt is the predecessor completion time. The predecessor used browser-engine automation, not the required browser tool; recovery explicitly discloses this instead of relabelling the capture. Representative frames are visually inspected and recorded in chat-slash-completion/RECOVERY.md. All non-slash evidence remains historical, with its existing citations; it was not recaptured or independently validated during this bounded remediation.",
-    "addedNote": "`addedAt`/`addedAtHead` above are the ROUND-2 pass's: they record the last pass that added a surface (`canvas-workspace/files-scan-stopped-empty`, twelve frames, at the replay of the head it ran on), so `addedFrames` 12 and `addedSurfaces` name that pass and not the re-capture that re-stamped it. The distinction is R3-1's: the pass that wrote `refreshedFrames: 48` counted the ADDED story's twelve frames in a number a reader reads as `re-captured in place`, so the two figures were conflated. Round 4 (R4-1) found the pair could not be trusted at all - a re-stamp overwrote `addedAt`/`addedAtHead` with its own run while resetting `addedFrames` to 0 and `addedSurfaces` to `[]`, so the fields named a pass that had added nothing and could not be fetched. `partialAddedFields` in `capture-evidence.mjs` now decides the citation (covered by `evidence-manifest.test.mjs`) and `check-evidence.mjs` holds both head citations to the reachability bar it applies to `head`. This rebase's re-capture found the COUNTS half of the same rule still open - it is a zero-add pass, and `main`'s accumulating writer reset them to 0/[] anyway, which is what these two values were corrected from - so the writer now leaves the whole added-pass record alone unless a run actually adds frames. Both rebase passes since are zero-add passes and the writer left that record alone, which is the corrected behaviour: `addedFrames` 12 and `addedSurfaces` still name the round-2 pass, and only the citation above moves, each time to the new rebase's replay of the same commit.",
-    "unchangedControl": {
-      "story": "canvas-workspace--markdown-document",
-      "frames": 12,
-      "changedOnDisk": 0,
-      "why": "The honesty check for this pass, and the reason a moved frame is legible as one: a surface this rebase does not paint differently was re-captured through the same command, on the same host, in the same session as the nine it does. All twelve came back BYTE-IDENTICAL, so the encoder and the renderer are deterministic here at this load. The class the moved frames belong to was measured the same way in the previous pass, which ran `audio-viewer` twice: its `neon` frame - which moved in the first run of BOTH passes - came back exactly the committed bytes in that second run. Neither control separates the widget from the encoder for `pdf-viewer/localOperatorDark`, whose difference is the platform PDF plugin not painting at all and which reproduced byte-for-byte instead (see `recaptureNote`)."
-    },
-    "recaptureNote": "Re-captured in place, at the rebased head, and the result is one-sided: 101 of the 108 frames came back BYTE-IDENTICAL to the committed bytes, and all 48 of the four Files surfaces plus all 12 control frames are among them. The 7 that moved are media-viewer frames - pdf 1 (`localOperatorDark`), image 2 (`synth`, `radient`), audio 2 (`neon`, `radient`), video 2 (`synth`, `radient`) - and six of the seven moved only at the lossy encoder's own quantisation scale: at an 8% tolerance (20/255) ZERO pixels differ, and the worst RMSE is 0.00054 (`video-viewer/radient`, 4,342 px of 1,152,000). That class is established rather than assumed: the same command on the same tree was run twice in the previous pass, and `audio-viewer/neon` - which moved in both passes' first runs - came back EXACTLY the committed bytes in one of them, so the movement is the widget repaint and the encoder and a frame that has moved is not read as a change unless it survives a second run. The seventh, `pdf-viewer/localOperatorDark`, is a reproducible platform paint failure and not that class: this session's private headless Chrome never painted the PDF guest document - a probe at 640,200 reads the platform field `srgb(40,40,40)` where the committed frame reads the white page - with a byte-for-byte identical difference (204,364 px, 163,673 of them above 8%) in both passes. The viewer's own source (`pdf-preview.tsx`, `canvas-file-viewer.tsx`, the story) is untouched by `main`'s move, and this branch's canvas hunks in `chat-page.tsx` and `chat-content.tsx` - the one host surface the rebase had to carry - survive line-for-line, so the committed frame is the one that depicts the surface under review; it is retained and NO byte-identity claim is made for it. The 7 frames whose committed bytes are retained are the same picture the re-capture measured.",
-    "addedAtHeadNote": "This is the pass that ADDED the twelve `canvas-workspace--files-scan-stopped-empty` frames, cited as the replay of the head it ran on: the original `58d3dfc05` is no longer reachable from any ref after an earlier force-push, its replay `46684b07e` was orphaned by the rebase onto 0.19.6, that replay's replay `5d2a04778` was orphaned by the rebase onto `fb9c0942e`, its next replay `9bf8a6357` was orphaned by the rebase onto `98c32e85e`, and its last one `a32475ed5` was orphaned in turn by the rebase onto `c0570ea60` - so the citation is this rebase's replay, `a9ed72ad7`. These pairs are not range-diff `=` where they differ at all: their patches differ in this rebase's spelling of the manifest alone, because that file's prose and counters were re-based on the new `main` on both sides, so every frame and every source path that commit carries is the same one, which is the property a citation is for. The twelve frames themselves were committed by `49442eaec`, this branch's reachable replay of the commit that carried them (its pre-rebase spelling was `19bfea347`), which is where a reader who wants the tree they landed in should look.",
+    "refreshedThemes": [
+      "localOperatorDark",
+      "localOperatorLight",
+      "dracula",
+      "dune",
+      "sage",
+      "monokai",
+      "tokyoNight",
+      "iceberg",
+      "radient",
+      "neon",
+      "obsidian",
+      "synth"
+    ],
+    "addedFrames": 32,
+    "addedSurfaces": [
+      "chat-ask-options/wrapping-labels@1024",
+      "chat-ask-options/wrapping-labels@560",
+      "chat-composer-status-row/states",
+      "chat-composer-status-row/long-goal",
+      "chat-composer-status-row/expanded",
+      "chat-composer-status-row/column-floor"
+    ],
+    "addedAt": "2026-09-14T16:27:33.307Z",
+    "addedAtHead": "8547effddba79c3d285944ef356520f34049a911",
+    "note": "The narrowed runs this branch has taken on top of the last full sweep, which is what `countsMean.frames` is asserted against. FIRST, the ask-options remediation recapture, cited at `bfcc614e9` - this branch's current spelling of that commit. Its earlier spellings went unreachable each time the branch was rebased (onto v0.21.0, twice more during round 4, and again onto v0.22.1), which is the re-pointing repair the manifest's other citations carry: a citation is only evidence if a reader can resolve it. The spelling is `git range-diff`'s over the fourteen replayed commits rather than this note's positional guess, and the pairings are the ones it reports: entry 4 (`2523612b6`, the recapture this run repeated), entries 7, 8, 11, 12 and 14 carry IDENTICAL patches across the rebase, and entry 5 is the single pair whose patch differs - in exactly one file, `scripts/vite-plugins/desktop-proxy.ts`, where that commit's 22 added lines are 15 lines of comment plus the seven-line guard `if (res.headersSent) { res.destroy(); return; }`. Those seven lines are present in this lineage byte-for-byte, landed independently by `main`'s own `8505bb752`, so only the duplicate comment prose is dropped and `main`'s own comment for the same guard stands in its place. Every other file's added and removed line sets are byte-identical between the two spellings, `scripts/click-proof.mjs` (309 added lines) and this set's `harness/ask-gate.vite.mjs` (167) among them, whose blob hashes are equal. It was a `--only=chat-ask-options` run: 122 frames moved, read out of `git diff --name-status 2523612b6 -- docs/evidence` filtered to `.webp` rather than counted by hand - 86 rewritten in place (84 in the swept set and the live pair's 2), 24 added as the two width-suffixed entries above (`wrapping-labels` existed only as the single-width `chat-ask-options/wrapping-labels/` before it, which is design round 1's D5: a story id captured at two widths is written with its width in the path), and 12 stale duplicates deleted rather than left behind, because a second copy of the same story at the same 1024 column would have been stale evidence counted as swept. `check-evidence.mjs` asserts the 120 of those 122 that fall outside the declared sets, which is why `refreshedFrames` exceeds the moved `.webp` count and why the deleted 12 are in it. SECOND, this round's re-verification: the same `--only=chat-ask-options` run at `refreshedAtHead`, the narrowed run's full nine entries across all twelve themes, 108 frames - re-taken to check that the frames are still pictures of this head's `src` rather than to re-argue it, and every one of the 108 came back byte-identical to the committed frame on disk (`git status docs/evidence` after the run names this manifest and nothing else). It ran twice, at `refreshedFromHead` and again at `refreshedAtHead`, the second time once the gate and harness repairs were committed so that `dirtyWorkingTree` would describe committed source; `refreshedFrames` is 216 rather than 108 because the capturer accumulates across the runs of one pass while the head stays inside that pass's ancestry - the count is frames taken, and 216 were taken, the second 108 of them moving no bytes. It is recorded because it is what licenses the tree stamps above. `frames` and `surfaces` are re-derived from the tree and from the capturer's own list as they stand rather than incremented from the previous values, which is what the capture script's own `+ addedSurfaces.length` would have got wrong here (the two new entries share one story ID, so the entry count moved by one and the directory count by two) and wrong again on this rebase, where upstream's list grew under this branch: 152 of the 161 swept entries are `main`'s own. One more narrowed run is recorded here because this file is the manifest's only per-run record and this round would otherwise have erased it: `main`'s tool-row round (`--only=chat-tool-rows`, refreshed 26 frames across 12 stories, 0 added, at `59997deb1`), which is where `chat-tool-rows/*` and the `tool-rows-4px-rejected` set come from. `previousRefresh` above is the model-picker remediation's two runs, unchanged, because they are still true of frames on disk. `refreshedStories` names this branch's own entries and nothing else. It carried nine `canvas-workspace--*` ids when this block's citation fields still described `main`'s pass; the branch's own pass replaced those fields, and a story list for a pass the block no longer cites is a record of something else, so it is deleted rather than left to disagree with the citation beside it. `main`'s own manifest still records that pass, which is where a reader following those ids should look. THIS BRANCH'S PASS (the composer status tabs) is the fourth narrowing recorded here, and the mechanical fields above are now ITS values — which is why the sentences in the paragraph above that name `refreshedAtHead`, `refreshedFrames` and `refreshedStories` describe the ask-options pass at ITS pass start rather than this one, their citations unchanged and their own record untouched. FIRST, `--only=chat-composer-status-row --themes=localOperatorDark,localOperatorLight`: four new stories, eight frames, all eight added, and those four surfaces are the ones `addedSurfaces` names above. SECOND, `--only=chat-run-panel` at the same two palettes, for the run trigger's `Activity` to `Info` swap (`docs/composer-status-tabs.md` § 6): the WHOLE set re-taken rather than the three `trigger-*` stories, because every story in it mounts the production `ChatHeader` and refreshing three of thirty-nine would leave one directory showing two glyphs. `frames` and `surfaces` are re-derived from the tree rather than carried from that run, and the reason is the capturer's own `+ addedSurfaces.length` arithmetic: the first attempt at that re-take was narrowed to `--only=chat-run-panel--trigger` and wrote those three stories in all twelve palettes, ten of which did not exist before, so it counted three EXISTING surfaces as new and raised `surfaces` to 168 and `frames` to 1202 — and those thirty frames were then deleted, because a re-take that changes a set's declared two-brand-theme shape is a different set. The set is 39 stories over two themes — 78 frames — again. THE MUTATION IS MEASURED ON THE FRAMES WHOSE FIXTURES HOLD NO LIVE CLOCK, and the rig is deterministic, which is what makes the measurement mean anything: `trigger-idle/localOperatorLight` captured three times at one head is byte-identical all three times, so a frame's diff against its committed predecessor is its input's diff. On the six brand-theme `trigger-*` frames, four differ only inside the glyph's own 16x16 box (`15x16+381+20`, two at `16x16+380+20`, `15x16+781+20`; AE 5,311 to 21,056 pixels) and two differ over a wider box whose worst band measures a maximum of 17/255 and 16/255 at means of 0.15 and 0.21 — the header's text and rules at identical positions, i.e. the lossy encoder reallocating blocks around the one block whose content moved, where a rendering change lands at 50-250 levels on edges. The ROSTER stories are a different case, and it is not this change: they photograph a running child's live clock. `roster-members/localOperatorDark` captured twice at one head differs by 5,560 pixels (0.62% of the frame) confined to a `15x56+1171+82` strip — the elapsed-time and percentage digits of two rows, `19s`/`2m31s` against `18s`/`2m30s`. That is content rather than sheen, and the ask-options paragraph above reads the same magnitude as anti-aliasing; the mechanism is the clock, which is also why 35 of the 78 frames moved again on this rebase's re-capture while all eight of the composer row's came back byte-identical. `docs/evidence/chat-run-details/` was NOT re-taken and cannot be: it is a declared preserved record of the retired popover whose story ids are gone from `STORIES`, which is what its own `supplementary` entry says — so the design record's § 9.2 sentence naming it as a story set this change re-takes is stale on that point. Its twenty frames still show the old glyph, and they are a record of a surface the tree no longer has rather than evidence about the one it does.",
     "previousRefresh": {
       "refreshedAt": "2026-09-13T07:23:43.292Z",
       "refreshedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
@@ -56,41 +119,7 @@
       "addedAtHead": "32c7751583627a8c74e9250798b6525e6e1931a2",
       "note": "The capture that ADDED this branch's twelve picker/band surfaces. Recorded here because the remediation round's own narrowed capture overwrites `addedFrames`/`addedSurfaces` in place, and an addition that disappears from the manifest reads as though the stories had always been swept."
     },
-    "refreshedAt": "2026-09-14T18:26:08.132Z",
-    "refreshedAtHead": "692b33fe5b014c8a05e39d1902412ae2fa08ed08",
-    "refreshedFromHead": "0149548b407a357120d5031a690f542aa80e8ec6",
-    "refreshedFrames": 180,
-    "refreshedStories": [
-      "chat-slash-completion--command-phase",
-      "chat-slash-completion--command-phase-narrowed",
-      "chat-slash-completion--command-phase-fuzzy",
-      "chat-slash-completion--argument-phase-teams",
-      "chat-slash-completion--argument-phase-narrowed",
-      "chat-slash-completion--argument-phase-models",
-      "chat-slash-completion--argument-phase-empty",
-      "chat-slash-completion--argument-phase-narrow-composer",
-      "chat-slash-completion--inline-mid-draft",
-      "chat-slash-completion--name-list-completed",
-      "chat-slash-completion--command-phase-scrolled",
-      "chat-slash-completion--argument-phase-themes",
-      "chat-slash-completion--argument-phase-no-match",
-      "chat-slash-completion--argument-phase-loading-and-error",
-      "chat-slash-completion--argument-phase-truncating-name"
-    ],
-    "refreshedThemes": [
-      "localOperatorDark",
-      "localOperatorLight",
-      "dracula",
-      "dune",
-      "sage",
-      "monokai",
-      "tokyoNight",
-      "iceberg",
-      "radient",
-      "neon",
-      "obsidian",
-      "synth"
-    ]
+    "refreshedFromHead": "9c82dce4f2a498c5ea97066b12c0ec3b24b1be88"
   },
   "supplementary": [
     {
@@ -166,6 +195,16 @@
       "source": "scripts/capture-evidence.mjs in the twelve-theme sweep before the story was removed",
       "why": "Historical: the Radient sign-in onboarding screen as it stood before the Tailwind v4 landing (bb57a4080) removed its story, which is what left the capture list naming an id that no longer exists. Kept as the record of the pre-v4 screen, and declared so a sweep neither deletes it silently nor reports it as unaccounted.",
       "capturedAt": "2026-08-06T18:36:03.218Z"
+    },
+    {
+      "path": "session-incident-rows-before",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "Storybook via scripts/capture-evidence.mjs, from the UNMODIFIED origin/main tree (73977340a) - the same story and the same persisted payloads as chat-canonical-notices/session-incidents, taken before either renderer file was edited, at the same 1280x700 viewport.",
+      "why": "The before half of the incident-row pair, and the reproduction of the operator's report. A sweep cannot re-derive it: it needs a tree that no longer exists in the repository, and the story renders the production components, so a fixture cannot fake the shipped row. What it holds is what the defect looked like - ten rows reading `session incident` with every message behind a chevron.",
+      "capturedAt": "2026-09-13T23:36:00.000Z",
+      "capturedAtHead": "73977340a81660a6ba88ecff9c9f33f00ab77178"
     },
     {
       "path": "transcript-images/real-conversation-images",
@@ -291,6 +330,15 @@
       "capturedAt": "2026-09-13T08:47:05.556466Z"
     },
     {
+      "path": "job-result-label-round5",
+      "frames": 5,
+      "surfaces": 3,
+      "themes": 2,
+      "source": "Local Operator browser tool, production JobResultMessages story in an isolated Vite harness. Before: canonical-transcript.tsx at 8e86608083171428c02ecd85fa357ff186dee824 plus the new fixture. After: that fixture with the explicit-label restoration committed as dce5c74fca8151e4425ee0c6794400a020172a0e before the forge-required rebase; modified working tree during capture. See job-result-label-round5/README.md for viewport, geometry and capture limitations. No CDP or private browser engine.",
+      "why": "The before/after pair pins the fallback label, glyph and truncated message regression on long job results with and without supporting detail. The expanded frame checks the surviving disclosure.",
+      "capturedAt": "2026-09-14T19:47:44.871517+00:00"
+    },
+    {
       "path": "chat-search",
       "frames": 19,
       "surfaces": 17,
@@ -367,6 +415,38 @@
       "source": "`scripts/capture-evidence.mjs`, over a detached worktree of UNMODIFIED `origin/main` at `7f0511dd4` (the state the operator reported), with the branch's `tool-row.stories.tsx` copied in so the four new story ids exist and every SOURCE file the stories render from left at main's. `ReceiptRows` is the one fixture that could not be copied - main has no `peer`/`wake` record kinds - so it builds the `{kind: \"custom\", customType, text}` records main's own `durableRecord` projects those wire rows to. The four worktrees' captures ran on one machine with `--allow-backend` (the operator's backend answers on the configured port and none of these stories talks to it) and with `reactDocgen: false` in a local untracked `.storybook-local/` config.",
       "why": "The claim is comparative and this is the only place it can be seen: the fixed frames show one unremarkable pane and one ledger row, and nothing in them says the expansion used to be `JSON.stringify(args)` inside a bordered `<pre>` with the result in a SECOND box, or that a peer message used to paint `<peer-session-message from_pid=92064 …>` on the row. The sweep cannot re-derive these - they need a DIFFERENT SOURCE TREE rather than a different fixture - which is why they are declared here rather than left in `chat-tool-rows/`. The comparison is legible without measuring anything: the before frames are visibly taller (the JSON pretty-print's braces and \"key\": punctuation cost rows the pane does not), and the before receipt rows carry a label (`peer message`/`wake prompt`) in a wider name column instead of the `peer`/`wake` ledger name. The harness's own reproduction recipe, and the one local config change it needs on main too, are in `docs/evidence/trace-legibility-baseline/README.md`.",
       "capturedAt": "2026-09-14T04:35:00.000Z"
+    },
+    {
+      "path": "chat-cold-send-browser",
+      "frames": 11,
+      "surfaces": 9,
+      "themes": 1,
+      "source": "Real browser-tool screenshots, lossless WebP conversions; actual React renderer and isolated HTTP/SSE backend",
+      "why": "New live flow verification and reproduced-before/fixed-after Q4. README distinguishes inherited-head frames from the final working-source delta. Not a Storybook sweep."
+    },
+    {
+      "path": "chat-tool-rows/cold-send-live-pane",
+      "frames": 2,
+      "surfaces": 1,
+      "themes": 2,
+      "source": "Preserved legacy full-pane captures from the interrupted coder; not new browser-tool captures",
+      "why": "Supporting historical D3/D4 images. Exact invocation not independently recovered; see README. New live validation lives in chat-cold-send-browser."
     }
-  ]
+  ],
+  "captureOrigin": {
+    "note": "Two preserved records, not one, and the fields are not interchangeable. `head`/`capturedAt` name the commit and the time the capture was taken at. `srcTree`/`scriptsTree` are the tree hashes the aggregate fields carried before they were re-derived, and they never described `head`'s trees: they are `8d019993e`'s (`git rev-parse 8d019993e:src` = 6253e4196..., `:scripts` = 2fe452ad2...), the upstream commit whose stamp block wrote them, while `0f19ae5e2:src` is 5e6095c258e8.... `dirtyWorkingTree` is the branch's own `8e8660808`-era pass recording the scratch `.storybook/main.ts` docgen override that capture needed, deliberately not a current value: a re-derivation does not make an older capture clean. No frame was recaptured for this re-derivation, and these frames are not claimed to be current. What covers this branch's delta is specific: the five in `job-result-label-round5` show the job-result and statement register this branch owns, and the six under `chat-canonical-notices/session-incidents`, `session-incidents-narrow` and `notice-lengths` show the incident and notice registers - all historical captures, none of them a frame at this head, and one row of `session-incidents` and `session-incidents-narrow` paints through upstream's receipt model there instead. The rest of this branch's delta - the tooltip/selection union in `disclosure.tsx` and the scripts the gate reads - has no frame at this head, so its evidence is the PR's test and rebase rounds rather than a picture.",
+    "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
+    "capturedAt": "2026-09-13T11:13:12.499634Z",
+    "srcTree": "6253e4196ba11cdf2855f5a8fec4fc07deacdc6e",
+    "scriptsTree": "2fe452ad280ba12139b28e41b6e33d0624136414",
+    "dirtyWorkingTree": true,
+    "recaptured": false
+  },
+  "upstreamComposerCapture": {
+    "sourceManifest": "a8f6bc4b9:docs/evidence/manifest.json",
+    "sourceHead": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
+    "upstreamFrames": 1192,
+    "upstreamSurfaces": 175,
+    "note": "Upstream manifest fields are preserved from a8f6bc4b9; only the two cold-send supplementary sets and the re-derived counts below were changed by this merge. This branch does not re-stamp upstream capture history."
+  }
 }
