@@ -230,11 +230,13 @@ test("the children the runner spawns are handed the notification kill switch", (
 
 test("a notification setting someone made deliberately survives the runner", () => {
 	/*
-	 * A default, not an override. Someone who exports `0` — an operator
-	 * debugging why a banner went missing — means it, and an `1` set to silence a
-	 * specific run must not be re-derived either. Both are passed through
-	 * untouched, which is what keeps a deliberate choice from being silently
-	 * inverted by tooling.
+	 * A default, not an override. Someone who exports a value — an operator
+	 * silencing one run, say — means it, and a value this runner re-derived would
+	 * be tooling deciding something about the operator's desktop without telling
+	 * them. Both `0` and `1` are passed through untouched. That is NOT the same as
+	 * saying `0` means "banners back on": the consumer silences on any non-empty
+	 * value (`os.environ.get()`, see `notifications-off.mjs`), so `0` is off like
+	 * `1`, and unsetting the key is the only way back on.
 	 */
 	for (const value of ["0", "1", "yes"]) {
 		const { status, stdout } = runRunner([REPORTS_ENV], {

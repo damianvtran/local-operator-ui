@@ -226,24 +226,81 @@ interruption, and it must be visible to whoever launched it.
 ### An agent-driven run does not banner either
 
 `headless` silences the **app's** own notification (`window-mode.ts` feeds
-`DesktopNotifier`) and has no reach into the **backend's**, which the app spawns
-with its own environment (`backendSpawnEnv`): a session parking on a gate
-announces itself from `session/runtime/serving.py::_announce_pending` through
-`local_operator/tui/notify.py`, and on macOS that ends at `osascript -e 'display
-notification'` — a banner in the operator's ACTUAL Notification Center, wearing
-Script Editor's identity. That is how ~46 of them arrived in six minutes from a
-single `pnpm test:desktop` run.
+`DesktopNotifier`) and has no reach into the **backend's**: a session parking on
+a gate announces itself from `session/runtime/serving.py::_announce_pending`
+through `local_operator/tui/notify.py`, and on macOS that ends at `osascript -e
+'display notification'` — a banner in the operator's ACTUAL Notification Center,
+wearing Script Editor's identity. That is where the ~46 that arrived in six
+minutes came from.
+
+Where they came from *mechanically* is worth stating exactly, because it is easy
+to get wrong in the direction that makes this guard look like it covers a path it
+does not (review round 1). **No file in `test:desktop` spawns Electron** —
+measured over the whole list — so the suite does not boot the app. Its live
+backend is a python `serve` started directly by `scripts/submit-latency.test.mjs`,
+which builds its child environment from the runner's, and that is the leg the
+runner's switch closes. The five app-proof rigs DO boot the app, but each sets
+`VITE_DISABLE_BACKEND_MANAGER=true`, so their app spawns no backend at all; the
+switch is set at their launch because a rig that stops disabling the manager, or
+the next rig somebody writes, would otherwise spawn one. The app-spawns-backend
+hop (`backendSpawnEnv`) is the shipped app's own path — the one a `.env` could
+reach — and it is protected on the app side rather than here.
 
 `scripts/notifications-off.mjs` is that switch applied to a child environment,
 and every path in this repo that spawns the app or the suite sets it:
 `run-desktop-tests.mjs`, the app-proof rigs (`browser-chrome-proof`,
 `renderer-driver`, `browser-host-proof`, `mentioned-files-app-proof`,
 `session-cookie-restart-proof`) and the `app:headless` / `dev:headless` scripts.
-An **explicit** value is honoured — `LOCAL_OPERATOR_NO_NOTIFICATIONS=0` in your
-shell keeps your own banners on — and the deliberate exceptions
+`scripts/notification-spawn-sites.test.mjs` enumerates those sites and fails on
+a new one that is not in its table, because the rig somebody adds next month is
+exactly the one that will forget. The deliberate exceptions
 (`notification-evidence.mjs`, interactive `pnpm dev` / `pnpm start`) are named in
-that module. `docs/evidence/desktop-notifications-off/` carries the before/after
-proof, stood on a shim `osascript` so neither case can touch the real one.
+that module and in the table.
+
+**The switch is about PRESENCE, not about the value.** `notify.py` reads it with
+`os.environ.get()` and silences on any non-empty string, so `0`, `1` and `no` all
+mean SILENCED — `LOCAL_OPERATOR_NO_NOTIFICATIONS=0` does **not** "keep your own
+banners on", and in a `.env` it is the spelling that silently re-arms the
+incident behind a variable that looks switched off. The only way back on is to
+unset the key for that launch:
+
+```sh
+env -u LOCAL_OPERATOR_NO_NOTIFICATIONS pnpm start   # banners on, one launch
+export -n LOCAL_OPERATOR_NO_NOTIFICATIONS           # banners on, this shell
+```
+
+An absent value therefore means "banners on"; an EMPTY one is not a choice
+anybody made — a stale export, or a `.env` line in the empty shape — so the
+helper reads it as OFF rather than leaving every banner armed behind a variable
+that looks switched off, and the app reads an empty value that reached its LAUNCH
+the same way. An empty value that only ever existed in the folded file, on a
+launch that stated nothing, is left alone: that is a person's own app, where the
+banner is the feature.
+
+**A `.env` in the working directory cannot replace it.** The app resolves the
+key from its own launch environment (`src/main/backend/notification-launch.ts`,
+applied in `backendSpawnEnv`) rather than from `process.env`, because
+`backend/config.ts` folds a `.env` from the working directory over the launch
+with dotenv `override: true` and `loadMacOSEnvironment` merges the operator's
+shell rc on top of that. Measured before the fix, through `pnpm app:headless`: a
+`.env` carrying `0` or an empty value reached the backend child as exactly that
+— and the empty one reads as ENABLED, i.e. the incident back with every gate
+still green. The value the launch was given now wins, so a stale `.env` cannot
+defeat an agent-driven run — and an empty value that reaches the launch at all
+still silences the backend, because empty is not a choice.
+
+**What this pin does not cover.** The consumer is `local_operator/tui/notify.py`,
+which lives in a SEPARATELY INSTALLED backend package that this repo does not pin
+(`src/main/update-install.ts` installs it with `pip install --upgrade
+local-operator`). Nothing here reads that file, so if upstream ever renames
+`_ENV_DISABLE`, every switch this repo sets becomes a variable nobody reads: the
+incident returns with all of these tests green. The pin guards the local
+spelling, not the contract; a cheap pin would need the installed backend's
+version or the name itself asserted against this repo's, and none exists today.
+
+`docs/evidence/desktop-notifications-off/` carries the before/after proof, stood
+on a shim `osascript` so neither case can touch the real one, and the measurement
+of the app→backend hop.
 
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
