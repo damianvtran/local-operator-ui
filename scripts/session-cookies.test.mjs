@@ -1,0 +1,923 @@
+/**
+ * Contract tests for session-only cookie persistence.
+ *
+ * The shipped TypeScript is bundled in memory with esbuild and driven against a
+ * fake jar and a real filesystem, the same way `browser-host.test.mjs` tests the
+ * browser host's core. What that buys here is the part of this feature that is
+ * about policy and ordering rather than about Chromium: which cookies may be
+ * stored at all, what happens after a crash, what a clear owes before it reports
+ * success, and what a keychain that is unavailable or useless does.
+ *
+ * WHAT THESE TESTS ARE NOT: proof that a real restart brings a real login back.
+ * The jar is a fake, so nothing here has ever loaded a page, and the CHIPS
+ * behaviour of the real runtime is not exercised. That evidence is
+ * `scripts/session-cookie-electron.test.mjs` (real Chromium, two real processes)
+ * and the app-level run recorded on the PR.
+ */
+
+import assert from "node:assert/strict";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { after, before, test } from "node:test";
+import { build } from "esbuild";
+
+const bundle = await build({
+	stdin: {
+		contents: ['export * from "./src/main/browser/session-cookies";'].join(
+			"\n",
+		),
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	// `session-cookies.ts` imports Electron only as TYPES (the runtime piece lives
+	// in `session-cookies-electron.ts`), so this needs no fixture — and it imports
+	// `./profile` for a type only, which is why the bundle stays Electron-free.
+});
+const mod = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+const {
+	SessionCookieVault,
+	createDebuggerCookieJar,
+	createSafeStorageCipher,
+	restoreParams,
+	sessionCookiePaths,
+	storedCookieFor,
+	partitionKeyForWrite,
+	isSessionCookie,
+	cookieIdentity,
+	attributeDrift,
+	REFUSAL,
+} = mod;
+
+const PARTITION_TENANT = {
+	topLevelSite: "https://tenant.example",
+	hasCrossSiteAncestor: false,
+};
+
+/** A jar that records every write, so a test can assert on the parameters rather
+ * than on a return value: the whole failure mode this feature has to avoid is a
+ * write that is missing the partition key. */
+function fakeJar(initial) {
+	const cookies = [...initial];
+	const writes = [];
+	return {
+		cookies,
+		writes,
+		async readAllCookies() {
+			return cookies.map((cookie) => ({ ...cookie }));
+		},
+		async writeCookie(params) {
+			writes.push(params);
+			const domain = params.domain ?? new URL(params.url).hostname;
+			const index = cookies.findIndex(
+				(cookie) =>
+					cookie.name === params.name &&
+					cookie.domain === domain &&
+					cookie.path === params.path,
+			);
+			const stored = {
+				name: params.name,
+				value: params.value,
+				domain,
+				path: params.path,
+				secure: params.secure === true,
+				httpOnly: params.httpOnly === true,
+				session: params.expires === undefined,
+				expires: params.expires ?? -1,
+				sameSite: params.sameSite ?? null,
+				priority: params.priority ?? "Medium",
+				sourceScheme: params.sourceScheme ?? null,
+				sourcePort: params.sourcePort ?? null,
+				partitionKey: params.partitionKey ?? null,
+			};
+			if (index >= 0) cookies[index] = stored;
+			else cookies.push(stored);
+		},
+	};
+}
+
+/** A cipher whose "ciphertext" is recognisable, and that can be told to refuse. */
+function fakeCipher({
+	available = true,
+	reason = "no keychain in this test",
+} = {}) {
+	return {
+		encrypted: [],
+		availability: () => (available ? { ok: true } : { ok: false, reason }),
+		encrypt(plaintext) {
+			this.encrypted.push(plaintext);
+			return Buffer.from(`cipher:${Buffer.from(plaintext).toString("base64")}`);
+		},
+		decrypt(ciphertext) {
+			const text = ciphertext.toString("utf8");
+			if (!text.startsWith("cipher:")) throw new Error("not our ciphertext");
+			return Buffer.from(text.slice("cipher:".length), "base64").toString(
+				"utf8",
+			);
+		},
+	};
+}
+
+const cookiesFor = (overrides = []) => [
+	{
+		name: "session_plain",
+		value: "v1",
+		domain: "app.example",
+		path: "/",
+		secure: true,
+		httpOnly: false,
+		session: true,
+		expires: -1,
+		sameSite: "Lax",
+		sourceScheme: "Secure",
+		sourcePort: 443,
+		...overrides[0],
+	},
+	{
+		name: "session_partitioned",
+		value: "v2",
+		domain: "third.example",
+		path: "/",
+		secure: true,
+		httpOnly: true,
+		session: true,
+		expires: -1,
+		sameSite: "None",
+		partitionKey: { ...PARTITION_TENANT },
+		sourceScheme: "Secure",
+		sourcePort: 443,
+		...overrides[1],
+	},
+	{
+		name: "persistent",
+		value: "v3",
+		domain: "app.example",
+		path: "/",
+		secure: true,
+		httpOnly: false,
+		session: false,
+		expires: Date.now() / 1000 + 3600,
+		sameSite: "Lax",
+		...overrides[2],
+	},
+];
+
+let root;
+const dirFor = (name) => {
+	const dir = join(root, name);
+	return { dir, ...sessionCookiePaths(dir) };
+};
+const makeVault = (jar, cipher, paths, log, extra = {}) =>
+	new SessionCookieVault({
+		jar,
+		cipher,
+		snapshotPath: paths.snapshotPath,
+		markerPath: paths.markerPath,
+		clearSessionData: async () => {},
+		log,
+		...extra,
+	});
+
+const collector = () => {
+	const lines = [];
+	return { lines, log: (message) => lines.push(message) };
+};
+
+before(() => {
+	root = mkdtempSync(join(tmpdir(), "lop-session-cookies-"));
+});
+after(() => {
+	rmSync(root, { recursive: true, force: true });
+});
+
+test("a clean cycle stores only session cookies, and restores their attributes", async () => {
+	const paths = dirFor("clean");
+	const { log } = collector();
+	const jar = fakeJar(cookiesFor());
+	const vault = makeVault(jar, fakeCipher(), paths, log);
+
+	const saved = await vault.snapshot();
+	assert.equal(saved.written, true);
+	assert.equal(
+		saved.saved,
+		2,
+		"the persistent cookie is not the vault's business",
+	);
+
+	// A restart: the jar comes back with only the persistent cookie, exactly as
+	// Chromium leaves it (session cookies do not survive the process).
+	const afterRestart = fakeJar([cookiesFor()[2]]);
+	const restoring = makeVault(afterRestart, fakeCipher(), paths, log);
+	const report = await restoring.restore();
+	assert.equal(report.outcome, "restored");
+	assert.equal(report.restored, 2);
+	assert.deepEqual(report.failed, []);
+	assert.deepEqual(report.drifted, []);
+
+	const plain = afterRestart.writes.find((w) => w.name === "session_plain");
+	assert.equal(plain.secure, true);
+	assert.equal(plain.httpOnly, false);
+	assert.equal(plain.sameSite, "Lax");
+	assert.equal(
+		plain.partitionKey,
+		undefined,
+		"an unpartitioned cookie stays unpartitioned",
+	);
+	assert.equal(
+		plain.expires,
+		undefined,
+		"no expiry is how the cookie comes back as a session cookie",
+	);
+	assert.equal(plain.path, "/");
+
+	const partitioned = afterRestart.writes.find(
+		(w) => w.name === "session_partitioned",
+	);
+	assert.deepEqual(partitioned.partitionKey, {
+		topLevelSite: "https://tenant.example",
+		hasCrossSiteAncestor: false,
+	});
+	assert.equal(partitioned.httpOnly, true);
+
+	// The persistent cookie was neither snapshotted nor rewritten.
+	assert.equal(
+		afterRestart.writes.some((w) => w.name === "persistent"),
+		false,
+	);
+});
+
+test("the naive channel's failure mode is real: it writes the cookie without its partition key", () => {
+	// This is the guard's non-vacuous half. The Electron cookie API reports a
+	// partitioned cookie with NO partition information at all (measured on the
+	// pinned runtime), so a design built on that API writes exactly what it read:
+	// no `partitionKey`, which is an unpartitioned cookie offered to every
+	// top-level site. The vault must never produce that shape for this cookie.
+	const read = cookiesFor()[1];
+	const naive = {
+		url: `https://${read.domain}${read.path}`,
+		name: read.name,
+		value: read.value,
+		secure: read.secure,
+		httpOnly: read.httpOnly,
+		sameSite: read.sameSite,
+	};
+	assert.equal("partitionKey" in naive, false);
+
+	const vaultWrite = restoreParams(storedCookieFor(read).cookie);
+	assert.deepEqual(vaultWrite.partitionKey, {
+		topLevelSite: "https://tenant.example",
+		hasCrossSiteAncestor: false,
+	});
+});
+
+test("a cookie whose partition identity cannot be represented is refused, not flattened", async () => {
+	const paths = dirFor("partition-refusal");
+	const { lines, log } = collector();
+	const opaque = {
+		...cookiesFor()[1],
+		name: "session_opaque",
+		partitionKey: undefined,
+		partitionKeyOpaque: true,
+	};
+	const incomplete = {
+		...cookiesFor()[1],
+		name: "session_incomplete",
+		// Measured: the setter rejects a partition key that does not carry
+		// `hasCrossSiteAncestor`, so this key cannot be restored as it was.
+		partitionKey: { topLevelSite: "https://tenant.example" },
+	};
+	const jar = fakeJar([...cookiesFor(), opaque, incomplete]);
+	const vault = makeVault(jar, fakeCipher(), paths, log);
+	const saved = await vault.snapshot();
+
+	assert.equal(saved.saved, 2);
+	assert.deepEqual(
+		saved.refused.map((entry) => [entry.name, entry.reason]).sort(),
+		[
+			["session_incomplete", REFUSAL.partitionUnrepresentable],
+			["session_opaque", REFUSAL.partitionUnrepresentable],
+		],
+	);
+	assert.match(lines.join("\n"), /not saving session_opaque/);
+
+	// And the refusal survives the round trip: neither name is ever written.
+	const afterRestart = fakeJar([]);
+	await makeVault(afterRestart, fakeCipher(), paths, log).restore();
+	assert.deepEqual(afterRestart.writes.map((w) => w.name).sort(), [
+		"session_partitioned",
+		"session_plain",
+	]);
+});
+
+test("host-only and domain scope are separate: only a dotted domain is sent as `domain`", () => {
+	const hostOnly = storedCookieFor({
+		...cookiesFor()[0],
+		domain: "app.example",
+	}).cookie;
+	const domainCookie = storedCookieFor({
+		...cookiesFor()[0],
+		domain: ".app.example",
+	}).cookie;
+	assert.equal(
+		restoreParams(hostOnly).domain,
+		undefined,
+		"host-only writes no domain",
+	);
+	assert.equal(restoreParams(hostOnly).url, "https://app.example/");
+	assert.equal(restoreParams(domainCookie).domain, ".app.example");
+});
+
+test("a non-Secure cookie is written through an http url, because an https one forces Secure", () => {
+	// Measured: `Network.setCookie` with an https url stores `secure: true` even
+	// when asked for `false`, so the scheme has to follow the attribute rather
+	// than the recorded source scheme.
+	const insecure = storedCookieFor({
+		...cookiesFor()[0],
+		secure: false,
+		sourceScheme: "Secure",
+		sourcePort: 443,
+	}).cookie;
+	const params = restoreParams(insecure);
+	assert.equal(params.secure, false);
+	assert.equal(params.url, "http://app.example/");
+	assert.equal(
+		params.sourceScheme,
+		"Secure",
+		"the recorded source scheme still travels",
+	);
+});
+
+test("unspecified SameSite stays unspecified, and an explicit one survives", () => {
+	const unspecified = storedCookieFor({
+		...cookiesFor()[0],
+		sameSite: null,
+	}).cookie;
+	const strict = storedCookieFor({
+		...cookiesFor()[0],
+		sameSite: "Strict",
+	}).cookie;
+	assert.equal("sameSite" in restoreParams(unspecified), false);
+	assert.equal(restoreParams(strict).sameSite, "Strict");
+});
+
+test("session-vs-persistent is read from either field, so an odd build cannot smuggle a persistent cookie in", () => {
+	assert.equal(isSessionCookie({ session: true }), true);
+	assert.equal(isSessionCookie({ expires: -1 }), true);
+	assert.equal(isSessionCookie({ session: false, expires: 12345 }), false);
+});
+
+test("an unclean run's snapshot is discarded, and the marker is written before anything else", async () => {
+	const paths = dirFor("crash");
+	const { lines, log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	assert.equal(existsSync(paths.snapshotPath), true);
+	assert.equal(
+		existsSync(paths.markerPath),
+		false,
+		"a clean shutdown removes the marker",
+	);
+
+	// Now the crash: the marker is on disk with the snapshot, which is exactly the
+	// state a run that died mid-browse leaves behind.
+	writeFileSync(
+		paths.markerPath,
+		JSON.stringify({ generation: "crashed-run" }),
+	);
+	const afterCrash = fakeJar([]);
+	const report = await makeVault(
+		afterCrash,
+		fakeCipher(),
+		paths,
+		log,
+	).restore();
+	assert.equal(report.outcome, "unclean-previous-run");
+	assert.equal(report.restored, 0);
+	assert.deepEqual(afterCrash.writes, []);
+	assert.equal(
+		existsSync(paths.snapshotPath),
+		false,
+		"the stale snapshot is removed",
+	);
+	assert.match(lines.join("\n"), /did not shut down cleanly/);
+});
+
+test("an unreadable marker still proves a run did not finish cleanly", async () => {
+	const paths = dirFor("crash-unreadable-marker");
+	const { log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	writeFileSync(paths.markerPath, "this is not json");
+	const jar = fakeJar([]);
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(report.outcome, "unclean-previous-run");
+	assert.deepEqual(jar.writes, []);
+});
+
+test("a corrupt or truncated snapshot is refused and removed, never half-applied", async () => {
+	const paths = dirFor("corrupt");
+	const { lines, log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	const whole = readFileSync(paths.snapshotPath);
+	writeFileSync(
+		paths.snapshotPath,
+		whole.subarray(0, Math.floor(whole.length / 2)),
+	);
+
+	const jar = fakeJar([]);
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(report.outcome, "unreadable");
+	assert.deepEqual(
+		jar.writes,
+		[],
+		"nothing from a half-written document is applied",
+	);
+	assert.equal(existsSync(paths.snapshotPath), false);
+	assert.match(lines.join("\n"), /could not be read/);
+});
+
+test("an interrupted write leaves the previous snapshot intact, not a truncated one", async () => {
+	const paths = dirFor("interrupted");
+	const { log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	const before = readFileSync(paths.snapshotPath);
+
+	// The staged file the writer uses, left behind by a kill between write and
+	// rename. The published snapshot must be untouched by it.
+	writeFileSync(`${paths.snapshotPath}.99999.tmp`, Buffer.from("cipher:half"));
+	const jar = fakeJar([cookiesFor()[2]]);
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(report.restored, 2);
+	assert.deepEqual(readFileSync(paths.snapshotPath), before);
+});
+
+test("a keychain that is unavailable fails closed in both directions", async () => {
+	const paths = dirFor("no-keychain");
+	const { lines, log } = collector();
+	const cipher = fakeCipher({
+		available: false,
+		reason: "the OS keychain is not available",
+	});
+
+	// The marker is written by the restore, before any page may load, and a run
+	// that could not store anything leaves it behind.
+	const jar = fakeJar(cookiesFor());
+	const vault = makeVault(jar, cipher, paths, log);
+	const started = await vault.restore();
+	assert.equal(started.outcome, "no-snapshot");
+	const saved = await vault.snapshot();
+	assert.equal(saved.written, false);
+	assert.equal(existsSync(paths.snapshotPath), false);
+	assert.deepEqual(
+		readdirSync(dirname(paths.markerPath)).filter((name) =>
+			name.includes("session-cookie"),
+		),
+		["session-cookie-generation.json"],
+		"only the marker exists: the marker is what later discards a stale snapshot",
+	);
+
+	// And a snapshot that exists from a run with a working keychain is not read.
+	const good = dirFor("no-keychain-source");
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), good, log).snapshot();
+	const jar2 = fakeJar([]);
+	const report = await makeVault(jar2, cipher, good, log).restore();
+	assert.equal(report.outcome, "cipher-unavailable");
+	assert.deepEqual(jar2.writes, []);
+	assert.equal(
+		existsSync(good.snapshotPath),
+		true,
+		"a temporarily unavailable keychain does not destroy the file",
+	);
+	assert.match(lines.join("\n"), /not restoring/);
+
+	// A run that could not snapshot leaves its marker behind, so the file it could
+	// not refresh is discarded by the next start rather than restored stale.
+	assert.equal(existsSync(good.markerPath), true);
+	const jar3 = fakeJar([]);
+	const afterStale = await makeVault(jar3, fakeCipher(), good, log).restore();
+	assert.equal(afterStale.outcome, "unclean-previous-run");
+	assert.deepEqual(jar3.writes, []);
+});
+
+test("a Linux basic_text or unknown keyring backend is refused; a real keyring is allowed", () => {
+	const backend = (selected) => ({
+		isEncryptionAvailable: () => true,
+		encryptString: (text) => Buffer.from(text),
+		decryptString: (buffer) => buffer.toString(),
+		getSelectedStorageBackend: () => selected,
+	});
+	assert.equal(
+		createSafeStorageCipher(backend("basic_text"), "linux").availability().ok,
+		false,
+	);
+	assert.equal(
+		createSafeStorageCipher(backend("unknown"), "linux").availability().ok,
+		false,
+	);
+	assert.equal(
+		createSafeStorageCipher(backend(undefined), "linux").availability().ok,
+		false,
+	);
+	assert.equal(
+		createSafeStorageCipher(backend("gnome_libsecret"), "linux").availability()
+			.ok,
+		true,
+	);
+	assert.equal(
+		createSafeStorageCipher(backend("kwallet6"), "linux").availability().ok,
+		true,
+	);
+	// macOS and Windows have no such backend to ask about; availability alone is
+	// the answer there.
+	assert.equal(
+		createSafeStorageCipher(backend("basic_text"), "darwin").availability().ok,
+		true,
+	);
+	const missing = {
+		isEncryptionAvailable: () => false,
+		encryptString: () => Buffer.alloc(0),
+		decryptString: () => "",
+	};
+	assert.equal(
+		createSafeStorageCipher(missing, "darwin").availability().ok,
+		false,
+	);
+});
+
+test("clearing cookies durably invalidates the snapshot first, and clearing the cache does not", async () => {
+	const paths = dirFor("clear");
+	const { log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	assert.equal(existsSync(paths.snapshotPath), true);
+
+	// The cache is not browsing data a user thinks of as a logout: the snapshot
+	// must survive it.
+	let cleared = null;
+	await makeVault(fakeJar([]), fakeCipher(), paths, log, {
+		clearSessionData: async (what) => {
+			cleared = what;
+		},
+	}).clearBrowsingData("cache");
+	assert.equal(cleared, "cache");
+	assert.equal(
+		existsSync(paths.snapshotPath),
+		true,
+		"clearing the cache logs nobody out",
+	);
+
+	// Cookies and everything: the file is gone BEFORE the clear reports success.
+	let snapshotGoneWhenClearing = null;
+	await makeVault(fakeJar([]), fakeCipher(), paths, log, {
+		clearSessionData: async () => {
+			snapshotGoneWhenClearing = !existsSync(paths.snapshotPath);
+		},
+	}).clearBrowsingData("cookies");
+	assert.equal(
+		snapshotGoneWhenClearing,
+		true,
+		"the invalidation is durable before the clear resolves",
+	);
+
+	// Same for everything, and the invalidation does not need a keychain: with the
+	// cipher refusing, a clear must still remove what a restore would read.
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	await makeVault(
+		fakeJar([]),
+		fakeCipher({ available: false }),
+		paths,
+		log,
+	).clearBrowsingData("everything");
+	assert.equal(existsSync(paths.snapshotPath), false);
+});
+
+test("a clear that lands during a restore runs after it, so nothing is written back after the user asked", async () => {
+	const paths = dirFor("clear-race");
+	const { log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+
+	const order = [];
+	const jar = fakeJar([]);
+	const slowJar = {
+		...jar,
+		async writeCookie(params) {
+			order.push("restore-write");
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			return jar.writeCookie(params);
+		},
+	};
+	const vault = makeVault(slowJar, fakeCipher(), paths, log, {
+		clearSessionData: async () => {
+			order.push("clear");
+		},
+	});
+	const restoring = vault.restore();
+	const clearing = vault.clearBrowsingData("cookies");
+	await Promise.all([restoring, clearing]);
+	assert.deepEqual(
+		order.slice(-1),
+		["clear"],
+		"the clear is serialised after the restore",
+	);
+	assert.equal(existsSync(paths.snapshotPath), false);
+});
+
+test("a newer persistent cookie is never overwritten by the older session snapshot", async () => {
+	const paths = dirFor("newer-cookie");
+	const { log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+
+	// The site replaced its session cookie with a persistent one between the two
+	// runs, so the jar has a same-identity entry that is newer than the snapshot.
+	const jar = fakeJar([
+		{ ...cookiesFor()[0], session: false, expires: Date.now() / 1000 + 600 },
+	]);
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(report.restored, 1, "only the partitioned one is restored");
+	assert.deepEqual(report.refused, [
+		{ name: "session_plain", reason: "newer-persistent-cookie-present" },
+	]);
+	assert.deepEqual(
+		jar.writes.map((w) => w.name),
+		["session_partitioned"],
+	);
+});
+
+test("restoring the newest value is the whole point: the snapshot holds what the jar held", async () => {
+	const paths = dirFor("rotation");
+	const { log } = collector();
+	await makeVault(
+		fakeJar([{ ...cookiesFor()[0], value: "rotated" }]),
+		fakeCipher(),
+		paths,
+		log,
+	).snapshot();
+	const jar = fakeJar([]);
+	await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(jar.writes[0].value, "rotated");
+});
+
+test("a read-back that disagrees is reported as drift rather than counted as restored", async () => {
+	const paths = dirFor("drift");
+	const { lines, log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	const jar = fakeJar([]);
+	const lying = {
+		...jar,
+		async writeCookie(params) {
+			await jar.writeCookie(params);
+			// The site's own write wins, as it would if something rewrote the cookie
+			// in the moment between the restore and the read-back.
+			const stored = jar.cookies.find((cookie) => cookie.name === params.name);
+			if (stored) stored.secure = !stored.secure;
+		},
+	};
+	const report = await makeVault(lying, fakeCipher(), paths, log).restore();
+	assert.equal(report.restored, 2);
+	assert.equal(report.drifted.length, 2);
+	assert.match(lines.join("\n"), /drifted/);
+});
+
+test("live values never reach the log", async () => {
+	const paths = dirFor("logging");
+	const { lines, log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	const jar = fakeJar([cookiesFor()[2]]);
+	await makeVault(jar, fakeCipher(), paths, log).restore();
+	const text = lines.join("\n");
+	for (const value of ["v1", "v2", "v3"]) {
+		assert.equal(
+			text.includes(value),
+			false,
+			`a cookie value (${value}) reached the log`,
+		);
+	}
+	assert.match(text, /restored 2 of 2/);
+});
+
+test("the snapshot and the marker are private files, and the snapshot is not the plaintext", async () => {
+	const paths = dirFor("modes");
+	const { log } = collector();
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	const mode = statSync(paths.snapshotPath).mode & 0o777;
+	assert.equal(mode, 0o600, "the snapshot is a credential at rest");
+	const raw = readFileSync(paths.snapshotPath, "utf8");
+	assert.equal(
+		raw.startsWith("cipher:"),
+		true,
+		"what lands on disk is the ciphertext",
+	);
+	assert.equal(raw.includes("v1"), false);
+});
+
+test("a jar that cannot be read is a refusal, not a silent empty snapshot", async () => {
+	const paths = dirFor("jar-failure");
+	const { lines, log } = collector();
+	const jar = {
+		async readAllCookies() {
+			throw new Error("the debugger detached");
+		},
+		async writeCookie() {},
+	};
+	const saved = await makeVault(jar, fakeCipher(), paths, log).snapshot();
+	assert.equal(saved.written, false);
+	assert.equal(existsSync(paths.snapshotPath), false);
+	assert.match(lines.join("\n"), /could not read the cookie jar/);
+
+	// The restore path refuses too, and says so rather than reporting "nothing to do".
+	await makeVault(fakeJar(cookiesFor()), fakeCipher(), paths, log).snapshot();
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.equal(report.outcome, "unreadable");
+	assert.equal(report.restored, 0);
+});
+
+test("a marker that cannot be written disables the vault rather than losing crash detection", async () => {
+	const { lines, log } = collector();
+	const missing = join(
+		root,
+		"missing",
+		"nested",
+		"session-cookie-generation.json",
+	);
+	const jar = fakeJar(cookiesFor());
+	const paths = { snapshotPath: join(root, "s.enc"), markerPath: missing };
+	// A directory where the marker file should go makes every write fail.
+	mkdirSync(missing, { recursive: true });
+	const vault = makeVault(jar, fakeCipher(), paths, log);
+	const report = await vault.restore();
+	assert.equal(report.outcome, "disabled");
+	assert.equal(report.restored, 0);
+	assert.equal(existsSync(paths.snapshotPath), false);
+
+	// And the same instance will not snapshot either: without the marker, a crash
+	// is undetectable, so a stored snapshot could be replayed after one.
+	const saved = await vault.snapshot();
+	assert.equal(saved.written, false);
+	assert.match(saved.reason, /marker/);
+	assert.match(lines.join("\n"), /not restoring anything/);
+});
+
+test("the debugger-backed jar imports one method and writes the parameters it is given", async () => {
+	const calls = [];
+	let attached = false;
+	const target = {
+		debugger: {
+			attach: (version) => {
+				if (attached)
+					throw new Error("Debugger is already attached to the target");
+				attached = true;
+				calls.push(["attach", version]);
+			},
+			isAttached: () => attached,
+			sendCommand: async (method, params) => {
+				calls.push([method, params]);
+				return method === "Network.getAllCookies"
+					? { cookies: [{ name: "a", session: true }] }
+					: { success: true };
+			},
+		},
+		loadAboutBlank: async () => calls.push(["loadAboutBlank"]),
+	};
+	const jar = createDebuggerCookieJar(target);
+	assert.deepEqual(await jar.readAllCookies(), [{ name: "a", session: true }]);
+	await jar.writeCookie({ name: "a", partitionKey: PARTITION_TENANT });
+	assert.deepEqual(
+		calls[0],
+		["loadAboutBlank"],
+		"a view needs a document before CDP answers",
+	);
+	assert.deepEqual(calls[1], ["attach", "1.3"]);
+	assert.equal(
+		calls.filter(([method]) => method === "attach").length,
+		1,
+		"a second read reuses the attachment instead of attaching twice, which Electron refuses",
+	);
+
+	// An attachment somebody else already holds is adopted rather than re-attached.
+	const adopted = createDebuggerCookieJar({
+		debugger: {
+			attach: () => {
+				throw new Error("Debugger is already attached to the target");
+			},
+			isAttached: () => true,
+			sendCommand: async () => ({ cookies: [] }),
+		},
+		loadAboutBlank: async () => {
+			throw new Error("the document is already there");
+		},
+	});
+	assert.deepEqual(await adopted.readAllCookies(), []);
+
+	// A refusal from Chromium is an error for that cookie, with its own reason.
+	const refusing = createDebuggerCookieJar({
+		debugger: {
+			attach: () => {},
+			isAttached: () => true,
+			sendCommand: async () => ({ success: false }),
+		},
+		loadAboutBlank: async () => {},
+	});
+	await assert.rejects(
+		() => refusing.writeCookie({ name: "a" }),
+		/the browser refused the cookie/,
+	);
+});
+
+test("the one adjustment this design makes is reported, and nothing else may move", async () => {
+	// A Secure cookie set from a trustworthy-but-insecure origin (http://localhost,
+	// measured) cannot be written back with an insecure source scheme at all:
+	// Chromium refuses it. The Secure attribute itself is preserved and the source
+	// scheme is raised to match, which is the stricter direction — and it is named
+	// in the report rather than left for a reader to notice.
+	const paths = dirFor("adjusted");
+	const { log } = collector();
+	const trustworthyInsecure = {
+		...cookiesFor()[0],
+		name: "secure_from_insecure_source",
+		secure: true,
+		sourceScheme: "NonSecure",
+		sourcePort: 1234,
+	};
+	await makeVault(
+		fakeJar([trustworthyInsecure]),
+		fakeCipher(),
+		paths,
+		log,
+	).snapshot();
+	const jar = fakeJar([]);
+	const report = await makeVault(jar, fakeCipher(), paths, log).restore();
+	assert.deepEqual(report.adjusted, [
+		{
+			name: "secure_from_insecure_source",
+			reason:
+				"secure cookie from an insecure source: source scheme raised from NonSecure to Secure",
+		},
+	]);
+	assert.deepEqual(
+		report.drifted,
+		[],
+		"the write's own parameters are what the read-back checks",
+	);
+	const write = jar.writes[0];
+	assert.equal(
+		write.secure,
+		true,
+		"Secure is preserved, which is the promised attribute",
+	);
+	assert.equal(write.sourceScheme, "Secure");
+	assert.equal(write.sourcePort, 443);
+	assert.equal(write.url, "https://app.example/");
+});
+
+test("attributeDrift and cookieIdentity compare identity and the promised attributes", () => {
+	const stored = storedCookieFor(cookiesFor()[1]).cookie;
+	const live = cookiesFor()[1];
+	assert.equal(attributeDrift(stored, live), null);
+	assert.equal(cookieIdentity(stored), cookieIdentity(live));
+	assert.match(attributeDrift(stored, { ...live, value: "other" }), /value/);
+	assert.match(
+		attributeDrift(stored, { ...live, partitionKey: null }),
+		/partition/,
+	);
+	assert.match(attributeDrift(stored, { ...live, secure: false }), /secure/);
+});
+
+test("a partition key with only a top-level site is not representable", () => {
+	assert.deepEqual(partitionKeyForWrite({ partitionKey: undefined }).key, null);
+	assert.equal(
+		partitionKeyForWrite({
+			partitionKey: { topLevelSite: "https://a.example" },
+		}).ok,
+		false,
+	);
+	assert.equal(
+		partitionKeyForWrite({
+			partitionKey: {
+				topLevelSite: "https://a.example",
+				hasCrossSiteAncestor: false,
+			},
+		}).ok,
+		true,
+	);
+	assert.equal(
+		partitionKeyForWrite({
+			partitionKey: {
+				topLevelSite: "https://a.example",
+				hasCrossSiteAncestor: false,
+			},
+			partitionKeyOpaque: true,
+		}).ok,
+		false,
+	);
+});
