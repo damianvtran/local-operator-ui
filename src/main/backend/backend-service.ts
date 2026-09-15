@@ -1007,6 +1007,40 @@ export class BackendServiceManager {
 	 * forbidden from spawning is still allowed to discover).
 	 */
 	private async discoverAndAttach(): Promise<boolean> {
+		const adopted = await this.adoptFirstUsableDaemon();
+		/*
+		 * WHY the probe loop is armed HERE and not only in `startOwned()`.
+		 *
+		 * `src/main/index.ts` calls this (through `checkExistingBackend()`) at
+		 * startup and calls `start()` ONLY when discovery found nothing - so an app
+		 * that adopted the operator's daemon finished starting with no interval at
+		 * all. The status then froze for the life of the app: the row kept naming
+		 * the adopted pid (and its version) after that process was gone,
+		 * `DETACHED_AFTER_MS` never promoted it to "stopped", nothing re-discovered
+		 * a daemon the operator started later without an app restart, and the
+		 * connectivity banner - whose only entry is an unreachable state - could
+		 * never appear, so the Retry that would run `reconnectNow()` was unreachable
+		 * in exactly the state that needed it (QA round 3, Q-1; review round 3,
+		 * R3-1).
+		 *
+		 * Adoption is what arms it, at every adoption: the record-backed candidate
+		 * here and the deprecated pre-record fallback this method reaches, which
+		 * publishes the same attachment. `startHealthCheck()` is idempotent - it
+		 * clears any existing interval first - so the owned path's own call, a
+		 * re-attach after a recovery and the three existing call sites stay
+		 * harmless.
+		 */
+		if (adopted) this.startHealthCheck();
+		return adopted;
+	}
+
+	/**
+	 * The discovery sweep and the adoption it ends in.
+	 *
+	 * {@link discoverAndAttach} owns what a successful attach implies for the
+	 * app; this owns which daemon is found, and why the rest are refused.
+	 */
+	private async adoptFirstUsableDaemon(): Promise<boolean> {
 		if (this.isAppClosing) return false;
 		this.discoveryWedged = [];
 		if (this.remoteConfigured) {
@@ -1658,10 +1692,16 @@ export class BackendServiceManager {
 			 * Nothing could be established: no record, and the address either did
 			 * not answer or was answered by a process that is not this child.
 			 * Registering a guess is the failure mode this whole module exists to
-			 * remove, so the manager reports and leaves the state alone.
+			 * remove, so the manager reports and leaves the state alone - and the
+			 * sentence below names what that means for the row: nothing
+			 * re-registers this child, so a later discovery pass can only re-find
+			 * it as an EXTERNAL daemon (`owned: false`, no ownership re-derived).
+			 * It used to promise the daemon "stays unregistered until the next
+			 * probe", which is a re-registration that does not exist (review
+			 * round 3, R3-4).
 			 */
 			logger.warn(
-				`Started a daemon at ${this.backendUrl} (pid ${child.pid}) but could not establish its identity; it stays unregistered until the next probe.`,
+				`Started a daemon at ${this.backendUrl} (pid ${child.pid}) but could not establish its identity; it is left unregistered rather than guessed, and a later discovery pass can only re-find it as a DISCOVERED daemon - not as the child this app started.`,
 				LogFileType.BACKEND,
 			);
 			return;
@@ -2253,8 +2293,39 @@ export class BackendServiceManager {
 					this.notifyBackendReady();
 					return;
 				}
+				/*
+				 * WHAT the probe found is folded into the state on EVERY branch, not only
+				 * on `identified`.
+				 *
+				 * Recovery is the only path a renderer can trigger (`reconnectNow()`,
+				 * the banner's Retry), and it is the only path that can correct a stale
+				 * attachment when nothing ticks: dropping a `failed`/`pid-dead` verdict
+				 * here left the machine on `attached` while the probe had just answered
+				 * that the daemon was gone, so `reconnectNow()` returned the same stale
+				 * pid and detail it was asked to refresh - a Retry that could not retry,
+				 * and a status claiming a dead daemon was connected (QA round 3, Q-2).
+				 *
+				 * A pid that is gone is EVIDENCE rather than a timeout to interpret, and
+				 * is recorded as such - the same rule `checkBackendHealth` applies before
+				 * it comes here, which is why the two cannot disagree about what a dead
+				 * process means.
+				 */
 				const selectedPid = this.daemonState.snapshot().pid;
-				if (selectedPid && pidLiveness(selectedPid) !== "dead") return;
+				const processGone =
+					selectedPid !== null && pidLiveness(selectedPid) === "dead";
+				const before = this.daemonState.snapshot();
+				this.daemonState.observe(
+					processGone ? { kind: "pid-dead" } : observation,
+				);
+				const after = this.daemonState.snapshot();
+				// The same push discipline the tick uses: a probe that found what the
+				// last one found is not news.
+				if (after.state !== before.state || after.detail !== before.detail) {
+					this.notifyStatus();
+				}
+				// A process that is still there is not ours to replace on a failed
+				// probe: paced and retried, never spawned over.
+				if (!processGone) return;
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
 			// is not ours to kill just because HTTP timed out.

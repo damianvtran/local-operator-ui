@@ -630,9 +630,19 @@ test("an unpaired app does not adopt a healthy backend it can never authenticate
 	}
 });
 
-test("a paired app adopts the configured backend, and only once it accepts the token (Q-1)", async () => {
+test("a paired app adopts the configured backend, and only once it accepts the token (Q-1)", async (t) => {
 	const saved = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
 	const pairingToken = "b".repeat(64);
+	/*
+	 * A manager that ATTACHES now arms the probe loop (round 3, Q-1), so it owns
+	 * a live interval - and a case that adopts and walks away would hold this
+	 * file's process open forever. Torn down from the test's own hook, so a
+	 * failing assertion cannot leave it behind either.
+	 */
+	let adopting = null;
+	t.after(async () => {
+		if (adopting) await adopting.stop(true);
+	});
 	process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = pairingToken;
 	try {
 		state.healthy = true;
@@ -652,6 +662,7 @@ test("a paired app adopts the configured backend, and only once it accepts the t
 		// Now the server holds the token the app was paired with.
 		state.pairedToken = pairingToken;
 		const manager = new BackendServiceManager();
+		adopting = manager;
 		assert.equal(await manager.checkExistingBackend(), true);
 		assert.equal(
 			manager.isUsingExternalBackend(),
@@ -691,25 +702,50 @@ test("adoption never probes an origin other than the one the app was configured 
 	 * daemon is the one a record described. Adoption is: enumerate the records,
 	 * require `/health` to report the record's own `instance_id`, require a
 	 * bearer the daemon accepts, and only then rotate onto it.
+	 *
+	 * The slice below is the RECORD-BACKED path - the sweep that enumerates and
+	 * ranks the records, plus the candidate attach - and ends where the
+	 * deprecated pre-record fallback is declared. It used to end at
+	 * `authenticatesAgainst(`, which left `legacyFixedPortAdoption` outside the
+	 * slice: that method DOES fetch `${backendUrl}${HEALTH_PATH}` directly (it
+	 * has no record to answer for it, which is what makes it deprecated), so
+	 * the message claimed more than the slice checked. The positive assertion
+	 * after it pins where that one direct fetch is allowed to live.
 	 */
 	const adoption = source.slice(
-		source.indexOf("async discoverAndAttach"),
-		source.indexOf("private async authenticatesAgainst("),
+		source.indexOf("async adoptFirstUsableDaemon"),
+		source.indexOf("private async legacyFixedPortAdoption("),
 	);
 	assert.match(
 		adoption,
 		/probe|discoverDaemons/,
-		"adoption must go through discovery, never a fetch of its own",
+		"the record-backed adoption path must go through discovery, never a fetch of its own",
 	);
 	assert.doesNotMatch(
 		adoption,
 		/fetch\(/,
-		"the adoption path must not fetch an origin directly: identity comes from the record, through the probe",
+		"the record-backed adoption path must not fetch an origin directly: identity comes from the record, through the probe",
 	);
 	assert.doesNotMatch(
 		adoption,
 		/https?:\/\/[a-z0-9.:]+/i,
 		"no literal origin to fall back to",
+	);
+	/*
+	 * The one direct fetch adoption still makes, pinned to the method that is
+	 * allowed to make it. Without this pairing the negative assertion above
+	 * would be reworded again the moment somebody moved the fetch, because
+	 * nothing states where it belongs: the pre-record fallback, reachable only
+	 * when the record directory is empty.
+	 */
+	const legacyAdoption = source.slice(
+		source.indexOf("private async legacyFixedPortAdoption("),
+		source.indexOf("private async authenticatesAgainstBackend("),
+	);
+	assert.match(
+		legacyAdoption,
+		/fetch\(/,
+		"the deprecated pre-record fallback is where a direct fetch belongs, because it has no record to identify the daemon with",
 	);
 	// The identity half of the rule, from the module that owns it.
 	const discoverySource = await readFile(
