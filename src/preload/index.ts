@@ -5,8 +5,11 @@ import type { BackendUpdateInfo } from "../main/update-service";
 import type {
 	DesktopMediaRequest,
 	DesktopRequest,
+	DesktopStreamEvent,
 } from "../shared/desktop-contract";
+import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 
 // Custom APIs for renderer
 const api = {
@@ -23,10 +26,78 @@ const api = {
 			visible: boolean;
 			focused: boolean;
 		}) => ipcRenderer.invoke("desktop-watch-heartbeat", args),
+		/**
+		 * Tell main this pane has STOPPED displaying `sessionId` (review round 2,
+		 * R2-4).
+		 *
+		 * Fired from the watch lease's cleanup, so navigating away from a
+		 * conversation withdraws the machine-wide claim that it is on screen. Without
+		 * it the last heartbeat stood until the window closed, and the backend —
+		 * which treats fresh presence as authoritative — suppressed that
+		 * conversation's banner while no pane displayed it.
+		 *
+		 * Fire-and-forget: the teardown of an effect cannot await, and a withdrawal
+		 * that is lost costs the same as the absence of this call, which is the
+		 * behaviour it is replacing.
+		 */
+		releaseWatchHeartbeat: (args: { sessionId: string }) =>
+			ipcRenderer.invoke("desktop-watch-release", args),
 		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
-		onOpenConversation: (callback: (sessionId: string) => void) => {
+		/**
+		 * The conversation main launched this window to show, read from THIS
+		 * process's argv (`webPreferences.additionalArguments`, set only when the
+		 * window was created for a click).
+		 *
+		 * A synchronous value rather than an event, and that is the whole point
+		 * (B3): the renderer rehydrates its persisted active conversation and paints
+		 * it in the first frame, so an id that arrives after the load shows the user
+		 * the wrong conversation and then swaps it. `null` on an ordinary launch.
+		 */
+		initialSession: readOpenSessionArgv(process.argv),
+		/**
+		 * Whether main created this window to open the CATALOGUE, read from the same
+		 * argv as `initialSession` and for the same reason (review round 2, R2-1).
+		 *
+		 * A second field rather than an overloaded `initialSession`, because the two
+		 * intents are no longer the same value: `initialSession: null` on an ordinary
+		 * launch means "restore what you had open", and that is exactly the wrong
+		 * answer for a click on a burst digest. Resolved through
+		 * `readLaunchTarget`, so the precedence lives in one place.
+		 */
+		initialCatalogue: readLaunchTarget(process.argv).kind === "catalogue",
+		feed: {
+			subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => {
+				const handler = (_event: unknown, frame: DesktopFeedFrame) =>
+					onFrame(frame);
+				ipcRenderer.on("desktop-feed-frame", handler);
+				return () => {
+					ipcRenderer.removeListener("desktop-feed-frame", handler);
+				};
+			},
+			watchState: (onState: (state: { connected: boolean }) => void) => {
+				const handler = (_event: unknown, state: { connected: boolean }) =>
+					onState(state);
+				ipcRenderer.on("desktop-feed-state", handler);
+				// Ask for the CURRENT state as well as every transition: a subscriber
+				// that mounts after a reconnect would otherwise render "disconnected"
+				// until the next transition, which may never come on a healthy feed.
+				ipcRenderer.send("desktop-feed-watch");
+				return () => {
+					ipcRenderer.removeListener("desktop-feed-state", handler);
+				};
+			},
+		},
+		onOpenConversation: (callback: (sessionId: string | null) => void) => {
+			/*
+			 * `null` is a TARGET, not a malformed payload: a burst digest's click
+			 * names several conversations and opens the catalogue, which the store
+			 * models as "no active session". Dropping it here would turn that click
+			 * back into the silent no-op this path exists to remove, so the filter
+			 * admits an explicit null and refuses only a value that is neither.
+			 */
 			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
 				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
+				else if (payload?.sessionId === null) callback(null);
 			};
 			ipcRenderer.on("desktop-open-conversation", handler);
 			return () => {
@@ -36,12 +107,10 @@ const api = {
 		stream: {
 			subscribe: (
 				args: { sessionId: string; epoch?: string; afterSeq?: number },
-				onEvent: (event: {
-					streamId: string;
-					kind: "data" | "error" | "end";
-					data?: string;
-					detail?: string;
-				}) => void,
+				// The contract's own type rather than a fourth transcription of the
+				// frame: a local copy is where a new field (here `status`, which
+				// carries a 404) gets dropped silently between main and the renderer.
+				onEvent: (event: DesktopStreamEvent) => void,
 			): { streamId: Promise<string>; dispose: () => void } => {
 				/*
 				 * `settled` is the ONLY handle anything here waits on, and the reason
@@ -73,15 +142,7 @@ const api = {
 						});
 						return null;
 					});
-				const handler = (
-					_event: unknown,
-					frame: {
-						streamId: string;
-						kind: "data" | "error" | "end";
-						data?: string;
-						detail?: string;
-					},
-				) => {
+				const handler = (_event: unknown, frame: DesktopStreamEvent) => {
 					// Frames are scoped to their own subscription: a late frame from
 					// a dead stream must not land on a new one's consumer.
 					void settled.then((streamId) => {
