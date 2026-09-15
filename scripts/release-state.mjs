@@ -45,7 +45,7 @@
  * a release as `released`, and neither is in `on:`.
  */
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 import {
 	PLATFORM_INSTALLERS,
 	PLATFORM_UPDATE_METADATA,
@@ -401,10 +401,7 @@ const MODES = {
 	finalize: finalizeRelease,
 };
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (isEntryPoint(import.meta.url)) {
 	const mode = process.argv[2];
 	try {
 		if (!Object.hasOwn(MODES, mode))
