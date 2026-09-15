@@ -81,6 +81,14 @@ const childEnv = {
 	LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 	LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 	LOCAL_OPERATOR_NO_TERMINAL_TITLE: "1",
+	// The app's own configuration, read at runtime by the main process. Passed in
+	// the environment rather than written to the repository's gitignored `.env`:
+	// a `.env` left behind by a rig changes what every other suite's config
+	// validation sees, which is a contaminated run rather than evidence.
+	VITE_LOCAL_OPERATOR_API_URL: process.env.VITE_LOCAL_OPERATOR_API_URL,
+	// `pnpm dev`'s own setting, and the reason this rig can never start a backend
+	// of its own: the subject is the app's view of a daemon that is already there.
+	VITE_DISABLE_BACKEND_MANAGER: "true",
 };
 
 const say = (text) => console.log(text);
@@ -120,15 +128,37 @@ async function stop(entry) {
 	});
 }
 
-/** One CDP call over the page's own WebSocket, then close it. */
-async function cdp(expression) {
+/**
+ * The APP's page target, out of everything the debug port lists.
+ *
+ * `/json/list` is not one entry: Electron's own internals are listed beside the
+ * window, and this rig's first run picked an `about:blank` one - a 0x0 viewport,
+ * an empty body, and a screenshot that never came back, which reads exactly like
+ * the app failing to paint. The window is the target whose URL is the app's own
+ * document; anything else is not the surface this evidence is about.
+ */
+async function findPage() {
 	const list = await (
 		await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`)
 	).json();
-	const page = list.find(
+	const pages = list.filter(
 		(target) => target.type === "page" && target.webSocketDebuggerUrl,
 	);
-	if (!page) throw new Error("no page target on the debug port");
+	const page = pages.find(
+		(target) => !/^(about:blank|devtools:|chrome:)/.test(target.url ?? ""),
+	);
+	if (!page)
+		throw new Error(
+			`no app page target on the debug port; saw ${JSON.stringify(
+				pages.map((target) => target.url),
+			)}`,
+		);
+	return page;
+}
+
+/** One CDP call over the page's own WebSocket, then close it. */
+async function cdp(expression) {
+	const page = await findPage();
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
 	await new Promise((resolve, reject) => {
 		socket.addEventListener("open", resolve, { once: true });
@@ -163,36 +193,42 @@ async function cdp(expression) {
 }
 
 async function screenshot(path) {
-	const list = await (
-		await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`)
-	).json();
-	const page = list.find(
-		(target) => target.type === "page" && target.webSocketDebuggerUrl,
-	);
+	const page = await findPage();
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
 	await new Promise((resolve, reject) => {
 		socket.addEventListener("open", resolve, { once: true });
 		socket.addEventListener("error", reject, { once: true });
 	});
+	/*
+	 * `Page.enable` first: the capture is a Page-domain request, and a target that
+	 * has not been enabled for it answers nothing at all - which surfaces as a
+	 * timeout rather than as an error. `fromSurface: true` is the default and is
+	 * written out here because it is the reason a never-shown window still yields
+	 * a complete frame.
+	 */
 	const data = await new Promise((resolve, reject) => {
 		const timer = setTimeout(
 			() => reject(new Error("screenshot timed out")),
 			30_000,
 		);
+		const send = (id, method, params) =>
+			socket.send(JSON.stringify({ id, method, params }));
 		socket.addEventListener("message", (event) => {
 			const message = JSON.parse(event.data);
-			if (message.id !== 1) return;
+			if (message.id === 1) {
+				send(2, "Page.captureScreenshot", {
+					format: "png",
+					fromSurface: true,
+					captureBeyondViewport: false,
+				});
+				return;
+			}
+			if (message.id !== 2) return;
 			clearTimeout(timer);
 			if (message.error) reject(new Error(JSON.stringify(message.error)));
 			else resolve(message.result.data);
 		});
-		socket.send(
-			JSON.stringify({
-				id: 1,
-				method: "Page.captureScreenshot",
-				params: { format: "png" },
-			}),
-		);
+		send(1, "Page.enable", {});
 	});
 	socket.close();
 	writeFileSync(path, Buffer.from(data, "base64"));
@@ -211,6 +247,14 @@ const READ_PAGE = `(() => {
 		viewport: window.innerWidth + "x" + window.innerHeight,
 		banner: banner ? banner.innerText.replace(/\\s+/g, " ").trim() : null,
 		session_rows: rows.length,
+		/*
+		 * The seeded transcript's own first row, read out of the page: the sidebar
+		 * shows a title derived from the conversation, so this is what proves the
+		 * app loaded the CONTENT rather than painting an empty state. Deliberately
+		 * not keyed on a class name - a selector this rig invented would be a claim
+		 * about the app's DOM rather than about what a reader sees.
+		 */
+		has_seeded_row: /row 0000/.test(text),
 		says_offline: /Server is offline|not connected|stopped/i.test(text),
 		first_lines: text.split("\\n").filter(Boolean).slice(0, 12),
 	});
@@ -253,20 +297,26 @@ try {
 	say("# launching the app in headless mode over CDP");
 	app = launch("node_modules/.bin/electron", [
 		".",
-		`--remote-debugging-port=${DEBUG_PORT}`,
-		`--user-data-dir=${PROFILE}`,
-		`--window-size=${WIDTH}x${HEIGHT}`,
+			`--remote-debugging-port=${DEBUG_PORT}`,
+			`--user-data-dir=${PROFILE}`,
+			`--window-size=${WIDTH}x${HEIGHT}`,
 	]);
-	// The app must attach to the seeded daemon, not spawn one, and must reach the
-	// port this rig chose: both are build-time values in this repository, so they
-	// are asserted rather than assumed.
-	const envFile = join(REPO, ".env");
-	const envText = existsSync(envFile) ? readFileSync(envFile, "utf8") : "";
-	if (!envText.includes(`:${DAEMON_PORT}`)) {
+	/*
+	 * The app must attach to the seeded daemon and never spawn one of its own. The
+	 * API URL reaches the main process through the environment (this repository's
+	 * `.env` is a developer file and is NOT created by this rig - a stray one
+	 * changes what other suites' config validation sees, which is exactly the
+	 * contamination this comment exists to prevent), so the value is passed to the
+	 * child below and asserted here rather than assumed.
+	 */
+	if (
+		!Object.values(childEnv).includes(`http://127.0.0.1:${DAEMON_PORT}`) &&
+		process.env.VITE_LOCAL_OPERATOR_API_URL !==
+			`http://127.0.0.1:${DAEMON_PORT}`
+	)
 		throw new Error(
-			`.env must point VITE_LOCAL_OPERATOR_API_URL at the scratch daemon (port ${DAEMON_PORT}); run the build once with ATTACH_FRAME_PORT=${DAEMON_PORT}`,
+			`set VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:${DAEMON_PORT} for this run (and rebuild with it unset: the URL is read at runtime)`,
 		);
-	}
 
 	// Attached: wait for the sidebar to hold the seeded conversation.
 	let attached = null;
@@ -274,11 +324,8 @@ try {
 	while (Date.now() < attachDeadline) {
 		try {
 			const page = JSON.parse(await cdp(READ_PAGE));
-			if (page.session_rows > 0) {
-				attached = page;
-				break;
-			}
 			attached = page;
+			if (page.session_rows > 0 || page.has_seeded_row) break;
 		} catch {
 			/* the debugger is not up yet */
 		}
