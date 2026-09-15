@@ -413,14 +413,19 @@ test("the assumed line and the Dock clause are one sentence, on the platform tha
 	 *
 	 * Both spellings are pinned as whole sentences, because the join is the part the
 	 * sync introduced and the Linux one is where the mac-only clause must not be.
+	 * The aside trails the sentence since design round 4's D18 measured where an
+	 * infix put the mode's colon and the facts a wrapped row starts with.
 	 */
 	assert.equal(
-		describeWindowLaunch(plan({ argv: ["--user-data-dir=/tmp/rig"] }), "darwin"),
-		"window mode headless (assumed: --user-data-dir marks an agent-driven launch, and no window mode was named): 1380x900, window created and never shown, page throttling off, no Dock tile",
+		describeWindowLaunch(
+			plan({ argv: ["--user-data-dir=/tmp/rig"] }),
+			"darwin",
+		),
+		"window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile (mode assumed: --user-data-dir marks an agent-driven launch, and no window mode was named)",
 	);
 	assert.equal(
 		describeWindowLaunch(plan({ argv: ["--user-data-dir=/tmp/rig"] }), "linux"),
-		"window mode headless (assumed: --user-data-dir marks an agent-driven launch, and no window mode was named): 1380x900, window created and never shown, page throttling off",
+		"window mode headless: 1380x900, window created and never shown, page throttling off (mode assumed: --user-data-dir marks an agent-driven launch, and no window mode was named)",
 	);
 });
 
