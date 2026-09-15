@@ -1,0 +1,106 @@
+{
+  "frame": {
+    "css": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 572
+    },
+    "dpr": 2,
+    "device": {
+      "x": 0,
+      "y": 0,
+      "width": 1600,
+      "height": 1144
+    },
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  "at": 164536,
+  "viewport": "800x572",
+  "active": "TEXTAREA",
+  "stack": null,
+  "chips": [],
+  "observed": {
+    "columnPx": 520,
+    "greeting": 0,
+    "smallView": true,
+    "chipsLaidOut": 0,
+    "chipsPainted": 0,
+    "chipsInert": 0,
+    "rowsLaidOut": 0,
+    "rowsPainted": 0
+  },
+  "expected": {
+    "columnPx": 520,
+    "smallView": true,
+    "greeting": 0,
+    "chipsPainted": 0,
+    "rule": "chat-content.tsx:343 sets isSmallView from a container measurement of the chat column (contentRect.width < 550); message-input.tsx:1109-1110 paints the empty-chat prompt only on !isSmallView. A column narrower than 550 is the intended small view: one compact composer, no greeting, no suggestion stack."
+  },
+  "holds": {
+    "settled": true,
+    "smallView": true,
+    "greeting": true,
+    "noLoadingClaim": false,
+    "all": false
+  },
+  "settlement": {
+    "now": 33592,
+    "reads": 9,
+    "layoutChanges": 1,
+    "lastChangeAt": 23967,
+    "stableForMs": 9625,
+    "settleWindowMs": 3000,
+    "settled": true,
+    "noLoadingClaimInAnyState": false,
+    "states": [
+      {
+        "at": 3119,
+        "lastSeenAt": 19207,
+        "reads": 4,
+        "columnWidth": null,
+        "bandY": null,
+        "bandHeight": null,
+        "composerY": null,
+        "composerHeight": null,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": null
+      },
+      {
+        "at": 23967,
+        "lastSeenAt": 33592,
+        "reads": 5,
+        "columnWidth": 520,
+        "bandY": 404,
+        "bandHeight": 168,
+        "composerY": 412,
+        "composerHeight": 144,
+        "stackTop": null,
+        "stackHeight": null,
+        "greeting": 0,
+        "skeleton": 0,
+        "chipLabels": [],
+        "rowsLaidOut": null,
+        "rowsInside": null,
+        "boundaryInGap": null,
+        "claims": {
+          "placeholders": 1,
+          "outsideBand": 1,
+          "shimmerBars": 3,
+          "captionVisible": true
+        }
+      }
+    ],
+    "note": "Every DISTINCT layout this page showed, with the span of readings that observed it. `at`/`lastSeenAt` are milliseconds since mount. `settled` means the reading that published this file was taken at least `settleWindowMs` after the last observed layout change, so it is not a pre-settlement snapshot; a state other than the last one is a TRANSIENT and is labelled by its own span."
+  },
+  "pageProbe": null,
+  "pageProbeNote": "pageProbe is null in this pass's readbacks. `draft-splash-viewport.html` publishes it last as a single escaped JSON string, and this reader's output budget cut it on two of the eight reads; rather than ship some files with it and some without, all eight carry null and every field this set's table, its D2 check or its settlement record uses is a top-level field of the file below. The one reading that lived only there is `store.activeDraftKey`: `draft:17fadb82-8a2f-4dbf-8baf-9f2e1ff65b9b` on the after origin and `draft:6bbef56d-fe60-4b58-b308-280a0f1691dc` on the before origin, each with `activeSessionId: null`."
+}
