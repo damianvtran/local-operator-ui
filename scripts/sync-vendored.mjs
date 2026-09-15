@@ -49,6 +49,7 @@ const SOURCE_REPO = "damianvtran/local-operator";
  * inferring it from a directory listing.
  */
 export const VENDORED_FILES = [
+	{ from: "extension/src/driver/psl.gen.ts", to: "driver/psl.gen.ts" },
 	{ from: "extension/src/driver/access-flow.ts", to: "driver/access-flow.ts" },
 	{ from: "extension/src/driver/access-queue.ts", to: "driver/access-queue.ts" },
 	{ from: "extension/src/driver/ax-compact.ts", to: "driver/ax-compact.ts" },
@@ -65,19 +66,10 @@ export const VENDORED_FILES = [
 ];
 
 /**
- * Files under `driver/` that this repo does NOT vendor, and why.
- *
- * Recorded rather than left implicit: a reader who lists lop's `driver/` will
- * find `psl.gen.ts` and should be told it is a deliberate omission rather than
- * a forgotten file.
+ * Explicit exclusions remain in the manifest so re-pins cannot silently omit
+ * a required policy input. PSL data now travels under the same pin/hash gate.
  */
-const NOT_VENDORED = [
-	{
-		file: "extension/src/driver/psl.gen.ts",
-		reason:
-			"the 157 KB generated public-suffix data. The app does not ship it: a generated blob copied by hand is an artifact with no generator and no check, and this host injects the rules through configurePslRules() instead (fail-closed when absent). See PROVENANCE.patches.",
-	},
-];
+const NOT_VENDORED = [];
 
 /**
  * The declared adaptations applied to a vendored file.
@@ -95,7 +87,7 @@ export const PATCHES = [
 		id: "psl-injection",
 		marker: "export function configurePslRules(",
 		reason:
-			"the vendored module imports the full generated PSL (`./psl.gen`), which this host does not ship. The rules are injected once at host start instead, and an absent rule set fails CLOSED: no `domain` option is offered and no stored `domain` grant matches. Exact-origin, loopback-host and one-shot grants are unaffected, and `status.domain_scope` reports which state the host is in.",
+			"the vendored module imports the full generated PSL (`./psl.gen`), which the host now injects from the same pinned generated table. The pinned generated rules are injected once at host start, and an absent rule set in isolated tests fails CLOSED: no `domain` option is offered and no stored `domain` grant matches. Exact-origin, loopback-host and one-shot grants are unaffected, and `status.domain_scope` reports which state the host is in.",
 		hunks: [
 			{
 				search: 'import { PSL_RULES } from "./psl.gen";\n',
@@ -104,7 +96,7 @@ export const PATCHES = [
  * This file is the vendored copy of \`extension/src/driver/origin-policy.ts\` and
  * differs from it in ONE declared way: the public-suffix rules are injected
  * (configurePslRules) rather than imported from the generated \`psl.gen.ts\`,
- * which this host does not ship. Do not edit it by hand — \`scripts/check-vendored.mjs\`
+ * which the host now injects from the same pinned generated table. Do not edit it by hand — \`scripts/check-vendored.mjs\`
  * compares it against the manifest and will fail the build. Re-pinning is
  * \`scripts/sync-vendored.mjs --from <ref>\`, which re-applies this adaptation.
  */
