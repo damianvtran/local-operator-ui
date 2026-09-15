@@ -4,7 +4,7 @@ import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
 import { ConsentNotifier } from "./consent-notifier";
 import type { DriveableView } from "./electron-types";
-import { BrowserHost } from "./host";
+import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
@@ -310,8 +310,14 @@ export async function startBrowserHost(
 	// exist (the user agent must already be set: Electron documents that
 	// `setUserAgent` does not affect existing WebContents, so a restore that beat
 	// it would leave the first tab presenting the default Electron UA).
+	//
+	// NOT awaited. The call allocates every view and settles the active tab
+	// synchronously, so the strip is correct on the first paint; the pages then load
+	// under the host's own bounded background budget, which is what stops a file full
+	// of rows — or one page that never answers — from withholding the browser until
+	// the RPC server exists (review round 1, R5).
 	const recorded = readSession(sessionStore.filePath, log);
-	await host.restoreTabs(recorded);
+	host.restoreTabs(recorded);
 	if (recorded.length) {
 		log(
 			`[browser] restored ${recorded.length} tab(s) from ${SESSION_FILENAME}; every restored tab is user-owned and holds no handle (design 7.3)`,
@@ -473,16 +479,32 @@ export async function startBrowserHost(
 		const notifyChrome = (): void => {
 			options.window.webContents.send("browser-state-changed");
 		};
-		contents.on("did-start-loading", notifyChrome);
+		contents.on("did-start-loading", () => {
+			// A navigation is under way, so the last refusal is stale — otherwise the
+			// failure panel would outlive the retry the user just pressed.
+			host.clearLoadFailure(tabId);
+			notifyChrome();
+		});
 		contents.on("did-stop-loading", notifyChrome);
 		contents.on("page-title-updated", notifyChrome);
 		contents.on(
 			"did-fail-load",
-			(_event, _code, _description, _url, isMainFrame) => {
+			(_event, code, description, url, isMainFrame) => {
 				// Sub-frame failures are ordinary (an ad iframe), and this run's own error
 				// frame is a main-frame refusal, which is the one that changes the state the
 				// chrome shows.
-				if (isMainFrame) notifyChrome();
+				if (!isMainFrame) return;
+				// The remote document CANNOT report this: a refused main-frame load leaves
+				// Chromium's own blank surface in the view, so the reason travels in the
+				// projection and the chrome paints it (design round 1, D1).
+				if (isReportableLoadFailure(code)) {
+					host.recordLoadFailure(tabId, {
+						code,
+						description,
+						url,
+					});
+				}
+				notifyChrome();
 			},
 		);
 
@@ -498,6 +520,9 @@ export async function startBrowserHost(
 		// page-initiated ones are all covered.
 		contents.on("did-navigate", (_event, url) => {
 			registry.bumpEpoch(tabId);
+			// The tab is on a document now, so whatever the last navigation was refused
+			// for no longer describes what is on screen.
+			host.clearLoadFailure(tabId);
 			// Returning to an approved site must not expose logs buffered while
 			// an autonomous unapproved document occupied this same WebContents.
 			stopLogCapture(contents.id);
@@ -528,6 +553,8 @@ export async function startBrowserHost(
 				if (token) approvals.forgetDocument(token);
 				registry.forget(tabId);
 			}
+			// A failure recorded against a tab whose view died describes nothing.
+			host.clearLoadFailure(tabId);
 			// The same release the registry's own close performs. A view that is
 			// already destroyed makes the detach's own `try` a no-op and the child-view
 			// removal a no-op too, so this is safe to run on a death we did not ask for.

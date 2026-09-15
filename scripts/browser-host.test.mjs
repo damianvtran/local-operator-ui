@@ -85,6 +85,7 @@ const {
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
+	isReportableLoadFailure,
 	configurePslRules,
 	domainScopeAvailable,
 	registrableDomain,
@@ -2721,4 +2722,163 @@ test("owner_* without a proof is refused with the extension's own answer", async
 		"req-q2b",
 	);
 	assert.deepEqual(recovered, { ownership_version: 1, state: "unresolved" });
+});
+
+// ---- restore is allocated up front and bounded (review round 1, R5) ---------
+
+/** A registry whose every page load never settles, so nothing about the restore
+ * pass can be observed as accidental progress. */
+function makeHangingRegistry() {
+	const views = new Map();
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			// The one thing a real page can do that no bound can wait out.
+			view.webContents.loadURL = () => new Promise(() => {});
+			views.set(tabId, view);
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	return { registry, views };
+}
+
+test("a restore allocates the whole strip before it returns, and serves while a page hangs", async () => {
+	const { registry, views } = makeHangingRegistry();
+	const { host } = makeHost({ registry });
+	const recorded = [
+		{ owner: "user", active: false, entries: [{ url: "https://example.com/a" }], activeIndex: 0 },
+		{ owner: "user", active: true, entries: [{ url: "https://example.com/b" }], activeIndex: 0 },
+	];
+
+	const state = host.restoreTabs(recorded);
+
+	// Allocated, and the recorded active tab, before any page has loaded.
+	assert.equal(views.size, 2, "one view per recorded tab, immediately");
+	assert.equal(state.tabs.length, 2, "and the strip is complete on the first read");
+	const active = state.tabs.find((tab) => tab.active);
+	assert.equal(
+		active.url === "about:blank" || active.tabId === state.activeTabId,
+		true,
+		"the recorded active tab is the active one, even though its page has not loaded",
+	);
+	assert.equal(
+		registry.activeTab.tabId,
+		state.tabs[1].tabId,
+		"the SECOND recorded tab was the active one and it did not lose its place",
+	);
+
+	// The claim the round-1 finding is about: the host serves while a page hangs.
+	// Nothing here waits on `whenRestored`, and the page never answers.
+	const status = await host.dispatch("status", {}, "restore-status");
+	assert.ok(status && typeof status === "object", "the host answered while a page was hung");
+
+	// And the hydration pass is genuinely still outstanding, rather than having
+	// finished silently: it is a background obligation, not a startup gate.
+	const settled = await Promise.race([
+		host.whenRestored().then(() => "settled"),
+		Promise.resolve("still-loading"),
+	]);
+	assert.equal(settled, "still-loading", "the restore is still in flight, and the host did not wait for it");
+});
+
+test("an empty restore still comes back as the blank tab it always did", async () => {
+	const { host, registry } = makeHost();
+	const state = host.restoreTabs([]);
+	assert.equal(state.tabs.length, 1, "a first run opens one blank tab");
+	assert.equal(registry.count(), 1);
+	await host.whenRestored();
+});
+
+// ---- a refused load is published, per tab (design round 1, D1) --------------
+
+test("a main-frame load refusal is published for its tab, and cleared by the next load", () => {
+	const { host, registry } = makeHost();
+	const first = registry.create({ owner: "user" });
+	const second = registry.create({ owner: "agent", sessionId: "alice" });
+	assert.equal(host.chromeState().navFailure, null, "a healthy tab reports no failure");
+
+	host.recordLoadFailure(second.tabId, {
+		code: -324,
+		description: "ERR_EMPTY_RESPONSE",
+		url: "http://127.0.0.1:9/",
+	});
+	let state = host.chromeState();
+	assert.equal(
+		state.navFailure,
+		null,
+		"the failure panel belongs to the tab the user is looking at, not to a background tab",
+	);
+	assert.equal(
+		state.tabs.find((tab) => tab.tabId === second.tabId).failed,
+		true,
+		"but the strip marks the tab that failed, because its page area says nothing on its own",
+	);
+	assert.equal(
+		state.tabs.find((tab) => tab.tabId === first.tabId).failed,
+		false,
+		"and only that tab",
+	);
+
+	host.recordLoadFailure(first.tabId, {
+		code: -324,
+		description: "ERR_EMPTY_RESPONSE",
+		url: "http://127.0.0.1:9/",
+	});
+	state = host.chromeState();
+	assert.equal(state.navFailure.description, "ERR_EMPTY_RESPONSE");
+	assert.equal(state.navFailure.url, "http://127.0.0.1:9/", "the attempted address rides with it");
+
+	host.clearLoadFailure(first.tabId);
+	state = host.chromeState();
+	assert.equal(state.navFailure, null, "the next navigation on that tab retires the failure");
+	assert.equal(state.tabs.find((tab) => tab.tabId === first.tabId).failed, false);
+
+	// A closed tab cannot leave a failure behind for whatever reuses the id.
+	host.recordLoadFailure(first.tabId, {
+		code: -105,
+		description: "ERR_NAME_NOT_RESOLVED",
+		url: "http://nope.invalid/",
+	});
+	host.closeTab(first.tabId);
+	assert.equal(host.chromeState().navFailure, null, "a closed tab's failure goes with it");
+});
+
+test("a refused load is reported only when it is one a user can act on", () => {
+	// ERR_ABORTED is a stop, a redirect hop and a superseded navigation - browsing
+	// working, not a refusal - and ERR_ABORTED is emitted far more often than any
+	// other code on a normal session.
+	assert.equal(isReportableLoadFailure(-3), false, "ERR_ABORTED is not a failure to show");
+	assert.equal(isReportableLoadFailure(0), false, "a zero code names no failure");
+	assert.equal(isReportableLoadFailure(-324), true);
+	assert.equal(isReportableLoadFailure(-105), true);
+});
+
+// ---- who is asking travels as an id and nothing else (D2) -------------------
+
+test("a pending request names its requesting session, and never a non-session identity", () => {
+	const { host } = makeHost();
+	host.approvals.requestAccess("https://login.example.com/", "session:alice");
+	let state = host.chromeState();
+	assert.equal(
+		state.pendingConsent[0].requesterSessionId,
+		"alice",
+		"the bare session id travels, so the chrome can resolve the conversation title",
+	);
+	assert.ok(
+		!JSON.stringify(state.pendingConsent).includes("session:alice"),
+		"and the raw requester identity does not",
+	);
+
+	// A requester that is NOT a session identity is an authority-boundary value -
+	// the context falls back to a request id - and must never be published.
+	host.approvals.cancelAccess("https://login.example.com/", "session:alice");
+	host.approvals.requestAccess("https://login.example.com/", "request-7f3a");
+	state = host.chromeState();
+	assert.equal(
+		state.pendingConsent[0].requesterSessionId,
+		null,
+		"an internal request id is not a conversation and is not rendered as one",
+	);
 });

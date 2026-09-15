@@ -25,8 +25,63 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { unlink, writeFile } from "node:fs/promises";
 import { before, test } from "node:test";
 import { build } from "esbuild";
+
+/*
+ * Node has no `localStorage`, and `useCanonicalSessionsStore` is persisted: zustand's
+ * persist middleware writes through storage on every `setState`, so with nothing
+ * there the write throws inside the middleware. The three methods the browser
+ * actually provides are enough to exercise the store's real interface, and the
+ * tests clear it between cases. `composer-tabs.test.mjs` carries the same shim for
+ * the same reason.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
+/*
+ * The render probe for the chrome hook.
+ *
+ * `renderToStaticMarkup` is the only renderer this repo ships (there is no jsdom
+ * here, and this change is not the place to add one — see `composer-tabs.test.mjs`
+ * for the same call): the component BODY runs, so `useBrowserChrome`'s callbacks
+ * and refs are created, and effects do not, so nothing touches the network or
+ * `requestAnimationFrame` on its own. That is enough to call the hook's returned
+ * API by hand and watch what it delivers — which is what R4's fix is about.
+ */
+const PROBE = `
+	import { createElement } from "react";
+	import { renderToStaticMarkup } from "react-dom/server";
+	import { useBrowserChrome } from "./src/renderer/src/features/browser/hooks/use-browser-chrome";
+
+	import { BrowserConsentBar, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-bar";
+	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
+	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+
+	export function renderBrowserChrome() {
+		const captured = { chrome: null };
+		const Probe = () => {
+			captured.chrome = useBrowserChrome();
+			return null;
+		};
+		renderToStaticMarkup(createElement(Probe));
+		return captured.chrome;
+	}
+
+	export const render = (element) => renderToStaticMarkup(element);
+	export const el = createElement;
+	export { BrowserConsentBar, requesterLabel, BrowserLoadFailure, loadFailureSentence, useCanonicalSessionsStore };
+`;
 
 const bundle = await build({
 	stdin: {
@@ -42,6 +97,15 @@ const bundle = await build({
 			// the rule that keeps two dialogs from releasing each other's suppression
 			// is covered without a browser.
 			'export * from "./src/renderer/src/shared/browser-view-policy";',
+			// The consent-attention store is the same kind of module: a subscribe/
+			// publish pair with no DOM, which the app shell and the browser surface
+			// both read (review round 1, R8).
+			'export * from "./src/renderer/src/shared/browser-consent-attention";',
+			// The chrome hook, driven through a REAL React render so its own rules can
+			// be exercised: `renderToStaticMarkup` runs the component body (so the
+			// hook's callbacks and refs exist) without running effects, which is
+			// exactly what the rect scheduler needs to be observable. See the R4 test.
+			PROBE,
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -51,11 +115,50 @@ const bundle = await build({
 	write: false,
 	// `browser-view-policy.ts` imports React for its hooks; the module is imported
 	// but never renders, and the package resolves normally from here.
+	//
+	// The renderer's path aliases are declared by hand because esbuild cannot read
+	// tsconfig paths (`composer-tabs.test.mjs` records the same), React stays
+	// external so the bundle shares ONE copy with the server renderer — two copies
+	// give a component a different React and every render throws on an invalid hook
+	// call — and a stylesheet carries no assertion here, so it loads empty.
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	// `mainFields`/`conditions` so a dependency is taken from its ESM entry: several
+	// of these packages ship a CJS build that calls `require("react")` at import
+	// time, which the dynamic-require shim cannot serve because React is external.
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	loader: { ".css": "empty" },
+	jsx: "automatic",
 });
-const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+// Written to a real file rather than imported as a data: URL: the bundle now
+// imports React by bare specifier, and a data: URL has no base path for module
+// resolution. Removed again as soon as it is imported.
+const bundlePath = new URL("./_browser-chrome.bundle.mjs", import.meta.url);
+await writeFile(bundlePath, bundle.outputFiles[0].text);
+const mod = await import(bundlePath.href);
+await unlink(bundlePath);
 const {
+	renderBrowserChrome,
+	render,
+	el,
+	BrowserConsentBar,
+	requesterLabel,
+	BrowserLoadFailure,
+	loadFailureSentence,
+	useCanonicalSessionsStore,
+	noteConsentAttention,
+	clearConsentAttention,
+	consentAttentionSnapshot,
+	subscribeConsentAttention,
+	MAX_RESTORED_TABS,
+	MAX_RESTORED_ENTRIES,
+	MAX_RESTORED_PAGE_STATE_CHARS,
+	MAX_RESTORED_URL_CHARS,
+	MAX_SESSION_FILE_BYTES,
 	BrowserSessionStore,
 	SESSION_FILENAME,
 	SESSION_FILE_MODE,
@@ -479,4 +582,491 @@ test("a release is idempotent: a double-release cannot unbalance the count", () 
 	assert.equal(browserViewSuppressed(), true);
 	other();
 	assert.equal(browserViewSuppressed(), false);
+});
+
+// ---- a bounded, validated restore (review round 1, R5) ----------------------
+
+/** Write a session file and read it back through the shipped reader. */
+function readBack(name, tabs) {
+	const dir = join(root, `restore-${name}`);
+	mkdirSync(dir, { recursive: true });
+	const path = join(dir, SESSION_FILENAME);
+	writeFileSync(path, JSON.stringify({ version: 1, tabs }));
+	const lines = [];
+	const read = readSession(path, (message) => lines.push(message));
+	return { read, lines };
+}
+
+/** A persisted tab with `count` entries, the last one active by default. */
+function persistedTab(count, overrides = {}) {
+	return {
+		owner: "user",
+		active: false,
+		entries: Array.from({ length: count }, (_unused, index) => ({
+			url: `https://example.com/page-${index}`,
+			title: `Page ${index}`,
+		})),
+		activeIndex: count - 1,
+		...overrides,
+	};
+}
+
+test("a restore allocates a bounded number of tabs, and keeps the tab the user was on", () => {
+	// 256 valid rows, which is the count the round-1 review used: the file is not
+	// hostile, it is a long-lived session, and every entry in it is restorable.
+	const tabs = Array.from({ length: 256 }, (_unused, index) =>
+		persistedTab(1, {
+			active: false,
+			entries: [{ url: `https://example.com/tab-${index}`, title: `Tab ${index}` }],
+			activeIndex: 0,
+		}),
+	);
+	// The tab the user was looking at is the OLDEST one, which is the case a plain
+	// `.slice(-N)` would drop.
+	tabs[0].active = true;
+	const { read } = readBack("cap", tabs);
+
+	assert.equal(
+		read.length,
+		MAX_RESTORED_TABS,
+		"one restore pass allocates at most the budget, whatever the file says",
+	);
+	assert.ok(
+		read.some((tab) => tab.active),
+		"the tab that was active is kept, because restoring it is the point of the feature",
+	);
+	assert.equal(
+		read[0].entries[0].url,
+		"https://example.com/tab-0",
+		"file order is preserved, so the tab strip does not shuffle to make the arithmetic easier",
+	);
+	assert.ok(
+		read.some((tab) => tab.entries[0].url === "https://example.com/tab-255"),
+		"the newest tabs are kept as well as the active one",
+	);
+});
+
+test("a restored stack is bounded around the entry the tab was showing", () => {
+	const { read } = readBack("stack", [
+		persistedTab(400, { active: true, activeIndex: 300 }),
+	]);
+	assert.equal(read.length, 1);
+	assert.equal(
+		read[0].entries.length,
+		MAX_RESTORED_ENTRIES,
+		"one tab's history depth is bounded too: a stack is memory the user never asked to spend twice",
+	);
+	assert.ok(
+		read[0].entries.some((entry) => entry.url === "https://example.com/page-300"),
+		"the entry the tab was showing survives the bound: keeping only the newest would delete the page the user left off on",
+	);
+	assert.ok(
+		read[0].entries.some((entry) => entry.url === "https://example.com/page-299"),
+		"and so does the entry before it, because a restored stack is restored so that Back still works",
+	);
+	const active = read[0].entries[read[0].activeIndex];
+	assert.equal(
+		active.url,
+		"https://example.com/page-300",
+		"the index is re-derived onto the surviving window, so the tab opens on the page it left off on",
+	);
+	assert.equal(
+		read[0].entries[read[0].activeIndex - 1].url,
+		"https://example.com/page-299",
+		"with that history immediately behind it",
+	);
+
+	// And the other end of the same rule: an active entry near the START keeps the
+	// whole window of depth rather than whatever happened to be left before it.
+	const early = readBack("stack-early", [
+		persistedTab(400, { active: true, activeIndex: 2 }),
+	]).read;
+	assert.equal(early[0].entries.length, MAX_RESTORED_ENTRIES);
+	assert.equal(early[0].activeIndex, 2, "an index inside the window is not moved");
+	assert.equal(early[0].entries[2].url, "https://example.com/page-2");
+});
+
+test("an oversized page state is dropped whole, and its entry kept", () => {
+	const huge = "c3RhdGU=".repeat(Math.ceil(MAX_RESTORED_PAGE_STATE_CHARS / 4));
+	const { read } = readBack("page-state", [
+		{
+			owner: "user",
+			active: true,
+			entries: [
+				{ url: "https://example.com/big", title: "Big", pageState: huge },
+				{ url: "https://example.com/small", title: "Small", pageState: "c3RhdGU=" },
+			],
+			activeIndex: 1,
+		},
+	]);
+	assert.equal(read.length, 1);
+	assert.equal(read[0].entries.length, 2, "both entries are still restorable");
+	assert.equal(
+		read[0].entries[0].pageState,
+		undefined,
+		"half a serialised page state is a corrupt one, so the whole blob goes rather than a prefix",
+	);
+	assert.equal(
+		read[0].entries[1].pageState,
+		"c3RhdGU=",
+		"a page state inside the budget is carried through verbatim",
+	);
+});
+
+test("a session file past the size budget is refused before it is parsed", () => {
+	const dir = join(root, "restore-oversized");
+	mkdirSync(dir, { recursive: true });
+	const path = join(dir, SESSION_FILENAME);
+	// Valid JSON, so the refusal is about SIZE rather than about a parse failure:
+	// the path is writable by anything on the machine and the read must not size
+	// itself off what the file says.
+	const padding = "x".repeat(MAX_SESSION_FILE_BYTES + 1);
+	writeFileSync(
+		path,
+		`{"version":1,"tabs":[{"owner":"user","active":true,"entries":[{"url":"https://example.com/","title":"${padding}"}],"activeIndex":0}]}`,
+	);
+	const lines = [];
+	const read = readSession(path, (message) => lines.push(message));
+	assert.deepEqual(read, [], "an oversized file restores nothing rather than restoring slowly");
+	assert.ok(
+		lines.some((line) => line.includes(String(MAX_SESSION_FILE_BYTES))),
+		`the refusal names the budget: ${JSON.stringify(lines)}`,
+	);
+});
+
+test("an unusable entry is filtered before anything is allocated, and a long URL is one of those", () => {
+	const tooLong = `https://example.com/${"a".repeat(MAX_RESTORED_URL_CHARS)}`;
+	const { read } = readBack("unusable", [
+		{
+			owner: "user",
+			active: true,
+			entries: [
+				{ url: tooLong, title: "Too long" },
+				{ url: "about:blank", title: "Not a page" },
+				{ url: "javascript:alert(1)", title: "Not a page" },
+				{ url: "https://example.com/kept", title: "Kept" },
+			],
+			activeIndex: 3,
+		},
+		{ owner: "user", active: false, entries: [], activeIndex: 0 },
+	]);
+	assert.equal(read.length, 1, "a tab with nothing restorable is not a tab");
+	assert.deepEqual(
+		read[0].entries.map((entry) => entry.url),
+		["https://example.com/kept"],
+		"the scheme rule and the length rule both apply one layer before the host allocates a view",
+	);
+	assert.equal(read[0].activeIndex, 0, "the index is re-derived against what survived");
+});
+
+// ---- the terminal rectangle (review round 1, R4) ---------------------------
+
+test("the null rect is delivered on the spot, and it cancels a pending frame", () => {
+	const frames = new Map();
+	const cancelled = [];
+	const delivered = [];
+	let nextFrameId = 0;
+	const previousRaf = globalThis.requestAnimationFrame;
+	const previousCancel = globalThis.cancelAnimationFrame;
+	const previousWindow = globalThis.window;
+	// A frame that RUNS is no longer pending: the real scheduler forgets it, so the
+	// stub has to as well, or "one report in flight" would not be observable.
+	const runFrame = (id) => {
+		const callback = frames.get(id);
+		frames.delete(id);
+		return callback();
+	};
+	globalThis.requestAnimationFrame = (callback) => {
+		nextFrameId += 1;
+		frames.set(nextFrameId, callback);
+		return nextFrameId;
+	};
+	globalThis.cancelAnimationFrame = (id) => {
+		cancelled.push(id);
+		frames.delete(id);
+	};
+	// The bridge the hook talks to, recorded in order. Installed BEFORE the render
+	// because `browserBridgeAvailable()` reads it in the component body.
+	globalThis.window = {
+		api: {
+			browser: {
+				setContentRect: (rect) => {
+					delivered.push(rect);
+					return Promise.resolve({});
+				},
+				state: async () => null,
+			},
+		},
+	};
+	try {
+		const chrome = renderBrowserChrome();
+		assert.ok(chrome, "the hook returned its API (the render ran)");
+		assert.deepEqual(delivered, [], "mounting alone reports no rectangle");
+
+		// A resize sample is throttled: recorded, and one frame scheduled.
+		chrome.setContentRect({ x: 0, y: 84, width: 1380, height: 785 });
+		assert.deepEqual(delivered, [], "a resize sample waits for the frame");
+		assert.equal(frames.size, 1, "and schedules exactly one");
+
+		// A second sample before the frame coalesces into it.
+		chrome.setContentRect({ x: 0, y: 84, width: 1380, height: 900 });
+		assert.equal(frames.size, 1, "two samples in one frame are one report");
+		runFrame([...frames.keys()][0]);
+		assert.deepEqual(
+			delivered,
+			[{ x: 0, y: 84, width: 1380, height: 900 }],
+			"the frame delivers the newest sample, once",
+		);
+
+		// The route-teardown case, which is what this rule is for: the null must not
+		// wait for a frame, because the frame is exactly what the unmount cancels.
+		chrome.setContentRect({ x: 0, y: 84, width: 1380, height: 785 });
+		assert.equal(frames.size, 1, "a pending sample is scheduled...");
+		chrome.setContentRect(null);
+		assert.deepEqual(
+			delivered.at(-1),
+			null,
+			"the terminal null rect reaches main synchronously, in the same tick it was reported",
+		);
+		assert.equal(
+			frames.size,
+			0,
+			"and it drops the pending sample, which would otherwise put the view back up on a route that no longer exists",
+		);
+		assert.equal(cancelled.length, 1, "by cancelling the frame it replaced");
+	} finally {
+		globalThis.requestAnimationFrame = previousRaf;
+		globalThis.cancelAnimationFrame = previousCancel;
+		globalThis.window = previousWindow;
+	}
+});
+
+// ---- one error slot per fact (review round 1, R6) --------------------------
+
+/** The shipped source with comments stripped, for the rules a render cannot see. */
+function shippedSource(relativePath) {
+	const source = readFileSync(join(process.cwd(), relativePath), "utf8");
+	return source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/^\s*\/\/.*$/gm, "");
+}
+
+test("an action's refusal is not erased by the state read that follows it (R6)", () => {
+	const source = shippedSource(
+		"src/renderer/src/features/browser/hooks/use-browser-chrome.ts",
+	);
+	// `setError` was the single slot: a refresh that succeeded cleared whatever the
+	// action had just recorded, which is the bug. Its absence is the pin that a
+	// revert has to come here and argue with.
+	assert.ok(
+		!source.includes("setError("),
+		"there is no single error slot left for a refresh to clear",
+	);
+	assert.ok(
+		/setActionError\(messageOf\(caught\)\)[\s\S]*?await refresh\(\)/.test(source),
+		"`run` records the action's refusal BEFORE it re-reads the projection",
+	);
+	const refresh = source.slice(
+		source.indexOf("const refresh = useCallback"),
+		source.indexOf("const run = useCallback"),
+	);
+	assert.ok(
+		refresh.includes("setReadError(null)"),
+		"a successful state read clears the READ error only",
+	);
+	assert.ok(
+		!refresh.includes("setActionError"),
+		"and it cannot touch the action's own refusal",
+	);
+	assert.ok(
+		/setActionError\(null\);\s*setReadError\(null\);/.test(source),
+		"the explicit dismissal clears both, which is the only other way an action error goes away",
+	);
+});
+
+// ---- a banner click reaches the request it named (review round 1, R8) ------
+
+test("the attention names one request, and a stale clear cannot drop a newer one", () => {
+	const seen = [];
+	const unsubscribe = subscribeConsentAttention(() => seen.push(consentAttentionSnapshot()));
+	assert.equal(consentAttentionSnapshot(), null, "nothing is attended to by default");
+
+	noteConsentAttention("entry-a");
+	assert.equal(consentAttentionSnapshot(), "entry-a");
+	noteConsentAttention("entry-a");
+	assert.equal(seen.length, 1, "naming the same request twice is not a second wake-up");
+
+	// The request the user was answering is gone, and a NEWER one has arrived: a
+	// late clear for the old entry must not take the new one with it.
+	noteConsentAttention("entry-b");
+	clearConsentAttention("entry-a");
+	assert.equal(
+		consentAttentionSnapshot(),
+		"entry-b",
+		"an answer to one request does not clear attention on another",
+	);
+
+	clearConsentAttention("entry-b");
+	assert.equal(consentAttentionSnapshot(), null);
+	clearConsentAttention();
+	assert.equal(consentAttentionSnapshot(), null, "clearing nothing is not an event");
+	unsubscribe();
+});
+
+// ---- the consent bar's own copy (design round 1, D2 and D3) ----------------
+
+const PENDING = {
+	entryId: "entry-1",
+	origin: "https://login.example.com",
+	authority: "login.example.com",
+	broad: { scope: "domain", key: "example.com" },
+	expiresAt: Date.now() + 600_000,
+	requesterSessionId: "session-abc",
+};
+
+test("the consent bar names the conversation that is asking (D2)", () => {
+	// The resolution rule, exercised directly: `renderToStaticMarkup` reads a
+	// zustand store's INITIAL state for its server snapshot, so a store mutated
+	// after creation is invisible to a rendered assertion — the rule is therefore
+	// called with the session list, which is the same call the component makes.
+	assert.equal(
+		requesterLabel("session-abc", [
+			{ session_id: "session-abc", title: "Quarterly research" },
+		]),
+		"The agent in 'Quarterly research'",
+		"a known session is named by its conversation title",
+	);
+	assert.equal(
+		requesterLabel("session-abc", [{ session_id: "session-abc", title: "  " }]),
+		"The agent in conversation session-abc",
+		"an untitled session stands in as its id, the way this app treats one everywhere else",
+	);
+	assert.equal(
+		requesterLabel(null, [{ session_id: "session-abc", title: "Named" }]),
+		"An agent",
+		"a requester that is not a session identity is never published: it may be an internal request id",
+	);
+
+	const markup = render(
+		el(BrowserConsentBar, {
+			pending: { ...PENDING, requesterSessionId: null },
+			waitingBehind: 0,
+			busy: false,
+			onDecide: () => {},
+		}),
+	);
+	// The markup escapes the apostrophe, so the assertion is on the words rather
+	// than on the exact punctuation.
+	assert.ok(
+		markup.includes("An agent wants to open"),
+		`the band still says what is being asked for: ${markup.slice(0, 300)}`,
+	);
+	assert.ok(
+		markup.includes("login.example.com"),
+		"and names the origin the decision is about",
+	);
+});
+
+test("the consent bar states each choice's own lifetime, and that the profile is shared (D3)", () => {
+	const markup = render(
+		el(BrowserConsentBar, {
+			pending: PENDING,
+			waitingBehind: 2,
+			busy: false,
+			onDecide: () => {},
+		}),
+	);
+	assert.ok(
+		!markup.includes("using this app's browser profile, until you revoke it"),
+		"the blanket lifetime that was false for the once and session choices is gone",
+	);
+	assert.ok(
+		markup.includes("one navigation, for that conversation"),
+		"the once grant says what it is actually bound to",
+	);
+	assert.ok(
+		markup.includes("this run only, and for every conversation"),
+		"the session grant says it is not per-conversation, which its own button could not say",
+	);
+	assert.ok(
+		markup.includes("kept until you revoke it, and shared with every conversation"),
+		"a persistent grant names both its lifetime and its audience",
+	);
+	assert.ok(
+		markup.includes("every site under example.com"),
+		"the domain choice states what it actually covers",
+	);
+	assert.ok(
+		markup.includes("keeps sign-ins across conversations and app restarts"),
+		"the shared profile, and the retained sign-ins in it, are stated rather than implied",
+	);
+	assert.ok(
+		markup.includes("You can open this site yourself either way"),
+		"and the gate's asymmetry survives the rewrite",
+	);
+	assert.ok(
+		markup.includes("2 other requests are waiting"),
+		"a user who arrived from a notification can see that others are queued",
+	);
+
+	// The domain line is only offered when the host computed the broad key: the bar
+	// must not describe a choice it does not render.
+	const noBroad = render(
+		el(BrowserConsentBar, {
+			pending: { ...PENDING, broad: null },
+			waitingBehind: 0,
+			busy: false,
+			onDecide: () => {},
+		}),
+	);
+	assert.ok(
+		!noBroad.includes("example.com, kept until you revoke it"),
+		"no public-suffix data means no domain offer and no domain copy",
+	);
+});
+
+// ---- a failed navigation says so (design round 1, D1) ----------------------
+
+test("a failed navigation names the reason in the app's own chrome, and offers a retry", () => {
+	const retried = [];
+	const markup = render(
+		el(BrowserLoadFailure, {
+			failure: {
+				code: -324,
+				description: "ERR_EMPTY_RESPONSE",
+				url: "http://127.0.0.1:9/",
+			},
+			onRetry: () => retried.push(true),
+		}),
+	);
+	// The markup escapes the apostrophe, so the assertion is on the words rather
+	// than on the exact punctuation.
+	assert.ok(
+		markup.includes("load this page"),
+		`the failure is stated rather than left as an empty frame: ${markup.slice(0, 300)}`,
+	);
+	assert.ok(
+		markup.includes("closed the connection without sending a response"),
+		"the sentence is the reason, not a generic apology",
+	);
+	assert.ok(
+		markup.includes("ERR_EMPTY_RESPONSE") && markup.includes("http://127.0.0.1:9/"),
+		"and the raw refusal and the attempted address are on screen for a bug report",
+	);
+	assert.ok(
+		markup.includes("browser-load-failure-retry") && markup.includes("Try again"),
+		"a recovery path is offered, because the panel is the only thing the user can act on",
+	);
+	assert.equal(retried.length, 0, "the retry is not fired by rendering");
+
+	// Where there is no sentence worth writing, the panel says the one thing that is
+	// always true instead of inventing a cause.
+	assert.equal(
+		loadFailureSentence("ERR_SOMETHING_NEW"),
+		"The page could not be loaded.",
+	);
+	assert.equal(
+		loadFailureSentence("ERR_NAME_NOT_RESOLVED"),
+		"That address does not resolve. Check the spelling.",
+	);
 });

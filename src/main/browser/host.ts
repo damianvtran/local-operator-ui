@@ -78,6 +78,116 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"retitle",
 ]);
 
+/**
+ * How many restored tabs load at once.
+ *
+ * Four because a restore is a burst of REAL page loads competing with whatever the
+ * user is already doing in the app, and because the tabs are already allocated:
+ * this number bounds concurrency, not the size of the restore (review R5 asked for
+ * bounded concurrency, not for a queue nobody waits on).
+ */
+const RESTORE_CONCURRENCY = 4;
+
+/**
+ * How long ONE restored tab may hold up the hydration pass.
+ *
+ * A restored URL is a fresh navigation (design 7.3), so `history.restore()` on a
+ * page that never answers is a wait with no bound of its own. Ten seconds is past
+ * any slow-but-working origin and short enough that the pass always finishes.
+ */
+const RESTORE_TAB_TIMEOUT_MS = 10_000;
+
+/**
+ * How long the WHOLE hydration pass may hold the host's attention.
+ *
+ * Per-tab timeouts compose badly: twenty tabs at four at a time and ten seconds
+ * each is fifty seconds of a startup nobody asked for. This is the outer bound, and
+ * when it expires the pass stops WAITING rather than stops working — the remaining
+ * tabs keep loading and the host is already serving (review R5: one hung page must
+ * not withhold the browser host).
+ */
+const RESTORE_BUDGET_MS = 8_000;
+
+/**
+ * Resolve with `work`, or reject once `ms` has passed.
+ *
+ * The loser is not cancelled — there is nothing to cancel on a `webContents`
+ * navigation that is already under way — so this bounds what the CALLER waits for,
+ * which is the property the restore needs. `timer.unref()` so a pass that has
+ * already finished cannot keep the process alive on its own.
+ */
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error(`timed out after ${ms}ms`)),
+			ms,
+		);
+		timer.unref?.();
+		work.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timer);
+				reject(error instanceof Error ? error : new Error(String(error)));
+			},
+		);
+	});
+}
+
+/**
+ * Why the active tab's last top-level navigation failed, as the chrome reports it.
+ *
+ * The REMOTE DOCUMENT CANNOT PAINT THIS. A failed load leaves Chromium's own blank
+ * surface in the view — Electron ships no error page for a main-frame refusal — so a
+ * user looking at the browser sees an empty white rectangle with a working address
+ * bar and no way to tell failure from a successfully loaded blank page (design
+ * round 1, D1). The reason is therefore carried in the projection instead, and the
+ * chrome renders it as app-owned copy with a retry.
+ *
+ * `code` is Chromium's net error and rides along verbatim so the panel can say
+ * `ERR_EMPTY_RESPONSE` in machine voice beside the sentence in the user's.
+ */
+export interface LoadFailure {
+	code: number;
+	description: string;
+	/** The URL the failed navigation was for — the attempted address, which is what
+	 * the user needs in hand to check it or try it again. */
+	url: string;
+}
+
+/**
+ * Whether Chromium's `did-fail-load` code describes a failure the USER should be
+ * told about.
+ *
+ * `ERR_ABORTED` (-3) is the one that matters, and it is the common case rather than
+ * an edge one: a reload, a stop, a click that supersedes a load in flight and every
+ * hop of a redirect chain report it. Those are navigation working, so a panel that
+ * appeared for each would be wrong far more often than right. `ERR_ABORTED` is
+ * still what a user-initiated stop produces, which is a deliberate action with its
+ * own visible outcome (the page is where they left it), not a refusal to explain.
+ *
+ * A zero code is the "provisional load failed" marker Electron also emits; it names
+ * no failure either.
+ */
+export function isReportableLoadFailure(code: number): boolean {
+	return code !== 0 && code !== -3;
+}
+
+/**
+ * The bare lop session id behind a consent requester, or null.
+ *
+ * Null for anything that is not a `session:<id>` identity, so an internal request
+ * id can never be published as if it named a conversation. See the call site in
+ * `chromeState` for why the renderer is given an id at all.
+ */
+function sessionRequesterOf(requester: string): string | null {
+	if (!requester.startsWith("session:")) return null;
+	const id = requester.slice("session:".length);
+	return id || null;
+}
+
 export interface BrowserHostOptions {
 	registry: BrowserActionContext["registry"];
 	cdp: BrowserActionContext["cdp"];
@@ -102,6 +212,21 @@ export class BrowserHost implements BrowserActionContext {
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+
+	/**
+	 * The last main-frame load failure per tab, cleared by the next load.
+	 *
+	 * Keyed by `tabId` and DROPPED with the tab: this is a statement about a document
+	 * that a tab is (or is not) showing, so a recycled id or a closed tab must not be
+	 * able to inherit it.
+	 */
+	private readonly loadFailures = new Map<number, LoadFailure>();
+
+	/**
+	 * The background hydration pass, so a caller can wait for it without the host
+	 * ever making anyone wait for it. See `restoreTabs`.
+	 */
+	private hydration: Promise<void> = Promise.resolve();
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
@@ -342,6 +467,34 @@ export class BrowserHost implements BrowserActionContext {
 	 * per-tab ownership markers. It never carries a nonce — the renderer is not an
 	 * agent and has no reason to hold a capability (design 11.7).
 	 */
+	/**
+	 * Record a main-frame load failure for a tab.
+	 *
+	 * Called from the view's own `did-fail-load`, which is the only place that knows a
+	 * navigation was refused by the network rather than by the gate. NOT recorded for
+	 * `ERR_ABORTED`, which is what a stop, a redirect chain and a superseded
+	 * navigation all report: those are the user's own browsing succeeding at
+	 * something, and presenting one as a failure would make the panel cry wolf on
+	 * every redirect (see `isReportableLoadFailure`).
+	 */
+	recordLoadFailure(tabId: number, failure: LoadFailure): void {
+		if (!this.registry.get(tabId)) return;
+		this.loadFailures.set(tabId, failure);
+		this.onChanged();
+	}
+
+	/** The next navigation on this tab is under way, so the last failure is stale. */
+	clearLoadFailure(tabId: number): void {
+		if (!this.loadFailures.delete(tabId)) return;
+		this.onChanged();
+	}
+
+	/** The failure the chrome shows for the ACTIVE tab, or null. */
+	private activeLoadFailure(activeTabId: number | null): LoadFailure | null {
+		if (activeTabId === null) return null;
+		return this.loadFailures.get(activeTabId) ?? null;
+	}
+
 	chromeState(): Record<string, unknown> {
 		// `active` is dropped when its webContents is already dead: `snapshot()`
 		// guards each read the same way, and a read that landed between destruction
@@ -364,6 +517,10 @@ export class BrowserHost implements BrowserActionContext {
 				active: entry.active,
 				restored: entry.restored,
 				handedOver: entry.handedTo !== null,
+				// Per TAB, not only for the active one: a background tab whose load was
+				// refused has no other way to say so - its page area is blank and the
+				// band belongs to the active tab - so the strip carries the mark.
+				failed: this.loadFailures.has(entry.tabId),
 			})),
 			activeTabId: activeRecord?.tabId ?? null,
 			url: active ? active.view.webContents.getURL() : "",
@@ -371,6 +528,10 @@ export class BrowserHost implements BrowserActionContext {
 			loading: active ? active.view.webContents.isLoading() : false,
 			canGoBack: navigation ? navigation.canGoBack() : false,
 			canGoForward: navigation ? navigation.canGoForward() : false,
+			// WHY the page area is empty, when it is. Null on a healthy tab, so the
+			// chrome's failure panel is driven by a fact rather than by "the page looks
+			// blank", which is also what a slow load and an empty document look like.
+			navFailure: this.activeLoadFailure(activeRecord?.tabId ?? null),
 			// The consent surface (PR 7) renders from this. Exposed now so the
 			// transport does not need a second wire change when it lands, and so an
 			// evidence run can answer a prompt headlessly.
@@ -380,6 +541,23 @@ export class BrowserHost implements BrowserActionContext {
 				authority: entry.displayAuthority,
 				broad: entry.broad ?? null,
 				expiresAt: entry.expiresAt,
+				// WHO IS ASKING, as an id the renderer may resolve and nothing more.
+				//
+				// The vendored queue says `requester` is an "authority boundary only. Never
+				// render or include in ambient notifications", and the consent bar has to
+				// tell the user which conversation they are authorising — in a
+				// multi-conversation app, "An agent" beside five choices is not a decision
+				// anyone can make (design round 1, D2). So what travels is the BARE lop
+				// session id, which is not a credential: it is the id the app already puts
+				// in its own chat routes, and it is exactly the value `handOver` matches
+				// against. The renderer resolves it to a conversation title from the same
+				// session list the hand-over dialog uses.
+				//
+				// STRICTLY `session:`-PREFIXED, which is why this does not reuse
+				// `sessionIdOf`: that helper returns any non-session identity unchanged, and
+				// a requester that is a bare request id (`actions/context.ts` falls back to
+				// one) would then be published to the UI.
+				requesterSessionId: sessionRequesterOf(entry.requester),
 			})),
 			// Which sites an agent may act on as the user RIGHT NOW (design 9.3's
 			// honesty requirement). Shipped in the same projection as the strip rather
@@ -410,6 +588,7 @@ export class BrowserHost implements BrowserActionContext {
 
 	closeTab(tabId: number): Record<string, unknown> {
 		this.dropReceipt(tabId);
+		this.loadFailures.delete(tabId);
 		this.registry.destroy(tabId);
 		this.onChanged();
 		return this.chromeState();
@@ -440,51 +619,140 @@ export class BrowserHost implements BrowserActionContext {
 	 * A restore that fails is logged and left as it is: the tab keeps whatever
 	 * Chromium managed to load, which is a blank tab rather than a broken one, and
 	 * blocking startup on a page that will not load is exactly what 7.2 forbids.
+	 *
+	 * TWO PHASES, because they have different clocks (review round 1, R5).
+	 *
+	 * 1. **Allocate, synchronously.** Every view, every tab id and the active tab are
+	 *    settled before this method returns, off a list `readSession` has already
+	 *    validated and bounded (`MAX_RESTORED_TABS`). So the strip is correct on the
+	 *    first paint and the host can serve — an agent's `open`, the chrome's `state`
+	 *    read — while the pages are still loading.
+	 * 2. **Hydrate, in the background.** `history.restore()` and `cdp.attach()` per
+	 *    tab, four at a time, each with its own timeout, all under one overall budget.
+	 *    A page that never answers delays nothing outside its own tab, and the pass
+	 *    never withholds a host that is already usable.
+	 *
+	 * WHY NOT `Promise.all` AND `await`, which is what this was: it created one view
+	 * per entry with no concurrency bound and awaited every one of them before RPC
+	 * started, so a file with 256 valid rows produced 256 views and one hung page
+	 * withheld the browser host entirely. The `catch` around it bounded nothing at
+	 * all about the pending case.
+	 *
+	 * Allocating synchronously is also what keeps rule 3 true: the active tab is
+	 * set from the recorded flag before any page has loaded, rather than when the
+	 * last tab happens to finish — which was a tab activation arriving after the
+	 * user had already started working, taking their place for no reason they
+	 * could see.
 	 */
-	async restoreTabs(tabs: PersistedTab[]): Promise<Record<string, unknown>> {
-		if (!tabs.length) return this.newTab();
-		const created: Array<{ tabId: number; recorded: PersistedTab }> = [];
-		await Promise.all(
-			tabs.map(async (recorded) => {
-				// `restored: true` is what makes the owner `user` and the nonce null, in
-				// the registry, for every restored tab regardless of what was written.
-				const record = this.registry.create({ owner: "user", restored: true });
-				created.push({ tabId: record.tabId, recorded });
-				const contents = record.view.webContents;
-				const history = contents.navigationHistory;
-				const entry = recorded.entries[recorded.activeIndex];
-				try {
-					if (history?.restore) {
-						await history.restore({
-							entries: recorded.entries,
-							index: recorded.activeIndex,
-						});
-					} else if (entry) {
-						// The honest degradation (see `NavigationHistoryLike`): a view with no
-						// history API still gets put back on the page it was showing, without its
-						// stack and its page state.
-						await contents.loadURL(entry.url);
-					}
-				} catch (error) {
-					this.log(
-						`[browser] could not restore tab ${record.tabId}: ${String(error)}`,
-					);
-				}
-				try {
-					await this.cdp.attach(contents);
-				} catch (error) {
-					this.log(
-						`[browser] could not attach to restored tab ${record.tabId}: ${String(error)}`,
-					);
-				}
-			}),
-		);
+	restoreTabs(tabs: PersistedTab[]): Record<string, unknown> {
+		if (!tabs.length) {
+			// A first run: one blank tab, as before. It is still a real navigation, so it
+			// rides the same background pass rather than blocking the host on `about:blank`.
+			this.hydration = this.newTab().then(() => undefined);
+			return this.chromeState();
+		}
+		// Phase 1: allocate. `restored: true` is what makes the owner `user` and the
+		// nonce null, in the registry, for every restored tab regardless of what the
+		// file said.
+		const created = tabs.map((recorded) => ({
+			tabId: this.registry.create({ owner: "user", restored: true }).tabId,
+			recorded,
+		}));
 		const wanted =
 			created.find((entry) => entry.recorded.active)?.tabId ??
 			created.at(-1)?.tabId;
 		if (wanted !== undefined) this.registry.activate(wanted);
 		this.onChanged();
+		// Phase 2: hydrate, unawaited. The registry's records stay in `created` order,
+		// which is the file's order, so the strip does not shuffle as pages land.
+		this.hydration = this.hydrateRestored(created);
 		return this.chromeState();
+	}
+
+	/** Wait for the background hydration pass. For tests and the proof run, which
+	 * want the tabs to have finished loading; nothing on a user's path calls it. */
+	whenRestored(): Promise<void> {
+		return this.hydration;
+	}
+
+	/**
+	 * Apply each restored tab's history and debugger session, bounded.
+	 *
+	 * `Promise.allSettled` rather than `Promise.all`: the two steps below already turn
+	 * a failure into a log line, and a rejection here would be an unhandled rejection
+	 * on a promise only a test awaits.
+	 */
+	private async hydrateRestored(
+		created: Array<{ tabId: number; recorded: PersistedTab }>,
+	): Promise<void> {
+		const deadline = Date.now() + RESTORE_BUDGET_MS;
+		const queue = [...created];
+		let reported = false;
+		const worker = async (): Promise<void> => {
+			for (;;) {
+				const next = queue.shift();
+				if (!next) return;
+				if (Date.now() >= deadline) {
+					// Said once per pass, not once per worker: four copies of one line says
+					// nothing the first does not, and this log is read by a support session.
+					if (!reported) {
+						reported = true;
+						this.log(
+							`[browser] the ${RESTORE_BUDGET_MS}ms restore budget expired with ${queue.length + 1} tab(s) still loading; they keep loading in the background`,
+						);
+					}
+					return;
+				}
+				await this.hydrateOne(next.tabId, next.recorded);
+			}
+		};
+		await Promise.allSettled(
+			Array.from(
+				{ length: Math.min(RESTORE_CONCURRENCY, created.length) },
+				worker,
+			),
+		);
+	}
+
+	/** One tab's half of the pass: the history stack, then the debugger session. */
+	private async hydrateOne(
+		tabId: number,
+		recorded: PersistedTab,
+	): Promise<void> {
+		const record = this.registry.get(tabId);
+		// The user can close a restored tab while its page is still loading, and the
+		// `destroyed` path may already have taken it: a hydration step that ran anyway
+		// would drive a released `webContents`.
+		if (!record) return;
+		const contents = record.view.webContents;
+		const history = contents.navigationHistory;
+		const entry = recorded.entries[recorded.activeIndex];
+		try {
+			await withTimeout(
+				history?.restore
+					? history.restore({
+							entries: recorded.entries,
+							index: recorded.activeIndex,
+						})
+					: // The honest degradation (see `NavigationHistoryLike`): a view with no
+						// history API still gets put back on the page it was showing, without
+						// its stack and its page state.
+						entry
+						? contents.loadURL(entry.url)
+						: Promise.resolve(),
+				RESTORE_TAB_TIMEOUT_MS,
+			);
+		} catch (error) {
+			this.log(`[browser] could not restore tab ${tabId}: ${String(error)}`);
+		}
+		if (!this.registry.get(tabId)) return;
+		try {
+			await withTimeout(this.cdp.attach(contents), RESTORE_TAB_TIMEOUT_MS);
+		} catch (error) {
+			this.log(
+				`[browser] could not attach to restored tab ${tabId}: ${String(error)}`,
+			);
+		}
 	}
 
 	activateTab(tabId: number): Record<string, unknown> {
