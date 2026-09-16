@@ -22,6 +22,10 @@ import { type BrowserWindow, app, ipcMain } from "electron";
 import { type UpdateInfo, autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
 
+import {
+	stripErrorPrefixes,
+	transientTransportCode,
+} from "../shared/transport-failure";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
@@ -337,6 +341,30 @@ export class UpdateService {
 	 * available", which is how `shouldFilterUpdateError` would otherwise read it.
 	 */
 	private updateStage: "idle" | "downloading" | "installing" = "idle";
+
+	/**
+	 * How many app-channel checks are in flight right now.
+	 *
+	 * ONE OWNER PER FAILURE. The `autoUpdater` `error` event and the check that
+	 * caused it are two producers of the same user-facing message, and they used
+	 * to carry two different suppression rules: `checkForUpdates` refuses to send
+	 * for a silent check and the event handler sent regardless, so one transient
+	 * failure was reported twice and a background check was reported at all. A
+	 * check in flight owns its own failure report, so the handler stands down
+	 * while this is above zero. It is a DEPTH rather than a boolean because the
+	 * scheduled check and a click can overlap.
+	 */
+	private appChecksInFlight = 0;
+
+	/**
+	 * The backoff between attempts at one app-channel feed fetch, in ms.
+	 *
+	 * Two retries, so three attempts, which is the bound a transient Wi-Fi roam
+	 * or resolver blip needs and short enough that a check the user is waiting on
+	 * still answers in seconds. A test overrides it rather than waiting 4 s per
+	 * case; nothing else does.
+	 */
+	public appFeedRetryDelaysMs: readonly number[] = [1_000, 3_000];
 
 	/** The last update the updater told us about, for its file metadata. */
 	private lastUpdateInfo: UpdateInfo | null = null;
@@ -1815,6 +1843,62 @@ export class UpdateService {
 	/**
 	 * Set up event handlers for the autoUpdater
 	 */
+	/**
+	 * One app-channel feed fetch, with its retries, as the owner of its failures.
+	 *
+	 * WHY A RETRY AND NOT A BETTER ERROR MESSAGE. The failures in the operator's
+	 * log are transients: a Wi-Fi change, a wake, a resolver blip. Every one of
+	 * them was followed by a check five minutes later that answered normally, so
+	 * the honest response to the first is to ask again rather than to tell the
+	 * user their network is down. Only a TRANSIENT failure is retried
+	 * (`transientTransportCode`), so a 404, a refused credential or a certificate
+	 * verdict still fails immediately and is not swallowed by a backoff.
+	 *
+	 * WHAT A CHECK CONCLUDES IS UNCHANGED, deliberately: a feed that never
+	 * arrived still reaches the caller as a rejected promise, and a check that
+	 * could not find out stays `unavailable` in the verdict. Retrying must not
+	 * turn "could not find out" into "nothing newer" - that conflation is this
+	 * repository's documented defect class, and it is why this is a retry rather
+	 * than an extra entry in `shouldFilterUpdateError` (whose filtered branch
+	 * emits `update-not-available`).
+	 *
+	 * The in-flight depth is held across the whole attempt sequence, so the
+	 * `error` events each attempt raises are owned by this call rather than
+	 * reported beside it.
+	 */
+	private async runAppFeedCheck(
+		fetchFeed: () => Promise<
+			Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>
+		>,
+	): Promise<Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>> {
+		this.appChecksInFlight += 1;
+		try {
+			const delays = this.appFeedRetryDelaysMs;
+			for (let attempt = 0; ; attempt += 1) {
+				try {
+					return await fetchFeed();
+				} catch (error) {
+					const code = transientTransportCode(error);
+					if (code === null || attempt >= delays.length) throw error;
+					const delay = delays[attempt];
+					/*
+					 * Logged per attempt, because a retry that succeeds leaves no trace
+					 * for the user and this line is the only record that the app papered
+					 * over a real network blip. It is also what tells a later reader that
+					 * an intermittent failure is happening often rather than once.
+					 */
+					logger.warn(
+						`Transient transport failure during the update check (${code}); retrying in ${delay}ms (attempt ${attempt + 2} of ${delays.length + 1})`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+				}
+			}
+		} finally {
+			this.appChecksInFlight -= 1;
+		}
+	}
+
 	private setupUpdateEvents(): void {
 		// When an update is available
 		autoUpdater.on("update-available", (info) => {
@@ -1870,6 +1954,29 @@ export class UpdateService {
 			// A download or an install that dies is not an availability problem:
 			// the user asked for something and it failed, so it has to be shown.
 			const actionable = this.updateStage !== "idle";
+			/*
+			 * ONE OWNER PER FAILURE. This handler and the check that provoked the
+			 * error are two producers of one message, and until this gate existed
+			 * they disagreed about when it may be sent: a scheduled check is silent
+			 * and its `checkForUpdates` catch sends nothing, while this handler sent
+			 * the same string regardless - so the log holds each transient failure
+			 * twice and the silent background check was the surface the operator
+			 * actually saw an alert from. While a check is in flight the check owns
+			 * the report: it retries first, and if the retries are exhausted its own
+			 * path says so once.
+			 *
+			 * A stage failure still reports through here even during a check, which
+			 * is why `actionable` is tested first: a download that dies while an
+			 * availability check happens to be running is still a failure the user
+			 * asked for.
+			 */
+			if (!actionable && this.appChecksInFlight > 0) {
+				logger.info(
+					"Update error during an availability check: the check reports its own failure",
+					LogFileType.UPDATE_SERVICE,
+				);
+				return;
+			}
 			const shouldFilter = !actionable && this.shouldFilterUpdateError(err);
 
 			if (shouldFilter) {
@@ -1881,8 +1988,17 @@ export class UpdateService {
 					version: app.getVersion(),
 				});
 			} else {
-				// Only send the error to the renderer if it shouldn't be filtered
-				this.sendToRenderer("update-error", err.message);
+				/*
+				 * Only send the error to the renderer if it shouldn't be filtered.
+				 *
+				 * The message is the machine's own words, cleaned of the nested
+				 * `Error: ` prefixes a wrapped failure carries; the sentence a person
+				 * reads is the renderer's (it classifies the same code with the same
+				 * shared module), so a raw `net::ERR_*` string can no longer BE the
+				 * message. Cleaning it here rather than only at the paint is what
+				 * keeps the machine-voice detail on the alert readable.
+				 */
+				this.sendToRenderer("update-error", stripErrorPrefixes(err.message));
 			}
 		});
 
@@ -1967,7 +2083,15 @@ export class UpdateService {
 				logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
 				this.onCheckRequested(options);
 				try {
-					return await autoUpdater.checkForUpdates();
+					/*
+					 * The same fetch with the same retries as the scheduled check
+					 * (`runAppFeedCheck`): a Wi-Fi roam that lands mid-click is the same
+					 * transient failure, and the person who pressed the button is the one
+					 * least served by being told their network is down.
+					 */
+					return await this.runAppFeedCheck(() =>
+						autoUpdater.checkForUpdates(),
+					);
 				} catch (error) {
 					logger.error(
 						"Error checking for UI updates:",
@@ -2464,7 +2588,15 @@ export class UpdateService {
 			 */
 			let result: Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>;
 			try {
-				result = await autoUpdater.checkForUpdates();
+				/*
+				 * The fetch is retried on a TRANSIENT transport failure (`runAppFeedCheck`),
+				 * before the `finally` below puts the not-available listener back: a
+				 * retry is the same fetch, so the listener swap has to hold across the
+				 * whole attempt sequence rather than per attempt.
+				 */
+				result = await this.runAppFeedCheck(() =>
+					autoUpdater.checkForUpdates(),
+				);
 			} finally {
 				if (silent) {
 					autoUpdater.removeAllListeners("update-not-available");
@@ -2523,7 +2655,13 @@ export class UpdateService {
 			) {
 				this.mainWindow.webContents.send(
 					"update-error",
-					(error as Error).message,
+					/*
+					 * Cleaned of the nested `Error: ` prefixes a wrapped failure carries,
+					 * at the source: this string is shown to a person as the machine's own
+					 * words under the sentence the renderer builds from the same code, and
+					 * `Error: Error: net::...` is a nesting nobody asked for.
+					 */
+					stripErrorPrefixes((error as Error).message),
 				);
 			}
 			// An error is not an answer: a known-spurious no-availability error is
@@ -3117,7 +3255,14 @@ export class UpdateService {
 				!this.mainWindow.webContents.isDestroyed()
 			) {
 				this.mainWindow.webContents.send("backend-update-error", {
-					message: (error as Error).message,
+					/*
+					 * Cleaned at the source, the same way the app channel's report is:
+					 * this channel's real strings are Node errno forms, and a wrapped
+					 * one carries the inner `Error: ` prefix into the sentence a person
+					 * reads. The renderer maps what is left to a sentence; this is what
+					 * keeps that sentence's machine line readable.
+					 */
+					message: stripErrorPrefixes((error as Error).message),
 					phase: "check",
 				});
 			}
@@ -3580,7 +3725,9 @@ export class UpdateService {
 				!this.mainWindow.webContents.isDestroyed()
 			) {
 				this.mainWindow.webContents.send("backend-update-error", {
-					message: (error as Error).message,
+					// Cleaned at the source, for the reason written on the check-phase
+					// report above.
+					message: stripErrorPrefixes((error as Error).message),
 					phase: "update",
 				});
 			}

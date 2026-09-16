@@ -6,7 +6,7 @@ import parse from "html-react-parser";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
 import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
-import { FloatingAlert } from "./floating-alert";
+import { UpdateErrorAlert } from "./update-error-alert";
 import {
 	ProgressContainer,
 	RELEASE_NOTES_PROSE,
@@ -879,53 +879,58 @@ export const Downloaded: Story = {
 };
 
 /**
- * Shows the notification when there's an error checking for updates.
+ * The alert the operator photographed, on the screen they were working on.
+ *
+ * WHY IT RENDERS THE SHIPPED COMPONENT AND NOT A COPY OF IT. This story used to
+ * draw its own `FloatingAlert` around a hardcoded sentence, which is how a
+ * fixture drifts from the component it stands for: the surface with NO frame in
+ * the tree was the one whose message the operator's report is about, and the
+ * message it drew was a string ("Failed to check for updates: Network error")
+ * that no producer in the app ever wrote. The message below is the operator's
+ * own - their `update-service.log` holds `net::ERR_INTERNET_DISCONNECTED` at
+ * 09:03:12 on 2026-09-16, on a machine with continuous internet, as a red alert
+ * over the chat screen.
+ *
+ * WHY IT IS HELD OPEN. `UpdateErrorAlert` renders through `FloatingAlert`, and
+ * the app gives it a six-second lifetime - a still cannot photograph a message
+ * that dismisses itself while the rig is resizing, so the frame holds it, the
+ * same way the refusal story holds its own. The WIRING (event or invoke
+ * rejection, one verdict, the sentence a person reads and the code beneath it)
+ * is not what a still can prove; it is
+ * `scripts/update-affirmation.test.mjs`, which drives the real component's
+ * listeners and reads both lines of the alert.
  */
 export const ErrorState: Story = {
 	args: {
 		autoCheck: false,
 	},
-	parameters: {
-		triggerUpdateError: true,
-	},
-	render: () => {
-		// Create a component that directly renders the error state
-		const ErrorComponent = () => {
-			// Use state to force the component to render with error state
-			const [error, setError] = useState(
-				"Failed to check for updates: Network error",
-			);
-			const [open, setOpen] = useState(true);
-
-			useEffect(() => {
-				// Set the state immediately
-				setError("Failed to check for updates: Network error");
-				setOpen(true);
-
-				// Set the trigger flag
-				window.triggerUpdateError = true;
-			}, []);
-
-			// If there's an error, render the UI directly
-			if (error) {
-				return (
-					<FloatingAlert
-						open={open}
-						autoHideDuration={6000}
-						onClose={() => setOpen(false)}
-						variant="danger"
-					>
-						{error}
-					</FloatingAlert>
-				);
-			}
-
-			// Fallback to the actual component
-			return <UpdateNotification autoCheck={false} />;
-		};
-
-		return <ErrorComponent />;
-	},
+	render: () => (
+		<div className="min-h-screen bg-canvas">
+			<div className="flex h-full flex-col gap-3 p-6">
+				<h1 className="font-medium text-body text-ink">Conversations</h1>
+				<ul className="flex max-w-xl flex-col gap-2">
+					{[
+						"Deploy the staging cluster",
+						"Review the paging change",
+						"Triage the support queue",
+					].map((row) => (
+						<li
+							key={row}
+							className="flex items-center justify-between rounded-md border border-hairline bg-surface px-3 py-2"
+						>
+							<span className="text-body-sm text-ink">{row}</span>
+							<span className="text-meta text-ink-dim">idle</span>
+						</li>
+					))}
+				</ul>
+			</div>
+			<UpdateErrorAlert
+				open
+				message="net::ERR_INTERNET_DISCONNECTED"
+				onClose={() => {}}
+			/>
+		</div>
+	),
 };
 
 type UpdaterTriggerFlag =
