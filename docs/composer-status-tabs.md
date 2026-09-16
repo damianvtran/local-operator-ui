@@ -460,11 +460,14 @@ box, so the rule applies with one fewer to spare.
 
 Visible: **`[Info] 4 to-dos open`** — the run pane's own mark, then
 `todoClause` (`run-detail-model.ts`), which is the app's one spelling of that
-fact: it is the clause the run trigger's own tooltip already uses
-(`run-detail-model.ts:2203`), and its singular/plural grammar (`1 to-do open`)
-is stated once, for the reason that model records for the sibling attention
-clause: *"Two copies of one rule is how round 1's U1-7/Q7 happened… and nothing
-but review would have caught it"* (`:2131-2144`).
+fact: it is the clause the run trigger's own tooltip already uses, behind that
+label's own `openTodos > 0` guard (`run-detail-model.ts`'s `runDetailTriggerLabel`),
+and its singular/plural grammar (`1 to-do open`) is stated once, for the reason
+that model records for the sibling attention clause: *"Two copies of one rule is
+how round 1's U1-7/Q7 happened… and nothing but review would have caught it"*.
+Both citations name the symbol or the guard rather than a line: these numbers had
+already drifted before this change, and the file they point into is edited often
+enough that a number is a claim with no keeper (agent review round 1, minor 1).
 
 **A settled plan stops spelling a count: `All to-dos resolved`, or `All to-dos
 closed` where anything was dropped.** The chip used to print `0 to-dos open`,
@@ -480,6 +483,13 @@ The two settled spellings are separate on purpose. `resolved` is a claim about
 work that got DONE, and a dropped item was abandoned rather than done, so a plan
 that gave part of itself up reads as `closed` — the word `todoTally` already uses
 for done plus dropped, and the word the TUI's `RESOLVED_STATUSES` stands behind.
+The settled word is therefore scoped PER SURFACE, deliberately: this chip's
+`resolved` is the strict subset where nothing was dropped, the pane's tally says
+`closed` for both settled cases (`3 of 3 closed`), and the TUI prints `resolved`
+for closure including dropped (`n/m resolved`, with the dropped count stated
+beside it) — three surfaces, one fact, and no single word that is right on all
+three, which is why the difference is recorded here rather than unified onto one
+of them (design review round 1, D1).
 One clause, one pluralisation, one settled pair; the chip's tooltip and
 accessible name are built from that same function (§ 5.3), so the body and the
 name cannot state the plan's ending two ways. The count forms — `1 to-do open`,
@@ -586,6 +596,7 @@ lineage it does not belong to."*
 | Visible, nothing open and nothing dropped | `All to-dos resolved` |
 | Visible, nothing open with items dropped | `All to-dos closed` |
 | Tooltip and accessible name | `Open the plan in run details — 4 to-dos open` |
+| Tooltip and accessible name, nothing open | `Open the plan in run details — All to-dos resolved` (nothing dropped) / `Open the plan in run details — All to-dos closed` (anything dropped) |
 
 - The settled rows are `todoClause`'s pair and not a second copy of them: the
   chip's body, its tooltip and its accessible name are all one call (§ 5.1).

@@ -377,7 +377,7 @@ test("a plan with every item done is the one that reads as resolved", () => {
 	assert.doesNotMatch(markup, /\d+ to-dos? open/);
 });
 
-test("the clause is the model's one spelling, for one, none and many", () => {
+test("the clause is the model's one spelling, for one, many and both settled states", () => {
 	assert.equal(todoClause({ openTodos: 0, droppedTodos: 0 }), "All to-dos resolved");
 	assert.equal(todoClause({ openTodos: 0, droppedTodos: 2 }), "All to-dos closed");
 	assert.equal(todoClause({ openTodos: 1, droppedTodos: 0 }), "1 to-do open");
