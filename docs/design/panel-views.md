@@ -1043,7 +1043,12 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
   stated twice in one viewport** — the note and the meta are one viewport here,
   where the terminal's header is a page-turn away, so the note drops what the
   meta already says (`Q queued`) and what the caveat line beneath it already says
-  (`U did not report`). Same plural helper for the meta and the rows
+  (`U did not report`). The once-per-viewport rule is scoped to a MEASURED total:
+  at `0 total` the note's addends (`0 sessions + 0 subagents`) are deliberately
+  KEPT even though the meta has already said `none running`, because they are this
+  panel's only spelling of a measured zero as distinct from `—`, and the terminal
+  weighs the same shape and keeps it too (design round 2, D8). Same plural helper
+  for the meta and the rows
   (`render.py::plural`'s irregular map: `1 trajectory` / `N trajectories`).
   Two sections share one spelling of a failed scan, from a single exported
   constant (section 3 and this one); with the scan failed, NEITHER section
@@ -1418,7 +1423,7 @@ Required stories per panel (the minimum reviewable set):
 | `unavailable` | the failure shape and the backend's own sentence |
 | `narrow` | 720px: bars surrender width first, labels and values hold |
 | `dense` | the largest legal payload: a body that overflows, evidencing the fold rule and the fade |
-| per-panel hard states | `/analytics`: `unpriced` (`cost_known_calls === 0`) and `partial-cost`; `/session`: `tree-cost` (descendants present), `no-tool-calls` (null), `zero-samples`; `/info`: `build-skew`, `roster-unread`, `remote-host`, and the fleet honesty states `fleet-one-does-not-report`, `fleet-nobody-reports`, `fleet-queued-only`, `fleet-all-idle`, `fleet-wedged`, `fleet-unavailable`, `fleet-probes-failed`, `fleet-agents-unread` (the `≥` bound, the `—` refusal, the measured-zero-with-a-queue, the earned `none running`, the wedged split, the registry that could not be scanned, and a probe that failed — by field and by block), plus `fleet-neighbours` (the section in situ, under the sessions section) and `fleet-narrow` (720px, where the note's separator wraps); `/context`: `no-numbers` (pre-`numbers` backend); `/failovers`: `failover-in-force`, `no-chains` |
+| per-panel hard states | `/analytics`: `unpriced` (`cost_known_calls === 0`) and `partial-cost`; `/session`: `tree-cost` (descendants present), `no-tool-calls` (null), `zero-samples`; `/info`: `build-skew`, `roster-unread`, `remote-host`, and the fleet honesty states `fleet-one-does-not-report`, `fleet-nobody-reports`, `fleet-queued-only`, `fleet-all-idle`, `fleet-wedged`, `fleet-unavailable`, `fleet-probes-failed`, `fleet-agents-unread` (the `≥` bound, the `—` refusal, the measured-zero-with-a-queue, the earned `none running`, the wedged split, the registry that could not be scanned, and a probe that failed — by field and by block), plus `fleet-neighbours` (the section in situ, under the sessions section), `fleet-narrow` (720px) and `fleet-note-wraps` (the one frame whose note WRAPS, where the separator's non-breaking spacing is judged from pixels); `/context`: `no-numbers` (pre-`numbers` backend); `/failovers`: `failover-in-force`, `no-chains` |
 
 Then, in the UI PR:
 
