@@ -118,9 +118,22 @@ export LOCAL_OPERATOR_DESKTOP_TOKEN=$(openssl rand -hex 32)
 local-operator serve --host 127.0.0.1 --port <your-port>
 
 LOCAL_OPERATOR_DESKTOP_TOKEN=$... npx electron-vite dev \
-  --remoteDebuggingPort=<your-cdp-port> -- --user-data-dir=<scratch>
+  --remoteDebuggingPort=<your-cdp-port>
 ```
 
+**A dev run cannot take `--user-data-dir`.** `electron-vite dev` parses its own
+options and spawns Electron itself, so a Chromium switch given to it — with a `--`
+separator or without one — never reaches the app's argv (measured: the app
+reported the default 1380x900 when `ELECTRON_CLI_ARGS` asked for 1024x768), and a
+`--` separator is worse than useless because Chromium stops reading switches at
+it. When this reproduction needs its own profile, build and use the documented
+agent launch instead, which puts the switches on the app's own argv:
+
+```
+pnpm build
+pnpm app:headless --remote-debugging-port=<your-cdp-port> \
+  --user-data-dir=<scratch> --window-size=1380x900
+```
 `--user-data-dir` is required when another Electron instance is already running:
 the app takes a single-instance lock and a second copy otherwise exits at once.
 Then, with a message typed in the composer, stop the backend and press Enter:
