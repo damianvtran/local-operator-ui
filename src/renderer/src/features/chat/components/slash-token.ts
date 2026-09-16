@@ -234,12 +234,37 @@ export function slashArgument(
 }
 
 /**
+ * Whether the slash token starting at `start` is a command BY POSITION.
+ *
+ * True when nothing but whitespace precedes the token: it is the whole draft,
+ * or the draft's opening word, which is the operator's "at the start of the
+ * input". A word anywhere else is part of the sentence being written, and a
+ * list opened over it recruits the user into a command the planner will refuse
+ * to run (design round 1, D1 = UX U2: `fix this /team` opened the roster, its
+ * footer promised a run, and the first Enter was consumed completing a word
+ * that then went to the model as prose).
+ *
+ * It lives here, beside the span it is asked about, because BOTH the popup's
+ * phase (`caretPhase` below) and the submit planner ask it and they must not
+ * answer differently. `planSlashSubmission` calls it for its own `opensDraft`
+ * rather than re-deriving the same fact from the spliced text.
+ */
+export function commandWordOpensDraft(draft: string, start: number): boolean {
+	return draft.slice(0, start).trim() === "";
+}
+
+/**
  * The caret's phase, so the two lists are mutually exclusive.
  *
  * "argument" wins over "command" because the two are disjoint by construction
  * (the argument phase requires the caret past the word-terminating space, where
  * `slashContext` has already declined), and the order is asserted here rather
  * than left to the caller.
+ *
+ * Both are gated on `commandWordOpensDraft`: a mid-draft word opens NOTHING,
+ * because the planner reads it as prose. Without the gate the popup is the one
+ * surface still offering a command (D1), and Enter on its row mutates a draft
+ * that then goes to the model as written (U2).
  */
 export function caretPhase(
 	text: string,
@@ -247,11 +272,17 @@ export function caretPhase(
 	commandNames: ReadonlySet<string>,
 	argumentCommands: readonly string[],
 ): "argument" | "command" | null {
-	if (
-		slashArgumentContext(text, argumentCommands, cursor, commandNames) !== null
-	)
+	const argument = slashArgumentContext(
+		text,
+		argumentCommands,
+		cursor,
+		commandNames,
+	);
+	if (argument !== null && commandWordOpensDraft(text, argument.tokenStart))
 		return "argument";
-	if (slashContext(text, cursor, commandNames) !== null) return "command";
+	const command = slashContext(text, cursor, commandNames);
+	if (command !== null && commandWordOpensDraft(text, command.start))
+		return "command";
 	return null;
 }
 

@@ -61,6 +61,12 @@ const COMMAND_NAMES = new Set([
 	"usage",
 	"model",
 	"compact",
+	"login",
+	"logout",
+	"credential",
+	"stop",
+	"fast",
+	"move",
 ]);
 /** `consumes_prompt: true` in the shared registry. */
 const PROMPT_COMMANDS = new Set(["team", "teams", "agent", "agents", "goal"]);
@@ -84,6 +90,31 @@ const ARMED_ONLY_COMMANDS = new Set(["goal"]);
  */
 const LOOP_NAMES = new Set([...COMMAND_NAMES, "loop"]);
 const LOOP_PROMPTS = new Set([...PROMPT_COMMANDS, "loop"]);
+/**
+ * The registry's own declaration: `arguments` is `optional` or `required`.
+ *
+ * `login`/`logout` are the sharp end of review round 1's R1 — both are
+ * `arguments: "required"` with no inline list and no free-text prompt, and the
+ * desktop forwards the typed word as the SELECTION, so reading them as prose
+ * stopped a command that runs today.
+ */
+const ARGUMENT_COMMANDS = new Set([
+	"login",
+	"logout",
+	"credential",
+	"stop",
+	"fast",
+	"move",
+	"model",
+	"effort",
+	"approvals",
+	"theme",
+	"team",
+	"teams",
+	"agent",
+	"agents",
+	"goal",
+]);
 
 const plan = (draft, caret, over = {}) =>
 	planSlashSubmission({
@@ -93,6 +124,7 @@ const plan = (draft, caret, over = {}) =>
 		promptCommands: PROMPT_COMMANDS,
 		armedOnlyCommands: ARMED_ONLY_COMMANDS,
 		valueArgumentCommands: VALUE_ARGUMENT_COMMANDS,
+		argumentCommands: ARGUMENT_COMMANDS,
 		nameListCommands: NAME_LIST_COMMANDS,
 		enabled: true,
 		...over,
@@ -854,4 +886,35 @@ test("the arming vocabulary is the registry's, and its absence takes the pick pa
 		}).kind,
 		"reassemble",
 	);
+ * Review round 1, R1 — the registry's own `arguments` field is the third
+ * vocabulary, and without it every whole-draft command whose argument list is
+ * not inline stopped running. Measured on the head the round reviewed: these
+ * read `whole` at base `d20c123c1` and `send` after this branch's rule, and QA
+ * Q1 then measured the live consequence — the send is refused, because a
+ * message may not start with `/`, and the command never runs.
+ */
+test("a command that declares an argument keeps its whole-draft form", () => {
+	for (const [draft, name, args] of [
+		["/login openai", "login", "openai"],
+		["/logout openai", "logout", "openai"],
+		["/credential anthropic", "credential", "anthropic"],
+		["/credential k", "credential", "k"],
+		["/stop 2", "stop", "2"],
+		["/fast on", "fast", "on"],
+		["/move ~/work", "move", "~/work"],
+	]) {
+		assert.deepEqual(
+			plan(draft, draft.length),
+			{ kind: "whole", command: { name, args } },
+			`${draft} is the command and its declared argument`,
+		);
+	}
+
+	/*
+	 * And the narrowing is still the declaration, not "any trailing word": a
+	 * no-argument command with text after it is prose (the operator's own report
+	 * about `/compact hello`), and the same command mid-sentence is prose too.
+	 */
+	assert.equal(plan("/compact hello", 14).kind, "send");
+	assert.equal(plan("fix this /login openai", 21).kind, "send");
 });

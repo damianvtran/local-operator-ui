@@ -256,6 +256,17 @@ export type SlashCompletionState = {
 	 * keystroke and a scan of the array would be a second copy of the same set.
 	 */
 	valueArgumentCommands: ReadonlySet<string>;
+	/**
+	 * The declaration half of the planner's argument vocabulary: names (primaries
+	 * and aliases) whose registry entry says `arguments` is `optional` or
+	 * `required`, read off the same `SlashCommandMeta` the planner is handed.
+	 *
+	 * It exists because the other two sets are narrower than the field they were
+	 * standing in for: `/login`, `/logout`, `/stop`, `/fast` and `/move` declare
+	 * an argument and carry no inline list, so a union of the other two read
+	 * their whole-draft forms as prose (review round 1, R1).
+	 */
+	argumentCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -406,6 +417,21 @@ export function useSlashCompletion({
 		() => new Set(vocabulary.words),
 		[vocabulary],
 	);
+	/*
+	 * The registry's own declaration, which is the only vocabulary `/login` and
+	 * its peers appear in: `arguments !== "none"`. Derived from the same
+	 * `SlashCommandMeta` list the completion rows render, so a new registry entry
+	 * cannot be in one and not the other.
+	 */
+	const argumentCommands = useMemo(() => {
+		const names = new Set<string>();
+		for (const command of registry) {
+			if (command.arguments === "none") continue;
+			names.add(command.name.toLowerCase());
+			for (const alias of command.aliases) names.add(alias.toLowerCase());
+		}
+		return names;
+	}, [registry]);
 	const commandNames = useMemo(() => {
 		const names = new Set<string>();
 		for (const command of registry) {
@@ -686,6 +712,7 @@ export function useSlashCompletion({
 		promptCommands,
 		armedOnlyCommands,
 		valueArgumentCommands,
+		argumentCommands,
 		nameListCommands: vocabulary.nameList,
 		argumentWords: vocabulary.words,
 		enabled,

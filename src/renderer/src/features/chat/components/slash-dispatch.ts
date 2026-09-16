@@ -70,6 +70,19 @@ import { commandBudgetRefusal } from "../utils/message-budget";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashCommandInvocation } from "./slash-submit";
 
+/**
+ * The terminal host's optimistic receipt for a pass that STARTS
+ * (`session/runtime/serving.py`, the `SlashResult` the routed command returns
+ * before the pass runs).
+ *
+ * Named here because it is the ONE receipt `/compact` swallows — the working
+ * line and the settled info line are the ported surfaces, and a note would
+ * announce the same thing a third time — and a suppression keyed on the
+ * notice's SHAPE instead of on this sentence also swallowed the refusals the
+ * runtime answers in the same tone (review round 1, R2).
+ */
+const COMPACT_START_NOTICE = "compacting context…";
+
 type SlashDispatchOptions = {
 	/** Canonical session the commands address. */
 	sessionId: string | undefined;
@@ -505,16 +518,19 @@ export function useSlashDispatch({
 						 * The receipt of a pass that STARTS is the terminal host's own
 						 * optimistic notice (`compacting context…`), and it is deliberately
 						 * NOT ported. The operator asked for the working line while the pass
-						 * runs and the compaction info line when it settles; a note on top
-						 * of both would announce the same thing a third time. A receipt that
-						 * is not that notice IS the command's own answer — a refusal, or a
-						 * crash reported before the canonical events could carry it — so it
-						 * is reported like any other refusal.
+						 * runs and the compaction info line when it settles; a note on top of
+						 * both would announce the same thing a third time. A receipt that is
+						 * not that notice IS the command's own answer — a refusal, or a crash
+						 * reported before the canonical events could carry it — so it is
+						 * reported like any other refusal.
+						 *
+						 * THE TEXT IS THE TEST, not the shape (review round 1, R2). Keyed on
+						 * `notice`+`info` this dropped EVERY info-toned receipt for this
+						 * command, including a refusal the runtime answers in that tone — the
+						 * "a command that appears to do nothing" failure this branch exists to
+						 * avoid, reintroduced by the line that was written to avoid it.
 						 */
-						if (
-							result.text &&
-							!(result.kind === "notice" && result.style === "info")
-						) {
+						if (result.text && result.text.trim() !== COMPACT_START_NOTICE) {
 							note(
 								result.text,
 								result.kind === "error" || result.style === "error",
