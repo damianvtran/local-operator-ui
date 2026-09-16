@@ -259,6 +259,27 @@ export type TranscriptRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/**
+			 * The pass's FINGERPRINT: the `tokens_before` the pass reported, which
+			 * both projections of one pass carry — the live id spells it
+			 * (`compaction:<generation>:<before>:<after>`) and the durable entry has
+			 * it in `payload.tokens_before`.
+			 *
+			 * WHY A FINGERPRINT RATHER THAN A CLOCK. The two projections are written
+			 * by different clocks in a fixed order: the backend awaits
+			 * `append_compaction` (ts = `time.time()`) and only then emits the settle
+			 * event, and the renderer stamps the live line with `Date.now()` when it
+			 * processes that frame — so the durable row is ALWAYS the older of the
+			 * two, whichever arrives first (agent review round 4, R4-1: a
+			 * time-ordered relation painted one pass as two rows in production). The
+			 * fingerprint is the identity the pair actually shares, and it is the only
+			 * key that cannot be confused by a second pass nearby.
+			 *
+			 * `undefined` when the pass reported no figure — an older transcript, or a
+			 * row written before `tokens_before` existed. That is what the window
+			 * fallback in `collapseSettledCompactions` is for.
+			 */
+			before?: number;
 	  };
 
 export type TranscriptState = {
@@ -788,41 +809,41 @@ export const COMPACTED_LINE = "Context compacted";
  * One pass, one row: the live settled line and the durable row are two
  * projections of ONE event, so exactly one of them may be painted.
  *
- * WHY THIS SHAPE, and it replaces a pairing that mutated as pages arrived. The
- * old rule matched each incoming durable row against the FIRST painted
- * `compaction:` row within two minutes, carried that row's sentence onto the
- * durable one and deleted the live row afterwards. Three defects followed from
- * being stateful and unordered: an already-painted durable row was re-paired on
- * every read (so the second read of a page stripped the figures), the search
- * read the pre-merge list (so one live row could be consumed twice and a later
- * pass adopted an earlier pass's numbers), and the deletion happened after the
- * loop (so both rows survived within it). Review round 3 reproduced all three on
- * the real module (R3-1, U12, Q5).
+ * WHY THIS SHAPE, and it replaces two rules that were both wrong. The first
+ * matched each incoming durable row against the FIRST painted `compaction:` row
+ * within two minutes (stateful and unordered: one live row could be spent twice).
+ * The second ordered the pair by clock on the stated reasoning that "a durable row
+ * is written when a pass ENDS" — which is backwards, and review round 4 measured
+ * it: the backend awaits `append_compaction` (whose ts is `time.time()` at the
+ * write, `session/transcript.py:809-812`) and only THEN emits the settle event
+ * (`session.py:9851`), while the renderer stamps the live line with `Date.now()`
+ * when it processes that frame, so the durable row is the OLDER of the two in
+ * either arrival order. One pass painted two rows — bare and figured, side by
+ * side, stable for a minute.
  *
- * This is a PURE, TOTAL, IDEMPOTENT function of the record list: computed from
- * the whole list rather than patched as pages arrive, so applying the same page
- * twice, re-seeding it with `replace`, or loading it cold all produce the SAME
- * rows. Each live line claims the durable row NEAREST at or after its own
- * instant that no earlier live line has claimed — one-to-one, oldest live line
- * first — and the live SENTENCE moves onto that durable row, which is then the
- * only row left. A durable row is written when a pass ENDS, which is why "at or
- * after" is the relation; the nearest-first order is what stops two passes inside
- * the window from swapping sentences, and claiming a durable row once is what
- * stops a single live line from being spent on two passes.
+ * So the pair is matched by IDENTITY first, because both projections already carry
+ * one: the live id spells the pass's `tokens_before` and the durable entry has it
+ * in its payload (the field the bare fallback reads for its sentence). A live line
+ * takes the durable row whose `before` equals its own — one-to-one, oldest live
+ * line first. A SECOND PAIRING INSIDE THE WINDOW remains for the row that carries
+ * no fingerprint (an older transcript): nearest by `|Δts|` in EITHER direction,
+ * claimed once. Distance is a tie-break, never the primary key.
  *
- * WHAT MAKES IT IDEMPOTENT, since round 3 measured it being the opposite: the
- * chosen sentence is carried INTO the record, and a page arriving later does not
- * overwrite it with the durable entry's bare projection (`durableRecord` keeps the
- * sentence a row already carries — the entry has no sentence of its own to
- * disagree with). So the second application of the same page finds the figures
- * already on the row, pairs nothing, and returns the identical list. A `replace`
- * re-seed or a cold read has no painted row to keep, which is the case
- * `COMPACTED_LINE` is for.
- *
- * Refusals need no rule here: the runtime's refusal writes its durable row and
- * emits no event at all (see `refreshTail`'s note), so there is no live line to
- * collapse.
+ * Still a PURE, TOTAL, IDEMPOTENT function of the record list: computed from the
+ * whole list rather than patched as pages arrive, so applying the same page twice,
+ * re-seeding it with `replace`, or loading it cold all produce the SAME rows, and
+ * the chosen sentence is carried INTO the record so a later read cannot strip it.
+ * Refusals need no rule here: the runtime writes the durable row and emits no
+ * event at all (see `refreshTail`'s note), so there is no live line to collapse.
  */
+/**
+ * How far apart two projections of one pass may sit when the durable row carries
+ * no fingerprint to match on. Wide enough for a slow disk write plus the frame's
+ * round trip, narrow enough that an unrelated pass minutes later cannot be
+ * claimed by it — and it is only ever a FALLBACK: the fingerprint is the key.
+ */
+const SETTLED_PAIRING_WINDOW_MS = 120_000;
+
 export function collapseSettledCompactions(
 	records: TranscriptRecord[],
 ): TranscriptRecord[] {
@@ -841,17 +862,36 @@ export function collapseSettledCompactions(
 	const dropped = new Set<string>();
 	/** The sentence each paired durable row keeps, keyed by its id. */
 	const kept = new Map<string, string>();
-	for (const row of [...live].sort((a, b) => a.ts - b.ts)) {
-		let nearest: TranscriptRecord | null = null;
+	const pair = (row: Settled, candidate: Settled) => {
+		claimed.add(candidate.id);
+		dropped.add(row.id);
+		kept.set(candidate.id, row.text);
+	};
+	const ordered = [...live].sort((a, b) => a.ts - b.ts);
+	// Identity first: the pass's own figure, which only its durable row carries.
+	for (const row of ordered) {
+		if (row.before === undefined) continue;
+		const match = durable.find(
+			(candidate) =>
+				!claimed.has(candidate.id) && candidate.before === row.before,
+		);
+		if (match) pair(row, match);
+	}
+	// Then the window, for a durable row with no figure to match on.
+	for (const row of ordered) {
+		if (dropped.has(row.id)) continue;
+		let nearest: Settled | null = null;
+		let distance = Number.POSITIVE_INFINITY;
 		for (const candidate of durable) {
 			if (claimed.has(candidate.id)) continue;
-			if (candidate.ts < row.ts) continue;
-			if (!nearest || candidate.ts < nearest.ts) nearest = candidate;
+			const delta = Math.abs(candidate.ts - row.ts);
+			if (delta > SETTLED_PAIRING_WINDOW_MS) continue;
+			if (delta < distance) {
+				distance = delta;
+				nearest = candidate;
+			}
 		}
-		if (!nearest) continue;
-		claimed.add(nearest.id);
-		dropped.add(row.id);
-		kept.set(nearest.id, row.text);
+		if (nearest) pair(row, nearest);
 	}
 	if (dropped.size === 0) return records;
 	return records
@@ -1258,7 +1298,17 @@ function durableRecord(
 		 */
 		const kept =
 			previous?.kind === "compaction" ? previous.text : COMPACTED_LINE;
-		return { kind: "compaction", id: entry.id, ts, text: kept };
+		// The entry's own figure, which is the pass's fingerprint: `append_compaction`
+		// writes `tokens_before` and no after-figure, and that one number is what lets
+		// this row be paired with its live line by identity rather than by clock.
+		const before = payload.tokens_before;
+		return {
+			kind: "compaction",
+			id: entry.id,
+			ts,
+			text: kept,
+			...(typeof before === "number" ? { before } : {}),
+		};
 	}
 	/*
 	 * The refusal's own durable row, painted rather than dropped: see
@@ -1473,8 +1523,24 @@ export function applyHistoryPage(
 	page: DesktopHistoryPage,
 	options: { replace?: boolean; keepPaging?: boolean } = {},
 ): TranscriptState {
+	/*
+	 * A view the user has CLEARED is answered with the pass's own outcome only.
+	 * `/clear` is view-only by contract, so a page read afterwards would repaint
+	 * every row it removed — measured as the in-place variant of review round 3's
+	 * U11 (UX round 4's U17): `/compact`, then `/clear`, then `/compact` again put
+	 * the cleared conversation back. The tail read exists for ONE row (a pass's
+	 * settled line, or its refusal), and `keepPaging` is the flag only that read
+	 * sets, so this is where the distinction can be drawn without a second
+	 * mechanism. A read that is not the tail read still repaints, which is
+	 * pre-existing behaviour of a view-only clear rather than this branch's.
+	 */
+	const clearedView =
+		options.keepPaging === true &&
+		state.records.length === 0 &&
+		state.viewEpoch > 0;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
+		if (clearedView && !isCompactionOutcome(entry)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. Handing it to `durableRecord` is what lets an unchanged
 		// `images` array keep its reference through a replayed page.
@@ -2117,7 +2183,13 @@ export function applyEvent(
 			 * `applyHistoryPage` is the same answer twice).
 			 */
 			return collapseRecords(
-				upsert(settled, { kind: "compaction", id, ts: now, text }),
+				upsert(settled, {
+					kind: "compaction",
+					id,
+					ts: now,
+					text,
+					...(before ? { before } : {}),
+				}),
 			);
 		}
 		case "retry_start": {
@@ -2460,6 +2532,17 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 		viewEpoch: state.viewEpoch + 1,
 		argsByCall: state.argsByCall,
 	};
+}
+
+/** Whether a durable entry is a compaction pass's own outcome row. */
+function isCompactionOutcome(
+	entry: DesktopHistoryPage["entries"][number],
+): boolean {
+	return (
+		entry.type === "compaction" ||
+		(entry.type === "message" &&
+			entry.payload?.custom_type === "compaction_refused")
+	);
 }
 
 /** A token count as the settled line prints it: `41.0k`, `864`. */
