@@ -247,8 +247,16 @@ which prints its own numbers into the picture):
 | Column | Chips rendered | Row height | `overflowX` |
 |---|---|---|---|
 | 900px (the app's own column) | 4, one line | 32px | 0 |
-| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 4, wrapped | 80px | 0 |
+| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 4, wrapped | 106px | 0 |
 | 172px (the app's floor with the canvas open) | 4, stacked | 106px | 0 |
+
+The 240px row read 80px until round 2 (m1) and that number was superseded by the
+chip group: the pre-group arrangement shared line 1 with one count chip and put the
+other two below, so it was one line shorter and the goal was truncated harder
+(`Goal: Rec…` against today's `Goal: Reconcile the March i…`).
+`docs/composer-activity-chips.md` § 7 owns that correction and the comparison;
+the frames' own captions in `activity-widths/` are where both numbers are read
+from.
 
 That height is the cost this row accepts rather than hides, and it is the same
 cost § 2.3 already records for the stacked arrangement, one chip further: the row
