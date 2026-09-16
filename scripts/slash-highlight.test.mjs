@@ -36,8 +36,8 @@ const {
 	runInkClass,
 	planSlashSubmission,
 } = await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /** The registry-derived vocabularies the composer hands the builder. */
 const COMMAND_NAMES = new Set([
@@ -317,7 +317,14 @@ test("draft -> plan -> runs: the tint follows what Enter will do", () => {
 			// The composer's own derivation (`promptCommands ∪ inlineArgumentFor`),
 			// as the popup builds it: the words whose trailing text is prose.
 			promptCommands: new Set(["goal", "loop", "btw", "fork", "team", "agent"]),
-			prefixingCommands: new Set(["team", "agent", "fork", "btw", "loop", "goal"]),
+			prefixingCommands: new Set([
+				"team",
+				"agent",
+				"fork",
+				"btw",
+				"loop",
+				"goal",
+			]),
 			nameListCommands: NAME_LIST_COMMANDS,
 			armedOnlyCommands: new Set(["goal"]),
 			// One wire row: `compact` declares `argument_shape: "none"` with no words,

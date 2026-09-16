@@ -748,35 +748,7 @@ const GeometryProbe = ({
 	const conversationId = conversationIdFor(label);
 	const queryClient = useQueryClient();
 	const boxRef = useRef<HTMLDivElement | null>(null);
-	/*
-	 * THE GUTTER IS FORCED BEFORE THE FIRST MEASURE, in an effect declared above it.
-	 *
-	 * It used to be injected in the same tick as the measurement, so the settled pass
-	 * read `scrollbar gutter 0px` and `paddingRight 8px vs 8px` in all twelve frames
-	 * (design round 3 D10, review round 3 MAJOR-2): the pair the round-2 prose quoted
-	 * was the value the injection WOULD produce, not one any frame carried, and the
-	 * correction it exists to measure never ran. Effects run in declaration order, so
-	 * this one applies the rule and lets the layout settle before the probe reads.
-	 *
-	 * A classic scrollbar needs BOTH: `overflow-y: scroll` reserves the track, and an
-	 * explicit `::-webkit-scrollbar` width stops Chromium from drawing one of the OS's
-	 * overlay scrollbars, which measure a 0px gutter however they are asked for
-	 * (measured on this machine: `overflow-y: scroll` alone still reported 0). This is
-	 * the platform setting's rendering, produced without touching the operator's
-	 * system preferences.
-	 */
-	useLayoutEffect(() => {
-		if (!forceScrollbar) return;
-		const textarea = boxRef.current?.querySelector("textarea");
-		if (!textarea) return;
-		const style = document.createElement("style");
-		style.textContent =
-			"textarea::-webkit-scrollbar { width: 15px; } textarea::-webkit-scrollbar-thumb { background: rgb(120,120,120); }";
-		document.head.appendChild(style);
-		textarea.style.overflowY = "scroll";
-		window.dispatchEvent(new Event("resize"));
-		return () => style.remove();
-	}, [forceScrollbar]);
+
 	const [rows, setRows] = useState<Record<string, string>>({});
 	/*
 	 * THE VOCABULARY IS SEEDED BEFORE THE FIRST MEASURE — see the note inside the
@@ -804,6 +776,22 @@ const GeometryProbe = ({
 		if (!box) return;
 		/** The first pass's readback, so a later pass can be compared to it. */
 		let settled = "";
+		/*
+		 * THE GUTTER IS FORCED BEFORE THE FIRST MEASURE, and the ordering is the point:
+		 * the injection used to run in the same tick as the measurement, so the settled
+		 * pass read `scrollbar gutter 0px` and `paddingRight 8px vs 8px` in all twelve
+		 * frames (design round 3 D10, review round 3 MAJOR-2) — the pair the round-2
+		 * prose quoted was the value the injection WOULD produce, not one any frame
+		 * carried, and the correction it exists to measure never ran. It now applies
+		 * synchronously below, before the rAF pair schedules anything.
+		 *
+		 * A classic scrollbar needs BOTH: `overflow-y: scroll` reserves the track, and
+		 * an explicit `::-webkit-scrollbar` width stops Chromium from drawing one of the
+		 * OS's overlay scrollbars, which measure a 0px gutter however they are asked
+		 * for (measured on this machine: `overflow-y: scroll` alone still reported 0).
+		 * That is the platform setting's rendering, produced without touching the
+		 * operator's system preferences.
+		 */
 		const measure = (pass: "settled" | "confirm-400ms" | "confirm-1500ms") => {
 			const textarea = box.querySelector("textarea");
 			if (!textarea) return;
@@ -971,9 +959,32 @@ const GeometryProbe = ({
 			cancelAnimationFrame(raf);
 			for (const timer of timers) clearTimeout(timer);
 		};
-	}, [draft, forceScrollbar]);
+		/*
+		 * No `forceScrollbar` here: the gutter is a stylesheet rule on the wrapper now,
+		 * not something this effect writes, so the only inputs the measurement has are
+		 * the draft and the fixtures seeded above.
+		 */
+	}, [draft]);
 	return (
-		<div ref={boxRef} className={cn("flex flex-col gap-2")}>
+		<div
+			ref={boxRef}
+			className={cn("flex flex-col gap-2")}
+			/*
+			 * A rule rather than an imperative write, so it is in the document from the
+			 * first layout instead of racing the measurement (the earlier effect ran in
+			 * the same tick as the probe and produced `gutter 0px` in every frame).
+			 * It is still an ASK: this platform draws overlay scrollbars the rule does
+			 * not replace, so the frames honestly read `0px` — see the note on the probe
+			 * below, which states the correction is inert here rather than quoting the
+			 * value the injection would have produced (design round 3 D10).
+			 */
+			data-force-scrollbar={forceScrollbar ? "" : undefined}
+		>
+			{forceScrollbar ? (
+				<style>{`[data-force-scrollbar] textarea { overflow-y: scroll; }
+[data-force-scrollbar] textarea::-webkit-scrollbar { width: 15px; }
+[data-force-scrollbar] textarea::-webkit-scrollbar-thumb { background: rgb(120,120,120); }`}</style>
+			) : null}
 			<Draft label={label} draft={draft} />
 			<dl
 				className={cn(
@@ -1012,18 +1023,20 @@ export const Geometry: Story = {
 				/>
 				<GeometryProbe label="geometry-prose" draft="fix this /usage" />
 				{/*
-				 * The scrollbar case: a command line long enough to wrap several times
-				 * with a classic scrollbar forced onto the field, which is the one state
-				 * where the mirror's text column is narrower than its box.
+				 * The scrollbar case: a wrapped NAME-list draft, which is the only kind of
+				 * multi-line draft the run rule paints (the multi-line kill exempts it),
+				 * under a probe that ASKS for a classic scrollbar.
 				 *
-				 * It carries a RUN, and that is the point of the probe rather than a
-				 * detail of its draft: the correction being measured (`paddingRight =
-				 * the textarea's + its gutter`) exists so that every tint after the
-				 * first wrap sits beside the glyph it names, and on a prose draft the
-				 * correction governs nothing because nothing is painted (design round 2
-				 * D2). A NAME-list command is what makes a wrapped draft paintable —
-				 * the multi-line kill exempts it — so the wrapped lines here have runs
-				 * on them.
+				 * Measured, and stated rather than implied: the platform does not give one.
+				 * Every head measured (`9a28eb0c6` through this one) reads `scrollbar gutter
+				 * 0px` and `paddingRight 8px vs 8px` with `textarea clientWidth` equal to
+				 * the mirror's, so the right-padding correction — `paddingRight = the
+				 * textarea's + its gutter` — is INERT here: macOS draws overlay scrollbars
+				 * that the injected `::-webkit-scrollbar` width does not replace, and the
+				 * frames agree with the readback rather than with the intent (design round
+				 * 3 D10, review round 3 MAJOR-2). What the panel does measure is the mirror
+				 * and the textarea agreeing on a wrapped draft's row count and on each
+				 * run's y, which is the half of D2 that does not depend on a gutter.
 				 */}
 				<GeometryProbe
 					label="geometry-scrollbar"
