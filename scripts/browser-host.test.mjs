@@ -45,6 +45,14 @@ const bundle = await build({
 			'export * from "./src/main/browser/rpc";',
 			'export * from "./src/main/browser/protocol";',
 			'export * from "./src/main/browser/approvals";',
+			// The queue's own constants (the cap, the request TTL) rather than literals in
+			// the tests below: a test that hard-codes 16 stops testing the cap the day the
+			// cap moves, and reads green while it does.
+			'export * from "./src/main/browser/vendor/driver/access-queue";',
+			'export * from "./src/main/browser/consent-notifier";',
+			// The banner class itself, reached through the alias below, so the tests can
+			// see what the DEFAULT factory raised without constructing one of their own.
+			'export { Notification as ElectronNotification } from "electron";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
 			'export * from "./src/main/browser/settle";',
@@ -62,7 +70,15 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 	// `host.ts` and `rpc.ts` reference `node:crypto`/`node:http` normally, and the
-	// browser modules import Electron only as TYPES, so no fixture is needed.
+	// browser modules import Electron only as TYPES, so no fixture is needed —
+	// EXCEPT for `consent-notifier.ts`, which imports `Notification` as a value.
+	// Unaliased, the electron package's `index.js` calls `getElectronPath()` at
+	// module scope and throws, so the whole bundle fails to load; the stub models the
+	// two members the notifier reads and records what it raised. Its header says why
+	// a stub rather than a real Electron here.
+	alias: {
+		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
+	},
 });
 const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -87,6 +103,11 @@ const {
 	PROTO_VERSION,
 	ERROR_CODES,
 	ApprovalStore,
+	ACCESS_QUEUE_CAP,
+	ACCESS_REQUEST_TTL_MS,
+	ConsentNotifier,
+	consentBody,
+	ElectronNotification,
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
@@ -966,30 +987,393 @@ test("a denial is durable and stops the re-prompt", () => {
 	assert.equal(store.describe().denied_origins, 1);
 });
 
-test("a request displaced by another session's prompt is superseded, not silently forgotten", () => {
-	const store = new ApprovalStore({ dir: join(root, "approvals-supersede") });
+test("a second session's request is queued behind the first, not displacing it", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-queue") });
 	const first = store.requestAccess(
 		"https://a.example/",
 		"session:a",
 		"async",
 		"req-1",
 	);
-	store.requestAccess("https://b.example/", "session:b", "async", "req-2");
-	assert.equal(
-		store.pendingEntries().length,
-		1,
-		"one prompt slot, replace-don't-queue",
+	const second = store.requestAccess(
+		"https://b.example/",
+		"session:b",
+		"async",
+		"req-2",
+	);
+	// THE BEHAVIOUR THIS TEST REPLACES. Until this round the second request called
+	// `displaceLive`, which cleared the whole live queue, and the assertion here read
+	// `pendingEntries().length === 1` under the name "one prompt slot,
+	// replace-don't-queue". The operator asked for the opposite by name ("allow a
+	// queue"), and design 9.1 already specified FIFO, so the assertion is now that
+	// NEITHER request is destroyed by the other's arrival.
+	assert.deepEqual(
+		store.pendingEntries().map((entry) => entry.origin),
+		["https://a.example", "https://b.example"],
+		"both requests are live, in the order they arrived",
 	);
 	assert.equal(
 		store.accessStateFor("https://a.example/", "session:a").state,
-		"superseded",
+		"pending",
 	);
 	assert.equal(
-		store.accessStateFor("https://a.example/", "session:c").state,
-		"none",
-		"a third session gets the neutral answer, not someone else's receipt",
+		store.accessStateFor("https://b.example/", "session:b").state,
+		"pending",
 	);
-	assert.ok(first.entry_id);
+	// Each is answered independently, and answering the newer one leaves the older
+	// one waiting — the property a single slot could not have.
+	assert.equal(store.respond(second.entry_id, "site").scope, "origin");
+	assert.equal(store.pendingEntries().length, 1);
+	assert.equal(store.pendingEntries()[0].entryId, first.entry_id);
+	assert.equal(
+		store.accessStateFor("https://a.example/", "session:a").state,
+		"pending",
+	);
+	assert.equal(store.originAllowed(safeHttpUrl("https://b.example/")), true);
+	assert.equal(
+		store.originAllowed(safeHttpUrl("https://a.example/")),
+		false,
+		"and the unanswered origin is still refused: a queue is not a grant",
+	);
+});
+
+test("at the cap the oldest request is displaced, and the newest requester is not refused", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-cap") });
+	const entries = [];
+	for (let index = 0; index < ACCESS_QUEUE_CAP; index += 1) {
+		entries.push(
+			store.requestAccess(
+				`https://cap${index}.example/`,
+				"session:a",
+				"async",
+				`req-${index}`,
+			),
+		);
+	}
+	assert.equal(store.pendingEntries().length, ACCESS_QUEUE_CAP);
+	const extra = store.requestAccess(
+		"https://late.example/",
+		"session:b",
+		"async",
+		"req-late",
+	);
+	// The refusal this replaces was `access_queue_full`: an error the user cannot act
+	// on, raised at the agent that did nothing wrong, in a state the displaced
+	// requester already handles.
+	assert.equal(extra.state, "pending", "the newest requester is never refused");
+	assert.equal(
+		store.pendingEntries().length,
+		ACCESS_QUEUE_CAP,
+		"the queue holds its cap",
+	);
+	assert.equal(
+		store.pendingEntries()[0].entryId,
+		entries[1].entry_id,
+		"the OLDEST entry stepped aside",
+	);
+	assert.equal(
+		store.accessStateFor("https://cap0.example/", "session:a").state,
+		"superseded",
+		"and its requester learned what happened rather than timing out into `none`",
+	);
+	assert.equal(
+		store.accessStateFor("https://late.example/", "session:b").state,
+		"pending",
+	);
+});
+
+test("a decision on a request that has expired is refused, and grants nothing", () => {
+	let clock = Date.now();
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-expired"),
+		now: () => clock,
+	});
+	const entry = store.requestAccess(
+		"https://expired.example/",
+		"session:a",
+		"async",
+		"req-1",
+	);
+	// The TTL is what stops a forgotten prompt granting a navigation nobody
+	// remembers requesting, and the queue is live only while `now < expiresAt`. The
+	// click is therefore the moment the bound has to hold: nothing fires at expiry,
+	// so a decision arriving a second late is the case this closes.
+	clock += ACCESS_REQUEST_TTL_MS + 1;
+	assert.equal(
+		store.pendingEntries().length,
+		0,
+		"the projection drops it at the TTL",
+	);
+	assert.throws(
+		() => store.respond(entry.entry_id, "site"),
+		(error) => error.code === "internal" && /expired/.test(error.message),
+		"an expired request cannot be granted",
+	);
+	assert.equal(
+		store.originAllowed(safeHttpUrl("https://expired.example/")),
+		false,
+		"and no durable grant was written",
+	);
+	assert.equal(store.describe().allowed_origins, 0);
+});
+
+/*
+ * THE SHIPPED-BUILD CONSENT DEFECT, reproduced as acceptance tests (an
+ * independent end-to-end pass against the released v0.24.0 build reported it;
+ * this file is where the reproduction lives so it cannot come back).
+ *
+ * The invariant, one sentence: `request_access` must never answer `allowed` when
+ * the following `open` will be refused, and must never suppress the consent band
+ * while doing so — from ONE source of truth. The root cause was that a resolved
+ * approval RECEIPT (15-minute `ACCESS_RESULT_TTL_MS`) outlived the grant it was
+ * written for, and `request_access` answered from the receipt instead of from
+ * current state, so the gate and the answer could disagree.
+ */
+test("a spent once-grant does not answer `allowed`: the request is raised again, and the band with it", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-once-spent") });
+	const url = safeHttpUrl("https://once-spent.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "once");
+	// The agent's next navigation is what spends it.
+	assert.equal(store.ensureTopLevelAccess(url, "session:a").viaOnceGrant, true);
+	// ...and now the SAME conversation asks again, which is the reported state:
+	// `request_access -> allowed`, then `open -> origin_not_allowed`, no band.
+	const again = store.requestAccess(url.href, "session:a", "async", "req-2");
+	assert.equal(
+		again.state,
+		"pending",
+		"the agent must not be told it may proceed: the grant it was written for is spent",
+	);
+	assert.equal(
+		store.pendingEntries().length,
+		1,
+		"and the consent band is raised, so the user is asked",
+	);
+	assert.throws(
+		() => store.ensureTopLevelAccess(url, "session:a"),
+		(error) => error.code === "origin_not_allowed",
+		"the answer and the gate now agree: nothing was admitted",
+	);
+});
+
+test("a revoked site re-asks in the SAME conversation: the receipt does not outlive the grant", () => {
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-revoke-reask"),
+	});
+	const url = safeHttpUrl("https://revoked.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "site");
+	// The positive direction first, so the assertion below is about the revocation
+	// rather than about a path that never worked: a live grant answers without a
+	// prompt and puts no band up.
+	assert.equal(
+		store.requestAccess(url.href, "session:a", "async", "req-2").state,
+		"allowed",
+	);
+	assert.equal(store.pendingEntries().length, 0);
+	store.revokeOrigin(url.origin);
+	const again = store.requestAccess(url.href, "session:a", "async", "req-3");
+	assert.equal(
+		again.state,
+		"pending",
+		"withdrawing the grant has to be authoritative in the conversation that earned it",
+	);
+	assert.equal(
+		store.pendingEntries().length,
+		1,
+		"and the band is raised there too",
+	);
+	// THE CONTRAST that shows the mechanism was per-conversation receipt state:
+	// a conversation that never held the receipt re-asks as well, so both read the
+	// same thing now instead of one being told a grant was live.
+	assert.equal(
+		store.requestAccess(url.href, "session:b", "async", "req-4").state,
+		"pending",
+	);
+});
+
+test("a deny reads `denied` on await_access, the way an allow reads `allowed`", () => {
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-deny-symmetry"),
+	});
+	const denied = safeHttpUrl("https://deny-symmetry.example/");
+	const entry = store.requestAccess(denied.href, "session:a", "async", "req-1");
+	store.respond(entry.entry_id, "deny");
+	assert.equal(
+		store.accessStateFor(denied.href, "session:a").state,
+		"denied",
+		"the refusal is readable for the requester it was made about — `none` means no request exists for you, which reads as `the user has not answered`",
+	);
+	// The allow path, for the contrast that makes the asymmetry visible: a site
+	// grant is readable from live state once its entry is gone.
+	const allowed = safeHttpUrl("https://allow-symmetry.example/");
+	const allowedEntry = store.requestAccess(
+		allowed.href,
+		"session:a",
+		"async",
+		"req-2",
+	);
+	store.respond(allowedEntry.entry_id, "site");
+	assert.equal(
+		store.accessStateFor(allowed.href, "session:a").state,
+		"allowed",
+	);
+});
+
+test("the positive direction still holds: a live grant short-circuits the band, an unspent once grant with it, and never another conversation", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-positive") });
+	const site = safeHttpUrl("https://positive-site.example/");
+	const once = safeHttpUrl("https://positive-once.example/");
+	const session = safeHttpUrl("https://positive-session.example/");
+	for (const [url, decision] of [
+		[site, "site"],
+		[once, "once"],
+		[session, "session"],
+	]) {
+		const entry = store.requestAccess(
+			url.href,
+			"session:a",
+			"async",
+			`open-${url.origin}`,
+		);
+		store.respond(entry.entry_id, decision);
+		assert.equal(
+			store.requestAccess(url.href, "session:a", "async", `re-${url.origin}`)
+				.state,
+			"allowed",
+			`a ${decision} decision is live authority for its own requester`,
+		);
+	}
+	assert.equal(
+		store.pendingEntries().length,
+		0,
+		"and none of them raised a band",
+	);
+	assert.equal(
+		store.requestAccess(once.href, "session:b", "async", "other").state,
+		"pending",
+		"an unspent once grant is never another conversation's: it is raised for them",
+	);
+});
+
+test("two requests for different origins coexist, and the queue is answered oldest first", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-coexist") });
+	store.requestAccess("https://one.example/", "session:a", "async", "req-1");
+	store.requestAccess("https://two.example/", "session:b", "async", "req-2");
+	store.requestAccess("https://three.example/", "session:c", "async", "req-3");
+	assert.deepEqual(
+		store.pendingEntries().map((entry) => entry.origin),
+		["https://one.example", "https://two.example", "https://three.example"],
+		"FIFO by sequence, which is the order the renderer numbers them in",
+	);
+});
+
+test("one banner per count change, not one per pending request", () => {
+	const raised = [];
+	const notifier = new ConsentNotifier({
+		show: "focus",
+		onAttention: () => {},
+		createNotification: (options) => ({
+			on: () => {},
+			show: () => raised.push(options),
+		}),
+	});
+	const pending = (count) =>
+		Array.from({ length: count }, (_, index) => ({
+			entryId: `entry-${index}`,
+			origin: `https://origin-${index}.example`,
+		}));
+	notifier.announce(pending(0));
+	assert.equal(raised.length, 0, "nothing pending, nothing to say");
+	// A busy minute: three requests arrive one at a time and then all at once.
+	notifier.announce(pending(1));
+	assert.equal(raised.length, 1);
+	assert.match(
+		raised[0].body,
+		/^An agent wants to open https:\/\/origin-0\.example\./,
+		"one pending names the origin, because that is the thing being asked about",
+	);
+	notifier.announce(pending(3));
+	assert.equal(
+		raised.length,
+		2,
+		"one banner for the count change, not one per entry",
+	);
+	assert.match(raised[1].body, /^3 site approvals are waiting\./);
+	// A re-announce at the same count is not a change.
+	notifier.announce(pending(3));
+	assert.equal(raised.length, 2);
+	// And a drop re-arms the watermark: the next arrival is an increase again.
+	notifier.announce(pending(1));
+	notifier.announce(pending(2));
+	assert.equal(raised.length, 3);
+});
+
+test("the click on a banner names the OLDEST live request", () => {
+	const attended = [];
+	let click = null;
+	const notifier = new ConsentNotifier({
+		show: "focus",
+		onAttention: (entryId) => attended.push(entryId),
+		createNotification: () => ({
+			on: (event, listener) => {
+				if (event === "click") click = listener;
+			},
+			show: () => {},
+		}),
+	});
+	notifier.announce([
+		{ entryId: "oldest", origin: "https://one.example" },
+		{ entryId: "newer", origin: "https://two.example" },
+	]);
+	click?.();
+	assert.deepEqual(attended, ["oldest"]);
+});
+
+test("the default banner is Electron's own, with the shape the copy expects", () => {
+	// The path the app takes: no injected factory, so `Notification.isSupported()`
+	// decides and Electron's real class does the raising — the stub above stands in
+	// for it, which is the only way this rule has an observer in a test at all.
+	ElectronNotification.reset();
+	const attended = [];
+	const notifier = new ConsentNotifier({
+		show: "focus",
+		onAttention: (entryId) => attended.push(entryId),
+	});
+	notifier.announce([{ entryId: "oldest", origin: "https://one.example" }]);
+	assert.deepEqual(ElectronNotification.raised, [
+		{
+			title: "Site approval needed",
+			body: consentBody(1, "https://one.example"),
+			silent: false,
+		},
+	]);
+	// And a platform that cannot raise banners is not an error: the band in the
+	// chrome is the primary channel.
+	ElectronNotification.supported = false;
+	notifier.announce([
+		{ entryId: "oldest", origin: "https://one.example" },
+		{ entryId: "newer", origin: "https://two.example" },
+	]);
+	assert.equal(ElectronNotification.raised.length, 1);
+});
+
+test("no banner is raised when the launch plan would not have focused the window", () => {
+	const raised = [];
+	const notifier = new ConsentNotifier({
+		show: "never",
+		onAttention: () => {},
+		createNotification: (options) => ({
+			on: () => {},
+			show: () => raised.push(options),
+		}),
+	});
+	notifier.announce([{ entryId: "a", origin: "https://one.example" }]);
+	assert.equal(
+		raised.length,
+		0,
+		"a headless run has nobody at the screen: the band is the primary channel",
+	);
 });
 
 test("cancelling removes only the caller's own entry", () => {
