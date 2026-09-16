@@ -214,7 +214,6 @@ export function ChatSidebar({
 		// store is a subscription.
 		rows: sessions.length,
 		storeFailed: Boolean(error),
-		planeAvailable: capabilities.data?.desktop_available === true,
 		// The banner's own condition, read through the same predicate it uses, so
 		// the two cannot drift into stating one condition twice (design round 1, D3).
 		coveredByCompatibilityBanner: compatibilityBannerShown(capabilities.data),

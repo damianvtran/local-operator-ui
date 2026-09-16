@@ -145,13 +145,16 @@ export async function requestDesktopOutcome(
 				},
 			},
 			/*
-			 * `answered` survives the catch, and the ONE case it is true in there is a
-			 * listener that answered with a body this process could not parse: the flag
-			 * was set when `fetch` resolved, so a malformed answer is still an answer and
-			 * must not let a serving daemon be detached as though it were absent. A
-			 * timeout ABORT does NOT reach here as `true` - it throws out of `fetch`
-			 * before the assignment, so it returns `answered: false` like a refused
-			 * socket (review round 2, MINOR-1; the earlier wording claimed otherwise).
+			 * `answered` survives the catch, and it is true here in exactly TWO cases,
+			 * both of them a listener that answered: a body this process could not
+			 * parse (the flag was set when `fetch` resolved, and a malformed answer is
+			 * still an answer), and a failure DURING the body read - an abort that
+			 * fired while the bytes were being pulled in lands here with `answered`
+			 * already set. A timeout abort that never got a response does NOT:
+			 * it throws out of `fetch` before the assignment, so it returns
+			 * `answered: false`, like a refused socket (review round 2 MINOR-1, and
+			 * review round 3 MINOR-1 which found the second case - the wording said
+			 * "the ONE case" and the invariant it named was narrower than the code).
 			 */
 			answered,
 		};
