@@ -134,6 +134,31 @@ const execPromise = promisify(exec);
 const ENV_VAR_REGEX = /^([^=]+)=(.*)$/;
 const LINE_BREAK = /\r?\n/;
 
+/**
+ * Which of the three things one answered desktop read told us.
+ *
+ * `refused` is HTTP 401/403 and NOTHING else: those are the two statuses that
+ * mean this app's CREDENTIAL was rejected. Every other answered status - a 503
+ * from a daemon whose session store cannot be read, a 500 from a broken build,
+ * a 404 from a daemon that never had a desktop plane - is `unusable`: a daemon
+ * answered, so the address is OCCUPIED and the app must neither call that a
+ * credential refusal nor start a second daemon over it.
+ *
+ * WHY the distinction is a type and not a boolean. Reading "any non-2xx" as a
+ * refusal recorded a live 503-answering daemon as one that refused this app's
+ * bearer, and that verdict - a `capability` observation plus a declined
+ * candidate - is what reached `start()` and spawned a replacement onto a port
+ * that was already answering. A boolean cannot carry the third case, so the
+ * distinction had nowhere to live.
+ */
+function classifyDesktopAnswer(
+	status: number,
+): "accepted" | "refused" | "unusable" {
+	if (status >= 200 && status < 300) return "accepted";
+	if (status === 401 || status === 403) return "refused";
+	return "unusable";
+}
+
 /** Options a `start()` caller may set. `quiet` is the watchdog's retry, whose
  * failures the status surface is already reporting; `reuseDiscovery` is the
  * startup block's second call, in the same tick as its own discovery pass. */
@@ -204,6 +229,19 @@ export class BackendServiceManager {
 	private remoteConfigured = false;
 	/** A failed probe or unreadable record is not evidence that spawning is safe. */
 	private discoveryBlocksSpawn = false;
+	/**
+	 * The address of a daemon that ANSWERED this app's desktop read without
+	 * refusing its credential, and the status it answered, from the last
+	 * discovery sweep.
+	 *
+	 * Non-null means the address is OCCUPIED by a daemon this app may not attach
+	 * to *yet*: `start()`'s no-spawn report has to publish that as a running
+	 * daemon, because the alternative it would otherwise reach - `no-candidate` -
+	 * renders as offline, which is the one sentence this whole change exists to
+	 * stop saying about a server that answers (#1170: an unreadable session store
+	 * answers 503 instead of an empty 200).
+	 */
+	private answeredButUnusable: { address: string; status: number } | null = null;
 	/**
 	 * Records discovery found alive but unresponsive (pid alive, heartbeat
 	 * stopped). They are why no candidate exists AND why spawning is forbidden,
@@ -979,6 +1017,18 @@ export class BackendServiceManager {
 				kind: "heartbeat-stale",
 				detail: `A Local Operator daemon is running (pid ${wedged.pid}), but it stopped publishing its heartbeat, so this app did not attach to it. Waiting without starting a second one.`,
 			});
+		} else if (this.answeredButUnusable) {
+			/*
+			 * A daemon that answered is not an absence. Reaching `no-candidate` here
+			 * published `detached` - the banner's "offline" - for a server that had
+			 * just answered this app's own read with a status, which is the same
+			 * wrong sentence as the false credential refusal one branch up, one
+			 * state further along.
+			 */
+			this.daemonState.observe({
+				kind: "unattachable",
+				detail: `A Local Operator daemon is running at ${this.answeredButUnusable.address} and answered this app's read with HTTP ${this.answeredButUnusable.status}, so this app is not attached to it. Nothing is being started over it; it keeps probing.`,
+			});
 		} else {
 			this.daemonState.observe({
 				kind: "no-candidate",
@@ -1172,6 +1222,7 @@ export class BackendServiceManager {
 	private async adoptFirstUsableDaemon(): Promise<boolean> {
 		if (this.isAppClosing) return false;
 		this.discoveryWedged = [];
+		this.answeredButUnusable = null;
 		if (this.remoteConfigured) {
 			this.discoveryBlocksSpawn = true;
 			return await this.legacyFixedPortAdoption();
@@ -1276,17 +1327,56 @@ export class BackendServiceManager {
 					return false;
 			}
 		}
-		if (!(await this.authenticatesAgainst(candidate.address, token))) {
+		const probe = await this.probeCandidate(candidate.address, token);
+		if (probe.verdict === "refused") {
 			logger.info(
-				`Daemon ${candidate.address} refuses this app's bearer for its desktop plane; not attaching (it would refuse every session list and every stream).`,
+				`Daemon ${candidate.address} refused this app's bearer for its desktop plane (HTTP ${probe.status}); not attaching (it would refuse every session list and every stream).`,
 				LogFileType.BACKEND,
 			);
 			this.daemonState.observe({
 				kind: "capability",
-				status: 403,
-				detail: `A daemon is running at ${candidate.address}, but it refused this app's credential for its desktop plane.`,
+				status: probe.status,
+				detail: `A daemon is running at ${candidate.address}, but it refused this app's credential for its desktop plane (HTTP ${probe.status}).`,
 			});
 			this.notifyStatus();
+			return false;
+		}
+		if (probe.verdict === "unusable") {
+			/*
+			 * A daemon that ANSWERS but cannot serve this read is not a daemon that
+			 * refused this app's credential, and the difference is load-bearing: the
+			 * refusal branch above records a capability verdict and declines, and a
+			 * decline here is what let `start()` mint a replacement token and spawn a
+			 * second daemon onto a port that was already answering (a 503 from a
+			 * daemon whose session store cannot be read was read as "any non-2xx" by
+			 * the old boolean probe). `discoveryBlocksSpawn` is the flag the spawn
+			 * path already consults to mean "a local daemon may still be running"
+			 * (backend-service.ts, `start`), so the app keeps probing and re-attaches
+			 * on a later tick instead of racing a replacement onto a serving port.
+			 */
+			logger.info(
+				`Daemon ${candidate.address} answered HTTP ${probe.status} to this app's desktop read without refusing its credential; not attaching this tick, and not starting a daemon over it.`,
+				LogFileType.BACKEND,
+			);
+			this.discoveryBlocksSpawn = true;
+			this.answeredButUnusable = {
+				address: candidate.address,
+				status: probe.status,
+			};
+			this.daemonState.observe({
+				kind: "unattachable",
+				detail: `A daemon is running at ${candidate.address} and answered this app's read with HTTP ${probe.status}, so this app is not attached to it. Nothing is being started over it.`,
+			});
+			this.notifyStatus();
+			return false;
+		}
+		if (probe.verdict === "unreachable") {
+			/*
+			 * Nothing answered, so this is not evidence about the ADDRESS either way
+			 * - unlike the two branches above, it must not claim occupancy, or a
+			 * stale record's dead address would pin the app off spawning for good.
+			 * The record's own aging path (`reapStaleRecords`) is what retires it.
+			 */
 			return false;
 		}
 		await this.attachTo(candidate, token);
@@ -1305,10 +1395,14 @@ export class BackendServiceManager {
 	 * `this.desktopToken` because this runs BEFORE adoption: the candidate must
 	 * be proved usable without the manager having committed to it.
 	 */
-	private async authenticatesAgainst(
+	private async probeCandidate(
 		address: string,
 		token: string,
-	): Promise<boolean> {
+	): Promise<
+		| { verdict: "accepted" }
+		| { verdict: "refused" | "unusable"; status: number }
+		| { verdict: "unreachable" }
+	> {
 		try {
 			/*
 			 * Deliberately NOT evidence for the state machine, unlike
@@ -1316,17 +1410,20 @@ export class BackendServiceManager {
 			 * candidate's credential, which may be neither the daemon this app is
 			 * attached to nor one it ever attaches to; stamping `lastTransportAt`
 			 * from a probe of someone else's port would let an unrelated listener
-			 * hold the app off `detached`. The adoption path that follows a `true`
-			 * here publishes its own state through `attachTo`.
+			 * hold the app off `detached`. The adoption path that follows an
+			 * `accepted` here publishes its own state through `attachTo`.
 			 */
 			const result = await requestDesktop(
 				{ op: "sessions.list", limit: 1 },
 				address,
 				token,
 			);
-			return result.status >= 200 && result.status < 300;
+			const verdict = classifyDesktopAnswer(result.status);
+			return verdict === "accepted"
+				? { verdict }
+				: { verdict, status: result.status };
 		} catch {
-			return false;
+			return { verdict: "unreachable" };
 		}
 	}
 
@@ -1456,7 +1553,7 @@ export class BackendServiceManager {
 			} | null;
 			if (!(await this.authenticatesAgainstBackend())) {
 				logger.info(
-					"A backend answered health but refused this app's desktop token; not adopting it.",
+					"A backend answered health but did not accept this app's desktop credential; not adopting it.",
 					LogFileType.BACKEND,
 				);
 				return false;
@@ -1508,7 +1605,7 @@ export class BackendServiceManager {
 				op: "sessions.list",
 				limit: 1,
 			});
-			return result.status >= 200 && result.status < 300;
+			return classifyDesktopAnswer(result.status) === "accepted";
 		} catch {
 			return false;
 		}

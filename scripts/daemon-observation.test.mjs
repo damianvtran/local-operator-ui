@@ -76,6 +76,8 @@ const RE_IT_KEEPS_PROBING_FOR_A_SER =
 	/It keeps probing for a server it can open/;
 const RE_LOGGER = /^\.\/logger$/;
 const RE_PROCESS_IS_GONE = /process is gone/;
+const RE_REFUSES_THIS_APP = /refused this app's credential/;
+const RE_503 = /503/;
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
 	/This app was not given the key to that server, so it did not start a second one/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
@@ -223,6 +225,13 @@ async function daemonScene({
 	 * occupant (review round 1, F-2).
 	 */
 	healthStatus = 200,
+	/**
+	 * The status `/v1/desktop/sessions` answers for a bearer it DOES accept.
+	 * Not 200 models the daemon #1170 makes possible: alive, serving, and unable
+	 * to read its session store, which it reports as a 503 rather than as an empty
+	 * listing the client cannot tell from a genuinely empty store.
+	 */
+	sessionsStatus = 200,
 }) {
 	const root = mkdtempSync(join(tmpdir(), `daemon-observation-${instanceId}-`));
 	const runDir = join(root, "run", "serve");
@@ -284,6 +293,10 @@ async function daemonScene({
 			// this daemon adoptable at all (an unauthenticated 200 is not).
 			if (presented !== acceptedBearer) {
 				json(401, { detail: "Unauthorized" });
+				return;
+			}
+			if (sessionsStatus !== 200) {
+				json(sessionsStatus, { detail: "session store unreadable" });
 				return;
 			}
 			json(200, { result: { sessions: [], truncated: false, limit: 1 } });
@@ -538,6 +551,52 @@ test("the banner's Retry corrects a stale attachment instead of returning it (Q-
  * read as the spawner's question ("this port is free"), and they are not the
  * same question.
  */
+
+test("a daemon answering 503 is not a credential refusal, and is not spawned over", async () => {
+	const scene = await daemonScene({
+		instanceId: "instance-unreadable-store",
+		sessionsStatus: 503,
+	});
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	try {
+		const started = await manager.start({ quiet: true });
+		assert.equal(
+			started,
+			false,
+			"nothing was adopted, so nothing may be reported as serving this app",
+		);
+		assert.equal(
+			manager.getOwnedPid(),
+			null,
+			"a daemon is answering on that port: spawning a replacement could only die with EADDRINUSE, and it lands on a daemon that is alive",
+		);
+		const snapshot = manager.getStatusSnapshot();
+		assert.equal(
+			snapshot.capabilityStatus,
+			null,
+			"a 503 is not a credential refusal: recording one is the false verdict that declined the candidate and reached the spawn path",
+		);
+		assert.doesNotMatch(
+			snapshot.detail,
+			RE_REFUSES_THIS_APP,
+			"the sentence may not tell the operator their credential was refused when the daemon simply could not read its store",
+		);
+		assert.equal(
+			snapshot.state,
+			"wedged",
+			"a daemon IS running and this app is not attached to it, which is not `detached` (the banner renders that as offline)",
+		);
+		assert.match(
+			snapshot.detail,
+			RE_503,
+			"the copy names the evidence the state came from",
+		);
+	} finally {
+		await manager.stop(false);
+		await scene.dispose();
+	}
+});
 
 test("a daemon answering the configured origin is never spawned over (EADDRINUSE storm)", async () => {
 	const scene = await daemonScene({
