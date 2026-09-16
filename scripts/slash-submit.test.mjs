@@ -176,7 +176,10 @@ test("the operator's rule: a command word is prose unless it is the input", () =
 	// A word not in the set is unaffected, so the input is a narrowing and not a
 	// second switch.
 	const other = { armedOnlyCommands: new Set(["loop"]) };
-	assert.equal(plan("/goal ship it\nand then tell me", 12, other).kind, "reassemble");
+	assert.equal(
+		plan("/goal ship it\nand then tell me", 12, other).kind,
+		"reassemble",
+	);
 });
 
 test("the plan hands the dispatcher a command, so args cannot cross a line", () => {
@@ -541,9 +544,14 @@ test("no branch consumes typed text without an outcome", () => {
 	]) {
 		const result = plan(draft, caret);
 		assert.ok(
-			["send", "whole", "splice", "reassemble", "list-open", "unrecognised"].includes(
-				result.kind,
-			),
+			[
+				"send",
+				"whole",
+				"splice",
+				"reassemble",
+				"list-open",
+				"unrecognised",
+			].includes(result.kind),
 			`${draft} produced ${result.kind}`,
 		);
 		if (result.kind === "splice") {

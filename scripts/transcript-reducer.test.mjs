@@ -2352,7 +2352,12 @@ test("a compaction pass is claimed from its start and retired by every stop", ()
 	 */
 	const once = applyEvent(
 		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
-		{ type: "compaction_end", success: true, tokens_before: 1_000, tokens_after: 900 },
+		{
+			type: "compaction_end",
+			success: true,
+			tokens_before: 1_000,
+			tokens_after: 900,
+		},
 	);
 	const again = applyEvent(once, {
 		type: "compaction_end",
@@ -2361,7 +2366,11 @@ test("a compaction pass is claimed from its start and retired by every stop", ()
 		tokens_after: 900,
 	});
 	assert.equal(again.compacting, false);
-	assert.equal(again.records.length, once.records.length, "the row is not doubled");
+	assert.equal(
+		again.records.length,
+		once.records.length,
+		"the row is not doubled",
+	);
 
 	// 5. A NEW TURN stops it: a session running a pass is not starting a turn, so
 	// a turn starting means the claim was never retired.
@@ -2405,7 +2414,8 @@ test("a compaction pass is claimed from its start and retired by every stop", ()
 		message: user("u1", "hi"),
 	});
 	assert.equal(
-		clearTranscript(applyEvent(cleared, { type: "compaction_start" })).compacting,
+		clearTranscript(applyEvent(cleared, { type: "compaction_start" }))
+			.compacting,
 		true,
 	);
 });
