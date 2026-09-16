@@ -57,6 +57,7 @@ const strip = (
 	waiting,
 	onActivate: () => {},
 	onClose: () => {},
+	onCloseTabs: () => {},
 	onNewTab: () => {},
 	onHandOver: () => {},
 	onRevokeHandOver: () => {},
@@ -263,6 +264,47 @@ export const GroupedOverflow: Story = {
 			</div>
 		),
 	],
+};
+
+/**
+ * THE PINNED CONTROL'S LIST, OPEN (design R4, fix 2).
+ *
+ * The same control at the pane's 640px, where a strip of four ordinary tabs already
+ * overflows, with its list open in the BAND rather than as a menu over the page: one
+ * section per conversation, every tab a row, the active one ticked, and the list
+ * bounded (`max-h-36` plus its own scroll) so twenty tabs cannot push the page away.
+ *
+ * WHY THIS IS A FRAME AND NOT A TEST: the claim is that the control is READABLE with a
+ * page behind it, and the page is a native view the DOM cannot see — so the live proof's
+ * composite is the assertion and this story is where the grammar is judged (the section
+ * headings, the tick, the dismiss control, the two-conversation labels).
+ */
+export const OverflowList: Story = {
+	args: strip(
+		[
+			tab(1, "Reports home", { sessionId: "session-reports" }),
+			tab(2, "Invoices due", { sessionId: "session-invoices" }),
+			tab(3, "Reports detail", { sessionId: "session-reports" }),
+			tab(4, "Sign in", { sessionId: "session-onboarding" }),
+			tab(5, "Dashboard", { restored: true }),
+			tab(6, "Docs"),
+		],
+		1,
+		{},
+		SESSIONS,
+	),
+	decorators: [
+		(Story) => (
+			<div className="w-[640px] max-w-full">
+				<Story />
+			</div>
+		),
+	],
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// A real press on the real control, so the frame is the product's own state.
+		await userEvent.click(await canvas.findByLabelText(/^All tabs, /));
+	},
 };
 
 /**
