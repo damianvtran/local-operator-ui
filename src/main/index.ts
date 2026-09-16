@@ -152,6 +152,24 @@ export type ReadFileResponse =
 const windowLaunch = resolveWindowLaunchPlan({
 	env: launchEnv,
 	argv: process.argv,
+	/*
+	 * The facts that let a flagless launch be recognised as a run rather than as
+	 * the operator's app — see the `driven` block in window-mode.ts for why the
+	 * shape is sound and why it cannot touch the shipped app.
+	 *
+	 * `app.isPackaged` is read here, at module load, rather than inside the
+	 * resolver: it describes the LAUNCH (the installed `.app` is packaged, a
+	 * checkout and the npm CLI are not), and the resolver stays free of Electron
+	 * so its rules can be tested as arithmetic instead of by booting an app.
+	 *
+	 * `process.stdin`/`process.stdout` are read as the process was STARTED with
+	 * them, for the same reason `launchEnv` exists: a terminal attached later
+	 * cannot make this a person's launch.
+	 */
+	packaged: app.isPackaged,
+	stdinIsTTY: process.stdin.isTTY,
+	stdoutIsTTY: process.stdout.isTTY,
+	platform: process.platform,
 });
 for (const problem of windowLaunch.problems) {
 	logger.warn(`[window-mode] ${problem}`, LogFileType.BACKEND);

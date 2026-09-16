@@ -10,12 +10,16 @@
  * runs happen without the grab: `headless` creates the window and never shows
  * it, `inactive` shows it without activating the app.
  *
- * Naming no mode is not the same as naming `normal`. A launch carrying one of
- * `AGENT_LAUNCH_FLAGS` — a scratch `--user-data-dir`, a
- * `--remote-debugging-port` — has said that it is a run rather than a person
- * using the app, so it resolves to `headless` and the startup line reports the
- * assumption. A launch that says nothing at all is still the operator's own
- * app, and still `normal`.
+ * Naming no mode is not the same as naming `normal`. A launch has said that it
+ * is a run rather than a person using the app in two different ways, and each
+ * resolves to `headless` with the startup line reporting the assumption. The
+ * first is a switch only a rig passes: one of `AGENT_LAUNCH_FLAGS` — a scratch
+ * `--user-data-dir`, a `--remote-debugging-port`. The second is shape: a launch
+ * that is not a packaged app and has no terminal on either stream, which is
+ * what a tool-spawned run looks like — and which is read on macOS and Linux
+ * only, since `isTTY` is not the same fact on Windows (see `driven` below). A
+ * launch that names no mode, passes neither switch, and is either packaged or
+ * still attached to a terminal is the operator's own app, and stays `normal`.
  *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
  * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
@@ -123,11 +127,13 @@ export interface WindowLaunchPlan {
 	 * Why the mode was ASSUMED rather than named, or null when the caller said
 	 * what it wanted and `problems` is the only thing worth reporting.
 	 *
-	 * Non-null exactly when the launch named no mode at all and one of
-	 * `AGENT_LAUNCH_FLAGS` was present, which is what makes `headless` the
-	 * default there. The reason travels with the plan so the startup line can
-	 * say the run was headless *because* of the scratch profile it named,
-	 * rather than leaving a reader to guess whether a mode was typed.
+	 * Non-null exactly when the launch named no mode at all and either one of
+	 * `AGENT_LAUNCH_FLAGS` was present or the launch had the driven shape (not
+	 * packaged, no terminal on either stream, and a platform where that signal is
+	 * read) — the two signals that make `headless` the default there. The reason
+	 * travels with the plan so the startup line can say the run was headless
+	 * *because* of the scratch profile it named or the shape it had, rather than
+	 * leaving a reader to guess whether a mode was typed.
 	 */
 	assumed: string | null;
 	/** What `ready-to-show` does: raise and focus, raise without focusing, or nothing. */
@@ -292,6 +298,37 @@ export function resolveWindowLaunchPlan(
 	input: {
 		env?: Record<string, string | undefined>;
 		argv?: readonly string[];
+		/**
+		 * `app.isPackaged`. False for `electron .` in a checkout, for a `/tmp` copy
+		 * of one, and for the npm CLI (`npx local-operator-ui` runs Electron on
+		 * `out/main/index.js`, which Electron does not consider an app bundle) —
+		 * true for the installed `.app` a person double-clicks. Optional so a
+		 * caller that cannot say stays on the historical `normal`; only an
+		 * explicit `false` takes part in the assumption below.
+		 */
+		packaged?: boolean;
+		/**
+		 * `process.platform`, defaulting to the real one. On Windows the shape
+		 * signal below is NOT read, deliberately: a Windows GUI-subsystem process
+		 * takes its stdio through `AttachConsole` rather than an inherited handle
+		 * (electron/electron#4552), so `process.stdin.isTTY`/`stdout.isTTY` there
+		 * are not the terminal fact they are on macOS and Linux — and this rule was
+		 * measured on macOS only. Windows keeps the historical `normal` for a
+		 * flagless launch rather than being hidden by a signal nobody has
+		 * measured there; rigs on Windows name the mode, as they had to before.
+		 * Enabling it is one measured Windows boot away, which is why the branch is
+		 * written as a platform check rather than left unstated.
+		 *
+		 * Typed as `NodeJS.Platform` rather than `string` on purpose: this clause is
+		 * the one place a wrong value would ENABLE the shape rule on the platform it
+		 * was deliberately scoped off, so a `"windows"` typo has to be a type error
+		 * rather than a silent no-op.
+		 */
+		platform?: NodeJS.Platform;
+		/** `process.stdin.isTTY`. See `isDrivenLaunch`. */
+		stdinIsTTY?: boolean | undefined;
+		/** `process.stdout.isTTY`. See `isDrivenLaunch`. */
+		stdoutIsTTY?: boolean | undefined;
 	} = {},
 ): WindowLaunchPlan {
 	const env = input.env ?? {};
@@ -347,13 +384,58 @@ export function resolveWindowLaunchPlan(
 	 * by naming a mode, and printed on stdout — while the false negative is the
 	 * focus grab this block exists to stop. The asymmetry is the point.
 	 */
-	const agentFlag =
-		!modeFlag.found && modeRaw === undefined
-			? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
-			: undefined;
+	const unnamed = !modeFlag.found && modeRaw === undefined;
+	const agentFlag = unnamed
+		? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
+		: undefined;
+	/*
+	 * The second way a launch says it is a run without naming a mode, and the one
+	 * the switches could not see.
+	 *
+	 * `AGENT_LAUNCH_FLAGS` catches the rigs that pass a scratch profile or a
+	 * devtools port. It does not catch the other half of what agents actually do
+	 * on this machine: boot the app straight out of a checkout with NO switch at
+	 * all — `node out/main/index.js` from a QA matrix copied into `/tmp`, a rig
+	 * that forgot the flag it was told to pass, the npm CLI started with
+	 * `--open-session`. Measured on this machine while writing this: every launch
+	 * in one afternoon's shared app log ran `normal`, including a burst of ten
+	 * boots in seven minutes from a flagless harness, so the assumption above was
+	 * firing for nobody.
+	 *
+	 * What those launches DO look like, and what a person's launch does not, is a
+	 * process with no terminal on either stream: a tool spawns the app with pipes,
+	 * so `isTTY` is undefined on both, while a person's terminal launch has at
+	 * least one stream on the terminal — both, normally, and a person who
+	 * redirects only the log keeps stdin on it. A person who detaches BOTH
+	 * (`pnpm dev < /dev/null > /tmp/dev.log 2>&1 &`) is hidden by this rule, which
+	 * is a deliberate, asserted trade: that shape is indistinguishable from the
+	 * tool spawns this exists to stop, it is announced on the launch's own stdout
+	 * line — which for this shape is the very log it was piped into — and one
+	 * flag restores the window.
+	 * Pairing that with `packaged === false` keeps the shipped app out of it
+	 * entirely — the `.app` a person double-clicks is packaged and can never be
+	 * assumed headless by this rule, whatever its streams look like — and a
+	 * non-terminal launcher of the unpackaged CLI keeps the escape hatch every
+	 * launch has: name `--window-mode=normal`, which the startup line then prints.
+	 *
+	 * The asymmetry is the one the module argues throughout: a run hidden by this
+	 * rule announces itself on stdout and is one flag from being visible again,
+	 * while the focus grab it prevents is the interruption the whole default
+	 * exists to stop.
+	 */
+	const platform = input.platform ?? process.platform;
+	const driven =
+		unnamed &&
+		agentFlag === undefined &&
+		input.packaged === false &&
+		platform !== "win32" &&
+		input.stdinIsTTY !== true &&
+		input.stdoutIsTTY !== true;
 	const assumed = agentFlag
 		? `${agentFlag} marks an agent-driven launch, and no window mode was named`
-		: null;
+		: driven
+			? "the launch is not a packaged app and has no terminal on either stream, so it is a driven run rather than the operator using the app"
+			: null;
 	if (modeFlag.found && modeFlag.value === undefined) {
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
