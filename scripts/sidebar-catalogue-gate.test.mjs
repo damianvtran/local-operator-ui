@@ -228,7 +228,11 @@ test("the plane the notice cannot name is always covered by the banner", () => {
 			}),
 		}),
 	);
-	assert.equal(gate.showList, true, "the rows stay; only the sentence is covered");
+	assert.equal(
+		gate.showList,
+		true,
+		"the rows stay; only the sentence is covered",
+	);
 	assert.equal(gate.notice, null, "the banner is the one that speaks");
 });
 
@@ -268,7 +272,12 @@ test("a first load with nothing to show neither claims rows nor names a remedy",
 	// by the coupling case above rather than by an input pairing the call site
 	// cannot produce (review round 3, MINOR-2).
 	const gate = catalogueGate(
-		inputs({ ready: false, wasReady: false, rows: 0, coveredByCompatibilityBanner: false }),
+		inputs({
+			ready: false,
+			wasReady: false,
+			rows: 0,
+			coveredByCompatibilityBanner: false,
+		}),
 	);
 	assert.equal(gate.showList, false);
 	assert.equal(gate.stale, false);
@@ -315,9 +324,7 @@ test("the store's own failure suppresses the gate sentence (the D9 rule)", () =>
 	// the sidebar already says the read failed and offers a refresh, so a flapping
 	// backend - the operator's reported condition - must not stack a warning about
 	// the gate above a danger about the read. The gate keeps its list either way.
-	const gate = catalogueGate(
-		inputs({ ready: false, storeFailed: true }),
-	);
+	const gate = catalogueGate(inputs({ ready: false, storeFailed: true }));
 	assert.equal(gate.showList, true);
 	assert.equal(gate.stale, true);
 	assert.equal(
