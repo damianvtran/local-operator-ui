@@ -6249,17 +6249,25 @@ test("an update failure says what happened, and keeps the machine's words subord
 		assert.equal(bare.detail, "net::ERR_INTERNET_DISCONNECTED");
 
 		/*
-		 * An app-authored label the app's own log really carries survives, and only the
-		 * fragment is replaced: this is the shape `Error checking for updates: Error:
-		 * Error: net::ERR_INTERNET_DISCONNECTED` reaches the copy as, and dropping the
-		 * label would lose which stage of the app was talking.
+		 * A PREFIX THE APP DOES NOT WRITE IS NOT COPY, and the CHECK-stage spelling is the
+		 * case that proves it: `Error checking for updates:` is a line main's LOGGER writes
+		 * (`update-service.ts`), not a message it sends, so a payload carrying it is one no
+		 * producer emits - and the sentence stands alone rather than welding a label that
+		 * came from nowhere onto the front of a sentence (review round 4, and the same
+		 * condition that emptied `APP_AUTHORED_LABELS`).
 		 */
-		const prefixed = copy.updateErrorCopy(
+		for (const unseenLabel of [
 			"Error checking for updates: net::ERR_TIMED_OUT",
-		);
-		assert.match(prefixed.sentence, /^Error checking for updates: /);
-		assert.equal(prefixed.sentence.includes("net::"), false, prefixed.sentence);
-		assert.equal(prefixed.detail, "net::ERR_TIMED_OUT");
+			"Error installing update: net::ERR_TIMED_OUT",
+		]) {
+			const unwritten = copy.updateErrorCopy(unseenLabel);
+			assert.match(
+				unwritten.sentence,
+				/^The app could not reach the update server/,
+			);
+			assert.equal(unwritten.sentence.includes("Error "), false);
+			assert.equal(unwritten.detail, "net::ERR_TIMED_OUT");
+		}
 		/*
 		 * AND A PREFIX THAT IS NOT THE APP'S IS NOT COPY (design round 2, D-14). The
 		 * rule is the app's own label set rather than a length, because short library
@@ -6278,7 +6286,7 @@ test("an update failure says what happened, and keeps the machine's words subord
 			);
 			assert.equal(shown.sentence.includes("Cannot parse"), false);
 			assert.equal(shown.sentence.includes("Request timed out"), false);
-			assert.match(shown.detail, /net::ERR_/);
+			assert.match(shown.detail, TRANSPORT_CODE);
 		}
 
 		/*
@@ -6882,7 +6890,7 @@ test("a check the user asked for still reports when the machine has no network",
 		);
 		assert.match(
 			rejected.message,
-			/^net::ERR_INTERNET_DISCONNECTED\b/,
+			OFFLINE_CODE_PREFIX,
 			"the code the machine's own stack gives for this state",
 		);
 		/*
