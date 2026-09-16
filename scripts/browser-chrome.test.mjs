@@ -1464,8 +1464,15 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		!source.includes("setError("),
 		"there is no single error slot left for a refresh to clear",
 	);
+	/*
+	 * The helper is `unwrapIpcErrorMessage` from `@shared/utils/ipc-error-message`
+	 * now - the update surfaces unwrap the same envelope, and the prefix is
+	 * spelled once for both. What this pin is about is unchanged: the call is
+	 * still `setActionError(<unwrapped message>)`, and it still comes BEFORE the
+	 * re-read.
+	 */
 	assert.ok(
-		/setActionError\(messageOf\(caught\)\)[\s\S]*?await refresh\(\)/.test(
+		/setActionError\(unwrapIpcErrorMessage\(caught\)\)[\s\S]*?await refresh\(\)/.test(
 			source,
 		),
 		"`run` records the action's refusal BEFORE it re-reads the projection",

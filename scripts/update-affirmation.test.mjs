@@ -297,6 +297,14 @@ const bundle = await build({
 			 * which surface holds it is the whole attribution question (R2-1, QA Q2).
 			 */
 			export { UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
+			/*
+			 * The alert that carries an update-path failure's sentence. Exported so the
+			 * harness can EXPAND it (below) rather than treat it as an opaque element:
+			 * the message a user reads is rendered by this component, and the wrapper is
+			 * deliberate - it is where the sentence and the machine's own words are kept
+			 * in one place, so the app and the story cannot drift.
+			 */
+			export { UpdateErrorAlert } from "./src/renderer/src/shared/components/common/update-error-alert";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -519,6 +527,7 @@ globalThis.window = {
 const {
 	CheckForUpdatesButton,
 	FloatingAlert,
+	UpdateErrorAlert,
 	Button,
 	UpdateContainer,
 	UpdateNotification,
@@ -577,16 +586,65 @@ function mount() {
 	return handle;
 }
 
-/** Every node in the rendered tree, depth first. */
+/**
+ * Every node in the rendered tree, depth first.
+ *
+ * The stand-in React runtime builds ELEMENTS rather than rendering them, so a
+ * component element is a node whose `type` is a function - which is what lets
+ * `visible` find `FloatingAlert` by identity. `UpdateErrorAlert` is expanded
+ * instead of returned, because it is a wrapper by design and the alert a user
+ * reads is the one INSIDE it: without this, a wrapper that renders the message
+ * would read as no message at all.
+ */
 function walk(node, out = []) {
 	if (Array.isArray(node)) {
 		for (const child of node) walk(child, out);
 		return out;
 	}
 	if (!node || typeof node !== "object") return out;
+	if (node.type === UpdateErrorAlert) {
+		walk(node.type(node.props ?? {}), out);
+		return out;
+	}
 	out.push(node);
 	if (node.props) walk(node.props.children, out);
 	return out;
+}
+
+/**
+ * The LINES a message renders, one entry per child element.
+ *
+ * The failure alert renders two of them - a sentence and the machine's own
+ * words under it - so a case about the copy has to be able to say which line it
+ * means. Everything that only cares what the message says joins them instead.
+ */
+function linesOf(value) {
+	if (value == null) return [];
+	if (Array.isArray(value)) return value.flatMap(linesOf);
+	if (typeof value === "string") return [value];
+	if (typeof value === "object" && value.props) {
+		return [textOf(value.props.children)];
+	}
+	return [];
+}
+
+/**
+ * Every string under a subtree, joined - what a message actually says.
+ *
+ * The failure alert renders two lines (a sentence and the machine's own words),
+ * so a message is a subtree rather than one string child.
+ */
+function textOf(value) {
+	if (typeof value === "string" || typeof value === "number") {
+		return String(value);
+	}
+	if (Array.isArray(value)) {
+		return value.map(textOf).filter(Boolean).join(" ");
+	}
+	if (value && typeof value === "object" && value.props) {
+		return textOf(value.props.children);
+	}
+	return "";
 }
 
 /**
@@ -600,10 +658,14 @@ function visible(handle) {
 	const shown = nodes.filter(
 		(node) => node.type === FloatingAlert && node.props?.open === true,
 	);
-	return shown.map((node) => ({
-		variant: node.props.variant ?? "info",
-		text: String(node.props.children ?? ""),
-	}));
+	return shown.map((node) => {
+		const lines = linesOf(node.props.children);
+		return {
+			variant: node.props.variant ?? "info",
+			lines,
+			text: lines.join(" "),
+		};
+	});
 }
 
 /** The affirmation currently on screen, or null. */
@@ -1455,7 +1517,25 @@ test("the pinned box holds one message, and the error takes it", () => {
 		`the box holds one message: ${JSON.stringify(shown)}`,
 	);
 	assert.equal(shown[0].variant, "danger");
-	assert.match(shown[0].text, /getaddrinfo ENOTFOUND/);
+	/*
+	 * The message is the app's own sentence about what happened and what to do,
+	 * with the machine's words subordinate under it. It used to BE the machine's
+	 * words: this report's real payload is a Node errno form, and the box read
+	 * `Error checking for updates: getaddrinfo ENOTFOUND api.github.com` or, for
+	 * the app channel, nothing but `net::ERR_INTERNET_DISCONNECTED` - the alert
+	 * the operator saw over their chat screen on a machine that was online.
+	 */
+	const [sentence, ...rest] = shown[0].lines;
+	assert.match(sentence, /could not reach the update server/i);
+	assert.match(sentence, /connection/i);
+	assert.equal(sentence.includes("getaddrinfo"), false, sentence);
+	assert.equal(sentence.includes("ENOTFOUND"), false, sentence);
+	/*
+	 * And the machine's own words are still there, beneath it and on their own
+	 * line, because the code is the part a bug report needs: `ENOTFOUND` is the
+	 * finding, and the sentence is the account of what it means.
+	 */
+	assert.deepEqual(rest, ["ENOTFOUND"]);
 	// The offer is a panel, not a toast: the box yielding its duplicate leaves the
 	// offer itself on screen behind the message.
 	assert.ok(showsText(handle, "Server update available"));

@@ -1665,6 +1665,13 @@ export const STORIES = [
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
+	/* The operator's own alert, over the screen they were working on: their
+	   update-service.log holds this exact transport code at 09:03:12 on
+	   2026-09-16, reported from a silent background check on a machine with
+	   continuous internet. The story renders the shipped alert and holds it open
+	   (the app gives it six seconds, which a still cannot catch); the wiring is
+	   scripts/update-affirmation.test.mjs. */
+	["common-updatenotification--error-state", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own
@@ -2091,6 +2098,13 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 	["common-connectivity-banner--unattachable", 1024, 300],
+	/* The machine-offline claim itself, and the one state the internet banner may
+	   paint: a negative reading that has held across the grace and been confirmed
+	   by a second one. Its companion - the same reading BEFORE the grace, which
+	   paints nothing - has no frame on purpose: a still of an absent banner cannot
+	   be told from a story that never mounted (the trap `attached` documents), so
+	   the rule is pinned by its own cases instead. */
+	["common-connectivity-banner--internet-offline-confirmed", 1024, 420],
 ];
 
 /**
