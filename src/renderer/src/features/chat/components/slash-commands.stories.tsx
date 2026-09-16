@@ -328,7 +328,13 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	inline: undefined,
 	argumentQuery: "",
 	commandQuery: "",
-	argumentList: { rows: [], loading: false, error: null, needsSession: false },
+	argumentList: {
+		rows: [],
+		loading: false,
+		error: null,
+		needsSession: false,
+		typed: false,
+	},
 	close: noop,
 	setActive: noopIndex,
 	setActiveHover: noopIndex,
@@ -354,7 +360,6 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	 * gives a shape to must pass the whole map through `over`.
 	 */
 	argumentShapes: new Map(),
-	wirelessShapes: new Map(),
 	nameListCommands: new Set(),
 	nameChoices: new Set(),
 	argumentWords: [],
@@ -588,6 +593,7 @@ export const ArgumentPhaseEmpty: Story = {
 							loading: false,
 							error: null,
 							needsSession: true,
+							typed: false,
 						},
 						matches: [],
 					})}
@@ -739,6 +745,7 @@ export const ArgumentPhaseLoadingAndError: Story = {
 							loading: true,
 							error: null,
 							needsSession: false,
+							typed: false,
 						},
 						matches: [],
 					})}
@@ -756,6 +763,7 @@ export const ArgumentPhaseLoadingAndError: Story = {
 							loading: false,
 							error: "Could not read the model catalogue.",
 							needsSession: false,
+							typed: false,
 						},
 						matches: [],
 					})}
@@ -792,6 +800,7 @@ export const ArgumentPhaseNoMatch: Story = {
 						loading: false,
 						error: null,
 						needsSession: false,
+						typed: false,
 					},
 					matches: [],
 				})}

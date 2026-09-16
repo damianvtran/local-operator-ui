@@ -71,7 +71,7 @@
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode, RefObject } from "react";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import type { SlashHighlightRun } from "./slash-highlight";
+import { type SlashHighlightRun, runInkClass } from "./slash-highlight";
 
 /**
  * Whether the transparent-text technique is in play for this draft.
@@ -83,35 +83,6 @@ import type { SlashHighlightRun } from "./slash-highlight";
  */
 export const highlightPaints = (runs: readonly SlashHighlightRun[]): boolean =>
 	runs.length > 0;
-
-/**
- * The ink each run takes, as ROLES rather than colours (`docs/branding.md`):
- * the theme decides what they are, and the twelve palettes each clear their own
- * contrast floor on the composer's `surface` ground.
- *
- *   - `command` → `text-token-command` + `font-semibold`. The role is the
- *     desktop's counterpart of the TUI's `$lo-signal` (a dedicated cool role,
- *     NOT the accent), added after the design round measured that no shipped text
- *     role separates from both `ink` and `accent` in all twelve palettes: `info`
- *     is the accent's twin in dune, neon, radient and obsidian, and the ink's
- *     twin in obsidian too. Bold mirrors the TUI's `text-style: bold`, and in
- *     obsidian the weight is the whole channel (the pinned monochrome case).
- *   - `name` → `text-success`. Mirroring the TUI's `$lo-string`, which borrows
- *     its green for exactly this job; the resolved argument must not collapse
- *     into the command word. This is the one borrowed semantic, and it is the
- *     designer round's to ratify.
- *   - `unknown` → `text-ink-dim`. The UI's quietest legal ink: an inert word is
- *     a typo in progress, not an alarm, and `ink-dim` sits on the 4.5:1 floor.
- *
- * `text-accent` is deliberately not used for any of them — it is reserved for
- * "a turn is live" (the TUI states the same reservation), and a recognised
- * command word is structure, not activity.
- */
-const RUN_INK: Record<SlashHighlightRun["kind"], string> = {
-	command: "text-token-command font-semibold",
-	name: "text-success",
-	unknown: "text-ink-dim",
-};
 
 type Segment = {
 	/** Offset into the draft, used as the React key: stable across renders. */
@@ -303,9 +274,7 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 								 * Branding's rule is "disabled changes colour, never opacity", so
 								 * the run's colour becomes the disabled ink rather than fading.
 								 */
-								className={cn(
-									disabled ? "text-ink-disabled" : RUN_INK[segment.kind],
-								)}
+								className={cn(runInkClass(segment.kind, disabled))}
 							>
 								{segment.text}
 							</span>

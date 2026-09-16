@@ -205,3 +205,80 @@ export function slashHighlightRuns({
 	runs.push({ start: nameStart, end: nameStart + name.length, kind: "name" });
 	return runs;
 }
+
+/**
+ * The runs the composer will ACT on, given what Enter does with the draft.
+ *
+ * The run rule is the TUI's and is deliberately blind to the plan: it paints a word
+ * that opens the line whether or not this host runs it. Two states make that a
+ * claim the outcome contradicts, and both were measured on the branch that
+ * installed the narrowing —
+ *
+ *  - a draft the planner SENDS as a message (`/compact hello`, and the operator's
+ *    own single-line first line) wore the command tint while Enter posted it to the
+ *    model (design D6 / UX U4 / QA Q4): `sendsAsWritten` drops every run, which
+ *    also makes two line counts of the same prose agree, since the multi-line rule
+ *    above already paints nothing;
+ *  - an `unknown` word is documented as "inert text that WILL be sent", which is
+ *    true only where the word is the whole line: a line of the form `/teem fix this`
+ *    is neither sent nor run — the dispatcher answers "unknown command" and keeps
+ *    the draft — so that run is narrowed to the bare case.
+ *
+ * Pure, and exported, because a gate on a React render is a gate nothing can pin:
+ * the two predicates are asserted in `scripts/slash-highlight.test.mjs` rather than
+ * left to a frame's pixels (review round 2 MINOR-1).
+ */
+export function runsMatchingPlan(
+	runs: readonly SlashHighlightRun[],
+	draft: string,
+	input: { sendsAsWritten: boolean },
+): SlashHighlightRun[] {
+	if (input.sendsAsWritten) return [];
+	return runs.filter(
+		(run) =>
+			run.kind !== "unknown" ||
+			draft.slice(run.start, run.end).trim() === draft.trim(),
+	);
+}
+
+/**
+ * The ink each run takes, as ROLES rather than colours (`docs/branding.md`):
+ * the theme decides what they are, and the twelve palettes each clear their own
+ * contrast floor on the composer's `surface` ground.
+ *
+ *   - `command` → `text-token-command` + `font-semibold`. The role is the
+ *     desktop's counterpart of the TUI's `$lo-signal` (a dedicated cool role,
+ *     NOT the accent), added after the design round measured that no shipped text
+ *     role separates from both `ink` and `accent` in all twelve palettes. Bold
+ *     mirrors the TUI's `text-style: bold`, and in obsidian the weight is the
+ *     whole channel (the pinned monochrome case in `palette-contract.ts`).
+ *   - `name` → `text-success`. Mirroring the TUI's `$lo-string`, which borrows its
+ *     green for exactly this job; the resolved argument must not collapse into
+ *     the command word.
+ *   - `unknown` → `text-ink-dim`. The UI's quietest legal ink: an inert word is a
+ *     typo in progress, not an alarm, and `ink-dim` sits on the 4.5:1 floor.
+ *
+ * `text-accent` is deliberately not used for any of them — it is reserved for
+ * "a turn is live" (the TUI states the same reservation), and a recognised command
+ * word is structure, not activity.
+ *
+ * Lives here rather than in the component for the same reason the gate above does:
+ * the DISABLED step is a behaviour a test has to be able to execute. The mirror's
+ * container already steps to `text-ink-disabled`, but a descendant span wins, so a
+ * field that cannot accept input painted an enabled-strength command word
+ * (design round 1 D2 — measured ΔE00 0.8-1.5 against the enabled frame, i.e. no
+ * step at all). Branding's rule is "disabled changes colour, never opacity".
+ */
+export const RUN_INK: Record<SlashHighlightRun["kind"], string> = {
+	command: "text-token-command font-semibold",
+	name: "text-success",
+	unknown: "text-ink-dim",
+};
+
+/** The class a run takes in the state it is drawn in. */
+export function runInkClass(
+	kind: SlashHighlightRun["kind"],
+	disabled: boolean,
+): string {
+	return disabled ? "text-ink-disabled" : RUN_INK[kind];
+}

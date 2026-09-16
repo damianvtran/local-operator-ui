@@ -211,48 +211,6 @@ export function argumentShapeVocabulary(
 }
 
 /**
- * The shapes an older backend's rows imply, from the two sources it DOES send.
- *
- * `argument_shape` is absent on every released backend, and treating that absence
- * as "no text is ever an argument" stopped a typed `/mcp logout` from running:
- * the planner answered `send`, the messages endpoint refused the leading slash,
- * and the user's gesture was undone — while `main` ran it. So the fallback reads
- * the two facts an older row does carry:
- *
- * 1. a destination with an inline argument list (`valueWords`, the renderer's own
- *    `inlineArgumentFor` derivation) takes ONE selector token — `/usage on` runs,
- *    `/usage more prose` is a message;
- * 2. otherwise the wire's `arguments` mode: `optional`/`required` means the
- *    command owns typed text (`/mcp logout`, `/login openai`, `/move ~/x`), and
- *    `none` means no text is ever its argument (`/compact hello` is a message).
- *
- * An ABSENT `arguments` is read as "may own text" rather than as `none`: absence
- * is a row predating the field, and the loose reading is the one that can only
- * ever reach a route error, never the permanent refusal this whole change is
- * about. The single-token test deliberately does not consult the list's values —
- * a renderer that drops that check is looser, and the endpoint still judges.
- */
-export function wirelessArgumentShapes(
-	commands: readonly ArgumentShapeCatalogueRow[],
-	valueWords: ReadonlySet<string>,
-): Map<string, ArgumentShapeRow> {
-	const shapes = new Map<string, ArgumentShapeRow>();
-	const EMPTY: ReadonlySet<string> = new Set<string>();
-	for (const command of commands) {
-		const names = [command.name, ...command.aliases].map((name) =>
-			name.toLowerCase(),
-		);
-		const row: ArgumentShapeRow = names.some((name) => valueWords.has(name))
-			? { shape: "word", words: EMPTY }
-			: command.arguments === "none"
-				? { shape: "none", words: EMPTY }
-				: { shape: "any", words: EMPTY };
-		for (const name of names) shapes.set(name, row);
-	}
-	return shapes;
-}
-
-/**
  * Whether `args` is a valid argument for `shape` — the same test the messages
  * endpoint's admission rule applies to a whole draft.
  *
@@ -349,12 +307,6 @@ export type SlashSubmissionArgs = {
 	 * below, which is what an older backend gets for every word.
 	 */
 	argumentShapes?: ReadonlyMap<string, ArgumentShapeRow>;
-	/**
-	 * What an older backend's rows imply for the same question — built by
-	 * `wirelessArgumentShapes` from the wire's `arguments` mode and the inline
-	 * argument lists, and asked only where `argumentShapes` has no answer.
-	 */
-	wirelessShapes?: ReadonlyMap<string, ArgumentShapeRow>;
 	/**
 	 * Names (primaries and aliases) of commands whose arming is EXPLICIT: a
 	 * free-text command this key never hoists, because the only gesture that arms
@@ -477,7 +429,6 @@ type Vocabularies = {
 	nameListCommands: ReadonlySet<string>;
 	armedOnlyCommands: ReadonlySet<string>;
 	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
-	wirelessShapes: ReadonlyMap<string, ArgumentShapeRow>;
 };
 
 /**
@@ -496,7 +447,6 @@ function planForSpan(
 		nameListCommands,
 		armedOnlyCommands,
 		argumentShapes,
-		wirelessShapes,
 	}: Vocabularies,
 ): SlashSubmissionPlan {
 	const spliced = replaceSpan(draft, span.start, span.end, "");
@@ -561,14 +511,37 @@ function planForSpan(
 		 * `/team ops fix this`-shaped draft to the endpoint to be refused.
 		 */
 		if (consumesText) return { kind: "whole", command };
-		const shape = argumentShapes.get(word) ?? wirelessShapes.get(word);
+		/*
+		 * A BACKEND THAT PUBLISHES NO SHAPE GETS `main`'s RULE, EXACTLY.
+		 *
+		 * The wire's shape is what makes the prose rule expressible: it is the only
+		 * source that can say "this command owns a selector token" (`/usage on` runs
+		 * while `/usage more prose` is a message) or "this one takes any text"
+		 * (`/rename my title`). The released backend sends no such field, and the
+		 * two half-answers tried here before it were both wrong in the same way —
+		 * reading `arguments: none` for every row stopped `/mcp logout`, `/login
+		 * openai`, `/rename <title>` and `/move <path>` from running at all (QA round
+		 * 1 Q1, measured base vs head on the wire), and reading `arguments: optional`
+		 * as "owns text" still sent `/usage on` to the messages endpoint, where the
+		 * old blanket policy refuses it (QA round 2 Q1, UX round 2 U1).
+		 *
+		 * So for this pairing the composer stops guessing: a whole-draft command word
+		 * with trailing text is a command, full stop, which is what `main` does and
+		 * what the released endpoint's own admission rule expects. The cost is stated
+		 * rather than hidden — on that backend `/compact hello` runs as `/compact
+		 * hello` and a single-line `/mcp logout seems to cause a crash` goes to the
+		 * command route — and the operator's prose rule arrives with the backend
+		 * release that publishes the shapes. No third vocabulary is invented for a
+		 * pairing that cannot express the distinction.
+		 */
+		const shape = argumentShapes.get(word);
 		if (shape) {
 			return argumentFits(shape, command.args)
 				? { kind: "whole", command }
 				: { kind: "send" };
 		}
-		// Neither: a word no source claims takes text, so the draft is prose.
-		return { kind: "send" };
+		/* See above: no shape on the wire is `main`'s rule, exactly. */
+		return { kind: "whole", command };
 	}
 
 	// Not the whole draft: only a token that OPENS the draft, for a command whose
@@ -632,7 +605,6 @@ export function planSlashSubmission({
 	nameListCommands,
 	armedOnlyCommands,
 	argumentShapes,
-	wirelessShapes,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
@@ -648,7 +620,6 @@ export function planSlashSubmission({
 		nameListCommands,
 		armedOnlyCommands,
 		argumentShapes: argumentShapes ?? NO_SHAPES,
-		wirelessShapes: wirelessShapes ?? argumentShapes ?? NO_SHAPES,
 	};
 
 	/*

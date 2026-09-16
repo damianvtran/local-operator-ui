@@ -167,6 +167,7 @@ import {
  * command runs.
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
+import { runsMatchingPlan } from "./slash-highlight";
 import { slashHighlightRuns } from "./slash-highlight";
 import { planSlashArming, planSlashSubmission } from "./slash-submit";
 import type {
@@ -1459,11 +1460,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * before and after that Enter, so both take the caller's answer.
 		 */
 		const paneHasSession = propPaneHasSession ?? false;
+		/*
+		 * The field's own disabled state, declared BEFORE the completion hook so the
+		 * popup can read the same fact the key handlers do — one expression, one
+		 * place, rather than a second copy at the popup's call site (design D3).
+		 */
+		const isBusy = Boolean(isLoading && currentJobId);
+		const isInputDisabled = unavailable || isBusy;
+
 		const slash = useSlashCompletion({
 			inputValue: newMessage,
 			selectionStart: caret,
 			sessionId: slashSessionId,
 			paneHasSession,
+			/*
+			 * The field's own state, so the popup cannot advertise keys a disabled
+			 * composer will not receive (design round 2 D3): `handleComposerKeyDown`
+			 * and the row click are gated on this same fact.
+			 */
+			disabled: isInputDisabled,
 			activeProfile: {
 				team: sessionStatus?.frontend?.active_team,
 				agent: sessionStatus?.frontend?.active_agent,
@@ -2147,7 +2162,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					armedOnlyCommands: slash.armedOnlyCommands,
 					prefixingCommands: slash.prefixingCommands,
 					argumentShapes: slash.argumentShapes,
-					wirelessShapes: slash.wirelessShapes,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 					/* LAST, so a caller asking about the DRAFT (`enabled: true`) wins
@@ -2160,7 +2174,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.armedOnlyCommands,
 				slash.prefixingCommands,
 				slash.argumentShapes,
-				slash.wirelessShapes,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,
@@ -2212,12 +2225,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * word is the whole line. With text after it nothing is painted.
 			 */
 			const plan = planFor(newMessage, caret, { enabled: true });
-			if (plan.kind === "send") return [];
-			return runs.filter(
-				(run) =>
-					run.kind !== "unknown" ||
-					newMessage.slice(run.start, run.end).trim() === newMessage.trim(),
-			);
+			return runsMatchingPlan(runs, newMessage, {
+				sendsAsWritten: plan.kind === "send",
+			});
 		}, [
 			newMessage,
 			caret,
@@ -2731,8 +2741,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * conversation that is gone is not a thing that can work); only the
 		 * sentence differs.
 		 */
-		const isBusy = Boolean(isLoading && currentJobId);
-		const isInputDisabled = unavailable || isBusy;
 
 		/*
 		 * Whether the suggestion chips are inert.

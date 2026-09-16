@@ -1682,6 +1682,20 @@ const COMMAND_TOKEN_GROUNDS = ["surface", "elevated"];
  * keeping it. The `success` separation has NO pin, which is what keeps the
  * command and the resolved name from collapsing into one read anywhere.
  */
+/*
+ * AND THREE IDENTITIES ARE RECORDED RATHER THAN ASSERTED, in the idiom the
+ * name's accent numbers already use above: `tokenCommand` IS `warning` in dune
+ * (`#E8C15A`), neon (`#FFA500`) and radient (`#E3B457`) — ΔE00 0.00 each,
+ * recomputed by the design round and visible in the frames as the same amber.
+ * Nothing asserts a separation here because there is none: those three palettes
+ * spend their own second hue on this run, which is what the role was asked to do
+ * (their `info` IS their accent, so a cool role was not available to them). The
+ * design round's reading is that the tint still reads as STRUCTURE rather than as
+ * an alarm — a bare word mid-sentence, with no icon, rule or ground — and that
+ * `warning` is far from those palettes' accents (ΔE00 50.3 and 43.3 in neon and
+ * radient). Recorded so the next palette edit meets the decision instead of
+ * re-filing it, and so a future `warning` change knows what it is also changing.
+ */
 const COMMAND_TOKEN_PINNED = [
 	{
 		theme: "obsidian",

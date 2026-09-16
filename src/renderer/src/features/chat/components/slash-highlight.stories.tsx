@@ -1,3 +1,4 @@
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 /*
@@ -23,6 +24,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
  * measured with numbers.
  */
 import type { Meta, StoryObj } from "@storybook/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
 import { MessageInput } from "./message-input";
@@ -743,18 +745,34 @@ const GeometryProbe = ({
 	 */
 	forceScrollbar?: boolean;
 }) => {
+	const queryClient = useQueryClient();
 	const boxRef = useRef<HTMLDivElement | null>(null);
 	const [rows, setRows] = useState<Record<string, string>>({});
+	/*
+	 * THE VOCABULARY IS SEEDED BEFORE THE FIRST MEASURE — see the note inside the
+	 * measure effect for why this exists at all; the dependency is the setter rather
+	 * than the client so the effect cannot re-run on every render.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the client is a stable singleton, and the setter is called on it rather than destructured (a detached `setQueryData` throws, measured).
+	useLayoutEffect(() => {
+		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
+	}, [queryClient]);
 	useLayoutEffect(() => {
 		const box = boxRef.current;
 		if (!box) return;
-		const measure = () => {
+		const measure = (pass: "first" | "400ms" | "settled") => {
 			const textarea = box.querySelector("textarea");
 			if (!textarea) return;
 			const t = getComputedStyle(textarea);
 			const lineHeight = Number.parseFloat(t.lineHeight);
 			const mirror = box.querySelector<HTMLElement>("[data-composer-mirror]");
 			const entry: Record<string, string> = {
+				// WHICH PASS this frame carries. The story measures three times because
+				// the composer's vocabulary arrives over a promise, and a frame whose
+				// numbers come from an earlier pass than its pixels is a frame that
+				// contradicts itself (design round 2 D2: two of the twelve printed
+				// `run unknown` beside pixels painting the command run).
+				pass,
 				draft: JSON.stringify(draft),
 				// The box's OWN value, so a frame's numbers and its pixels are the
 				// same state rather than two claims about it.
@@ -857,6 +875,18 @@ const GeometryProbe = ({
 		 * logging all three keeps the timing visible rather than hidden behind the
 		 * last one.
 		 */
+		/*
+		 * THE VOCABULARY IS SEEDED BEFORE THE FIRST MEASURE.
+		 *
+		 * The composer's command registry normally arrives over a promise, which is why
+		 * this story measures more than once — and why two of the twelve frames in the
+		 * round-2 set printed `run unknown "/compact"` beside pixels painting the command
+		 * run, and `mirror rendered false` beside a panel that visibly paints runs
+		 * (design round 2 D2). A frame whose numbers describe a different pass than its
+		 * own pixels proves nothing about either. Seeding the same fixture the msw
+		 * handler serves makes every pass the settled one; the `pass` field on each
+		 * readback records which pass a frame carries anyway.
+		 */
 		const timers: ReturnType<typeof setTimeout>[] = [];
 		const raf = requestAnimationFrame(() =>
 			requestAnimationFrame(() => {
@@ -880,10 +910,9 @@ const GeometryProbe = ({
 						window.dispatchEvent(new Event("resize"));
 					}
 				}
-				measure();
-				for (const delay of [400, 1500]) {
-					timers.push(setTimeout(measure, delay));
-				}
+				measure("first");
+				timers.push(setTimeout(() => measure("400ms"), 400));
+				timers.push(setTimeout(() => measure("settled"), 1500));
 			}),
 		);
 		return () => {
@@ -934,12 +963,21 @@ export const Geometry: Story = {
 				 * The scrollbar case: a command line long enough to wrap several times
 				 * with a classic scrollbar forced onto the field, which is the one state
 				 * where the mirror's text column is narrower than its box.
+				 *
+				 * It carries a RUN, and that is the point of the probe rather than a
+				 * detail of its draft: the correction being measured (`paddingRight =
+				 * the textarea's + its gutter`) exists so that every tint after the
+				 * first wrap sits beside the glyph it names, and on a prose draft the
+				 * correction governs nothing because nothing is painted (design round 2
+				 * D2). A NAME-list command is what makes a wrapped draft paintable —
+				 * the multi-line kill exempts it — so the wrapped lines here have runs
+				 * on them.
 				 */}
 				<GeometryProbe
 					label="geometry-scrollbar"
 					forceScrollbar={true}
 					draft={
-						"/compact please summarise the failing tests in the TUI crash report, note which of them are flaky, and then stop. Then do it again for the desktop composer and the terminal editor, and tell me which of the two wrappers disagrees about the line it paints."
+						"/team frontend-guild please summarise the failing tests in the TUI crash report, note which of them are flaky, and then stop. Then do it again for the desktop composer and the terminal editor, and tell me which of the two wrappers disagrees about the line it paints.\nand then send it on to the reviewer"
 					}
 				/>
 			</div>

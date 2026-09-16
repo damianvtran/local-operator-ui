@@ -202,7 +202,7 @@ export const LEADING_SLASH_CODE = "leading_slash_message";
  * it. (User-visible copy: proposed here, ratified by the design round.)
  */
 export const LEADING_SLASH_MESSAGE =
-	"That line starts with a command word, so it was not sent as a message. Send the command on its own, or move it below your text.";
+	"That line starts with a command word, so it was not sent as a message. Move the word below your text to send it as a message, or send the command on its own.";
 
 /**
  * The same refusal, on a backend that still applies the OLD blanket policy.
@@ -215,11 +215,13 @@ export const LEADING_SLASH_MESSAGE =
  *
  * What it may NOT say is that updating fixes it: the admission rule's narrowing
  * is not in a release yet, so a user who pressed the update would meet the same
- * refusal (UX round 1 U6, measured against the released backend). The sentence
- * names the route that works TODAY and the one the update removes.
+ * refusal (UX round 1 U6, measured against the released backend). It also may not
+ * repeat the remedy the sentence above it already gave — round 2 measured the
+ * pair wrapping to three lines in a fresh chat to say two things (UX N2) — so it
+ * states the skew and what the update removes, and stops.
  */
 export const LEADING_SLASH_OLDER_BACKEND_MESSAGE =
-	"This backend is older than this app and still refuses messages that begin with a command word. Move the word below your text to send it now; an updated backend no longer refuses them.";
+	"This backend is older than this app: it refuses any message that begins with a command word, which an updated backend no longer does.";
 
 /**
  * The fallback sentence for a backend update that did not start.
