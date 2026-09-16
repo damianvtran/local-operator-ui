@@ -110,9 +110,37 @@ export type SurfaceScope = "all" | { sessionId: string };
  * keys on, and the object is rebuilt from it inside the surface rather than trusted
  * from the caller. A host cannot trip it, which is the right place for that
  * guarantee: this model owns the rule.
+ *
+ * INJECTIVE, and that is a correctness property rather than a nicety (review round
+ * 1, NIT A): keying a session scope as its bare session id made a session literally
+ * named `all` indistinguishable from the all-tabs scope, so the strip would show
+ * every conversation's tabs while the switch read "This conversation". Session ids
+ * come from the daemon, so the collision was theoretical — but a key that is only
+ * USUALLY injective is the kind of thing that holds until the day it does not.
+ *
+ * THE ENCODING IS THIS PAIR'S OWN BUSINESS: `scopeFromKey` below is the only thing
+ * that reads it, so no caller takes the string apart, and a session id containing a
+ * prefix of its own cannot confuse it.
  */
+const ALL_SCOPE_KEY = "all";
+const SESSION_SCOPE_PREFIX = "session:";
+
 export function scopeKey(scope: SurfaceScope): string {
-	return scope === "all" ? "all" : scope.sessionId;
+	return scope === "all"
+		? ALL_SCOPE_KEY
+		: `${SESSION_SCOPE_PREFIX}${scope.sessionId}`;
+}
+
+/** The scope a key names. The inverse of `scopeKey`, and the only reader of its
+ * encoding. A key that is neither the all-scope nor prefixed is still a session
+ * key: the tolerant reading is the one that cannot silently truncate an id. */
+export function scopeFromKey(key: string): SurfaceScope {
+	if (key === ALL_SCOPE_KEY) return "all";
+	return {
+		sessionId: key.startsWith(SESSION_SCOPE_PREFIX)
+			? key.slice(SESSION_SCOPE_PREFIX.length)
+			: key,
+	};
 }
 
 /** One live request, numbered and timed, as every surface renders it. */

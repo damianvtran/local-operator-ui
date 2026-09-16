@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 
 /**
  * The renderer's half of the browser feature: the projection main publishes and
@@ -234,50 +241,149 @@ export interface BrowserProjection {
  * event handlers — is the drift this repository refuses everywhere else, so the
  * read lives here once and `useBrowserChrome` adds the writes on top of it.
  */
-export function useBrowserProjection(): BrowserProjection {
-	const [state, setState] = useState<BrowserChromeState | null>(null);
-	const [readError, setReadError] = useState<string | null>(null);
-	const available = browserBridgeAvailable();
+/**
+ * THE PROJECTION IS READ ONCE PER WINDOW, NOT ONCE PER HOOK (review round 1, F5).
+ *
+ * WHY, and it is the one thing two instances of this read could get wrong: PR 2
+ * mounts this twice at once — the chat header's badge and the surface — and two
+ * instances meant two `api.state()` calls and two pairs of event subscriptions, so
+ * a projection change landing between them left the badge counting 1 while the tray
+ * showed 2 until the next event. The clock half of that race was closed by the
+ * shared clock (`approval-queue-model.ts`); this is the other half, and the fix is
+ * not to reconcile two readings but to have ONE. The store is the module-scoped
+ * shape this repository already uses for renderer-wide browser state
+ * (`shared/browser-consent-attention.ts`), subscribed with `useSyncExternalStore`
+ * so the lifecycle is React's rather than an effect's.
+ */
+type ProjectionSnapshot = {
+	state: BrowserChromeState | null;
+	readError: string | null;
+};
 
-	const refresh = useCallback(async (): Promise<BrowserChromeState | null> => {
-		const api = bridge();
-		if (!api) return null;
-		try {
-			const next = (await api.state()) as BrowserChromeState | null;
-			if (next && Array.isArray(next.tabs)) {
-				setState(next);
-				setReadError(null);
-				return next;
-			}
-			return null;
-		} catch (caught) {
-			setReadError(messageOf(caught));
-			return null;
+/** A FRESH OBJECT per publish: `useSyncExternalStore` compares snapshots with
+ * `Object.is`, so a mutated object would be a change React never sees. */
+let projectionSnapshot: ProjectionSnapshot = { state: null, readError: null };
+const projectionListeners = new Set<() => void>();
+/** The bridge's event subscriptions, held only while something is listening. */
+let detachBridge: (() => void) | null = null;
+
+function publishProjection(next: ProjectionSnapshot): void {
+	projectionSnapshot = next;
+	for (const listener of projectionListeners) listener();
+}
+
+/**
+ * Read the projection, and return what was read.
+ *
+ * The VALUE is returned as well as published, because a caller's own consequence
+ * of a read — `useBrowserChrome`'s pending-URL note — needs the state the read
+ * produced rather than the state React is about to render.
+ */
+async function readProjection(): Promise<BrowserChromeState | null> {
+	const api = bridge();
+	if (!api) return null;
+	try {
+		const next = (await api.state()) as BrowserChromeState | null;
+		if (next && Array.isArray(next.tabs)) {
+			publishProjection({ state: next, readError: null });
+			return next;
 		}
-	}, []);
+		return null;
+	} catch (caught) {
+		publishProjection({ ...projectionSnapshot, readError: messageOf(caught) });
+		return null;
+	}
+}
 
+function subscribeProjection(listener: () => void): () => void {
+	const first = projectionListeners.size === 0;
+	projectionListeners.add(listener);
+	if (first) {
+		/*
+		 * A NEW MOUNT STARTS FROM NOTHING, exactly as it did when this state was
+		 * per-hook: the previous mount's tabs are not this one's, and the first read
+		 * lands within a frame either way. It is ASSIGNED rather than published,
+		 * because the subscriber that just arrived reads this snapshot for itself —
+		 * notifying listeners from inside `subscribe` is an update React asks
+		 * components not to schedule.
+		 */
+		projectionSnapshot = { state: null, readError: null };
+		void readProjection();
+		/*
+		 * Two subscriptions rather than one: main emits the consent event for the
+		 * approval store's changes (which include the pending set) and the state event
+		 * for the registry's. Both land on the same projection, and reading it twice is
+		 * cheaper than two projections that can disagree.
+		 */
+		const api = browserBridgeAvailable() ? window.api?.browser : undefined;
+		if (api) {
+			const offState = api.onStateChanged(() => void readProjection());
+			const offConsent = api.onConsentChanged(() => void readProjection());
+			detachBridge = () => {
+				offState();
+				offConsent();
+			};
+		}
+	}
+	return () => {
+		projectionListeners.delete(listener);
+		if (projectionListeners.size === 0) {
+			detachBridge?.();
+			detachBridge = null;
+		}
+	};
+}
+
+function projectionSnapshotOf(): ProjectionSnapshot {
+	return projectionSnapshot;
+}
+
+/**
+ * The projection, subscribed — the READ half of the browser chrome, split out so a
+ * second reader can have the same source rather than a second way of getting it.
+ *
+ * WHY THIS IS SEPARATE, and the reason is PR 2's rather than a tidy-up: the chat
+ * header's Globe trigger carries an attention badge counting THIS conversation's
+ * live requests (`docs/design/browser-approval-ux.md` 7.3), and that control is
+ * mounted whether or not the pane is. It needs the projection and none of the
+ * twenty intents `useBrowserChrome` returns, so mounting the whole chrome in the
+ * header would put every tab control in a header that has one badge and no tab
+ * strip. A hand-written second subscription — its own `api.state()`, its own two
+ * event handlers — is the drift this repository refuses everywhere else, so the
+ * read lives here once and `useBrowserChrome` adds the writes on top of it.
+ */
+export function useBrowserProjection(): BrowserProjection {
+	const snapshot = useSyncExternalStore(
+		subscribeProjection,
+		projectionSnapshotOf,
+		projectionSnapshotOf,
+	);
+	/*
+	 * A BRIDGE THAT APPEARS AFTER THE FIRST SUBSCRIBER still gets read.
+	 *
+	 * The store attaches its event subscriptions once, when its first consumer
+	 * arrives, so a bridge that is absent at that moment - a story's stub, a preload
+	 * that lands late - would otherwise leave the projection permanently null with no
+	 * event in the world to wake it. This is the recovery, and it is idempotent: every
+	 * consumer may ask, and they all read the one source and publish to the one
+	 * snapshot. Measured before it existed: a composition story that installed its
+	 * stub from an effect showed the pane's loading state forever, with `reported
+	 * content rect: none` under the caption.
+	 */
+	const available = browserBridgeAvailable();
 	useEffect(() => {
-		if (!available) return;
-		void refresh();
-		const api = window.api?.browser;
-		if (!api) return;
-		// Two subscriptions rather than one: main emits the consent event for the
-		// approval store's changes (which include the pending set) and the state
-		// event for the registry's. Both land on the same projection, and reading it
-		// twice is cheaper than two projections that can disagree.
-		const offState = api.onStateChanged(() => void refresh());
-		const offConsent = api.onConsentChanged(() => void refresh());
-		return () => {
-			offState();
-			offConsent();
-		};
-	}, [available, refresh]);
-
+		if (available) void readProjection();
+	}, [available]);
+	const refresh = useCallback(readProjection, []);
 	const clearReadError = useCallback((): void => {
-		setReadError(null);
+		publishProjection({ ...projectionSnapshot, readError: null });
 	}, []);
-
-	return { state, readError, refresh, clearReadError };
+	return {
+		state: snapshot.state,
+		readError: snapshot.readError,
+		refresh,
+		clearReadError,
+	};
 }
 
 export function useBrowserChrome(): BrowserChrome {
