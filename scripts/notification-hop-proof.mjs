@@ -321,8 +321,8 @@ try {
 	flush();
 
 	const code = await teardown();
-		cleanup();
-		process.exit(code);
+	cleanup();
+	process.exit(code);
 } finally {
 	/*
 	 * The THROW path: an exception after the spawn used to exit with the app still
