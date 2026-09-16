@@ -26,6 +26,7 @@ import {
 import {
 	type SurfaceScope,
 	originOfUrl,
+	requestsInScope,
 	tabsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
@@ -125,6 +126,17 @@ export interface BrowserSurfaceProps {
 	 * the route counts every request, and PR 2's pane counts only the requests this
 	 * conversation's agent raised and has to say so (spec 7.2, interface 3). */
 	approvalHeaderLabel?: (count: number) => string;
+	/**
+	 * The way out of a scope that has nothing in it, when the host HAS other tabs to
+	 * show (spec 7.2).
+	 *
+	 * Absent on the route, where there is no narrower list to widen: `scope="all"`
+	 * already shows everything, so its empty state has nothing to offer and says the
+	 * plain truth ("No tabs are open."). The pane passes it, and the surface renders
+	 * the action only for a conversation scope — a host that has no other scope is a
+	 * host that must not offer one.
+	 */
+	onShowAllTabs?: () => void;
 }
 
 const DEFAULT_APPROVAL_HEADER = defaultApprovalHeaderLabel;
@@ -134,6 +146,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	surfaceTag,
 	dockSurfaceTag,
 	approvalHeaderLabel = DEFAULT_APPROVAL_HEADER,
+	onShowAllTabs,
 }) => {
 	const chrome = useBrowserChrome();
 	const suppressed = useBrowserViewSuppressed();
@@ -166,10 +179,20 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
+	//
+	// THE SAME SCOPE APPLIES TO THE REQUESTS, for the second half of the same
+	// question (“which of these are mine”): the scope's OWN key for that is the
+	// requester rather than a tab (spec 7.2 — a request belongs to a conversation by
+	// WHO ASKED), so `requestsInScope` is a different filter from `tabsInScope` over a
+	// different field, and both are fed the host's one scope prop. That is what makes
+	// the pane's badge count this conversation's live requests while the route's
+	// counts every one, from the same component and the same model: the input differs,
+	// nothing here branches on which host it is.
 	const requests = state?.pendingConsent;
-	// Memoised on the projection's own array: an empty-array literal here would be a
-	// new identity on every render, and the queue hook's effect keys on it.
-	const pendingRequests = useMemo(() => requests ?? [], [requests]);
+	const pendingRequests = useMemo(
+		() => requestsInScope(requests ?? [], scope),
+		[requests, scope],
+	);
 	const queue = useApprovalQueue(pendingRequests, tabs);
 
 	// ---- layout: report the rectangle ---------------------------------------
@@ -508,10 +531,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						// is to pick a tab above - and that is deliberate rather than an
 						// inconsistency to iron out.
 						//
-						// THE SCOPED EMPTY STATE IS PR 2's, and this is its wording in advance
-						// (spec §7.2): a conversation's list must not say "no tabs" while three are
-						// open behind a filter. The route passes `scope="all"`, where "No tabs are
-						// open." is the whole truth.
+						// TWO ACTIONS IN THE SCOPED BRANCH, and they are two DIFFERENT actions rather
+						// than the same one twice (spec 7.2): `Show all tabs` widens the LIST and
+						// `New tab` opens a page. The first is the primary one here, because the
+						// state this copy exists for is the half-truth case - three tabs are open
+						// and none of them is this conversation's - and the honest next move there
+						// is to look at what IS open, not to open a fourth. It is rendered only when
+						// the host actually HAS a wider scope to offer, so the route's own empty
+						// state keeps its single action.
 						<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
 							<Globe aria-hidden className="size-6 text-ink-dim" />
 							{scope === "all" ? (
@@ -522,13 +549,25 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									appears here while it works.
 								</p>
 							)}
-							<Button
-								variant={scope === "all" ? "primary" : "outline"}
-								size="sm"
-								onClick={() => void chrome.newTab()}
-							>
-								New tab
-							</Button>
+							<div className="flex items-center gap-2">
+								{scope !== "all" && onShowAllTabs && (
+									<Button
+										variant="primary"
+										size="sm"
+										onClick={onShowAllTabs}
+										data-tour-tag="browser-scope-show-all"
+									>
+										Show all tabs
+									</Button>
+								)}
+								<Button
+									variant={scope === "all" ? "primary" : "outline"}
+									size="sm"
+									onClick={() => void chrome.newTab()}
+								>
+									New tab
+								</Button>
+							</div>
 						</div>
 					)}
 					{state && tabs.length > 0 && !activeTab && (

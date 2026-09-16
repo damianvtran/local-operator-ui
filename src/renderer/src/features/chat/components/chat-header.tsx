@@ -1,13 +1,14 @@
 import {
 	Avatar,
 	AvatarFallback,
+	Badge,
 	Button,
 	Skeleton,
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Bot, FileText } from "lucide-react";
+import { Bot, FileText, Globe } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
@@ -77,6 +78,30 @@ type ChatHeaderProps = {
 	 */
 	listOnScreen?: boolean;
 	readerChildId?: string | null;
+	/**
+	 * Opens the conversation's browser pane, or absent when this header cannot
+	 * (`ChatContent` passes it only where there is a pane to open).
+	 *
+	 * The same shape as `onOpenOptions` above, and for the same reason: the canvas
+	 * button is rendered from whether a host offered the action, so the header never
+	 * has to know which routes or environments have a canvas — or, here, a browser.
+	 * It hides while the pane is open, exactly as the canvas button does, because the
+	 * pane carries its own close and a trigger for a pane that is already up is a
+	 * no-op with a tooltip. The run trigger beside it stays visible as a toggle, and
+	 * that difference is deliberate: the canvas and the browser are surfaces you
+	 * summon and dismiss, where the run details are a pane you flip in and out of
+	 * while reading (`docs/run-sidebar.md` § 3.4).
+	 */
+	onOpenBrowser?: () => void;
+	/**
+	 * How many approvals THIS conversation is waiting on, for the trigger's badge.
+	 *
+	 * The count and not a dot, which is the one place this header differs from the
+	 * canvas button beside it: a canvas dot says "there is something in there", and a
+	 * pending approval is an ASK — an agent is stopped until the user answers — so
+	 * the number is the whole information the badge carries (spec 5.1, 7.3).
+	 */
+	browserAttentionCount?: number;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
@@ -89,9 +114,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	mcpServers = [],
 	listOnScreen = false,
 	readerChildId = null,
+	onOpenBrowser,
+	browserAttentionCount = 0,
 }) => {
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	// Read here rather than passed in: the pane is a property of the window's right
+	// slot, so the control that opens it and the slot that renders it have to answer
+	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
+	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
@@ -193,19 +224,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			</div>
 
 			{/*
-			 * The header's action cluster: the run-panel trigger, then the canvas
-			 * button, as one group at the end of the bar. The cluster carries the
-			 * `ml-auto` the canvas button used to carry, so the two actions sit 8px
-			 * apart instead of being pinned to opposite ends of whatever else the bar
-			 * happens to hold.
+			 * The header's action cluster: the run-panel trigger, the browser pane's trigger,
+			 * then the canvas button, as one group at the end of the bar. The cluster carries
+			 * the `ml-auto` the canvas button used to carry, so the actions sit 8px apart
+			 * instead of being pinned to opposite ends of whatever else the bar happens to
+			 * hold.
 			 *
-			 * These two ARE the right pane's two choices, and they are mutually
-			 * exclusive in the STORE rather than here: each setter clears the other, so
-			 * this cluster never has to know which pane is up. The canvas button keeps
-			 * its own hide-when-open rule (`onOpenOptions && !isCanvasOpen`), because a
-			 * button that re-opens the pane already on screen is a no-op with a
-			 * tooltip; the run trigger stays, because it is a TOGGLE with an
-			 * `aria-pressed` ground and that is exactly what makes the swap reversible.
+			 * THESE ARE THE RIGHT PANE'S THREE CHOICES, and they are mutually exclusive in
+			 * the STORE rather than here: each setter clears the other two
+			 * (`claimRightSlot`), so this cluster never has to know which pane is up. The
+			 * canvas and browser buttons keep their own hide-when-open rule
+			 * (`onOpenOptions && !isCanvasOpen`, `onOpenBrowser && !isBrowserPaneOpen`),
+			 * because a button that re-opens the pane already on screen is a no-op with a
+			 * tooltip; the run trigger stays, because it is a TOGGLE with an `aria-pressed`
+			 * ground and that is exactly what makes the swap reversible.
 			 */}
 			<div className={cn("ml-auto flex items-center gap-2")}>
 				<RunDetailsTrigger
@@ -214,6 +246,58 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					listOnScreen={listOnScreen}
 					readerChildId={readerChildId}
 				/>
+				{/* The conversation's browser, third in the cluster. `ghost`/`icon` like its
+				    neighbours, and it carries the count when this conversation has a request
+				    outstanding — see `browserAttentionCount` for why a count here and a dot on
+				    the canvas button. */}
+				{onOpenBrowser && !isBrowserPaneOpen && (
+					<Tooltip
+						content={
+							browserAttentionCount > 0
+								? `Open browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
+								: "Open browser"
+						}
+						side="top"
+					>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onOpenBrowser}
+							aria-label={
+								browserAttentionCount > 0
+									? `Open browser, ${browserAttentionCount} waiting`
+									: "Open browser"
+							}
+							data-tour-tag="browser-pane-trigger"
+							className={cn("relative")}
+						>
+							<Globe aria-hidden={true} />
+							{/*
+							 * The URL bar's own badge, at this control's corner rather than outside it
+							 * (`ring-canvas` names the ground behind it so the overlap reads as an
+							 * object on top of the button, and the offset is inward: this header is
+							 * `canvas` with `px-4`, so unlike the URL bar's outer corner there is room
+							 * — the round-2 D3 defect was a badge drawn 7px past the window's edge).
+							 */}
+							{browserAttentionCount > 0 && (
+								<span
+									className={cn("pointer-events-none absolute -top-1 -right-1")}
+								>
+									<Badge
+										variant="attention"
+										shape="pill"
+										className={cn(
+											"h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas",
+										)}
+										data-tour-tag="browser-pane-badge"
+									>
+										{browserAttentionCount}
+									</Badge>
+								</span>
+							)}
+						</Button>
+					</Tooltip>
+				)}
 				{onOpenOptions && !isCanvasOpen && (
 					<Tooltip
 						content={
