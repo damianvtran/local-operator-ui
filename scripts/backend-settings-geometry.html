@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+  Geometry rig for the Backend settings surface (a measurement surface, not part
+  of the app and not part of the test suite).
+
+  Why a rig rather than a story. The redesign's acceptance targets are numbers —
+  the region's height, rows per screen, how many controls are still full width,
+  how many focusables the closed default state contributes. A still shows the
+  symptom; these show whether the target was met, and they have to be taken from
+  the SHIPPED components at a real window size rather than from a stand-in.
+
+  The page mounts the shipped `SettingsPage` against a stubbed desktop bridge
+  carrying the real `/v1/settings` projection, for the same reason the story
+  file does: without `window.api.desktop.request` the section photographs a
+  transport error instead of its rows.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Backend settings — geometry</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./backend-settings-geometry.tsx"></script>
+	</body>
+</html>

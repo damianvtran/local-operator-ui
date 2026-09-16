@@ -700,6 +700,40 @@ export const STORIES = [
 	["settings-integrations--filtered", 1000, 860],
 	["settings-integrations--filtered-empty", 1000, 860],
 	["settings-integrations--no-servers", 1000, 860],
+
+	/*
+	 * Backend settings: the whole registry — 99 keys in 18 sections — which had no
+	 * frame, no story and no fixture in this set until now. The four states that
+	 * matter most are arrival (nothing touched), all-expanded (the long scroll the
+	 * complaint is about), filtered (a search that force-opens the sections it
+	 * lands in and says how many rows it found) and one-section-open (a header's
+	 * own geometry).
+	 *
+	 * 1380x900 is the app's default window and 1000x900 the step below where the
+	 * settings rail collapses to its icon column, so both are swept for the
+	 * arrival state; 620x900 is deliberately NARROWER than the row's own 560px
+	 * column breakpoint, because the rows stack on the COLUMN and a viewport that
+	 * never crosses it would photograph the layout that already worked.
+	 *
+	 * `all-expanded` declares 1700 rather than 900: with the advanced tier held
+	 * back, every section open is ~1500px of registry, and a 900px frame of it
+	 * would be a picture of the first 14 rows. `changed-rows` is the configured
+	 * fixture — off-default rows, changed dots, `Use default` — and the other
+	 * three are the states a reader reaches by searching, by a deep link and by a
+	 * gate that is switched off.
+	 */
+	["settings-backend--arrival", 1380, 900],
+	["settings-backend--arrival", 1000, 900],
+	["settings-backend--all-expanded", 1380, 1700],
+	["settings-backend--collapsed", 1380, 900],
+	["settings-backend--one-section-open", 1380, 900],
+	["settings-backend--filtered", 1380, 900],
+	["settings-backend--no-results", 1380, 900],
+	["settings-backend--changed-rows", 1380, 900],
+	["settings-backend--read-only-and-redacted", 1380, 900],
+	["settings-backend--gated-children", 1380, 900],
+	["settings-backend--deep-link", 1380, 900],
+	["settings-backend--narrow", 620, 900],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
