@@ -257,7 +257,7 @@ that scrolls" — and it does not hold: the panes' other list SHEDS per phase ra
 than scrolling (a 24-item plan leaves the whole region 9px of scroll), so six rows
 did not buy the space the sentence claimed. What they bought was the operator's own
 ask unkept: they asked to "see all the armed wakes", and above six the section said
-more existed without saying which. Sixteen is the number `build_wake_schedule` refuses past
+more existed without saying which. Sixteen is the number `build_wake_schedule` refuses to
 exceed, so a full session is the whole list, and the marker below the list is the
 footer for a payload that exceeds the DECLARED bound (a hand-edited index, or a
 future runtime that raises the limit) rather than the routine truncation it was.

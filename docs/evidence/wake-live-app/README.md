@@ -10,8 +10,11 @@ photographed a composer band the tree had already stopped drawing — the seven
 centred bordered chips (`Trending stocks on WallStreetBets`, `MNIST`, …) that
 `#228` retired. Design review's convergence round measured it: the frames were a
 picture of two different windows, with the chip correct and the band behind it a
-release old. Every frame here was re-taken on this head, so the band around the
-chip is the band that ships.
+release old. Every frame here was re-taken on this head. Four of them — `absent`, `one`,
+`hover` and `focused` — carry the composer band, and it is the band that ships. The other
+three are photographed with the run pane open, where the chat column narrows to 444px and
+this head draws no composer band at all (design review's final confirmation measured it),
+so those frames show the chip and the pane rather than a band.
 
 ## How it was taken
 
@@ -55,10 +58,10 @@ store: `38729b6c9750` with nothing armed, `209652f679c8` with one schedule and
 | --- | --- | --- |
 | `live-wake-chip-absent` | `38729b6c9750`, nothing armed | The composer, and **no wake chip**: the run's own DOM read is `noChip: { present: false, row: false }`. Note what the second field is saying: at this head a session with nothing to report grows NO status row at all, so the absence of a chip is not a chip drawn empty — which is the gate the frame isolates (`[data-status-wakes]` absent, not present-and-blank). |
 | `live-wake-chip-one` | `209652f679c8`, one one-shot | `1 wake armed` with the `AlarmClock` mark, at the row's content edge with no goal and no plan — the run records the row's chips as `{wakes: true}` and every other chip false. |
-| `live-wake-chip-hover` | the same | The same chip under a real pointer, tooltip open: `Open the wakes in run details — 1 wake armed` (the run reads the tooltip element and finds the label). |
+| `live-wake-chip-hover` | the same | The same chip under a real pointer, tooltip open: `Open the wakes in run details — 1 wake armed` (the run reads the tooltip element and finds the label). The label wraps to two lines in the frame, splitting `1 wake` from `armed` — the tooltip's own layout at this width, not a truncated string. |
 | `live-wake-chip-focused` | the same | The chip reached by a real `Shift+Tab` from the composer, with the focus ring the app gives a keyboard user. `document.activeElement` is the chip. |
 | `live-wake-pane-press` | the same | **The press.** The driver's hit-tested `press` on the chip, and the pane open at **Wakes** with `1 wake armed`, `Sep 15 11:44 PM EDT · once`, the prompt, and the footer `To stop a wake, ask the agent to cancel it.` The run records `{ runPanelOpen: true, rows: 1 }`. |
-| `live-wake-chip-many` | `b7a48cc57f6f`, eight armed | `8 wakes armed`, with the run pane still open from the press in the row above (the pane is identical to the frame below; only the composer's focus ring differs, so the chip-alone-at-eight state is not in this set). |
+| `live-wake-chip-many` | `b7a48cc57f6f`, eight armed | `8 wakes armed`, with the run pane still open from the press in the row above. The pane is identical to the frame below; the two differ only in the composer's blinking text caret (a 60px column at source x1078/y888 in both frames), so the chip-alone-at-eight state is not in this set. |
 | `live-wake-pane-many` | the same | The section with **all eight** schedules, soonest first, no marker — `{ rows: 8 }`, the count the chip states and the list the chip opens agreeing on one payload from a real store. |
 
 **What the band around them is now.** At 1380px this head draws its product chips
