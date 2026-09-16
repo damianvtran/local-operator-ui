@@ -220,7 +220,10 @@ test("a new epoch retires the old counters", async () => {
 	 */
 	store.setState({
 		sessions: [
-			catalogue({ status: { code: "busy", label: "Working" }, status_revision: 9 }),
+			catalogue({
+				status: { code: "busy", label: "Working" },
+				status_revision: 9,
+			}),
 			catalogue({
 				session_id: OTHER,
 				title: "Release notes",
@@ -286,9 +289,7 @@ test("an unstamped list still applies its status", async () => {
 	 * cleared, because an absent key is not a claim (the same rule the row merge
 	 * has always had for `supported`).
 	 */
-	await list([
-		wire({ status: { code: "error", label: "Failed" } }),
-	]);
+	await list([wire({ status: { code: "error", label: "Failed" } })]);
 	assert.deepEqual(row().status, { code: "error", label: "Failed" });
 	assert.equal(row().status_revision, 7);
 	assert.equal(row().status_epoch, EPOCH);
@@ -343,8 +344,16 @@ test("a frame for an unknown session is dropped", async () => {
 	 */
 	store
 		.getState()
-		.applySessionStatus(OTHER, { code: "busy", label: "Working" }, 1, LATER_EPOCH);
+		.applySessionStatus(
+			OTHER,
+			{ code: "busy", label: "Working" },
+			1,
+			LATER_EPOCH,
+		);
 	assert.equal(row().status_revision, undefined);
 	assert.equal(row().status_epoch, undefined);
-	assert.deepEqual(row().status, { code: "approval", label: "Approval needed" });
+	assert.deepEqual(row().status, {
+		code: "approval",
+		label: "Approval needed",
+	});
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import { createRequire } from "node:module";
+import { test } from "node:test";
 import { build } from "esbuild";
 const require = createRequire(import.meta.url);
 const result = await build({
@@ -68,8 +68,8 @@ for (const [code, icon, ink] of [
 	["unknown", "circle-help", "ink-dim"],
 ]) {
 	test(`${code} does not lose status when acknowledged`, () => {
-		const before = render(code, true),
-			after = render(code, false);
+		const before = render(code, true);
+		const after = render(code, false);
 		assert.equal(after, before);
 		assert.match(after, new RegExp(`lucide-${icon}`));
 		assert.match(after, new RegExp(`text-${ink}`));
@@ -124,7 +124,10 @@ const storeResult = await build({
 			setup(builder) {
 				builder.onResolve(
 					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
-					() => ({ path: "transport", namespace: "chat-session-status-fixture" }),
+					() => ({
+						path: "transport",
+						namespace: "chat-session-status-fixture",
+					}),
 				);
 				builder.onLoad(
 					{ filter: /.*/, namespace: "chat-session-status-fixture" },
@@ -163,16 +166,19 @@ test("a completion delivered by frames renders as an unread complete row", () =>
 	// What a `sessions.list` response left in the store: busy, stamped by the
 	// feed process that is serving this client.
 	useCanonicalSessionsStore.setState({
-		sessions: replaceSessionRows([], [
-			{
-				session_id: FEED_SESSION,
-				title: "Quarterly revenue model",
-				binding: { agent: null, team: null },
-				status: { code: "busy", label: "Working" },
-				status_revision: 2,
-				status_epoch: FEED_EPOCH,
-			},
-		]),
+		sessions: replaceSessionRows(
+			[],
+			[
+				{
+					session_id: FEED_SESSION,
+					title: "Quarterly revenue model",
+					binding: { agent: null, team: null },
+					status: { code: "busy", label: "Working" },
+					status_revision: 2,
+					status_epoch: FEED_EPOCH,
+				},
+			],
+		),
 	});
 	// The turn finishes: the derived pair arrives on `session_status`, the unseen
 	// mark on `attention`. Both through the store, both as the hook calls them.
