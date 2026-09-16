@@ -1,5 +1,6 @@
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent } from "@storybook/test";
 import { type ReactNode, useEffect } from "react";
 import type { Message } from "../types/message";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
@@ -212,6 +213,71 @@ const composerBand = ({ story, isSmallView, pool, draft }: BandProps) => {
 	) : (
 		input
 	);
+};
+
+/*
+ * The capturer's shutter, and the once-per-document play guard, both copied from
+ * the composer-stories module's contract rather than re-invented: a play runs
+ * MORE THAN ONCE per load when the story's args settle after the first render
+ * (the theme arrives as an arg), so an unguarded play types the command twice
+ * into a box that already holds it and the capture waits for a state that never
+ * arrives.
+ */
+const holdShutter = () => {
+	document.documentElement.dataset.capturePending = "1";
+};
+
+const releaseShutter = () => {
+	delete document.documentElement.dataset.capturePending;
+};
+
+let played = false;
+
+/**
+ * THE CAPTURE OPEN ON THE BAND THAT CENTRES THE COMPOSER (UX round 4, U16).
+ *
+ * The state this frame holds is the one the round-4 bounce was measured in: an
+ * empty chat, where the band claims the column and centres its group, with a
+ * capture open so the sentence is up. No committed frame showed it - the two
+ * empty-chat surfaces' frames are IDLE, and the credential frames are this
+ * story's flex column rather than the app's centred band - so the movement could
+ * only be reported as numbers.
+ *
+ * On the shipped head the group's centring moved the whole composer by half the
+ * sentence's height (measured live at 1380: `textarea.y` 402.25 idle -> 416.00
+ * armed, toggling twice while one command was typed, against live `origin/main`'s
+ * 402.25 through all eleven keystrokes). The fix mirrors the sentence below the
+ * group, so the centring shift cancels for everything between the two lines and
+ * the box does not move at all; the live numbers are the design record §7.5's and
+ * the PR's remediation comment's. WHAT A STILL CANNOT SAY, and what it is
+ * therefore not claiming: whether the box moved. It shows the state - greeting,
+ * sentence on the composer's own measure, box, tip row and chips, at the app's
+ * own 1380x872 - beside `empty-chat`, which is the same band with no sentence.
+ */
+export const EmptyChatCredential: Story = {
+	render: () => (
+		<Column label="empty chat, capture open: the sentence is above the box and the composer does not move when it arrives">
+			{composerBand({ story: "empty-chat-credential" })}
+		</Column>
+	),
+	play: async ({ canvasElement }) => {
+		if (played) return;
+		played = true;
+		holdShutter();
+		const box = canvasElement.querySelector<HTMLTextAreaElement>(
+			'textarea[role="combobox"]',
+		);
+		if (!box) throw new Error("the composer's textarea is not in this story");
+		await userEvent.click(box);
+		await userEvent.type(box, "/credential sk-live-CANARY-4417");
+		if (box.value.includes("sk-live-CANARY-4417")) {
+			throw new Error("the typed secret reached the buffer");
+		}
+		if (!box.value.includes("•")) {
+			throw new Error(`no mask cells were painted: ${box.value}`);
+		}
+		releaseShutter();
+	},
 };
 
 /** The pinned opening sample of four and the tip row, at the app's default width. */

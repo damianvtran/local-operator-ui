@@ -225,6 +225,85 @@ const CONTROLS = [
 		border: "accent",
 		ink: "accent",
 	},
+	{
+		/*
+		 * The composer's credential pill and mask span (`credential-overlay.tsx`).
+		 *
+		 * Its ink is `ink`, not a semantic: the pill paints NO VISIBLE TEXT — the
+		 * marker's characters are the textarea's, and this element is a
+		 * background-only mirror behind them — so what `ink` measures here is the
+		 * real pair on screen (the textarea's own ink over the wash the pill puts
+		 * behind it). The wash and the edge are the `info` family rather than a new
+		 * role: the pill states a FACT ("a credential is referenced here"), which is
+		 * what that triple means, and reusing it is what lets this row assert on the
+		 * composer's own ground with the rows above.
+		 *
+		 * The EDGE is painted as a 1px `outline`, not a border, and the measurement
+		 * is the same one: an outline does not participate in layout, so the mirror's
+		 * line boxes stay byte-identical to the textarea's and the pill cannot drift
+		 * off the characters it sits under. A border here costs 2px per line and
+		 * misaligns every pill that follows it — measured in the frames.
+		 *
+		 * `surface` is the ground the composer box paints (`COMPOSER_BOX`,
+		 * `border-control` on `bg-surface`), and the rows above cover `canvas` for
+		 * the same component wherever it is drawn on a bare page.
+		 *
+		 * WHICH PAIR MOVES FIRST, named because this is the tightest edge in the table
+		 * and the next palette edit needs to know it without re-deriving the row:
+		 * sage's `infoBorder` against `canvas` is **3.09:1** against the 3:1 floor,
+		 * with the worst-everywhere-else figure (3.14:1 — dune and radient, on
+		 * `surface`) beside it. Both were recomputed from the twelve palettes in
+		 * design round 2, which is also when the sentence was written: round 1's
+		 * disposition claimed this line was already here and it was not (D5).
+		 *
+		 * The armed token's `warningWash` is deliberately NOT a row here — it has no
+		 * boundary and no ink of its own (the textarea paints the glyphs), so it is not
+		 * a component triple; the pairs are recorded in the design record instead
+		 * (`docs/design/composer-credential-capture.md` §7.1).
+		 */
+		name: "credential pill",
+		on: ["canvas", "surface"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "ink",
+	},
+	/*
+	 * The not-stored chip's own treatment — the SAME chip, in the warning role
+	 * (`credential-overlay.tsx`'s `CREDENTIAL_NOT_STORED_ROLE`, UX round 3, U13).
+	 *
+	 * A row of its own rather than a second note on the pill's, because it is a
+	 * second component triple with its own fill and its own edge (branding.md §
+	 * "adding a component with its own fill and border means adding a row"): the
+	 * marker text the textarea paints sits on `warningWash` with `warningBorder`
+	 * drawn as its 1px outline, and both halves have to clear their floors on the
+	 * two grounds the composer can sit on. The pill's row above says nothing about
+	 * this pair — a green run over there is not evidence about a chip nobody listed.
+	 *
+	 * `ink` is the ink for the same reason the pill's is: this element paints no
+	 * visible text at all, so `ink` here measures the pair actually on screen — the
+	 * textarea's own glyphs over the wash the overlay puts behind them.
+	 *
+	 * ITS EDGE IS DASHED, and that is a rule of the component rather than a taste
+	 * choice the colours can carry (design round 4, D2; code review round 4, MINOR
+	 * 2; UX round 4, U17). This row measures two TRIPLES, and the two registers
+	 * sitting inside their own floors says nothing about whether a reader can tell
+	 * them apart: measured over the twelve palettes, `warningWash` against
+	 * `infoWash` is a fill contrast of **1.01-1.11** (ten of the twelve at or below
+	 * 1.06), the two edges **1.00-1.72**, and a greyscale reading of the two fills
+	 * is **34 vs 35 of 255**. They are separated by hue and almost nothing else, so
+	 * the dash is what carries the state for a reader who cannot separate a warm
+	 * brown from a cool blue — the same doctrine the TUI's amber is measured
+	 * against in the design record's §7.1. A dash is also the only channel here
+	 * that survives monochrome without a new token: the armed token shares this
+	 * wash and has no edge at all.
+	 */
+	{
+		name: "credential pill (unbacked)",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "ink",
+	},
 	/*
 	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).
 	 *

@@ -306,21 +306,36 @@ export const RunPanel = ({
 	}, [onReaderChildChange, path]);
 
 	/*
-	 * BACK: one level UP the lineage, and out of the pane at the first level
-	 * (`§ 5.5`, `§ 3.5`).
+	 * BACK: one level UP the lineage, and — at the top of the reader — back to the
+	 * pane's own root (`§ 5.5`, `§ 3.5`).
 	 *
 	 * The two-rung rule is the document's own, implemented rather than
 	 * approximated: the reader's path is `session -> child -> ... -> current`, so
 	 * while there is a parent to land on, back is that parent's page; at the first
-	 * level there is no step left inside the reader and back leaves the pane, the
-	 * same exit the ✕ and the breadcrumb's root crumb take. Before this rule the
-	 * control left the reader from ANY depth, which is why it disagreed with the
-	 * breadcrumb — the crumb popped one level from the same state (round 1,
-	 * Q6/U1-3).
+	 * level there is no step left inside the READER and back lands on the roster —
+	 * the pane's root view, which is the level above every reader, and the same
+	 * landing as `Escape` (`leaveReader`, below) because it is the same rung.
 	 *
-	 * `Escape` is deliberately NOT this (`leaveReader`, below): the TUI separates
-	 * "up one level" (`p` = parent) from "leave the mode" (`esc` = `_leave`,
-	 * `subagent_view.py:3423-3424`), and the desktop's two controls follow it.
+	 * WHY THE FIRST LEVEL USED TO CLOSE THE PANE, and why that was the defect:
+	 * round 1's rule (U1-3) sent back out of the PANE here, on the reasoning that
+	 * the reader is the pane and the pane is what the ✕ closes. It was reported
+	 * from use instead: the operator's own report is that a first-level reader had
+	 * NO way back up to the roster, because back, the ✕ and the breadcrumb's root
+	 * crumb all took the same exit. The pane already has its own close control in
+	 * this bar (`PanelRightClose`, "Close run details"), so a second control —
+	 * labelled "Back" — doing that control's job is the defect, not the design.
+	 * Back now genuinely goes back: to the roster, one level up, with the pane open.
+	 * Round 1's surviving half is unchanged and still asserted: back pops while
+	 * there is a level to pop, and the crumb and back agree at EVERY depth,
+	 * including this one, where both now land on the roster.
+	 *
+	 * The consequence, stated rather than left implicit: back at the first level
+	 * and `Escape` in the reader now land in the same place. That is deliberate —
+	 * they are two spellings of "up out of the reader" at the one depth where
+	 * there is no deeper page to step to — while `Escape`'s own ladder is
+	 * unchanged (reader -> roster, roster -> close the pane). `Escape` still
+	 * reaches the roster from ANY depth, where back steps up one page at a time;
+	 * that difference is what the two keys are for.
 	 */
 	const back = useCallback(() => {
 		const parent = path.length > 1 ? path[path.length - 2] : null;
@@ -337,13 +352,15 @@ export const RunPanel = ({
 			return;
 		}
 		/*
-		 * The first level. The pane closes, and the trigger takes focus back — which
-		 * is the trigger's own effect rather than a call here, because this button
-		 * unmounts with the pane and a `focus()` on a detached node is a no-op.
+		 * The top of the reader: the roster, exactly as `Escape` leaves it — the pane
+		 * stays open, and focus goes where `leaveReader` puts it (the nearest ancestor
+		 * on this path that IS a row, else the trigger). Routing it through
+		 * `leaveReader` rather than setting the child to null here is what makes the
+		 * focus rule exist in ONE place: two exits that agree on where they land must
+		 * not be two implementations of where focus goes.
 		 */
-		setUnopenable(false);
-		onClose();
-	}, [onClose, onReaderChildChange, path]);
+		leaveReader();
+	}, [leaveReader, onReaderChildChange, path]);
 
 	const openChild = useCallback(
 		(id: string) => {
@@ -590,6 +607,16 @@ export const RunPanel = ({
 	const childControlLabel = `${children.length} child${
 		children.length === 1 ? "" : "ren"
 	}`;
+	/*
+	 * The Back control's name, in ONE string (`§ 6.2`), the same way the descend
+	 * control above derives its tooltip and its accessible name from one count: two
+	 * literals are two chances to drift, and the tooltip is the only place a sighted
+	 * user reads what this control does. The word stays "Back" - it still moves up a
+	 * level, and at the first level the level above the reader is the pane's own
+	 * root, so renaming it would describe the landing rather than the move the user
+	 * made (designer D2, round 1).
+	 */
+	const backName = "Back";
 
 	return (
 		/*
@@ -627,11 +654,11 @@ export const RunPanel = ({
 				<div className={cn("flex min-w-0 items-center gap-1")}>
 					{row ? (
 						<>
-							<Tooltip content="Back">
+							<Tooltip content={backName}>
 								<Button
 									variant="ghost"
 									size="icon-sm"
-									aria-label="Back"
+									aria-label={backName}
 									onClick={back}
 								>
 									{/*
@@ -646,10 +673,16 @@ export const RunPanel = ({
 							</Tooltip>
 							{/*
 							 * The breadcrumb IS the title (`§ 5.2`): the root crumb is the
-							 * panel itself — pressing it closes the panel, after one back
-							 * from the first level — and each crumb after it is one level of
-							 * the lineage. A `<nav>` because it is navigation, and the current
-							 * crumb is marked rather than linked.
+							 * panel's own root — pressing it goes to the roster, the view that
+							 * lists the children, exactly as one back from the first level does —
+							 * and each crumb after it is one level of the lineage. A `<nav>`
+							 * because it is navigation, and the current crumb is marked rather
+							 * than linked.
+							 *
+							 * The crumb is deliberately NOT the pane's close control (round 1 sent
+							 * it to `onClose`): the bar already carries that control at its right
+							 * edge, and a crumb in the title hoisting the ✕'s job is the defect the
+							 * operator reported — no way back up out of a first-level reader.
 							 */}
 							<nav
 								aria-label="Subagent path"
@@ -659,7 +692,7 @@ export const RunPanel = ({
 							>
 								<button
 									type="button"
-									onClick={onClose}
+									onClick={leaveReader}
 									className={cn(
 										"shrink-0 truncate rounded-sm px-1 text-meta text-ink-muted hover:text-ink",
 									)}

@@ -291,6 +291,56 @@ test("create success plus admission failure retries exact same session and paylo
 	assert.equal(store.getState().drafts[key], undefined);
 });
 
+test("the admission seam stores against the session the send created, and its answer is what is sent", async () => {
+	reset();
+	const order = [];
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		order.push("send");
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const seen = [];
+	await admitChatDraft(
+		key,
+		input,
+		undefined,
+		() => {
+			order.push("echo");
+		},
+		/*
+		 * The composer's own seam, on the pane where the session does not exist
+		 * until this call creates it: it must be handed the id the create
+		 * answered with, and the text it returns is what the owner receives. The
+		 * caller is a credential capture storing a value the message only cites
+		 * (UX round 1, U2) — with the seam ignored, the message would carry the
+		 * citation of a key nothing holds.
+		 */
+		async (sessionId) => {
+			seen.push(sessionId);
+			order.push("seam");
+			return "deploy [credential LOP_SECRET_ABCDEFGH (19 chars)]";
+		},
+	);
+	assert.deepEqual(seen, ["222222222222"], "the seam got the created session");
+	const message = calls.find((request) => request.op === "sessions.message");
+	assert.ok(message, "the message reached the transport");
+	assert.equal(
+		message.text,
+		"deploy [credential LOP_SECRET_ABCDEFGH (19 chars)]",
+		"the substituted text is what the owner receives",
+	);
+	assert.ok(
+		order.indexOf("seam") < order.indexOf("send"),
+		`the store ran before the message left: ${order.join(",")}`,
+	);
+});
+
 test("ambiguous create retains request ID and duplicate concurrent sends allocate once", async () => {
 	reset();
 	let release;
@@ -2634,14 +2684,17 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	const popup = popups[0];
 
 	// The anchor premise: `absolute bottom-full` positions against the
-	// nearest positioned ancestor, which the source documents is the composer
-	// box itself. If that `relative` goes, the popup anchors to some distant
-	// ancestor and floats away from the composer -- a different defect, and
-	// this is where it is caught.
+	// nearest positioned ancestor. Round 3 moved the popup's anchor ONE
+	// element out — from the composer box to the wrapper that also carries
+	// the capture's sentence (design round 3, D1; UX round 3, U14) — because
+	// the sentence now sits above the box and the popup has to clear it.
+	// Whoever the parent is, it must declare `relative`: without it the popup
+	// anchors to some distant ancestor and floats away from the composer,
+	// which is a different defect and this is where it is caught.
 	const parent = byId.get(popup.parentId);
 	assert.ok(
-		parent?.tagText.includes('"relative"'),
-		"the composer box (the slash popup's direct parent) no longer declares `relative`, so the popup no longer anchors to the box it is meant to escape",
+		/(^|["\s])relative(["\s]|$)/.test(parent?.tagText ?? ""),
+		"the slash popup's direct parent (the composer's anchoring wrapper since round 3) no longer declares `relative`, so the popup no longer anchors to the element it is meant to escape",
 	);
 
 	const ancestorsOf = (el) => {
@@ -3240,10 +3293,25 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	);
 	// And the two entry points a user actually submits with both consult it: the
 	// Enter key and the form's submit (the Send button).
-	const plans = composer.match(/planFor\(newMessage, caret\)/g) ?? [];
+	//
+	// They consult it THROUGH `planForDraft`, the credential capture's one
+	// exception in front of the planner (§5: after an Esc cancel the text the
+	// operator sees is what gets sent, QA round 1 Q2 — the wrapper answers `send`
+	// for the token the composer just cancelled and delegates everything else).
+	// So the guard follows the call sites through the wrapper AND pins that the
+	// wrapper still delegates, which is what makes the rename safe rather than a
+	// hole: a `planForDraft` that stopped calling `planFor` would take both call
+	// sites out of the planner's reach while this assertion stayed green.
+	const plans = composer.match(/planForDraft\(newMessage, caret\)/g) ?? [];
 	assert.ok(
 		plans.length >= 2,
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
+	);
+	assert.ok(
+		/const planForDraft = useCallback\([\s\S]{0,400}?planFor\(draft, at\)/.test(
+			composer,
+		),
+		"`planForDraft` no longer delegates to `planFor`, so the two submit entry points consult an exception with no planner behind it",
 	);
 
 	/*
