@@ -710,14 +710,21 @@ function scaleFixture(sessions: number, roots = SCALE_ROOTS): ScaleFixture {
 		/* One row in 37 has no published price: the Cost column's `—`. */
 		const unpriced = index % 37 === 5;
 		/*
-		 * The cost rides its OWN multiplier, and the scale is dollars rather
-		 * than cents, so a page of the Cost-sorted table shows distinct values.
-		 * A fixture whose sessions all cost three cents photographs a Cost
-		 * column that reads `$0.032` in every row — which is not a defect in
-		 * the sort, but it is indistinguishable from one in the frame, and a
-		 * frame is what this file exists to produce.
+		 * The cost is DERIVED FROM THE TOKENS at a per-row unit price, which is
+		 * both what a ledger does and the only shape whose top page is legible.
+		 * A product of the call count and a per-call price ties at the top —
+		 * every row on the first page of a Cost sort has the same call count and
+		 * the same maximum unit, so the frame reads `$2.37` twenty times and the
+		 * sort cannot be judged from it. The unit price varies fourfold (a cheap
+		 * model through an expensive one), so the order is related to the token
+		 * order without being it.
 		 */
-		const costMicro = unpriced ? 0 : calls * (2_000 + (index % 29) * 12_000);
+		const microPerKiloToken = 1_200 + (scramble(index + 5) % 2_800);
+		const costMicro = unpriced
+			? 0
+			: Math.round(
+					((contextTokens + outputTokens) / 1_000) * microPerKiloToken,
+				);
 		const costKnownCalls = unpriced ? 0 : calls;
 		bySession[id] = {
 			calls,
