@@ -92,7 +92,16 @@ export const ConnectivityBanner = ({
 		const advance = () => {
 			const decision = read();
 			offlineConfirmationRef.current = decision.state;
-			if (decision.report) setInternetOfflineReported(true);
+			/*
+			 * The READING's verdict, in both directions.
+			 *
+			 * This used to set the banner only when `decision.report` was true, so a
+			 * positive reading reset the confirmation state and left the banner
+			 * standing until the next poll happened to re-render it - the opposite of
+			 * the module's own "a positive reading clears immediately" (review round
+			 * 1, R7). A `false` here is the arm that takes the claim back.
+			 */
+			setInternetOfflineReported(decision.report);
 		};
 
 		window.addEventListener("offline", advance);
@@ -258,7 +267,16 @@ export const ConnectivityBanner = ({
 					<div className="flex min-w-0 flex-col gap-1">
 						<AlertDescription>
 							{isInternetIssue
-								? `You are offline. Your configured hosting provider (${hostingProvider}) requires an internet connection.`
+								? /*
+									 * The provider name is interpolated only when there IS one. A
+									 * config with no `hosting` value rendered "Your configured
+									 * hosting provider () requires an internet connection" - an
+									 * empty slot in the middle of a sentence, which QA saw in the
+									 * real app rather than in a fixture (QA round 1, Q3) - and the
+									 * sentence is about the machine's connection either way, so
+									 * the clause is simply absent when it has nothing to name.
+									 */
+									`You are offline. ${hostingProvider ? `Your configured hosting provider (${hostingProvider}) requires` : "This app's updates require"} an internet connection.`
 								: (serverIssue?.title ??
 									"A connectivity issue has been detected.")}
 						</AlertDescription>

@@ -8,7 +8,10 @@
 
 import { toast } from "sonner";
 import type { ExternalToast } from "sonner"; // Using ExternalToast for options type
-import { transientTransportFragment } from "../../../../shared/transport-failure";
+import {
+	stripErrorPrefixes,
+	transientTransportFragment,
+} from "../../../../shared/transport-failure";
 
 // Store active toast IDs by message
 const activeToasts = new Map<string, string | number>(); // Sonner IDs can be string or number
@@ -84,19 +87,28 @@ const CONNECTION_FAILURE_COPY =
  * The sentence is never emitted twice: the replacement is the same text in both
  * shapes, so a message already carrying it has nothing left for the classifier
  * to find.
+ *
+ * THE SLICE IS TAKEN FROM THE STRIPPED MESSAGE, because the offsets ARE offsets
+ * into the stripped one (`TransportFragment`): computing a position in the
+ * cleaned text and using it to cut the raw one spliced the sentence in at the
+ * wrong place and left the code's tail on screen - `Error: net::ERR_TIMED_OUT`
+ * rendered as "...then try again.MED_OUT" (review round 1, R1). The prefixes the
+ * stripper removes are exactly the ones a `String(err)`-derived message carries,
+ * so this was reachable from any call site that did not pre-clean.
  */
 const transportFailureText = (message: string): string => {
 	const trimmed = message.trim();
 	if (Object.prototype.hasOwnProperty.call(RAW_TRANSPORT_ERRORS, trimmed)) {
 		return CONNECTION_FAILURE_COPY;
 	}
-	const fragment = transientTransportFragment(trimmed);
+	const cleaned = stripErrorPrefixes(trimmed);
+	const fragment = transientTransportFragment(cleaned);
 	if (fragment === null) return message;
 	// A fragment inside machine vocabulary is replaced along with it - see
 	// `TransportFragment.clause`; one that is a clause of an authored message
 	// leaves the authored half in place.
 	if (!fragment.clause) return CONNECTION_FAILURE_COPY;
-	return `${trimmed.slice(0, fragment.start)}${CONNECTION_FAILURE_COPY}${trimmed.slice(fragment.end)}`;
+	return `${cleaned.slice(0, fragment.start)}${CONNECTION_FAILURE_COPY}${cleaned.slice(fragment.end)}`;
 };
 
 /**

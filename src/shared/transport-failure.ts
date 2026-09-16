@@ -111,6 +111,12 @@ const CHROMIUM_SET: ReadonlySet<string> = new Set(CHROMIUM_TRANSPORT_CODES);
  */
 const CLAUSE_END = /[:\-\u2014\n]$/;
 const CLAUSE_START = /^[:\n]/;
+/*
+ * What ends one clause of a message and begins the next, for `clauseTextOf`: a
+ * colon, an em dash, a spaced hyphen, or a line break. Hoisted, like the two
+ * above, because a literal inside the function is rebuilt per call.
+ */
+const CLAUSE_BOUNDARY = /[:\uff1a\n\u2014]| - /g;
 
 const LEADING_ERROR_PREFIXES = /^(?:\s*Error:\s*)+/;
 const EMBEDDED_ERROR_PREFIX = /:\s+Error:\s+/g;
@@ -152,6 +158,17 @@ export interface TransportFragment {
 	start: number;
 	/** End offset (exclusive) within the stripped message. */
 	end: number;
+	/**
+	 * The clause of the message the code sits in, trimmed.
+	 *
+	 * WHAT IT IS FOR. A matched token is not always a readable machine line on
+	 * its own: `getaddrinfo ENOTFOUND pypi.org` is one clause whose subject is the
+	 * whole phrase, and showing a bare `ENOTFOUND` was a machine line with no
+	 * noun in it (design round 1, D8). The surface that renders the subordinate
+	 * line takes this when the code has no subject of its own, and the code alone
+	 * when it is a Chromium `net::ERR_*` - which names itself.
+	 */
+	clauseText: string;
 	/**
 	 * Whether this fragment stands as its own clause of the message.
 	 *
@@ -212,6 +229,7 @@ export function transientTransportFragment(
 			code: `net::${code}`,
 			start,
 			end,
+			clauseText: clauseTextOf(cleaned, start, end),
 			clause: isClause(cleaned, start, end - start),
 		};
 	}
@@ -229,6 +247,7 @@ export function transientTransportFragment(
 				code,
 				start,
 				end,
+				clauseText: clauseTextOf(cleaned, start, end),
 				clause: isClause(cleaned, start, end - start),
 			};
 		}
@@ -244,6 +263,7 @@ export function transientTransportFragment(
 			code: phrase,
 			start,
 			end: start + phrase.length,
+			clauseText: clauseTextOf(cleaned, start, start + phrase.length),
 			clause: true,
 		};
 	}
@@ -275,7 +295,7 @@ export function isTransientTransportFailure(input: unknown): boolean {
  * An `Error` whose `message` is empty falls back to its `name`, so a
  * `DOMException`-shaped failure is not read as "no failure at all".
  */
-function messageOf(input: unknown): string {
+export function messageOf(input: unknown): string {
 	if (typeof input === "string") return input;
 	if (input instanceof Error) return input.message || input.name || "";
 	if (input && typeof input === "object" && "message" in input) {
@@ -283,6 +303,28 @@ function messageOf(input: unknown): string {
 		return typeof message === "string" ? message : "";
 	}
 	return "";
+}
+
+/**
+ * The clause the offsets sit in, trimmed: from the last boundary before them to
+ * the first boundary after them.
+ *
+ * A boundary is a colon, a dash or a line break, which is what the messages in
+ * the log use to join an outer account to an inner one. No boundary on either
+ * side means the clause is the whole message, which is the correct answer for a
+ * bare `getaddrinfo ENOTFOUND pypi.org`.
+ */
+function clauseTextOf(message: string, start: number, end: number): string {
+	let from = 0;
+	for (const boundary of message.slice(0, start).matchAll(CLAUSE_BOUNDARY)) {
+		from = (boundary.index ?? 0) + boundary[0].length;
+	}
+	let to = message.length;
+	for (const boundary of message.slice(end).matchAll(CLAUSE_BOUNDARY)) {
+		to = end + (boundary.index ?? 0);
+		break;
+	}
+	return message.slice(from, to).trim();
 }
 
 /**

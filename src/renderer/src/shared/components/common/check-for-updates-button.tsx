@@ -1,11 +1,13 @@
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Spinner } from "@shared/components/common/spinner";
+import { UpdateErrorAlert } from "@shared/components/common/update-error-alert";
 import { Button } from "@shared/components/ui";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { updateMessageOf } from "@shared/utils/update-error-copy";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -20,6 +22,17 @@ export const CheckForUpdatesButton = () => {
 	const [checking, setChecking] = useState(false);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+	/**
+	 * A failed check, held as the raw message so the alert can map it.
+	 *
+	 * WHY IT IS NOT `snackbarMessage`: the copy for this box is the shared rule's
+	 * (`updateErrorCopy`), and the box has to stay up until it is read and offer
+	 * the retry the sentence names - a message that dismisses itself in six
+	 * seconds, or that paints whatever string the producer happened to set, is the
+	 * defect this change exists to remove (design D2/D3, UX U1/U3, UX U6). The
+	 * unrelated confirmations below keep the plain snackbar.
+	 */
+	const [checkError, setCheckError] = useState<string | null>(null);
 	const [snackbarSeverity, setSnackbarSeverity] = useState<
 		"success" | "info" | "warning" | "danger"
 	>("info");
@@ -125,6 +138,16 @@ export const CheckForUpdatesButton = () => {
 		[],
 	);
 
+	/**
+	 * A failed check, in the box that owns it: the sentence, the machine line
+	 * under it, and the retry the sentence asks for.
+	 */
+	const showCheckError = useCallback((message: string) => {
+		showingAffirmationRef.current = false;
+		setCheckError(message);
+		setSnackbarOpen(true);
+	}, []);
+
 	const showAffirmation = useCallback((message: string) => {
 		showingAffirmationRef.current = true;
 		setSnackbarMessage(message);
@@ -192,7 +215,14 @@ export const CheckForUpdatesButton = () => {
 					setSnackbarSeverity("warning");
 					setSnackbarOpen(true);
 				} else if (!isSuppressed) {
-					showMessage(message, "danger");
+					/*
+					 * Through the shared copy, like every other surface that shows an
+					 * update failure. This handler used to paint the raw string - it is the
+					 * one the PR's own promise had left behind, so a `net::ERR_*` from a
+					 * check the user pressed could still reach the box as the sentence
+					 * (review round 1, UX U6).
+					 */
+					showCheckError(message);
 				}
 			},
 		);
@@ -254,7 +284,7 @@ export const CheckForUpdatesButton = () => {
 			removeNpxUpdateAvailableListener();
 			removeBackendUpdateAvailableListener();
 		};
-	}, [dismissAffirmation, showMessage]);
+	}, [dismissAffirmation, showMessage, showCheckError]);
 
 	// The durable record of the last failed install: read on mount, and re-read
 	// when this start turns out to have one.
@@ -357,12 +387,13 @@ export const CheckForUpdatesButton = () => {
 			// confirmation and error messages.
 		} catch (error) {
 			if (seq !== checkSeqRef.current) return;
-			showMessage(
-				`Error checking for updates: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-				"danger",
-			);
+			/*
+			 * The invoke envelope and the nested `Error: ` prefixes come off first
+			 * (`updateMessageOf`), and the ALERT decides what the reader is told:
+			 * this is a failure of a check the user asked for, so it reports - and it
+			 * reports the sentence, not the string Electron framed.
+			 */
+			showCheckError(updateMessageOf(error));
 		} finally {
 			/*
 			 * Only the newest check owns the button's busy state: a slow earlier one
@@ -377,13 +408,17 @@ export const CheckForUpdatesButton = () => {
 		}
 	};
 
-	// Handle snackbar close
+	/**
+	 * Handle snackbar close
+	 *
+	 * Dismissal by the user or by the timer is also the end of the claim: a later
+	 * offer must not try to take back something nobody is showing.
+	 */
 	const handleSnackbarClose = () => {
-		// Dismissal by the user or by the timer is also the end of the claim: a
-		// later offer must not try to take back something nobody is showing.
 		showingAffirmationRef.current = false;
 		setSnackbarOpen(false);
 		setSnackbarMessage(null);
+		setCheckError(null);
 	};
 
 	return (
@@ -447,8 +482,8 @@ export const CheckForUpdatesButton = () => {
 				</FloatingAlert>
 			)}
 
-			{/* General info, success, or error messages */}
-			{snackbarMessage && (
+			{/* General info, success, or warning messages */}
+			{snackbarMessage && snackbarSeverity !== "danger" && (
 				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
@@ -457,6 +492,21 @@ export const CheckForUpdatesButton = () => {
 				>
 					{snackbarMessage}
 				</FloatingAlert>
+			)}
+
+			{/*
+			 * A failed check the user asked for: the shared sentence with the machine's
+			 * words beneath it, held until it is dismissed, with the retry the sentence
+			 * names (design D2/D3).
+			 */}
+			{checkError && (
+				<UpdateErrorAlert
+					open={snackbarOpen}
+					message={checkError}
+					onClose={handleSnackbarClose}
+					onRetry={() => void checkForUpdates()}
+					retrying={checking}
+				/>
 			)}
 		</>
 	);

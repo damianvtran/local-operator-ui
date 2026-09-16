@@ -1672,6 +1672,13 @@ export const STORIES = [
 	   (the app gives it six seconds, which a still cannot catch); the wiring is
 	   scripts/update-affirmation.test.mjs. */
 	["common-updatenotification--error-state", 1280, 900],
+	/*
+	 * The same alert for the WRAPPED feed failure, which is the shape the copy's
+	 * prefix rule is about (design round 1, D1 asked for exactly this frame): the
+	 * sentence must stand alone, with the machine's words subordinate rather than
+	 * welded to the front of it.
+	 */
+	["common-updatenotification--error-state-wrapped", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own

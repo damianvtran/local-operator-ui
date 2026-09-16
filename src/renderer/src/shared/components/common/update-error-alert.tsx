@@ -1,10 +1,13 @@
+import { Button } from "@shared/components/ui";
 import { updateErrorCopy } from "@shared/utils/update-error-copy";
 import type { FC } from "react";
 import { FloatingAlert } from "./floating-alert";
+import { PanelDetails } from "./panel-details";
 
 /**
  * The bottom-right alert an update-path failure paints, with the sentence a
- * person reads and the machine's own words under it.
+ * person reads, the machine's own words under it, and the retry the sentence
+ * names.
  *
  * WHY IT IS A COMPONENT AND NOT THREE LINES INSIDE `UpdateNotification`. The
  * alert used to render `{error}` - whatever string the producer set - so
@@ -19,6 +22,22 @@ import { FloatingAlert } from "./floating-alert";
  * prose at reading weight, the machine's words are monospace and dim below it,
  * which is what `browser-load-failure.tsx` does for a refused page load and
  * what `docs/branding.md` 7 says about machine voice.
+ *
+ * WHY THE MACHINE LINE IS LABELLED AND COPYABLE, and why it is `PanelDetails`.
+ * A bare unlabelled mono line reads as stray rather than as evidence, and the
+ * only use a transport code has for a person is quoting it in a report - the
+ * same two reasons the by-hand and install panels below already show their
+ * detail under `Details:` with a copy button (design D4). This feature had two
+ * idioms for one job; it now has one.
+ *
+ * WHY THE RETRY IS HERE. The copy says "then try again" and named no owner: the
+ * app's own retries had already run, the check control lives in the update
+ * panel (possibly on another screen), and the only control on the alert was the
+ * X. `FloatingAlert` already supports an action beside the message - the
+ * connectivity banner's Retry is one - so the sentence's promise is a button
+ * (design D3, UX U1/U3). `updateErrorCopy` decides whether it applies at all: a
+ * download or install failure is not answered by another check, and those
+ * surfaces keep their own control.
  */
 export interface UpdateErrorAlertProps {
 	open: boolean;
@@ -27,6 +46,10 @@ export interface UpdateErrorAlertProps {
 	onClose: () => void;
 	/** Milliseconds before it dismisses itself. Omit to leave it up. */
 	autoHideDuration?: number;
+	/** Runs the check again, for a failure whose answer is another check. */
+	onRetry?: () => void;
+	/** Whether that check is running now, so the button cannot stack them. */
+	retrying?: boolean;
 }
 
 export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
@@ -34,27 +57,33 @@ export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
 	message,
 	onClose,
 	autoHideDuration,
+	onRetry,
+	retrying = false,
 }) => {
-	const { sentence, detail } = updateErrorCopy(message);
+	const { sentence, detail, action } = updateErrorCopy(message);
 	return (
 		<FloatingAlert
 			open={open}
 			autoHideDuration={autoHideDuration}
 			onClose={onClose}
 			variant="danger"
+			action={
+				action === "check" && onRetry ? (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onRetry}
+						disabled={retrying}
+					>
+						{/* The button is the owner "then try again" was missing, so its
+						    label is the copy's own verb rather than a second sentence. */}
+						{retrying ? "Checking..." : "Try again"}
+					</Button>
+				) : null
+			}
 		>
 			<p>{sentence}</p>
-			{detail !== null ? (
-				/*
-				 * `break-words` rather than `truncate`: a wrapper-shaped failure
-				 * ("Cannot parse releases feed: ...") is long, and a machine line that
-				 * silently loses its tail is worse than one that wraps - it reads as
-				 * the whole of what the machine said.
-				 */
-				<p className="break-words font-mono text-mono-sm text-ink-dim">
-					{detail}
-				</p>
-			) : null}
+			{detail !== null ? <PanelDetails detail={detail} stacked /> : null}
 		</FloatingAlert>
 	);
 };
