@@ -210,15 +210,48 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const active = tab.tabId === activeTabId;
 						const waitingOrdinal = waiting[tab.tabId];
 						/*
-						 * THE FLOOR IS SIZED FOR THE CHIPS THE ROW ACTUALLY CARRIES (review round 4,
-						 * MINOR). One chip needs `min-w-56`; three - `Agent` with `Failed` and a
-						 * `Request n`, or `Restored` with the same pair - need `min-w-80`, because the
-						 * chips are 43-62px each and a one-chip floor put a three-chip row's title at
-						 * ~15px, which is the `R…` reading D13 was filed about. `Shared` and
-						 * `Restored` are exclusive with `Agent` per the view's own field comments, so
-						 * three is the worst configured case and a fourth would overflow the tab.
+						 * THE FLOOR IS SIZED FOR THE CHIPS THE ROW ACTUALLY CARRIES, AND FOR THE
+						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW (review round 5, MAJOR and MINOR).
+						 *
+						 * THE COMBINATIONS ARE ENUMERATED FROM THE REGISTRY, NOT FROM THE STORY. Round
+						 * 4 assumed the five markers were mutually exclusive; `Shared` is not exclusive
+						 * with `Agent`, it is IMPLIED by it - `handOver` sets `owner = "agent"` AND
+						 * `handedTo = sessionId` (`registry.ts:369-372`), `host.ts:549` projects
+						 * `handedOver`, and the two chips render on independent conditions, so every
+						 * handed-over tab carries both. `handOver` never clears `restored`, and
+						 * `failed` and a waiting `Request n` stack on top:
+						 *
+						 *   1-2 chips  Agent, Shared, Restored, Failed, Request n, in any of the pairs
+						 *              the registry can reach
+						 *   3 chips    Agent + Shared + (Failed | Request n), Restored + Failed +
+						 *              Request n
+						 *   4 chips    Agent + Shared + Failed + Request n   <- reachable
+						 *   5 chips    Restored + Agent + Shared + Failed + Request n   <- reachable
+						 *
+						 * MEASURED CHIP WIDTHS (round 4's figures, same `px-1` pill): Agent 43, Shared
+						 * 43, Restored 48, Failed 48, Request n 62. Against them, the four floors
+						 * below keep a >= 85px title - the number this file's own harness asserts - for
+						 * every row up to three chips, inactive or active, using 320px for the
+						 * inactive three-chip case: 320 - 32 (px-2) - 16 (mark) - 148 (chips) - 24 (4
+						 * gaps) = 116px. The ACTIVE row adds the in-flow cluster (two `icon-sm` at 28px
+						 * plus a 6px gap = 68px), which is why it takes one step more at every chip
+						 * count: 320 - 68 - 32 - 16 - 105 - 18 = 81px at two chips, which is why the
+						 * active two-chip row is `min-w-96` rather than `min-w-80`.
+						 *
+						 * THE FOUR- AND FIVE-CHIP ROWS ARE CONTAINED RATHER THAN SIZED, and that is the
+						 * deliberate half of this. `min-w-96` (384px) holds a four-chip row's title at
+						 * 384 - 32 - 16 - 196 - 24 = 116px; at five chips the chips alone are 244px, so
+						 * the title has 62px and the row is at its ceiling. Raising the ceiling further
+						 * would put one pathological state - restored, handed over, failed AND waiting
+						 * at once - ahead of every ordinary tab in the strip's scroll order, and the
+						 * alternative of dropping a chip would hide a state the design round approved.
+						 * So the guarantee for those rows is structural, not numeric: the row clips at
+						 * its own edge (`overflow-hidden` below) and never paints over its neighbour,
+						 * and the strip scrolls. Nothing about that weakens the chips that ARE sized:
+						 * every chip stays whole inside its tab's box.
+						 *
 						 * Roles rather than computed pixels: the contract's spacing steps are the
-						 * vocabulary here, and `min-w-72` is the two-chip step between them.
+						 * vocabulary here.
 						 */
 						const chips = [
 							tab.owner === "agent",
@@ -227,14 +260,23 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							tab.failed,
 							waitingOrdinal !== undefined,
 						].filter(Boolean).length;
-						const floor =
-							chips >= 3
-								? "min-w-80"
+						const floor = active
+							? chips >= 3
+								? "min-w-96"
 								: chips === 2
-									? "min-w-72"
+									? "min-w-96"
 									: chips === 1
-										? "min-w-56"
-										: "min-w-44";
+										? "min-w-80"
+										: "min-w-56"
+							: chips >= 4
+								? "min-w-96"
+								: chips === 3
+									? "min-w-80"
+									: chips === 2
+										? "min-w-72"
+										: chips === 1
+											? "min-w-56"
+											: "min-w-44";
 						const previous = index > 0 ? tabs[index - 1] : null;
 						// The divider belongs to the gap between two inactive tabs: the active
 						// one is continuous with the page, so no rule may run into it.
@@ -263,6 +305,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 * pays for the wider floor.
 										 */
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
+										// THE ROW CLIPS AT ITS OWN EDGE (review round 5, MAJOR). At four and five
+										// chips the floor above is a ceiling too, and the chips are `shrink-0`, so
+										// without this the row's content would paint over the neighbouring tab -
+										// the same `bg-canvas`-over-`bg-canvas` class of defect design round 3
+										// filed as MAJOR, in a state nothing photographs. Clipped rather than
+										// overlapped, and the strip scrolls, so the state is reachable by a user
+										// who scrolls to it.
+										"overflow-hidden",
 										floor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
