@@ -14,9 +14,9 @@
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-16T03:14:22.817Z",
-    "refreshedAtHead": "9ba181d8d5e44c1c8e6bb8f29707834e11f4d6a1",
-    "refreshedFrames": 696,
+    "refreshedAt": "2026-09-16T04:02:09.445Z",
+    "refreshedAtHead": "aa936899f52d445028f95d5ae587a4ff2e93fa8e",
+    "refreshedFrames": 720,
     "refreshedStories": [
       "browser-approvals-dock--approved",
       "browser-approvals-dock--denied",
@@ -1050,7 +1050,7 @@
       "frames": 6,
       "surfaces": 6,
       "themes": 1,
-      "source": "scripts/browser-chrome-proof.mjs run at 210c795cb7b05f50a7fab860e548870c48fd9d26 (its pre-rebase twin was 210c795cb7b05f50a7fab860e548870c48fd9d26; the frames were taken at the tree this commit carries) (pnpm build, then env -u NO_COLOR LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 node scripts/browser-chrome-proof.mjs --keep), one frame per state, encoded to .webp at quality 90. Not producible by capture-evidence.mjs: these are the app with its own chrome over a real page, not a story in isolation.",
+      "source": "scripts/browser-chrome-proof.mjs run at 937d99822 (this branch's spelling of the commit that re-shot five of these six frames; the sixth, `03`, is from the same tree and is the bounded delta the directory's README states) (pnpm build, then env -u NO_COLOR LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 node scripts/browser-chrome-proof.mjs --keep), one frame per state, encoded to .webp at quality 90. Not producible by capture-evidence.mjs: these are the app with its own chrome over a real page, not a story in isolation.",
       "why": [
         "Three of the four things the operator asked for are COMPOSITION asks - a dock that narrows the page, a strip that reads like real tabs above a page, and a counted badge at the URL bar's corner - and every swept browser frame is a standalone story with a decorator. The stories cannot show a panel beside a live page, a rect that moved, or a badge whose control sits against the window edge; the round-1 design pass had to capture these itself and recommended they be committed.",
         "The decorator padding is what hid the defect D3 describes: in the running app the badge is drawn at the window's right edge, where the story frame's own padding kept it whole. 17-tab-actions-in-band.webp is the frame that shows the badge where it is actually painted, next to the tab actions row that same round renamed.",

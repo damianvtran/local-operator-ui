@@ -1,6 +1,6 @@
 # The browser surfaces in composition
 
-Four frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
+Six frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
 repository that photographs the browser feature the way a user meets it: the real
 chrome over a real page, in one frame, at the window size the app actually runs.
 
@@ -24,6 +24,8 @@ Storybook story cannot answer any of them:
 | `12-approvals-queue.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
 | `17-tab-actions-in-band.webp` | the tab actions row and the badge in situ (D3, D4) |
 | `18-approvals-dock.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
+| `19-strip-marked-tab-at-rest.webp` | the strip at rest with an agent-marked row, so D12's marker visibility has a frame that can show it |
+| `20-strip-failed-and-agent-markers.webp` | the `Failed` and `Agent` markers painted together, the pair D11 re-framed |
 
 Source, exactly:
 
@@ -40,12 +42,21 @@ temporary. A full `capture-evidence.mjs` sweep does not produce them and does no
 overwrite them: they are declared as a supplementary set in `manifest.json`, which is
 what keeps the sweep's own frame count honest.
 
-## A deferred re-shoot, stated
+## What these frames are photographs of, and the one bounded delta left
 
-These four frames were taken at `cd6769521` and show the code as it stood there. The
-round that followed re-shaped four browser surfaces — the tab strip's overlaid chrome
-cluster, the band's busy cue, the dock's notice sentence and waiting row, and the URL
-bar's label reserve — and those frames are **not** re-photographed here: the re-shoot is
-deferred behind machine memory pressure rather than quietly implied. `manifest.json`'s
-`partialCapture.roundTwoRecapture` says the same thing, with the two commands that
-settle it.
+`12`, `17`, `18`, `19` and `20` were re-taken at `937d99822` (this branch's spelling
+of the round that re-shaped the tab strip's overlaid chrome cluster, the band's busy
+cue, the dock's notice sentence and waiting row, and the URL bar's label reserve).
+That re-shoot is done: the deferral the earlier revision of this file carried is
+discharged, and `manifest.json`'s `partialCapture.roundTwoRecapture` records it.
+
+**What is bounded rather than current (design round 3, D24):** `03` carries strip
+pixels from that same tree, and none of the six is re-photographed at the head that
+added the four- and five-chip floors and the button-level clip. The delta is bounded,
+and this is the reason rather than a promise: the frames here render rows carrying at
+most one chip, and both of those changes bind only at four chips or more (the floor
+steps) or when a row's content exceeds its floor at all (the clip, which measures as a
+backstop today). Nothing in these six frames can move with them. Re-taking them is one
+`pnpm build` plus `node scripts/browser-chrome-proof.mjs --keep`, and the frames are
+read from that run's scratch directory; it is a capture run, so it waits for a window
+where the box is not carrying other sessions' suites.
