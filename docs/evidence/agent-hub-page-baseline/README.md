@@ -6,7 +6,8 @@ fixtures, same viewport, same twelve themes.
 
 ## What produced these frames
 
-A second worktree at `origin/main` (`f04c9e596`, the 0.25.14 merge),
+A second worktree at `origin/main` (`da9e75a61`, the 0.25.16 merge; `4cdd06a0a`
+before it, and the hub files are identical on both),
 `pnpm install`, its own Storybook, and the same rig:
 
 ```
@@ -37,11 +38,12 @@ from the diff.
 - **Not what a real backend sends.** The payloads are fixtures, as in the `after`
   set — the same ones, so the pair differs in the hub's own code and nothing else.
 - **Not a `main` that includes the change.** This set is `origin/main` at
-  `f04c9e596`; the `after` set is the branch, whose own base is `0c04cbb09`.
-  Neither tree contains the other's work, and the hub files are identical between
-  the two bases (`git diff --stat 0c04cbb09 f04c9e596 -- src/renderer/src/features/agent-hub`
-  is empty), so the pair isolates the change rather than a move of `main`.
-- **Not the sidebar.** `chat-sidebar.tsx` DID move between those two bases
+  `da9e75a61`; the `after` set is the branch, rebased onto that same commit. The
+  hub files are identical between the two trees (`git diff --stat origin/main --
+  src/renderer/src/features/agent-hub` is empty of the branch's own work), so the
+  pair isolates the change rather than a move of `main`.
+- **Not the sidebar.** `chat-sidebar.tsx` has moved twice across this branch's
+  rebases
   (main's current-row work), which is the reason this baseline set carries the
   hub only: the sidebar's new states have no `before` to compare against, and the
   `after` frames for them are from this branch's own tree.

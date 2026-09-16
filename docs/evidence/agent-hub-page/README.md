@@ -34,7 +34,9 @@ patched to make it photograph the hub rather than its load error.
 ## The reading, and why it is the point
 
 `scripts/hub-round-trips.mjs` reads a ledger the story's own bridge fills with
-every request the page issues. Twelve cards, same fixtures, before and after:
+every request the page issues. Twelve cards, same fixtures, before and after —
+measured on `origin/main` at `da9e75a61` (a second worktree) and on this branch
+rebased onto it, and re-measured after each rebase rather than carried forward:
 
 | | `origin/main` | this branch |
 | --- | --- | --- |
