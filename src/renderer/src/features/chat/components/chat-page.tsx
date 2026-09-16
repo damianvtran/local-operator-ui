@@ -76,6 +76,7 @@ import {
 	sessionMoveEnabled,
 	useSessionMove,
 } from "../move-session";
+import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { specUnresolved } from "../session-status/session-model";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
@@ -540,12 +541,8 @@ function SessionPanel({
 				: MOVE_UNAVAILABLE_REASON;
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
-		void useCanonicalSessionsStore
-			.getState()
-			.openSession(id)
-			.then((ok) => {
-				if (ok) navigate(`/chat/${id}`);
-			});
+		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
+		void openConversation(navigate, id);
 	};
 	/*
 	 * The effort rungs the owner will accept, shared with `EffortPicker`.
@@ -2060,53 +2057,13 @@ export function ChatPage() {
 	};
 	const select = (id: string) => {
 		/*
-		 * THE URL MOVES WITH THE COMMIT, not one read later.
-		 *
-		 * A click used to commit the conversation in its own frame and then write
-		 * the URL for it only after the guard read answered - so for a whole round
-		 * trip this window's OWN address bar named the conversation the user had just
-		 * left. The route-to-store effect below reconciles the store TO the route,
-		 * which is right for a route that arrives from outside (a deep link, Back, a
-		 * legacy agent link) and wrong for a route this window is still in the middle
-		 * of writing: it re-opened the left conversation as a FRESH switch, and
-		 * because that switch was newer than the user's own click it won - the view
-		 * went back to the conversation the user had left, and the click they
-		 * actually made was refused its URL write (`openSession` reports false for it
-		 * once the reconcile has bumped the generation). Reproduced by
-		 * `scripts/session-switch-latency.mjs --race --race-write`, whose second click
-		 * is dispatched at the first click's URL write - the interval in which that
-		 * bar named the wrong conversation.
-		 *
-		 * Writing it here instead makes the stale value impossible rather than
-		 * guarded against: the commit and the URL move in one task, one render, and
-		 * the route then never names a conversation older than the store for a click
-		 * this window made. `stage` (the New-chat path) already writes its URL at the
-		 * gesture for the same reason, so this is the established pattern here rather
-		 * than a second one.
-		 *
-		 * The read still owns the FAILURE path, unchanged: it is the only thing that
-		 * tells us the target exists, and a read that fails rolls the store back to
-		 * the conversation the user came from (`openSession`) - so the URL is put back
-		 * with it below. `replace` because the failed target is not a place the user
-		 * asked to be able to walk back to.
+		 * The sidebar's finger on the switch. The rule - why the URL is written with
+		 * the commit rather than behind the guard read, and why all three entrances
+		 * share it - is in `openConversation`; all this one owns is its own screen
+		 * state (the navigation sentence belongs to the route the user is leaving).
 		 */
-		const store = useCanonicalSessionsStore.getState();
-		const pending = store.openSession(id);
-		/* After the commit above, which `openSession` performs synchronously. */
-		navigate(`/chat/${id}`);
 		setRouteError(null);
-		void pending.then((ok) => {
-			if (ok) return;
-			/*
-			 * The read disproved the target and the store has already rolled back, so
-			 * the address bar follows it: an address bar naming a conversation the view
-			 * is not on is the same lie in the other direction. Read back from the
-			 * store rather than remembered, because the rollback re-validates what it
-			 * restores (a draft whose row no longer exists is not restored).
-			 */
-			const restored = useCanonicalSessionsStore.getState().activeSessionId;
-			navigate(restored ? `/chat/${restored}` : "/chat", { replace: true });
-		});
+		void openConversation(navigate, id);
 	};
 	const id = draftKey ? draft?.sessionId : (active ?? undefined);
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
