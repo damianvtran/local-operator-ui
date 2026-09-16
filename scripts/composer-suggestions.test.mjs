@@ -63,9 +63,12 @@ const {
 } = mod;
 
 /** A deterministic stand-in for `Math.random`, so an order is reproducible. */
-const seeded = (seed) => () => {
-	seed = (seed * 1103515245 + 12345) % 2147483648;
-	return seed / 2147483648;
+const seeded = (seed) => {
+	let state = seed;
+	return () => {
+		state = (state * 1103515245 + 12345) % 2147483648;
+		return state / 2147483648;
+	};
 };
 
 test("the suggestion pool is the product's own requests, and nothing else", () => {
@@ -144,7 +147,11 @@ test("a sample is a uniform draw from the pool, not a sort", () => {
 	 */
 	const seen = new Set();
 	for (let i = 0; i < 200; i++) {
-		for (const label of pickSuggestions(DEFAULT_MESSAGE_SUGGESTIONS, 4, seeded(i + 1))) {
+		for (const label of pickSuggestions(
+			DEFAULT_MESSAGE_SUGGESTIONS,
+			4,
+			seeded(i + 1),
+		)) {
 			seen.add(label);
 		}
 	}
@@ -167,7 +174,12 @@ test("a pool no larger than the sample is returned whole and in order", () => {
 
 test("the session's first draw is the pool's head, and only later draws sample", () => {
 	const session = { opening: true };
-	const first = sampleSuggestions(DEFAULT_MESSAGE_SUGGESTIONS, 4, seeded(3), session);
+	const first = sampleSuggestions(
+		DEFAULT_MESSAGE_SUGGESTIONS,
+		4,
+		seeded(3),
+		session,
+	);
 	assert.deepEqual(
 		first,
 		DEFAULT_MESSAGE_SUGGESTIONS.slice(0, 4),
@@ -175,7 +187,12 @@ test("the session's first draw is the pool's head, and only later draws sample",
 	);
 	assert.equal(session.opening, false, "the opening draw is consumed");
 
-	const second = sampleSuggestions(DEFAULT_MESSAGE_SUGGESTIONS, 4, seeded(3), session);
+	const second = sampleSuggestions(
+		DEFAULT_MESSAGE_SUGGESTIONS,
+		4,
+		seeded(3),
+		session,
+	);
 	assert.equal(second.length, 4);
 	assert.equal(
 		new Set(second).size,

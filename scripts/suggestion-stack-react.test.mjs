@@ -20,9 +20,9 @@ globalThis.localStorage = bootstrapDOM.window.localStorage;
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
-	delete globalThis.window;
-	delete globalThis.document;
-	delete globalThis.localStorage;
+	globalThis.window = undefined;
+	globalThis.document = undefined;
+	globalThis.localStorage = undefined;
 });
 
 // Run the shipped component, Button, React effects and DOM events, not an
@@ -79,8 +79,11 @@ const writeBundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(writeBundlePath, writeBundle.outputFiles[0].text);
-const { DEFAULT_MESSAGE_SUGGESTIONS, useConversationInputStore, useMessageInput } =
-	await import(writeBundlePath.href);
+const {
+	DEFAULT_MESSAGE_SUGGESTIONS,
+	useConversationInputStore,
+	useMessageInput,
+} = await import(writeBundlePath.href);
 await unlink(writeBundlePath);
 
 const suggestions = [
@@ -516,7 +519,10 @@ test("a filled label reaches the persisted draft and survives a remount", async 
 	const label = DEFAULT_MESSAGE_SUGGESTIONS[2];
 	let api = null;
 	function Host() {
-		api = useMessageInput({ conversationId: draftKey, onSubmit: async () => {} });
+		api = useMessageInput({
+			conversationId: draftKey,
+			onSubmit: async () => {},
+		});
 		return h("textarea", {
 			ref: api.textareaRef,
 			readOnly: true,
@@ -533,7 +539,11 @@ test("a filled label reaches the persisted draft and survives a remount", async 
 	let root = null;
 	try {
 		root = await mount();
-		assert.equal(api.inputValue, "", "an empty box to start, which is the only state the chips fill from");
+		assert.equal(
+			api.inputValue,
+			"",
+			"an empty box to start, which is the only state the chips fill from",
+		);
 		/*
 		 * The handler's own two calls, in its own order - the setter it holds, then
 		 * the caret at the end of the label (which the handler writes through
