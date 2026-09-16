@@ -3,8 +3,9 @@ import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
+import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import { FloatingAlert } from "./floating-alert";
 import {
 	ProgressContainer,
@@ -57,6 +58,12 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateDevMode: () => () => {},
 			onBackendUpdateNotAvailable: () => () => {},
 			onBackendUpdateCompleted: () => () => {},
+			/*
+			 * A failed server update, which the panel now leaves its in-flight state on.
+			 * The stub has to exist or the panel's own subscription throws before the
+			 * story renders.
+			 */
+			onBackendUpdateError: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -75,6 +82,29 @@ const createEmptyUpdaterMethods = () => {
 createEmptyUpdaterMethods();
 
 /**
+ * The main process's own sentence for the operator's case.
+ *
+ * The update ran, pip exited 0 and nothing was installed. It names the release the
+ * attempt was for and the version still running, because that is the pair a reader
+ * can check - and it is copied from `UpdateService.updateBackend`'s failing branch
+ * rather than invented, since the frame is a picture of that sentence.
+ */
+const SERVER_UPDATE_FAILURE_MESSAGE =
+	"The server update to 0.55.10 did not take effect: the server is still on 0.55.9. See the update service log for pip's output, then try again.";
+
+/**
+ * The listeners `onBackendUpdateError` has registered for the current story.
+ *
+ * Module scope rather than inside `mockUpdaterApi`, because the mock is
+ * re-installed on every decorator effect while the component's subscription
+ * survives it - a registry rebuilt per install would leave an event fired at a
+ * stale set of listeners with nothing to deliver to.
+ */
+const backendUpdateErrorListeners: Array<
+	(report: BackendUpdateErrorReport) => void
+> = [];
+
+/**
  * Mock implementation of the window.api.updater methods
  */
 const mockUpdaterApi = () => {
@@ -89,7 +119,28 @@ const mockUpdaterApi = () => {
 		checkForAllUpdates: async () =>
 			updateCheckVerdict({ app: "current", server: "current" }),
 		getLastInstallAttempt: async () => null,
-		updateBackend: async () => Promise.resolve(true),
+		updateBackend: async () => {
+			/*
+			 * The two server-update outcomes this file has stories for, produced in the
+			 * order the main process produces them.
+			 *
+			 * An update that is still RUNNING never settles here, because a resolved answer
+			 * would replace exactly the state that frame exists for. A FAILED update sends
+			 * its reason on `backend-update-error` first and then RESOLVES false - which is
+			 * the shape the renderer had to be fixed for, and the reason the failure frame
+			 * is not a state the fixture can assemble without it.
+			 */
+			if (window.triggerBackendUpdateInFlight) {
+				return new Promise<boolean>(() => {});
+			}
+			if (window.triggerBackendUpdateError) {
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({ message: SERVER_UPDATE_FAILURE_MESSAGE, phase: "update" });
+				}
+				return false;
+			}
+			return true;
+		},
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
 		quitForUpdateInstall: async () => true,
@@ -187,6 +238,24 @@ const mockUpdaterApi = () => {
 				callback();
 			}
 			return () => {};
+		},
+		onBackendUpdateError: (
+			callback: (report: BackendUpdateErrorReport) => void,
+		) => {
+			/*
+			 * Registered rather than fired at subscribe time, unlike the other triggers
+			 * here: this channel reports the outcome of an ATTEMPT, and the panel only
+			 * treats it as one while an attempt is in flight - which is the property the
+			 * shipped listener has to have, because `checkForBackendUpdates` sends the
+			 * same channel for the check's own failures, tagged `phase: "check"`. So the
+			 * event is delivered by `updateBackend` above, where the main process
+			 * delivers it.
+			 */
+			backendUpdateErrorListeners.push(callback);
+			return () => {
+				const at = backendUpdateErrorListeners.indexOf(callback);
+				if (at >= 0) backendUpdateErrorListeners.splice(at, 1);
+			};
 		},
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
 			// For stories that need to trigger this callback
@@ -451,6 +520,8 @@ declare global {
 		triggerBackendUpdateAvailable?: boolean;
 		triggerBackendUpdateNotAvailable?: boolean;
 		triggerBackendUpdateCompleted?: boolean;
+		triggerBackendUpdateError?: boolean;
+		triggerBackendUpdateInFlight?: boolean;
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
@@ -866,7 +937,8 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateInstallInFlight"
 	| "triggerBackendUpdateManualRequired"
 	| "triggerBackendUpdateManualRequiredExistingServer"
-	| "triggerBackendUpdateNonManaged";
+	| "triggerBackendUpdateNonManaged"
+	| "triggerBackendUpdateError";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -981,4 +1053,96 @@ export const BackendUpdateNonManaged: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerBackendUpdateNonManaged: true },
 	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
+};
+/**
+ * The panel driven the way the user drives it: raise the offer, press its own
+ * "Update server", and let the main process answer.
+ *
+ * Two states in this file need that press and neither can be reached by a trigger
+ * flag alone, because both exist only WHILE the invoked update is running or after
+ * it has answered: the in-flight panel the operator was stuck on (design D2's
+ * "before" half), and the failure that replaced it. The flag has to be set before
+ * the component subscribes, as every `Triggered` story here does, and
+ * `capturePending` holds the shutter until the press has painted - the pattern
+ * `app-updates-section.stories.tsx` uses for its own press.
+ */
+const PressUpdateServer = ({ outcome }: { outcome: "inflight" | "failed" }) => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.triggerBackendUpdateAvailable = true;
+		window.triggerBackendUpdateInFlight = outcome === "inflight";
+		window.triggerBackendUpdateError = outcome === "failed";
+		setReady(true);
+	}, [outcome]);
+	useEffect(() => {
+		if (!ready) return;
+		document.documentElement.dataset.capturePending = "1";
+		let cancelled = false;
+		const expected =
+			outcome === "inflight"
+				? "Updating server"
+				: "The server update didn't finish";
+		const settle = async () => {
+			/* The offer is raised by the mount effect, so the control exists only
+			   after a pass - poll for it rather than assume the timing. */
+			for (let i = 0; i < 200; i++) {
+				const button = [...document.querySelectorAll("button")].find(
+					(candidate) => candidate.textContent?.trim() === "Update server",
+				);
+				if (button) {
+					button.click();
+					break;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			}
+			for (let i = 0; i < 200; i++) {
+				if (document.body.textContent?.includes(expected)) break;
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			}
+			await new Promise((resolve) =>
+				requestAnimationFrame(() => resolve(null)),
+			);
+			if (!cancelled) {
+				delete document.documentElement.dataset.capturePending;
+			}
+		};
+		void settle();
+		return () => {
+			cancelled = true;
+			delete document.documentElement.dataset.capturePending;
+		};
+	}, [ready, outcome]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+/**
+ * The panel WHILE a server update is running: the state the operator was stuck on.
+ *
+ * The "before" half of the report this branch fixes, and it had no frame anywhere
+ * in the repository - the in-flight panel was a state nobody had photographed,
+ * which is why the hang could be described but not shown (design D2). The invoked
+ * update never settles, because a resolved answer would replace exactly the state
+ * under test.
+ */
+export const BackendUpdateInFlight: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="inflight" />,
+};
+
+/**
+ * A server update that FAILED, as the user sees it after this branch's fix.
+ *
+ * This is the state the design round re-judges: a standing failed-tone panel in
+ * the panel slot carrying the main process's own sentence, with both actions - try
+ * it again, or defer the release. `triggerBackendUpdateError` was declared before
+ * this story existed and nothing set it, so the state could not be photographed at
+ * all and the design round measured it through a scratch rig instead (design D2).
+ *
+ * The failure arrives the way the main process sends it - the reason goes out on
+ * `backend-update-error` and the invoke then resolves `false` - so the frame is of
+ * the real sequence rather than of a state the fixture assembled by hand.
+ */
+export const BackendUpdateFailed: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="failed" />,
 };
