@@ -41,6 +41,8 @@ const snapshot = (
 	desktopAvailable: true,
 	failures: 0,
 	capabilityStatus: null,
+	unanswered: 0,
+	lastTransportAt: null,
 	detail:
 		"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
 	updatedAt: Date.now(),
@@ -56,23 +58,41 @@ const snapshot = (
  * installed here, per story, rather than added to the shared preview mock: that
  * file is the whole evidence sweep's environment, and a change there would move
  * frames for every surface that renders an update control.
+ *
+ * The set is the PRELOAD's own updater surface, not the handful of methods this
+ * section happens to call today. A fixture that stubs only what today's call sites
+ * reach is one bridge method away from throwing inside a mount effect, and that
+ * failure is silent from CI's side: nothing re-drives a story, so the next capture
+ * is the first thing to see it (review round 1, R1-1). `scripts/
+ * preload-updater-surface.test.mjs` asserts that set on every fixture in the tree,
+ * so the next method cannot be missed the same way.
  */
 const updaterStub = () => ({
-	onUpdateError: () => () => {},
-	onUpdateNotAvailable: () => () => {},
-	onBackendUpdateNotAvailable: () => () => {},
-	onBackendUpdateDevMode: () => () => {},
-	onUpdateInstallFailed: () => () => {},
-	onUpdateAvailable: () => () => {},
-	onDownloadProgress: () => () => {},
-	onUpdateDownloaded: () => () => {},
-	getLastInstallAttempt: async () => null,
+	checkForUpdates: async () => ({ updateInfo: {}, cancellationToken: null }),
+	checkForBackendUpdates: async () => null,
 	checkForAllUpdates: async () => ({}),
-	checkForBackendUpdates: async () => ({}),
+	getLastInstallAttempt: async () => null,
+	updateBackend: async () => ({}),
 	downloadUpdate: async () => ({}),
 	quitAndInstall: async () => ({}),
-	quitForInstall: async () => ({}),
-	updateBackend: async () => ({}),
+	quitForUpdateInstall: async () => ({}),
+	onUpdateAvailable: () => () => {},
+	onUpdateNotAvailable: () => () => {},
+	onUpdateDevMode: () => () => {},
+	onUpdateNpxAvailable: () => () => {},
+	onBackendUpdateAvailable: () => () => {},
+	onBackendUpdateDevMode: () => () => {},
+	onBackendUpdateNotAvailable: () => () => {},
+	onBackendUpdateCompleted: () => () => {},
+	onBackendUpdateError: () => () => {},
+	onBackendUpdateManualRequired: () => () => {},
+	onUpdateDownloaded: () => () => {},
+	onUpdateError: () => () => {},
+	onUpdateInstallBlocked: () => () => {},
+	onUpdateInstallFailed: () => () => {},
+	onUpdateProgress: () => () => {},
+	onUpdateInstallInFlight: () => () => {},
+	onBeforeQuitForUpdate: () => () => {},
 });
 
 const Bridge = ({

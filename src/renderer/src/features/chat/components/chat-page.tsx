@@ -775,6 +775,23 @@ function SessionPanel({
 					}
 				: undefined,
 	});
+	/*
+	 * Whether a command can address a SESSION on this pane — the dispatcher's own
+	 * question, stated ONCE beside the value it is asked of (`sessionId`, the only
+	 * thing `useSlashDispatch` reads to answer "/x needs an open conversation").
+	 *
+	 * The composer consumes it because two of the sentences around the `/goal`
+	 * arming are about what the NEXT Enter can do, and a second derivation is
+	 * already on record: the composer read "does `sessionStatus` exist", which on a
+	 * real New-chat pane is true — the page builds it from the preview's own
+	 * SNAPSHOT, with `draft: true` — while `conversationId` is the PANE's identity,
+	 * so the note promising the goal printed on exactly the pane whose next Enter
+	 * is refused (UX U1). One answer, one owner. (The payload is named as "the
+	 * preview's snapshot" rather than by its property path on purpose: this file's
+	 * structural test asserts that EVERY read of that path is the strip's prop, and
+	 * a prose mention inside this comment is a read as far as the scan can tell.)
+	 */
+	const paneHasSession = Boolean(sessionId);
 	useEffect(() => {
 		if (draftKey) input.current?.focusInput();
 	}, [draftKey]);
@@ -1826,6 +1843,12 @@ function SessionPanel({
 					 */
 					onSlashCommand={dispatchFromControl}
 					onSlashNote={slashNote}
+					/*
+					 * The pane's answer to the dispatcher's own question, handed to the
+					 * composer so its arming copy and the popup's cannot promise a run this
+					 * pane will refuse (UX U1 / design D3).
+					 */
+					paneHasSession={paneHasSession}
 					sendError={composerSendError}
 					/*
 					 * The session's readings, straight off the canonical stream, and
@@ -2080,15 +2103,37 @@ export function ChatPage() {
 						</p>
 					)}
 					{!enabled ? (
-						<div className={cn("p-6 text-body text-ink-muted")}>
-							{capabilities.isLoading
-								? "Connecting to the backend…"
-								: capabilities.error
-									? capabilities.error.message
-									: "Update the backend to use canonical chats. Your existing histories are unchanged."}
+						/*
+						 * A PANE-level state, presented as one: centred in the column, the shape the
+						 * route's own Suspense fallback already uses, and - the reason it is not a
+						 * bare `p-6` against the top edge - clear of the full-bleed bands.
+						 *
+						 * Both bands are `fixed` at the top of the window, so while one shows it
+						 * covers the first ~30px of EVERY surface. Measured on the withdrawn frame
+						 * (`docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`), this
+						 * sentence's line box was laid out at y=24 with the pane empty below it, so
+						 * the pane read as a single flat colour beside a sidebar that kept its
+						 * rows: the node existed, was 880x70 and `checkVisibility()` was true, and
+						 * the reader could not see it. Centring it in the pane also stops the
+						 * sentence from being the pane's first 30 pixels, whatever the band does
+						 * (design round 1, D2).
+						 */
+						<div
+							className={cn(
+								"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
+								"text-body text-ink-muted",
+							)}
+						>
+							<p className={cn("text-center")}>
+								{capabilities.isLoading
+									? "Connecting to the backend…"
+									: capabilities.error
+										? capabilities.error.message
+										: "Update the backend to use canonical chats. Your existing histories are unchanged."}
+							</p>
 							<button
 								type="button"
-								className={cn("ml-2 underline")}
+								className={cn("underline")}
 								onClick={() => void capabilities.refetch()}
 							>
 								Retry

@@ -121,12 +121,17 @@ const updater = {};
 for (const name of [
 	"checkForUpdates", "checkForAllUpdates", "checkForBackendUpdates",
 	"downloadUpdate", "quitAndInstall", "updateBackend",
+	"quitForUpdateInstall",
 ]) updater[name] = async () => ({});
+updater.getLastInstallAttempt = async () => null;
 for (const name of [
 	"onUpdateAvailable", "onUpdateNotAvailable", "onUpdateDevMode",
 	"onUpdateNpxAvailable", "onUpdateDownloaded", "onUpdateError",
-	"onUpdateProgress", "onBackendUpdateAvailable", "onBackendUpdateDevMode",
+	"onUpdateProgress", "onUpdateInstallBlocked", "onUpdateInstallFailed",
+	"onUpdateInstallInFlight", "onBeforeQuitForUpdate",
+	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",
+	"onBackendUpdateError", "onBackendUpdateManualRequired",
 ]) updater[name] = noop;
 window.api = {
 	updater,

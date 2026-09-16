@@ -83,6 +83,7 @@ const updater = {};
 for (const name of [
 	"checkForUpdates", "checkForAllUpdates", "checkForBackendUpdates",
 	"downloadUpdate", "quitAndInstall", "updateBackend",
+	"quitForUpdateInstall",
 ]) updater[name] = async () => ({});
 // Every subscription on the preload updater surface. A missing one is not
 // cosmetic: UpdateNotification calls them at mount, and a TypeError there
@@ -92,9 +93,10 @@ for (const name of [
 	"onUpdateAvailable", "onUpdateNotAvailable", "onUpdateDevMode",
 	"onUpdateNpxAvailable", "onUpdateDownloaded", "onUpdateError",
 	"onUpdateProgress", "onUpdateInstallBlocked", "onUpdateInstallFailed",
+	"onUpdateInstallInFlight", "onBeforeQuitForUpdate",
 	"onBackendUpdateAvailable", "onBackendUpdateDevMode",
 	"onBackendUpdateNotAvailable", "onBackendUpdateCompleted",
-	"onBackendUpdateManualRequired", "onBeforeQuitForUpdate",
+	"onBackendUpdateError", "onBackendUpdateManualRequired",
 ]) updater[name] = noop;
 updater.getLastInstallAttempt = async () => null;
 window.api = {

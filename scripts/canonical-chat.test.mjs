@@ -3,6 +3,18 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+/*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function, and
+ * `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * (`pnpm lint:scripts`, which compares each changed file against its baseline)
+ * is the only thing that would have said so.
+ */
+const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
+	/statusUnavailable\.includes\("liveness"\)/;
+const RE_LIVENESS_UNREAD_SENTENCE =
+	/livenessUnread\s*\?\s*"The daemon could not read which chats are running[^"]*"\s*:\s*"Nothing running right now\."/;
+
 // Exercise the shipped store and closed IPC schema in memory. The transport
 // fixture records effects; this is deterministic state evidence, not a browser.
 const values = new Map();
@@ -114,6 +126,7 @@ function reset() {
 	echoes.length = 0;
 	store.setState({
 		sessions: [],
+		statusUnavailable: [],
 		activeSessionId: "111111111111",
 		activeDraftKey: null,
 		drafts: {},
@@ -174,6 +187,75 @@ test("authoritative refresh removes absent IDs while newer viewed revision survi
 	);
 	assert.equal(rows[0].attention.unseen, false);
 	assert.deepEqual(rows[0].attention.revision, [5, 5]);
+});
+
+/**
+ * #1170's marker: a daemon that could not read liveness must not be rendered as
+ * an idle machine.
+ *
+ * The daemon now says which reads it could not answer (`degraded: ["liveness"]`)
+ * because a swallowed liveness read publishes `active: false` for every row,
+ * which the sidebar renders as "Nothing running right now." over rows that
+ * exist - a claim about the machine derived from a read that FAILED. The field
+ * is additive, so this asserts the compatibility half as well: a daemon that
+ * sends nothing leaves the marker empty and every surface renders as it did.
+ */
+test("the daemon's unread reads are carried, and an absent marker is not an empty store", async () => {
+	reset();
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [{ id: "aaaa", name: "frame", mtime: 5, active: false }],
+		truncated: false,
+		degraded: ["liveness"],
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(store.getState().statusUnavailable, ["liveness"]);
+	assert.equal(store.getState().error, null);
+
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [{ id: "aaaa", name: "frame", mtime: 5, active: false }],
+		truncated: false,
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().statusUnavailable,
+		[],
+		"a daemon that predates the marker must leave the app exactly as it was",
+	);
+
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [],
+		truncated: false,
+		degraded: "liveness",
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().statusUnavailable,
+		[],
+		"a marker that is not a list of read names is not evidence about any read",
+	);
+});
+
+/**
+ * The sentence half of the same marker, asserted on the source in the shape
+ * this file already uses for a JSX-level rule (U16, D2): rendering the sidebar
+ * needs the whole chat feature tree, while the state that feeds it is pinned
+ * behaviourally in the case above.
+ */
+test("Active chats stops claiming nothing is running when liveness went unread", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		rendered,
+		RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS,
+		"the sidebar no longer reads the daemon's marker, so it cannot help but claim an idle machine",
+	);
+	assert.match(
+		rendered,
+		RE_LIVENESS_UNREAD_SENTENCE,
+		"the Active chats section claims nothing is running even when the read that would know did not answer",
+	);
 });
 
 test("create success plus admission failure retries exact same session and payload", async () => {
@@ -258,6 +340,7 @@ test("the admission seam stores against the session the send created, and its an
 		`the store ran before the message left: ${order.join(",")}`,
 	);
 });
+
 
 test("ambiguous create retains request ID and duplicate concurrent sends allocate once", async () => {
 	reset();
@@ -1784,6 +1867,49 @@ test("the header stops announcing that the session has not started once one exis
 	);
 });
 
+/**
+ * D2: the pane's own unavailable state must be somewhere a reader can see it.
+ *
+ * Asserted on the source, in the shape this file already uses for a JSX-level
+ * rule (U16 above), because the rung IS the fix: both bands are `fixed` at the
+ * top of the window, so while one shows it covers the first ~30px of every
+ * surface, and a sentence laid out against that edge is a statement nobody
+ * reads. Measured on the committed frame
+ * `docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`: the node was
+ * 880x70 at y=24 with `checkVisibility()` true, the pane below the band held no
+ * painted pixels at all, and the pane read as a single flat colour beside a
+ * sidebar that kept its rows. The pixels are the rig's evidence; this is the
+ * case that fails when the presentation regresses.
+ */
+test("the pane's unavailable state is centred, clear of the full-bleed bands", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const rung = rendered.match(
+		/!enabled \? \(([\s\S]{0,1400}?)\) : identity \?/,
+	);
+	assert.ok(
+		rung,
+		"the pane's own unavailable branch is gone, so the state it carries has no presentation left to judge",
+	);
+	assert.match(
+		rung[1],
+		/items-center justify-center/,
+		"the sentence is anchored to the top of the pane again, where the fixed bands cover it: a statement no reader sees, beside a sidebar that keeps its rows (design round 1, D2)",
+	);
+	assert.doesNotMatch(
+		rung[1],
+		/className=\{cn\("p-6/,
+		"a bare `p-6` against the top edge is exactly the shape that was invisible",
+	);
+	assert.match(
+		rung[1],
+		/Update the backend to use canonical chats/,
+		"and the sentence itself is still the one the state owes",
+	);
+});
+
 /*
  * R13, the same boundary read in the OTHER direction, against the same shipped
  * store and the real `desktopRequestSchema`.
@@ -2565,13 +2691,6 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// this is where it is caught.
 	const parent = byId.get(popup.parentId);
 	assert.ok(
-		/*
-		 * An optional chain rather than `parent && …`: the same assertion, in the
-		 * form the file's own linter asks for. It is here because this file is one
-		 * of the `scripts/` files this change touches, and `pnpm lint:scripts`
-		 * holds every touched file to the contract — a pre-existing violation in a
-		 * file a branch already has open is that branch's to clear.
-		 */
 		parent?.tagText.includes('"relative"'),
 		"the composer box (the slash popup's direct parent) no longer declares `relative`, so the popup no longer anchors to the box it is meant to escape",
 	);
@@ -3172,18 +3291,23 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	);
 	// And the two entry points a user actually submits with both consult it: the
 	// Enter key and the form's submit (the Send button).
-	/*
-	 * `planForDraft`, not `planFor`: the composer's inline credential capture adds
-	 * one rule in FRONT of the planner (a token the operator just Esc-cancelled
-	 * submits as prose rather than dispatching as the command, QA round 1 Q2), and
-	 * it does so in a wrapper both call sites share — which is the property this
-	 * assertion is about. Matching the wrapper's name keeps the count of
-	 * SUBMIT call sites, which is what must not drop to one.
-	 */
-	const plans = composer.match(/planFor(?:Draft)?\(newMessage, caret\)/g) ?? [];
+	//
+	// They consult it THROUGH `planForDraft`, the credential capture's one
+	// exception in front of the planner (§5: after an Esc cancel the text the
+	// operator sees is what gets sent, QA round 1 Q2 — the wrapper answers `send`
+	// for the token the composer just cancelled and delegates everything else).
+	// So the guard follows the call sites through the wrapper AND pins that the
+	// wrapper still delegates, which is what makes the rename safe rather than a
+	// hole: a `planForDraft` that stopped calling `planFor` would take both call
+	// sites out of the planner's reach while this assertion stayed green.
+	const plans = composer.match(/planForDraft\(newMessage, caret\)/g) ?? [];
 	assert.ok(
 		plans.length >= 2,
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
+	);
+	assert.ok(
+		/const planForDraft = useCallback\([\s\S]{0,400}?planFor\(draft, at\)/.test(composer),
+		"`planForDraft` no longer delegates to `planFor`, so the two submit entry points consult an exception with no planner behind it",
 	);
 
 	/*

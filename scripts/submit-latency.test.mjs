@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { after, test } from "node:test";
 import { build } from "esbuild";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 /*
  * The submit-latency benchmark: is the ~1.15 s the user feels after pressing
@@ -1037,7 +1038,13 @@ sys.exit(child.wait())
 		"python3",
 		["-c", supervisor, BACKEND_BIN, "serve", "--port", String(port)],
 		{
-			env: isolatedEnv(root, token),
+			// The supervisor is a real interpreter, so its python variables are
+			// stated rather than inherited (scripts/python-child-env.mjs) - an ambient
+			// `PYTHONPYCACHEPREFIX` pointing inside an installed `.app` is how a
+			// harness wrote a bytecode cache into one. The cache does NOT go under
+			// `root`: that is this run's config directory, which the backend reads for
+			// its serve records, so a harness has no business adding to it.
+			env: pythonChildEnv({ base: isolatedEnv(root, token) }),
 			// stdin is a PIPE and deliberately left open: it is the liveness
 			// channel the supervisor waits on.
 			stdio: ["pipe", "pipe", "pipe"],

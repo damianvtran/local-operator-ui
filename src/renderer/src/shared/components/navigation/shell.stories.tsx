@@ -217,6 +217,8 @@ const UPDATER_STUB = {
 	updateBackend: async () => false,
 	downloadUpdate: async () => [],
 	quitAndInstall: () => {},
+	quitForUpdateInstall: async () => true,
+	getLastInstallAttempt: async () => null,
 	onUpdateAvailable: noopUnsubscribe,
 	onUpdateNotAvailable: noopUnsubscribe,
 	onUpdateDevMode: noopUnsubscribe,
@@ -225,9 +227,14 @@ const UPDATER_STUB = {
 	onBackendUpdateDevMode: noopUnsubscribe,
 	onBackendUpdateNotAvailable: noopUnsubscribe,
 	onBackendUpdateCompleted: noopUnsubscribe,
+	onBackendUpdateError: noopUnsubscribe,
+	onBackendUpdateManualRequired: noopUnsubscribe,
 	onUpdateDownloaded: noopUnsubscribe,
 	onUpdateProgress: noopUnsubscribe,
 	onUpdateError: noopUnsubscribe,
+	onUpdateInstallBlocked: noopUnsubscribe,
+	onUpdateInstallFailed: noopUnsubscribe,
+	onUpdateInstallInFlight: noopUnsubscribe,
 	onBeforeQuitForUpdate: noopUnsubscribe,
 };
 

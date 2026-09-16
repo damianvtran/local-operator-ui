@@ -3,6 +3,23 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function,
+ * and `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * is the only thing that would have said so.
+ */
+const RE = /.*/;
+const RE_401_403_REFUSED_EVENT_STRE = /401|403|refused|event stream|http/i;
+const RE_401_REFUSED_EVENT_STREAM_I = /401|refused|event stream/i;
+const RE_HISTORY_I = /history/i;
+const RE_REACT = /^react$/;
+const RE_RECONNECT_I = /reconnect/i;
+const RE_SHARED_API_LOCAL_OPERATOR =
+	/^@shared\/api\/local-operator\/desktop-api$/;
+const RE_TANSTACK_REACT_QUERY = /^@tanstack\/react-query$/;
+const RE_USE_CONNECTIVITY_STATUS = /^\.\/use-connectivity-status$/;
+
+/*
  * The renderer half of the empty-conversation bug: a stream that cannot be
  * established must be retried, and the app must not claim a conversation is
  * empty until it has actually read one.
@@ -93,15 +110,15 @@ const bundle = await build({
 		{
 			name: "hook-test-fixtures",
 			setup(builder) {
-				builder.onResolve({ filter: /^react$/ }, () => ({
+				builder.onResolve({ filter: RE_REACT }, () => ({
 					path: "react",
 					namespace: "fixture",
 				}));
-				builder.onResolve(
-					{ filter: /^@shared\/api\/local-operator\/desktop-api$/ },
-					() => ({ path: "transport", namespace: "fixture" }),
-				);
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => ({
+				builder.onResolve({ filter: RE_SHARED_API_LOCAL_OPERATOR }, () => ({
+					path: "transport",
+					namespace: "fixture",
+				}));
+				builder.onLoad({ filter: RE, namespace: "fixture" }, (args) => ({
 					contents: args.path === "react" ? HARNESS_SOURCE : TRANSPORT_SOURCE,
 					loader: "js",
 				}));
@@ -277,6 +294,20 @@ globalThis.cancelAnimationFrame = (id) => {
 	if (at >= 0) rafQueue.splice(at, 1);
 };
 globalThis.window = {
+	/*
+	 * A listener registry, because the connectivity gate subscribes to the
+	 * browser's own online/offline events: without these the gate cannot mount at
+	 * all, and a harness that cannot mount the hook cannot say anything about it.
+	 */
+	listeners: {},
+	addEventListener(type, handler) {
+		this.listeners[type] ??= [];
+		this.listeners[type].push(handler);
+	},
+	removeEventListener(type, handler) {
+		const at = (this.listeners[type] ?? []).indexOf(handler);
+		if (at >= 0) this.listeners[type].splice(at, 1);
+	},
 	setTimeout: (callback, delay) => {
 		const id = nextId++;
 		timerQueue.push({ id, callback, delay });
@@ -518,7 +549,7 @@ test("a stream that never opens is retried without a receipt, within a bounded s
 	);
 	assert.doesNotMatch(
 		mounted.view().failure.statement,
-		/401|refused|event stream/i,
+		RE_401_REFUSED_EVENT_STREAM_I,
 		"the reader is never shown transport register",
 	);
 	assert.equal(
@@ -616,7 +647,7 @@ test("a failed history read on an empty transcript is retried, then surfaced ins
 		"an unreadable history is not an empty history - this is the assertion that stops the greeting painting over real rows",
 	);
 	assert.equal(mounted.view().status, "unavailable");
-	assert.match(mounted.view().failure?.statement ?? "", /history/i);
+	assert.match(mounted.view().failure?.statement ?? "", RE_HISTORY_I);
 	assert.equal(
 		mounted.view().transcript.records.length,
 		0,
@@ -679,13 +710,21 @@ test("Retry during a pending stream retry opens ONE subscription and leaves no o
 	send(cursorMissingSnapshotFrame());
 	await settle();
 	const reconcileRetry1 = freshRetries();
-	assert.equal(reconcileRetry1.length, 1, "the reconcile armed its first retry");
+	assert.equal(
+		reconcileRetry1.length,
+		1,
+		"the reconcile armed its first retry",
+	);
 	assert.equal(reconcileRetry1[0].delay, 500);
 
 	fire(reconcileRetry1[0]);
 	await settle();
 	const reconcileRetry2 = freshRetries();
-	assert.equal(reconcileRetry2.length, 1, "the reconcile armed its second retry");
+	assert.equal(
+		reconcileRetry2.length,
+		1,
+		"the reconcile armed its second retry",
+	);
 	assert.equal(reconcileRetry2[0].delay, 1000);
 
 	// The stream dies AFTER that, so its retry is the newest retry timer.
@@ -699,7 +738,11 @@ test("Retry during a pending stream retry opens ONE subscription and leaves no o
 	// screen in, with `dispose === null` and a queued `connect()`.
 	fire(reconcileRetry2[0]);
 	await settle();
-	assert.equal(mounted.view().status, "unavailable", "the history failure surfaced");
+	assert.equal(
+		mounted.view().status,
+		"unavailable",
+		"the history failure surfaced",
+	);
 	assert.ok(mounted.view().failure, "with a sentence to show");
 	assert.ok(
 		timerQueue.includes(streamRetry[0]),
@@ -709,11 +752,7 @@ test("Retry during a pending stream retry opens ONE subscription and leaves no o
 	const before = test_state.streams.length;
 	mounted.view().retry();
 	await settle();
-	assert.equal(
-		test_state.streams.length,
-		before + 1,
-		"Retry opened a stream",
-	);
+	assert.equal(test_state.streams.length, before + 1, "Retry opened a stream");
 	assert.equal(
 		timerQueue.includes(streamRetry[0]),
 		false,
@@ -763,12 +802,12 @@ test("every transport detail maps to ONE product sentence, and none of them leak
 		const notice = streamFailureNotice(detail);
 		assert.doesNotMatch(
 			notice.statement,
-			/401|403|refused|event stream|http/i,
+			RE_401_403_REFUSED_EVENT_STRE,
 			`the reader is never shown transport register (${detail})`,
 		);
 		assert.match(
 			notice.statement,
-			/reconnect/i,
+			RE_RECONNECT_I,
 			"the sentence has to say what to do about it",
 		);
 	}
@@ -785,4 +824,169 @@ test("every transport detail maps to ONE product sentence, and none of them leak
 		"no control is offered where reconnecting cannot help",
 	);
 	assert.deepEqual(streamFailureNotice(null), refused);
+});
+
+// ------------------------------------------------------- the connectivity gate
+
+/*
+ * The gate's half of the operator's second symptom: after a reload, no
+ * conversations or messages would load, and only a later reload brought them
+ * back.
+ *
+ * The mechanism was the effect that ran on the way DOWN. React Query's
+ * `invalidateQueries({ refetchType: "active" })` re-runs the reads it marks
+ * stale, and against a connection main had just called unreachable those reads
+ * can only fail - so a state flap replaced rendered rows with an error and threw
+ * away in-flight work at the exact moment the daemon was least able to answer.
+ * Nothing about a lost connection is a reason to re-ask a question; what the app
+ * owes the reader on the way back up is the re-read.
+ *
+ * The gate is bundled here with two fixtures and nothing else: a query client
+ * that records what it is asked to invalidate, and a status source the test
+ * drives. Everything between them is the shipping hook.
+ */
+
+const QUERY_SOURCE = `
+export const useQueryClient = () => globalThis.__gateTest.client;
+export const useQuery = () => ({ data: undefined, isLoading: false });
+`;
+
+const STATUS_SOURCE = `
+export const useConnectivityStatus = () => globalThis.__gateTest.status;
+`;
+
+const gateBundle = await build({
+	stdin: {
+		contents:
+			'export { useConnectivityGate } from "./src/renderer/src/shared/hooks/use-connectivity-gate.ts"; export { __setRuntime } from "react";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "neutral",
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	write: false,
+	tsconfig: "tsconfig.web.json",
+	plugins: [
+		{
+			name: "gate-test-fixtures",
+			setup(builder) {
+				const fixtures = {
+					react: HARNESS_SOURCE,
+					query: QUERY_SOURCE,
+					status: STATUS_SOURCE,
+				};
+				builder.onResolve({ filter: RE_REACT }, () => ({
+					path: "react",
+					namespace: "fixture",
+				}));
+				builder.onResolve({ filter: RE_TANSTACK_REACT_QUERY }, () => ({
+					path: "query",
+					namespace: "fixture",
+				}));
+				// Resolved by IMPORTER as well as specifier: `./use-connectivity-status`
+				// is a relative import, and only the gate's own copy may be
+				// substituted.
+				builder.onResolve({ filter: RE_USE_CONNECTIVITY_STATUS }, (args) =>
+					args.importer.endsWith("shared/hooks/use-connectivity-gate.ts")
+						? { path: "status", namespace: "fixture" }
+						: undefined,
+				);
+				builder.onLoad({ filter: RE, namespace: "fixture" }, (args) => ({
+					contents: fixtures[args.path],
+					loader: "js",
+				}));
+			},
+		},
+	],
+});
+
+globalThis.__gateTest = {
+	client: {
+		calls: [],
+		invalidateQueries(options) {
+			this.calls.push(options);
+		},
+	},
+	status: {
+		isServerOnline: true,
+		isOnline: true,
+		hostingProvider: "",
+		shouldCheckInternet: true,
+		hasConnectivityIssue: false,
+		connectivityIssue: null,
+		isLoading: false,
+		refetchInternetStatus: () => {},
+		refetchServerStatus: () => {},
+	},
+};
+
+const { useConnectivityGate, __setRuntime } = await import(
+	`data:text/javascript;base64,${Buffer.from(gateBundle.outputFiles[0].text).toString("base64")}#gate`
+);
+
+test("a server flap does not re-ask or cancel a read on the way down, and refreshes on the way up", () => {
+	let view = null;
+	const renderer = createRenderer(() => {
+		view = useConnectivityGate();
+		return {};
+	});
+	__setRuntime(renderer);
+	renderer.render();
+
+	const client = globalThis.__gateTest.client;
+	assert.equal(view.isServerOnline, true);
+	assert.deepEqual(
+		client.calls,
+		[],
+		"a healthy connection invalidates nothing",
+	);
+
+	// DOWN: main has called the connection unreachable.
+	client.calls.length = 0;
+	globalThis.__gateTest.status.isServerOnline = false;
+	renderer.render();
+	assert.deepEqual(
+		client.calls,
+		[],
+		"going offline must not re-run a single backend read: they can only fail, and re-running them is what replaced the rendered conversations with an error",
+	);
+	assert.equal(view.isServerOnline, false);
+	assert.equal(
+		view.shouldEnableQuery({ bypassInternetCheck: true }),
+		false,
+		"and the gate still disables a NEW read while there is no connection to read through",
+	);
+
+	// UP: the daemon is back.
+	client.calls.length = 0;
+	globalThis.__gateTest.status.isServerOnline = true;
+	renderer.render();
+	assert.equal(
+		client.calls.length,
+		1,
+		"the recovery is what owes the reader a re-read - exactly once",
+	);
+	const call = client.calls[0];
+	assert.equal(call.refetchType, "active");
+	const invalidates = (key) => call.predicate({ queryKey: [key] });
+	assert.equal(
+		invalidates("conversation-messages"),
+		true,
+		"the transcript is refreshed on recovery",
+	);
+	assert.equal(invalidates("credentials"), true);
+	for (const key of ["server-health", "internet-connectivity", "config"]) {
+		assert.equal(
+			invalidates(key),
+			false,
+			`${key} is the signal itself, not a read it should re-trigger`,
+		);
+	}
+
+	// A second render with nothing changed does not invalidate again.
+	client.calls.length = 0;
+	renderer.render();
+	assert.deepEqual(client.calls, []);
 });

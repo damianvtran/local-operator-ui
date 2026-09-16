@@ -201,6 +201,7 @@ export type RejectionReason =
 	| "undialable-address"
 	| "unreachable"
 	| "identity-mismatch"
+	| "unready-answer"
 	| "not-a-daemon";
 
 export interface DiscoveryRejection {
@@ -462,9 +463,66 @@ export function recordAddress(record: ServeRecord): string {
 	return `http://${host}:${record.port}`;
 }
 
+/**
+ * WHY an address did not answer, which is not the same question as whether it
+ * is there.
+ *
+ * A probe budget is not evidence of absence. A daemon mid-turn on a busy box
+ * misses a 2 s budget while it is serving every other request - measured on the
+ * operator's machine, where `/health` came back after the budget while
+ * `/v1/desktop/sessions` answered in the same minutes, and the app told the
+ * user their server was offline. So the transport distinguishes the causes:
+ *
+ *   - `timeout`: the request was still outstanding when the budget expired. The
+ *     address is LISTENING and simply did not answer in time. Never evidence
+ *     that a daemon is gone.
+ *   - `refused`: the OS refused the connection (`ECONNREFUSED`) or the route to
+ *     it is gone. Nothing is accepting on that port - that IS evidence.
+ *   - `unresolved`: the name did not resolve. A different operator mistake
+ *     (a typo'd host), and not evidence about a local daemon.
+ *   - `other`: anything else (`ECONNRESET`, a TLS error, an unknown throw).
+ *     Treated with the timeouts rather than with the refusals, because this
+ *     process cannot say what it saw.
+ */
+export type UnreachableCause = "timeout" | "refused" | "unresolved" | "other";
+
+/**
+ * Classify a thrown fetch failure into the four causes above.
+ *
+ * `AbortSignal.timeout` rejects with a `TimeoutError` DOMException on Node's
+ * undici, but the name is not the whole story: an abort from a caller-supplied
+ * signal carries `AbortError`, and a timeout that aborts an in-flight request
+ * can surface either. Both mean "still outstanding when the budget expired",
+ * which is why they share the `timeout` arm rather than falling into `other`.
+ *
+ * The errno lives on the error's own `code` or on `cause.code`, depending on
+ * whether the failure came from the socket or from the fetch wrapper, so both
+ * are read.
+ */
+export function classifyUnreachable(error: unknown): UnreachableCause {
+	const name = (error as { name?: unknown })?.name;
+	if (name === "TimeoutError" || name === "AbortError") return "timeout";
+	const code =
+		(error as { code?: unknown })?.code ??
+		(error as { cause?: { code?: unknown } })?.cause?.code;
+	switch (code) {
+		case "ECONNREFUSED":
+		case "EHOSTUNREACH":
+		case "ENETUNREACH":
+		case "ENETDOWN":
+		case "EPIPE":
+			return "refused";
+		case "ENOTFOUND":
+		case "EAI_AGAIN":
+			return "unresolved";
+		default:
+			return "other";
+	}
+}
+
 export type IdentityProbe =
 	| { outcome: "identified"; identity: HealthIdentity }
-	| { outcome: "unreachable"; detail: string }
+	| { outcome: "unreachable"; cause: UnreachableCause; detail: string }
 	| { outcome: "not-a-daemon"; detail: string }
 	| { outcome: "identity-mismatch"; detail: string; identity: HealthIdentity };
 
@@ -539,6 +597,7 @@ export async function probeIdentity(
 	} catch (error) {
 		return {
 			outcome: "unreachable",
+			cause: classifyUnreachable(error),
 			detail: error instanceof Error ? error.message : String(error),
 		};
 	}
@@ -824,7 +883,18 @@ export function normaliseAddress(
 export async function probeUnidentified(
 	address: string,
 	options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
-): Promise<{ reason: RejectionReason; detail: string }> {
+): Promise<{
+	reason: RejectionReason;
+	cause?: UnreachableCause;
+	/**
+	 * The answering daemon's identity, when it published one. Carried so a caller
+	 * that must NAME what it found - the spawn gate, whose whole job is telling
+	 * "a daemon is here" from "nothing is here" - does not have to probe a second
+	 * time to learn the pid and version it is about to log.
+	 */
+	identity?: HealthIdentity;
+	detail: string;
+}> {
 	const fetchImpl = options.fetchImpl ?? fetch;
 	try {
 		const response = await fetchImpl(new URL(HEALTH_PATH, address), {
@@ -834,15 +904,28 @@ export async function probeUnidentified(
 			signal: AbortSignal.timeout(options.timeoutMs ?? PROBE_TIMEOUT_MS),
 		});
 		if (response.status !== 200) {
+			/*
+			 * Its own reason, and NOT `not-a-daemon`: this arm is what let a daemon
+			 * that is starting up, unhealthy or shutting down - and a proxy fronting
+			 * one - be read as "the port is free", because `not-a-daemon` is the one
+			 * answer the spawn gate passes through (review round 1, F-2). A status
+			 * is not an identity, but it IS an occupant: the socket is bound, so a
+			 * child spawned onto it dies on `[Errno 48]` and the credential for
+			 * whatever is serving there has already been overwritten by the time it
+			 * does. `not-a-daemon` keeps its own, narrower meaning - a 200 that names
+			 * no instance - which stays passable on purpose.
+			 */
 			return {
-				reason: "not-a-daemon",
+				reason: "unready-answer",
 				detail: `${HEALTH_PATH} answered ${response.status} and no record describes this address`,
 			};
 		}
 		const payload = await response.json().catch(() => null);
-		if (readIdentity(payload)) {
+		const identity = readIdentity(payload);
+		if (identity) {
 			return {
 				reason: "identity-mismatch",
+				identity,
 				detail: `a daemon answered but no serve record describes ${address}, so it cannot be proven to be the one this app found`,
 			};
 		}
@@ -853,6 +936,7 @@ export async function probeUnidentified(
 	} catch (error) {
 		return {
 			reason: "unreachable",
+			cause: classifyUnreachable(error),
 			detail: error instanceof Error ? error.message : String(error),
 		};
 	}

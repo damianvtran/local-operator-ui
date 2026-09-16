@@ -232,6 +232,32 @@ type HealthCheckResponse = {
 };
 
 /**
+ * What `backend-update-error` carries: the sentence, and the phase that wrote it.
+ *
+ * The channel has two producers that mean different things - the failing branches
+ * of `checkForBackendUpdates`, which answer a CHECK the user may have pressed, and
+ * the failing branches of `updateBackend`, which answer the attempt itself - and
+ * the renderer has to tell them apart. It used to infer the difference from
+ * whether an attempt happened to be in flight, which is wrong in exactly the case
+ * the sibling settings surfaces make reachable: a check the user pressed fails
+ * while a server update (minutes long) is running, and the check's "Unable to
+ * determine backend version." then painted as the UPDATE's reason while the
+ * update's own sentence went to a toast that dismissed itself six seconds later
+ * (review R2-1, QA Q2). So the producer says which phase it is rather than the
+ * consumer guessing from timing.
+ */
+export type BackendUpdateErrorReport = {
+	/** The sentence to show, written by the branch that failed. */
+	message: string;
+	/**
+	 * `check` for a report from `checkForBackendUpdates`, `update` for one from
+	 * `updateBackend`. The renderer puts an attempt's report on the standing
+	 * failure panel and a check's on the toast a check has always taken.
+	 */
+	phase: "check" | "update";
+};
+
+/**
  * Type definition for backend update information
  */
 export type BackendUpdateInfo = {
@@ -2950,10 +2976,10 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				if (!silent) {
-					this.sendToRenderer(
-						"backend-update-error",
-						"Unable to determine backend version.",
-					);
+					this.sendToRenderer("backend-update-error", {
+						message: "Unable to determine backend version.",
+						phase: "check",
+					});
 				}
 				return { status: "unavailable", info: null };
 			}
@@ -2967,10 +2993,11 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				if (!silent) {
-					this.sendToRenderer(
-						"backend-update-error",
-						"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
-					);
+					this.sendToRenderer("backend-update-error", {
+						message:
+							"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+						phase: "check",
+					});
 				}
 				return { status: "unavailable", info: null };
 			}
@@ -3006,10 +3033,10 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				if (!silent) {
-					this.sendToRenderer(
-						"backend-update-error",
-						"Unable to determine backend version.",
-					);
+					this.sendToRenderer("backend-update-error", {
+						message: "Unable to determine backend version.",
+						phase: "check",
+					});
 				}
 				return { status: "unavailable", info: null };
 			}
@@ -3089,10 +3116,10 @@ export class UpdateService {
 				this.mainWindow.webContents &&
 				!this.mainWindow.webContents.isDestroyed()
 			) {
-				this.mainWindow.webContents.send(
-					"backend-update-error",
-					(error as Error).message,
-				);
+				this.mainWindow.webContents.send("backend-update-error", {
+					message: (error as Error).message,
+					phase: "check",
+				});
 			}
 
 			// A failed check is not "the server is current": the panel's copy and
@@ -3202,10 +3229,10 @@ export class UpdateService {
 					this.mainWindow.webContents &&
 					!this.mainWindow.webContents.isDestroyed()
 				) {
-					this.mainWindow.webContents.send(
-						"backend-update-error",
-						"No backend service reference available, cannot update.",
-					);
+					this.mainWindow.webContents.send("backend-update-error", {
+						message: "No backend service reference available, cannot update.",
+						phase: "update",
+					});
 				}
 				return false;
 			}
@@ -3225,10 +3252,10 @@ export class UpdateService {
 						this.mainWindow.webContents &&
 						!this.mainWindow.webContents.isDestroyed()
 					) {
-						this.mainWindow.webContents.send(
-							"backend-update-error",
-							"No python server is available, nothing to update.",
-						);
+						this.mainWindow.webContents.send("backend-update-error", {
+							message: "No python server is available, nothing to update.",
+							phase: "update",
+						});
 					}
 					return false;
 
@@ -3280,6 +3307,18 @@ export class UpdateService {
 						`Unknown startup mode: ${startupMode}`,
 						LogFileType.UPDATE_SERVICE,
 					);
+					/*
+					 * Every other failing branch above reports on `backend-update-error`,
+					 * and this one used to leave the renderer with nothing: `update-backend`
+					 * RESOLVES false, so a renderer reading only the rejection kept its
+					 * in-flight panel up with no reason on it. "Say so on every failure" is
+					 * the rule this branch was the exception to.
+					 */
+					this.sendToRenderer("backend-update-error", {
+						message:
+							"The app could not tell how this server was started, so it did not update it. See the update service log.",
+						phase: "update",
+					});
 					return false;
 			}
 
@@ -3325,14 +3364,21 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				await this.restartBackendAfterFailedUpgrade();
-				this.sendToRenderer(
-					"backend-update-error",
-					"The bundled server's Python environment could not be found, so the update did not run. Please reinstall the application.",
-				);
+				this.sendToRenderer("backend-update-error", {
+					message:
+						"The bundled server's Python environment could not be found, so the update did not run. Please reinstall the application.",
+					phase: "update",
+				});
 				return false;
 			}
 
-			const pip = buildPipUpgradeCommand(pythonPath);
+			/*
+			 * The target travels into the requirement, so pip cannot satisfy the user's
+			 * request with the version it is already standing on: the app promised a
+			 * specific release, and an index page that predates it (a cached one, or an
+			 * unreachable one) has to fail here rather than report success.
+			 */
+			const pip = buildPipUpgradeCommand(pythonPath, targetVersion ?? null);
 
 			// Read what the environment has NOW. "pip exited 0" is not evidence that
 			// anything was installed - pip reports success when the requirement is
@@ -3377,14 +3423,15 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				const serverIsBack = await this.restartBackendAfterFailedUpgrade();
-				this.sendToRenderer(
-					"backend-update-error",
-					pipRun.exitCode !== 0
-						? serverIsBack
-							? "The server update failed to install. The previously installed server is running again; see the update service log for pip's output."
-							: "The server update failed to install and the server did not come back up. Restart Local Operator, and see the update service log for pip's output."
-						: `The server update ran but the installed version did not change (still ${versionAfter ?? "unknown"}), so it is reported as failed.`,
-				);
+				this.sendToRenderer("backend-update-error", {
+					message:
+						pipRun.exitCode !== 0
+							? serverIsBack
+								? "The server update failed to install. The previously installed server is running again; see the update service log for pip's output."
+								: "The server update failed to install and the server did not come back up. Restart Local Operator, and see the update service log for pip's output."
+							: `The server update to ${targetVersion ?? "the new release"} did not take effect: the server is still on ${versionAfter ?? "its previous version"}. See the update service log for pip's output, then try again.`,
+					phase: "update",
+				});
 				return false;
 			}
 
@@ -3434,10 +3481,11 @@ export class UpdateService {
 							LogFileType.UPDATE_SERVICE,
 						);
 						if (this.mainWindow) {
-							this.mainWindow.webContents.send(
-								"backend-update-error",
-								"Backend was updated but failed to restart properly. Please restart the application.",
-							);
+							this.mainWindow.webContents.send("backend-update-error", {
+								message:
+									"Backend was updated but failed to restart properly. Please restart the application.",
+								phase: "update",
+							});
 						}
 						return false;
 					}
@@ -3452,10 +3500,11 @@ export class UpdateService {
 				this.backendService.setAutoUpdating(false);
 
 				if (this.mainWindow) {
-					this.mainWindow.webContents.send(
-						"backend-update-error",
-						"Backend was updated but failed to restart. Please restart the application.",
-					);
+					this.mainWindow.webContents.send("backend-update-error", {
+						message:
+							"Backend was updated but failed to restart. Please restart the application.",
+						phase: "update",
+					});
 				}
 				return false;
 			}
@@ -3471,10 +3520,10 @@ export class UpdateService {
 					`Backend did not report version ${targetVersion ?? "the new one"} after the update`,
 					LogFileType.UPDATE_SERVICE,
 				);
-				this.sendToRenderer(
-					"backend-update-error",
-					`The server restarted but did not report ${targetVersion ? `version ${targetVersion}` : "the updated version"}. Check the update service log, then try again.`,
-				);
+				this.sendToRenderer("backend-update-error", {
+					message: `The server restarted but did not report ${targetVersion ? `version ${targetVersion}` : "the updated version"}. Check the update service log, then try again.`,
+					phase: "update",
+				});
 				return false;
 			}
 			logger.info(
@@ -3530,10 +3579,10 @@ export class UpdateService {
 				this.mainWindow.webContents &&
 				!this.mainWindow.webContents.isDestroyed()
 			) {
-				this.mainWindow.webContents.send(
-					"backend-update-error",
-					(error as Error).message,
-				);
+				this.mainWindow.webContents.send("backend-update-error", {
+					message: (error as Error).message,
+					phase: "update",
+				});
 			}
 
 			return false;
