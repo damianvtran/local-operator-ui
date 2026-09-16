@@ -265,6 +265,51 @@ export const GroupedOverflow: Story = {
 	],
 };
 
+/**
+ * THE CHIP CAP, AT THE WIDTH WHERE IT BITES (design R4, fix 1).
+ *
+ * This is the row `worst-case` is about - restored, handed over, failed AND waiting
+ * at once - rendered at the pane's own 640px, where the floors are a step down and
+ * five chips used to leave the title nothing at all. The cap shows three states and
+ * collapses the other two behind `+2`, so the frame is where the design round reads
+ * two things at once: that the states which survive are the three that carry
+ * information (an ask, the agent's ownership, the failure), and that the number and
+ * its title are honest about what they hide rather than a silent truncation.
+ *
+ * IT IS A SECOND STORY RATHER THAN `worst-case` RENAMED, and the reason is the
+ * evidence set: a swept story's frames are committed under its id, so a rename
+ * leaves a directory nothing declares. The two stories are not redundant either -
+ * `worst-case` is the cap at the route's 1280px (the base rung), this one is the
+ * cap at the pane's 640 (the narrow rung), which is where the arithmetic is tight.
+ */
+export const ChipsCollapsed: Story = {
+	args: strip(
+		[
+			tab(1, "Dashboard"),
+			// Five states on an INACTIVE row: {Restored, Agent, Shared, Failed, Request n}.
+			// Three survive; `Shared` and `Restored` collapse, which is the pair the
+			// priority list yields first.
+			tab(2, "Checkout", {
+				owner: "agent",
+				handedOver: true,
+				restored: true,
+				failed: true,
+				url: "https://checkout.example.com/basket",
+			}),
+			tab(3, "Reports", { owner: "agent" }),
+		],
+		1,
+		{ 2: 2 },
+	),
+	decorators: [
+		(Story) => (
+			<div className="w-[640px] max-w-full">
+				<Story />
+			</div>
+		),
+	],
+};
+
 /*
  * THE WORST-CASE ROWS, WHICH NOTHING RENDERED UNTIL ROUND 6. Both of round 6's
  * MAJORs were invisible because no fixture carried a four- or five-chip row: the
@@ -283,6 +328,12 @@ export const GroupedOverflow: Story = {
  * row pays 68px for the cluster that sits in flow on it, and only one tab can be
  * active in a strip. `WorstCase` is the row that set the floor's ceiling;
  * `WorstCaseWidest` is the row that is contained rather than sized.
+ *
+ * WHAT THE CHIP CAP CHANGED IN THESE TWO FRAMES (R4, fix 1): the five-state rows
+ * that used to read `Check...` at a 72px title now show three states and a `+2`, and
+ * the title clears 85px on both. The fixtures are unchanged deliberately - the pair
+ * of frames is the before and after of the cap, so a reader can see what it cost
+ * rather than take the arithmetic on trust.
  */
 export const WorstCase: Story = {
 	args: strip(

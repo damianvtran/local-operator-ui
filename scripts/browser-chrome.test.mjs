@@ -70,7 +70,7 @@ const PROBE = `
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
-	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
+	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
 	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
@@ -96,6 +96,8 @@ const PROBE = `
 		BrowserApprovalsTray,
 		BrowserApprovalsDock,
 		BrowserTabStrip,
+		stateChips,
+		tabFloor,
 		BrowserPage,
 		BrowserPane,
 		PANE_SURFACE_ID,
@@ -201,6 +203,8 @@ const {
 	BrowserApprovalsTray,
 	BrowserApprovalsDock,
 	BrowserTabStrip,
+	stateChips,
+	tabFloor,
 	BrowserPage,
 	BrowserPane,
 	PANE_SURFACE_ID,
@@ -2665,6 +2669,246 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 });
 
 // ---- a failed navigation says so (design round 1, D1) ----------------------
+
+test("the chip cap keeps the three states that carry information and counts the rest (R4, fix 1)", () => {
+	// THE CAP IS `stateChips`, so the test drives the shipped rule rather than
+	// restating it. The combinations are the ones the file's own enumeration calls
+	// REACHABLE from the registry: `handOver` sets `owner` and `handedTo` together,
+	// so `Shared` is implied by `Agent`; `restored` is set at creation and never
+	// cleared; and `failed` and a waiting `Request n` stack on either.
+	const view = (overrides) => ({
+		tabId: 1,
+		owner: "user",
+		handedOver: false,
+		restored: false,
+		failed: false,
+		...overrides,
+	});
+	const agent = { owner: "agent" };
+	const cases = [
+		{
+			name: "one state",
+			tab: view({ failed: true }),
+			waiting: undefined,
+			shown: ["failed"],
+			collapsed: [],
+		},
+		{
+			name: "the implied pair {Agent, Shared}",
+			tab: view({ owner: "agent", handedOver: true }),
+			waiting: undefined,
+			shown: ["agent", "shared"],
+			collapsed: [],
+		},
+		{
+			name: "{Agent, Failed, Request n} — three, so nothing is hidden",
+			tab: view({ ...agent, failed: true }),
+			waiting: 1,
+			shown: ["request", "agent", "failed"],
+			collapsed: [],
+		},
+		{
+			name: "{Agent, Shared, Restored, Failed} — four, so the lowest-value state yields",
+			tab: view({ ...agent, handedOver: true, restored: true, failed: true }),
+			waiting: undefined,
+			shown: ["agent", "failed", "shared"],
+			collapsed: ["restored"],
+		},
+		{
+			name: "the five-state row — an ask, ownership and the failure survive; Shared and Restored do not",
+			tab: view({ ...agent, handedOver: true, restored: true, failed: true }),
+			waiting: 2,
+			shown: ["request", "agent", "failed"],
+			collapsed: ["shared", "restored"],
+		},
+		{
+			name: "{Restored, Failed, Request n} — Restored survives when it is not the fifth state",
+			tab: view({ restored: true, failed: true }),
+			waiting: 3,
+			shown: ["request", "failed", "restored"],
+			collapsed: [],
+		},
+	];
+	for (const entry of cases) {
+		const { shown, collapsed } = stateChips(entry.tab, entry.waiting);
+		assert.deepEqual(
+			[...shown].sort(),
+			[...entry.shown].sort(),
+			`${entry.name}: which chips are drawn`,
+		);
+		assert.deepEqual(
+			collapsed,
+			entry.collapsed,
+			`${entry.name}: which are collapsed, in priority order`,
+		);
+		assert.ok(
+			shown.size + collapsed.length <= 5,
+			`${entry.name}: the states are conserved, never relabelled`,
+		);
+		assert.ok(
+			shown.size <= 3,
+			`${entry.name}: never more than three chips inline`,
+		);
+	}
+	// THE PRIORITY IS THE SURVIVAL ORDER, asserted from the other side: with all five
+	// present, dropping exactly one sub-state at a time, `request` outlives `agent`
+	// outlives `failed` outlives `shared` outlives `restored`.
+	const all = view({
+		...agent,
+		handedOver: true,
+		restored: true,
+		failed: true,
+	});
+	assert.deepEqual([...stateChips(all, 1).shown].sort(), [
+		"agent",
+		"failed",
+		"request",
+	]);
+	assert.deepEqual(stateChips(all, 1).collapsed, ["shared", "restored"]);
+	assert.deepEqual([...stateChips(all, undefined).shown].sort(), [
+		"agent",
+		"failed",
+		"shared",
+	]);
+});
+
+test("every floor rung leaves the title the width the strip promises (R4, fix 1)", () => {
+	// THE INVARIANT IS A PURE FUNCTION (design R4), and it is read off the SHIPPED
+	// rung rather than restated here: `tabFloor` returns the classes, this maps each
+	// tier's token to the pixel width the spacing scale gives it, and the assertion is
+	// the title that is left. A rung edited without redoing the arithmetic fails here
+	// rather than in a frame somebody has to notice.
+	const SPACING_PX = {
+		"min-w-30": 120,
+		"min-w-33": 132,
+		"min-w-36": 144,
+		"min-w-44": 176,
+		"min-w-48": 192,
+		"min-w-50": 200,
+		"min-w-56": 224,
+		"min-w-60": 240,
+		"min-w-62": 248,
+		"min-w-72": 288,
+		"min-w-80": 320,
+		"min-w-96": 384,
+		"min-w-[26rem]": 416,
+	};
+	/** The three rungs a single `tabFloor` string carries, by tier. */
+	const rungs = (floor) => {
+		const out = {};
+		for (const token of floor.split(" ")) {
+			if (token.startsWith("@max-2xl:"))
+				out.narrow = SPACING_PX[token.slice("@max-2xl:".length)];
+			else if (token.startsWith("@2xl:@max-6xl:"))
+				out.middle = SPACING_PX[token.slice("@2xl:@max-6xl:".length)];
+			else out.base = SPACING_PX[token];
+		}
+		assert.ok(
+			typeof out.base === "number",
+			`the rung names a base spacing step this test knows: ${floor}`,
+		);
+		// A TIER WITH NO TOKEN OF ITS OWN INHERITS THE WIDER ONE, which is how the
+		// cascade works and why `min-w-96 @max-2xl:min-w-62` is a floor at BOTH the base
+		// and the middle tier.
+		out.middle ??= out.base;
+		out.narrow ??= out.middle;
+		return out;
+	};
+	// MEASURED PILL WIDTHS, the same table the component's comment carries.
+	const PILL = {
+		request: 62,
+		agent: 43,
+		failed: 48,
+		shared: 43,
+		restored: 48,
+		collapsed: 36,
+	};
+	/** The widest set of pills at each reachable count, in the cap's priority order:
+	 * the cap spends `request`, then `agent`, then `failed`, and the collapse is ONE
+	 * pill whatever it hides. */
+	const widestPills = [
+		0,
+		PILL.request,
+		PILL.request + PILL.agent,
+		PILL.request + PILL.agent + PILL.failed,
+		PILL.request + PILL.agent + PILL.failed + PILL.collapsed,
+	];
+	/** A row's title: the floor, less the row's 32px of padding, the pills, the 6px
+	 * gaps (`pills + 1` of them), and the active row's 68px in-flow cluster. */
+	const title = (floorPx, pills, active) =>
+		floorPx - 32 - widestPills[pills] - 6 * (pills + 1) - (active ? 68 : 0);
+
+	const rows = [];
+	for (const active of [false, true]) {
+		for (let pills = 0; pills <= 4; pills += 1) {
+			const { base, middle, narrow } = rungs(tabFloor(active, pills));
+			rows.push({ active, pills, base, middle, narrow });
+			for (const [tier, floorPx] of [
+				["base", base],
+				["middle", middle],
+			]) {
+				assert.ok(
+					title(floorPx, pills, active) >= 85,
+					`${active ? "active" : "inactive"} ${pills}-pill row at the ${tier} tier (${floorPx}px): title ${title(floorPx, pills, active)}px, and the file promises 85`,
+				);
+			}
+		}
+	}
+	// The two rows that used to yield, quantified: the cap gives them a wider title
+	// than the five-pill ladder did, at the same floor.
+	const PRE_CAP = { 4: 196, 5: 244 };
+	assert.equal(
+		PILL.request + PILL.agent + PILL.failed + PILL.shared,
+		PRE_CAP[4],
+	);
+	assert.equal(
+		PILL.request + PILL.agent + PILL.failed + PILL.shared + PILL.restored,
+		PRE_CAP[5],
+	);
+	for (const present of [4, 5]) {
+		const capped = rows.find((row) => row.pills === 4 && row.active === false);
+		assert.ok(
+			title(capped.base, 4, false) >
+				capped.base - 32 - PRE_CAP[present] - 6 * 5,
+			`a ${present}-state inactive row keeps a wider title than the five-pill ladder left it`,
+		);
+	}
+
+	// THE NARROW TIER PROMISES LESS AND ALWAYS DID (the pane's own width): the rung a
+	// row gets is never LARGER than the one it had before the cap, and the capped row's
+	// title is strictly wider because the collapse pill is narrower than the pills it
+	// replaces. That is the whole obligation the cap owes this tier.
+	const PRE_CAP_NARROW = [120, 132, 200, 224, 248, 248];
+	for (let present = 0; present <= 5; present += 1) {
+		const capped = rows.find(
+			(row) => row.pills === Math.min(present, 4) && row.active === false,
+		);
+		assert.ok(
+			capped.narrow <= PRE_CAP_NARROW[present],
+			`${present} states at the narrow tier: ${capped.narrow}px is no larger than the ${PRE_CAP_NARROW[present]}px it used to get`,
+		);
+	}
+	// THE ARBITRARY LENGTH IS SINGULAR, which is the design's own simplification: one
+	// step past the spacing scale survives (`min-w-[26rem]`) instead of two, and no rung
+	// at any count uses anything else outside the scale.
+	const arbitrary = new Set();
+	for (const active of [false, true]) {
+		for (let pills = 0; pills <= 4; pills += 1) {
+			for (const token of tabFloor(active, pills).split(" ")) {
+				// The class without its container variant: `@2xl:@max-6xl:min-w-80` is
+				// `min-w-80` at the middle tier.
+				const step = token.slice(token.lastIndexOf(":") + 1);
+				// A spacing step is `min-w-<n>`; anything else is a length somebody chose.
+				if (!/^min-w-\d+$/.test(step)) arbitrary.add(step);
+			}
+		}
+	}
+	assert.deepEqual(
+		[...arbitrary],
+		["min-w-[26rem]"],
+		"exactly one step past the spacing scale is left in the ladder",
+	);
+});
 
 test("a failed navigation names the reason in the app's own chrome, and offers a retry", () => {
 	const retried = [];
