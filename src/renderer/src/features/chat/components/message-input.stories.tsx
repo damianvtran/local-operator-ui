@@ -1,7 +1,8 @@
 import { cn } from "@shared/lib/utils";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent } from "@storybook/test";
-import { useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
@@ -932,6 +933,71 @@ export const CredentialPillAtLineStart: Story = {
 		}
 		releaseShutter();
 	},
+};
+
+/**
+ * Seeds the composer's own draft store, which is the only honest way to render
+ * the state this frame is about.
+ *
+ * A RESTORED DRAFT is what produces an unbacked marker: the marker text is
+ * persisted (§6) and the payload map is not (it is a ref), so a reload paints a
+ * citation nothing holds. The draft is the composer's own store rather than a
+ * prop — there is no `draft` prop on `MessageInput`, deliberately — so the story
+ * writes the store the way the app writes it, in an EFFECT rather than at module
+ * scope because the store is `persist`ed and a write made before rehydration can
+ * be merged away by it (the technique the composer-band stories established).
+ */
+const WithDraft = ({
+	conversation,
+	text,
+	children,
+}: {
+	conversation: string;
+	text: string;
+	children: ReactNode;
+}) => {
+	useEffect(() => {
+		useConversationInputStore.getState().setCurrentInput(conversation, text);
+	}, [conversation, text]);
+	return <>{children}</>;
+};
+
+/**
+ * A MARKER NOTHING BACKS, painted in the NOT-STORED register (UX round 3, U13;
+ * design round 4, D3).
+ *
+ * Round 3 changed this state's paint — a marker no payload backs takes the
+ * warning wash with a DASHED edge (design round 4, D2) instead of the live
+ * pill's own treatment — and the change was pinned by a test case and a row of
+ * the contrast contract and by no frame at all, on a surface whose evidence IS
+ * frames (228 of them, none of them this state). The designer had to write this
+ * draft into localStorage by hand to photograph it.
+ *
+ * The text is the LIVE pill's own sentence from `CredentialPillMidProse` with the
+ * payload gone — `deploy with [Credential #1, 19 chars] to the staging box` — so
+ * the two frames are the pair a reader compares: same characters, same position,
+ * same 1024 measure, and the only difference is what the app knows about the
+ * value. What the frame is for: the chip is distinguishable from a live pill
+ * without relying on hue (the dash), and the marker is not left as literal text.
+ */
+export const CredentialPillUnbacked: Story = {
+	render: () => (
+		<Frame label="a marker nothing backs: the live pill's own characters, restored from a draft after the payload was gone">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<WithDraft
+					conversation="story"
+					text={"deploy with [Credential #1, 19 chars] to the staging box"}
+				>
+					<MessageInput
+						isLoading={false}
+						messages={NONEMPTY}
+						conversationId="story"
+						onSendMessage={async () => true}
+					/>
+				</WithDraft>
+			</div>
+		</Frame>
+	),
 };
 
 /**

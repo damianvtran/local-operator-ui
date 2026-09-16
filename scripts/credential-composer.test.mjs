@@ -98,6 +98,51 @@ for (const [key, value] of Object.entries({
 Object.defineProperty(window.document, "visibilityState", { value: "hidden" });
 Object.defineProperty(window.document, "hidden", { value: true });
 
+/*
+ * `window.matchMedia`, which jsdom does not implement at all.
+ *
+ * It becomes reachable from here for the first time with the CENTRING band's
+ * case below: the tip row that band renders reads a media query (reduced
+ * motion), and every other composer in this file is bottom-anchored and never
+ * mounts it. Reporting `matches: false` is the honest default — it is the state
+ * a browser with the preference unset reports, and the query is not what any
+ * assertion here is about.
+ */
+/*
+ * ONE object per query, and it is load-bearing rather than tidy: `matchMedia` is
+ * read through `useSyncExternalStore`, whose `getSnapshot` must return the same
+ * value between renders or React re-renders forever. A stub that built a fresh
+ * object per call hung this file's centring-band case (measured: the file timed
+ * out at 80s with no assertion ever running).
+ */
+/*
+ * AND THE WINDOW'S OWN TIMERS, not only the globals above. The tip row that the
+ * CENTRING band renders schedules its rotation on `window.setInterval`, which is
+ * jsdom's own function and not the global one this fixture wrapped — so it was
+ * never recorded and never cleared, and the file hung after the mount with the
+ * process held open (measured: 45-84s per run, no assertion involved).
+ */
+window.setTimeout = tracked(realSetTimeout);
+window.setInterval = tracked(realSetInterval);
+
+const mediaQueries = new Map();
+window.matchMedia = (query) => {
+	const key = String(query);
+	if (!mediaQueries.has(key)) {
+		mediaQueries.set(key, {
+			matches: false,
+			media: key,
+			onchange: null,
+			addListener: () => {},
+			removeListener: () => {},
+			addEventListener: () => {},
+			removeEventListener: () => {},
+			dispatchEvent: () => false,
+		});
+	}
+	return mediaQueries.get(key);
+};
+
 window.electron = {
 	ipcRenderer: {
 		on: () => () => {},
@@ -215,6 +260,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { MessageInput } from "./src/renderer/src/features/chat/components/message-input.tsx";
+			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export {
@@ -253,6 +299,7 @@ const bundle = await build({
 const bundlePath = new URL(`./_composer-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	CHAT_MEASURE,
 	MessageInput,
 	QueryClient,
 	QueryClientProvider,
@@ -334,6 +381,14 @@ async function mount({
 	onSlashCommand,
 	onSendMessage,
 	sessionStatus,
+	/*
+	 * THE TRANSCRIPT IS A PARAMETER, because it decides the BAND's own shape and
+	 * not only the content above it: `messages: []` is the state in which the band
+	 * claims the column and centres the composer's group (see the mirror's case
+	 * below), and every other case here pins the bottom-anchored composer, which is
+	 * what a populated pane has.
+	 */
+	messages = [{ id: "m", role: "system", timestamp: new Date(0) }],
 	keepWorld = false,
 	remount = false,
 } = {}) {
@@ -412,7 +467,7 @@ async function mount({
 				{ client },
 				h(MessageInput, {
 					isLoading: false,
-					messages: [{ id: "m", role: "system", timestamp: new Date(0) }],
+					messages,
 					conversationId,
 					sessionStatus,
 					onSendMessage: async (...args) => {
@@ -989,8 +1044,12 @@ test("the notice is tied to the field, sits ABOVE the composer box in the band's
 	 * So the sentence lives OUTSIDE the box and ABOVE it, in the band's own flow on
 	 * the composer's measure, where the pinned edge cannot be pushed by it.
 	 * MEASURED, not asserted structurally: a 20px line injected above the box moves
-	 * `textarea.y` by 0.00px on a populated pane (751.30 -> 751.30 at 1380), and the
-	 * same line injected below it moves it by a full 20px (751.30 -> 731.30). jsdom
+	 * `textarea.y` by 0.00px on a populated pane (757.00 -> 757.00 at 1380; the
+	 * 20px injected line is the design record's §7.5 table), and the same line
+	 * injected below it moves it by a full 20px (757.00 -> 737.00). The 751.30 this
+	 * comment used to quote was the PRE-REMEDIATION rig's figure, taken before the
+	 * sentence left the composer, and the state the paragraph below is about did
+	 * not exist there (code review round 4, MINOR 3). jsdom
 	 * has no layout engine, so what this test pins is the STRUCTURE that produces
 	 * that; the numbers are the live rig's.
 	 */
@@ -1213,6 +1272,15 @@ const painted = () => {
 		unbacked:
 			span.className.includes("bg-warning-wash") &&
 			span.className.includes("outline-warning-border"),
+		/*
+		 * THE EDGE'S STYLE, which round 4 made the not-stored chip's second
+		 * distinction (design round 4, D2; code review round 4, MINOR 2; UX round 4,
+		 * U17). Hue alone does not separate the chip from a live pill: measured over
+		 * the twelve palettes the two washes sit at 1.01-1.11 fill contrast and a
+		 * greyscale reading of 34 vs 35 of 255. A dashed edge costs no token and
+		 * survives monochrome.
+		 */
+		dashed: span.className.includes("outline-dashed"),
 		armed:
 			span.className.includes("bg-warning-wash") &&
 			!span.className.includes("outline-warning-border"),
@@ -1346,6 +1414,21 @@ test("a marker whose payload did not survive is painted, and sent as the not-sto
 		painted().filter((s) => s.pill).length,
 		0,
 		"the unbacked marker is NOT painted with the live pill's treatment",
+	);
+	/*
+	 * AND THE CHIP'S EDGE IS DASHED, which is the second distinction and the one
+	 * that does not need colour to be seen (design round 4, D2; code review round
+	 * 4, MINOR 2; UX round 4, U17). The warning pair against the info pair is a
+	 * HUE difference and almost nothing else - the two washes sit at 1.01-1.11
+	 * fill contrast across the twelve palettes, and a greyscale reading of them is
+	 * 34 vs 35 of 255 - so a reader who cannot separate a warm brown from a cool
+	 * blue had no cue at all before pressing Enter. This assertion fails if the
+	 * edge goes back to `outline-solid`.
+	 */
+	assert.equal(
+		painted().filter((s) => s.dashed).length,
+		1,
+		"the not-stored chip's edge is dashed, so its meaning survives its hue",
 	);
 
 	await clickSend(reloaded);
@@ -1620,4 +1703,243 @@ test("the minted name dodges the session's own names, read through the mounted c
 		30,
 		"sanity: the alphabet indexed",
 	);
+});
+
+/* ------------------------------------------------------------------ */
+/* Round 4 — the popup's anchor, the centring band's sentence, and the   */
+/* mint lane's stale count                                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE POPUP'S ANCHOR CARRIES THE MEASURE, and this is the structural half of a
+ * MEASURED defect (design round 4, D1 — the round's only MAJOR).
+ *
+ * The slash list renders `absolute bottom-full left-0 right-0`, so its width and
+ * its x come from its CONTAINING BLOCK and nothing else. Round 3 moved that
+ * anchor from the composer box (which carries `CHAT_MEASURE`) to the wrapper
+ * that also holds the sentence, and the wrapper was `w-full` with no measure of
+ * its own — so the list silently started resolving against the COLUMN. Measured
+ * on the same story and viewport against live `origin/main`: the list was
+ * x 63..961 (w 898, the box's own edge) on `main` and x 48..976 (w 928) here,
+ * and in a 1332px column 241..1139 (898) became 48..1332 (1284) — a 192px
+ * overhang on each side, visible the moment anyone types `/`.
+ *
+ * jsdom has no layout engine, so what this case pins is the STRUCTURE that
+ * produces those numbers: the anchor carries the same measure the box does.
+ * Deleting `CHAT_MEASURE` from the wrapper — the mutation this exists for —
+ * fails it, and the live x-ranges are the rig's business (the record's §7.5 and
+ * the PR's remediation comment carry them).
+ */
+test("the popup's anchoring wrapper carries the composer's shared measure, not the column's", async () => {
+	const frame = await mount();
+	const box = frame.box();
+	const wrapper = box.parentElement;
+	const wrapperClass = ` ${wrapper.getAttribute("class") ?? ""} `;
+	for (const part of CHAT_MEASURE.split(" ").filter(Boolean)) {
+		assert.ok(
+			wrapperClass.includes(part),
+			`the anchoring wrapper must carry \`${part}\` of \`CHAT_MEASURE\`: the list's \`left-0 right-0\` resolves against THIS element, so a wrapper without the measure is a second, wider measure for the list (design round 4, D1). Wrapper class was: ${wrapperClass}`,
+		);
+	}
+	/*
+	 * The other half of the same rule, and the half that makes the measure above
+	 * beat rather than match: the list is `left-0 right-0`, which is what pins its
+	 * width to its containing block instead of its content.
+	 */
+	await openCapture(frame);
+	await key(frame, { key: "Backspace" });
+	const list = window.document.querySelector('[role="listbox"]');
+	assert.ok(list, "the slash list is open on `/cred`");
+	assert.equal(
+		list.parentElement,
+		wrapper,
+		"the list's containing block is that wrapper",
+	);
+	assert.ok(
+		/(^|["\s])left-0( |$)/.test(` ${list.getAttribute("class") ?? ""} `) &&
+			/(^|["\s])right-0( |$)/.test(` ${list.getAttribute("class") ?? ""} `),
+		"and it spans its containing block (`left-0 right-0`), so the wrapper's measure IS the list's width",
+	);
+});
+
+/*
+ * THE CENTRING BAND'S SENTENCE IS MIRRORED BELOW THE GROUP (UX round 4, U16).
+ *
+ * On an empty chat the band claims the column and centres its group, so a line
+ * added anywhere in it moves the whole group by HALF the line — the composer the
+ * operator is typing in included. Measured on the app at 1380 with real
+ * keystrokes: `textarea.y` 402.25 idle -> 416.00 armed, toggling twice while one
+ * command is typed (`/cred` 416.00, `/crede` 402.25, `/credential` 416.00),
+ * where live `origin/main` holds 402.25 through all eleven keystrokes.
+ *
+ * The device is a hidden MIRROR of the sentence at the end of the group: the
+ * group grows by the line on both sides of the box, so the centring shift
+ * cancels for everything between the two lines. Both halves must measure the
+ * same height, which is why they share one class list — asserted below, because
+ * the mechanism is arithmetic and two class lists would be two definitions of
+ * that height. Deleting the mirror (the mutation this exists for) fails the
+ * first assertion; rendering it on a populated pane fails the last.
+ *
+ * jsdom has no layout engine, so this pins the STRUCTURE; the live y-values are
+ * the design record §7.5's and the PR's.
+ */
+const mirrorOf = () =>
+	[...window.document.querySelectorAll("output")].find(
+		(el) => el.getAttribute("aria-hidden") === "true",
+	) ?? null;
+
+const classTokens = (el) =>
+	new Set((el.getAttribute("class") ?? "").split(/\s+/).filter(Boolean));
+
+test("on the band that centres the composer, the sentence is mirrored below the group", async () => {
+	const centred = await mount({
+		conversationId: "conv-centred",
+		messages: [],
+	});
+	const idleMirror = mirrorOf();
+	assert.ok(
+		idleMirror,
+		"the centring band renders its mirror node in every state",
+	);
+	assert.ok(
+		idleMirror.className.includes("hidden"),
+		"and `hidden` while there is no sentence, so the idle composer reserves nothing and stays `origin/main`'s geometry to the pixel",
+	);
+	assert.equal(idleMirror.textContent, "");
+
+	await openCapture(centred);
+	await type(centred, "sk-live-CANARY-4417");
+	const notice = window.document.getElementById("composer-credential-notice");
+	assert.ok(
+		(notice.textContent ?? "").length > 0,
+		"the sentence is up, which is the state the mirror is for",
+	);
+	const mirror = mirrorOf();
+	assert.ok(
+		mirror,
+		"the centring band mirrors the sentence: without it the group grows by one line and the composer moves by half of it (UX round 4, U16)",
+	);
+	assert.equal(
+		mirror.textContent,
+		notice.textContent,
+		"the mirror carries the same sentence, which is what makes its height the sentence's height",
+	);
+	assert.equal(
+		mirror.id,
+		"",
+		"the mirror is not the element `aria-describedby` names",
+	);
+	assert.ok(
+		mirror.classList.contains("invisible"),
+		"it is invisible: it is the same sentence twice, and the sentence is already painted above the box",
+	);
+	const noticeTokens = classTokens(notice);
+	const mirrorTokens = classTokens(mirror);
+	mirrorTokens.delete("invisible");
+	assert.deepEqual(
+		[...mirrorTokens].sort(),
+		[...noticeTokens].sort(),
+		"and it carries the sentence's OWN class list, so the two lines cannot measure different heights (one `credentialNoticeLine`, two consumers)",
+	);
+	/*
+	 * Below the BOX, and that is the arithmetic: the line above the box is what
+	 * grows the group, the line below it is what cancels the centring shift for
+	 * everything between them.
+	 */
+	assert.ok(
+		centred.box().compareDocumentPosition(mirror) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"the mirror is below the composer box in the group",
+	);
+
+	/*
+	 * AND NOT ON A POPULATED PANE, where the band is bottom-anchored: there a
+	 * mirrored line below the box would grow the band downward and push the typed
+	 * line up by the line's full height, which is the defect U14/D1 removed.
+	 */
+	const populated = await mount({ conversationId: "conv-centred-populated" });
+	await openCapture(populated);
+	await type(populated, "sk-live-CANARY-4417");
+	assert.ok(
+		window.document.getElementById("composer-credential-notice").textContent
+			.length > 0,
+		"the same state on a populated pane does raise the sentence",
+	);
+	assert.equal(
+		mirrorOf(),
+		null,
+		"and renders no mirror: the sentence stays in the flow, where the transcript above yields instead",
+	);
+});
+
+/*
+ * THE MINT LANE CANNOT CARRY A STALE COUNT (code review round 4, NIT 2).
+ *
+ * The UX remediation claims a retired disclosure "cannot ride a minted marker
+ * either", and until this case no test minted: the only new coverage was the
+ * Esc → backspaces → cleared → prose → reload lane. The mechanism is by
+ * construction (`applyCapture` writes `disclosureOver(buffer)`, which cannot
+ * match a minted buffer), so this is coverage rather than a defect — but a claim
+ * about a lane nothing exercises is exactly what the round-4 review flagged.
+ *
+ * The shape is QA's D-3, which is the live version of the same walk: a real Esc
+ * leaves nineteen characters disclosed, the box is cleared with real keys and a
+ * second capture is typed and minted, and the count the mint persists is 0 —
+ * including across a reload, which is where a stale count used to come back.
+ */
+test("a retired count cannot ride a minted marker, across the mint and a reload", async () => {
+	const frame = await mount({ conversationId: "conv-mint-lane" });
+	await openCapture(frame);
+	await type(frame, "sk-live-CANARY-4417");
+	await esc(frame);
+	assert.equal(
+		frame.disclosure(),
+		19,
+		"the Esc persists the count WITH the characters it describes",
+	);
+
+	// Clear the box with real keys, then mint a fresh capture into it.
+	const field = frame.textarea();
+	await act(async () => {
+		field.setSelectionRange(0, field.value.length);
+	});
+	await key(frame, { key: "Delete" });
+	assert.equal(frame.notice(), "", "the empty box discloses nothing");
+	await openCapture(frame);
+	await type(frame, "sk-live-CANARY-8888");
+	await enter(frame);
+	assert.match(
+		frame.value(),
+		/^\[Credential #1, 19 chars\] $/,
+		"the span minted a marker rather than sending",
+	);
+	assert.equal(
+		painted().filter((s) => s.pill).length,
+		1,
+		"and the marker is painted: a live pill, not the not-stored chip",
+	);
+	assert.equal(
+		frame.notice(),
+		"",
+		"the sentence is gone over a marker: the characters it described are not in the box any more",
+	);
+	assert.equal(
+		frame.disclosure(),
+		0,
+		"and the count the mint persisted is 0 — the stale nineteen can never ride this marker",
+	);
+
+	const reloaded = await mount({
+		conversationId: "conv-mint-lane",
+		keepWorld: true,
+		remount: true,
+		onSendMessage: async () => true,
+	});
+	assert.equal(reloaded.value(), "[Credential #1, 19 chars] ");
+	assert.equal(
+		reloaded.notice(),
+		"",
+		"a reload restores the marker without raising a claim about plaintext characters",
+	);
+	assert.equal(reloaded.disclosure(), 0, "and re-persists no count");
 });

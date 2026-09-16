@@ -96,6 +96,7 @@ import {
 	type Capture,
 	type CredentialPayload,
 	IDLE_CAPTURE,
+	type UnredactedDisclosure,
 	type UnstoredReason,
 	applyDomEdit,
 	armSpan,
@@ -113,6 +114,7 @@ import {
 	typeIntoCapture,
 	unbackedMarkers,
 	unredactedNotice,
+	unredactedOverBuffer,
 	unstoredNotice,
 } from "./credential-capture";
 
@@ -938,8 +940,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * that is never empty must not consume the opening sample the first empty chat
 		 * of the session is pinned to.
 		 */
-		const showEmptyChatPrompt =
-			messages.length === 0 && !isHydrating && !isSmallView;
+		/*
+		 * THE BAND CENTRES THE COMPOSER: one fact with two consumers, so one
+		 * expression. `grow` is what claims the column, and `justify-center` then
+		 * centres the group - which means anything added to that group moves all of
+		 * it by HALF the addition, the sentence above the box included. That is why
+		 * the sentence is mirrored below the group; the mirror's own comment, beside
+		 * the sentence it mirrors, carries the measurement.
+		 */
+		const bandCentred = messages.length === 0 && !isHydrating;
+
+		const showEmptyChatPrompt = bandCentred && !isSmallView;
 
 		/*
 		 * The empty chat's sample, drawn once and HELD for this composer's mount.
@@ -1038,7 +1049,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * it was built in would persist the previous count — or none — which is
 		 * exactly the class of defect design round 2's D2 filed.
 		 */
-		type UnredactedDisclosure = { chars: number; over: string };
 		const [disclosure, setDisclosureState] =
 			useState<UnredactedDisclosure | null>(null);
 		const disclosureRef = useRef<UnredactedDisclosure | null>(null);
@@ -1054,10 +1064,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * describe (UX round 3, U12's repro B, which persisted `unredactedChars: 7`
 		 * beside `just some prose`).
 		 */
-		const disclosureOver = useCallback((buffer: string) => {
-			const held = disclosureRef.current;
-			return held && held.over === buffer ? held.chars : 0;
-		}, []);
+		const disclosureOver = useCallback(
+			(buffer: string) =>
+				unredactedOverBuffer(disclosureRef.current, buffer) ?? 0,
+			[],
+		);
 		/*
 		 * The buffer the CAPTURE itself last wrote, so a whole-buffer replacement can
 		 * be told apart from the capture's own edit (see the teardown effect below).
@@ -1404,13 +1415,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * What the sentence is about, AS OF THIS RENDER: the count when the box still
 		 * holds the text the Esc produced, and `null` otherwise.
 		 *
-		 * The derivation is what makes the notice able to come DOWN (UX round 3, U12):
-		 * the retirement effect below clears the state on the edit, and this hides the
-		 * sentence in the same commit even before that state change lands — one rule
-		 * for the rendered half and the persisted half (see `disclosureOver`).
+		 * THE RENDERED HALF of `unredactedOverBuffer`, the same rule `disclosureOver`
+		 * wraps for the persisted half — one answer, asked with two buffers, instead of
+		 * two predicates that have to be kept in step. What it buys is that the notice
+		 * comes DOWN on the first edit (UX round 3, U12): the count and the buffer it
+		 * was taken over are compared HERE, so the sentence cannot be rendered over
+		 * text it does not describe, in the same commit as the edit that changed the
+		 * text. The retirement effect further down clears the state itself (and so the
+		 * store with it); this line is why the render cannot lag that effect by a
+		 * commit, and the effect is why the state does not outlive the box.
 		 */
-		const unredactedChars =
-			disclosure && disclosure.over === newMessage ? disclosure.chars : null;
+		const unredactedChars = unredactedOverBuffer(disclosure, newMessage);
 
 		// Slash completion reads the caret position, so it lives above the
 		// textarea's own onChange rather than deriving position from the value.
@@ -3187,6 +3202,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * draw. The variant owns the size; the call sites no longer claim to.
 		 */
 
+		/*
+		 * THE SENTENCE'S LINE, one class list with two consumers.
+		 *
+		 * The sentence above the composer box and the MIRROR of it below the
+		 * composer's group (rendered on the centring band only; see the mirror's own
+		 * comment in `inputContent`) have to measure the SAME height, because the
+		 * whole device is that the group grows by one line on each side of the box and
+		 * therefore recentres without moving it. Two copies of this list would be two
+		 * definitions of that height, and the first edit to either - a padding step, a
+		 * type step - would quietly rebuild the bounce the mirror removes.
+		 */
+		const credentialNoticeLine = cn(
+			"block text-body-sm",
+			// The same padding step the interrupt notice beside the composer uses, so
+			// the two sentences share one text edge with the box's own contents.
+			isSmallView ? "px-2 pb-1" : "px-4 pb-2",
+			// The unredact is the one state where the next Enter discloses a
+			// secret, so it takes the warning role rather than muted ink.
+			unredactedChars !== null ? "text-warning" : "text-ink-muted",
+		);
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
 				{/*
@@ -3601,8 +3637,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * armed state's completion list from painting over the armed state's sentence;
 				 * anchored to the box instead, the two occupy the same strip and the popup (a
 				 * later sibling) wins.
+				 *
+				 * AND THE WRAPPER CARRIES THE MEASURE, which is a round-4 fix rather than
+				 * tidiness (design round 4, D1). The popup's `left-0 right-0` resolves against
+				 * its CONTAINING BLOCK, so moving the anchor from the box (which carries
+				 * `CHAT_MEASURE`) to this wrapper silently re-pointed the list at the COLUMN:
+				 * measured on the same story and the same viewport against live `origin/main`,
+				 * the list was x 63..961 (w 898 - the box's own edge) on `main` and x 48..976
+				 * (w 928) here, and in a 1332px column 241..1139 (898) became 48..1332 (1284),
+				 * a 192px overhang on each side. A positioning wrapper that the thing it
+				 * positions does not measure against is a second measure by accident, which is
+				 * precisely what `chat-measure.ts` exists to prevent. The notice and the box
+				 * keep their own `CHAT_MEASURE` because each is read as the composer in its own
+				 * right (the notice's width is asserted on its own by the suites).
 				 */}
-				<div className="relative w-full">
+				<div className={cn(CHAT_MEASURE, "relative w-full")}>
 					{/*
 					 * The popup is a CHILD of this anchoring wrapper and renders `absolute
 					 * bottom-full`, i.e. deliberately outside the box's content area, above it.
@@ -3662,13 +3711,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						id={CREDENTIAL_NOTICE_ID}
 						className={cn(
 							CHAT_MEASURE,
-							credentialNotice ? "block text-body-sm" : "hidden",
-							// The same padding step the interrupt notice beside the composer uses, so
-							// the two sentences share one text edge with the box's own contents.
-							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
-							// The unredact is the one state where the next Enter discloses a
-							// secret, so it takes the warning role rather than muted ink.
-							unredactedChars !== null ? "text-warning" : "text-ink-muted",
+							credentialNotice ? credentialNoticeLine : "hidden",
 						)}
 					>
 						{credentialNotice}
@@ -4376,6 +4419,72 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						/>
 					</div>
 				)}
+				{/*
+				 * THE SENTENCE'S MIRROR, on the band that CENTRES the composer and nowhere
+				 * else (UX round 4, U16).
+				 *
+				 * THE DEFECT. On an empty chat the band claims the column and centres its
+				 * group, so a line added anywhere in that group moves the whole of it by
+				 * half the line - the composer the operator is typing in included, which is
+				 * the pane the app OPENS on. Measured on the running app at 1380, real
+				 * keystrokes: `textarea.y` 402.25 idle -> 416.00 armed, and it toggles twice
+				 * while one command is typed - `/cred` 416.00, `/crede` 402.25,
+				 * `/credential` 416.00 - where live `origin/main` holds 402.25 through all
+				 * eleven keystrokes. The popup moves with it.
+				 *
+				 * WHY THE TWO OBVIOUS DEVICES DO NOT WORK HERE. Taking the sentence out of
+				 * the flow adds no height, and is what this band wants - but on this band the
+				 * sentence shares its strip with the completion list, which is `absolute
+				 * bottom-full` above it in the same wrapper: with no line in the flow the
+				 * list resolves to the sentence's own strip, and the list (a later sibling,
+				 * `z-20`) wins. That sentence is the only thing that says what Enter will do
+				 * (UX round 2, U10), so it cannot be the half that loses. Reserving the line
+				 * while the sentence is ABSENT is no better: it moves the IDLE empty-chat
+				 * composer, which is `origin/main`'s to the pixel today (402.25 on both trees
+				 * at 1380), and an empty sentence rendering no box at all is a property the
+				 * suites pin.
+				 *
+				 * THE DEVICE. Mirror the line BELOW the group instead, so the group grows by
+				 * the line on both sides of the box: the centring shift cancels for
+				 * everything between the two lines - the box, the status row, the tip row and
+				 * the chips all sit at their idle y, and the sentence paints in the space the
+				 * group's own top vacates. Both halves must measure the same height, which is
+				 * why they share `credentialNoticeLine`. The clearance is structural rather
+				 * than tuned: the greeting above yields exactly one line, so the sentence's
+				 * top is always the idle gap below the greeting's bottom (32px: the splash's
+				 * `gap-6` plus the form's `pt-2`), whatever the sentence's own height or the
+				 * column's width.
+				 *
+				 * CONFINED TO THIS BAND, and that is a requirement rather than tidiness: on a
+				 * populated pane the band is bottom-anchored (`shrink-0`, the box pinned by
+				 * its bottom edge), so a mirrored line under the box would grow the band
+				 * downward and push the typed line UP by the line's full height - the defect
+				 * U14/D1 removed. There, the sentence stays in the flow, where the transcript
+				 * above it yields instead.
+				 *
+				 * WHY IT IS INVISIBLE AND ARIA-HIDDEN rather than a spacer: it is the same
+				 * sentence twice, so it must neither be announced (a screen reader would read
+				 * the notice twice) nor painted (the sentence is already on screen, above the
+				 * box). It carries no `id`, because `CREDENTIAL_NOTICE_ID` names one element
+				 * and `aria-describedby` points at that one. And it renders `hidden` while
+				 * there is no sentence, so the idle band still reserves nothing.
+				 *
+				 * WHAT IT COSTS, disclosed: the greeting yields one line (27.5px at 1380)
+				 * when the sentence arrives, in place of the composer's half-line. Nothing
+				 * else in the pane moves.
+				 */}
+				{bandCentred ? (
+					<output
+						aria-hidden="true"
+						className={cn(
+							CHAT_MEASURE,
+							credentialNotice ? credentialNoticeLine : "hidden",
+							"invisible",
+						)}
+					>
+						{credentialNotice}
+					</output>
+				) : null}
 			</form>
 		);
 
@@ -4461,7 +4570,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * band. A switch into a session that really is empty is the only case
 					 * that then moves, and that is the honest move.
 					 */
-					messages.length === 0 && !isHydrating ? "grow" : "shrink-0",
+					bandCentred ? "grow" : "shrink-0",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the

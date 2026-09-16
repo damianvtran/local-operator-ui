@@ -78,6 +78,7 @@ const {
 	tokenSpans,
 	typeIntoCapture,
 	unredactedNotice,
+	unredactedOverBuffer,
 	unstoredNotice,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -1699,6 +1700,54 @@ test("a duplicated citation is cited once and not-stored after it", () => {
  * The notices (§4, §5, §9.4) — one authority per phrase
  * ---------------------------------------------------------------------------
  */
+
+/*
+ * §5/§6's ONE RULE FOR "does this count describe this buffer" (code review round
+ * 4, MINOR 1).
+ *
+ * The rule has two callers and one answer: the RENDERED sentence asks it with the
+ * render's own buffer, and the PERSISTED count asks it (through `disclosureOver`)
+ * with the value it is about to write. It is pinned HERE, in the pure module,
+ * because the DOM suite cannot tell it apart from the retirement effect that runs
+ * in the same commit: with the `over` test dropped, every rendered case stayed
+ * green (measured - 21/21 passing with the mutation in place), so the component
+ * suite was pinning the effect while the record credited the derivation.
+ *
+ * What the rule prevents, and why a bare count is not enough: the sentence says
+ * "N characters are now PLAIN TEXT in the composer", and the count travels in
+ * the persisted draft. Unpaired, four backspaces left it claiming eleven over a
+ * seven-character remnant, a cleared box retyped with ordinary prose re-persisted
+ * the stale seven, and a restored marker could carry it into a transcript that
+ * mentions no secret at all (UX round 3, U12).
+ */
+test("a disclosure count applies only to the buffer it was taken over", () => {
+	const held = { chars: 11, over: "/credential BACKSPACE-1" };
+	assert.equal(
+		unredactedOverBuffer(held, "/credential BACKSPACE-1"),
+		11,
+		"the count stands while the box still holds the text it describes",
+	);
+	assert.equal(
+		unredactedOverBuffer(held, "/credential BACKSPA"),
+		null,
+		"and comes down on the first edit: a shorter remnant is not the buffer it was taken over",
+	);
+	assert.equal(
+		unredactedOverBuffer(held, ""),
+		null,
+		"an empty box discloses nothing",
+	);
+	assert.equal(
+		unredactedOverBuffer(held, "[Credential #1, 19 chars] "),
+		null,
+		"and a minted marker cannot carry a count taken over the plaintext it replaced",
+	);
+	assert.equal(
+		unredactedOverBuffer(null, "/credential BACKSPACE-1"),
+		null,
+		"no disclosure means no count, whatever the box holds",
+	);
+});
 
 test("the notices are the TUI's own sentences", () => {
 	assert.equal(
