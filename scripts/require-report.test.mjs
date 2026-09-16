@@ -22,13 +22,7 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-	mkdtempSync,
-	readFileSync,
-	readdirSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -71,15 +65,12 @@ function withGate(body, fn) {
 }
 
 test("a gate that answers is passed through untouched", () =>
-	withGate(
-		`echo "checked 3 things, all present"\nexit 0\n`,
-		(args, options) => {
-			const step = runStep(args, options);
-			assert.equal(step.status, 0);
-			assert.match(step.stdout, /checked 3 things, all present/);
-			assert.doesNotMatch(step.stdout, /produced no report/);
-		},
-	));
+	withGate(`echo "checked 3 things, all present"\nexit 0\n`, (args, options) => {
+		const step = runStep(args, options);
+		assert.equal(step.status, 0);
+		assert.match(step.stdout, /checked 3 things, all present/);
+		assert.doesNotMatch(step.stdout, /produced no report/);
+	}));
 
 test("a gate that succeeds and says nothing is refused, not read as a pass", () =>
 	// The defect's exact signature, which the repository shipped from nine scripts:
@@ -89,7 +80,10 @@ test("a gate that succeeds and says nothing is refused, not read as a pass", () 
 	withGate(`# runs nothing\n`, (args, options) => {
 		const step = runStep(args, options);
 		assert.equal(step.status, 1);
-		assert.match(step.stdout, /::error title=Stub gate produced no report::/);
+		assert.match(
+			step.stdout,
+			/::error title=Stub gate produced no report::/,
+		);
 		assert.match(step.stdout, /exited 0 without printing anything/);
 	}));
 
@@ -117,16 +111,13 @@ test("a silent FAILURE is not re-read as a silence", () =>
 	}));
 
 test("a gate that dies with output keeps both", () =>
-	withGate(
-		`echo "guard: could not read the base commit" >&2\nexit 2\n`,
-		(args, options) => {
-			const step = runStep(args, options);
-			assert.equal(step.status, 2);
-			// stderr is folded into the step's single stream, which is where a reader and
-			// the runner both look.
-			assert.match(step.stdout, /could not read the base commit/);
-		},
-	));
+	withGate(`echo "guard: could not read the base commit" >&2\nexit 2\n`, (args, options) => {
+		const step = runStep(args, options);
+		assert.equal(step.status, 2);
+		// stderr is folded into the step's single stream, which is where a reader and
+		// the runner both look.
+		assert.match(step.stdout, /could not read the base commit/);
+	}));
 
 test("the helper refuses to be called wrong rather than passing silently", () => {
 	// A caller that forgot the command is a defect in the step. Passing 0 here would

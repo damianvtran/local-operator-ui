@@ -27,6 +27,16 @@
  */
 
 import { spawn } from "node:child_process";
+// The REAL Electron binary, not `node_modules/.bin/electron`. That path is a
+// shell -> `node cli.js` -> Electron chain, so the pid a harness holds is the
+// SHIM's: signalling it stops the shim and leaves the app running while the
+// harness reports it stopped (QA round 1, Q1 — one leaked main in QA's run and
+// five in their own harness). Imported from `electron` in plain Node it resolves
+// to the binary itself, so the pid we hold is the app's.
+import electronPath from "electron";
+import { createServer } from "node:http";
+import { connect } from "node:net";
+import { networkInterfaces } from "node:os";
 import {
 	existsSync,
 	mkdirSync,
@@ -36,18 +46,8 @@ import {
 	statSync,
 	writeFileSync,
 } from "node:fs";
-import { createServer } from "node:http";
-import { connect } from "node:net";
-import { networkInterfaces } from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-// The REAL Electron binary, not `node_modules/.bin/electron`. That path is a
-// shell -> `node cli.js` -> Electron chain, so the pid a harness holds is the
-// SHIM's: signalling it stops the shim and leaves the app running while the
-// harness reports it stopped (QA round 1, Q1 — one leaked main in QA's run and
-// five in their own harness). Imported from `electron` in plain Node it resolves
-// to the binary itself, so the pid we hold is the app's.
-import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
@@ -112,9 +112,7 @@ function say(line) {
 function check(label, ok, detail) {
 	const status = ok ? "PASS" : "FAIL";
 	if (!ok) failures += 1;
-	say(
-		`[${status}] ${label}${detail === undefined ? "" : `\n        ${detail}`}`,
-	);
+	say(`[${status}] ${label}${detail === undefined ? "" : `\n        ${detail}`}`);
 	record(label, `[${status}] ${detail === undefined ? "" : detail}`);
 	return ok;
 }
@@ -220,9 +218,7 @@ function startSite() {
 					"persistent=1; Path=/; Max-Age=86400",
 				],
 			});
-			res.end(
-				"<!doctype html><title>cookie set</title><p id=cookies>cookies set</p>",
-			);
+			res.end("<!doctype html><title>cookie set</title><p id=cookies>cookies set</p>");
 			return;
 		}
 		if (url.pathname === "/page2") {
@@ -234,9 +230,7 @@ function startSite() {
 		res.end(PAGE);
 	});
 	return new Promise((resolve) => {
-		server.listen(0, "127.0.0.1", () =>
-			resolve({ server, port: server.address().port }),
-		);
+		server.listen(0, "127.0.0.1", () => resolve({ server, port: server.address().port }));
 	});
 }
 
@@ -283,11 +277,7 @@ async function launchApp() {
 	DEVTOOLS_PORT = await freeDevtoolsPort();
 	const child = spawn(
 		electronPath,
-		[
-			".",
-			`--user-data-dir=${USER_DATA}`,
-			`--remote-debugging-port=${DEVTOOLS_PORT}`,
-		],
+		[".", `--user-data-dir=${USER_DATA}`, `--remote-debugging-port=${DEVTOOLS_PORT}`],
 		{
 			env,
 			cwd: ROOT,
@@ -309,34 +299,23 @@ async function launchApp() {
 		clearInterval(timer);
 		flush();
 	});
-	return {
-		child,
-		logPath,
-		stream,
-		flush,
-		stop: () =>
-			new Promise((resolve) => {
-				/** Kill the process GROUP, not just the pid, and tolerate a group that has
-				 * already gone away. */
-				const killTree = (signal) => {
-					try {
-						process.kill(-child.pid, signal);
-					} catch {
-						try {
-							child.kill(signal);
-						} catch {
-							/* already dead */
-						}
-					}
-				};
-				child.once("exit", resolve);
-				killTree("SIGTERM");
-				setTimeout(() => {
-					killTree("SIGKILL");
-					resolve();
-				}, 5000);
-			}),
-	};
+	return { child, logPath, stream, flush, stop: () => new Promise((resolve) => {
+		/** Kill the process GROUP, not just the pid, and tolerate a group that has
+		 * already gone away. */
+		const killTree = (signal) => {
+			try {
+				process.kill(-child.pid, signal);
+			} catch {
+				try { child.kill(signal); } catch { /* already dead */ }
+			}
+		};
+		child.once("exit", resolve);
+		killTree("SIGTERM");
+		setTimeout(() => {
+			killTree("SIGKILL");
+			resolve();
+		}, 5000);
+	}) };
 }
 
 function stateFilePath() {
@@ -369,22 +348,13 @@ async function rpc(state, method, params = {}, options = {}) {
 			"Content-Type": "application/json",
 			...(options.omitKey ? {} : { "X-Bridge-Key": key }),
 		},
-		body:
-			typeof options.rawBody === "string"
-				? options.rawBody
-				: JSON.stringify({
-						id: options.id ?? `proof-${method}`,
-						method,
-						params,
-					}),
+		body: typeof options.rawBody === "string"
+			? options.rawBody
+			: JSON.stringify({ id: options.id ?? `proof-${method}`, method, params }),
 	});
 	const text = await response.text();
 	let json = null;
-	try {
-		json = JSON.parse(text);
-	} catch {
-		/* not JSON: the status is the fact */
-	}
+	try { json = JSON.parse(text); } catch { /* not JSON: the status is the fact */ }
 	return { status: response.status, headers: response.headers, text, json };
 }
 
@@ -410,12 +380,8 @@ async function rpcOk(state, method, params = {}) {
  * "the IPC handler is missing" while the handler was registered and working.
  */
 async function rendererEvaluate(expression, options = {}) {
-	const list = await (
-		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
-	).json();
-	const page = list.find(
-		(target) => target.type === "page" && target.url.startsWith("file:"),
-	);
+	const list = await (await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)).json();
+	const page = list.find((target) => target.type === "page" && target.url.startsWith("file:"));
 	if (!page) throw new Error("no renderer target on the debugging port");
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
 	await new Promise((resolve, reject) => {
@@ -438,9 +404,7 @@ async function rendererEvaluate(expression, options = {}) {
 				logged.push(String(incoming.params.entry.text ?? ""));
 			}
 			if (incoming.method === "Runtime.consoleAPICalled") {
-				const args = (incoming.params?.args ?? []).map((a) =>
-					String(a.value ?? a.description ?? ""),
-				);
+				const args = (incoming.params?.args ?? []).map((a) => String(a.value ?? a.description ?? ""));
 				logged.push(args.join(" "));
 			}
 			if (incoming.id === EVALUATE_ID) resolve(incoming);
@@ -461,8 +425,7 @@ async function rendererEvaluate(expression, options = {}) {
 	});
 	// The blocked-request report arrives after the evaluate settles, so give the log
 	// channel a moment before closing the socket.
-	if (options.collectLogs)
-		await new Promise((resolve) => setTimeout(resolve, 1500));
+	if (options.collectLogs) await new Promise((resolve) => setTimeout(resolve, 1500));
 	socket.close();
 	if (message.error) return { error: `CDP: ${message.error.message}` };
 	if (message.result?.exceptionDetails) {
@@ -487,9 +450,7 @@ async function waitForRenderer(timeoutMs = 60_000) {
 		);
 		if (ready.value === "ready") return;
 		if (Date.now() - started > timeoutMs) {
-			throw new Error(
-				`the renderer never exposed window.api.browser (${JSON.stringify(ready)})`,
-			);
+			throw new Error(`the renderer never exposed window.api.browser (${JSON.stringify(ready)})`);
 		}
 		await new Promise((resolve) => setTimeout(resolve, 250));
 	}
@@ -500,29 +461,17 @@ async function waitForRenderer(timeoutMs = 60_000) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function approve(state, origin, decision, kind = "async") {
-	const requested = await rpcOk(state, "request_access", {
-		url: origin,
-		requester: "session:proof",
-	});
-	if (requested.state === "allowed")
-		return { requested, answered: null, awaited: { state: "allowed" } };
+	const requested = await rpcOk(state, "request_access", { url: origin, requester: "session:proof" });
+	if (requested.state === "allowed") return { requested, answered: null, awaited: { state: "allowed" } };
 	const pending = await rendererEvaluate(
 		"window.api.browser.state().then((s) => JSON.stringify(s.pendingConsent))",
 	);
-	const entry = JSON.parse(pending.value ?? "[]").find(
-		(candidate) => candidate.origin === origin,
-	);
-	if (!entry)
-		throw new Error(
-			`no pending consent for ${origin}: ${JSON.stringify(pending)}`,
-		);
+	const entry = JSON.parse(pending.value ?? "[]").find((candidate) => candidate.origin === origin);
+	if (!entry) throw new Error(`no pending consent for ${origin}: ${JSON.stringify(pending)}`);
 	const answered = await rendererEvaluate(
 		`window.api.browser.respondToConsent(${JSON.stringify(entry.entryId)}, ${JSON.stringify(decision)}).then((s) => JSON.stringify(s))`,
 	);
-	const awaited = await rpcOk(state, "await_access", {
-		url: origin,
-		requester: "session:proof",
-	});
+	const awaited = await rpcOk(state, "await_access", { url: origin, requester: "session:proof" });
 	return { requested, answered, awaited, kind };
 }
 
@@ -561,13 +510,7 @@ async function main() {
 	app = await launchApp();
 	let state = await waitForState();
 	say(`state file: ${stateFilePath()}`);
-	say(
-		app.stream
-			.join("")
-			.split("\n")
-			.filter((line) => line.includes("[browser]"))
-			.join("\n"),
-	);
+	say(app.stream.join("").split("\n").filter((line) => line.includes("[browser]")).join("\n"));
 
 	await waitForRenderer();
 	// The renderer owns layout (design 11.2): the chrome measures its content area
@@ -603,10 +546,7 @@ async function main() {
 	);
 	check(
 		"the record names a live ui host with a protocol version",
-		state.host === "ui" &&
-			state.proto === 1 &&
-			typeof state.session_key === "string" &&
-			state.session_key.length >= 32,
+		state.host === "ui" && state.proto === 1 && typeof state.session_key === "string" && state.session_key.length >= 32,
 		`host=${state.host} proto=${state.proto} key length=${state.session_key.length} pid=${state.pid}`,
 	);
 
@@ -615,64 +555,23 @@ async function main() {
 	const healthBody = await health.json();
 	check(
 		"/health identifies this process",
-		health.status === 200 &&
-			healthBody.host === "ui" &&
-			healthBody.pid === state.pid,
+		health.status === 200 && healthBody.host === "ui" && healthBody.pid === state.pid,
 		`GET /health -> ${health.status} ${JSON.stringify(healthBody)}`,
 	);
 	const noKey = await rpc(state, "status", {}, { omitKey: true });
-	check(
-		"a request without the key is refused",
-		noKey.status === 401,
-		`-> ${noKey.status} ${noKey.text}`,
-	);
-	const wrongKey = await rpc(
-		state,
-		"status",
-		{},
-		{ key: `${state.session_key}x` },
-	);
-	check(
-		"a request with the wrong key is refused",
-		wrongKey.status === 401,
-		`-> ${wrongKey.status} ${wrongKey.text}`,
-	);
+	check("a request without the key is refused", noKey.status === 401, `-> ${noKey.status} ${noKey.text}`);
+	const wrongKey = await rpc(state, "status", {}, { key: `${state.session_key}x` });
+	check("a request with the wrong key is refused", wrongKey.status === 401, `-> ${wrongKey.status} ${wrongKey.text}`);
 	const unknownMethod = await rpc(state, "teleport", {});
-	check(
-		"an unknown method is refused at the boundary",
-		unknownMethod.status === 422,
-		`-> ${unknownMethod.status} ${unknownMethod.text}`,
-	);
+	check("an unknown method is refused at the boundary", unknownMethod.status === 422, `-> ${unknownMethod.status} ${unknownMethod.text}`);
 	const malformed = await rpc(state, "status", {}, { rawBody: "{not json" });
-	check(
-		"a malformed body is refused",
-		malformed.status === 422,
-		`-> ${malformed.status} ${malformed.text}`,
-	);
-	const extraField = await rpc(
-		state,
-		"status",
-		{},
-		{
-			rawBody: JSON.stringify({
-				id: "x",
-				method: "status",
-				params: {},
-				extra: 1,
-			}),
-		},
-	);
-	check(
-		"an unknown envelope field is refused",
-		extraField.status === 422,
-		`-> ${extraField.status} ${extraField.text}`,
-	);
+	check("a malformed body is refused", malformed.status === 422, `-> ${malformed.status} ${malformed.text}`);
+	const extraField = await rpc(state, "status", {}, { rawBody: JSON.stringify({ id: "x", method: "status", params: {}, extra: 1 }) });
+	check("an unknown envelope field is refused", extraField.status === 422, `-> ${extraField.status} ${extraField.text}`);
 	const unauthorised = await rpc(state, "read", { tab: "ui:1:deadbeef" });
 	check(
 		"an unauthorised surface handle is refused with the tool's own code",
-		unauthorised.status === 200 &&
-			unauthorised.json?.ok === false &&
-			unauthorised.json.error.code === "tab_closed",
+		unauthorised.status === 200 && unauthorised.json?.ok === false && unauthorised.json.error.code === "tab_closed",
 		`-> ${unauthorised.text}`,
 	);
 	// --- 2b. the bind address, and what the rest of this machine's LAN can do --
@@ -699,11 +598,7 @@ async function main() {
 		);
 	} else {
 		const refused = await new Promise((resolve) => {
-			const socket = connect({
-				host: lan.address,
-				port: state.port,
-				timeout: 2000,
-			});
+			const socket = connect({ host: lan.address, port: state.port, timeout: 2000 });
 			socket.once("connect", () => {
 				socket.destroy();
 				resolve("CONNECTED");
@@ -724,22 +619,16 @@ async function main() {
 	const statusCall = await rpc(state, "status", {});
 	check(
 		"a valid call answers the envelope the Python client expects",
-		statusCall.status === 200 &&
-			statusCall.json?.id === "proof-status" &&
-			statusCall.json.ok === true,
+		statusCall.status === 200 && statusCall.json?.id === "proof-status" && statusCall.json.ok === true,
 		`-> ${statusCall.text.slice(0, 400)}`,
 	);
 	record("status", JSON.stringify(statusCall.json.result, null, 2));
 
 	// --- 3. the origin gate --------------------------------------------------
-	const unapproved = await rpc(state, "open", {
-		url: `${siteOrigin}/`,
-		requester: "session:proof",
-	});
+	const unapproved = await rpc(state, "open", { url: `${siteOrigin}/`, requester: "session:proof" });
 	check(
 		"an agent open on an unapproved origin fails early, before any prompt",
-		unapproved.status === 200 &&
-			unapproved.json?.error?.code === "origin_not_allowed",
+		unapproved.status === 200 && unapproved.json?.error?.code === "origin_not_allowed",
 		`-> ${unapproved.text}`,
 	);
 
@@ -747,23 +636,18 @@ async function main() {
 	const approved = await approve(state, siteOrigin, "site");
 	check(
 		"request_access raises a prompt the app's chrome can answer, and await_access sees the decision",
-		approved.requested.state === "pending" &&
-			approved.awaited.state === "allowed",
+		approved.requested.state === "pending" && approved.awaited.state === "allowed",
 		`request_access -> ${JSON.stringify(approved.requested)}\nrespondToConsent (via window.api.browser) -> ${approved.answered?.value ?? approved.answered?.error}\nawait_access -> ${JSON.stringify(approved.awaited)}`,
 	);
 
 	// --- 5. a real page, driven ---------------------------------------------
-	const opened = await rpcOk(state, "open", {
-		url: `${siteOrigin}/`,
-		requester: "session:proof",
-	});
+	const opened = await rpcOk(state, "open", { url: `${siteOrigin}/`, requester: "session:proof" });
 	const handle = opened.tab;
 	say(`opened ${handle} -> ${opened.url} "${opened.title}"`);
 	const read = await rpcOk(state, "read", { tab: handle });
 	check(
 		"read returns the page's text from the isolated world",
-		read.text.includes("Browser host proof page") &&
-			read.url === `${siteOrigin}/`,
+		read.text.includes("Browser host proof page") && read.url === `${siteOrigin}/`,
 		`read.text starts: ${JSON.stringify(read.text.slice(0, 120))}... url=${read.url}`,
 	);
 	const isolation = await rpcOk(state, "read", {
@@ -788,16 +672,8 @@ async function main() {
 	// agent would have read.
 	const nameRef = /- textbox "Name" \[(e\d+)\]/.exec(snapshot1.snapshot)?.[1];
 	const goRef = /- button "Go" \[(e\d+)\]/.exec(snapshot1.snapshot)?.[1];
-	check(
-		"the snapshot exposes the controls by ref",
-		Boolean(nameRef && goRef),
-		`name=${nameRef} go=${goRef}`,
-	);
-	const typed = await rpcOk(state, "type", {
-		tab: handle,
-		ref: nameRef,
-		text: "Ada Lovelace",
-	});
+	check("the snapshot exposes the controls by ref", Boolean(nameRef && goRef), `name=${nameRef} go=${goRef}`);
+	const typed = await rpcOk(state, "type", { tab: handle, ref: nameRef, text: "Ada Lovelace" });
 	check(
 		"type lands in the field and reads back",
 		typed.value === "Ada Lovelace",
@@ -807,8 +683,7 @@ async function main() {
 	const readAfter = await rpcOk(state, "read", { tab: handle });
 	check(
 		"click fires the page's handler (the click reads back as the page wrote it)",
-		readAfter.text.includes("clicked with Ada Lovelace") &&
-			clicked.navigated === false,
+		readAfter.text.includes("clicked with Ada Lovelace") && clicked.navigated === false,
 		`click -> ${JSON.stringify(clicked)}\nread after click: ${JSON.stringify(readAfter.text.slice(0, 160))}`,
 	);
 	// Taken BEFORE the scroll below: the frame should be the page the agent just
@@ -820,18 +695,11 @@ async function main() {
 	writeFileSync(shotPath, bytes);
 	check(
 		"screenshot returns a PNG, written here and magic-checked",
-		bytes[0] === 0x89 &&
-			bytes[1] === 0x50 &&
-			bytes[2] === 0x4e &&
-			bytes[3] === 0x47 &&
-			bytes.length > 10_000,
+		bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 && bytes.length > 10_000,
 		`${shotPath}: ${bytes.length} bytes, magic ${bytes.subarray(0, 8).toString("hex")}, url=${shot.url}, title=${JSON.stringify(shot.title)}`,
 	);
 
-	const scrolled = await rpcOk(state, "scroll", {
-		tab: handle,
-		direction: "bottom",
-	});
+	const scrolled = await rpcOk(state, "scroll", { tab: handle, direction: "bottom" });
 	check(
 		"scroll moves the page and reports whether more remains",
 		scrolled.scrollY > 0 && scrolled.moreBelow === false,
@@ -841,20 +709,13 @@ async function main() {
 	const levels = new Set(logs.entries.map((entry) => entry.level));
 	check(
 		"logs carry console output and the uncaught exception",
-		logs.entries.length >= 4 &&
-			levels.has("error") &&
-			levels.has("warning") &&
-			levels.has("log"),
+		logs.entries.length >= 4 && levels.has("error") && levels.has("warning") && levels.has("log"),
 		`${logs.entries.length} entries\n${logs.entries.map((entry) => `  ${entry.level} [${entry.source}] ${entry.text.replace(/\n/g, " ").slice(0, 90)}`).join("\n")}`,
 	);
 	// The page records the permission outcome asynchronously, so poll for it rather
 	// than racing it.
 	let geoText = await rpcOk(state, "read", { tab: handle, selector: "#geo" });
-	for (
-		let attempt = 0;
-		attempt < 20 && geoText.text.includes("not asked");
-		attempt += 1
-	) {
+	for (let attempt = 0; attempt < 20 && geoText.text.includes("not asked"); attempt += 1) {
 		await sleep(250);
 		geoText = await rpcOk(state, "read", { tab: handle, selector: "#geo" });
 	}
@@ -863,13 +724,8 @@ async function main() {
 		geoText.text.includes("denied"),
 		`geolocation result on the page: ${JSON.stringify(geoText.text)}`,
 	);
-	const popupText = await rpcOk(state, "read", {
-		tab: handle,
-		selector: "#popup",
-	});
-	const tabsAfterPopup = await rpcOk(state, "tabs", {
-		requester: "session:proof",
-	});
+	const popupText = await rpcOk(state, "read", { tab: handle, selector: "#popup" });
+	const tabsAfterPopup = await rpcOk(state, "tabs", { requester: "session:proof" });
 	check(
 		"a popup is blocked and creates no tab",
 		popupText.text.includes("blocked") && tabsAfterPopup.tabs.length === 1,
@@ -877,16 +733,11 @@ async function main() {
 	);
 	// --- 6. a navigation, and the epoch it invalidates ----------------------
 	const staleClick = await rpc(state, "click", { tab: handle, ref: goRef });
-	const navigated = await rpcOk(state, "goto", {
-		tab: handle,
-		url: `${siteOrigin}/page2`,
-		requester: "session:proof",
-	});
+	const navigated = await rpcOk(state, "goto", { tab: handle, url: `${siteOrigin}/page2`, requester: "session:proof" });
 	const afterNav = await rpc(state, "click", { tab: handle, ref: goRef });
 	check(
 		"a goto re-reports the page that arrived, and a pre-navigation ref is refused",
-		navigated.url === `${siteOrigin}/page2` &&
-			afterNav.json?.error?.code === "element_not_found",
+		navigated.url === `${siteOrigin}/page2` && afterNav.json?.error?.code === "element_not_found",
 		`goto -> ${JSON.stringify(navigated)}\nclick with the pre-navigation ref -> ${afterNav.text}`,
 	);
 	check(
@@ -926,8 +777,7 @@ async function main() {
 	});
 	check(
 		"the tab is usable again after a timed-out navigation",
-		afterHung.json?.ok === true &&
-			afterHung.json.result.url === `${siteOrigin}/page2`,
+		afterHung.json?.ok === true && afterHung.json.result.url === `${siteOrigin}/page2`,
 		`goto ${siteOrigin}/page2 after the timeout -> ${afterHung.text}`,
 	);
 
@@ -951,12 +801,7 @@ async function main() {
 	check(
 		"the app's own renderer cannot use the agent's RPC",
 		String(rendererReach.value).startsWith("blocked:"),
-		`from the renderer: ${rendererReach.value ?? rendererReach.error}\nchromium's own reason: ${
-			(rendererReach.logged ?? [])
-				.filter((line) => /CORS|blocked|fetch|Access-Control/i.test(line))
-				.slice(-3)
-				.join(" | ") || "(no console line captured)"
-		}`,
+		`from the renderer: ${rendererReach.value ?? rendererReach.error}\nchromium's own reason: ${(rendererReach.logged ?? []).filter((line) => /CORS|blocked|fetch|Access-Control/i.test(line)).slice(-3).join(" | ") || "(no console line captured)"}`,
 	);
 	const rendererNoCors = await rendererEvaluate(
 		`(async () => {
@@ -977,16 +822,8 @@ async function main() {
 		"a no-cors attempt yields nothing readable either",
 		typeof rendererNoCors.value === "string" &&
 			(rendererNoCors.value.startsWith("blocked:") ||
-				(rendererNoCors.value.includes("type opaque") &&
-					rendererNoCors.value.includes('readable: ""'))),
-		`from the renderer: ${rendererNoCors.value ?? rendererNoCors.error}\nchromium's own reason: ${
-			(rendererNoCors.logged ?? [])
-				.filter((line) =>
-					/CORS|blocked|fetch|Access-Control|private/i.test(line),
-				)
-				.slice(-3)
-				.join(" | ") || "(no console line captured)"
-		}`,
+				(rendererNoCors.value.includes("type opaque") && rendererNoCors.value.includes('readable: ""'))),
+		`from the renderer: ${rendererNoCors.value ?? rendererNoCors.error}\nchromium's own reason: ${(rendererNoCors.logged ?? []).filter((line) => /CORS|blocked|fetch|Access-Control|private/i.test(line)).slice(-3).join(" | ") || "(no console line captured)"}`,
 	);
 
 	// --- 8. where the jar lives, and what is in it ---------------------------
@@ -1006,15 +843,8 @@ async function main() {
 	// quit (see the restart step below): Chromium keeps cookies in memory and writes
 	// them lazily, so a read against a running app reports an empty table and would
 	// have "measured" the wrong thing.
-	await rpcOk(state, "open", {
-		url: `${siteOrigin}/set`,
-		requester: "session:proof",
-	});
-	const echoBefore = await rpcOk(state, "goto", {
-		tab: handle,
-		url: `${siteOrigin}/echo`,
-		requester: "session:proof",
-	});
+	await rpcOk(state, "open", { url: `${siteOrigin}/set`, requester: "session:proof" });
+	const echoBefore = await rpcOk(state, "goto", { tab: handle, url: `${siteOrigin}/echo`, requester: "session:proof" });
 	const echoBeforeRead = await rpcOk(state, "read", { tab: handle });
 	record("cookies the jar sent before restart", echoBeforeRead.text);
 	say(`before restart, /echo received: ${echoBeforeRead.text.trim()}`);
@@ -1032,9 +862,7 @@ async function main() {
 	const cookieRows = cookieQuery.stdout.trim();
 	check(
 		"the persistent cookie is in Chromium's own store, with the flags to match",
-		cookieRows
-			.split("\n")
-			.some((row) => row.includes("persistent") && row.includes("|1|1")),
+		cookieRows.split("\n").some((row) => row.includes("persistent") && row.includes("|1|1")),
 		`sqlite3 ${cookieDb} "select host_key,name,is_persistent,has_expires from cookies order by name"\n${cookieRows || "(no rows)"}\nstderr: ${cookieQuery.stderr.trim() || "(none)"}`,
 	);
 	record(
@@ -1046,15 +874,11 @@ async function main() {
 	app = await launchApp();
 	state = await waitForState();
 	say(`restarted: new port ${state.port}, same profile ${state.profile_dir}`);
-	const persistedApproval = await rpcOk(state, "open", {
-		url: `${siteOrigin}/echo`,
-		requester: "session:proof",
-	});
+	const persistedApproval = await rpcOk(state, "open", { url: `${siteOrigin}/echo`, requester: "session:proof" });
 	const echoAfter = await rpcOk(state, "read", { tab: persistedApproval.tab });
 	check(
 		"an approved origin stays approved across a restart (the grant is durable)",
-		typeof persistedApproval.tab === "string" &&
-			persistedApproval.tab.startsWith("ui:"),
+		typeof persistedApproval.tab === "string" && persistedApproval.tab.startsWith("ui:"),
 		`open after restart -> ${JSON.stringify({ tab: persistedApproval.tab, url: persistedApproval.url })}`,
 	);
 	record("cookies the jar sent after restart", echoAfter.text);
@@ -1084,20 +908,16 @@ async function main() {
 		url: `${siteOrigin}/echo`,
 		requester: "session:proof",
 	});
-	const afterClearRead = await rpcOk(state, "read", {
-		tab: persistedApproval.tab,
-	});
+	const afterClearRead = await rpcOk(state, "read", { tab: persistedApproval.tab });
 	const afterClearStatus = await rpcOk(state, "status", {});
 	check(
 		"clearing cookies empties the jar over the app's own IPC",
-		cleared.value?.includes("cookies") === true &&
-			afterClearRead.text.includes("(none)"),
+		cleared.value?.includes("cookies") === true && afterClearRead.text.includes("(none)"),
 		`window.api.browser.clearData("cookies") -> ${cleared.value ?? cleared.error}\nafter clearing, /echo saw: ${afterClearRead.text.trim()}`,
 	);
 	check(
 		"clearing cookies does NOT revoke the agent's approvals (they are policy, not data)",
-		afterClearStatus.approvals.allowed_origins >= 1 ||
-			afterClearStatus.approvals.broad_grants >= 1,
+		afterClearStatus.approvals.allowed_origins >= 1 || afterClearStatus.approvals.broad_grants >= 1,
 		`status.approvals after the clear: ${JSON.stringify(afterClearStatus.approvals)}`,
 	);
 	void afterClear;
@@ -1106,19 +926,13 @@ async function main() {
 	const finalLogPath = app.logPath;
 	await stopApp();
 	const logAfter = readFileSync(finalLogPath, "utf8");
-	const browserLines = (logAfter + logBefore)
-		.split("\n")
-		.filter((line) => line.includes("[browser]"));
+	const browserLines = (logAfter + logBefore).split("\n").filter((line) => line.includes("[browser]"));
 	check(
 		"the host logged its denials and its decisions",
-		browserLines.some((line) => line.includes("denied a geolocation")) &&
-			browserLines.some((line) => line.includes("blocked a popup")),
+		browserLines.some((line) => line.includes("denied a geolocation")) && browserLines.some((line) => line.includes("blocked a popup")),
 		browserLines.slice(0, 40).join("\n"),
 	);
-	record(
-		"app log lines from the browser host",
-		browserLines.slice(0, 60).join("\n"),
-	);
+	record("app log lines from the browser host", browserLines.slice(0, 60).join("\n"));
 
 	const summary = [
 		"# Browser host end-to-end proof",
@@ -1142,12 +956,8 @@ function run(command, args) {
 		const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
 		let stdout = "";
 		let stderr = "";
-		child.stdout.on("data", (chunk) => {
-			stdout += chunk.toString();
-		});
-		child.stderr.on("data", (chunk) => {
-			stderr += chunk.toString();
-		});
+		child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
+		child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
 		child.on("close", (code) => resolve({ code, stdout, stderr }));
 	});
 }
