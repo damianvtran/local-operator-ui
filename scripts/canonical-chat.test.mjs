@@ -177,6 +177,75 @@ test("authoritative refresh removes absent IDs while newer viewed revision survi
 	assert.deepEqual(rows[0].attention.revision, [5, 5]);
 });
 
+/**
+ * #1170's marker: a daemon that could not read liveness must not be rendered as
+ * an idle machine.
+ *
+ * The daemon now says which reads it could not answer (`degraded: ["liveness"]`)
+ * because a swallowed liveness read publishes `active: false` for every row,
+ * which the sidebar renders as "Nothing running right now." over rows that
+ * exist - a claim about the machine derived from a read that FAILED. The field
+ * is additive, so this asserts the compatibility half as well: a daemon that
+ * sends nothing leaves the marker empty and every surface renders as it did.
+ */
+test("the daemon's unread reads are carried, and an absent marker is not an empty store", async () => {
+	reset();
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [{ id: "aaaa", name: "frame", mtime: 5, active: false }],
+		truncated: false,
+		degraded: ["liveness"],
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(store.getState().statusUnavailable, ["liveness"]);
+	assert.equal(store.getState().error, null);
+
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [{ id: "aaaa", name: "frame", mtime: 5, active: false }],
+		truncated: false,
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().statusUnavailable,
+		[],
+		"a daemon that predates the marker must leave the app exactly as it was",
+	);
+
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [],
+		truncated: false,
+		degraded: "liveness",
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().statusUnavailable,
+		[],
+		"a marker that is not a list of read names is not evidence about any read",
+	);
+});
+
+/**
+ * The sentence half of the same marker, asserted on the source in the shape
+ * this file already uses for a JSX-level rule (U16, D2): rendering the sidebar
+ * needs the whole chat feature tree, while the state that feeds it is pinned
+ * behaviourally in the case above.
+ */
+test("Active chats stops claiming nothing is running when liveness went unread", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		rendered,
+		/statusUnavailable\.includes\("liveness"\)/,
+		"the sidebar no longer reads the daemon's marker, so it cannot help but claim an idle machine",
+	);
+	assert.match(
+		rendered,
+		/livenessUnread\s*\?\s*"The daemon could not read which chats are running[^"]*"\s*:\s*"Nothing running right now\."/,
+		"the Active chats section claims nothing is running even when the read that would know did not answer",
+	);
+});
+
 test("create success plus admission failure retries exact same session and payload", async () => {
 	reset();
 	let attempts = 0;

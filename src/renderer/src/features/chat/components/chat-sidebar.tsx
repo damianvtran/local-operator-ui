@@ -191,6 +191,10 @@ export function ChatSidebar({
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
+	// The daemon's own marker for reads it could not answer. Empty for any daemon
+	// that predates it, which is what keeps this additive.
+	const statusUnavailable = useCanonicalSessionsStore((s) => s.statusUnavailable);
+	const livenessUnread = statusUnavailable.includes("liveness");
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
 	const [query, setQuery] = useState("");
@@ -1135,7 +1139,9 @@ export function ChatSidebar({
 											.map((row) => sessionRow(row))
 									) : (
 										<p className="px-2 text-meta text-ink-muted">
-											Nothing running right now.
+											{livenessUnread
+												? "The daemon could not read which chats are running, so this list may be incomplete."
+												: "Nothing running right now."}
 										</p>
 									))}
 							</section>
