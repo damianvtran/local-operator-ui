@@ -848,14 +848,62 @@ const EXCEPTIONS = [
 	 * the text pair above: a shared control's colour, recorded where a reader
 	 * can find it rather than changed in a panel's PR.
 	 */
-	{ theme: "monokai", fg: "dangerBorder", bg: "elevated", got: 2.49, why: "the danger control's only edge on a dialog ground; worst of the eight" },
-	{ theme: "dracula", fg: "dangerBorder", bg: "elevated", got: 2.51, why: "same pair as monokai" },
-	{ theme: "radient", fg: "dangerBorder", bg: "elevated", got: 2.58, why: "same pair as monokai" },
-	{ theme: "synth", fg: "dangerBorder", bg: "elevated", got: 2.6, why: "same pair as monokai" },
-	{ theme: "obsidian", fg: "dangerBorder", bg: "elevated", got: 2.65, why: "same pair as monokai" },
-	{ theme: "tokyoNight", fg: "dangerBorder", bg: "elevated", got: 2.66, why: "same pair as monokai" },
-	{ theme: "neon", fg: "dangerBorder", bg: "elevated", got: 2.78, why: "same pair as monokai" },
-	{ theme: "dune", fg: "dangerBorder", bg: "elevated", got: 2.88, why: "same pair as monokai; 0.12 under the floor" },
+	{
+		theme: "monokai",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.49,
+		why: "the danger control's only edge on a dialog ground; worst of the eight",
+	},
+	{
+		theme: "dracula",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.51,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "radient",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.58,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "synth",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.6,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "obsidian",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.65,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "tokyoNight",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.66,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "neon",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.78,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "dune",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.88,
+		why: "same pair as monokai; 0.12 under the floor",
+	},
 ];
 
 /*

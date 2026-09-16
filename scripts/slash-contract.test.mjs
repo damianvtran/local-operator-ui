@@ -652,7 +652,7 @@ test("an unambiguous Enter still asks the destination before it runs", () => {
 	}
 });
 
-	/*
+/*
  * The click footer's claim has to be the one the gesture KEEPS. Both the copy
  * and the pick read the same two inputs — a command row's destination rule
  * (`pointerPickRuns`) and an argument list's own `runs` — so the cases below

@@ -59,6 +59,13 @@ import { join } from "node:path";
  */
 import { withMockKeychain } from "./chrome-keychain.mjs";
 
+/*
+ * The one regex this rig needs, at module scope: biome's `useTopLevelRegex`
+ * charges a literal compiled inside a function, and the stderr listener below
+ * runs on every chunk Chrome writes.
+ */
+const DEVTOOLS_LISTENING = /DevTools listening on (ws:\/\/[^\s]+)/;
+
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://localhost:6006";
 const OUT = process.argv[3] ?? "docs/evidence/chat-slash-enter-gestures";
@@ -68,7 +75,8 @@ const OUT = process.argv[3] ?? "docs/evidence/chat-slash-enter-gestures";
  * rather than discovered so a rename fails loudly at the first wait instead of
  * photographing Storybook's own error page.
  */
-const STORY = process.env.SLASH_PROOF_STORY ?? "chat-message-input--slash-enter";
+const STORY =
+	process.env.SLASH_PROOF_STORY ?? "chat-message-input--slash-enter";
 /* The app's own default window, and the frame the story is authored at. */
 const WIDTH = Number(process.env.SLASH_PROOF_WIDTH ?? 1380);
 const HEIGHT = Number(process.env.SLASH_PROOF_HEIGHT ?? 900);
@@ -165,7 +173,7 @@ const wsUrl = await new Promise((resolve, reject) => {
 	);
 	chrome.stderr.on("data", (d) => {
 		buf += d.toString();
-		const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+		const m = buf.match(DEVTOOLS_LISTENING);
 		if (m) {
 			clearTimeout(t);
 			resolve(m[1]);
@@ -174,7 +182,9 @@ const wsUrl = await new Promise((resolve, reject) => {
 });
 
 const browser = new WebSocket(wsUrl);
-await new Promise((r) => (browser.onopen = r));
+await new Promise((resolve) => {
+	browser.onopen = resolve;
+});
 let nextId = 1;
 const pending = new Map();
 browser.onmessage = (event) => {
@@ -187,7 +197,7 @@ browser.onmessage = (event) => {
 			: resolve(msg.result);
 	}
 };
-const raw = (method, params = {}, sessionId) =>
+const raw = (method, params, sessionId) =>
 	new Promise((resolve, reject) => {
 		const id = nextId++;
 		pending.set(id, { resolve, reject });
@@ -216,7 +226,9 @@ async function evaluate(expression) {
 		returnByValue: true,
 	});
 	if (res.exceptionDetails) {
-		throw new Error(res.exceptionDetails.exception?.description ?? "page error");
+		throw new Error(
+			res.exceptionDetails.exception?.description ?? "page error",
+		);
 	}
 	return res.result.value;
 }
@@ -429,7 +441,10 @@ browser.addEventListener("message", (event) => {
 			`exception: ${msg.params.exceptionDetails?.exception?.description ?? msg.params.exceptionDetails?.text}`,
 		);
 	}
-	if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") {
+	if (
+		msg.method === "Runtime.consoleAPICalled" &&
+		msg.params.type === "error"
+	) {
 		pageProblems.push(
 			`console.error: ${msg.params.args.map((a) => a.value ?? a.description ?? a.type).join(" ")}`,
 		);
@@ -472,7 +487,8 @@ try {
 		await reset();
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(THEME)} }, version: 0 })); } catch {}`,
-		});		await typeWord(testCase.word, testCase.trailing, testCase.caretLefts);
+		});
+		await typeWord(testCase.word, testCase.trailing, testCase.caretLefts);
 		const before = await evaluate(READ_STATE);
 		const beforeFrame = await shoot(`${testCase.name}-before`);
 		if (testCase.click) {
@@ -488,7 +504,9 @@ try {
 		for (const [field, expected] of Object.entries(testCase.expect)) {
 			const actual = after[field];
 			if (actual !== expected) {
-				mismatches.push(`${field}: ${JSON.stringify(actual)} (expected ${JSON.stringify(expected)})`);
+				mismatches.push(
+					`${field}: ${JSON.stringify(actual)} (expected ${JSON.stringify(expected)})`,
+				);
 			}
 		}
 		if (mismatches.length > 0) failures += 1;
@@ -518,7 +536,10 @@ try {
 } finally {
 	record.pageProblems = pageProblems;
 	record.failures = failures;
-	writeFileSync(join(OUT, "result.json"), `${JSON.stringify(record, null, 2)}\n`);
+	writeFileSync(
+		join(OUT, "result.json"),
+		`${JSON.stringify(record, null, 2)}\n`,
+	);
 	chrome.kill("SIGTERM");
 }
 
