@@ -374,9 +374,10 @@ jobs:
           # `Error: VITE_GOOGLE_CLIENT_ID is not set` (and the same for each of the
           # other three) from `loadConfig`, before a single module is compiled, so
           # this step could not complete while these lines were absent - which is
-          # what every dispatch of this workflow did. Runs 35009147986, 35011068051,
-          # 35016174653, 35021403386 and 35027593846 failed exactly here
-          # (`failed to load config from electron.vite.config.js`), so the
+          # what EVERY dispatch of this workflow did: seven at the time of writing,
+          # all of them on `main`, from 35009147986 to 35040000402, and every one
+          # of them failed exactly here (`failed to load config from
+          # electron.vite.config.js`), so the
           # `exact-update` job this workflow exists for - the unmodified incumbent
           # updater driving itself onto the candidate's exact signed bytes - has
           # never run once since the workflow was added. `publish.yml` declares

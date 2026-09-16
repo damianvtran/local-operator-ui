@@ -207,9 +207,10 @@ jobs:
           # (`scripts/vite-plugins/`, as `electron.vite.config.js` wires them) refuse
           # to build without fails with nothing but "VITE_GOOGLE_CLIENT_ID is not set"
           # in its log, so nobody notices until somebody reads one - which is how
-          # `signed-update-candidate.yml`'s build job failed on all five of the
-          # dispatches it ever had, leaving the `exact-update` job it exists to feed
-          # unexercised for the workflow's whole life. The check derives the variable
+          # `signed-update-candidate.yml`'s build job failed on EVERY one of the
+          # dispatches it has ever had, seven at the time of writing and all of them
+          # on `main`, leaving the `exact-update` job it exists to feed unexercised
+          # for the workflow's whole life. The check derives the variable
           # names from those plugins rather than holding its own copy, fails a binding
           # whose `secrets.*` name disagrees with the rest of the tree, and fails an
           # invocation it cannot resolve rather than dropping it; this step is where
