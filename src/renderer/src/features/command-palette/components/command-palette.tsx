@@ -13,7 +13,7 @@ import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useChatPanelRequestStore } from "@shared/store/chat-panel-request-store";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Search as LucideSearch, X } from "lucide-react";
 import {
@@ -27,6 +27,7 @@ import {
 	useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
 	PALETTE_GROUP_TITLES,
@@ -131,7 +132,7 @@ export const CommandPalette: FC = () => {
 	const isCreateAgentDialogOpen = useUiPreferencesStore(
 		(state) => state.isCreateAgentDialogOpen,
 	);
-	const requestPanel = useChatPanelRequestStore((state) => state.requestPanel);
+	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 
 	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam();
 	const getLastAgentId = useAgentSelectionStore(
@@ -310,20 +311,26 @@ export const CommandPalette: FC = () => {
 					return;
 				case "panel": {
 					/*
-					 * A panel is presented BY THE CHAT PANE, so the request is written
-					 * first and the route is moved second: the pane consumes it as it mounts,
-					 * and a request written after the navigation would race the consumer's
-					 * own mount.
+					 * A panel is presented by a HOST, and which one depends on the
+					 * destination: a session-scoped panel is the chat pane's (its adapters
+					 * need the pane's canonical handle) and a machine panel has a shell host
+					 * too (`panel-outlet.tsx`). So the request is written first either way —
+					 * the pane consumes it as it mounts, and a request written after the
+					 * navigation would race the consumer's own mount — and the route moves
+					 * only for the destinations that need a pane to be presented at all.
 					 *
-					 * Navigating only when we are not already there matters for the rows a
-					 * session pane offers: `/chat` on its own keeps the store's active session,
-					 * so re-routing an already-open conversation is a no-op the user did not
-					 * ask for, while re-routing from Settings is the whole point of the row.
+					 * That single condition is requirement R2: choosing Analytics while
+					 * reading Settings used to throw the user back to chat to show them a page
+					 * about the machine they were already looking at.
 					 */
 					const { destination } = item.target;
 					requestPanel(destination);
 					closeCommandPalette();
-					if (!location.pathname.startsWith("/chat")) navigate("/chat");
+					if (
+						destinationNeedsSession(destination) &&
+						!location.pathname.startsWith("/chat")
+					)
+						navigate("/chat");
 					return;
 				}
 			}
