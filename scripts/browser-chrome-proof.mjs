@@ -3344,6 +3344,122 @@ async function main() {
 			`pinned control reads ${JSON.stringify(poolSeen.pin)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "19-strip-pooled-20-over-6.png")}`);
+
+		/*
+		 * ---- 19b. THE PINNED CONTROL, OPEN, WITH A REAL PAGE BEHIND IT ----------
+		 *
+		 * THE FRAME §12.1 ASKED FOR. The design's open question 1 is mechanical but
+		 * unmeasured: a Radix menu anchored in the band paints DOWNWARD into the content
+		 * rect, `browser-view-policy.ts:34-38` deliberately does not register menus in the
+		 * band, and no z-index beats a native sibling view — so the pinned control, which
+		 * is the token "the user can always reach any tab" is spent on, may have been
+		 * unreadable exactly at the scale it exists for.
+		 *
+		 * THIS STEP IS THEREFORE THE ACCEPTANCE TEST, NOT A PHOTOGRAPH: it opens the
+		 * control and composites the frame the way every other frame here is composited —
+		 * the renderer's own paint plus the PAGE layer at the content rectangle — so if
+		 * the page covers the control's rows, the composite says so in pixels, and the
+		 * rows' own hit-testability is read from the DOM as well. A step that asserted
+		 * only "the menu exists" would be green in both worlds.
+		 *
+		 * THE PAGE LAYER NEEDS AN AGENT TAB: `capturePage` addresses a tab by its handle,
+		 * and a user tab has no handle by design (§6.3). So one agent tab is opened in the
+		 * first conversation and activated, which is also the state the frame wants — the
+		 * active tab is the only one that occupies the content rectangle.
+		 */
+		const pinAgent = await rpc(state, "open", {
+			url: `${origin()}/second`,
+			requester: "session:conv-alpha",
+		});
+		const pinToken = pinAgent.json?.result?.tab ?? null;
+		check(
+			"an agent tab is available for the page layer, in one of the pool's conversations",
+			typeof pinToken === "string",
+			`${pinAgent.status} ${JSON.stringify(pinAgent.json?.result ?? pinAgent.json?.error)}`,
+		);
+		const activated = await evaluate(`(() => {
+			const rows = [...document.querySelectorAll('[role="tab"]')];
+			const agent = rows.find((row) => row.innerText.includes('Agent'));
+			if (!agent) return 'missing';
+			agent.click();
+			return 'clicked';
+		})()`);
+		await wait(600);
+		const pinTrigger = await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-overflow"]') ? 'present' : 'missing'`,
+		);
+		const pinLabel = await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-overflow"]')?.getAttribute('aria-label') ?? null`,
+		);
+		await realClick('[data-tour-tag="browser-tab-overflow"]');
+		/*
+		 * EITHER SHAPE IS ACCEPTED HERE, deliberately. On the tree this step was written
+		 * against the control opens a Radix menu (`[role="menu"]`); the change it is the
+		 * acceptance test for replaces that with a band row
+		 * (`browser-tab-overflow-list`). Waiting for one of them is what lets the SAME
+		 * command produce the before frame and the after frame the design's §6.3 asks
+		 * for, rather than two harnesses that are not comparable.
+		 */
+		const pinReading = await waitFor(
+			async () => {
+				const reading = await evaluate(`(() => {
+				const list = document.querySelector('[data-tour-tag="browser-tab-overflow-list"]');
+				const menu = document.querySelector('[role="menu"]');
+				const open = list ?? menu;
+				if (!open) return null;
+				const box = (node) => {
+					if (!node) return null;
+					const rect = node.getBoundingClientRect();
+					return { top: Math.round(rect.top), bottom: Math.round(rect.bottom), left: Math.round(rect.left), right: Math.round(rect.right), height: Math.round(rect.height) };
+				};
+				const rows = [...open.querySelectorAll('[data-tour-tag="browser-tab-overflow-row"], [role="menuitem"]')];
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				return {
+					shape: list ? "in-band list" : "dropdown menu",
+					box: box(open),
+					content: box(content),
+					rows: rows.slice(0, 4).map((row) => row.innerText.replace(/\\s+/g, ' ').trim()),
+					rowCount: rows.length,
+					ticked: rows.filter((row) => row.getAttribute('aria-current') === 'true' || row.querySelector('[aria-hidden="false"]')).length,
+				};
+			})()`);
+				return reading;
+			},
+			"the pinned control to open, as a list or as a menu",
+			15_000,
+		);
+		const pinFrameChrome = await captureRenderer("19b-pinned-control-open");
+		const pinPage = await capturePage(
+			state,
+			pinToken,
+			"19b-pinned-control-open",
+		);
+		const pinRect = await contentRect();
+		const pinFrame = await compose(
+			"19b-pinned-control-open",
+			pinFrameChrome,
+			pinPage,
+			pinRect,
+		);
+		record(
+			"the pinned control, open",
+			JSON.stringify({ pinTrigger, pinLabel, pinReading, pinRect }, null, 2),
+		);
+		check(
+			"the pinned control opens with a row for every tab in the pool, in the band rather than over the page",
+			pinReading !== null &&
+				pinReading.rows.length > 0 &&
+				pinReading.rowCount === poolSeen.rows + 1 &&
+				pinReading.box !== null &&
+				pinReading.content !== null &&
+				// OUTSIDE the native view's rectangle, which is the whole claim: a
+				// control whose box intersects the content rect is drawn where the page
+				// paints, and the composite is where a reader can see it.
+				pinReading.box.bottom <= pinReading.content.top &&
+				pinReading.box.top >= 0,
+			`${pinReading?.shape}: ${pinReading?.rowCount} row(s), box ${JSON.stringify(pinReading?.box)} against the content rect's bottom ${pinReading?.content?.bottom}`,
+		);
+		say(`frame: ${join(OUT_DIR, "19b-pinned-control-open.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);

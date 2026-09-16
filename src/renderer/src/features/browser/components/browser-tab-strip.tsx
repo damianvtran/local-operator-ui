@@ -1,11 +1,4 @@
-import {
-	Button,
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-	Tooltip,
-} from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	Bot,
@@ -246,6 +239,23 @@ export function stateChips(
 }
 
 /**
+ * A group's name, for the strip's chip and the band list's headings.
+ *
+ * ONE RULE FOR BOTH, and the unattributed run's own sentence lives here rather than
+ * at two call sites: `sessionDisplayName` resolves a conversation, and `null` is not
+ * a conversation but the user's own tabs, which the design names `No conversation`
+ * (open question 8).
+ */
+function groupLabelName(
+	group: { sessionId: string | null },
+	sessions: ReadonlyArray<{ session_id: string; title?: string | null }>,
+): string {
+	return group.sessionId === null
+		? "No conversation"
+		: sessionDisplayName(group.sessionId, sessions);
+}
+
+/**
  * The floor rung for a row: the Tailwind width classes, per tier.
  *
  * EXTRACTED AS A FUNCTION RATHER THAN INLINED IN THE ROW so the invariant behind it
@@ -313,7 +323,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** Which tab's actions are expanded in the band, if any. Local view state: the
 	 * expansion is not a fact about a tab, and main has no opinion about it. */
 	const [actionsTabId, setActionsTabId] = useState<number | null>(null);
+	/** Whether the pinned control's list of every tab is open, in the band. Local view
+	 * state for the same reason the actions row's is: it is not a fact about a tab. */
+	const [overflowOpen, setOverflowOpen] = useState(false);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
+	/** The pinned control's own element, so dismissing the list hands focus back to the
+	 * control that opened it — the same contract the actions row has with its trigger
+	 * (UX round 2, U9). */
+	const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
+	/** The list itself, so opening it can move focus INTO the band (D4's rule, applied
+	 * to the second band row rather than re-derived for it). */
+	const overflowRowRef = useRef<HTMLDivElement | null>(null);
 
 	/** One ref per tab's actions trigger, so dismissing the row can hand focus back
 	 * to the tab it belonged to (UX round 2, U9: both dismissal paths unmount the
@@ -346,6 +366,25 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		// focused element after an unrelated click in the dock was this row).
 		actionsRowRef.current?.focus();
 	}, [actionsTabId]);
+
+	/**
+	 * Dismiss the pinned list and put the caret back where it came from.
+	 *
+	 * THE RETURN IS THE WHOLE REASON THE TRIGGER HAS A REF: every dismissal path
+	 * unmounts the element that had focus, which drops a keyboard user to `<body>` and
+	 * out of the strip entirely — the class of defect the actions row's own note
+	 * records from UX round 2 (U9). The band's rows are all reachable by keyboard, so
+	 * this one has to be right rather than merely survivable.
+	 */
+	const closeOverflow = useCallback((): void => {
+		setOverflowOpen(false);
+		overflowTriggerRef.current?.focus();
+	}, []);
+
+	useEffect(() => {
+		if (!overflowOpen) return;
+		overflowRowRef.current?.focus();
+	}, [overflowOpen]);
 
 	// The activated tab scrolls into view (spec §6's last row). With the width
 	// policy kept, a long strip scrolls, and a tab activated from the dock or by an
@@ -614,13 +653,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							? groupLeads.get(tab.tabId)
 							: undefined;
 						const groupLabel = group
-							? {
-									...group,
-									name:
-										group.sessionId === null
-											? "No conversation"
-											: sessionDisplayName(group.sessionId, sessions),
-								}
+							? { ...group, name: groupLabelName(group, sessions) }
 							: null;
 						// The divider belongs to the gap between two inactive tabs: the active
 						// one is continuous with the page, so no rule may run into it — and a tab
@@ -994,68 +1027,31 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					})}
 				</div>
 				{tabsOffScreen > 0 && (
-					/*
-					 * THE PINNED WAY TO REACH ANY TAB, which is the canvas's own answer to
-					 * the same problem (`canvas-tabs.tsx`: "scrolling sideways to find a file
-					 * is a fallback, not the only route"): one control in a fixed place
-					 * listing every tab, with the active one ticked. It sits OUTSIDE the
-					 * scroller, so it cannot itself be scrolled out of reach.
-					 *
-					 * IT APPEARS ONLY WHEN SOMETHING IS MISSING, AND IT COUNTS (QA round 1,
-					 * Q2): the count is the control's own text, its label and its tooltip say
-					 * what the count means, and a strip that fits draws no control at all.
-					 * That is also why the gate is `tabsOffScreen` rather than
-					 * `tabs.length > 1`, which is what it was for one round.
-					 *
-					 * IT EXISTS BECAUSE OF D1: at the pane's default width a strip of four
-					 * tabs still overflows after the floors step down (the narrow tier holds
-					 * four 1-chip rows; anything wider, or a 480px pane, runs out), and a
-					 * mouse has no horizontal wheel to scroll with. The two halves are one
-					 * answer - the floors decide how many fit, and this says how many did not.
-					 */
-					<DropdownMenu>
-						<Tooltip
-							content={
-								tabsOffScreen === 1
-									? "All tabs — 1 not shown"
-									: `All tabs — ${tabsOffScreen} not shown`
-							}
+					<Tooltip
+						content={
+							tabsOffScreen === 1
+								? "All tabs — 1 not shown"
+								: `All tabs — ${tabsOffScreen} not shown`
+						}
+					>
+						<Button
+							ref={overflowTriggerRef}
+							variant="ghost"
+							size="icon-sm"
+							aria-label={`All tabs, ${tabsOffScreen} not shown`}
+							aria-expanded={overflowOpen}
+							onClick={() => setOverflowOpen((open) => !open)}
+							data-tour-tag="browser-tab-overflow"
+							className={cn("shrink-0 gap-0.5 self-center px-1")}
 						>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									aria-label={`All tabs, ${tabsOffScreen} not shown`}
-									data-tour-tag="browser-tab-overflow"
-									className={cn("shrink-0 gap-0.5 self-center px-1")}
-								>
-									<ChevronDown aria-hidden="true" />
-									{/* The count itself, at the chip's own step and tabular so two
-									    digits do not shift the row it sits in. */}
-									<span
-										aria-hidden="true"
-										className={cn("text-meta tabular-nums")}
-									>
-										+{tabsOffScreen}
-									</span>
-								</Button>
-							</DropdownMenuTrigger>
-						</Tooltip>
-						<DropdownMenuContent align="end" className={cn("max-w-80")}>
-							{tabs.map((tab) => (
-								<DropdownMenuItem
-									key={tab.tabId}
-									onSelect={() => onActivate(tab.tabId)}
-								>
-									<Check
-										aria-hidden="true"
-										className={cn(tab.tabId !== activeTabId && "invisible")}
-									/>
-									<span className={cn("truncate")}>{tabLabel(tab.title)}</span>
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+							<ChevronDown aria-hidden="true" />
+							{/* The count itself, at the chip's own step and tabular so two
+							    digits do not shift the row it sits in. */}
+							<span aria-hidden="true" className={cn("text-meta tabular-nums")}>
+								+{tabsOffScreen}
+							</span>
+						</Button>
+					</Tooltip>
 				)}
 				{tabs.length > 0 && (
 					/* Not drawn when the strip is empty (design round 1, N3): the page area
@@ -1075,6 +1071,140 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					</Tooltip>
 				)}
 			</div>
+			{overflowOpen && (
+				/*
+				 * THE BAND ROW THE PINNED CONTROL OPENS, and the reason it is a row and not
+				 * a menu: a Radix menu anchored in the band paints DOWNWARD into the content
+				 * rect, where the native view wins — `browser-view-policy.ts:34-38`
+				 * deliberately does not register menus in the band, and no z-index beats a
+				 * native sibling view. This row is outside that rectangle, so nothing here can
+				 * be occluded and nothing needs suppressing; the strip grows by its height and
+				 * the page's own rectangle shrinks by exactly the same amount, because the
+				 * content element is measured by a `ResizeObserver` and the host re-bounds the
+				 * view. The SAME trade the actions row below makes, and the reason the dock
+				 * narrows rather than hides.
+				 *
+				 * BOUNDED, and that is not cosmetic: 20 tabs of sections would otherwise push
+				 * the page off screen, which is the failure the dock's design exists to avoid
+				 * (design risk 7). `max-h-36` plus the row's own scroll keeps the band a band.
+				 *
+				 * FOCUS MOVES IN ON OPEN AND BACK TO THE TRIGGER ON CLOSE (the effects above),
+				 * so a keyboard user is not dropped to `<body>` by either path — the UX round
+				 * 2 (U9) class of defect, which the actions row was fixed for.
+				 */
+				<div
+					ref={overflowRowRef}
+					tabIndex={-1}
+					onKeyDown={(event) => {
+						if (event.key === "Escape") {
+							event.stopPropagation();
+							closeOverflow();
+						}
+					}}
+					className="flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
+					data-tour-tag="browser-tab-overflow-list"
+				>
+					<div className="flex items-center gap-2 px-2">
+						<span className="text-meta text-ink-dim">
+							{tabsOffScreen === 1
+								? "All tabs, 1 not shown"
+								: `All tabs, ${tabsOffScreen} not shown`}
+						</span>
+						<div className="grow" />
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Hide all tabs"
+							onClick={closeOverflow}
+							data-tour-tag="browser-tab-overflow-dismiss"
+						>
+							{/* The same chevron the actions row uses to close itself: one shape for
+							    "this band row goes away", on both rows. */}
+							<ChevronUp aria-hidden className="size-3.5" />
+						</Button>
+					</div>
+					<div className="max-h-36 overflow-y-auto">
+						{groups.map((group) => (
+							<div
+								key={group.sessionId ?? "unattributed"}
+								data-tour-tag="browser-tab-overflow-section"
+							>
+								{/* A section's heading is drawn under the same rule as the strip's
+								    chips: two conversations need naming, one does not. */}
+								{showGroupLabels && (
+									<div className="flex items-center gap-1.5 px-2 pt-1 text-meta text-ink-dim">
+										<MessagesSquare aria-hidden className="size-3.5" />
+										<span
+											className="truncate"
+											title={groupLabelName(group, sessions)}
+										>
+											{groupLabelName(group, sessions)}
+										</span>
+										<span className="tabular-nums">{group.tabs.length}</span>
+									</div>
+								)}
+								{group.tabs.map((tab) => (
+									<button
+										type="button"
+										key={tab.tabId}
+										onClick={() => {
+											closeOverflow();
+											onActivate(tab.tabId);
+										}}
+										aria-current={tab.tabId === activeTabId}
+										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+										data-tour-tag="browser-tab-overflow-row"
+									>
+										<Check
+											aria-hidden
+											className={cn(
+												"size-3.5 shrink-0",
+												tab.tabId !== activeTabId && "invisible",
+											)}
+										/>
+										<TabMark tab={tab} />
+										<span className="min-w-0 grow truncate" title={tab.title}>
+											{tab.title}
+										</span>
+									</button>
+								))}
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+			{/*
+			 * THE PINNED WAY TO REACH ANY TAB, IN THE BAND (design R4, fix 2).
+			 *
+			 * IT WAS A RADIX DROPDOWN, AND THE MENU WAS THE BUG. A dropdown anchored
+			 * in the band paints DOWNWARD into the content rect, and the native view
+			 * wins there: `browser-view-policy.ts:34-38` deliberately does not
+			 * register menus in the band and no z-index beats a native sibling view.
+			 * The row's actions were moved into the band for exactly this reason; the
+			 * pinned control was not, and it is the token "the user can always reach
+			 * any tab" is spent on — so the one control that exists for tabs you
+			 * cannot see could not be seen either, at precisely the scale it is for.
+			 *
+			 * SO IT IS A BAND ROW NOW, the same shape and the same dismissal contract
+			 * as the actions row: the strip grows by its height, the page's rect
+			 * shrinks by the same amount (`ResizeObserver` in `browser-surface.tsx`),
+			 * and NOTHING IS OCCLUDED AND NOTHING IS SUPPRESSED. That is the trade the
+			 * dock's design already makes, and the reason the page narrows rather than
+			 * hides.
+			 *
+			 * IT IS THE CANVAS'S OWN ANSWER to the same problem (`canvas-tabs.tsx`:
+			 * "scrolling sideways to find a file is a fallback, not the only route"), and
+			 * it sits OUTSIDE the scroller so it cannot itself be scrolled out of reach.
+			 * IT APPEARS ONLY WHEN SOMETHING IS MISSING, AND IT COUNTS (QA round 1, Q2):
+			 * the count is its own text, and a strip that fits draws no control at all -
+			 * which is why the gate is `tabsOffScreen` and not `tabs.length > 1`.
+			 *
+			 * SECTIONED BY CONVERSATION, because at the scale this control exists for
+			 * — 20 tabs over six conversations — a flat list of 20 names is the same
+			 * problem as the strip, one level up. The sections come from the SAME
+			 * grouping the strip renders (`groups`, above), so a tab cannot be in one
+			 * conversation's section here and another's run there.
+			 */}
 			{actionsTab && (
 				// IN THE BAND, which is the whole point: this row is outside the native
 				// view's rectangle, so it is visible. The strip grows by this row's height

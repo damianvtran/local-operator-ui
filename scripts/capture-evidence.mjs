@@ -626,6 +626,10 @@ export const STORIES = [
 	["browser-tab-strip--grouped", 1280, 140],
 	["browser-tab-strip--grouped-overflow", 1280, 140],
 	["browser-tab-strip--chips-collapsed", 640, 140],
+	/* The pinned control's list, open, in the band: the frame §12.1 asked for, where the
+	   question is whether a page behind it can occlude it. Captured at the pane's 640
+	   for the same reason `chips-collapsed` is - that is where the control appears. */
+	["browser-tab-strip--overflow-list", 640, 280],
 	/* The dock, which replaced the Sites sheet. It is a full-height in-flow panel,
 	   so the declared height is the panel's; `narrow` is captured in a 560px
 	   viewport because the dock's own width classes are the product's (`w-80` below
