@@ -42,18 +42,21 @@
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
+import type { RunPanelSection } from "@shared/store/ui-preferences-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, PanelRightClose } from "lucide-react";
+import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { RunChildReader } from "./run-child-reader";
 import {
 	type McpServerRow,
-	OPEN_CHILD_STATUSES,
 	type RunDetails,
 	type SubagentRow,
+	isOpenChildStatus,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
@@ -482,7 +485,19 @@ export const RunPanel = ({
 	const clearReveal = useUiPreferencesStore(
 		(state) => state.clearRunPanelReveal,
 	);
+	/*
+	 * The sections a reveal request can name, held as one ref each. The LOOKUP is
+	 * what the request goes through (below), so a section can be added to
+	 * `RunPanelSection` and named here without the effect growing a branch per
+	 * section — and a request for a section that is NOT on screen (a plan that left
+	 * the wire between the press and this effect, or a chip whose rows settled under
+	 * the user's finger) resolves to nothing and is retired, which is the behaviour
+	 * this path already had for its one section.
+	 */
+	const bodyRef = useRef<HTMLDivElement | null>(null);
 	const todosSectionRef = useRef<HTMLElement | null>(null);
+	const subagentsSectionRef = useRef<HTMLElement | null>(null);
+	const jobsSectionRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (!revealRequest) return;
@@ -497,17 +512,51 @@ export const RunPanel = ({
 			onReaderChildChange(null);
 			return;
 		}
-		const target = todosSectionRef.current;
-		if (target) {
+		/*
+		 * A `Record` over the union rather than a chain of ternaries, and that is a
+		 * correctness property and not a style choice (agent review round 1, m2): as
+		 * a chain, the last arm is a catch-all, so a FOURTH member of
+		 * `RunPanelSection` would compile and silently scroll the jobs section for a
+		 * destination that has no section of its own. Here the omission is a type
+		 * error, and the reader can see at a glance that every destination the store
+		 * can hold has a section.
+		 */
+		const sectionRefs: Record<
+			RunPanelSection,
+			RefObject<HTMLElement | null>
+		> = {
+			todos: todosSectionRef,
+			subagents: subagentsSectionRef,
+			jobs: jobsSectionRef,
+		};
+		const target = sectionRefs[revealRequest.section].current;
+		const region = bodyRef.current;
+		if (target && region) {
 			/*
-			 * `block: "start"` and no `behavior`, so the reveal is instant rather than a
-			 * smooth scroll: `branding.md` § 5 reserves motion for entrances, and a pane
-			 * that animated its own scroll under a user who is reading would move text
+			 * The REGION moves and nothing else, which is PR #207's subject and the
+			 * operator-reported defect it exists to delete: `scrollIntoView` walks
+			 * every scrolling ancestor, and in this layout the chat column's slot row
+			 * is scrollable at the widths where the pane does not fit beside the
+			 * column, so the reveal slid the whole frame — measured at 108px at
+			 * 1024x673 and 221px at 800x600 — and this branch adds two more triggers
+			 * for it. `scrollRegionToTop` assigns the pane's own `scrollTop` instead
+			 * (`shared/lib/scroll.ts` carries the measurements and the reasoning).
+			 *
+			 * Instant, never smooth: `branding.md` § 5 reserves motion for entrances,
+			 * and a pane that animated its own scroll under a reader would move text
 			 * they are already looking at. Focus deliberately does NOT move (`§ 9`: a
 			 * pane is part of the page, and the user pressing this chip is in the
-			 * composer, usually mid-sentence) — `scrollIntoView` takes no focus with it.
+			 * composer, usually mid-sentence), and an assignment to `scrollTop` takes
+			 * no focus with it.
+			 *
+			 * It CLAMPS like every scroll assignment: when the content below the
+			 * target is shorter than the region, the browser stops at the region's own
+			 * maximum and the section lands as close to the head as the region allows
+			 * (QA round 1's Q1, observed as `scrollTop 447 === maxScroll 447` for the
+			 * Jobs chip on a short wire). That is the pane's honest behaviour and the
+			 * record states it, rather than claiming every reveal ends at the head.
 			 */
-			target.scrollIntoView({ block: "start" });
+			scrollRegionToTop(region, target);
 		}
 		/*
 		 * Retired either way: a request whose section is not in this pane (todos that
@@ -775,7 +824,7 @@ export const RunPanel = ({
 							: null
 					}
 					pulse={pulses[row.id] ?? 0}
-					live={OPEN_CHILD_STATUSES.includes(row.status)}
+					live={isOpenChildStatus(row.status)}
 					/*
 					 * The reader's clock anchors (`useChildRowClock`): the instants THIS model
 					 * was measured at, so the header's elapsed ticks from the same pinned
@@ -803,6 +852,7 @@ export const RunPanel = ({
 				 * one because it pages on keydown, and this one does not page at all.
 				 */
 				<div
+					ref={bodyRef}
 					className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain")}
 				>
 					{/*
@@ -875,6 +925,8 @@ export const RunPanel = ({
 						onToggleRosterExpanded={() => setRosterExpanded(true)}
 						paneWidth={paneWidth}
 						todosSectionRef={todosSectionRef}
+						subagentsSectionRef={subagentsSectionRef}
+						jobsSectionRef={jobsSectionRef}
 					/>
 				</div>
 			)}

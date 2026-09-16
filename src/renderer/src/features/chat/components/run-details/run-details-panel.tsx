@@ -1,8 +1,8 @@
 /**
- * The run panel's body: the roster, the plan and the MCP server list
- * (`docs/run-sidebar.md` § 4-§ 7).
+ * The run panel's body: the roster, the plan, the tool jobs and the MCP server
+ * list (`docs/run-sidebar.md` § 4-§ 7).
  *
- * One panel, three sections, and a section appears only when it has content: a
+ * One panel, four sections, and a section appears only when it has content: a
  * run with only to-dos shows only `To-dos`, a session with only MCP servers
  * shows only those. No empty heading and no placeholder — an empty section is
  * not a state anything renders, so it renders as absence.
@@ -19,6 +19,7 @@
 import { Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
+import { RunDetailJobs } from "./run-detail-jobs";
 import { RunDetailMcp } from "./run-detail-mcp";
 import type { McpServerRow, RunDetails } from "./run-detail-model";
 import { hasRunDetails } from "./run-detail-model";
@@ -59,6 +60,17 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 * where the pane is looking.
 	 */
 	todosSectionRef?: Ref<HTMLElement>;
+	/**
+	 * The Subagents section's element, for the same request.
+	 *
+	 * Three refs rather than one because the request now names one of three
+	 * destinations (`RunPanelSection`): the composer's plan chip, its subagents
+	 * chip and its jobs chip each point at their own section, and the pane resolves
+	 * the request through whichever ref that section owns.
+	 */
+	subagentsSectionRef?: Ref<HTMLElement>;
+	/** The Jobs section's element, for the same request. */
+	jobsSectionRef?: Ref<HTMLElement>;
 };
 
 export const RunDetailsPanel = ({
@@ -72,6 +84,8 @@ export const RunDetailsPanel = ({
 	onToggleRosterExpanded,
 	paneWidth,
 	todosSectionRef,
+	subagentsSectionRef,
+	jobsSectionRef,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -107,6 +121,7 @@ export const RunDetailsPanel = ({
 					onOpenChild={onOpenChild}
 					interactive={childrenOpenable}
 					paneWidth={paneWidth}
+					sectionRef={subagentsSectionRef}
 				/>
 			),
 		});
@@ -137,6 +152,30 @@ export const RunDetailsPanel = ({
 					details={details}
 					paneWidth={paneWidth}
 					sectionRef={todosSectionRef}
+				/>
+			),
+		});
+	}
+	/*
+	 * The Jobs section, and its gate is the same rule the composer's jobs chip is
+	 * gated on: rows that have not settled. It takes the MEASURED model rather than
+	 * the untimed one, unlike the plan above — the elapsed clock is the one figure
+	 * this section draws that moves, so it is the one section beside the roster that
+	 * has to be repainted when it does.
+	 *
+	 * `openJobs > 0` is a presence test on the DERIVED list, like the two above it,
+	 * and it is what makes `hasRunDetails`'s new clause and this section the same
+	 * fact: the quiet line says "Nothing in flight" only when there is no section to
+	 * contradict it.
+	 */
+	if (details.openJobs > 0) {
+		sections.push({
+			key: "jobs",
+			body: (
+				<RunDetailJobs
+					details={measured}
+					paneWidth={paneWidth}
+					sectionRef={jobsSectionRef}
 				/>
 			),
 		});

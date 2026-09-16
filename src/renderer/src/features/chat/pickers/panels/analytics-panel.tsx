@@ -9,6 +9,8 @@ import {
 	type AnalyticsData,
 	type AnalyticsMetric,
 	type AnalyticsWindow,
+	CACHE_HIT_LABEL,
+	CACHE_HIT_MEANING,
 	METRIC_LABEL,
 	analyticsWindow,
 	cacheReadFraction,
@@ -67,6 +69,22 @@ export type AnalyticsPanelProps = {
 	onClose: () => void;
 };
 
+/**
+ * The one sentence that says what the cache rate is, under both tables.
+ *
+ * A visible line rather than a `title` attribute (review round 1, D4): the
+ * explanation has to survive a frame, a screenshot, a screen reader and a
+ * keyboard, and a tooltip survives none of the four. It sits with the table it
+ * explains because it is the table's own measure, and it is folded into the
+ * table's accessible name too (`DataTable`'s `label`), so a reader who arrives at
+ * the table by navigation hears it rather than only seeing it.
+ */
+const CacheHitLegend = () => (
+	<p className={cn("pt-1 text-balance text-ink-dim text-meta")}>
+		{CACHE_HIT_MEANING}
+	</p>
+);
+
 const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 	data,
 	metric,
@@ -96,22 +114,43 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			numeric: true,
 			cell: (row) => row.cost,
 		},
+		/*
+		 * The last column, like the terminal's own row suffix
+		 * (`analytics_panel.py:1856`), and read from the row's OWN aggregate: the
+		 * section meta already says the totals here include subagents, so a rate
+		 * taken from the panel's headline aggregate would be a different claim
+		 * about the same row.
+		 *
+		 * The header names the measure (`CACHE_HIT_LABEL`, the same name the totals
+		 * tile uses) and the legend under the table states the denominator and what
+		 * `—` means: a `title` attribute alone reached no keyboard or touch reader
+		 * and appeared in no frame (review round 1, D4).
+		 */
+		{
+			key: "cache",
+			header: CACHE_HIT_LABEL,
+			numeric: true,
+			cell: (row) => percentageOf(row.cacheHit),
+		},
 	];
 	return (
-		<DataTable<(typeof rows)[number]>
-			label="Usage by provider in this window"
-			columns={columns}
-			rows={rows}
-			rowKey={(row) => row.key}
-			leading={(row) => (
-				<ProportionBar
-					fraction={row.fraction}
-					className="w-24"
-					srLabel={`${row.key}: ${percentageOf(row.fraction)} of ${METRIC_LABEL[metric].toLowerCase()} in this window`}
-				/>
-			)}
-			empty={<PanelEmpty text="No per-provider rows in this window." />}
-		/>
+		<>
+			<DataTable<(typeof rows)[number]>
+				label={`Usage by provider in this window. ${CACHE_HIT_MEANING}`}
+				columns={columns}
+				rows={rows}
+				rowKey={(row) => row.key}
+				leading={(row) => (
+					<ProportionBar
+						fraction={row.fraction}
+						className="w-24"
+						srLabel={`${row.key}: ${percentageOf(row.fraction)} of ${METRIC_LABEL[metric].toLowerCase()} in this window`}
+					/>
+				)}
+				empty={<PanelEmpty text="No per-provider rows in this window." />}
+			/>
+			<CacheHitLegend />
+		</>
 	);
 };
 
@@ -159,11 +198,18 @@ const SessionTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			numeric: true,
 			cell: (row) => row.cost,
 		},
+		/* Same column, same rule, one row per session (see `ProviderTable`). */
+		{
+			key: "cache",
+			header: CACHE_HIT_LABEL,
+			numeric: true,
+			cell: (row) => percentageOf(row.cacheHit),
+		},
 	];
 	return (
 		<>
 			<DataTable<(typeof rows)[number]>
-				label="Usage by session in this window"
+				label={`Usage by session in this window. ${CACHE_HIT_MEANING}`}
 				columns={columns}
 				rows={rows}
 				rowKey={(row) => row.id}
@@ -176,6 +222,7 @@ const SessionTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 				)}
 				empty={<PanelEmpty text="No per-session rows in this window." />}
 			/>
+			<CacheHitLegend />
 			{hidden > 0 ? <MoreRowsLine count={hidden} /> : null}
 		</>
 	);
@@ -298,10 +345,17 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 									}
 									fraction={costKnownFraction(aggregate)}
 								/>
+								{/*
+								 * The note names the DENOMINATOR, which is what the ratio is
+								 * over: `840k read · 96k written` read as read/(read+written)
+								 * and gave 90% where the tile says 44% (review round 1, D5b).
+								 * The written count stays because it is a real fact about the
+								 * window, just not the one the percentage is about.
+								 */}
 								<StatCard
-									label="Cache read"
+									label={CACHE_HIT_LABEL}
 									value={percentageOf(cacheReadFraction(aggregate))}
-									note={`${formatTokens(aggregate.cache_read_tokens)} read · ${formatTokens(aggregate.cache_write_tokens)} written`}
+									note={`${formatTokens(aggregate.cache_read_tokens)} of ${formatTokens(aggregate.context_tokens)} context · ${formatTokens(aggregate.cache_write_tokens)} written`}
 									fraction={cacheReadFraction(aggregate)}
 								/>
 							</StatGrid>
