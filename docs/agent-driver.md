@@ -37,11 +37,31 @@ node scripts/renderer-driver.mjs --gate-check       # proves the gate fails clos
 `--scene states` (the default) writes a before/after pair of one screen plus a
 real control press; `--scene palette` does the same for the command palette,
 driving it the way it is actually opened (a pointer sequence on the rail's
-Search row) and typing into it through CDP's own input pipeline; `--scene none`
-boots and arms the driver without running a
+Search row) and typing into it through CDP's own input pipeline; `--scene
+new-chat` drives the app-wide `⌘N` with a real CDP key chord
+(`Input.dispatchKeyEvent`). It asserts whichever claim the run is in: with
+`--backend`, the feature — a fresh draft staged and the app on the chat route,
+plus the two presses that are deliberately not it (`⌘⇧N`, a bare `n`); without,
+the gate — the same press changing nothing, because the shortcut takes the New
+chat row's own `session_catalogue` gate and a driver run has no backend.
+`--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
+
+**`--backend <url>` points the app at a live, ISOLATED backend this run owns.**
+Absent (the default) the app is aimed at a port the script verified dead, so a
+scene captures an app that cannot reach a backend and every frame is publishable
+by construction. Set, the app's own transport uses that backend instead, which is
+what a surface gated on a backend ANSWER needs — a capability-gated row cannot be
+driven at all while the capability is unreachable. The bearer is read from
+`LOCAL_OPERATOR_DESKTOP_TOKEN` in the script's environment, never from argv; the
+run refuses to start without it. **The renderer must have been built against the
+same URL** (`VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:<port> pnpm build`): the
+renderer's copy of that address is inlined at build time, so a tree built for the
+default would leave the renderer talking to the operator's own backend while main
+talked to the run's. The run asserts which URL the renderer was built with and
+fails by name if it is not the one `--backend` named.
 
 **The run refuses before its first boot if the tree is not on the Electron this
 branch pins** (`package.json` `optionalDependencies.electron`, the version
@@ -143,16 +163,21 @@ that could reach his state is redirected, and the run prints all of them:
   instead.
 - The app's **cwd is outside the checkout**, and the scratch cwd holds a `.env`
   with `VITE_LOCAL_OPERATOR_API_URL` pointing at a port the script picked and
-  verified to be dead. `src/main/backend/config.ts` loads `.env` from
-  `process.cwd()` with dotenv `override: true`, so a repository `.env` cannot win
-  and the run has no reachable backend. That is the difference between a run that
-  shows a disconnected app and one that writes into the operator's backend — and
-  it is why every frame can be pasted into a PR.
+  verified to be dead — or, under `--backend`, at the backend this run started.
+  `src/main/backend/config.ts` loads `.env` from `process.cwd()` with dotenv
+  `override: true`, so a repository `.env` cannot win and the run has no reachable
+  backend. That is the difference between a run that shows a disconnected app and
+  one that writes into the operator's backend — and it is why every frame can be
+  pasted into a PR.
 - The run asserts, with `lsof` on the app's own pid, that the app holds **no TCP
   connection to the URL the renderer was built with** (`VITE_LOCAL_OPERATOR_API_URL`
   is inlined into the renderer bundle, and a few renderer-direct features —
   attachments, the canvas edit API, the updates panel — would use it). The probe
-  says "unavailable" rather than "no connections" if `lsof` is missing.
+  says "unavailable" rather than "no connections" if `lsof` is missing. Under
+  `--backend` that URL IS the run's own backend, so the two halves are asked
+  separately instead: the app holds a connection to the run's backend, and holds
+  none to `http://localhost:1111`, the address the operator's own backend listens
+  on and the one a careless build would leave inlined.
 - `CMUX_*` and `LOP_*` are stripped from the child environment: an inherited
   workspace id has already renamed the operator's real cmux workspaces from a test
   run in this repository.
@@ -233,7 +258,8 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
-There are two scenes, and the second one is the worked example of that rule:
+There are three scenes, and the second and third are the worked examples of that
+rule:
 
 - **`states`** — the before/after pair of one screen plus a real control press;
 - **`palette`** — the command palette, opened by a pointer sequence on the rail's
@@ -248,6 +274,18 @@ There are two scenes, and the second one is the worked example of that rule:
   settings registry, and the panel rows, which need a live chat pane behind
   them). Those are covered by unit tests over the join and the ranking, and by
   the QA pass against a live backend.
+- **`new-chat`** — the sidebar's `⌘N`, pressed through CDP's own key pipeline
+  (`Input.dispatchKeyEvent`, never a `KeyboardEvent` built inside the page,
+  because the whole claim is that the press reaches the listener) against the
+  BUILT app. It is the scene that needed this harness's three newer flags:
+  `--backend` points the app's own transport at a live, ISOLATED backend the run
+  owns, `--backend-records` hands the app the record that backend wrote for
+  itself (without it `discovery.ts` does not admit the daemon), and
+  `--seed-onboarding-complete` writes the scratch profile's onboarding flags,
+  because a fresh profile in front of a fresh backend is a first-run user whose
+  six-step wizard is a modal over the window. It asserts both halves of the
+  claim: that the chord moves the app to `/chat` and stages a fresh draft, and
+  that with no catalogue answering the press changes nothing at all.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
