@@ -1,7 +1,16 @@
-import { Button, Tooltip } from "@shared/components/ui";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	Bot,
+	Check,
+	ChevronDown,
 	ChevronUp,
 	Globe,
 	MoreHorizontal,
@@ -186,6 +195,45 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		element?.scrollIntoView({ block: "nearest", inline: "nearest" });
 	}, [activeTabId]);
 
+	/*
+	 * WHETHER THE STRIP CONTINUES PAST ITS RIGHT EDGE, and the same shape the
+	 * canvas's own strip uses for the same problem (`canvas-tabs.tsx`): one
+	 * boolean, recomputed on scroll and on resize, drawn as a mask on the row's
+	 * last 24px. It is a promise that there is more to see, which is the half a
+	 * scrolling row cannot make for itself - macOS draws no scrollbar until the
+	 * user scrolls, and a mouse user has no horizontal wheel at all.
+	 *
+	 * WHY IT TRACKS THE SCROLL POSITION RATHER THAN THE OVERFLOW: drawn from
+	 * `scrollWidth > clientWidth` alone, it ghosts the last tab of a row that has
+	 * been scrolled to its end - the row does continue, just not that way. The
+	 * pinned `All tabs` control beside it is what makes any tab reachable; this is
+	 * only the signal.
+	 */
+	const [hasMoreRight, setHasMoreRight] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when `tabs` changes even though the body never reads it.
+	useEffect(() => {
+		const strip = scrollerRef.current;
+		if (!strip) return;
+
+		const measure = () => {
+			// 1px: `scrollWidth` and `clientWidth` are rounded independently, so a
+			// fully scrolled strip lands a fraction short of equal.
+			setHasMoreRight(
+				strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 1,
+			);
+		};
+
+		measure();
+		strip.addEventListener("scroll", measure, { passive: true });
+		const observer = new ResizeObserver(measure);
+		observer.observe(strip);
+
+		return () => {
+			strip.removeEventListener("scroll", measure);
+			observer.disconnect();
+		};
+	}, [tabs]);
+
 	return (
 		<div
 			// `border-control`, not `hairline`: this is the strip's only boundary
@@ -198,13 +246,25 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		>
 			{/* `pt-1` and no bottom padding: the tabs sit flush on the strip's own
 			    rule, which is what lets the active tab interrupt it. */}
-			<div className="flex items-stretch gap-0 px-2 pt-1">
+			<div className={cn("flex h-9 items-stretch gap-0 px-2 pt-1")}>
 				<div
 					ref={scrollerRef}
 					// `-mb-px` extends the scroll container's clip box 1px down, over the
 					// strip's bottom rule, so the active tab's notch can paint ON that rule
 					// rather than being clipped by the scroll container one pixel above it.
-					className="flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px"
+					//
+					// `@container/strip` is what makes the row's floors a function of the
+					// room the row has rather than of the window (design round 1, D1): the
+					// pane is the first host where four tabs do not fit, and a floor
+					// calibrated on the route's 1240px is what hid a whole tab there.
+					className={cn(
+						"@container/strip flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px",
+						// Native scrollbars steal height from a strip and appear only on
+						// some platforms; the mask below is what says the row continues.
+						"[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+						hasMoreRight &&
+							"[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]",
+					)}
 				>
 					{tabs.map((tab, index) => {
 						const active = tab.tabId === activeTabId;
@@ -304,6 +364,51 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										: chips === 1
 											? "min-w-56"
 											: "min-w-44";
+						/*
+						 * THE SAME LADDER, ONE STEP DOWN, WHEN THE STRIP ITSELF IS NARROW
+						 * (design round 1, D1). The rungs above are sized for the route's 1240px,
+						 * where the agent tab's `min-w-80` is 26% of the strip; in the pane's own
+						 * default 640 it is 50%, and the four tabs the `all-tabs` frame carries
+						 * need about 1100px inside 596 - so a WHOLE TAB was off-screen with
+						 * nothing on screen saying so, which is the state the pane exists to show.
+						 *
+						 * `@max-6xl` is 1152px, below the route's strip, so the route's own frames
+						 * and its approval are untouched while a pane (or a narrow window) steps
+						 * down. Two examples from the table above, one rung at a time:
+						 *   inactive, 1 chip  224->118 becomes 192->86   (the file's 85px promise)
+						 *   active,   1 chip  320->146 becomes 288->114
+						 * Below this step no rung can keep BOTH the chips whole and a title above
+						 * that promise - 85px plus 244px of chips needs 465px for one tab - so
+						 * past it the strip scrolls, says so with the mask, and the pinned `All
+						 * tabs` control beside it is how a mouse user reaches the rest. That is
+						 * the trade this used to make silently: the 3- and 4-chip rows yield their
+						 * title here exactly as the 5-chip row already does above.
+						 *
+						 * Literal class names rather than a template string, because Tailwind's
+						 * scanner reads the source text: a class assembled at runtime is a class
+						 * it cannot see.
+						 */
+						const compactFloor = active
+							? chips >= 5
+								? "min-w-[30rem]"
+								: chips === 4
+									? "min-w-[26rem]"
+									: chips === 3
+										? "@max-6xl:min-w-96"
+										: chips === 2
+											? "@max-6xl:min-w-80"
+											: chips === 1
+												? "@max-6xl:min-w-72"
+												: "min-w-56"
+							: chips >= 4
+								? "@max-6xl:min-w-80"
+								: chips === 3
+									? "@max-6xl:min-w-72"
+									: chips === 2
+										? "@max-6xl:min-w-60"
+										: chips === 1
+											? "@max-6xl:min-w-48"
+											: "@max-6xl:min-w-36";
 						const previous = index > 0 ? tabs[index - 1] : null;
 						// The divider belongs to the gap between two inactive tabs: the active
 						// one is continuous with the page, so no rule may run into it.
@@ -333,6 +438,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 */
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
 										floor,
+										compactFloor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
 											: "text-ink-muted hover:bg-elevated hover:text-ink",
@@ -567,17 +673,65 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						);
 					})}
 				</div>
-				<Tooltip content="New tab">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="New tab"
-						onClick={onNewTab}
-						data-tour-tag="browser-new-tab"
-					>
-						<Plus aria-hidden className="size-4" />
-					</Button>
-				</Tooltip>
+				{tabs.length > 1 && (
+					/*
+					 * THE PINNED WAY TO REACH ANY TAB, which is the canvas's own answer to
+					 * the same problem (`canvas-tabs.tsx`: "scrolling sideways to find a file
+					 * is a fallback, not the only route"): one control in a fixed place
+					 * listing every tab, with the active one ticked. It sits OUTSIDE the
+					 * scroller, so it cannot itself be scrolled out of reach.
+					 *
+					 * It exists because of D1 rather than for tidiness: at the pane's default
+					 * width a strip of four tabs still overflows even after the floors step
+					 * down, and a mouse has no horizontal wheel to scroll with.
+					 */
+					<DropdownMenu>
+						<Tooltip content="All tabs">
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label="All tabs"
+									data-tour-tag="browser-tab-overflow"
+									className={cn("shrink-0 self-center")}
+								>
+									<ChevronDown aria-hidden="true" />
+								</Button>
+							</DropdownMenuTrigger>
+						</Tooltip>
+						<DropdownMenuContent align="end" className={cn("max-w-80")}>
+							{tabs.map((tab) => (
+								<DropdownMenuItem
+									key={tab.tabId}
+									onSelect={() => onActivate(tab.tabId)}
+								>
+									<Check
+										aria-hidden="true"
+										className={cn(tab.tabId !== activeTabId && "invisible")}
+									/>
+									<span className={cn("truncate")}>{tabLabel(tab.title)}</span>
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
+				{tabs.length > 0 && (
+					/* Not drawn when the strip is empty (design round 1, N3): the page area
+					   already offers `New tab` under the same label, and two controls 270px
+					   apart that do the same thing is the duplication the empty state's own
+					   comment forbids. */
+					<Tooltip content="New tab">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="New tab"
+							onClick={onNewTab}
+							data-tour-tag="browser-new-tab"
+						>
+							<Plus aria-hidden className="size-4" />
+						</Button>
+					</Tooltip>
+				)}
 			</div>
 			{actionsTab && (
 				// IN THE BAND, which is the whole point: this row is outside the native
