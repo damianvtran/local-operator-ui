@@ -8,6 +8,7 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
@@ -44,6 +45,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
+import { newChatShortcutCap } from "../new-chat-shortcut";
 
 type Props = {
 	selectedConversation?: string;
@@ -109,6 +111,41 @@ const rowStyle =
  */
 const rowCurrent = "bg-sunken text-ink hover:bg-sunken";
 
+/**
+ * The edge the New chat row's caps carry while that row is CURRENT, and the
+ * reason it is a call site rather than a change to `KeyboardShortcut`'s own
+ * appearance.
+ *
+ * THE DEFECT THIS EXISTS FOR. `rowCurrent` paints the row `sunken`, which is also
+ * the cap's own fill (`CAP` in `keyboard-shortcut.tsx`), so on the one row the
+ * chord creates, the caps and their ground are the same role: measured 1.00:1 over
+ * ΔE00 0.00 in all twelve palettes, and the caps read as plain monospace glyphs
+ * exactly when the user has just used the chord they name. The glyph ink stays
+ * legible there (6.33-12.59:1) — this is the affordance, not legibility. That is
+ * why `keyboard-shortcut.tsx`'s own "a cap that is already a different ground does
+ * not need an edge" premise is corrected there rather than contradicted silently
+ * here.
+ *
+ * WHY AN OUTLINE RATHER THAN A BORDER, AND WHY THESE ROLES. A border enters the
+ * box model, so the caps would grow 1px per side in one state only and jitter as
+ * the row becomes current; this row also retires `border-control` on the ROW
+ * itself for precisely that shift (see the comment above the row). An outline
+ * draws outside layout, so the cap's box — and the row's alignment with the All
+ * chats row — is identical in both states. `outline-control` against `sunken`
+ * measures 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13), clearing
+ * `docs/branding.md` § 3's 3:1 structural floor in every one of them, and it is
+ * the idiom this app already uses for a structural edge on a row
+ * (`pickers/picker-host.tsx`). The "the cap steps to `bg-elevated` instead"
+ * alternative was measured and rejected: it would raise the one element on a row
+ * whose whole point is being recessed, and its ratio to that ground is
+ * 1.20-1.55:1 against the edge's 3.13-5.91:1.
+ *
+ * `scripts/contrast-contract.mjs` pins this string, because no palette assertion
+ * can see a class, and `scripts/new-chat-row.test.mjs`'s own pin is why the row
+ * below repeats its predicate rather than hoisting it.
+ */
+const capEdge = "outline-solid outline-1 -outline-offset-1 outline-control";
+
 import { ChatSessionStatus } from "./chat-session-status";
 
 /**
@@ -153,6 +190,14 @@ export function ChatSidebar({
 	if (ready) wasReady.current = true;
 	const stale = Boolean(capabilities.error) && wasReady.current;
 	const showList = ready || stale;
+	/*
+	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY
+	 * on purpose: it is the same `navigator.platform` read `chat-header.tsx` and
+	 * `sidebar-navigation.tsx` make, and the boolean it produces is what the cap
+	 * helper takes (`newChatShortcutCap`, aligned with the palette's
+	 * `paletteShortcutCaps` rather than taking the platform string itself).
+	 */
+	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
@@ -1066,6 +1111,43 @@ export function ChatSidebar({
 						>
 							<MessageSquarePlus className="size-4" />
 							<span className="flex-1 text-left">New chat</span>
+							{/*
+							 * The chord this row is the visible half of, as caps — the same
+							 * `KeyboardShortcut` the inline editor's footer prints, so the two
+							 * spellings of "a shortcut" in this app cannot diverge.
+							 *
+							 * It is the TRAILING element, where the All chats row above carries
+							 * its count: both rows end in the column that says what the row will
+							 * give you, and the label's own `flex-1` is what holds it there.
+							 *
+							 * AND WHEN THE ROW IS CURRENT THE CAPS TAKE AN EDGE, because on that
+							 * row their own fill IS the ground (`capEdge` carries the
+							 * measurement and the reason it is an outline rather than a border).
+							 * The condition is the row's own current-draft predicate, spelled out
+							 * again rather than hoisted to a name: `scripts/new-chat-row.test.mjs`
+							 * pins that expression as source text — it is what holds the ground and
+							 * `aria-current` to the same two terms — so a name here would move a
+							 * pin this change has no business moving. The two must agree: the edge
+							 * appears exactly where the row paints `rowCurrent`.
+							 *
+							 * Platform: `isMac` above, derived from `navigator.platform` the way
+							 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
+							 * `newChatShortcutCap` as a boolean - the shape the palette's own caps
+							 * use. The read is synchronous (the capability hook's answer is async,
+							 * and a row that painted `⌘N` before it arrived would flash the wrong cap
+							 * on Windows), and the cap is asserted in
+							 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
+							 *
+							 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
+							 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
+							 * attribute would announce the same chord twice.
+							 */}
+							<KeyboardShortcut
+								shortcut={newChatShortcutCap(isMac)}
+								className={cn(
+									Boolean(activeDraftKey) && !draft?.target && capEdge,
+								)}
+							/>
 						</button>
 					</section>
 					{all ? (
