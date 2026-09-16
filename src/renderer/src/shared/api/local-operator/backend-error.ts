@@ -18,6 +18,7 @@
  * agreement is assertable because both selectors are plain functions.
  */
 
+import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import { DesktopControlError } from "./desktop-api";
 
 /**
@@ -224,6 +225,49 @@ export function backendCompatibilityMessage(input: {
 		// the failure and stop.
 		return "Provider sign-in, settings, slash commands and MCP management are unavailable because the Local Operator server did not answer as expected.";
 	return `The Local Operator server is missing ${missing.join(", ")} support. Update it to enable those surfaces.`;
+}
+
+/**
+ * The negotiated features the compatibility banner holds a backend to.
+ *
+ * It lives here rather than in the banner because a second surface now needs
+ * the SAME question answered: the chat sidebar must know whether a statement
+ * about this condition is already on screen before it adds its own (design
+ * round 1, D3 / review round 2, MINOR-2 / QA round 1, Q-5). Two copies of this
+ * list is how "one statement per condition" silently becomes two.
+ */
+export const REQUIRED_BACKEND_FEATURES = [
+	"auth",
+	"settings",
+	"commands",
+	"catalogues",
+	"lifecycle",
+	"mcp",
+	"radient",
+] as const;
+
+/**
+ * Whether `BackendCompatibilityBanner` is on screen for this capabilities
+ * answer - which is the same question as "is the operator already being told
+ * about this".
+ *
+ * Written as the NEGATION of the banner's own early return so the two cannot
+ * disagree: the banner renders unless the plane is available AND every required
+ * feature is advertised. An absent answer counts as shown, which is also what
+ * the banner does (it lists every required feature as missing until one
+ * arrives).
+ */
+export function compatibilityBannerShown(
+	capabilities:
+		| Pick<DesktopCapabilities, "desktop_available" | "features">
+		| null
+		| undefined,
+): boolean {
+	if (!capabilities) return true;
+	const missing = REQUIRED_BACKEND_FEATURES.filter(
+		(feature) => (capabilities.features?.[feature] ?? 0) < 1,
+	);
+	return missing.length > 0 || capabilities.desktop_available !== true;
 }
 
 /**

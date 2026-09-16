@@ -3,6 +3,18 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+/*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function, and
+ * `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * (`pnpm lint:scripts`, which compares each changed file against its baseline)
+ * is the only thing that would have said so.
+ */
+const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
+	/statusUnavailable\.includes\("liveness"\)/;
+const RE_LIVENESS_UNREAD_SENTENCE =
+	/livenessUnread\s*\?\s*"The daemon could not read which chats are running[^"]*"\s*:\s*"Nothing running right now\."/;
+
 // Exercise the shipped store and closed IPC schema in memory. The transport
 // fixture records effects; this is deterministic state evidence, not a browser.
 const values = new Map();
@@ -114,6 +126,7 @@ function reset() {
 	echoes.length = 0;
 	store.setState({
 		sessions: [],
+		statusUnavailable: [],
 		activeSessionId: "111111111111",
 		activeDraftKey: null,
 		drafts: {},
@@ -174,6 +187,75 @@ test("authoritative refresh removes absent IDs while newer viewed revision survi
 	);
 	assert.equal(rows[0].attention.unseen, false);
 	assert.deepEqual(rows[0].attention.revision, [5, 5]);
+});
+
+/**
+ * #1170's marker: a daemon that could not read liveness must not be rendered as
+ * an idle machine.
+ *
+ * The daemon now says which reads it could not answer (`degraded: ["liveness"]`)
+ * because a swallowed liveness read publishes `active: false` for every row,
+ * which the sidebar renders as "Nothing running right now." over rows that
+ * exist - a claim about the machine derived from a read that FAILED. The field
+ * is additive, so this asserts the compatibility half as well: a daemon that
+ * sends nothing leaves the marker empty and every surface renders as it did.
+ */
+test("the daemon's unread reads are carried, and an absent marker is not an empty store", async () => {
+	reset();
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [{ id: "aaaa", name: "frame", mtime: 5, active: false }],
+		truncated: false,
+		degraded: ["liveness"],
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(store.getState().statusUnavailable, ["liveness"]);
+	assert.equal(store.getState().error, null);
+
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [{ id: "aaaa", name: "frame", mtime: 5, active: false }],
+		truncated: false,
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().statusUnavailable,
+		[],
+		"a daemon that predates the marker must leave the app exactly as it was",
+	);
+
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [],
+		truncated: false,
+		degraded: "liveness",
+	});
+	await store.getState().fetchSessions();
+	assert.deepEqual(
+		store.getState().statusUnavailable,
+		[],
+		"a marker that is not a list of read names is not evidence about any read",
+	);
+});
+
+/**
+ * The sentence half of the same marker, asserted on the source in the shape
+ * this file already uses for a JSX-level rule (U16, D2): rendering the sidebar
+ * needs the whole chat feature tree, while the state that feeds it is pinned
+ * behaviourally in the case above.
+ */
+test("Active chats stops claiming nothing is running when liveness went unread", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		rendered,
+		RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS,
+		"the sidebar no longer reads the daemon's marker, so it cannot help but claim an idle machine",
+	);
+	assert.match(
+		rendered,
+		RE_LIVENESS_UNREAD_SENTENCE,
+		"the Active chats section claims nothing is running even when the read that would know did not answer",
+	);
 });
 
 test("create success plus admission failure retries exact same session and payload", async () => {
@@ -1063,15 +1145,12 @@ test("a leading-slash refusal on the created-session arm still hands the text ba
 	// that has to create its session in the same call that sends the text.
 	const key = store.getState().stageDraft();
 	const text = "/usage\ncreated-session arm line two";
-	await assert.rejects(
-		admitChatDraft(key, { ...input, text }),
-		(error) => {
-			assert.ok(error instanceof DesktopControlError);
-			assert.equal(error.code, LEADING_SLASH_CODE);
-			assert.equal(error.message, LEADING_SLASH_MESSAGE);
-			return true;
-		},
-	);
+	await assert.rejects(admitChatDraft(key, { ...input, text }), (error) => {
+		assert.ok(error instanceof DesktopControlError);
+		assert.equal(error.code, LEADING_SLASH_CODE);
+		assert.equal(error.message, LEADING_SLASH_MESSAGE);
+		return true;
+	});
 	const state = store.getState();
 	const draft = state.drafts[key];
 	// The session was created inside the send, and the request that carried the
@@ -1100,7 +1179,10 @@ test("a leading-slash refusal on the created-session arm still hands the text ba
 	// asserted rather than assumed: the user's two lines go back into an empty
 	// composer, which is what `restoreSubmittedText` does with an empty box.
 	assert.equal(refusedBeforeAdmissionText(draft), text);
-	assert.equal(restoreSubmittedText("", refusedBeforeAdmissionText(draft)), text);
+	assert.equal(
+		restoreSubmittedText("", refusedBeforeAdmissionText(draft)),
+		text,
+	);
 });
 
 /*
@@ -1144,8 +1226,14 @@ test("a refusal hands the composer the same text on both arms", async () => {
 		/./,
 	);
 	const created = store.getState().drafts[createdKey];
-	assert.equal(refusedBeforeAdmissionText(named), "/usage\nnamed-session arm line two");
-	assert.equal(refusedBeforeAdmissionText(created), "/usage\ncreated arm line two");
+	assert.equal(
+		refusedBeforeAdmissionText(named),
+		"/usage\nnamed-session arm line two",
+	);
+	assert.equal(
+		refusedBeforeAdmissionText(created),
+		"/usage\ncreated arm line two",
+	);
 	// Same refusal shape on both: the arms differ in identity, not in what the
 	// user is owed.
 	for (const draft of [named, created])
@@ -1284,7 +1372,10 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	const key = store.getState().stageDraft();
 	const text = "/usage\npair arm line two";
 	const attachments = ["/tmp/notes.txt", "/tmp/screenshot.png"];
-	await assert.rejects(admitChatDraft(key, { ...input, text, attachments }), /./);
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments }),
+		/./,
+	);
 	const draft = store.getState().drafts[key];
 	const refusal = {
 		text: refusedBeforeAdmissionText(draft),
@@ -1369,7 +1460,11 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	assert.deepEqual(heldInRow.missingFiles, []);
 	assert.equal(heldInRow.withheld, null);
 	assert.equal(
-		refusedSplitNotice(heldInRow.withheld, ["/tmp/notes.txt"], heldInRow.missingFiles),
+		refusedSplitNotice(
+			heldInRow.withheld,
+			["/tmp/notes.txt"],
+			heldInRow.missingFiles,
+		),
 		null,
 	);
 
@@ -1404,7 +1499,11 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	assert.deepEqual(rebuilt.paths, []);
 	assert.equal(rebuilt.withheld, null);
 	assert.equal(
-		refusedSplitNotice(rebuilt.withheld, refusal.attachments, rebuilt.missingFiles),
+		refusedSplitNotice(
+			rebuilt.withheld,
+			refusal.attachments,
+			rebuilt.missingFiles,
+		),
 		null,
 	);
 
@@ -1637,7 +1736,7 @@ test("the alert region renders the failure before the muted context it lands und
 		"utf8",
 	);
 	const start = source.indexOf('role="alert"');
-	assert.ok(start > 0, "the alert region has no `role=\"alert\"` root");
+	assert.ok(start > 0, 'the alert region has no `role="alert"` root');
 	// Bounded by the composer box, which is the region's next sibling, so the
 	// slice is this region and nothing else.
 	// `COMPOSER_BOX,` with the comma is code and only code: the region's own
@@ -1714,6 +1813,49 @@ test("the header stops announcing that the session has not started once one exis
 		rung[1],
 		/canonical\.frontend\?\.cwd \|\| cwd/,
 		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
+	);
+});
+
+/**
+ * D2: the pane's own unavailable state must be somewhere a reader can see it.
+ *
+ * Asserted on the source, in the shape this file already uses for a JSX-level
+ * rule (U16 above), because the rung IS the fix: both bands are `fixed` at the
+ * top of the window, so while one shows it covers the first ~30px of every
+ * surface, and a sentence laid out against that edge is a statement nobody
+ * reads. Measured on the committed frame
+ * `docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`: the node was
+ * 880x70 at y=24 with `checkVisibility()` true, the pane below the band held no
+ * painted pixels at all, and the pane read as a single flat colour beside a
+ * sidebar that kept its rows. The pixels are the rig's evidence; this is the
+ * case that fails when the presentation regresses.
+ */
+test("the pane's unavailable state is centred, clear of the full-bleed bands", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const rung = rendered.match(
+		/!enabled \? \(([\s\S]{0,1400}?)\) : identity \?/,
+	);
+	assert.ok(
+		rung,
+		"the pane's own unavailable branch is gone, so the state it carries has no presentation left to judge",
+	);
+	assert.match(
+		rung[1],
+		/items-center justify-center/,
+		"the sentence is anchored to the top of the pane again, where the fixed bands cover it: a statement no reader sees, beside a sidebar that keeps its rows (design round 1, D2)",
+	);
+	assert.doesNotMatch(
+		rung[1],
+		/className=\{cn\("p-6/,
+		"a bare `p-6` against the top edge is exactly the shape that was invisible",
+	);
+	assert.match(
+		rung[1],
+		/Update the backend to use canonical chats/,
+		"and the sentence itself is still the one the state owes",
 	);
 });
 
@@ -2498,7 +2640,7 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// this is where it is caught.
 	const parent = byId.get(popup.parentId);
 	assert.ok(
-		parent && parent.tagText.includes('"relative"'),
+		parent?.tagText.includes('"relative"'),
 		"the composer box (the slash popup's direct parent) no longer declares `relative`, so the popup no longer anchors to the box it is meant to escape",
 	);
 
@@ -3076,9 +3218,7 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	 * nobody could keep.
 	 */
 	const code = (source) =>
-		source
-			.replace(/\/\*[\s\S]*?\*\//g, "")
-			.replace(/^[ \t]*\/\/.*$/gm, "");
+		source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 	const composer = code(
 		await readFile(
 			"src/renderer/src/features/chat/components/message-input.tsx",

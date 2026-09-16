@@ -41,6 +41,8 @@ const snapshot = (
 	desktopAvailable: true,
 	failures: 0,
 	capabilityStatus: null,
+	unanswered: 0,
+	lastTransportAt: null,
 	detail:
 		"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
 	updatedAt: Date.now(),
