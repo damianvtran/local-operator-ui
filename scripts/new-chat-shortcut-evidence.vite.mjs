@@ -58,7 +58,7 @@ writeFileSync(
 		"# Written by scripts/new-chat-shortcut-evidence.vite.mjs.",
 		`# The page answers /health itself, proxied to this harness's backend.`,
 		`VITE_LOCAL_OPERATOR_API_URL=${ORIGIN}`,
-		`VITE_DISABLE_BACKEND_MANAGER=true`,
+		"VITE_DISABLE_BACKEND_MANAGER=true",
 		"",
 	].join("\n"),
 );

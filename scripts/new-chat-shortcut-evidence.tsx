@@ -25,10 +25,10 @@
 import { ChatPage } from "@features/chat/components/chat-page";
 import { queryClient } from "@shared/api/query-client";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { ThemeProvider } from "@shared/themes/theme-provider";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { ThemeName } from "@shared/themes";
 import { DEFAULT_THEME } from "@shared/themes";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { ThemeProvider } from "@shared/themes/theme-provider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

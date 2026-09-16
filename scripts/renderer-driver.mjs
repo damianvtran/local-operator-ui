@@ -143,14 +143,12 @@ const ELECTRON_BIN = (() => {
 		binary = resolveFromRepo("electron");
 	} catch (error) {
 		throw new Error(
-			`cannot resolve the Electron runtime from ${ROOT}: ${error?.message ?? error}\n` +
-				"Install this branch's own dependencies first: pnpm install --frozen-lockfile",
+			`cannot resolve the Electron runtime from ${ROOT}: ${error?.message ?? error}\nInstall this branch's own dependencies first: pnpm install --frozen-lockfile`,
 		);
 	}
 	if (typeof binary !== "string" || !existsSync(binary)) {
 		throw new Error(
-			`the Electron runtime is not on disk at ${String(binary)}\n` +
-				"pnpm install --frozen-lockfile (or `npx install-electron --no`) fetches it.",
+			`the Electron runtime is not on disk at ${String(binary)}\npnpm install --frozen-lockfile (or \`npx install-electron --no\`) fetches it.`,
 		);
 	}
 	return binary;
@@ -264,6 +262,28 @@ if (!/^\d+x\d+$/.test(WINDOW_SIZE)) {
 	process.exit(2);
 }
 
+/*
+ * The app's own output, read as patterns rather than as literals inside the
+ * checks that use them: `useTopLevelRegex` asks for that, and two of these are
+ * asked in more than one scene, so one name is also one place to change.
+ *
+ * None of them carries `g` or `y`, so none carries a `lastIndex` from one use to
+ * the next and hoisting cannot change an answer.
+ */
+
+/** Whether a user agent names Electron, which is how a built app is told from a bare Vite page. */
+const ELECTRON_USER_AGENT = /Electron/i;
+
+/** Electron's own refusal, for a driver channel this launch never armed. */
+const NO_HANDLER_REGISTERED = /no handler registered/i;
+
+/** The line an armed launch prints, read in three places. */
+const ARMED_LINE = /\[dev-driver\] ARMED/;
+
+/** The two halves of the refusal a typo gets, in the launch's own words. */
+const NOT_AN_OPT_IN = /not an opt-in/;
+const DRIVER_STAYED_OFF = /stayed off/;
+
 const SCRATCH_TAG = `lo-renderer-driver-${process.pid}`;
 const SCRATCH = join(tmpdir(), SCRATCH_TAG);
 const HOME_DIR = join(SCRATCH, "home");
@@ -317,11 +337,11 @@ function writeAppCwdEnv(extraLines = []) {
 	writeFileSync(
 		join(APP_CWD, ".env"),
 		[
-			`# Written by scripts/renderer-driver.mjs. The app loads this with dotenv`,
-			`# override:true from its cwd, which is why the harness runs with a cwd`,
-			`# outside the checkout: a repo .env would win otherwise.`,
+			"# Written by scripts/renderer-driver.mjs. The app loads this with dotenv",
+			"# override:true from its cwd, which is why the harness runs with a cwd",
+			"# outside the checkout: a repo .env would win otherwise.",
 			`VITE_LOCAL_OPERATOR_API_URL=${APP_API_URL}`,
-			`VITE_DISABLE_BACKEND_MANAGER=true`,
+			"VITE_DISABLE_BACKEND_MANAGER=true",
 			...extraLines,
 			"",
 		].join("\n"),
@@ -591,9 +611,17 @@ async function launchApp({
 	 * than overwriting is what makes "the unarmed boot was given no frames
 	 * directory at all" true, so the empty-frames assertion below is about the
 	 * launch rather than about which directory the harness happened to count.
+	 *
+	 * `undefined` rather than the `delete` operator, which is what these were
+	 * while `noDelete` allowed it: Node omits an `env` value that is `undefined`
+	 * (measured on 22.22.0 and 24.18.1 — the child sees no key at all, exactly as
+	 * it does after a removal), so an arming exported in whoever ran the harness
+	 * still cannot reach this boot. The app's own gate takes only `1` and `true`
+	 * and reports anything else as a TYPO, so even a runtime that spelled the
+	 * value through could not arm an unarmed launch.
 	 */
-	delete env.LOCAL_OPERATOR_UI_DEV_DRIVER;
-	delete env.LOCAL_OPERATOR_UI_DEV_DRIVER_OUT;
+	env.LOCAL_OPERATOR_UI_DEV_DRIVER = undefined;
+	env.LOCAL_OPERATOR_UI_DEV_DRIVER_OUT = undefined;
 	if (armed) {
 		env.LOCAL_OPERATOR_UI_DEV_DRIVER = "1";
 		env.LOCAL_OPERATOR_UI_DEV_DRIVER_OUT = FRAMES;
@@ -685,15 +713,17 @@ async function waitForDevtools(handle, timeoutMs = 60_000) {
 	const started = Date.now();
 	for (;;) {
 		try {
-			const response = await fetch(`http://127.0.0.1:${handle.port}/json/version`);
+			const response = await fetch(
+				`http://127.0.0.1:${handle.port}/json/version`,
+			);
 			if (response.ok) return;
 		} catch {
 			/* not listening yet */
 		}
 		if (Date.now() - started > timeoutMs) {
+			const tail = (await readAppLog(handle)).split("\n").slice(-30).join("\n");
 			throw new Error(
-				`the app's debugging port ${handle.port} never answered in ${timeoutMs}ms\n` +
-					(await readAppLog(handle)).split("\n").slice(-30).join("\n"),
+				`the app's debugging port ${handle.port} never answered in ${timeoutMs}ms\n${tail}`,
 			);
 		}
 		await wait(250);
@@ -773,9 +803,11 @@ class CdpClient {
 				return client;
 			}
 			if (Date.now() - started > timeoutMs) {
+				const seen = JSON.stringify(
+					list.map((e) => ({ type: e.type, url: e.url })),
+				);
 				throw new Error(
-					`no renderer target for ${targetUrlPart} on port ${port} after ${timeoutMs}ms: ` +
-						JSON.stringify(list.map((e) => ({ type: e.type, url: e.url }))),
+					`no renderer target for ${targetUrlPart} on port ${port} after ${timeoutMs}ms: ${seen}`,
 				);
 			}
 			await wait(250);
@@ -955,8 +987,24 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 			await wait(gapMs);
 			continue;
 		}
-		if (previous !== null && previous.equals(bytes)) {
-			return { ...frame, attempts: attempt, stable: true, toastFree, toastWaitMs };
+		/*
+		 * `?.` for the explicit `previous !== null &&`, and the two agree on every
+		 * value this variable actually holds: it is `null` before the first
+		 * capture and a Buffer after one, and an optional call answers the same
+		 * way for both. `undefined` is the one state where they differ, and it is
+		 * unreachable here - the declaration below starts at `null` and the only
+		 * assignment is a Buffer - but it differs in the safe direction: the
+		 * explicit form would have thrown a TypeError there, while this one
+		 * answers `undefined`, which is falsy and simply keeps waiting.
+		 */
+		if (previous?.equals(bytes)) {
+			return {
+				...frame,
+				attempts: attempt,
+				stable: true,
+				toastFree,
+				toastWaitMs,
+			};
 		}
 		previous = bytes;
 		await wait(gapMs);
@@ -1040,7 +1088,7 @@ async function sceneStates(cdp) {
 	);
 	check(
 		"the renderer sees the built app, not a bare Vite page",
-		/Electron/i.test(hello.userAgent),
+		ELECTRON_USER_AGENT.test(hello.userAgent),
 		hello.userAgent,
 	);
 
@@ -1491,11 +1539,15 @@ async function sceneNewChat(cdp) {
 		frames.every(
 			(frame) =>
 				frame.bytes > 1000 &&
-				frame.pixels.width === frame.viewport.width * frame.viewport.devicePixelRatio &&
-				frame.pixels.height === frame.viewport.height * frame.viewport.devicePixelRatio,
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
 		),
 		frames
-			.map((f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`)
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
 			.join(" | "),
 	);
 	return frames;
@@ -1535,7 +1587,7 @@ async function scenePalette(cdp) {
 	);
 	check(
 		"the renderer sees the built app, not a bare Vite page",
-		/Electron/i.test(hello.userAgent),
+		ELECTRON_USER_AGENT.test(hello.userAgent),
 		hello.userAgent,
 	);
 	/*
@@ -1694,7 +1746,9 @@ async function scenePalette(cdp) {
 					frame.viewport.height * frame.viewport.devicePixelRatio,
 		),
 		frames
-			.map((f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`)
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
 			.join(" | "),
 	);
 	/*
@@ -1780,7 +1834,7 @@ async function inertBootChecks(
 	results.push(
 		check(
 			`${prefix}: main refuses the capture channel`,
-			/no handler registered/i.test(refused),
+			NO_HANDLER_REGISTERED.test(refused),
 			refused,
 		),
 	);
@@ -1844,16 +1898,14 @@ async function inertBootChecks(
 	 * words, rather than with one loose "it did not say ARMED", so a boot that
 	 * stopped reporting a refusal would fail this check instead of passing it.
 	 */
-	const armedLines = driverLines.filter((line) =>
-		/\[dev-driver\] ARMED/.test(line),
-	);
+	const armedLines = driverLines.filter((line) => ARMED_LINE.test(line));
 	results.push(
 		refusalExpected
 			? check(
 					`${prefix}: the launch refused the driver out loud`,
 					armedLines.length === 0 &&
-						/not an opt-in/.test(driverLines.join(" / ")) &&
-						/stayed off/.test(driverLines.join(" / ")),
+						NOT_AN_OPT_IN.test(driverLines.join(" / ")) &&
+						DRIVER_STAYED_OFF.test(driverLines.join(" / ")),
 					driverLines.join(" / ") || "no [dev-driver] line",
 				)
 			: check(
@@ -2017,7 +2069,7 @@ async function gateCheck() {
 		results.push(
 			check(
 				"armed: the launch said so on stdout",
-				/\[dev-driver\] ARMED/.test(log),
+				ARMED_LINE.test(log),
 				log
 					.split("\n")
 					.filter((l) => l.includes("[dev-driver]"))
@@ -2083,10 +2135,7 @@ async function main() {
 		let copied = 0;
 		for (const entry of readdirSync(BACKEND_RECORDS)) {
 			if (!entry.endsWith(".json")) continue;
-			copyFileSync(
-				join(BACKEND_RECORDS, entry),
-				join(records, entry),
-			);
+			copyFileSync(join(BACKEND_RECORDS, entry), join(records, entry));
 			copied += 1;
 		}
 		say(
@@ -2115,7 +2164,9 @@ async function main() {
 	 */
 	const runtime = electronRuntime();
 	say(`  electron      ${runtime.installed}   (${ELECTRON_BIN})`);
-	say(`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`);
+	say(
+		`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`,
+	);
 	const onThePinnedRuntime = check(
 		"the harness is driving the Electron this branch pins",
 		runtime.installed === runtime.pinned,
@@ -2140,7 +2191,9 @@ async function main() {
 		say(
 			`\n[refusing] this tree is not on the pinned runtime (${runtime.installed} installed, ${runtime.pinned} pinned).`,
 		);
-		say("            Nothing was booted and no frame was captured. Reinstall with");
+		say(
+			"            Nothing was booted and no frame was captured. Reinstall with",
+		);
 		say("            `pnpm install --frozen-lockfile` and run this again.");
 		if (CLEAN && !KEEP) rmSync(SCRATCH, { recursive: true, force: true });
 		else say(`            scratch: ${SCRATCH}`);
@@ -2176,12 +2229,12 @@ async function main() {
 		let cdp = null;
 		try {
 			await waitForDevtools(handle);
-		cdp = await CdpClient.attach(handle.port, "out/renderer/index.html");
+			cdp = await CdpClient.attach(handle.port, "out/renderer/index.html");
 			const verbs = await waitForBridge(cdp);
 			note("verbs registered by the renderer", JSON.stringify(verbs));
 			check(
 				"the armed launch said so on stdout",
-				/\[dev-driver\] ARMED/.test(await readAppLog(handle)),
+				ARMED_LINE.test(await readAppLog(handle)),
 				(await readAppLog(handle))
 					.split("\n")
 					.filter((line) => line.includes("[dev-driver]"))
@@ -2315,7 +2368,9 @@ async function main() {
 		.sort();
 	say(`\nframes: ${frames.length === 0 ? "(none)" : frames.join(", ")}`);
 	say(`frames directory: ${FRAMES}`);
-	say(`app log: ${join(SCRATCH, GATE_CHECK ? "app-armed.log" : "app-scene.log")}`);
+	say(
+		`app log: ${join(SCRATCH, GATE_CHECK ? "app-armed.log" : "app-scene.log")}`,
+	);
 
 	/*
 	 * Two flags, one decision, and the frames are never the casualty: `--out`
