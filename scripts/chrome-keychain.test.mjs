@@ -3,8 +3,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { test } from "node:test";
 import {
-	blankComments,
 	MOCK_KEYCHAIN_SWITCH,
+	blankComments,
 	withMockKeychain,
 } from "./chrome-keychain.mjs";
 
@@ -109,10 +109,7 @@ function scanFiles() {
 			if (!root.recursive && name.includes(sep)) continue;
 			// Any depth under `harness/` inside a per-surface evidence directory: the
 			// frames' own rigs, not the surface's other notes and stubs.
-			if (
-				root.harnessOnly &&
-				!/^docs\/evidence\/[^/]+\/harness\//.test(rel)
-			) {
+			if (root.harnessOnly && !/^docs\/evidence\/[^/]+\/harness\//.test(rel)) {
 				continue;
 			}
 			files.push(rel);
@@ -158,7 +155,10 @@ function findSpawnSites() {
 			let end = source.indexOf("(", site.at);
 			for (; end < source.length; end += 1) {
 				if (source[end] === "(") depth += 1;
-				else if (source[end] === ")" && (depth -= 1) === 0) break;
+				else if (source[end] === ")") {
+					depth -= 1;
+					if (depth === 0) break;
+				}
 			}
 			const text = raw.slice(source.indexOf("(", site.at) + 1, end);
 			const [command = ""] = splitArguments(text);
@@ -408,7 +408,11 @@ test("the comment blanker preserves offsets, and does not mistake code for comme
 	].join("\n");
 	const blanked = blankComments(source);
 
-	assert.equal(blanked.length, source.length, "every offset must still index the raw text");
+	assert.equal(
+		blanked.length,
+		source.length,
+		"every offset must still index the raw text",
+	);
 	assert.equal(
 		blanked.split("\n").length,
 		source.split("\n").length,
