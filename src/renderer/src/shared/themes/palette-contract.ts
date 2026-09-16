@@ -37,6 +37,13 @@
  * @see scripts/contrast-contract.mjs — the executable version
  */
 
+/*
+ * Type-only, so `themes/palette-contract.ts` and `types/theme.ts` still share
+ * no runtime code: the registry is built from the palette directory, and the
+ * union this file is checked against is erased at compile time.
+ */
+import type { ThemeName } from "../types/theme";
+
 /**
  * A theme's complete colour surface.
  *
@@ -206,7 +213,21 @@ export type ThemePalette = {
 
 /** A palette plus the identity the theme picker shows. */
 export type ThemeDefinition = {
-	id: string;
+	/**
+	 * The theme's id, typed as the union rather than `string` on purpose.
+	 *
+	 * A `string` here compiled anything: a palette whose `id` disagreed with its
+	 * `ThemeName` member still shipped a `[data-theme="…"]` block under that
+	 * spelling (the CSS generator reads this directory, not the union), still
+	 * rendered a tile (the picker maps over this array), and `getTheme` returned
+	 * the default for it in silence. Widening the set from twelve hand-typed ids
+	 * to fifty-nine is what made that trap worth closing, and it closes here
+	 * rather than in the registry: with `ThemeName` on the field, a mismatch
+	 * between a file's id and the union is a compile error, and `index.ts` no
+	 * longer needs a cast to build `ThemeCollection` out of it (review round 1,
+	 * M-1). A type-only import, so the two modules still share no runtime code.
+	 */
+	id: ThemeName;
 	name: string;
 	/** One line, shown under the name in the theme picker. */
 	description: string;

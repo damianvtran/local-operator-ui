@@ -191,12 +191,19 @@ const definitions: readonly ThemeDefinition[] = [
  *
  * Built by mapping rather than written out, so adding a palette to the array
  * above is the whole of adding a theme.
+ *
+ * No cast on `definition.id`: `ThemeDefinition.id` is `ThemeName`, so the
+ * object literal below already satisfies `ThemeOption` and the registry's
+ * exhaustiveness is checked against the union rather than asserted (review
+ * round 1, M-1). The trailing cast on the whole expression stays — `Object.
+ * fromEntries` is typed with a `string` index signature, and widening that back
+ * to the union's exact keys is what the annotation is for.
  */
 export const themes: ThemeCollection = Object.fromEntries(
 	definitions.map((definition) => [
 		definition.id,
 		{
-			id: definition.id as ThemeName,
+			id: definition.id,
 			name: definition.name,
 			description: definition.description,
 			theme: createBaseTheme(definition.palette),

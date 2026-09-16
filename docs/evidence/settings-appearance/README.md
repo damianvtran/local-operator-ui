@@ -36,16 +36,19 @@ theme, so a missing story is a missing subject rather than a missing theme.
 
 `scripts/capture-evidence.mjs`'s own `THEMES` list deliberately stays at the
 twelve this app shipped, because every story in that file is captured once per
-theme: sweeping all fifty-nine would take the committed set from 4,703 frames /
-192 MB to roughly 23,000 frames / ~950 MB. So the picker is captured in the whole
-registry here, once, and everything else keeps its twelve — with
+theme: sweeping all fifty-nine would take the committed set from **4,851**
+frames / **195 MB** on disk (`git ls-files 'docs/evidence/**/*.webp' | wc -l`;
+`du -sh docs/evidence`), of which **4,110** stand outside the declared
+supplementary sets, to roughly **24,000** frames / **~950 MB** — the 59/12 ratio
+the list itself implies. So the picker is captured in the whole registry here,
+once, and everything else keeps its twelve — with
 `pnpm check-themes` asserting every contrast floor over all fifty-nine palettes
 regardless, since it reads the palette directory rather than that list.
 
 ## The geometry the frames are evidence for
 
-Read from the live DOM of these stories (`getBoundingClientRect`), at the
-settings page's own 896px column, 1000px viewport:
+Read from the live DOM of these stories (`getBoundingClientRect`), at 1000px
+viewport, which is the 896px column the story's own `max-w-4xl` frame gives it:
 
 | | before (12 themes, card grid) | after (59 themes, tile grid) |
 |---|---|---|
@@ -56,9 +59,33 @@ settings page's own 896px column, 1000px viewport:
 | **height per theme** | **92.1px** | **18.5px** |
 | section height | 1167.1px | 1152.8px |
 
-So the fifty-nine-theme picker is 14px **shorter** than the twelve-theme one it
-replaces, and the marginal cost of a palette falls 92.1px -> 18.5px. A
-fifty-nine-card picker at the old treatment would have been a 5,400px scroll.
+This is the STORY's column and not the app's, and that matters more than it
+looks (UX round 1, U1). The story renders the section alone, with no rails, and
+`max-w-4xl` is a maximum, so at every window width it shows the 5-column band.
+In the app the grid's column is set by the two rails around it, so the per-theme
+cost is a band. Measured in the app at each window width (868px of viewport
+height in every case):
+
+| window | grid column | columns | rows | tile w | grid span | per theme |
+|---|---|---|---|---|---|---|
+| 1000 | 660 | 3 | 20 | 214.7 | 1621px | 27.5px |
+| 1020 | 680 | 4 | 16 | 164.0 | 1304px | 22.1px |
+| 1040 | 528 | 3 | 20 | 170.7 | 1621px | 27.5px |
+| 1300 | 788 | 4 | 16 | 191.0 | 1304px | 22.1px |
+| 1380 | 868 | 5 | 13 | 167.2 | 1066px | 18.1px |
+
+So the honest figure is 27.5px per theme at 1000px and 18.1px at 1380px against
+92.1px for the twelve, and the 1040 band is SPARSER than the 1020 band below it
+because crossing 1040 expands the settings rail from 48px to 220px inside the
+same window. A full five columns needs a window of about 1344px, which the app's
+own default of 1380 clears by 36px. The "14px shorter" line above therefore holds
+only at this 896px column, where the card grid and the tile grid are both at
+their widest count; at the narrower bands the two are not comparable on that
+axis, because they change column count at different widths.
+
+`theme-selector.tsx`'s tile docblock carries the same two tables beside the code
+that renders the grid, including the 1040 band as a documented property of the
+page's rails rather than a defect to tune away.
 
 ## What these frames ARE, and what they are NOT
 
