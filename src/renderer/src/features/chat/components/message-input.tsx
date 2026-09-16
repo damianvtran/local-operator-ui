@@ -1627,6 +1627,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * a token that is still in the box.
 				 */
 				/*
+				 * UNPINNED, and stated so rather than left looking pinned (review rounds
+				 * 11/12): this prune and the `lastIndex` reset above are both fixed-but-
+				 * unpinned. Removing the prune leaves the suite green because the harness's
+				 * edit path never produces the buffer state the app reaches (a masked
+				 * citation, or the token with its trailing space consumed), and removing
+				 * the reset leaves it green because the module's own readers reset the same
+				 * shared regex first — the reset is defence in depth. The seam's own rule,
+				 * below, IS pinned (round 12's tail case fails on the untrimmed seam).
+				 *
 				 * The record lives as long as the token it describes is still in the box,
 				 * and the test is on the token's WORD rather than the run it was recorded
 				 * with: the run carries the token's trailing space, so the ordinary buffer
@@ -2249,36 +2258,53 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * picker, the door §1 keeps open for the store, the list and the forget
 		 * verbs.
 		 */
+		/*
+		 * WHICH GESTURE A DRAFT CARRIES, as a fact this box observed rather than one
+		 * the buffer's text can imply.
+		 *
+		 * A token the operator PICKED is a command wherever it sits, and so is one this
+		 * box CANCELLED and an edit then moved — the half of the operator's own report
+		 * he kept ("if you don't actually hit enter on the suggested command or click
+		 * it"), and the reason #238's property holds: a token that reaches the
+		 * dispatcher has its arguments refused, so a secret can never land in command
+		 * text. A word merely TYPED is prose unless it is the whole draft, or opens one
+		 * for a command that consumes text — the planner's own rule, untouched here.
+		 *
+		 * THE TEST IS ON THE TOKEN'S WORD, not on the run the record was built with:
+		 * `credential-capture.ts` records `buffer.slice(tokenStart, span.start)` — the
+		 * token PLUS its separator, `"/credential "` — so a draft that ends in the bare
+		 * token would fail a run-shaped test, fall through to prose, and send the secret
+		 * as message text (review round 12, MAJOR). The empty-text record is excluded
+		 * deliberately: the same module builds `text: ""` on its other branch, and
+		 * `includes("")` is true for EVERY draft, so an unguarded test would make any
+		 * draft the record's.
+		 */
+		const gestureFor = useCallback(
+			(draft: string): "send" | "pick" | "typed" => {
+				const cancelled = cancelledToken.current;
+				if (holdsCancelledToken(draft, cancelled)) return "send";
+				const cancelOwned =
+					cancelled !== null &&
+					cancelled.text.trim().length > 0 &&
+					draft.includes(cancelled.text.trim());
+				const pick = pickedToken.current;
+				const pickOwned =
+					pick !== null &&
+					pick.trim().length > 0 &&
+					draft.includes(pick.trim());
+				return cancelOwned || pickOwned ? "pick" : "typed";
+			},
+			[],
+		);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
-				const cancelled = cancelledToken.current;
-				if (holdsCancelledToken(draft, cancelled)) {
-					return { kind: "send" };
-				}
-				/*
-				 * A token the DISPATCHER owns is a command wherever it sits, and the
-				 * composer can tell it from a typed word because it saw the gesture:
-				 *
-				 * - a token this box CANCELLED and an edit then MOVED — the cancel's own
-				 *   record is the proof it was not typed as prose, and `#238`'s property
-				 *   is what makes it the dispatcher's: `/credential <args>` has its
-				 *   arguments refused, so a secret can never land in command text (a
-				 *   mid-sentence word would otherwise be sent to the model as written);
-				 * - or a token the PICKER inserted, which is the half of the operator's
-				 *   own rule he kept: "if you don't actually hit enter on the suggested
-				 *   command or click it" — a click is a command gesture, typing is not.
-				 *
-				 * Everything else is the operator's rule unchanged: a typed word is prose
-				 * unless it is the whole draft, or opens one for a command that consumes
-				 * text. The gesture is the planner's own input (`"pick"` = "this word is a
-				 * command wherever it sits"), so nothing here re-implements the rule.
-				 */
-				const owned =
-					(cancelled !== null && draft.includes(cancelled.text)) ||
-					(pickedToken.current !== null && draft.includes(pickedToken.current));
-				return owned ? planFor(draft, at, "pick") : planFor(draft, at);
+				const gesture = gestureFor(draft);
+				if (gesture === "send") return { kind: "send" };
+				return gesture === "pick"
+					? planFor(draft, at, "pick")
+					: planFor(draft, at);
 			},
-			[planFor],
+			[gestureFor, planFor],
 		);
 
 		/**

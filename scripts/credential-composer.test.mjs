@@ -2141,3 +2141,49 @@ test("a real keystroke that moves a cancelled token hands it to the dispatcher (
 	assert.equal(ran.length, 2, "the armed caret still reaches the dispatcher");
 	assert.equal(armed.sent.length, 0, "and the secret is not sent as text");
 });
+
+test("a token moved to the END of the buffer still reaches the dispatcher (round 12, MAJOR)", async () => {
+	/*
+	 * The record is built as the token PLUS its separator
+	 * (`credential-capture.ts`: `text: buffer.slice(tokenStart, span.start)`, so
+	 * `"/credential "`), so a draft that ends in the bare token does not contain the
+	 * record's run — and a run-shaped test at the plan seam therefore fell through to
+	 * prose and SENT the secret as message text. This is the moved-token case the
+	 * harness can drive: no arm, no mask, just a buffer and Enter. Removing the
+	 * seam's `.trim()` is what fails it.
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-q16-tail",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, "SECRET");
+	await esc(frame);
+	const field = frame.textarea();
+	await act(async () => {
+		writeValue(
+			field,
+			"SECRET please /credential",
+			"SECRET please /credential".length,
+		);
+	});
+	await settle();
+	assert.equal(frame.value(), "SECRET please /credential");
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 1, "the token moved to the end still dispatches");
+	assert.equal(
+		ran[0]?.name,
+		"credential",
+		"and it is the credential command, whose arguments are refused",
+	);
+	assert.equal(
+		frame.sent.length,
+		0,
+		"so the secret is never sent as message text",
+	);
+});
