@@ -85,17 +85,23 @@ import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import {
 	type CompletionRow,
 	SlashSuggestionsPopup,
-	completionFor,
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
+import { completionFor } from "./slash-completion";
 /*
  * `extensionFor` comes from the CONTRACT module rather than from the popup
  * component: the ambiguous Enter's splice is a pure function of the draft, the
  * caret and the word span, and living there is what lets
  * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
  */
-import { extensionFor, pointerPickRuns } from "./slash-contract";
+import {
+	extensionFor,
+	pickArmsCommand,
+	pointerPickRuns,
+	reassembledNote,
+	stagedNote,
+} from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
@@ -103,7 +109,7 @@ import { extensionFor, pointerPickRuns } from "./slash-contract";
  * command runs.
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
-import { planSlashSubmission } from "./slash-submit";
+import { planSlashArming, planSlashSubmission } from "./slash-submit";
 import type {
 	SlashCommandInvocation,
 	SlashSubmissionPlan,
@@ -392,6 +398,25 @@ type MessageInputProps = {
 	 */
 	unavailable?: boolean;
 	/**
+	 * Whether this pane can address a SESSION — the dispatcher's own question.
+	 *
+	 * The page builds one dispatcher per pane and hands it the canonical session id
+	 * it may address (`chat-page.tsx`), so this is that answer, stated once beside
+	 * the dispatcher instead of re-derived here. The composer needs it because two
+	 * of its sentences are about what the NEXT Enter can do — the popup's arming
+	 * line and the staged note — and a pane that cannot address a session answers
+	 * both with the dispatcher's refusal clause rather than a promise.
+	 *
+	 * Optional, and absent means NO session to address: the only callers that leave
+	 * it out are the story fixtures, and the honest reading of "nobody said" is the
+	 * one that does not promise a run. It is deliberately NOT derived from
+	 * `sessionStatus` (present on a draft pane, from the preview) or from
+	 * `conversationId` (on a draft pane that is the PANE's identity, a non-empty
+	 * string) — that derivation is exactly how the note came to promise a goal on
+	 * the pane whose next Enter is refused (UX U1).
+	 */
+	paneHasSession?: boolean;
+	/**
 	 * The session's own readings — model, effort, context, spend — and the way
 	 * to open each one's picker.
 	 *
@@ -451,9 +476,10 @@ type MessageInputProps = {
 	 * Say something in the composer's own note idiom.
 	 *
 	 * The dispatcher already owns that surface (`useSlashDispatch`'s `note`), so
-	 * the composer borrows it rather than growing a second one. Used for the two
-	 * outcomes a user cannot read off the box: a mid-draft name-list command
-	 * whose list cannot answer, and a staged reassembly that did NOT send.
+	 * the composer borrows it rather than growing a second one. Used for the three
+	 * outcomes a user cannot read off the box: a mid-draft name-list command whose
+	 * list cannot answer, a staged reassembly that did NOT send, and a staged
+	 * ARMING by a pick (the goal is set by the next Enter, not by this one).
 	 */
 	onSlashNote?: (text: string) => void;
 	/**
@@ -650,6 +676,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
+			paneHasSession: propPaneHasSession,
 			runDetails,
 		},
 		ref,
@@ -926,10 +953,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * key that could only fail.
 		 */
 		const slashSessionId = sessionStatus ? conversationId : undefined;
+		/*
+		 * The pane's own answer, and the one the two arming sentences read: a draft
+		 * pane supplies `sessionStatus` (from the preview) and holds a non-empty
+		 * `conversationId` (the pane's identity), so "is this composer holding a
+		 * session id" is TRUE on the very pane whose next Enter the dispatcher
+		 * refuses (UX U1). The popup's line and the note are the surfaces on screen
+		 * before and after that Enter, so both take the caller's answer.
+		 */
+		const paneHasSession = propPaneHasSession ?? false;
 		const slash = useSlashCompletion({
 			inputValue: newMessage,
 			selectionStart: caret,
 			sessionId: slashSessionId,
+			paneHasSession,
 			activeProfile: {
 				team: sessionStatus?.frontend?.active_team,
 				agent: sessionStatus?.frontend?.active_agent,
@@ -1111,16 +1148,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					caret: at,
 					commandNames: slash.commandNames,
 					promptCommands: slash.promptCommands,
+					armedOnlyCommands: slash.armedOnlyCommands,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
 			[
 				slash.commandNames,
 				slash.promptCommands,
+				slash.armedOnlyCommands,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,
 			],
+		);
+
+		/**
+		 * Put a line in the box and say what the key DID NOT do.
+		 *
+		 * Both staging paths — a free-text command reassembled by Enter, and an
+		 * armed-only command hoisted by a pick — write the box and the caret the same
+		 * way, and both owe the user a sentence about a draft that changed under them.
+		 * One helper, so a stage that silently rewrites what somebody typed cannot
+		 * exist beside one that explains itself.
+		 */
+		const stage = useCallback(
+			(text: string, at: number, note: string) => {
+				pendingCaret.current = at;
+				setNewMessage(text);
+				setCaret(at);
+				onSlashNote?.(note);
+			},
+			[onSlashNote, setNewMessage],
 		);
 
 		/**
@@ -1186,10 +1244,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// guessing which trailing words are a name — but a user who pressed
 					// Enter twice has no other signal that their sentence MOVED and the
 					// key did not send, so say it (round 1 UX U7).
-					pendingCaret.current = plan.caret;
-					setNewMessage(plan.text);
-					setCaret(plan.caret);
-					onSlashNote?.(`Staged ${plan.text.trim()}. Enter again runs it.`);
+					stage(
+						plan.text,
+						plan.caret,
+						/*
+						 * The REASSEMBLY's own sentence, from the helper that owns it: the quote's
+						 * punctuation is `stagedSentence`'s (QA round 2, Q2-2) and the pane
+						 * clause is the dispatcher's own, shared with the arming note — the
+						 * clause this line was missing while its sibling already carried it
+						 * (review F3). It keeps its own verb because the two answers are to
+						 * different gestures: "again" is what tells a user who just pressed
+						 * Enter that their sentence moved rather than sent (round 1 UX U7).
+						 */
+						reassembledNote(plan.text.trim(), paneHasSession),
+					);
 					return;
 				}
 				const outcome = await runSlashCommand(plan.command);
@@ -1211,6 +1279,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				setNewMessage,
 				slash.open,
 				slash.matches.length,
+				stage,
+				// The reassembly's note carries the pane's own clause too (review F3):
+				// the promise is conditioned on this pane being able to address a
+				// session, which the dispatcher answers with the same value.
+				paneHasSession,
 			],
 		);
 
@@ -1226,6 +1299,63 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (!completion) return;
 				slash.close();
+				/*
+				 * ARMED, when the pick named an armed-only command's own row on the key that
+				 * ACTS — the one gesture that arms it, and the reason Enter needs no
+				 * inference. The pick hoists the command to the front and STAGES the line, so
+				 * the box shows exactly what the next Enter will run: the goal set and the
+				 * text sent.
+				 *
+				 * `disposition.run` is the gate, and it is #221's own rule read back: the
+				 * keyboard hands it `true` only for an unambiguous ENTER, and a pointer click
+				 * passes it directly; Tab — the completion key, which "never runs" — hands it
+				 * `false` and therefore never arms. That keeps this row's two meanings exactly
+				 * as they read: Tab completes the word, Enter stages the line. (It is also the
+				 * gate `tab-no-arm` photographs and the reason this line survived a merge
+				 * that rewrote the composer around it.)
+				 *
+				 * The route is the ROW's (`pickArmsCommand`) and the line is the DRAFT's
+				 * (`planSlashArming`), both read off the vocabulary the registry derives,
+				 * so no command name and no destination is written into this path.
+				 *
+				 * `none` means there was nothing to arm — a bare `/goal` pick, where the
+				 * completion below is the same write it has always been and the bare form
+				 * still opens the goal read on the next Enter.
+				 */
+				// The `row.kind` test is the same rule `pickArmsCommand` applies, stated
+				// here so the destination below is reachable without a cast.
+				if (
+					row.kind === "command" &&
+					disposition.run &&
+					pickArmsCommand(row, slash.armedOnlyCommands)
+				) {
+					const armed = planSlashArming({
+						draft: completion.text,
+						caret: completion.caret,
+						commandNames: slash.commandNames,
+						armedOnlyCommands: slash.armedOnlyCommands,
+					});
+					if (armed.kind === "armed") {
+						/*
+						 * The RECEIPT, and the one thing it may not guess at: the dispatcher
+						 * refuses `/goal` on a pane with no conversation and the staged line goes
+						 * with the refusal, so on a draft pane the note says what the pane can
+						 * actually do instead of promising the goal will be set (UX U5 / design
+						 * D5). `stagedNote` owns the sentence, keyed by the destination the row
+						 * carries, so a second armed destination cannot inherit a false one.
+						 */
+						stage(
+							armed.text,
+							armed.caret,
+							stagedNote(
+								armed.text.trim(),
+								row.command.destination,
+								paneHasSession,
+							),
+						);
+						return;
+					}
+				}
 				pendingCaret.current = completion.caret;
 				setNewMessage(completion.text);
 				setCaret(completion.caret);
@@ -1277,6 +1407,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSlashCommand,
 				planFor,
 				applyPlan,
+				stage,
+				// The staged note's promise is conditioned on whether this pane can run
+				// anything yet (UX U5), so the callback reads the dispatcher's own answer
+				// with the rest.
+				paneHasSession,
 			],
 		);
 		/*
@@ -1353,6 +1488,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * can never be quietly turned back into prose by a later re-read of the
 				 * text, and a draft the planner called prose can never be claimed by a
 				 * command (QA round 2, Q4).
+				 *
+				 * Prose is also what an ARMED-ONLY command's word makes this draft, which
+				 * is why `/goal` in a sentence falls through here instead of being moved
+				 * to the front: that arming is the popup PICK's gesture, and only a pick
+				 * produces the staged line that arms it.
 				 */
 				if (
 					event.key === "Enter" &&

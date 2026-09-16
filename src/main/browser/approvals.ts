@@ -420,13 +420,35 @@ export class ApprovalStore {
 	/**
 	 * Raise a request, or report that one already covers this caller.
 	 *
-	 * The rules are `vendor/driver/access-flow.ts`'s, applied to the queue: a repeat
-	 * request for the same origin by the same requester is idempotent with its
-	 * original TTL, a request for a different origin REPLACES the live one (with
-	 * a tombstone for the displaced requester), and a DURABLE denial answers
-	 * "denied" without re-prompting, because that is what the button promises —
-	 * "Don't allow" says the agent stops asking about this site until the denial is
-	 * revoked.
+	 * THE QUEUE IS A QUEUE, and this comment is the record of what changed. Until
+	 * this round `requestAccess` called `displaceLive` on every new request, which
+	 * cleared the WHOLE live queue and tombstoned it: one prompt slot,
+	 * replace-don't-queue, so a second agent's request destroyed the first agent's
+	 * (and the test said so plainly, `"one prompt slot, replace-don't-queue"`).
+	 * The design authority says the opposite — "the queue is FIFO with a 10-minute
+	 * async TTL" (design 9.1), which is why `access-queue.ts` ships a cap of 16 that
+	 * this host could never reach — and the operator asked for it by name ("allow a
+	 * queue"). So:
+	 *
+	 * 1. A repeat request for the same origin by the same requester is idempotent
+	 *    with its ORIGINAL TTL. Resetting the TTL would let a polling agent extend
+	 *    the window indefinitely.
+	 * 2. A live receipt answers without re-prompting (see the deny arm below), so a
+	 *    user does not learn to click Allow to make the prompt stop.
+	 * 3. A request for a different origin, or from a different requester, is
+	 *    APPENDED in `sequence` order and waits its turn.
+	 * 4. At the cap the OLDEST live entry is displaced, with a `superseded`
+	 *    tombstone so the agent that raised it learns what happened rather than
+	 *    timing out into an anonymous `none`. The NEWEST requester is never refused:
+	 *    refusing the agent that is behaving normally would turn a full queue into a
+	 *    hard, unactionable failure for the one caller that did nothing wrong.
+	 *
+	 * WHAT THE CHANGE COSTS, stated because it is a real trade a reviewer should not
+	 * have to find: a displaced request taught its agent immediately, where a queued
+	 * one now waits for its own `await_access` budget and then re-requests
+	 * (idempotent while its entry is live). In exchange, a user with four agents
+	 * working sees four requests instead of one, and no agent's request is destroyed
+	 * by another's arrival.
 	 */
 	requestAccess(
 		rawUrl: unknown,
@@ -451,31 +473,29 @@ export class ApprovalStore {
 		}
 		/*
 		 * A DURABLE DENIAL IS READ FROM THE VERDICT, not from the receipt written when
-		 * it was made — the same bug in the opposite direction. Reading it from a
-		 * receipt re-prompted the user 15 minutes later for a site they had already
-		 * refused, which is the nag the deny decision exists to stop.
+		 * it was made — the same bug in the opposite direction, and it is also what the
+		 * button promises: "Don't allow" says the agent stops asking about this site
+		 * until the denial is revoked. Reading it from a 15-minute receipt re-prompted
+		 * the user for a site they had refused, which is the nag the deny decision
+		 * exists to stop.
 		 */
 		if (this.refusalReason(url) === "denied") {
 			return { origin: url.origin, state: "denied" satisfies AccessState };
 		}
+		// Same origin, same requester, already pending: idempotent, and the ORIGINAL TTL is
+		// kept - resetting it would let a polling agent extend its own window indefinitely.
+		// It sits after the live-authority read so an unspent grant still answers without a
+		// prompt, and after the durable-denial read so a refused site does not re-prompt.
 		const existing = findPending(this.queue, url.origin, requester, kind, now);
 		if (existing) {
-			// Same origin, same requester, already pending: idempotent, original TTL
-			// kept. Resetting the TTL would let a polling agent extend the window
-			// indefinitely.
 			return this.entryResponse(existing, "pending");
 		}
 		this.sweep(now);
+		// The cap is the only thing that still displaces, and it displaces the entry
+		// that has waited longest — never the one that just asked.
 		if (liveQueue(this.queue, now).length >= ACCESS_QUEUE_CAP) {
-			throw new BrowserHostError(
-				"access_queue_full",
-				`site approval queue is full with ${liveQueue(this.queue, now).length} pending requests`,
-				{ pending_count: liveQueue(this.queue, now).length },
-			);
+			this.displaceOldest(now);
 		}
-		// Replace-don't-queue: the surface shows ONE origin, so a request for a
-		// different origin displaces the live one and leaves it a receipt.
-		this.displaceLive(now);
 		const entry = newEntry(
 			url.origin,
 			displayAuthority(url),
@@ -530,18 +550,19 @@ export class ApprovalStore {
 						requestedAt: entry.requestedAt,
 						expiresAt: entry.expiresAt,
 						/*
-						 * NO `decision` TERM, and the removal is the point. The vendored
-						 * `accessState()` takes an optional decision so that a LIVE record can read
-						 * `allowed`/`denied` before the grant lands, and this host fed it from the
-						 * decision receipts — but every arm that writes a receipt removes its entry
-						 * from the queue FIRST (`respond` filters, `cancelAccess` splices), entry ids
-						 * are minted per entry and nothing here is restored from disk, so a record
-						 * with a decision can never be the record this reads. It was unreachable code
-						 * carrying the residue of the defect this fix closes, and a reader would
-						 * reasonably infer from it that a receipt can still answer. It cannot:
-						 * `requestAccess` answers from `liveAuthority` and from a durable verdict, and
-						 * the receipts are the store's record of what was decided (swept by TTL)
-						 * rather than a reader's source.
+						 * NO `decision` TERM, and the removal is the point (review round 1,
+						 * finding 5). The vendored `accessState()` takes an optional decision so
+						 * that a LIVE record can read `allowed`/`denied` before the grant lands,
+						 * and this host fed it from the decision receipts — but every arm that
+						 * writes a receipt removes its entry from the queue FIRST (`respond`
+						 * filters, `cancelAccess` splices), entry ids are minted per entry and
+						 * nothing here is restored from disk, so a record with a decision can
+						 * never be the record this reads. It was unreachable code carrying the
+						 * residue of the defect this PR fixes, and a reader would reasonably infer
+						 * from it that a receipt can still answer. It cannot: `requestAccess`
+						 * answers from `liveAuthority` and from a durable verdict, and the
+						 * receipts are the store's record of what was decided (purged by
+						 * `revokeOrigin` and swept by TTL) rather than a reader's source.
 						 */
 					}
 				: undefined,
@@ -615,6 +636,28 @@ export class ApprovalStore {
 			);
 		}
 		const now = this.now();
+		if (now >= entry.expiresAt) {
+			// THE TTL IS ENFORCED ON READ AND WAS NOT ON WRITE, which is the defect this
+			// check closes: a click at `expiresAt + 1s` on a request the UI is showing as
+			// expired used to be accepted and wrote a durable grant. The 10-minute bound
+			// exists exactly so that "an unanswered prompt left open forever would let a
+			// long-forgotten Allow click grant a navigation nobody remembers requesting"
+			// (`access-flow.ts:41-44`).
+			//
+			// The code stays `internal` deliberately. The error vocabulary is shared with
+			// the released session, and a code it does not know is dropped as a silent
+			// hang rather than reported (see `errors.ts`); this file already answers "that
+			// request is no longer pending" with `internal`, and an expired request is the
+			// same fact with a different reason in the sentence.
+			this.queue = this.queue.filter(
+				(candidate) => candidate.entryId !== entryId,
+			);
+			this.onChanged();
+			throw new BrowserHostError(
+				"internal",
+				"that site approval request expired before it was answered; the agent has to ask again",
+			);
+		}
 		this.queue = this.queue.filter(
 			(candidate) => candidate.entryId !== entryId,
 		);
@@ -786,6 +829,18 @@ export class ApprovalStore {
 			delete this.store.origins[origin];
 			removed += 1;
 		}
+		/*
+		 * The DECISION RECEIPTS for this origin go with it, and this is the second half
+		 * of the fix for the shipped consent defect: a receipt is a copy of a decision
+		 * with its own 15-minute life, so a revocation that left one behind let
+		 * `request_access` answer from a decision the user had just withdrawn - in the
+		 * conversation that earned it, while a fresh conversation re-asked. Keyed on the
+		 * receipt's own `origin` because the entry the decision was made about is long
+		 * gone by the time a revoke arrives.
+		 */
+		for (const key of Object.keys(this.results)) {
+			if (this.results[key]?.origin === origin) delete this.results[key];
+		}
 		if (this.sessionGrants.delete(origin)) removed += 1;
 		const before = this.store.records.length;
 		this.store.records = this.store.records.filter(
@@ -864,13 +919,17 @@ export class ApprovalStore {
 
 	// ---- internals -----------------------------------------------------------
 
-	/** Replace-don't-queue: the live entry for another origin (or another
-	 * requester) is displaced, and its requester gets a tombstone so its next poll
+	/** At the cap: the OLDEST live entry (or entries, if a queue was restored over
+	 * the cap) steps aside, and its requester gets a tombstone so its next poll
 	 * reads "superseded" rather than the neutral "none". */
-	private displaceLive(now: number): void {
+	private displaceOldest(now: number): void {
 		const live = liveQueue(this.queue, now);
 		if (!live.length) return;
-		for (const entry of live) {
+		const displaced = live.slice(
+			0,
+			Math.max(1, live.length - ACCESS_QUEUE_CAP + 1),
+		);
+		for (const entry of displaced) {
 			this.tombstones[receiptKey(entry.origin, entry.requester)] = tombstoneFor(
 				{
 					origin: entry.origin,
@@ -881,7 +940,8 @@ export class ApprovalStore {
 				},
 			);
 		}
-		this.queue = [];
+		const displacedIds = new Set(displaced.map((entry) => entry.entryId));
+		this.queue = this.queue.filter((entry) => !displacedIds.has(entry.entryId));
 		this.trimTombstones();
 	}
 
