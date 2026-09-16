@@ -223,13 +223,14 @@ export const RunDetailWakes = ({
 				 * The wording is the row's own voice (`N hidden` is the plan's, `Show N
 				 * more` is the roster's): "more wakes" names the thing counted, because a
 				 * bare `2 more` under a section whose rows are schedules could be read as
-				 * two more occurrences of the row above it.
+				 * two more occurrences of the row above it. The noun inflects because one is
+				 * reachable through the CLI's own writer (UX round 2's U7).
 				 */}
 				{hidden > 0 && (
 					<li className={cn("pr-3")}>
 						<Disclosure
 							disabled={true}
-							summary={`${hidden} more wakes`}
+							summary={`${hidden} more wake${hidden === 1 ? "" : "s"}`}
 							className={cn("pl-9 text-meta")}
 						/>
 					</li>

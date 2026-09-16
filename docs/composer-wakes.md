@@ -421,13 +421,14 @@ retained rather than consumed.
    with the pane open, emptying the session's schedule in an isolated index produced
    no update across 45 samples over 132s (`1 wake armed` throughout), and re-entering
    the conversation cleared both surfaces cleanly — no stranded heading, the pane
-   still open. The reviewer's own caveat is part of the finding and is carried here:
-   a `headless` window never receives the app's focus/visibility refresh, so a
-   focused window may well refresh on its own, and a cold session has no runtime
-   publishing anything in the first place — which is also the operator's own reading
-   state for an old conversation. What is NOT claimed: that a wake index is watched.
-   Nothing in this change subscribes to it, and closing that gap means a new
-   subscription rather than a rendering fix.
+   still open. UX round 2 re-ran it on a clean store (index AND transcript emptied)
+   in both `headless` and a shown-but-unactivated `inactive` window: both held the
+   stale chip for 32/32 samples over 93s, `visibilityState` read `visible` in both,
+   and the 96-second frame was byte-identical to the pre-removal one (U6). So
+   visibility is NOT the missing leg — **activation** is, and this environment
+   cannot take it; re-entry is what clears the surfaces. What is NOT claimed: that
+   a wake index is watched. Nothing in this change subscribes to it, and closing
+   that gap means a new subscription rather than a rendering fix.
 6. **The wire's `remaining` is dead, and this change reads around it rather than
    repairing it** (§ 2). The consequence for a reader of these frames: every
    limit-bounded row in them renders its bound from `limit - fired_count`, which is
