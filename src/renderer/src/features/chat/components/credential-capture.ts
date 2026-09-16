@@ -244,6 +244,63 @@ const LEADING_BLANKS = /^[ \t]*/;
 export const CREDENTIAL_MARKER = /\[Credential #(\d+), (\d+) chars\]/g;
 
 /**
+ * Every credential marker in `buffer`, in document order.
+ *
+ * THE MARKER GRAMMAR IS THE APP'S OWN, and that is the whole of what this walks:
+ * `CREDENTIAL_MARKER` is the same predicate {@link citationSpan} locates a
+ * payload's citation by, so the runs this returns and the citations the submit
+ * rewrites are one set. What differs between the two callers is only whether a
+ * payload still backs the run.
+ *
+ * WHY IT HAS TO EXIST AT ALL (design round 2, D2 + UX round 2, U11 + code review
+ * round 2, MAJOR 1). §6 persists the marker text deliberately — it holds no
+ * secret — while the value map is a ref that dies with the document. A reload, a
+ * quit or a conversation switch therefore restores a draft that CITES a
+ * credential the composer no longer has, and every consumer of the map used to
+ * answer "nothing here": `paintPlan` painted the marker as prose and
+ * `substituteCredentials` sent it VERBATIM, so the model received a
+ * composer-local `[Credential #1, 19 chars]` naming a key nothing holds — the
+ * exact silent failure that function's own docstring says the whole path exists
+ * to remove.
+ */
+export function markerSpans(buffer: string): Span[] {
+	const out: Span[] = [];
+	// A module-level regex with `g` carries `lastIndex` between calls, so both
+	// ends of the walk are reset, as `tokenSpans` does for the same reason.
+	CREDENTIAL_MARKER.lastIndex = 0;
+	for (
+		let m = CREDENTIAL_MARKER.exec(buffer);
+		m !== null;
+		m = CREDENTIAL_MARKER.exec(buffer)
+	) {
+		out.push({ start: m.index, end: m.index + m[0].length });
+	}
+	CREDENTIAL_MARKER.lastIndex = 0;
+	return out;
+}
+
+/**
+ * The markers in `text` that NO payload in `payloads` backs.
+ *
+ * Backed means what {@link citationSpan} means: the payload's own marker text,
+ * at the first offset it occurs at. Everything else is a citation of a value
+ * this composer cannot reach any more — a restored draft's marker, or a marker
+ * the operator duplicated. Both are the same thing to the model, which is why
+ * one answer covers them.
+ */
+export function unbackedMarkers(
+	text: string,
+	payloads: readonly CredentialPayload[],
+): Span[] {
+	const backed = new Set<number>();
+	for (const payload of payloads) {
+		const span = citationSpan(text, payload);
+		if (span) backed.add(span.start);
+	}
+	return markerSpans(text).filter((span) => !backed.has(span.start));
+}
+
+/**
  * One run of the buffer the overlay paints, and how it paints it.
  *
  * `"pill"` is a marker the buffer cites, `"mask"` is the masked span while it is
@@ -260,7 +317,8 @@ export type PaintSegment = {
  *
  * The markers are located by {@link citationSpan}, which is the same predicate the
  * submit path stores by — so what the operator sees chipped and what reaches the
- * model cannot disagree, and a hand-typed lookalike is painted as the prose it is.
+ * model cannot disagree. A marker NO payload backs is painted by the same rule,
+ * because the submit rewrites it by the same rule (see the walk below).
  *
  * The masked span is painted too, with the pill's own treatment: the bullets are
  * already painted by the textarea, and the wash behind them is what makes "these
@@ -292,9 +350,34 @@ export function paintPlan(
 	capture: Capture = IDLE_CAPTURE,
 ): PaintSegment[] {
 	const ranges: { span: Span; kind: "pill" | "mask" | "armed" }[] = [];
+	const backed = new Set<number>();
 	for (const payload of payloads) {
 		const span = citationSpan(buffer, payload);
-		if (span) ranges.push({ span, kind: "pill" });
+		if (span) {
+			ranges.push({ span, kind: "pill" });
+			backed.add(span.start);
+		}
+	}
+	/*
+	 * AN UNBACKED MARKER IS PAINTED AS A PILL TOO, and this is the half of the fix
+	 * that is about the OPERATOR rather than the model (design round 2, D2; UX
+	 * round 2, U11). A restored draft's marker has no payload, and every
+	 * payload-driven painter skipped it, so the receipt the app itself wrote showed
+	 * up as literal text — the one state in which the app's own citation reads as
+	 * something the operator typed. `substituteCredentials` now rewrites that run
+	 * at submit, and the pill is the box's own statement of the same fact: what the
+	 * overlay paints and what the submit rewrites are ONE set.
+	 *
+	 * It costs the "a hand-typed lookalike is painted as the prose it is" property
+	 * this function's docstring used to claim, and that trade is the point rather
+	 * than a casualty of it: the submit rewrite cannot tell a typed lookalike from
+	 * a restored marker either, so painting the one and rewriting the other would
+	 * be a SECOND disagreement — the exact class of defect the pill exists to
+	 * prevent.
+	 */
+	for (const span of markerSpans(buffer)) {
+		if (backed.has(span.start)) continue;
+		ranges.push({ span, kind: "pill" });
 	}
 	if (capture.arm && capture.arm.end > capture.arm.start)
 		ranges.push({ span: capture.arm, kind: "armed" });
@@ -1028,17 +1111,31 @@ export type CancelResult = {
 	/** How many characters were restored, for the announcement. Never the value. */
 	restored: number;
 	/**
-	 * The inert token run the cancel left in the buffer, or `null` when nothing
-	 * was restored.
+	 * The inert token run the cancel left in the buffer, or `null` when the buffer
+	 * holds no arming token to leave inert.
 	 *
-	 * Reported only for a cancel that RESTORED characters, and that scoping is
-	 * the whole point of it. An empty-span cancel owes no promise — its notice is
-	 * suppressed — so `/credential ` + Enter must still reach the dispatcher and
-	 * open the picker, which is the route §1 keeps open to the store, the list
-	 * and the forget verbs. A cancel that restored characters is the one the
-	 * composer has just told the operator "Enter will expose them" about, and
-	 * that promise is what a `/credential`-shaped leading token would otherwise
-	 * break (QA round 1, Q2).
+	 * REPORTED FOR EVERY CANCEL, THE EMPTY-SPAN ONE INCLUDED, and the round-2
+	 * finding is why (UX round 2, U9). It used to be scoped to a cancel that
+	 * RESTORED characters, on the reasoning that an empty-span cancel "owes the
+	 * promise to nobody" — the promise being the notice that says Enter will
+	 * expose the restored text. That reasoning is sound about the NOTICE and
+	 * wrong about the SUBMIT: with no token registered, `/credential ` + Esc +
+	 * `mysecretname` + Enter reached the dispatcher, which read the leading
+	 * `/credential` as the COMMAND, opened the picker, consumed the operator's
+	 * words as its argument and stripped them out of the box — nothing sent, and
+	 * nothing on screen saying why. The same text with characters in the span
+	 * sent as prose, so one visible buffer had opposite outcomes and the losing
+	 * one was silent.
+	 *
+	 * The run is the token and its trailing blanks, and it is matched by
+	 * POSITION rather than by a flag (see `holdsCancelledToken`), so an edit that
+	 * moves it hands it back to the dispatcher — `/credential <args>` with no
+	 * capture and no cancel keeps stripping its arguments, which is the case that
+	 * rule exists for. The operator's own characters are never inside it: the
+	 * mask span starts at the token's end, so a `restored` character lands AFTER
+	 * the run and a typed one extends the buffer after it too — the run survives
+	 * both, which is what makes the exception hold while the operator keeps
+	 * writing their sentence.
 	 */
 	token: CancelledToken | null;
 };
@@ -1069,7 +1166,9 @@ export type CancelResult = {
  *
  * The token and its delimiting space are left behind as inert literal text:
  * they are visible, they are not a mode, and the next typed character makes the
- * line stop matching the arming predicate on its own.
+ * line stop matching the arming predicate on its own. That they are also inert
+ * TO SUBMIT — the same is true of the text the operator writes after them — is
+ * what `CancelResult["token"]` reports and `holdsCancelledToken` enforces.
  */
 export function cancelTypedCredential(
 	capture: Capture,
@@ -1096,13 +1195,10 @@ export function cancelTypedCredential(
 		buffer: next,
 		caret: span.start + restoredText.length,
 		restored: charCount(restoredText),
-		token:
-			restoredText.length > 0 && span.start > tokenStart
-				? {
-						span: { start: tokenStart, end: span.start },
-						text: buffer.slice(tokenStart, span.start),
-					}
-				: null,
+		token: {
+			span: { start: tokenStart, end: span.start },
+			text: buffer.slice(tokenStart, span.start),
+		},
 	};
 }
 
@@ -1386,10 +1482,14 @@ export type UnstoredReason = "unreachable" | "rejected-key" | "lost";
  * refusal into one 409 (`server/routes/desktop_lifecycle.py:161-172`): the
  * store's own `reason` never crosses the wire. So this end infers:
  * `"unreachable"` when there is no session to reach or the call did not land,
- * and `"lost"` when the store was reached and said no — which, for a key this
- * composer minted against `CREDENTIAL_KEY_PATTERN`, is a blank VALUE: the key
- * cannot be the problem, so the reachable refusal is the restored draft whose
- * bytes do not survive (§6). `"rejected-key"` is kept in the vocabulary because
+ * and `"lost"` when there is no value to hand over at all. `"lost"` is the
+ * sentence two different ways of losing the value share, deliberately: a store
+ * that was reached and said no — which, for a key this composer minted against
+ * `CREDENTIAL_KEY_PATTERN`, is a blank VALUE, i.e. the restored draft whose bytes
+ * do not survive (§6) — and a MARKER no payload backs any more, which never
+ * reached a store because there was nothing to send (design round 2, D2). Both
+ * are the same thing to the agent: no usable credential, and the operator is the
+ * one who has to supply it. `"rejected-key"` is kept in the vocabulary because
  * the phrase is the TUI's and a future transport that reports the reason must
  * not have to invent a fourth sentence; nothing in this port produces it.
  */
@@ -1430,29 +1530,56 @@ export const credentialCitation = (payload: CredentialPayload): string =>
  * Spliced DESCENDING, so an earlier replacement cannot invalidate a later
  * offset. A marker that appears twice in the buffer is rewritten ONCE, at its
  * first occurrence: the citation is the app's own the first time it can be
- * found, and the second copy is text the operator duplicated, which no rule
- * here can tell from prose.
+ * found, and the second copy is an UNBACKED marker like any other — see below.
+ *
+ * AN UNBACKED MARKER IS REWRITTEN TOO (design round 2, D2 + UX round 2, U11 +
+ * code review round 2, MAJOR 1). A marker no payload backs is a citation of a
+ * value this composer cannot reach any more — the commonest case being §6's
+ * persisted draft, whose marker text survives the reload that retires the value
+ * map. Left alone it reached the model verbatim, and the model read a
+ * composer-local `[Credential #1, 19 chars]` naming a key nothing holds. It now
+ * takes {@link describeUnstored} with the same "the value did not survive" cause a
+ * refused payload gets, because that is the same fact: there is no value here,
+ * and the operator has to hand it over again.
+ *
+ * The cause is deliberately NOT a fourth reason with a fourth sentence. The
+ * sentence is about the OUTCOME (no usable credential, paste it again), and two
+ * phrases for one outcome would make the model guess whether they differ — the
+ * one-authority rule this file's notice vocabulary already states.
  */
 export function substituteCredentials(
 	text: string,
-	payloads: Iterable<CredentialPayload>,
+	payloads: readonly CredentialPayload[],
 	refused: Map<number, UnstoredReason> = new Map(),
 ): string {
-	const spans: { span: Span; payload: CredentialPayload }[] = [];
-	for (const payload of payloads) {
+	/*
+	 * The payload list is indexed TWICE below (once to take the backed spans, once
+	 * through `unbackedMarkers` to find the rest), so it is taken as an ARRAY rather
+	 * than as an `Iterable`: a `Map.values()` iterator is single-use, and the second
+	 * walk of an exhausted one finds nothing — which made every backed marker look
+	 * unbacked and spliced the not-stored sentence OVER its own citation. Caught by
+	 * the seam's own case, which is why this parameter is not `Iterable` any more.
+	 */
+	const list = [...payloads];
+	const spans: { span: Span; payload: CredentialPayload | null }[] = [];
+	for (const payload of list) {
 		const span = citationSpan(text, payload);
 		if (span === null) continue;
 		spans.push({ span, payload });
 	}
+	// No payload can back these: `unbackedMarkers` excludes every span the loop
+	// above took, so the two sets cannot overlap and the splice order is safe.
+	for (const span of unbackedMarkers(text, list))
+		spans.push({ span, payload: null });
 	let out = text;
 	for (const { span, payload } of spans.sort(
 		(a, b) => b.span.start - a.span.start,
 	)) {
-		const reason = refused.get(payload.index);
+		const reason = payload === null ? "lost" : refused.get(payload.index);
 		const named =
-			reason === undefined
-				? credentialCitation(payload)
-				: describeUnstored(reason);
+			payload === null || reason !== undefined
+				? describeUnstored(reason ?? "lost")
+				: credentialCitation(payload);
 		out = out.slice(0, span.start) + named + out.slice(span.end);
 	}
 	return out;
@@ -1513,6 +1640,41 @@ export const CREDENTIAL_ARMED_NOTICE =
  */
 export const CREDENTIAL_TYPING_NOTICE =
 	"masked as you type — Enter turns it into a pill, Esc cancels";
+
+/**
+ * The same state with NOTHING typed into the span yet, where Enter does
+ * something else entirely (UX round 2, U10).
+ *
+ * The space is what opened the mask, so the span can be open and empty, and in
+ * that state {@link CREDENTIAL_TYPING_NOTICE} is a false promise twice over: it
+ * promises a pill, and Enter with an empty span mints nothing — it falls through
+ * to the submit path, which reaches the command DISPATCHER. What the dispatcher
+ * does next depends on the pane, so there are two sentences rather than one, and
+ * the composer picks between them by whether there is a session to store into
+ * (the same fact `credentialSessionId` carries):
+ *
+ * - in a session, `/credential` with no arguments opens the existing
+ *   `CredentialPicker` — the door §1 keeps open to the store, the list and the
+ *   forget verbs;
+ * - on a NEW CHAT it cannot: the dispatcher answers "/credential needs an open
+ *   conversation. Start one first.", so the notice says the same thing BEFORE
+ *   Enter is pressed rather than letting the operator's first attempt in a fresh
+ *   chat read as an error.
+ *
+ * Both keep the token's own words ("masked") first, because the state they
+ * describe is still a masking one: the next character typed becomes a cell.
+ */
+export const CREDENTIAL_EMPTY_SPAN_NOTICE =
+	"masked — Enter opens the credential picker; type or paste the secret into this span";
+
+/**
+ * The empty-span form for a pane with no session yet; see
+ * {@link CREDENTIAL_EMPTY_SPAN_NOTICE}. The second clause mirrors the
+ * dispatcher's own sentence so the notice and the line that follows it agree
+ * word for word about the cause.
+ */
+export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
+	"masked — a new chat has no open conversation yet, so Enter cannot store a credential";
 
 /**
  * Said after Esc unredacts a typed secret back into the composer as plaintext

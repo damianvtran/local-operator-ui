@@ -230,8 +230,7 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   now PLAIN TEXT in the composer — Enter will expose them"). The `/credential `
   token is left behind as inert literal text. With no characters to restore the
   cancel still ends the mode (the TUI's R1/U2 regression: it used to re-arm
-  itself and capture the prose that followed).
-- **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
+  itself and capture the prose that followed).- **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
   `editor.py:6452`), and the port needs the equivalent for the EMPTY sub-state: a
   cancel that restores nothing produces no buffer change, so an edit the cancel
   posts cannot be seen by the change handler that would re-arm from it. Two round
@@ -250,6 +249,18 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   the dispatcher exists for is untouched — `/credential <args>` submitted with no
   capture still strips its arguments, so a secret can never land in command text
   (QA round 1, Q2).
+  **This holds for the EMPTY-span cancel too, and round 2 is why that had to be
+  said** (UX round 2, U9). The run used to be reported only by a cancel that
+  restored characters — sound about the NOTICE, which is suppressed when nothing
+  was restored, and wrong about the SUBMIT: `/credential ` + Esc + `mysecretname`
+  + Enter dispatched the command, consumed the operator's words as its argument
+  and left the box holding `deploy with`, sending nothing and saying nothing,
+  while the SAME visible sentence with characters in the span sent as prose. One
+  buffer, opposite outcomes, and the losing one silent. What the cancel actually
+  promises is that the GESTURE is over; the token is how the submit is told. The
+  run survives the operator's own typing either way, because a restored
+  character and a typed one both land AFTER it (the mask span starts at the
+  token's end).
 - **armed, no space yet** → Esc does **not** disarm. With the popup open it
   closes the popup; otherwise it keeps its existing meaning. The arm survives.
 - The Escape restore must not re-arm: the TUI nests the restore in
@@ -277,12 +288,32 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   a quit come back holding the inert `/credential ` the operator had just
   cancelled, with their line gone (UX round 1, U4). §5's own words for that
   state are the answer: after the unredact it is not a credential.
-- The marker text **is** persisted (it holds no secret) and a restored draft
-  therefore repaints its pill. A restored payload starts with an empty value —
-  the TUI's encoder deliberately does not write the value
-  (`local_operator/tui/session_drafts.py:132-148`) — and a submit in that state
-  finds nothing to store, so the citation says so (§9) rather than promising a
-  key that nothing holds.
+  **The disclosure is persisted WITH those characters and re-raised when they
+  come back** — the count, never the value and never the sentence. §5 says the
+  unredacted state must never be silent, and once §6 decided to keep the
+  plaintext, a reload was reaching that state with no notice, no arm and no pill:
+  the previous session had warned that the next Enter would expose these
+  characters, and the new one said nothing (design round 2, D2). The count rides
+  in the draft store as `unredactedChars`, written with the draft on every write
+  the composer or its hook makes, and an empty draft discloses nothing — enforced
+  at the one place the pair is written rather than at each caller.
+- **A marker no payload backs repaints its pill and is rewritten at submit.** A
+  restored draft's marker has no value behind it — the map is a ref, so a new
+  document starts empty and a conversation switch retires it on purpose — and it
+  is now painted by the same rule as a cited one and rewritten by the same rule,
+  so the two can never disagree. Round 1 claimed both and had neither: the marker
+  painted as ordinary prose and a submit sent it **verbatim**, so the model
+  received a composer-local `[Credential #1, 19 chars]` naming a key nothing
+  holds (design round 2, D2; UX round 2, U11; code review round 2, MAJOR 1). §9
+  states the rewrite.
+  - **The disclosure is persisted WITH the characters it describes**, and re-raised
+  when they come back. §5 says the unredacted state must never be silent, and
+  after §6's decision to persist the plaintext, a reload was reaching that state
+  with no notice, no arm and no pill — one Enter away from exposing the
+  characters the previous session had warned about. The count (never the value,
+  never the sentence) travels in the draft store as `unredactedChars`, and the
+  composer raises the same `unredactedNotice` from it on arrival; an empty draft
+  discloses nothing, enforced at the one place the pair is written.
 - Clearing the composer, submitting successfully, and disarming all clear or
   drop the map; a **failed send keeps it**, because the operator's unsent draft
   must not lose the value behind a pill they can see.
@@ -314,6 +345,20 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    so the ordinary composer keeps exactly today's render path. Scroll offset is
    synchronised when the textarea scrolls internally (it only does so past
    `max-h`).
+   **The armed run, measured** (design round 2; the figure below is recomputed
+   from all twelve palettes rather than quoted, and it corrects the range round
+   1 recorded, whose low end was sage's 3.99 where the minimum is
+   `localOperatorLight`'s **3.69**): `warningWash` against `canvas` runs
+   **ΔE00 3.69** (`localOperatorLight`) to **13.79** (`neon`), and against
+   `surface` **5.37** (`obsidian`) to **15.86** (`neon`) — three to seven times
+   §3's observed "about 2" step for a wash, so the token is a state mark rather
+   than a tint, in every theme. Ink over that wash (`ink` on `warningWash`, the
+   pair the textarea's own glyphs make) is **8.39:1** at its worst
+   (`tokyoNight`), clear of the 4.5 floor. The pill's own edge is the tightest
+   pair in the table — sage's `infoBorder` on `canvas` at **3.09:1** against a
+   3:1 floor — and both pairs are now named in the record rather than assumed
+   (design round 2, D5/D6); the contract's own row (`credential pill`) carries
+   the pin line.
    **Channels actually available here, stated because the TUI has two and this
    has one.** The TUI marks the armed token on two independent channels: an
    amber token run and a glyph swap, of which the glyph is the one that survives
@@ -345,11 +390,32 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    returns. Without it the most likely first use — a brand-new chat whose first
    message hands over an API key — silently degraded to the not-stored citation
    (UX round 1, U2).
-5. **The notice reserves its line.** The masked sentence is not mounted
-   conditionally: its slot is always in the layout, one line box tall, because
-   mounting it pushed the typed line down 35.5px mid-word and the mint moved it
-   back (design round 1, D3). A terminal redraws a row; a textarea over a real
-   layout cannot, so the space is reserved rather than re-flowed.
+5. **The notice lives on a row the composer already has.** It is a second line of
+   prose the TUI keeps in its notice row, and here it rides the composer's own
+   control row — between the attach/`cwd` group and the mic/send controls, with
+   the readings still immediately after the chip. Round 1 put it in a band of its
+   own ABOVE the textarea and reserved a line box for it, because mounting it
+   conditionally pushed the typed line down 35.5px mid-word and the mint moved it
+   back (design round 1, D3). Both halves of that cost were measured in round 2
+   (D3/D4): the reservation was 19.5px while a populated sentence is 23.5px, so
+   arming still moved the typed line and the whole control row by 4px — and the
+   reserved band was the composer's STANDING shape in every state, which dropped
+   the idle composer's ring 38px below the composer it replaced. The control row
+   is 32px tall at every width in every state (its icon buttons size it), so a
+   19.5px sentence inside it costs nothing at all: the textarea's `y` is identical
+   in all four states — idle, armed, masked and minted — and an idle composer has
+   no sentence and no reserved line, so it is the composer that was there before
+   the gesture existed. The sentence WRAPS rather than truncating when a narrow
+   column cannot hold it (the row then grows by at most 7.5px, against the 23.5px
+   a band of its own would have cost at every width), because this sentence is the
+   one channel the state has that survives `NO_COLOR` (§7.1) and a clipped
+   "…Esc cancels" would be the sentence failing at its only job.
+   **And the sentence says what Enter will actually do in the state the operator
+   is in** (UX round 2, U10). With an EMPTY span, Enter does not mint: it falls
+   through to the dispatcher, which opens the credential picker in a session and
+   cannot store at all on a pane with no session yet. So there are three
+   sentences, not two: armed; masking-and-filled; masking-and-empty (in a session,
+   or on a draft pane).
 
 Everything else — the regex, the mask cell, the marker format, the citation
 phrases, the naming convention, the disarm rules, the whole-buffer teardown
@@ -406,6 +472,15 @@ At submit, with the TUI's `_capture_inline_credentials` as the reference:
      `empty-key` → the store rejected its name; otherwise the value did not
      survive, so ask the operator to paste it again). One authority for these
      phrases, shared by every path that writes one.
+   - **an UNBACKED marker** — a marker in the buffer that no payload backs, which
+     is what a restored draft holds — takes the same "the value did not survive"
+     sentence, and this is a round-2 correction rather than a new case: leaving it
+     verbatim was the silent failure this whole step exists to remove, and the
+     shape cannot be told apart from the app's own receipt after a reload, so the
+     rule applies to the shape (design round 2, D2; UX round 2, U11; code review
+     round 2, MAJOR 1). It also means the early return — "nothing is cited, so
+     there is nothing to rewrite" — is no longer right: a message can cite nothing
+     and still need substituting.
 4. tell the operator, per outcome: on success the TUI's notice — *"Stored
    <keys>. Injected into every bash command as an environment variable; the
    agent cannot read the value."* — and on failure a warning naming the retry
@@ -429,6 +504,17 @@ At submit, with the TUI's `_capture_inline_credentials` as the reference:
    desktop-contract change**: the seam is a callback the composer already had a
    place for (the send's own optimistic echo sits in the same window), and a host
    that cannot offer the window simply ignores it.
+   **Round 2 found the seam present and unreachable in the app** (UX round 2, U8;
+   QA round 2, Q5): the composer decided whether it had a session by testing the
+   page's `sessionStatus` object for truthiness, and a New-chat pane is handed one
+   — built from `sessions.preview`, `draft: true` — because the status strip
+   renders the draft's own readings from it. So the pane the feature is most likely
+   to be used from took the "I have a session" branch, stored against the pane's
+   own non-session id, and the transport refused it locally with a 422 that never
+   reached the wire; the operator saw a warning toast after the fact and the model
+   received the not-stored citation, while an established session's identical
+   gesture stored correctly. The predicate is the page's own `draft` flag, and the
+   suite now mounts the composer with the props the real pane passes.
 7. **The list answer is read in ONE place.** The runtime answers
    `[{"key", "source"}]`, not `string[]`; the collision guard and the credential
    picker both need the names, so one reader (`credentialNamesFrom`) turns that

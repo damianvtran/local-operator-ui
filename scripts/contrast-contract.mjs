@@ -247,6 +247,19 @@ const CONTROLS = [
 		 * `surface` is the ground the composer box paints (`COMPOSER_BOX`,
 		 * `border-control` on `bg-surface`), and the rows above cover `canvas` for
 		 * the same component wherever it is drawn on a bare page.
+		 *
+		 * WHICH PAIR MOVES FIRST, named because this is the tightest edge in the table
+		 * and the next palette edit needs to know it without re-deriving the row:
+		 * sage's `infoBorder` against `canvas` is **3.09:1** against the 3:1 floor,
+		 * with the worst-everywhere-else figure (3.14:1 — dune and radient, on
+		 * `surface`) beside it. Both were recomputed from the twelve palettes in
+		 * design round 2, which is also when the sentence was written: round 1's
+		 * disposition claimed this line was already here and it was not (D5).
+		 *
+		 * The armed token's `warningWash` is deliberately NOT a row here — it has no
+		 * boundary and no ink of its own (the textarea paints the glyphs), so it is not
+		 * a component triple; the pairs are recorded in the design record instead
+		 * (`docs/design/composer-credential-capture.md` §7.1).
 		 */
 		name: "credential pill",
 		on: ["canvas", "surface"],

@@ -165,10 +165,23 @@ const answer = (request) => {
 		};
 	if (request.op === "commands.list") return { commands: COMMANDS };
 	if (request.op === "sessions.credential") {
+		/*
+		 * THE RUNTIME'S OWN SHAPE, which is two envelopes deep and not one
+		 * (code review round 2, MINOR 3). The route answers
+		 * `reply({"data": result})` and `reply` builds `CRUDResponse(...,
+		 * result=result)`, so the JSON body main fetches is
+		 * `{"status":…,"result": {"data": …}}` and `desktopResult` hands the
+		 * renderer that inner `result` — i.e. `{"data": <op result>}`. Answering
+		 * the op result directly made `credentialNamesFrom` read `[]` here (it
+		 * reads `answer.data.credentials`), so the §8 collision guard was INERT in
+		 * every case that drives the shipped component while the pure suite used
+		 * the real shape — the fixture at the top of this file was referenced by
+		 * nothing that asserted, and nothing caught it.
+		 */
 		if (request.action === "list")
-			return { ok: true, credentials: credentialList };
-		if (request.action === "store") return credentialStoreReply;
-		return { ok: true };
+			return { data: { ok: true, credentials: credentialList } };
+		if (request.action === "store") return { data: credentialStoreReply };
+		return { data: { ok: true } };
 	}
 	return {};
 };
@@ -204,6 +217,14 @@ const bundle = await build({
 			export { MessageInput } from "./src/renderer/src/features/chat/components/message-input.tsx";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export {
+				CREDENTIAL_ARMED_NOTICE,
+				CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+				CREDENTIAL_EMPTY_SPAN_NOTICE,
+				CREDENTIAL_KEY_ALPHABET,
+				CREDENTIAL_TYPING_NOTICE,
+				unredactedNotice,
+			} from "./src/renderer/src/features/chat/components/credential-capture.ts";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -236,6 +257,12 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	useConversationInputStore,
+	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_NOTICE,
+	CREDENTIAL_KEY_ALPHABET,
+	CREDENTIAL_TYPING_NOTICE,
+	unredactedNotice,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -306,7 +333,9 @@ async function mount({
 	conversationId = `conv-${++mountSeq}`,
 	onSlashCommand,
 	onSendMessage,
+	sessionStatus,
 	keepWorld = false,
+	remount = false,
 } = {}) {
 	const sent = [];
 	/*
@@ -340,6 +369,22 @@ async function mount({
 			return parsed?.state?.inputByConversation?.[conversationId]?.currentInput;
 		},
 	});
+	/*
+	 * A FULL RELOAD, which this rig could not express before: `root` is reused
+	 * across mounts (that is what makes two mounts one app), so every "restored
+	 * draft" case here was really a RE-RENDER of the same instance — and a
+	 * component's refs survive a re-render, which is precisely the thing §6 says
+	 * does not survive a reload. Design round 2's D2/UX round 2's U11 are about
+	 * the reload, so the rig needs both: `remount` tears the root down and builds
+	 * a new one (refs gone, localStorage kept), while a second `mount` without it
+	 * is the conversation switch the code review called reachable.
+	 */
+	if (remount) {
+		await act(async () => {
+			root?.unmount();
+		});
+		root = undefined;
+	}
 	root ??= createRoot(window.document.getElementById("root"));
 	await act(async () => {
 		root.render(
@@ -350,6 +395,7 @@ async function mount({
 					isLoading: false,
 					messages: [{ id: "m", role: "system", timestamp: new Date(0) }],
 					conversationId,
+					sessionStatus,
 					onSendMessage: async (...args) => {
 						sent.push(args);
 						return onSendMessage ? onSendMessage(...args) : true;
@@ -539,7 +585,10 @@ test("an empty span reaches the picker from the button as it does from the key",
 	};
 	const frame = await mount({ onSlashCommand: dispatch });
 	await type(frame, "/credential ");
-	assert.match(frame.notice(), /masked as you type/);
+	// The span is open and EMPTY, which is the state U10 is about: Enter does not
+	// mint a pill here, it falls through to the dispatcher, so the notice names
+	// the door instead of promising one.
+	assert.equal(frame.notice(), CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE);
 	await clickSend(frame);
 	await settle();
 	assert.equal(frame.sent.length, 0, "an empty span is not a message");
@@ -695,9 +744,9 @@ test("accepting the /credential row opens the capture, so the paste is captured"
 	// command and both end in the trailing space that opens the capture.
 	assert.match(frame.value(), /^\/(credential|cred) $/);
 	assert.equal(frame.sent.length, 0, "completing a row is not a send");
-	assert.match(
+	assert.equal(
 		frame.notice(),
-		/masked as you type/,
+		CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 		"the picker-accepted trailing space opens the capture",
 	);
 
@@ -881,10 +930,23 @@ test("after an Escape the token stops suppressing once an edit moves it", async 
 /* its line                                                             */
 /* ------------------------------------------------------------------ */
 
-test("the notice is tied to the field and its slot is always in the layout", async () => {
+test("the notice is tied to the field, lives on the composer's own control row, and reserves nothing", async () => {
 	const frame = await mount({ conversationId: "conv-7" });
-	// D3: the element exists with NO sentence, so the textarea's own `y` does
-	// not change when one arrives.
+	/*
+	 * D3 + D4 (design round 2). The element exists with NO sentence — so it is
+	 * discoverable and the field can name it the moment one arrives — but it is
+	 * mounted on the row the composer ALREADY has, not in a band of its own above
+	 * the textarea.
+	 *
+	 * That home is what makes the reservation unnecessary: the row is sized by
+	 * its icon buttons (32px measured), so a 19.5px line inside it adds no height
+	 * in any of the four states, and an EMPTY element generates no line box at all,
+	 * so the idle composer is geometrically the composer that was here before this
+	 * feature (before: `min-h-[19.5px]` pinned a line above the textarea even when
+	 * the sentence was absent). jsdom has no layout engine, so what is asserted
+	 * here is the STRUCTURE that produces it; the four measured `y` values are the
+	 * design round's own numbers, taken from a rendered frame.
+	 */
 	const idle = window.document.getElementById("composer-credential-notice");
 	assert.ok(idle, "the notice slot is mounted in the idle composer");
 	assert.equal(idle.textContent, "");
@@ -895,6 +957,21 @@ test("the notice is tied to the field and its slot is always in the layout", asy
 		frame.textarea().getAttribute("aria-describedby"),
 		null,
 		"an idle composer is not described by an empty element",
+	);
+	// One of the composer's own rows, and the send control's own row at that:
+	// nothing above the textarea is reserved for this sentence any more.
+	const row = idle.parentElement;
+	assert.ok(
+		row.contains(frame.button()),
+		"the notice shares the row that holds the composer's controls",
+	);
+	assert.ok(
+		!row.contains(frame.textarea()),
+		"and that row is NOT the textarea's, so a sentence in it cannot move the typed line",
+	);
+	assert.ok(
+		!(idle.className || "").includes("min-h-"),
+		"no reserved line box is pinned on the element: the row's own height absorbs it",
 	);
 
 	await type(frame, "/credential ");
@@ -910,5 +987,414 @@ test("the notice is tied to the field and its slot is always in the layout", asy
 	assert.ok(
 		!/chip/.test(frame.notice()),
 		"the marker is a pill here; this composer's chip is the directory control",
+	);
+});
+/* ------------------------------------------------------------------ */
+/* Round 2 — U8/Q5, D2/U11/MAJOR-1, U9, U10                             */
+/* ------------------------------------------------------------------ */
+
+/*
+ * WHAT THE OVERLAY ACTUALLY PAINTED, read off the DOM.
+ *
+ * The overlay is a background-only mirror of the textarea's own text, one
+ * `<span>` per paint segment, so the segments ARE the paint: a marker that no
+ * payload backs is either a `pill` span (painted) or a `plain` one (not).
+ * Code review round 2 asked for exactly this — the round-1 pin asserted
+ * `frame.value()`, which is the marker TEXT and is identical whether or not
+ * anything is painted underneath it, so the sentence in its message ("the
+ * remounted composer repaints the pill") could not be falsified by the pin.
+ */
+const painted = () => {
+	const overlay = [
+		...window.document.querySelectorAll("div[aria-hidden='true']"),
+	].find((el) => el.classList.contains("-z-10"));
+	if (!overlay) return [];
+	return [...overlay.children].map((span) => ({
+		text: span.textContent,
+		pill: span.className.includes("bg-info-wash"),
+		armed: span.className.includes("bg-warning-wash"),
+	}));
+};
+
+test("a credential in a NEW chat's FIRST message is stored against the session the send created", async () => {
+	/*
+	 * UX round 2's U8 / QA round 2's Q5, in-process: the seam this test drives is
+	 * the one the real host drives, and the mount now carries the props the real
+	 * New-chat pane carries.
+	 *
+	 * THE STATUS OBJECT IS THE FINDING. A draft pane is handed a [`sessionStatus`]
+	 * by the page — built from `sessions.preview`, with `draft: true` — because
+	 * the status strip renders the draft's own readings from it. Round 1's pin
+	 * mounted the composer with NO status object at all, so it exercised the seam
+	 * by accident: the production pane took the other branch of the same
+	 * expression, believed it had a session, and stored against the pane's own
+	 * non-session id. `desktopRequestSchema` refuses that id locally — it must be
+	 * twelve hex digits — with a 422 that never reaches the wire, and the
+	 * composer's 4xx branch recorded it as "the store refused", so the operator's
+	 * first message arrived at the model as `[credential NOT stored …]` with no
+	 * store request anywhere on the wire.
+	 *
+	 * So the mount below is the draft pane's own shape, and the assertion is the
+	 * one that fails without the fix: the composer must HAND THE HOST A SEAM.
+	 */
+	const stored = [];
+	// The rig's own convention (see the M3 case above): the request log is
+	// module-level, so each case clears it and asserts only on its own calls.
+	calls.length = 0;
+	const frame = await mount({
+		conversationId: "draft-pane-1",
+		sessionStatus: { frontend: null, draft: true },
+		onSendMessage: async (
+			_payload,
+			_attachments,
+			_onEchoPainted,
+			_typed,
+			seam,
+		) => {
+			assert.ok(
+				seam,
+				"a draft pane must hand the host the before-admission seam",
+			);
+			const rendered = await seam("3b83870393a1");
+			stored.push(rendered);
+			return true;
+		},
+	});
+	await openCapture(frame, { prose: "here is my key " });
+	await type(frame, "sk-live-CANARY-4417");
+	await enter(frame);
+	await clickSend(frame);
+	await settle();
+
+	assert.equal(stored.length, 1, "the seam ran once");
+	assert.match(
+		stored[0],
+		/\[credential LOP_SECRET_[A-Z2-9]{8} \(19 chars\)/,
+		"the value reached the session the send created, so the citation names its key",
+	);
+	/*
+	 * The wire, from the rig's own request log: ONE store, addressed to the CREATED
+	 * session — and no store against the pane's own id, which is what the pre-fix
+	 * composer attempted (and which the real transport refuses locally, since a
+	 * session id must be twelve hex digits, so the request never appears at all).
+	 */
+	const posts = calls.filter(
+		(c) =>
+			c.request?.op === "sessions.credential" && c.request.action === "store",
+	);
+	assert.equal(posts.length, 1, "exactly one store for the whole gesture");
+	assert.equal(
+		posts[0].request.sessionId,
+		"3b83870393a1",
+		"addressed to the CREATED session, not to the pane's own id",
+	);
+	assert.equal(posts[0].request.value, "sk-live-CANARY-4417");
+});
+
+test("a marker whose payload did not survive is painted, and sent as the not-stored citation", async () => {
+	/*
+	 * Design round 2's D2 + UX round 2's U11 + code review round 2's MAJOR 1, all
+	 * three faces of §6's one decision: the marker text is persisted and the
+	 * payload map is not. §6 claimed a restored draft "repaints its pill" and that
+	 * "a submit in that state finds nothing to store, so the citation says so".
+	 * Neither was true: the marker painted as prose and was sent VERBATIM, so the
+	 * model received a composer-local `[Credential #1, 19 chars]` naming a key
+	 * nothing holds.
+	 */
+	// The rig's own convention (see the M3 case above): the request log is
+	// module-level, so each case clears it and asserts only on its own calls.
+	calls.length = 0;
+	const frame = await mount({ conversationId: "conv-unbacked" });
+	await openCapture(frame);
+	await type(frame, "sk-live-CANARY-4417");
+	await enter(frame);
+	assert.equal(frame.value(), "[Credential #1, 19 chars] ");
+	assert.equal(painted().filter((s) => s.pill).length, 1, "minted: one pill");
+
+	// A RELOAD: same conversation, same persisted draft, and a composer whose
+	// payload map is empty because it is a ref and refs do not survive one. The
+	// host is a draft pane's, so the send carries its markers into the seam —
+	// which is where the rewrite happens, and where the model's text comes from.
+	const handed = [];
+	const reloaded = await mount({
+		conversationId: "conv-unbacked",
+		keepWorld: true,
+		remount: true,
+		onSendMessage: async (_content, _attachments, _echo, _typed, seam) => {
+			if (seam) handed.push(await seam("2e0e7dbc066a"));
+			return true;
+		},
+	});
+	assert.equal(reloaded.value(), "[Credential #1, 19 chars] ");
+	assert.equal(
+		painted().filter((s) => s.pill).length,
+		1,
+		"an unbacked marker is painted as a pill, not left as literal text",
+	);
+
+	await clickSend(reloaded);
+	await settle();
+	const sent = String(handed.at(-1));
+	assert.ok(
+		!sent.includes("[Credential #1, 19 chars]"),
+		`the bare marker must not reach the model: ${sent}`,
+	);
+	assert.match(
+		sent,
+		/\[credential NOT stored — its value did not survive; ask the operator to paste it again\]/,
+		"the marker is rewritten to the cause that actually applies",
+	);
+	assert.ok(
+		!/LOP_SECRET_/.test(sent),
+		"and no key is named: there is no name for a value that never arrived",
+	);
+});
+
+test("a restored draft still discloses the characters an Esc unredacted", async () => {
+	/*
+	 * Design round 2's D2: the live state discloses itself and the persisted one
+	 * did not, so a reload, a quit or a crash reached the one state §5 says must
+	 * never be silent — an ordinary-looking composer holding plaintext — and the
+	 * very next Enter exposed it. The characters are the operator's prose (§6) and
+	 * stay in the draft; the disclosure now travels with them.
+	 */
+	const frame = await mount({ conversationId: "conv-disclose" });
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, "sk-live-CANARY-4417");
+	await esc(frame);
+	assert.equal(
+		frame.notice(),
+		unredactedNotice(19),
+		"the live state discloses, as round 1 pinned",
+	);
+
+	// The persisted draft carries the characters AND the count.
+	const raw = JSON.parse(
+		window.localStorage.getItem("conversation-input-store"),
+	).state.inputByConversation["conv-disclose"];
+	assert.equal(raw.currentInput, "deploy with /credential sk-live-CANARY-4417");
+	assert.equal(
+		raw.unredactedChars,
+		19,
+		"the count is persisted with the draft",
+	);
+
+	// A reload. Same conversation, empty payload map, characters restored.
+	const reloaded = await mount({
+		conversationId: "conv-disclose",
+		keepWorld: true,
+		remount: true,
+	});
+	assert.equal(reloaded.value(), "deploy with /credential sk-live-CANARY-4417");
+	assert.equal(
+		reloaded.notice(),
+		unredactedNotice(19),
+		"the disclosure survives the restore, in the same words the live state used",
+	);
+});
+
+test("an Esc-cancelled token is prose even when the span was empty (U9)", async () => {
+	/*
+	 * The same visible buffer had opposite outcomes depending on whether the span
+	 * had held characters: with characters in it the escape made the token inert,
+	 * and with none the next words the operator typed were DISPATCHED — the
+	 * picker opened, the words became its argument, the composer was stripped back
+	 * to `deploy with`, nothing was sent and nothing said why.
+	 */
+	const dispatch = [];
+	const frame = await mount({
+		onSlashCommand: async (command) => {
+			dispatch.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "deploy with /credential ");
+	await esc(frame);
+	await type(frame, "mysecretname");
+	assert.equal(frame.value(), "deploy with /credential mysecretname");
+	await enter(frame);
+	await settle();
+	assert.deepEqual(
+		dispatch,
+		[],
+		"an Esc-cancelled token never reaches the dispatcher",
+	);
+	const sent = frame.sent.at(-1)[0];
+	assert.equal(
+		typeof sent === "string" ? sent : sent.text,
+		"deploy with /credential mysecretname",
+		"the operator's own sentence is what was sent",
+	);
+
+	/*
+	 * The other direction, unchanged and deliberately so: `/credential <args>`
+	 * with no capture and no cancel is still the COMMAND's own line, and it still
+	 * consumes its arguments so a secret can never land in command text.
+	 */
+	const dispatched = [];
+	const control = await mount({
+		conversationId: "conv-control",
+		onSlashCommand: async (command) => {
+			dispatched.push(command);
+			return "consumed";
+		},
+	});
+	await type(control, "/credential --forget-all");
+	await enter(control);
+	await settle();
+	assert.equal(
+		dispatched.length,
+		1,
+		"an uncancelled /credential still dispatches",
+	);
+	assert.equal(control.value(), "", "and its arguments never stay in the box");
+});
+
+test("the empty span's sentence names what Enter does in a LIVE session", async () => {
+	/*
+	 * UX round 2's U10: the bare token's cover sentence described neither Enter
+	 * outcome. On a pane with a session, Enter falls through to the dispatcher and
+	 * opens the credential picker; on a pane without one it cannot store at all.
+	 * The two states say so, in their own words — and this is the live one.
+	 */
+	const frame = await mount({
+		conversationId: "2e0e7dbc066a",
+		sessionStatus: { frontend: null },
+	});
+	await openCapture(frame);
+	assert.equal(frame.notice(), CREDENTIAL_EMPTY_SPAN_NOTICE);
+	assert.match(frame.notice(), /picker/);
+	assert.ok(
+		!frame.notice().includes("new chat"),
+		"a session pane does not warn about the draft pane's limitation",
+	);
+});
+
+test("an empty-span Escape parks no caret, so the next word lands where it was typed", async () => {
+	/*
+	 * Code review round 2, MINOR 2: the round-1 U1 pin passed with the
+	 * caret-parking guard DELETED, because the change that fixed U1 also retires
+	 * the composer's caret marker from the `onSelect` the browser fires — two
+	 * mechanisms, and jsdom's select-event ordering is what decides which one a
+	 * black-box pin exercises. This case puts the guard on the critical path: the
+	 * operator has moved the caret back into their own sentence, and an Esc whose
+	 * own edit changes nothing must not snap it to the token's end. Deleting the
+	 * guard makes the composer park `span.start + restored` (the token's end) and
+	 * the next character lands there instead of under the operator's caret.
+	 */
+	const frame = await mount({ conversationId: "conv-caret" });
+	await type(frame, "/credential ");
+	const field = frame.textarea();
+	await act(async () => {
+		field.setSelectionRange(4, 4);
+		field.dispatchEvent(new window.Event("select", { bubbles: true }));
+	});
+	await settle();
+	await esc(frame);
+	assert.deepEqual(
+		frame.caret(),
+		{ start: 4, end: 4 },
+		"the caret stays where the operator put it: the cancel's own edit moved nothing",
+	);
+	await type(frame, "X");
+	assert.equal(frame.value(), "/creXdential ");
+	assert.deepEqual(frame.caret(), { start: 5, end: 5 });
+});
+
+test("the minted name dodges the session's own names, read through the mounted composer (§8)", async () => {
+	/*
+	 * Code review round 2, MINOR 3: with the harness answering the runtime's
+	 * shape the guard is live, and this case puts it on the critical path instead
+	 * of trusting the shape. `credentialList` already holds `LOP_SECRET_ABCDEFGH`,
+	 * and the draw is pinned so the composer's FIRST candidate is exactly that
+	 * name: the guard must skip it and mint the next one.
+	 *
+	 * The draw is the only way to reach a collision from outside — the real one is
+	 * CSPRNG over 30^8, which is why QA recorded this as unpinnable end to end
+	 * and why the guard is worth a pin here instead. `getRandomValues` is restored
+	 * whatever happens.
+	 */
+	const strings = "ABCDEFGH";
+	const drawValues = [...strings].map((c) =>
+		CREDENTIAL_KEY_ALPHABET.indexOf(c),
+	);
+	assert.deepEqual(
+		drawValues,
+		[0, 1, 2, 3, 4, 5, 6, 7],
+		"sanity: the seeded name is in alphabet order, so the draw is its indices",
+	);
+	// The rig's own convention (see the M3 case above): the request log is
+	// module-level, so each case clears it and asserts only on its own calls.
+	calls.length = 0;
+	const frame = await mount({
+		conversationId: "2e0e7dbc066a",
+		// A live session: the arm-time `list` read is what populates the guard.
+		sessionStatus: { frontend: null },
+		onSendMessage: async () => true,
+	});
+	await openCapture(frame);
+	await settle();
+	assert.ok(
+		calls.some(
+			(c) =>
+				c.request?.op === "sessions.credential" && c.request.action === "list",
+		),
+		"arming reads the session's names",
+	);
+
+	const real = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+	const remaining = [...drawValues, ...drawValues.map(() => 9)];
+	globalThis.crypto.getRandomValues = (buffer) => {
+		const next = remaining.shift();
+		if (next === undefined) return real(buffer);
+		buffer[0] = next;
+		return buffer;
+	};
+	let receipt;
+	try {
+		await paste(frame, "sk-live-CANARY-4417");
+		receipt = frame.sent;
+	} finally {
+		globalThis.crypto.getRandomValues = real;
+	}
+	assert.ok(receipt, "the paste minted");
+	assert.equal(
+		frame.value(),
+		"[Credential #1, 19 chars] ",
+		"the paste minted one credential",
+	);
+	const beforeSend = calls.filter(
+		(c) =>
+			c.request?.op === "sessions.credential" && c.request.action === "store",
+	);
+	assert.equal(beforeSend.length, 0, "minting does not store; the send does");
+	await clickSend(frame);
+	await settle();
+	const key = calls
+		.filter(
+			(c) =>
+				c.request?.op === "sessions.credential" && c.request.action === "store",
+		)
+		.at(-1)?.request.key;
+	assert.ok(key, "the send stored a credential");
+	assert.notEqual(
+		key,
+		"LOP_SECRET_ABCDEFGH",
+		"the name the session already held was skipped rather than replaced",
+	);
+	assert.equal(
+		key,
+		"LOP_SECRET_KKKKKKKK",
+		"the next candidate is the one that was used (the alphabet's own order:\n\t\t\t\t\t\t * `ABCDEFGH…`, so index 9 is `K`, not `J`)",
+	);
+	assert.deepEqual(
+		credentialList,
+		[{ key: "LOP_SECRET_ABCDEFGH", source: "command" }],
+		"the session's own name is untouched: nothing was replaced",
+	);
+	assert.equal(
+		CREDENTIAL_KEY_ALPHABET.length,
+		30,
+		"sanity: the alphabet indexed",
 	);
 });

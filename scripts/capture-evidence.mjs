@@ -971,9 +971,13 @@ export const STORIES = [
 	   so the mask, the mint and the Escape restore are exercised by the frames
 	   rather than photographed from a prop that fakes the state, and each play
 	   fails loudly rather than releasing the shutter if its state did not
-	   arrive. `escaped` is the one frame where the canary is ON SCREEN, and that
-	   is the point of it: it is the only exit that leaves a secret in the
-	   composer, and it is there because the operator asked for it with Esc. */
+	   arrive. `escaped` is the one CREDENTIAL state where the canary is ON SCREEN,
+	   and that is the point of it: it is the only exit that leaves a secret in the
+	   composer, and it is there because the operator asked for it with Esc. That is
+	   also why the draft store is cleared between frames: the escaped plaintext is
+	   PERSISTED (design §6), so without the clear the six states captured after it
+	   restored it and were photographed holding a secret they have nothing to do
+	   with (design round 2, D1). */
 	["chat-message-input--credential-armed", 1024, 300],
 	["chat-message-input--credential-masked", 1024, 300],
 	["chat-message-input--credential-pill-mid-prose", 1024, 300],
@@ -2027,6 +2031,26 @@ const main = async () => {
 
 	/* zustand persist key for the UI preferences store. */
 	const PREFS_KEY = "ui-preferences-storage";
+	/*
+	 * THE DRAFT STORE IS CLEARED FOR EVERY FRAME, and this is a correctness rule
+	 * rather than tidiness. `conversation-input-store` is zustand's `persist`, so
+	 * it outlives the document — and the credential stories TYPE into a composer
+	 * keyed `story`, one of them (the Esc restore) leaving a live canary in the
+	 * persisted draft on purpose. The NEXT story that mounts a composer for the
+	 * same conversation therefore restored that canary and was photographed
+	 * holding it: six states, seventy-two frames, beginning with
+	 * `interrupt-left-work-running`, all of them pictures of a composer the story
+	 * never asked for (design round 2, D1). The mechanism is §6's own decision to
+	 * persist the Esc-restored characters, so the fix is not a code change: each
+	 * frame now starts from the draft state its own story declares, the same way
+	 * each frame already starts from its own theme.
+	 *
+	 * Nothing is lost by it: a story that needs a draft seeds one itself, in its
+	 * own play function (the composer-band and quote stories do exactly that,
+	 * after this script has run), which is the only honest way to photograph a
+	 * restored draft anyway.
+	 */
+	const DRAFT_KEY = "conversation-input-store";
 	let seedScript = null;
 	let captured = 0;
 	for (const [story, width, height, options = {}] of stories) {
@@ -2112,7 +2136,7 @@ const main = async () => {
 			({ identifier: seedScript } = await cdp.send(
 				"Page.addScriptToEvaluateOnNewDocument",
 				{
-					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); } catch {}`,
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)}); } catch {}`,
 				},
 			));
 
