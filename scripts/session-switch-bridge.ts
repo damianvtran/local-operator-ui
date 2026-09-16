@@ -74,6 +74,18 @@ export type BridgeConfig = {
 	stepsBySession: Record<string, TranscriptStep[]>;
 	latency?: BridgeLatency;
 	/**
+	 * Per-session overrides of `latency`, for the arms that have to make ONE
+	 * click's hop slower than another's.
+	 *
+	 * The global table cannot express a race: with both hops the same length the
+	 * second click's read always settles last, so "which load lands" is decided
+	 * by whichever timer the event loop happens to run first rather than by the
+	 * order the user clicked in - a flake wearing a reproduction's clothes. Field
+	 * by field, falling back to `latency` where a field is absent, so an arm
+	 * names only the hop it needs to differ.
+	 */
+	latencyBySession?: Record<string, Partial<BridgeLatency>>;
+	/**
 	 * Session ids whose `sessions.get` FAILS with a 404.
 	 *
 	 * The rollback path is the half of an optimistic commit that a timing
@@ -101,6 +113,16 @@ export type BridgeLog = {
 		op: string;
 		sessionId?: string;
 		startedAt: number;
+		/**
+		 * When the answer arrived, or 0 while it is still IN FLIGHT.
+		 *
+		 * Logged at the START rather than on settle, because "is anything still
+		 * running" is a question about the abandoned work this harness exists to
+		 * watch, and a log that only holds finished requests cannot answer it: a
+		 * read that is a second from answering is simply absent, which reads the
+		 * same as a read that was never issued. The arm gates its readback on "no
+		 * request in flight", so this is the field that makes that gate precise.
+		 */
 		settledAt: number;
 	}>;
 	/** Every stream subscription, with `open` and `snapshot` delivery times. */
@@ -109,6 +131,16 @@ export type BridgeLog = {
 		subscribedAt: number;
 		openedAt: number;
 		snapshotAt: number;
+		/**
+		 * When the renderer threw the subscription away, if it did.
+		 *
+		 * The arm that asks whether a superseded conversation's load is CANCELLED
+		 * cannot answer it from the frames alone: a subscription left running and
+		 * one disposed at the switch look identical in the transcript (both deliver
+		 * nothing to an unmounted panel), and they are the two answers to the
+		 * operator's ask. This is the transport's own record of which happened.
+		 */
+		disposedAt: number;
 	}>;
 	latency: Required<BridgeLatency>;
 };
@@ -387,6 +419,12 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 		default: config.latency?.default ?? 1,
 		stream: config.latency?.stream ?? 12,
 	};
+	const bySession = config.latencyBySession ?? {};
+	/** One op's delay for one session: the session's override, else the table. */
+	const delayFor = (sessionId: string | undefined, op: keyof BridgeLatency) =>
+		(sessionId === undefined ? undefined : bySession[sessionId]?.[op]) ??
+		latency[op] ??
+		latency.default;
 	const log: BridgeLog = { requests: [], streams: [], latency };
 	const titles = new Map(config.sessions.map((row) => [row.id, row.name]));
 
@@ -432,17 +470,21 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 	const desktop = {
 		request: async (request: DesktopRequestLike) => {
 			const startedAt = now();
-			const ms = latency[request.op as keyof BridgeLatency] ?? latency.default;
-			await wait(ms);
-			const result = answer(request);
-			const settledAt = now();
-			log.requests.push({
+			const entry = {
 				op: request.op,
 				sessionId:
 					typeof request.sessionId === "string" ? request.sessionId : undefined,
 				startedAt,
-				settledAt,
-			});
+				settledAt: 0,
+			};
+			log.requests.push(entry);
+			const ms = delayFor(
+				typeof request.sessionId === "string" ? request.sessionId : undefined,
+				request.op as keyof BridgeLatency,
+			);
+			await wait(ms);
+			const result = answer(request);
+			entry.settledAt = now();
 			if (result && "notFound" in result)
 				return { status: 404, body: { detail: "Unknown session." } };
 			return { status: 200, body: { result } };
@@ -459,6 +501,7 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 					subscribedAt,
 					openedAt: 0,
 					snapshotAt: 0,
+					disposedAt: 0,
 				};
 				log.streams.push(entry);
 				const epoch = `epoch-${args.sessionId}`;
@@ -469,7 +512,8 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 					onEvent({ kind: "data", data: JSON.stringify(frame) });
 				};
 				void (async () => {
-					await wait(latency.stream);
+					const streamDelay = delayFor(args.sessionId, "stream");
+					await wait(streamDelay);
 					if (cancelled) return;
 					seq += 1;
 					send({
@@ -484,7 +528,7 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 						},
 					});
 					entry.openedAt = now();
-					await wait(latency.stream);
+					await wait(streamDelay);
 					if (cancelled) return;
 					seq += 1;
 					send({
@@ -512,6 +556,7 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 				return {
 					dispose: () => {
 						cancelled = true;
+						entry.disposedAt = now();
 						onEvent({ kind: "end" });
 					},
 				};
