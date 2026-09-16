@@ -473,6 +473,57 @@ const READ_PAGE = `(async () => {
 		 */
 		sidebar: (document.querySelector('nav[aria-label="Chats"]')?.innerText ?? "").replace(/\\s+/g, " ").trim().slice(0, 600),
 		/*
+		 * D2's probe: the content pane beside the sidebar, and WHY it is blank.
+		 *
+		 * The design round measured the pane as a single flat colour in the same
+		 * frames the sidebar paints, with the designed sentence present in the DOM.
+		 * "Present in the DOM but not painted" has two shapes and the pixels cannot
+		 * tell them apart: the node is hidden or clipped inside its own subtree, or
+		 * the branch that should hold it is not the one taken. So this reads the
+		 * deepest element carrying one of the pane's sentences and walks its
+		 * ancestors, with the geometry that decides it - the size each one actually
+		 * got, its display/overflow/height, and checkVisibility(), which is the
+		 * engine's own answer to "would a reader see this".
+		 */
+		pane: (() => {
+			const wanted = [
+				"Update the backend to use canonical chats",
+				"cannot use the backend's desktop controls",
+				"Choose an agent or team",
+				"Start a chat",
+				"Connecting to the backend",
+			];
+			const hits = [...document.querySelectorAll("p, div, section, h1")].filter((el) =>
+				wanted.some((w) => (el.textContent || "").includes(w)),
+			);
+			if (hits.length === 0) return { sentence: null, chain: [] };
+			const node = hits[hits.length - 1];
+			const chain = [];
+			for (let el = node; el && el !== document.documentElement; el = el.parentElement) {
+				const r = el.getBoundingClientRect();
+				const style = getComputedStyle(el);
+				chain.push({
+					tag: el.tagName.toLowerCase(),
+					cls: String(el.className || "").slice(0, 48),
+					w: Math.round(r.width),
+					h: Math.round(r.height),
+					y: Math.round(r.top),
+					display: style.display,
+					overflow: style.overflow,
+					height: style.height,
+					minHeight: style.minHeight,
+					visible:
+						typeof el.checkVisibility === "function"
+							? el.checkVisibility()
+							: null,
+				});
+			}
+			return {
+				sentence: wanted.find((w) => (node.textContent || "").includes(w)) || null,
+				chain,
+			};
+		})(),
+		/*
 		 * The full-bleed band at the top of the window. It has NO role of its own -
 		 * the compatibility banner is a setup state and deliberately does not
 		 * announce itself assertively - so the only honest read is the position both
