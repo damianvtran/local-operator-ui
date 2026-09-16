@@ -58,6 +58,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ARGS = process.argv.slice(2);
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
@@ -295,15 +296,28 @@ const main = async () => {
 	dataDir = join(tmpdir(), `lo-composer-band-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 
-	chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-sandbox",
-		"--disable-gpu",
-		"--hide-scrollbars",
-		`--user-data-dir=${dataDir}`,
-		"--remote-debugging-port=0",
-		"about:blank",
-	]);
+	/*
+	 * `withMockKeychain` is not optional. A scratch `--user-data-dir` under
+	 * TMPDIR is not enough on macOS: with `HOME` redirected (as agent runs do),
+	 * Chrome finds no login keychain, cannot encrypt its cookie store through
+	 * OSCrypt, and tries to CREATE one - which is an OS authorization alert on
+	 * the operator's screen, from a measurement run
+	 * (`scripts/chrome-keychain.mjs`). The switch makes Chromium's keychain read
+	 * a constant instead, and `scripts/chrome-keychain.test.mjs` fails any rig
+	 * that launches Chrome without it.
+	 */
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
 
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
