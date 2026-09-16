@@ -45,6 +45,7 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type SettingTier,
+	allOpenTargets,
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
@@ -329,14 +330,18 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		const names = sections
 			.filter((section) => open || matchingForSection(section.name).length > 0)
 			.map((section) => section.name);
-		setOpened(new Set(open ? names : []));
-		setClosed(new Set(open ? [] : names));
-		// `Expand all` / `Collapse all` are read as being about the list on screen,
-		// so while a filter is up they reach the filtered view too — otherwise the
-		// one control whose whole job is to move every section would be the one
-		// control a search made inert. The reader's own sets are still written, so
-		// the choice survives the query being cleared.
-		setFilterClosed(new Set(open ? [] : names));
+		/*
+		 * Which of the two sets this press moves — and which it must keep out of —
+		 * depends on what is on screen. `allOpenTargets` carries the reasoning and
+		 * the two defects that conflating them caused (UX round 2, U13/U14; QA
+		 * round 2, Q8).
+		 */
+		const targets = allOpenTargets(open, filtering, names);
+		if (targets.layout) {
+			setOpened(new Set(targets.layout.opened));
+			setClosed(new Set(targets.layout.closed));
+		}
+		setFilterClosed(new Set(targets.filter));
 	};
 
 	// The filter's own collapse state is the filter's: it goes when the filter
@@ -589,14 +594,29 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		let frame = 0;
 		let attempts = 0;
 		const step = () => {
+			const row = document.querySelector<HTMLElement>(
+				`[data-setting-key="${CSS.escape(focusKey)}"]`,
+			);
 			// Scoped to the row's CONTROL SLOT. Unscoped, this selector matched the
 			// row's `Use default`/`Save` buttons first — they precede the control in
 			// document order — so an off-default row was focused on its reset button
 			// rather than on its field (review round 1, n4).
-			const el = document.querySelector<HTMLElement>(
-				`[data-setting-key="${CSS.escape(focusKey)}"] [data-setting-control] :is(input, textarea, select, button[role="switch"], button)`,
-			);
+			//
+			// The ROW is the fallback for a destination that has no control to focus.
+			// A retired or redacted row renders a bare `<span>` in that slot, so the
+			// slot selector matched nothing, the loop burned every attempt, and —
+			// because the scroll sits in the success branch — the named row was not
+			// even scrolled to. That is exactly the population the `readonly` fix
+			// created, and `buildSettingKeyItems` offers those keys in the palette
+			// without a `kind` filter, so it is reachable in the shipped flow (review
+			// round 2, M1). `tabIndex = -1` makes a non-interactive destination
+			// focusable without adding it to the tab order.
+			const el =
+				row?.querySelector<HTMLElement>(
+					`[data-setting-control] :is(input, textarea, select, button[role="switch"], button)`,
+				) ?? row;
 			if (el) {
+				if (el === row) el.tabIndex = -1;
 				el.focus();
 				el.scrollIntoView({ block: "center" });
 				revealedFocusKey.current = focusKey;

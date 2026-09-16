@@ -259,3 +259,46 @@ export function opensOnArrival(
 	const core = rows.filter((row) => tierFor(row) === "core").length;
 	return core * 2 >= rows.length;
 }
+
+/**
+ * What `Expand all` / `Collapse all` moves, as a function of whether a filter is
+ * up.
+ *
+ * The two presses are not the same press, and conflating them was a defect in
+ * both directions at once (UX round 2, U13 and U14; the same defect QA's round 2
+ * filed as Q8, and proved new by running the identical sequence on the
+ * pre-remediation tree):
+ *
+ *  - UNFILTERED the press is about the whole list, so it writes the reader's own
+ *    `opened`/`closed` and leaves the FILTER's set EMPTY. It used to seed that set
+ *    with "the sections holding core rows" — a query-shaped subset of a list no
+ *    query was asking about — and the filtered view reads an entry there as "the
+ *    reader shut this section", which is what suppresses the force-open a search
+ *    performs. `Collapse all` then `provider` reported "35 results in 6 sections"
+ *    with two matched sections collapsed and 30 rows rendered.
+ *  - FILTERED the press is about the list on screen, so it writes the filter's set
+ *    — which is cleared when the filter is, so the choice cannot outlive the query
+ *    — and must NOT touch the reader's layout, or which sections are collapsed
+ *    after the search clears is decided by a query already cleared (U14: after the
+ *    press and a cleared query, Model was shut and three sections the query never
+ *    touched were open).
+ *
+ * Exported for the same reason `opensOnArrival` is: the decision is pure, the
+ * sequence that broke it is not reachable from this repository's renderer tests,
+ * and a unit assertion over this function is therefore the arm the regression
+ * needs (`scripts/backend-settings-tiers.test.mjs`).
+ */
+export function allOpenTargets(
+	open: boolean,
+	filtering: boolean,
+	names: readonly string[],
+): {
+	layout: { opened: string[]; closed: string[] } | null;
+	filter: string[];
+} {
+	if (filtering) return { layout: null, filter: open ? [] : [...names] };
+	return {
+		layout: { opened: open ? [...names] : [], closed: open ? [] : [...names] },
+		filter: [],
+	};
+}
