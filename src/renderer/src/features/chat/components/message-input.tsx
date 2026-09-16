@@ -1627,21 +1627,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * a token that is still in the box.
 				 */
 				/*
-				 * The pick's record lives exactly as long as the token it describes: a
-				 * buffer that no longer contains the run the picker wrote is a different
-				 * draft, and keeping the record would make a later hand-typed token of the
-				 * same text the picker's. The ARM is not that event — it is the pick's own
-				 * consequence, which is why it clears its sibling and not this.
+				 * The record lives as long as the token it describes is still in the box,
+				 * and the test is on the token's WORD rather than the run it was recorded
+				 * with: the run carries the token's trailing space, so the ordinary buffer
+				 * an operator ends up with — `/credential SECRET`, or the masked citation —
+				 * does not contain it, and testing the run cleared the record at the first
+				 * real edit (QA round 9, Q16: the draft was then prose and the secret went
+				 * out as message text). The ARM is not that event either: it is the token's
+				 * own consequence, which is why it clears its sibling and not this.
 				 */
 				if (
 					pickedToken.current !== null &&
-					!next.buffer.includes(pickedToken.current)
+					!next.buffer.includes(pickedToken.current.trim())
 				) {
 					pickedToken.current = null;
 				}
 				if (
 					cancelledToken.current !== null &&
-					!next.buffer.includes(cancelledToken.current.text)
+					!next.buffer.includes(cancelledToken.current.text.trim())
 				) {
 					cancelledToken.current = null;
 				}
