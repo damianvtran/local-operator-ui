@@ -236,11 +236,13 @@ and `box.y` are four of its keys.
 | absent | present | the plan count alone, at the row's start | 24px + gap |
 | present | present | goal chip first, count second | 24px + gap |
 | present, expanded | either | the chips' line, plus the goal's body beneath | up to 160px |
-| any of the above | any | **plus up to two ACTIVITY chips**, after the plan chip: subagents, then jobs (`docs/composer-activity-chips.md`) | see below |
+| any of the above | any | **plus up to three COUNT chips**, after the plan chip: wakes, then subagents and jobs (`docs/composer-wakes.md`, `docs/composer-activity-chips.md`) | see below |
 
 The activity chips are the row's second change, and they are the reason the last
 row of that table can no longer be described as "24px + gap" in the general case:
 four chips do not share a line at any column the app renders, so the row WRAPS.
+The wake chip is the third change and changes none of that — it is a fourth count,
+it is gated the same way, and it only moves the width at which the group wraps.
 Measured on the frames (`docs/evidence/chat-composer-status-row/activity-widths/`,
 which prints its own numbers into the picture):
 
@@ -589,14 +591,25 @@ rule is deliberately not copied:
    (the plan is not on screen inside a reader: a reader replaces the panel body
    wholesale, `run-details-trigger.tsx:61-70`);
 3. bring the **To-dos section into view** in the pane's scroll region;
-4. **focus does not move.** `docs/run-sidebar.md` § 9 (line 1317) fixes this:
-   *"Focus does not move into the pane when it opens. Unlike the popover… a pane
+4. **the pane does not take focus.** `docs/run-sidebar.md` § 9 (line 1317) fixes
+   this: *"Focus does not move into the pane when it opens. Unlike the popover… a pane
    is part of the page."* The user pressing this chip is in the composer, usually
    mid-sentence; the app's caret guards exist to keep exactly that
    (`message-input.tsx`'s `composerPointerTouched`/`composerFocusIsOurs`), and a
    control that moved focus into another column would take the caret with it. The
    cost is recorded: a keyboard user who presses the chip stays on the chip, and
    reaches the pane by Tab as they already do from the header trigger.
+
+   **What that does NOT say, and must not be read as saying** (QA round 1's
+   observation): a genuine CLICK still focuses the pressed button, because that is
+   the browser's own behaviour and not this control's decision — measured on the
+   built app, `document.activeElement` after a real hit-tested click is
+   `BUTTON[Open the wakes in run details — 8 wakes armed]`, so a reader mid-sentence
+   who clicks the chip has moved their caret to the chip. It is identical for the
+   three sibling count chips and for the pane's header trigger, so nothing here is
+   a new behaviour to fix; what the rule above fixes is that the PANE takes no
+   focus and no element is teleported. The two claims are separate: **the reveal
+   moves nobody, and a click moves the caret to the button the reader clicked.**
 
 **Why not a toggle, given the trigger is one.** The trigger is a toggle because
 it is the pane's door — it has to close it too, and it has to be pressable while
@@ -682,6 +695,30 @@ does, they carry no `aria-pressed` and no pressed ground for § 5.2's reason, an
   keeps the refusal meaningful is that the mark is the roster's existing
   nine-state vocabulary, unchanged and unauthored here, and not a decorative pulse
   invented for the composer. `animate-pulse-visible` remains the skeleton's alone.
+
+### 5.6 The wake chip
+
+**`docs/composer-wakes.md`'s subject**, and the two sentences the plan chip's
+reader needs are § 5.5's over a fourth destination:
+
+- **Same control box, same reveal, one more destination.** The wake chip imports
+  `CHIP_CONTROL` exactly as § 5.1's count chip does, carries no `aria-pressed` and
+  no pressed ground for § 5.2's reason, and files § 5.2's one-shot, nonce'd request
+  with `section: "wakes"`. The pane resolves it through that section's own ref.
+- **It is a MARKED count, and the mark is not the roster's `Info`.** § 6's
+  refusal of a mark on the plan chip was overruled in § 5.5's shape for the
+  activity chips; the wake chip takes the same ruling, with `AlarmClock`. What
+  keeps the refusal meaningful is unchanged and is now stated over three marks:
+  each is an existing glyph whose meaning is fixed elsewhere (`Info` for "this
+  opens the run pane", the roster's nine states, the alarm for a wake), none is a
+  decorative pulse, and `animate-pulse-visible` remains the skeleton's alone. This
+  one is the only count chip on the row that does not move, because an armed
+  schedule is not moving.
+
+It sits BETWEEN the plan chip and the two activity chips, which is the one
+placement sentence this document owes: the goal, the plan and the wakes are what
+the session is set up to do, and the subagents and jobs are what is happening now
+(`docs/composer-wakes.md` § 4 has the rejected alternative).
 
 ---
 

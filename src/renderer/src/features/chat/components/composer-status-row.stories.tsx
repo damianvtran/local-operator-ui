@@ -151,6 +151,87 @@ const SETTLED_ACTIVITY = detailsWith([
 	wireJob("s1", "bash", "completed", "bash: wc -l invoices/march.csv"),
 ]);
 
+/**
+ * One ARMED wake schedule in the wire's shape, epoch MILLISECONDS for the due
+ * instant — the trap the contract names beside the epoch-SECONDS job rows.
+ *
+ * `next_due_at` is minutes from a FIXED instant rather than from `Date.now()`, so
+ * the clause in a frame is reproducible: a caption that re-renders differently on
+ * every capture is one nobody can compare against the previous one.
+ */
+const WAKE_NOW_MS = Date.parse("2026-03-14T14:26:00Z");
+
+const wakeOf = (
+	id: string,
+	message: string,
+	dueInMinutes: number,
+	everyMinutes?: number,
+	limit?: number,
+): Record<string, unknown> => ({
+	id,
+	message,
+	next_due_at: WAKE_NOW_MS + dueInMinutes * 60_000,
+	created_at: WAKE_NOW_MS - 3_600_000,
+	every_ms: everyMinutes === undefined ? null : everyMinutes * 60_000,
+	/* `remaining` stays null exactly as the backend publishes it, and `limit` is
+	   what the bounded clause is rendered from — see the fixtures' own note. */
+	remaining: null,
+	limit: limit ?? null,
+	fired_count: 0,
+});
+
+/** One schedule: the wake chip alone, at the row's start. */
+const WAKES_ONLY: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: [],
+	wakes: [wakeOf("w1", "Check the 09:00 deploy finished", 34)],
+	nowMs: WAKE_NOW_MS,
+});
+
+/** Nine schedules: the chip's count at the wire's ordinary full-scheduler size. */
+const WAKES_MANY: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: [],
+	wakes: Array.from({ length: 9 }, (_, index) =>
+		wakeOf(`w${index + 1}`, `Wake ${index + 1}`, (index + 1) * 45),
+	),
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * A plan and an armed wake: the pair the row has to hold, and the pane's own two
+ * sections in miniature.
+ */
+const PLAN_AND_WAKES: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: planOf(["pending", "done"]),
+	wakes: [
+		wakeOf("w1", "Stand-up reminder", 12),
+		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * All five chips at once: goal, plan, wakes, subagents and jobs.
+ *
+ * The row's widest state, which is the one the wrap and the ordinal first-chip
+ * rule both have to survive. The pair with `ActivityWidths` (four chips) is the
+ * difference the fourth count chip makes to the wrap regime.
+ */
+const ALL_FIVE: RunDetails = deriveRunDetails({
+	jobs: [
+		wireJob("c1", "task", "running", "Audit the March invoices"),
+		wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+	],
+	todos: planOf(["pending"]),
+	wakes: [
+		wakeOf("w1", "Stand-up reminder", 12),
+		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	nowMs: WAKE_NOW_MS,
+});
+
 /** A goal that fits: the control for the truncation claim beside `LONG_GOAL`. */
 const SHORT_GOAL = "Reconcile the March invoices";
 
@@ -780,6 +861,117 @@ export const ActivityWidths: Story = {
 					label="172 (the column floor): the row stacks, and the chips follow the goal"
 					frontend={frontend(SHORT_GOAL)}
 					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The wake chip: the fourth count, and the one about the FUTURE.
+ *
+ * Five bands, each a claim the design record makes, and the five together are what
+ * "a session's armed wakes are visible" means on this row:
+ *
+ * 1. wakes alone — no goal, no plan, no activity — so the chip takes the row's
+ *    content edge. This is the state nothing in the app could show before, and
+ *    the pair with band 4 is the count gate.
+ * 2. one schedule beside the plan, where the two leading chips have to share the
+ *    row's 8px gutter rather than each opening their own edge with the
+ *    `${FIRST_CHIP}` cancellation.
+ * 3. nine schedules: the count is the model's, and the row is unchanged by how
+ *    many rows the pane behind it will draw.
+ * 4. the CONTROL band: the same plan and activity with no wakes, so the chip's
+ *    absence is legible as an absence rather than as a chip that happens to be
+ *    somewhere else on the line.
+ * 5. the goal, the plan, the wakes and both activity counts at 900px, which is
+ *    the row at its widest and the frame the wrap has to survive.
+ */
+export const WakeChip: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="Wakes alone: one schedule, no goal and no plan, so the chip is at the row's start"
+				frontend={frontend("")}
+				runDetails={WAKES_ONLY}
+			/>
+			<Band
+				label="The plan and the wakes: two count chips in one gutter, the plan first"
+				frontend={frontend("")}
+				runDetails={PLAN_AND_WAKES}
+			/>
+			<Band
+				label="Nine schedules: the chip states the model's count, and only the pane behind it caps its rows"
+				frontend={frontend("")}
+				runDetails={WAKES_MANY}
+			/>
+			<Band
+				label="The control: the same plan and activity with no wakes — no chip at all"
+				frontend={frontend("")}
+				runDetails={BOTH_ACTIVITY}
+			/>
+			<Band
+				label="All five at 900: goal, plan, wakes, subagents and jobs on one line"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={ALL_FIVE}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The row's width story with the FOURTH count chip, which is the one that changes
+ * the wrap regime.
+ *
+ * `ActivityWidths` above measures the same row with three counts; the difference
+ * this set exists to show is what the wake chip costs at each width, and the
+ * numbers are printed into each frame rather than asserted beside it. The four
+ * widths are the ones the record and the frames argue about, plus the row's own
+ * smaller floor:
+ *
+ * - 900, the composer's own column width;
+ * - 240, `CHAT_CHIP_ICON_ONLY_PX`, the boundary where the composer's chrome stops
+ *   sharing one line;
+ * - 220, the column floor the wake change was specified against — narrower than
+ *   any of the three above, and the width where the chips have the least room;
+ * - 172, the app's real floor with the canvas open (QA round 1, measured).
+ *
+ * The one number that matters at all four is `overflowX 0`: a chip group that
+ * wraps inside its column instead of painting past it.
+ */
+export const WakeWidths: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					width={900}
+					label="900: all five chips on one line beside the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240 (CHAT_CHIP_ICON_ONLY_PX): the chips take the line under the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={220}
+					label="220 (the specified column floor): the same group, one line lower"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): the row stacks, and the chips follow the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_FIVE}
 				/>
 			</RowFacts>
 		</div>

@@ -248,12 +248,14 @@ type UiPreferencesState = {
  * union, so a section spelled at a call site and nowhere here would be a request
  * nothing could resolve.
  *
- * The three are the pane's three LIVE lists — the plan, the roster and the tool
- * jobs — and they are named for their sections rather than for their controls:
- * `jobs` is the section that draws `bash` rows, which the roster deliberately
- * does not hold (`run-detail-model.ts`'s partition).
+ * The four are the pane's four LIVE lists — the plan, the roster, the tool jobs
+ * and the session's armed wake schedules — and they are named for their sections
+ * rather than for their controls: `jobs` is the section that draws `bash` rows,
+ * which the roster deliberately does not hold (`run-detail-model.ts`'s
+ * partition), and `wakes` is the section that draws the schedules, which no other
+ * section holds at all.
  */
-export type RunPanelSection = "todos" | "subagents" | "jobs";
+export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
 
 /**
  * Claiming the right slot for one of the two panes that can live in it.
