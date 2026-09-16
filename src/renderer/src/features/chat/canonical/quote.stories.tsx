@@ -18,20 +18,26 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
  * proves it too, but only on whatever transcript that run happened to open; a
  * story holds the same claim still, in every palette, from the diff alone.
  *
- * WHAT IS DELIBERATELY NOT SIMULATED. The toolkit's reveal is the parent row's
- * `group-hover`, and no story can hover: `userEvent.hover` dispatches synthetic
- * pointer events, which do not set CSS `:hover`. So the frames these stories
- * produce show the toolkit HIDDEN at its resting `opacity-0` - which is the
- * correct resting state and the half a design review can judge. The revealed
- * state is a LIVE-RUN frame and nothing here is one: the design and UX rounds of
- * this change photograph it from the running app and attach it to the pull
- * request, which is where a reader should look for it rather than at an empty
- * corner of a still.
+ * WHAT IS DELIBERATELY NOT SIMULATED HERE. The toolkit's reveal is the parent
+ * row's `group-hover`, and a story's `play` cannot produce it: `userEvent.hover`
+ * dispatches synthetic pointer events, which do not set CSS `:hover`. So the
+ * frames these stories produce show the toolkit HIDDEN at its resting
+ * `opacity-0`, which is the correct resting state and the half a design review
+ * can judge from a still.
  *
- * The keyboard reveal (`group-focus-within`) is the other half of that and is
- * equally unreachable from these stills: what a frame here CAN show is the
- * resting strip in the tab order, and what it cannot is the ring appearing on
- * it.
+ * THE REVEALED STATE IS PHOTOGRAPHED BY THE EVIDENCE RIG, NOT BY A STORY. The
+ * round that judged this surface first read the reveal as unreachable from a
+ * still; the UX round corrected that, and the correction is about the rig rather
+ * than about these stories - a private headless Chrome driven over CDP with real
+ * `Input.dispatchMouseEvent` drives the actual input pipeline, so `:hover` and
+ * `group-hover` answer there and the revealed strip is both drivable and
+ * photographable. `scripts/capture-evidence.mjs` takes those frames from this
+ * same story set, in every theme.
+ *
+ * The keyboard reveal (`group-focus-within`) is reachable the same way, with
+ * real `Input.dispatchKeyEvent` Tab presses rather than a `play` function; what
+ * a resting still CAN show is the strip in the tab order, and what it cannot is
+ * the ring appearing on it.
  */
 
 const conversationId = "story";
@@ -166,10 +172,18 @@ const Frame = ({ records }: { records: TranscriptRecord[] }) => {
  * clicks its disclosure trigger: a story that wrote `addReply` directly would
  * keep passing after the toolkit stopped reaching the store, which is the one
  * thing these frames exist to check.
+ *
+ * IT DELIBERATELY DOES NOT CLEAR FIRST (design round 1, D1; QA round 1, Q4).
+ * It used to call `clearReplies` before every press, which meant the second
+ * press wiped the first chip and `TwoQuotesStaged` rendered ONE chip reading
+ * the second row's words - the exact opposite of what its docstring claimed to
+ * prove, and a frame that would have stayed green through a regression making
+ * the second press replace the first. The mount-time `useCleanReplies` on
+ * `Frame` is what keeps story order from leaking; within a story, presses must
+ * append the way the product does.
  */
 function pressQuote(rowId: string) {
 	return () => {
-		useConversationInputStore.getState().clearReplies(conversationId);
 		const row = document.querySelector(
 			`[data-record-id="${rowId}"] [data-lo-quote-toolkit] button`,
 		);
@@ -220,7 +234,9 @@ export const StagedQuote: Story = {
  * Two quotes staged from two rows: the list stacks, and each is its own chip.
  *
  * Driven through the row controls as well, so the second press is proven to
- * append rather than replace.
+ * append rather than replace - which is a claim this story could not previously
+ * make, because its own `pressQuote` cleared the list before each press and the
+ * frame showed the second row's words alone.
  */
 export const TwoQuotesStaged: Story = {
 	render: () => <Frame records={CONVERSATION} />,
