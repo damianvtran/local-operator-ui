@@ -274,7 +274,18 @@ const variableValue = z.string().max(16384);
  * bound is the same number stated where a caller can be refused by name
  * instead of by a 422 the user cannot act on.
  */
-const wakeMessage = z.string().min(1).max(2_000);
+/**
+ * The prompt's ceiling, EXPORTED because a second reader needs the number.
+ *
+ * The create dialog states this bound inline ("This prompt is 3,120 characters,
+ * and a wake holds at most 2,000") rather than letting the main process refuse
+ * the request with its generic "Invalid desktop operation." - which is the one
+ * refusal in this family a user could neither read nor act on. One number, two
+ * readers, no second copy to drift.
+ */
+export const WAKE_MESSAGE_MAX_CHARS = 2_000;
+
+const wakeMessage = z.string().min(1).max(WAKE_MESSAGE_MAX_CHARS);
 /**
  * A wake's per-session handle, `w1`..`w16`.
  *
@@ -1207,6 +1218,18 @@ export type DesktopWakeSupervisor = {
 	running: boolean;
 	/** The backend's own word for the state, shown verbatim rather than re-worded. */
 	detail: string;
+	/**
+	 * Whether the probe could speak about THIS store at all.
+	 *
+	 * A fourth field the frozen interface did not name and the route sends
+	 * anyway (`routes/desktop_wakes.py::_supervisor_info`), which the reviewer's R7
+	 * asked the page to read: a store outside the real home is supervised by
+	 * nothing, so `supported`/`running` describe SOMEBODY ELSE's launchd there and
+	 * printing "the supervisor is not running" over it is a claim about a machine
+	 * the probe never looked at. Optional, so a runtime that stops sending it
+	 * reads as "the probe can speak" - which is the pre-field behaviour.
+	 */
+	verifiable?: boolean;
 };
 
 /**

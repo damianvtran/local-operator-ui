@@ -42,7 +42,11 @@ import { cn } from "@shared/lib/utils";
 import { ArrowUpRight, SquarePen, X } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
-import type { ScheduledTaskRow, WakeLine } from "../scheduled-task-model";
+import {
+	type ScheduledTaskRow,
+	type WakeLine,
+	hiddenWakesLabel,
+} from "../scheduled-task-model";
 
 export type WakeConversationRowProps = {
 	row: ScheduledTaskRow;
@@ -179,7 +183,7 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 						   by default, which is this primitive's own rule. */
 						<Disclosure
 							summary={
-								expanded ? "Show fewer" : `Show ${hidden.length} more wakes`
+								expanded ? "Show fewer" : hiddenWakesLabel(hidden.length)
 							}
 							onOpenChange={setExpanded}
 							className={cn("pl-4")}

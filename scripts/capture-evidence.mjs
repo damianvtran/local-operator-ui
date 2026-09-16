@@ -1977,9 +1977,17 @@ export const STORIES = [
 	["schedules-page--cancel-confirm", 1280, 900],
 	["schedules-page--create-dialog", 1280, 900],
 	["schedules-page--create-dialog-existing", 1280, 900],
+	["schedules-page--create-dialog-no-conversations", 1280, 900],
 	["schedules-page--create-dialog-every", 1280, 900],
+	/* The repeat floor, refused inline: the one refusal the dialog owns rather
+	   than letting the transport answer for it with its generic sentence. */
+	["schedules-page--create-dialog-repeat-floor", 1280, 900],
 	["schedules-page--create-dialog-ceiling", 1280, 900],
 	["schedules-page--edit-wake", 1280, 900],
+	/* The editor after a REPEAT-only change: the path the old re-anchor sentence
+	   was false on, and the dirty `Save` the old dialog enabled with nothing to
+	   save. */
+	["schedules-page--edit-wake-repeat-only", 1280, 900],
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],

@@ -48,10 +48,16 @@ const {
 	MAX_WAKE_SCHEDULES,
 	PARKED_CLAUSE,
 	WAKE_LINE_CAP,
+	hiddenWakesLabel,
+	keepEndsLabel,
+	keepFirstRunLabel,
+	keepRepeatLabel,
 	legacyScheduleCadence,
 	repeatEveryString,
 	scheduledTaskRows,
+	supervisorLead,
 	toScheduledTaskRow,
+	validateScheduledTask,
 	wakeCountClause,
 	wakeCreateBody,
 	wakePromptHead,
@@ -238,7 +244,182 @@ test("a legacy row's cadence is spelled in the wake vocabulary, bounds included"
 			},
 			NOW,
 		),
-		/^once · /,
+		/^once · at /,
+	);
+	/* A recurring row's anchor is a NAMED clause (`starts`), not a bare `from`:
+	   the wake lines above it lead with a clock, so an unnamed preposition there
+	   read as a change of kind mid-list (the designer's D5). */
+	assert.match(
+		legacyScheduleCadence(
+			{
+				...base,
+				interval: 1,
+				unit: "hours",
+				start_time_utc: new Date(2026, 3, 1, 9, 0).toISOString(),
+			},
+			NOW,
+		),
+		/^every 1h · starts /,
+	);
+});
+
+test("one wake, one line: the disclosure and the count pluralise the same way", () => {
+	/* `Show 1 more wakes` shipped on the populated list (the designer's D4, the
+	   reviewer's R5): the label is also the control's ACCESSIBLE NAME, so the
+	   singular is a correctness case rather than a nicety. */
+	assert.equal(hiddenWakesLabel(1), "Show 1 more wake");
+	assert.equal(hiddenWakesLabel(3), "Show 3 more wakes");
+	assert.equal(wakeCountClause(1), "1 wake");
+});
+
+test("ties in the due instant are broken by name, and by nothing else", () => {
+	/* Same instant, so the tie-break is the only thing that can order them, and
+	   the wire's own order is deliberately the reverse of the answer. */
+	const rows = scheduledTaskRows(
+		[
+			entry("bbbbbbbbbbbb", "Zeta", [schedule("w1", 30)]),
+			entry("aaaaaaaaaaaa", "Alpha", [schedule("w1", 30)]),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		rows.map((row) => row.name),
+		["Alpha", "Zeta"],
+	);
+});
+
+test("when nothing can fire, no row prints an instant", () => {
+	const listing = [entry("aaaaaaaaaaaa", "Alpha", [schedule("w1", 30)])];
+	const rows = scheduledTaskRows(listing, NOW, { dueInstants: false });
+	const [row] = rows;
+	/* The parked rule applied one state over (the designer's D2): the strip carries
+	   the reason, and the row keeps the count and the work it describes. */
+	assert.equal(row.dueInstants, false);
+	assert.equal(row.parked, false);
+	assert.equal(row.meta, "1 wake");
+	assert.equal(row.wakes[0].dueLabel, "");
+	assert.equal(row.wakes[0].cadence.length > 0, true);
+	/* And the default is the trusted reading, or every other test here would be
+	   asserting this branch. */
+	const trusted = scheduledTaskRows(listing, NOW);
+	assert.equal(trusted[0].dueInstants, true);
+	assert.match(trusted[0].meta, /· next /);
+});
+
+test("the supervisor sentence is one truth, picked by three states", () => {
+	assert.match(
+		supervisorLead({ supported: true, running: false, detail: "" }),
+		/^The wake supervisor is installed but not running/,
+	);
+	assert.match(
+		supervisorLead({ supported: false, running: false, detail: "" }),
+		/^Wakes are not supervised on this platform yet/,
+	);
+	/* `supported: false` also reports `verifiable: false`, so the order of the two
+	   clauses is load-bearing: a Linux user must not read a launchd sentence. */
+	assert.match(
+		supervisorLead({
+			supported: false,
+			running: false,
+			detail: "",
+			verifiable: false,
+		}),
+		/^Wakes are not supervised on this platform yet/,
+	);
+	assert.match(
+		supervisorLead({
+			supported: true,
+			running: false,
+			detail: "",
+			verifiable: false,
+		}),
+		/^Nothing supervises this store's scheduled tasks/,
+	);
+});
+
+test("the editor's keep options state the value they keep", () => {
+	const wakeRow = {
+		id: "w1",
+		message: "m",
+		next_due_at: minutes(120),
+		every_ms: 86_400_000,
+		until_at: null,
+		limit: null,
+		fired_count: 3,
+		overdue_s: 0,
+		stale: false,
+		last_fired_at: null,
+		last_attempt_at: null,
+	};
+	assert.match(keepFirstRunLabel(wakeRow, NOW, false), /^Keep \d/);
+	assert.equal(keepFirstRunLabel(wakeRow, NOW, true), "Keep it parked");
+	assert.equal(keepRepeatLabel(wakeRow), "Keep every 1d");
+	assert.equal(keepRepeatLabel({ ...wakeRow, every_ms: null }), "Keep as once");
+	assert.equal(keepEndsLabel(wakeRow, NOW), "Keep never ending");
+	assert.match(
+		keepEndsLabel({ ...wakeRow, limit: 5 }, NOW),
+		/^Keep 2 runs left$/,
+	);
+	assert.equal(
+		keepEndsLabel({ ...wakeRow, limit: 4, fired_count: 3 }, NOW),
+		"Keep 1 run left",
+	);
+	assert.match(
+		keepEndsLabel({ ...wakeRow, until_at: minutes(60 * 24) }, NOW),
+		/^Keep ending /,
+	);
+});
+
+test("the dialog's refusals are inline, named, and independent", () => {
+	const quiet = {
+		message: "read my email",
+		needsConversation: false,
+		repeatMs: null,
+		endsRuns: null,
+		existingWakeCount: 0,
+		alreadyRun: 0,
+	};
+	assert.equal(validateScheduledTask(quiet).invalid, false);
+	/* The ceiling, spelled the way it has always been. */
+	assert.equal(
+		validateScheduledTask({ ...quiet, existingWakeCount: 16 }).conversation,
+		"This conversation already has 16 wakes, the most it can hold. Cancel one to add another.",
+	);
+	assert.equal(
+		validateScheduledTask({ ...quiet, needsConversation: true }).conversation,
+		"Pick a conversation.",
+	);
+	/* The repeat floor. */
+	assert.equal(
+		validateScheduledTask({ ...quiet, repeatMs: 30_000 }).repeat,
+		"Wakes repeat no more often than once a minute.",
+	);
+	assert.equal(
+		validateScheduledTask({ ...quiet, repeatMs: 60_000 }).repeat,
+		"",
+	);
+	/* The wire's own prompt ceiling, stated where the value is: past it the main
+	   process refuses the whole request with "Invalid desktop operation." (R3). */
+	const long = validateScheduledTask({ ...quiet, message: "x".repeat(2_500) });
+	assert.equal(long.invalid, true);
+	assert.match(long.prompt, /^This prompt is 2,500 characters/);
+	assert.match(long.prompt, /at most 2,000/);
+	assert.equal(
+		validateScheduledTask({ ...quiet, message: "x".repeat(2_000) }).prompt,
+		"",
+	);
+	assert.equal(
+		validateScheduledTask({ ...quiet, message: "   " }).invalid,
+		true,
+	);
+	/* A run budget the wake has already met (the designer's D3 point 4). */
+	assert.equal(
+		validateScheduledTask({ ...quiet, endsRuns: 1, alreadyRun: 3 }).ends,
+		"This wake has already run 3 times, so the run budget has to be at least 4.",
+	);
+	assert.equal(
+		validateScheduledTask({ ...quiet, endsRuns: 4, alreadyRun: 3 }).ends,
+		"",
 	);
 });
 

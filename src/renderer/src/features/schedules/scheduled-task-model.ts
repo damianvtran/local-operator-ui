@@ -5,6 +5,10 @@ import {
 	formatWakeDue,
 } from "@features/chat/components/run-details/run-detail-model";
 import type { ScheduleResponse } from "@shared/api/local-operator";
+import {
+	type DesktopWakeSupervisor,
+	WAKE_MESSAGE_MAX_CHARS,
+} from "../../../../shared/desktop-contract";
 /**
  * The Schedules page's own model: what a row is, what it says, and what the
  * create dialog offers.
@@ -62,8 +66,20 @@ const UNIT_MS: Record<ScheduleResponse["unit"], number> = {
 	days: 86_400_000,
 };
 
-/** One wake line, plus the two facts the PAGE adds to the pane's row. */
+/** One wake line, plus the facts the PAGE adds to the pane's row. */
 export type WakeLine = WakeRow & {
+	/**
+	 * The typed wire row this line was derived from.
+	 *
+	 * Carried rather than re-derived from the labels: the editor states the
+	 * wake's CURRENT time, cadence and bound on its own controls (the designer's
+	 * D3 - a surface that asks the user to decide with the value hidden), and a
+	 * label is not a value. The alternative - parsing `every 1d` back out of the
+	 * rendered sentence - is the second grammar this module exists to avoid.
+	 */
+	source: DesktopWakeScheduleRow;
+	/** Where this wake sits in its conversation's own order, 1-based. */
+	position: number;
 	/**
 	 * `Ran 3 times` for a wake that has fired, or "" for one that has not.
 	 *
@@ -96,6 +112,15 @@ export type ScheduledTaskRow = {
 	 */
 	parked: boolean;
 	ghost: boolean;
+	/**
+	 * Whether this row's instants are ones the machine will actually fire.
+	 *
+	 * Distinct from `parked`: a parked row is stopped by its own session, this is
+	 * a page where nothing is supervised. The row renders identically (no
+	 * instant, the count only) and the strip carries the reason, which is why the
+	 * two are separate flags rather than one.
+	 */
+	dueInstants: boolean;
 	/** The soonest due instant across the wakes, or `null` when none is knowable. */
 	nextDueAt: number | null;
 	wakes: WakeLine[];
@@ -120,6 +145,158 @@ export const wakeCountClause = (count: number): string =>
 
 /** The parked clause, which replaces BOTH the due label and the count. */
 export const PARKED_CLAUSE = "Parked — wakes resume when you open it";
+
+/**
+ * The disclosure's label, singular at one.
+ *
+ * `Show 1 more wakes` shipped on the populated list because the clause was
+ * written only in the plural, and it is the control's ACCESSIBLE NAME too (the
+ * designer's D4 and the reviewer's R5 are the same defect). The page's own
+ * `wakeCountClause` pluralises; this is the same rule on the same kind of noun.
+ */
+export const hiddenWakesLabel = (hidden: number): string =>
+	hidden === 1 ? "Show 1 more wake" : `Show ${hidden} more wakes`;
+
+/**
+ * What the editor's `keep` options say, with the value they are keeping.
+ *
+ * The designer's D3, and the reason it is a defect rather than a wording
+ * preference: the editor asks the user to decide about a time, a cadence and a
+ * bound while showing none of the three. Every other surface on this feature is
+ * value-bearing (the row reads `4:00 PM EDT · every 1d · 3 left · Ran 3 times`),
+ * so these are the row's own formatters applied to the same values - not a
+ * second vocabulary for them.
+ */
+export const keepFirstRunLabel = (
+	wake: DesktopWakeScheduleRow,
+	nowMs: number,
+	parked: boolean,
+): string => {
+	if (parked) return "Keep it parked";
+	/* `next_due_at` is non-null on this wire, and a null would be a row with no
+	   instant to keep: the fallback says that rather than printing `NaN`. */
+	return wake.next_due_at === null
+		? "Keep the current time"
+		: `Keep ${formatWakeDue(wake.next_due_at, nowMs)}`;
+};
+
+export const keepRepeatLabel = (wake: DesktopWakeScheduleRow): string =>
+	wake.every_ms === null
+		? "Keep as once"
+		: `Keep ${formatWakeCadence(wake.every_ms, null)}`;
+
+export const keepEndsLabel = (
+	wake: DesktopWakeScheduleRow,
+	nowMs: number,
+): string => {
+	if (wake.limit !== null) {
+		const left = Math.max(0, wake.limit - wake.fired_count);
+		return `Keep ${left} run${left === 1 ? "" : "s"} left`;
+	}
+	if (wake.until_at !== null) {
+		return `Keep ending ${formatWakeDue(wake.until_at, nowMs)}`;
+	}
+	return "Keep never ending";
+};
+
+/**
+ * The one sentence that says whether anything will fire, and picks the reason.
+ *
+ * The designer's D2: the strip and the panel footer were making opposite claims
+ * on one screen ("scheduled tasks will not fire" above, "wakes fire whether or
+ * not this window is open" below), and the states are not one condition but
+ * three. Order matters - `supported: false` also reports `verifiable: false`
+ * (`wakes/install.py::supervisor_state`), so the platform sentence has to win or
+ * a Linux user reads a launchd sentence.
+ */
+export const supervisorLead = (supervisor: DesktopWakeSupervisor): string => {
+	if (!supervisor.supported) {
+		return "Wakes are not supervised on this platform yet, so they only fire while a conversation is running.";
+	}
+	if (supervisor.verifiable === false) {
+		return "Nothing supervises this store's scheduled tasks, so they only fire while their conversation is running.";
+	}
+	return "The wake supervisor is installed but not running, so scheduled tasks will not fire.";
+};
+
+/**
+ * The dialog's inline refusals, derived rather than scattered through the JSX.
+ *
+ * One function per branch would be three places to keep in step; this is the
+ * ONLY place the create/edit form decides whether it can be submitted, and each
+ * refusal carries the sentence the user reads. Two of the three existed inline in
+ * the component before this (the ceiling and the repeat floor); the third is the
+ * reviewer's R3 - a prompt past the wire's ceiling was refused by the main
+ * process with its generic "Invalid desktop operation.", which is the one refusal
+ * in this family a user can neither read nor act on.
+ *
+ * `alreadyRun` is the EDIT branch's bound: `limit` is the total number of runs a
+ * wake may make, so a budget at or below what it has already made is
+ * incoherent rather than merely odd (`advance_wake_schedule` retires it on the
+ * next fire, so `After 1 run` on a wake that has run three times means "one more
+ * and stop" - stated inline instead of discovered).
+ */
+export type ScheduledTaskInput = {
+	message: string;
+	/** A conversation must be named on the create branch's existing-conversation arm. */
+	needsConversation: boolean;
+	/** `null` when the form is not naming a repeat. */
+	repeatMs: number | null;
+	/** The `After N runs` bound, or `null`. */
+	endsRuns: number | null;
+	/** The wakes the target conversation holds; the create branch's ceiling. */
+	existingWakeCount: number;
+	/** The runs this wake has already made (the edit branch). */
+	alreadyRun: number;
+};
+
+export type ScheduledTaskRefusals = {
+	invalid: boolean;
+	/** Under the prompt field. */
+	prompt: string;
+	/** Under the conversation picker. */
+	conversation: string;
+	/** Under the Repeat control. */
+	repeat: string;
+	/** Under the Ends control. */
+	ends: string;
+};
+
+export const validateScheduledTask = (
+	input: ScheduledTaskInput,
+): ScheduledTaskRefusals => {
+	const length = input.message.trim().length;
+	const prompt =
+		length > WAKE_MESSAGE_MAX_CHARS
+			? `This prompt is ${length.toLocaleString()} characters, and a wake holds at most ${WAKE_MESSAGE_MAX_CHARS.toLocaleString()}. Shorten it to save.`
+			: "";
+	const conversation = input.needsConversation ? "Pick a conversation." : "";
+	const repeat =
+		input.repeatMs !== null && input.repeatMs < MIN_WAKE_INTERVAL_MS
+			? "Wakes repeat no more often than once a minute."
+			: "";
+	const ends =
+		input.endsRuns !== null && input.endsRuns <= input.alreadyRun
+			? `This wake has already run ${input.alreadyRun} time${input.alreadyRun === 1 ? "" : "s"}, so the run budget has to be at least ${input.alreadyRun + 1}.`
+			: "";
+	const ceiling =
+		input.existingWakeCount >= MAX_WAKE_SCHEDULES
+			? `This conversation already has ${input.existingWakeCount} wakes, the most it can hold. Cancel one to add another.`
+			: "";
+	return {
+		invalid:
+			length === 0 ||
+			length > WAKE_MESSAGE_MAX_CHARS ||
+			input.needsConversation ||
+			repeat !== "" ||
+			ends !== "" ||
+			ceiling !== "",
+		prompt,
+		conversation: ceiling || conversation,
+		repeat,
+		ends,
+	};
+};
 
 /**
  * The prompt, flattened to one clause for a toast or a confirm.
@@ -168,26 +345,37 @@ export const wakeRowName = (
 const wakeLines = (
 	schedules: DesktopWakeScheduleRow[],
 	nowMs: number,
-): WakeLine[] =>
-	deriveWakes(schedules, nowMs).map((row) => {
-		/*
-		 * `Ran N times` is derived from `fired_count`, which this wire carries and
-		 * the pane's does not. A ONE-SHOT that has fired is absent from the
-		 * listing altogether (the scheduler retires it), so a fired count here
-		 * always belongs to a recurrence - which is what makes the clause honest
-		 * without a second condition.
-		 */
-		const fired = schedules.find(
-			(schedule) => schedule.id === row.id,
-		)?.fired_count;
-		return {
-			...row,
-			ranLabel:
-				typeof fired === "number" && fired > 0
-					? `Ran ${fired} time${fired === 1 ? "" : "s"}`
-					: "",
-		};
-	});
+): WakeLine[] => {
+	const byId = new Map(schedules.map((schedule) => [schedule.id, schedule]));
+	return deriveWakes(schedules, nowMs)
+		.map((row, index) => {
+			const source = byId.get(row.id);
+			/*
+			 * `deriveWakes` dropped every record it could not identify, so a row it
+			 * returned always has its wire row: the guard is for the type, not for a
+			 * case the data can reach.
+			 */
+			if (source === undefined) return null;
+			/*
+			 * `Ran N times` is derived from `fired_count`, which this wire carries
+			 * and the pane's does not. A ONE-SHOT that has fired is absent from the
+			 * listing altogether (the scheduler retires it), so a fired count here
+			 * always belongs to a recurrence - which is what makes the clause honest
+			 * without a second condition.
+			 */
+			const fired = source.fired_count;
+			return {
+				...row,
+				source,
+				position: index + 1,
+				ranLabel:
+					typeof fired === "number" && fired > 0
+						? `Ran ${fired} time${fired === 1 ? "" : "s"}`
+						: "",
+			};
+		})
+		.filter((line): line is WakeLine => line !== null);
+};
 
 /**
  * One listing entry as a page row, with its head clause already decided.
@@ -197,11 +385,37 @@ const wakeLines = (
  * The page's first row is therefore the same answer the pane's first row gives,
  * which is what lets the two surfaces be read together.
  */
+/**
+ * Whether this page can promise that any instant it prints will fire.
+ *
+ * `dormant`/`ghost` answer it per row; the SUPERVISOR answers it for the whole
+ * machine, and when it answers no, every instant on the page is as wrong as a
+ * parked row's (the designer's D2: the strip said nothing would fire while the
+ * rows underneath kept asserting `next 2:14 PM EDT`). The parked rule is applied
+ * one state over, and the page states the reason once, in the strip.
+ */
+export type RowOptions = {
+	/**
+	 * The supervisor's verdict, as `supervisor.supported && supervisor.running`
+	 * AND `supervisor.verifiable !== false` - the third term because a store the
+	 * probe cannot speak for (`WakeListing.verifiable`) says nothing about
+	 * launchd, and reading its silence as "running" would be a claim about
+	 * someone else's supervisor.
+	 */
+	dueInstants?: boolean;
+};
+
 export const toScheduledTaskRow = (
 	entry: DesktopWakeEntry,
 	nowMs: number,
+	options: RowOptions = {},
 ): ScheduledTaskRow => {
+	const dueInstants = options.dueInstants !== false;
 	const parked = entry.dormant === true || entry.ghost === true;
+	/* The row's OWN fact (`parked`) stays separate from the page's
+	   (`dueInstants`): the reason differs, and the strip carries one of them. Both
+	   mean the instants below must not be printed. */
+	const suppressInstants = parked || !dueInstants;
 	/*
 	 * A parked row drops the INSTANT everywhere on itself, including on its wake
 	 * lines: the stored `next_due_at` will not fire (the supervisor skips a
@@ -212,7 +426,7 @@ export const toScheduledTaskRow = (
 	 * - they are what the work IS, and they are still true.
 	 */
 	const wakes = wakeLines(entry.schedules ?? [], nowMs).map((row) =>
-		parked ? { ...row, dueLabel: "" } : row,
+		suppressInstants ? { ...row, dueLabel: "" } : row,
 	);
 	const visible = wakes.slice(0, WAKE_LINE_CAP);
 	const nextDueAt =
@@ -230,6 +444,7 @@ export const toScheduledTaskRow = (
 		cwd: entry.cwd,
 		parked,
 		ghost: entry.ghost === true,
+		dueInstants,
 		nextDueAt,
 		wakes,
 		visibleWakes: visible,
@@ -242,9 +457,10 @@ export const toScheduledTaskRow = (
 export const scheduledTaskRows = (
 	entries: DesktopWakeEntry[] | undefined,
 	nowMs: number,
+	options: RowOptions = {},
 ): ScheduledTaskRow[] =>
 	(entries ?? [])
-		.map((entry) => toScheduledTaskRow(entry, nowMs))
+		.map((entry) => toScheduledTaskRow(entry, nowMs, options))
 		/*
 		 * An entry with no wakes is not a row: the listing is built from the wake
 		 * index, so this is a store whose last wake just retired, and the page
@@ -286,15 +502,23 @@ export const legacyScheduleCadence = (
 	};
 	const start = readBound(schedule.start_time_utc);
 	const end = readBound(schedule.end_time_utc);
+	/*
+	 * Every clause here is NAMED (`starts`, `at`, `until`), which is the
+	 * designer's D5: the first version led with `from 9:16 AM EDT` while the wake
+	 * lines above led with a clock, so reading down the page the first token
+	 * silently changed kind and `from` was doing work no user could decode.
+	 */
 	if (schedule.one_time) {
-		return start === null ? "once" : `once · ${formatWakeDue(start, nowMs)}`;
+		return start === null ? "once" : `once · at ${formatWakeDue(start, nowMs)}`;
 	}
 	const cadence = formatWakeCadence(
 		schedule.interval * UNIT_MS[schedule.unit],
 		null,
 	);
 	if (end !== null) return `${cadence} · until ${formatWakeDue(end, nowMs)}`;
-	if (start !== null) return `${cadence} · from ${formatWakeDue(start, nowMs)}`;
+	if (start !== null) {
+		return `${cadence} · starts ${formatWakeDue(start, nowMs)}`;
+	}
 	return cadence;
 };
 

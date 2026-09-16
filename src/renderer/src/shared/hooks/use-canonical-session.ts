@@ -1623,10 +1623,23 @@ export function useCanonicalSessionStream(
 		 * Deliberately NOT published as a user action: the caller is a mutation
 		 * elsewhere in the app that has already succeeded, so there is nothing to
 		 * press and nothing to explain. The pane's own `retry` stays the only control
-		 * on this handle, and its budget reset (`attempt = 0`) is not needed here
-		 * because a resync only runs while a subscription is live.
+		 * on this handle, and its budget reset (`attempt = 0`) is not needed here.
+		 *
+		 * A pending RETRY is cancelled first, and that ordering is load-bearing
+		 * rather than tidy: this used to assume "a resync only runs while a
+		 * subscription is live", which is false inside the backoff window above
+		 * (`dispose` is null and `retryTimer` is armed to call `connect()` itself).
+		 * A wake write from the Schedules page landing in that window would connect
+		 * here, then have the timer connect a SECOND stream over it - the first
+		 * handle overwritten and never disposed, so it keeps delivering frames into
+		 * this reducer and outlives the pane's unmount, whose cleanup closes only the
+		 * newest (the reviewer's R4: code-read, and the fix is the ordering).
 		 */
 		const resync = () => {
+			if (retryTimer !== 0) {
+				window.clearTimeout(retryTimer);
+				retryTimer = 0;
+			}
 			reconnectRef.current = {};
 			receiptRef.current = null;
 			closeStream();

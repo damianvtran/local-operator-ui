@@ -31,7 +31,10 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect } from "react";
 import "../../../styles/index.css";
-import { ScheduledTaskDialog } from "./scheduled-task-dialog";
+import {
+	ScheduledTaskDialog,
+	type WakeEditTarget,
+} from "./scheduled-task-dialog";
 import { SchedulesPage } from "./schedules-page";
 
 /**
@@ -40,6 +43,9 @@ import { SchedulesPage } from "./schedules-page";
  * Sunday 15 March 2026, 2:00 PM local. Every due instant below is an offset from
  * THIS value, so the frames say the same thing on every capture that runs.
  */
+/** The dialog's own conversation select, by the id the dialog gives it. */
+const CONVERSATION_SELECTOR = '[id$="-conversation"]';
+
 const FIXTURE_NOW_MS = new Date(2026, 2, 15, 14, 0, 0, 0).getTime();
 
 /** An instant `minutes` after the pinned now. */
@@ -97,6 +103,47 @@ const conversation = (
 		next_due_at: due.length > 0 ? Math.min(...due) : null,
 		schedules,
 		...extra,
+	};
+};
+
+/**
+ * The editor's conversation: four wakes, so the dialog's context line can name
+ * the one being edited (`Invoices workspace · wake 2 of 4`), and the wake in
+ * position 2 is the recurring one whose cadence and bound the `keep` labels have
+ * to state.
+ */
+const EDIT_WAKES: DesktopWakeEntry[] = [
+	conversation("c0ffee123456", "Invoices workspace", "~/invoices", [
+		wake("w1", 26, "Read my unread email and send me one summary message."),
+		wake(
+			"w2",
+			120,
+			"Pull last week's revenue and refunds from the finance sheet and write a short digest with the three biggest movers.",
+			{ every_ms: 24 * HOUR_MS, fired_count: 3 },
+		),
+		wake("w3", 320, "Flag any invoice that is more than 30 days overdue."),
+		wake("w4", 400, "Tidy the scratch directory and tell me what was removed."),
+	]),
+];
+
+/** The edit target for one of `EDIT_WAKES`' wakes, by id. */
+const editTarget = (
+	entries: DesktopWakeEntry[],
+	wakeId: string,
+	position: number,
+): WakeEditTarget => {
+	const entry = entries[0];
+	const row = entry.schedules.find((schedule) => schedule.id === wakeId);
+	if (!row) throw new Error(`no wake ${wakeId} in the fixture`);
+	return {
+		sessionId: entry.session_id,
+		wakeId,
+		message: row.message,
+		conversationName: entry.name,
+		position,
+		count: entry.schedules.length,
+		wake: row,
+		parked: entry.dormant === true,
 	};
 };
 
@@ -378,6 +425,34 @@ const answer = async (request: { op: string; [key: string]: unknown }) => {
 				},
 			};
 		}
+		/*
+		 * The picker's own read, answered from the conversations these fixtures
+		 * describe: the create dialog asks `sessions.list` for which conversations
+		 * EXIST (a conversation with no wakes is the branch's whole point), while
+		 * the ceiling it renders comes from the wake listing's own count.
+		 */
+		case "sessions.list":
+			return {
+				status: 200,
+				body: {
+					status: 200,
+					message: "ok",
+					result: {
+						sessions: stub.entries.map((entry) => ({
+							id: entry.session_id,
+							name: entry.name,
+							/*
+							 * SECONDS: this wire's unit, and the one place it differs from the
+							 * wake listing beside it. The fixtures above are pinned in
+							 * milliseconds (they feed `next_due_at`), so the conversion is
+							 * written here rather than by re-expressing every fixture.
+							 */
+							mtime: Math.floor(entry.updated_at / 1000),
+							live_state: "cold",
+						})),
+					},
+				},
+			};
 		case "legacy.schedules.list":
 			return {
 				status: 200,
@@ -540,7 +615,41 @@ const page = (state: Partial<StubState>) => {
 		...state,
 	};
 	stageWorkspace();
-	return <SchedulesPage nowMs={FIXTURE_NOW_MS} />;
+	/*
+	 * `h-screen`, because in the app the panel is `min-h-0 flex-1` inside a
+	 * full-height page: without it every story photographed a panel hugging its
+	 * own content - `empty` a 262px card where the app shows a large empty panel -
+	 * and that is the input to every judgement about the fence's weight (the
+	 * designer's D8).
+	 */
+	return (
+		<div className="h-screen">
+			<SchedulesPage nowMs={FIXTURE_NOW_MS} />
+		</div>
+	);
+};
+
+/**
+ * Hold the capture until a piece of text is on screen.
+ *
+ * The load-error frames came out byte-identical to the loading ones in all 12
+ * themes: the app's own query policy retries once (`query-client.ts:35`), so the
+ * page is still `isLoading` for a tick after mount and the rig shot the spinner
+ * (the designer's D1). `data-capture-pending` is the rig's own opt-in wait, so
+ * the story asserts the branch rendered rather than hoping the tick landed.
+ */
+const HoldUntilText = ({ text }: { text: string }) => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		const timer = window.setInterval(() => {
+			if (document.body.textContent?.includes(text)) {
+				document.documentElement.removeAttribute("data-capture-pending");
+				window.clearInterval(timer);
+			}
+		}, 50);
+		return () => window.clearInterval(timer);
+	}, [text]);
+	return null;
 };
 
 /**
@@ -574,7 +683,12 @@ export const Loading: Story = { render: () => page({ hang: true }) };
 
 /** The load failed: what happened, what it means, and a way back. */
 export const LoadError: Story = {
-	render: () => page({ fail: "The backend did not answer." }),
+	render: () => (
+		<>
+			<HoldUntilText text="Could not load scheduled tasks." />
+			{page({ fail: "The backend did not answer." })}
+		</>
+	),
 };
 
 /** The common row: one conversation, one wake. */
@@ -692,10 +806,17 @@ const Drive = ({
 		const type = async (selector: string, text: string) => {
 			for (let attempt = 0; attempt < 80; attempt++) {
 				if (cancelled) return false;
-				const field = document.querySelector<HTMLTextAreaElement>(selector);
+				const field = document.querySelector<
+					HTMLTextAreaElement | HTMLInputElement
+				>(selector);
 				if (field) {
+					/* Both prototypes: the prompt is a `Textarea` and the repeat
+					   interval is a number `Input`, and React re-renders from the
+					   prototype's setter in either case. */
 					const setter = Object.getOwnPropertyDescriptor(
-						window.HTMLTextAreaElement.prototype,
+						field instanceof HTMLInputElement
+							? window.HTMLInputElement.prototype
+							: window.HTMLTextAreaElement.prototype,
 						"value",
 					)?.set;
 					setter?.call(field, text);
@@ -853,7 +974,7 @@ export const EditWake: Story = {
 	render: () => {
 		stageWorkspace();
 		stub = {
-			entries: MANY,
+			entries: EDIT_WAKES,
 			legacy: [],
 			supervisor: SUPERVISOR,
 			readError: false,
@@ -865,25 +986,134 @@ export const EditWake: Story = {
 				open
 				onClose={() => {}}
 				nowMs={FIXTURE_NOW_MS}
-				edit={{
-					sessionId: "111111111111",
-					wakeId: "w1",
-					message:
-						"Pull last week's revenue and refunds from the finance sheet and write a short digest with the three biggest movers.",
-				}}
+				edit={editTarget(EDIT_WAKES, "w2", 2)}
 			/>
 		);
 	},
 };
 
-/** The create dialog on the existing-conversation branch. */
-export const CreateDialogExisting: Story = {
+/**
+ * The editor after a REPEAT-only change.
+ *
+ * The path the old sentence was false on (`build_wake_edit` moves the anchor
+ * only when the request carries `in`/`at`) and the path the old `Save` was
+ * enabled on with nothing to save (the designer's D11). The frame carries both:
+ * a dirty, enabled `Save`, and the sentence that no longer claims a re-anchor.
+ */
+export const EditWakeRepeatOnly: Story = {
+	render: () => {
+		stageWorkspace();
+		stub = {
+			entries: EDIT_WAKES,
+			legacy: [],
+			supervisor: SUPERVISOR,
+			readError: false,
+			hang: false,
+			fail: null,
+		};
+		return (
+			<>
+				<ScheduledTaskDialog
+					open
+					onClose={() => {}}
+					nowMs={FIXTURE_NOW_MS}
+					edit={editTarget(EDIT_WAKES, "w2", 2)}
+				/>
+				<Drive
+					steps={[
+						/* A Radix `<Select>` opens in a PORTAL, so picking a row is two
+						   steps: press the trigger, then the listbox that appeared. */
+						{ selector: '[id$="-repeat"]' },
+						{ selector: '[role="listbox"]', option: "Every" },
+						{ selector: '[aria-label="Repeat interval"]', text: "30" },
+					]}
+				/>
+			</>
+		);
+	},
+};
+
+/**
+ * The repeat floor, refused inline with the reason.
+ *
+ * The dialog owns this refusal rather than letting the transport answer for it,
+ * which is the class of fix the reviewer's R3 asked for on the prompt too.
+ */
+export const CreateDialogRepeatFloor: Story = {
 	render: () => (
 		<>
 			<ScheduledTaskDialog open onClose={() => {}} nowMs={FIXTURE_NOW_MS} />
-			<Drive steps={[{ selector: 'button[aria-pressed="false"]' }]} />
+			<Drive
+				steps={[
+					{ selector: 'button[aria-pressed="false"]' },
+					{ selector: '[id$="-repeat"]' },
+					{ selector: '[role="listbox"]', option: "Every" },
+					{ selector: '[aria-label="Repeat interval"]', text: "0" },
+				]}
+			/>
 		</>
 	),
+};
+
+/**
+ * The create dialog on the existing-conversation branch, with the picker open on
+ * the conversations `sessions.list` answers with.
+ *
+ * The picker's own read, not the wake listing's: the list below names
+ * conversations that need not have a wake yet, which is the whole point of the
+ * branch.
+ */
+export const CreateDialogExisting: Story = {
+	render: () => {
+		stageWorkspace();
+		stub = {
+			entries: MANY,
+			legacy: [],
+			supervisor: SUPERVISOR,
+			readError: false,
+			hang: false,
+			fail: null,
+		};
+		return (
+			<>
+				<ScheduledTaskDialog open onClose={() => {}} nowMs={FIXTURE_NOW_MS} />
+				<Drive
+					steps={[
+						{ selector: 'button[aria-pressed="false"]' },
+						{ selector: CONVERSATION_SELECTOR },
+					]}
+				/>
+			</>
+		);
+	},
+};
+
+/**
+ * The same branch with nothing to pick, which is a machine that has never had a
+ * conversation.
+ *
+ * The state this change exists to make honest: the control used to be DISABLED
+ * with no reason, which reads as a broken dialog. "There is nothing here yet,
+ * and here is the other choice" is the sentence it says instead.
+ */
+export const CreateDialogNoConversations: Story = {
+	render: () => {
+		stageWorkspace();
+		stub = {
+			entries: [],
+			legacy: [],
+			supervisor: SUPERVISOR,
+			readError: false,
+			hang: false,
+			fail: null,
+		};
+		return (
+			<>
+				<ScheduledTaskDialog open onClose={() => {}} nowMs={FIXTURE_NOW_MS} />
+				<Drive steps={[{ selector: 'button[aria-pressed="false"]' }]} />
+			</>
+		);
+	},
 };
 
 /**

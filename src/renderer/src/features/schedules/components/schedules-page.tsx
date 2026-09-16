@@ -54,6 +54,7 @@ import {
 	type ScheduledTaskRow,
 	type WakeLine,
 	scheduledTaskRows,
+	supervisorLead,
 	wakePromptHead,
 } from "../scheduled-task-model";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
@@ -100,13 +101,30 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	const editLegacy = useEditSchedule();
 	const removeLegacy = useRemoveSchedule();
 
+	const legacyRows = legacy.data?.result?.schedules ?? [];
+	const supervisor = listing.data?.supervisor;
+
+	/*
+	 * Can anything on this machine actually fire?
+	 *
+	 * `verifiable: false` is the third term and it is not decoration: a store
+	 * outside the real home is supervised by nothing, so `supported`/`running`
+	 * there describe the OPERATOR's launchd rather than this store's (the
+	 * backend's own `_supervisor_info`). Reading that silence as "running" is how
+	 * a page ends up promising a fire it cannot cause.
+	 */
+	const canFire =
+		supervisor?.supported === true &&
+		supervisor.running === true &&
+		supervisor.verifiable !== false;
+
 	/*
 	 * `nowMs` is read once per render: a due label is true of the moment it is
 	 * drawn, and the listing's own poll is what moves it on.
 	 */
-	const rows = scheduledTaskRows(listing.data?.entries, nowMs);
-	const legacyRows = legacy.data?.result?.schedules ?? [];
-	const supervisor = listing.data?.supervisor;
+	const rows = scheduledTaskRows(listing.data?.entries, nowMs, {
+		dueInstants: canFire,
+	});
 
 	const openConversation = (sessionId: string) => {
 		void useCanonicalSessionsStore
@@ -259,28 +277,46 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				    empty store, and saying "no scheduled tasks" there would be a
 				    claim the backend did not make. */}
 				{!listing.isLoading && listing.data?.read_error && (
-					<div className="border-hairline border-b p-4">
+					<div className="flex flex-col items-start gap-2 border-hairline border-b p-4">
 						<Alert variant="warning">
 							Could not read this machine's scheduled tasks, so the list below
 							may be incomplete.
 						</Alert>
+						{/* The partial failure had no way back either: the only recovery
+						    was to leave the page and return (the designer's D6). Same
+						    `refetch` the total-failure branch uses, because it is the same
+						    recovery. */}
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void listing.refetch()}
+						>
+							Try again
+						</Button>
 					</div>
 				)}
 
 				{/* "Will my scheduled task actually fire" is not answerable from the
 				    index: on macOS the supervisor is a LaunchAgent, and a listing
 				    that omitted this would invite trusting a dead schedule. */}
-				{!listing.isLoading &&
-					supervisor &&
-					(!supervisor.supported || !supervisor.running) && (
-						<div className="border-hairline border-b p-4">
-							<Alert variant="warning">
-								{supervisor.supported
-									? `The wake supervisor is installed but not running, so scheduled tasks will not fire. ${supervisor.detail}`
-									: `Wakes are not supervised on this platform yet, so they only fire while a conversation is running. ${supervisor.detail}`}
-							</Alert>
-						</div>
-					)}
+				{!listing.isLoading && supervisor && !canFire && (
+					<div className="border-hairline border-b p-4">
+						<Alert variant="warning">{supervisorLead(supervisor)}</Alert>
+						{/*
+						 * The backend's own words, on their own line and in machine
+						 * voice: `launchd reports the agent as not running` is a bug
+						 * report's sentence, not a user's, and appending it to the lead
+						 * sentence with no terminal period was two voices in one line
+						 * (the designer's D6). `text-mono` is the role branding reserves
+						 * for machine output.
+						 */}
+						{supervisor.detail && (
+							<p className="mt-2 font-mono text-meta text-ink-dim">
+								{supervisor.detail}
+							</p>
+						)}
+					</div>
+				)}
 
 				{isEmpty && (
 					/* An empty state that names the easier route rather than just
@@ -321,6 +357,11 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 										sessionId: target.sessionId,
 										wakeId: wake.id,
 										message: wake.message,
+										conversationName: target.name,
+										position: wake.position,
+										count: target.wakes.length,
+										wake: wake.source,
+										parked: target.parked,
 									})
 								}
 							/>
@@ -336,14 +377,20 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				 * creates one.
 				 */}
 				{(legacyRows.length > 0 || legacy.error) && (
-					<section className="border-hairline border-t">
+					/*
+					 * `bg-sunken` rather than the rows' `surface`: the designer's D5
+					 * measured the fence as a PEER of the list above it (same ground,
+					 * same type steps, same hairlines), and the note that a list is the
+					 * wrong host for engine prose. It is an annex now - a different
+					 * ground, and one sentence instead of three, because the posture it
+					 * describes is stated in the dialog that creates its replacement.
+					 */
+					<section className="border-hairline border-t bg-sunken">
 						<div className="flex flex-col gap-1 px-4 py-3">
 							<h2 className="text-heading text-ink">Legacy schedules</h2>
 							<p className="max-w-150 text-body-sm text-ink-muted">
-								These run on the older agent-schedule engine, which starts a
-								fresh agent for each run with approvals granted automatically.
-								New scheduled tasks are created as wakes, which run as a turn in
-								a conversation.
+								These run on the older agent-schedule engine. New scheduled
+								tasks are created as wakes, in a conversation.
 							</p>
 							{legacy.error && (
 								<p className="text-body-sm text-danger">
@@ -364,12 +411,27 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					</section>
 				)}
 
+				{/* The listing is capped (the backend's own default), and past the cap
+				    the page would otherwise under-report silently - `truncated` exists
+				    so a client can say "showing N of M" (the reviewer's R7). */}
+				{!listing.isLoading && listing.data?.truncated && (
+					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
+						Showing {listing.data.entries.length} of {listing.data.total}{" "}
+						conversations with wakes.
+					</p>
+				)}
+
 				{/* The one sentence this page owes the reader, and the question the
-				    whole feature raises: what happens when nobody is looking. */}
+				    whole feature raises: what happens when nobody is looking.
+				    The FIRE half is gated on the supervisor, because when nothing can
+				    fire that sentence is false on this screen - the strip below the
+				    header carries that truth instead (the designer's D2). The PARK
+				    half is true in every state: it is what stopping a conversation
+				    does, whatever is supervising. */}
 				{(rows.length > 0 || legacyRows.length > 0) && (
 					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
-						Wakes fire whether or not this window is open. Stopping a
-						conversation parks its wakes until you open it again.
+						{canFire ? "Wakes fire whether or not this window is open. " : ""}
+						Stopping a conversation parks its wakes until you open it again.
 					</p>
 				)}
 			</div>

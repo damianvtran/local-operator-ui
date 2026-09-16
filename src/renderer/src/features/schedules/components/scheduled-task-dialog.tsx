@@ -53,6 +53,7 @@
  * does instead of offering nothing.
  */
 import { formatAge } from "@features/chat/pickers/usage-view-model";
+import type { DesktopWakeScheduleRow } from "@shared/api/local-operator/wakes-api";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -77,16 +78,18 @@ import { Plus } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useId, useMemo, useState } from "react";
 import {
+	useConversationChoices,
 	useCreateScheduledTask,
 	useEditWake,
 	useWakesListing,
 } from "../hooks/use-wakes-queries";
 import {
-	MAX_WAKE_SCHEDULES,
-	MIN_WAKE_INTERVAL_MS,
-	repeatEveryString,
-	wakePromptHead,
+	keepEndsLabel,
+	keepFirstRunLabel,
+	keepRepeatLabel,
+	validateScheduledTask,
 } from "../scheduled-task-model";
+import { repeatEveryString, wakePromptHead } from "../scheduled-task-model";
 
 /** Which conversation the task runs in. */
 type Destination = "new" | "existing";
@@ -140,6 +143,20 @@ export type WakeEditTarget = {
 	wakeId: string;
 	/** The armed wake's current prompt, as the field's starting value. */
 	message: string;
+	/**
+	 * The conversation the wake lives in, and the wake's place in it.
+	 *
+	 * The designer's D3: the editor is the one surface on this feature where the
+	 * user decides with the value hidden, and "wake 2 of 4" plus the name is what
+	 * tells them WHICH schedule the three `keep` options below are keeping.
+	 */
+	conversationName: string;
+	position: number;
+	count: number;
+	/** The wake's own values, for the `keep` labels and the run-budget bound. */
+	wake: DesktopWakeScheduleRow;
+	/** Whether its conversation is stopped, where the instant is not kept. */
+	parked: boolean;
 };
 
 export type ScheduledTaskDialogProps = {
@@ -183,7 +200,32 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	const [endsRuns, setEndsRuns] = useState<number | "">(2);
 	const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
+	/*
+	 * Two reads, two questions: WHICH conversations exist (the picker) and how
+	 * many wakes one already has (the ceiling). The picker is not built on the
+	 * wake listing: that list is keyed on conversations that already have wakes,
+	 * so a picker built on it could only offer the ones a user has already
+	 * scheduled - and the branch exists precisely to arm a wake in a conversation
+	 * that has none.
+	 */
+	const choices = useConversationChoices(open);
 	const listing = useWakesListing();
+	const refetchListing = listing.refetch;
+	/*
+	 * Ask for the count when the question is asked.
+	 *
+	 * The ceiling this dialog states is a claim about how many wakes a
+	 * conversation holds RIGHT NOW, and the listing behind it polls on a 30 s
+	 * interval and is otherwise read once at page load (the dialog is mounted for
+	 * the page's whole life, so there is no mount to refetch on). A dialog opened
+	 * inside that window would state a count it cannot know - measured on the live
+	 * drive: sixteen wakes armed behind the page's back, and the ceiling sentence
+	 * absent because the listing still said zero. One small read per open is the
+	 * price of the sentence being true.
+	 */
+	useEffect(() => {
+		if (open) void refetchListing();
+	}, [open, refetchListing]);
 	const createTask = useCreateScheduledTask();
 	const editWake = useEditWake();
 	const newConversationCwd = useCanonicalSessionsStore((state) => state.cwd);
@@ -238,39 +280,70 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 
 	/* Newest first, which is the order the sidebar's own list is read in. */
 	const conversations = useMemo(
-		() =>
-			[...(listing.data?.entries ?? [])].sort(
-				(a, b) => (b.updated_at ?? 0) - (a.updated_at ?? 0),
-			),
-		[listing.data],
+		() => [...(choices.data ?? [])].sort((a, b) => b.mtime - a.mtime),
+		[choices.data],
+	);
+	const selectedConversation = conversations.find(
+		(entry) => entry.id === conversationId,
 	);
 
-	const selectedConversation = conversations.find(
-		(entry) => entry.session_id === conversationId,
-	);
-	const existingWakeCount = selectedConversation?.schedules.length ?? 0;
-	const atCeiling = existingWakeCount >= MAX_WAKE_SCHEDULES;
+	/*
+	 * The ceiling is the wake listing's answer about the SELECTED conversation,
+	 * not a property of the picker's rows: `sessions.list` says nothing about
+	 * wakes, and the count has to be the one the page would create against.
+	 */
+	const existingWakeCount =
+		listing.data?.entries.find((entry) => entry.session_id === conversationId)
+			?.schedules.length ?? 0;
 
 	const repeatMs =
 		repeatMode === "every" && repeatCount !== ""
 			? repeatCount * REPEAT_UNIT_MS[repeatUnit]
 			: null;
-	/** The one refusal the dialog owns: a repeat faster than a wake may run. */
-	const repeatTooFast = repeatMs !== null && repeatMs < MIN_WAKE_INTERVAL_MS;
 
 	const needsConversation =
 		!isEdit && destination === "existing" && !conversationId;
 	const needsPick = preset === "pick" && !pickedAt;
 	const needsEndDate = ends === "date" && !endsAt;
 	const needsEndRuns = ends === "runs" && endsRuns === "";
-	const invalid =
-		!prompt.trim() ||
-		needsConversation ||
-		needsPick ||
-		repeatTooFast ||
-		needsEndDate ||
-		needsEndRuns ||
-		atCeiling;
+
+	/*
+	 * Every refusal the form can state inline comes from ONE derivation, so the
+	 * sentence a user reads cannot drift from the condition that produced it -
+	 * and so the matrix is testable without a renderer
+	 * (`scripts/scheduled-task-model.test.mjs`). The three `needs*` gates below
+	 * are "the field is still empty" rather than refusals: they disable the
+	 * action and carry no sentence, because the control they sit on already says
+	 * what it wants.
+	 */
+	const refusals = validateScheduledTask({
+		message: prompt,
+		/*
+		 * Suppressed when the picker has nothing to offer: the empty-list sentence
+		 * already says why there is no choice, and "Pick a conversation." under it
+		 * would be the second reason for one absence. The refusal is for the case
+		 * where the choice EXISTS and has not been made.
+		 */
+		needsConversation: needsConversation && conversations.length > 0,
+		repeatMs,
+		endsRuns: ends === "runs" && endsRuns !== "" ? endsRuns : null,
+		existingWakeCount,
+		alreadyRun: edit?.wake.fired_count ?? 0,
+	});
+	const invalid = refusals.invalid || needsPick || needsEndDate || needsEndRuns;
+
+	/*
+	 * The designer's D11: the dialog opens on all three `keep` defaults with the
+	 * prompt already filled, so an enabled `Save` is a button whose press would
+	 * PATCH nothing. Dirtiness is "a field differs from the value it started
+	 * with", which for the timing controls is exactly "not on `keep`".
+	 */
+	const dirty =
+		!isEdit ||
+		prompt !== edit.message ||
+		preset !== "keep" ||
+		repeatMode !== "keep" ||
+		ends !== "keep";
 
 	/*
 	 * The workspace a NEW conversation starts in, which is the store's staged cwd
@@ -329,7 +402,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				onClose();
 				return;
 			}
-			await createTask.mutateAsync({
+			const created = await createTask.mutateAsync({
 				requestId,
 				...(conversationId
 					? { sessionId: conversationId }
@@ -351,9 +424,16 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			 * The toast names the CONVERSATION, by the head of the prompt that
 			 * became its name: the title is derived, and meeting it first in a toast
 			 * is how it stops being a surprise in the sidebar.
+			 *
+			 * `index_written: false` is a 200 with a caveat - the wake is armed in
+			 * the transcript and the DERIVED index write failed, so the listing this
+			 * dialog just invalidated may answer without it for a moment (the
+			 * reviewer's R7). Saying so beats a row the user cannot find.
 			 */
 			showSuccessToast(
-				`Scheduled task created — ${wakePromptHead(prompt.trim())}`,
+				created.index_written
+					? `Scheduled task created — ${wakePromptHead(prompt.trim())}`
+					: `Scheduled task created — ${wakePromptHead(prompt.trim())}. The list may lag until the index catches up.`,
 			);
 			/*
 			 * The page does not navigate away. The user just made a row on this
@@ -379,7 +459,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={handleSubmit}
-				disabled={invalid || pending}
+				disabled={invalid || pending || !dirty}
 				startIcon={<Plus size={18} />}
 			>
 				{isEdit
@@ -403,6 +483,13 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			fullWidth
 			dataTourTag="create-scheduled-task-dialog"
 		>
+			{/* The designer's D3, first line of the body: which schedule the three
+			    `keep` controls below are keeping, named the way the row names it. */}
+			{edit && (
+				<p className="text-body-sm text-ink-dim">
+					{edit.conversationName} · wake {edit.position} of {edit.count}
+				</p>
+			)}
 			{/* One column: the fields are long strings, and the two-column grid this
 			    replaces split "Interval" and "Unit" across cells of unequal width for
 			    no reason. */}
@@ -423,6 +510,12 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 					<p className="text-body-sm text-ink-muted">
 						This is the message the conversation receives when it wakes up.
 					</p>
+					{/* The wire's own ceiling, stated where the value is: past it the main
+					    process would refuse the whole request with "Invalid desktop
+					    operation.", which is the one refusal here a user cannot act on. */}
+					{refusals.prompt && (
+						<p className="text-meta text-danger">{refusals.prompt}</p>
+					)}
 				</div>
 
 				{/* Absent on edit: a wake's conversation is where it lives, so there is
@@ -466,7 +559,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						<Select
 							value={conversationId ?? ""}
 							onValueChange={setConversationId}
-							disabled={pending || conversations.length === 0}
+							disabled={pending}
 						>
 							<SelectTrigger id={`${ids}-conversation`}>
 								<SelectValue placeholder="Pick a conversation" />
@@ -474,21 +567,42 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 							<SelectContent>
 								{conversations.map((entry) => (
 									<SelectItem
-										key={entry.session_id}
-										value={entry.session_id}
-										textValue={entry.name || entry.session_id.slice(0, 8)}
+										key={entry.id}
+										value={entry.id}
+										textValue={entry.name || entry.id.slice(0, 8)}
 									>
-										{entry.name || entry.session_id.slice(0, 8)}
+										{entry.name || `Untitled ${entry.id.slice(0, 8)}`}
 										<span className="pl-2 text-ink-dim">
-											{formatAge(Math.max(0, nowMs - (entry.updated_at ?? 0)))}
+											{/* `mtime` is epoch seconds on this wire (see
+											    `ConversationChoice`); the dialog's own clock is ms. */}
+											{formatAge(Math.max(0, nowMs - entry.mtime * 1000))}
 										</span>
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
-						{listing.isLoading && (
+						{/*
+						 * An empty picker states WHY it is empty and what to do instead.
+						 * The control it replaces was disabled with no reason shown, which
+						 * reads as a broken dialog: "there is nothing here" and "you may not
+						 * use this" are different sentences and only one of them is true.
+						 */}
+						{choices.isLoading && (
 							<p className="text-meta text-ink-dim">Loading conversations…</p>
 						)}
+						{choices.error && (
+							<p className="text-meta text-danger">
+								Could not read your conversations: {choices.error.message}
+							</p>
+						)}
+						{!choices.isLoading &&
+							!choices.error &&
+							conversations.length === 0 && (
+								<p className="text-meta text-ink-dim">
+									No conversations yet — start one in chat, or choose{" "}
+									<em>A new conversation</em>.
+								</p>
+							)}
 					</div>
 				)}
 
@@ -497,11 +611,26 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						Starts in {workspaceDirectory} with your default model.
 					</p>
 				)}
-				{!isEdit && atCeiling && (
-					<p className="text-meta text-danger">
-						This conversation already has {MAX_WAKE_SCHEDULES} wakes, the most
-						it can hold. Cancel one to add another.
+				{/*
+				 * The existing-conversation branch's own consequence line, which the
+				 * first version was missing entirely: choosing it removed the
+				 * new-conversation sentence and replaced it with nothing, so the branch
+				 * that writes into work the user already has was the one that said least
+				 * about what it would do (the designer's D10).
+				 *
+				 * It does NOT name the conversation's model. `sessions.list` carries no
+				 * model for a session (`SessionRow`: id, name, mtime, preview plus
+				 * decorations), and inventing one from the picker's `binding` would be a
+				 * claim about which provider runs the turn - recorded as deferred rather
+				 * than asserted.
+				 */}
+				{!isEdit && destination === "existing" && selectedConversation && (
+					<p className="text-body-sm text-ink-dim">
+						Runs in {selectedConversation.name}, as a turn in that conversation.
 					</p>
+				)}
+				{!isEdit && refusals.conversation && (
+					<p className="text-meta text-danger">{refusals.conversation}</p>
 				)}
 
 				<div className="flex flex-col gap-1.5">
@@ -516,7 +645,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						</SelectTrigger>
 						<SelectContent>
 							{isEdit && (
-								<SelectItem value="keep">Keep the current time</SelectItem>
+								<SelectItem value="keep">
+									{keepFirstRunLabel(edit.wake, nowMs, edit.parked)}
+								</SelectItem>
 							)}
 							<SelectItem value="in-an-hour">In an hour</SelectItem>
 							<SelectItem value="in-30-minutes">In 30 minutes</SelectItem>
@@ -549,7 +680,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						</SelectTrigger>
 						<SelectContent>
 							{isEdit && (
-								<SelectItem value="keep">Keep the current repeat</SelectItem>
+								<SelectItem value="keep">
+									{keepRepeatLabel(edit.wake)}
+								</SelectItem>
 							)}
 							<SelectItem value="never">Don't repeat</SelectItem>
 							<SelectItem value="every">Every</SelectItem>
@@ -590,7 +723,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 							</Select>
 						</div>
 					)}
-					{repeatTooFast && (
+					{refusals.repeat && (
 						<p className="text-meta text-danger">
 							Wakes repeat no more often than once a minute.
 						</p>
@@ -614,7 +747,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 							</SelectTrigger>
 							<SelectContent>
 								{isEdit && (
-									<SelectItem value="keep">Keep the current end</SelectItem>
+									<SelectItem value="keep">
+										{keepEndsLabel(edit.wake, nowMs)}
+									</SelectItem>
 								)}
 								<SelectItem value="never">Never</SelectItem>
 								<SelectItem value="date">On a date…</SelectItem>
@@ -646,6 +781,13 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 								disabled={pending}
 							/>
 						)}
+						{/* A run budget the wake has already met, refused with the reason:
+						    `limit` is the TOTAL a wake may run, so `After 1 run` on a wake
+						    that has run three times means "one more and stop" - the
+						    designer's D3 point 4, stated rather than discovered. */}
+						{refusals.ends && (
+							<p className="text-meta text-danger">{refusals.ends}</p>
+						)}
 					</div>
 				)}
 
@@ -655,17 +797,29 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				    `yolo=True` runs were. Stated here because the difference is
 				    invisible until something waits. */}
 				<p className="text-body-sm text-ink-dim">
-					This runs as a turn in the conversation, so a tool that needs approval
-					waits for you instead of running unattended.
+					If a tool needs approval, the wake parks and waits for you rather than
+					acting on its own; a wait that runs out stops the turn without running
+					the tool.
 				</p>
-				{/* What a save DOES, on the branch where it can move the schedule: the
-				    backend re-anchors the due instant to the new first run, so this
-				    states it rather than letting the user discover it by watching the
-				    row's time change. */}
+				{/*
+				 * What a save DOES, in one sentence, because the cases are one rule:
+				 * `build_wake_edit` moves the due anchor only when the request carries
+				 * `in`/`at` (`moves_time`), so a new first run moves the next fire and
+				 * nothing else does - not the repeat, not a bound, not the prompt
+				 * (`pinned_due_ms` keeps the row's own instant). The two earlier
+				 * variants said this only until the user changed the repeat, which is
+				 * the change that made the old sentence false (the reviewer's R2).
+				 *
+				 * The second clause is the designer's D3 point 2: runs are not reset
+				 * (`fired_count` survives, so `Ran 3 times` stays on the row and a
+				 * `limit` still counts against them); the third is that the row is the
+				 * same row, which is why an edit is offered at all.
+				 */}
 				{isEdit && (
 					<p className="text-body-sm text-ink-dim">
-						A new time or repeat re-anchors the wake from the first run you
-						pick. Deliveries already made stay counted.
+						A new first run moves the next wake to that time, and a new repeat
+						carries on from it. Runs already made still count, and the wake
+						keeps its place in the conversation.
 					</p>
 				)}
 				{/* The chat route LAST rather than first: it is honest and it is not
