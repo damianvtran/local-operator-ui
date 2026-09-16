@@ -192,17 +192,14 @@ test("the read is wired to the scoped predicate, the paging guard and the view e
 	assert.match(hook, /keepPaging: true/);
 	assert.match(hook, /transcript\.viewEpoch !== epoch/);
 	/*
-	 * MINOR-1 (review round 8): the instant that reaches the reducer is the PASS'S
-	 * OWN receipt instant, and dropping it left the whole suite green — the same
-	 * class as Q14, a wiring fact no test could falsify. Two facts, asserted
-	 * together: the hook hands `since` down to the page merge, and the dispatch's
-	 * `since` is the receipt's own `Date.now()` (the assertion below on
-	 * `refreshTail(since, epoch)` is what makes them the same value). The reducer
-	 * side of the pair — a page row before that instant is refused — is driven
-	 * behaviourally in `scripts/transcript-reducer.test.mjs`; and the option pair is
-	 * REQUIRED by the reducer's own type, so an omission there cannot compile.
+	 * The cleared-view scope is the CLEAR INSTANT on the transcript state, not the
+	 * read's own receipt — measured on a real runtime, a refusal of an empty
+	 * conversation is written 24 ms before the client holds the receipt, so a
+	 * receipt-keyed scope left the pane silent (QA round 7's Q15). Two wiring facts
+	 * here, and the behaviour is driven in `scripts/transcript-reducer.test.mjs`
+	 * (which is where the production ordering is asserted):
 	 */
-	assert.match(hook, /outcomeSince: since/);
+	assert.match(hook, /clearTranscript\(current\.transcript\)/);
 	const dispatch = readFileSync(
 		"src/renderer/src/features/chat/components/slash-dispatch.ts",
 		"utf8",
