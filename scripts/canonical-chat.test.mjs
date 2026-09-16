@@ -114,6 +114,7 @@ function reset() {
 	echoes.length = 0;
 	store.setState({
 		sessions: [],
+		statusUnavailable: [],
 		activeSessionId: "111111111111",
 		activeDraftKey: null,
 		drafts: {},
@@ -1714,6 +1715,47 @@ test("the header stops announcing that the session has not started once one exis
 		rung[1],
 		/canonical\.frontend\?\.cwd \|\| cwd/,
 		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
+	);
+});
+
+/**
+ * D2: the pane's own unavailable state must be somewhere a reader can see it.
+ *
+ * Asserted on the source, in the shape this file already uses for a JSX-level
+ * rule (U16 above), because the rung IS the fix: both bands are `fixed` at the
+ * top of the window, so while one shows it covers the first ~30px of every
+ * surface, and a sentence laid out against that edge is a statement nobody
+ * reads. Measured on the committed frame
+ * `docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`: the node was
+ * 880x70 at y=24 with `checkVisibility()` true, the pane below the band held no
+ * painted pixels at all, and the pane read as a single flat colour beside a
+ * sidebar that kept its rows. The pixels are the rig's evidence; this is the
+ * case that fails when the presentation regresses.
+ */
+test("the pane's unavailable state is centred, clear of the full-bleed bands", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const rung = rendered.match(/!enabled \? \(([\s\S]{0,1400}?)\) : identity \?/);
+	assert.ok(
+		rung,
+		"the pane's own unavailable branch is gone, so the state it carries has no presentation left to judge",
+	);
+	assert.match(
+		rung[1],
+		/items-center justify-center/,
+		"the sentence is anchored to the top of the pane again, where the fixed bands cover it: a statement no reader sees, beside a sidebar that keeps its rows (design round 1, D2)",
+	);
+	assert.doesNotMatch(
+		rung[1],
+		/className=\{cn\("p-6/,
+		"a bare `p-6` against the top edge is exactly the shape that was invisible",
+	);
+	assert.match(
+		rung[1],
+		/Update the backend to use canonical chats/,
+		"and the sentence itself is still the one the state owes",
 	);
 });
 
