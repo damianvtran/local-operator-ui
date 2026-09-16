@@ -92,7 +92,7 @@ node scripts/capture-evidence.mjs --only=chat-message-input \
 | Frames | Why they were re-taken |
 | --- | --- |
 | `credential-armed`, `credential-masked`, `credential-escaped` | The sentence left the control row and the box entirely: it is now a full-width line **above** the composer box (§7.5), so the composer's own ring sits at rows **85..204** in these frames, one sentence's height below the idle frame's, where round 2 had the sentence inside the row at the composer's own position. The box's height is unchanged (the ring rows are 119 apart in both the idle and the armed frame), and the sentence's line is the composer's width — never the ribbon design round 3 measured at 1380/950/800. |
-| `idle`, `credential-pill-mid-prose`, `credential-pill-at-line-start`, `awaiting-*`, `stop-*`, `interrupt-*` | Nothing at all, and that is the point: the field now declares `block`, so the line box the overlay's wrapper had introduced is gone and the composer is `origin/main`'s again. Measured on the committed pixels — accent ring rows, counted as rows with more than 200 accent pixels — the `idle` frame is **57/58..175/176**, which is exactly the pre-wrapper frame's (`a8b056aa7`: 57/58..175/176); the round-3 head's idle frame was 57/58..**181/182**, the 6px the extra line box cost. Across the twelve non-credential states **all 144 frames** are identical to their pre-wrapper copies above a WebP-loss threshold (142 bit-exact, two single-pixel `neon` differences), and the live app agrees: the composer box measures **112.00px** on this head and on `origin/main` at 1380, and 124.00px on both at 950, 800 and 440, with the field's `y` and height equal. |
+| `idle`, `credential-pill-mid-prose`, `credential-pill-at-line-start`, `awaiting-*`, `stop-*`, `interrupt-*` | Nothing at all, and that is the point: the field now declares `block`, so the line box the overlay's wrapper had introduced is gone and the composer is `origin/main`'s again. Measured on the committed pixels — accent ring rows, counted as rows with more than 200 accent pixels — the `idle` frame is **57/58..175/176**, which is exactly the pre-wrapper frame's (`a8b056aa7`: 57/58..175/176); the round-3 head's idle frame was 57/58..**181/182**, the 6px the extra line box cost. Across the twelve non-credential states **all 144 frames** are pictures of the pre-wrapper geometry, measured against the copy at `492bcecf1^` rather than argued: **0 of 144 are byte-identical** (a WebP re-encode is not byte-stable), **128 of 144 have no pixel differing at all at a 5% fuzz**, the remaining **16 differ in exactly one pixel** each, and at a **10% fuzz all 144 are identical** — the largest per-channel difference anywhere in the set is **28/255** (`interrupt-left-jobs-only/neon`), with the per-frame peaks at 10-28/255, which is the encoder's own re-encode noise on frames whose geometry did not move. **The "142 bit-exact" this section claimed does not reproduce in any baseline** and is replaced by the sentence above (design round 4, D4; code review round 4, NIT 1; QA round 4, Q3 — all three measured it independently and got the same 128/16 split). And the live app agrees: the composer box measures **112.00px** on this head and on `origin/main` at 1380, and 124.00px on both at 950, 800 and 440, with the field's `y` and height equal. |
 | `credential-masked-session-pane`, `credential-masked-small-view` | **New stories**, both asked for by round 3 (D3, D4). The first photographs the sentence with the two neighbours that used to decide its wrapping — a live working-directory chip and the session's readings — sharing the row (1024px). The second photographs the shipped small-view rung (a 440px column with `isSmallView`) with the capture open, in which round 2's "at most 7.5px" bound had measured 11px. |
 
 What this round does NOT change, and a reader should not look for here: the
@@ -100,6 +100,32 @@ masked cells, the pill's wash and edge, the minted marker text, the Esc restore
 and the notice's own sentences are round 1's and round 2's, and their frames
 agree with the ones those rounds committed wherever the sentence's position is
 not in the picture.
+
+### Round 4: the register's own frame, after the fold onto `origin/main`
+
+Round 4 filed three findings against this surface — design D1 (the slash popup's
+anchor had moved to the COLUMN), D2/U17 (the not-stored register was carried by
+hue alone) and D3 (that register had no frame at all, on a surface whose evidence
+IS frames) — so the surface was re-taken once more: all TWENTY states, twelve
+themes, 240 frames, at the head this branch commits.
+
+```
+npx storybook dev -p 6188 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=chat-message-input \
+  --allow-backend http://127.0.0.1:6188
+```
+
+| Frames | Why they were re-taken |
+| --- | --- |
+| `credential-pill-unbacked` | **New state**, and the one design D3 asked for: a marker a restored draft cites whose payload did not survive — the live pill's own sentence with the value gone — painted in the warning register with the **dashed** edge round 4 added, so the register is legible without relying on hue (D2/U17; code review MINOR 2). Nothing backed its paint before this frame except a test case and a row of `scripts/contrast-contract.mjs`. |
+| the other nineteen | **Nothing at all.** The re-take is the fold's and the re-stamp's: the popup's anchor regained the composer's measure (D1), which changes no committed frame here — the list is not open in any state this surface captures — and the register's dash paints only on the new state. Measured against the previous head's copies (`4684e1017`): **1 of 227 frames differs at all** (`credential-masked-small-view/localOperatorLight`, one pixel) and **none differs at a 5% fuzz**, which is the reproducibility claim the round-3 section makes, re-earned on a tree that had also folded nineteen commits of `origin/main` in. |
+
+The re-take is narrowed to this surface, so `manifest.json`'s `partialCapture`
+carries the pass (`refreshedStories`, `refreshedFrames`) rather than the whole
+swept set. The two record corrections round 4 asked for are in this file: the
+bit-exact count above, restated as measured, and the round-3 section's citation
+of the pre-wrapper copies, which now names the commit each comparison ran
+against.
 
 ### Round 1: the WHOLE surface, re-taken
 

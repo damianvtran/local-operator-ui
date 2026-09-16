@@ -378,11 +378,14 @@ export function paintPlan(
 	 * own wash said "a credential is referenced here" about a value nothing holds,
 	 * and it was pixel-identical to a live pill, so the operator learned the value
 	 * was gone only AFTER pressing Enter, from the citation in the transcript. The
-	 * `unbacked` kind takes the design's existing NOT-STORED register instead — the
+	 * `unbacked` kind takes the WARNING register instead — the
 	 * warning role the unredacted sentence already uses (`bg-warning-wash` with a
 	 * `warning-border` edge) — so the box says "this one did not survive" before the
 	 * send. The two kinds still come from the SAME location rule, which is what
-	 * keeps the paint and the submit rewrite in step: only the colour differs.
+	 * keeps the paint and the submit rewrite in step: the role and the edge's STYLE
+	 * differ, and the dash is what carries the state when the hue does not (1.01-1.11
+	 * of fill contrast between the two washes; a greyscale reading of 34 vs 35 of
+	 * 255 — design round 4, D2; UX round 4, U17).
 	 *
 	 * It costs the "a hand-typed lookalike is painted as the prose it is" property
 	 * this function's docstring used to claim, and that trade is the point rather
