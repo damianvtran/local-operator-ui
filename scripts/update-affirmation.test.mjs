@@ -708,190 +708,6 @@ async function answer(handle, verdict) {
 	handle.render();
 }
 
-/**
- * Press the section's own control, through its own `onClick`.
- *
- * The control is found in the rendered tree rather than called by name, so the
- * handler under test is the one the shipped section wires up. Two notes on
- * fidelity: a real DOM would refuse the click while `disabled` and this harness
- * does not (the double-press case below is the reachable version of that race,
- * where both clicks land in one tick before React commits `checking`), and the
- * handler returns a promise nobody awaits - the component's own async flow, not
- * a test-controlled one.
- */
-function press(handle) {
-	const control = walk(handle.tree).find(
-		(node) => node.type === Button && typeof node.props?.onClick === "function",
-	);
-	assert.ok(control, "the section must render its check control");
-	control.props.onClick();
-}
-
-/* --------------------------------------------------------------------- cases */
-
-test("a check that proved both channels current shows the sentence", async () => {
-	const handle = mount();
-	assert.equal(
-		affirmationOnScreen(handle),
-		null,
-		"nothing is claimed before a check",
-	);
-	press(handle);
-	handle.render();
-	await answer(handle, CURRENT);
-	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
-});
-
-test("Q1: the next check retires the sentence before it resolves", async () => {
-	const handle = mount();
-	press(handle);
-	await answer(handle, CURRENT);
-	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
-
-	// The second press, WITH the check still unanswered: the claim is already
-	// gone, because until the check answers there is nothing proving it.
-	press(handle);
-	handle.render();
-	assert.equal(
-		affirmationOnScreen(handle),
-		null,
-		"a started check must retire the previous verdict's claim",
-	);
-
-	// And the offer that check produces does not bring it back: this is the
-	// reported pair - offer panel plus "you are up to date" - one check later.
-	await answer(handle, SERVER_OFFER);
-	assert.equal(affirmationOnScreen(handle), null);
-	assert.deepEqual(
-		visible(handle),
-		[],
-		"a null affirmation shows no button message",
-	);
-});
-
-test("Q1: a background offer retires the sentence with no press at all", async () => {
-	const handle = mount();
-	press(handle);
-	await answer(handle, CURRENT);
-	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
-
-	// A real `{silent:true}` check emits its events even though the periodic
-	// caller never applies its verdict to this button (QA's second repro).
-	updater.emit("backend-update-available", {
-		currentVersion: "0.54.43",
-		latestVersion: "0.54.44",
-		manual: false,
-	});
-	handle.render();
-	assert.equal(
-		affirmationOnScreen(handle),
-		null,
-		"an offer makes the whole-installation sentence false, whoever raised it",
-	);
-});
-
-test("Q1: every offer channel retires the sentence, not just the server's", async () => {
-	for (const [event, payload] of [
-		["update-available", { version: "0.22.4" }],
-		[
-			"update-npx-available",
-			{ currentVersion: "0.22.3", latestVersion: "0.22.4" },
-		],
-		[
-			"backend-update-available",
-			{ currentVersion: "0.54.43", latestVersion: "0.54.44" },
-		],
-	]) {
-		const handle = mount();
-		press(handle);
-		await answer(handle, CURRENT);
-		assert.equal(affirmationOnScreen(handle), CURRENT.affirmation, event);
-		updater.emit(event, payload);
-		handle.render();
-		assert.equal(affirmationOnScreen(handle), null, `${event} must retire it`);
-	}
-});
-
-test("Q1: an inconclusive or offered verdict leaves no sentence behind", async () => {
-	for (const verdict of [
-		SERVER_OFFER,
-		INCONCLUSIVE,
-		{ app: "available", server: "current", affirmation: null },
-	]) {
-		const handle = mount();
-		press(handle);
-		await answer(handle, CURRENT);
-		assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
-		press(handle);
-		handle.render();
-		await answer(handle, verdict);
-		assert.equal(
-			affirmationOnScreen(handle),
-			null,
-			`${JSON.stringify(verdict)} must not leave the earlier sentence up`,
-		);
-	}
-});
-
-test("Q1: an older check resolving late cannot repaint its verdict", async () => {
-	const handle = mount();
-
-	// Check A starts, then check B starts before A answers (a press can also be
-	// followed by the periodic check's own resolve, and `checking` only guards
-	// the button, not the ordering of resolves).
-	press(handle);
-	press(handle);
-	handle.render();
-
-	// A - the OLDER one - answers with the affirmation, after B has begun. It
-	// must not paint: B owns the screen and has not spoken yet.
-	const older = updater.checks[0];
-	const newer = updater.checks[1];
-	older.resolve(CURRENT);
-	await new Promise((resolve) => realSetTimeout(resolve, 0));
-	handle.render();
-	assert.equal(
-		affirmationOnScreen(handle),
-		null,
-		"the superseded check's affirmation arrived after a newer check started",
-	);
-
-	// B answers with the same verdict, and now the sentence is legitimate.
-	newer.resolve(CURRENT);
-	await new Promise((resolve) => realSetTimeout(resolve, 0));
-	await new Promise((resolve) => realSetTimeout(resolve, 0));
-	handle.render();
-	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
-});
-
-test("Q1: an offer does not dismiss a message that is not the affirmation", async () => {
-	const handle = mount();
-	/*
-	 * The error listener is gated on `manualCheckRef` (the message answers a
-	 * check the user asked for), so a press opens that window first - and the
-	 * check is deliberately left unanswered, which is the state an error arrives
-	 * in.
-	 */
-	press(handle);
-	handle.render();
-	updater.emit("update-error", "Error checking for updates: boom");
-	handle.render();
-	assert.deepEqual(
-		visible(handle).map((alert) => alert.variant),
-		["danger"],
-	);
-	updater.emit("backend-update-available", {
-		currentVersion: "0.54.43",
-		latestVersion: "0.54.44",
-	});
-	handle.render();
-	assert.deepEqual(
-		visible(handle).map((alert) => alert.variant),
-		["danger"],
-		"an unrelated offer must not close an error toast",
-	);
-});
-
 test("Q1: the sentence can be earned again after being taken back", async () => {
 	const handle = mount();
 	press(handle);
@@ -953,8 +769,7 @@ test("R9: an offer raised during a check keeps that check's verdict from affirmi
 	// The background path's own event, delivered while the manual check is in
 	// flight and with no button involved at all.
 	updater.emit("backend-update-available", {
-		currentVersion: "0.54.43",
-		latestVersion: "0.54.44",
+		...SERVER_UPDATE_OFFER,
 		manual: false,
 	});
 	handle.render();
@@ -976,8 +791,7 @@ test("R9: an offer before the check does not rob a later check of the sentence",
 	// check from earning the sentence (an earlier offer standing beside a
 	// legitimately affirmed verdict is the separately recorded stale-panel case).
 	updater.emit("backend-update-available", {
-		currentVersion: "0.54.43",
-		latestVersion: "0.54.44",
+		...SERVER_UPDATE_OFFER,
 		manual: false,
 	});
 	press(handle);
@@ -1826,30 +1640,229 @@ test("the failure card stays up while its own retry runs, and a success ends it"
 });
 
 /**
- * R2-2/Q-1, the button's half: the held failure has its OWN open state and its own
- * dismissal, and a new message claims the corner. One shared flag let the by-hand
- * panel's 10 s autoHide take the held failure down, and let two boxes paint the
- * same corner at once.
+ * QA round 3, Q-1/Q-2: ONE failure paints ONE box.
+ *
+ * Two components painted this event - the app-level `UpdateNotification` and, inside
+ * the Settings tree, `CheckForUpdatesButton`. QA measured them two runs of two: the
+ * same 400x192 rect at the same z-index, both `role="alert"`, each with its own
+ * `Copy details` and `Try again`, each clearing only itself - so after a retry
+ * SUCCEEDED one box cleared while the other stayed on screen still saying the app
+ * could not reach the update server. The app-level alert owns the box now: it is
+ * mounted wherever the button is, it holds until dismissed, it carries the retry, and
+ * a successful check clears it. The Settings surface paints none of its own - only
+ * its panels about the server and the bundle, which are a different subject.
+ *
+ * The first half of this case fails on the head before it: that tree paints a danger
+ * alert for exactly this failure.
  */
-test("a new message claims the corner, so the held failure cannot double-paint", async () => {
+test("one failure paints one box, and it is the app-level alert that owns it", async () => {
+	const settings = mount();
+	press(settings);
+	settings.render();
+	updater.emit("update-error", "net::ERR_CONNECTION_REFUSED");
+	await settleCheck(settings, new Error("net::ERR_CONNECTION_REFUSED"));
+	assert.deepEqual(
+		dangerToasts(settings),
+		[],
+		"the Settings surface must not paint a second box for the failure the app-level alert owns",
+	);
+
+	const app = mountNotification();
+	updater.emit("update-error", "net::ERR_CONNECTION_REFUSED");
+	app.render();
+	assert.equal(
+		dangerToasts(app).length,
+		1,
+		"the failure is painted exactly once",
+	);
+	assert.ok(
+		pinnedToast(app).props.action,
+		"and the box that owns it is the one carrying the retry",
+	);
+});
+
+/**
+ * Press the section's own control, through its own `onClick`.
+ *
+ * The control is found in the rendered tree rather than called by name, so the
+ * handler under test is the one the shipped section wires up. Two notes on
+ * fidelity: a real DOM would refuse the click while `disabled` and this harness
+ * does not (the double-press case below is the reachable version of that race,
+ * where both clicks land in one tick before React commits `checking`), and the
+ * handler returns a promise nobody awaits - the component's own async flow, not
+ * a test-controlled one.
+ */
+function press(handle) {
+	const control = walk(handle.tree).find(
+		(node) => node.type === Button && typeof node.props?.onClick === "function",
+	);
+	assert.ok(control, "the section must render its check control");
+	control.props.onClick();
+}
+
+/* --------------------------------------------------------------------- cases */
+
+test("a check that proved both channels current shows the sentence", async () => {
 	const handle = mount();
+	assert.equal(
+		affirmationOnScreen(handle),
+		null,
+		"nothing is claimed before a check",
+	);
 	press(handle);
 	handle.render();
-	await settleCheck(handle, new Error("net::ERR_CONNECTION_REFUSED"));
+	await answer(handle, CURRENT);
+	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
+});
 
-	const failed = pinnedToast(handle);
-	assert.ok(failed, JSON.stringify(visible(handle)));
-	assert.equal(failed.props.autoHideDuration, undefined, "held, not timed");
+test("Q1: the next check retires the sentence before it resolves", async () => {
+	const handle = mount();
+	press(handle);
+	await answer(handle, CURRENT);
+	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
 
-	/*
-	 * The next check this button runs takes the corner: a check in flight is not the
-	 * old failure, and leaving both up would answer one question twice.
-	 */
+	// The second press, WITH the check still unanswered: the claim is already
+	// gone, because until the check answers there is nothing proving it.
 	press(handle);
 	handle.render();
 	assert.equal(
-		pinnedToast(handle),
-		undefined,
-		"one box answers the corner, not two",
+		affirmationOnScreen(handle),
+		null,
+		"a started check must retire the previous verdict's claim",
+	);
+
+	// And the offer that check produces does not bring it back: this is the
+	// reported pair - offer panel plus "you are up to date" - one check later.
+	await answer(handle, SERVER_OFFER);
+	assert.equal(affirmationOnScreen(handle), null);
+	assert.deepEqual(
+		visible(handle),
+		[],
+		"a null affirmation shows no button message",
+	);
+});
+
+test("Q1: a background offer retires the sentence with no press at all", async () => {
+	const handle = mount();
+	press(handle);
+	await answer(handle, CURRENT);
+	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
+
+	// A real `{silent:true}` check emits its events even though the periodic
+	// caller never applies its verdict to this button (QA's second repro).
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		manual: false,
+	});
+	handle.render();
+	assert.equal(
+		affirmationOnScreen(handle),
+		null,
+		"an offer makes the whole-installation sentence false, whoever raised it",
+	);
+});
+
+test("Q1: every offer channel retires the sentence, not just the server's", async () => {
+	for (const [event, payload] of [
+		["update-available", { version: "0.22.4" }],
+		[
+			"update-npx-available",
+			{ currentVersion: "0.22.3", latestVersion: "0.22.4" },
+		],
+		/*
+		 * The producer's own shape, not a two-field stand-in: `UpdateNotification`'s
+		 * offer handler reads `updateCommand`, and a payload without it is a fixture the
+		 * app never sends (the unguarded read that then throws is recorded in the
+		 * handoff, not changed here).
+		 */
+		["backend-update-available", { ...SERVER_UPDATE_OFFER }],
+	]) {
+		const handle = mount();
+		press(handle);
+		await answer(handle, CURRENT);
+		assert.equal(affirmationOnScreen(handle), CURRENT.affirmation, event);
+		updater.emit(event, payload);
+		handle.render();
+		assert.equal(affirmationOnScreen(handle), null, `${event} must retire it`);
+	}
+});
+
+test("Q1: an inconclusive or offered verdict leaves no sentence behind", async () => {
+	for (const verdict of [
+		SERVER_OFFER,
+		INCONCLUSIVE,
+		{ app: "available", server: "current", affirmation: null },
+	]) {
+		const handle = mount();
+		press(handle);
+		await answer(handle, CURRENT);
+		assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
+		press(handle);
+		handle.render();
+		await answer(handle, verdict);
+		assert.equal(
+			affirmationOnScreen(handle),
+			null,
+			`${JSON.stringify(verdict)} must not leave the earlier sentence up`,
+		);
+	}
+});
+
+test("Q1: an older check resolving late cannot repaint its verdict", async () => {
+	const handle = mount();
+
+	// Check A starts, then check B starts before A answers (a press can also be
+	// followed by the periodic check's own resolve, and `checking` only guards
+	// the button, not the ordering of resolves).
+	press(handle);
+	press(handle);
+	handle.render();
+
+	// A - the OLDER one - answers with the affirmation, after B has begun. It
+	// must not paint: B owns the screen and has not spoken yet.
+	const older = updater.checks[0];
+	const newer = updater.checks[1];
+	older.resolve(CURRENT);
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	handle.render();
+	assert.equal(
+		affirmationOnScreen(handle),
+		null,
+		"the superseded check's affirmation arrived after a newer check started",
+	);
+
+	// B answers with the same verdict, and now the sentence is legitimate.
+	newer.resolve(CURRENT);
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	handle.render();
+	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
+});
+
+test("Q1: an offer does not dismiss a message that is not the affirmation", async () => {
+	/*
+	 * MOUNTED ON THE COMPONENT THAT OWNS THE BOX (QA round 3, Q-1). This case used the
+	 * Settings button's own error toast as its "message that is not the affirmation";
+	 * that toast is gone, because one failure paints one box and the app-level alert is
+	 * it - so the property is asserted where the box now lives.
+	 */
+	const handle = mountNotification();
+	updater.emit("update-error", "Error checking for updates: boom");
+	handle.render();
+	assert.deepEqual(
+		visible(handle).map((alert) => alert.variant),
+		["danger"],
+	);
+	/*
+	 * The producer's own shape, not a two-field stand-in: this component's offer
+	 * handler reads `updateCommand`, and a payload without it is a fixture the app
+	 * never sends (see the note in the handoff about that field being unguarded).
+	 */
+	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
+	handle.render();
+	assert.deepEqual(
+		visible(handle).map((alert) => alert.variant),
+		["danger"],
+		"an unrelated offer must not close an error toast",
 	);
 });
