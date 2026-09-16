@@ -1506,6 +1506,138 @@ test("a completed install the notice declines still answers the press", () => {
  * by-hand surface left `"installing"` set and the NEXT attempt's panel opened on
  * the previous attempt's sentence.
  */
+/**
+ * U13: the panel that follows the click carries the same reading as the offer.
+ *
+ * The offer learned to stop promising a restart it cannot perform (U9), and the
+ * in-flight install panel went on making the same promise two seconds later, on
+ * the same machine, from a constant chosen by the install's LAYOUT. Both ask
+ * `serverRestartsWithInstall` now, so this case pins both arms of the SAME
+ * payload, before and after the press.
+ */
+test("the in-flight install panel promises a restart only where one is coming", () => {
+	const press = (restartable) => {
+		const handle = mountNotification();
+		updater.emit("backend-update-available", {
+			...SERVER_UPDATE_OFFER,
+			restartable,
+		});
+		handle.render();
+		control(handle, "Update server").props.onClick();
+		handle.render();
+		return handle;
+	};
+
+	// Before any phase event: the panel's ambient sentence must not promise it
+	// either - it is the one a pip update shows for its whole run.
+	const ownedAmbient = press(true);
+	const ownedAmbientCopy = allCopy(ownedAmbient).join(" ");
+	assert.match(
+		ownedAmbientCopy,
+		/will temporarily go offline while it restarts/,
+		ownedAmbientCopy,
+	);
+
+	const adoptedAmbient = press(false);
+	const adoptedAmbientCopy = allCopy(adoptedAmbient).join(" ");
+	assert.equal(
+		/will temporarily go offline/.test(adoptedAmbientCopy),
+		false,
+		`an adopted server is not taken offline: ${adoptedAmbientCopy}`,
+	);
+
+	// And the install phase itself, which is where the reviewer found it.
+	const owned = press(true);
+	updater.emit("backend-update-progress", { phase: "installing" });
+	owned.render();
+	const ownedCopy = allCopy(owned).join(" ");
+	assert.match(ownedCopy, /and it restarts once the install lands/, ownedCopy);
+
+	const adopted = press(false);
+	updater.emit("backend-update-progress", { phase: "installing" });
+	adopted.render();
+	const adoptedCopy = allCopy(adopted).join(" ");
+	assert.equal(
+		/restarts once the install lands/.test(adoptedCopy),
+		false,
+		`the panel must not re-promise the restart: ${adoptedCopy}`,
+	);
+	// The rest of the sentence still stands.
+	assert.match(adoptedCopy, /keeps serving while this runs/, adoptedCopy);
+	assert.match(
+		adoptedCopy,
+		/can't be interrupted once it has started/,
+		adoptedCopy,
+	);
+});
+
+/**
+ * U14: the unattended notice speaks only when the readings differ.
+ *
+ * Its new `unattended && restartable` arm fired exactly when the app OWNED the
+ * server it had just started from the landed install - so the headline asserted a
+ * skew that did not exist and the advice told the reader to restart the app that
+ * was painting the panel, with Settings reading the new version one second later.
+ * The producer reads the serving daemon now, so the panel is silent unless there is
+ * something to say - and the attempt is still accounted for.
+ */
+test("an unattended completion speaks only when the readings actually differ", () => {
+	const completion = (runningVersion) => ({
+		installVersion: "0.56.2",
+		runningVersion,
+		restarted: false,
+		unattended: true,
+		restartable: true,
+	});
+
+	// The ordinary path: the app came back and started its daemon from the landed
+	// install. Both readings agree, so there is no skew to report - and the attempt
+	// is not left silent either.
+	const agreeing = mountNotification();
+	startServerUpdate(agreeing);
+	updater.emit("backend-update-completed", completion("0.56.2"));
+	agreeing.render();
+	const agreeingCopy = allCopy(agreeing).join(" ");
+	assert.equal(
+		/older build than the install/.test(agreeingCopy),
+		false,
+		`no skew exists here: ${agreeingCopy}`,
+	);
+	assert.equal(
+		/once more/.test(agreeingCopy),
+		false,
+		`no restart is owed here: ${agreeingCopy}`,
+	);
+	assert.equal(
+		visible(agreeing).length,
+		1,
+		`the attempt must still be accounted for: ${JSON.stringify(visible(agreeing))}`,
+	);
+	assert.match(
+		visible(agreeing)[0].text,
+		/Server update completed successfully/,
+	);
+
+	// The state the notice is for: the abandoned attempt landed and the daemon
+	// serving this launch is genuinely still on the old build.
+	const skew = mountNotification();
+	startServerUpdate(skew);
+	updater.emit("backend-update-completed", {
+		...completion("0.56.0"),
+		restartable: false,
+	});
+	skew.render();
+	const skewCopy = allCopy(skew).join(" ");
+	assert.match(skewCopy, /older build than the install/, skewCopy);
+	assert.match(skewCopy, /finished while Local Operator was closed/, skewCopy);
+	assert.match(skewCopy, /still reports 0\.56\.0/, skewCopy);
+	assert.match(
+		skewCopy,
+		/It moves onto the new build when it restarts/,
+		skewCopy,
+	);
+});
+
 test("a phase from an attempt answered elsewhere cannot leak into the next", async () => {
 	const handle = mountNotification();
 	startServerUpdate(handle);

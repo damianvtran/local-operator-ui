@@ -3499,7 +3499,7 @@ export class UpdateService {
 		 * as soon as it is read - so a periodic check finding nothing left says
 		 * nothing (UX U6).
 		 */
-		this.reportUnattendedServerUpdate();
+		await this.reportUnattendedServerUpdate();
 
 		try {
 			// Handle dev mode case
@@ -4256,7 +4256,7 @@ export class UpdateService {
 	 * launch would be a permanent warning about a state the app has since read
 	 * correctly (and the failure path keeps no record for the app to re-read).
 	 */
-	private reportUnattendedServerUpdate(): void {
+	private async reportUnattendedServerUpdate(): Promise<void> {
 		const marker = readPendingServerUpdateMarker(this.markerDir());
 		if (!marker) return;
 		const after = this.readGlobalInstallVersion();
@@ -4268,13 +4268,31 @@ export class UpdateService {
 			);
 			return;
 		}
+		/*
+		 * THE SERVING DAEMON'S OWN READING, and this is UX U14's cause. The event
+		 * used to carry `runningVersion: null` deliberately, on the reasoning that the
+		 * attempt landed while nothing was watching - so the renderer had no reading
+		 * to compare the install against and announced a skew it could not see. On the
+		 * ordinary graceful-quit path the app comes back and spawns its daemon from
+		 * the landed install (the reading is the install's own version), while the
+		 * panel headed itself "The server is on an older build than the install" and
+		 * told the user to restart the app that was painting it - with Settings one
+		 * second later reading the new version.
+		 *
+		 * The read is the same one the check uses, taken at the same moment (the app's
+		 * backend is up by now: discovery runs before the first check), so the
+		 * renderer's own guard can say whether the two readings actually differ and
+		 * stay silent when they agree. Unreadable stays null, and null is silence: the
+		 * panel may not claim a skew it cannot see.
+		 */
+		const running = await this.getInstalledBackendVersion();
 		logger.info(
-			`A server update that no app was supervising landed: ${marker.before ?? "unknown"} -> ${after}`,
+			`A server update that no app was supervising landed: ${marker.before ?? "unknown"} -> ${after}; the backend serving this launch reports ${running ?? "no reading"}`,
 			LogFileType.UPDATE_SERVICE,
 		);
 		this.sendToRenderer("backend-update-completed", {
 			installVersion: after,
-			runningVersion: null,
+			runningVersion: running,
 			restarted: false,
 			unattended: true,
 			restartable: this.backendIsAppOwned(),
