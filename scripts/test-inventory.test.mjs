@@ -21,8 +21,10 @@ import { test } from "node:test";
  * Files that deliberately do not run in the desktop suite, and where they do run.
  *
  * Each reason names the command a reader can run to see it, or says plainly
- * that nothing runs it — which is the honest answer for the two at the end and
- * a gap in the repository rather than in this list.
+ * that nothing runs it — which is the honest answer for ONE entry below
+ * (`session-cookie-electron.test.mjs`), and a gap in the repository rather than
+ * in this list. (Round 4, R4-4: this sentence said "the two at the end" while
+ * exactly one entry carried that reason.)
  */
 const EXEMPT = {
 	"scripts/check-scripts-lint.test.mjs":

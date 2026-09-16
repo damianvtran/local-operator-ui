@@ -2679,6 +2679,211 @@ test("a history re-read does not double a settled pass", () => {
 	);
 });
 
+test("a tail read never answers the paging question, and never repaints a cleared view", () => {
+	/*
+	 * R4-2 — the `keepPaging` half of the tail read was pinned by a source regex
+	 * and nothing else, so neutering the branch kept the suite green. Driven here
+	 * instead: a page whose own `has_more` says "there is more behind me" must not
+	 * put the affordance back on a transcript that already held everything (round
+	 * 3, R3-5), and the mentioned-files scan's paging must not resume.
+	 *
+	 * U17 — and the same read must not repaint a view the user cleared. `/clear` is
+	 * view-only by contract, so the page's other rows would restore exactly what it
+	 * removed: UX round 4 measured `/compact` → `/clear` → `/compact` putting the
+	 * conversation back. The tail read exists for the pass's OWN row, which is what
+	 * a cleared view is answered with.
+	 */
+	const rows = (state) => state.records.map((record) => record.kind);
+	const at = 1_700_000_000_000;
+	const page = {
+		...pageOf([
+			{
+				id: "u1",
+				ts: at / 1000,
+				type: "message",
+				payload: { role: "user", content: "hi" },
+			},
+			{
+				id: "d1",
+				ts: (at + 100) / 1000,
+				type: "compaction",
+				payload: { tokens_before: 41_000 },
+			},
+		]),
+		// The page's own claim, which a tail read must not believe.
+		has_more: true,
+	};
+	assert.equal(
+		page.has_more,
+		true,
+		"the fixture page claims there is more behind it",
+	);
+
+	const loaded = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			{
+				id: "u0",
+				ts: at / 1000 - 1,
+				type: "message",
+				payload: { role: "user", content: "older" },
+			},
+		]),
+	);
+	assert.equal(
+		loaded.hasMore,
+		false,
+		"a first read of the tail has nothing behind it",
+	);
+
+	const tail = applyHistoryPage(loaded, page, { keepPaging: true });
+	assert.equal(
+		tail.hasMore,
+		false,
+		"the tail read leaves the paging state alone",
+	);
+	const ordinary = applyHistoryPage(loaded, page);
+	assert.equal(
+		ordinary.hasMore,
+		true,
+		"an ordinary read still believes the page",
+	);
+
+	// U17: the cleared view keeps only the pass's own outcome row.
+	const cleared = clearTranscript(loaded);
+	assert.deepEqual(rows(cleared), []);
+	const afterTail = applyHistoryPage(cleared, page, { keepPaging: true });
+	assert.deepEqual(
+		rows(afterTail),
+		["compaction"],
+		"the pass's row is the only thing a tail read paints into a cleared view",
+	);
+});
+
+test("the pair is matched by the pass's own figure, in the order production writes it", () => {
+	/*
+	 * Review round 4's BLOCKER (R4-1, U15/U16). The old rule ordered the pair by
+	 * clock and required the durable row to be at-or-after the live line, on the
+	 * reasoning that "a durable row is written when a pass ENDS". Production writes
+	 * it the other way round: the backend awaits `append_compaction` and only then
+	 * emits the settle event, and the renderer stamps the live line when it
+	 * processes that frame — so the durable row is ALWAYS the older of the two, in
+	 * either arrival order, and one pass painted two rows: one bare, one figured,
+	 * side by side.
+	 */
+	const rows = (state) =>
+		state.records
+			.filter((record) => record.kind === "compaction")
+			.map((record) => `${record.id}|${record.text}`);
+	const durable = (id, ts, tokens) => ({
+		id,
+		ts,
+		type: "compaction",
+		payload: tokens === undefined ? {} : { tokens_before: tokens },
+	});
+	const settle = (state, before, after, at) =>
+		applyEvent(
+			state,
+			{
+				type: "compaction_end",
+				success: true,
+				tokens_before: before,
+				tokens_after: after,
+			},
+			at,
+		);
+
+	const T = 1_700_000_000_000;
+	// S7 — the page read lands AFTER the event (the ordinary `refreshTail` shape):
+	// durable at T, live line processed at T + 250 ms.
+	const twoOrders = [
+		{
+			name: "durable first, live line applied after",
+			build: () =>
+				applyHistoryPage(
+					settle(
+						applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T),
+						41_000,
+						9_000,
+						T + 250,
+					),
+					pageOf([durable("d1", T / 1000, 41_000)]),
+				),
+		},
+		{
+			name: "live line first, durable page after",
+			build: () =>
+				applyHistoryPage(
+					settle(
+						applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T),
+						41_000,
+						9_000,
+						T + 250,
+					),
+					pageOf([durable("d1", (T + 100) / 1000, 41_000)]),
+				),
+		},
+	];
+	for (const { name, build } of twoOrders) {
+		const state = build();
+		assert.deepEqual(
+			rows(state),
+			["d1|Context compacted, 41.0k to 9.0k tokens"],
+			`${name}: one pass, one row, and the figures survive`,
+		);
+	}
+
+	// U16 — two passes inside the window: each keeps its OWN figure on its own row.
+	const pass1 = settle(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T),
+		25,
+		25,
+		T + 250,
+	);
+	const both = settle(pass1, 904, 900, T + 30_250);
+	const paired = applyHistoryPage(
+		both,
+		pageOf([
+			durable("d2", (T + 30_100) / 1000, 904),
+			durable("d1", T / 1000, 25),
+		]),
+	);
+	assert.deepEqual(rows(paired), [
+		"d1|Context compacted to 25 tokens",
+		"d2|Context compacted, 904 to 900 tokens",
+	]);
+
+	// A durable row with NO fingerprint falls back to the nearest within the window,
+	// and a live line with no durable row is left exactly as it is.
+	const legacy = applyHistoryPage(
+		settle(
+			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T),
+			41_000,
+			9_000,
+			T + 250,
+		),
+		pageOf([durable("d1", T / 1000)]),
+	);
+	assert.deepEqual(rows(legacy), [
+		"d1|Context compacted, 41.0k to 9.0k tokens",
+	]);
+	const alone = settle(EMPTY_TRANSCRIPT, 41_000, 9_000, T + 250);
+	assert.equal(rows(alone).length, 1);
+	assert.match(rows(alone)[0], /^compaction:/);
+
+	// And a pass whose durable row is minutes away is NOT claimed by the window:
+	// distance is a tie-break for a fingerprint-less row, never the key.
+	const farApart = applyHistoryPage(
+		settle(EMPTY_TRANSCRIPT, 41_000, 9_000, T + 250),
+		pageOf([durable("d9", (T + 600_000) / 1000)]),
+	);
+	assert.equal(
+		rows(farApart).length,
+		2,
+		"two unrelated projections stay two rows",
+	);
+});
+
 test("one pass, one row: the collapse is pure, total and idempotent, and the figures stay", () => {
 	/*
 	 * Review round 3 (R3-1 / U12 / Q5), and round 4's revision of the copy. The
@@ -2692,11 +2897,15 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 			.filter((record) => record.kind === "compaction")
 			.map((record) => `${record.id}|${record.text}`);
 
-	const durableRow = (id, ts) => ({
+	// `tokens` is the pass's own figure — the durable projection of it, and the
+	// fingerprint the pairing keys on (the entry carries `tokens_before` and no
+	// after-figure). Fixtures that handed every row the same number would pass
+	// through the window fallback and never exercise the identity rule.
+	const durableRow = (id, ts, tokens) => ({
 		id,
 		ts,
 		type: "compaction",
-		payload: { tokens_before: 41_000 },
+		payload: { tokens_before: tokens },
 	});
 	const settle = (state, before, after, at) =>
 		applyEvent(
@@ -2716,9 +2925,11 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T0),
 		41_000,
 		9_000,
-		T0 + 500,
+		T0 + 250,
 	);
-	const page = pageOf([durableRow("d1", T0 / 1000 + 1)]);
+	// The wire's own ordering (QA round 4, Q11): the durable row is appended BEFORE
+	// the settle event is emitted, so its ts is EARLIER than the live line's.
+	const page = pageOf([durableRow("d1", (T0 + 100) / 1000, 41_000)]);
 	const once = applyHistoryPage(live, page);
 	assert.deepEqual(rows(once), ["d1|Context compacted, 41.0k to 9.0k tokens"]);
 
@@ -2755,7 +2966,7 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T0),
 			41_000,
 			9_000,
-			T0 + 500,
+			T0 + 250,
 		),
 		9_000,
 		3_000,
@@ -2763,7 +2974,10 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 	);
 	const twoPages = applyHistoryPage(
 		both,
-		pageOf([durableRow("d2", T0 / 1000 + 31), durableRow("d1", T0 / 1000 + 1)]),
+		pageOf([
+			durableRow("d2", (T0 + 30_100) / 1000, 9_000),
+			durableRow("d1", (T0 + 100) / 1000, 41_000),
+		]),
 	);
 	assert.deepEqual(rows(twoPages), [
 		"d1|Context compacted, 41.0k to 9.0k tokens",

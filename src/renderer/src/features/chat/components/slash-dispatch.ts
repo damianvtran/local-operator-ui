@@ -537,6 +537,16 @@ export function useSlashDispatch({
 							 * Fired without awaiting, deliberately: the command has
 							 * already returned `consumed`, and the transcript is the only
 							 * thing this touches.
+							 *
+							 * THE LAG IS ACCEPTED, and measured rather than assumed
+							 * (U14/U18): the composer empties when the command returns,
+							 * and the refusal's row lands ~1.6-2.5 s later — the runtime
+							 * writes it at ~1.47 s and the first read is at 1.5 s. The
+							 * alternative is the silence this read was written to end, so
+							 * the delay is the honest cost of showing it at all. The pass
+							 * itself is not silent in the meantime: the rung appears on
+							 * `compaction_start` for an accepted pass, and a decline has
+							 * no such frame to show.
 							 */
 							/*
 							 * The pass's own instant, captured HERE rather than read
