@@ -241,7 +241,9 @@ and `box.y` are four of its keys.
 `details.todos.length === 0`.** `RunDetails.todos` holds PHASES, and the model
 decodes a phase record with no items to a phase with no items, so the phase count
 is non-zero for a session whose plan is one named empty phase - where the row
-would print `0 to-dos open`, which reads as a finished plan (QA round 1, Q3,
+would state a finished plan over a plan that has no items at all (the settled
+clause § 5.1 now fixes; `0 to-dos open` when this round ran, which read as a
+finished plan too) (QA round 1, Q3,
 driven: that checkpoint renders no row while the pane still shows `To-dos 0 of 0
 closed · Foundation`). The item count is zero only when there is genuinely nothing
 to be in the middle of. The pane's own section keeps gating on phases,
@@ -457,14 +459,44 @@ is three boxes too many, so these read as text until you reach for one"*
 box, so the rule applies with one fewer to spare.
 
 Visible: **`[Info] 4 to-dos open`** — the run pane's own mark, then
-`todoClause(openTodos)`
-(`run-detail-model.ts:2125-2126`), which is the app's one spelling of that fact:
-it is the clause the run trigger's own tooltip already uses
-(`run-detail-model.ts:2203`), and its singular/plural grammar
-(`1 to-do open`) is stated once (`:2119-2126`) for the reason that model records
-for the sibling attention clause: *"Two copies of one rule is how round 1's
-U1-7/Q7 happened… and nothing but review would have caught it"*
-(`:2131-2144`).
+`todoClause` (`run-detail-model.ts`), which is the app's one spelling of that
+fact: it is the clause the run trigger's own tooltip already uses, behind that
+label's own `openTodos > 0` guard (`run-detail-model.ts`'s `runDetailTriggerLabel`),
+and its singular/plural grammar (`1 to-do open`) is stated once, for the reason
+that model records for the sibling attention clause: *"Two copies of one rule is
+how round 1's U1-7/Q7 happened… and nothing but review would have caught it"*.
+Both citations name the symbol or the guard rather than a line: these numbers had
+already drifted before this change, and the file they point into is edited often
+enough that a number is a claim with no keeper (agent review round 1, minor 1).
+
+**A settled plan stops spelling a count: `All to-dos resolved`, or `All to-dos
+closed` where anything was dropped.** The chip used to print `0 to-dos open`,
+which states the remainder and leaves the reader to do the subtraction that
+turns it into a fact about the plan; on this row it read as the absence of a
+plan rather than the end of one. That is the operator's follow-up rather than a
+new design round, and it is the reason `todoClause` now takes the COUNTS rather
+than a numeral: it reads `openTodos` and `droppedTodos` off one `RunDetails`, so
+no caller can ask it to claim a clean finish without being handed the dropped
+count that would contradict it.
+
+The two settled spellings are separate on purpose. `resolved` is a claim about
+work that got DONE, and a dropped item was abandoned rather than done, so a plan
+that gave part of itself up reads as `closed` — the word `todoTally` already uses
+for done plus dropped, and the word the TUI's `RESOLVED_STATUSES` stands behind.
+The settled word is therefore scoped PER SURFACE, deliberately: this chip's
+`resolved` is the strict subset where nothing was dropped, the pane's tally says
+`closed` for both settled cases (`3 of 3 closed`), and the TUI prints `resolved`
+for closure including dropped (`n/m resolved`, with the dropped count stated
+beside it) — three surfaces, one fact, and no single word that is right on all
+three, which is why the difference is recorded here rather than unified onto one
+of them (design review round 1, D1).
+One clause, one pluralisation, one settled pair; the chip's tooltip and
+accessible name are built from that same function (§ 5.3), so the body and the
+name cannot state the plan's ending two ways. The count forms — `1 to-do open`,
+`4 to-dos open` — are unchanged, spelling and all. The trigger's own tooltip
+keeps its guard and so keeps saying nothing about a settled plan: it answers
+"is anything asking for something right now?", and the outcome is the chip's fact
+rather than the toggle's (`docs/run-details.md` § 6.2).
 
 **The mark is the run pane's own `Info`, leading the count**, and it was added in
 design review round 1 (D1). Without it the chip was plain muted text in the same
@@ -473,7 +505,8 @@ affordance — neither of which exists in a still, and neither of which a reader
 consults before pressing. At the floor it was worse than neutral: `3 to-dos open`
 sat on the line under a truncated goal sentence, in the goal's ink, where it read
 as the sentence's wrapped remainder, and `0 to-dos open` read as a completion
-statement. One glyph now means "this opens the run pane" on both surfaces, since
+statement (the copy § 5.1 has since replaced). One glyph now means "this opens
+the run pane" on both surfaces, since
 the header trigger wears the same mark (§ 6.1). `size-3.5` is the disclosure
 chevron's own size, so the two chips carry same-size marks and stay one species.
 
@@ -501,9 +534,11 @@ repetition rather than a second label.
   header states `n of m closed · k dropped` in full
   (`run-detail-model.ts:1811-1843`, rendered at `run-detail-todos.tsx:183-190`)
   and the chip points at it.
-- **A finished plan says `0 to-dos open`** and still renders. That is the
-  honest reading of a complete plan, and it keeps the row's height from
-  changing when the last item closes.
+- **A finished plan says `All to-dos resolved`, or `All to-dos closed` where
+  anything was dropped, and still renders.** The clause stays rather than the
+  chip vanishing, because the row's height must not change when the last item
+  closes; the words are the model's settled pair (§ 5.1) rather than a count,
+  and a plan that abandoned part of itself must not read as one that finished.
 - **Rejected: `11 of 15 closed` (`todoTally`).** Three reasons, all checkable:
   it needs the plan named separately, because the phrase does not contain the
   word *to-dos* — the operator's ask 2 is explicit that the chip must say there
@@ -558,9 +593,13 @@ lineage it does not belong to."*
 
 | | String |
 |---|---|
-| Visible | `4 to-dos open` |
+| Visible, nothing open and nothing dropped | `All to-dos resolved` |
+| Visible, nothing open with items dropped | `All to-dos closed` |
 | Tooltip and accessible name | `Open the plan in run details — 4 to-dos open` |
+| Tooltip and accessible name, nothing open | `Open the plan in run details — All to-dos resolved` (nothing dropped) / `Open the plan in run details — All to-dos closed` (anything dropped) |
 
+- The settled rows are `todoClause`'s pair and not a second copy of them: the
+  chip's body, its tooltip and its accessible name are all one call (§ 5.1).
 - The action leads and the count follows, joined by `LABEL_SEAM`, so pressure
   could shed the way the trigger's label already does
   (`run-detail-model.ts:2207-2226`).

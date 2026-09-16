@@ -103,6 +103,39 @@ function splitArguments(text) {
 }
 
 /**
+ * The text of a scanned file, or `null` when it is gone by the time it is read.
+ *
+ * WHY a vanished file is not a finding. The loop below ENUMERATES `scripts/` and
+ * `bin/` and reads each entry afterwards, while `node --test` runs test FILES in
+ * parallel: a file that exists at enumeration can be gone at the read. That is
+ * the race that turned `Desktop Tests` red on CI for the sibling scan
+ * (`scripts/chrome-keychain.test.mjs`'s own `readScannedFile`, whose docblock
+ * carries the full account): a throwaway `scripts/_*.bundle.mjs` written and
+ * unlinked by a concurrent test file, a pattern this repository gitignores
+ * precisely because it is disposable. Every test file that writes one is in this
+ * file's own roster (`package.json`), so this scanner can be crossed by it too.
+ *
+ * The helper is per-file rather than shared, like this scanner's own
+ * `splitArguments` and comment blanker: the two scanners import nothing from each
+ * other, and a file-read helper has no business in `chrome-keychain.mjs`'s
+ * keychain module.
+ *
+ * Skipping such a file keeps every assertion's meaning - what this scan asserts
+ * about is the files that ARE there, and a rig that is really gone is still
+ * caught by the reach assertions below (`electron.length >= 6`, the guarded-row
+ * count, and `UNSCANNABLE_SPAWN_PATHS`' own `existsSync`). ONLY `ENOENT` is
+ * tolerated: a directory or a permission failure is a finding, and is thrown.
+ */
+function readScannedFile(file) {
+	try {
+		return readFileSync(file, "utf8");
+	} catch (error) {
+		if (error?.code !== "ENOENT") throw error;
+		return null;
+	}
+}
+
+/**
  * Every spawn-ish call site in `scripts/` and `bin/`, with the balanced text of
  * its argument list, classified by what it starts.
  *
@@ -121,7 +154,10 @@ function findSpawnSites() {
 			if (!entry.isFile()) continue;
 			if (!/\.(mjs|js|cjs)$/.test(entry.name)) continue;
 			const file = join(dir, entry.name);
-			const raw = readFileSync(file, "utf8");
+			const raw = readScannedFile(file);
+			// Gone between the enumeration above and this read: a concurrent test file's
+			// throwaway, which is not a spawn site. See `readScannedFile`.
+			if (raw === null) continue;
 			const source = blankComments(raw);
 			const found = [];
 			for (const name of SPAWN_NAMES) {
@@ -139,7 +175,14 @@ function findSpawnSites() {
 				let end = source.indexOf("(", site.at);
 				for (; end < source.length; end += 1) {
 					if (source[end] === "(") depth += 1;
-					else if (source[end] === ")" && (depth -= 1) === 0) break;
+					else if (source[end] === ")") {
+						// Spelled out rather than `(depth -= 1) === 0`: the
+						// assignment-in-expression is a pre-existing lint error here, and the
+						// scripts-scope gate requires the whole of `biome check` on any file
+						// a change touches. Behaviour is identical.
+						depth -= 1;
+						if (depth === 0) break;
+					}
 				}
 				const text = raw.slice(source.indexOf("(", site.at) + 1, end);
 				const [command = ""] = splitArguments(text);
