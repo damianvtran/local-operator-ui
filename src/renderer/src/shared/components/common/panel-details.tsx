@@ -53,6 +53,15 @@ export const PanelDetails = ({
 		<Button
 			variant="ghost"
 			size="sm"
+			/*
+			 * STACKED, THE CONTROL PULLS ITS OWN PADDING BACK TO THE RAIL. `sm` carries
+			 * `px-2`, so the button's glyph sat 7-8px right of the sentence, the
+			 * `Details:` label and the code, which all share one left edge - a rail
+			 * break inside a four-item stack (design round 2, D11). The row layout
+			 * does not need it: there the control is the last item on a line whose
+			 * rail is set by the label at the start.
+			 */
+			className={stacked ? "-ml-2" : undefined}
 			onClick={() => {
 				void navigator.clipboard
 					.writeText(detail)

@@ -159,6 +159,21 @@ const POST_WAKE_CHECK_DELAY_MS = 20_000;
 function versionSuffix(version: string | null | undefined): string {
 	return version ? ` to version ${version}` : "";
 }
+
+/**
+ * The failure the network gate hands its caller when the machine never had a network.
+ *
+ * WHY IT CARRIES A CHROMIUM CODE. This is not an invented error: it is the exact
+ * failure a fetch attempted in that state produces - the operator's own log has
+ * `net::ERR_INTERNET_DISCONNECTED` at the dark-wake second, from the updater's own
+ * executor - so the renderer classifies it with the same shared classifier and
+ * paints the same sentence it would paint for the real one. The alternative
+ * (inventing a message in the app's own voice) would be a second spelling of one
+ * failure, in the module whose whole purpose is having one.
+ */
+function offlineTransportError(): Error {
+	return new Error("net::ERR_INTERNET_DISCONNECTED");
+}
 /**
  * Run a command and report its exit code rather than throwing on failure.
  *
@@ -1943,27 +1958,11 @@ export class UpdateService {
 		>,
 	): Promise<Awaited<ReturnType<typeof autoUpdater.checkForUpdates>> | null> {
 		/*
-		 * A CHECK THAT COULD NOT REACH THE NETWORK IS NOT A FAILURE TO REPORT, and
-		 * it is not a request worth spending either. `net.isOnline()` answers "this
-		 * machine believes it has no network", which is the state the operator's
-		 * dark-wake log is a picture of - and a fetch attempted there fails with
-		 * `net::ERR_INTERNET_DISCONNECTED`, which used to be retried three times and
-		 * then reported. Skipping quietly leaves the verdict where a check that did
-		 * not run belongs (`unavailable`, never "nothing newer"), and the next tick
-		 * does the work.
+		 * The gate that decides whether a REQUEST is worth spending lives inside the
+		 * attempt ladder (`runAppFeedAttempts`), not here: a skip has to leave the
+		 * caller's own failure path intact, and what that path does depends on who
+		 * asked. See the note there.
 		 *
-		 * The reading is deliberately NOT latched into any state: it is asked once
-		 * per check, so a machine that comes back a second later is checked on the
-		 * next attempt rather than remembered as offline.
-		 */
-		if (!this.networkIsReachable()) {
-			logger.info(
-				"Skipping the app update check: this machine reports no network right now (net.isOnline() is false). The next scheduled check will try again.",
-				LogFileType.UPDATE_SERVICE,
-			);
-			return null;
-		}
-		/*
 		 * The second caller rides the sequence already in flight rather than
 		 * starting another one; see `appFeedFetchInFlight`.
 		 */
@@ -2003,6 +2002,32 @@ export class UpdateService {
 			const delays = this.appFeedRetryDelaysMs;
 			for (let attempt = 0; ; attempt += 1) {
 				try {
+					/*
+					 * THE GATE IS AN ATTEMPT, NOT AN EXIT. A machine that reports no network
+					 * spends no request - but the ladder still runs, because whether a check
+					 * FAILS is the caller's question and its answer depends on WHO ASKED:
+					 * an app-initiated check is silent, and a check the user clicked has to
+					 * be answered with the sentence the copy already has (review round 2,
+					 * R2-1). Returning early here made a clicked check resolve `null`, and a
+					 * resolved invoke is not a failure - so the click the operator's rule
+					 * exists for was the one path that said nothing at all.
+					 *
+					 * Waiting between gate readings rather than between requests is also
+					 * what a wake needs: the network can come back inside the ladder's four
+					 * seconds, and an attempt that never left the machine costs nothing to
+					 * repeat.
+					 */
+					if (!this.networkIsReachable()) {
+						logger.info(
+							`The machine reports no network (net.isOnline() is false); not spending a request on the update feed${attempt < delays.length ? `, asking again in ${delays[attempt]}ms (attempt ${attempt + 2} of ${delays.length + 1})` : ""}.`,
+							LogFileType.UPDATE_SERVICE,
+						);
+						if (attempt >= delays.length) throw offlineTransportError();
+						await new Promise((resolve) =>
+							setTimeout(resolve, delays[attempt]),
+						);
+						continue;
+					}
 					return await fetchFeed();
 				} catch (error) {
 					const code = transientTransportCode(error);
@@ -3316,10 +3341,16 @@ export class UpdateService {
 			 * app channel's at the dark-wake instant (`Error fetching from PyPI: Error:
 			 * getaddrinfo ENOTFOUND pypi.org`, same second). Skipping leaves the status
 			 * `unavailable`, which is what a channel that did not find out reports.
+			 *
+			 * AND THIS CHANNEL DOES NOT REPORT THE STATE, even when the check was the
+			 * user's: the app channel's ladder reaches the same reading first, fails with
+			 * the same code and is what the renderer is answered with, so a report here
+			 * would put a second sentence beside it for one condition (review round 2,
+			 * R2-1's rule, applied to the other channel).
 			 */
 			if (!this.networkIsReachable()) {
 				logger.info(
-					"Skipping the server update check: this machine reports no network right now (net.isOnline() is false). The next scheduled check will try again.",
+					"Skipping the server update check: this machine reports no network right now (net.isOnline() is false). The app channel owns the report; the next scheduled check will try again.",
 					LogFileType.UPDATE_SERVICE,
 				);
 				return { status: "unavailable", info: null };
