@@ -12,7 +12,7 @@ import {
 } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
 import { type FC, useMemo } from "react";
-import type { SurfaceScope } from "../model/approval-queue-model";
+import type { SurfaceScope } from "../model/tab-index-model";
 import { paneApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserSurface } from "./browser-surface";
 

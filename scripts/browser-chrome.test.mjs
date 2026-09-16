@@ -71,7 +71,8 @@ const PROBE = `
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, scopeFromKey, scopeKey, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -112,6 +113,14 @@ const PROBE = `
 		tabsInScope,
 		waitingOrdinals,
 		RESOLVED_KEEP,
+		closeConversationIntent,
+		closeOthersIntent,
+		closeToTheRightIntent,
+		groupTabsBySession,
+		pooledTabs,
+		sessionDisplayName,
+		summariseConversations,
+		tabsBySession,
 		BrowserLoadFailure,
 		loadFailureSentence,
 		useCanonicalSessionsStore,
@@ -204,6 +213,14 @@ const {
 	tabsInScope,
 	waitingOrdinals,
 	RESOLVED_KEEP,
+	closeConversationIntent,
+	closeOthersIntent,
+	closeToTheRightIntent,
+	groupTabsBySession,
+	pooledTabs,
+	sessionDisplayName,
+	summariseConversations,
+	tabsBySession,
 	BrowserLoadFailure,
 	loadFailureSentence,
 	useCanonicalSessionsStore,
@@ -2017,6 +2034,216 @@ test("the pane's tray sentence says which list its count is about", () => {
 	// conversation's tabs while the count stays this conversation's (spec 7.2).
 	assert.equal(paneApprovalHeaderLabel(1), "1 approval for this conversation");
 	assert.equal(paneApprovalHeaderLabel(3), "3 approvals for this conversation");
+});
+
+test("the tab index groups a pool by conversation, unattributed last", () => {
+	// Design R3. The order rule is the whole of the "see all the tabs that
+	// conversation opened" claim: groups by their FIRST tab, tabs within a group in
+	// the order they arrived (the registry's creation order), and the unattributed
+	// run last, because conversations are the organising idea and the tail is the
+	// miscellaneous set (open question 8).
+	const tabs = [
+		{ tabId: 1, sessionId: "alice" },
+		{ tabId: 2, sessionId: null },
+		{ tabId: 3, sessionId: "bob" },
+		{ tabId: 4, sessionId: "alice" },
+		{ tabId: 5, sessionId: "bob" },
+	];
+	assert.deepEqual(
+		groupTabsBySession(tabs).map((group) => [
+			group.sessionId,
+			group.tabs.map((tab) => tab.tabId),
+		]),
+		[
+			["alice", [1, 4]],
+			["bob", [3, 5]],
+			[null, [2]],
+		],
+		"three interleaved conversations read A A B B, not A B A A B",
+	);
+	// THE POOL IS THE GROUPING FLATTENED, derived rather than compared again: the
+	// bulk close's "to the right" label counts tabs in this order, and the user
+	// counts them by looking at the strip.
+	assert.deepEqual(
+		pooledTabs(tabs).map((tab) => tab.tabId),
+		[1, 4, 3, 5, 2],
+		"the rendered order is the grouped order",
+	);
+	// A single-group pool stays ONE group: the strip renders no chips unless there
+	// are two conversations in the pool (design R3), which is what keeps the pane's
+	// own conversation scope byte-identical to what it rendered before this change.
+	assert.equal(
+		groupTabsBySession(tabs.filter((tab) => tab.sessionId === "alice")).length,
+		1,
+		"one conversation is one group, and gets no label",
+	);
+
+	// KEYED FROM THE TAB SIDE, and unattributed tabs are in NO entry: they are not
+	// any conversation's, which is the same rule `tabsInScope` applies.
+	assert.deepEqual([...tabsBySession(tabs).keys()], ["alice", "bob"]);
+	assert.deepEqual(
+		tabsBySession(tabs)
+			.get("bob")
+			?.map((tab) => tab.tabId),
+		[3, 5],
+	);
+	assert.equal(tabsBySession(tabs).has("null"), false);
+});
+
+test("a conversation's summary counts its tabs, and reuses its entry when nothing changed", () => {
+	// The identity-reuse half is not a micro-optimisation: the sidebar renders every
+	// row in one scroll container with no virtualisation, so a new Map of new objects
+	// per browser event re-renders all forty rows for a change that touched one.
+	const tabs = [
+		{ tabId: 1, sessionId: "alice", loading: true },
+		{ tabId: 2, sessionId: "alice", failed: true },
+		{ tabId: 3, sessionId: "bob" },
+		{ tabId: 4, sessionId: null },
+	];
+	const requests = [
+		// Expired at `now`, and main prunes nothing: counting it would put a badge on
+		// a row for an ask that is over, which is the defect `approval-queue-model.ts`
+		// exists to prevent.
+		{ entryId: "r1", requesterSessionId: "alice", expiresAt: 1_000 },
+		{ entryId: "r2", requesterSessionId: "alice", expiresAt: 9_000 },
+		// A non-session requester belongs to no conversation (spec 7.2).
+		{ entryId: "r3", requesterSessionId: null, expiresAt: 9_000 },
+		{ entryId: "r4", requesterSessionId: "bob", expiresAt: 9_000 },
+	];
+	const first = summariseConversations(tabs, requests, 2_000);
+	assert.deepEqual(first.get("alice"), {
+		tabCount: 2,
+		loadingCount: 1,
+		failedCount: 1,
+		pendingApprovals: 1,
+	});
+	assert.deepEqual(first.get("bob"), {
+		tabCount: 1,
+		loadingCount: 0,
+		failedCount: 0,
+		pendingApprovals: 1,
+	});
+	assert.equal(
+		first.has("null"),
+		false,
+		"no summary is keyed on the unattributed set: a null key is not a conversation",
+	);
+
+	const second = summariseConversations(tabs, requests, 2_000, first);
+	assert.equal(
+		second.get("alice"),
+		first.get("alice"),
+		"an unchanged conversation hands back the SAME object, which is what stops its row re-rendering",
+	);
+	assert.equal(second.get("bob"), first.get("bob"));
+
+	// A change to ONE conversation must not disturb another's identity, and must
+	// produce a new object for the one that changed.
+	const third = summariseConversations(
+		tabs.map((tab) => (tab.tabId === 1 ? { ...tab, loading: false } : tab)),
+		requests,
+		2_000,
+		first,
+	);
+	assert.notEqual(
+		third.get("alice"),
+		first.get("alice"),
+		"a changed count is a changed entry",
+	);
+	assert.equal(third.get("bob"), first.get("bob"));
+	assert.equal(third.get("alice")?.loadingCount, 0);
+
+	// A conversation with a live request and no tabs of its own is present with a
+	// zero tab count rather than absent: the mark has to say "an agent here is
+	// waiting on you" for a conversation whose tab the user has already closed.
+	const waiting = summariseConversations(
+		tabs.filter((tab) => tab.sessionId !== "carol"),
+		[
+			...requests,
+			{ entryId: "r5", requesterSessionId: "carol", expiresAt: 9_000 },
+		],
+		2_000,
+	);
+	assert.deepEqual(waiting.get("carol"), {
+		tabCount: 0,
+		loadingCount: 0,
+		failedCount: 0,
+		pendingApprovals: 1,
+	});
+});
+
+test("the bulk closes resolve to the tabs the labels name", () => {
+	// Design R5. `others` means the WHOLE POOL, not the host's visible list — in the
+	// pane, scoped to two tabs of eight, the label reads `Close 7 other tabs`, which
+	// is the truth about what it does.
+	const tabs = [
+		{ tabId: 1, sessionId: null },
+		{ tabId: 2, sessionId: "alice" },
+		{ tabId: 3, sessionId: null },
+		{ tabId: 4, sessionId: "alice" },
+	];
+	assert.deepEqual(
+		closeOthersIntent(tabs, 2),
+		{ mode: "ids", tabIds: [4, 1, 3] },
+		"`others` excludes exactly the kept tab, in the order the strip shows",
+	);
+	assert.equal(
+		closeOthersIntent([{ tabId: 2, sessionId: "alice" }], 2),
+		null,
+		"one tab has no others, so the item is not offered",
+	);
+	assert.equal(closeOthersIntent([], 7), null, "nothing to close is no item");
+
+	// `to the right` is about the RENDERED order, which is the grouped one.
+	const pooled = pooledTabs(tabs);
+	assert.deepEqual(
+		closeToTheRightIntent(pooled, 2),
+		{ mode: "ids", tabIds: [4, 1, 3] },
+		"the tabs after the anchor in the grouped order the user is looking at",
+	);
+	assert.equal(
+		closeToTheRightIntent(pooled, 3),
+		null,
+		"the last tab in the order shows no `to the right` item",
+	);
+	assert.equal(
+		closeToTheRightIntent(pooled, 99),
+		null,
+		"an anchor that is not in the list closes nothing",
+	);
+
+	assert.deepEqual(closeConversationIntent("alice"), {
+		mode: "conversation",
+		sessionId: "alice",
+	});
+});
+
+test("a conversation is named by its title, or by its id when it has none", () => {
+	const sessions = [
+		{ session_id: "alice", title: "Reports" },
+		{ session_id: "bob", title: "   " },
+		{ session_id: "carol", title: null },
+	];
+	assert.equal(sessionDisplayName("alice", sessions), "Reports");
+	assert.equal(
+		sessionDisplayName("bob", sessions),
+		"bob",
+		"a whitespace title is not a name",
+	);
+	assert.equal(sessionDisplayName("carol", sessions), "carol");
+	assert.equal(
+		sessionDisplayName("dave", sessions),
+		"dave",
+		"a session the list does not know is its own id, the same fallback the hand-over dialog uses",
+	);
+	// The requester sentence is built on the SAME rule (one rule, two callers).
+	assert.equal(requesterLabel("alice", sessions), "The agent in 'Reports'");
+	assert.equal(
+		requesterLabel("bob", sessions),
+		"The agent in conversation bob",
+	);
+	assert.equal(requesterLabel("alice", sessions, { short: true }), "Reports");
+	assert.equal(requesterLabel(null, sessions), "An agent");
 });
 
 test("both hosts render the page area under the same spinner, so one selector holds in both", () => {
