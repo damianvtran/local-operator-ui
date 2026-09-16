@@ -1,6 +1,5 @@
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Spinner } from "@shared/components/common/spinner";
-import { UpdateErrorAlert } from "@shared/components/common/update-error-alert";
 import { Button } from "@shared/components/ui";
 import {
 	UpdateType,
@@ -32,20 +31,6 @@ export const CheckForUpdatesButton = () => {
 	 * defect this change exists to remove (design D2/D3, UX U1/U3, UX U6). The
 	 * unrelated confirmations below keep the plain snackbar.
 	 */
-	const [checkError, setCheckError] = useState<string | null>(null);
-	/**
-	 * Whether the held failure is on screen, ON ITS OWN.
-	 *
-	 * WHY IT IS NOT `snackbarOpen`. The failure is held until the reader dismisses
-	 * it, while the boxes beside it (the by-hand panel, the confirmation) dismiss
-	 * themselves on a timer - so one shared flag let another box's autoHide take
-	 * the held failure down, and let two boxes paint the same corner at once
-	 * (review round 2, R2-2; QA round 2 measured two identical 400x192 rects, both
-	 * `role="alert"`, one at the app root and one here). The failure keeps its own
-	 * open state and its own dismissal; `showMessage`/`showAffirmation` clear it
-	 * when a new message claims the box, which is the other half of the same rule.
-	 */
-	const [errorOpen, setErrorOpen] = useState(false);
 	const [snackbarSeverity, setSnackbarSeverity] = useState<
 		"success" | "info" | "warning" | "danger"
 	>("info");
@@ -147,27 +132,9 @@ export const CheckForUpdatesButton = () => {
 			setSnackbarMessage(message);
 			setSnackbarSeverity(severity);
 			setSnackbarOpen(true);
-			/*
-			 * A message claiming the corner takes the held failure off it: two boxes
-			 * cannot both be the answer to the same check, and a retry that succeeds
-			 * while the old failure is still up would otherwise say both things at
-			 * once (review round 2, R2-2).
-			 */
-			setCheckError(null);
-			setErrorOpen(false);
 		},
 		[],
 	);
-
-	/**
-	 * A failed check, in the box that owns it: the sentence, the machine line
-	 * under it, and the retry the sentence asks for.
-	 */
-	const showCheckError = useCallback((message: string) => {
-		showingAffirmationRef.current = false;
-		setCheckError(message);
-		setErrorOpen(true);
-	}, []);
 
 	const showAffirmation = useCallback((message: string) => {
 		showingAffirmationRef.current = true;
@@ -205,15 +172,6 @@ export const CheckForUpdatesButton = () => {
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(message: string) => {
 				if (!manualCheckRef.current) return;
-				// Only suppress known spurious errors
-				const suppressedPatterns = [
-					"ENOENT: no such file or directory, open", // e.g. missing update yml
-					"Could not get code signature for running application", // macOS spurious
-					"Cannot find latest.yml", // electron-updater
-				];
-				const isSuppressed = suppressedPatterns.some((pat) =>
-					message.includes(pat),
-				);
 
 				if (message.includes("manually")) {
 					// Legacy wording from a main process that named pip for every
@@ -235,16 +193,18 @@ export const CheckForUpdatesButton = () => {
 					setSnackbarMessage(null);
 					setSnackbarSeverity("warning");
 					setSnackbarOpen(true);
-				} else if (!isSuppressed) {
-					/*
-					 * Through the shared copy, like every other surface that shows an
-					 * update failure. This handler used to paint the raw string - it is the
-					 * one the PR's own promise had left behind, so a `net::ERR_*` from a
-					 * check the user pressed could still reach the box as the sentence
-					 * (review round 1, UX U6).
-					 */
-					showCheckError(message);
 				}
+				/*
+				 * AND NOTHING FOR AN ORDINARY FAILURE. This branch used to paint one here
+				 * through the shared copy (review round 1, UX U6) while the app-level alert
+				 * painted the same event - two boxes for one failure, which is QA round 3's
+				 * Q-1. `UpdateNotification` owns it: it is mounted on every screen this
+				 * button is, its alert is held until dismissed, it carries the retry, and
+				 * `updateMessageFate` is what decides whether a message is shown at all
+				 * (main's `shouldFilterUpdateError` having already declined the known
+				 * non-failures), so this listener needs neither its own copy nor its own
+				 * suppression list.
+				 */
 			},
 		);
 
@@ -305,7 +265,7 @@ export const CheckForUpdatesButton = () => {
 			removeNpxUpdateAvailableListener();
 			removeBackendUpdateAvailableListener();
 		};
-	}, [dismissAffirmation, showMessage, showCheckError]);
+	}, [dismissAffirmation, showMessage]);
 
 	// The durable record of the last failed install: read on mount, and re-read
 	// when this start turns out to have one.
@@ -330,15 +290,14 @@ export const CheckForUpdatesButton = () => {
 	}, []);
 
 	/**
-	 * Check for updates.
+	 * Check for updates, from this surface's own control.
 	 *
-	 * `keepFailure` is set by the one caller that IS the failure card - its own
-	 * retry - and it means "do not take the card down while this runs": the card
-	 * stays up with its button in its in-progress state, and a check that
-	 * SUCCEEDS is what ends it (UX round 2, U7). Every other caller starts from a
-	 * clean box, which is what the dismissal below is for.
+	 * It reports nothing itself: a failure this check meets is emitted as
+	 * `update-error` and painted by the app-level alert, which is the single owner of
+	 * that box (QA round 3, Q-1). What is left here is the component's own state -
+	 * the acknowledgement sentence and the panels about the server and the bundle.
 	 */
-	const checkForUpdates = async ({ keepFailure = false } = {}) => {
+	const checkForUpdates = async () => {
 		if (isDevelopmentMode()) {
 			showMessage(
 				"Updates are not checked in development mode. This feature is only available in production builds.",
@@ -356,16 +315,11 @@ export const CheckForUpdatesButton = () => {
 		 */
 		const seq = ++checkSeqRef.current;
 		/*
-		 * A NEW CHECK RETIRES BOTH HALVES OF THE LAST ONE, and the held failure is one
-		 * of them: this is the reader asking again, so what the previous check
-		 * concluded - its sentence and its failure - is no longer what the app knows.
-		 * The exception is the failure card's own retry (`keepFailure`), which stays up
-		 * with its own button showing the check is running (UX round 2, U7).
+		 * A new check retires the previous verdict's sentence before it resolves: this
+		 * is the reader asking again, so what the last check concluded is no longer
+		 * what the app knows.
 		 */
-		if (!keepFailure) {
-			dismissAffirmation();
-			closeCheckError();
-		}
+		dismissAffirmation();
 		// This check's own window for offers opens here: anything raised from now
 		// until its verdict lands is something this verdict may not paint over.
 		offerSinceCheckStartRef.current = false;
@@ -398,14 +352,6 @@ export const CheckForUpdatesButton = () => {
 			if (seq !== checkSeqRef.current) return;
 
 			/*
-			 * A check the FAILURE CARD started that finished without failing ends the
-			 * card: the retry it offered worked, and leaving the old failure up would
-			 * say the opposite. Only that caller - `keepFailure` - is affected; every
-			 * other check clears the box on its way in.
-			 */
-			if (keepFailure) closeCheckError();
-
-			/*
 			 * An affirmation is painted only when this check's own window saw no
 			 * offer. `dismissAffirmation()` at the top of this function cannot cover
 			 * that case: it is a no-op once the claim is already retired, so an offer
@@ -435,12 +381,16 @@ export const CheckForUpdatesButton = () => {
 		} catch (error) {
 			if (seq !== checkSeqRef.current) return;
 			/*
-			 * The invoke envelope and the nested `Error: ` prefixes come off first
-			 * (`updateMessageOf`), and the ALERT decides what the reader is told:
-			 * this is a failure of a check the user asked for, so it reports - and it
-			 * reports the sentence, not the string Electron framed.
+			 * LOGGED, NOT PAINTED, and deliberately: the main process emits
+			 * `update-error` for every failure it reports, and the app-level alert is
+			 * what a reader sees for it (QA round 3, Q-1). A second paint from the
+			 * invoke's own rejection is the duplicate this round removes, and a failure
+			 * main declined to report - the release-artifact family - must stay silent
+			 * rather than be re-raised from here.
 			 */
-			showCheckError(updateMessageOf(error));
+			console.warn(
+				`Update check failed; the app-level alert owns the report: ${updateMessageOf(error)}`,
+			);
 		} finally {
 			/*
 			 * Only the newest check owns the button's busy state: a slow earlier one
@@ -466,14 +416,6 @@ export const CheckForUpdatesButton = () => {
 		setSnackbarOpen(false);
 		setSnackbarMessage(null);
 	};
-
-	/**
-	 * Dismissal of the HELD failure, and only of it: the reader's own X.
-	 */
-	const closeCheckError = useCallback(() => {
-		setCheckError(null);
-		setErrorOpen(false);
-	}, []);
 
 	return (
 		<>
@@ -549,25 +491,20 @@ export const CheckForUpdatesButton = () => {
 			)}
 
 			{/*
-			 * A failed check the user asked for: the shared sentence with the machine's
-			 * words beneath it, held until it is dismissed, with the retry the sentence
-			 * names (design D2/D3).
+			 * AND NO FAILURE ALERT HERE, which is the one-painter rule (QA round 3,
+			 * Q-1/Q-2). This component used to render `UpdateErrorAlert` for a check it
+			 * ran, while `UpdateNotification` - mounted at the app root - rendered one
+			 * for the same `update-error` event: two boxes, one failure, each with its
+			 * own Copy details and Try again inside the same 400x192 rect at the same
+			 * z-index, and each clearing only itself. After a retry SUCCEEDED the reader
+			 * could be left looking at a card that still said the app could not reach
+			 * the update server. The app-level alert is the single owner now: it is
+			 * mounted wherever this button is, it holds until dismissed, it carries the
+			 * retry, and a successful check clears it. What stays here is this
+			 * component's OWN surfaces - the by-hand panel, the install-blocked panel
+			 * and the confirmation - because those are about the server and the bundle
+			 * rather than about the check.
 			 */}
-			{checkError && (
-				<UpdateErrorAlert
-					open={errorOpen}
-					message={checkError}
-					onClose={closeCheckError}
-					/*
-					 * A retry the ALERT started keeps the card mounted while it runs, so
-					 * its own button shows the in-progress state instead of the card
-					 * vanishing for the app's 1 s + 3 s ladder with nothing on screen
-					 * saying a check is running (UX round 2, U7).
-					 */
-					onRetry={() => void checkForUpdates({ keepFailure: true })}
-					retrying={checking}
-				/>
-			)}
 		</>
 	);
 };

@@ -172,7 +172,17 @@ function versionSuffix(version: string | null | undefined): string {
  * failure, in the module whose whole purpose is having one.
  */
 function offlineTransportError(): Error {
-	return new Error("net::ERR_INTERNET_DISCONNECTED");
+	/*
+	 * THE MESSAGE NAMES THE GATE, not a failed fetch (review round 3, R3-3). A grep
+	 * for this code in the log would otherwise find a line that reads like a request
+	 * that went out and came back refused, and a reader chasing it would look for a
+	 * dropped connection that never existed. The code stays, because the renderer
+	 * classifies and describes it with the shared table; the parenthetical is what
+	 * says the check never left the machine.
+	 */
+	return new Error(
+		"net::ERR_INTERNET_DISCONNECTED - the machine reported no network, so no request was made",
+	);
 }
 /**
  * Run a command and report its exit code rather than throwing on failure.

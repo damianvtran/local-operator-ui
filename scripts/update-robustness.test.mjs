@@ -6200,6 +6200,37 @@ test("the classifier knows the family the log holds, and refuses the rest", asyn
 	}
 });
 
+/*
+ * The literals the update-copy assertions read, hoisted to module scope.
+ *
+ * `lint/performance/useTopLevelRegex` is this file's own lint rule, and the reason is
+ * measurable here: a regex literal inside a test body adds a warning whose JSON form
+ * carries the surrounding code, and this file's report is large enough that the
+ * scripts gate's own buffer is a real constraint - it tripped `ENOBUFS` on the run
+ * that first added these.
+ */
+const OFFLINE_CODE_PREFIX = /^net::ERR_INTERNET_DISCONNECTED\b/;
+const NO_REQUEST_MADE = /no request was made/;
+const TRANSPORT_CODE = /net::ERR_/;
+const DOWNLOAD_LABEL = /^Error downloading/;
+const STAGE_SENTENCE_CASES = [
+	[
+		"Error downloading update: net::ERR_TIMED_OUT",
+		/could not be downloaded/i,
+		/start the download again/i,
+	],
+	[
+		"Error starting the update: net::ERR_CONNECTION_RESET",
+		/could not be installed/i,
+		/start it again from the update panel/i,
+	],
+	[
+		"Error quitting for the update: net::ERR_TIMED_OUT",
+		/could not quit to finish the install/i,
+		/quit the app yourself/i,
+	],
+];
+
 test("an update failure says what happened, and keeps the machine's words subordinate", async () => {
 	const { module: copy, dir } = await loadPureModule(
 		"src/renderer/src/shared/utils/update-error-copy",
@@ -6369,6 +6400,32 @@ test("an update failure says what happened, and keeps the machine's words subord
 				.sentence,
 			/could not be downloaded/i,
 		);
+		/*
+		 * ONE SENTENCE PER STAGE (design round 3, D-17; review R3-1). All three labels
+		 * are live producers, and one sentence for the family told a reader whose
+		 * download had already landed that the download failed - sending them to a
+		 * control that re-downloads an artifact they already have.
+		 */
+		for (const [label, sentence, next] of STAGE_SENTENCE_CASES) {
+			const stageCopy = copy.updateErrorCopy(label);
+			assert.match(stageCopy.sentence, sentence, label);
+			assert.match(
+				stageCopy.sentence,
+				next,
+				`${label} names its own next step`,
+			);
+			assert.equal(stageCopy.action, null, `${label} offers no check control`);
+			assert.match(
+				stageCopy.detail,
+				TRANSPORT_CODE,
+				`${label} keeps the code subordinate`,
+			);
+			assert.equal(
+				stageCopy.sentence.includes("could not be downloaded"),
+				DOWNLOAD_LABEL.test(label),
+				`${label} must not blame the download`,
+			);
+		}
 
 		/*
 		 * ONE verdict per message, on either channel: the release-artifact wording
@@ -6823,18 +6880,24 @@ test("a check the user asked for still reports when the machine has no network",
 			rejected instanceof Error,
 			"the click is answered with a failure, not a resolved invoke - a resolved one is how it said nothing at all",
 		);
-		assert.equal(
+		assert.match(
 			rejected.message,
-			"net::ERR_INTERNET_DISCONNECTED",
+			/^net::ERR_INTERNET_DISCONNECTED\b/,
 			"the code the machine's own stack gives for this state",
 		);
+		/*
+		 * AND THE MESSAGE SAYS THE REQUEST WAS NEVER MADE (review round 3, R3-3): a
+		 * grep for the code would otherwise find a line that reads like a fetch which
+		 * went out and came back refused.
+		 */
+		assert.match(rejected.message, NO_REQUEST_MADE);
 		/*
 		 * And the renderer has copy for it: the same sentence the alert paints for a
 		 * real fetch that failed this way, with the code subordinate.
 		 */
 		const shown = copy.updateErrorCopy(rejected.message);
 		assert.match(shown.sentence, /could not reach the update server/i);
-		assert.equal(shown.detail, "net::ERR_INTERNET_DISCONNECTED");
+		assert.match(shown.detail, OFFLINE_CODE_PREFIX);
 		assert.equal(shown.action, "check", "and the retry it names has an owner");
 		assert.deepEqual(
 			sent.map(({ channel }) => channel),

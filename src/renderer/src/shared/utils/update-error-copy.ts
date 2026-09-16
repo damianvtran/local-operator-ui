@@ -89,8 +89,25 @@ const UPDATE_SERVER_UNREACHABLE =
  * (design round 2, D-9; UX U9). It names the surface that does own it instead:
  * the update panel's own download control, which is behind this alert.
  */
-const UPDATE_DOWNLOAD_FAILED =
-	"The update could not be downloaded. Check this machine's connection, then start the download again.";
+/**
+ * ONE SENTENCE PER STAGE, and why the stages are told apart at all.
+ *
+ * All three of these labels are live producers reachable from a press - the
+ * download, the install-start and the quit-for-install catches in
+ * `update-notification.tsx` - and a single sentence for the family said "the update
+ * could not be downloaded" to a reader whose download had already landed, sending
+ * them back to a control that re-downloads an artifact they already have (design
+ * round 3, D-17; review R3-1). Each sentence names its own stage's next action and the
+ * surface that owns it: the update panel behind this alert carries the control in
+ * every case.
+ */
+const UPDATE_STAGE_SENTENCE: Record<UpdateStage, string> = {
+	download:
+		"The update could not be downloaded. Check this machine's connection, then start the download again.",
+	install:
+		"The update could not be installed. Check this machine's connection, then start it again from the update panel.",
+	quit: "The app could not quit to finish the install. Quit the app yourself, then let the update finish.",
+};
 
 /**
  * The sentence for a failure a RETRY CANNOT FIX, and why it promises nothing.
@@ -142,7 +159,23 @@ const MACHINE_MARK =
  * action the copy offers.
  */
 const UPDATE_STAGE_LABEL =
-	/^(?:Error downloading update|Error starting the update|Error quitting for the update)\b/i;
+	/^(Error downloading update|Error starting the update|Error quitting for the update)\b/i;
+
+/** The stage a labelled failure came from, or null when it carries no stage label. */
+type UpdateStage = "download" | "install" | "quit";
+
+function updateStageOf(message: string): UpdateStage | null {
+	switch (UPDATE_STAGE_LABEL.exec(message)?.[1]?.toLowerCase()) {
+		case "error downloading update":
+			return "download";
+		case "error starting the update":
+			return "install";
+		case "error quitting for the update":
+			return "quit";
+		default:
+			return null;
+	}
+}
 
 /**
  * The whole set of labels THIS APP writes in front of an update failure, and why it
@@ -162,10 +195,6 @@ const UPDATE_STAGE_LABEL =
  * wrong one puts a stranger's prose at reading weight.
  */
 const APP_AUTHORED_LABELS = [
-	"error downloading update",
-	"error starting the update",
-	"error quitting for the update",
-	"error installing update",
 	"error checking for updates",
 	"error checking for update",
 ];
@@ -186,7 +215,7 @@ const WHITESPACE_RUN = /\s+/;
  */
 export function updateErrorCopy(message: string): UpdateErrorCopy {
 	const cleaned = stripErrorPrefixes(message).trim();
-	const downloadStage = UPDATE_STAGE_LABEL.test(cleaned);
+	const stage = updateStageOf(cleaned);
 	const fragment = transientTransportFragment(cleaned);
 	if (fragment === null) {
 		/*
@@ -201,9 +230,8 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 			return { sentence: cleaned, detail: null, action: null };
 		}
 		return {
-			sentence: downloadStage
-				? UPDATE_DOWNLOAD_FAILED
-				: UPDATE_CHECK_INCOMPLETE,
+			sentence:
+				stage === null ? UPDATE_CHECK_INCOMPLETE : UPDATE_STAGE_SENTENCE[stage],
 			detail: cleaned === "" ? null : cleaned,
 			action: null,
 		};
@@ -214,8 +242,8 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 	 * sentence: what failed is the download, and the retry the connection
 	 * sentence names would be a check that cannot re-download anything (UX U9).
 	 */
-	if (downloadStage) {
-		return { sentence: UPDATE_DOWNLOAD_FAILED, detail, action: null };
+	if (stage !== null) {
+		return { sentence: UPDATE_STAGE_SENTENCE[stage], detail, action: null };
 	}
 	const action: "check" | null = "check";
 	/*
