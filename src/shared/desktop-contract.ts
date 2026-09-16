@@ -317,6 +317,293 @@ const configUpdate = z
 	})
 	.strict();
 
+/*
+ * Instruction-set publication (agent-hub contract §1.3/§1.4/§1.5/§3.1).
+ *
+ * An agent is primarily its instruction set, so the unit of publication is a
+ * DOCUMENT and not an archive: `POST`/`PUT /v1/agents/{id}/publish` carry the
+ * content fields below, and the local backend fills in the ones it owns (the
+ * instruction body lives in the agent's `system_prompt.md`) while the renderer
+ * overrides only what the dialog actually edits. That is why there is no
+ * `model`, no `hosting` and no `current_working_directory` in this vocabulary:
+ * nothing outside a content field has a shape to travel in.
+ *
+ * The bounds and the rule SENTENCES below mirror the hub's validator — the same
+ * numbers and the same words as `local_operator/clients/radient.py`'s
+ * `_name_rule` and `build_instruction_set_document` — for two reasons the brief
+ * calls out. A client bound stricter than the server's is a bug report (it
+ * refuses a document the hub would have accepted, with no way for the author to
+ * tell which side refused), and a client that explains one rule in its own words
+ * puts two sentences in front of the user for the same refusal. So the schema
+ * below REFINES ON these functions rather than restating their rules: what this
+ * renderer would send and what it would refuse cannot disagree with the field
+ * sentence the publish dialog renders.
+ */
+
+/** 128 after `trim`, the same bound the desktop profiles route already uses. */
+export const PUBLICATION_NAME_MAX_CHARS = 128;
+export const PUBLICATION_DESCRIPTION_MAX_CHARS = 2000;
+export const PUBLICATION_INSTRUCTIONS_MAX_CHARS = 8000;
+export const PUBLICATION_TOOL_MAX_CHARS = 64;
+export const PUBLICATION_TOOLS_MAX_ITEMS = 64;
+
+/**
+ * Length in CODE POINTS, the unit every cap here counts.
+ *
+ * Not `String.prototype.length`, which counts UTF-16 units: an instruction body
+ * of 8000 emoji is 8000 characters to the hub and 16,000 to a naive check, so
+ * counting units would refuse at half the ceiling the server enforces — the
+ * client-stricter-than-the-server direction the contract forbids.
+ */
+const publicationCharCount = (value: string): number => [...value].length;
+
+/*
+ * The three character classes a name is checked against, written as predicates
+ * over CODE POINTS rather than as character-class literals.
+ *
+ * Two reasons, and the second is why this is the form rather than a taste.
+ * These sets are statements about code points — "a name may not contain a
+ * control character" is a claim about the character, not about the byte — so
+ * the code says code points. And a class literal has to CONTAIN the characters
+ * it refuses, which this repository's linter rejects
+ * (`lint/suspicious/noControlCharactersInRegex`) for exactly this kind of rule;
+ * the same reasoning is recorded at `src/main/window-mode.ts`'s `breaksALine`.
+ */
+
+/**
+ * The Unicode White_Space property, plus `U+001C`-`U+001F`.
+ *
+ * Those four are not White_Space, and Python's `str.isspace()` — which is what
+ * the hub's mirror of this rule is written in — says they are. Including them
+ * changes only WHICH rule fires for such a name (they are control characters
+ * too, and the whitespace rule is the one the hub checks first), so this stays
+ * a faithful mirror of the order the hub reports rules in.
+ *
+ * `U+FEFF` is deliberately absent: JavaScript's `\s` matches it, the White_Space
+ * property and both server implementations do not, so matching it here would
+ * refuse a name the hub accepts.
+ */
+const isPublicationWhiteSpace = (point: number): boolean =>
+	(point >= 0x09 && point <= 0x0d) ||
+	(point >= 0x1c && point <= 0x20) ||
+	point === 0x85 ||
+	point === 0xa0 ||
+	point === 0x1680 ||
+	(point >= 0x2000 && point <= 0x200a) ||
+	point === 0x2028 ||
+	point === 0x2029 ||
+	point === 0x202f ||
+	point === 0x205f ||
+	point === 0x3000;
+
+/** Python's `unicodedata.category(c) == "Cc"`, which is what the hub checks. */
+const isPublicationControl = (point: number): boolean =>
+	point <= 0x1f || (point >= 0x7f && point <= 0x9f);
+
+/** The bidi overrides a rendered name would use to differ from its bytes. */
+const isPublicationBidiOverride = (point: number): boolean =>
+	(point >= 0x202a && point <= 0x202e) || (point >= 0x2066 && point <= 0x2069);
+
+/** Whether any code point of `value` satisfies `predicate`. */
+const publicationHasCodePoint = (
+	value: string,
+	predicate: (point: number) => boolean,
+): boolean => {
+	for (const character of value) {
+		if (predicate(character.codePointAt(0) ?? 0)) return true;
+	}
+	return false;
+};
+
+/**
+ * Python's `str.strip()`, over the set above.
+ *
+ * Not `String.prototype.trim()`, which strips the ECMAScript WhiteSpace set:
+ * the four `U+001C`-`U+001F` characters the rule above includes are exactly the
+ * ones JS leaves alone, so a name trailing one of them would be trimmed by the
+ * hub and not here — two different names out of one string.
+ */
+const publicationTrim = (value: string): string => {
+	const characters = [...value];
+	let start = 0;
+	let end = characters.length;
+	while (
+		start < end &&
+		isPublicationWhiteSpace(characters[start].codePointAt(0) ?? 0)
+	)
+		start++;
+	while (
+		end > start &&
+		isPublicationWhiteSpace(characters[end - 1].codePointAt(0) ?? 0)
+	)
+		end--;
+	return characters.slice(start, end).join("");
+};
+
+/** Every run of the whitespace set collapsed to a single `U+0020` (contract §3.1). */
+const publicationCollapseWhiteSpace = (value: string): string => {
+	let result = "";
+	let pendingSeparation = false;
+	for (const character of value) {
+		if (isPublicationWhiteSpace(character.codePointAt(0) ?? 0)) {
+			pendingSeparation = result.length > 0;
+			continue;
+		}
+		if (pendingSeparation) {
+			result += " ";
+			pendingSeparation = false;
+		}
+		result += character;
+	}
+	return result;
+};
+
+/**
+ * The rule a published NAME breaks, or `null` when it is publishable.
+ *
+ * Rule text included, because it is what the dialog shows and what the hub's
+ * `details.rule` carries — one sentence whichever side refused. The check order
+ * is the hub's own, and the order decides which rule a name breaks for, so a
+ * client that reported a different one would send its author looking for a
+ * character that is not there.
+ */
+export function publicationNameRule(name: string): string | null {
+	const trimmed = publicationTrim(name);
+	if (!trimmed) return "must not be empty";
+	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
+		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
+	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
+	if (publicationHasCodePoint(trimmed, isPublicationWhiteSpace))
+		return "must not contain whitespace";
+	if (publicationHasCodePoint(trimmed, isPublicationControl))
+		return "must not contain control characters";
+	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
+		return "must not contain Unicode bidirectional override characters";
+	const characters = [...trimmed];
+	if (
+		"-.".includes(characters[0]) ||
+		"-.".includes(characters[characters.length - 1])
+	)
+		return 'must not begin or end with "-" or "."';
+	return null;
+}
+
+/**
+ * The hub's `name_key`: `normalize(lowercase(NFKC(trim(name))))`.
+ *
+ * The identity a name is unique BY (contract §3.1) and not the name itself — the
+ * stored name keeps the author's case. The publish dialog asks this of a name
+ * the user is about to claim, and the pull path asks it of a name it is about to
+ * land beside, so both use it from here rather than each normalising its own
+ * way: two normalisations in one app is how a duplicate check passes where the
+ * resolver then picks one row arbitrarily.
+ *
+ * Known divergence, recorded rather than hidden: `toLowerCase()` is the JS
+ * case mapping, which differs from Go's `strings.ToLower` for a handful of
+ * characters (Turkish dotted I, Cherokee). A name that differs only in one of
+ * those is refused by the hub as taken and reported as available here — the
+ * safer of the two directions, since the server's answer is the one that
+ * decides and the dialog's check is a courtesy.
+ */
+export function publicationNameKey(name: string): string {
+	return publicationCollapseWhiteSpace(
+		publicationTrim(name).normalize("NFKC").toLowerCase(),
+	);
+}
+
+/** The rule a publication description breaks, or `null` (1..2000 characters). */
+export function publicationDescriptionRule(description: string): string | null {
+	if (!description.trim()) return "must not be empty";
+	if (publicationCharCount(description) > PUBLICATION_DESCRIPTION_MAX_CHARS)
+		return `must be at most ${PUBLICATION_DESCRIPTION_MAX_CHARS} characters`;
+	return null;
+}
+
+/** The rule an instruction body breaks, or `null` (1..8000 characters). */
+export function publicationInstructionsRule(
+	instructions: string,
+): string | null {
+	if (!instructions.trim()) return "must not be empty";
+	if (publicationCharCount(instructions) > PUBLICATION_INSTRUCTIONS_MAX_CHARS)
+		return `must be at most ${PUBLICATION_INSTRUCTIONS_MAX_CHARS} characters`;
+	return null;
+}
+
+/** The rule a tool list breaks, or `null` (<=64 items of 1..64 characters). */
+export function publicationToolsRule(tools: readonly string[]): string | null {
+	if (tools.length > PUBLICATION_TOOLS_MAX_ITEMS)
+		return `must hold at most ${PUBLICATION_TOOLS_MAX_ITEMS} items`;
+	for (const tool of tools) {
+		if (!tool.trim() || publicationCharCount(tool) > PUBLICATION_TOOL_MAX_CHARS)
+			return `must hold items of 1 to ${PUBLICATION_TOOL_MAX_CHARS} characters`;
+	}
+	return null;
+}
+
+/** Whether this renderer's contract would let a publish for `name` leave at all. */
+export const isPublishableName = (name: string): boolean =>
+	publicationNameRule(name) === null;
+
+/**
+ * A publishable name, asked of the rule above rather than restated.
+ *
+ * A name the schema refuses never reaches the backend, so the dialog checks it
+ * first and says which rule broke: the schema's own refusal is "Invalid desktop
+ * operation.", which names neither field nor rule and cannot be told apart from
+ * a bug.
+ */
+const publicationName = z.string().refine(isPublishableName, {
+	message: "That is not a name the hub can publish.",
+});
+
+const publicationInstructions = z
+	.string()
+	.refine(
+		(instructions) => publicationInstructionsRule(instructions) === null,
+		{ message: "That instruction body cannot be published." },
+	);
+
+const publicationDescription = z
+	.string()
+	.refine((description) => publicationDescriptionRule(description) === null, {
+		message: "That description cannot be published.",
+	});
+
+const publicationTools = z
+	.array(z.string())
+	.refine((tools) => publicationToolsRule(tools) === null, {
+		message: "That tool list cannot be published.",
+	});
+
+/**
+ * The fields a renderer may override, which are exactly a version-1 document's
+ * CONTENT fields.
+ *
+ * `document_type`/`document_version` are absent on purpose: they are
+ * client-owned and the hub refuses an override of either, so a schema that
+ * admitted them would let the renderer send a value the server must reject.
+ * Every field is optional because an override is a partial: a field the dialog
+ * does not edit is read from the local agent row, which is where the instruction
+ * body actually lives. A field this renderer does not send is a field whose
+ * local value is the one the author wrote.
+ */
+const publicationDocument = z
+	.object({
+		name: publicationName,
+		description: publicationDescription,
+		instructions: publicationInstructions,
+		kind: z.enum(["role", "specialist"]),
+		when_to_use: z.string(),
+		tools: publicationTools,
+		effort: z.string(),
+		delegate: z.boolean(),
+		version: z.string(),
+		categories: z.array(z.string()),
+		tags: z.array(z.string()),
+	})
+	.partial()
+	.strict();
+
 // This vocabulary is the security boundary, not a generic authenticated fetch.
 // The renderer selects an operation; it never supplies a URL, method or headers.
 export const desktopRequestSchema = z.discriminatedUnion("op", [
@@ -712,6 +999,45 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({ op: z.literal("auth.probe"), provider: id })
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.upload"), agentId: id }).strict(),
+	/*
+	 * Publication, beside the legacy zip upload it replaces for this surface.
+	 *
+	 * `legacy.agent.upload` stays exactly as it is — it is how an agent published
+	 * under the old standard is still updated, and an older desktop build still
+	 * pushes through it — but the app's own publish action moves onto the document
+	 * ops below, which carry the instruction set instead of a zip of the agent
+	 * directory.
+	 */
+	z
+		.object({
+			op: z.literal("agent.publish"),
+			agentId: id,
+			document: publicationDocument.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent.republish"),
+			agentId: id,
+			// The HUB listing to update. Required rather than inferred: the local
+			// registry keeps no link to the listing a row was published as, so a
+			// republish that did not name one would have to guess which public row to
+			// overwrite — and guessing here overwrites somebody's listing.
+			hubAgentId: id,
+			document: publicationDocument.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent.nameAvailability"),
+			// Deliberately looser than `publicationName`: this op asks whether a name
+			// is publishable, and a name that breaks the rules is a question the
+			// dialog does not ask (it shows the rule locally instead). The route is
+			// public, so the only thing this bound has to keep out is a query the
+			// backend can make no sense of.
+			name: z.string().min(1).max(PUBLICATION_NAME_MAX_CHARS),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("legacy.agents.list"),
@@ -2370,6 +2696,33 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.upload":
 			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
+		case "agent.publish":
+			return {
+				path: `/v1/agents/${request.agentId}/publish`,
+				method: "POST",
+				// The route's own body shape: a partial override of the document the
+				// backend builds from the local row. `{}` rather than `undefined` when
+				// there is no override, because the route's input model forbids extras
+				// and still wants a JSON OBJECT — an omitted body makes a legal call
+				// answer 422.
+				body: { document: request.document ?? {} },
+			};
+		case "agent.republish":
+			return {
+				path: `/v1/agents/${request.agentId}/publish`,
+				method: "PUT",
+				body: {
+					hub_agent_id: request.hubAgentId,
+					document: request.document ?? {},
+				},
+			};
+		case "agent.nameAvailability": {
+			// `name` travel as the user typed it: the hub is the one that trims and
+			// normalises, and a client that pre-normalised would be answering a
+			// different question than the one it asked.
+			const query = new URLSearchParams({ name: request.name });
+			return { path: `/v1/agent-name-availability?${query}`, method: "GET" };
+		}
 		case "legacy.agents.list": {
 			const query = new URLSearchParams({
 				page: String(request.page ?? 1),
