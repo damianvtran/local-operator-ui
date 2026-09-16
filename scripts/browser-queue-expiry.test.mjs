@@ -3,7 +3,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
-import { act, createElement } from "react";
+import { act, createElement, StrictMode } from "react";
 // React DOM feature-detects its host at import time, so the document has to exist
 // before it is loaded (the same bootstrap `suggestion-stack-react.test.mjs` uses).
 const bootstrapDOM = new JSDOM("<!doctype html>");
@@ -77,6 +77,16 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { renderQueueProbe, reconcileResolved } = await import(bundlePath.href);
 await unlink(bundlePath);
 
+/*
+ * THE APP MOUNTS ITSELF STRICT (`src/renderer/src/main.tsx`), so the probe renders
+ * strict here too: an updater may be applied to the same base state more than once,
+ * and anything that is not pure shows up only in that mount. That is how the
+ * round-4 finding was reachable at all — the previous version of this file rendered
+ * WITHOUT StrictMode, and the fix it was testing for a row that a strict build
+ * never rendered.
+ */
+const renderProbe = (Probe) => createElement(StrictMode, null, createElement(Probe));
+
 const request = (overrides) => ({
 	entryId: "entry-1",
 	origin: "https://ttl.example",
@@ -97,7 +107,7 @@ test("a request that dies of its TTL resolves on the renderer's tick, with no ne
 	const requests = [request({})];
 	const Probe = renderQueueProbe(requests, [], (model) => reports.push(model));
 	await act(async () => {
-		root.render(createElement(Probe));
+		root.render(renderProbe(Probe));
 	});
 
 	const first = reports.at(-1);
@@ -136,7 +146,7 @@ test("a live request is never reported as resolved, however often the tick runs"
 	const root = createRoot(host);
 	const Probe = renderQueueProbe(requests, [], (model) => reports.push(model));
 	await act(async () => {
-		root.render(createElement(Probe));
+		root.render(renderProbe(Probe));
 	});
 	await new Promise((resolve) => setTimeout(resolve, 1600));
 	const last = reports.at(-1);
@@ -216,7 +226,7 @@ test("a stale entry is resolved once, not again every retention window", async (
 			reports.push(model),
 		);
 		await act(async () => {
-			root.render(createElement(Probe));
+			root.render(renderProbe(Probe));
 		});
 
 		// One real interval tick past the TTL: the row, with the `at` the surface first
