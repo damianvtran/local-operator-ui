@@ -1,6 +1,12 @@
-import { Button, Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
+import {
+	Button,
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { X } from "lucide-react";
+import { PanelRightClose } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
 import type { SurfaceScope } from "../model/approval-queue-model";
 import { paneApprovalHeaderLabel } from "./browser-approvals-tray";
@@ -94,15 +100,40 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					{/* The title is the pane's own, and it is the same word the route is
 					    reachable by (`Browser` in the rail), so the two hosts are the same
 					    feature rather than two names for it (spec 7.2: "the pane title is
-					    `Browser`"). */}
-					<span className={cn("shrink-0 text-body-sm font-medium text-ink")}>
-						Browser
-					</span>
+					    `Browser`").
+
+					    IT IS SET AT THE SLOT'S TITLE STEP, NOT LOUDER (design round 1, D4).
+					    `text-meta text-ink-dim` is what the run panel states its own header
+					    title at (`run-panel.tsx`), and the canvas's header carries no title at
+					    all. At `text-body-sm font-medium text-ink` the word was the second
+					    heaviest thing in a 40px bar whose only other content is the switch's
+					    selected label, so the header read as two claims about what the pane is;
+					    the pane's own contents name it, and this step leaves the switch the
+					    bar's one assertion. */}
+					<span className={cn("shrink-0 text-meta text-ink-dim")}>Browser</span>
 					<Tabs
 						value={switchValue}
 						onValueChange={(value) => setChoice(value as PaneScopeChoice)}
 					>
-						<TabsList aria-label="Which tabs to show">
+						<TabsList
+							aria-label="Which tabs to show"
+							/* THE TRACK NEEDS A DRAWN EDGE HERE, and only here (design round 1,
+							   D3). The primitive's track is `sunken` and this header is `sunken`
+							   too - the pane's header must stay `sunken` because the slot's other
+							   two panes state that ground for their own bar - so the track's own
+							   fill is 1.015:1 / dE00 1.00 against its container and the control had
+							   no extent at all: the unselected side read as a bare word 31px from
+							   the pill, and on a draft the disabled side would have read as a
+							   MISSING option rather than an unavailable one.
+
+							   An outline rather than a border, because a border would eat 2px of
+							   the 32px track and squeeze the 24px pill out of it, while an
+							   `-outline-offset-1` ring is drawn inside the box and changes no
+							   layout at all - the same idiom the picker row's pointer mark uses. */
+							className={cn(
+								"outline-solid outline-1 -outline-offset-1 outline-control",
+							)}
+						>
 							<TabsTrigger
 								value="conversation"
 								disabled={sessionId === null}
@@ -124,15 +155,25 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 						</TabsList>
 					</Tabs>
 				</div>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label="Close browser"
-					onClick={onClose}
-					data-tour-tag="browser-pane-close"
-				>
-					<X aria-hidden className="size-3.5" />
-				</Button>
+				{/* THE SAME EXIT AS THE SLOT'S OTHER TWO PANES (design round 1, D2). Both
+				    siblings paint `PanelRightClose` in the same corner, at the same size,
+				    inside a `Tooltip`; a bare 8x8 `X` here was lighter than both, the only
+				    one of the three with no visible label on hover, and - worst - the same
+				    glyph as the per-tab close 56px below it, so the pane's own exit read as
+				    "close tab". The tooltip is not decoration: it is the affordance's label,
+				    and an icon-only control whose neighbours all carry one is the control
+				    that gets mistaken for the tab's. */}
+				<Tooltip content="Close browser">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Close browser"
+						onClick={onClose}
+						data-tour-tag="browser-pane-close"
+					>
+						<PanelRightClose aria-hidden="true" />
+					</Button>
+				</Tooltip>
 			</div>
 			<div id={PANE_SURFACE_ID} className="flex min-h-0 grow flex-col">
 				<BrowserSurface
