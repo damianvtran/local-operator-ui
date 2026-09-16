@@ -141,8 +141,75 @@ const payload = JSON.parse(
 	),
 );
 
-const mount = async () => {
-	const client = new QueryClient({
+const mount = async (t) => {
+	/*
+	 * Teardown is armed FIRST, before anything this function creates exists. It is
+	 * registered ON THE TEST (`t.after`, "after this test, however it ended")
+	 * rather than written at the end of each test's body, because that placement
+	 * only ever ran on the green path: a throw anywhere in a body leaves the rest
+	 * unexecuted, and the tree this file mounted is then still live with nothing
+	 * left to unmount it.
+	 *
+	 * Why FIRST, and not after `createRoot` (the placement this file first
+	 * shipped with, one line above the render): entered there it still hangs. The
+	 * two `setQueryData` seeds below are what hold the event loop, so a throw
+	 * after them and before the teardown registers reproduces the original
+	 * failure exactly - MEASURED with a probe throwing at the container append,
+	 * `timeout 30` gave exit 124 at 30.0s with the warning stream and no summary;
+	 * the same probe with the seeds removed exits 1 in 0.7s, and a teardown doing
+	 * nothing but `client.clear()` exits it in 0.8s. The seeded query cache is
+	 * the holder. Reachable without contrivance: `setQueryData` shape drift, a
+	 * changed prop contract on `BackendSettingsSection`, or a Radix primitive
+	 * jsdom does not provide all fail inside the body rather than on an
+	 * assertion, and the red run then presents as a hang again.
+	 *
+	 * So each resource is torn down only if it exists, and the cache is cleared in
+	 * a `finally` - an unmount that throws must not skip the one step that
+	 * releases the loop. MEASURED on all three throw paths with this in place - a
+	 * throw before `createRoot`, inside the render `act`, and after it - each
+	 * exits 1 in about a second with a full summary naming the thrown error.
+	 *
+	 * WHY ANY OF IT MATTERS: once the mounted tree is left standing the process
+	 * runs forever. The tree keeps the event loop open - Radix's popper and the
+	 * reveal effect re-arm per frame and every render warns - so a bounded run
+	 * produces a stream of warnings, no summary at all (node prints it only when
+	 * the process is free to finish) and exit 124 under `timeout`. Wired into CI
+	 * that way, a broken handler appears as a HANG rather than as a failing test,
+	 * and a hang is the one result that gets retried until it looks flaky.
+	 *
+	 * WHICH MUTATION IS WHICH, because the first version of this comment named
+	 * the wrong one. The handler reverted VERBATIM to its pre-fix inline form
+	 * (from `dafc7f007^`, with `allOpenTargets` left exported and intact) fails
+	 * all THREE cases - `tests 3 / pass 0 / fail 3`, summary 1.7s in (3.6s wall).
+	 * The `pass 2 / fail 1` figure belongs to the LAYOUT-ONLY partial revert:
+	 * pre-fix `setOpened`/`setClosed` writes with this tree's
+	 * `setFilterClosed(new Set(targets.filter))` kept, which fails only the third
+	 * case, summary 1.4s in. Both exit 1 within seconds with a summary, which is
+	 * the property this file is for; a reader reverting to reproduce the hang will
+	 * see three failures, not one.
+	 */
+	/* `const` record rather than `let` declarations: biome's `useConst` is right
+	 * that each field is written once, and the teardown above has to be armed
+	 * before any of them exists. */
+	const mounted = {};
+	t.after(async () => {
+		await act(async () => {
+			try {
+				mounted.root?.unmount();
+			} finally {
+				// React Query arms a garbage-collection timer per cached query, and the
+				// default is five minutes: without this the timers outlive the assertions
+				// and hold the event loop, so three sub-second tests cost five minutes of
+				// CI. (`mount` also pins `gcTime: 0`, which is what keeps a PASSING run
+				// quick; this is the belt to that braces, and clearing the cache on the
+				// way out is what a test wants anyway - the next mount seeds its own
+				// client.)
+				mounted.client?.clear();
+			}
+		});
+		mounted.container?.remove();
+	});
+	mounted.client = new QueryClient({
 		defaultOptions: {
 			// Seeded rather than fetched: this file is about one handler's effect
 			// on what renders, not about the wire.
@@ -157,24 +224,24 @@ const mount = async () => {
 			gcTime: 0,
 		},
 	});
-	client.setQueryData(desktopKeys.capabilities, {
+	mounted.client.setQueryData(desktopKeys.capabilities, {
 		desktop_available: true,
 		features: { settings: 1 },
 	});
-	client.setQueryData(backendSettingsKeys.all, payload);
-	const container = document.createElement("div");
-	document.body.append(container);
-	const root = createRoot(container);
+	mounted.client.setQueryData(backendSettingsKeys.all, payload);
+	mounted.container = document.createElement("div");
+	document.body.append(mounted.container);
+	mounted.root = createRoot(mounted.container);
 	await act(async () => {
-		root.render(
+		mounted.root.render(
 			createElement(
 				QueryClientProvider,
-				{ client },
+				{ client: mounted.client },
 				createElement(BackendSettingsSection, {}),
 			),
 		);
 	});
-	return { root, client, container };
+	return mounted;
 };
 
 const click = async (el) => {
@@ -212,95 +279,90 @@ const openSections = () =>
 		(el) => el.getAttribute("data-open") === "true",
 	).length;
 
+/*
+ * Node's runner sets NO default per-test timeout, so a body that never settles
+ * parks the run instead of failing it: a test awaiting a forever-pending
+ * promise never returns, reports no failure, and exits 124 under a bound. This
+ * file's green run is ~2s for all three cases, so 30s is ~15x its cost and
+ * turns that shape into a failure. It does NOT bound the other shape - tests
+ * that finish and then leave the process unable to exit, which is the hang this
+ * file's `t.after` removes; a per-test timeout cannot see a leak that outlives
+ * every test, so the Desktop Tests job carries its own `timeout-minutes` for
+ * that one.
+ */
+const TEST_TIMEOUT_MS = 30_000;
+
 /** The component's own visibility contract: rendered, and no ancestor hidden. */
 const rowShown = (key) => {
 	const el = document.querySelector(`[data-setting-key="${key}"]`);
 	return Boolean(el) && el.closest("[hidden]") === null;
 };
 
-test("Collapse all, then a search: the search force-opens what it matched", async () => {
-	const { root, client } = await mount();
+test(
+	"Collapse all, then a search: the search force-opens what it matched",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t);
 
-	await click(button("Collapse all"));
-	assert.equal(
-		openSections(),
-		0,
-		"Collapse all with no filter up collapses the index",
-	);
+		await click(button("Collapse all"));
+		assert.equal(
+			openSections(),
+			0,
+			"Collapse all with no filter up collapses the index",
+		);
 
-	await type(search(), "provider");
-	assert.ok(
-		openSections() > 0,
-		`a query force-opens the sections it matched; ${openSections()} were open`,
-	);
-	assert.ok(
-		rowShown("hosting"),
-		"the matched row is rendered and its section body is not hidden",
-	);
+		await type(search(), "provider");
+		assert.ok(
+			openSections() > 0,
+			`a query force-opens the sections it matched; ${openSections()} were open`,
+		);
+		assert.ok(
+			rowShown("hosting"),
+			"the matched row is rendered and its section body is not hidden",
+		);
+	},
+);
 
-	await act(async () => {
-		root.unmount();
-		// React Query arms a garbage-collection timer per cached query, and the
-		// default is five minutes: without this the timers outlive the assertions
-		// and hold the event loop, so three sub-second tests cost five minutes of
-		// CI. Clearing the cache on the way out is what a test wants anyway - the
-		// next mount seeds its own client.
-		client.clear();
-	});
-});
+test(
+	"Collapse all with the tier shown, then a search: same, for all 19 sections",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t);
 
-test("Collapse all with the tier shown, then a search: same, for all 19 sections", async () => {
-	const { root, client } = await mount();
+		await click(button("Show advanced"));
+		await click(button("Collapse all"));
+		assert.equal(openSections(), 0, "the tier-revealed index is collapsed");
 
-	await click(button("Show advanced"));
-	await click(button("Collapse all"));
-	assert.equal(openSections(), 0, "the tier-revealed index is collapsed");
+		await type(search(), "provider");
+		assert.ok(
+			openSections() > 0,
+			`every matched section is force-opened; ${openSections()} were open`,
+		);
+		assert.ok(
+			rowShown("hosting"),
+			"the matched row is rendered rather than counted and hidden",
+		);
+	},
+);
 
-	await type(search(), "provider");
-	assert.ok(
-		openSections() > 0,
-		`every matched section is force-opened; ${openSections()} were open`,
-	);
-	assert.ok(
-		rowShown("hosting"),
-		"the matched row is rendered rather than counted and hidden",
-	);
+test(
+	"Collapse all during a search stays out of the reader's own layout",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t);
 
-	await act(async () => {
-		root.unmount();
-		// React Query arms a garbage-collection timer per cached query, and the
-		// default is five minutes: without this the timers outlive the assertions
-		// and hold the event loop, so three sub-second tests cost five minutes of
-		// CI. Clearing the cache on the way out is what a test wants anyway - the
-		// next mount seeds its own client.
-		client.clear();
-	});
-});
+		await type(search(), "provider");
+		assert.ok(rowShown("hosting"), "the query shows its match to begin with");
 
-test("Collapse all during a search stays out of the reader's own layout", async () => {
-	const { root, client } = await mount();
+		await click(button("Collapse all"));
+		assert.equal(openSections(), 0, "the press collapses the list on screen");
 
-	await type(search(), "provider");
-	assert.ok(rowShown("hosting"), "the query shows its match to begin with");
-
-	await click(button("Collapse all"));
-	assert.equal(openSections(), 0, "the press collapses the list on screen");
-
-	await type(search(), "");
-	assert.equal(
-		openSections(),
-		4,
-		"clearing the query restores the arrival layout, not a query-shaped one",
-	);
-	assert.ok(rowShown("hosting"), "and Model's own row is on screen again");
-
-	await act(async () => {
-		root.unmount();
-		// React Query arms a garbage-collection timer per cached query, and the
-		// default is five minutes: without this the timers outlive the assertions
-		// and hold the event loop, so three sub-second tests cost five minutes of
-		// CI. Clearing the cache on the way out is what a test wants anyway - the
-		// next mount seeds its own client.
-		client.clear();
-	});
-});
+		await type(search(), "");
+		assert.equal(
+			openSections(),
+			4,
+			"clearing the query restores the arrival layout, not a query-shaped one",
+		);
+		assert.ok(rowShown("hosting"), "and Model's own row is on screen again");
+	},
+);
