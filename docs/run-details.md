@@ -498,6 +498,14 @@ Event-shaped and count-carrying, shedding clauses rather than truncating them:
 Sentence case, pluralised honestly, no jargon beyond `subagent` and `to-do` —
 both of which are the product's own nouns and both of which the TUI uses.
 
+**A settled plan contributes no count clause here, in either of the settled
+spellings the composer chip uses.** The clause list names what is outstanding
+(`hasRunDetails` is the rule in full), and the guard on `openTodos` is what
+keeps a plan that ended out of a toggle's accessible name — the outcome belongs
+to the chip above the composer (`composer-status-tabs.md` § 5.1:
+`All to-dos resolved`, or `All to-dos closed` where anything was dropped), and
+this control's job is to say whether anything is asking for something right now.
+
 ### 6.3 Panel states
 
 | state | rendering |

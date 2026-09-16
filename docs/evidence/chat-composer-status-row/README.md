@@ -19,9 +19,21 @@ This pass ran against 6018: a sibling worktree's Storybook was already listening
 6017, and the frames are whatever the URL you pass is serving.
 
 `--themes` is the two brand palettes, which is `branding.md` § 9.9's minimum, and
-the light pass is where contrast defects hide. The tree is the commit that added
-this surface; `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carry
-it, as they do for every frame here.
+the light pass is where contrast defects hide. The tree that added this surface
+is what `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carried
+then, as they do for every frame here.
+
+**The `states` pair was re-taken for the settled-plan copy** (`fix(composer):
+state a settled plan instead of a zero count`): the chip's finished case printed
+`0 to-dos open`, which stated the remainder rather than the plan's ending, and it
+now says what settled. The two bands that carry that pair are `All to-dos
+resolved` (every item done) and `All to-dos closed` (one dropped, and
+deliberately not `resolved`) — the sixth band's label says the second half out
+loud so the difference is not left to the reader's eye. The run above is that
+pass, and `partialCapture` records it at the head that made the change. The other
+three directories were re-written by the same run and came back byte-identical,
+which is what says the copy change moved no height, no in-flight count and
+nothing at the column floor.
 
 ## What is in each frame, and what it proves
 
@@ -36,7 +48,7 @@ legible; it contains no controls, and nothing in these frames is a claim about i
 
 | Frame (`<theme>.webp`) | Bands, and what they show |
 | --- | --- |
-| `states/` | The matrix in the record's order. **Band 1 is the state that most needs pinning: the row renders NOTHING**, so that band IS the pre-change composer — the box with no row above it, which is what every session with no goal and no plan looked like before this change. Then: goal alone, plan alone at the row's start, both, and a finished plan still saying `0 to-dos open`. |
+| `states/` | The matrix in the record's order. **Band 1 is the state that most needs pinning: the row renders NOTHING**, so that band IS the pre-change composer — the box with no row above it, which is what every session with no goal and no plan looked like before this change. Then: goal alone, plan alone at the row's start, both, a plan whose every item is done (`All to-dos resolved`), and a finished plan with an abandoned item (`All to-dos closed`, and deliberately not `resolved`). |
 | `long-goal/` | A goal that fits (the chip is content-sized) above a 300-character goal (the snippet truncates). The truncation claim needs the first band to be legible at all: an ellipsis only says anything beside a value that does not need one. |
 | `expanded/` | The collapsed row above its own expanded form at a 900px column, the second opened by CLICKING the real trigger. The vertical cost is the difference between the two bands; the body's cap is the whole-line ceiling `CAPPED_BLOCK` sets (120px, six lines at `leading-5`), which the frames show ending on a complete line rather than through a seventh line's glyphs. |
 | `column-floor/` | The same pair at a **172px** column — the width the app's chat column actually reaches with the canvas open (QA round 1, measured on the built app; this set was captured at 220px before that correction, which meant it pinned a large-view inset at a width where the product renders the small-view step). The story derives `isSmallView` from its own band width, so the row takes `px-2 pb-1` and the stand-in box `p-2` exactly as the app does. Collapsed, the row stacks with its label visible; expanded, the body takes the row's own width less the primitive's 20px indent. |
@@ -56,9 +68,20 @@ record's arithmetic — and stated because four of them are what the record's
 | Row `overflowX` | 0 | **0** | **0** |
 | Expanded body measure | (see below) | — | **136px** client, **120px** tall (six whole lines) against **300px** of content — the cap and its own scroller |
 
+**The settled chips are wider than the count chip, and the frames say by how
+much.** Read off the re-captured `states` pair the same way the table above was
+read: the count chip's ink spans x=40–139, `All to-dos closed` x=40–155 and
+`All to-dos resolved` x=40–165, all three starting at the same leading edge and
+occupying the same 14px mark-and-label line — so the settled copy adds up to
+26px to a chip that is already `shrink-0`, and changes no band's height. The
+widest settled chip is therefore ~137px of box against the floor's 156px content
+box; that case is arithmetic here rather than a frame, because `column-floor`
+photographs the count form and this pass did not add a settled band to it.
+
 Measured with a real browser on these stories, out of the live DOM — not
 re-derived from the record's arithmetic, which is what made the first version of
-this table wrong in two rows. The two corrections worth naming: the floor is 172px
+this table wrong in two rows.
+The two corrections worth naming: the floor is 172px
 and takes the small-view step (so 54px, not 58px, and the body is 136px, not the
 168px a large-view inset produced), and the goal's label is VISIBLE at the floor
 rather than `sr-only` (design review round 1, D3 and D4).
@@ -72,6 +95,16 @@ number here is what the frame contains, and whether a ~136px measure is acceptab
 at the floor is the design round's call rather than this set's claim.
 
 ## What this set does NOT prove
+
+- **The widest chip this row can render against the floor's content box.**
+  `column-floor` photographs the count form, so the settled chips at the 172px
+  floor are arithmetic on two frames that share one scale (~138px for
+  `All to-dos resolved` and ~128px for `All to-dos closed` against a measured
+  156px content box), not a picture. The chip is `shrink-0` and carries no
+  `truncate`, so a chip that ever exceeded its box would spill rather than wrap:
+  the overflow guarantee for the widest case is a measurement here, and a frame
+  of the settled band at the floor is what would make it a photograph (design
+  review round 1, D3).
 
 - **Not the live composer.** The row's real neighbours in the app are the send
   alert and the composer box, whose widths come from the chat column and the
