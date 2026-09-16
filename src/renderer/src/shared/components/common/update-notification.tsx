@@ -29,16 +29,26 @@ const RELEASE_ARTIFACT_ERROR_REGEX =
 	/cannot find .* in the latest release artifacts/i;
 
 /**
- * What the panel says when the server update failed without naming a reason.
+ * What the panel says when the server update failed and named no reason.
  *
  * `update-backend` RESOLVES false rather than rejecting, so an attempt that ends
  * false with no event is a real outcome to report - not a silent clear. It should
  * be unreachable: every failing branch in `UpdateService.updateBackend` sends
  * `backend-update-error` first. It is the backstop that means the panel can never
  * hang on a main process that answered without saying why.
+ *
+ * It names the release the app was updating to, because that is the fact the
+ * reader can check against what is running, and it deliberately does NOT send
+ * them to "the update service log": the renderer has no affordance that opens it
+ * (the only `showItemInFolder` call site is the attachment menu, and nothing here
+ * names `LogFileType.UPDATE_SERVICE`), so naming it is not a next step. The panel
+ * that carries this sentence says where the record does live - in Settings, the
+ * same idiom the install-failure panel one screen up uses (design D3).
  */
-const SERVER_UPDATE_FAILED_MESSAGE =
-	"The server update did not complete. See the update service log, then try again.";
+const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
+	targetVersion
+		? `The server update to ${targetVersion} did not complete.`
+		: "The server update did not complete.";
 
 type BackendUpdateInfo = {
 	currentVersion: string;
@@ -461,6 +471,19 @@ export const UpdateNotification = ({
 	const [appVersion, setAppVersion] = useState<string>("unknown");
 
 	// State for backend update status
+	/**
+	 * A server update that failed, holding the main process's own reason.
+	 *
+	 * Deliberately its own state rather than an entry in `error`, for the reason
+	 * the install refusals above are: a failure the user has to act on belongs in
+	 * the panel slot. In `error` it was a 6-second toast in the opposite corner
+	 * whose only control was Dismiss - and, because `error` was an early return
+	 * above the offer panel, it also took **Update server** off the screen for the
+	 * rest of the session (design D1, UX U1).
+	 */
+	const [backendUpdateFailure, setBackendUpdateFailure] = useState<
+		string | null
+	>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
 	const [backendUpdateInfo, setBackendUpdateInfo] =
 		useState<BackendUpdateInfo | null>(null);
@@ -484,7 +507,8 @@ export const UpdateNotification = ({
 		sourceBuild: false,
 	});
 	/**
-	 * Whether THIS server-update attempt has already been answered by an event.
+	 * Whether THIS server-update attempt has already been answered by an event, and
+	 * whether one is running at all.
 	 *
 	 * A failed `update-backend` is reported twice over: once on
 	 * `backend-update-error`, and once by the invoke resolving `false`. Both are
@@ -493,10 +517,20 @@ export const UpdateNotification = ({
 	 * and the resolved value is only read when nothing did. The ref is per attempt
 	 * (rewritten when the button is pressed) so a late event from an earlier
 	 * attempt cannot silence, or double-report, the one in flight.
+	 *
+	 * `inFlight` is what keeps `backend-update-error` honest, because that channel
+	 * is ALSO the check channel: `checkForBackendUpdates` sends on it from three
+	 * branches ("Unable to determine backend version." and two siblings) whenever
+	 * the check is not silent - and a check the user pressed is not silent. Only an
+	 * event that answers an attempt this panel started may clear the in-flight
+	 * flags or claim the attempt is over, so a plain check's error can no longer
+	 * end "Checking for updates" early or mark an idle attempt terminal (review
+	 * R1-2). A check-time message still reaches the user: it takes the toast.
 	 */
-	const backendUpdateAttemptRef = useRef<{ terminal: boolean }>({
-		terminal: false,
-	});
+	const backendUpdateAttemptRef = useRef<{
+		terminal: boolean;
+		inFlight: boolean;
+	}>({ terminal: false, inFlight: false });
 
 	/** True while `Install now` has been pressed and the pre-flight is running. */
 	const [installing, setInstalling] = useState(false);
@@ -654,18 +688,40 @@ export const UpdateNotification = ({
 		void window.api.openExternal(url);
 	}, []);
 
+	/**
+	 * Answer the attempt in flight, if there is one.
+	 *
+	 * Every terminal event for a server update goes through here, so the two facts
+	 * the ref carries - the attempt is over, and nothing is running now - are set in
+	 * one place. Without the second, a check that failed minutes after an update
+	 * completed would still look like an in-flight attempt and would paint a failure
+	 * panel over the success notice.
+	 */
+	const answerBackendUpdateAttempt = useCallback(() => {
+		const attempt = backendUpdateAttemptRef.current;
+		if (!attempt.inFlight) return false;
+		attempt.terminal = true;
+		attempt.inFlight = false;
+		return true;
+	}, []);
+
 	// Update the backend
 	const updateBackend = useCallback(async () => {
-		backendUpdateAttemptRef.current = { terminal: false };
+		backendUpdateAttemptRef.current = { terminal: false, inFlight: true };
 		try {
 			setChecking(true);
 			setUpdatingBackend(true);
 			setError(null);
+			/*
+			 * A new attempt clears the last failure: the panel is about to be replaced by
+			 * the in-flight state, and leaving the notice set would repaint it over the
+			 * attempt the user just started. Nothing about a failed update is sticky.
+			 */
+			setBackendUpdateFailure(null);
 			// The target version travels with the request so the main process can
 			// confirm the restarted server actually reports it.
-			const result = await window.api.updater.updateBackend(
-				backendUpdateInfoRef.current?.latestVersion,
-			);
+			const targetVersion = backendUpdateInfoRef.current?.latestVersion;
+			const result = await window.api.updater.updateBackend(targetVersion);
 			/*
 			 * `false` is a failure, not a quiet no-op: this invoke resolves false on
 			 * every failing branch, so reading only its rejection - which is what this
@@ -674,21 +730,22 @@ export const UpdateNotification = ({
 			 * reported the same failure wins, so one failure is one message.
 			 */
 			if (result === false && !backendUpdateAttemptRef.current.terminal) {
-				setError(SERVER_UPDATE_FAILED_MESSAGE);
-				setSnackbarOpen(true);
+				setBackendUpdateFailure(serverUpdateFailedMessage(targetVersion));
 			}
 		} catch (err) {
 			if (!backendUpdateAttemptRef.current.terminal) {
-				setError(
-					`Error updating server: ${err instanceof Error ? err.message : String(err)}`,
+				setBackendUpdateFailure(
+					`The server update could not be started: ${
+						err instanceof Error ? err.message : String(err)
+					}`,
 				);
-				setSnackbarOpen(true);
 			}
 		} finally {
 			// Unconditional, and deliberately not per-branch: no path through
 			// `update-backend` may leave the in-flight panel up. The error event's own
 			// listener clears these too, but a main process that answered without one
 			// still has to hand the panel back to the user.
+			backendUpdateAttemptRef.current.inFlight = false;
 			setChecking(false);
 			setUpdatingBackend(false);
 		}
@@ -703,6 +760,19 @@ export const UpdateNotification = ({
 			setBackendUpdateInfo(null);
 		}
 	}, [deferUpdate, backendUpdateInfo]);
+
+	/**
+	 * Dismiss a failed server update.
+	 *
+	 * The deferral is the same one the offer's own "Update later" performs, so a
+	 * dismissal also stops the periodic checks re-offering the release the user just
+	 * said not to install; without it the panel would come straight back and the
+	 * button would read as broken.
+	 */
+	const handleDismissBackendUpdateFailure = useCallback(() => {
+		setBackendUpdateFailure(null);
+		handleDeferBackendUpdate();
+	}, [handleDeferBackendUpdate]);
 
 	// Handle deferring an update
 	const handleDeferUpdate = useCallback(() => {
@@ -779,8 +849,10 @@ export const UpdateNotification = ({
 		const removeBackendManualRequiredListener =
 			window.api.updater.onBackendUpdateManualRequired((info) => {
 				// The by-hand panel replaces this one, so the attempt is answered and the
-				// resolved `false` behind it must not add a second message.
-				backendUpdateAttemptRef.current.terminal = true;
+				// resolved `false` behind it must not add a second message. Answering it
+				// here also clears `inFlight`, so a check that fails behind the by-hand
+				// panel cannot be read as this attempt's failure.
+				answerBackendUpdateAttempt();
 				// The panel has to know which version it is waiting for, so it can name it
 				// and clear itself once the server reaches it. The producer sends it; the
 				// offer that preceded the attempt is the fallback for a producer that
@@ -888,6 +960,17 @@ export const UpdateNotification = ({
 					};
 					setBackendUpdateAvailable(true);
 					setBackendUpdateInfo(enhancedInfo);
+					/*
+					 * A new offer SUPERSEDES the failure notice, exactly as it supersedes
+					 * `installFailed` above: the check that just ran found the release again,
+					 * so "this update failed" is no longer the newest thing known and the
+					 * panel that carries **Update server** takes the slot back. Without
+					 * this, one failed attempt hid the offer for the rest of the session -
+					 * including a fresh check's own offer, which painted nothing (UX U1).
+					 * The failure itself is not lost: the reason is in the log and in
+					 * Settings, under Application updates.
+					 */
+					setBackendUpdateFailure(null);
 					setSnackbarOpen(true);
 				}
 			});
@@ -938,7 +1021,9 @@ export const UpdateNotification = ({
 		// Backend update completed
 		const removeBackendUpdateCompletedListener =
 			window.api.updater.onBackendUpdateCompleted(() => {
-				backendUpdateAttemptRef.current.terminal = true;
+				// The attempt this answers is over, and `terminal` keeps the resolved
+				// `true`/`false` behind this event from reporting it a second time.
+				answerBackendUpdateAttempt();
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
 				setChecking(false);
@@ -954,21 +1039,30 @@ export const UpdateNotification = ({
 		/**
 		 * A server update that failed, with the main process's own reason.
 		 *
-		 * This is the channel every failing branch of `UpdateService.updateBackend`
-		 * reports on, and nothing subscribed to it until now - so pip's output, the
-		 * unreadable venv and the "version did not change" verdict were all written
-		 * to a channel with no reader, and the in-flight panel had no way to learn the
-		 * update was over. Same surface as every other failure here (`setError` feeds
-		 * the FloatingAlert toast), and the same two flags `checkForUpdates` clears in
-		 * its `finally`.
+		 * The channel carries two different things, and they belong on two different
+		 * surfaces. The failing branches of `UpdateService.updateBackend` report here -
+		 * pip's output, the unreadable venv and the "version did not change" verdict all
+		 * used to be written to a channel with no reader, and the in-flight panel had no
+		 * way to learn the update was over. So do three branches of
+		 * `checkForBackendUpdates` ("Unable to determine backend version."), which is
+		 * the CHECK the user may have pressed: those are not update outcomes, and
+		 * treating them as ones ended "Checking for updates" early and marked an idle
+		 * attempt terminal (review R1-2).
+		 *
+		 * So the attempt in flight decides the surface: an attempt this panel started
+		 * gets the standing failure panel and its flags cleared, and anything else is
+		 * the check the user asked for and takes the toast it has always taken.
 		 */
 		const removeBackendUpdateErrorListener =
 			window.api.updater.onBackendUpdateError((message) => {
-				backendUpdateAttemptRef.current.terminal = true;
+				if (answerBackendUpdateAttempt()) {
+					setBackendUpdateFailure(message);
+					setChecking(false);
+					setUpdatingBackend(false);
+					return;
+				}
 				setError(message);
 				setSnackbarOpen(true);
-				setChecking(false);
-				setUpdatingBackend(false);
 			});
 
 		// Check for updates on mount if autoCheck is true
@@ -992,12 +1086,49 @@ export const UpdateNotification = ({
 			removeInstallFailedListener();
 			removeInstallInFlightListener();
 		};
-	}, [autoCheck, checkForUpdates, shouldShowUpdate]);
+	}, [
+		answerBackendUpdateAttempt,
+		autoCheck,
+		checkForUpdates,
+		shouldShowUpdate,
+	]);
 
 	// Handle snackbar close
 	const handleSnackbarClose = () => {
 		setSnackbarOpen(false);
 	};
+
+	/**
+	 * The state's panel, with this component's error toast beside it.
+	 *
+	 * The toast used to BE the branch for `error`: an early return in a component
+	 * whose other branches are all panels. So any error at all - a refused check, a
+	 * failed download, a rejected quit - replaced the panel instead of joining it,
+	 * and for the failure this control reports it removed the very surface carrying
+	 * **Update server**, leaving a toast in the opposite corner whose only button was
+	 * Dismiss (design D1). It is also why a fresh offer painted nothing: the offer was
+	 * set, and the standing error kept it off the screen (UX U1).
+	 *
+	 * Every branch below renders through here, so no panel can be hidden by a toast
+	 * again - which is the property, not the particular error that exposed it. The
+	 * panel leads in the DOM and the toast is announced independently, so the order
+	 * is an implementation detail rather than a reading order.
+	 */
+	const withErrorToast = (panel: ReactNode) => (
+		<>
+			{panel}
+			{error !== null && (
+				<FloatingAlert
+					open={snackbarOpen}
+					autoHideDuration={6000}
+					onClose={handleSnackbarClose}
+					variant="danger"
+				>
+					{error}
+				</FloatingAlert>
+			)}
+		</>
+	);
 
 	/*
 	 * The failure notice comes before the check's own progress panel.
@@ -1009,7 +1140,7 @@ export const UpdateNotification = ({
 	 * U8). The failure is not a function of the check.
 	 */
 	if (installFailed) {
-		return (
+		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
 					{installFailed.cancelledByRelaunch
@@ -1063,7 +1194,7 @@ export const UpdateNotification = ({
 					</Button>
 				</UpdateActions>
 				{installFailed.detail && <PanelDetails detail={installFailed.detail} />}
-			</UpdateContainer>
+			</UpdateContainer>,
 		);
 	}
 
@@ -1082,7 +1213,7 @@ export const UpdateNotification = ({
 	 * the one panel whose window closes while the user reads it (reviews D1, D3).
 	 */
 	if (installInFlight) {
-		return (
+		return withErrorToast(
 			<UpdateContainer role="alert">
 				<UpdateHeading>The update is still installing</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
@@ -1112,13 +1243,13 @@ export const UpdateNotification = ({
 				{installInFlight.detail && (
 					<PanelDetails detail={installInFlight.detail} />
 				)}
-			</UpdateContainer>
+			</UpdateContainer>,
 		);
 	}
 
 	// If checking for updates or updating backend, show a loading indicator
 	if (checking) {
-		return (
+		return withErrorToast(
 			<UpdateContainer>
 				<h2 className="mb-3 text-heading text-ink">
 					{updatingBackend ? "Updating server" : "Checking for updates"}
@@ -1131,28 +1262,14 @@ export const UpdateNotification = ({
 				<ProgressContainer>
 					<Progress />
 				</ProgressContainer>
-			</UpdateContainer>
-		);
-	}
-
-	// If there's an error, show a toast
-	if (error) {
-		return (
-			<FloatingAlert
-				open={snackbarOpen}
-				autoHideDuration={6000}
-				onClose={handleSnackbarClose}
-				variant="danger"
-			>
-				{error}
-			</FloatingAlert>
+			</UpdateContainer>,
 		);
 	}
 
 	// An install the app refused to start. A panel rather than a toast: the app is
 	// still running, the update is still staged, and the remedy is the point.
 	if (installBlocked) {
-		return (
+		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
 					{installBlocked.heading ??
@@ -1196,14 +1313,14 @@ export const UpdateNotification = ({
 				{installBlocked.detail && (
 					<PanelDetails detail={installBlocked.detail} />
 				)}
-			</UpdateContainer>
+			</UpdateContainer>,
 		);
 	}
 
 	// A manual backend update: a server the app does not own, so the command is
 	// the whole answer and it has to stay on screen long enough to be read.
 	if (manualUpdateRequired && manualUpdateInfo) {
-		return (
+		return withErrorToast(
 			<UpdateContainer>
 				<UpdateHeading>The server needs updating by hand</UpdateHeading>
 				{/* Same emphasis as the other producer of this state
@@ -1281,13 +1398,13 @@ export const UpdateNotification = ({
 				{manualUpdateInfo.detail && (
 					<PanelDetails detail={manualUpdateInfo.detail} />
 				)}
-			</UpdateContainer>
+			</UpdateContainer>,
 		);
 	}
 
 	// If an update is available but not downloaded yet
 	if (updateAvailable && !updateDownloaded && updateInfo) {
-		return (
+		return withErrorToast(
 			<>
 				<UpdateContainer>
 					<h2 className="mb-3 text-heading text-ink">Update available</h2>
@@ -1389,13 +1506,13 @@ export const UpdateNotification = ({
 				>
 					A new update is available: v{updateInfo.version}
 				</FloatingAlert>
-			</>
+			</>,
 		);
 	}
 
 	// If an update has been downloaded
 	if (updateDownloaded && updateInfo) {
-		return (
+		return withErrorToast(
 			<>
 				<UpdateContainer>
 					<h2 className="mb-3 text-heading text-ink">
@@ -1452,13 +1569,62 @@ export const UpdateNotification = ({
 				>
 					Update downloaded and ready to install
 				</FloatingAlert>
-			</>
+			</>,
+		);
+	}
+
+	/*
+	 * A server update that failed, as a standing panel in the panel slot.
+	 *
+	 * It is the same surface `installFailed` above uses, for the same reason: the app
+	 * is still on the old version, the user asked for the new one, and the next step
+	 * is theirs - so the notice has to stay long enough to be read and carry the
+	 * action. As a toast it was gone in six seconds, sat 625px below the panel the
+	 * user was watching, and offered only Dismiss while its own copy said "then try
+	 * again" with no way to (design D1, UX U1).
+	 *
+	 * It sits ABOVE the offer branch because it is the newer fact of the two when
+	 * both are set - the offer is still available and the failure explains why it is
+	 * still worth taking. A check that finds the release again clears the failure, so
+	 * the offer takes the slot back rather than being hidden for the session.
+	 */
+	if (backendUpdateFailure) {
+		return withErrorToast(
+			<UpdateContainer tone="failed">
+				<UpdateHeading tone="failed">
+					The server update didn't finish
+				</UpdateHeading>
+				<p className="mb-2 text-body text-ink-muted">{backendUpdateFailure}</p>
+				{/* What survives the dismiss, and where to find it - the sentence the
+				    install panel above uses, because the record is the same record. The
+				    fallback copy used to name "the update service log", which nothing in
+				    this app can open (design D3). */}
+				<p className="mt-1 text-body-sm text-ink-muted">
+					This is also recorded in Settings, under Application updates.
+				</p>
+				<UpdateActions>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleDismissBackendUpdateFailure}
+					>
+						Update later
+					</Button>
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => void updateBackend()}
+					>
+						Try again
+					</Button>
+				</UpdateActions>
+			</UpdateContainer>,
 		);
 	}
 
 	// If a backend update is available
 	if (backendUpdateAvailable && backendUpdateInfo) {
-		return (
+		return withErrorToast(
 			<>
 				<UpdateContainer>
 					<h2 className="mb-3 text-heading text-ink">
@@ -1554,13 +1720,13 @@ export const UpdateNotification = ({
 						A new server update is available: v{backendUpdateInfo.latestVersion}
 					</FloatingAlert>
 				)}
-			</>
+			</>,
 		);
 	}
 
 	// If a backend update has been completed
 	if (backendUpdateCompleted) {
-		return (
+		return withErrorToast(
 			<FloatingAlert
 				open={true}
 				autoHideDuration={6000}
@@ -1568,11 +1734,21 @@ export const UpdateNotification = ({
 				variant="success"
 			>
 				Server update completed successfully
-			</FloatingAlert>
+			</FloatingAlert>,
 		);
 	}
 
-	return null;
+	/*
+	 * Nothing to offer: no update in play, no failure to report, no check running.
+	 *
+	 * The toast still renders through the wrapper, and this is the branch that
+	 * carries it. Before the toast had a wrapper it was an early return of its own,
+	 * so it appeared here; folding it into the panels without this last call would
+	 * have dropped every message that is NOT about a panel state - a check that
+	 * failed, a download that was rejected - which is a worse version of the defect
+	 * being fixed (design D1, UX U1).
+	 */
+	return withErrorToast(null);
 };
 
 /**

@@ -1003,6 +1003,18 @@ export const STORIES = [
 		900,
 	],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
+	/*
+	 * The two states the operator's own report produced (2026-09-15), and neither
+	 * had a frame anywhere in this set: the panel he was STUCK ON ("Updating
+	 * server", which no story could reach without pressing the shipped control,
+	 * because the state exists only while the invoked update is running), and the
+	 * FAILURE that replaced it, which the branch announced with a toast in the
+	 * opposite corner and a retry that was off the screen (design round 1, D1/D2).
+	 * The failure frames are the ones the design round re-judges; the in-flight pair
+	 * is their before-half.
+	 */
+	["common-updatenotification--backend-update-in-flight", 1280, 900],
+	["common-updatenotification--backend-update-failed", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	/*
 	 * Two more than the set had, and both for a reason: `--filtered` is the only

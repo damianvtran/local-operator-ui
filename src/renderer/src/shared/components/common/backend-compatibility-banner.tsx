@@ -42,6 +42,18 @@ const REQUIRED_FEATURES = [
 	"radient",
 ] as const;
 
+/**
+ * What the banner says when the updater refused and said nothing else.
+ *
+ * Every failing branch of `update-backend` writes its own sentence to
+ * `backend-update-error` first, and this banner now reads it, so this is the
+ * backstop for an answer that arrived without one. It names the next step because
+ * that is what the banner is for: the buttons beside it re-probe, and the failure
+ * is recorded in the app's own update log (design D4, review R1-5).
+ */
+const BACKEND_UPDATE_UNEXPLAINED =
+	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+
 export const BackendCompatibilityBanner = () => {
 	const capabilities = useDesktopCapabilities();
 	const queryClient = useQueryClient();
@@ -55,23 +67,38 @@ export const BackendCompatibilityBanner = () => {
 	const update = useCallback(async () => {
 		setUpdating(true);
 		setUpdateError(null);
+		/*
+		 * The reason the main process wrote about THIS attempt.
+		 *
+		 * `update-backend` reports failure by RESOLVING false, and the sentence that
+		 * explains it is sent on `backend-update-error` before that promise settles -
+		 * so "the update could not start" was shown while the cause was already in
+		 * hand on the channel (design D4, review R1-5). The listener is scoped to the
+		 * attempt rather than mounted with the banner: the same channel carries the
+		 * check's own three failures, and a listener that outlived the press would
+		 * report a background check's message as this one's outcome.
+		 */
+		let reason: string | null = null;
+		const removeBackendUpdateErrorListener =
+			window.api.updater.onBackendUpdateError((message) => {
+				reason = message;
+			});
 		try {
 			const started = await window.api.updater.updateBackend();
 			// The invoke RESOLVES false when the update was refused or failed, so a
 			// resolved promise is not success: taking it for one told the user the
 			// update had been started and left them on a server that never moved.
 			if (started === false) {
-				setUpdateError("The backend update could not start.");
+				setUpdateError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
 				return;
 			}
 			retry();
 		} catch (error) {
 			setUpdateError(
-				error instanceof Error
-					? error.message
-					: "The backend update could not start.",
+				error instanceof Error ? error.message : BACKEND_UPDATE_UNEXPLAINED,
 			);
 		} finally {
+			removeBackendUpdateErrorListener();
 			setUpdating(false);
 		}
 	}, [retry]);

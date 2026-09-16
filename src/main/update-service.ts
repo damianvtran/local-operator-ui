@@ -3400,7 +3400,7 @@ export class UpdateService {
 						? serverIsBack
 							? "The server update failed to install. The previously installed server is running again; see the update service log for pip's output."
 							: "The server update failed to install and the server did not come back up. Restart Local Operator, and see the update service log for pip's output."
-						: `The server update ran but the installed version did not change (still ${versionAfter ?? "unknown"}), so it is reported as failed.`,
+						: `The server update to ${targetVersion ?? "the new release"} did not take effect: the server is still on ${versionAfter ?? "its previous version"}. See the update service log for pip's output, then try again.`,
 				);
 				return false;
 			}
