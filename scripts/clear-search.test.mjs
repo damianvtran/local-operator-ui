@@ -56,8 +56,7 @@ const ROOT = process.cwd();
 // plugins are needed.
 const bundle = await build({
 	stdin: {
-		contents:
-			'export * from "./src/renderer/src/features/chat/clear-search";',
+		contents: 'export * from "./src/renderer/src/features/chat/clear-search";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -113,7 +112,10 @@ test("the clear control is rendered only while a filter is applied", () => {
 
 test("the clear control is the settings-search idiom, not a new one", () => {
 	const at = sidebar.indexOf('aria-label="Clear search"');
-	assert.ok(at > 0, "the control must carry the accessible name `Clear search`");
+	assert.ok(
+		at > 0,
+		"the control must carry the accessible name `Clear search`",
+	);
 	const control = sidebar.slice(sidebar.lastIndexOf("{query && (", at), at);
 	assert.match(control, /variant="ghost"/);
 	assert.match(
@@ -212,10 +214,14 @@ test("the committed readback still places the control inside its field", () => {
 
 	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
 		const queried = entry("query", theme);
-		assert.ok(queried.controlPresent, `${theme}: no control with a query applied`);
+		assert.ok(
+			queried.controlPresent,
+			`${theme}: no control with a query applied`,
+		);
 		// The 4px right inset and the 2px vertical centring the README quotes.
 		assert.equal(
-			queried.inputBox.x + queried.inputBox.w -
+			queried.inputBox.x +
+				queried.inputBox.w -
 				(queried.controlBox.x + queried.controlBox.w),
 			4,
 			`${theme}: the control's right inset`,

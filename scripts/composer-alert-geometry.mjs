@@ -47,7 +47,8 @@ import { withMockKeychain } from "./chrome-keychain.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ARGS = process.argv.slice(2);
 const AS_JSON = ARGS.includes("--json");
-const flag = (name) => ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+const flag = (name) =>
+	ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const OUT = flag("out") ?? join(tmpdir(), "composer-alert-geometry");
 const PORT = Number(flag("port") ?? 5429);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -275,7 +276,12 @@ const teardown = () => {
 		// Same race `chat-alignment-geometry.mjs` documents: SIGKILL returns
 		// before the profile stops being written to, so a plain recursive remove
 		// can throw ENOTEMPTY and turn a successful measurement into a failure.
-		rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 10,
+			retryDelay: 100,
+		});
 		dataDir = null;
 	}
 };
@@ -339,7 +345,9 @@ const startChrome = async () => {
 				resolve(m[1]);
 			}
 		});
-		chrome.on("exit", (code) => reject(new Error(`Chrome exited early (${code})`)));
+		chrome.on("exit", (code) =>
+			reject(new Error(`Chrome exited early (${code})`)),
+		);
 	});
 	const { host } = new URL(wsUrl);
 	const list = await fetch(`http://${host}/json`).then((r) => r.json());
@@ -361,8 +369,7 @@ const startChrome = async () => {
  */
 const assertions = (measurement, idle, column) => {
 	const failures = [];
-	if (!measurement.present)
-		return [`no alert region rendered at ${column}px`];
+	if (!measurement.present) return [`no alert region rendered at ${column}px`];
 	const fail = (message) => failures.push(`${column}px: ${message}`);
 	/*
 	 * Nothing in this region may be prose that came from the SOURCE. A JSX
@@ -437,7 +444,7 @@ const main = async () => {
 	const problems = [];
 	for (const { column, states } of CASES) {
 		for (const state of states) {
-			if (ONLY && !(`${column}-${state}`).includes(ONLY)) continue;
+			if (ONLY && !`${column}-${state}`.includes(ONLY)) continue;
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
@@ -531,10 +538,18 @@ const main = async () => {
 			problems.push(`${problem} [state ${measurement.state}]`);
 	}
 
-	const report = { origin: ORIGIN, theme: THEME, viewport: VIEWPORT, out: OUT, measurements };
+	const report = {
+		origin: ORIGIN,
+		theme: THEME,
+		viewport: VIEWPORT,
+		out: OUT,
+		measurements,
+	};
 	if (AS_JSON) console.log(JSON.stringify(report, null, 2));
 	else {
-		console.log(`\ncomposer alert geometry — ${THEME}, ${VIEWPORT.width}x${VIEWPORT.height} CSS\n`);
+		console.log(
+			`\ncomposer alert geometry — ${THEME}, ${VIEWPORT.width}x${VIEWPORT.height} CSS\n`,
+		);
 		console.log(
 			"column  state       region(client/scroll)  failure  visible/total  notice  chips  box-top  send-bottom",
 		);
@@ -543,7 +558,9 @@ const main = async () => {
 				[
 					String(m.column).padStart(6),
 					m.state.padEnd(11),
-					m.present ? `${m.region.clientHeight}/${m.region.scrollHeight}`.padEnd(21) : "-".padEnd(21),
+					m.present
+						? `${m.region.clientHeight}/${m.region.scrollHeight}`.padEnd(21)
+						: "-".padEnd(21),
 					m.present ? String(m.failureIndex) : "-",
 					m.present ? `${m.failureVisibleLines}/${m.failureLines}` : "-",
 					m.noticeIndex === null ? "-" : String(m.noticeIndex),

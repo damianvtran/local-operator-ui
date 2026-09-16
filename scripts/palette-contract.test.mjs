@@ -143,7 +143,9 @@ test("the palette paints above the app's connection banner", () => {
 	 * over the query field — the user typing into a field they could not see (UX
 	 * round 1, U1).
 	 */
-	const banner = read("src/renderer/src/shared/components/common/connectivity-banner.tsx");
+	const banner = read(
+		"src/renderer/src/shared/components/common/connectivity-banner.tsx",
+	);
 	const palette = read(
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
 	);

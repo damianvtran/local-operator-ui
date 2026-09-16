@@ -9,15 +9,16 @@
  * it off a row that has nothing honest to quote.
  */
 
+import type { Box } from "./quote-anchor";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 /**
  * Marks the quote toolkit so a selection cannot be read as content.
  *
- * The strip lives inside the turn it belongs to, which is also the element a
+ * The control lives inside the turn it belongs to, which is also the element a
  * selection is tested against - so a reader who drags across the whole row
- * would otherwise hand `selectionTextIn` the word "Quote" as the thing to
- * quote. Checked here rather than by hiding the strip from the selection,
+ * would otherwise hand `quoteSelectionIn` the word "Quote" as the thing to
+ * quote. Checked here rather than by hiding the control from the selection,
  * because the button has to stay operable and readable to assistive
  * technology.
  */
@@ -46,14 +47,14 @@ export function isQuotable(
 ): boolean {
 	if (record.kind !== "user" && record.kind !== "assistant") return false;
 	/*
-	 * `bodyText` is the text the toolkit would actually stage - the row's own
-	 * text with any reply markup taken out - and this rule reads THAT rather than
-	 * `record.text`. A turn whose whole text is `<reply-to>x</reply-to>` has a
-	 * non-empty raw text and an EMPTY body, so gating on the raw text mounted a
-	 * control whose press was a silent no-op: `quoteText` answers `null` for an
-	 * empty body, and `handleQuote` returns before staging anything (round 1,
-	 * finding 5). The rule is "this row has words to offer", so it has to read
-	 * the words that would be offered.
+	 * `bodyText` is the row's own text with any reply markup taken out, and this
+	 * rule reads THAT rather than `record.text`. A turn whose whole text is
+	 * `<reply-to>x</reply-to>` has a non-empty raw text and an EMPTY body, so
+	 * gating on the raw text mounted a control whose press was a silent no-op:
+	 * there is nothing under the pointer to highlight, and a control that can
+	 * only be raised by a highlight it has no words for can never be raised
+	 * (round 1, finding 5). The rule is "this row has words to offer", so it has
+	 * to read the words that would be offered.
 	 */
 	if (bodyText.trim().length === 0) return false;
 	if (record.kind !== "assistant") return true;
@@ -82,44 +83,190 @@ const toolkitAncestor = (node: Node): Element | null => {
 	return host?.closest(`[${QUOTE_TOOLKIT_ATTR}]`) ?? null;
 };
 
+const isElement = (node: Node): node is Element =>
+	node.nodeType === Node.ELEMENT_NODE;
+
 /**
- * The reader's selection, when one lies inside `element` and is theirs.
+ * Where this turn's own words end, as a `Range.setEnd` offset.
  *
- * Returns `null` for a collapsed caret, for a selection that starts in one turn
- * and ends in another (a drag across rows is not a quote of either), and for one
- * with an end inside the toolkit.
+ * NOT `childNodes.length`, and the difference is the whole of M1 (code review),
+ * U9 (UX) and Q27 (QA) from round 1: the control is rendered inside the turn it
+ * belongs to, so a clip to the turn's own end EXTENDS the range over the
+ * control's box - the range then measures its own output, and the second
+ * consumer of that range was the placement, which read it back as the last line
+ * of the highlight. Ending at the control's own child keeps the range over the
+ * turn's words and nothing else.
  *
- * BOTH ends are tested, for the containment rule and for the toolkit rule: an
- * anchor inside this turn whose focus is in the next one would otherwise be
- * quoted as this turn's words, and the reader would watch a partial drag become
- * a quote of the wrong half.
- *
- * `document`/`window` are read lazily rather than at module load so this file
- * stays importable by a node test, which is where its rules are asserted.
+ * The words are unaffected: the control renders an icon and no text node, so a
+ * clip that stops short of it quotes exactly what a clip to the turn's end did.
+ * This is the tripwire the `QUOTE_TOOLKIT_ATTR` comment above names, removed
+ * rather than documented - a control that grows a label or a timestamp would
+ * have joined the quote through this clip otherwise.
  */
-export function selectionTextIn(element: HTMLElement | null): string | null {
+const contentEnd = (element: HTMLElement): number => {
+	const children = Array.from(element.childNodes);
+	const control = children.findIndex(
+		(child) => isElement(child) && child.hasAttribute(QUOTE_TOOLKIT_ATTR),
+	);
+	return control === -1 ? children.length : control;
+};
+
+/**
+ * Whether two boxes are the same box, allowing for sub-pixel rounding.
+ *
+ * A range's box for an element IS that element's border box, and the two are
+ * read through different APIs (`Range.getClientRects` against
+ * `Element.getBoundingClientRect`), so exact equality would be a coin toss on a
+ * fractional layout. The tolerance is under the smallest difference that can
+ * mean anything here: a line is 14-17px tall and the control is 32, so no two
+ * distinct boxes are within 0.5px of each other in every coordinate at once.
+ */
+const sameBox = (a: Box, b: Box): boolean =>
+	Math.abs(a.top - b.top) < 0.5 &&
+	Math.abs(a.left - b.left) < 0.5 &&
+	Math.abs(a.right - b.right) < 0.5 &&
+	Math.abs(a.bottom - b.bottom) < 0.5;
+
+/**
+ * The lines the control is placed against: the reader's highlight, and NOT the
+ * control.
+ *
+ * Two rules, both learned the hard way, and they are one rule stated twice: the
+ * placement must be a pure function of the highlight, so nothing it produces may
+ * appear in its own input.
+ *
+ * 1. THE HIGHLIGHT'S OWN RANGE, not the clipped one. `quoteSelectionIn` returns
+ *    a clipped range for the TEXT, because only this turn's words are quoted -
+ *    but a drag that leaves this turn and ends in the next one has highlighted
+ *    the next turn too, and the flip has to clear that part as well. Measured in
+ *    round 1 (QA Q27): with the clipped range the control was placed below this
+ *    turn's own last line, which is where the highlighted continuation
+ *    begins - the control painted on the reader's own selection, the state
+ *    `quote-anchor.ts` claimed was impossible.
+ * 2. NO MOUNTED CONTROL'S BOX IS A LINE, which is what `QUOTE_TOOLKIT_ATTR` is
+ *    for. An element inside the range contributes its own border box, so our
+ *    shell - rendered inside the turn we are measuring - arrives as one of the
+ *    highlight's boxes. It was last, so it became `lines[lines.length - 1]` and
+ *    the flip placed the control below its OWN previous position: 40px down the
+ *    pane per re-measuring event while the pointer was still down (QA measured
+ *    `440 → 480 → 520 → 560 → 600 → 640`, UX `95.7 → 135.7 → 175.7`).
+ *
+ * The boxes are the range's own `getClientRects()` - one per line, in document
+ * order - with the controls filtered out by geometry, because a `DOMRect` does
+ * not say which node it came from. Filtering by BOX rather than by node is safe
+ * in the direction that matters: it can only ever drop a box that is exactly a
+ * mounted control's, and a control that exactly covers one of the highlight's
+ * own lines is the failure this filters, not a line to keep.
+ */
+export const highlightLines = (range: Range): Box[] => {
+	const controls = Array.from(
+		document.querySelectorAll(`[${QUOTE_TOOLKIT_ATTR}]`),
+		(node) => node.getBoundingClientRect(),
+	);
+	return Array.from(range.getClientRects())
+		.filter((rect) => !controls.some((control) => sameBox(control, rect)))
+		.map((rect) => ({
+			top: rect.top,
+			left: rect.left,
+			right: rect.right,
+			bottom: rect.bottom,
+		}));
+};
+
+/**
+ * The reader's highlight, as a quote of THIS turn: the part of the highlight
+ * that lies in `element`, the LINES the control is placed against, and nothing
+ * at all when this turn is not where the highlight begins.
+ *
+ * The two halves come from two different ranges on purpose, and the reason is
+ * the round-1 defect (review M1, UX U9, QA Q27): the TEXT is this turn's part of
+ * the highlight, because only this turn's words are quoted, while the GEOMETRY
+ * has to describe the WHOLE highlight, because the control is placed against it
+ * and a flip that clears only this turn's last line lands on the highlighted
+ * continuation in the next turn. See `highlightLines`.
+ *
+ * ONE RULE WHERE THERE WERE THREE, and the reason is the affordance's own
+ * trigger. It used to be raised by the row's hover, so a press had to answer
+ * "what does a press with no selection mean", and that answer - the turn's own
+ * words - dragged two more functions behind it to stop it widening:
+ * `selectionTextIn` (a highlight wholly inside this turn), `selectionClippedTo`
+ * (one that overshoots it, clipped) and `quoteText`'s `bodyText` fallback (no
+ * highlight at all). Nothing raises the control without a highlight now, so the
+ * no-highlight case has no press to answer: it is answered by there being no
+ * control. The three collapse into this one function, and with them the
+ * empty-clip boundary that code review round 2 (MINOR 2), UX round 2 (U8) and
+ * QA round 2 (Q8) each landed on - a clip holding no character of this turn is
+ * not a highlight of it, and raises nothing.
+ *
+ * WHY THE HIGHLIGHT HAS TO BEGIN HERE. One drag can touch two turns, and a
+ * control mounted in each of them would be two controls claiming one highlight.
+ * The START endpoint is what makes the owner unique: a range has exactly one,
+ * and it lies in exactly one turn. The control therefore belongs to the turn
+ * the reader began in - the turn the operator's second ask is about, the one
+ * the highlight reads as belonging to - and that turn's own part of the
+ * highlight is what it quotes.
+ *
+ * The END is deliberately NOT required to lie here. A drag that starts in this
+ * turn and overshoots into the next one is the overshoot everyone makes
+ * selecting to the end of a paragraph by hand, and clipping it to this turn can
+ * only ever drop text the reader did not highlight in this turn. A start
+ * OUTSIDE is the opposite case and answers `null` - that is the next turn's
+ * control, or a row that has none.
+ *
+ * A ROW THAT HAS NONE IS A DELIBERATE NARROWING (code review round 1, m3). A
+ * drag that BEGINS in a tool or ledger row - or in an answer that is still
+ * streaming - and runs down into a settled answer highlights quotable prose and
+ * raises nothing, because the owner is the turn the highlight begins in and a
+ * ledger row mounts no control. The hover press this replaces used to answer
+ * that case with the whole turn body, so this is a narrowing rather than a
+ * regression, and it is recorded here rather than only in the PR thread: the
+ * alternative is a fallback to "the first quotable turn the highlight reaches",
+ * which would put a control on a turn the reader did not begin in and break the
+ * one-control rule that the paragraph above exists for.
+ *
+ * Both endpoints are tested against the toolkit, for the reason the
+ * `QUOTE_TOOLKIT_ATTR` comment above gives. It is defence in depth rather than
+ * a live path today: a drag can only reach the control by starting on it, and a
+ * start inside the toolkit is refused by the same guard. *
+ * The text is trimmed and never truncated. The trim is not truncation - a
+ * highlight's leading and trailing whitespace is not what the reader pointed at
+ * - and the text is free of `<reply-to>` markup because it was read from the
+ * DOM, where the markup was never text. There is no truncation anywhere on this
+ * path on purpose: a quote is a claim about what was said, and a prefix of a
+ * sentence silently presented as the whole of it is the failure this file
+ * exists to avoid. The composer's own `ReplyPreview` truncates for DISPLAY,
+ * which is a different thing from the text that is sent.
+ *
+ * `window` is read lazily rather than at module load so this file stays
+ * importable by a node test, which is where its rules are asserted.
+ */
+/** What a highlight of this turn gives the control: the words, and the lines. */
+export type QuoteHighlight = {
+	/** This turn's part of the highlight, trimmed: what a press stages. */
+	text: string;
+	/** The whole highlight's own line boxes. See `highlightLines`. */
+	lines: Box[];
+};
+
+export function quoteSelectionIn(
+	element: HTMLElement | null,
+): QuoteHighlight | null {
 	if (!element) return null;
 	const selection = window.getSelection();
 	if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
 		return null;
 	}
 	const range = selection.getRangeAt(0);
-	if (
-		!element.contains(range.startContainer) ||
-		!element.contains(range.endContainer)
-	) {
-		return null;
-	}
 	/*
 	 * Both endpoints, not `range.commonAncestorContainer` (round 1, finding 3).
-	 * A drag that starts in the prose and ends on the strip has the TURN as its
-	 * common ancestor, so testing the ancestor tested the one node that is
-	 * guaranteed not to be inside the toolkit - and the strip's visible text
+	 * A drag that starts in the prose and ends on the control has the TURN as
+	 * its common ancestor, so testing the ancestor tested the one node that is
+	 * guaranteed not to be inside the toolkit - and the control's visible text
 	 * joined the quote, which is the case the `QUOTE_TOOLKIT_ATTR` doc comment
-	 * above gives as the reason that attribute exists. Harmless while the strip
-	 * renders a lone `<Quote/>` glyph and no text node, and reachable the moment
-	 * it carries a label or a timestamp, which is what the copy of this strip in
-	 * `message-controls.tsx` already does.
+	 * above gives as the reason that attribute exists. Harmless while the
+	 * control renders a lone `<Quote/>` glyph and no text node, and reachable
+	 * the moment it carries a label or a timestamp, which is what the copy of
+	 * this strip in `message-controls.tsx` already does.
 	 */
 	if (
 		toolkitAncestor(range.startContainer) ||
@@ -127,141 +274,17 @@ export function selectionTextIn(element: HTMLElement | null): string | null {
 	) {
 		return null;
 	}
-	const text = selection.toString().trim();
-	return text.length > 0 ? text : null;
-}
-
-/**
- * The reader's selection CLIPPED to this turn, or `null` when none reaches it.
- *
- * This is the second half of the selection rule, and it exists because the two
- * ways `selectionTextIn` answers `null` are not the same thing. One is "the
- * reader made no selection", where quoting the turn's own words is the
- * documented fallback and is honest. The other is "the reader made a selection
- * I cannot attribute to this turn" - and the fallback answered THAT with the
- * turn's whole body, which is a silent WIDENING: the reader highlights 132
- * characters, the chip claims the entire turn, and the chip's one-line
- * truncation makes the two easy to tell apart only by someone who reads both
- * ends (UX round 1, U3; QA round 1, Q3, which measured exactly that: a real
- * drag released 5px below the turn staged the whole body).
- *
- * WHY A DRAG THAT LEAVES THE TURN IS CLIPPED RATHER THAN REFUSED. The reader
- * began the drag inside this turn and dragged past its end - the overshoot
- * everyone makes selecting to the end of a paragraph by hand. Refusing would
- * leave the press either a no-op or, worse, exactly the widening above, so the
- * honest reading is the part of the highlight that lies in this turn.
- *
- * A NON-EMPTY CLIP NARROWS AND NEVER WIDENS, which is the property this
- * function is written to hold. A range is ordered, so with one endpoint inside
- * and the other outside, the outside end is necessarily BEYOND the
- * corresponding edge of this turn: clamping it to that edge can only drop text
- * the reader did not highlight in this turn. Both endpoints inside is
- * `selectionTextIn`'s answer and answers `null` here rather than a second,
- * possibly divergent one; neither endpoint inside means the selection does not
- * reach this turn at all, where clipping would have to invent a boundary and
- * the caller's whole-turn fallback is right.
- *
- * THE EMPTY CLIP IS THE BOUNDARY WHERE THAT STOPS HOLDING, and this paragraph
- * exists because three round-2 streams read the sentence above as an absolute
- * and each found the exception (code review, MINOR 2; UX round 2, U8; QA round
- * 2, Q8, which reproduced it with a real drag). The clip is measured as a
- * RANGE, and a range whose in-turn part holds no characters is empty: a drag
- * that starts inside and releases on the turn's exact first character, or one
- * that begins in the whitespace past the last line's ink and never crosses it,
- * both leave `clipped.toString().trim()` at `""`. An empty clip is answered as
- * `null`, and `null` is also the answer for "no selection reaches this turn",
- * so the caller cannot tell the two apart and stages the turn's WHOLE BODY. The
- * reader therefore gets a LONGER quote than they highlighted - the widening U3
- * was filed for, narrowed to a character-exact boundary rather than removed.
- *
- * WHY THAT FALLBACK IS THE CHOSEN ONE RATHER THAN A REFUSAL. Refusing the
- * press means making the empty clip distinguishable at the call site (which
- * `quoteText` can no longer do, since it reads an empty string as "no
- * selection"), and it buys a silent no-op on a gesture that reads as a quote -
- * while the boundary it refuses on is not one a reader can aim at. The
- * zero-character clip needs the release, or the press anchor, to land on an
- * exact character boundary; a release inside the turn, below it, or spanning two
- * turns clips to the words that were actually highlighted and behaves (UX round
- * 2's boundary table; QA's boundary pair). What the reader sees is then the same
- * thing a press with nothing selected shows: the composer's chip paints the
- * turn's opening words truncated to one line, the sent block repeats it above
- * the body, and the whole text goes on the wire. A gesture that caught no ink of
- * this turn is, at this boundary, indistinguishable from one that selected
- * nothing in it, so it gets the turn's own words rather than nothing.
- *
- * The toolkit rule is refused here too, and for the same reason it is refused in
- * `selectionTextIn`: a drag ending on the strip is a drag to the strip, and
- * clamping its end to the turn's end would quietly turn that into a quote of
- * the prose the reader dragged away from.
- *
- * Consequence worth naming: a selection that spans two turns now quotes each
- * turn's own part of it rather than either whole turn. That is a narrowing of
- * the same defect, not a separate decision - a cross-turn drag was previously
- * answered with a whole turn the reader had not selected.
- */
-export function selectionClippedTo(element: HTMLElement | null): string | null {
-	if (!element) return null;
-	const selection = window.getSelection();
-	if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-		return null;
-	}
-	const range = selection.getRangeAt(0);
-	if (
-		toolkitAncestor(range.startContainer) ||
-		toolkitAncestor(range.endContainer)
-	) {
-		return null;
-	}
-	const startInside = element.contains(range.startContainer);
-	const endInside = element.contains(range.endContainer);
-	if (startInside === endInside) return null;
+	if (!element.contains(range.startContainer)) return null;
 	const clipped = range.cloneRange();
-	if (!startInside) clipped.setStart(element, 0);
-	if (!endInside) clipped.setEnd(element, element.childNodes.length);
-	/*
-	 * An empty clip answers the SAME `null` as "no selection reaches this turn",
-	 * so the caller's `??` chain passes it through and `quoteText` falls back to
-	 * the whole body. That widening is deliberate and bounded - the doc comment
-	 * above says why it is not refused - so it is stated here rather than left
-	 * to be rediscovered as a bug in this line.
-	 */
+	if (!element.contains(range.endContainer)) {
+		clipped.setEnd(element, contentEnd(element));
+	}
 	const text = clipped.toString().trim();
-	return text.length > 0 ? text : null;
-}
-
-/**
- * The text a quote from a turn carries, or `null` when there is none.
- *
- * There is no truncation here on purpose. A quote is a claim about what was
- * said, and a prefix of a sentence silently presented as the whole of it is the
- * failure mode this file exists to avoid; the composer's own `ReplyPreview`
- * truncates for DISPLAY, which is a different thing from the text that is sent.
- *
- * `selected` is the reader's own selection when one lies inside this turn, and
- * wins over the turn's whole text: they chose it, so it is the more specific
- * thing to quote. It arrives already trimmed and free of markup because it was
- * read from the DOM, where the markup was never text.
- *
- * The `bodyText` fallback is the turn's text with any `<reply-to>` markup
- * removed. Not a nicety: quoting a turn that was itself a reply would otherwise
- * nest the tags one level deeper on every quote of a quote, and `parseReplies`
- * is a non-greedy scan, so the nesting it eventually misreads is a reply
- * attributed to the wrong speaker. The markup is transport, and neither speaker
- * said it.
- */
-export function quoteText(
-	bodyText: string,
-	selected: string | null,
-): string | null {
+	if (text.length === 0) return null;
 	/*
-	 * A selection that trims to nothing is not a selection. `selectionTextIn`
-	 * already answers `null` for one, so this is the second half of one rule
-	 * rather than a duplicate guard: it keeps the answer the same for a caller
-	 * that hands the raw result of `window.getSelection().toString()` in
-	 * without going through that function, where a whitespace-only drag would
-	 * otherwise yield no quote at all instead of the turn's own words.
+	 * The GEOMETRY is taken from the reader's own range rather than from
+	 * `clipped`, for the reason `highlightLines` gives: the clip narrows the
+	 * TEXT to this turn, and the reader's highlight does not stop there.
 	 */
-	const chosen = selected && selected.trim().length > 0 ? selected : bodyText;
-	const text = chosen.trim();
-	return text.length > 0 ? text : null;
+	return { text, lines: highlightLines(range) };
 }

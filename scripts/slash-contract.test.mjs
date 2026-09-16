@@ -83,8 +83,9 @@ const {
  * The pick rule's inputs are the DESTINATION TABLE's own fields — a
  * destination's kind and whether it declares an inline list — so the cases
  * below read them off `picker-registry.tsx` rather than restating them: a table
- * edit that gave `/analytics` a list, or made `session.compact` routable, has to
- * turn this file red instead of passing against a stale copy.
+ * edit that gave `/analytics` a list, or moved `session.compact` out of the
+ * protected set, has to turn this file red instead of passing against a stale
+ * copy.
  *
  * The table cannot be IMPORTED. Its entries hold the picker components as
  * values, so bundling it pulls the whole renderer and every package it imports
@@ -1090,7 +1091,7 @@ test("the empty copy names which of the four causes it is", () => {
 	// (`destination-pickers.tsx` carries the same rule for its dialog).
 	assert.equal(
 		argumentEmptyCopy(list),
-		"Not reported yet. Enter opens the full picker.",
+		"Not reported yet. Enter runs the command.",
 	);
 	assert.equal(
 		argumentEmptyCopy({ ...list, needsSession: true }),
@@ -1108,7 +1109,7 @@ test("the empty copy names which of the four causes it is", () => {
 	// which is the sentence UX round 1 U4 asked for.
 	assert.equal(
 		argumentEmptyCopy({ ...list, rows: [{ value: "delivery" }] }),
-		"No matches. Enter opens the full picker.",
+		"No matches. Enter runs the command.",
 	);
 });
 
@@ -1139,7 +1140,7 @@ test("the no-match state is what typing a missing team produces", () => {
 			error: null,
 			needsSession: false,
 		}),
-		"No matches. Enter opens the full picker.",
+		"No matches. Enter runs the command.",
 	);
 });
 
@@ -1203,12 +1204,18 @@ test("a list-bearing command completes and never runs", () => {
 });
 
 test("the three protected destinations are protected by id, not by kind", () => {
-	// Two are `direct` and one is a `picker` with no inline list, so a rule
-	// written off the kind alone would run all three — and a stray click would
-	// detach the app, wipe the transcript view or start a compaction.
+	// All three are `direct` now, and a rule written off the kind alone would run
+	// every one of them — a stray click would detach the app, wipe the transcript
+	// view or start a compaction. That is exactly why the protection is a set of
+	// IDs rather than a property of the kind: `/compact` moving from a picker to a
+	// direct destination must not make a stray click able to spend a pass.
 	assert.equal(registryEntry("window.close")?.kind, "direct");
 	assert.equal(registryEntry("transcript.clear")?.kind, "direct");
-	assert.equal(registryEntry("session.compact")?.kind, "picker");
+	assert.equal(
+		registryEntry("session.compact")?.kind,
+		"direct",
+		"`/compact` presents by running, not by opening a dialog",
+	);
 	assert.equal(
 		registryEntry("session.compact")?.inline,
 		undefined,
@@ -1272,7 +1279,7 @@ const PROMPT = new Set(["loop", "team"]);
 const NAME_LIST = new Set(["team"]);
 
 /** `planSlashSubmission` with the vocabularies above, which is what the pick runs. */
-const submissionFor = (draft, caret) =>
+const submissionFor = (draft, caret, gesture = "typed") =>
 	planSlashSubmission({
 		draft,
 		caret,
@@ -1281,6 +1288,14 @@ const submissionFor = (draft, caret) =>
 		armedOnlyCommands: ARMED_ONLY,
 		nameListCommands: NAME_LIST,
 		enabled: true,
+		/*
+		 * The gesture the real caller would be making, and the default is the
+		 * conservative one. A PICK of a row is an explicit choice, so a command
+		 * chosen that way is a command wherever it sits in the draft — the row's
+		 * own footer says what the click does, and this is the planner's half of
+		 * keeping it (`message-input.tsx`'s pick path passes `"pick"`).
+		 */
+		gesture,
 	});
 
 /** A command row, keyed by the name OR ALIAS that matched (`rowId`'s `label`). */
@@ -1532,7 +1547,10 @@ test("the click line is the row's real route, for the prompt row too", () => {
 		false,
 	);
 	assert.equal(picked.text, "please run /loop  on 3 tasks");
-	assert.equal(submissionFor(picked.text, picked.caret).kind, "reassemble");
+	assert.equal(
+		submissionFor(picked.text, picked.caret, "pick").kind,
+		"reassemble",
+	);
 
 	const line = clickFooter({
 		phase: "command",
@@ -1659,14 +1677,16 @@ test("the free-text row names the key that moves the draft", () => {
 	const ARGUMENT_WORDS = ["model", "team"];
 	assert.ok(registryEntry("session.model")?.inline, "model's list is real");
 	assert.ok(registryEntry("session.team")?.inline, "team's list is real");
-	assert.equal(
-		caretPhase("please run /loop", 16, WORDS, ARGUMENT_WORDS),
-		"command",
-	);
-	assert.equal(
-		slashArgumentContext("please run /loop", ARGUMENT_WORDS, 16, WORDS),
-		null,
-	);
+	/*
+	 * A draft-OPENING command, because that is the position this branch's rule
+	 * gives the phase to (`commandWordOpensDraft`): a word typed inside a sentence
+	 * is prose, the popup does not open on it, and Q2 of round 2 measured exactly
+	 * that from the keyboard. The phase's own property — a command row has no
+	 * argument list to read a `runs` off, because `slashArgumentContext` is null
+	 * there — is unchanged by where the row was raised.
+	 */
+	assert.equal(caretPhase("/loop", 5, WORDS, ARGUMENT_WORDS), "command");
+	assert.equal(slashArgumentContext("/loop", ARGUMENT_WORDS, 5, WORDS), null);
 
 	// The row's own route for that state, read the way the component reads it:
 	// from the DESTINATION the registry routes `/loop` to, not from an argument
@@ -1695,10 +1715,22 @@ test("the free-text row names the key that moves the draft", () => {
 		enterFooter({ ...hoisting, label: "loop" }),
 		"Enter stages /loop; the next Enter runs it.",
 	);
+	/*
+	 * The gesture is the PICK's, and this is the round-3 merge's one semantic
+	 * seam: a mid-draft prompt command hoists when the user CHOSE the row (the
+	 * footer above is read from `hoists`/`takesDraft`, which are the row's own
+	 * claims), and is prose when the word was merely typed — `submissionFor`'s
+	 * default, asserted on the next line.
+	 */
 	assert.equal(
-		submissionFor("please run /loop on 3 tasks", 16).kind,
+		submissionFor("please run /loop on 3 tasks", 16, "pick").kind,
 		"reassemble",
-		"and that is the plan the composer's next Enter takes",
+		"and that is the plan the composer's next Enter takes, after the pick",
+	);
+	assert.deepEqual(
+		submissionFor("please run /loop on 3 tasks", 16),
+		{ kind: "send" },
+		"typed rather than picked, the same sentence is sent as written",
 	);
 
 	// Nothing to move: the bare word completes and the next Enter RUNS it, so the

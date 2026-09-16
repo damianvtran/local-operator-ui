@@ -55,7 +55,13 @@ export const PYTHON_RESOURCE_DIRS = Object.fromEntries(
  * build must not fail on the input shape it happens to get; nothing here
  * guesses, and an unrecognised value is refused rather than matched loosely.
  */
-const ARCH_NAMES = { 0: "ia32", 1: "x64", 2: "armv7l", 3: "arm64", 4: "universal" };
+const ARCH_NAMES = {
+	0: "ia32",
+	1: "x64",
+	2: "armv7l",
+	3: "arm64",
+	4: "universal",
+};
 
 /** The architecture name for an `afterPack` context's `arch`. */
 export function archName(arch) {
@@ -118,9 +124,13 @@ export function pruneUnshippedPythonResources({
 		pruned.push(target);
 	}
 	if (pruned.length > 0) {
-		log(`Pruned bundled Python the ${name} app cannot run: ${pruned.join(", ")}`);
+		log(
+			`Pruned bundled Python the ${name} app cannot run: ${pruned.join(", ")}`,
+		);
 	} else {
-		log(`No off-architecture bundled Python found for ${name} in ${resourcesDir}`);
+		log(
+			`No off-architecture bundled Python found for ${name} in ${resourcesDir}`,
+		);
 	}
 	return { pruned, kept: join(resourcesDir, keep), resourcesDir };
 }
