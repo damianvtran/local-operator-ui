@@ -2347,6 +2347,31 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+	/*
+	 * The rest of the hub's states, and why the sweep grew with this change.
+	 * `grid` alone photographed one of the six things the surface can look like,
+	 * so "the hub is empty", "the hub is loading" and "the hub refused" had no
+	 * frames at all - and two of the three are unreachable by hand on a working
+	 * machine, which is what a story is for.
+	 */
+	["agent-hub-page--signed-in", 1280, 900],
+	["agent-hub-page--loading", 1280, 900],
+	["agent-hub-page--empty", 1280, 900],
+	["agent-hub-page--load-failed", 1280, 900],
+	["agent-hub-page--empty-category", 1280, 900],
+	["agent-hub-page--page-change-keeps-the-grid", 1280, 900],
+	/*
+	 * The chat sidebar's Agents section, at the width that column actually is:
+	 * the frame is the 360px panel inside a little ground, because the section is
+	 * three rows and an action, and a 1280px frame of it would be a picture of the
+	 * app's empty right-hand side.
+	 */
+	["chat-sidebar-agents--empty-with-shortcut", 420, 760],
+	["chat-sidebar-agents--empty-without-shortcut", 420, 760],
+	["chat-sidebar-agents--installed-with-builtins", 420, 760],
+	["chat-sidebar-agents--all-installed", 420, 760],
+	["chat-sidebar-agents--installing", 420, 760],
+	["chat-sidebar-agents--install-summary", 420, 760],
 
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub

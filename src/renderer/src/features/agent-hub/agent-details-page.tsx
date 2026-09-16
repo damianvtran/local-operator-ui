@@ -5,6 +5,9 @@ import {
 } from "@shared/components/common/base-dialog";
 import { Spinner } from "@shared/components/common/spinner";
 import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
 	Avatar,
 	AvatarFallback,
 	Button,
@@ -12,6 +15,7 @@ import {
 	Skeleton,
 	Tooltip,
 } from "@shared/components/ui";
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
 import { formatCalendarDate } from "@shared/utils/date-utils";
@@ -23,13 +27,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AgentTagsAndCategories } from "./components/agent-tags-and-categories";
 import { CommentsSection } from "./components/comments-section";
 import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
-import { useAgentDownloadCountQuery } from "./hooks/use-agent-download-count-query";
-import { useAgentFavouriteCountQuery } from "./hooks/use-agent-favourite-count-query";
+import { useAgentStatusesQuery } from "./hooks/use-agent-statuses-query";
 import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
-import { useAgentFavouriteQuery } from "./hooks/use-agent-favourite-query";
-import { useAgentLikeCountQuery } from "./hooks/use-agent-like-count-query";
 import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
-import { useAgentLikeQuery } from "./hooks/use-agent-like-query";
 import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 
@@ -42,6 +42,17 @@ import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
  * star at 1.62:1 on `iceberg`, under half the 3:1 floor a meaningful graphic
  * owes its ground. `agent-card` renders the same pair the same way.
  */
+
+/**
+ * The headline for each failed action, so the sentence names what did not
+ * happen rather than that "something" did not.
+ */
+const FAILURE_TITLES = {
+	like: "The like did not go through",
+	favourite: "The favourite did not go through",
+	download: "The download did not start",
+	delist: "The agent was not delisted",
+} as const;
 
 const CountDisplay: React.FC<{ children: React.ReactNode }> = ({
 	children,
@@ -63,34 +74,29 @@ export const AgentDetailsPage: React.FC = () => {
 		data: agent,
 		isLoading,
 		error,
+		refetch,
 	} = useAgentDetailsQuery({
 		agentId: agentId ?? "",
 		enabled: !!agentId,
 	});
-	const { isLiked } = useAgentLikeQuery({
-		agentId: agentId ?? "",
-		enabled: !!agentId && isAuthenticated,
+	/*
+	 * One batched read for this one agent's viewer state, rather than the two
+	 * per-agent reads it used to make. Same op as the grid's, so the two surfaces
+	 * cannot disagree about what the viewer has liked; its ids are just a list of
+	 * one here.
+	 */
+	const { statuses } = useAgentStatusesQuery({
+		agentIds: agentId ? [agentId] : [],
 	});
-	const { isFavourited } = useAgentFavouriteQuery({
-		agentId: agentId ?? "",
-		enabled: !!agentId && isAuthenticated,
-	});
-	const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery(
-		{
-			agentId: agentId ?? "",
-			enabled: !!agentId,
-		},
-	);
-	const { data: favouriteCount, isLoading: isLoadingFavourites } =
-		useAgentFavouriteCountQuery({
-			agentId: agentId ?? "",
-			enabled: !!agentId,
-		});
-	const { data: downloadCount, isLoading: isLoadingDownloads } =
-		useAgentDownloadCountQuery({
-			agentId: agentId ?? "",
-			enabled: !!agentId,
-		});
+	const isLiked = statuses[agentId ?? ""]?.liked ?? false;
+	const isFavourited = statuses[agentId ?? ""]?.favourited ?? false;
+	/*
+	 * The three counts come from the document this page already fetched. Each
+	 * used to be a separate request for a number that arrived with the agent.
+	 */
+	const likeCount = agent?.like_count ?? 0;
+	const favouriteCount = agent?.favourite_count ?? 0;
+	const downloadCount = agent?.download_count ?? 0;
 
 	const likeMutation = useAgentLikeMutation();
 	const favouriteMutation = useAgentFavouriteMutation();
@@ -99,6 +105,15 @@ export const AgentDetailsPage: React.FC = () => {
 
 	// State for the confirmation dialog
 	const [isDelistDialogOpen, setIsDelistDialogOpen] = useState(false);
+	/*
+	 * Which action failed, so its sentence can sit where the control is. The
+	 * three card actions and the delist each report into this one slot: the hub's
+	 * mutations used to fail into toasts while its reads failed into the surface,
+	 * and this page had both.
+	 */
+	const [failedAction, setFailedAction] = useState<
+		"like" | "favourite" | "download" | "delist" | null
+	>(null);
 
 	// Determine if the current user is the owner
 	const isOwner =
@@ -106,18 +121,52 @@ export const AgentDetailsPage: React.FC = () => {
 
 	const handleLikeToggle = () => {
 		if (!agentId || !isAuthenticated || likeMutation.isPending) return;
-		likeMutation.mutate({ agentId, isCurrentlyLiked: isLiked });
+		setFailedAction(null);
+		likeMutation.mutate(
+			{ agentId, isCurrentlyLiked: isLiked },
+			{ onError: () => setFailedAction("like") },
+		);
 	};
 
 	const handleFavouriteToggle = () => {
 		if (!agentId || !isAuthenticated || favouriteMutation.isPending) return;
-		favouriteMutation.mutate({ agentId, isCurrentlyFavourited: isFavourited });
+		setFailedAction(null);
+		favouriteMutation.mutate(
+			{ agentId, isCurrentlyFavourited: isFavourited },
+			{ onError: () => setFailedAction("favourite") },
+		);
 	};
 
 	const handleDownload = () => {
 		if (!agentId || !agent || downloadMutation.isPending) return;
-		downloadMutation.mutate({ agentId: agent.id, agentName: agent.name });
+		setFailedAction(null);
+		downloadMutation.mutate(
+			{ agentId: agent.id, agentName: agent.name },
+			{ onError: () => setFailedAction("download") },
+		);
 	};
+
+	const handleDelist = () => {
+		if (!agentId || !isOwner || delistMutation.isPending) return;
+		setFailedAction(null);
+		delistMutation.mutate(
+			{ agentId },
+			{ onError: () => setFailedAction("delist") },
+		);
+		setIsDelistDialogOpen(false);
+	};
+
+	const failure = !failedAction
+		? null
+		: failedAction === "like"
+			? { error: likeMutation.error, retry: handleLikeToggle }
+			: failedAction === "favourite"
+				? { error: favouriteMutation.error, retry: handleFavouriteToggle }
+				: failedAction === "download"
+					? { error: downloadMutation.error, retry: handleDownload }
+					// Delisting is confirmed through the dialog, so the failed attempt is
+					// reported and not silently repeated from here.
+					: { error: delistMutation.error, retry: undefined };
 
 	const handleBack = () => {
 		navigate("/agent-hub");
@@ -133,10 +182,19 @@ export const AgentDetailsPage: React.FC = () => {
 
 	if (error) {
 		return (
-			<div className="flex h-full items-center justify-center">
-				<p className="text-body-sm text-danger">
-					Failed to load agent details: {error.message}
-				</p>
+			<div className="flex h-full items-center justify-center p-6">
+				<Alert variant="danger" className="max-w-2xl">
+					<AlertTitle>This agent could not be loaded</AlertTitle>
+					<AlertDescription>
+						{error.message ||
+							"The Radient agent catalogue did not answer. Try again."}
+					</AlertDescription>
+					<div className="mt-2">
+						<Button variant="outline" size="sm" onClick={() => void refetch()}>
+							Try again
+						</Button>
+					</div>
+				</Alert>
 			</div>
 		);
 	}
@@ -184,13 +242,7 @@ export const AgentDetailsPage: React.FC = () => {
 								className={cn(isLiked && "text-danger")}
 							>
 								<Heart fill={isLiked ? "currentColor" : "none"} />
-								<CountDisplay>
-									{isLoadingLikes ? (
-										<Skeleton className="h-3.5 w-5" />
-									) : (
-										(likeCount ?? 0)
-									)}
-								</CountDisplay>
+								<CountDisplay>{likeCount}</CountDisplay>
 							</Button>
 						</span>
 					</Tooltip>
@@ -210,13 +262,7 @@ export const AgentDetailsPage: React.FC = () => {
 								className={cn(isFavourited && "text-warning")}
 							>
 								<Star fill={isFavourited ? "currentColor" : "none"} />
-								<CountDisplay>
-									{isLoadingFavourites ? (
-										<Skeleton className="h-3.5 w-5" />
-									) : (
-										(favouriteCount ?? 0)
-									)}
-								</CountDisplay>
+								<CountDisplay>{favouriteCount}</CountDisplay>
 							</Button>
 						</span>
 					</Tooltip>
@@ -232,10 +278,10 @@ export const AgentDetailsPage: React.FC = () => {
 							>
 								<Download />
 								<CountDisplay>
-									{isLoadingDownloads || downloadMutation.isPending ? (
+									{downloadMutation.isPending ? (
 										<Skeleton className="h-3.5 w-5" />
 									) : (
-										(downloadCount ?? 0)
+										downloadCount
 									)}
 								</CountDisplay>
 							</Button>
@@ -260,6 +306,35 @@ export const AgentDetailsPage: React.FC = () => {
 					)}
 				</div>
 			</div>
+
+			{failure && failedAction && (
+				/*
+				 * The failure sits under the controls that produced it and names which
+				 * one, rather than arriving as a toast over a page the user is still
+				 * reading. Same voice, same place, for every action on this surface.
+				 */
+				<Alert
+					variant="danger"
+					className="mb-6"
+					data-testid="agent-details-error"
+				>
+					<AlertTitle>{FAILURE_TITLES[failedAction]}</AlertTitle>
+					<AlertDescription>
+						{userFacingMessage(
+							failure.error,
+							"The action did not complete. Try again.",
+						)}
+					</AlertDescription>
+					{/* A sibling, never a child: `AlertDescription` is a `<p>`. */}
+					{failure.retry && (
+						<div className="mt-2">
+							<Button variant="outline" size="sm" onClick={failure.retry}>
+								Try again
+							</Button>
+						</div>
+					)}
+				</Alert>
+			)}
 
 			<AgentTagsAndCategories tags={agent.tags} categories={agent.categories} />
 			<div className="mt-4 mb-6 flex flex-col gap-2 text-body-sm text-ink-muted">
@@ -311,8 +386,7 @@ export const AgentDetailsPage: React.FC = () => {
 						<PrimaryButton
 							onClick={() => {
 								if (!agentId || !isOwner || delistMutation.isPending) return;
-								delistMutation.mutate({ agentId });
-								setIsDelistDialogOpen(false);
+								handleDelist();
 							}}
 							disabled={delistMutation.isPending}
 						>

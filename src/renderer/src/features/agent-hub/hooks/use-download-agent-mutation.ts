@@ -1,4 +1,3 @@
-import { pullRefusalMessage } from "@features/agents/utils/publication-failure";
 import { localNameCollision } from "@features/agents/utils/publication-validation";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
 import type {
@@ -9,7 +8,6 @@ import type {
 import { apiConfig } from "@shared/config"; // Import apiConfig for the base URL
 import { agentsQueryKey } from "@shared/hooks/use-agents";
 import {
-	showErrorToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
@@ -19,6 +17,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { patchPublicAgentCount } from "./use-public-agent-counts";
 
 /**
  * A pulled agent as the import path reports it.
@@ -74,8 +73,15 @@ const cachedLocalNames = (
  *   machine's own list shows the name is now held twice, said plainly as the
  *   duplicate it is, because the profile resolver picks between rows with one
  *   name by nothing the user can see;
- * - **refused** — the reason, from the refusal's code when the backend sends one
- *   and from its sentence otherwise.
+ * - **refused** — left on `mutation.error` for the caller to render, carrying the
+ *   backend's own sentence; see below.
+ *
+ * THE FAILURE IS THE CALLER'S. This hook used to raise an error toast and
+ * nothing else, which made the hub the only feature that spoke two error
+ * languages: reads failed into the surface, mutations failed into a toast that
+ * floated over whatever was next. The card and the details page now render
+ * `mutation.error` inline beside the control that failed, so this hook reports
+ * and does not announce — the component that owns the button owns the sentence.
  *
  * @returns Mutation result object for downloading an agent.
  */
@@ -120,10 +126,13 @@ export const useDownloadAgentMutation = () => {
 			}
 
 			// Invalidate local agents list to reflect the newly downloaded agent
-			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			// Optionally invalidate agent download counts if needed elsewhere
-			queryClient.invalidateQueries({
-				queryKey: ["agent-download-count", variables.agentId],
+queryClient.invalidateQueries({ queryKey: agentsQueryKey });
+			// The hub record's own count, moved by the delta the server just
+			// applied; there is no per-card count query left to invalidate.
+			patchPublicAgentCount(queryClient, {
+				agentId: variables.agentId,
+				field: "download_count",
+				delta: 1,
 			});
 
 			const agentResult = data.result; // Capture result
@@ -137,10 +146,6 @@ export const useDownloadAgentMutation = () => {
 					"Downloaded agent ID not found in response, cannot navigate to chat.",
 				);
 			}
-		},
-		onError: (error, variables) => {
-			showErrorToast(pullRefusalMessage(error, variables.agentName ?? ""));
-			console.error("Download agent error:", error);
 		},
 	});
 
