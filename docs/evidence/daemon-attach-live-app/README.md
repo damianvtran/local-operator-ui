@@ -7,6 +7,15 @@ the operator's focus never taken. Nothing here is a Storybook still, because the
 states are MAIN's and the renderer's together - a capability answer, the daemon
 status, the catalogue store - and a story can stub only one side of that.
 
+**Re-shot at `3aac67e6e`, after the rebase onto main's #235 head.** Every frame
+below was produced by this rig on the tree this PR now carries (`--scene all`,
+headless, its own profile, no window shown, no notifications). The relative-time
+text in the rows is what moved: measured against the frames committed before,
+every other pixel band is unchanged - the rail is byte-identical (`y 60-180`,
+`x 0-460`, same md5), and the differences sit at `x 600-1000 / y 1300-1612`,
+which is the rows' own timestamps. That is also the answer to design round 2's
+D14/D15, recorded in the section below.
+
 ## What each frame is
 
 | frame | tree | state it photographs |
@@ -29,6 +38,17 @@ status, the catalogue store - and a story can stub only one side of that.
   output rather than by pixels. Re-running the live-app rig on a base worktree
   would need a second checkout with its own `node_modules`; that was not run in
   this round under the machine hold, and this note is the honest substitute.
+- **The D14/D15 symptoms do not reproduce on the re-shot set.** Design round 2
+  measured two of six frames painting the Active line in `ink-muted` where the
+  head paints that `<p>` in `ink-dim` (D14), and frames predating the `\u2318N` cap
+  on the New chat row (D15). Re-shot from this head, the frames are the ones the
+  code paints: measured, the change against the previously committed files is the
+  rows' relative-time text and nothing else - the rail region is byte-identical
+  between old and new, and the caption row is unchanged. Either the two frames D14
+  names were already current when it was measured, or what it saw is not in this
+  set; the frames are now produced by the head under review either way, and the
+  designer's re-read is the check that matters. Stated here rather than claimed as
+  a fix this round did not have to make.
 - **No separate "poked" frame.** The rig captures one - the operator coming back
   to the window, which is the only path the base tree has - and on this head it
   is byte-identical to `after-gate-withdrawn.png` (md5 `525f78e7…`), because the
