@@ -387,6 +387,37 @@ test("an armed-only command is never hoisted by Enter (the operator's report)", 
  * one of the 126 of 261 fall-through states the review swept was a non-U+0020
  * separator, i.e. a paste shape: a TSV tab, or an NBSP lifted off a web page.
  */
+/*
+ * WHICH GESTURE EACH CASE IS ABOUT, because that distinction is the rule (round
+ * 8's decision, stated for the record): a word merely TYPED is prose unless it is
+ * the whole draft, or opens one for a command that consumes text; a token the
+ * operator PICKED — a click, or Enter on a highlighted row — is a command
+ * wherever it sits, which is the half of the operator's own report he kept
+ * ("if you don't actually hit enter on the suggested command or click it").
+ * These are all the TYPED gesture; the picked one is driven where the pick
+ * happens (the composer's own suites).
+ */
+test("a typed word is prose unless it is the whole draft or opens an argument-taking one", () => {
+	// The suite's own helper, so this case reads the same vocabularies every other
+	// one does (the registry's three: names, prompts and declared arguments).
+	const typed = (draft) => plan(draft, draft.length);
+	for (const draft of [
+		"/compact hello",
+		"hello /compact",
+		"fix this /usage",
+		"please /credential mysecretname",
+	]) {
+		assert.equal(
+			typed(draft).kind,
+			"send",
+			`${JSON.stringify(draft)} is prose`,
+		);
+	}
+	// The whole draft, and the leading prompt command, still run.
+	assert.equal(typed("/compact").kind, "whole");
+	assert.equal(typed("/goal ship it").kind, "whole");
+});
+
 test("the word/argument separator is the whitespace class, not a literal space", () => {
 	for (const separator of ["\t", "\u00a0", "\u2009", "\v", "\f"]) {
 		const at = JSON.stringify(separator);

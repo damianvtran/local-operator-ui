@@ -91,6 +91,7 @@ import {
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_STORE_TIMEOUT_MS,
+	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
 	type CancelledToken,
 	type Capture,
@@ -1088,6 +1089,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const cancelledToken = useRef<CancelledToken | null>(null);
 		/*
+		 * The token the PICKER wrote into the box, as the run text a later draft still
+		 * contains, or `null`. The counterpart of `cancelledToken` for the other
+		 * gesture that makes a word the dispatcher's: a pick is a command wherever it
+		 * sits (the operator's own rule), and nothing in the buffer's TEXT distinguishes
+		 * a token the picker inserted from one typed by hand — so the record is the
+		 * distinction, taken where the pick happens.
+		 */
+		const pickedToken = useRef<string | null>(null);
+		/*
 		 * Set when a submit has succeeded, so the payload map is retired with the
 		 * BUFFER rather than ahead of it. Clearing the map first left a window in
 		 * which the raw `[Credential #1, 19 chars]` painted un-pilled and an Enter
@@ -1602,7 +1612,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				captureOwnedBuffer.current = next.buffer;
 				// An armed capture is a NEW gesture: whatever the operator cancelled
 				// before, this is not it any more.
-				if (next.capture.arm) cancelledToken.current = null;
+				if (next.capture.arm) {
+					cancelledToken.current = null;
+					pickedToken.current = null;
+				}
 				setCapture(next.capture);
 				setNewMessage(next.buffer);
 				persistDraft(next.capture, next.buffer);
@@ -2198,10 +2211,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * verbs.
 		 */
 		const planForDraft = useCallback(
-			(draft: string, at: number): SlashSubmissionPlan =>
-				holdsCancelledToken(draft, cancelledToken.current)
-					? { kind: "send" }
-					: planFor(draft, at),
+			(draft: string, at: number): SlashSubmissionPlan => {
+				const cancelled = cancelledToken.current;
+				if (holdsCancelledToken(draft, cancelled)) {
+					return { kind: "send" };
+				}
+				/*
+				 * A token the DISPATCHER owns is a command wherever it sits, and the
+				 * composer can tell it from a typed word because it saw the gesture:
+				 *
+				 * - a token this box CANCELLED and an edit then MOVED — the cancel's own
+				 *   record is the proof it was not typed as prose, and `#238`'s property
+				 *   is what makes it the dispatcher's: `/credential <args>` has its
+				 *   arguments refused, so a secret can never land in command text (a
+				 *   mid-sentence word would otherwise be sent to the model as written);
+				 * - or a token the PICKER inserted, which is the half of the operator's
+				 *   own rule he kept: "if you don't actually hit enter on the suggested
+				 *   command or click it" — a click is a command gesture, typing is not.
+				 *
+				 * Everything else is the operator's rule unchanged: a typed word is prose
+				 * unless it is the whole draft, or opens one for a command that consumes
+				 * text. The gesture is the planner's own input (`"pick"` = "this word is a
+				 * command wherever it sits"), so nothing here re-implements the rule.
+				 */
+				const owned =
+					(cancelled !== null && draft.includes(cancelled.text)) ||
+					(pickedToken.current !== null && draft.includes(pickedToken.current));
+				return owned ? planFor(draft, at, "pick") : planFor(draft, at);
+			},
 			[planFor],
 		);
 
@@ -2455,6 +2492,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				const plan = planFor(completion.text, completion.caret, "pick");
 				if (plan.kind === "send") return;
+				/*
+				 * Record the token the picker just wrote, so a LATER Enter still knows
+				 * this word was picked rather than typed even if an edit has moved it:
+				 * a pick is a command wherever it sits (the operator's own rule), and the
+				 * buffer's text cannot say which gesture put the token there.
+				 */
+				const pickedRun = CREDENTIAL_TOKEN.exec(completion.text);
+				pickedToken.current = pickedRun ? pickedRun[0].trim() : null;
 				await applyPlan(plan, newMessage, caret);
 			},
 			[

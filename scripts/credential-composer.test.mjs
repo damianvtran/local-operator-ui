@@ -177,7 +177,14 @@ const COMMANDS = [
 		name: "credential",
 		description: "Type or paste a secret after a space; masked",
 		aliases: ["cred"],
-		arguments: "none",
+		/*
+		 * THE RUNTIME'S OWN MODE, not a simplification: `slash_commands.py`
+		 * declares `ArgumentMode.OPTIONAL` for `/credential`, and the planner reads
+		 * this field as one of its three vocabularies — so a stub saying `none` would
+		 * have the suite assert a shape the app cannot produce (`/credential
+		 * --forget-all` typed whole is a whole-draft command there).
+		 */
+		arguments: "optional",
 		echo: false,
 		consumes_prompt: false,
 		destination: "session.credential",
