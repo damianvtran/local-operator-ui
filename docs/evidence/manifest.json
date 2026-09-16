@@ -16,7 +16,7 @@
   "partialCapture": {
     "refreshedAt": "2026-09-16T14:04:48.097Z",
     "refreshedAtHead": "a150d4dafdbba45b1dfdb87aadf3aec7bebca94a",
-    "refreshedFrames": 408,
+    "refreshedFrames": 414,
     "refreshedStories": [
       "browser-pane--this-conversation",
       "browser-pane--all-tabs",
@@ -39,13 +39,16 @@
       "browser-pane--trigger-at-cap",
       "browser-pane--pane-overflow-count",
       "browser-pane--narrow-overflow-count",
-      "browser-pane--route-no-overflow"
+      "browser-pane--route-no-overflow",
+      "chat-run-panel--back-to-roster",
+      "chat-run-panel--back-pop",
+      "chat-run-panel--close-from-reader"
     ],
     "refreshedThemes": [
       "localOperatorDark",
       "localOperatorLight"
     ],
-    "addedFrames": 94,
+    "addedFrames": 100,
     "addedSurfaces": [
       "browser-consent-bar/an-agent",
       "browser-url-bar/two-digits",
@@ -73,7 +76,10 @@
       "browser-pane/trigger-at-cap",
       "browser-pane/pane-overflow-count",
       "browser-pane/narrow-overflow-count",
-      "browser-pane/route-no-overflow"
+      "browser-pane/route-no-overflow",
+      "chat-run-panel/back-to-roster",
+      "chat-run-panel/back-pop",
+      "chat-run-panel/close-from-reader"
     ],
     "addedAt": "2026-09-16T10:59:44.629Z",
     "addedAtHead": "4fe0a1c4fd26b1c59911dc55e37d1d496c17b4ce",
@@ -450,7 +456,24 @@
       "refreshedFrames": 36
     },
     "roundThreeRecapture": "Re-taken at 210c795cb7b05f50a7fab860e548870c48fd9d26 (pnpm build, then node scripts/browser-chrome-proof.mjs --keep; then a Storybook dev server with node scripts/capture-evidence.mjs --only=browser --themes=localOperatorDark,localOperatorLight). The strip, the consent band, the dock and the URL bar are all re-shot at that tree, and the composition set is re-encoded from the same harness run. Round 2's deferral is discharged rather than replaced by this note.",
-    "rebaseNote": "THE TALLY COVERS THE PASS's DIFF AGAINST `main`, WHICH A REBASE WIDENED. This branch was rebased onto `origin/main` = `9adf108dc` (0.25.0) after the pass was taken, so main's own later re-shoots of `chat-message-input--*` and `command-palette--*` now sit in the difference between the pass commit and main: 417 frames across 30 surfaces, of which this feature's own re-shoot is the browser set. The frame COUNT and the story list are therefore the whole diff rather than the narrower browser sweep alone - claiming the browser sweep alone would under-report the frames this commit's tree differs by, which is what the tally is for. No frame here was shot by this branch that the pass did not shoot."
+    "rebaseNote": "THE TALLY COVERS THE PASS's DIFF AGAINST `main`, WHICH A REBASE WIDENED. This branch was rebased onto `origin/main` = `9adf108dc` (0.25.0) after the pass was taken, so main's own later re-shoots of `chat-message-input--*` and `command-palette--*` now sit in the difference between the pass commit and main: 417 frames across 30 surfaces, of which this feature's own re-shoot is the browser set. The frame COUNT and the story list are therefore the whole diff rather than the narrower browser sweep alone - claiming the browser sweep alone would under-report the frames this commit's tree differs by, which is what the tally is for. No frame here was shot by this branch that the pass did not shoot.",
+    "runPanelExitRefresh": {
+      "refreshedAt": "2026-09-16T14:20:00.000Z",
+      "capturedFromHead": "68946d867f1f6f6070a9422f987a6d131bf63f4c",
+      "refreshedStories": [
+        "chat-run-panel--back-to-roster",
+        "chat-run-panel--back-pop",
+        "chat-run-panel--close-from-reader"
+      ],
+      "refreshedFrames": 6,
+      "addedSurfaces": [
+        "chat-run-panel/back-to-roster",
+        "chat-run-panel/back-pop",
+        "chat-run-panel/close-from-reader"
+      ],
+      "addedFrames": 6,
+      "note": "This branch's own pass, folded into the accumulated fields rather than replacing them, and given its own key so main's `addedAtHead`/`refreshedAtHead` keep naming main's passes - which is what the gate reads them for. It wrote the six frames of `chat-run-panel/{back-to-roster,back-pop,close-from-reader}` at the two brand themes from `capturedFromHead`, and the SIX BEFORE halves of the same three stories live in the declared supplementary set `run-panel-back-before/`, captured in the same worktree with `origin/main`'s `run-panel.tsx` temporarily in place. The frames are NOT re-stamped for the merges that followed: `capturedFromHead` is where they were taken, and the merges changed no module any of them is made of."
+    }
   },
   "supplementary": [
     {
