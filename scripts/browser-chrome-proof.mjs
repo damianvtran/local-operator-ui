@@ -2073,9 +2073,41 @@ async function main() {
 							const box = node.getBoundingClientRect();
 							return { left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) };
 						};
+						/*
+						 * A BOX IS NOT PAINT (review round 4, MINOR). The assertions above are
+						 * geometric, and a marker at 'opacity: 0' or scrolled out of the strip's
+						 * own clip box has a healthy box with no overlap and would pass. So each
+						 * row also reports whether the marker is hit-testable at its own centre
+						 * and what its computed opacity is.
+						 */
+						const markerInk = () => {
+							if (!marker) return null;
+							const box = marker.getBoundingClientRect();
+							const hit = document.elementFromPoint(
+								Math.round(box.left + box.width / 2),
+								Math.round(box.top + box.height / 2),
+							);
+							return {
+								opacity: getComputedStyle(marker).opacity,
+								hit: hit === marker || (hit !== null && marker.contains(hit)),
+							};
+						};
+						// How many state chips the row carries: the floor is sized for it (see
+						// 'browser-tab-strip.tsx'), and naming the specimen in the detail is what
+						// stops a one-chip run from passing as proof about a three-chip row.
+						const chips = [
+							'[data-tour-tag="browser-tab-agent-marker"]',
+							'[data-tour-tag="browser-tab-failed"]',
+							'[data-tour-tag="browser-tab-waiting"]',
+						].filter((sel) => box.querySelector(sel)).length +
+							[...box.querySelectorAll('span')].filter((el) =>
+								/^(Shared|Restored)$/.test(el.textContent?.trim() ?? '')
+							).length;
 						return {
 							active: tab.getAttribute('aria-selected') === 'true',
 							marked: !!marker,
+							chips,
+							markerInk: markerInk(),
 							tabWidth: Math.round(box.getBoundingClientRect().width),
 							titleBox: title ? Math.round(title.getBoundingClientRect().width) : null,
 							titleRight: rect(title)?.right ?? null,
@@ -2136,12 +2168,24 @@ async function main() {
 					row.markerBox.width <= 0 ||
 					row.markerBox.height <= 0 ||
 					(row.clusterBox !== null &&
-						row.markerBox.right > row.clusterBox.left + 1)),
+						row.markerBox.right > row.clusterBox.left + 1) ||
+					row.markerInk === null ||
+					row.markerInk.opacity === "0" ||
+					row.markerInk.hit !== true),
 		);
 		check(
-			"every marked row's `Agent` chip is painted, and clear of the chrome cluster",
+			"every marked row's chip is painted - visible, hit-testable at its own centre, and clear of the chrome cluster",
 			marked.length >= 1 && covered.length === 0,
-			JSON.stringify({ covered, marked }, null, 2),
+			JSON.stringify(
+				{
+					covered,
+					// The specimen, named: how many chips each marked row carries, because the
+					// row's floor is sized for that count (review round 4, MINOR).
+					specimen: marked.map((row) => ({ chips: row.chips, titleBox: row.titleBox })),
+				},
+				null,
+				2,
+			),
 		);
 		/*
 		 * AND THE MARKER IS NOT A ONE-OFF: the same check on the ACTIVE row, which is the

@@ -210,21 +210,32 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const active = tab.tabId === activeTabId;
 						const waitingOrdinal = waiting[tab.tabId];
 						/*
-						 * A MARKED ROW CARRIES MORE CHROME, so it gets a wider floor (review
-						 * round 3, MAJOR). `min-w-44` is the width at which nine BARE tabs fit
-						 * and each still names itself; a row carrying the `Agent` chip AND the
-						 * active tab's permanent close control has 43px more in it than that,
-						 * so at 176px its title measured ~17px however the chrome behaved -
-						 * the marker cannot go (it is the only thing that tells an agent's tab
-						 * from the user's) and neither can the title, so the floor moves
-						 * instead of either.
+						 * THE FLOOR IS SIZED FOR THE CHIPS THE ROW ACTUALLY CARRIES (review round 4,
+						 * MINOR). One chip needs `min-w-56`; three - `Agent` with `Failed` and a
+						 * `Request n`, or `Restored` with the same pair - need `min-w-80`, because the
+						 * chips are 43-62px each and a one-chip floor put a three-chip row's title at
+						 * ~15px, which is the `R…` reading D13 was filed about. `Shared` and
+						 * `Restored` are exclusive with `Agent` per the view's own field comments, so
+						 * three is the worst configured case and a fourth would overflow the tab.
+						 * Roles rather than computed pixels: the contract's spacing steps are the
+						 * vocabulary here, and `min-w-72` is the two-chip step between them.
 						 */
-						const marked =
-							tab.owner === "agent" ||
-							tab.handedOver ||
-							tab.restored ||
-							tab.failed ||
-							waitingOrdinal !== undefined;
+						const chips = [
+							tab.owner === "agent",
+							tab.handedOver,
+							tab.restored,
+							tab.failed,
+							waitingOrdinal !== undefined,
+						].filter(Boolean).length;
+						const marked = chips > 0;
+						const floor =
+							chips >= 3
+								? "min-w-80"
+								: chips === 2
+									? "min-w-72"
+									: chips === 1
+										? "min-w-56"
+										: "min-w-44";
 						const previous = index > 0 ? tabs[index - 1] : null;
 						// The divider belongs to the gap between two inactive tabs: the active
 						// one is continuous with the page, so no rule may run into it.
@@ -253,7 +264,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 * pays for the wider floor.
 										 */
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
-										marked ? "min-w-56" : "min-w-44",
+										floor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
 											: "text-ink-muted hover:bg-elevated hover:text-ink",
@@ -420,8 +431,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												else setActionsTabId(tab.tabId);
 											}}
 											// Revealed on hover/focus like the close button, unless its own row
-											// is open - and it holds no width now, so the reveal costs the title
-											// nothing (D13).
+											// is open. On an INACTIVE tab it holds no width at all, so the reveal
+											// costs the title nothing (D13); on the ACTIVE one it sits in flow beside
+											// the permanent close control and keeps its 28px, which is part of why an
+											// active marked row needs the wider floor above.
 											className={cn(
 												"transition-opacity",
 												actionsTabId === tab.tabId

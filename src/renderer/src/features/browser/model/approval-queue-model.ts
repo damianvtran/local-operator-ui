@@ -268,7 +268,18 @@ export function reconcileResolved(
 			authority: request.authority,
 			at: now,
 		}));
-	const known = reported;
+	/*
+	 * BOTH HALVES OF THE DE-DUPE, and the second one is why the bookkeeping could
+	 * move out of the updater without reopening round 3's finding. `reported`
+	 * survives retention's prune of the state; the rows in `resolved` are the same
+	 * memory one render behind, so they cover the window before the effect above has
+	 * recorded them — without them, two reconciles inside one commit could each
+	 * produce the row.
+	 */
+	const known = new Set([
+		...reported,
+		...resolved.map((row) => row.key),
+	]);
 	return [...fresh, ...expired]
 		.filter((row) => !known.has(row.key))
 		.concat(resolved)
@@ -352,33 +363,52 @@ export function useApprovalQueue(
 	 * then re-resolved with a fresh `at` on every retention window — a stale
 	 * `expired` row re-announced inside `aria-live` once per five minutes, for as
 	 * long as any other request kept the clock alive (review round 3, MAJOR).
-	 * Bounded by the queue's own cap and dropped with the surface, which is the
-	 * same lifetime the memory's meaning has.
+	 *
+	 * ITS BOUND IS THE SESSION, NOT THE QUEUE'S CAP (review round 4, NIT): the cap
+	 * bounds LIVE entries, while this holds one key per entry the surface has ever
+	 * resolved — a few dozen bytes each, growing with use and dropped with the
+	 * surface, which is the same lifetime the memory's meaning has.
+	 *
+	 * IT IS WRITTEN OUTSIDE THE UPDATER, in the effect below (review round 4,
+	 * MAJOR). An updater has to be pure because React may apply one update to the
+	 * same base state more than once — `StrictMode` does exactly that, and `main.tsx`
+	 * mounts the app strict — so a ref mutated inside it made the SECOND application
+	 * de-dupe against a key the first one had just added and drop the resolved row
+	 * for good: the one row this whole memory exists to show, permanently absent in
+	 * every dev build.
 	 */
 	const reported = useRef<Set<string>>(new Set());
-	/** The updater both arms share: reconcile, then remember what was reported so
-	 * retention cannot un-remember it. Idempotent, which matters because React may
-	 * run an updater twice. */
+	/** The updater both arms share. PURE, which is the whole of the round-4 fix: it
+	 * reads `reported` and never writes it, so applying it twice produces the same
+	 * rows. */
 	const reconcile = useCallback(
 		(
 			was: ReadonlyArray<ApprovalRequestInput>,
 			next: ReadonlyArray<ApprovalRequestInput>,
 			at: number,
 		) =>
-			setResolved((current) => {
-				const rows = reconcileResolved(
+			setResolved((current) =>
+				reconcileResolved(
 					was,
 					next,
 					current,
 					answered.current,
 					reported.current,
 					at,
-				);
-				for (const row of rows) reported.current.add(row.key);
-				return rows;
-			}),
+				),
+			),
 		[],
 	);
+
+	/*
+	 * THE COMMITTED ROWS ARE WHAT THE MEMORY IS ABOUT, so this is where they are
+	 * recorded — after React has settled on a value, not while it is deciding. The
+	 * effect cannot run between two applications of the same update, which is
+	 * exactly why the bookkeeping works here and could not work in the updater.
+	 */
+	useEffect(() => {
+		for (const row of resolved) reported.current.add(row.key);
+	}, [resolved]);
 
 	/*
 	 * THE GATE IS THE LIVE COUNT, not the projection's length (review round 1,
