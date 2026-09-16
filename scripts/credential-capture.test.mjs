@@ -690,13 +690,42 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	assert.equal(holdsCancelledToken("please /credential hunter2", token), false);
 	assert.equal(holdsCancelledToken("/cred hunter2", token), false);
 	assert.equal(holdsCancelledToken("", token), false);
-	// An EMPTY-span cancel owes the promise to nobody, so it reports no token and
-	// `/credential ` + Enter still reaches the picker (design §1, UX round 1 U3).
+	// THE EMPTY-SPAN CANCEL REPORTS THE TOKEN TOO (UX round 2, U9), and the
+	// reason is that the promise and the SUBMIT rule are two different questions.
+	// The notice is suppressed here — nothing was restored, so there is nothing to
+	// warn about — but `/credential ` + Esc + `mysecretname` + Enter used to reach
+	// the dispatcher, which read the leading token as the COMMAND, opened the
+	// picker, ate the operator's words as its argument and stripped them out of
+	// the box. Nothing sent, nothing said. With the token reported, the run the
+	// cancel left behind is inert to submit exactly as the restored one is.
 	const empty = harness();
 	empty.type("/credential ");
 	empty.escape();
-	assert.equal(empty.state.lastCancel.token, null);
+	assert.deepEqual(empty.state.lastCancel.token, {
+		span: { start: 0, end: 12 },
+		text: "/credential ",
+	});
 	assert.equal(empty.state.lastCancel.restored, 0);
+	// The characters the operator writes AFTER an empty-span cancel land after
+	// the run, so the run is still there — and that is the whole of U9: the same
+	// visible buffer behaved as prose when the span had held characters and as a
+	// command when it had not.
+	const typed = harness();
+	typed.type("deploy with /credential ");
+	typed.escape();
+	typed.type("mysecretname");
+	assert.equal(typed.state.buffer, "deploy with /credential mysecretname");
+	assert.ok(
+		holdsCancelledToken(typed.state.buffer, typed.state.lastCancel.token),
+	);
+	// The half that must NOT change: with no cancel at all, `/credential <args>`
+	// is still the command's own line. Nothing registered a token, so nothing
+	// suppresses the dispatcher; the composer suite pins what the dispatcher then
+	// does with the arguments (`/credential --forget-all` still strips them).
+	const uncancelled = harness();
+	uncancelled.type("/credential --forget-all");
+	assert.equal(uncancelled.state.lastCancel, undefined);
+	assert.equal(holdsCancelledToken("/credential --forget-all", null), false);
 });
 
 test("the armed token is painted, not only announced", () => {
@@ -1555,12 +1584,24 @@ test("every citation is rewritten, stored or not, so no marker reaches the model
 	);
 });
 
-test("a hand-typed lookalike is prose: never substituted, never stripped", () => {
+test("a marker nothing backs is a not-stored citation, not prose to be guessed at", () => {
 	/*
-	 * §4: a citation counts as the app's own only when the marker text matches
-	 * the payload's own recorded marker AND the index matches. Two hand-typed
-	 * shapes are distinguishable from a real citation and neither may be
-	 * touched: the same number with an edited tail, and a number nothing minted.
+	 * §4's grammar decides which occurrence a PAYLOAD cites — the marker text must
+	 * be the payload's own and the index must match — and that rule still holds
+	 * for the citation itself. What round 2 changed is what happens to a marker
+	 * that rule rejects (design round 2, D2 + UX round 2, U11 + code review round
+	 * 2, MAJOR 1).
+	 *
+	 * It used to be sent VERBATIM as "prose", on the reasoning that the app cannot
+	 * tell a hand-typed lookalike from its own receipt. But §6 persists the marker
+	 * text deliberately while the value map dies with the document, so the
+	 * COMMONEST instance of that shape is the app's own receipt coming back after
+	 * a reload — and the model then received a composer-local
+	 * `[Credential #1, 19 chars]` naming a key nothing holds. The shape is now
+	 * treated as one thing: a citation of a value this composer cannot reach, sent
+	 * as the not-stored sentence. A hand-typed lookalike is caught by the same rule
+	 * because the rule CANNOT tell it apart, and a rule that guessed would be the
+	 * paint/send disagreement this whole path exists to remove.
 	 */
 	const composer = harness();
 	composer.type("/credential ");
@@ -1568,28 +1609,29 @@ test("a hand-typed lookalike is prose: never substituted, never stripped", () =>
 	composer.enter();
 	const payload = [...composer.state.payloads.values()][0];
 	const text = `${composer.state.buffer}my own [Credential #1, 999 chars] note, and [Credential #7, 4 chars]`;
+	// The payload still cites only its OWN marker at its own index.
 	assert.equal(citationSpan(text, payload).start, 0);
-	assert.equal(
-		substituteCredentials(text, [payload]).includes(
-			"[Credential #1, 999 chars]",
-		),
-		true,
-		"an edited tail is not the app's citation",
-	);
-	assert.equal(
-		substituteCredentials(text, [payload]).includes("[Credential #7, 4 chars]"),
-		true,
-		"a number nothing minted is prose",
-	);
-	// The grammar itself must not be fooled by a lookalike either.
+	const out = substituteCredentials(text, [payload]);
+	assert.ok(out.includes(`$${payload.key}`), "the backed marker is cited");
 	assert.ok(
-		!text
-			.slice(text.indexOf("[Credential #1, 999 chars]"))
-			.startsWith(payload.marker),
+		!out.includes("[Credential #1, 999 chars]"),
+		"an edited tail is a marker no payload backs, so it is rewritten too",
+	);
+	assert.ok(!out.includes("[Credential #7, 4 chars]"));
+	assert.equal(
+		(out.match(/NOT stored/g) ?? []).length,
+		2,
+		"one not-stored citation per unbacked marker, and none for the backed one",
 	);
 });
 
-test("a duplicated citation is rewritten once, at its first occurrence", () => {
+test("a duplicated citation is cited once and not-stored after it", () => {
+	/*
+	 * The first occurrence is the one the payload cites (so it carries the real
+	 * key); every copy after it names a value the model cannot use, so it takes
+	 * the not-stored sentence rather than being passed through as text — the
+	 * model cannot tell the two apart either.
+	 */
 	const composer = harness();
 	composer.type("/credential ");
 	composer.type("dup");
@@ -1600,9 +1642,10 @@ test("a duplicated citation is rewritten once, at its first occurrence", () => {
 	const out = substituteCredentials(text, [payload]);
 	assert.ok(out.includes(`$${payload.key}`));
 	assert.ok(
-		out.includes(marker),
-		"the second copy is text the operator duplicated",
+		!out.includes(marker),
+		"no bare marker is left in the outgoing text",
 	);
+	assert.ok(out.includes(describeUnstored("lost")));
 });
 
 /*

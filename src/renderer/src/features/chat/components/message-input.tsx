@@ -88,6 +88,8 @@ import { ComposerStatusRow } from "./composer-status-row";
  */
 import {
 	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
+	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_STORE_TIMEOUT_MS,
 	CREDENTIAL_TYPING_NOTICE,
 	type CancelledToken,
@@ -109,6 +111,7 @@ import {
 	substituteCredentials,
 	syncCapture,
 	typeIntoCapture,
+	unbackedMarkers,
 	unredactedNotice,
 	unstoredNotice,
 } from "./credential-capture";
@@ -967,11 +970,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * to repaint as the mode changes, and the ref is what the event handlers read
 		 * so a handler built for one render cannot act on a stale capture.
 		 *
-		 * `unredacted` is the one disclosure the app makes, and it is the operator's
+		 * `unredactedChars` is the one disclosure the app makes, and it is the
+		 * operator's
 		 * own Esc: §5's notice that the characters are now plain text in the
-		 * composer. It is held as a sentence rather than derived from state, because
-		 * it describes an EVENT and the state that follows it is an ordinary
-		 * composer holding prose.
+		 * composer. The sentence is derived from the count at the render site rather
+		 * than held as state, because it describes an EVENT and the state that follows
+		 * it is an ordinary composer holding prose.
 		 */
 		const [capture, setCaptureState] = useState<Capture>(IDLE_CAPTURE);
 		const captureRef = useRef<Capture>(IDLE_CAPTURE);
@@ -981,7 +985,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, []);
 		const payloadsRef = useRef(new Map<number, CredentialPayload>());
 		const nextIndexRef = useRef(1);
-		const [unredacted, setUnredacted] = useState<string | null>(null);
+		/*
+		 * §5's disclosure, held as the COUNT of characters it is about rather than
+		 * as the sentence, so the same number can be persisted with the draft and the
+		 * sentence itself stays one authority (`unredactedNotice`).
+		 *
+		 * A ref beside the state for the same reason `captureRef` exists: the
+		 * CANCEL that produces this number writes it in the same tick as the buffer
+		 * (`applyCapture` → `persistDraft`), and a closure still reading the render
+		 * it was built in would persist the previous count — or none — which is
+		 * exactly the class of defect design round 2's D2 filed.
+		 */
+		const [unredactedChars, setUnredactedChars] = useState<number | null>(null);
+		const unredactedCharsRef = useRef<number | null>(null);
+		const setUnredacted = useCallback((chars: number | null) => {
+			unredactedCharsRef.current = chars;
+			setUnredactedChars(chars);
+		}, []);
 		/*
 		 * The buffer the CAPTURE itself last wrote, so a whole-buffer replacement can
 		 * be told apart from the capture's own edit (see the teardown effect below).
@@ -1023,13 +1043,29 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		/*
 		 * The session a store can reach, or `undefined` for a draft pane.
 		 *
-		 * It is the page's own "is there a live session" signal (`sessionStatus` is
-		 * supplied only once a canonical session exists), and it is the right one to
-		 * ask: on a New chat the session is created INSIDE the send, so at submit
-		 * time there is genuinely nothing to store into yet. The citation then says
-		 * so honestly (§9.3) instead of promising a key nothing holds.
+		 * `sessionStatus` IS NOT THE QUESTION — its `draft` flag is (UX round 2, U8;
+		 * QA round 2, Q5). The page supplies a status object for BOTH cases: a live
+		 * session and a New-chat pane reading `sessions.preview` (`draft: true`,
+		 * `chat-page.tsx`), because the status strip renders the draft's own readings
+		 * from the preview. Testing the object for truthiness therefore answered "yes,
+		 * there is a session" on exactly the pane where there is not one, and the
+		 * composer stored against the pane's own non-session id: `desktopRequestSchema`
+		 * refuses it locally (a session id must be twelve hex digits) with a 422 that
+		 * never reaches the wire, the composer reads that 4xx as a store refusal, and
+		 * the operator's FIRST message in a new chat arrived at the model as
+		 * `[credential NOT stored — its value did not survive]` with a warning toast
+		 * after the fact. Measured three times over three lanes: no
+		 * `POST …/credentials` on the wire, an empty session store, and no child ever
+		 * seeing a value — while the in-process pin passed, because it mounts the
+		 * composer with no status object at all.
+		 *
+		 * `draft` is the authoritative "no session yet" signal, and it is the page's
+		 * own: it is set in the two branches that have no `sessionId` and nowhere
+		 * else. Absent (a live session, or the legacy path) means the pane can store
+		 * directly.
 		 */
-		const credentialSessionId = sessionStatus ? conversationId : undefined;
+		const credentialSessionId =
+			sessionStatus && !sessionStatus.draft ? conversationId : undefined;
 
 		/*
 		 * The submit seam (§9): store what the text cites, then rewrite every
@@ -1056,9 +1092,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				sessionId: string | undefined = credentialSessionId,
 			): Promise<{ text: string; stored: string[]; refused: string[] }> => {
-				const payloads = payloadsRef.current;
-				const cited = citedPayloads(text, payloads.values());
-				if (cited.length === 0) return { text, stored: [], refused: [] };
+				/*
+				 * Materialised ONCE, because the submit walks the map more than once (the
+				 * cited set, the unbacked markers, the rewrite) and a `Map.values()`
+				 * iterator answers only the first walk.
+				 */
+				const listed = [...payloadsRef.current.values()];
+				const cited = citedPayloads(text, listed);
+				/*
+				 * AN UNBACKED MARKER IS A REASON TO RUN, WITH NO STORE CALL BEHIND IT
+				 * (design round 2, D2 + UX round 2, U11). A restored draft's marker is
+				 * part of a NORMAL message — nothing is stored for it, because its value
+				 * did not survive — but the model must still not receive the
+				 * composer-local `[Credential #N, M chars]`, so the rewrite has to
+				 * happen exactly as it does for a citation. Without this the early
+				 * return sent the bare marker verbatim, which is the silent failure
+				 * `substituteCredentials` exists to remove.
+				 */
+				if (cited.length === 0 && unbackedMarkers(text, listed).length === 0)
+					return { text, stored: [], refused: [] };
 				const refused = new Map<number, UnstoredReason>();
 				const stored: string[] = [];
 				for (const payload of cited) {
@@ -1118,10 +1170,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * model cannot use (`substitute_credentials`).
 				 */
 				return {
-					text: substituteCredentials(text, payloads.values(), refused),
+					text: substituteCredentials(text, listed, refused),
 					stored,
 					refused: [...refused.keys()].map(
-						(index) => payloads.get(index)?.key ?? `#${index}`,
+						(index) =>
+							listed.find((payload) => payload.index === index)?.key ??
+							`#${index}`,
 					),
 				};
 			},
@@ -1254,6 +1308,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// The seam's own decision reads it: with a session there is nothing to
 				// defer, so only a new-chat pane hands the host a callback.
 				credentialSessionId,
+				// The disclosure is retired by the same submit that sends the text it
+				// warns about (design round 2, D2's re-raise has this as its other half).
+				setUnredacted,
 			],
 		);
 
@@ -1269,6 +1326,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom,
 			// §6: no persisted draft write while a masked capture is open.
 			draftHeld: isTyping(capture),
+			/*
+			 * §5/§6's disclosure travels WITH the draft it describes, on every write
+			 * this hook makes — including the keystrokes that follow the cancel, which
+			 * is why it rides the hook rather than being written by the composer's own
+			 * capture path alone. Design round 2's D2 was the missing half of §6's
+			 * deliberate decision to persist the Esc-restored characters: the
+			 * characters came back and the sentence that makes them legible did not.
+			 */
+			draftUnredacted: unredactedChars ?? 0,
 		});
 
 		// Slash completion reads the caret position, so it lives above the
@@ -1319,7 +1385,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!field || at === null) return;
 			pendingCaret.current = null;
 			field.setSelectionRange(at, at);
-		}, [newMessage, textareaRef]);
+		}, [newMessage, textareaRef, setUnredacted]);
 
 		/*
 		 * ---------------------------------------------------------------------
@@ -1377,7 +1443,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (isTyping(capture)) return;
 				useConversationInputStore
 					.getState()
-					.setCurrentInput(conversationId, buffer);
+					.setCurrentInput(
+						conversationId,
+						buffer,
+						unredactedCharsRef.current ?? 0,
+					);
 			},
 			[conversationId],
 		);
@@ -1505,6 +1575,39 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [conversationId, setCapture]);
 
 		/*
+		 * WHAT THE DRAFT SAYS ABOUT ITSELF, re-raised on arrival (design round 2,
+		 * D2).
+		 *
+		 * §6 persists the Esc-restored characters deliberately — by then they are the
+		 * operator's prose — and the teardown above clears this composer's own
+		 * disclosure on a switch, which is right for a LIVE cancel and was the whole
+		 * of the persisted state: the restored draft came back holding a secret with
+		 * no notice, no arm and no pill, and one Enter exposed it. §5 says that state
+		 * must never be silent, so the count now travels with the characters in the
+		 * draft store and this raises the same sentence on the way back in.
+		 *
+		 * A subscription rather than a read of the hook's restored value, because the
+		 * store is what is persisted and the store is written on every keystroke: the
+		 * two are one fact (see `draftUnredacted`), and reading the store is what
+		 * makes the disclosure survive a write it did not itself make.
+		 *
+		 * Ordering is deliberate — this effect is declared AFTER the two that clear
+		 * the state, so within the commit that switches conversation the clear runs
+		 * first and this re-raises the incoming draft's own disclosure over it. A
+		 * count of 0 (no draft, an empty draft, or a draft with nothing unredacted)
+		 * is the common case and does nothing at all.
+		 */
+		const storedUnredactedChars = useConversationInputStore((s) =>
+			conversationId
+				? (s.inputByConversation[conversationId]?.unredactedChars ?? 0)
+				: 0,
+		);
+		useEffect(() => {
+			if (storedUnredactedChars <= 0) return;
+			setUnredacted(storedUnredactedChars);
+		}, [storedUnredactedChars, setUnredacted]);
+
+		/*
 		 * The map is retired with the BUFFER, never ahead of it (code review round
 		 * 1, MINOR-5). `retirePayloads` is the submit's request; this is the commit
 		 * that honours it, once nothing in the box still cites a payload — so the box
@@ -1595,7 +1698,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			applyCapture(minted);
 			setUnredacted(null);
 			return true;
-		}, [applyCapture, newMessage, takenCredentialNames]);
+		}, [applyCapture, newMessage, takenCredentialNames, setUnredacted]);
 
 		/*
 		 * `true` when this keypress belonged to the capture.
@@ -1634,11 +1737,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * stripped the restored characters out of the operator's sentence, so
 					 * the text they were told they were about to expose was destroyed
 					 * instead. Recorded at the cancel because the cancel is the only place
-					 * that knows which token was the gesture. `null` for an empty-span
-					 * cancel, which owes the promise to nobody and must still reach the
-					 * picker.
+					 * that knows which token was the gesture.
+					 *
+					 * RECORDED FOR THE EMPTY-SPAN CANCEL TOO (UX round 2, U9), which is
+					 * the round-2 correction: `null` there was justified by the NOTICE
+					 * being suppressed — nothing was restored, so there is nothing to
+					 * warn about — and that is true about the notice and false about the
+					 * submit. With no token registered, `/credential ` + Esc +
+					 * `mysecretname` + Enter dispatched the command, ate the operator's
+					 * words as its argument and stripped them out of the box. What the
+					 * cancel promises is that the gesture is OVER; the token is how the
+					 * submit is told.
 					 */
 					cancelledToken.current = cancelled.token;
+					setUnredacted(cancelled.restored > 0 ? cancelled.restored : null);
 					applyCapture(cancelled);
 					/*
 					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
@@ -1646,13 +1758,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * ordinary while holding characters that are now plain text, and
 					 * the very next Enter exposes them. The length is the count, never
 					 * the value. An empty cancel owes no warning — it put nothing in
-					 * the buffer.
+					 * the buffer — and the count travels with the draft it describes, so
+					 * the same sentence comes back on a reload (design round 2, D2).
+					 *
+					 * SET BEFORE `applyCapture`, deliberately, because that call is what
+					 * PERSISTS the draft: it reads this count off the ref, and a cancel
+					 * that wrote the characters first and the count second would put a
+					 * disclosure-free plaintext draft on disk — silently, and only
+					 * after a reload, which is exactly the shape D2 filed.
 					 */
-					setUnredacted(
-						cancelled.restored > 0
-							? unredactedNotice(cancelled.restored)
-							: null,
-					);
+					setUnredacted(cancelled.restored > 0 ? cancelled.restored : null);
+					applyCapture(cancelled);
 					return true;
 				}
 
@@ -1705,6 +1821,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// `takenCredentialNames` itself, which is why that is no longer a
 				// dependency here.
 				submitCapture,
+				setUnredacted,
 			],
 		);
 
@@ -2646,7 +2763,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * - TYPING is the state where the operator most needs words, because their
 		 *   keystrokes are producing bullets instead of characters — alarming rather
 		 *   than reassuring unless something says it is deliberate AND how it ends,
-		 *   so the sentence names the mask and both keys;
+		 *   so the sentence names the mask and both keys. An EMPTY span is the same
+		 *   state with the other Enter outcome, so it gets its own sentence rather
+		 *   than the pill promise (UX round 2, U10 — see the constants);
 		 * - ARMED is shown only while the token is still the caret's own tail, which
 		 *   is exactly when a space would open the span. The TUI shows its armed
 		 *   notice in the picker's row, which only exists during the argument phase
@@ -2656,24 +2775,32 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * - UNREDACTED outranks ARMED and TYPING cannot coexist with it. It reports a
 		 *   state the operator did not ask to be in (they asked to cancel) and the one
 		 *   where the next Enter discloses a secret, so it is the warning tone rather
-		 *   than muted ink — the same reason the TUI posts it as a warning.
+		 *   than muted ink — the same reason the TUI posts it as a warning. The
+		 *   sentence is built from the count here rather than stored, so the notice a
+		 *   RESTORE raises and the notice the cancel raised are the same words from the
+		 *   same authority (design round 2, D2).
 		 */
 		const credentialNotice = isTyping(capture)
-			? CREDENTIAL_TYPING_NOTICE
-			: (unredacted ??
-				(capture.arm !== null &&
-				// Measured at the END OF THE BUFFER rather than at the `caret` state,
-				// and the difference is a race rather than a nicety: `caret` lags one
-				// commit behind the keystroke that moved it, so a derivation that read it
-				// here would flicker the armed notice on and off between renders — and in
-				// the evidence play functions it did, producing a frame with the notice in
-				// one theme and not in the next. The line's tail is the true subject of the
-				// predicate (`CREDENTIAL_ARM` is anchored to the caret's own line end), and
-				// the end of the buffer is that same tail in every state the operator can
-				// be typing in.
-				armSpan(newMessage, newMessage.length) !== null
+			? capture.value !== ""
+				? CREDENTIAL_TYPING_NOTICE
+				: credentialSessionId
+					? CREDENTIAL_EMPTY_SPAN_NOTICE
+					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
+			: unredactedChars !== null
+				? unredactedNotice(unredactedChars)
+				: capture.arm !== null &&
+						// Measured at the END OF THE BUFFER rather than at the `caret` state,
+						// and the difference is a race rather than a nicety: `caret` lags one
+						// commit behind the keystroke that moved it, so a derivation that read it
+						// here would flicker the armed notice on and off between renders — and in
+						// the evidence play functions it did, producing a frame with the notice in
+						// one theme and not in the next. The line's tail is the true subject of the
+						// predicate (`CREDENTIAL_ARM` is anchored to the caret's own line end), and
+						// the end of the buffer is that same tail in every state the operator can
+						// be typing in.
+						armSpan(newMessage, newMessage.length) !== null
 					? CREDENTIAL_ARMED_NOTICE
-					: null));
+					: null;
 
 		const shortcutText = useMemo(() => {
 			if (platform === "darwin") {
@@ -3289,46 +3416,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						</div>
 					)}
 
-					{/*
-					 * The capture's own notice, in the `<output>` register the interrupt
-					 * sentence already uses: the result of a user action, said politely.
-					 * It sits INSIDE the box because it is about what the box is doing
-					 * with the next keystroke, and its horizontal padding matches the
-					 * textarea's own so the two lines share a text edge.
-					 *
-					 * IT TAKES ITS SPACE WHETHER OR NOT IT HAS A SENTENCE (design round 1,
-					 * D3). Mounted conditionally, the sentence arriving pushed the typed
-					 * line, the caret and the whole attach/send row down by 35.5px in the
-					 * middle of a word — and the mint pushed them back, so the pill the
-					 * operator had just made jumped 36px while they were looking at it.
-					 * Reserving one line box keeps the textarea's own `y` identical in all
-					 * four states: idle, armed, masked and minted. The value is spelled as
-					 * the type step it reserves rather than as the measured total, so it
-					 * cannot drift from the font: `--text-body-sm` is 13px at line-height
-					 * 1.5, i.e. this 19.5px line box, and `pb-1` adds the 4px the design
-					 * round measured on top of it. Every sentence this slot can hold fits
-					 * one line at the composer's own floor width, which is what makes one
-					 * line the right reservation.
-					 *
-					 * AND IT IS DESCRIBED TO THE FIELD (UX round 1, U7). `role="status"`
-					 * announces every CHANGE, which serves an operator who types through
-					 * the state and does nothing for one who arrives at an already-masked
-					 * composer: the field's value reads out as bullets and nothing says
-					 * why. `aria-describedby` is set only while there is a sentence, so an
-					 * idle composer is not described by an empty element.
-					 */}
-					<output
-						id={CREDENTIAL_NOTICE_ID}
-						className={cn(
-							"block text-body-sm min-h-[19.5px]",
-							isSmallView ? "px-1.5 pb-1" : "px-2 pb-1",
-							// The unredact is the one state where the next Enter discloses a
-							// secret, so it takes the warning role rather than muted ink.
-							unredacted ? "text-warning" : "text-ink-muted",
-						)}
-					>
-						{credentialNotice}
-					</output>
 					{isRecording ? (
 						<AudioRecordingIndicator isRecording={isRecording} />
 					) : isTranscribing ? (
@@ -3726,6 +3813,73 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									/>
 								)}
 							</div>
+
+							{/*
+							 * The capture's own notice, in the `<output>` register the interrupt
+							 * sentence already uses: the result of a user action, said politely.
+							 *
+							 * IT LIVES ON A ROW THE COMPOSER ALREADY HAS, AND COSTS NO HEIGHT
+							 * (design round 2, D3 + D4). Round 1 reserved a line ABOVE the textarea,
+							 * and round 2 measured what that cost from both ends: the reservation
+							 * was 19.5px while a populated notice is 23.5px, because
+							 * `min-h-[19.5px]` (border-box) did not include the sentence's own
+							 * `pb-1`, so arming still moved the typed line, the caret and the whole
+							 * attach/send row by 4px at the two keystrokes round 1 named — and the
+							 * reserved band was then the composer's standing shape in EVERY state,
+							 * idle included, which puts the idle composer's ring 38px below the
+							 * composer it replaced.
+							 *
+							 * Both are gone by construction here. This row is 32px tall at every
+							 * width in every state — it is sized by its icon buttons — so a single
+							 * 19.5px line inside it adds NOTHING in any of the four states: the
+							 * textarea's `y` is the pre-change value in all four, measured rather
+							 * than asserted. An empty notice (the idle composer) generates no line
+							 * box at all, so nothing is reserved and the idle composer IS the
+							 * composer that was there before this feature. Nothing moves: not the
+							 * typed line, not the caret, not the row.
+							 *
+							 * WHERE IN THE ROW, and why not the free space at the far end. The cell
+							 * sits between the attach/chip group and the controls, with `order-2`
+							 * above the column threshold: the strip's DOM slot is first and the
+							 * controls are `order-3`, so the paint stays
+							 * [attach][chip][readings][notice][mic][send] — D7's "the readings sit
+							 * immediately after the chip" is preserved, and the sentence lands in the
+							 * row's own free space rather than in a band of its own.
+							 *
+							 * IT WRAPS RATHER THAN TRUNCATING, deliberately, and that is the one
+							 * residual, stated plainly: at a column wide enough to hold the sentence
+							 * on the row's own line (measured: 750px of free row at the composer's
+							 * 900px measure, against a 353.86px sentence) the row never grows at
+							 * all, while a column narrow enough that the sentence cannot fit lets it
+							 * take a second line — 19.5px against the row's 32px, so the row grows by
+							 * at most 7.5px there, against the 23.5px a band of its own would have
+							 * cost at every width. Truncating instead would hold that at zero by
+							 * promising less than it says: the whole argument for this sentence is
+							 * that it is the ONE channel that survives `NO_COLOR` (§7.1), so a
+							 * clipped "…Esc cancels" is the sentence failing at its only job.
+							 *
+							 * AND IT IS DESCRIBED TO THE FIELD (UX round 1, U7). `role="status"`
+							 * announces every CHANGE, which serves an operator who types through
+							 * the state and does nothing for one who arrives at an already-masked
+							 * composer: the field's value reads out as bullets and nothing says
+							 * why. `aria-describedby` is set only while there is a sentence, so an
+							 * idle composer is not described by an empty element.
+							 *
+							 * It is no longer padded to share a text edge with the textarea: it is
+							 * no longer a second line of the composer's text, and the row's own
+							 * `gap-x-2` is what separates it from the chip and the controls.
+							 */}
+							<output
+								id={CREDENTIAL_NOTICE_ID}
+								className={cn(
+									"min-w-0 text-body-sm @min-[750px]/chatcol:order-2",
+									// The unredact is the one state where the next Enter discloses a
+									// secret, so it takes the warning role rather than muted ink.
+									unredactedChars !== null ? "text-warning" : "text-ink-muted",
+								)}
+							>
+								{credentialNotice}
+							</output>
 
 							{/* Right side: microphone, send or stop button.
 							 *

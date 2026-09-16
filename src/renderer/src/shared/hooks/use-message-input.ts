@@ -268,6 +268,23 @@ type UseMessageInputOptions = {
 	 */
 	draftHeld?: boolean;
 	/**
+	 * How many characters of the current draft are characters an Esc unredacted
+	 * back into the composer as PLAIN TEXT, or 0 (§5, §6).
+	 *
+	 * Written WITH the draft on every write this hook makes, because the two are
+	 * one fact: the persisted characters are on disk (that is what §6 decided), and
+	 * the disclosure that says so has to travel with them or a reload restores a
+	 * secret into an ordinary-looking composer. Design round 2's D2 is exactly
+	 * that: the live state disclosed itself, the restored one did not, and the very
+	 * next Enter exposed the characters.
+	 *
+	 * The count comes from the composer, which is the only thing that knows it (the
+	 * cancel's own answer), and it rides here rather than being written by the
+	 * composer separately so the two halves cannot be written apart — the same
+	 * reason `draftHeld` gates the write in this hook instead of at each caller.
+	 */
+	draftUnredacted?: number;
+	/**
 	 * Submits the message.
 	 *
 	 * `onEchoPainted` is the seam that lets the composer clear itself at the
@@ -291,6 +308,7 @@ export const useMessageInput = ({
 	onSubmit,
 	scrollToBottom,
 	draftHeld = false,
+	draftUnredacted = 0,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -428,11 +446,17 @@ export const useMessageInput = ({
 				// cannot mistake it for a restore somebody else made.
 				if (draftHeld) return;
 				lastPushedRef.current = value;
-				setCurrentInput(conversationId, value);
+				setCurrentInput(conversationId, value, draftUnredacted);
 				resetCurrentHistoryIndex(conversationId);
 			}
 		},
-		[conversationId, setCurrentInput, resetCurrentHistoryIndex, draftHeld],
+		[
+			conversationId,
+			setCurrentInput,
+			resetCurrentHistoryIndex,
+			draftHeld,
+			draftUnredacted,
+		],
 	);
 
 	const submittingRef = useRef(false);
