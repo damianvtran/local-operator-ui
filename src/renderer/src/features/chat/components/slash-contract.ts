@@ -356,6 +356,31 @@ export function pointerPickRuns(
  * matched and the string `completionFor` writes, and the caller's set holds both
  * members of that pair.
  */
+/**
+ * The fact each GESTURE acts on, which is not the same fact for both.
+ *
+ * The keyboard's Enter reads the LATCH — an arrow is a choice only when it actually
+ * moved the marker — while a POINTER pick names one exact row, so it is a choice
+ * whatever the marker's history (`pickArmsCommand`'s own docstring: "an arrow key is
+ * a choice, a CLICK is a choice, and a pre-selected row is neither"). The popup's
+ * click line read the latch, which cannot be true for a one-row list, so it promised
+ * a completion on the one gesture that hoists the draft and stages it — measured in
+ * the running app three rounds running (UX r2 U2, review r3 MAJOR-1 = UX r3 U1). The
+ * decision has one home so the two lines cannot disagree about their own gestures.
+ */
+export function gestureArmsCommand(
+	row: RoutableRow,
+	armedOnlyCommands: ReadonlySet<string>,
+	gesture: "key" | "pointer",
+	latched: boolean,
+): boolean {
+	return pickArmsCommand(
+		row,
+		armedOnlyCommands,
+		gesture === "pointer" ? true : latched,
+	);
+}
+
 export function pickArmsCommand(
 	row: RoutableRow,
 	armedOnlyCommands: ReadonlySet<string>,

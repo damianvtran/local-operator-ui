@@ -745,8 +745,38 @@ const GeometryProbe = ({
 	 */
 	forceScrollbar?: boolean;
 }) => {
+	const conversationId = conversationIdFor(label);
 	const queryClient = useQueryClient();
 	const boxRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE GUTTER IS FORCED BEFORE THE FIRST MEASURE, in an effect declared above it.
+	 *
+	 * It used to be injected in the same tick as the measurement, so the settled pass
+	 * read `scrollbar gutter 0px` and `paddingRight 8px vs 8px` in all twelve frames
+	 * (design round 3 D10, review round 3 MAJOR-2): the pair the round-2 prose quoted
+	 * was the value the injection WOULD produce, not one any frame carried, and the
+	 * correction it exists to measure never ran. Effects run in declaration order, so
+	 * this one applies the rule and lets the layout settle before the probe reads.
+	 *
+	 * A classic scrollbar needs BOTH: `overflow-y: scroll` reserves the track, and an
+	 * explicit `::-webkit-scrollbar` width stops Chromium from drawing one of the OS's
+	 * overlay scrollbars, which measure a 0px gutter however they are asked for
+	 * (measured on this machine: `overflow-y: scroll` alone still reported 0). This is
+	 * the platform setting's rendering, produced without touching the operator's
+	 * system preferences.
+	 */
+	useLayoutEffect(() => {
+		if (!forceScrollbar) return;
+		const textarea = boxRef.current?.querySelector("textarea");
+		if (!textarea) return;
+		const style = document.createElement("style");
+		style.textContent =
+			"textarea::-webkit-scrollbar { width: 15px; } textarea::-webkit-scrollbar-thumb { background: rgb(120,120,120); }";
+		document.head.appendChild(style);
+		textarea.style.overflowY = "scroll";
+		window.dispatchEvent(new Event("resize"));
+		return () => style.remove();
+	}, [forceScrollbar]);
 	const [rows, setRows] = useState<Record<string, string>>({});
 	/*
 	 * THE VOCABULARY IS SEEDED BEFORE THE FIRST MEASURE — see the note inside the
@@ -755,7 +785,20 @@ const GeometryProbe = ({
 	 */
 	useLayoutEffect(() => {
 		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
-	}, [queryClient]);
+		/*
+		 * AND THE ROSTER, which the `name` run reads (`useEntities`), for the same
+		 * reason one round later: it resolves over the API fixture after first paint,
+		 * so the first measure saw a run set its own pixels did not paint — three of
+		 * twelve frames printed `run fontWeights command=600` beside a visible green
+		 * name run (design round 3 D9). Seeded, every pass describes one state.
+		 */
+		for (const command of ["team", "agent"]) {
+			queryClient.setQueryData(
+				["desktop", "entities", conversationId, command, ""],
+				{ entities: TEAM_ENTITIES, current: "" },
+			);
+		}
+	}, [queryClient, conversationId]);
 	useLayoutEffect(() => {
 		const box = boxRef.current;
 		if (!box) return;
@@ -860,18 +903,19 @@ const GeometryProbe = ({
 				}
 			}
 			/*
-			 * The FRAME carries the first pass; a later pass never replaces it.
+			 * The FRAME carries the first pass, and a later pass only WARNS.
 			 *
-			 * That is a measured decision, not a preference. The capture takes the
-			 * shutter as soon as the story is drawn, so the frame has to carry a
-			 * reading that is already true then — and the later passes are not more
-			 * settled, they are differently timed: in obsidian the first pass reports
-			 * `textarea caret rgb(241, 238, 230)` and the 400 ms one reports
-			 * `rgba(0, 0, 0, 0)`, because the theme's CSS variables land on their own
-			 * schedule and `caret-color` reads through them. A frame set whose numbers
-			 * describe the theme two ways is the D2 defect, so the readback is fixed on
-			 * the pass the frame can actually carry, and a later disagreement is
-			 * WARNED about with both readings rather than silently overwriting it.
+			 * The capture takes its shutter as soon as the story is drawn, so the
+			 * reading a frame carries has to be true by then: the vocabulary and the
+			 * roster are both seeded before the first measure precisely so that it is,
+			 * and the later passes exist to CONFIRM it rather than to supersede it. The
+			 * warning names both readings, because a disagreement here is not a matter
+			 * of taste — it means the composed app was not the state the numbers
+			 * describe, which is what round 2 and round 3 both caught: the `name` run
+			 * was absent from pass 1 in obsidian, dune and localOperatorLight (the
+			 * roster resolves over the API fixture), so those frames printed
+			 * `run fontWeights command=600` while their own pixels painted a green name
+			 * (design round 3 D9). Nothing here can make that visible; the warning can.
 			 */
 			if (pass === "settled") {
 				settled = JSON.stringify({ ...entry, pass: undefined });
@@ -888,14 +932,14 @@ const GeometryProbe = ({
 			);
 		};
 		/*
-		 * Measured THREE TIMES, and the repeats are not belt-and-braces: the
-		 * composer's command vocabulary arrives from the `commands.list` fixture over
-		 * a resolved promise, so a reading taken on the second animation frame
-		 * measures an app whose registry is still empty — every word reads as
-		 * `unknown` (measured: the first pass logged `run unknown "/compact"`). The
-		 * later passes are what the frame and the numbers should describe, and
-		 * logging all three keeps the timing visible rather than hidden behind the
-		 * last one.
+		 * Measured THREE TIMES, and the repeats are a CONFIRMATION rather than a
+		 * ladder: the first pass is the settled one because both fixtures the surface
+		 * reads are seeded before it — `commands.list` (the vocabulary) and
+		 * `commands.entities` (the roster, which is what the `name` run needs and what
+		 * round 3's D9 caught missing: three of twelve frames printed no name run while
+		 * their own pixels painted one). The later passes exist so a reading that comes
+		 * out differently can say so instead of being frozen silently; they are logged
+		 * with their pass name so the timing stays visible.
 		 */
 		/*
 		 * THE VOCABULARY IS SEEDED BEFORE THE FIRST MEASURE.
@@ -912,34 +956,11 @@ const GeometryProbe = ({
 		const timers: ReturnType<typeof setTimeout>[] = [];
 		const raf = requestAnimationFrame(() =>
 			requestAnimationFrame(() => {
-				if (forceScrollbar) {
-					const textarea = boxRef.current?.querySelector("textarea");
-					if (textarea) {
-						/*
-						 * A classic scrollbar needs BOTH: `overflow-y: scroll` reserves the
-						 * track, and an explicit `::-webkit-scrollbar` width stops Chromium
-						 * from drawing one of the OS's overlay scrollbars, which measure a
-						 * 0px gutter however they are asked for (measured on this machine:
-						 * `overflow-y: scroll` alone still reported 0). This is the
-						 * platform setting's rendering, produced without touching the
-						 * operator's system preferences.
-						 */
-						const style = document.createElement("style");
-						style.textContent =
-							"textarea::-webkit-scrollbar { width: 15px; } textarea::-webkit-scrollbar-thumb { background: rgb(120,120,120); }";
-						document.head.appendChild(style);
-						textarea.style.overflowY = "scroll";
-						window.dispatchEvent(new Event("resize"));
-					}
-				}
 				/*
-				 * The FIRST pass is the settled one, because the registry above is
-				 * seeded; the later passes only CONFIRM it. They do not overwrite the
-				 * frame's readback when they agree, so the frame carries a settled
-				 * reading (the capture fires on its own schedule and used to photograph
-				 * a pass whose numbers described an app with an empty vocabulary), and
-				 * they DO overwrite it and say so when they disagree — a broken seed is
-				 * then loud rather than silently absorbed.
+				 * The FIRST pass is the settled one, because both fixtures are seeded
+				 * before it; the later passes CONFIRM it. The frame keeps the settled
+				 * readback and a later pass that differs only WARNS with both readings
+				 * (above) — it never replaces what the frame shows.
 				 */
 				measure("settled");
 				timers.push(setTimeout(() => measure("confirm-400ms"), 400));
