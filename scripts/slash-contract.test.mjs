@@ -61,6 +61,7 @@ const {
 	matchChoices,
 	NO_CONVERSATION_CLAUSE,
 	phaseLabel,
+	gestureArmsCommand,
 	pickArmsCommand,
 	pickStagesDraft,
 	planSlashArming,
@@ -1344,6 +1345,7 @@ test("a pick of the armed row hoists and stages; other rows are unchanged", () =
 	 * moves it.
 	 */
 	assert.equal(pickArmsCommand(armedRow("team"), ARMED_ONLY, true), false);
+
 	assert.equal(pickArmsCommand(armedRow("model"), ARMED_ONLY, true), false);
 	// An argument row never arms: an arming gesture NAMES a command.
 	assert.equal(pickArmsCommand(argumentRow("gpt-5"), ARMED_ONLY, true), false);
@@ -1375,6 +1377,38 @@ test("a pick of the armed row hoists and stages; other rows are unchanged", () =
 			armedOnlyCommands: ARMED_ONLY,
 		}),
 		{ kind: "none" },
+	);
+});
+
+/*
+ * AND THE TWO GESTURES DO NOT READ THE SAME FACT.
+ *
+ * The click line read the keyboard's LATCH (`state.chosenByHand`), which cannot be
+ * true for a one-row list — only an arrow that actually MOVED the marker latches,
+ * and a one-row list clamps — while the click itself hands the pick
+ * `chosenByHand: true` and stages the draft. So in the state UX r2 U2 was filed on,
+ * the popup printed "Click completes /goal." over the only gesture that arms it
+ * (review r3 MAJOR-1 = UX r3 U1, measured in the running app on both wires).
+ */
+test("the click line reads the pointer gesture, not the keyboard's latch", () => {
+	// A pointer pick names one exact row: it is a choice whatever the marker did.
+	assert.equal(
+		gestureArmsCommand(armedRow("goal"), ARMED_ONLY, "pointer", false),
+		true,
+	);
+	// The keyboard's Enter needs the latch, and a pre-selected row has none.
+	assert.equal(
+		gestureArmsCommand(armedRow("goal"), ARMED_ONLY, "key", false),
+		false,
+	);
+	assert.equal(
+		gestureArmsCommand(armedRow("goal"), ARMED_ONLY, "key", true),
+		true,
+	);
+	// Rows that do not arm answer false either way.
+	assert.equal(
+		gestureArmsCommand(armedRow("team"), ARMED_ONLY, "pointer", false),
+		false,
 	);
 });
 
@@ -1516,6 +1550,17 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 	assert.equal(enterLine.includes("completes"), false);
 	assert.equal(clickFooter(composed), "Click stages /goal.");
 	assert.equal(clickFooter(composed).includes("runs"), false);
+	/*
+	 * The click line at THIS gesture: `composed` above carries the keyboard's latch
+	 * for its Enter half, and the pointer's own answer for the click's half. Feeding
+	 * the click the latch instead is the regression this pins — it printed a
+	 * completion over the gesture that hoists the sentence.
+	 */
+	assert.equal(
+		clickFooter({ ...composed, arms: false }),
+		"Click completes /goal.",
+		"the latch alone is not the pointer's fact - this is what the line said",
+	);
 
 	// Nothing survives the word — a bare `/goal` — so the pick completes it and the
 	// bare form is run by the next Enter. That is #221's own answer and it stays.

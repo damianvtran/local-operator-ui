@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -19,7 +20,8 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/components/slash-highlight";',
+			'export * from "./src/renderer/src/features/chat/components/slash-highlight";\n' +
+			'export { planSlashSubmission } from "./src/renderer/src/features/chat/components/slash-submit";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -27,8 +29,13 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { slashHighlightRuns, firstContentLine, runsMatchingPlan, runInkClass } =
-	await import(
+const {
+	slashHighlightRuns,
+	firstContentLine,
+	runsMatchingPlan,
+	runInkClass,
+	planSlashSubmission,
+} = await import(
 		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 	);
 
@@ -290,4 +297,74 @@ test("every run steps colour when the composer is disabled", () => {
 	);
 	assert.equal(runInkClass("name", false), "text-success");
 	assert.equal(runInkClass("unknown", false), "text-ink-dim");
+});
+
+/*
+ * THE WIRING, NOT ONLY THE PREDICATES (review r3 MINOR-1).
+ *
+ * The pure gate was pinned in round 2, and deleting the CALL left 149 tests green:
+ * a suite that only exercises `runsMatchingPlan` cannot see a composer that stopped
+ * asking it. These two rows go draft -> real plan -> runs, which is the chain the
+ * composer runs, and the source assertion below is what fails if the call itself is
+ * removed (the shape the reviewer measured: `return runs;`).
+ */
+test("draft -> plan -> runs: the tint follows what Enter will do", () => {
+	const planFor = (draft) =>
+		planSlashSubmission({
+			draft,
+			caret: draft.length,
+			commandNames: COMMAND_NAMES,
+			// The composer's own derivation (`promptCommands ∪ inlineArgumentFor`),
+			// as the popup builds it: the words whose trailing text is prose.
+			promptCommands: new Set(["goal", "loop", "btw", "fork", "team", "agent"]),
+			prefixingCommands: new Set(["team", "agent", "fork", "btw", "loop", "goal"]),
+			nameListCommands: NAME_LIST_COMMANDS,
+			armedOnlyCommands: new Set(["goal"]),
+			// One wire row: `compact` declares `argument_shape: "none"` with no words,
+			// which is what makes `/compact hello` prose on a shaped backend.
+			argumentShapes: new Map([
+				["compact", { shape: "none", words: new Set() }],
+			]),
+			enabled: true,
+		});
+	const painted = (draft) =>
+		runsMatchingPlan(runs(draft), draft, {
+			sendsAsWritten: planFor(draft).kind === "send",
+		});
+
+	// A word the shaped wire says owns no text: Enter sends the draft, so nothing is
+	// painted even though the run rule paints the word on its own.
+	assert.equal(planFor("/compact hello").kind, "send");
+	assert.deepEqual(painted("/compact hello"), []);
+	// The same word as the whole draft: Enter runs it, so the run stays.
+	assert.equal(planFor("/compact").kind, "whole");
+	assert.ok(painted("/compact").length > 0);
+});
+
+test("the composer and the mirror both make the calls these pins describe", () => {
+	/*
+	 * A source assertion, and deliberately so: the gates are called from a React
+	 * render, where no unit test can reach the CALL without a DOM harness this repo
+	 * does not have for the composer. It fails on exactly the mutation the reviewer
+	 * used (`return runs;` at the memo, or a mirror that stops asking for the ink),
+	 * which is the property worth pinning.
+	 */
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	assert.match(
+		composer,
+		/runsMatchingPlan\(runs, newMessage, \{\s*sendsAsWritten: plan\.kind === "send",/,
+		"the composer must consult the plan before painting",
+	);
+	const mirror = readFileSync(
+		"src/renderer/src/features/chat/components/composer-highlight.tsx",
+		"utf8",
+	);
+	assert.match(
+		mirror,
+		/runInkClass\(segment\.kind, disabled\)/,
+		"the mirror must step its ink through the same helper the pin exercises",
+	);
 });

@@ -74,7 +74,7 @@ import {
 	commandLabels,
 	enterFooter,
 	phaseLabel,
-	pickArmsCommand,
+	gestureArmsCommand,
 	rowId,
 	sharedCommandPrefix,
 	slashDestructive,
@@ -967,9 +967,10 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		 */
 		arms:
 			activeRow?.kind === "command"
-				? pickArmsCommand(
+				? gestureArmsCommand(
 						activeRow,
 						state.armedOnlyCommands,
+						"key",
 						state.chosenByHand,
 					)
 				: false,
@@ -1018,14 +1019,25 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		label: activeRow?.kind === "command" ? activeRow.label : "",
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: pickRuns,
-		// A click on an armed row STAGES; `pointerPickRuns` still answers `true` for
-		// the goal destination, so this line cannot promise a run on the row whose
-		// pick hoists the draft (UX U2 / design D1).
+		/*
+		 * THE CLICK LINE'S OWN GESTURE, not the keyboard's.
+		 *
+		 * A pointer pick names one exact row, so it IS a choice — the fact the pick
+		 * handler hard-codes as `onPick(row, { run: true, chosenByHand: true })` and
+		 * the fact `pickArmsCommand`'s docstring calls "a CLICK is a choice". Reading
+		 * `state.chosenByHand` here (the arrow LATCH, set only when an arrow actually
+		 * moved the marker, and a one-row list never moves) made this line say
+		 * "Click completes /goal." in the exact state the click hoists the draft to
+		 * `/goal I approve spend` and stages it (review round 3 MAJOR-1 = UX round 3
+		 * U1, measured in the running app on both wires). The Enter line above keeps
+		 * the latch, because Enter's disposition is the latch.
+		 */
 		arms:
 			activeRow?.kind === "command"
-				? pickArmsCommand(
+				? gestureArmsCommand(
 						activeRow,
 						state.armedOnlyCommands,
+						"pointer",
 						state.chosenByHand,
 					)
 				: false,
