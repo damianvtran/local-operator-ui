@@ -7,11 +7,28 @@
  * The frames to judge the panel on are the degrade ones, because `/info` is the
  * one panel whose two halves come from different places:
  *
- * - `Unavailable` is a backend that did not answer, and sections 4 and 5 still
+ * - `Unavailable` is a backend that did not answer, and sections 5 and 6 still
  *   render — the panel degrades SECTION BY SECTION, never to a blank, because
  *   the conversation facts are live local state rather than a second read.
  * - `BuildSkew` and `RosterUnread` are the two caveats the host half can carry,
  *   each a quiet line rather than a warning about a number nobody measured.
+ * - The `Fleet*` frames are the new "Agents and subagents" section's honesty
+ *   rules, and they are the ones to judge closely, because every one of them is
+ *   a state in which a number would be a lie: `FleetAllReporting` (the measured
+ *   answer), `FleetOneDoesNotReport` (the `≥` lower bound on the figure itself,
+ *   not only in the sentence below it), `FleetNobodyReports` (the `—` refusal —
+ *   never a fabricated `0`), `FleetQueuedOnly` (`none running · Q queued`, so a
+ *   zero total does not contradict a visible queue), `FleetAllIdle` (the one
+ *   state in which `none running` is a measurement) and `FleetWedged` (the
+ *   runtime split plus the as-of-its-last-heartbeat caveat). `FleetUnavailable`
+ *   is the registry that could not be scanned: the section then carries no
+ *   numbers at all, only the notice section 3 shows. `FleetProbesFailed` is the
+ *   sixth refusal — a probe that failed is `—`, never `0` — in its field-level
+ *   spelling, and `FleetAgentsUnread` is its block-level half. `FleetNeighbours`
+ *   is the section in SITU, with the sessions section directly above it, which is
+ *   the only frame that can answer "does this belong to this panel". `FleetNarrow`
+ *   is 720px, and `FleetNoteWraps` is the one frame whose note WRAPS, which is
+ *   where the separator's fix is judged from pixels rather than from a test.
  * - `RemoteHost` is the label that keeps the panel honest when the backend is
  *   not on this machine: the host facts describe the machine the app is
  *   CONNECTED TO, which is why section 2's meta says exactly that.
@@ -137,11 +154,23 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 		build_skew: false,
 		usage_available: true,
 		available: true,
-		subagents_reporting: 1,
+		/*
+		 * The fleet roll-ups satisfy the terminal's own arithmetic, because this
+		 * section renders them side by side: `fleet_session_trajectories` is the
+		 * BUSY live count above, `fleet_trajectories` is that plus
+		 * `fleet_subagents_running`, and `subagents_reporting + subagents_unreported`
+		 * is the LIVE count. A fixture whose addends do not reach its total is a
+		 * fixture a reviewer has to distrust, and the note column prints all three.
+		 * The magnitudes stay SCALED to this host's three-row registry: the counter
+		 * that fed `≥42 trajectories` at briefing time came from a host running
+		 * twenty-one sessions, and a twenty-one-runtime counter above a three-row
+		 * table would be the same defect in the other direction.
+		 */
+		subagents_reporting: 2,
 		subagents_unreported: 0,
-		fleet_subagents_running: 1,
+		fleet_subagents_running: 3,
 		fleet_subagents_queued: 0,
-		fleet_session_trajectories: 2,
+		fleet_session_trajectories: 1,
 		fleet_trajectories: 4,
 	},
 	agents: {
@@ -225,6 +254,23 @@ const base = {
 	gated: false,
 };
 
+/** The fleet roll-ups, overridden as one coherent set on top of the registry. */
+const fleet = (
+	over: Partial<DesktopInfoData["sessions"]> = {},
+): DesktopInfoData => info({ sessions: { ...info().sessions, ...over } });
+
+/**
+ * The base registry with nothing in flight.
+ *
+ * The idle and queued states need it because `busy` is a LINE flag, not a
+ * counter one can zero on its own: leaving the busy row in place under a
+ * `none running` header is the contradiction those two stories exist to show.
+ */
+const idleLines = (
+	lines: DesktopInfoData["sessions"]["lines"],
+): DesktopInfoData["sessions"]["lines"] =>
+	lines.map((line) => ({ ...line, busy: false, pending: null }));
+
 const meta: Meta<typeof InfoPanel> = {
 	title: "panels-info",
 	component: InfoPanel,
@@ -284,7 +330,15 @@ export const BuildSkew: Story = {
 		...base,
 		data: info({
 			sessions: { ...info().sessions, build_skew: true },
-			degraded: [["sessions.fleet_trajectories", "the registry answered late"]],
+			/*
+			 * A name the harness really emits (`env.tty` is an `isatty` read that can
+			 * fail; `_safe("env.tty", …)` writes this entry). The previous spelling,
+			 * `sessions.fleet_trajectories`, is a field the collector cannot fail on:
+			 * a scan that fails is spelled `available === false`, and now that this
+			 * panel prints numbers from that field, naming it here would make section
+			 * 7 disclaim a reading section 4 renders (review round 1, N3).
+			 */
+			degraded: [["env.tty", "IsattyError: stdout has no terminal"]],
 		}),
 		frontend,
 	},
@@ -327,7 +381,7 @@ export const NoMemory: Story = {
 	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
-/** The registry scan failed: section 3 says so, sections 4 and 5 still render. */
+/** The registry scan failed: section 3 says so, sections 5 and 6 still render. */
 export const RegistryUnavailable: Story = {
 	args: {
 		...base,
@@ -340,7 +394,264 @@ export const RegistryUnavailable: Story = {
 };
 
 /**
- * A backend that did not answer: sections 1-3 are unavailable, 4 and 5 are not.
+ * The measured answer: every runtime reported, and the fleet is doing work.
+ *
+ * `2 runtimes · 4 trajectories` in the section's own meta, with the addends
+ * beside the figure. This is the state the section is normally read in, and the
+ * one every other `Fleet*` frame is a departure from.
+ */
+export const FleetAllReporting: Story = {
+	args: { ...base, data: fleet(), frontend },
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * One runtime is an older build and cannot report its subagents.
+ *
+ * The `≥` rides the FIGURE rather than only the caveat sentence, because a
+ * qualifier the reader has to scroll to is not a qualifier: without it the meta
+ * would present a sum with a missing term as a total.
+ */
+export const FleetOneDoesNotReport: Story = {
+	args: {
+		...base,
+		data: fleet({ subagents_reporting: 1, subagents_unreported: 1 }),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * Nobody could report, and nothing at all was measured: the `—` refusal.
+ *
+ * `0` here would be pure fabrication — no runtime answered — and the note names
+ * WHY the value is unknown instead of printing the addends as three zeros.
+ */
+export const FleetNobodyReports: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 0,
+			lines: idleLines(info().sessions.lines),
+			subagents_reporting: 0,
+			subagents_unreported: 2,
+			fleet_subagents_running: 0,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 0,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * Nothing is running and children are waiting: `none running · 3 queued`.
+ *
+ * The queued children are named BESIDE the measured `0 total`, never added into
+ * it — a child on a capacity slot spends nothing, so counting it as a trajectory
+ * would inflate the number this section exists to state precisely. But a bare
+ * `0` above a visible queue is the same contradiction reached by arithmetic.
+ */
+export const FleetQueuedOnly: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 0,
+			lines: idleLines(info().sessions.lines),
+			fleet_subagents_running: 0,
+			fleet_subagents_queued: 3,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 0,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * Every runtime reported zero and nothing is waiting: `none running`.
+ *
+ * The one state in which the bare word is earned, because it is a measurement
+ * rather than a hedge over an unmeasured term.
+ */
+export const FleetAllIdle: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 0,
+			lines: idleLines(info().sessions.lines),
+			fleet_subagents_running: 0,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 0,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * A runtime that stopped answering: it still counts, and its counts are stale.
+ *
+ * `runtimes` is `live + wedged` — a wedged pid is still there and its children
+ * may still be working — so the meta counts it, the Runtimes card splits it out,
+ * and the caveat says which number is as of when.
+ */
+export const FleetWedged: Story = {
+	args: {
+		...base,
+		data: fleet({
+			lines: [
+				{ ...info().sessions.lines[0], busy: false },
+				{
+					...info().sessions.lines[1],
+					pid: 84_020,
+					state: "wedged",
+					busy: false,
+					heartbeat_age_s: 4_200,
+				},
+			],
+			total: 2,
+			live: 1,
+			wedged: 1,
+			busy: 0,
+			subagents_reporting: 1,
+			fleet_subagents_running: 2,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 2,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The registry that could not be scanned, one section lower than section 3.
+ *
+ * The same failure, framed where the new section draws it: the section shows
+ * section 3's notice VERBATIM and carries no numbers at all — no meta, no
+ * cards, no caveat — because every number it has comes from the scan that just
+ * failed.
+ */
+export const FleetUnavailable: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: { ...info().sessions, available: false, lines: [] },
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The section in situ: the sessions section directly above it, both on screen.
+ *
+ * The other `Fleet*` frames open at the section's own heading, so the one thing
+ * they cannot show is whether this section belongs to this panel — the gap above
+ * it, the heading rhythm, and whether the two count sections read as one
+ * document (design round 1, D7). Scrolled to the SESSIONS heading instead, on the
+ * three-row registry that leaves room for both.
+ */
+export const FleetNeighbours: Story = {
+	args: { ...base, data: fleet(), frontend },
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * 720px, and the one state whose note carries TWO clauses.
+ *
+ * The narrow width is what the other frames cannot answer — they are all 1140 —
+ * and the two-clause note is what makes the wrap visible: `2 sessions + 4
+ * subagents · 3 queued` in a 333px card is where the separator lands at the start
+ * of a line if it is breakable (design round 1, D5/D7). The state is an ordinary
+ * one: work running, more of it waiting.
+ */
+export const FleetNarrow: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 2,
+			fleet_session_trajectories: 2,
+			fleet_subagents_running: 4,
+			fleet_subagents_queued: 3,
+			fleet_trajectories: 6,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The note at the width where it WRAPS — the frame D5's fix never had.
+ *
+ * The separator is non-breaking on both sides so a clause boundary cannot leave
+ * the middot ending a line, and until this story the only proof of it was a unit
+ * test: every other frame's note is short enough to sit on one line, because the
+ * clause that used to force a wrap (`· U did not report`) is exactly the one
+ * D2/D6 removed (QA round 2, Q6). This fixture is the shape that wraps at the
+ * `panels-info` capture width — a busy host, work running and more of it waiting
+ * — so the wrap is photographed and the separator's behaviour at a break is
+ * judged from a picture rather than inferred from the code.
+ */
+export const FleetNoteWraps: Story = {
+	args: {
+		...base,
+		data: fleet({
+			live: 42,
+			total: 42,
+			busy: 41,
+			subagents_reporting: 42,
+			fleet_session_trajectories: 40,
+			fleet_subagents_running: 163,
+			fleet_subagents_queued: 12,
+			fleet_trajectories: 203,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * A probe that FAILED is `—`, never `0` — the sixth refusal rule, which had no
+ * frame before this round (review round 1, N2).
+ *
+ * The FIELD-level spelling (`agents.profiles`): one probe of the agent block
+ * failed and its neighbour answered, so the cards must differ.
+ */
+export const FleetProbesFailed: Story = {
+	args: {
+		...base,
+		data: info({
+			degraded: [["agents.profiles", "the agent registry could not be read"]],
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The BLOCK-level spelling of the same rule: the whole agent collection failed.
+ *
+ * `_safe("agents", …)` wraps `collect_agents` and its fallback is
+ * `AgentsInfo()` — `profiles: 0`, `teams: 0` — so the wire carries `("agents",
+ * reason)` and BOTH cards must refuse rather than print two plausible zeros
+ * (review round 1, M1). The `Dense` fixture carries this spelling too, but its
+ * frame is scrolled to the Environment section, so it is this story that shows
+ * the cards for the case.
+ */
+export const FleetAgentsUnread: Story = {
+	args: {
+		...base,
+		data: info({
+			degraded: [["agents", "the session roster could not be read"]],
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * A backend that did not answer: sections 1-4 are unavailable, 5 and 6 are not.
  *
  * The whole point of sectioning by SOURCE rather than by topic: the host facts
  * need the backend, the conversation facts do not, and a blank panel would throw
@@ -431,7 +742,7 @@ export const RemoteHost: Story = {
 };
 
 /** MCP mid-handshake: `Still connecting`, never "1 of 3 up" during a handshake. */
-/** Settling counts are in section 5, below the fold (D2). */
+/** Settling counts are in section 6, below the fold (D2). */
 export const McpSettling: Story = {
 	args: {
 		...base,
@@ -546,8 +857,7 @@ export const Dense: Story = {
 			},
 			degraded: [
 				["agents", "the session roster could not be read"],
-				["sessions.fleet_trajectories", "the registry answered late"],
-				["process.memory", "the memory probe timed out"],
+				["env.tty", "IsattyError: stdout has no terminal"],
 			],
 		}),
 	},
