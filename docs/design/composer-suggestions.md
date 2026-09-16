@@ -667,7 +667,7 @@ UI-flavoured ports of the TUI's `TIPS` (`welcome.py:404`). It ships as:
 ```ts
 const COMPOSER_TIPS = [
 	"search chats and agents to reopen an earlier session",
-	"ask for a team and several agents run one request",
+	"ask for a team and several agents share one request",
 	"type /approvals to set whether tools ask first",
 	"ask for parallel work and the agent fans out subagents",
 	"open the run panel to see a turn's plan and subagents",
