@@ -645,6 +645,22 @@ export const STORIES = [
 	["browser-approvals-dock--denied", 1280, 720],
 	["browser-approvals-dock--empty", 1280, 720],
 	["browser-approvals-dock--narrow", 560, 720],
+	/*
+	 * THE CONVERSATION MARK (design R2), in the states the sidebar can put it in. Nine
+	 * of them because the mark is small and its states differ by one glyph, one count or
+	 * one badge: a frame that showed two of them would leave a reviewer guessing at the
+	 * other seven. `in-a-row` is the one that matters most - the mark is never seen
+	 * alone, and the badge's ring paints `canvas` on whatever ground the row owns.
+	 */
+	["browser-conversation-mark--nothing-open", 320, 64],
+	["browser-conversation-mark--has-tabs", 320, 64],
+	["browser-conversation-mark--loading", 320, 64],
+	["browser-conversation-mark--one-approval", 320, 64],
+	["browser-conversation-mark--three-approvals", 320, 64],
+	["browser-conversation-mark--many-approvals", 320, 64],
+	["browser-conversation-mark--everything", 320, 64],
+	["browser-conversation-mark--focused", 320, 64],
+	["browser-conversation-mark--in-a-row", 320, 96],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
@@ -1571,6 +1587,9 @@ export const STORIES = [
 	 * because there is no panel to fit - a caption and two blocks.
 	 */
 	["chat-sidebar-current-row--wash-swatches", 780, 260],
+	/* The marks on the rows, at the panel's own width: two conversations with a browser
+	   doing something and a third with none, which is the control case. */
+	["chat-sidebar-status-feed--browser-marks", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is

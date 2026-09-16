@@ -678,6 +678,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									variant={tabScope === "all" ? "primary" : "outline"}
 									size="sm"
 									onClick={() => void chrome.newTab(hostSessionId)}
+									/* Named for the driver: this is the empty host's ONLY way to
+									   open a tab, so it is the control a run has to press to prove
+									   that a tab opened in a conversation is ATTRIBUTED to it (R1).
+									   A tour tag rather than a class, like every other drivable
+									   control here. */
+									data-tour-tag="browser-surface-new-tab"
 								>
 									{newTabLabel}
 								</Button>

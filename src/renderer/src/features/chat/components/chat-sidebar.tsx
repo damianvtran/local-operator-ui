@@ -1,3 +1,5 @@
+import { BrowserConversationMark } from "@features/browser/components/browser-conversation-mark";
+import type { ConversationBrowserSummary } from "@features/browser/model/tab-index-model";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	desktopFeatureEnabled,
@@ -54,6 +56,19 @@ type Props = {
 	selectedConversation?: string;
 	onSelectConversation: (id: string) => void;
 	onStageDraft: (target?: ChatTarget, fresh?: boolean) => void;
+	/**
+	 * What the browser is doing in each conversation, keyed by session id.
+	 *
+	 * A PROP RATHER THAN A SUBSCRIPTION IN THIS FILE, and the reason is the mark's own
+	 * contract: the counts come from the ONE shared projection (`useBrowserProjection`),
+	 * and a list of forty rows each subscribing is the cost the store exists to remove
+	 * (see `use-conversation-browser-summaries.ts`). The host passes the map; a story
+	 * passes a fixture, which is also how the mark's states get frames.
+	 */
+	browserSummaries?: ReadonlyMap<string, ConversationBrowserSummary>;
+	/** Open a conversation's browser: select it, scope the pane to the conversation and
+	 * bring the pane up. One press, three effects, batched into one render (design R2). */
+	onOpenConversationBrowser?: (sessionId: string) => void;
 };
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
@@ -201,6 +216,8 @@ export function ChatSidebar({
 	selectedConversation,
 	onSelectConversation,
 	onStageDraft,
+	browserSummaries,
+	onOpenConversationBrowser,
 }: Props) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -491,6 +508,32 @@ export function ChatSidebar({
 			),
 		[drafts],
 	);
+	/*
+	 * WHICH CONVERSATIONS HAVE A BROWSER, AND HOW LOUD (design R2).
+	 *
+	 * The mark is drawn only where there is something to say — a conversation with no
+	 * tabs and no waiting request gets no control, the same rule the strip's pinned
+	 * control follows. `detail` is the row's own name, resolved through the ONE rule for
+	 * it, because the mark's label has to name the conversation it would open.
+	 */
+	const browserMarkFor = (row: CanonicalSessionRow) => {
+		const summary = browserSummaries?.get(row.session_id);
+		if (
+			!summary ||
+			(summary.tabCount === 0 && summary.pendingApprovals === 0)
+		) {
+			return null;
+		}
+		return (
+			<BrowserConversationMark
+				key={`browser:${row.session_id}`}
+				sessionId={row.session_id}
+				name={row.title || "Untitled chat"}
+				summary={summary}
+				onOpen={onOpenConversationBrowser ?? (() => {})}
+			/>
+		);
+	};
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
@@ -505,30 +548,61 @@ export function ChatSidebar({
 		 */
 		const isCurrent =
 			selectedConversation === row.session_id && !activeDraftKey;
+		/*
+		 * THE ROW IS A WRAPPER PLUS A BUTTON NOW (design R2), and the shape is the entity
+		 * row's, which is the only other row here that carries a sibling control: the
+		 * wrapper paints the CURRENT-STATE ground (it fills the gap the 24px mark leaves
+		 * and the rounded corners), the button paints it again because `rowStyle`'s own
+		 * `hover:bg-elevated` is the only thing that beats the step it inherits, and the
+		 * mark drops its hover fill while the row is current. That is ONE state spread
+		 * over three elements by the DOM, exactly as `rowStyle`'s docstring describes for
+		 * the entity row, and `scripts/chat-sidebar-selection.test.mjs` resolves each
+		 * expression through the shipped `cn` rather than looking for a class name.
+		 *
+		 * THE MARK IS A SIBLING, NOT A CHILD OF THE BUTTON. A button cannot contain a
+		 * button, and a row whose whole box is one target has nowhere to put a second
+		 * action. Its slot is RESERVED list-wide by the reveal's opacity rule rather than
+		 * inserted on hover: a row that reflows under the pointer is worse than no
+		 * affordance, which is the same reason the entity row reserves its glyph.
+		 *
+		 * WHAT THE BUTTON KEEPS: `data-chat-row` on exactly one element per row, and with
+		 * it `title` and `aria-current` — three committed harnesses select on those and the
+		 * arrow-key traversal walks the attribute (see the mark's own note).
+		 */
 		return (
-			<button
+			<div
 				key={row.session_id}
-				type="button"
-				data-chat-row
-				/* Named for the driver, which has to OPEN a conversation before the chat
+				className={cn(
+					"group flex h-8 items-center gap-1 rounded-md",
+					// The wrapper's ground, under the same condition as the button's, so the
+					// 4px the mark leaves is not a notch in the selected row's fill.
+					isCurrent && rowCurrent,
+				)}
+			>
+				<button
+					type="button"
+					data-chat-row
+					/* Named for the driver, which has to OPEN a conversation before the chat
 				   header - and so the right slot's three triggers - exists at all
 				   (`renderer-driver.mjs`'s `browser-pane` scene). A tour tag rather than a
 				   class: it is the same hook every other drivable control in this app
 				   carries, and it is inert outside a driver run. */
-				data-tour-tag="chat-session-row"
-				data-child={nested || undefined}
-				className={cn(
-					rowStyle,
-					"w-full text-left",
-					nested && "pl-7",
-					isCurrent && rowCurrent,
-					// m4: the unread mark is NOT here. `font-semibold` on this
-					// `flex-1 truncate` title rewrote the visible string when the
-					// mark arrived, re-truncating text under the reader's cursor;
-					// it lives in the reserved status slot instead (see `Status`).
-				)}
-				aria-current={isCurrent ? "page" : undefined}
-				/* The tooltip carries the row's binding and its own state — the facts the
+					data-tour-tag="chat-session-row"
+					data-child={nested || undefined}
+					className={cn(
+						rowStyle,
+						// `w-full` became `min-w-0 grow`: the wrapper is the row now, and the
+						// button shares it with the mark.
+						"min-w-0 grow text-left",
+						nested && "pl-7",
+						isCurrent && rowCurrent,
+						// m4: the unread mark is NOT here. `font-semibold` on this
+						// `flex-1 truncate` title rewrote the visible string when the
+						// mark arrived, re-truncating text under the reader's cursor;
+						// it lives in the reserved status slot instead (see `Status`).
+					)}
+					aria-current={isCurrent ? "page" : undefined}
+					/* The tooltip carries the row's binding and its own state — the facts the
 			   row may not be drawing — and deliberately NOT the search mark's words,
 			   which the row announces itself through the `sr-only` span beside it:
 			   both channels saying "matched in conversation" would be one fact
@@ -538,11 +612,11 @@ export function ChatSidebar({
 			   and ", not sent yet" are appended in every case, so on a row that
 			   draws one of those the tooltip repeats it rather than omitting it
 			   (review round 6, R33). */
-				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
-				onClick={() => onSelectConversation(row.session_id)}
-			>
-				<ChatSessionStatus row={row} />
-				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
+					title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${row.attention?.unseen ? ", unread" : ""}`}
+					onClick={() => onSelectConversation(row.session_id)}
+				>
+					<ChatSessionStatus row={row} />
+					{/* ONE trailing statement per row, decided by `rowTrailingStatement`
 				    in `features/chat/chat-search.ts` — which is also where the three
 				    failed layouts that led to it are written down (an orphan `·` from
 				    a single truncating span, a starved title from unbounded slots, and
@@ -556,17 +630,17 @@ export function ChatSidebar({
 				    which is that cap doing the work a floor used to. The two literal
 				    statements below cannot truncate anything: they are fixed strings
 				    with no width to run out of. */}
-				<span className="min-w-0 flex-1 truncate">
-					{row.title || "Untitled chat"}
-				</span>
-				{/* In a flat list nothing else names the profile answering, so two
+					<span className="min-w-0 flex-1 truncate">
+						{row.title || "Untitled chat"}
+					</span>
+					{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's `title` carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
-				{trailing === "binding" && (
-					/* Bounded, unlike the two literals below. `bindingName` is a
+					{trailing === "binding" && (
+						/* Bounded, unlike the two literals below. `bindingName` is a
 					   user-authored agent or team name and the agent-name field
 					   accepts 64 characters, so `shrink-0` with no `truncate` left an
 					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
@@ -577,16 +651,16 @@ export function ChatSidebar({
 					   it scales with the panel, and `truncate` clips inside it. The
 					   other two are literals and stay `shrink-0`: they cannot grow,
 					   so they cannot starve anything. */
-					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {bindingName(row)}
-					</span>
-				)}
-				{trailing === "not_sent" && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
-						· Not sent yet
-					</span>
-				)}
-				{/* Says WHY a row is in a filtered list when its visible text does not
+						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+							· {bindingName(row)}
+						</span>
+					)}
+					{trailing === "not_sent" && (
+						<span className="ml-1 shrink-0 text-meta text-ink-muted">
+							· Not sent yet
+						</span>
+					)}
+					{/* Says WHY a row is in a filtered list when its visible text does not
 			    contain the query. Without it a row appears in a filtered list with
 			    nothing in common with the query, which is worse than no filter: the
 			    user cannot tell a real match from a bug. Rendered in the row's own
@@ -594,18 +668,20 @@ export function ChatSidebar({
 			    element so it can never be clipped, and on the rows that carry it.
 			    The visible words are `aria-hidden` and the sentence is carried by
 			    the `sr-only` span after them, so a screen reader hears it once. */}
-				{trailing === "conversation" && (
-					<>
-						<span
-							aria-hidden="true"
-							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
-						>
-							· in conversation
-						</span>
-						<span className="sr-only">, matched in conversation</span>
-					</>
-				)}
-			</button>
+					{trailing === "conversation" && (
+						<>
+							<span
+								aria-hidden="true"
+								className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+							>
+								· in conversation
+							</span>
+							<span className="sr-only">, matched in conversation</span>
+						</>
+					)}
+				</button>
+				{browserMarkFor(row)}
+			</div>
 		);
 	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {

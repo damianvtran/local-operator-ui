@@ -1,3 +1,4 @@
+import type { ConversationBrowserSummary } from "@features/browser/model/tab-index-model";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
@@ -199,6 +200,15 @@ let roster: WireRow[] = [];
  * this one would gain two sections and stop being the states they were shot in.
  */
 let entities: { agents: string[]; teams: string[] } | null = null;
+ * What the browser is doing in each conversation, for the `BrowserMarks` story.
+ *
+ * A FIXTURE RATHER THAN THE LIVE MAP, and the reason is the same one the roster above
+ * has: the real counts come from `useConversationBrowserSummaries`, which reads the
+ * shared projection through the browser bridge — and a story has no bridge and no host.
+ * The page passes this map to the real `ChatSidebar`, which is the same prop the page
+ * passes in the app, so what is faked is the transport and nothing above it.
+ */
+let markFixtures: ReadonlyMap<string, ConversationBrowserSummary> = new Map();
 
 if (typeof window !== "undefined") {
 	const page = window as unknown as {
@@ -361,6 +371,18 @@ const Readout: FC<{ rows?: number }> = ({ rows }) => {
 					…and {sessions.length - shown.length} more rows, in the list beside.
 				</p>
 			)}
+			<p data-readout-marks>
+				Browser marks:{" "}
+				{markFixtures.size === 0
+					? "none"
+					: sessions
+							.filter((row) => markFixtures.has(row.session_id))
+							.map((row) => {
+								const summary = markFixtures.get(row.session_id);
+								return `${row.title}: ${summary?.tabCount} tab(s), ${summary?.pendingApprovals} approval(s)`;
+							})
+							.join(" · ")}
+			</p>
 			<p data-readout-frames className="pt-2">
 				Frames delivered: {frames.length ? frames : "none"}
 			</p>
@@ -375,6 +397,8 @@ const Page: FC<{ readoutRows?: number }> = ({ readoutRows }) => (
 				selectedConversation={undefined}
 				onSelectConversation={() => undefined}
 				onStageDraft={() => undefined}
+				browserSummaries={markFixtures}
+				onOpenConversationBrowser={() => undefined}
 			/>
 		</div>
 		<Readout rows={readoutRows} />
@@ -478,6 +502,57 @@ export const GateParked: Story = {
  * "Complete, unread", and the row's tooltip carries the same words for a pointer
  * user.
  */
+/**
+ * THE CONVERSATION MARK ON THE ROWS (design R2).
+ *
+ * The one story in this file about the browser, and it is here rather than beside the
+ * mark's own stories because the claim is about the LIST: three conversations, two of
+ * them with a browser doing something, and the marks sitting in the rows at the sidebar's
+ * own width - on the resting ground and beside a row whose status glyph is already
+ * talking, which is the pair that has to stay legible together.
+ *
+ * The counts are the ones `docs/evidence` frames as `chat-sidebar-browser-marks`: a
+ * conversation with three tabs (one loading) and one approval, a second with two tabs
+ * and nothing waiting, and a third with no browser at all drawn by the same list — the
+ * last being the control case, because "the rule is that only rows with something to say
+ * carry a mark" is invisible unless a row without one is in the frame.
+ */
+export const BrowserMarks: Story = {
+	render: () => {
+		roster = [
+			wireRow(QUARTERLY, "Quarterly revenue model", 1_760_000_300, BUSY, 1),
+			wireRow(
+				RECONCILE,
+				"Reconcile the supplier ledger",
+				1_760_000_200,
+				IDLE,
+				1,
+			),
+			wireRow(MIGRATE, "Migrate the deploy script", 1_760_000_100, IDLE, 1),
+		];
+		markFixtures = new Map([
+			[
+				QUARTERLY,
+				{
+					tabCount: 3,
+					loadingCount: 1,
+					failedCount: 0,
+					pendingApprovals: 1,
+				},
+			],
+			[
+				RECONCILE,
+				{ tabCount: 2, loadingCount: 0, failedCount: 1, pendingApprovals: 0 },
+			],
+		]);
+		return <Page />;
+	},
+	play: async () => {
+		await catalogueSettled(3);
+		await sleep(300);
+	},
+};
+
 export const CompletionUnseen: Story = {
 	render: () => {
 		roster = [
