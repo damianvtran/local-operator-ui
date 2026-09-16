@@ -984,9 +984,10 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
 | 1 | **Install** | `StatGrid` of 3 + a two-row path block | `install.*` |
 | 2 | **Host runtime** | `DataTable` | `process.*` |
 | 3 | **Sessions on this machine** | `StatGrid` of 4 + `DataTable` | `sessions.*` |
-| 4 | **This conversation** | `DataTable` | `canonical.frontend.*` |
-| 5 | **Environment** | `DataTable` + a `Disclosure` | `env.*` + `frontend.mcp_servers` |
-| 6 | **Could not be read** | `DataTable` of reasons | `degraded[]` |
+| 4 | **Agents and subagents** | `StatGrid` of 4 + prose caveats | `sessions.*` fleet roll-ups + `agents.profiles`/`teams` |
+| 5 | **This conversation** | `DataTable` | `canonical.frontend.*` |
+| 6 | **Environment** | `DataTable` + a `Disclosure` | `env.*` + `frontend.mcp_servers` |
+| 7 | **Could not be read** | `DataTable` of reasons | `degraded[]` |
 
 - **Section 1.** Version + a `warning` `Badge` `vX.Y.Z available — /update` when
   `behind && latest_known`; install kind; interpreter. Then `Install path` and
@@ -1013,7 +1014,30 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
   model, uptime (`formatDuration`) or `last_activity_s` for a `stored` row,
   memory (`formatBytes(footprint_bytes ?? rss_bytes)`), and the markers
   (`this session` / `busy` / `needs X`) as badges. Meta: `N live · M total`.
-- **Section 4** is the half that keeps `/info` honest on a remote backend: the
+- **Section 4** answers the terminal's other question — how many agent runtimes
+  and how many agent trajectories this machine is running — and mirrors
+  `info_panel.py::_agents_section` and `_fleet_caveats` exactly. `StatGrid` of
+  four: **Runtimes** (`live + wedged`; the note is `N live`, plus `· M wedged`
+  when there are any), **Trajectories** (`≥M total` — the `≥` only when some
+  runtimes did not report — with `S sessions + B subagents`, then `· Q queued`
+  and `· U did not report` when non-zero), **Agent profiles** and **Teams**
+  (`agents.profiles`/`agents.teams`, rendered `—` when the probe's own name
+  appears in `degraded[]`; a zero from a probe that answered is still a zero).
+  Meta: `N runtimes · ≥M trajectories`; `N runtimes · trajectories —` when some
+  runtimes did not report AND nothing was measured; `N runtimes · none running ·
+  Q queued` when the measured total is zero with children waiting;
+  `N runtimes · none running` when every runtime reported zero. Caveats are
+  quiet prose under the grid and appear only when they apply: `U session(s)
+  run(s) an older build and do(es) not report subagents — the fleet total is a
+  lower bound.` (both verbs inflect together) and `M session(s) is/are wedged;
+  its/their counts are as of its/their last heartbeat.` (the possessives inflect
+  with the subject). Three rules are NOT presentation choices: an unmeasured
+  term is never rendered as `0` (`—` is the unknown spelling), queued children
+  are named BESIDE the trajectory total and never added into it, and `runtimes`
+  is `live + wedged` so the meta agrees with the sum beneath it. Same plural
+  helper for the meta and the rows (`render.py::plural`'s irregular map: `1
+  trajectory` / `N trajectories`).
+- **Section 5** is the half that keeps `/info` honest on a remote backend: the
   host facts above describe the machine the backend runs on; this section
   describes the window in front of the user. Rows: session id, model
   (`selected_model.provider/model_id`), **answering model only when it differs**
@@ -1021,7 +1045,7 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
   `context_tokens / context_window` (via `formatContextTokens` /
   `formatWindow`), cost knowledge (`cost_knowledge`), active team or agent when
   set, goal when set. Meta: `live · this conversation`.
-- **Section 5.** MCP: `mcp_servers` from `canonical.frontend` — configured /
+- **Section 6.** MCP: `mcp_servers` from `canonical.frontend` — configured /
   connected / failed counts with a `settling` note, then failure rows
   `name → error`. Then approval mode (`env.approval_mode`), browser backend and
   pairing, mobile installed/healthy/port, guides and skills counts, and
@@ -1030,7 +1054,7 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
   (`term`, `colorterm`, `multiplexer`, `is_tty`, `terminal_size`, `theme`) go
   inside a `Disclosure` labelled `Runtime terminal`, because they describe the
   terminal the *backend runtime* has (or does not have), not this window.
-- **Section 6** renders only when `degraded.length > 0`: two columns,
+- **Section 7** renders only when `degraded.length > 0`: two columns,
   `field` in mono and the reason in prose. This is the answer to "why is this
   `—`" and its absence is the reason `/info` costs a round trip
   (`info/model.py:417-423`).
@@ -1039,14 +1063,14 @@ Degrades:
 
 | Condition | Required behaviour |
 |---|---|
-| `sessions.available === false` | Section 3 becomes `PanelNotice kind="unavailable"`: "Could not scan the session registry. Close and reopen this panel to try again." (the desktop has no `r` key; do not borrow the TUI's copy). |
+| `sessions.available === false` | Sections 3 and 4 become `PanelNotice kind="unavailable"`: "Could not scan the session registry. Close and reopen this panel to try again." (the desktop has no `r` key; do not borrow the TUI's copy). Section 4 carries **no numbers at all** then — no meta, no cards, no caveat — because every number it has comes from the scan that failed. |
 | `sessions.usage_available === false` | One line under the table: "Memory could not be measured on this machine." Never a column of `—` (`model.py:192-195`). |
 | `sessions.build_skew === true` | One `PanelNotice kind="degraded"` line: "More than one build is running. A change may look absent in a window that has not been restarted." |
 | `sessions.lines.length === 0` | "No other lop sessions are running on this machine." |
 | `install.*` all empty | The section still renders, with `unavailable` in place of each value — a missing section reads as a rendering bug (`info_panel.py:422-427`). |
 | `env.mcp_settling` | Note "Still connecting deferred servers" — reporting "1 of 3 up" mid-handshake makes a user file a bug about a server that came up a second later (`model.py:323-326`). |
 | `diagnostics < 1` | One `PanelNotice kind="unavailable"`, op never called. |
-| Backend unreachable | `PanelNotice kind="unavailable"` with `errorText(error)`; sections 4 and 5 still render from `canonical.frontend`, because they are live local facts. This is a **requirement**: the panel must degrade section by section, not blank. |
+| Backend unreachable | `PanelNotice kind="unavailable"` with `errorText(error)`; sections 5 and 6 still render from `canonical.frontend`, because they are live local facts. This is a **requirement**: the panel must degrade section by section, not blank. |
 
 ### 6.4 `/context` → `ContextView` (destination `session.context`)
 
@@ -1358,7 +1382,7 @@ Required stories per panel (the minimum reviewable set):
 | `unavailable` | the failure shape and the backend's own sentence |
 | `narrow` | 720px: bars surrender width first, labels and values hold |
 | `dense` | the largest legal payload: a body that overflows, evidencing the fold rule and the fade |
-| per-panel hard states | `/analytics`: `unpriced` (`cost_known_calls === 0`) and `partial-cost`; `/session`: `tree-cost` (descendants present), `no-tool-calls` (null), `zero-samples`; `/info`: `build-skew`, `roster-unread`, `remote-host`; `/context`: `no-numbers` (pre-`numbers` backend); `/failovers`: `failover-in-force`, `no-chains` |
+| per-panel hard states | `/analytics`: `unpriced` (`cost_known_calls === 0`) and `partial-cost`; `/session`: `tree-cost` (descendants present), `no-tool-calls` (null), `zero-samples`; `/info`: `build-skew`, `roster-unread`, `remote-host`, and the fleet honesty states `fleet-one-does-not-report`, `fleet-nobody-reports`, `fleet-queued-only`, `fleet-all-idle`, `fleet-wedged`, `fleet-unavailable` (the `≥` bound, the `—` refusal, the measured-zero-with-a-queue, the earned `none running`, the wedged split, and the registry that could not be scanned); `/context`: `no-numbers` (pre-`numbers` backend); `/failovers`: `failover-in-force`, `no-chains` |
 
 Then, in the UI PR:
 
