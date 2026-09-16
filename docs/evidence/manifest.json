@@ -1118,11 +1118,13 @@
     },
     {
       "path": "wake-live-app",
-      "frames": 10,
+      "frames": 7,
       "surfaces": 1,
       "themes": 1,
-      "source": "scripts/renderer-driver.mjs against the built app with an isolated config dir and a synthetic session carrying a real armed wake, headless window mode, captured from inside the app (CDP) rather than by a screen grab; the live press of the chip and the pane's reveal are frames in this set.",
-      "declaredAtHead": "48296702beda0c2c3216e4cdadb88a8b26681e77"
+      "source": "the built app, headless, against an isolated daemon with real wakes armed by the real CLI, photographed through the app's own capturePage(); the press is the driver's hit-tested press on the chip's selector, the focus a real Shift+Tab through CDP's input pipeline",
+      "capturedAtHead": "f4308eb27c7455dad83c357c074bc11c81994247",
+      "recapturedAt": "2026-09-16",
+      "recaptureNote": "Re-shot at this head because the band in the previous frames was the #228 band the tree had retired (design review's convergence round, D1). The rig was a copy of scripts/renderer-driver.mjs with one extra scene, driving the built app headless against the isolated daemon on 8801 with real CLI-armed wakes."
     }
   ],
   "remediationRecord": {
