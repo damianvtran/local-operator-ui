@@ -93,6 +93,7 @@ import {
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_STORE_TIMEOUT_MS,
 	CREDENTIAL_TYPING_NOTICE,
+	CREDENTIAL_WORDS,
 	type CancelledToken,
 	type Capture,
 	type CredentialPayload,
@@ -127,6 +128,13 @@ import {
  * elements of THIS component and nothing outside it should need to know.
  */
 const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
+
+/**
+ * The capture's own words as the planner wants them. Module scope and built once:
+ * `planFor` is a dependency-sensitive callback, and a set rebuilt per render would
+ * invalidate it on every keystroke.
+ */
+const CREDENTIAL_WORD_SET: ReadonlySet<string> = new Set(CREDENTIAL_WORDS);
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
@@ -2163,6 +2171,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					prefixingCommands: slash.prefixingCommands,
 					argumentShapes: slash.argumentShapes,
 					nameListCommands: slash.nameListCommands,
+					/*
+					 * `/credential`'s token dispatches wherever it sits: its argument is
+					 * a SECRET, so the prose rule (which would send the surviving
+					 * sentence as a message) must not be applied to it. The words come
+					 * from the capture module that owns the token, not from a name
+					 * spelled here (see `CREDENTIAL_WORDS`).
+					 */
+					commandLockedWords: CREDENTIAL_WORD_SET,
 					enabled: slash.available && Boolean(onSlashCommand),
 					/* LAST, so a caller asking about the DRAFT (`enabled: true`) wins
 					   over this mount's own capability. */

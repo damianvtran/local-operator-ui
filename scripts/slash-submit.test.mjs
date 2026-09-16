@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -1216,4 +1217,79 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 		kind: "whole",
 		command: { name: "compact", args: "hello" },
 	});
+});
+
+/*
+ * COMMAND-LOCKED WORDS, and the security reason they are exempt from the prose
+ * rule (round 6).
+ *
+ * `/credential`'s argument is a SECRET. The dispatcher strips it before building
+ * command text for exactly that reason (`slash-dispatch.ts:523-525`), and the
+ * desktop's own suite asserts the property after an Escape and an edit that moves
+ * the token: "the moved token dispatched as the command again ... the arguments are
+ * stripped so a secret can never land in command text, and no message carries the
+ * token" (`scripts/credential-composer.test.mjs`, the moved-token case). Under the
+ * prose rule the mid-draft token was answered `send` — a MESSAGE — which would have
+ * posted the secret to the model and left the dispatcher with nothing to strip.
+ *
+ * The exemption is the CALLER's set, never a name written in the planner, and it is
+ * asserted in both directions here so the rule the operator asked for stays intact
+ * for every other word.
+ */
+test("a command-locked word dispatches wherever its token sits", () => {
+	const locked = {
+		commandLockedWords: new Set(["credential", "cred"]),
+		// Visible to the planner at all, which is the caller's other half: a word no
+		// vocabulary carries is `unrecognised`/`send` whatever else is said about it.
+		commandNames: new Set([...COMMAND_NAMES, "credential", "cred"]),
+	};
+	const draft = "please /credential SECRET";
+	const spliced = plan(draft, draft.length, locked);
+	assert.equal(spliced.kind, "splice", draft);
+	assert.deepEqual(spliced.command, { name: "credential", args: "SECRET" });
+	// The token leaves the draft, so nothing carries it into a message.
+	assert.equal(spliced.text, "please");
+	// The SAME draft with no locked words is the sentence the operator wrote.
+	assert.deepEqual(
+		plan(draft, draft.length, {
+			commandNames: new Set([...COMMAND_NAMES, "credential", "cred"]),
+		}),
+		{ kind: "send" },
+	);
+	// A whole-draft token is a command on either vocabulary, unchanged.
+	assert.equal(plan("/credential SECRET", 18, locked).kind, "whole");
+	assert.equal(
+		plan("/credential SECRET", 18, {
+			commandNames: new Set([...COMMAND_NAMES, "credential", "cred"]),
+		}).kind,
+		"whole",
+	);
+	// The alias is a word of its own, from the same set.
+	assert.equal(plan("see /cred x", 11, locked).kind, "splice");
+});
+
+test("the composer passes the capture's own words to the planner", () => {
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	assert.match(
+		composer,
+		/commandLockedWords: CREDENTIAL_WORD_SET/,
+		"the composer must hand the planner the capture's words",
+	);
+	assert.match(
+		composer,
+		/const CREDENTIAL_WORD_SET: ReadonlySet<string> = new Set\(CREDENTIAL_WORDS\)/,
+		"and build them from the module that owns the token",
+	);
+	const capture = readFileSync(
+		"src/renderer/src/features/chat/components/credential-capture.ts",
+		"utf8",
+	);
+	assert.match(
+		capture,
+		/export const CREDENTIAL_WORDS: readonly string\[\] = \["credential", "cred"\]/,
+		"one vocabulary: the token's own regex is built from these words",
+	);
 });

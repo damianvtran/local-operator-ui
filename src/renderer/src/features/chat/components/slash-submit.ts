@@ -317,6 +317,19 @@ export type SlashSubmissionArgs = {
 	armedOnlyCommands: ReadonlySet<string>;
 	/** Names of commands whose argument list is open before any name is typed. */
 	nameListCommands: ReadonlySet<string>;
+	/**
+	 * Words whose token DISPATCHES wherever it sits in the draft.
+	 *
+	 * The caller's answer rather than a name written here, and there is exactly one
+	 * such word in the product: `/credential`, whose argument is a SECRET. The
+	 * dispatcher strips that argument before it becomes command text for that reason
+	 * (`slash-dispatch.ts:523-525`), so a mid-draft token the prose rule called a
+	 * message would send the secret to the model instead. Measured rather than
+	 * argued: `scripts/credential-composer.test.mjs`'s moved-token case asserts the
+	 * Escaped token dispatches again once an edit moves it, and this branch answered
+	 * `send` for it (`please /credential SECRET` -> `send`).
+	 */
+	commandLockedWords?: ReadonlySet<string>;
 	/** Whether a boundary slash token is a command at all (the feature is on). */
 	enabled: boolean;
 };
@@ -327,6 +340,9 @@ export type SlashSubmissionArgs = {
  * against — and it selects the fallback path, never a defaulted shape.
  */
 const NO_SHAPES: ReadonlyMap<string, ArgumentShapeRow> = new Map();
+
+/** No command-locked words: the caller's set is the whole vocabulary. */
+const NO_WORDS: ReadonlySet<string> = new Set();
 
 /** The name/argument separator: the first whitespace character of a token. */
 const WHITESPACE = /\s/;
@@ -429,6 +445,7 @@ type Vocabularies = {
 	nameListCommands: ReadonlySet<string>;
 	armedOnlyCommands: ReadonlySet<string>;
 	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
+	commandLockedWords: ReadonlySet<string>;
 };
 
 /**
@@ -447,6 +464,7 @@ function planForSpan(
 		nameListCommands,
 		armedOnlyCommands,
 		argumentShapes,
+		commandLockedWords,
 	}: Vocabularies,
 ): SlashSubmissionPlan {
 	const spliced = replaceSpan(draft, span.start, span.end, "");
@@ -544,6 +562,28 @@ function planForSpan(
 		return { kind: "whole", command };
 	}
 
+	/*
+	 * COMMAND-LOCKED: this word's token is a command wherever it sits, and it leaves
+	 * the draft behind exactly as it would have before the prose rule (the splice the
+	 * branch below still does for an opening value command).
+	 *
+	 * The prose rule's justification is that the surviving text is a sentence
+	 * somebody meant to write. That is true of `/compact hello` and false of a token
+	 * whose argument is a SECRET: there the sentence would carry the secret, and the
+	 * only thing the dispatcher can strip is command text it is handed - not a message
+	 * it never sees. See `commandLockedWords` for the measurement.
+	 */
+	if (commandLockedWords.has(word)) {
+		return {
+			kind: "splice",
+			start: span.start,
+			end: span.end,
+			command,
+			text: spliced.text,
+			caret: spliced.caret,
+		};
+	}
+
 	// Not the whole draft: only a token that OPENS the draft, for a command whose
 	// trailing text IS its argument and which a typed draft may hoist at all, is
 	// a command. Anything else is the sentence the user is writing, and it is sent
@@ -605,6 +645,7 @@ export function planSlashSubmission({
 	nameListCommands,
 	armedOnlyCommands,
 	argumentShapes,
+	commandLockedWords,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
@@ -620,6 +661,7 @@ export function planSlashSubmission({
 		nameListCommands,
 		armedOnlyCommands,
 		argumentShapes: argumentShapes ?? NO_SHAPES,
+		commandLockedWords: commandLockedWords ?? NO_WORDS,
 	};
 
 	/*
