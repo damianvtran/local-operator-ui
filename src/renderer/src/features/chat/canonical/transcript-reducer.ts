@@ -1095,7 +1095,10 @@ function durableRecord(
 	 * The refusal's own durable row, painted rather than dropped: see
 	 * `compactionOutcome` for why it is the only surface this pass has.
 	 */
-	if (entry.type === "message" && payload.custom_type === "compaction_refused") {
+	if (
+		entry.type === "message" &&
+		payload.custom_type === "compaction_refused"
+	) {
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		const outcome = compactionOutcome(String(details.detail ?? ""));
 		return {
@@ -1302,7 +1305,8 @@ export function applyHistoryPage(
 	options: { replace?: boolean } = {},
 ): TranscriptState {
 	const incoming: TranscriptRecord[] = [];
-	for (const entry of page.entries) {		// A tool row keys by call id, not entry id, so the prior record is looked
+	for (const entry of page.entries) {
+		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. Handing it to `durableRecord` is what lets an unchanged
 		// `images` array keep its reference through a replayed page.
 		const previous =

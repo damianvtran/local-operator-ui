@@ -5,7 +5,7 @@
  * the base commit, because the component it mounts - `CompactView` - is
  * deleted by the change these frames are the before-half of. The frames it
  * produced are committed under
- * `docs/evidence/compact-dialog-before/`, declared as a `supplementary` set in
+ * `docs/evidence/chat-compact-dialog-before/`, declared as a `supplementary` set in
  * the manifest for exactly this reason: a sweep of the shipping tree cannot
  * produce them, because the tree no longer has the dialog.
  *

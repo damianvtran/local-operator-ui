@@ -587,8 +587,11 @@ export const STORIES = [
 	 * 900 tall the frame is mostly ground and `check-evidence`'s uniformity
 	 * ceiling rejects it.
 	 */
-	["chat-tool-rows--compacting-pass-before", 1280, 300],
-	["chat-tool-rows--compacting-pass-after", 1280, 300],
+	["chat-tool-rows--compacting-rung", 1280, 300],
+	["chat-tool-rows--compacting-settled", 1280, 300],
+	/* The third ending, and the one the dialog used to own: a pass that did
+	   NOT run. Added by the round that gave the refusal a row. */
+	["chat-tool-rows--compacting-refused", 1280, 300],
 	["chat-tool-rows--working-labels", 760, 300],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
 	   arguments. Captured at the height the story declares, because the frame IS
@@ -1825,7 +1828,11 @@ export const STORIES = [
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
 	/* A command typed into a sentence, the list above the prose. */
-	["chat-slash-completion--inline-mid-draft", 768, 340],
+	/* The mid-draft state round-1 D1 judged, kept as the BEFORE half (the fix's
+	   own after-picture is absence, which this rig's element floor refuses to
+	   photograph), and the `/compact` row a reader meets when they type `/comp`. */
+	["chat-slash-completion--inline-mid-draft-before", 768, 340],
+	["chat-slash-completion--compact-row", 768, 340],
 	/* The state a name pick produces: list closed, caret after the space. */
 	["chat-slash-completion--name-list-completed", 768, 260],
 	/* A long list: the popup keeps its own scroll at its row cap. */

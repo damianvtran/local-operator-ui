@@ -90,6 +90,16 @@ const COMMANDS: SlashCommandMeta[] = [
 		execution: "owner",
 	},
 	{
+		name: "compact",
+		description: "Summarises older history so the next request is smaller.",
+		aliases: [],
+		arguments: "none",
+		echo: false,
+		consumes_prompt: false,
+		destination: "session.compact",
+		execution: "owner",
+	},
+	{
 		name: "move",
 		description: "Move the session to another working directory",
 		aliases: [],
@@ -349,6 +359,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// This branch's own vocabulary: the commands whose trailing text is an
 	// argument chosen from a list.
 	valueArgumentCommands: new Set(),
+	argumentCommands: new Set(),
 	nameListCommands: new Set(),
 	argumentWords: [],
 	enabled: true,
@@ -613,10 +624,23 @@ export const ArgumentPhaseNarrowComposer: Story = {
 };
 
 /**
- * The mid-draft frame the whole change is about: a command typed into a
- * sentence, the list open ABOVE the prose, and the draft untouched behind it.
+ * The mid-draft frame the whole change is about, kept as the BEFORE half of the
+ * round-1 fix: a command word typed into a sentence, the list open above it, the
+ * draft untouched behind it.
+ *
+ * Rendering this state is the POINT of the story. Design round 1 (D1 = UX U2)
+ * judged exactly this frame, and the popup it shows was real product behaviour
+ * before this round: the list opened on the tokenizer alone while the submit
+ * planner now reads that word as prose, so its footer promised a run that never
+ * happened and the first Enter mutated the draft instead of sending it.
+ * `caretPhase` asks the planner's own positional question now and this state is
+ * unreachable — which is also why there is no "after" frame beside it: the
+ * honest after-picture is a composer with NOTHING above it, and the capture rig
+ * refuses a story whose subject does not draw (its element floor rejected it
+ * when this story was written that way). The rule itself is pinned in
+ * `scripts/slash-token.test.mjs` and the state is recorded in the set's README.
  */
-export const InlineMidDraft: Story = {
+export const InlineMidDraftBefore: Story = {
 	render: () => (
 		<Box width={720} draft="fix this /team">
 			<SlashSuggestionsPopup
@@ -626,6 +650,28 @@ export const InlineMidDraft: Story = {
 					inline: { source: "team", nameThenMessage: true, runs: false },
 					matches: argumentRowsFor("team", TEAMS, null),
 				})}
+				onPick={noop}
+			/>
+		</Box>
+	),
+};
+
+/**
+ * The row the operator's own gesture lands on: `/compact` in the command list,
+ * with its registry description and its click footer.
+ *
+ * Design round 1's D2: the deleted dialog held the only explanation of what
+ * compaction does, and this row is what carries it now — so the round asked for
+ * a picture of the state a reader actually sees. Both sentences are the
+ * shipped ones: `pointerPickRuns` is false for `session.compact`, so the click
+ * COMPLETES the word and the footer says so rather than promising a run, and
+ * `POINTER_PICK_NEVER_RUNS` is what keeps a stray click from spending a pass.
+ */
+export const CompactRow: Story = {
+	render: () => (
+		<Box width={720} draft="/comp">
+			<SlashSuggestionsPopup
+				state={state({ phase: "command", matches: commandRows("comp") })}
 				onPick={noop}
 			/>
 		</Box>
