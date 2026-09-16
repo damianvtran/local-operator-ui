@@ -1809,6 +1809,13 @@ export function useCanonicalSessionStream(
 					 */
 					transcript: applyHistoryPage(current.transcript, page, {
 						keepPaging: true,
+						/*
+						 * The pass THIS read was scheduled for, handed down so a cleared
+						 * view can keep that pass's outcome row and no earlier pass's:
+						 * it is the same instant the stop predicate compares against,
+						 * taken from the command receipt (`slash-dispatch.ts`).
+						 */
+						outcomeSince: since,
 					}),
 				}));
 				/*
