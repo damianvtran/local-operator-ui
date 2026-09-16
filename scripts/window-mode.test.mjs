@@ -68,7 +68,51 @@ const raise = await import(
 );
 const { presentWindow, raiseWindow } = raise;
 
+/*
+ * The dev-driver arming decision, bundled the same way. It is here rather than
+ * in `dev-driver-gate.test.mjs` because what is being asserted is the
+ * COMPOSITION the driven shape makes reachable — a launch nobody told anything
+ * now resolves `headless`, and a `headless` plan is what turns an opt-in from a
+ * refusal into an armed bridge — so the case needs the resolver and the arming
+ * decision in one process.
+ */
+const devDriver = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/dev-driver";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { DEV_DRIVER_ENV, DEV_DRIVER_OUT_ENV, resolveDevDriverArming } =
+	devDriver;
+
 const plan = (input) => resolveWindowLaunchPlan(input);
+
+/*
+ * The launch shape a tool-spawned run has, pinned to the platform this rule was
+ * MEASURED on rather than left to the ambient `process.platform`.
+ *
+ * Without this, every shape case below would assert `headless` on macOS and
+ * Linux CI and silently assert nothing on a Windows host, where the same input
+ * resolves `normal` by design — so the file would pass on a platform whose
+ * behaviour it does not describe. Passing the platform makes each case a
+ * statement about the rule rather than about the machine running it.
+ */
+const DRIVEN = {
+	packaged: false,
+	stdinIsTTY: undefined,
+	stdoutIsTTY: undefined,
+	platform: "darwin",
+};
 
 test("no input is the shipped behaviour: a focused 1380x900 window", () => {
 	// The default must stay exactly what the released app does today, because
@@ -290,6 +334,163 @@ test("silence with no agent switch is still the operator's focused window", () =
 	assert.equal(plan().mode, "normal");
 	assert.equal(plan().assumed, null);
 	assert.equal(plan({ argv: [".", "--window-size=1024x673"] }).mode, "normal");
+});
+
+test("a launch with no terminal on either stream is a driven run, and resolves headless", () => {
+	// The shape the agent switches could not see, and the one that was STILL
+	// taking the operator's focus after the switch-based assumption shipped: a
+	// tool booting the app straight out of a checkout with no switch at all.
+	// A tool spawns it with pipes, so neither stream is a terminal, and a
+	// checkout is not a packaged app — together those two facts say this is a
+	// run rather than the operator using the app.
+	const resolved = plan(DRIVEN);
+	assert.equal(resolved.mode, "headless");
+	assert.equal(resolved.show, "never");
+	assert.equal(resolved.focusable, false);
+	assert.equal(resolved.backgroundThrottling, false);
+	assert.deepEqual(resolved.problems, []);
+	assert.match(resolved.assumed ?? "", /no terminal/);
+});
+
+test("a terminal on either stream is a person, and keeps the focused window", () => {
+	// A person runs `pnpm dev` in a terminal, and a person who redirects the log
+	// (`local-operator-ui > app.log &`) still has stdin ON the terminal — the
+	// pair is what makes this safe to pair with `packaged: false`, so each half
+	// is asserted on its own.
+	for (const streams of [
+		{ stdinIsTTY: true, stdoutIsTTY: true },
+		{ stdinIsTTY: true, stdoutIsTTY: undefined },
+		{ stdinIsTTY: undefined, stdoutIsTTY: true },
+	]) {
+		const resolved = plan({ ...DRIVEN, ...streams });
+		assert.equal(resolved.mode, "normal", JSON.stringify(streams));
+		assert.equal(resolved.assumed, null, JSON.stringify(streams));
+	}
+});
+
+test("the packaged app is never assumed headless, however it was started", () => {
+	// A double-clicked `.app` has no terminal either, so `packaged` is the whole
+	// reason a person's own app cannot be hidden by the rule above. This is the
+	// assertion that keeps the shipped release rendering a window.
+	const resolved = plan({
+		packaged: true,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(resolved.mode, "normal");
+	assert.equal(resolved.assumed, null);
+});
+
+test("a caller that cannot say whether it is packaged stays on the historical normal", () => {
+	// `packaged` is optional, and only an explicit `false` takes part: a caller
+	// that says nothing must keep the behaviour it had before this rule existed.
+	assert.equal(
+		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined, platform: "darwin" })
+			.mode,
+		"normal",
+	);
+});
+
+test("a named mode still wins on a launch with no terminal", () => {
+	// The escape hatch, on the new path: a person who launches the checkout from
+	// a non-terminal launcher keeps `normal` by naming it.
+	for (const mode of ["normal", "inactive", "headless"]) {
+		const resolved = plan({ ...DRIVEN, argv: [`--window-mode=${mode}`] });
+		assert.equal(resolved.mode, mode);
+		assert.equal(
+			resolved.assumed,
+			null,
+			`${mode} from the flag is not assumed`,
+		);
+	}
+});
+
+test("an agent switch is the stronger reason and is what the line names", () => {
+	// Both signals can be true at once, and the line has to name the specific
+	// one: "a rig passed --user-data-dir" is what a reader can act on.
+	const both = plan({ ...DRIVEN, argv: ["--user-data-dir=/tmp/rig"] });
+	assert.equal(both.mode, "headless");
+	assert.match(both.assumed ?? "", /user-data-dir/);
+	assert.doesNotMatch(both.assumed ?? "", /no terminal/);
+});
+
+test("a mistyped or empty mode beside a terminal-less launch still reports rather than assumes", () => {
+	// Reaching for the mode is asking to be told. A typo keeps the report and
+	// the `normal` fallback; an empty value names nothing and takes the new
+	// assumption exactly as it takes the switch-based one.
+	const typo = plan({ ...DRIVEN, env: { [WINDOW_MODE_ENV]: "headles" } });
+	assert.equal(typo.mode, "normal");
+	assert.equal(typo.assumed, null);
+	assert.match(typo.problems[0], /headles/);
+
+	const blank = plan({ ...DRIVEN, env: { [WINDOW_MODE_ENV]: "" } });
+	assert.equal(blank.mode, "headless");
+	assert.match(blank.assumed ?? "", /no terminal/);
+	assert.doesNotMatch(blank.problems[0], /using normal/);
+});
+
+test("a person who detaches BOTH streams is hidden, deliberately and asserted", () => {
+	// The trade this rule makes, pinned here so it cannot drift into an untested
+	// gap: `pnpm dev < /dev/null > /tmp/dev.log 2>&1 &` is indistinguishable from
+	// the tool spawns the rule exists to stop. It is announced on the launch's own
+	// stdout line and one flag restores the window, which is why the rule is
+	// preferred over the focus grab it prevents — but a person CAN meet it.
+	const detached = plan(DRIVEN);
+	assert.equal(detached.mode, "headless");
+	assert.match(detached.assumed ?? "", /no terminal/);
+});
+
+test("Windows keeps the historical normal: the shape signal was not measured there", () => {
+	// Electron takes a Windows GUI process's stdio through `AttachConsole`, not an
+	// inherited handle, so `isTTY` there is not the terminal fact it is on macOS
+	// (the platform this rule was measured on). Rather than hide a window on a
+	// signal nobody has measured, the rule does not fire on win32 and rigs there
+	// name the mode — which is what they had to do before it existed anyway.
+	for (const platform of ["win32"]) {
+		const resolved = plan({
+			packaged: false,
+			stdinIsTTY: undefined,
+			stdoutIsTTY: undefined,
+			platform,
+		});
+		assert.equal(resolved.mode, "normal", platform);
+		assert.equal(resolved.assumed, null, platform);
+	}
+	// The switch-based assumption is platform-independent and still fires there.
+	const withSwitch = plan({
+		...DRIVEN,
+		argv: ["--user-data-dir=/tmp/rig"],
+		platform: "win32",
+	});
+	assert.equal(withSwitch.mode, "headless");
+	assert.match(withSwitch.assumed ?? "", /user-data-dir/);
+});
+
+test("the dev driver arms on the plan a driven launch resolves", () => {
+	// The composition this change makes reachable, asserted end to end rather
+	// than in two halves: before it, a flagless rig that set the opt-in met the
+	// refusal at the arming decision because its mode was `normal`. Now the same
+	// launch resolves `headless`, and `headless` is what arms.
+	const driven = plan(DRIVEN);
+	assert.equal(driven.mode, "headless");
+	const arming = resolveDevDriverArming({
+		env: {
+			[DEV_DRIVER_ENV]: "1",
+			[DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames",
+		},
+		windowMode: driven.mode,
+	});
+	assert.equal(arming.armed, true);
+	// And the same opt-in in the operator's own window is still refused, so the
+	// composition did not widen who may arm.
+	const person = resolveDevDriverArming({
+		env: {
+			[DEV_DRIVER_ENV]: "1",
+			[DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames",
+		},
+		windowMode: "normal",
+	});
+	assert.equal(person.armed, false);
 });
 
 test("the startup line says the mode was assumed, and why", () => {
