@@ -15,9 +15,10 @@
  *      the injected Tooltip's own prop, per chart type, not on a screenshot;
  *   2. the active bar carries the hover colour, which is a FRAME_CLASS rule
  *      because a CSS rule beats the SVG presentation attribute a prop would
- *      write — and the rule only wins if it comes AFTER the plain-rectangle rule
- *      it shares its specificity with. Source text is the only place that order
- *      is visible.
+ *      write. What decides the win is the NESTING, not the source order: the
+ *      active wrapper is a descendant of the plain one and `fill` is inherited
+ *      (review round 1, F2), so what the assertions below can bind is that both
+ *      rules exist and that the active one names the role.
  *
  * The middle layer is the shipped `withActiveBar` itself, over real recharts
  * elements: recharts reaches a mark's active state only when the mark declares
@@ -248,5 +249,46 @@ test("the hover colour is a role rule on the active wrapper", () => {
 		frameSource.slice(active, active + 80),
 		/#[0-9a-fA-F]{3,8}/,
 		"the hover fill is a literal colour rather than the chart-bar-hover role",
+	);
+});
+
+/*
+ * The D6 scroll hook, pinned at BOTH of its ends (review round 2, N1).
+ *
+ * `data-panel-body` exists because a frame whose claim is a panel's END has to
+ * scroll the real scroller, and the position is browser state no story can set.
+ * Until this test its only guard was the capture rig's own throw on a selector
+ * matching nothing — and the sweep is not in `test:desktop`, so a rename would
+ * have been noticed only on the next manual capture, as a frame that silently
+ * reverted to a duplicate of the at-rest one. That is the failure mode D6 caught
+ * in the first place, so it is worth a check CI actually runs.
+ *
+ * The PAIR is the assertion, not either half: the selector is only meaningful
+ * against the attribute, and each half alone is satisfied by code that does
+ * nothing. The entry is located by its own directory name rather than by the
+ * literal line, so the check still binds if the tuple is reformatted — the same
+ * shape `composer-tabs.test.mjs` uses for its `scrollIntoView` call.
+ */
+test("the panel body's scroll hook is named at both ends", () => {
+	const host = readFileSync(
+		join(ROOT, "src/renderer/src/features/chat/pickers/picker-host.tsx"),
+		"utf8",
+	);
+	const rig = readFileSync(join(ROOT, "scripts/capture-evidence.mjs"), "utf8");
+
+	assert.match(
+		host,
+		/data-panel-body=""/,
+		"the panel body no longer renders `data-panel-body`: the frame that shows a session panel's end state would silently become a second copy of the at-rest one",
+	);
+
+	// Everything from the entry's own dir to the next entry's opening bracket:
+	// the tuple is multi-line, so a fixed-size window is not a safe slice.
+	const entry = rig.slice(rig.indexOf('dir: "unnamed-sessions-end"'));
+	const body = entry.slice(0, entry.indexOf("\n\t["));
+	assert.match(
+		body,
+		/scrollToEnd: "\[data-panel-body\]"/,
+		"the `unnamed-sessions-end` entry no longer scrolls `[data-panel-body]`: the attribute would still be rendered and nothing would use it",
 	);
 });
