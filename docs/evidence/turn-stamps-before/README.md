@@ -35,14 +35,24 @@ a merely noisy one. The stamp's own placement is judged on the two deterministic
 and on `chat-tool-rows/turn-timestamps`, whose fixtures are relative to the capture and
 whose ground is a transcript of its own.
 
-## The pair also carries the footer's shape
+## The footer's shape is not in this pair, and where it is
 
-The before frames show the footer stamp as it was: `2025-10-09` in
-[`../chat-notification-feed-states/cached-paint/`](../chat-notification-feed-states/cached-paint/)
-and `2026-03-14` in the run panel's reader, i.e. the hover row's `yyyy-MM-dd`, while the turn
-stamps this change adds read `Oct 9, 2025, 4:53 AM`. Converging the footer on the turn stamp's
-own component is why 97 frames were re-taken a second time, and it is the same defect class
-`date-utils.ts` documents in `formatCalendarDate`'s comment.
+Converging the transcript footer on the turn stamp's own component (it renders `TurnTimestamp` now,
+where it used to render the hover row's `MessageTimestamp`) moved 97 frames in the second round, and
+**none of them is in this set**: these two stories' footers fall outside their own viewports, so the
+pair does not carry the footer either way. The old shape is in the frames this branch committed
+BEFORE that fix, and the pair is one `git show` away:
+
+```console
+$ git show 8226619b3:docs/evidence/chat-notification-feed-states/cached-paint/localOperatorDark.webp > /tmp/old.webp
+$ magick /tmp/old.webp -gravity south -crop 100%x18%+0+0 +repage /tmp/old-foot.png
+$ magick docs/evidence/chat-notification-feed-states/cached-paint/localOperatorDark.webp \
+    -gravity south -crop 100%x18%+0+0 +repage /tmp/new-foot.png
+$ magick /tmp/old-foot.png /tmp/new-foot.png -append /tmp/pair.png   # `2025-10-09` over `Oct 9, 2025, 4:53 AM`
+```
+
+The run panel's reader frames moved the same way (`reader-settled` by 2,991px, `reader-nested` by
+25,714px); they were re-taken without a before set, so their old shape lives in that same commit.
 
 ## Both widths, because the placement claim is about edges
 
