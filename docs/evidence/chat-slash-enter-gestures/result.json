@@ -1,5 +1,5 @@
 {
-  "origin": "http://localhost:6006",
+  "origin": "http://127.0.0.1:6231",
   "story": "chat-message-input--slash-enter",
   "theme": "localOperatorDark",
   "viewport": {
@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/slash-enter-proof.mjs",
-  "at": "2026-09-15T23:25:56.812Z",
+  "at": "2026-09-16T02:29:54.798Z",
   "cases": [
     {
       "name": "enter-runs-analytics",
@@ -25,7 +25,8 @@
           "/analyticsAggregated token-consumption analytics across all sessionsvalue?"
         ],
         "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter runs /analytics."
       },
       "after": {
         "draft": "",
@@ -33,7 +34,8 @@
         "phase": null,
         "rows": [],
         "active": null,
-        "ran": "/analytics"
+        "ran": "/analytics",
+        "enterNote": null
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/enter-runs-analytics-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/enter-runs-analytics-after.png",
@@ -57,7 +59,8 @@
           "/modelSwitch model; /model default saves it for new sessionsvalue?"
         ],
         "active": "/modelSwitch model; /model default saves it for new sessionsvalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter completes /model."
       },
       "after": {
         "draft": "/model ",
@@ -65,7 +68,8 @@
         "phase": "Models",
         "rows": [],
         "active": null,
-        "ran": "none"
+        "ran": "none",
+        "enterNote": null
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/enter-completes-a-list-command-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/enter-completes-a-list-command-after.png",
@@ -89,7 +93,8 @@
           "/analyticsAggregated token-consumption analytics across all sessionsvalue?"
         ],
         "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter runs /analytics."
       },
       "after": {
         "draft": "/analytics ",
@@ -97,7 +102,8 @@
         "phase": null,
         "rows": [],
         "active": null,
-        "ran": "none"
+        "ran": "none",
+        "enterNote": null
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/tab-never-runs-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/tab-never-runs-after.png",
@@ -123,7 +129,8 @@
           "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/loginAuthenticate a providervalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter completes to lo."
       },
       "after": {
         "draft": "/lo",
@@ -135,7 +142,8 @@
           "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/loginAuthenticate a providervalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-grows-the-prefix-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-grows-the-prefix-after.png",
@@ -161,7 +169,8 @@
           "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/loginAuthenticate a providervalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter completes to lo."
       },
       "after": {
         "draft": "/lo hello",
@@ -173,10 +182,147 @@
           "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/loginAuthenticate a providervalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-keeps-the-written-message-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-keeps-the-written-message-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "ambiguous-enter-at-bare-slash",
+      "why": "The popup's FIRST state, and the one a browsing user presses Enter in: `/` matches everything, the candidates share no prefix, so the word cannot grow and Enter is deliberately inert. The line has to name the gestures that act instead (UX round 1, U1-U3).",
+      "gesture": "Enter after typing \"/\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/",
+        "list": "Slash commands",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+      },
+      "before": {
+        "draft": "/",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+          "/sessionCurrent-session usage, cost and request diagnostics",
+          "/usageShow provider usage quota",
+          "/infoInstall, version, and running sessions on this machine",
+          "/modelSwitch model; /model default saves it for new sessionsvalue?",
+          "/teamList teams, chart a team's org, or send a request to a team's managervalue?",
+          "/themeSwitch color theme; arrows preview livevalue?",
+          "/compactCompact the context now",
+          "/clearClear the transcript (history is untouched)",
+          "/exitQuit the app",
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
+        ],
+        "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+        "ran": "none",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+      },
+      "after": {
+        "draft": "/",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+          "/sessionCurrent-session usage, cost and request diagnostics",
+          "/usageShow provider usage quota",
+          "/infoInstall, version, and running sessions on this machine",
+          "/modelSwitch model; /model default saves it for new sessionsvalue?",
+          "/teamList teams, chart a team's org, or send a request to a team's managervalue?",
+          "/themeSwitch color theme; arrows preview livevalue?",
+          "/compactCompact the context now",
+          "/clearClear the transcript (history is untouched)",
+          "/exitQuit the app",
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
+        ],
+        "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
+        "ran": "none",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-at-bare-slash-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-at-bare-slash-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "ambiguous-enter-at-the-shared-prefix",
+      "why": "The same inert key in the state `/l` + Enter just grew into: `/lo` IS the common prefix of `login`, `logout` and `loop`, so a second Enter cannot narrow either, and the same line has to carry it (U2).",
+      "gesture": "Enter after typing \"/lo\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/lo",
+        "list": "Slash commands",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+      },
+      "before": {
+        "draft": "/lo",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
+        ],
+        "active": "/loginAuthenticate a providervalue?",
+        "ran": "none",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+      },
+      "after": {
+        "draft": "/lo",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/loginAuthenticate a providervalue?",
+          "/logoutRemove stored provider credentialsvalue?",
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
+        ],
+        "active": "/loginAuthenticate a providervalue?",
+        "ran": "none",
+        "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-at-the-shared-prefix-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/ambiguous-enter-at-the-shared-prefix-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "enter-completes-and-the-next-enter-runs",
+      "why": "The U4 arm: `/clear`'s destination declines a POINTER run like `/model`'s, but its completion closes the list, so the NEXT Enter runs it. Its line says so, and that line is in this case's BEFORE frame (the popup is gone by the AFTER one, which is why only the outcome is asserted here — the wording is pinned by `slash-contract.test.mjs`).",
+      "gesture": "Enter after typing \"/clear\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/clear ",
+        "list": null
+      },
+      "before": {
+        "draft": "/clear",
+        "list": "Slash commands",
+        "phase": "Commands",
+        "rows": [
+          "/clearClear the transcript (history is untouched)"
+        ],
+        "active": "/clearClear the transcript (history is untouched)",
+        "ran": "none",
+        "enterNote": "Enter completes /clear; Enter again runs it."
+      },
+      "after": {
+        "draft": "/clear ",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "beforeFrame": "docs/evidence/chat-slash-enter-gestures/enter-completes-and-the-next-enter-runs-before.png",
+      "afterFrame": "docs/evidence/chat-slash-enter-gestures/enter-completes-and-the-next-enter-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -196,7 +342,8 @@
           "/analyticsAggregated token-consumption analytics across all sessionsvalue?"
         ],
         "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
-        "ran": "none"
+        "ran": "none",
+        "enterNote": "Enter runs /analytics."
       },
       "after": {
         "draft": "",
@@ -204,7 +351,8 @@
         "phase": null,
         "rows": [],
         "active": null,
-        "ran": "/analytics"
+        "ran": "/analytics",
+        "enterNote": null
       },
       "beforeFrame": "docs/evidence/chat-slash-enter-gestures/click-runs-analytics-before.png",
       "afterFrame": "docs/evidence/chat-slash-enter-gestures/click-runs-analytics-after.png",
