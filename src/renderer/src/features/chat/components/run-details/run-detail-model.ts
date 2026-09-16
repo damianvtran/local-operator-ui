@@ -1284,7 +1284,9 @@ export const formatWakeDue = (epochMs: number, nowMs: number): string => {
  * finished rather than promised one more delivery. A NEGATIVE count cannot reach
  * this function (the clamp is one line up) and is not defended against here: the
  * wire's own bound is the reader's trust boundary, and a payload below it is a
- * backend defect rather than a label this function should spell.
+ * backend defect rather than a label this function should spell — the clamp covers
+ * the DERIVED count only (`limit - fired_count`), so a negative sent ON THE WIRE
+ * prints as sent, which is round 2's correction to the sentence this replaced.
  */
 export const formatWakeCadence = (
 	everyMs: number | null,

@@ -997,14 +997,17 @@ export const WakesRecurring: Story = {
 };
 
 /**
- * Nine schedules: the cap and its overflow marker.
+ * Nine schedules: the whole list, which is now every one of them.
  *
- * `MAX_WAKE_SCHEDULES = 16` is what the wire can carry, so nine is an ordinary
- * full scheduler rather than an extreme, and without a cap the section would push
- * the plan and the roster off the pane for a readout nobody is acting on. The
- * marker is a STATEMENT, not a control — nothing in this pane can put a shed wake
- * back — which is why it wears the disabled disclosure the plan's shed count
- * wears rather than the roster's `Show N more`.
+ * `WAKE_ROW_CAP` is `MAX_WAKE_SCHEDULES = 16` (UX round 1's U1), so nine renders
+ * nine rows and this band shows the list rather than a truncation of it. The
+ * argument the six-row cap carried — "without a cap the section would push the
+ * plan and the roster off the pane" — is the one U1 measured false (the panes'
+ * other list SHEDS rather than scrolls, so a 24-item plan leaves the region 9px of
+ * scroll); what it bought was the operator's ask unkept. The marker still exists
+ * for a payload past the declared 16 and is a STATEMENT, not a control — nothing
+ * in this pane can put a shed wake back — which is why it wears the disabled
+ * disclosure the plan's shed count wears rather than the roster's `Show N more`.
  */
 export const WakesMany: Story = {
 	render: () => (

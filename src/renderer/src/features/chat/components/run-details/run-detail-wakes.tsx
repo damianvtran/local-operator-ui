@@ -203,6 +203,12 @@ export const RunDetailWakes = ({
 				 * `disabled` branch is that row: it keeps the gutter and the row height
 				 * of every other disclosure while dressing this one as what it is.
 				 *
+				 * Citational caveat: the x918/x897 pair was measured on the frame at
+				 * `3519aa7da`, the last revision whose `wakes-many` drew a marker. The frame
+				 * committed here draws nine rows and no marker, because the cap is now the
+				 * wire's 16 and no fixture reaches past it — so the numbers are reproducible
+				 * from that revision and from no current frame.
+				 *
 				 * `pl-9` puts the LI at the row's own text column — the same 12px + 16px + 8px
 				 * the plan's shed count uses — and the marker's TEXT then lands 20px inside
 				 * that column, because the shared `Disclosure` primitive indents its summary
