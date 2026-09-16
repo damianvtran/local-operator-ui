@@ -13,7 +13,12 @@ overlays the layout instead of taking its height out of it. Everything the shell
 mounts below it keeps its y, which means the covered rows are not displaced —
 they are absent.
 
-**D9 — content under the band, at three different band heights.**
+**D9 — content under the band, at three different band heights.** Measured on
+`main`'s own capture (`base-absent.png`, md5 `ac580c4d…`): the band occupies
+device y 0-134, the same extent it has on `#205` (the copy is the same two-line
+copy), so every row the design round measured as covered is covered on this
+pull request's base as well — the numbers below are that measurement, and this
+pull request is where they get fixed.
 
 - The pane's page title occupies device y 62-89 in `after-attached.png` (no band).
   In `after-gate-open.png` and `after-flap-during.png` those rows are band paint
@@ -28,11 +33,25 @@ they are absent.
   through their upper half. A half-line of text reads as a rendering fault, not
   as a state.
 
-**D10 — the same overlay leaves the working column blank in the daemon-absent
-state.** In `after-daemon-absent.png` the pane below the band (device x≥1000,
-y>134) holds **0 painted pixels of 2,808,960** — one colour, `#15130e` — while
-the sidebar beside it carries the gate's own notice. `#205` fixed this in the
-withdrawn cell (9,105 painted pixels) and not in this one.
+**D10 — RESTATED AFTER QA ROUND 2: this is NOT this pull request's work.** The
+design round measured the pane below the band in `after-daemon-absent.png` as 0
+painted pixels of 2,808,960, one colour (`#15130e`). QA round 2 then measured the
+same cell **re-run on #205's head** and found it painting — the pane's own
+sentence at device y 828-853 and its `Retry` at 888-912 — and traced the
+committed frame to a pre-pane-fix capture (`#205`'s Q-7, re-shot there on
+`ced379608`).
+
+Re-measured for this brief on both trees:
+
+| frame | tree | pane content below the band (device x≥1000, y>134) |
+| --- | --- | --- |
+| `base-absent.png` (QA's capture, md5 `ac580c4d…`) | `main` | **0 painted pixels** — this is where the void is real |
+| `after-absent.png` (QA's capture on #205's head) | `#205` | sentence at 828-853, `Retry` at 888-912 |
+
+So the void is `main`'s and `#205`'s pane fix is what removes it: this pull
+request does **not** need to re-fix it, and nothing here should be read as
+claiming the pane is blank on the head being merged. What remains inherited — and
+what this pull request is for — is D9 below.
 
 **Why this is a separate pull request.** The band's position is the same on
 `main` (`fixed inset-x-0 top-0 z-2200`), and `after-daemon-absent.png` is
