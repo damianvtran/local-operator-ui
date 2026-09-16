@@ -1318,8 +1318,8 @@ export const wakeClause = (count: number): string =>
  * A NON-POSITIVE `every_ms` reads as no recurrence at all (`once`, and
  * `everyMs: null`), which is the TUI band's own test for the same field —
  * `if schedule.every_ms` is Python truthiness, so a `0` there renders `once` too.
- * The wire cannot produce one (`MIN_WAKE_INTERVAL_MS` is 60 s,
- * `harness/wake.py:47`) and the case is written rather than left to fall through
+ * The wire cannot produce one (`every_ms` is declared `ge=MIN_WAKE_INTERVAL_MS`,
+ * `harness/wake.py:91`) and the case is written rather than left to fall through
  * because the fall-through is `every 0ms`, a row that states a cadence no
  * scheduler has. The row and its label are decided in ONE place so the two cannot
  * disagree about whether there is a recurrence.
@@ -1334,7 +1334,31 @@ const deriveWake = (
 	if (message === "" && nextDueAt === null) return null;
 	const interval = wireNumber(record.every_ms);
 	const everyMs = interval !== null && interval > 0 ? interval : null;
-	const remaining = wireNumber(record.remaining);
+	/*
+	 * `remaining` FIRST, and the scheduler's own arithmetic when it is absent.
+	 *
+	 * The wire's `WakeState` DECLARES `remaining` and neither publishing path ever
+	 * fills it (`frontend_state.py::_wake_state` and `attached.py::_cold_wakes` both
+	 * validate the schedule's own dump, and the schedule carries `limit` and
+	 * `fired_count` rather than a remaining count) — measured on a live backend, a
+	 * schedule created with `--limit 3` publishes `limit: 3, fired_count: 0,
+	 * remaining: null`. Reading only `remaining` would therefore make the bounded
+	 * clause unreachable in the product while it rendered in every fixture that
+	 * filled the field, which is the worst shape a defect can take.
+	 *
+	 * The fallback is the BACKEND's own arithmetic and not an invention:
+	 * `harness/wake.py::due_while_down` bounds a catch-up by
+	 * `max(schedule.limit - schedule.fired_count, 0)` for exactly this reason. One
+	 * expression, so the row and its label cannot disagree about whether the
+	 * schedule is bounded; `remaining` wins when a future runtime starts populating
+	 * it, so this becomes the fallback rather than a second opinion.
+	 */
+	const limit = wireNumber(record.limit);
+	const remaining =
+		wireNumber(record.remaining) ??
+		(limit === null
+			? null
+			: Math.max(limit - (wireNumber(record.fired_count) ?? 0), 0));
 	return {
 		id: wireText(record.id) || `wake-${index}`,
 		message,

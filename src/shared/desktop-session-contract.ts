@@ -390,6 +390,17 @@ export type DesktopNotification = {
  * `every_ms` is null for a one-shot schedule and `remaining` is null when the
  * recurrence is unbounded; both are optional because a schedule created before
  * either field existed simply does not carry it.
+ *
+ * `limit` and `fired_count` are the SCHEDULER's own fields riding through
+ * `WakeState`'s `extra="allow"` (`WakeState.model_validate(schedule.model_dump())`,
+ * `frontend_state.py::_wake_state` and `attached.py::_cold_wakes` — both paths
+ * publish the schedule dump, so both carry them). They are declared here because
+ * the renderer READS them: `remaining` is declared on `WakeState` and is never
+ * populated by either path (measured against a live backend, a schedule created
+ * with `--limit 3` publishes `limit: 3, fired_count: 0, remaining: null`), so the
+ * cadence's bounded clause takes the backend's own `limit - fired_count` when
+ * `remaining` is absent. Declaring them is what keeps that read checkable rather
+ * than a field reached for through an index signature.
  */
 export type CanonicalWakeState = {
 	id: string;
@@ -401,6 +412,10 @@ export type CanonicalWakeState = {
 	every_ms?: number | null;
 	/** Deliveries left, or null when the schedule is not limit-bounded. */
 	remaining?: number | null;
+	/** Deliveries the schedule was created to make, or null when unbounded. */
+	limit?: number | null;
+	/** Deliveries already made. */
+	fired_count?: number;
 };
 
 export type CanonicalFrontendState = {

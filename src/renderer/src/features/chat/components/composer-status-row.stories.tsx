@@ -160,14 +160,18 @@ const wakeOf = (
 	message: string,
 	dueInMinutes: number,
 	everyMinutes?: number,
-	remaining?: number,
+	limit?: number,
 ): Record<string, unknown> => ({
 	id,
 	message,
 	next_due_at: WAKE_NOW_MS + dueInMinutes * 60_000,
 	created_at: WAKE_NOW_MS - 3_600_000,
 	every_ms: everyMinutes === undefined ? null : everyMinutes * 60_000,
-	remaining: remaining ?? null,
+	/* `remaining` stays null exactly as the backend publishes it, and `limit` is
+	   what the bounded clause is rendered from — see the fixtures' own note. */
+	remaining: null,
+	limit: limit ?? null,
+	fired_count: 0,
 });
 
 /** One schedule: the wake chip alone, at the row's start. */
