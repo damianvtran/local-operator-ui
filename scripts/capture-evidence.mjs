@@ -649,8 +649,11 @@ export const STORIES = [
 	 * THE CONVERSATION MARK (design R2), in the states the sidebar can put it in. Nine
 	 * of them because the mark is small and its states differ by one glyph, one count or
 	 * one badge: a frame that showed two of them would leave a reviewer guessing at the
-	 * other seven. `in-a-row` is the one that matters most - the mark is never seen
-	 * alone, and the badge's ring paints `canvas` on whatever ground the row owns.
+	 * other seven. EVERY ONE OF THEM RENDERS THE MARK IN A ROW, and `on-both-grounds` is
+	 * the pair that matters most: the mark is never seen alone, the badge's ring paints
+	 * `canvas` on whatever ground the row owns, and the two grounds sit on opposite sides
+	 * of the panel's own step. (The harness's element floor is the mechanical half of the
+	 * same decision - a lone 24px control is not a drawn surface.)
 	 */
 	["browser-conversation-mark--nothing-open", 320, 64],
 	["browser-conversation-mark--has-tabs", 320, 64],
@@ -660,7 +663,7 @@ export const STORIES = [
 	["browser-conversation-mark--many-approvals", 320, 64],
 	["browser-conversation-mark--everything", 320, 64],
 	["browser-conversation-mark--focused", 320, 64],
-	["browser-conversation-mark--in-a-row", 320, 96],
+	["browser-conversation-mark--on-both-grounds", 320, 128],
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],

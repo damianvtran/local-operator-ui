@@ -200,6 +200,8 @@ let roster: WireRow[] = [];
  * this one would gain two sections and stop being the states they were shot in.
  */
 let entities: { agents: string[]; teams: string[] } | null = null;
+
+/**
  * What the browser is doing in each conversation, for the `BrowserMarks` story.
  *
  * A FIXTURE RATHER THAN THE LIVE MAP, and the reason is the same one the roster above
