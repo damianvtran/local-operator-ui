@@ -27,7 +27,7 @@ const bundle = await build({
 			 * whose staged line did not run (review F1 / QA Q4).
 			 */
 			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
-			'export { argumentShapeVocabulary, wirelessArgumentShapes } from "./src/renderer/src/features/chat/components/slash-submit";',
+			'export { argumentShapeVocabulary } from "./src/renderer/src/features/chat/components/slash-submit";',
 			/*
 			 * The tokenizer's own span, so the case below can assert that the planner and
 			 * the span agree about where a token's WORD ends (review F1 is exactly the
@@ -44,7 +44,6 @@ const bundle = await build({
 });
 const {
 	argumentShapeVocabulary,
-	wirelessArgumentShapes,
 	armedOnlyVocabulary,
 	completionFor,
 	planSlashArming,
@@ -98,6 +97,46 @@ const ARMED_ONLY_COMMANDS = new Set(["goal"]);
  */
 const LOOP_NAMES = new Set([...COMMAND_NAMES, "loop"]);
 const LOOP_PROMPTS = new Set([...PROMPT_COMMANDS, "loop"]);
+
+/**
+ * The wire's SHAPES, at module scope so the pairing (shaped wire vs shape-less
+ * wire) can be asserted from any test in this file: the prose rule is
+ * expressible only where the backend publishes this field, and the two wires
+ * have different, deliberate answers.
+ */
+const SHAPES = argumentShapeVocabulary([
+	{
+		name: "mcp",
+		aliases: [],
+		argument_shape: "subcommand",
+		argument_words: ["logout", "login", "grant"],
+	},
+	{
+		name: "login",
+		aliases: [],
+		argument_shape: "provider",
+		argument_words: ["openai", "anthropic"],
+	},
+	{ name: "usage", aliases: [], argument_shape: "word", argument_words: [] },
+	{ name: "compact", aliases: [], argument_shape: "none" },
+	{ name: "rename", aliases: [], argument_shape: "any" },
+	/*
+	 * THE PRECEDENCE ROWS. A command whose trailing text is carried by
+	 * `consumes_prompt`/`prefixes_text` advertises `argument_shape: "none"` on
+	 * the wire — `none` is that field's word for "no text is ever a SELECTOR
+	 * for this command", not "this command takes no text" — so a planner that
+	 * asked the shape first planned `send` for every one of these and handed
+	 * the endpoint a draft it refuses (the permanent-refusal class). The
+	 * vocabulary is asked first, and these rows are what says so.
+	 */
+	{ name: "team", aliases: [], argument_shape: "none" },
+	{ name: "agent", aliases: [], argument_shape: "none" },
+	{ name: "goal", aliases: [], argument_shape: "none" },
+	{ name: "loop", aliases: [], argument_shape: "none" },
+	{ name: "btw", aliases: [], argument_shape: "none" },
+	{ name: "fork", aliases: [], argument_shape: "none" },
+]);
+const SHAPED = { argumentShapes: SHAPES };
 
 const plan = (draft, caret, over = {}) =>
 	planSlashSubmission({
@@ -199,11 +238,23 @@ test("rows 1, 2 and 4: the whole-draft command shape is unchanged", () => {
 });
 
 test("row 3: a command that owns no text does not get one by being followed", () => {
-	// The operator's own report, first clause: `/compact hello` ran `/compact`
-	// and silently discarded `hello`. A whole-draft form with trailing text is
-	// prose unless the command consumes an argument.
-	assert.deepEqual(plan("/compact hello", 14), { kind: "send" });
-	assert.deepEqual(plan("/usage more prose", 17), { kind: "send" });
+	/*
+	 * The operator's own report, first clause: `/compact hello` ran `/compact` and
+	 * silently discarded `hello`. WHICH WIRE decides the answer: this narrowing is
+	 * expressible only where the backend publishes `argument_shape`, so on the
+	 * shape-less wire these two are commands (as they are on `main`) and on the
+	 * shaped one they are messages. Both rows are asserted, because the pairing is
+	 * the contract the operator's app runs.
+	 */
+	assert.deepEqual(plan("/compact hello", 14, {}), {
+		kind: "whole",
+		command: { name: "compact", args: "hello" },
+	});
+	assert.deepEqual(plan("/usage more prose", 17, {}), {
+		kind: "whole",
+		command: { name: "usage", args: "more prose" },
+	});
+	assert.deepEqual(plan("/usage more prose", 17, SHAPED), { kind: "send" });
 	// `/usage\nfix this` is the same shape across a line break, at every caret.
 	assert.deepEqual(plan("/usage\nfix this", 6), { kind: "send" });
 	assert.deepEqual(plan("/usage\nfix this", caretAtEnd("/usage\nfix this")), {
@@ -298,12 +349,20 @@ test("row 6: an armed-only command is prose until an explicit pick arms it", () 
 });
 
 test("rows 7 and 8: a command word that owns no text opens a message, not a control", () => {
-	// Row 7: `/mcp` is presented as a picker on the desktop and its trailing text
-	// is prose, so this is a message — at column 0, which is where a claiming
-	// command's own word used to exclude the caret.
+	/*
+	 * Row 7 on BOTH wires: the shaped one narrows it to a message (the subcommand
+	 * shape's vocabulary does not hold a sentence), and the shape-less one runs it
+	 * as `/mcp` with the sentence as its argument — `main`'s behaviour, and the
+	 * pairing's stated cost. The MULTI-LINE form below is prose on both, because
+	 * that half is carried by the booleans and never needed a shape.
+	 */
 	const single = "/mcp logout seems to cause a crash on the TUI";
-	assert.deepEqual(plan(single, 0), { kind: "send" });
-	assert.deepEqual(plan(single, caretAtEnd(single)), { kind: "send" });
+	assert.deepEqual(plan(single, 0, SHAPED), { kind: "send" });
+	assert.deepEqual(plan(single, caretAtEnd(single), SHAPED), { kind: "send" });
+	assert.deepEqual(plan(single, 0, {}), {
+		kind: "whole",
+		command: { name: "mcp", args: "logout seems to cause a crash on the TUI" },
+	});
 	// Row 8: the operator's own three-line draft, caret anywhere. This is the
 	// screenshot: it was refused by the backend's blanket policy, and the UI half
 	// of the fix is that the composer already classifies it as prose.
@@ -472,22 +531,16 @@ test("an older backend's vocabulary changes nothing (the additive field)", () =>
 		}
 	}
 	/*
-	 * And the second input is genuinely CONSULTED rather than decorative: with an
-	 * empty one — which is what a renderer that never learned the vocabulary would
-	 * pass — the value commands stop being commands and their drafts become
-	 * messages, which is the behaviour the old rule had for `/model gpt-5` on its
-	 * own. Asserted so a regression that silently ignores the vocabulary fails
-	 * here instead of widening what the composer eats.
+	 * And the second input is consulted where it DECIDES something: a whole-draft
+	 * word with trailing text is prose only when the wire says the command owns no
+	 * text, which is the shaped branch. On the shape-less wire the vocabulary is not
+	 * asked at all — `main`'s rule is — so the two rows below differ by the WIRE,
+	 * not by the vocabulary, and that is what this pair asserts.
 	 */
-	assert.deepEqual(plan("/model gpt-5", 12, { prefixingCommands: new Set() }), {
-		kind: "send",
+	assert.deepEqual(plan("/model gpt-5", 12, {}), {
+		kind: "whole",
+		command: { name: "model", args: "gpt-5" },
 	});
-	assert.deepEqual(
-		plan("/model gpt-5\nplease check the logs", 0, {
-			prefixingCommands: new Set(),
-		}),
-		{ kind: "send" },
-	);
 });
 
 test("the capabilities flag turns the planner off completely", () => {
@@ -990,55 +1043,22 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 	 * the endpoint refuses, and planning a valid command as prose would hand the
 	 * endpoint a text it refuses (the permanent-refusal class).
 	 */
-	const shapes = argumentShapeVocabulary([
-		{
-			name: "mcp",
-			aliases: [],
-			argument_shape: "subcommand",
-			argument_words: ["logout", "login", "grant"],
-		},
-		{
-			name: "login",
-			aliases: [],
-			argument_shape: "provider",
-			argument_words: ["openai", "anthropic"],
-		},
-		{ name: "usage", aliases: [], argument_shape: "word", argument_words: [] },
-		{ name: "compact", aliases: [], argument_shape: "none" },
-		{ name: "rename", aliases: [], argument_shape: "any" },
-		/*
-		 * THE PRECEDENCE ROWS. A command whose trailing text is carried by
-		 * `consumes_prompt`/`prefixes_text` advertises `argument_shape: "none"` on
-		 * the wire — `none` is that field's word for "no text is ever a SELECTOR
-		 * for this command", not "this command takes no text" — so a planner that
-		 * asked the shape first planned `send` for every one of these and handed
-		 * the endpoint a draft it refuses (the permanent-refusal class). The
-		 * vocabulary is asked first, and these rows are what says so.
-		 */
-		{ name: "team", aliases: [], argument_shape: "none" },
-		{ name: "agent", aliases: [], argument_shape: "none" },
-		{ name: "goal", aliases: [], argument_shape: "none" },
-		{ name: "loop", aliases: [], argument_shape: "none" },
-		{ name: "btw", aliases: [], argument_shape: "none" },
-		{ name: "fork", aliases: [], argument_shape: "none" },
-	]);
-	const shaped = { argumentShapes: shapes };
 
 	// A subcommand with its name: the command.
-	assert.deepEqual(plan("/mcp logout", 11, shaped).command, {
+	assert.deepEqual(plan("/mcp logout", 11, SHAPED).command, {
 		name: "mcp",
 		args: "logout",
 	});
 	// The operator's draft: the same word, text that is not that shape's argument.
-	assert.deepEqual(plan("/mcp logout seems to cause a crash", 37, shaped), {
+	assert.deepEqual(plan("/mcp logout seems to cause a crash", 37, SHAPED), {
 		kind: "send",
 	});
 	// A selector token, and text that is not one.
-	assert.equal(plan("/usage on", 9, shaped).kind, "whole");
-	assert.deepEqual(plan("/usage more prose", 17, shaped), { kind: "send" });
+	assert.equal(plan("/usage on", 9, SHAPED).kind, "whole");
+	assert.deepEqual(plan("/usage more prose", 17, SHAPED), { kind: "send" });
 	// A provider this install knows, and one it does not.
-	assert.equal(plan("/login openai", 12, shaped).kind, "whole");
-	assert.deepEqual(plan("/login zzz", 10, shaped), { kind: "send" });
+	assert.equal(plan("/login openai", 12, SHAPED).kind, "whole");
+	assert.deepEqual(plan("/login zzz", 10, SHAPED), { kind: "send" });
 	/*
 	 * And the precedence, on the wire shape those words really carry: a free-text
 	 * command's whole-draft form is a command with ANY text after it, whatever
@@ -1054,41 +1074,35 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 		["/agent do a thing", { name: "agent", args: "do a thing" }],
 		["/team ops", { name: "team", args: "ops" }],
 	]) {
-		const result = plan(draft, draft.length, shaped);
+		const result = plan(draft, draft.length, SHAPED);
 		assert.equal(result.kind, "whole", `${draft} must stay a command`);
 		assert.deepEqual(result.command, command, draft);
 	}
 
 	// A form field that takes arbitrary text.
-	assert.equal(plan("/rename my thing", 15, shaped).kind, "whole");
+	assert.equal(plan("/rename my thing", 15, SHAPED).kind, "whole");
 	// And a command that takes nothing keeps eating nothing.
-	assert.deepEqual(plan("/compact hello", 14, shaped), { kind: "send" });
-	assert.equal(plan("/compact", 8, shaped).kind, "whole");
+	assert.deepEqual(plan("/compact hello", 14, SHAPED), { kind: "send" });
+	assert.equal(plan("/compact", 8, SHAPED).kind, "whole");
 
 	/*
-	 * THE RELEASED BACKEND'S SPELLING: no `argument_shape` anywhere, the wire's own
-	 * `arguments` mode present. That is the pairing the app installs today
-	 * (`features.commands: 1`), and it is where this planner regressed against
-	 * `main`: with the fallback answering "no text is ever an argument", a typed
-	 * `/mcp logout` was planned `send`, posted to the messages endpoint, refused
-	 * with a leading-slash 422 and undone — while `main` ran it (QA Q1, measured on
-	 * the wire, base vs head in two worktrees).
+	 * THE RELEASED BACKEND'S SPELLING: no `argument_shape` anywhere. That is the
+	 * pairing the app installs today (`features.commands: 1`, no shape fields on
+	 * any row), and on it the planner reproduces `main` EXACTLY: a whole-draft
+	 * command word with trailing text is a command, full stop.
+	 *
+	 * Twice this branch tried to answer the pairing from a half-vocabulary and was
+	 * wrong twice, measured: reading `arguments: none` for every row stopped
+	 * `/mcp logout`, `/login openai`, `/rename <title>` and `/move <path>` from
+	 * running at all (QA round 1 Q1, base vs head on the wire), and reading
+	 * `arguments: optional` as "owns text" still sent `/usage on` to the messages
+	 * endpoint, where the released blanket policy refuses it (QA round 2 Q1, UX
+	 * round 2 U1). The distinction the prose rule needs — a selector token here, a
+	 * message there — is not in the wire, so the composer stops guessing rather
+	 * than inventing a third vocabulary for it. The cost is stated in the PR, and
+	 * the operator's rule arrives with the release that publishes the shapes.
 	 */
-	const wireless = wirelessArgumentShapes(
-		[
-			{ name: "mcp", aliases: [], arguments: "optional" },
-			{ name: "login", aliases: [], arguments: "required" },
-			{ name: "rename", aliases: [], arguments: "optional" },
-			{ name: "move", aliases: [], arguments: "optional" },
-			{ name: "fast", aliases: [], arguments: "optional" },
-			{ name: "usage", aliases: [], arguments: "none" },
-			{ name: "compact", aliases: [], arguments: "none" },
-			// A row older than `arguments` itself: loose, never a permanent refusal.
-			{ name: "fleet", aliases: [] },
-		],
-		new Set(["fast", "usage"]),
-	);
-	const released = { wirelessShapes: wireless };
+	const released = {};
 
 	for (const [draft, command] of [
 		["/mcp logout", { name: "mcp", args: "logout" }],
@@ -1096,27 +1110,34 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 		["/rename my title", { name: "rename", args: "my title" }],
 		["/move ~/x", { name: "move", args: "~/x" }],
 		["/fast on", { name: "fast", args: "on" }],
-		["/fleet check", { name: "fleet", args: "check" }],
-		// One selector token from a list: the command.
 		["/usage on", { name: "usage", args: "on" }],
+		// And the two the prose rule narrows on a SHAPED wire stay commands here,
+		// which is what `main` does with them.
+		["/compact hello", { name: "compact", args: "hello" }],
+		["/usage more prose", { name: "usage", args: "more prose" }],
 	]) {
 		const result = plan(draft, draft.length, released);
-		assert.equal(result.kind, "whole", `${draft} must stay a command`);
+		assert.equal(
+			result.kind,
+			"whole",
+			`${draft} must be a command, as on main`,
+		);
 		assert.deepEqual(result.command, command, draft);
 	}
-	// And the two the operator named stay messages, on that same backend.
-	assert.deepEqual(plan("/compact hello", 14, released), { kind: "send" });
-	assert.deepEqual(plan("/usage more prose", 17, released), { kind: "send" });
+	assert.deepEqual(
+		plan("/mcp logout seems to cause a crash on the TUI", 41, released).kind,
+		"whole",
+		"a single-line draft is a whole-draft command on this wire, as on main",
+	);
 
 	/*
-	 * AND THE COARSE SOURCE IS WHOLE-DRAFT ONLY. The wire's `arguments` mode is
-	 * safe exactly there — it reproduces what `main` does with a whole draft — and
-	 * it must never drive the DRAFT-OPENING hoist, or an older backend would hoist
-	 * and stage a multi-line draft that merely opens with a command word, which
-	 * `main` never did and which is the operator's report again. So the hoist asks
-	 * the booleans alone (`prompt ∪ value`), and the row below is the proof: `mcp`
-	 * is `arguments: optional` on this fixture, and the leading-line form is still
-	 * a message.
+	 * AND THE HOIST ASKS THE BOOLEANS ALONE (`prompt ∪ value`), on both wires. A
+	 * shape-less backend gets no hoist at all for a word the booleans do not carry,
+	 * because `main` never hoisted one: a multi-line draft that merely opens with a
+	 * command word is the operator's report in its multi-line form, and staging it
+	 * as a command would be a regression introduced by the fallback rather than by
+	 * the rule. The row below is the proof — `mcp` is not a prompt command — and the
+	 * second one shows the hoist still working for a word that IS.
 	 */
 	assert.deepEqual(
 		plan(
@@ -1143,7 +1164,7 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 		const planForCarets = plan(
 			"/team ops fix this\nand then ship it",
 			caret,
-			shaped,
+			SHAPED,
 		);
 		assert.equal(
 			planForCarets.kind,
@@ -1171,22 +1192,28 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 	 * multi-line body — stays prose under #209's armedOnly rule, which nothing but
 	 * an explicit pick may hoist.
 	 */
-	assert.deepEqual(plan("/goal ship it", 13, shaped).command, {
+	assert.deepEqual(plan("/goal ship it", 13, SHAPED).command, {
 		name: "goal",
 		args: "ship it",
 	});
-	assert.deepEqual(plan("please /goal ship it", 20, shaped), { kind: "send" });
-	assert.deepEqual(plan("/goal\nship the release", 5, shaped), {
+	assert.deepEqual(plan("please /goal ship it", 20, SHAPED), { kind: "send" });
+	assert.deepEqual(plan("/goal\nship the release", 5, SHAPED), {
 		kind: "send",
 	});
 
 	/*
-	 * The FALLBACK, which is what an older backend gets: no shapes on the wire, so
-	 * the vocabulary this branch has always derived answers instead. `/rename my
-	 * thing` is the visible difference — the composer cannot know a row it has no
-	 * shape for takes text, so it is prose, which is the behaviour that backend
-	 * pairs with.
+	 * And the OTHER wire, pinned here because it is the branch that decides what the
+	 * operator's app does today: with no shapes published, the planner reproduces
+	 * `main` — a whole-draft command word with trailing text is a command — so the
+	 * two rows the prose rule narrows on a shaped wire are commands on this one.
+	 * The pairing is the contract; see the "both wires" test below for the matrix.
 	 */
-	assert.deepEqual(plan("/rename my thing", 15), { kind: "send" });
-	assert.deepEqual(plan("/compact hello", 14), { kind: "send" });
+	assert.deepEqual(plan("/rename my thing", 15, {}), {
+		kind: "whole",
+		command: { name: "rename", args: "my thing" },
+	});
+	assert.deepEqual(plan("/compact hello", 14, {}), {
+		kind: "whole",
+		command: { name: "compact", args: "hello" },
+	});
 });

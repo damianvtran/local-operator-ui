@@ -27,9 +27,10 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { slashHighlightRuns, firstContentLine } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { slashHighlightRuns, firstContentLine, runsMatchingPlan, runInkClass } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 /** The registry-derived vocabularies the composer hands the builder. */
 const COMMAND_NAMES = new Set([
@@ -233,4 +234,60 @@ test("the first content line is the mirror's payload, from one definition", () =
 			assert.ok(run.start >= line.start && run.end <= line.end);
 		}
 	}
+});
+
+/*
+ * THE TWO GATES THE FRAMES COULD NOT PIN (review round 2 MINOR-1).
+ *
+ * Both are behaviour the round-1 remediation shipped with no executed assertion:
+ * reverting either left every suite green, and the frame set cannot fail a
+ * regression it has no predicate for. They are pure functions in the module above
+ * for exactly this reason.
+ */
+test("the tint is dropped where Enter sends the draft as a message", () => {
+	const draft = "/compact hello";
+	const painted = runs(draft);
+	assert.ok(painted.length > 0, "the run rule paints this word on its own");
+	assert.deepEqual(
+		runsMatchingPlan(painted, draft, { sendsAsWritten: true }),
+		[],
+		"a draft the planner sends as a message paints nothing",
+	);
+	assert.deepEqual(
+		runsMatchingPlan(painted, draft, { sendsAsWritten: false }),
+		painted,
+		"and the same runs survive where the command runs",
+	);
+});
+
+test("the `unknown` run is narrowed to the bare word", () => {
+	// With text after it the line is neither sent nor run — the dispatcher answers
+	// "unknown command" and keeps the draft — so the ink whose meaning is "inert
+	// text that WILL be sent" may not be painted (design D6).
+	const withText = "/teem fix this";
+	assert.ok(runs(withText).length > 0, "the rule still paints an unknown word");
+	assert.deepEqual(
+		runsMatchingPlan(runs(withText), withText, { sendsAsWritten: false }),
+		[],
+	);
+	const bare = "/teem";
+	assert.equal(
+		runsMatchingPlan(runs(bare), bare, { sendsAsWritten: false }).length,
+		runs(bare).length,
+		"the bare word keeps its dim",
+	);
+});
+
+test("every run steps colour when the composer is disabled", () => {
+	// Branding: disabled changes colour, never opacity — and the mirror's container
+	// cannot do it, because a descendant span wins (design round 1 D2).
+	for (const kind of ["command", "name", "unknown"]) {
+		assert.equal(runInkClass(kind, true), "text-ink-disabled", kind);
+	}
+	assert.equal(
+		runInkClass("command", false),
+		"text-token-command font-semibold",
+	);
+	assert.equal(runInkClass("name", false), "text-success");
+	assert.equal(runInkClass("unknown", false), "text-ink-dim");
 });

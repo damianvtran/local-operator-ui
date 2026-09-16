@@ -945,7 +945,13 @@ export function enterFooter(input: EnterFooterInput): string | null {
 			 * a session must not be promised the run the next Enter will refuse.
 			 */
 			if (
-				input.opening &&
+				/*
+				 * The staging sentence belongs to either half of the pick: the ARMING
+				 * (which hoists from anywhere in the draft) or the REASSEMBLY of a
+				 * command that takes the draft (which only happens from the line the
+				 * word opens). `opening` alone was the round-2 defect.
+				 */
+				(input.arms || input.opening) &&
 				pickStagesDraft({
 					runs: input.runs,
 					arms: input.arms,
@@ -963,7 +969,16 @@ export function enterFooter(input: EnterFooterInput): string | null {
 			 * invariant broken — the line may not promise a gesture the key does not
 			 * perform — and it is the state the narrowed rule created (UX U3 / design D5).
 			 */
-			if (!input.opening)
+			/*
+			 * BUT THE ARMING HALF IS NOT THIS HALF. Where the row ARMS
+			 * (`input.arms`), the pick stages the draft whatever the word's position:
+			 * a hand-chosen `/goal` inside a sentence hoists to `/goal I approve
+			 * spend` and the next Enter RUNS it — measured, and the sentence this
+			 * branch had dropped (review round 2 MAJOR-1, UX round 2 U2). `opening`
+			 * answers the REASSEMBLY question (a command that takes the draft is
+			 * hoisted only from the line it opens) and never the arming one.
+			 */
+			if (!input.arms && !input.opening)
 				return `Enter completes /${input.label}; the next Enter sends this as written.`;
 			/*
 			 * The four answers this table carried before the arming, kept exactly as
@@ -1059,10 +1074,15 @@ export function clickFooter(input: ClickFooterInput): string | null {
 	if (input.phase === "command") {
 		/*
 		 * A token inside a sentence: the pointer COMPLETES it where it stands and runs
-		 * nothing, which is the whole of what it does in that state (design D5 / U3).
+		 * nothing — UNLESS the row ARMS, where the click is the one gesture that stages
+		 * the line (measured: clicking the `/goal` row on `I approve spend /goal`
+		 * rewrote the draft to `/goal I approve spend` while this line promised a
+		 * completion — review round 2 MAJOR-1, UX round 2 U2).
 		 */
-		if (!input.opening) return `Click completes /${input.label}.`;
+		if (!input.arms && !input.opening)
+			return `Click completes /${input.label}.`;
 		if (
+			(input.arms || input.opening) &&
 			pickStagesDraft({
 				runs: input.runs,
 				arms: input.arms,
@@ -1092,6 +1112,17 @@ export type EmptyArgumentList = {
 	loading: boolean;
 	error: string | null;
 	needsSession: boolean;
+	/**
+	 * Whether a value is already typed in the argument position.
+	 *
+	 * The empty state's second clause used to be "Enter opens the full picker" in
+	 * every case, and it is false as soon as something is typed: measured on a
+	 * backend holding no teams, `/team` + Enter opened the picker while `/team ops`
+	 * + Enter RAN the command with `ops` as its name (UX round 2 U5). The line has
+	 * to name the gesture the key performs in the state it is drawn in, which is
+	 * the invariant the command-phase footer was fixed to hold.
+	 */
+	typed: boolean;
 };
 
 /**
@@ -1128,6 +1159,11 @@ export function argumentEmptyCopy(list: EmptyArgumentList): string {
 	if (list.loading) return "Loading…";
 	// Rows exist, the query excluded all of them: "not reported yet" would be a
 	// lie about the source rather than a fact about the filter.
-	if (list.rows.length > 0) return "No matches. Enter opens the full picker.";
-	return "Not reported yet. Enter opens the full picker.";
+	if (list.rows.length > 0)
+		return list.typed
+			? "No matches. Enter runs the command with what you typed."
+			: "No matches. Enter opens the full picker.";
+	return list.typed
+		? "Not reported yet. Enter runs the command with what you typed."
+		: "Not reported yet. Enter opens the full picker.";
 }

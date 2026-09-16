@@ -1498,12 +1498,13 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 		paneHasSession: true,
 		hoists: true,
 		/*
-		 * The word sits INSIDE a sentence here — text survives it (`hoists`) — and
-		 * that is the fact the planner turns on: `I approve spend /goal` is sent as
-		 * written, so neither "Enter stages" nor "the next Enter runs it" is true of
-		 * this state and the copy must not claim either (design D5, UX U2). The
-		 * staging sentence still belongs to the word that OPENS the line, which is
-		 * the state the free-text rows below cover.
+		 * THE STATE ROUND 2 MEASURED, and the sentence it must print. The word sits
+		 * INSIDE a sentence here (text survives it, `hoists: true`), and the row ARMS
+		 * (`arms: true`, which only a hand-chosen row does) — so the pick hoists the
+		 * sentence into a staged `/goal I approve spend` and the NEXT Enter runs the
+		 * goal. `opening` is false, and that is exactly why it may not gate these
+		 * lines: an armed pick stages from anywhere in the draft, while a command that
+		 * takes the draft is reassembled only from the line it opens.
 		 */
 		opening: false,
 		value: "",
@@ -1511,17 +1512,16 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 		unambiguous: true,
 	};
 	const enterLine = enterFooter(composed);
-	assert.equal(
-		enterLine,
-		"Enter completes /goal; the next Enter sends this as written.",
-	);
-	assert.equal(clickFooter(composed), "Click completes /goal.");
+	assert.equal(enterLine, "Enter stages /goal; the next Enter runs it.");
+	assert.equal(enterLine.includes("completes"), false);
+	assert.equal(clickFooter(composed), "Click stages /goal.");
+	assert.equal(clickFooter(composed).includes("runs"), false);
 
 	// Nothing survives the word — a bare `/goal` — so the pick completes it and the
 	// bare form is run by the next Enter. That is #221's own answer and it stays.
 	assert.equal(
-		enterFooter({ ...composed, hoists: false }),
-		"Enter completes /goal; the next Enter sends this as written.",
+		enterFooter({ ...composed, opening: true, hoists: false }),
+		"Enter runs /goal.",
 	);
 
 	// The KEY those lines describe: #221's rule, with the staging decided by the

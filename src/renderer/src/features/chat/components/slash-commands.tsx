@@ -97,7 +97,6 @@ import {
 	type ArmingCatalogueRow,
 	argumentShapeVocabulary,
 	armedOnlyVocabulary,
-	wirelessArgumentShapes,
 } from "./slash-submit";
 import {
 	caretPhase,
@@ -238,6 +237,8 @@ export type SlashArgumentListState = {
 	loading: boolean;
 	/** Set when the list could not be read at all (a 5xx or a transport drop). */
 	error: string | null;
+	/** Whether a value is already typed in the argument position. */
+	typed: boolean;
 	/** No live session, so no entity source can answer. */
 	needsSession: boolean;
 };
@@ -309,10 +310,6 @@ export type SlashCompletionState = {
 	prefixingCommands: ReadonlySet<string>;
 	/** Per-word `argument_shape`/`argument_words`, empty on an older backend. */
 	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
-	/** The same question answered from what an older backend DOES send — the
-	 *  wire's `arguments` mode and the inline argument lists
-	 *  (`wirelessArgumentShapes`). */
-	wirelessShapes: ReadonlyMap<string, ArgumentShapeRow>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -351,7 +348,11 @@ function useArgumentRows(
 	 * query that failed and a query that was never asked (UX round 1 U7).
 	 */
 	paneHasSession: boolean,
-): SlashArgumentListState {
+	/*
+	 * Everything but `typed`: the row builder owns the list, and the hook adds the
+	 * one fact that comes from the DRAFT rather than from the query (UX U5).
+	 */
+): Omit<SlashArgumentListState, "typed"> {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	// Hooks cannot be called conditionally, so the entity query always runs and
 	// is merely DISABLED for the renderer-local source.
@@ -456,6 +457,18 @@ export type SlashCompletionArgs = {
 	 * staged note both have to give (UX U1 / design D3).
 	 */
 	paneHasSession?: boolean;
+	/**
+	 * Whether the composer this popup belongs to can receive a KEY at all.
+	 *
+	 * Not a second `eligible`: `eligible` asks whether the SURFACE is available
+	 * (the backend's `commands` capability, a phase to complete), while this asks
+	 * whether the FIELD can be typed into — and a disabled composer can receive
+	 * neither of the keys both footer lines describe. The list was drawn over a
+	 * disabled box advertising "Enter completes … / Click completes …" while
+	 * `handleComposerKeyDown` and the click handler were both gated on the disabled
+	 * state (design round 2 D3), which is the popup's own invariant inverted.
+	 */
+	disabled?: boolean;
 };
 
 export function useSlashCompletion({
@@ -464,6 +477,7 @@ export function useSlashCompletion({
 	sessionId,
 	activeProfile,
 	paneHasSession = false,
+	disabled = false,
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
@@ -568,20 +582,6 @@ export function useSlashCompletion({
 		() => argumentShapeVocabulary(registry),
 		[registry],
 	);
-	/*
-	 * And the fallback the SAME rows imply when the wire publishes no shape: the
-	 * released backend (`features.commands: 1`) is that pairing, and answering it
-	 * with "no text is ever an argument" stopped `/mcp logout` and `/login openai`
-	 * from running at all (QA Q1, measured against `main`). Derived from the same
-	 * two facts the popup already has — the wire's `arguments` mode and the inline
-	 * argument lists `vocabulary` is built from — so there is still one
-	 * vocabulary, not a second list of command names.
-	 */
-	const wirelessShapes = useMemo(
-		() => wirelessArgumentShapes(registry, new Set(vocabulary.words)),
-		[registry, vocabulary.words],
-	);
-
 	// The caret's phase decides which list is up, and the two are mutually
 	// exclusive by construction (`slash-token.ts:caretPhase` asserts the order).
 	const commandContext = useMemo(
@@ -658,13 +658,23 @@ export function useSlashCompletion({
 		);
 	}, [commandContext, registry]);
 
-	const argumentList = useArgumentRows(
+	const argumentListRows = useArgumentRows(
 		inline?.source,
 		sessionId,
 		activeProfile?.team,
 		activeProfile?.agent,
 		enabled,
 		paneHasSession,
+	);
+	/*
+	 * The empty state's own fact, added here where the typed value lives: the row
+	 * builder owns the list's contents, and the COPY needs to know whether a name
+	 * is already in the box, because that is what decides whether Enter opens the
+	 * picker or runs the command (UX round 2 U5).
+	 */
+	const argumentList = useMemo(
+		() => ({ ...argumentListRows, typed: Boolean(argumentContext?.value) }),
+		[argumentListRows, argumentContext],
 	);
 
 	const argumentMatches = useMemo(
@@ -716,7 +726,7 @@ export function useSlashCompletion({
 				: null;
 
 	const matches = phase === "argument" ? argumentMatches : commandMatches;
-	const eligible = enabled && phase !== null;
+	const eligible = enabled && phase !== null && !disabled;
 	const visible = eligible && (matches.length > 0 || phase === "argument");
 
 	const [state, setState] = useState({ open: false, active: 0 });
@@ -846,7 +856,6 @@ export function useSlashCompletion({
 		armedOnlyCommands,
 		prefixingCommands,
 		argumentShapes,
-		wirelessShapes,
 		nameListCommands: vocabulary.nameList,
 		nameChoices,
 		argumentWords: vocabulary.words,
