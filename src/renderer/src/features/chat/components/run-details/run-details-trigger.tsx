@@ -37,8 +37,18 @@
  * the user is not going to act on, and the counts are the first thing the
  * tooltip already says.
  *
- * The one indication it does carry is the failure dot, whose rule changed with
- * the surface: see `§ 3.4` and the two ledgers below.
+ * **Two indications, and they are distinguished by INK rather than by shape.**
+ * The dot is one 8px mark in one position, and what it is saying is which of two
+ * facts it carries: `danger` for the failure ledger (§ 3.4's "something needs your
+ * attention and you have not looked"), and `info` for live activity the panel is
+ * not currently showing — subagents that are running while the pane is closed or
+ * showing a reader. That is not a second ledger: it holds no state, has no
+ * `seen`-set, and is true whenever there is an open child and no list on screen
+ * to say so, which is exactly the `listOnScreen` gate the failure ledger already
+ * reads. `docs/run-sidebar.md` § 3.4 and `docs/composer-activity-chips.md` § 5
+ * carry the argument; the shape stays one dot because a second mark on a 32px
+ * control is a decoration nobody can read, and the two meanings are one question
+ * — "is there something in the pane I should look at".
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
@@ -203,6 +213,24 @@ export const RunDetailsTrigger = ({
 	const attention =
 		(details ? hasUnseenFailure(details, seen) : false) ||
 		hasUnseenMcpProblem(mcpServers, seenMcp);
+	/*
+	 * The activity term, and it is live state rather than a third ledger: the
+	 * question is "is something running that this pane is not showing you", asked
+	 * of the derived model at render time. The whole gate is `!listOnScreen` — the
+	 * same term the failure ledger uses two paragraphs up — so the dot goes out the
+	 * moment the pane paints the list, with nothing to acknowledge and nothing to
+	 * remember. A `seen`-set here would be a copy of state that already exists, and
+	 * it would go stale the moment a child settled without the user looking.
+	 *
+	 * SUBAGENTS only, never jobs, and that asymmetry is deliberate: a background
+	 * `eval` may legitimately run for hours, so a jobs-driven dot would mean "a long
+	 * job exists" on a session nobody has touched since yesterday, while a running
+	 * child means "something is happening now". The jobs count still reaches the
+	 * user — through the tooltip above and the composer's chips below — and a dot
+	 * that is always lit is a dot nobody reads.
+	 */
+	const activity =
+		details !== null && !listOnScreen && details.openChildren > 0;
 
 	/*
 	 * `details === null` is the legacy path: no canonical session, so no session
@@ -266,19 +294,30 @@ export const RunDetailsTrigger = ({
 				data-run-panel-trigger=""
 			>
 				<Info aria-hidden={true} />
-				{attention && (
+				{(attention || activity) && (
 					/*
-					 * A single 8px `danger` dot at the button's top-right corner. It is
-					 * not decoration and it is not a count: it says something needs
-					 * attention and nobody has looked (§ 3.4), and it clears while the
-					 * panel is open. `rounded-full` is reserved for avatars, status dots
-					 * and pill badges, which is exactly what this is.
+					 * A single 8px dot at the button's top-right corner, in one of two inks
+					 * (the docblock above says which and why). It is not decoration and it is
+					 * not a count: `danger` says something needs attention and nobody has
+					 * looked (§ 3.4); `info` says the session is working while the pane is not
+					 * showing it. Both clear by themselves — the failure ledger clears while
+					 * the panel is open, the activity ink clears the moment the list is on
+					 * screen. `rounded-full` is reserved for avatars, status dots and pill
+					 * badges, which is exactly what this is.
+					 *
+					 * `aria-hidden`, and no clause is added to the accessible name for the
+					 * activity case: the label ALREADY carries the child clause whenever there
+					 * is an open child (`runDetailTriggerLabel`, which spells the state the
+					 * mark shows — `running`, `queued` or `paused`), so a spoken word here
+					 * would be the same fact twice — while the failure case has no such clause
+					 * and is precisely why the dot is the only statement that one makes.
 					 */
 					<span
 						aria-hidden={true}
 						data-run-panel-dot=""
 						className={cn(
-							"absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger",
+							"absolute -top-0.5 -right-0.5 size-2 rounded-full",
+							attention ? "bg-danger" : "bg-info",
 						)}
 					/>
 				)}
