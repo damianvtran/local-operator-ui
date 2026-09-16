@@ -47,6 +47,10 @@ export const sage: ThemeDefinition = {
 		accent: "#476E49",
 		accentHover: "#35563A",
 		accentActive: "#294229",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.3 from `accent` and 8.37:1 on surface, where the accent
+		// itself is 5.46:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#345035",
 		// The celadon, at the faintest tint that still lets the accent clear 4.5:1
 		// on it. This is where Sage's signature colour still shows.
 		accentWash: "#E6E9D8",
