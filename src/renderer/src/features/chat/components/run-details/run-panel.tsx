@@ -607,6 +607,16 @@ export const RunPanel = ({
 	const childControlLabel = `${children.length} child${
 		children.length === 1 ? "" : "ren"
 	}`;
+	/*
+	 * The Back control's name, in ONE string (`§ 6.2`), the same way the descend
+	 * control above derives its tooltip and its accessible name from one count: two
+	 * literals are two chances to drift, and the tooltip is the only place a sighted
+	 * user reads what this control does. The word stays "Back" - it still moves up a
+	 * level, and at the first level the level above the reader is the pane's own
+	 * root, so renaming it would describe the landing rather than the move the user
+	 * made (designer D2, round 1).
+	 */
+	const backName = "Back";
 
 	return (
 		/*
@@ -644,11 +654,11 @@ export const RunPanel = ({
 				<div className={cn("flex min-w-0 items-center gap-1")}>
 					{row ? (
 						<>
-							<Tooltip content="Back">
+							<Tooltip content={backName}>
 								<Button
 									variant="ghost"
 									size="icon-sm"
-									aria-label="Back"
+									aria-label={backName}
 									onClick={back}
 								>
 									{/*

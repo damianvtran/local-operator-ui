@@ -371,27 +371,18 @@ const withCanvasClosed = (Story: () => ReactNode) => {
 /**
  * Click a control and hold the shutter until the state it produces is on screen.
  *
- * The poll is on the DOM rather than on a timeout because the state arrives a
- * frame after the click, and a fixed sleep is a race that would only ever be won
- * by luck.
+ * ONE implementation of the shutter protocol, not two (review R1-3): this is
+ * `usePressFlow` with a single step, kept because most flows are one press. Two
+ * things change for the better by delegating rather than re-implementing - the
+ * step waits for its own control (`waitFor`), so a missing control holds the
+ * shutter instead of photographing the state it should have left, and the release
+ * is the generalisation's two agreeing polls rather than one, which is what stops
+ * a capture landing on a frame mid-swap.
  */
-const useClickAndWait = (selector: string, settleSelector: string) => {
-	useEffect(() => {
-		const button = document.querySelector<HTMLButtonElement>(selector);
-		if (!button) return;
-		document.documentElement.dataset.capturePending = "1";
-		button.click();
-		const poll = window.setInterval(() => {
-			if (!document.querySelector(settleSelector)) return;
-			window.clearInterval(poll);
-			document.documentElement.removeAttribute("data-capture-pending");
-		}, 40);
-		return () => {
-			window.clearInterval(poll);
-			document.documentElement.removeAttribute("data-capture-pending");
-		};
-	}, [selector, settleSelector]);
-};
+const useClickAndWait = (selector: string, settleSelector: string) =>
+	usePressFlow([{ press: selector, waitFor: selector }], () =>
+		Boolean(document.querySelector(settleSelector)),
+	);
 
 /*
  * A real, tiny PNG (72x44, 425 bytes) for the child-scoped attachment story.
@@ -774,11 +765,17 @@ export const RosterMembers: Story = {
  * because a still cannot carry a key press: a frame is identical whether or not
  * Back pops a level, and whether or not focus landed anywhere. The rules round 1
  * settled are keyboard-visible ONLY — focus entering a reader as it opens,
- * `Escape` fired from the TRIGGER (which lives outside the pane), Back popping
- * one level and leaving the pane at the first — so what they need is a pane whose
- * callbacks move real state, and a driver that presses the keys. This is that
- * pane: the same `RunPanel`, mounted the way `chat-content.tsx` mounts it, with
- * `readerChildId` and the store's open flag as state.
+ * `Escape` fired from the TRIGGER (which lives outside the pane), and Back either
+ * popping one level or, at the first level, returning to the roster with the pane
+ * still open — so what they need is a pane whose callbacks move real state, and a
+ * driver that presses the keys. This is that pane: the same `RunPanel`, mounted
+ * the way `chat-content.tsx` mounts it, with `readerChildId` and the store's open
+ * flag as state.
+ *
+ * The keyboard half is also asserted executably, in
+ * `scripts/run-panel-navigation.test.mjs`, which mounts THIS harness rather than a
+ * second reproduction: the mount, the pop and the landing (including where focus
+ * goes) are read from this component's real state, so the two cannot drift.
  *
  * A photograph of it would be a picture of the harness (whatever the walk last
  * pressed), so it contributes no frame and is absent from the sweep on purpose.
