@@ -158,6 +158,73 @@ export const AgentAndWaiting: Story = {
 	),
 };
 
+/*
+ * THE WORST-CASE ROWS, WHICH NOTHING RENDERED UNTIL ROUND 6. Both of round 6's
+ * MAJORs were invisible because no fixture carried a four- or five-chip row: the
+ * floor's arithmetic described them, the harness could not measure them, and the
+ * design stream had nothing to look at. These two stories are that gap closed.
+ *
+ * WHY THEY ARE REACHABLE, from the registry rather than from taste: `handOver`
+ * sets `owner = "agent"` and `handedTo` in one step, so `Agent` and `Shared`
+ * always travel together; `restored` is set at creation and never cleared; and
+ * `failed` and a waiting `Request n` stack on top of either. So
+ * `{Agent, Shared, Failed, Request n}` is the tab a user clicks BECAUSE it needs
+ * approval - not a pathological one - and `{Restored, Agent, Shared, Failed,
+ * Request n}` is the widest row the projection can produce.
+ *
+ * THE ACTIVE ROW IS THE BINDING CASE and takes one story each, because the active
+ * row pays 68px for the cluster that sits in flow on it, and only one tab can be
+ * active in a strip. `WorstCase` is the row that set the floor's ceiling;
+ * `WorstCaseWidest` is the row that is contained rather than sized.
+ */
+export const WorstCase: Story = {
+	args: strip(
+		[
+			tab(1, "Dashboard"),
+			// Four chips, active: {Agent, Shared, Failed, Request n}.
+			tab(2, "Invoices", {
+				owner: "agent",
+				handedOver: true,
+				failed: true,
+				url: "https://invoices.example.com/pay",
+			}),
+			// Five chips, inactive: {Restored, Agent, Shared, Failed, Request n}.
+			tab(3, "Checkout", {
+				owner: "agent",
+				handedOver: true,
+				restored: true,
+				failed: true,
+				url: "https://checkout.example.com/basket",
+			}),
+			tab(4, "Docs"),
+		],
+		2,
+		{ 2: 1, 3: 2 },
+	),
+};
+
+/** The widest row the projection can produce, ACTIVE: `restored` is not cleared by
+ * a hand-over, so this row carries five chips and the in-flow cluster together.
+ * This is the row the floor contains rather than sizes - the title yields and the
+ * button clips, and the frame is where a reader can see what that costs. */
+export const WorstCaseWidest: Story = {
+	args: strip(
+		[
+			tab(1, "Dashboard"),
+			tab(2, "Checkout", {
+				owner: "agent",
+				handedOver: true,
+				restored: true,
+				failed: true,
+				url: "https://checkout.example.com/basket",
+			}),
+			tab(3, "Docs"),
+		],
+		2,
+		{ 2: 1 },
+	),
+};
+
 /** A background tab whose main-frame load was refused: the one carrier of that
  * state, because the failure panel belongs to the active tab and the page area is
  * blank (design round 1, D1). */
