@@ -645,10 +645,32 @@ export class BrowserHost implements BrowserActionContext {
 		};
 	}
 
-	/** A user tab: created active, at about:blank, owned by the user and with no
-	 * capability until the user hands it over (design 6.1, 6.3). */
-	async newTab(): Promise<Record<string, unknown>> {
-		const record = this.registry.create({ owner: "user" });
+	/**
+	 * A user tab: created active, at about:blank, owned by the user and with no
+	 * capability until the user hands it over (design 6.1, 6.3).
+	 *
+	 * ATTRIBUTED TO THE CONVERSATION IT WAS OPENED FROM when it has one (design R1).
+	 * That is the whole of the main-process half and it takes no new mechanism:
+	 * `registry.create` already stores a non-restored tab's `sessionId`
+	 * (`registry.ts:231`) and already leaves every user tab's `nonce` null (`:232`).
+	 *
+	 * WHY THIS CHANGES NO CAPABILITY, and the test that pins it
+	 * (`scripts/browser-host.test.mjs`): `mayDrive` requires the session id AND a
+	 * nonce (`registry.ts:395-397`), and this tab has the first and not the second, so
+	 * an agent in that conversation still cannot drive a tab the user opened. The
+	 * `tabs` listing redacts its handle, `agentTabCount()` filters on `owner` and is
+	 * unmoved, the agent cap is unmoved, and hand-over stays the only authority
+	 * transfer.
+	 *
+	 * Before this, all three ways a user could open a tab produced one the pane's
+	 * "This conversation" scope would never show, because the scope filter reads this
+	 * one field.
+	 */
+	async newTab(sessionId?: string | null): Promise<Record<string, unknown>> {
+		const record = this.registry.create({
+			owner: "user",
+			sessionId: sessionId ?? null,
+		});
 		await record.view.webContents.loadURL("about:blank");
 		await this.cdp.attach(record.view.webContents);
 		this.onChanged();

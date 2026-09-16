@@ -83,7 +83,10 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 
 	ipcMain.handle("browser-state", (event) => authorize(event).chromeState());
 
-	ipcMain.handle("browser-new-tab", async (event) => authorize(event).newTab());
+	ipcMain.handle("browser-new-tab", async (event, sessionId: unknown) => {
+		const host = authorize(event);
+		return host.newTab(optionalConversationOrThrow(sessionId));
+	});
 
 	ipcMain.handle("browser-close-tab", (event, tabId: unknown) => {
 		const host = authorize(event);
@@ -215,6 +218,28 @@ function numberOrThrow(value: unknown, name: string): number {
 		throw new Error(`${name} must be an integer.`);
 	}
 	return value;
+}
+
+/**
+ * The conversation a new tab should belong to, or null for none.
+ *
+ * THE BOUNDARY VALIDATES RATHER THAN TRUSTS, which is why this exists at all:
+ * the renderer's `sessionId` is a string it derived from the session list, and
+ * main has no reason to accept anything else as a name for a conversation.
+ * `null`/absent is a REAL and common value — the route, and the pane on a draft,
+ * open tabs that belong to no conversation — while an empty or blank string is a
+ * mistake rather than a value: it would be stored as an attribution that matches
+ * no scope's comparison and reads to a human as "a conversation with no name".
+ * Refusing it here is what keeps `sessionId` a name or nothing.
+ */
+function optionalConversationOrThrow(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	if (typeof value !== "string") {
+		throw new Error("A conversation id must be a string.");
+	}
+	const sessionId = value.trim();
+	if (!sessionId) throw new Error("A conversation id cannot be empty.");
+	return sessionId;
 }
 
 function contentRectOrNull(value: unknown): ContentRect | null {

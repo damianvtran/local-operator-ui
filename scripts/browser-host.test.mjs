@@ -53,6 +53,12 @@ const bundle = await build({
 			// The banner class itself, reached through the alias below, so the tests can
 			// see what the DEFAULT factory raised without constructing one of their own.
 			'export { Notification as ElectronNotification } from "electron";',
+			// The IPC module is registered by the app (and in the app it is Electron's
+			// real `ipcMain`): the bundle carries it so the tests can drive a channel
+			// through the shipped authorize gate and the shipped validators, which is
+			// where a new tab's conversation id is validated.
+			'export * from "./src/main/browser/ipc";',
+			'export { ipcMain } from "electron";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
 			'export * from "./src/main/browser/settle";',
@@ -108,6 +114,9 @@ const {
 	ConsentNotifier,
 	consentBody,
 	ElectronNotification,
+	ipcMain,
+	registerBrowserIpc,
+	BROWSER_IPC_CHANNELS,
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
@@ -1713,6 +1722,137 @@ test("the projection names each tab's conversation — and never its capability"
 	assert.ok(
 		!/"nonce"/.test(wire) && !/"handle"/.test(wire),
 		"and no field is named for one either",
+	);
+});
+
+test("a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)", async () => {
+	const { host, registry } = makeHost();
+	const owner = { requester: "session:alice", url: "https://scope.example/" };
+	// An agent tab in the SAME conversation, so the listing below has both tabs and
+	// the difference between them is what the test reads.
+	await host.dispatch("request_access", owner, "req-1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", owner, "req-2");
+
+	// The pane's own `New tab`, called exactly the way `browser-new-tab` calls it.
+	await host.newTab("alice");
+	const opened = host.chromeState().tabs.at(-1);
+	assert.equal(
+		opened.sessionId,
+		"alice",
+		"the tab is attributed to the conversation it was opened from, which is the one field the pane's scope filter reads",
+	);
+	assert.equal(
+		opened.owner,
+		"user",
+		"and it is the user's tab: the user pressed the button, so it becomes active",
+	);
+
+	// THE CAPABILITY CLAIM, which is what makes this additive rather than a new
+	// authority. `mayDrive` requires the session id AND a nonce; this tab has the
+	// first and not the second, so the agent in that conversation cannot drive it.
+	const record = registry.get(opened.tabId);
+	assert.ok(record);
+	assert.equal(
+		registry.mayDrive(record, "alice"),
+		false,
+		"having the session is not having the capability",
+	);
+	assert.equal(surfaceToken(record), null, "there is no token to present");
+	// The projection carries no handle field at all — a handle is the capability, and
+	// `chromeState` never sends one — so the capability claim is read where the
+	// handles are: the agent's own listing, below.
+	assert.equal(
+		registry.agentTabCount(),
+		1,
+		"the cap counts owners, and the user's tab did not become an agent tab",
+	);
+
+	const listed = await host.dispatch(
+		"tabs",
+		{ requester: "session:alice" },
+		"req-3",
+	);
+	const theirs = listed.tabs.find((entry) => entry.owner === "user");
+	assert.equal(
+		theirs?.tab,
+		"",
+		"the agent's listing shows the user's tab with no handle at all: awareness without a capability",
+	);
+	const mine = listed.tabs.find((entry) => entry.owner === "agent");
+	assert.ok(
+		mine?.tab && !mine.tab.endsWith("…"),
+		`while its own tab is still listed in full, so the listing is unchanged where it matters: ${mine?.tab}`,
+	);
+	assert.ok(parseSurface(mine.tab), "and the full handle is a real token");
+
+	// AND THE OTHER DIRECTION, so the attribution is not a one-way door: handing
+	// this tab over is still the only way the agent gains authority over it.
+	await host.handOver(opened.tabId, "alice");
+	assert.equal(
+		registry.mayDrive(registry.get(opened.tabId), "alice"),
+		true,
+		"hand-over is still the one authority transfer",
+	);
+});
+
+test("a conversation id is validated at the IPC boundary rather than trusted (R1)", async () => {
+	const { host } = makeHost();
+	// The window the handlers authorize, with the shape `authorize` compares.
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => host,
+		clearData: async () => {},
+		log: () => {},
+	});
+	/** One `ipcRenderer.invoke`, through the shipped handler. */
+	const invoke = (channel, ...args) => {
+		const handler = ipcMain.handlers.get(channel);
+		assert.ok(handler, `${channel} is registered`);
+		return handler({ sender: webContents, senderFrame: frame }, ...args);
+	};
+
+	// ABSENT and null are real, common values rather than mistakes: the route and a
+	// draft pane open tabs that belong to no conversation.
+	await invoke("browser-new-tab");
+	assert.equal(host.chromeState().tabs.at(-1).sessionId, null);
+	await invoke("browser-new-tab", null);
+	assert.equal(host.chromeState().tabs.at(-1).sessionId, null);
+
+	// A NAMED conversation is stored as the name, trimmed.
+	await invoke("browser-new-tab", "  alice  ");
+	assert.equal(
+		host.chromeState().tabs.at(-1).sessionId,
+		"alice",
+		"the boundary normalises rather than storing a spelling no scope will match",
+	);
+
+	// And the mistakes are refused at the boundary, which is the contract: an empty
+	// or blank id would be stored as an attribution that compares equal to no scope
+	// and reads to a human as a conversation with no name.
+	await assert.rejects(
+		() => invoke("browser-new-tab", ""),
+		/cannot be empty/,
+		"an empty conversation id is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-new-tab", "   "),
+		/cannot be empty/,
+	);
+	await assert.rejects(
+		() => invoke("browser-new-tab", 42),
+		/must be a string/,
+		"a non-string is refused rather than coerced",
+	);
+	assert.equal(
+		host.chromeState().tabs.filter((tab) => tab.sessionId === null).length,
+		2,
+		"and a refused call creates no tab at all",
 	);
 });
 
