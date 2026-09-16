@@ -102,11 +102,23 @@ export type ChildStatus =
  * the desktop frontend, and §10 records that follow-up with the mechanism the
  * harness actually allows.
  */
-export const OPEN_CHILD_STATUSES: readonly ChildStatus[] = [
-	"running",
-	"queued",
-	"paused",
-];
+export const OPEN_CHILD_STATUSES = ["running", "queued", "paused"] as const;
+
+/**
+ * The three states a row can be in and still be OPEN work — the mark's own union.
+ *
+ * It is DERIVED from the list above rather than written beside it, and that is
+ * the point of the double assertion: `ActivityTally.mark` and the clause's table
+ * lookup are both over this type, so the word a chip prints is a total lookup with
+ * no fallback arm to be unreachable (agent review round 2, n2).
+ */
+export type OpenChildStatus = (typeof OPEN_CHILD_STATUSES)[number];
+
+/** Whether a folded state is one of the three open ones. */
+export const isOpenChildStatus = (
+	status: ChildStatus,
+): status is OpenChildStatus =>
+	OPEN_CHILD_STATUSES.some((open) => open === status);
 
 /** Every to-do state the panel draws, from the TUI's `STATUS_MARKS` (`:177`). */
 export type TodoItemStatus = "pending" | "done" | "dropped" | "blocked";
@@ -391,6 +403,26 @@ export type RunDetails = {
 	todos: TodoPhaseView[];
 	/** Children that have not settled: running or queued (`§3.3`). */
 	openChildren: number;
+	/**
+	 * The session's TOOL jobs: every `bash` row on the wire, settled or not.
+	 *
+	 * The session's SECOND kind of activity, and a different list from the roster
+	 * beside it — the partition is in `deriveRunDetails`, and this field exists
+	 * because a `bash` row is the one thing that partition keeps out of the
+	 * roster: a backgrounded shell and a background `eval` both register as
+	 * `type: "bash"` (`harness/jobs.py:216`, `tools/builtin.py:2186`,
+	 * `tools/eval.py:937`), which is why the composer's jobs chip and the pane's
+	 * Jobs section need a list of their own to count and to draw.
+	 *
+	 * NOT part of `lineage`, deliberately. The lineage is the reader's walk over
+	 * `parent_job_id` (`§ 5.5`), and a tool row has no `session_id` to open a
+	 * conversation on and no role to state — it is a row to read, never a page to
+	 * visit (`childOpenable` is false for every one of them, which is why the
+	 * section renders them without an open control).
+	 */
+	jobs: SubagentRow[];
+	/** Tool jobs that have not settled: running or queued (`§3.3`). */
+	openJobs: number;
 	/** Ids of every failed child, in roster order — the "unseen failure" ledger. */
 	failedChildIds: string[];
 	/** To-do items still open — pending or blocked (`§3.3`). */
@@ -641,8 +673,107 @@ const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 };
 
 /** Whether a folded state has settled. */
-const isSettled = (status: ChildStatus): boolean =>
-	!OPEN_CHILD_STATUSES.includes(status);
+const isSettled = (status: ChildStatus): boolean => !isOpenChildStatus(status);
+
+/**
+ * Whether a row is still OPEN — running, queued or paused (`§3.3`).
+ *
+ * Exported because the question is now asked in three places that must not
+ * disagree: the roster's own `openChildren`, `openJobs` over the tool rows
+ * (`deriveRunDetails`), and the Jobs section's own slice. One spelling, so a
+ * later definition of "open" cannot leave the composer's number counting rows
+ * the pane refuses to draw — which is the class of drift the model's
+ * "one tally" rule exists to stop.
+ */
+export const isOpenRow = (row: SubagentRow): boolean => !isSettled(row.status);
+
+/**
+ * The state mark an activity chip LEADS with, over the rows that chip counts.
+ *
+ * The composer's two activity chips each lead with a state mark rather than with
+ * a digit (`docs/composer-activity-chips.md`), and the mark IS the "animation
+ * while active": `SubagentStateIcon` spins a `running` row and nothing else, so
+ * the chip moves exactly while the work it names is moving. Nothing new is
+ * invented for it — no keyframe, no token — because the roster has carried this
+ * mark since the pane was the popover.
+ *
+ * The precedence IS `OPEN_CHILD_STATUSES`' own order — running, then queued,
+ * then paused — and that is not a coincidence to preserve twice: an open set is a
+ * subset of that list, so walking it is a total function over any non-empty set.
+ * With one row open, which is the ordinary case, the mark is simply that row's
+ * own. With several, the busiest wins: a spinner beside a queued sibling is the
+ * honest reading of "something here is running", and the alternative — the
+ * first row on the wire — would make the mark depend on the ledger's ordering.
+ *
+ * `null` when NOTHING is open, and the chips use that as their gate rather than
+ * re-deciding from a count: it is the same predicate the count is derived from
+ * (`isOpenRow`), so "the chip renders" and "the number it prints is positive"
+ * cannot come apart. `run-detail-model.test.mjs` pins that equivalence for both
+ * lists.
+ */
+export function activityMark(
+	rows: readonly SubagentRow[],
+): OpenChildStatus | null {
+	const open = rows.filter(isOpenRow);
+	for (const status of OPEN_CHILD_STATUSES) {
+		if (open.some((row) => row.status === status)) return status;
+	}
+	return null;
+}
+
+/**
+ * An activity chip's whole reading: how many rows are open, and the state its
+ * mark shows — DERIVED TOGETHER so the sentence and the glyph cannot disagree.
+ *
+ * Design review round 1 (D1) and UX's U4 are the same defect, found from the
+ * pixels and from the copy: the chips printed `N running` for any unsettled row
+ * while `activityMark` drew `Clock` for a capacity-queued child or `CirclePause`
+ * for a parked one — and the mark is `aria-hidden`, so the words were not merely
+ * a second opinion, they were the only thing a screen reader heard: "1 subagent
+ * running" for a child that has not started.
+ *
+ * The fix is structural rather than a second string. The count and the mark come
+ * out of ONE call, and the clause takes the TALLY rather than a bare number, so
+ * a caller cannot spell a sentence that disagrees with the glyph it is about to
+ * draw: it has no number to pass and no state to invent. `null` when nothing is
+ * open, which is the gate both chips and the trigger read.
+ *
+ * `count` is the same measure `openChildren`/`openJobs` publish, so the chips'
+ * gate and the model's counts remain one predicate (`isOpenRow`).
+ */
+export type ActivityTally = {
+	count: number;
+	mark: OpenChildStatus;
+	/**
+	 * How many of the open rows are in `mark`'s own state.
+	 *
+	 * Carried because `count` alone cannot say whether the set is UNIFORM, and the
+	 * sentence needs to: `mark` is the busiest state (`activityMark`'s ladder), so
+	 * with `DEFAULT_MAX_RUNNING_JOBS = 15` (`harness/jobs.py:36`) any fan-out above
+	 * fifteen children spends most of its life with rows parked behind the running
+	 * ones, and a clause that puts the busiest state's word beside the OPEN total
+	 * then claims work that is not happening (design round 2, D6: the chip read
+	 * `40 subagents running` while the pane two inches away read `15 running ·
+	 * 25 queued · 17 interrupted · 5 done`).
+	 *
+	 * `markCount === count` is the uniform case and the only one that may use the
+	 * state word; `markCount < count` is the mixed case, whose word is the family's.
+	 */
+	markCount: number;
+};
+
+export function activityTally(
+	rows: readonly SubagentRow[],
+): ActivityTally | null {
+	const open = rows.filter(isOpenRow);
+	const mark = activityMark(rows);
+	if (mark === null) return null;
+	return {
+		count: open.length,
+		mark,
+		markCount: open.filter((row) => row.status === mark).length,
+	};
+}
 
 /* ------------------------------------------------------------------ */
 /* Derivation                                                          */
@@ -930,12 +1061,53 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	 * row shows a child that a stricter filter would hide, and the failure this
 	 * rule exists to stop is over-reporting work, not losing it.
 	 */
-	const taskRows = jobs
-		.filter((job) => {
-			const type = wireText(job.type);
-			return type === "" || type === "task";
-		})
-		.map((job) => deriveChild(job, nowSeconds));
+	const taskWire: Array<Record<string, unknown>> = [];
+	const jobWire: Array<Record<string, unknown>> = [];
+	for (const job of jobs) {
+		const type = wireText(job.type);
+		if (type === "bash") {
+			jobWire.push(job);
+			continue;
+		}
+		/*
+		 * Every row lands in exactly ONE of the two lists, which is why this is a
+		 * PARTITION and not the membership filter it used to be: the rows that are
+		 * not children used to be dropped here, and they are now the session's own
+		 * activity — the composer's jobs chip counts them and the pane's Jobs section
+		 * draws them (`docs/composer-activity-chips.md`).
+		 *
+		 * Three cases, and the third is written rather than left to a `filter`:
+		 *
+		 * - `bash` -> `jobWire`, the tool jobs.
+		 * - `""` or `task` -> `taskWire`, the roster's candidates (the rule above:
+		 *   a row with no `type` may be a child this renderer has not been taught).
+		 * - any OTHER word -> NEITHER list. An unrecognised `type` is not evidence
+		 *   that a row is a delegating child, and it is not evidence that it is a
+		 *   shell job either; putting it in the roster would repeat round 1's
+		 *   over-reporting, and putting it under the Jobs heading would give that
+		 *   section a row its own tally does not count. `JobType` has exactly two
+		 *   words today (`harness/jobs.py:216`), so this branch is unreachable on the
+		 *   wire — which is precisely why it is stated: `frontend.jobs` is a field
+		 *   whose vocabulary the RUNTIME owns, and the two lists must not both claim
+		 *   a row a future runtime invents.
+		 */
+		if (type === "" || type === "task") taskWire.push(job);
+	}
+	const taskRows = taskWire.map((job) => deriveChild(job, nowSeconds));
+	/*
+	 * The tool jobs, derived through the SAME `deriveChild`. It is type-agnostic
+	 * and reads only fields a `bash` row supplies — `label`, `status`,
+	 * `start_time`, `settled_at`, and a `latest_details` the tool register paths
+	 * leave null — so a second derivation for this list would be a second place
+	 * for a state to lose its mark.
+	 *
+	 * What a bash row can never do is fold to `queued`: the flag is minted only for
+	 * a `task` row the capacity gate parked (`harness/jobs.py:1006-1029`,
+	 * `harness/subagent.py:655`), so that rung of `activityMark`'s ladder is
+	 * unreachable on this list. The ladder is shared anyway — one spelling of "the
+	 * busiest open row" is worth more than the rung it cannot reach.
+	 */
+	const jobRows = jobWire.map((job) => deriveChild(job, nowSeconds));
 	/*
 	 * `childCount` is the parent/child edges counted over the WHOLE lineage — see
 	 * `SubagentRow.childCount` for why it is derived rather than read, and
@@ -963,8 +1135,10 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	return {
 		subagents: roster,
 		lineage,
+		jobs: jobRows,
 		todos,
-		openChildren: roster.filter((row) => !isSettled(row.status)).length,
+		openChildren: roster.filter(isOpenRow).length,
+		openJobs: jobRows.filter(isOpenRow).length,
 		failedChildIds: roster
 			.filter((row) => row.status === "failed")
 			.map((row) => row.id),
@@ -1027,9 +1201,19 @@ export function retimeRunDetails(
 ): RunDetails {
 	const subagents = retimeRows(details.subagents, nowMs);
 	const lineage = retimeRows(details.lineage, nowMs);
-	return subagents === details.subagents && lineage === details.lineage
+	/*
+	 * The tool jobs are re-measured on the same tick, and the rule is the one
+	 * above: a running `bash` job's clock is live, and the Jobs section draws its
+	 * elapsed label (`NumberRun`). Leaving this list on the wire's own reading
+	 * would put the two lists of live work the panel draws side by side — both
+	 * measured against the same `measuredAtMs` — on two different clocks.
+	 */
+	const jobs = retimeRows(details.jobs, nowMs);
+	return subagents === details.subagents &&
+		lineage === details.lineage &&
+		jobs === details.jobs
 		? details
-		: { ...details, subagents, lineage };
+		: { ...details, subagents, lineage, jobs };
 }
 
 /** One row, re-measured at `nowMs`; returns the same row when nothing moved. */
@@ -1201,6 +1385,14 @@ export function hasRunDetails(
 	if (!details) return false;
 	return (
 		details.openChildren > 0 ||
+		/*
+		 * A running tool job makes the panel non-empty in its own right, which is why
+		 * it is in here: without it the pane's quiet line would claim "Nothing in
+		 * flight" while the Jobs section directly beneath it draws rows
+		 * (`docs/composer-activity-chips.md`; the panel's own note at that branch
+		 * says the second sentence must never disagree with what is rendered).
+		 */
+		details.openJobs > 0 ||
 		details.openTodos > 0 ||
 		hasUnseenFailure(details, seen)
 	);
@@ -2473,8 +2665,92 @@ export function visibleTodoPhases(phases: TodoPhaseView[]): {
 const plural = (count: number, noun: string): string =>
 	count === 1 ? `1 ${noun}` : `${count} ${noun}s`;
 
-const childClause = (count: number): string =>
-	`${plural(count, "subagent")} running`;
+/**
+ * The state word in a clause, from the mark the chip leads with.
+ *
+ * `CHILD_STATE_WORD` is the roster's own table, so the chips say what a roster
+ * row says about the same state — `queued` and `paused` included, which is the
+ * half that was missing while the clause hardcoded `running`.
+ *
+ * The parameter is `OpenChildStatus`, the mark's own union, rather than a looser
+ * `ChildStatus` with a cast: `activityMark` can only return one of the three, all
+ * three are keys of the table, so the lookup is total and there is no
+ * unreachable `?? state` arm (agent review round 2, n2).
+ */
+const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
+
+/**
+ * The word a clause uses for the set: the STATE's word when every open row is in
+ * that state, the FAMILY's word when they are not.
+ *
+ * `open` is the model's own vocabulary (`openChildren`, `openJobs`,
+ * `OPEN_CHILD_STATUSES`), and it is the word the plan chip one slot to the left
+ * already teaches (`1 to-do open`). It is true of all three open states by
+ * construction, so the mixed case cannot drift back into a claim the rows deny
+ * (design round 2, D6). It is also NARROWER than the state word it replaces, so it
+ * cannot cost the row a line.
+ */
+const tallyWord = (tally: ActivityTally): string =>
+	tally.markCount === tally.count ? stateWord(tally.mark) : "open";
+
+/**
+ * The busiest state, for the strings that have room for it: the chip's accessible
+ * name and its tooltip, one line above it in the same column.
+ *
+ * The ON-SURFACE text stays the narrow one, and the mark itself is `aria-hidden`
+ * by the roster's contract — so without this the only reading a screen reader gets
+ * of a mixed set would be the family word, which names the count and not the work
+ * that is running. It is the same derivation over the same tally as the clause, so
+ * the two strings cannot state different numbers.
+ */
+export const busiestClause = (tally: ActivityTally): string =>
+	tally.markCount === tally.count
+		? ""
+		: `, ${tally.markCount} ${stateWord(tally.mark)}`;
+
+/**
+ * The subagent clause: `1 subagent running`, `2 subagents queued` when the open set
+ * is uniform, `40 subagents open` when it is not.
+ *
+ * EXPORTED for the same reason as `todoClause` below, and by the same precedent:
+ * the composer's subagents chip states the fact the trigger's tooltip states, one
+ * above the other in the same column, and a second pluralisation is how the two
+ * come to disagree about one number.
+ *
+ * It takes the TALLY and not a count (see `activityTally`), and it takes the WORD
+ * from `tallyWord` rather than from the mark directly: the count is every OPEN row
+ * and the mark is the busiest one, so the mark's own word beside the open total
+ * would claim work that is not happening whenever rows are parked behind a running
+ * few (design round 2, D6). Uniform, the state's word; mixed, the family's — and
+ * the busiest state then travels in `busiestClause`, on the accessible name.
+ */
+export const childClause = (tally: ActivityTally): string =>
+	`${plural(tally.count, "subagent")} ${tallyWord(tally)}`;
+
+/**
+ * The tool-job clause: `1 job running`, `3 jobs running`.
+ *
+ * `job` rather than `bash`, which is the word the WIRE uses for the row
+ * (`harness/jobs.py:216`): `bash` is the runtime's name for the mechanism and
+ * this is a sentence a user reads above their composer. The pane's section is
+ * headed `Jobs` for the same reason, and these two are the pair that has to
+ * agree — the chip names the count and the section names the rows.
+ *
+ * The clause carries the LADDER's word rather than a hardcoded `running`, and the
+ * docblock that used to argue `running` was "safe here" because a tool row is
+ * running-or-queued is gone with the argument: the ladder is shared, the wire's
+ * `queued` flag is minted only for `task` rows today, and a sentence that is true
+ * because of a claim about the backend is the kind of thing this file exists to
+ * avoid. If a future `JobType` can be parked, the clause already says so.
+ *
+ * Since design round 2's D6 the word comes from `tallyWord`, so what the clause
+ * says is the state's word when every open tool row shares it and the family's
+ * (`3 jobs open`) when they do not — the same rule as the subagent clause, one
+ * surface over, and the busiest state reaches the chip's accessible name through
+ * `busiestClause`.
+ */
+export const jobClause = (tally: ActivityTally): string =>
+	`${plural(tally.count, "job")} ${tallyWord(tally)}`;
 
 /**
  * The two counts that decide the plan's clause: how much is still open, and how
@@ -2592,11 +2868,21 @@ const mcpClause = (count: number): string =>
  * action is the one clause that may never be shed, because a control whose name
  * lost its verb names nothing.
  *
- * The "running" clause counts children that have not settled, not only those
- * whose status is literally `running`: `§6.2` fixes the product's word for a
- * child at work, and the alternative (omitting a queued child from the count)
- * would under-report work the user is waiting on. The roster's own clock mark is
- * where the queued/running distinction is made.
+ * The clause counts children that have not settled, not only those whose status is
+ * literally `running`, and it says WHICH state that count is in rather than
+ * assuming the busiest one: `§6.2` fixes the product's word for a child at work,
+ * but a queued or parked child is neither, and the sentence and the mark one line
+ * below it are built from the same `ActivityTally` so they cannot disagree
+ * (design review round 1, D1). The alternative — omitting unsettled rows from the
+ * count — would under-report work the user is waiting on.
+ *
+ * The job clause is spelled the same way and for the same reason: `openJobs` is
+ * the count of tool rows that have not settled, and a backgrounded shell that has
+ * been admitted is work the user is waiting on. It is built from a tally too, so
+ * the day a tool row can be parked the tooltip says so instead of saying
+ * "running" on the strength of a claim about the runtime. Both lists are still
+ * counted SEPARATELY — one clause each, never a summed "4 jobs" that would put a
+ * delegated child and a `sleep 150` under one noun the app does not use.
  */
 export function runDetailTriggerLabel(
 	details: RunDetails | null | undefined,
@@ -2617,7 +2903,25 @@ export function runDetailTriggerLabel(
 	if ((options.mcpProblems ?? 0) > 0) {
 		attention.push(mcpClause(options.mcpProblems ?? 0));
 	}
-	if (details.openChildren > 0) counts.push(childClause(details.openChildren));
+	/*
+	 * The two activity clauses are built from the SAME tally the chips and the
+	 * trigger's own dot read (`activityTally`), not from the bare counts: the
+	 * tooltip and the row one line below it must not state one number two ways,
+	 * and the STATE in the sentence has to be the state of the mark the row draws
+	 * (design round 1, D1). Guarded, because a tally is `null` exactly when the
+	 * count is zero.
+	 */
+	const children = activityTally(details.subagents);
+	if (children) counts.push(childClause(children));
+	/*
+	 * The tool jobs sit between the two child-side clauses, and the order is the
+	 * composer's own ("children, then jobs, then to-dos"): the trigger's tooltip is
+	 * read directly above the chips that state the same three facts, and a label
+	 * that ranked them differently from the row below it would be a second, quieter
+	 * statement about which of the two counts matters more.
+	 */
+	const jobs = activityTally(details.jobs);
+	if (jobs) counts.push(jobClause(jobs));
 	/*
 	 * Guarded on `openTodos`, so the trigger's name is UNCHANGED by the settled
 	 * spellings above: the trigger answers "is anything asking for something right
@@ -2628,6 +2932,7 @@ export function runDetailTriggerLabel(
 	 * this path exactly as it was.
 	 */
 	if (details.openTodos > 0) counts.push(todoClause(details));
+
 	const clauses = [...attention, ...counts];
 	if (clauses.length === 0) return prefix;
 

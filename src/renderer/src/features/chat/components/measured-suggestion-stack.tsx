@@ -7,6 +7,12 @@ type Props = {
 	band: HTMLDivElement | null;
 	splash: HTMLDivElement | null;
 	suggestions: readonly string[];
+	/**
+	 * Whether the chips are inert. Covers the composer being unavailable (a
+	 * send in flight, recording, transcribing) AND the composer holding a draft,
+	 * where a press would replace what the user is writing. The caller decides;
+	 * this component only paints the state.
+	 */
 	disabled: boolean;
 	onSelect: (suggestion: string) => void;
 	focusComposer: () => void;
@@ -101,7 +107,15 @@ export const MeasuredSuggestionStack = ({
 			ref={stackRef}
 			data-lo-suggestion-stack={true}
 			className={cn(
-				"flex flex-wrap justify-center gap-2",
+				/*
+				 * Left-aligned on the measure, not centred. With the chips' boundaries
+				 * gone, a centred ragged block is the only thing left making the set look
+				 * deliberate, and that reads as a first-run menu rather than as a list of
+				 * examples. It also introduces no new axis: the group already has one left
+				 * edge, drawn by the composer box above it, and the tip row between them
+				 * takes the same one.
+				 */
+				"flex flex-wrap justify-start gap-2",
 				// No scrollbar (which re-wraps labels). The margin preserves the last
 				// visible chip's outline in the gap before the first omitted row.
 				layout.cap !== null && "overflow-clip [overflow-clip-margin:4px]",
@@ -111,13 +125,46 @@ export const MeasuredSuggestionStack = ({
 			{suggestions.map((suggestion, index) => {
 				const hidden = layout.hidden[index] ?? false;
 				return (
+					/*
+					 * The chip is the app's existing borderless-control pattern, not a new one:
+					 * `ghost` is defined as having neither fill nor edge at rest, which is the
+					 * same thing the attach button beside the composer already takes. The
+					 * `outline` variant's `border border-control` was the loudness - on an
+					 * empty chat it drew seven edges at the 3:1 floor that exists for the sole
+					 * boundary of a CONTROL, on the one screen with nothing to compete with
+					 * them. `hairline` is the tempting wrong answer: it is the decorative role
+					 * and measures 1.25:1 at its worst, which is a boundary nobody can see.
+					 *
+					 * The hover pair steps the ground to `elevated` and the ink to `ink`,
+					 * overriding `ghost`'s own `accent-wash` hover: the accent is spent on the
+					 * primary action and the focus ring, and a hovered suggestion is neither.
+					 * This is the pair the attach button uses, and the pair the contrast
+					 * contract's `ask option button (hover)` row already asserts.
+					 *
+					 * `px-2` rather than `px-3`: 12px existed to keep a label off its own
+					 * border, and there is no longer a border to keep it off. Separation
+					 * between chips is `gap-2` plus both paddings, i.e. 24px edge to edge.
+					 *
+					 * THE DISABLED STATE is the app's existing contract, not a new one: a
+					 * colour step to the disabled ink role (which `ghost` already carries)
+					 * and never opacity, with the hover ground neutralised so an inert chip
+					 * cannot light up under the pointer - the same pair `chat-sidebar.tsx`
+					 * uses on its own disabled row. The box is untouched, deliberately: the
+					 * caller disables these while the composer holds a draft, and the band
+					 * must not move while the user types (`message-input.tsx`'s
+					 * `suggestionsDisabled` has the why).
+					 */
 					<Button
 						key={suggestion}
-						variant="outline"
+						variant="ghost"
 						size="sm"
-						className="h-auto max-w-full whitespace-normal break-words px-3 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"
+						className="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 						style={hidden ? { visibility: "hidden" } : undefined}
 						aria-hidden={hidden || undefined}
+						// Stated as well as set: the attribute is how a chip is announced,
+						// and the state is the composer holding a draft rather than the chip
+						// being unavailable in principle.
+						aria-disabled={disabled || undefined}
 						disabled={disabled || hidden}
 						onClick={() => {
 							if (!hidden && !disabled) onSelect(suggestion);
