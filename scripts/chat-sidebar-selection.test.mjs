@@ -223,34 +223,58 @@ const literalOf = (file, name) => {
 	return match[1];
 };
 
+/**
+ * Whether a resolved class list carries the current row's structural edge.
+ *
+ * Both tokens are required: `outline-1` alone leaves `outline-style: none` in
+ * Tailwind v4, and `rowStyle` already carries a `focus-visible:outline-*` set
+ * that must not be mistaken for the edge.
+ */
+const carriesEdge = (classes) =>
+	classes.includes("outline-solid") && classes.includes("outline-control");
+
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
+const rowCurrentEdge = literalOf(SIDEBAR, "rowCurrentEdge");
 
-/* The four chat call sites and the entity row's three elements. Every predicate
-   is stubbed TRUE, so each entry is the class list that element carries while
-   its row is the current one. */
+/*
+ * The two halves of a current row's mark, and which elements carry which.
+ *
+ * `ground` is what makes the row readable as the current one, `edge` is the
+ * structural half that survives the palettes where the ink floors cap the
+ * ground, and the entity row's name button deliberately carries the first and
+ * NOT the second — it already paints the ground inside its wrapper, and a
+ * second ring there would be a second mark rather than a stronger one.
+ */
 const CURRENT = [
 	{
 		what: "the selected conversation",
 		file: SIDEBAR,
+		/*
+		 * Anchored on the row's own tour tag rather than on its predicate: the
+		 * predicate is named ONCE (`isCurrent`) because the ground, the edge and
+		 * `aria-current` all read it, so it no longer sits inside this element's
+		 * `cn(...)` for a backward search to find.
+		 */
 		expression: () =>
-			expressionBefore(SIDEBAR, "selectedConversation === row.session_id"),
+			expressionAfter(SIDEBAR, 'data-tour-tag="chat-session-row"'),
 		stubs: {
 			rowStyle,
 			rowCurrent,
+			rowCurrentEdge,
 			nested: false,
-			selectedConversation: "s1",
-			row: { session_id: "s1" },
-			activeDraftKey: "",
+			isCurrent: true,
 		},
 		ground: true,
+		edge: true,
 	},
 	{
 		what: "the All chats filter",
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">All chats</span>"),
-		stubs: { rowStyle, rowCurrent, all: true },
+		stubs: { rowStyle, rowCurrent, rowCurrentEdge, all: true },
 		ground: true,
+		edge: true,
 	},
 	{
 		what: "the New chat row",
@@ -259,21 +283,25 @@ const CURRENT = [
 		stubs: {
 			rowStyle,
 			rowCurrent,
+			rowCurrentEdge,
 			activeDraftKey: "draft-key",
 			draft: undefined,
 		},
 		ground: true,
+		edge: true,
 	},
 	{
 		what: "the entity row's wrapper",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity>"),
-		stubs: { rowCurrent, staged: true },
+		stubs: { rowCurrent, rowCurrentEdge, staged: true },
 		ground: true,
+		edge: true,
 	},
 	{
 		/* The element round 1's MAJOR was about: it carries `rowStyle`, so its
-		   hover step is what used to paint over the wrapper's ground. */
+		   hover step is what used to paint over the wrapper's ground. It carries
+		   the GROUND and not the EDGE, and that asymmetry is asserted below. */
 		what: "the entity row's name button",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity-name"),
@@ -307,6 +335,7 @@ const CURRENT = [
 			),
 		stubs: { labelled: true, isActive: true },
 		ground: true,
+		edge: true,
 		notCurrent: { labelled: true, isActive: false },
 	},
 ];
@@ -327,18 +356,27 @@ test("the current row's ground is a step off its panel, not a wash", () => {
 });
 
 /*
- * THE SECOND SIGNAL, and why one ground is not enough.
+ * THE TWO NON-COLOUR STEPS, and why a ground is not enough on its own.
  *
  * A ground alone has to outrank the step the rows AROUND it take under the
- * pointer, and after the selection was quietened it stopped doing so: measured in
- * the shipped frames, a hovered neighbour paints `elevated` at ΔE00 2.20-4.58 from
- * the panel while the current row paints `highlight` at 2.18-2.35, so on the dark
- * palettes the pointer's transient mark became the louder of the two (selection
- * over hover was 0.93 / 0.97 / 1.89 before this change and 0.48 / 0.52 / 0.49
- * after — design round 1, D1). The answer is not a louder ground: the operator
- * asked for a SUBTLE selection, and raising `highlight` would trade that away.
- * It is the second, non-colour step the settings rail's active row has always
- * carried — `font-medium` — which is now on both rails rather than one.
+ * pointer, and it cannot: the ink floors on `highlight` cap how far the row's
+ * mark can climb (the caps and the `· lopdev` binding inside a current row are
+ * drawn in `ink-dim`), while the hover step the neighbouring rows carry is
+ * `elevated`, which is also every menu, popover and tooltip ground in the app
+ * and so is not a value this panel can move. On eight of the twelve palettes
+ * `elevated` is therefore still the LARGER step off `surface`. Two non-colour
+ * steps answer it, and the file asserts both:
+ *
+ *   `font-medium` — the step the settings rail's active row already carried,
+ *   now on both rails (the test below), and
+ *   `rowCurrentEdge` — the 1px `outline-control` ring, asserted in
+ *   `the box of a current row carries the structural edge` below.
+ *
+ * The operator's own report is the reason the ground ITSELF also rose: he asked
+ * first for a SUBTLE selection, saw it rendered, and reported the current row as
+ * invisible beside a hovered neighbour — so the role now lands ΔE00 4.0-4.4 from
+ * `surface` where it was authored at 2.18-2.28. `scripts/contrast-contract.mjs`
+ * states that band and asserts it; this file cannot see a colour at all.
  */
 test("a current row carries a non-colour step, and a row that is not current does not", () => {
 	assert.ok(
@@ -360,6 +398,71 @@ test("a current row carries a non-colour step, and a row that is not current doe
 	assert.ok(
 		!inactive.includes("font-medium"),
 		`a row that is NOT current must not be heavier than the one that is:\n${inactive}`,
+	);
+});
+
+test("the box of a current row carries the structural edge, and nothing else does", () => {
+	/*
+	 * The half of the mark the ink floors cannot cap. `outline-control` clears § 3's
+	 * 3:1 floor against every palette's `highlight` (asserted as a ROLE in
+	 * `contrast-contract.mjs`, which is where it can be measured), and this file is
+	 * where the CLASS is resolved: the edge has to be on every box that paints the
+	 * ground, because dropping it from one of them is a one-word edit no palette row
+	 * can see.
+	 *
+	 * The entity row's name button is the deliberate exception and is asserted as
+	 * one: it paints the ground inside its wrapper, so an edge there would draw a
+	 * second ring inside the wrapper's ring — a second mark rather than a stronger
+	 * one. A row that is NOT current must carry no edge at all, which is the same
+	 * property from the other side.
+	 */
+	for (const site of CURRENT) {
+		const classes = merged(site.file, site.expression(), site.stubs);
+		const carries = carriesEdge(classes);
+		if (site.edge) {
+			assert.ok(
+				carries,
+				`${site.what} is a current row's BOX and no longer carries the structural half of the mark, so on the eight palettes where the hover step outranks the ground it has no non-luminance signal left:\n${classes}`,
+			);
+		} else {
+			assert.ok(
+				!carries,
+				`${site.what} now carries the row's structural edge; the edge marks the row's box, and an inner element that paints the ground inside that box draws a second ring rather than a stronger mark:\n${classes}`,
+			);
+		}
+	}
+	const rail = CURRENT.find((site) => site.file === SETTINGS_RAIL);
+	const inactive = merged(rail.file, rail.expression(), rail.notCurrent);
+	assert.ok(
+		!carriesEdge(inactive),
+		`a settings row that is NOT current carries the current row's edge:\n${inactive}`,
+	);
+});
+
+test("the edge is a structural role and a solid 1px ring, not a hairline or a fill", () => {
+	/*
+	 * A guard on the CONSTANT, where the other test guards its placement. Three
+	 * different weakenings all leave a class list that still looks like an edge:
+	 * a `hairline` role (decorative, no floor — § 3 caps it below 2:1 by design),
+	 * a lost `outline-solid` (Tailwind v4's `outline-1` alone leaves
+	 * `outline-style: none`, which is why `credential-overlay.tsx` carries the same
+	 * note), and a lost `-outline-offset-1` (the ring then draws OUTSIDE the row's
+	 * box and the row's own box grows by 2px against its neighbours).
+	 */
+	for (const token of [
+		"outline-solid",
+		"outline-1",
+		"-outline-offset-1",
+		"outline-control",
+	]) {
+		assert.ok(
+			rowCurrentEdge.split(" ").includes(token),
+			`the current row's edge no longer carries \`${token}\`:\n${rowCurrentEdge}`,
+		);
+	}
+	assert.ok(
+		!rowCurrentEdge.includes("hairline"),
+		`the current row's edge is drawn in \`hairline\`, which is decorative and has no floor — § 3 caps it below 2:1 against these grounds by design, so it is not a mark anyone can see:\n${rowCurrentEdge}`,
 	);
 });
 
@@ -515,42 +618,49 @@ test("no current-row class literal in either panel is on the wash", () => {
 });
 
 test("the selected row's mark and its aria-current read the same terms", () => {
-	const source = read(SIDEBAR);
-	const at = source.indexOf("aria-current={");
-	assert.notEqual(at, -1, "the session row has no aria-current");
-	const ariaCurrent = source.slice(
-		at,
-		source.indexOf("}", source.indexOf("?", at)),
+	const source = code.get(SIDEBAR);
+	const declared = source.indexOf("const isCurrent =");
+	assert.notEqual(
+		declared,
+		-1,
+		"the session row no longer names its current-row predicate, so the ground, the edge and `aria-current` are written out separately and can disagree",
 	);
 	/*
-	 * Both halves of the predicate, on both sides of the fact: a row that paints
-	 * a ground the accessibility tree does not claim misreports where the user is
-	 * for a screen reader, and one that claims a ground it does not paint does it
-	 * for everyone else. The two terms are what `!activeDraftKey` is doing here —
-	 * a staged draft owns the current-row mark instead.
+	 * Both halves of the predicate, on all three readers: a row that paints a mark
+	 * the accessibility tree does not claim misreports where the user is for a
+	 * screen reader, and one that claims a mark it does not paint does it for
+	 * everyone else. `!activeDraftKey` is what says a staged draft owns the mark
+	 * instead. The declaration is the single place the two terms may live, and the
+	 * other two readers have to READ it — which is why they are asserted against
+	 * the name and the name against the terms, rather than each against the terms.
 	 */
-	const sessionRow = stripComments(
-		argumentsFrom(
-			code.get(SIDEBAR),
-			code
-				.get(SIDEBAR)
-				.lastIndexOf(
-					"className={cn(",
-					code.get(SIDEBAR).indexOf("selectedConversation === row.session_id"),
-				),
-		),
-	);
+	const declaration = source.slice(declared, source.indexOf(";", declared));
 	for (const term of [
 		"selectedConversation === row.session_id",
 		"!activeDraftKey",
 	]) {
 		assert.ok(
-			ariaCurrent.includes(term),
-			`aria-current no longer reads \`${term}\`, so it and the row's ground can disagree:\n${ariaCurrent}`,
-		);
-		assert.ok(
-			sessionRow.includes(term),
-			`the session row's ground no longer reads \`${term}\`, so it and aria-current can disagree:\n${sessionRow}`,
+			declaration.includes(term),
+			`\`isCurrent\` no longer reads \`${term}\`, so the row's mark and \`aria-current\` can disagree about which row is the current one:\n${declaration}`,
 		);
 	}
+	const ariaCurrent = source.slice(
+		source.indexOf("aria-current=", declared),
+		declared +
+			source
+				.slice(declared)
+				.indexOf("\n", source.indexOf("aria-current=", declared)),
+	);
+	assert.ok(
+		ariaCurrent.includes("isCurrent"),
+		`the session row's \`aria-current\` no longer reads the shared predicate:\n${ariaCurrent}`,
+	);
+	const rowClasses = argumentsFrom(
+		source,
+		source.indexOf("className={cn(", declared),
+	);
+	assert.ok(
+		rowClasses.includes("isCurrent"),
+		`the session row's class list no longer reads the shared predicate, so it can paint a mark the accessibility tree does not claim:\n${rowClasses}`,
+	);
 });
