@@ -81,6 +81,16 @@ ground where it does not.
 - Built app, driven by an agent: `pnpm app:driver` (see `docs/agent-driver.md`)
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
+- Lint scope over the scripts tree: `pnpm lint:scripts`. `pnpm lint`'s path list is
+  hand-written and leaves `scripts/` out — the proof harnesses, evidence rigs and
+  release gates, i.e. the code that decides whether other things are verified —
+  which is how a formatter error rode into a merged pull request green. This gate
+  runs the same `biome check` over the `scripts/` files a change touches, compared
+  against a base ref (`origin/main` locally, the merge commit's first parent in
+  CI), so a violation cannot ride in with the diff that introduces it. The rest of
+  that tree's pre-existing backlog is burnt down as files are touched; widening
+  `pnpm lint` to name `scripts/` outright is the follow-up once it is gone. See
+  `scripts/check-scripts-lint.mjs`.
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
 - Theme gates: `pnpm check-themes` (freshness + contrast floors)
