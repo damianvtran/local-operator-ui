@@ -7,6 +7,11 @@ import {
 	desktopMedia,
 	mediaError,
 } from "./desktop-api";
+import {
+	type PublicationDetails,
+	publicationErrorFromBody,
+	publicationProse,
+} from "./publication-errors";
 import type {
 	AgentCreate,
 	AgentDetails,
@@ -15,6 +20,111 @@ import type {
 	AgentUpdate,
 	CRUDResponse,
 } from "./types";
+
+/**
+ * A partial override of a version-1 instruction-set document.
+ *
+ * The fields are the document's CONTENT fields, so this type is the renderer's
+ * half of the contract in `src/shared/desktop-contract.ts`: the op's schema
+ * narrows it further (name rules, caps), and the local backend refuses any key
+ * outside the set with `422 invalid_instruction_set` naming it. `document_type`
+ * and `document_version` are client-owned and deliberately absent — an override
+ * of either is refused, so there is no shape here in which one could travel.
+ */
+export type PublicationDocumentOverride = {
+	name?: string;
+	description?: string;
+	instructions?: string;
+	kind?: "role" | "specialist";
+	when_to_use?: string;
+	tools?: string[];
+	effort?: string;
+	delegate?: boolean;
+	version?: string;
+	categories?: string[];
+	tags?: string[];
+};
+
+/**
+ * What the hub returned for an accepted publication.
+ *
+ * `agent_id` is the HUB listing's id, which is the only handle a republish can
+ * be addressed with: the local registry keeps no link to the listing a row was
+ * published as, so whatever remembers that link has to be this app.
+ */
+export type PublishedListing = {
+	agent_id: string;
+	name: string;
+	version?: string;
+	document_version?: number;
+};
+
+/**
+ * The hub's answer to "is this name publishable?" (contract §2.1).
+ *
+ * `available: false` is a SUCCESSFUL answer, not an error: the question was
+ * asked and answered, with `code` saying why (`name_taken`,
+ * `name_reserved_builtin`). The hub answers this route as an error only when the
+ * name itself breaks the name rules.
+ */
+export type NameAvailability = {
+	name: string;
+	name_key?: string;
+	available: boolean;
+	code?: string;
+	details?: PublicationDetails;
+};
+
+/**
+ * The error a failed control response should become.
+ *
+ * The ladder, in order, and every arm is a state this app supports:
+ *
+ * 1. a refusal carrying a KNOWN code becomes a typed `PublicationError` the
+ *    caller can switch on;
+ * 2. a refusal with a prose `detail` keeps that prose — an older backend answers
+ *    every one of these failures with one string, and a hub whose code this
+ *    renderer does not recognise is a hub newer than this app;
+ * 3. a 404 with no code at all is an op this backend does not have. FastAPI's own
+ *    body for that is the literal string "Not Found", which tells a user nothing
+ *    they can act on, so the caller may supply the sentence that names the
+ *    remedy. `undefined` leaves the status-tagged generic.
+ *
+ * @param response - The failed response
+ * @param unknownOp - The sentence for a backend that has no such operation
+ */
+async function controlRefusal(
+	response: Response,
+	unknownOp?: string,
+): Promise<Error> {
+	let body: unknown = null;
+	try {
+		body = await response.json();
+	} catch {
+		body = null;
+	}
+	const structured = publicationErrorFromBody(response.status, body);
+	if (structured) return structured;
+	const prose = publicationProse(body);
+	if (
+		unknownOp &&
+		response.status === 404 &&
+		(!prose || prose === "Not Found")
+	) {
+		return new DesktopControlError(response.status, unknownOp);
+	}
+	return new DesktopControlError(
+		response.status,
+		prose ?? `The request failed (HTTP ${response.status}).`,
+	);
+}
+
+/** The publication arm of `controlRefusal`, with this app's sentence for an old backend. */
+const publicationFailure = (response: Response) =>
+	controlRefusal(
+		response,
+		"This backend cannot publish instruction sets yet. Update the backend and try again.",
+	);
 
 /**
  * Agents API client for the Local Operator API
@@ -336,9 +446,103 @@ export const AgentsApi = {
 	},
 
 	/**
+	 * Publish an agent's instruction set to the Radient Agent Hub
+	 *
+	 * The DOCUMENT travels, not a zip of the agent directory: the local backend
+	 * builds a version-1 instruction-set document from the agent row (the
+	 * instruction body lives in its `system_prompt.md`) and applies only the
+	 * overrides given here. Nothing else about the row can reach the wire — no
+	 * conversation, no execution history, no memory, no plan, no working
+	 * directory, no model — because the document has no field for any of them.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the local agent to publish
+	 * @param document - The content fields the caller is overriding, if any
+	 * @returns Promise resolving to the hub's publication result
+	 * @throws PublicationError when the hub or the proxy refused with a code, and
+	 * `DesktopControlError` when it refused without one (see `publicationFailure`)
+	 */
+	async publishAgentInstructionSet(
+		_baseUrl: string,
+		agentId: string,
+		document?: PublicationDocumentOverride,
+	): Promise<CRUDResponse<PublishedListing>> {
+		const response = await desktopControlResponse({
+			op: "agent.publish",
+			agentId,
+			document,
+		});
+
+		if (!response.ok) throw await publicationFailure(response);
+
+		return response.json() as Promise<CRUDResponse<PublishedListing>>;
+	},
+
+	/**
+	 * Update an already-published listing with the agent's current instruction set
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the local agent whose instruction set is being published
+	 * @param hubAgentId - ID of the HUB listing to update (not a local agent id)
+	 * @param document - The content fields the caller is overriding, if any
+	 * @returns Promise resolving to the hub's publication result
+	 * @throws PublicationError on a refusal, `DesktopControlError` without a code
+	 */
+	async republishAgentInstructionSet(
+		_baseUrl: string,
+		agentId: string,
+		hubAgentId: string,
+		document?: PublicationDocumentOverride,
+	): Promise<CRUDResponse<PublishedListing>> {
+		const response = await desktopControlResponse({
+			op: "agent.republish",
+			agentId,
+			hubAgentId,
+			document,
+		});
+
+		if (!response.ok) throw await publicationFailure(response);
+
+		return response.json() as Promise<CRUDResponse<PublishedListing>>;
+	},
+
+	/**
+	 * Ask the hub whether an agent name can be published
+	 *
+	 * Public and advisory, and deliberately without a credential: a check that
+	 * needed a signed-in account would be unavailable in exactly the state where
+	 * the user is deciding whether to sign in. It is also not authoritative — a
+	 * name reported available can be taken before the publication lands — so
+	 * callers must treat a failure here as "no answer" rather than as a refusal.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param name - The name as the user typed it
+	 * @returns Promise resolving to the hub's availability answer
+	 * @throws PublicationError on a refusal, `DesktopControlError` without a code
+	 */
+	async getAgentNameAvailability(
+		_baseUrl: string,
+		name: string,
+	): Promise<CRUDResponse<NameAvailability>> {
+		const response = await desktopControlResponse({
+			op: "agent.nameAvailability",
+			name,
+		});
+
+		if (!response.ok) throw await publicationFailure(response);
+
+		return response.json() as Promise<CRUDResponse<NameAvailability>>;
+	},
+
+	/**
 	 * Upload (push) an agent to Radient marketplace
-	 * Upload (push) the agent with the given ID to the Radient agents marketplace.
-	 * Requires RADIENT_API_KEY.
+	 *
+	 * The LEGACY path: it zips the agent directory and posts the archive, and an
+	 * agent published that way carries no instruction-set document. It is kept
+	 * because it is how a row published before the standard is still updated, and
+	 * the app's own publish action no longer calls it — `publishAgentInstructionSet`
+	 * does. Every failure here is one prose string (the D-2 defect), which is why
+	 * nothing user-facing should still reach for it.
 	 *
 	 * @param baseUrl - The base URL of the Local Operator API
 	 * @param agentId - ID of the agent to upload
@@ -391,19 +595,14 @@ export const AgentsApi = {
 			agentId,
 		});
 
-		if (!response.ok) {
-			// Attempt to parse error details if available
-			let errorDetail = `Download agent from Radient request failed: ${response.status} ${response.statusText}`;
-			try {
-				const errorBody = await response.json();
-				if (errorBody?.detail) {
-					errorDetail = `Download agent from Radient failed: ${errorBody.detail}`;
-				}
-			} catch (_) {
-				// Ignore if parsing fails, use the original error message
-			}
-			throw new Error(errorDetail);
-		}
+		// The refusal keeps whatever structure the backend sent, rather than being
+		// flattened into one prefixed string: a pull can fail because the agent is
+		// gone from the hub, because the hub is unreachable, or because this
+		// machine could not write the row, and those need different sentences. The
+		// old arm here read `detail` as a STRING and interpolated it, so a
+		// structured refusal would have reached the user as "[object Object]"
+		// (contract D-2's shape, on the pull side).
+		if (!response.ok) throw await controlRefusal(response);
 
 		return response.json() as Promise<CRUDResponse<AgentDetails>>;
 	},

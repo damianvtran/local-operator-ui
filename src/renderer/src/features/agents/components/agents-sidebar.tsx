@@ -225,9 +225,6 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	// Upload to Hub dialog state
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
-	const [uploadValidationIssues, setUploadValidationIssues] = useState<
-		string[]
-	>([]);
 	const { isAuthenticated } = useRadientAuth();
 	const agentClient = useMemo(
 		() => createLocalOperatorClient(apiConfig.baseUrl),
@@ -338,40 +335,22 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
-	const getAgentUploadValidationIssues = useCallback(
-		(agent: AgentDetails | null): string[] => {
-			if (!agent) return ["No agent selected."];
-			const issues: string[] = [];
-			if (!agent.name || agent.name.trim() === "")
-				issues.push("Name is required.");
-			if (!agent.description || agent.description.trim() === "")
-				issues.push("Description is required.");
-			const hasCategory = agent.categories && agent.categories.length > 0;
-			if (!hasCategory) issues.push("At least one category is required.");
-			return issues;
-		},
-		[],
-	);
-
-	const handleOpenUploadDialog = useCallback(
-		(agent: AgentDetails) => {
-			setUploadAgent(agent);
-			setUploadValidationIssues(getAgentUploadValidationIssues(agent));
-			setIsUploadDialogOpen(true);
-		},
-		[getAgentUploadValidationIssues],
-	);
+	/*
+	 * Opening the dialog is the whole of this surface's job now. The dialog owns
+	 * the rules, the request and the refusal, which is what makes the row menu here
+	 * behave exactly like the header button on the agent page — until it did not:
+	 * this handler used to set a validation list and close the dialog on confirm,
+	 * so publishing from the agent list published NOTHING and said nothing.
+	 */
+	const handleOpenUploadDialog = useCallback((agent: AgentDetails) => {
+		setUploadAgent(agent);
+		setIsUploadDialogOpen(true);
+	}, []);
 
 	const handleCloseUploadDialog = useCallback(() => {
 		setIsUploadDialogOpen(false);
 		setUploadAgent(null);
-		setUploadValidationIssues([]);
 	}, []);
-
-	const handleConfirmUpload = useCallback(() => {
-		// Implement actual upload logic here if needed
-		handleCloseUploadDialog();
-	}, [handleCloseUploadDialog]);
 
 	const handleAgentCreated = useCallback(
 		async (agentId: string) => {
@@ -515,10 +494,8 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 			<UploadAgentDialog
 				open={isUploadDialogOpen}
 				onClose={handleCloseUploadDialog}
-				agentName={uploadAgent?.name || ""}
+				agent={uploadAgent}
 				isAuthenticated={isAuthenticated}
-				onConfirmUpload={handleConfirmUpload}
-				validationIssues={uploadValidationIssues}
 			/>
 		</div>
 	);

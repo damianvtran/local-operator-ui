@@ -2290,6 +2290,42 @@ export const STORIES = [
 	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
+
+	/*
+	 * The publish dialog, in every state its rewrite introduced (agent-hub
+	 * contract §6.2/§6.3): the consent copy that now says what is published, the
+	 * blocked-field list that disables submit, and each refusal with its own
+	 * headline, action and register. Six of the ten are reached by PRESSING the
+	 * consent box and Publish — a treatment rendered from a prop would not be
+	 * evidence that the flow reaches it.
+	 *
+	 * 980x860: the dialog at its own `sm` step (max-w-xl) plus the page it is
+	 * centred in. Declared rather than measured for the reason every entry here
+	 * is — a frame whose height depends on which refusal is showing is a frame a
+	 * reviewer cannot diff against the next round's.
+	 */
+	["agents-publish-dialog--default", 980, 860],
+	["agents-publish-dialog--pre-validation-blocked", 980, 860],
+	["agents-publish-dialog--name-taken", 980, 860],
+	["agents-publish-dialog--name-taken-by-you", 980, 860],
+	["agents-publish-dialog--reserved-builtin", 980, 860],
+	["agents-publish-dialog--reserved-builtin-refusal", 980, 860],
+	["agents-publish-dialog--moderation-rejected", 980, 860],
+	["agents-publish-dialog--moderation-unavailable", 980, 860],
+	["agents-publish-dialog--published", 980, 860],
+	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The pull's four outcomes, each one real toast from the real hook against a
+	 * stubbed transport, held open with `toastDuration: Infinity` because an
+	 * auto-closed toast is a frame that cannot be reproduced. Sized tight to the
+	 * caption plus the toast: a taller viewport is mostly ground, which
+	 * `check-evidence` rejects as a story that painted nothing.
+	 */
+	["agents-pull-outcomes--downloaded", 980, 420],
+	["agents-pull-outcomes--adjusted-name", 980, 420],
+	["agents-pull-outcomes--already-held", 980, 420],
+	["agents-pull-outcomes--refused", 980, 420],
+	["agents-pull-outcomes--refused-prose", 980, 420],
 	/*
 	 * The Schedules page, re-shot whole when the page was harmonized onto the
 	 * wake primitive: its rows are conversations-with-wakes now, so every
