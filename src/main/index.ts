@@ -60,6 +60,8 @@ import {
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
+import type { LauncherWatch } from "./launcher-watch";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -68,10 +70,13 @@ import { UpdateService } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
 import {
+	LAUNCHER_EXIT_DEADLINE_MS,
+	LAUNCHER_POLL_INTERVAL_MS,
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
 	type WindowShow,
 	describeWindowLaunch,
+	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
 	windowIntentPayload,
 } from "./window-mode";
@@ -123,12 +128,138 @@ export type ReadFileResponse =
 	| { success: true; data: string }
 	| { success: false; error: unknown }; // or use `string` if you always send error.message
 
+/*
+ * How this process wants its window to behave. Resolved at load, from
+ * `LOCAL_OPERATOR_UI_WINDOW_MODE` / `--window-mode=` and `--window-size=`,
+ * so every launch path is covered by one switch: `pnpm dev`, `pnpm start`,
+ * `npx electron .` in a rig, and `npx local-operator-ui` (which spawns
+ * Electron with this process's environment, so it inherits the value).
+ *
+ * Why it sits this high in the file: `app.dock` is set up below, before
+ * anything is ready, and `headless` is the mode that must not take a Dock
+ * tile. Resolving the plan first is what lets the Dock decision be made once,
+ * from the same table the window itself is built from, rather than re-read from
+ * the environment at a second call site that could disagree.
+ *
+ * Read from `launchEnv` — the environment this process was LAUNCHED with — and
+ * not from `process.env`, because `./backend/config` has already folded a
+ * `.env` from the working directory into `process.env` with dotenv
+ * `override: true` by the time this runs (see the comment on `launchEnv`). A
+ * window mode is a fact about the launch: a file in the checkout must not be
+ * able to turn a deliberately `headless` run into one that raises a window and
+ * takes the operator's focus.
+ */
+const windowLaunch = resolveWindowLaunchPlan({
+	env: launchEnv,
+	argv: process.argv,
+});
+for (const problem of windowLaunch.problems) {
+	logger.warn(`[window-mode] ${problem}`, LogFileType.BACKEND);
+	/*
+	 * Also on stdout, because a rejected mode is a fact about the LAUNCH, not
+	 * about the backend: `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falling back
+	 * to `normal` is exactly what turns a typo into an interruption, and the
+	 * warning above only reaches a log file the rig does not read. A rig greps
+	 * stdout; a person reads the terminal.
+	 */
+	console.log(`[window-mode] ${problem}`);
+}
+
+/*
+ * Ending a headless run, and the one outcome it may not have: still being here.
+ *
+ * Every path that ends a headless run goes through these two functions, because
+ * the same defect appeared on each of them separately — a window close, a
+ * launcher that went away, a signal — and each time the app was left running
+ * with no window and no user. The graceful path is always tried first
+ * (`app.quit()`, which is what the shipped app takes), and the deadline is the
+ * guarantee underneath it.
+ *
+ * What the deadline does NOT cover, stated because it decides what a harness
+ * author may rely on: the escalation is `app.exit(0)`, whose `process.on("exit")`
+ * handler runs `backendService.emergencyStopOwned()`, which can only `SIGKILL` a
+ * child that was SPAWNED AND REGISTERED as the owned backend. A boot still
+ * installing its managed runtime has no such field yet, and a deadline that
+ * lands in that window can leave that work behind. The owned backend this repo
+ * actually runs (the `serve` child) is registered long before a harness drives
+ * the window, which is why 10 s is chosen deliberately over the app's own
+ * `QUIT_CLEANUP_FAILSAFE_MS` (~34 s): a launcher-gone run is a run nobody is
+ * watching, and the cost of waiting is another instance of exactly the kind this
+ * module exists to remove. An escalated exit is still status 0 — it is a run
+ * ending because its way of being watched went away, not a failure — so a
+ * harness must not read the status as the signal; the `[window-mode]` line is
+ * what says which path ended it.
+ */
+let headlessExitDeadline: NodeJS.Timeout | null = null;
+function armHeadlessExitDeadline(why: string): void {
+	if (headlessExitDeadline) return;
+	const deadline = setTimeout(() => {
+		const line = `${why}; the quit did not finish within ${LAUNCHER_EXIT_DEADLINE_MS} ms, exiting`;
+		logger.error(`[window-mode] ${line}`, LogFileType.BACKEND);
+		console.log(`[window-mode] ${line}`);
+		app.exit(0);
+	}, LAUNCHER_EXIT_DEADLINE_MS);
+	// Never a reason for the process to stay alive by itself.
+	deadline.unref();
+	headlessExitDeadline = deadline;
+}
+
+/**
+ * End this headless run. `why` is the plain sentence a person reads on stdout;
+ * `detail` is the technical reading that goes to the backend log with it, so the
+ * console line stays about the outcome (`pid 1` is trivia to whoever ran
+ * `pnpm dev:headless`) while a post-mortem still gets the observation.
+ */
+function endHeadlessRun(why: string, detail?: string): void {
+	logger.info(`[window-mode] ${why}; quitting`, LogFileType.BACKEND);
+	console.log(`[window-mode] ${why}; quitting`);
+	/*
+	 * The mechanism on its OWN line, at file level.
+	 *
+	 * Round 2 (D7) asked for the outcome/mechanism split to reach the terminal, and
+	 * round 3 (R7) caught that my first attempt only renamed the problem: the
+	 * logger mirrors to stdout, so folding the observation into the message put the
+	 * parenthetical beside the plain sentence anyway. `debug` is the file channel —
+	 * the console transport is level `info` — so the mechanism lands in the log and
+	 * the line a person reads stays about the outcome. In a `pnpm dev` run the
+	 * console is at `debug` and will show this too, which is the right way round:
+	 * whoever is running the dev app is the one who wants to know why it left.
+	 */
+	if (detail) {
+		logger.debug(
+			`[window-mode] launcher probe: ${detail}`,
+			LogFileType.BACKEND,
+		);
+	}
+	armHeadlessExitDeadline(why);
+	app.quit();
+}
+
+/** The launcher watch, held so `before-quit` can stop it. */
+let launcherWatch: LauncherWatch | null = null;
+
 // Set application name
 app.setName("Local Operator");
+/*
+ * The Dock tile on macOS, which a headless run must not have.
+ *
+ * A `headless` run is an app nobody is using: the window is never shown, so the
+ * tile leads nowhere, and it accumulates — one per boot, for every harness and
+ * every QA matrix. Measured on this repo, a single evidence session left ~30 of
+ * them in the operator's Dock, which is how the underlying leak (instances that
+ * outlived their launcher) was noticed in the first place. `app.dock.hide()` is
+ * the whole fix for the visible half; `launcher-watch.ts` is the other half.
+ *
+ * The icon is only set where a tile exists to carry it: on a hidden dock the
+ * call would say nothing, and the reason it is here at all is the shipped app.
+ */
 const image = nativeImage.createFromPath(icon);
-// Set dock icon on macOS only
 if (process.platform === "darwin" && app.dock) {
-	app.dock.setIcon(image);
+	if (windowLaunch.hideDock) {
+		app.dock.hide();
+	} else {
+		app.dock.setIcon(image);
+	}
 }
 
 // Initialize PostHog
@@ -640,36 +771,6 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
 	dialog.showErrorBox("Backend Error", message);
 };
 
-/*
- * How this process wants its window to behave. Resolved at load, from
- * `LOCAL_OPERATOR_UI_WINDOW_MODE` / `--window-mode=` and `--window-size=`,
- * so every launch path is covered by one switch: `pnpm dev`, `pnpm start`,
- * `npx electron .` in a rig, and `npx local-operator-ui` (which spawns
- * Electron with this process's environment, so it inherits the value).
- *
- * Read from `launchEnv` — the environment this process was LAUNCHED with — and
- * not from `process.env`, because `./backend/config` has already folded a
- * `.env` from the working directory into `process.env` with dotenv
- * `override: true` by the time this runs (see the comment on `launchEnv`). A
- * window mode is a fact about the launch: a file in the checkout must not be
- * able to turn a deliberately `headless` run into one that raises a window and
- * takes the operator's focus.
- */
-const windowLaunch = resolveWindowLaunchPlan({
-	env: launchEnv,
-	argv: process.argv,
-});
-for (const problem of windowLaunch.problems) {
-	logger.warn(`[window-mode] ${problem}`, LogFileType.BACKEND);
-	/*
-	 * Also on stdout, because a rejected mode is a fact about the LAUNCH, not
-	 * about the backend: `LOCAL_OPERATOR_UI_WINDOW_MODE=hedless` falling back
-	 * to `normal` is exactly what turns a typo into an interruption, and the
-	 * warning above only reaches a log file the rig does not read. A rig greps
-	 * stdout; a person reads the terminal.
-	 */
-	console.log(`[window-mode] ${problem}`);
-}
 /*
  * The `[window-mode]` line that says what this process's window will do is
  * printed by the branch below that actually OWNS an instance, not here.
@@ -1307,6 +1408,56 @@ app
 			);
 			app.exit(0);
 			return;
+		}
+
+		/*
+		 * A headless run does not outlive the process that launched it.
+		 *
+		 * The window is never shown and macOS keeps a windowless app alive, so an
+		 * app whose harness died has nothing that would ever end it: one survivor per
+		 * boot, each holding its memory and a Dock tile. Measured on this repo, a QA
+		 * round's 13 boots left 13 survivors, all reparented to launchd, one of them
+		 * still answering on its debugging port. `resolveLauncherWatchPlan` decides
+		 * whether this run is launcher-bound at all (only `headless` with a real
+		 * launcher is); the reason is printed either way, so a rig reads the policy
+		 * rather than inferring it from the mode. Read from `launchEnv` for the reason
+		 * the window mode above is: the `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE`
+		 * opt-out is a fact about the LAUNCH, so a `.env` in the checkout must not be
+		 * able to make a run outlive the harness that started it.
+		 */
+		const launcher = resolveLauncherWatchPlan({
+			mode: windowLaunch.mode,
+			launcherPid: process.ppid,
+			env: launchEnv,
+		});
+		logger.info(`[window-mode] ${launcher.reason}`, LogFileType.BACKEND);
+		if (windowLaunch.mode !== "normal") {
+			console.log(`[window-mode] ${launcher.reason}`);
+		}
+		if (launcher.watch && launcher.launcherPid !== null) {
+			launcherWatch = startLauncherWatch({
+				launcherPid: launcher.launcherPid,
+				intervalMs: LAUNCHER_POLL_INTERVAL_MS,
+				isAlive: isProcessAlive,
+				parentPid: () => process.ppid,
+				onLauncherGone: ({ message, detail }) =>
+					endHeadlessRun(message, detail),
+			});
+		}
+		if (windowLaunch.mode === "headless") {
+			/*
+			 * A signal is the case the graceful path does NOT reach on its own.
+			 * Chromium's SIGTERM shutdown closes the window and then leaves the
+			 * process up (macOS keeps a windowless app), and an app-initiated quit
+			 * emits no `window-all-closed` at all — measured, SIGTERM to a booted
+			 * headless app left it alive at 45 s and 70 s, with the quit never
+			 * completing and the `will-quit` failsafe never reached. Handling the
+			 * signal here turns it into the same bounded exit every other path gets
+			 * and is also what makes Ctrl-C in a terminal end `pnpm dev:headless`.
+			 */
+			for (const signal of ["SIGTERM", "SIGINT"] as const) {
+				process.on(signal, () => endHeadlessRun(`received ${signal}`));
+			}
 		}
 
 		// Default open or close DevTools by F12 in development
@@ -2427,6 +2578,32 @@ app
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
+	/*
+	 * A headless run has one window, no user, and no way back: if its window has
+	 * closed the run is over. This is the WINDOW path and not the signal one —
+	 * measured, a driver closing the window over CDP reaches this branch and the
+	 * app is gone in about a second, while an app-initiated quit (a signal) does
+	 * not emit `window-all-closed` at all, which is why the signal path handles
+	 * itself above rather than leaning on this. Without either, a closed window
+	 * left the process running with nothing in it: off macOS that is already
+	 * `app.quit()` below, and the `darwin` branch deliberately keeps a windowless
+	 * app in the Dock.
+	 */
+	if (windowLaunch.mode === "headless") {
+		/*
+		 * Prefixed like every other end path (round 2, D8): this line is how a rig
+		 * learns which path ended a run, and it was the one that did not carry the
+		 * prefix. Printed as well as logged, for the same reason the others are.
+		 */
+		logger.info(
+			"[window-mode] all windows closed in a headless run; quitting",
+			LogFileType.BACKEND,
+		);
+		console.log("[window-mode] all windows closed in a headless run; quitting");
+		app.quit();
+		return;
+	}
+
 	// On macOS, keep the app active in the dock
 	if (process.platform === "darwin") {
 		/*
@@ -2503,19 +2680,6 @@ const QUIT_CLEANUP_FAILSAFE_MS =
 	QUIT_FAILSAFE_MARGIN_MS;
 let backendQuitPending = false;
 app.on("will-quit", (event) => {
-	/*
-	 * A WAITING CONVERSATION DIES WITH THE PROCESS, AND SAYS SO (review round 3,
-	 * NIT-3). The queue is in-memory, so a park still waiting here is gone for good
-	 * — and its losing launch was told it would be delivered once a window is open.
-	 * The line is the only place that promise can be seen to end, and it is what
-	 * makes a park that never arrived distinguishable from one the log lost.
-	 */
-	if (parkedLaunches.length > 0) {
-		reportParksAtQuit(
-			parkedLaunches.map((parked) => parked.session),
-			reportRaise,
-		);
-	}
 	/*
 	 * The viewer record and endpoint are this branch's, and they go BEFORE the
 	 * owned-cleanup guard: that guard returns early when there is nothing owned to
@@ -2621,6 +2785,42 @@ app.on("before-quit", async (event) => {
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
 	logger.info("App is about to quit", LogFileType.BACKEND);
+
+	/*
+	 * A WAITING CONVERSATION DIES WITH THE PROCESS, AND SAYS SO (review round 3,
+	 * NIT-3). The queue is in-memory, so a park still waiting here is gone for good
+	 * — and its losing launch was told it would be delivered once a window is open.
+	 * The line is the only place that promise can be seen to end, which is what makes
+	 * a park that never arrived distinguishable from one the log simply lost.
+	 *
+	 * It lives HERE rather than in `will-quit`, where it was first written, because
+	 * `scripts/owned-serve-lifecycle.test.mjs` slices and runs that handler on its
+	 * own: a read of this module's queue is a reference that slice cannot satisfy,
+	 * and a shutdown narrative belongs on the handler that already owns one.
+	 */
+	if (parkedLaunches.length > 0) {
+		reportParksAtQuit(
+			parkedLaunches.map((parked) => parked.session),
+			reportRaise,
+		);
+	}
+	/*
+	 * The bounded exit for EVERY way a headless run can be asked to quit, not
+	 * only the two that arm it themselves (the launcher going, a signal). This is
+	 * here rather than in the two call sites because a quit that wedges is a
+	 * property of the quit path, not of whoever asked for it: measured on this
+	 * head, `app.quit()` from a signal never reached `will-quit` and never
+	 * completed, so a run whose launcher went would have sat there had the
+	 * deadline been armed only in the watch's callback. Arming it here also makes
+	 * the window-close path (a driver closing the window over CDP) bounded.
+	 *
+	 * The watch is stopped with it: a poll that lands mid-shutdown must not stack
+	 * a second quit on the one already under way.
+	 */
+	if (windowLaunch.mode === "headless") {
+		launcherWatch?.stop();
+		armHeadlessExitDeadline("the app is quitting");
+	}
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
 	/*

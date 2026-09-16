@@ -498,6 +498,104 @@ roots at `ppid 1`, and the app's single-instance lock - PER `--user-data-dir`
 rather than machine-wide, as `renderer-driver.mjs` measures - then turned the
 following launch in that same tree into "Another instance is already running".
 
+### A `headless` run takes no Dock tile, and leaves when its launcher does
+
+Two things `headless` does differently from every other mode, both of them about
+not accumulating on the operator's machine. The behaviour is in
+`src/main/window-mode.ts` (`hideDock`, `resolveLauncherWatchPlan`), applied in
+`src/main/index.ts`, and the watch itself is `src/main/launcher-watch.ts`. The
+three ends a harness can set off — its window closing, its launcher going, a
+signal — all funnel through `endHeadlessRun`/`armHeadlessExitDeadline`; the app's
+other quit descents (the smoke-test exit, the update-install path) keep the
+bounds they already had.
+
+- **No Dock tile (macOS).** A headless run is an app nobody is using — the
+  window is never shown, so the tile leads nowhere — and it is the mode this
+  repository boots tens of times over on one laptop. Measured: one evidence
+  session left ~30 of them in the operator's Dock, which is how the defect below
+  was noticed. `inactive` keeps its tile and icon and is the path back for a run
+  somebody wants to find and click into; `headless` is for runs nobody is
+  watching. (That path back is a MODE, so it also drops the lifetime behaviour:
+  only `headless` is launcher-bound, and an `inactive` run is ended by a person
+  or by its own window, not by the watch. `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE=1`
+  extends a run's LIFE and not its visibility — it does not bring the tile back.)
+- **It leaves when its launcher does.** The pid that launched the app (its
+  `ppid` at startup) is polled every 2 s, and the app quits when that process is
+  gone — after two consecutive misses, because a single one is a race. Being
+  reparented (`process.ppid` no longer naming the launcher) counts as the same
+  fact seen from the child's side. `app.quit()` goes first; if the process is
+  still alive 10 s later it exits anyway. **An escalated exit is still status
+  0**, on all three paths, for the reason each of them is legitimate: the
+  launcher path is a run ending because the thing watching it went away, a signal
+  or a closed window is a run the caller asked to end, and in every case the
+  deadline says only that the graceful descent did not finish in time. So a
+  harness must not read the exit status as the signal; the `[window-mode]` line
+  (or the `launcher probe` line in the log) is what says which path ended it.
+- **A signal ends it too.** `SIGTERM`/`SIGINT` are handled in `headless` only
+  (never on the shipped app: Ctrl-C must not change meaning for a person), which
+  turns Chromium's shutdown — it closes the window and then leaves the process
+  alive — into the same bounded exit. `window-all-closed` covers the other case,
+  a genuinely closed window (a driver closing it over CDP reaches it, measured
+  at ~1 s), and NOT a signal: an app-initiated quit emits no
+  `window-all-closed` at all.
+
+What a rig can read: every mode but `normal` prints the mode line and then the
+launcher policy — `window mode headless: 1380x900, window created and never
+shown, page throttling off, no Dock tile` (the tile clause is macOS-only, and a
+Linux or Windows rig sees the same line without it), then `headless run launched
+by pid N; it quits when that process goes` (or the reason it is *not*
+launcher-bound).
+
+A launch that was **assumed** to be a run appends the reason it decided that, and
+the aside trails the sentence so the prefix above is the same on both spellings:
+
+```
+window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile (mode assumed: --user-data-dir marks an agent-driven launch, and no window mode was named)
+```
+
+Both spellings are quoted because a rig anchored on the whole named sentence
+never matches an assumed run, which is the common case for a harness. (The aside
+trails rather than sitting after the mode because of what an infix cost: 86
+characters between `headless` and its colon, which moved the colon to printed offset 120
+(106 in the sentence itself, before the `[window-mode] ` prefix) and made a
+wrapped row begin with `: 1380x900, …` — design round 4, D18.)
+
+`normal` prints neither, so a harness waiting for a policy line on a `normal`
+boot waits forever. The mode line deliberately says nothing about the launcher:
+it is printed before that policy is resolved and would be wrong in exactly the
+two cases where a run does not leave by itself.
+
+Same defect, both halves of it: a harness that signalled the launcher — the
+`node` process the pnpm `electron` shim `exec`s — rather than the app left the
+app running with no driver, one instance per boot. Measured here: 13 boots in a
+QA round left 13 survivors, all `ppid 1`, and a matrix left ~30. Both halves are
+closed as this repository now stands: **the watch** ends a run whose launcher is
+gone, and **the driver** (`#190`, `e83ab9b1f`) spawns the app binary itself,
+signals the app's own main process by exact pid — `SIGTERM`, then `SIGKILL` on
+that same pid — and reaps what it started, however the run ends.
+
+What this does NOT cover, stated because it is easy to over-read:
+
+- A run with **no launcher at startup** (`ppid 1`) is left alone rather than
+  guessed at. Note what does and does not produce that: neither `detached: true`
+  nor `setsid(2)` reparents a child — only the parent's exit does — so a
+  `detached: true` spawn still has a real launcher pid and **is** watched. What
+  `ppid 1` at startup means is that the run was orphaned before it could look,
+  and such a run **must reap its own instances** — nothing here can end it.
+  `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE=1` is the explicit way to say "this run
+  means to outlive its launcher".
+- The escalation's emergency stop kills a **registered** owned backend child. A
+  boot still installing its managed runtime has no such child yet, so a deadline
+  that lands in that window can leave that work behind; the `serve` child a
+  harness boots against is registered long before the window is driven.
+- A launcher that kills *nothing* still leaks: the watch fires when the launcher
+  is **gone**, so a driver that stops the wrapper and stays alive itself holds
+  its app until the driver exits.
+- A harness of your own is still yours to stop by **pid**: a `pkill` by pattern
+  takes the operator's own running app with it. (`stopApp()` in
+  `scripts/renderer-driver.mjs` used to signal the launcher rather than the app;
+  that half has since landed — see the paragraph above.)
+
 ### `headless` is a full-fidelity rendering path, not a degraded one
 
 That is what makes it usable as evidence rather than only as a way to stay out
@@ -559,6 +657,53 @@ Native banners are suppressed entirely in `headless` (the notifier's delivery
 gate), because the run has nobody at the screen and a toast would interrupt
 whoever is really at the machine — and because a banner's own click handler is
 a path that raises a window.
+
+### A rig's Chrome does not touch the keychain either
+
+The same rule one runtime over: a capture rig's browser must not reach the
+operator's desktop. On 2026-09-15 the rigs below started raising **"Keychain Not
+Found — A keychain cannot be found to store "Chrome.""** on the operator's
+screen, Chrome's icon and `Cancel` / `Reset To Defaults` included. macOS
+resolves the keychain from `HOME`, and these runs are normally invoked with
+`HOME` and `TMPDIR` pointed at a scratch directory so a run cannot write into the
+operator's own config and session store — in which case there is no login
+keychain in reach at all. Chrome then cannot encrypt its cookie store
+(`Encryption is not available.` on its stderr), a `Network.setCookie` that
+answers `success: true` writes no row to the profile, and macOS logs `authd …
+Failed to authorize right 'system.keychain.create.loginkc' by client
+'/Applications/Google Chrome.app'` — Chrome trying to CREATE one, which is the
+alert. Two such denials two minutes apart (`17:29:36`, `17:31:42`), with the
+same log showing five Chrome processes reaching the Security framework in
+`17:27:40`–`17:29:36`, is why it kept coming back.
+
+`scripts/chrome-keychain.mjs` exports `withMockKeychain`, which puts
+`--use-mock-keychain` on a rig's Chrome argv so OSCrypt uses a constant mock key
+and Keychain Services is never called. Every rig that launches Chrome routes its
+argv through it — the nine in `scripts/` and the three under
+`docs/evidence/<surface>/harness/`, which are archived beside their frames but
+are still runnable — and `scripts/chrome-keychain.test.mjs` scans for the calls
+that start Chrome and fails on one that does not. That scan states its own
+bound rather than promising more than it can see: `.mjs`/`.js`/`.cjs` files under
+`scripts/`, `bin/` and each `docs/evidence/<surface>/harness/` tree, a command
+token that says `chrome`, and a spawn spelled with one of six call names
+(`spawn`, `spawnSync`, `exec`, `execSync`, `execFile`, `execFileSync`, a namespace
+prefix like `cp.spawn` included). A rig added as a `.ts` file, or in a directory
+outside those roots, is review's business rather than that test's — the test's
+own docstring says the same thing, and so does this paragraph.
+
+What this deliberately does not touch: the rigs that boot the PRODUCT are
+outside the Chrome scan by construction, and the ones that reach the real
+keychain do it on purpose — `session-cookie-restart-proof.mjs` symlinks the
+scratch `HOME`'s `Library/Keychains` at the real one, and
+`session-cookie-electron.test.mjs` does not override `HOME` at all, because
+Electron's own `safeStorage` round-trip is what they prove. The rigs that boot
+the app with an EMBEDDED Chromium under a scratch `HOME` (`browser-chrome-proof`,
+`browser-host-proof`) do not prompt either, and the reason lives in the app
+rather than in them: `src/main/browser/session-cookies.ts` asks the cheap
+question first — whether `~/Library/Keychains/login.keychain-db` exists — and
+fails closed, because calling `safeStorage` in that state can block the main
+thread (measured: 7785 ms in Electron 44.3.0) or wait on a SecurityAgent prompt
+an unattended launch can never answer.
 
 ### Capturing the frame
 
