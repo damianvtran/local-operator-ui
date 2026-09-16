@@ -282,6 +282,20 @@ const CONTROLS = [
 	 * `ink` is the ink for the same reason the pill's is: this element paints no
 	 * visible text at all, so `ink` here measures the pair actually on screen — the
 	 * textarea's own glyphs over the wash the overlay puts behind them.
+	 *
+	 * ITS EDGE IS DASHED, and that is a rule of the component rather than a taste
+	 * choice the colours can carry (design round 4, D2; code review round 4, MINOR
+	 * 2; UX round 4, U17). This row measures two TRIPLES, and the two registers
+	 * sitting inside their own floors says nothing about whether a reader can tell
+	 * them apart: measured over the twelve palettes, `warningWash` against
+	 * `infoWash` is a fill contrast of **1.01-1.11** (ten of the twelve at or below
+	 * 1.06), the two edges **1.00-1.72**, and a greyscale reading of the two fills
+	 * is **34 vs 35 of 255**. They are separated by hue and almost nothing else, so
+	 * the dash is what carries the state for a reader who cannot separate a warm
+	 * brown from a cool blue — the same doctrine the TUI's amber is measured
+	 * against in the design record's §7.1. A dash is also the only channel here
+	 * that survives monochrome without a new token: the armed token shares this
+	 * wash and has no edge at all.
 	 */
 	{
 		name: "credential pill (unbacked)",

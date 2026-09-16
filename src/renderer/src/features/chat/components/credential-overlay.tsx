@@ -98,10 +98,26 @@ export const CREDENTIAL_ARMED_ROLE = cn("rounded-xs bg-warning-wash");
  * The edge is an OUTLINE for the same pixel reason the pill's is: this element's
  * glyphs are the textarea's, and a border would add 2px to every line box and
  * walk the treatment off the characters it is under.
+ *
+ * WHY THE EDGE IS DASHED, which is the round-4 half of the same finding (design
+ * round 4, D2; code review round 4, MINOR 2; UX round 4, U17). The warning pair
+ * against the pill's info pair separates the two states by HUE and almost
+ * nothing else: measured over the twelve generated palettes, the two washes sit
+ * at a fill contrast of **1.01-1.11** (ten of the twelve at or under 1.06), the
+ * two edges at **1.00-1.72**, and a greyscale reading of the two fills is **34
+ * vs 35 of 255**. Desaturated, the live pill and the not-stored chip are the same
+ * patch with the same glyphs - so an operator who cannot separate a warm brown
+ * from a cool blue has no cue at all before pressing Enter, and the app's own
+ * doctrine (the warning role on the unredacted sentence exists precisely because
+ * the TUI's amber fails a monochrome terminal) says a state must not rest on
+ * colour alone. A dash style costs no new token and survives monochrome. It also
+ * separates the chip from the ARMED token, which shares `bg-warning-wash` and
+ * has no edge at all - the chip is the only one of the three with an edge, and
+ * now the only one with a dashed one.
  */
 export const CREDENTIAL_NOT_STORED_ROLE = cn(
 	"rounded-xs bg-warning-wash",
-	"outline-1 outline-solid outline-warning-border",
+	"outline-1 outline-dashed outline-warning-border",
 	"box-decoration-clone",
 );
 

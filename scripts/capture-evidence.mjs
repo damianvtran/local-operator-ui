@@ -913,6 +913,14 @@ export const STORIES = [
 	["chat-composer-band--long-labels", 900, 572],
 	["chat-composer-band--draft-held", 1380, 872],
 	["chat-composer-band--reduced-motion", 1380, 872, { reducedMotion: true }],
+	/*
+	 * AND THE CAPTURE OPEN ON THE SAME BAND (UX round 4, U16). The band centres
+	 * its group only while the transcript is empty, and that is exactly the state
+	 * in which the sentence above the box used to move the whole group by half
+	 * its height - the movement live `origin/main` does not have. The two frames
+	 * are the pair: `empty-chat` with no sentence, this one with the capture open.
+	 */
+	["chat-composer-band--empty-chat-credential", 1380, 872],
 	[
 		"chat-composer-band--empty-chat",
 		1380,
@@ -982,6 +990,15 @@ export const STORIES = [
 	["chat-message-input--credential-masked", 1024, 300],
 	["chat-message-input--credential-pill-mid-prose", 1024, 300],
 	["chat-message-input--credential-pill-at-line-start", 1024, 300],
+	/*
+	 * THE MARKER NOTHING BACKS (design round 4, D3). The state is a restored
+	 * draft's: the marker text is persisted (§6) and the payload map is a ref, so
+	 * a reload paints a citation nothing holds - in the NOT-STORED register, which
+	 * round 3 gave a dashed edge (design round 4, D2) so its meaning survives its
+	 * hue. The row above is its pair: the same characters, the same position, and
+	 * a live payload.
+	 */
+	["chat-message-input--credential-pill-unbacked", 1024, 300],
 	["chat-message-input--credential-escaped", 1024, 300],
 	/* THE TWO SURFACES ROUND 3 FOUND UNPHOTOGRAPHED (design D3, D4), and the
 	   reason the round-2 "the row grows by at most 7.5px" bound was wrong: the

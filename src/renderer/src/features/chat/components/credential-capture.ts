@@ -1722,6 +1722,41 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
 export const unredactedNotice = (length: number): string =>
 	`${length} characters are now PLAIN TEXT in the composer — Enter will expose them`;
 
+/**
+ * §5/§6's disclosure: the count of characters a cancel put back into the box, and
+ * the exact buffer they are in. The pair is the state; this type is here rather
+ * than beside its React setter so the rule below and the component share one
+ * definition of it.
+ */
+export type UnredactedDisclosure = { chars: number; over: string };
+
+/**
+ * THE ONE RULE FOR "does this count describe this buffer", asked twice per
+ * keystroke: `null` unless the buffer IS the text the count was taken over.
+ *
+ * It exists as a named rule because the disclosure has two halves that must
+ * agree and no third answer between them - the RENDERED sentence (this function
+ * on the render's own buffer) and the PERSISTED count (`disclosureOver` in
+ * `message-input.tsx`, which wraps it and answers 0 rather than `null`) - and
+ * because the mismatch is the whole defect it exists for (UX round 3, U12;
+ * code review round 3, MINOR 1): four backspaces left the sentence claiming
+ * eleven characters over a seven-character remnant, a cleared box retyped with
+ * ordinary prose re-persisted the stale count under text that was never
+ * plaintext secret characters, and a restored marker could carry it into a
+ * transcript that mentions no secret at all. A count that outlives its text is
+ * a sentence about nothing.
+ *
+ * Pinned here, in the pure module, rather than only through the component: the
+ * DOM suite cannot separate this rule from the retirement effect that runs in
+ * the same commit, so a mutation that drops the `over` test entirely left every
+ * rendered case green (code review round 4, MINOR 1).
+ */
+export const unredactedOverBuffer = (
+	disclosure: UnredactedDisclosure | null,
+	buffer: string,
+): number | null =>
+	disclosure && disclosure.over === buffer ? disclosure.chars : null;
+
 /** A uniform draw in `[0, bound)`, injectable so the naming rule is testable. */
 export type Draw = (bound: number) => number;
 
