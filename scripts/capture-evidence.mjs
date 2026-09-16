@@ -567,6 +567,18 @@ export const STORIES = [
 	   pixels in the middle are. */
 	["chat-tool-rows--narrow", 560, 276],
 	["chat-tool-rows--working", 1280, 900],
+	/*
+	 * The compaction pass, before and after. The BEFORE frame is the change
+	 * itself: `/compact` used to be answered by a modal dialog, and the pass was
+	 * invisible in the transcript; the rung is now the only liveness statement
+	 * the surface makes about it, and the AFTER frame is what replaces the dialog
+	 * once the pass settles (the reducer's own info line, with the token counts).
+	 * Sized to the two rows and the rung, for the reason `working-labels` is: at
+	 * 900 tall the frame is mostly ground and `check-evidence`'s uniformity
+	 * ceiling rejects it.
+	 */
+	["chat-tool-rows--compacting-pass-before", 1280, 300],
+	["chat-tool-rows--compacting-pass-after", 1280, 300],
 	["chat-tool-rows--working-labels", 760, 300],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
 	   arguments. Captured at the height the story declares, because the frame IS
