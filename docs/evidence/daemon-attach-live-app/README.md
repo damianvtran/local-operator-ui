@@ -12,7 +12,7 @@ status, the catalogue store - and a story can stub only one side of that.
 | frame | tree | state it photographs |
 | --- | --- | --- |
 | `after-attached.png` | this branch | the app attached to a real `lop serve` v0.55.6 with a seeded conversation (the `attached` scene) |
-| `after-daemon-absent.png` | this branch | the same launch with nothing answering: the renderer's banner and main's `detached` snapshot, read from the same page |
+| `after-daemon-absent.png` | this branch | the same launch with nothing answering: the renderer's banner and main's `detached` snapshot, read from the same page. Re-shot on `c546a8ccf` (QA round 2, Q-7): the pane carries its own sentence at device y 828-853 and its `Retry` at 888-912, where the frame this file used to hold was a pre-pane-fix capture showing the pane empty. The rig writes this scene to `after-absent.png`; the frame is declared here under its committed name, so a re-shoot either renames it or is committed as this one |
 | `after-gate-open.png` | this branch | the catalogue gate OPEN against the rig's stub backend: agents, teams and the seeded conversation all listed. It is also the flap scene's BEFORE frame - the same state is the starting point of both cells |
 | `after-gate-withdrawn.png` | this branch | **the cell the operator reported**: the backend's answer stops opening the desktop plane while the app is running, and NOBODY touches anything. The rows are still there, at full ink, and the condition is stated once - by the full-bleed band - rather than by the sidebar as well |
 | `after-flap-during.png` | this branch | the list holding through a probe-budget flap: every probe expires inside its 2 s budget while every read still answers |
