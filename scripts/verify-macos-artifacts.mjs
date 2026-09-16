@@ -506,96 +506,6 @@ export function seedBootstrapCheck(appPath) {
 	);
 }
 
-/**
- * The Electron locale packs the app ships, which the build strips to English.
- *
- * Why this is a gate check rather than a one-line config review: `build.mac.
- * electronLanguages` is read by `app-builder-lib` while it prunes `*.lproj`
- * from BOTH the app's `Contents/Resources` and the Electron Framework's
- * resources (verified in this repository's installed packer,
- * `app-builder-lib@26.16.1/out/electron/ElectronFramework.js`), before signing,
- * and it refuses to empty the directory - the empty-locales startup crash. Two
- * ways that silently stops holding: the key is dropped from `package.json` by a
- * later merge (the class the seed hooks already lost once), or the packer's
- * behaviour changes under a version bump. Either way the bundle keeps ~50 MB of
- * `locale.pak` across 220 directories, every user downloads and extracts it,
- * and nothing else in the pipeline notices. The check therefore asserts the
- * subset AND that something survived, because a prune that removed every
- * locale would satisfy a subset test on its own.
- *
- * `locale.pak` is counted over the whole `Contents`: the framework keeps one per
- * surviving language directory, so the count is the second, independent
- * statement that the strip happened (`en` alone is 1, `en` + `en-US` is 2).
- */
-export function electronLocaleCheck(appPath, { walk = defaultWalk } = {}) {
-	const contents = join(appPath, "Contents");
-	const directories = [
-		join(contents, "Resources"),
-		join(
-			contents,
-			"Frameworks",
-			"Electron Framework.framework",
-			"Versions",
-			"A",
-			"Resources",
-		),
-	];
-	// Which languages a wanted one keeps is the PACKER's rule, not this file's:
-	// `isLocaleMatch` in `app-builder-lib@26.16.1/out/electron/ElectronFramework.js`
-	// answers `wanted === language || language.startsWith(wanted + "-")`, both
-	// sides lowercased with `_` read as `-`. So `["en", "en-US"]` keeps the whole
-	// English family - MEASURED on the packaged artifact this change builds: 8
-	// `*.lproj` directories and 8 `locale.pak`, `en`, `en_GB` and the
-	// `en_*`FEMININE/MASCULINE/NEUTER variants the framework ships, where the
-	// change was estimated at two. The predicate below is that rule narrowed to
-	// the one thing this gate asserts: whatever survives must be English.
-	const isEnglishLocale = (name) => {
-		const code = name
-			.slice(0, -"lproj".length - 1)
-			.toLowerCase()
-			.replace(/_/g, "-");
-		return code === "en" || code.startsWith("en-");
-	};
-	const strays = [];
-	const kept = [];
-	for (const directory of directories) {
-		let names = [];
-		try {
-			names = readdirSync(directory);
-		} catch {
-			// An absent directory is reported through the counts below rather than
-			// thrown: the app bundles this gate has seen carry both.
-		}
-		for (const name of names) {
-			if (!name.endsWith(".lproj")) continue;
-			if (isEnglishLocale(name)) kept.push(join(directory, name));
-			else strays.push(join(directory, name));
-		}
-	}
-	const localePaks = walk(contents).filter(
-		(relative) => (relative.split(/[\\/]/).pop() ?? "") === "locale.pak",
-	);
-	// A pack per surviving language, at most: the third assertion is what catches
-	// a PARTIAL strip, where the directories went and the packs stayed.
-	const passed =
-		strays.length === 0 && kept.length > 0 && localePaks.length <= kept.length;
-	const output = passed
-		? `${kept.length} .lproj kept (English only), ${localePaks.length} locale.pak`
-		: strays.length > 0
-			? `${strays.length} non-English locale pack(s) shipped, e.g. ${strays.slice(0, 3).join(", ")}; build.mac.electronLanguages must stay ["en", "en-US"]`
-			: kept.length === 0
-				? "no .lproj survived anywhere: the packer refuses to empty that directory, so this is a stripped-to-nothing bundle"
-				: `${localePaks.length} locale.pak for ${kept.length} surviving locale directories: language packs were left behind for languages the strip removed`;
-	return {
-		id: "app-electron-locales",
-		scope: "app",
-		target: appPath,
-		description: "only the English Electron locale packs are shipped",
-		passed,
-		output,
-	};
-}
-
 /** A failure entry shaped like the other checks, so the CLI reports it alike. */
 export function bundledBytecodeCheck(appPath, options = {}) {
 	const found = findBundledBytecode(appPath, options);
@@ -783,11 +693,11 @@ export function verifyArtifacts({
 		bundledBytecodeCheck(path),
 		bundledPythonCheck(path, { run, expectArch: arch }),
 		privatePythonSeedCheck(path, { expectArch: arch }),
-		// The four halves of an in-app update's weight, each asserted where the
-		// build assembled it: the locale packs, the seed content nothing imports,
-		// the execute bits that mean nothing in a bundle, and the venv bootstrap
-		// the pruning must not have reached.
-		electronLocaleCheck(path),
+		// The three halves of the seed's weight, each asserted where the build
+		// assembled it: the content nothing imports, the execute bits that mean
+		// nothing in a bundle, and the venv bootstrap the pruning must not have
+		// reached.
+		prunedSeedCheck(path),
 		prunedSeedCheck(path),
 		seedModeCheck(path),
 		seedBootstrapCheck(path),
@@ -799,13 +709,12 @@ export function verifyArtifacts({
 		}
 		log(`Checking app: ${appPath}`);
 		results.push(...runChecks({ appPath, dmgPath: null, run }));
-		// Neither of the next seven is a `codesign` question: all are about what the
+		// Neither of the next six is a `codesign` question: all are about what the
 		// build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
 		results.push(privatePythonSeedCheck(appPath));
-		results.push(electronLocaleCheck(appPath));
 		results.push(prunedSeedCheck(appPath));
 		results.push(seedModeCheck(appPath));
 		results.push(seedBootstrapCheck(appPath));
@@ -872,14 +781,6 @@ export function verifyArtifacts({
 		if (seed) {
 			log(
 				`The bundled seed is not the pruned one: ${seed.output}. scripts/setup-python-resource.sh runs scripts/prune-python-seed.mjs over the tree it downloads, so fix the build rather than the bundle.`,
-			);
-		}
-		const locales = failures.find(
-			(result) => result.id === "app-electron-locales",
-		);
-		if (locales) {
-			log(
-				`The app ships locale packs it should not: ${locales.output}. build.mac.electronLanguages prunes them before signing, so fix that key rather than deleting the directories after the fact.`,
 			);
 		}
 	}

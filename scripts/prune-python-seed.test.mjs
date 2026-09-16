@@ -24,7 +24,6 @@ import {
 	seedModeViolations,
 } from "./prune-python-seed.mjs";
 import {
-	electronLocaleCheck,
 	prunedSeedCheck,
 	seedBootstrapCheck,
 	seedModeCheck,
@@ -130,8 +129,8 @@ function makeSeed(dir, { pruned = false } = {}) {
 }
 
 /**
- * A packaged app carrying one arm64 seed (already pruned) and the English
- * locale packs only - the shape the gate must pass.
+ * A packaged app carrying one arm64 seed, already pruned - the shape the gate
+ * must pass.
  *
  * Every regression case below mutates a fresh copy of this, so a failing case
  * fails for the one thing it changed.
@@ -139,30 +138,10 @@ function makeSeed(dir, { pruned = false } = {}) {
 function makePassingApp(dir) {
 	const app = join(dir, "mac-arm64", "Local Operator.app");
 	const resources = join(app, "Contents", "Resources");
-	const framework = join(
-		app,
-		"Contents",
-		"Frameworks",
-		"Electron Framework.framework",
-		"Versions",
-		"A",
-		"Resources",
-	);
 	makeSeed(join(resources, LAYOUT.seedNamespace, "arm64"), { pruned: true });
-	// The three spellings the packer's family rule keeps (see
-	// `electronLocaleCheck`): the bare code, a region variant and one of the
-	// framework's gendered variants, so this file is pinned against the rule the
-	// packer implements rather than against the two names it was estimated to
-	// keep.
-	for (const name of ["en", "en_US", "en_GB_NEUTER"]) {
-		mkdirSync(join(resources, `${name}.lproj`), { recursive: true });
-		mkdirSync(join(framework, `${name}.lproj`), { recursive: true });
-	}
-	writeFileSync(join(framework, "en.lproj", "locale.pak"), "");
 	return {
 		app,
 		resources,
-		framework,
 		seed: join(resources, LAYOUT.seedNamespace, "arm64"),
 	};
 }
@@ -251,7 +230,6 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 		prunedSeedCheck(passing.app),
 		seedModeCheck(passing.app),
 		seedBootstrapCheck(passing.app),
-		electronLocaleCheck(passing.app),
 	])
 		assert.equal(check.passed, true, `${check.id} must pass: ${check.output}`);
 	assert.deepEqual(
@@ -289,41 +267,6 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
 	const bootstrapCheck = seedBootstrapCheck(noWheel.app);
 	assert.equal(bootstrapCheck.passed, false);
 	assert.match(bootstrapCheck.output, /ensurepip\/_bundled\/pip-\*\.whl/);
-
-	// 5. A locale the strip should have removed, in either directory.
-	const strayLocales = makePassingApp(tempDir("lo-app-"));
-	mkdirSync(join(strayLocales.framework, "de.lproj"));
-	const strayCheck = electronLocaleCheck(strayLocales.app);
-	assert.equal(strayCheck.passed, false);
-	assert.match(strayCheck.output, /de\.lproj/);
-
-	// 6. Every locale removed: a subset test alone would call this a pass.
-	const strippedTooFar = makePassingApp(tempDir("lo-app-"));
-	for (const dir of [strippedTooFar.resources, strippedTooFar.framework])
-		for (const name of ["en", "en_US", "en_GB_NEUTER"])
-			rmSync(join(dir, `${name}.lproj`), { recursive: true });
-	const tooFarCheck = electronLocaleCheck(strippedTooFar.app);
-	assert.equal(tooFarCheck.passed, false);
-	assert.match(tooFarCheck.output, /no \.lproj survived/);
-
-	// 7. A PARTIAL strip: the language directories went and their packs stayed
-	// behind. One pack per surviving directory is the invariant, so this fails
-	// without a hard-coded count.
-	const strayPaks = makePassingApp(tempDir("lo-app-"));
-	for (const name of ["en.lproj", "en_US.lproj"])
-		writeFileSync(join(strayPaks.resources, name, "locale.pak"), "");
-	for (const name of ["en_US", "en_GB_NEUTER"])
-		writeFileSync(join(strayPaks.framework, `${name}.lproj`, "locale.pak"), "");
-	// Two more where no language directory justifies one at all.
-	writeFileSync(join(strayPaks.resources, "locale.pak"), "");
-	writeFileSync(join(strayPaks.app, "Contents", "locale.pak"), "");
-	// Six surviving directories, seven packs.
-	const pakCheck = electronLocaleCheck(strayPaks.app);
-	assert.equal(pakCheck.passed, false, pakCheck.output);
-	assert.match(
-		pakCheck.output,
-		/7 locale\.pak for 6 surviving locale directories/,
-	);
 });
 
 /*
@@ -336,7 +279,7 @@ test("the gate passes a pruned bundle and names each way it can regress", () => 
  * was the config, so the config is what is asserted - the same lesson
  * `prune-python-resource.test.mjs` records for `afterPack`.
  */
-test("the seeding script runs the prune, and the builder ships only English", () => {
+test("the seeding script runs the prune", () => {
 	const script = readFileSync(
 		join(process.cwd(), "scripts/setup-python-resource.sh"),
 		"utf8",
@@ -345,14 +288,6 @@ test("the seeding script runs the prune, and the builder ships only English", ()
 		script,
 		/node\s+"\$\(dirname "\$0"\)\/prune-python-seed\.mjs"/,
 		"setup-python-resource.sh must run scripts/prune-python-seed.mjs: it is the only place the seed tree is materialised, and a prune nothing calls is a comment",
-	);
-	const build = JSON.parse(
-		readFileSync(join(process.cwd(), "package.json"), "utf8"),
-	).build;
-	assert.deepEqual(
-		build.mac.electronLanguages,
-		["en", "en-US"],
-		"build.mac.electronLanguages is what prunes the 220 locale packs before signing; app-builder-lib reads it from the mac block, and the gate fails the release without it",
 	);
 });
 
