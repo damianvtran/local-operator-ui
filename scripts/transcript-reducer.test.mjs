@@ -2753,23 +2753,27 @@ test("a tail read never answers the paging question, and never repaints a cleare
 	);
 
 	/*
-	 * U17, and its residual (round 5's R5-2/U20): the cleared view keeps only the
-	 * pass's own outcome row — and it must keep doing so once something HAS been
-	 * painted into it. The guard first required the view to be empty, so the first
-	 * read painting the outcome row turned it off and the SECOND scheduled read
-	 * (the schedule's 5 s delay) landed the whole page: `/clear`, keep working,
-	 * `/compact`, and the pre-clear conversation came back. The epoch is the fact,
-	 * not the emptiness.
+	 * U17, its round-5 residual (R5-2/U20) and its round-7 one (Q14): a cleared
+	 * view is answered with THE PASS the read exists for, and with nothing else.
+	 * Three facts, each of which was a defect on its own:
+	 *
+	 * - `/clear` is view-only, so a page read afterwards repaints every row it
+	 *   removed (U17);
+	 * - the test is the EPOCH, not "is the view empty" — the first read painting the
+	 *   pass's own row made the view non-empty and the second read landed whole
+	 *   (R5-2/U20);
+	 * - and the ROW SET is scoped to the pass, by the CLEAR INSTANT rather than by
+	 *   the read's own receipt: measured on a real runtime, a refusal of an empty
+	 *   conversation is written 24 ms BEFORE the client holds the receipt, because
+	 *   it takes no model call — so a receipt-keyed scope refused it and the pane
+	 *   stayed silent (Q15). A pass whose receipt was sent after the clear writes
+	 *   its row after the clear, whatever that gap is.
 	 */
-	const cleared = clearTranscript(loaded);
+	const clearAt = at + 50;
+	const cleared = clearTranscript(loaded, clearAt);
 	assert.deepEqual(rows(cleared), []);
-	// The read's own instant — the command receipt that started the pass — which is
-	// what scopes the rows a cleared view will accept (Q14).
-	const since = at + 50;
-	const afterTail = applyHistoryPage(cleared, page, {
-		keepPaging: true,
-		outcomeSince: since,
-	});
+	assert.equal(cleared.clearedAt, clearAt, "the clear stamps its own instant");
+	const afterTail = applyHistoryPage(cleared, page, { keepPaging: true });
 	assert.deepEqual(
 		rows(afterTail),
 		["compaction"],
@@ -2777,10 +2781,7 @@ test("a tail read never answers the paging question, and never repaints a cleare
 	);
 
 	// The SECOND read, after that row is on screen: still only the pass's own row.
-	const secondRead = applyHistoryPage(afterTail, page, {
-		keepPaging: true,
-		outcomeSince: since,
-	});
+	const secondRead = applyHistoryPage(afterTail, page, { keepPaging: true });
 	assert.deepEqual(
 		rows(secondRead),
 		["compaction"],
@@ -2788,61 +2789,57 @@ test("a tail read never answers the paging question, and never repaints a cleare
 	);
 
 	/*
-	 * Q14 — the two-pass page. "Outcome rows" was too wide: the pre-clear passes'
-	 * rows are outcome rows too, so a cleared view showed a bare line per old pass
-	 * under the new one (measured on four sessions, two heads). The scope is the
-	 * read's own instant, so an OLDER pass's row is not admitted and this pass's is.
+	 * The two-pass page, in the PRODUCTION ordering Q15 measured: the older pass's
+	 * row is before the clear, and THIS pass's row is after the clear but BEFORE the
+	 * read's receipt instant — which is exactly the shape that made a receipt-keyed
+	 * scope silent.
 	 */
+	const receiptAt = clearAt + 120;
 	const twoPasses = {
 		...pageOf([
 			{
 				id: "old_pass",
-				// Before the receipt that scheduled this read.
-				ts: (since - 60_000) / 1000,
+				ts: (clearAt - 60_000) / 1000,
 				type: "compaction",
 				payload: { tokens_before: 25 },
 			},
 			{
 				id: "this_pass",
-				ts: (since + 100) / 1000,
+				// After the clear, before the receipt the renderer would hold.
+				ts: (receiptAt - 24) / 1000,
 				type: "compaction",
 				payload: { tokens_before: 41_000 },
+			},
+			{
+				id: "refused_pass",
+				// The same ordering for a REFUSAL row, which is the case Q15 filed.
+				ts: (receiptAt - 24) / 1000,
+				type: "message",
+				payload: {
+					kind: "custom",
+					custom_type: "compaction_refused",
+					details: { detail: "the conversation is empty" },
+				},
 			},
 		]),
 		has_more: true,
 	};
-	// Cleared from a view that HAD rows: `clearTranscript` is a no-op on an empty
-	// transcript (it early-returns), so the epoch only moves when there was
-	// something to clear — which is exactly the state the operator is in.
-	const bulkCleared = clearTranscript(loaded);
-	assert.ok(bulkCleared.viewEpoch > 0, "the clear moved the epoch");
+	const scoped = applyHistoryPage(cleared, twoPasses, { keepPaging: true });
 	assert.deepEqual(
-		applyHistoryPage(bulkCleared, twoPasses, {
-			keepPaging: true,
-			outcomeSince: since,
-		}).records.map((record) => record.id),
-		["this_pass"],
-		"a cleared view keeps this pass's outcome row and no earlier pass's",
+		scoped.records.map((record) => record.id),
+		["this_pass", "refused_pass"],
+		"a cleared view keeps this pass's rows — written before the receipt — and no earlier pass's",
 	);
 
-	// And the bracket QA ran: `/clear`, a new message, then the pass — the page
-	// carrying both the old pass and this one must not put the old one back.
+	// And the bracket QA ran: `/clear`, a new message, then the pass.
 	const afterNewMessage = appendPendingUser(afterTail, "and now compact again");
 	assert.deepEqual(rows(afterNewMessage), ["compaction", "user"]);
 	const afterSecondPass = applyHistoryPage(afterNewMessage, twoPasses, {
 		keepPaging: true,
-		outcomeSince: since,
 	});
-	// `d1` is the earlier read's own pass row (its ts is after this read's instant,
-	// so it is this read's pass), `old_pass` is the pre-clear one that must not come
-	// back, and the page's `u1` is not an outcome row at all.
 	assert.ok(
 		!afterSecondPass.records.some((record) => record.id === "old_pass"),
 		"the pre-clear pass stays gone through a later /compact",
-	);
-	assert.deepEqual(
-		afterSecondPass.records.map((record) => record.id),
-		["d1", "this_pass", "and now compact again"],
 	);
 
 	// The ordinary read is untouched: it still repaints the rows `/clear` removed

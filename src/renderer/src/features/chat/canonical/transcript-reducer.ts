@@ -350,6 +350,28 @@ export type TranscriptState = {
 	 * U11/Q7/R3-7).
 	 */
 	viewEpoch: number;
+	/**
+	 * Wall-clock ms of the last `/clear`, or `undefined` if the view has never
+	 * been cleared.
+	 *
+	 * WHY THIS EXISTS, and it is a MEASUREMENT rather than a theory. A cleared view
+	 * must admit the outcome row of the pass the read exists for and no earlier
+	 * pass's. The first attempt scoped that to the READ's own instant (the command
+	 * receipt), on the reasoning that a pass's row cannot be written before the
+	 * receipt that started it. Measured on a real runtime, that is false for the
+	 * fast path: refusing an empty conversation takes no model call, so
+	 * `_record_compaction_refusal` wrote the row 24 ms BEFORE the client even held
+	 * the HTTP response — and the renderer takes its `since` after receiving it, so
+	 * every such refusal fell outside the scope and the pane stayed silent (QA
+	 * round 7's Q15, reproduced here on a real serve rather than a mock).
+	 *
+	 * The clear instant is the boundary the rule actually needs: a pass whose
+	 * receipt was sent after the clear writes its row after the clear, whatever the
+	 * write-to-receipt gap is, and a pre-clear pass's row is before it by
+	 * construction. It is deliberately NOT a tolerance window — that would be a
+	 * clock guess standing in for a fact the state can hold.
+	 */
+	clearedAt?: number;
 	/** Oldest durable id painted; the cursor for `sessions.history` paging. */
 	oldestId: string | null;
 	hasMore: boolean;
@@ -1546,31 +1568,7 @@ function durableRecord(
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
-	options: { replace?: boolean } & (
-		| {
-				keepPaging: true;
-				/**
-				 * The instant this read was scheduled for: the command receipt that
-				 * started the pass, which `slash-dispatch.ts` takes with `Date.now()`
-				 * and the stop predicate already compares against
-				 * (`tailCarriesOutcome`).
-				 *
-				 * A CLEARED view is scoped by it, and that is the whole reason it is
-				 * here: "outcome rows" alone was too wide, because the pre-clear
-				 * passes' rows are outcome rows too — `/clear`, keep working,
-				 * `/compact` re-admitted them (QA round 6's Q14, measured on four
-				 * sessions and two heads).
-				 *
-				 * REQUIRED wherever `keepPaging` is set, which is a TYPE rather than
-				 * a test: the pair is one fact (this read, for this pass), and a
-				 * caller that dropped the instant would leave a cleared view
-				 * unscoped — the defect returning silently. The wiring test pins the
-				 * value; this makes its absence uncompilable.
-				 */
-				outcomeSince: number;
-		  }
-		| { keepPaging?: false; outcomeSince?: never }
-	) = {},
+	options: { replace?: boolean; keepPaging?: boolean } = {},
 ): TranscriptState {
 	/*
 	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
@@ -1587,17 +1585,17 @@ export function applyHistoryPage(
 	 *   includes the pre-clear passes' rows, which is what put a bare
 	 *   `Context compacted` per old pass back under the new one (round 6's Q14).
 	 *
-	 * `keepPaging` is set by exactly one caller (the tail read), the epoch is bumped
-	 * by exactly one function (`clearTranscript`) and `outcomeSince` is the instant
-	 * that same read was scheduled for — so nothing here needs new state to be true.
-	 * A read that is not the tail read still repaints, which is parity with
-	 * `origin/main` and deliberately unchanged.
+	 * `keepPaging` is set by exactly one caller (the tail read), the epoch and the
+	 * clear instant are written by exactly one function (`clearTranscript`), and the
+	 * instant is the boundary the rule needs rather than the read's own receipt
+	 * (which a fast refusal can precede — see `clearedAt`). A read that is not the
+	 * tail read still repaints, which is parity with `origin/main` and deliberately
+	 * unchanged.
 	 */
 	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
-		if (clearedView && !isCompactionOutcome(entry, options.outcomeSince))
-			continue;
+		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. Handing it to `durableRecord` is what lets an unchanged
 		// `images` array keep its reference through a replayed page.
@@ -2579,7 +2577,10 @@ export function reconcileLimit(missingCalls: number): number {
 }
 
 /** View-only clear: the painted rows go, the backend history is untouched. */
-export function clearTranscript(state: TranscriptState): TranscriptState {
+export function clearTranscript(
+	state: TranscriptState,
+	at: number = Date.now(),
+): TranscriptState {
 	if (state.records.length === 0) return state;
 	// `argsByCall` survives for the same reason it survives a `replace`: the
 	// history this clears is still on the backend, and repainting it must not
@@ -2595,6 +2596,8 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 		// The reset this counter exists for: a read scheduled against the previous
 		// epoch must discard its page rather than repaint what `/clear` removed.
 		viewEpoch: state.viewEpoch + 1,
+		// The instant a cleared view is scoped by (see the field's own note).
+		clearedAt: at,
 		argsByCall: state.argsByCall,
 	};
 }
@@ -2611,15 +2614,15 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
  */
 function isCompactionOutcome(
 	entry: DesktopHistoryPage["entries"][number],
-	since?: number,
+	clearedAt?: number,
 ): boolean {
 	const outcome =
 		entry.type === "compaction" ||
 		(entry.type === "message" &&
 			entry.payload?.custom_type === "compaction_refused");
 	if (!outcome) return false;
-	if (since === undefined) return true;
-	return Math.round((entry.ts ?? 0) * 1000) >= since;
+	if (clearedAt === undefined) return true;
+	return Math.round((entry.ts ?? 0) * 1000) >= clearedAt;
 }
 
 /** A token count as the settled line prints it: `41.0k`, `864`. */
