@@ -243,7 +243,8 @@ round's change, and that was true; but the frame was a capture of an older tree
 regardless, and QA's round 3 measured it away from this head by **1,293 pixels
 (0.0270% of the frame) inside `357x28+42+1586`**: the rail's own `Search` row and
 its `⌘+K` hint, which this head paints where that capture had nothing — the row
-entered the rail with the command-palette work (`e4c19e289`), after the capture.
+entered the rail with the command-palette work (`290e4f8eb`, the commit that brought
+both the row and its `⌘+K` hint), after the capture.
 The frame committed now is this head's, from the documented no-backend run
 (`--scene new-chat` with no `--backend`), whose transcript is above; the pair is
 byte-identical at 167,486 bytes each, which is the property the set claims for it.
@@ -258,7 +259,7 @@ question this frame's freshness turned on.
 | The row block, 2x (device pixels) | [`before-row-dark`](before-row-dark.png) | [`after-row-dark`](after-row-dark.png) |
 | After the row's own action | *(no before: the marking is unchanged)* | [`after-row-staged-light`](after-row-staged-light.png) — the staged draft marks the row current, and the caps carry the structural edge that says they are caps on it (`sunken` on `sunken`, 1.00:1, is what this frame showed before round 2's fix — see below) |
 | The chord in the built app, against a real backend | [`cmd-n-live-before`](cmd-n-live-before.png) — Agent hub | [`cmd-n-live-after`](cmd-n-live-after.png) — the chat route 2 ms later, the staged draft's pane, and the row holding its current marking with the same edge on its caps |
-| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before` (167,486 bytes each, AE 0). Re-shot in round 3 because its rail periphery was an older tree than this head's (`Search ⌘+K` is `e4c19e289`'s row); the subject did not move, and the re-shoot is what makes that claim about THIS head |
+| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before` (167,486 bytes each, AE 0). Re-shot in round 3 because its rail periphery was an older tree than this head's (`Search` and its `⌘+K` hint are `290e4f8eb`'s row); the subject did not move, and the re-shoot is what makes that claim about THIS head |
 
 ## The measurements behind the pixels
 
