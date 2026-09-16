@@ -136,6 +136,27 @@ const tabLabel = (title: string): string => {
 		: `${trimmed.slice(0, 23).trimEnd()}\u2026`;
 };
 
+/**
+ * Reveal-on-hover-or-focus, the treatment a row's chrome gets when the strip has
+ * no room to keep it in flow. Literal class names rather than a template string,
+ * because Tailwind's scanner reads the source text.
+ */
+const REVEAL_ON_HOVER_OR_FOCUS =
+	"opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
+
+/**
+ * The same treatment, applied only while the strip is narrow, for the chrome that a
+ * WIDE strip keeps permanent (the active row's cluster, below `@xl`).
+ *
+ * It exists as its own constant because the two are not interchangeable: the first
+ * is unconditional, and the second has to lose to `opacity-100` above the tier while
+ * beating it inside. `@max-2xl:` is a container variant, so it is emitted after the
+ * unvariant utility and wins inside the tier - the same rule the floors above rely
+ * on, and half the reason a tier is a RANGE rather than two stacked `max-` variants.
+ */
+const NARROW_REVEAL =
+	"@max-2xl:opacity-0 @max-2xl:pointer-events-none @max-2xl:group-hover:opacity-100 @max-2xl:group-hover:pointer-events-auto @max-2xl:group-focus-within:opacity-100 @max-2xl:group-focus-within:pointer-events-auto";
+
 export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
 	activeTabId,
@@ -195,6 +216,58 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		element?.scrollIntoView({ block: "nearest", inline: "nearest" });
 	}, [activeTabId]);
 
+	/*
+	 * HOW MANY TABS ARE NOT FULLY VISIBLE, which is what the pinned control is FOR.
+	 *
+	 * QA round 1 (Q2) drove the control where nothing overflows - the route's 1160px
+	 * strip with six tabs, `overflows: false` - and found it drawn anyway, with an
+	 * empty own text and its `aria-label` reading `All tabs`: a control whose
+	 * PRESENCE said nothing, so a user could not read overflow, or its absence, from
+	 * it. It was gated on `tabs.length > 1`.
+	 *
+	 * The fix is a COUNT rather than a tint or a chevron, and the count is measured
+	 * here rather than derived from `scrollWidth - clientWidth` because the two say
+	 * different things: overflow says "there is more to scroll to", and what a user
+	 * needs to know is "how many tabs am I not seeing". The number also decides the
+	 * control's presence, so a strip that fits carries no control at all - the
+	 * honest signal, since a control that is always there is a control that says
+	 * nothing.
+	 *
+	 * The measure is the canvas strip's (`canvas-tabs.tsx`): on mount, on scroll and
+	 * on resize, keyed on `tabs` because opening or closing a tab changes the
+	 * scrollable width without resizing the strip. 1px of slack because a row that
+	 * is flush with the scroller's edge is visible, and the boxes are rounded
+	 * independently. A tab lying HALF outside counts as not shown, which is the
+	 * case the count exists for.
+	 */
+	const [tabsOffScreen, setTabsOffScreen] = useState(0);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when `tabs` changes even though the body never reads it.
+	useEffect(() => {
+		const strip = scrollerRef.current;
+		if (!strip) return;
+
+		const measure = () => {
+			const view = strip.getBoundingClientRect();
+			let offScreen = 0;
+			for (const row of strip.querySelectorAll("[data-tab-id]")) {
+				const box = row.getBoundingClientRect();
+				if (box.left < view.left - 1 || box.right > view.right + 1)
+					offScreen += 1;
+			}
+			setTabsOffScreen(offScreen);
+		};
+
+		measure();
+		strip.addEventListener("scroll", measure, { passive: true });
+		const observer = new ResizeObserver(measure);
+		observer.observe(strip);
+
+		return () => {
+			strip.removeEventListener("scroll", measure);
+			observer.disconnect();
+		};
+	}, [tabs]);
+
 	return (
 		<div
 			// `border-control`, not `hairline`: this is the strip's only boundary
@@ -207,19 +280,32 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		>
 			{/* `pt-1` and no bottom padding: the tabs sit flush on the strip's own
 			    rule, which is what lets the active tab interrupt it. */}
-			<div className={cn("flex items-stretch gap-0 px-2 pt-1")}>
+			<div
+				className={cn("@container/strip flex items-stretch gap-0 px-2 pt-1")}
+			>
 				<div
 					ref={scrollerRef}
 					// `-mb-px` extends the scroll container's clip box 1px down, over the
 					// strip's bottom rule, so the active tab's notch can paint ON that rule
 					// rather than being clipped by the scroll container one pixel above it.
 					//
-					// `@container/strip` is what makes the row's floors a function of the
-					// room the row has rather than of the window (design round 1, D1): the
-					// pane is the first host where four tabs do not fit, and a floor
-					// calibrated on the route's 1240px is what hid a whole tab there.
+					// `@container/strip` is declared on the ROW THAT HOLDS THE WHOLE STRIP —
+					// this scroller, the pinned control and the new-tab button — and the
+					// placement is load-bearing rather than tidy (measured, then re-measured):
+					// on the scroller, the container's width DROPS by the control's own width
+					// the moment the control appears, so the tier the floors read depended on
+					// the control the floors decide — four tabs fitted at the narrow tier,
+					// overflowed again at the middle one, and the strip oscillated between
+					// them, which is how a frame came back with a `+2` control over a strip
+					// whose four rows did fit. The container is now the one box whose width
+					// the control cannot change, so the tiers are a function of the room the
+					// STRIP has and the count below is a function of the room the ROWS have.
+					//
+					// That is also why the narrow tier starts at 672px rather than 576: the
+					// container now includes the control's space, so the pane's own 640 strip
+					// is 640 here where it measured 567 before.
 					className={cn(
-						"@container/strip flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px",
+						"flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px",
 					)}
 				>
 					{tabs.map((tab, index) => {
@@ -299,72 +385,76 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							tab.failed,
 							waitingOrdinal !== undefined,
 						].filter(Boolean).length;
-						const floor = active
-							? chips >= 5
-								? "min-w-[30rem]"
-								: chips === 4
-									? "min-w-[26rem]"
-									: chips === 3
-										? "min-w-96"
-										: chips === 2
-											? "min-w-96"
-											: chips === 1
-												? "min-w-80"
-												: "min-w-56"
-							: chips >= 4
-								? "min-w-96"
-								: chips === 3
-									? "min-w-80"
-									: chips === 2
-										? "min-w-72"
-										: chips === 1
-											? "min-w-56"
-											: "min-w-44";
 						/*
 						 * THE SAME LADDER, ONE STEP DOWN, WHEN THE STRIP ITSELF IS NARROW
-						 * (design round 1, D1). The rungs above are sized for the route's 1240px,
-						 * where the agent tab's `min-w-80` is 26% of the strip; in the pane's own
-						 * default 640 it is 50%, and the four tabs the `all-tabs` frame carries
-						 * need about 1100px inside 596 - so a WHOLE TAB was off-screen with
-						 * nothing on screen saying so, which is the state the pane exists to show.
+						 * (design round 1, D1; QA round 1, Q2; the designer's round-1
+						 * remainder). The rungs above are sized for the route's 1240px, where
+						 * the agent tab's `min-w-80` is 26% of the strip; in the pane's own
+						 * default 640 it is 50%, so a WHOLE TAB was off-screen with nothing on
+						 * screen saying so - the state the pane exists to show.
 						 *
-						 * `@max-6xl` is 1152px, below the route's strip, so the route's own frames
-						 * and its approval are untouched while a pane (or a narrow window) steps
-						 * down. Two examples from the table above, one rung at a time:
-						 *   inactive, 1 chip  224->118 becomes 192->86   (the file's 85px promise)
-						 *   active,   1 chip  320->146 becomes 288->114
-						 * Below this step no rung can keep BOTH the chips whole and a title above
-						 * that promise - 85px plus 244px of chips needs 465px for one tab - so
-						 * past it the strip scrolls, says so with the mask, and the pinned `All
-						 * tabs` control beside it is how a mouse user reaches the rest. That is
-						 * the trade this used to make silently: the 3- and 4-chip rows yield their
-						 * title here exactly as the 5-chip row already does above.
+						 * THREE TIERS, EACH ONE A RANGE, OVER A CONTAINER THAT CANNOT MOVE:
+						 * the narrow one is everything under 672px (42rem), the middle one is
+						 * 672..1152, and the base rungs take the rest. Ranges rather than
+						 * stacked `max-` variants because both would claim the pane and the
+						 * winner would be whichever Tailwind sorted last; a container on the
+						 * strip ROW rather than on the scroller because the scroller's width
+						 * changes when the pinned control appears - and the control's own
+						 * presence is decided by the floors the tier sets, so measured on the
+						 * scroller the two fed each other and the strip oscillated between
+						 * fitting four tabs and not fitting them (caught in a frame: a `+2`
+						 * control over a strip whose four rows did fit).
+						 *
+						 * WHAT THE NARROW RUNGS BUY, by chip count, from the same
+						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` arithmetic as the comment
+						 * above and with the pane's own room (640 strip, about 546px of scroller
+						 * once the control and the new-tab button have taken theirs):
+						 *   no chips 120 -> 82px of title   four rows = 480  (room to spare)
+						 *   1 chip   132 -> 45px of title   four rows = 528  (FOUR FIT, which is
+						 *                                    the case D1 filed and the case the
+						 *                                    pane's default width exists for)
+						 *   2 chips  200 -> 45px of title   three fit, the rest are counted
+						 * A 45px title is FIVE OR SIX CHARACTERS, not the 85px this file promises
+						 * at the route's width, and that is the trade this tier makes out loud:
+						 * the row keeps its mark, every one of its chips and the hover/focus
+						 * chrome, the whole name is in the native `title` and in the pinned
+						 * control's menu, and the pane's own divider is how a user buys the
+						 * measure back. A tier that kept the 85px promise would show three rows
+						 * and cut the fourth, which is the defect D1 filed; at 480, or with six
+						 * tabs, even this tier runs out and the control's COUNT is what says so.
+						 * The two halves are one answer: the floors decide how many fit, and the
+						 * control says how many did not.
+						 *
+						 * THE NARROW TIER HAS NO ACTIVE/INACTIVE SPLIT, because the active row's
+						 * chrome is overlaid there rather than in flow (see the cluster below):
+						 * its 68px of permanent controls is exactly what stopped four rows
+						 * fitting.
 						 *
 						 * Literal class names rather than a template string, because Tailwind's
 						 * scanner reads the source text: a class assembled at runtime is a class
 						 * it cannot see.
 						 */
-						const compactFloor = active
+						const floor = active
 							? chips >= 5
-								? "min-w-[30rem]"
+								? "min-w-[30rem] @max-2xl:min-w-[17rem]"
 								: chips === 4
-									? "min-w-[26rem]"
+									? "min-w-[26rem] @max-2xl:min-w-62"
 									: chips === 3
-										? "@max-6xl:min-w-96"
+										? "min-w-96 @max-2xl:min-w-56"
 										: chips === 2
-											? "@max-6xl:min-w-80"
+											? "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-50"
 											: chips === 1
-												? "@max-6xl:min-w-72"
-												: "min-w-56"
+												? "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-33"
+												: "min-w-56 @max-2xl:min-w-30"
 							: chips >= 4
-								? "@max-6xl:min-w-80"
+								? "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-62"
 								: chips === 3
-									? "@max-6xl:min-w-72"
+									? "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-56"
 									: chips === 2
-										? "@max-6xl:min-w-60"
+										? "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-50"
 										: chips === 1
-											? "@max-6xl:min-w-48"
-											: "@max-6xl:min-w-36";
+											? "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-33"
+											: "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-30";
 						const previous = index > 0 ? tabs[index - 1] : null;
 						// The divider belongs to the gap between two inactive tabs: the active
 						// one is continuous with the page, so no rule may run into it.
@@ -394,7 +484,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 */
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
 										floor,
-										compactFloor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
 											: "text-ink-muted hover:bg-elevated hover:text-ink",
@@ -546,13 +635,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									<div
 										className={cn(
 											active
-												? "relative flex shrink-0 items-center gap-1.5"
+												? cn(
+														"relative flex shrink-0 items-center gap-1.5",
+														// THE ACTIVE ROW'S CLUSTER STEPS OUT OF FLOW IN A NARROW STRIP (D1's
+														// remainder). 68px of permanent controls is what stopped four rows
+														// fitting the pane's 567px scroller - the floors in this file can
+														// shrink, controls cannot - so below `@xl` the active row takes exactly
+														// the treatment every inactive row has had since D13: overlaid on the
+														// row's right end, revealed on hover or focus, with the elevated
+														// ground so the title it covers is not read through it. It stays
+														// reachable by keyboard through the same `group-focus-within` the other
+														// rows use, and the actions expansion is still the always-reachable
+														// path for the mouse.
+														"@max-2xl:absolute @max-2xl:inset-y-0 @max-2xl:right-1",
+														"@max-2xl:group-hover:bg-elevated @max-2xl:group-focus-within:bg-elevated",
+													)
 												: "absolute inset-y-0 right-1 flex items-center gap-1.5",
 											// Its own actions row being open is not a hover, so the ground
 											// and the reveal follow that state explicitly.
 											!active &&
 												"group-hover:bg-elevated group-focus-within:bg-elevated",
-											actionsTabId === tab.tabId && !active && "bg-elevated",
+											actionsTabId === tab.tabId &&
+												(active ? "@max-2xl:bg-elevated" : "bg-elevated"),
 										)}
 									>
 										{/* The actions trigger. The menu it used to open painted into the
@@ -574,12 +678,16 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											// is open. On an INACTIVE tab it holds no width at all, so the reveal
 											// costs the title nothing (D13); on the ACTIVE one it sits in flow beside
 											// the permanent close control and keeps its 28px, which is part of why an
-											// active marked row needs the wider floor above.
+											// active marked row needs the wider floor above - and, below `@xl`, why
+											// the whole cluster steps out of flow and takes the reveal with it.
 											className={cn(
 												"transition-opacity",
 												actionsTabId === tab.tabId
 													? "text-ink"
-													: "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+													: cn(
+															REVEAL_ON_HOVER_OR_FOCUS,
+															active && NARROW_REVEAL,
+														),
 											)}
 											data-tour-tag="browser-tab-menu"
 										>
@@ -598,12 +706,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												// opacity step, never a layout shift - and on the active tab,
 												// where this control is permanent, it is IN FLOW, so the title
 												// truncates before it instead of running under it (review
-												// round 3, MAJOR).
+												// round 3, MAJOR). Below `@xl` - the pane's own width and
+												// narrower - the whole cluster is overlaid instead, for the
+												// reason the container class above states.
 												className={cn(
 													"transition-opacity",
 													active
-														? "opacity-100"
-														: "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+														? cn("opacity-100", NARROW_REVEAL)
+														: REVEAL_ON_HOVER_OR_FOCUS,
 												)}
 												data-tour-tag="browser-tab-close"
 											>
@@ -629,7 +739,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						);
 					})}
 				</div>
-				{tabs.length > 1 && (
+				{tabsOffScreen > 0 && (
 					/*
 					 * THE PINNED WAY TO REACH ANY TAB, which is the canvas's own answer to
 					 * the same problem (`canvas-tabs.tsx`: "scrolling sideways to find a file
@@ -637,21 +747,43 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * listing every tab, with the active one ticked. It sits OUTSIDE the
 					 * scroller, so it cannot itself be scrolled out of reach.
 					 *
-					 * It exists because of D1 rather than for tidiness: at the pane's default
-					 * width a strip of four tabs still overflows even after the floors step
-					 * down, and a mouse has no horizontal wheel to scroll with.
+					 * IT APPEARS ONLY WHEN SOMETHING IS MISSING, AND IT COUNTS (QA round 1,
+					 * Q2): the count is the control's own text, its label and its tooltip say
+					 * what the count means, and a strip that fits draws no control at all.
+					 * That is also why the gate is `tabsOffScreen` rather than
+					 * `tabs.length > 1`, which is what it was for one round.
+					 *
+					 * IT EXISTS BECAUSE OF D1: at the pane's default width a strip of four
+					 * tabs still overflows after the floors step down (the narrow tier holds
+					 * four 1-chip rows; anything wider, or a 480px pane, runs out), and a
+					 * mouse has no horizontal wheel to scroll with. The two halves are one
+					 * answer - the floors decide how many fit, and this says how many did not.
 					 */
 					<DropdownMenu>
-						<Tooltip content="All tabs">
+						<Tooltip
+							content={
+								tabsOffScreen === 1
+									? "All tabs — 1 not shown"
+									: `All tabs — ${tabsOffScreen} not shown`
+							}
+						>
 							<DropdownMenuTrigger asChild>
 								<Button
 									variant="ghost"
 									size="icon-sm"
-									aria-label="All tabs"
+									aria-label={`All tabs, ${tabsOffScreen} not shown`}
 									data-tour-tag="browser-tab-overflow"
-									className={cn("shrink-0 self-center")}
+									className={cn("shrink-0 gap-0.5 self-center px-1")}
 								>
 									<ChevronDown aria-hidden="true" />
+									{/* The count itself, at the chip's own step and tabular so two
+									    digits do not shift the row it sits in. */}
+									<span
+										aria-hidden="true"
+										className={cn("text-meta tabular-nums")}
+									>
+										+{tabsOffScreen}
+									</span>
 								</Button>
 							</DropdownMenuTrigger>
 						</Tooltip>
