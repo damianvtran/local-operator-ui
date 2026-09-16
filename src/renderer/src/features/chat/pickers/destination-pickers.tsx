@@ -2266,53 +2266,6 @@ export const AsidePicker: FC<PickerContext> = ({
 	);
 };
 
-export const CompactView: FC<PickerContext> = ({
-	sessionId,
-	canonical,
-	onClose,
-}) => {
-	const command = useSessionCommand(sessionId);
-	const [startedAt] = useState(() => Date.now());
-	// biome-ignore lint/correctness/useExhaustiveDependencies: fire once on open
-	useEffect(() => {
-		void command.run("compact", "");
-	}, []);
-	// Completion comes from the canonical stream, not from the command
-	// receipt: the owner answers "compacting" immediately and the compaction
-	// record lands in the transcript when the pass actually settles.
-	const settled = canonical.transcript.records.find(
-		(record): record is Extract<typeof record, { kind: "compaction" }> =>
-			record.kind === "compaction" && record.ts >= startedAt,
-	);
-	const state =
-		command.result?.tone === "error"
-			? "error"
-			: settled
-				? "complete"
-				: "pending";
-	return (
-		<PickerHost
-			open
-			onClose={onClose}
-			title="Compact context"
-			description="Summarises older history so the next request is smaller."
-			busy={state === "pending" && !command.busy}
-			result={
-				state === "complete" && settled
-					? { tone: "success", text: settled.text }
-					: (command.result ?? null)
-			}
-			body={
-				state === "pending" ? (
-					<p className="text-body-sm text-ink-muted">
-						{command.result?.text ?? "Asking the owner to compact"}
-					</p>
-				) : undefined
-			}
-		/>
-	);
-};
-
 export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 	const [key, setKey] = useState("");
 	const [value, setValue] = useState("");

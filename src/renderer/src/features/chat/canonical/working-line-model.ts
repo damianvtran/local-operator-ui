@@ -70,6 +70,23 @@ export type WorkingLineState = { activity: string; phase: string };
 export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
 
 /**
+ * The label for a compaction pass in flight, and the phase its clock runs in.
+ *
+ * The copy is the terminal host's own — `local_operator/tui/app.py`'s
+ * working-line fallback for `on_compaction_started` is literally `compacting
+ * context` — because a reader who learned the phrase in the terminal should not
+ * learn a second one here (the same reason the rest of this ladder is the
+ * harness's vocabulary).
+ *
+ * WHY IT IS ITS OWN PHASE. Phases are what the clock is keyed to, and a pass is
+ * a fact with its own duration: folded into `thinking` the clock would restart
+ * under the reader at whatever label change happened next, which is the defect
+ * the working line's contract calls out. A pass also outranks `waiting`: it is
+ * the more specific statement about why this session is busy.
+ */
+export const COMPACTING_ACTIVITY = "compacting context";
+
+/**
  * A send this pane made that the owner has not answered: the request id its
  * optimistic echo was painted under, which is also the id the owner's durable
  * row coalesces onto.
@@ -225,6 +242,18 @@ export type WorkingLineInput = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
 	/**
+	 * A compaction pass is in flight (`TranscriptState.compacting`).
+	 *
+	 * The transcript's own fact, and the reconciliation for every way the pass
+	 * stops lives in the reducer that owns it: `compaction_end` (success, refusal
+	 * or failure), a replaced/durable transcript, a new turn, and a receipt gap
+	 * that drops live-only claims. A DEAD TRANSPORT is the one case handled here
+	 * rather than there, because it is this row's rule and not the flag's: an
+	 * unavailable transport suppresses the rung instead of being cleared by it, so
+	 * a reconnection cannot resurrect a claim by leaving the flag set.
+	 */
+	compacting: boolean;
+	/**
 	 * A send from this conversation has been admitted and the owner has not
 	 * answered it. The app's own fact, not the owner's; see the file comment for
 	 * why its window is the whole wait rather than the request.
@@ -245,6 +274,7 @@ export type WorkingLineInput = {
 
 export function deriveWorkingLine({
 	waiting,
+	compacting,
 	starting,
 	startingAfterId,
 	gate,
@@ -252,6 +282,19 @@ export function deriveWorkingLine({
 	records,
 }: WorkingLineInput): WorkingLineState | null {
 	if (gate) return null;
+
+	/*
+	 * The pass outranks `waiting`, and `unavailable` outranks the pass: a rung
+	 * that claims a compaction is progressing beside a pane that is saying the
+	 * transport died is claiming progress nobody can vouch for. The check sits
+	 * here rather than in the reducer because suppressing a claim and retiring a
+	 * fact are different repairs — a reconnect during a pass that is genuinely
+	 * still running restores the rung from the backend's own replayed start.
+	 */
+	if (compacting) {
+		if (unavailable) return null;
+		return { activity: COMPACTING_ACTIVITY, phase: "compacting" };
+	}
 
 	if (waiting) {
 		const runningTools = records.filter(
@@ -336,6 +379,7 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
  */
 export function workingLineInputFor(pane: {
 	waiting: boolean;
+	compacting: boolean;
 	starting: boolean;
 	startingAfterId?: string | null;
 	gate?: unknown;
@@ -344,6 +388,7 @@ export function workingLineInputFor(pane: {
 }): WorkingLineInput {
 	return {
 		waiting: pane.waiting,
+		compacting: pane.compacting === true,
 		starting: pane.starting,
 		startingAfterId: pane.startingAfterId ?? null,
 		gate: Boolean(pane.gate),

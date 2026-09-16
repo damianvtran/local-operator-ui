@@ -268,6 +268,22 @@ export type TranscriptState = {
 	index: Map<string, number>;
 	/** Backend generation of the turn currently in flight, if any. */
 	generation: number;
+	/**
+	 * A compaction pass is in flight, from `compaction_start` to `compaction_end`.
+	 *
+	 * A BOOLEAN ON THE TRANSCRIPT rather than a latch in app state, because the
+	 * two facts that end it are transcript facts: the settling frame, and the
+	 * replacement of the transcript the claim was made against. It is what the
+	 * working line's `compacting context` rung reads, and it is cleared on every
+	 * way the pass can stop — see `COMPACTING_ACTIVITY` in `working-line-model.ts`
+	 * for the four of them and why a dead transport suppresses the rung instead.
+	 *
+	 * A `compaction_end` whose record is already painted still clears it (the
+	 * replay of an end after a reconnect must not leave the claim standing), which
+	 * is why the clear is applied to a seeded copy rather than skipped by that
+	 * case's idempotence guard.
+	 */
+	compacting: boolean;
 	/** Oldest durable id painted; the cursor for `sessions.history` paging. */
 	oldestId: string | null;
 	hasMore: boolean;
@@ -312,6 +328,7 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	records: [],
 	index: new Map(),
 	generation: 0,
+	compacting: false,
 	oldestId: null,
 	hasMore: false,
 	argsByCall: new Map(),
@@ -1369,7 +1386,18 @@ export function applyEvent(
 		case "agent_start": {
 			const generation = Number(event.generation ?? state.generation + 1);
 			if (generation === state.generation) return state;
-			return { ...state, generation };
+			/*
+			 * A NEW TURN is one of the ways a compaction claim stops. It cannot
+			 * overlap a pass — a session running a compaction is not starting a turn
+			 * — so a turn starting means any claim still standing was never retired,
+			 * and retiring it here is what keeps a lost `compaction_end` from
+			 * outliving the pass it described.
+			 */
+			return { ...state, generation, compacting: false };
+		}
+		case "compaction_start": {
+			if (state.compacting) return state;
+			return { ...state, compacting: true };
 		}
 		case "agent_end": {
 			const generation = Number(event.generation ?? state.generation);
@@ -1744,8 +1772,14 @@ export function applyEvent(
 					: "Context compacted"
 				: `Compaction did not run${event.detail ? `: ${String(event.detail)}` : ""}`;
 			const id = `compaction:${state.generation}:${before}:${after}`;
-			if (state.index.has(id)) return state;
-			return upsert(state, { kind: "compaction", id, ts: now, text });
+			// The pass is over either way — success, refusal or failure — so this is
+			// the clear, applied BEFORE the idempotence guard: a replayed end must
+			// still retire a claim it has already painted a record for.
+			const settled = state.compacting
+				? { ...state, compacting: false }
+				: state;
+			if (settled.index.has(id)) return settled;
+			return upsert(settled, { kind: "compaction", id, ts: now, text });
 		}
 		case "retry_start": {
 			const text = `Retrying after an error (attempt ${String(event.attempt ?? "?")})${
@@ -1916,6 +1950,19 @@ export function applyLiveSeed(
 	if (frontend.streaming && frontend.generation > next.generation) {
 		next = { ...next, generation: frontend.generation };
 	}
+	/*
+	 * A compaction claim is not CARRIED across a seed, and this is the "a
+	 * reconnect must not resurrect a claim" half of its reconciliation.
+	 *
+	 * The seed is the authoritative statement of which live facts are still true
+	 * for this viewer, and the claim is a live-only fact like any other: it is
+	 * re-asserted below by the seed's own replayed `compaction_start` — the
+	 * backend folds session events into `live_events`, so a pass that is really
+	 * still running arrives in the loop — and retired when the seed does not say
+	 * so. Withholding a rung is the safe direction; claiming a pass nobody can
+	 * vouch for is the defect this whole reconciliation exists to remove.
+	 */
+	if (next.compacting) next = { ...next, compacting: false };
 	const inFlight = frontend.streaming === true;
 	/* A row was placed at a time the seed itself stated, so order by time. */
 	let placed = false;
@@ -2061,14 +2108,26 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 	return {
 		...EMPTY_TRANSCRIPT,
 		generation: state.generation,
+		// The in-flight pass is a BACKEND fact, not a painted one: clearing the view
+		// does not stop a compaction, so the claim is carried rather than dropped —
+		// which is also what the empty-transcript early return above already does.
+		compacting: state.compacting,
 		argsByCall: state.argsByCall,
 	};
 }
 
 /** Remove live-only records (no durable id) — used when a gap invalidates paint. */
 export function dropLiveRecords(state: TranscriptState): TranscriptState {
+	/*
+	 * The in-flight pass claim is LIVE-ONLY for the same reason those records are:
+	 * a receipt gap means the app cannot see whether the pass is still running,
+	 * and a reconnect must not inherit a claim from before the gap. Withheld
+	 * rather than guessed, and restored for free if the pass really is still in
+	 * flight — the snapshot's live seed replays its own `compaction_start`.
+	 */
+	const base = state.compacting ? { ...state, compacting: false } : state;
 	return removeMatching(
-		state,
+		base,
 		(record) =>
 			(record.kind === "assistant" && record.streaming) ||
 			(record.kind === "tool" && record.phase !== "done"),

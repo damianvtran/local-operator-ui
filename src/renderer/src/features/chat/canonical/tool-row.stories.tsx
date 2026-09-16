@@ -70,11 +70,18 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	...over,
 });
 
-function transcriptOf(records: TranscriptRecord[]): TranscriptState {
+function transcriptOf(
+	records: TranscriptRecord[],
+	compacting = false,
+): TranscriptState {
 	return {
 		records,
 		index: new Map(records.map((record, position) => [record.id, position])),
 		generation: 1,
+		// The pass claim is the ONLY thing on this state that the transcript
+		// itself carries rather than reading off a record, so it is a parameter
+		// here: the compacting stories are the only frames that set it.
+		compacting,
 		oldestId: null,
 		hasMore: false,
 		argsByCall: new Map(),
@@ -86,6 +93,7 @@ const Frame = ({
 	width = "100%",
 	height = 300,
 	waiting = false,
+	compacting = false,
 	starting = false,
 	startingAfterId = null,
 	status = "live",
@@ -115,6 +123,15 @@ const Frame = ({
 	 */
 	height?: number;
 	waiting?: boolean;
+	/**
+	 * A compaction pass in flight (`TranscriptState.compacting`).
+	 *
+	 * Not `waiting`: the app never knows a pass is coming until the backend says
+	 * one started, and the rung this raises is a different claim with its own
+	 * phase. See `compacting-pass-before` / `compacting-pass-after` below for the
+	 * pair a reviewer needs.
+	 */
+	compacting?: boolean;
 	/**
 	 * A send this conversation has admitted and that has produced nothing yet —
 	 * the cold-engage window, before the owner's first frame.
@@ -174,7 +191,7 @@ const Frame = ({
 			style={{ width, height }}
 		>
 			<CanonicalTranscript
-				transcript={transcriptOf(records)}
+				transcript={transcriptOf(records, compacting)}
 				gate={null}
 				waiting={waiting}
 				starting={starting}
@@ -453,6 +470,83 @@ export const Working: Story = {
  * the row after it fell back to the wider `item` gap. An invisible record must
  * not be able to push visible rows apart.
  */
+/**
+ * A compaction pass in flight: the aggregate working line is the only thing on
+ * screen that says so, and its label is the terminal host's own.
+ *
+ * This is the BEFORE/AFTER pair for the change that deleted `/compact`'s dialog.
+ * The dialog used to be the whole of the surface's answer to the command, and it
+ * stayed up over a pass that had already finished; the transcript now carries
+ * the fact itself - this rung while the pass runs, the info line below once it
+ * settles (`CompactingPassAfter`, which is the same transcript with the
+ * `compaction` record the reducer paints and no pass in flight).
+ *
+ * The clock is left at 0s deliberately: this story is about the copy and the
+ * fact, and `Working` above is the story that pins the ticking clock.
+ */
+export const CompactingPassBefore: Story = {
+	render: () => (
+		<Frame
+			compacting
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The same transcript once the pass has settled: the rung is gone and the
+ * reducer's own info line is what took its place, carrying the token counts the
+ * backend reported.
+ *
+ * Both frames are one change, which is why they are a pair rather than two
+ * stories: the dialog this replaces was what used to stand between them.
+ */
+export const CompactingPassAfter: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "compaction",
+					id: "compaction:1:41000:9000",
+					ts: TS,
+					text: "Context compacted, 41.0k to 9.0k tokens",
+				},
+			]}
+		/>
+	),
+};
+
 export const OperatorSpacingCases: Story = {
 	render: () => (
 		<div className="flex flex-col gap-8 p-6">

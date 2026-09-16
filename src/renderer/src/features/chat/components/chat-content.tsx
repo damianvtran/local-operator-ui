@@ -850,6 +850,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										workingLineClaimed(
 											workingLineInputFor({
 												waiting: canonical.busy,
+												// The compacting pass is claimed from the same transcript the line
+												// below reads, so the hint and the rung cannot disagree.
+												compacting:
+													canonical.view.transcript.compacting === true,
 												starting: canonical.starting === true,
 												startingAfterId: canonical.startingAfterId ?? null,
 												gate: canonical.view.frontend?.pending_gate ?? null,
