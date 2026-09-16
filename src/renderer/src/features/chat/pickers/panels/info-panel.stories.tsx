@@ -910,3 +910,31 @@ export const WireEnvironment: Story = {
 
 /** 720px: the value column wraps and the markers stack. */
 export const Narrow: Story = { args: { ...base, data: info(), frontend } };
+
+/**
+ * The SESSION-FREE panel: what `/info` renders when no conversation is open.
+ *
+ * The operator's requirement is that this panel runs with no conversation at all
+ * (`/info` on an empty "Start of conversation" pane used to be refused outright),
+ * and that it can be read from a page that is not chat — which is what `""` in
+ * `sessionId` means: no conversation in front of the user, whether because none
+ * exists or because the user is on Settings.
+ *
+ * What to judge, and what must NOT be here: no `This conversation` heading and no
+ * `Nothing to report here.` under it — the heading was the lie, not the notice,
+ * because a section headed "this conversation" that says nothing is there is
+ * worse than no section. The description has dropped its "and the conversation in
+ * front of you" clause for the section that actually exists, and the machine half
+ * is untouched: same install, host, "Sessions on this machine", Environment and
+ * "Could not be read" sections. The `frontend: null` is what that pane really
+ * has, and it is also what makes the ROWS the conversation section used to read
+ * unavailable rather than empty.
+ *
+ * Which is why the marker is absent from the sessions table here and in
+ * `LiveHalfUnmeasured` both: `sessionLineRows` marks the current row only when a
+ * line's id matches, and `""` matches nothing — the honest outcome, and one this
+ * frame can now be read against.
+ */
+export const SessionFree: Story = {
+	args: { ...base, data: info(), frontend: null, sessionId: "" },
+};
