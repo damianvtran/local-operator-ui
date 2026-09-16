@@ -285,6 +285,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures a session switch phase by phase",
 	),
 	guarded(
+		"scripts/slash-enter-proof.mjs",
+		"spawn",
+		1,
+		"plays the composer's slash-popup gestures with real key events and presses, and records what the composer dispatched",
+	),
+	guarded(
 		"scripts/usage-real-evidence.mjs",
 		"spawn",
 		1,

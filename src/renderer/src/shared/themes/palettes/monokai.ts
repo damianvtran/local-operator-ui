@@ -39,6 +39,10 @@ export const monokai: ThemeDefinition = {
 		accent: "#A6E22E",
 		accentHover: "#B6E94E",
 		accentActive: "#8BC220",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 10.65:1 on surface, where the accent
+		// itself is 8.72:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#D0F090",
 		accentWash: "#363E23",
 		onAccent: "#272822",
 
