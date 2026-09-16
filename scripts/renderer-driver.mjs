@@ -1962,6 +1962,68 @@ async function sceneBrowserPane(cdp) {
 	 */
 	if (conversation !== null) {
 		/*
+		 * THE TRACK'S RING, MEASURED RATHER THAN ASSUMED (design round 1's D3,
+		 * re-checked in round 2 because it never painted). The list is Radix's
+		 * `Tabs.List`, whose `RovingFocusGroup` root writes
+		 * `style: { outline: "none", ... }` on the element it renders - and with
+		 * `asChild` that element IS the list. An inline declaration beats every class,
+		 * so the ring's classes were in the DOM and in the stylesheet while
+		 * `outline-style` computed to `none`, and not one pixel of the ring was drawn
+		 * in any frame. The ring is drawn by a wrapper Radix does not own now; this
+		 * reads both elements so the claim is about what paints rather than about what
+		 * is declared.
+		 */
+		const ring = await cdp.evaluate(`(() => {
+			const track = document.querySelector('[data-tour-tag="browser-pane-scope-track"]');
+			if (!track) return null;
+			const list = track.querySelector('[role="tablist"]');
+			const computed = getComputedStyle(track);
+			return {
+				style: computed.outlineStyle,
+				width: computed.outlineWidth,
+				color: computed.outlineColor,
+				listInline: list ? list.getAttribute("style") : null,
+				listStyle: list ? getComputedStyle(list).outlineStyle : null,
+			};
+		})()`);
+		note("the scope switch's track", JSON.stringify(ring));
+		check(
+			"the track's ring PAINTS: a solid outline of the control role, on an element the primitive does not own",
+			ring !== null &&
+				ring.style === "solid" &&
+				Number.parseFloat(ring.width) >= 1,
+			JSON.stringify(ring),
+		);
+		check(
+			"and the primitive's own suppression stays on the LIST, where it is meant, rather than on the track",
+			ring !== null &&
+				ring.listStyle === "none" &&
+				(ring.listInline ?? "").includes("outline"),
+			JSON.stringify(ring),
+		);
+
+		/*
+		 * THE STRIP'S HEIGHT ACROSS THE EMPTY AND POPULATED CASES (design round 2,
+		 * D9): the design round measured the page stepping 32px between them, because
+		 * the row's height came from the tabs in it and with none it collapsed to its
+		 * own padding. Measured here with nothing of this conversation open, and again
+		 * the moment one tab exists.
+		 */
+		const stripRow = () =>
+			cdp.evaluate(`(() => {
+				const row = document.querySelector('[data-tour-tag="browser-tab-strip-row"]');
+				if (!row) return null;
+				const box = row.getBoundingClientRect();
+				return {
+					height: Math.round(box.height),
+					rows: row.querySelectorAll("[data-tab-id]").length,
+				};
+			})()`);
+		const emptyStrip = await readUntil(
+			() => stripRow(),
+			(state) => state !== null && state.rows === 0,
+		);
+		/*
 		 * WITH NO URL, DELIBERATELY, and it is the only shape that works here: a
 		 * navigation to an origin the user has not approved is refused by the gate
 		 * (`origin_not_allowed` - measured), and `about:blank` is refused by the
@@ -1971,7 +2033,35 @@ async function sceneBrowserPane(cdp) {
 		 * the same `Agent` chip as any other, and that is what the strip's arithmetic
 		 * reads.
 		 */
-		for (let index = 0; index < 4; index += 1) {
+		const firstTab = await browserRpc("open", {
+			requester: `session:${conversation}`,
+		});
+		note("open", JSON.stringify(firstTab.result ?? firstTab.error));
+		const oneTabStrip = await readUntil(
+			() => stripRow(),
+			(state) => state !== null && state.rows === 1,
+		);
+		const oneTabFrame = await captureSettled(cdp, "browser-pane-strip-one");
+		note(
+			"the strip's height, empty and with one tab",
+			JSON.stringify({ empty: emptyStrip, oneTab: oneTabStrip }),
+		);
+		note("frame", JSON.stringify(oneTabFrame));
+		check(
+			"the strip's height does not step when the first tab arrives (D9): at most 2px between the empty row and one tab",
+			emptyStrip !== null &&
+				oneTabStrip !== null &&
+				emptyStrip.rows === 0 &&
+				oneTabStrip.rows === 1 &&
+				Math.abs(emptyStrip.height - oneTabStrip.height) <= 2,
+			JSON.stringify({ empty: emptyStrip, oneTab: oneTabStrip }),
+		);
+		check(
+			"and the empty strip is a real row rather than a collapsed one",
+			emptyStrip !== null && emptyStrip.height >= 32,
+			JSON.stringify(emptyStrip),
+		);
+		for (let index = 0; index < 3; index += 1) {
 			const openedTab = await browserRpc("open", {
 				requester: `session:${conversation}`,
 			});
