@@ -740,26 +740,47 @@ function compactionOutcome(detail: string): {
 }
 
 /**
- * The settled line: ONE sentence, and the SAME one in both of its projections.
+ * The settled line for a pass whose OWN figures this reader still has: the live
+ * `compaction_end` sentence, before and after included.
  *
- * WHY IT CARRIES NO FIGURES, having carried them since round 1. A pass is
- * projected twice — the live `compaction_end` event, which knows
- * `tokens_before`/`tokens_after`, and the DURABLE `compaction` transcript row,
- * which knows only `tokens_before` (`Transcript.append_compaction`'s payload has
- * no after-figure; verified against the backend, not inferred). A sentence that
- * prints a figure the durable row cannot reproduce reads DIFFERENTLY in the two
- * views of one conversation: watch a pass and read "to 9.0k tokens", reload and
- * read a bare line, and the line has changed under the reader — measured on the
- * app in review round 3 (R3-1, Q5, Q6, U13), after round 2's pairing tried to
- * carry the live sentence onto the durable row and lost it on the next read
- * anyway. The durable record is the source of truth, so the line says what the
- * durable record can say.
+ * WHY THE LIVE SENTENCE IS THE ONE THAT SURVIVES THE PAIRING. A pass is projected
+ * twice — the live event, which knows `tokens_before` and `tokens_after`, and the
+ * DURABLE `compaction` transcript row, which knows only `tokens_before`
+ * (`Transcript.append_compaction`'s payload has no after-figure; read from the
+ * backend, not inferred). The live sentence is strictly the more informative of
+ * the two, so it is the one the pair keeps: the row a reader watched settle is
+ * the row they keep reading, figures and all, until something reloads the view
+ * without it.
  *
- * RESTORING THE FIGURES is a one-field backend change — `append_compaction`
- * carrying the settled figures, or the settled sentence — and is recorded in the
- * round-3 remediation as not addressed from this repository. When it lands, both
- * projections can print the pair again and this constant becomes a function of
- * the payload.
+ * WHICH IS A LIVE-ONLY FACT, and that is parity rather than a defect. The base
+ * app painted this sentence from the event, and the terminal host's own receipt
+ * (`tui/session_presentation.py`) carries the figures too while only its REPLAY
+ * is the bare marker sentence. A cold reload — a fresh reader with no live row to
+ * pair — shows `COMPACTED_LINE`, exactly as the replay does.
+ *
+ * The two figures are printed as the pair when they differ and as one number when
+ * they match, because a pass whose reduction rounds to the same step printing
+ * `52.7k to 52.7k` reads as "compacted and changed nothing" (UX round 1, U4).
+ *
+ * PERSISTING the pair is a one-field backend change — `append_compaction`
+ * carrying the after-figure, or the settled sentence — recorded under "not
+ * addressed" in the round-3/4 remediation rather than papered over here.
+ */
+export function compactionSettledLine(before: number, after: number): string {
+	const from = formatTokens(before);
+	const to = formatTokens(after);
+	return from === to
+		? `Context compacted to ${to} tokens`
+		: `Context compacted, ${from} to ${to} tokens`;
+}
+
+/**
+ * What a pass's row says when this reader has no live sentence for it: the
+ * durable row's own sentence, and the sentence a COLD reload shows.
+ *
+ * It is deliberately not a second opinion about the pass — a reader that never
+ * saw the live line learns that the context was compacted and nothing more,
+ * which is what the transcript can honestly say.
  */
 export const COMPACTED_LINE = "Context compacted";
 
@@ -783,10 +804,20 @@ export const COMPACTED_LINE = "Context compacted";
  * twice, re-seeding it with `replace`, or loading it cold all produce the SAME
  * rows. Each live line claims the durable row NEAREST at or after its own
  * instant that no earlier live line has claimed — one-to-one, oldest live line
- * first — and is then dropped. A durable row is written when a pass ENDS, which
- * is why "at or after" is the relation; the nearest-first order is what stops
- * two passes inside the window from swapping sentences, and claiming a durable
- * row once is what stops a single live line from being spent on two passes.
+ * first — and the live SENTENCE moves onto that durable row, which is then the
+ * only row left. A durable row is written when a pass ENDS, which is why "at or
+ * after" is the relation; the nearest-first order is what stops two passes inside
+ * the window from swapping sentences, and claiming a durable row once is what
+ * stops a single live line from being spent on two passes.
+ *
+ * WHAT MAKES IT IDEMPOTENT, since round 3 measured it being the opposite: the
+ * chosen sentence is carried INTO the record, and a page arriving later does not
+ * overwrite it with the durable entry's bare projection (`durableRecord` keeps the
+ * sentence a row already carries — the entry has no sentence of its own to
+ * disagree with). So the second application of the same page finds the figures
+ * already on the row, pairs nothing, and returns the identical list. A `replace`
+ * re-seed or a cold read has no painted row to keep, which is the case
+ * `COMPACTED_LINE` is for.
  *
  * Refusals need no rule here: the runtime's refusal writes its durable row and
  * emits no event at all (see `refreshTail`'s note), so there is no live line to
@@ -795,8 +826,9 @@ export const COMPACTED_LINE = "Context compacted";
 export function collapseSettledCompactions(
 	records: TranscriptRecord[],
 ): TranscriptRecord[] {
-	const live: TranscriptRecord[] = [];
-	const durable: TranscriptRecord[] = [];
+	type Settled = Extract<TranscriptRecord, { kind: "compaction" }>;
+	const live: Settled[] = [];
+	const durable: Settled[] = [];
 	for (const record of records) {
 		if (record.kind !== "compaction") continue;
 		// Synthetic ids are the live projections (`compaction:<generation>:…`);
@@ -807,6 +839,8 @@ export function collapseSettledCompactions(
 	if (live.length === 0 || durable.length === 0) return records;
 	const claimed = new Set<string>();
 	const dropped = new Set<string>();
+	/** The sentence each paired durable row keeps, keyed by its id. */
+	const kept = new Map<string, string>();
 	for (const row of [...live].sort((a, b) => a.ts - b.ts)) {
 		let nearest: TranscriptRecord | null = null;
 		for (const candidate of durable) {
@@ -817,9 +851,18 @@ export function collapseSettledCompactions(
 		if (!nearest) continue;
 		claimed.add(nearest.id);
 		dropped.add(row.id);
+		kept.set(nearest.id, row.text);
 	}
 	if (dropped.size === 0) return records;
-	return records.filter((record) => !dropped.has(record.id));
+	return records
+		.filter((record) => !dropped.has(record.id))
+		.map((record) => {
+			const text = kept.get(record.id);
+			if (text === undefined) return record;
+			if (record.kind !== "compaction" && record.kind !== "notice")
+				return record;
+			return text === record.text ? record : { ...record, text };
+		});
 }
 
 /**
@@ -1205,7 +1248,17 @@ function durableRecord(
 	const payload = entry.payload ?? {};
 	const ts = Math.round((entry.ts ?? 0) * 1000);
 	if (entry.type === "compaction") {
-		return { kind: "compaction", id: entry.id, ts, text: "Context compacted" };
+		/*
+		 * The sentence a row already carries is KEPT. The entry has no sentence of
+		 * its own — only counts — so there is nothing here for it to disagree with,
+		 * and recomputing one would strip the figures the pairing put there on the
+		 * very next read (review round 3, R3-1: the second application of a page was
+		 * enough). This is the fact that makes `collapseSettledCompactions`
+		 * idempotent, and it is stated where the recomputation would otherwise live.
+		 */
+		const kept =
+			previous?.kind === "compaction" ? previous.text : COMPACTED_LINE;
+		return { kind: "compaction", id: entry.id, ts, text: kept };
 	}
 	/*
 	 * The refusal's own durable row, painted rather than dropped: see
@@ -2020,11 +2073,14 @@ export function applyEvent(
 			const after = Number(event.tokens_after ?? 0);
 			const ok = Boolean(event.success);
 			const failure = ok ? null : compactionOutcome(String(event.detail ?? ""));
-			// The settled sentence is the durable row's sentence (`COMPACTED_LINE`):
-			// the event's figures are NOT printed, because the durable projection
-			// cannot reproduce them and a line that reads differently after a reload
-			// is worse than a line without numbers (see the constant).
-			const text = failure ? failure.text : COMPACTED_LINE;
+			// The event's own figures, which is the sentence the pairing carries onto
+			// the durable row — see `compactionSettledLine` for why this one wins and
+			// `COMPACTED_LINE` for what a cold reader gets instead.
+			const text = failure
+				? failure.text
+				: before && after
+					? compactionSettledLine(before, after)
+					: COMPACTED_LINE;
 			// Still keyed by the pass, because it is the id a replayed end matches
 			// and the id the collapse below recognises as the live projection.
 			const id = `compaction:${state.generation}:${before}:${after}`;
@@ -2404,6 +2460,13 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 		viewEpoch: state.viewEpoch + 1,
 		argsByCall: state.argsByCall,
 	};
+}
+
+/** A token count as the settled line prints it: `41.0k`, `864`. */
+function formatTokens(count: number): string {
+	if (count < 1_000) return String(count);
+	if (count < 1_000_000) return `${(count / 1_000).toFixed(1)}k`;
+	return `${(count / 1_000_000).toFixed(1)}M`;
 }
 
 /** Remove live-only records (no durable id) — used when a gap invalidates paint. */
