@@ -1614,6 +1614,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// before, this is not it any more.
 				if (next.capture.arm) {
 					cancelledToken.current = null;
+				}
+				/*
+				 * The pick's record lives exactly as long as the token it describes: a
+				 * buffer that no longer contains the run the picker wrote is a different
+				 * draft, and keeping the record would make a later hand-typed token of the
+				 * same text the picker's. The ARM is not that event — it is the pick's own
+				 * consequence, which is why it clears its sibling and not this.
+				 */
+				if (
+					pickedToken.current !== null &&
+					!next.buffer.includes(pickedToken.current)
+				) {
 					pickedToken.current = null;
 				}
 				setCapture(next.capture);
@@ -1683,7 +1695,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			payloadsRef.current.clear();
 			nextIndexRef.current = 1;
 			retirePayloads.current = false;
+			/*
+			 * BOTH gesture records, together: they are the same kind of fact — which
+			 * tokens THIS box put there — and clearing one without the other left a
+			 * typed draft in the next conversation planned as a pick (review round 10,
+			 * MINOR-1: `please store /credential mysecretname` answered `splice`).
+			 */
 			cancelledToken.current = null;
+			pickedToken.current = null;
 			setDisclosure(null);
 		}, [conversationId, setCapture, setDisclosure]);
 
@@ -2361,6 +2380,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (!completion) return;
 				slash.close();
 				/*
+				 * The pick's OWN record, taken here rather than beside the run: Tab
+				 * completes the word without running it and Enter/click runs it, and BOTH
+				 * are this box writing the token — which is the fact the planner needs,
+				 * because a buffer's text cannot say whether a token was picked or typed.
+				 * A pick of any other row clears it, since that write is not this token.
+				 *
+				 * The module's own discipline for this global regex: a fresh `lastIndex`
+				 * before every read, because `test`/`exec` carry the previous match's
+				 * position and two identical unreset calls answer `"/credential"` then
+				 * `null` (review round 10, MINOR-2).
+				 */
+				CREDENTIAL_TOKEN.lastIndex = 0;
+				const pickedRun = CREDENTIAL_TOKEN.exec(completion.text);
+				pickedToken.current = pickedRun ? pickedRun[0].trim() : null;
+				/*
 				 * ARMED, when the pick named an armed-only command's own row on the key that
 				 * ACTS — the one gesture that arms it, and the reason Enter needs no
 				 * inference. The pick hoists the command to the front and STAGES the line, so
@@ -2498,8 +2532,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * a pick is a command wherever it sits (the operator's own rule), and the
 				 * buffer's text cannot say which gesture put the token there.
 				 */
-				const pickedRun = CREDENTIAL_TOKEN.exec(completion.text);
-				pickedToken.current = pickedRun ? pickedRun[0].trim() : null;
 				await applyPlan(plan, newMessage, caret);
 			},
 			[

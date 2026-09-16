@@ -986,6 +986,112 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 	);
 });
 
+test("a token the PICKER wrote is the dispatcher's wherever an edit moves it", async () => {
+	/*
+	 * The PICKED half of the gesture rule, driven rather than asserted: the
+	 * operator's own report kept the pick ("if you don't actually hit enter on the
+	 * suggested command or click it"), so a token the picker wrote is a command
+	 * wherever it sits — and #238's property is what needs it to be one, because
+	 * the dispatcher refuses `/credential`'s arguments, so a secret can never land
+	 * in command text. Tab writes the token without running it (this composer's own
+	 * completing key), and the edit then MOVES it, which is the shape a buffer's
+	 * text cannot tell from one typed there: the pick's own record is the
+	 * difference, and this case is what pins it (review round 10, MINOR-3 —
+	 * deleting the recording lines left the suite green).
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-picked-moved",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/cred");
+	await key(frame, { key: "Tab", text: undefined });
+	assert.match(frame.value(), /^\/(credential|cred) $/);
+	assert.equal(ran.length, 0, "completing the row did not run it");
+	/*
+	 * A SECOND pick, from a fresh draft: the read is a /g `exec`, so a caller that
+	 * did not reset `lastIndex` would answer `null` here and the record would never
+	 * be set (review round 10, MINOR-2). One pick alone cannot tell the two apart.
+	 */
+	await act(async () => writeValue(frame.textarea(), "", 0));
+	await type(frame, "/cred");
+	await key(frame, { key: "Tab", text: undefined });
+	assert.match(frame.value(), /^\/(credential|cred) $/);
+	await act(async () => {
+		const field = frame.textarea();
+		const next = `please ${field.value}SECRET`;
+		writeValue(field, next, next.length);
+	});
+	await settle();
+	await enter(frame);
+	await settle();
+	assert.equal(
+		ran.length,
+		1,
+		"a PICKED token dispatches where an edit moved it, so its arguments are refused",
+	);
+	assert.equal(frame.sent.length, 0, "and the token never travels as prose");
+});
+
+test("a pick does not outlive its conversation as a claim about a later typed draft", async () => {
+	/*
+	 * The switch retires BOTH gesture records (review round 10, MINOR-1). A pick
+	 * that only armed the sibling's clear left `pickedToken` holding `/credential`,
+	 * so the NEXT conversation planned a hand-typed draft containing that text as a
+	 * pick — the reviewer's probe answered `splice` where it must be prose. A second
+	 * `mount` without `remount` IS the switch this rig can express: same instance,
+	 * same refs, a new conversation.
+	 *
+	 * The draft is shaped so the CAPTURE cannot mask the difference: the arm needs
+	 * the token at the end of the buffer, and `please /credential and more` does not
+	 * end with it — so what Enter does here is the planner's answer, which is the
+	 * fact under test.
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-pick-then-switch",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/cred");
+	await key(frame, { key: "Tab", text: undefined });
+	assert.match(frame.value(), /^\/(credential|cred) $/);
+
+	const next = await mount({
+		conversationId: "conv-typed-after-switch",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(next, "please /credential and more");
+	await enter(next);
+	await settle();
+	assert.deepEqual(
+		ran,
+		[],
+		"a typed draft is prose, whatever the last pick wrote",
+	);
+	/*
+	 * WHAT ENTER DID, stated honestly: nothing was dispatched, and the typed token
+	 * opened the CAPTURE — this composer's designed route for a secret after a
+	 * space — so the box holds the masked citation rather than running anything.
+	 * The capture is why this case observes the no-dispatch half rather than the
+	 * plan itself: a typed credential token never reaches the planner, which is the
+	 * property #238 exists to keep.
+	 */
+	assert.match(
+		next.value(),
+		/^please (\/credential and more|\[Credential #1, \d+ chars\] )$/,
+		"the sentence survives, with its secret masked",
+	);
+});
+
 test("after an Escape the token stops suppressing once an edit moves it", async () => {
 	const ran = [];
 	const frame = await mount({
