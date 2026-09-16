@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Captures visual evidence across all twelve themes from Storybook.
+ * Captures visual evidence from Storybook, one frame per story per theme in
+ * the sweep's theme list below.
  *
  *     node scripts/capture-evidence.mjs [storybook-origin]   # default :6017
  *
@@ -121,6 +122,37 @@ const BACKEND_ORIGIN = (() => {
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
+/*
+ * THE SWEEP'S THEME LIST IS A DELIBERATELY BOUNDED SET, NOT "every theme the
+ * app ships".
+ *
+ * Every story below is captured once per theme, so this list multiplies the
+ * whole evidence set. It held the twelve palettes this app shipped, and it still
+ * holds them: those twelve are painted on every surface in this file, which is
+ * what makes a frame comparable with the ones committed before it, and they
+ * span both modes and the two brand ramps. The registry now carries
+ * fifty-nine, and sweeping all of them would take this set from 4,320 committed
+ * frames (167 MB, 3,703 of them outside the declared supplementary sets) to
+ * roughly 21,000 frames and three quarters of a gigabyte, with a full run going
+ * from about half an hour to several — on a box that five other worktrees are
+ * working in at the same time. The twelve stay the spine because the
+ * forty-seven they do not cover are covered where it matters rather than
+ * silently dropped:
+ *
+ *   - `pnpm check-themes` asserts every contrast floor over ALL fifty-nine
+ *     palettes, because the contract reads the palette directory rather than
+ *     this list;
+ *   - `docs/evidence/settings-appearance/` carries the appearance picker in all
+ *     fifty-nine, once, because that is the surface a palette port is judged on;
+ *   - any other theme can be captured on demand, with no code change, through
+ *     `--themes=<a,b,…>` (a comma-separated `ThemeName` list, intersected with
+ *     this literal — the same narrowing a remediation recapture uses).
+ *
+ * So a frame in `localOperatorDark` is a picture of every surface in the app,
+ * and a frame in `catppuccinMocha` is one command away rather than free by
+ * default. Growing this list is a decision about the evidence budget rather
+ * than about coverage, which is why it is written down here instead of implied.
+ */
 export const THEMES = [
 	"localOperatorDark",
 	"localOperatorLight",
@@ -1041,6 +1073,19 @@ export const STORIES = [
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
 	   and a still is the only instrument for it. */
 	["chat-run-panel--trigger-activity-dot", 1280, 700],
+	/*
+	 * Settings > Appearance: the theme picker, in the settings page's own 896px
+	 * column — the surface a palette port is judged on, and the only story that
+	 * renders the whole theme set at once (fifty-nine tiles, forty-one under
+	 * `Dark` and eighteen under `Light`).
+	 *
+	 * Captured at the picker's own height rather than the 900 default: the frame
+	 * IS the grid, and a viewport that clips the light group cannot answer the
+	 * question the tiles exist for — whether fifty-nine palettes read as a set
+	 * you can take in at a glance. The height is 1420, read off the rendered
+	 * column (see `docs/evidence/settings-appearance/README.md`).
+	 */
+	["settings-appearance--gallery", 1000, 1420],
 	/*
 	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
 	 * that report was about — the deep link revealing a named server, an argument
