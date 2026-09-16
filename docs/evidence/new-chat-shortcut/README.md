@@ -79,13 +79,30 @@ another app's chord, and the second belongs to whatever text field has focus.
 
 **What these frames show.** `cmd-n-live-after.png` is the REAL app on the draft
 the chord staged: the chat pane reading `New chat` / `The session starts when you
-send your first message.`, the composer, and — in the sidebar — the New chat row
-carrying its `⌘` and `N` caps, marked current because the draft it started is the
-one on screen, and edged, because on a current row the caps' own fill IS the
-ground and the boundary is what says they are caps. `cmd-n-live-before.png` is
-where it came from: Agent hub with its categories. Nothing in either frame is the
-operator's data: the backend is this run's own, its catalogue is empty, and the
-scratch profile is its own.
+send your first message.`, the empty state under it, the composer with the focus
+ring the run left on it, and — in the sidebar — the New chat row carrying its `⌘`
+and `N` caps, marked current because the draft it started is the one on screen, and
+edged, because on a current row the caps' own fill IS the ground and the boundary
+is what says they are caps. `cmd-n-live-before.png` is where it came from: Agent
+hub with its categories. Nothing in either frame is the operator's data: the
+backend is this run's own, its catalogue is empty, and the scratch profile is its
+own.
+
+**The pair was RE-SHOT once, for `#228`, and the re-shoot is the reason its pane
+changed.** `#228` replaced the composer's suggestion stack, so the pane in these
+frames carries the new tip line (`search chats and agents to reopen an earlier
+session`) and its own single row of suggestions rather than the two rows the
+earlier captures showed — a change in the pane around this PR's subject, not in
+the subject. That is measured rather than asserted: at fuzz 0 the two `after`
+frames differ by 378,855 of 4,791,360 pixels inside `2254x853+466+469`, while the
+caps' own region differs by **0 pixels in three crops** (x 900-1040, 930-1030 and
+880-1040 across the row band), the New chat row's band by 8 pixels of antialiasing
+and the rail by none. The `before` frame did not move at all: it is byte-identical
+(148,464 B, `magick compare -metric AE` = 0) to the capture it replaces, and is
+committed from this run because the pair has to be one run. Focus is the one thing
+these two `after` frames do not share — the run's own ⌘N press left the ring on the
+composer rather than where the previous capture had it — and it is named here
+rather than left for a reader to find.
 
 **What they do not show.** Not the packaged app's install path, not a session
 with history (the catalogue is empty), and not the keyboard on Windows or Linux:
@@ -183,8 +200,8 @@ in. The committed copies are now this head's:
 | Frame | AE against the frame it replaces, at **fuzz 0** (any pixel that differs at all) | Where the difference is |
 | --- | --- | --- |
 | `after-row-staged-light.png` | **30,724 of 128,000 = 24.0031%** | the whole **528x64 current-row band at +16+98**, because `#218` repainted that row's ground. Counted by cropping the caps' union box `111x43+425+108` and comparing the crops, then blanking that same box on both frames and comparing the rest: **2,505** of the 30,724 lie inside it and **28,219** outside — the ground is most of the change |
-| `cmd-n-live-after.png` | **309,458 of 4,791,360 = 6.4587%** | much wider — `2678x1016+42+598` — because the frame is re-derived from this head, so the chat pane's own copy and its suggestion chips moved with it and not only the row |
-| `cmd-n-live-before.png` | **1,293 of 4,791,360 = 0.0270%** | a `357x28` text box at `+42+1586` in the Agent hub; re-shot with its sibling so the pair is one run, since `after` had to move |
+| `cmd-n-live-after.png` | **378,855 of 4,791,360 = 7.9071%** | `2254x853+466+469` — the pane and the composer's focus ring, not the row: the rail (`x 0..459`) differs by **0** pixels, the chats sidebar (`x 460..999`) by **51** (max channel delta 17: antialiasing on its own chrome), the New chat row's band by **8** (`y 1320..1329`, ±3 units on the `All chats` label), and the caps' own region by **0 in three separate crops**. Re-shot because `#228` rewrote the composer's suggestion stack — see the round-2 note below |
+| `cmd-n-live-before.png` | **0 (byte-identical, 148,464 B)** | Agent hub, unchanged by `#228` at every pixel; re-taken with its sibling in the same run so the pair is one run, and the equality is stated rather than assumed |
 
 **Those numbers are counts and boxes at different tolerances if they are read the
 old way, so here they are at one.** `magick compare -metric AE` at **fuzz 0** puts the
