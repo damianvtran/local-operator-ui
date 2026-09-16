@@ -19,8 +19,7 @@
  *
  *   1. the GROUND a current row paints is a step off its panel, not a wash —
  *      read off the shipped class strings, because no palette assertion can see
- *      a class and every one of them stayed green while this shipped;
- *   2. the ground SURVIVES THE POINTER, resolved through the SHIPPED `cn` over
+ *      a class and every one of them stayed green while this shipped; *   2. the ground SURVIVES THE POINTER, resolved through the SHIPPED `cn` over
  *      the expression the component actually passes. This is the instrument
  *      round 1 asked for and the reason this file no longer merges strings it
  *      wrote itself: the property is a tailwind-merge resolution (the two
@@ -38,11 +37,12 @@
  *      rail's row are one fact.
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*. That is a property of the
- * role pair across twelve palettes, and it is `scripts/contrast-contract.mjs`'s
- * job — `["surface", "sunken"]` and `["elevated", "sunken"]` are asserted there
- * at the field floor of ΔE00 2.0 (both pairs pre-date this change; only the
- * call-site pins are new), with `sunken`'s worst case at 3.75. It also cannot
- * prove the row reads as the current one on screen; that is the frames in
+ * role against its neighbours across twelve palettes, and it is
+ * `scripts/contrast-contract.mjs`'s job — it asserts `highlight` against
+ * `surface`, `elevated` and `sunken` at the field floor of ΔE00 2.0, with the
+ * authored values measuring 2.18-2.28 from `surface`, 2.52-5.05 from `elevated`
+ * (the row's hover step, the binding pair) and 2.15-15.43 from `sunken`. It also
+ * cannot prove the row reads as the current one on screen; that is the frames in
  * `docs/evidence/chat-sidebar-selection/`.
  *
  * PROCEDURE NOTE. The sidebar cannot be rendered in isolation — it reads the
@@ -312,8 +312,8 @@ const CURRENT = [
 
 test("the current row's ground is a step off its panel, not a wash", () => {
 	assert.ok(
-		rowCurrent.includes("bg-sunken"),
-		`the current row's ground must be a step of its own; \`sunken\` is ΔE00 3.75 from \`surface\` at its worst (iceberg) against the 2.0 field floor. Got:\n${rowCurrent}`,
+		rowCurrent.includes("bg-highlight"),
+		`the current row's ground must be the role authored for it — \`highlight\`, a shallow step off \`surface\` in the direction the mode runs (ΔE00 2.18-2.28): above the perceptual threshold, and under the \`sunken\` well it replaced (3.75-14.94, the operator's dark box). Got:\n${rowCurrent}`,
 	);
 	assert.ok(
 		!rowCurrent.includes("bg-accent-wash"),
@@ -321,7 +321,7 @@ test("the current row's ground is a step off its panel, not a wash", () => {
 	);
 	assert.ok(
 		rowCurrent.includes("text-ink"),
-		`the ground is a ground for text, and \`ink\` is the role whose 7:1 floor \`sunken\` is asserted on. Got:\n${rowCurrent}`,
+		`the ground is a ground for text, and \`ink\` is the role whose 7:1 floor \`highlight\` is asserted on. Got:\n${rowCurrent}`,
 	);
 });
 
@@ -330,7 +330,7 @@ test("every current-row element keeps the ground under the pointer", () => {
 		const classes = merged(site.file, site.expression(), site.stubs);
 		if (site.ground) {
 			assert.ok(
-				classes.includes("bg-sunken"),
+				classes.includes("bg-highlight"),
 				`${site.what} paints no ground of its own while it is the current row:\n${classes}`,
 			);
 		}
@@ -367,7 +367,7 @@ test("a row that is NOT current still gets the pointer's step", () => {
 			`${site.what} must keep the pointer's step while its row is NOT current:\n${classes}`,
 		);
 		assert.ok(
-			!classes.includes("bg-sunken"),
+			!classes.includes("bg-highlight"),
 			`${site.what} must not carry the current-row ground while it is not current:\n${classes}`,
 		);
 	}
@@ -396,13 +396,13 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// marks the row the reader is IN, not the heading above it.
 				"hover:bg-elevated": 4,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
-				"hover:bg-sunken": 1,
+				"hover:bg-highlight": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it.
 				"hover:bg-transparent": 1,
 			},
 		],
-		[SETTINGS_RAIL, { "hover:bg-elevated": 1, "hover:bg-sunken": 1 }],
+		[SETTINGS_RAIL, { "hover:bg-elevated": 1, "hover:bg-highlight": 1 }],
 	]);
 	for (const [file, expected] of declared) {
 		const found = {};
@@ -452,7 +452,7 @@ test("the entity row's current-row predicate is the draft's own target", () => {
 
 test("the merge is load-bearing rather than incidental", () => {
 	/*
-	 * Stated so a later reader cannot "fix" this by deleting `hover:bg-sunken`:
+	 * Stated so a later reader cannot "fix" this by deleting `hover:bg-highlight`:
 	 * the raw concatenation the browser would see WITHOUT `cn` carries both
 	 * rules, and `hover:bg-elevated` wins on cascade order.
 	 */

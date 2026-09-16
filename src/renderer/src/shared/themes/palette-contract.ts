@@ -65,6 +65,40 @@ export type ThemePalette = {
 	elevated: string;
 	/** One step recessed: wells, tracks, code grounds, footers. */
 	sunken: string;
+	/**
+	 * The current row's own ground: a SHALLOW step off `surface`, in the
+	 * direction the mode runs (darker on light themes, lighter on dark ones).
+	 *
+	 * A selection is not a well. Before this role existed the current row was
+	 * painted `sunken`, which is always RECESSED — a hole in the panel — and
+	 * loud with it: `deltaE(sunken, surface)` runs 3.75 (iceberg) to 14.94
+	 * (synth) across the twelve palettes, against the ~2 perceptual threshold
+	 * `docs/branding.md` § 3 cites. `sunken` is also the role for wells, tracks
+	 * and code grounds, with ~50 call sites depending on it, so the current row
+	 * could not be quietened by moving that value: the row needed a ground of
+	 * its own.
+	 *
+	 * ## The band, and the two floors it sits between
+	 *
+	 * Authored to land at **ΔE00 2.0-2.5 from `surface`** — above the
+	 * perceptual threshold (below it a row is drawn and not seen, the defect
+	 * `docs/evidence/chat-sidebar-selection/README.md` records) and well under
+	 * `sunken`'s 3.75-14.94 (above that it stops being a highlight and becomes
+	 * the box the operator reported). Measured per palette by
+	 * `scripts/contrast-contract.mjs`'s `highlight` block; the authored values
+	 * land 2.18-2.28.
+	 *
+	 * The top of the band is bounded by something the row does not control: a
+	 * row's `hover:` step is `elevated`, so a hovered row must STILL be a
+	 * different ground from the current one. That pair's worst case is ΔE00
+	 * 2.52 (obsidian) and the contract asserts it at the field floor, which is
+	 * what stops the band running up into the hover step.
+	 *
+	 * `highlight` is the ground the row is painted with; every ink on it is
+	 * asserted at its own floor, so it is a ground for text rather than a tint
+	 * behind it.
+	 */
+	highlight: string;
 
 	/* ---- ink: four weights, each with a floor --------------------------- */
 

@@ -62,30 +62,37 @@ const rowStyle =
  * the All chats filter, the New chat row staging an untargeted draft, and the
  * agent or team an untargeted-vs-targeted draft names.
  *
- * WHY THE STEP IS `sunken` AND NOT THE ACCENT WASH. This panel is `bg-surface`
- * (the `nav aria-label="Chats"` root), and `accentWash` is ΔE00 **1.05** from
- * `surface` in tokyoNight (#262B3F on #24283B) — the operator's own report, "you
- * can't tell from the sidebar which one is selected", measured. Hover is louder
- * than selection in that theme (the `elevated` step those rows already carry,
- * ΔE00 4.58), so the pointer read as the current row while the current row did
- * not. The wash is not broken everywhere — the app rail paints it on `sunken`,
- * where it measures 9.6 — which is why this is a per-call-site ground and NOT a
- * palette change: strengthening `accentWash` for the panels that draw it on
- * `surface` would make every hover tint in the app louder. (The SETTINGS rail
- * was the other `surface` panel and is fixed with this one, by the same swap:
- * `features/settings/components/settings-sidebar.tsx`.)
+ * WHY THE STEP IS `highlight`. This panel is `bg-surface` (the
+ * `nav aria-label="Chats"` root), and a selection needs a step off it that is
+ * SEEN and no more than that. `highlight` is the palette role authored for this
+ * ground — a shallow step off `surface` in the direction the mode runs, at ΔE00
+ * 2.18-2.28 across the twelve palettes, which is above the perceptual threshold
+ * `docs/branding.md` § 3 cites and well under the `sunken` well it replaced
+ * (3.75-14.94 from `surface`, the operator's "very dark colour" measured).
  *
- * `sunken` is a step off `surface` in every one of the twelve palettes, and the
- * step is already gated as a pair: `contrast-contract.mjs` asserts `surface`
- * against `sunken` and `sunken` against `elevated` at the field floor of ΔE00
- * 2.0. The measured worst case is **3.75** (iceberg), against the wash's 1.05,
- * which is below that floor in **one** of the twelve palettes (the next lowest is
- * dracula at 3.28); `elevated` was the other candidate and is rejected at 2.15 in
- * that same palette — a margin of 0.15 over a floor is not a fix. The step also
- * keeps selection and hover on OPPOSITE sides of the panel ground (recessed vs
- * raised), so the two can never be confused, and only the ground carries the
- * fact: ground plus mark plus text for one state is what docs/branding.md § 2
- * rules out.
+ * WHY NOT THE ACCENT WASH. `accentWash` is ΔE00 **1.05** from `surface` in
+ * tokyoNight (#262B3F on #24283B) — the operator's own report, "you can't tell
+ * from the sidebar which one is selected", measured. Hover is louder than
+ * selection in that theme (the `elevated` step those rows already carry, ΔE00
+ * 4.58), so the pointer read as the current row while the current row did not.
+ * The wash is not broken everywhere — the app rail paints it on `sunken`, where
+ * it measures 9.6 — which is why this is a call-site ground and NOT a wash:
+ * strengthening `accentWash` for the panels that draw it on `surface` would make
+ * every hover tint in the app louder. (The SETTINGS rail was the other `surface`
+ * panel and takes this same role: `features/settings/components/settings-sidebar.tsx`.)
+ *
+ * WHY NOT `sunken`, WHICH IS WHAT THIS USED TO BE. `sunken` is the RECESSED
+ * role: a well, a track, a code ground — a hole in the panel rather than a mark
+ * on it — and at 3.75-14.94 from `surface` it read as the dark box the operator
+ * reported. It is also ~50 call sites that depend on it being deep, so the row
+ * could not be quietened by moving the role; the row needed one of its own.
+ *
+ * WHY NOT `elevated`. It is the same rows' hover step, so selection and hover
+ * would land on the same ground and the current row would be indistinguishable
+ * from the one under the pointer — the pair measured ΔE00 0.77 in obsidian when
+ * the selection ground was the wash. The contract now asserts `highlight`
+ * against `surface`, `elevated` AND `sunken` at the field floor for exactly that
+ * reason, with `elevated` the binding pair (worst case 2.52, obsidian).
  *
  * AND WHY IT IS ON TWO ELEMENTS OF THE ENTITY ROW. The mark cannot be carried by
  * one class there: the name button inside the row carries `rowStyle`, so its
@@ -101,52 +108,21 @@ const rowStyle =
  *
  * WHY THE HOVER OVERRIDE IS IN THIS STRING. `rowStyle` carries
  * `hover:bg-elevated`, and a hover variant outranks a bare background in the
- * cascade, so every row here replaced its selection ground with the hover
- * ground under the pointer — in obsidian those two collapsed to ΔE00 0.77.
- * Stating the ground again at `hover:` is what stops that, and `cn` is what
- * makes it hold: tailwind-merge resolves the two `hover:bg-*` in favour of the
- * later one, so the inherited step is dropped rather than landing second.
+ * cascade, so without it every row here replaces its selection ground with the
+ * hover ground under the pointer: a state the user is IN would be repainted as
+ * the state the pointer is in, and `highlight` and `elevated` are both STEPS OFF
+ * `surface` rather than opposites — in the dark palettes both sit above it, and
+ * in the light ones `elevated` is the only one above it, so the two would be read
+ * as one ramp with the pointer at the top. Stating the ground again at
+ * `hover:` is what stops that, and `cn` is what makes it hold: tailwind-merge
+ * resolves the two `hover:bg-*` in favour of the later one, so the inherited
+ * step is dropped rather than landing second.
  * `scripts/chat-sidebar-selection.test.mjs` asserts that resolution through the
  * shipped `cn`, and `contrast-contract.mjs` pins this string — a bare
  * `bg-accent-wash` here is invisible in tokyoNight and no palette assertion can
  * see a class.
  */
-const rowCurrent = "bg-sunken text-ink hover:bg-sunken";
-
-/**
- * The edge the New chat row's caps carry while that row is CURRENT, and the
- * reason it is a call site rather than a change to `KeyboardShortcut`'s own
- * appearance.
- *
- * THE DEFECT THIS EXISTS FOR. `rowCurrent` paints the row `sunken`, which is also
- * the cap's own fill (`CAP` in `keyboard-shortcut.tsx`), so on the one row the
- * chord creates, the caps and their ground are the same role: measured 1.00:1 over
- * ΔE00 0.00 in all twelve palettes, and the caps read as plain monospace glyphs
- * exactly when the user has just used the chord they name. The glyph ink stays
- * legible there (6.33-12.59:1) — this is the affordance, not legibility. That is
- * why `keyboard-shortcut.tsx`'s own "a cap that is already a different ground does
- * not need an edge" premise is corrected there rather than contradicted silently
- * here.
- *
- * WHY AN OUTLINE RATHER THAN A BORDER, AND WHY THESE ROLES. A border enters the
- * box model, so the caps would grow 1px per side in one state only and jitter as
- * the row becomes current; this row also retires `border-control` on the ROW
- * itself for precisely that shift (see the comment above the row). An outline
- * draws outside layout, so the cap's box — and the row's alignment with the All
- * chats row — is identical in both states. `outline-control` against `sunken`
- * measures 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13), clearing
- * `docs/branding.md` § 3's 3:1 structural floor in every one of them, and it is
- * the idiom this app already uses for a structural edge on a row
- * (`pickers/picker-host.tsx`). The "the cap steps to `bg-elevated` instead"
- * alternative was measured and rejected: it would raise the one element on a row
- * whose whole point is being recessed, and its ratio to that ground is
- * 1.20-1.55:1 against the edge's 3.13-5.91:1.
- *
- * `scripts/contrast-contract.mjs` pins this string, because no palette assertion
- * can see a class, and `scripts/new-chat-row.test.mjs`'s own pin is why the row
- * below repeats its predicate rather than hoisting it.
- */
-const capEdge = "outline-solid outline-1 -outline-offset-1 outline-control";
+const rowCurrent = "bg-highlight text-ink hover:bg-highlight";
 
 import { ChatSessionStatus } from "./chat-session-status";
 
@@ -1184,15 +1160,15 @@ export function ChatSidebar({
 							 * its count: both rows end in the column that says what the row will
 							 * give you, and the label's own `flex-1` is what holds it there.
 							 *
-							 * AND WHEN THE ROW IS CURRENT THE CAPS TAKE AN EDGE, because on that
-							 * row their own fill IS the ground (`capEdge` carries the
-							 * measurement and the reason it is an outline rather than a border).
-							 * The condition is the row's own current-draft predicate, spelled out
-							 * again rather than hoisted to a name: `scripts/new-chat-row.test.mjs`
-							 * pins that expression as source text — it is what holds the ground and
-							 * `aria-current` to the same two terms — so a name here would move a
-							 * pin this change has no business moving. The two must agree: the edge
-							 * appears exactly where the row paints `rowCurrent`.
+							 * NOTHING IS PASSED WHILE THE ROW IS CURRENT, and that is the point
+							 * rather than an omission: a cap has no fill and no edge of its own
+							 * (`keyboard-shortcut.tsx` carries the measurement that retired the
+							 * `bg-sunken` fill), so the marks it used to need on this one row —
+							 * the `capEdge` outline, which existed because the cap and the row
+							 * were both `sunken` — have nothing left to separate. The row's own
+							 * `rowCurrent` ground carries the state, and the chord is drawn the
+							 * same way on every ground it lands on, which is what makes it one
+							 * idiom rather than one idiom plus an exception.
 							 *
 							 * Platform: `isMac` above, derived from `navigator.platform` the way
 							 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
@@ -1206,12 +1182,7 @@ export function ChatSidebar({
 							 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
 							 * attribute would announce the same chord twice.
 							 */}
-							<KeyboardShortcut
-								shortcut={newChatShortcutCap(isMac)}
-								className={cn(
-									Boolean(activeDraftKey) && !draft?.target && capEdge,
-								)}
-							/>
+							<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
 						</button>
 					</section>
 					{all ? (
