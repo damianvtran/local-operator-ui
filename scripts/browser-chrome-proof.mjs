@@ -2929,10 +2929,23 @@ async function main() {
 			url: "https://dropped.example/",
 			requester: "session:other",
 		});
+		/*
+		 * THE WAIT IS ON THE ROW THE CHECK ASSERTS, not on "some rows exist". It used to be
+		 * the latter, and that is ALWAYS TRUE here: the two `reask.example` rows are already
+		 * in the list when this scene starts, so the predicate returned the FIRST read and
+		 * the check compared the DOM against the state it had before the withdrawal. It read
+		 * as a flake rather than a tautology because the first read happens to land after
+		 * React's next commit on a fast enough run, and a slower one measures the harness
+		 * instead of the product: with the projection read through one shared store this
+		 * check failed 4 runs out of 4 while passing on the branch's base commit, and the
+		 * difference was the extra commit's latency, not the row.
+		 */
 		const afterWithdrawal = await waitFor(
 			async () => {
 				const read = await resolvedRead();
-				return read.rows.length > 0 ? read : null;
+				return read.rows.some((row) => row.includes("dropped.example"))
+					? read
+					: null;
 			},
 			"the withdrawn request to be explained in the band",
 			15_000,
@@ -3301,7 +3314,14 @@ async function main() {
 				};
 			})()`);
 			return reading.chips.length === 7 && reading.rows === 20 ? reading : null;
-		}, "the pooled strip to settle with 20 rows and 7 group labels");
+			// NON-FATAL ON PURPOSE: this step is the §6.3 before/after pair, so the SAME
+			// command runs against a scratch worktree at the merge base, where the strip
+			// has no group labels and this reading can never arrive. A throw here ends the
+			// run on the base tree and takes the before frame with it, which is what
+			// happened the first time; the CHECK below is what fails instead.
+		}, "the pooled strip to settle with 20 rows and 7 group labels").catch(
+			() => null,
+		);
 		const poolFrame = await captureRenderer("19-strip-pooled-20-over-6");
 		await compose(
 			"19-strip-pooled-20-over-6",
@@ -3309,7 +3329,7 @@ async function main() {
 			null,
 			await contentRect(),
 		);
-		note("the pooled strip", JSON.stringify(poolSeen, null, 2));
+		record("the pooled strip", JSON.stringify(poolSeen, null, 2));
 		check(
 			"the pooled strip groups 20 tabs into their 6 conversations plus the unattributed run, LAST (R3)",
 			poolSeen.chips.length === 7 &&
@@ -3384,7 +3404,7 @@ async function main() {
 			agent.click();
 			return 'clicked';
 		})()`);
-		await wait(600);
+		await sleep(600);
 		const pinTrigger = await evaluate(
 			`document.querySelector('[data-tour-tag="browser-tab-overflow"]') ? 'present' : 'missing'`,
 		);
@@ -3460,6 +3480,109 @@ async function main() {
 			`${pinReading?.shape}: ${pinReading?.rowCount} row(s), box ${JSON.stringify(pinReading?.box)} against the content rect's bottom ${pinReading?.content?.bottom}`,
 		);
 		say(`frame: ${join(OUT_DIR, "19b-pinned-control-open.png")}`);
+
+		/*
+		 * ---- 19c. A BATCH CLOSE IS ONE INTENT AND ONE STATE CHANGE --------------
+		 *
+		 * The design's §6.4 batch step, and the number it is about is the EVENT COUNT: N
+		 * sequential closes are N `onChanged` calls, which are N full `chromeState()`
+		 * builds, N IPC broadcasts, N renderer re-reads and N `session.json` writes. The
+		 * count is therefore the evidence — a batch that closed the same tabs through N
+		 * intents would look identical in every frame.
+		 *
+		 * The event counter is installed from the renderer over the REAL subscription the
+		 * app itself uses, so what is counted is what the app would be woken by.
+		 */
+		await evaluate(`(() => {
+			window.__proofStateEvents = 0;
+			window.__proofOff = window.api.browser.onStateChanged(() => {
+				window.__proofStateEvents += 1;
+			});
+			return 'armed';
+		})()`);
+		const batchBefore = await chromeState();
+		// The row menu of the pool's FIRST tab, which is in the first conversation.
+		const batchMenu = await evaluate(`(() => {
+			const row = document.querySelector('[data-tab-id]');
+			const trigger = row?.querySelector('[data-tour-tag="browser-tab-menu"]');
+			if (!trigger) return 'missing';
+			trigger.click();
+			return 'clicked';
+		})()`);
+		const batchItem = await waitFor(
+			async () =>
+				(await evaluate(
+					`(() => {
+						const item = document.querySelector('[data-tour-tag="browser-tab-close-conversation"]');
+						return item ? item.innerText.replace(/\\s+/g, ' ').trim() : null;
+					})()`,
+				)) ?? null,
+			"the conversation close to be offered",
+			10_000,
+		);
+		const eventsBefore = await evaluate("window.__proofStateEvents");
+		const basket = {
+			conversation: batchBefore.tabs[0].sessionId,
+			before: batchBefore.tabs.length,
+			beforeIds: batchBefore.tabs.map((tab) => tab.tabId),
+		};
+		await evaluate(
+			`document.querySelector('[data-tour-tag="browser-tab-close-conversation"]')?.click()`,
+		);
+		const batchAfter = await waitFor(async () => {
+			const current = await chromeState();
+			return current.tabs.length < basket.before ? current : null;
+		}, "the batch close to land");
+		// One more delivery may be in flight for the event that carried the change, so the
+		// count is read after the DOM has settled rather than on the first reading.
+		await sleep(500);
+		const eventsAfter = await evaluate("window.__proofStateEvents");
+		const survived = batchAfter.tabs;
+		/** What this conversation held before the press, so the arithmetic below is about
+		 * that conversation rather than about the pool. */
+		const closedCount = batchBefore.tabs.filter(
+			(tab) => tab.sessionId === basket.conversation,
+		).length;
+		const batchFrame = await captureRenderer("19c-batch-close-one-event");
+		await compose(
+			"19c-batch-close-one-event",
+			batchFrame,
+			await capturePage(state, pinToken, "19c-batch-close-one-event"),
+			await contentRect(),
+		);
+		record(
+			"a conversation's tabs, closed as one intent",
+			JSON.stringify(
+				{
+					item: batchItem,
+					conversation: basket.conversation,
+					before: basket.before,
+					after: batchAfter.tabs.length,
+					stateEvents: eventsAfter - eventsBefore,
+					survived: survived.map((tab) => ({
+						tabId: tab.tabId,
+						sessionId: tab.sessionId,
+						owner: tab.owner,
+					})),
+				},
+				null,
+				2,
+			),
+		);
+		check(
+			"one press closes every tab of one conversation, and leaves every other conversation's alone (R5)",
+			batchItem !== null &&
+				closedCount >= 2 &&
+				batchAfter.tabs.length === basket.before - closedCount &&
+				survived.every((tab) => tab.sessionId !== basket.conversation),
+			`${batchItem}: ${basket.before} tab(s) -> ${batchAfter.tabs.length}; the closed conversation was ${basket.conversation}`,
+		);
+		check(
+			"and it was ONE state change, not one per tab: the number is the whole point of the intent (R5)",
+			eventsAfter - eventsBefore === 1,
+			`${eventsAfter - eventsBefore} browser-state-changed event(s) for ${basket.before - batchAfter.tabs.length} closed tab(s)`,
+		);
+		say(`frame: ${join(OUT_DIR, "19c-batch-close-one-event.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);

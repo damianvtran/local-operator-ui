@@ -534,6 +534,12 @@ const api = {
 			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
 		closeTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tab", tabId),
+		/** A bulk close: `{ mode: "ids", tabIds }` for tabs the user could see, or
+		 * `{ mode: "conversation", sessionId }` which MAIN resolves at execution time
+		 * (design R5 — a list computed in the renderer would miss a tab an agent opened
+		 * while the band was open). Main validates the shape rather than trusting it. */
+		closeTabs: (intent: unknown): Promise<unknown> =>
+			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
 		navigate: (url: string): Promise<unknown> =>

@@ -368,6 +368,11 @@ export type CloseTabsIntent =
 	| { mode: "ids"; tabIds: number[] }
 	| { mode: "conversation"; sessionId: string };
 
+/** The `ids` arm on its own. The two POSITIONAL builders below produce only this one, and
+ * saying so is what lets a label read `tabIds.length` without narrowing a union it knows
+ * the answer to — the count in the label is the disclosure, so it cannot be a `maybe`. */
+export type CloseTabsByIdsIntent = Extract<CloseTabsIntent, { mode: "ids" }>;
+
 /**
  * `Close N other tabs`: every tab in the pool except the one the menu is on.
  *
@@ -382,7 +387,7 @@ export type CloseTabsIntent =
 export function closeOthersIntent(
 	allTabs: readonly TabInput[],
 	keepTabId: number,
-): CloseTabsIntent | null {
+): CloseTabsByIdsIntent | null {
 	const tabIds = pooledTabs(allTabs)
 		.map((tab) => tab.tabId)
 		.filter((tabId) => tabId !== keepTabId);
@@ -405,7 +410,7 @@ export function closeOthersIntent(
 export function closeToTheRightIntent(
 	orderedTabs: readonly TabInput[],
 	anchorTabId: number,
-): CloseTabsIntent | null {
+): CloseTabsByIdsIntent | null {
 	const at = orderedTabs.findIndex((tab) => tab.tabId === anchorTabId);
 	if (at < 0) return null;
 	const tabIds = orderedTabs.slice(at + 1).map((tab) => tab.tabId);

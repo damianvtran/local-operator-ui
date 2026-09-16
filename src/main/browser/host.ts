@@ -188,6 +188,20 @@ function sessionRequesterOf(requester: string): string | null {
 	return id || null;
 }
 
+/**
+ * A bulk close, as this host executes one (design R5).
+ *
+ * DECLARED ON BOTH SIDES OF THE PROCESS BOUNDARY, deliberately, following the repo's
+ * existing pattern for a cross-process shape (`ContentRect` is declared in
+ * `registry.ts` and again in `use-browser-chrome.ts`): main does not import renderer
+ * modules, and the IPC boundary VALIDATES the intent it is given rather than trusting
+ * a type from the other side — which is what makes the two declarations the same shape
+ * without one of them being authority over the other.
+ */
+export type CloseTabsIntent =
+	| { mode: "ids"; tabIds: number[] }
+	| { mode: "conversation"; sessionId: string };
+
 export interface BrowserHostOptions {
 	registry: BrowserActionContext["registry"];
 	cdp: BrowserActionContext["cdp"];
@@ -682,6 +696,53 @@ export class BrowserHost implements BrowserActionContext {
 		this.loadFailures.delete(tabId);
 		this.registry.destroy(tabId);
 		this.onChanged();
+		return this.chromeState();
+	}
+
+	/**
+	 * Close several tabs as ONE intent (design R5): resolve it, close them, notify once.
+	 *
+	 * TWO MODES RATHER THAN ONE LIST, and the difference is the race the design names:
+	 *
+	 * - `ids` is positional — "these tabs, the ones I could see" — and main closes
+	 *   exactly those, skipping any that are already gone. A tab an agent opened after the
+	 *   press is not in the list and survives, which the strip then shows honestly.
+	 * - `conversation` is resolved HERE, at execution time, against the live registry. A
+	 *   list computed from a projection the renderer read seconds ago (the band stays open
+	 *   while the user reads it) would miss a tab an agent opened in that conversation in
+	 *   the meantime — and the user pressed something that said ALL.
+	 *
+	 * ONE `onChanged()` EITHER WAY, which is the whole point of `registry.destroyMany`: N
+	 * closes are N full `chromeState()` builds, N IPC broadcasts, N renderer re-reads and
+	 * N `session.json` writes.
+	 */
+	closeTabs(intent: CloseTabsIntent): Record<string, unknown> {
+		const tabIds =
+			intent.mode === "ids"
+				? intent.tabIds
+				: this.registry
+						.list()
+						.filter((record) => record.sessionId === intent.sessionId)
+						.map((record) => record.tabId);
+		for (const tabId of tabIds) {
+			// Per tab, before the batch drops them: a pending receipt and a last load
+			// failure are keyed by tab id, and both are stale the moment the tab is gone.
+			this.dropReceipt(tabId);
+			this.loadFailures.delete(tabId);
+		}
+		/*
+		 * NO SECOND NOTIFICATION HERE, and the removal of one is the whole claim: the
+		 * registry's own `onChanged` IS this host's (`index.ts:312` passes the same
+		 * function `BrowserHost` takes as `onChanged`), so `destroyMany` already sent the
+		 * ONE `browser-state-changed` this intent owes the renderer. Calling it again here
+		 * — which `closeTab` above does, and which is two broadcasts for one user action —
+		 * measured as two events for a four-tab batch in `browser-chrome-proof.mjs`, and
+		 * the count is the evidence the design's §6.4 asks for: N full `chromeState()`
+		 * builds, N broadcasts and N `session.json` writes are exactly what this intent
+		 * exists to replace. The state is still returned fresh, which is what the caller
+		 * reads; nothing was removed means nothing changed, and nothing is sent.
+		 */
+		this.registry.destroyMany(tabIds);
 		return this.chromeState();
 	}
 
