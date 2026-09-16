@@ -606,8 +606,18 @@ export type BytecodeHealResult = BytecodeHealPlan & { removed: string[] };
  *
  * `remove` is injectable so the tests can drive every branch without a signed
  * bundle on disk; the default is the real thing. A path is re-checked against
- * `isPythonBytecodePath` immediately before it is removed, so a caller holding
- * a stale plan cannot widen what gets deleted. A removal that throws is
+ * `isPythonBytecodePath` immediately before it is removed, and what that buys is
+ * narrower than "a stale plan is refused" (review round 1, R2): no caller can
+ * supply a plan, and the plan this function computes has already passed the same
+ * predicate, so with an unchanged filesystem the second call is a tautology. What
+ * it is NOT is time-invariant: `isPythonBytecodePath` resolves `realpathSync` on
+ * the path it is given, so the re-check re-resolves whatever the path means *now*
+ * - and a component of it replaced by a symlink out of the bundle between the
+ * plan and the unlink is refused then, which is the class a plan can never know
+ * about. It is cheap (one stat per file, on a pass that removes a handful) and it
+ * is the difference between the entitlement being read once and being read at the
+ * moment of deletion, so it stays; the test "a swap under the tree between the
+ * plan and the unlink refuses" is what makes it bite. A removal that throws is
  * reported as not healed with the path, because the caller's next step is a
  * re-probe and a refusal rather than a half-healed bundle it believes in.
  */
