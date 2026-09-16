@@ -737,7 +737,15 @@ test("the tally budget tracks the pane, and sheds the last segment whole at the 
 	// A sane value at every width the pane can take, and a width that is not a
 	// usable number falls back to the design's default rather than poisoning the
 	// shed comparison with `NaN` (which would silently disable shedding).
-	for (const width of [320, 420, 640, 0, -1000, Number.NaN, Number.POSITIVE_INFINITY]) {
+	for (const width of [
+		320,
+		420,
+		640,
+		0,
+		-1000,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+	]) {
 		assert.ok(tallyBudget(width) >= 1, String(width));
 	}
 	assert.equal(tallyBudget(Number.NaN), tallyBudget(420));
@@ -757,7 +765,10 @@ test("the tally budget tracks the pane, and sheds the last segment whole at the 
 	// prefix of WHOLE segments — never a fragment of one.
 	const narrow = subagentTally(rows, tallyBudget(320));
 	assert.ok(narrow.length < full.length);
-	assert.ok(full.startsWith(narrow), `${narrow} is a whole-segment prefix of ${full}`);
+	assert.ok(
+		full.startsWith(narrow),
+		`${narrow} is a whole-segment prefix of ${full}`,
+	);
 	assert.equal(narrow, "2 running · 1 queued · 1 failed");
 	// The measured failure was the word `interrupted` cut at `interr`; assert the
 	// property rather than the string, so a future segment change cannot quietly
@@ -816,12 +827,25 @@ test("the brief is suppressed when the transcript already carries it", () => {
 	assert.equal(briefIsInTranscript(reconciled, brief), true);
 	// A child whose record predates `launch_message_id` matches nothing and keeps
 	// the brief: the fallback direction, not a silenced block.
-	assert.equal(briefIsInTranscript(reconciled, "Some other instruction"), false);
+	assert.equal(
+		briefIsInTranscript(reconciled, "Some other instruction"),
+		false,
+	);
 	// Non-user rows are not the brief, however they read: only a user turn can be
 	// the launch.
 	assert.equal(
 		briefIsInTranscript(
-			[{ kind: "assistant", id: "c-a1", ts: 1, text: brief, streaming: false, stopReason: null, error: false }],
+			[
+				{
+					kind: "assistant",
+					id: "c-a1",
+					ts: 1,
+					text: brief,
+					streaming: false,
+					stopReason: null,
+					error: false,
+				},
+			],
 			brief,
 		),
 		false,
@@ -852,14 +876,28 @@ test("a truncated launch row is still the brief", () => {
 		"Carry out these four steps IN ORDER, one bash tool call each, then give a one-line summary: (1) bash: sleep 150; (2) bash: wc -l /tmp/lo-live/work/notes.txt; (3) bash: sleep 150; (4) bash: tail -2 /tmp/lo-live/work/notes.txt. Never combine two steps into one call.";
 	const truncated = `${brief.slice(0, 200)}…`;
 	const records = [
-		{ kind: "user", id: "subagent-launch:job-a", ts: 1, text: truncated, images: [] },
+		{
+			kind: "user",
+			id: "subagent-launch:job-a",
+			ts: 1,
+			text: truncated,
+			images: [],
+		},
 	];
 	assert.equal(briefIsInTranscript(records, brief), true);
 	// A record that is a DIFFERENT instruction still leaves the brief standing,
 	// even when it shares an opening phrase.
 	assert.equal(
 		briefIsInTranscript(
-			[{ kind: "user", id: "c-u1", ts: 2, text: "Carry out these three steps", images: [] }],
+			[
+				{
+					kind: "user",
+					id: "c-u1",
+					ts: 2,
+					text: "Carry out these three steps",
+					images: [],
+				},
+			],
 			brief,
 		),
 		false,
@@ -1463,6 +1501,22 @@ test("the tooltip carries counts, pluralised honestly, and names the ACTION", ()
 	assert.equal(
 		runDetailTriggerLabel(derive([], []), NOTHING_SEEN, { open: true }),
 		"Close run details",
+	);
+	/*
+	 * A SETTLED plan adds nothing to the trigger, and it stays that way now that
+	 * the settled case has its own copy. The trigger answers "is anything asking
+	 * for something right now?" (`hasRunDetails`), and a plan that ended is not;
+	 * the composer chip states the outcome, the trigger states what is
+	 * outstanding. Both settled spellings are pinned so a future reader sees the
+	 * decision rather than having to infer it from a guard.
+	 */
+	assert.equal(
+		runDetailTriggerLabel(derive([], plan(["done", "done"]))),
+		"Open run details",
+	);
+	assert.equal(
+		runDetailTriggerLabel(derive([], plan(["done", "dropped"]))),
+		"Open run details",
 	);
 });
 
@@ -2260,7 +2314,10 @@ test("the MCP tally pluralises, and agrees with the trigger's own clause", () =>
 	});
 	assert.match(label, /1 MCP server needs attention/);
 	// The cold payload has no status to tally at all.
-	assert.equal(mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])), MCP_COLD_LINE);
+	assert.equal(
+		mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])),
+		MCP_COLD_LINE,
+	);
 });
 
 test("an MCP row's diagnosis is the canonical projection's, and only where it applies", () => {
@@ -2328,10 +2385,9 @@ test("the remedy is the one this surface can carry out, and words where it canno
 	// An http server with no explicit refusal is the NORMAL case — the backend
 	// publishes `False` only for a definite one (`mcp/desktop.py:104-116`) — so
 	// "unknown" is offered the grant rather than read as a refusal.
-	assert.deepEqual(
-		remedy({ status: "auth-required", transport: "http" }),
-		{ kind: "grant" },
-	);
+	assert.deepEqual(remedy({ status: "auth-required", transport: "http" }), {
+		kind: "grant",
+	});
 	assert.deepEqual(
 		remedy({
 			status: "auth-required",
@@ -2477,7 +2533,9 @@ test("an operation the backend FINISHED is not a row state, and never deletes a 
 	assert.deepEqual(row.remedy, { kind: "grant" });
 
 	// The same rule for a transport that dropped after a successful connect.
-	const dropped = [{ name: "slack", status: "disconnected", transport: "http" }];
+	const dropped = [
+		{ name: "slack", status: "disconnected", transport: "http" },
+	];
 	const connected = [
 		{
 			id: "op-2",
@@ -2540,7 +2598,12 @@ test("a server that declares credential fields gets the key remedy, and one that
 			status: "auth-required",
 			transport: "stdio",
 			environment_keys: ["GOOGLE_CLIENT_SECRET"],
-			secret_refs: [{id: "GOOGLE_CLIENT_SECRET", bindings: [{field: "env", key: "GOOGLE_CLIENT_SECRET"}]}],
+			secret_refs: [
+				{
+					id: "GOOGLE_CLIENT_SECRET",
+					bindings: [{ field: "env", key: "GOOGLE_CLIENT_SECRET" }],
+				},
+			],
 		}).remedy,
 		{ kind: "key" },
 	);
@@ -2550,7 +2613,12 @@ test("a server that declares credential fields gets the key remedy, and one that
 			transport: "http",
 			transport_oauth_supported: false,
 			header_keys: ["Authorization"],
-			secret_refs: [{id: "SERVICE_TOKEN", bindings: [{field: "headers", key: "Authorization"}]}],
+			secret_refs: [
+				{
+					id: "SERVICE_TOKEN",
+					bindings: [{ field: "headers", key: "Authorization" }],
+				},
+			],
 		}).remedy,
 		{ kind: "key" },
 	);
@@ -2561,10 +2629,14 @@ test("a server that declares credential fields gets the key remedy, and one that
 		row({ status: "auth-required", transport: "stdio" }).remedy,
 		{ kind: "words", label: "Manage this server's credentials in Settings" },
 	);
-	assert.deepEqual(row({ status: "auth-required", transport: "stdio", environment_keys: [] }).remedy, {
-		kind: "words",
-		label: "Manage this server's credentials in Settings",
-	});
+	assert.deepEqual(
+		row({ status: "auth-required", transport: "stdio", environment_keys: [] })
+			.remedy,
+		{
+			kind: "words",
+			label: "Manage this server's credentials in Settings",
+		},
+	);
 
 	// A server that CAN grant never gets the key remedy: the browser flow is the
 	// one that re-consents, and a declared header map does not change that.
@@ -2589,7 +2661,12 @@ test("a row's key fields are the backend's secret-reference IDs, never config fi
 			// left `${HUBSPOT_TOKEN}` unresolved after a "successful" save.
 			environment_keys: ["TOKEN", "SHARED"],
 			header_keys: ["Authorization", "SHARED"],
-			secret_refs: [{id: "TOKEN"}, {id: "SHARED"}, {id: "TOKEN"}, {id: "SERVICE_TOKEN"}],
+			secret_refs: [
+				{ id: "TOKEN" },
+				{ id: "SHARED" },
+				{ id: "TOKEN" },
+				{ id: "SERVICE_TOKEN" },
+			],
 		},
 	]);
 	// Declared order, deduped by ID: one field per referenced secret, and never a
