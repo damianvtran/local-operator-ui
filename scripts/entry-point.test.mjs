@@ -278,6 +278,18 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// `ci.yml`'s release contracts step. Derives the workflows directory, the
+			// plugin's guard list and the script table from its own module URL, so the
+			// answer is the same summary whatever the working directory is.
+			script: "check-build-env.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /build steps carry all \d+ variables/,
+			stderr: /^$/,
+		},
+		{
 			// `ci.yml`'s Lint job, on a scratch repository whose `main` is HEAD: the whole
 			// verdict path runs (base resolution, merge base, changed-file scan) and
 			// answers in its own words, with no biome invocation to depend on and nothing
