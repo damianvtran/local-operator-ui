@@ -20,9 +20,11 @@
  */
 
 import {
+	REQUIRED_BACKEND_FEATURES,
 	backendCompatibilityMessage,
 	backendErrorKind,
 	backendUpdateIsRemedy,
+	compatibilityBannerShown,
 } from "@shared/api/local-operator/backend-error";
 import {
 	desktopKeys,
@@ -32,15 +34,7 @@ import { Alert, AlertDescription, Button } from "@shared/components/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 
-const REQUIRED_FEATURES = [
-	"auth",
-	"settings",
-	"commands",
-	"catalogues",
-	"lifecycle",
-	"mcp",
-	"radient",
-] as const;
+const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
 
 /**
  * What the banner says when the updater refused and said nothing else.
@@ -113,7 +107,7 @@ export const BackendCompatibilityBanner = () => {
 		? REQUIRED_FEATURES.filter((feature) => (data.features?.[feature] ?? 0) < 1)
 		: [...REQUIRED_FEATURES];
 	const unpaired = Boolean(data) && !data?.desktop_available;
-	if (data?.desktop_available && missing.length === 0) return null;
+	if (!compatibilityBannerShown(data)) return null;
 
 	// The probe's HTTP status is what separates "old" from "not running" from
 	// "cannot authenticate", and the providers grid reads the same field to reach

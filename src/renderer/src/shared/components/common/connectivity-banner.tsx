@@ -150,10 +150,25 @@ export const ConnectivityBanner = ({
 	 */
 	const serverIssue = isInternetIssue ? null : serverBannerCopy(serverSnapshot);
 	const isTransientServerIssue = serverSnapshot?.reconnecting === true;
-	// A state the app is expected to recover from on its own is a warning, not an
-	// alarm: "not connected, reconnecting" is not the claim "the server stopped".
+	/*
+	 * A state the app is expected to recover from on its own is a warning, not an
+	 * alarm: "not connected, reconnecting" is not the claim "the server stopped".
+	 *
+	 * `wedged` joins them because its own copy asserts the opposite of a failure -
+	 * "A Local Operator server is running on this machine and this app is not
+	 * attached to it" - and the two could not disagree more loudly than they did:
+	 * measured in the `unattachable` frames, the band painted in the danger triple
+	 * (`#2f1b19` against the warning wash `#2a2213`, rose icon against amber) while
+	 * the sentence went to trouble to say nothing was wrong and nothing was started
+	 * over a healthy daemon. `danger` stays for the paths that ARE failures - the
+	 * server stopped, or a connection that is not coming back (design round 1, D6).
+	 */
 	const bannerVariant: AlertProps["variant"] =
-		isInternetIssue || isTransientServerIssue ? "warning" : "danger";
+		isInternetIssue ||
+		isTransientServerIssue ||
+		serverSnapshot?.state === "wedged"
+			? "warning"
+			: "danger";
 
 	return (
 		/*
