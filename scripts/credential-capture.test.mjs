@@ -1228,6 +1228,52 @@ test("Esc restores the typed characters as plaintext and reports the length", ()
 	);
 });
 
+test("the ARMING POWER belongs to the completion and the keystroke, and to no other route", () => {
+	/*
+	 * Code review round 2, MINOR 1: the composer's pick pin asserted that the
+	 * completion is CONSULTED, not that the route can arm — and the reviewer
+	 * measured that swapping `"completion"` for `"caret"` at that call site
+	 * survives every case in the composer suite. Re-measured here: it does, and
+	 * the reason is not a missing pin, it is that the two are indistinguishable
+	 * THERE. `handleSlashPick` writes through `applyCapture`, the write reaches
+	 * the controlled textarea, and the textarea's own `onChange` mirrors it as
+	 * `"typing"` — the other origin `mayArm` accepts — so the capture arms on the
+	 * mirror whatever the pick said.
+	 *
+	 * Where the power IS observable is the module, and that is what this case
+	 * pins: given the same buffer and caret, the completion arms and a caret move
+	 * does not. Deleting `|| arrival === "completion"` from `mayArm`, or adding
+	 * `"caret"` to it, fails here — which is the statement the composer's call
+	 * site is making when it names `"completion"` (and why naming it is not
+	 * decoration).
+	 */
+	const byCompletion = harness();
+	byCompletion.state.buffer = "/credential";
+	byCompletion.state.caret = 11;
+	byCompletion.acceptCompletion(" ");
+	assert.deepEqual(
+		byCompletion.state.capture.arm,
+		{ start: 0, end: 12 },
+		"the row's own trailing space arms the capture",
+	);
+
+	const byCaret = harness();
+	byCaret.state.buffer = "/credential ";
+	byCaret.state.caret = 12;
+	byCaret.caretTo(12);
+	assert.equal(
+		byCaret.state.capture.arm,
+		null,
+		"the same buffer, reached by a caret move, does not arm: §2's caret origin carries no arming power",
+	);
+
+	// And the keystroke still does, which is what the picker's write becomes
+	// through the textarea's own onChange.
+	const byTyping = harness();
+	byTyping.type("/credential ");
+	assert.ok(byTyping.state.capture.arm, "a typed trailing space arms");
+});
+
 test("Esc on an empty span ends the mode and leaves the token inert", () => {
 	const composer = harness();
 	composer.type("/credential ");

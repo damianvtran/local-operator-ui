@@ -341,7 +341,6 @@ test("the admission seam stores against the session the send created, and its an
 	);
 });
 
-
 test("ambiguous create retains request ID and duplicate concurrent sends allocate once", async () => {
 	reset();
 	let release;
@@ -3306,7 +3305,9 @@ test("the submit path cannot re-decide what a draft is", async () => {
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
 	);
 	assert.ok(
-		/const planForDraft = useCallback\([\s\S]{0,400}?planFor\(draft, at\)/.test(composer),
+		/const planForDraft = useCallback\([\s\S]{0,400}?planFor\(draft, at\)/.test(
+			composer,
+		),
 		"`planForDraft` no longer delegates to `planFor`, so the two submit entry points consult an exception with no planner behind it",
 	);
 
