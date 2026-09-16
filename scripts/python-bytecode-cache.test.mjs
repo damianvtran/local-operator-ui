@@ -13,8 +13,9 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { after, test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 /**
@@ -215,6 +216,37 @@ test("a prefix pointing inside a .app bundle is replaced", () => {
 	assert.equal(notABundle.PYTHONPYCACHEPREFIX, "/Users/someone/appcache");
 });
 
+test("a relative prefix is replaced, because it resolves against the writer's cwd", () => {
+	// The docstring always said the redirect "protects the bundle only while the
+	// value is absolute"; the code kept such a value, and `insideAppBundle` could
+	// not catch it because a relative path carries no `.app` segment. Measured on
+	// this machine with the cwd inside a bundle's own python directory:
+	//
+	//   env -u PYTHONDONTWRITEBYTECODE PYTHONPYCACHEPREFIX=relcache \
+	//     python3 -c "import encodings"
+	//
+	// wrote `<cwd>/relcache/opt/homebrew/.../__init__.cpython-314.pyc` - into the
+	// very tree this module keeps bytecode out of. So every relative spelling is
+	// replaced with the app's own cache directory, exactly like an in-bundle value.
+	for (const value of [
+		"relcache",
+		"cache",
+		"./relcache",
+		"../pycache",
+		"../Resources/python_aarch64/pycache",
+	]) {
+		const env = withPythonBytecodeCache(
+			{ PYTHONPYCACHEPREFIX: value },
+			USER_DATA,
+		);
+		assert.equal(
+			env.PYTHONPYCACHEPREFIX,
+			pythonBytecodeCacheDir(USER_DATA),
+			value,
+		);
+	}
+});
+
 test("an empty or whitespace-only prefix is treated as unset", () => {
 	// Measured, not assumed: a copy of the shipped 0.17.0 interpreter tree goes
 	// from 3 `.pyc` to 20 with `PYTHONPYCACHEPREFIX=` and to 23 with
@@ -256,6 +288,175 @@ const INSIDE_BUNDLE_PREFIX =
 
 /** Temp paths the stubbed Electron `app.getPath` hands the bundled module. */
 const PATHS = { home: null, userData: null, appData: null, temp: tmpdir() };
+
+/**
+ * Every `PYTHON*` variable, which is the set this suite refuses to inherit.
+ *
+ * `PYTHONPYCACHEPREFIX` and `PYTHONDONTWRITEBYTECODE` are the two this file is
+ * about, but they are not the pair that can make a spawn measure the wrong
+ * thing: `PYTHONPATH` puts directories on `sys.path` and `PYTHONHOME` moves the
+ * stdlib, so a suite that wants to say where a child's bytecode went has to
+ * start from an environment that carries none of them.
+ */
+const INHERITED_PYTHON_ENV = /^PYTHON/;
+
+/** `env` with every inherited `PYTHON*` variable removed. */
+function withoutInheritedPythonEnv(base = process.env) {
+	const env = {};
+	for (const [key, value] of Object.entries(base)) {
+		if (INHERITED_PYTHON_ENV.test(key)) continue;
+		env[key] = value;
+	}
+	return env;
+}
+
+/**
+ * A scratch directory a spawned python may write bytecode into.
+ *
+ * One root per run, reclaimed by the `after` hook below, so a spawn's cache
+ * directory is always this run's own and never a shared one a previous run
+ * left something in - the assertion "the control's `.pyc` landed under the
+ * prefix" is worth nothing against a directory that was already full.
+ */
+let bytecodeScratchRoot = null;
+function bytecodeScratchDir(label) {
+	bytecodeScratchRoot ??= mkdtempSync(join(tmpdir(), "lo-bytecode-spawn-"));
+	return mkdtempSync(join(bytecodeScratchRoot, `${label}-`));
+}
+
+/** A path-segment test for an `.app` bundle, mirroring the shipped module's. */
+function isInsideAppBundle(path) {
+	return path
+		.split(/[\\/]/)
+		.some((segment) => segment.length > 4 && segment.endsWith(".app"));
+}
+
+/**
+ * The environment every python this file starts is handed.
+ *
+ * Why this exists, and why it is not `{ ...process.env }`. This suite measures
+ * whether a spawned interpreter writes bytecode and where. Run from the inside
+ * of the app it is testing - an agent shell, which is how it is run in the
+ * field - the ambient environment already carries the app's own
+ * `PYTHONPYCACHEPREFIX` (`~/Library/Application Support/Local Operator/
+ * python-bytecode-cache` on this machine) and `PYTHONDONTWRITEBYTECODE=1`, and
+ * a test that spreads `process.env` inherits both: measured here, two cases in
+ * this file failed for exactly that reason - the control run could not write
+ * (`dont_write_bytecode` was True before the interpreter started) and the
+ * update service's probe reported the caller's prefix rather than the app's.
+ *
+ * Inheriting is worse than flaky. On 2026-09-15 the ambient prefix on the
+ * operator's machine pointed INSIDE the installed app
+ * (`.../Local Operator.app/Contents/Resources/python_aarch64/pycache`) and this
+ * file's real-CPython control run - a plain `spawnSync("python3", ..., { env: {
+ * ...process.env, ...extraEnv } })` - inherited it and wrote 19 `.pyc` into
+ * `/Applications/Local Operator.app`. `codesign` reported every one as
+ * `file added:`, the app's start-up pass called the bundle unrepairable, and
+ * the operator got "this copy of Local Operator needs replacing" for a bundle
+ * that was one file-deletion away from valid (the heal's own inability to
+ * recognise that layout is the other half of the fix). So the rule here is not
+ * "set the variables we remember": it is that a spawn in this file states the
+ * whole python environment it measures, and inherits none of it.
+ *
+ * - every inherited `PYTHON*` variable is dropped;
+ * - the prefix is explicit - the caller's, or a fresh scratch directory under
+ *   this run's tmp root - and the effective value is refused if it is relative
+ *   or names a path inside a bundle, because those are the two values that put
+ *   bytecode somewhere the caller did not choose (a relative prefix resolves
+ *   against the child's cwd, which may be inside a bundle);
+ * - `PYTHONDONTWRITEBYTECODE` is stated per run: `write: true` sets no refusal at
+ *   all, so a run that means to produce a write can produce one, and the default
+ *   sets the same refusal the app sets. An inherited `1` can no longer make a
+ *   control run silently write nothing.
+ */
+function pythonChildEnv({
+	base = process.env,
+	prefix,
+	write = false,
+	extra = {},
+} = {}) {
+	const env = withoutInheritedPythonEnv(base);
+	env.PYTHONPYCACHEPREFIX = prefix ?? bytecodeScratchDir("cache");
+	// Only ever SET, never deleted: the environment this helper builds carries no
+	// `PYTHON*` variable it was not given, so a run that means to write simply
+	// states no refusal.
+	if (!write) env.PYTHONDONTWRITEBYTECODE = "1";
+	// Last, so a caller can state anything this helper does not know about - and
+	// an explicit `undefined` removes a key, which is how the install-script case
+	// reaches the state "the script has to default the prefix itself".
+	for (const [key, value] of Object.entries(extra)) {
+		if (value === undefined) delete env[key];
+		else env[key] = value;
+	}
+	const effective = env.PYTHONPYCACHEPREFIX;
+	if (effective !== undefined) {
+		if (!isAbsolute(effective)) {
+			throw new Error(
+				`pythonChildEnv: ${effective} is relative, so the child would resolve it against its own cwd; state an absolute prefix`,
+			);
+		}
+		if (isInsideAppBundle(effective)) {
+			throw new Error(
+				`pythonChildEnv: ${effective} is inside a bundle, which is the placement this whole suite exists to keep bytecode out of`,
+			);
+		}
+	}
+	return env;
+}
+
+/**
+ * The incident's own environment, for one deliberate spawn in this file.
+ *
+ * This is the fixture arm of the hostile-prefix case: a real interpreter handed
+ * an inherited-prefix-shaped environment that points inside a bundle, which is
+ * how 19 `.pyc` reached the operator's installed app. It exists so the case is
+ * not vacuous - a fixture nothing ever writes to proves nothing about a spawn
+ * that leaves it alone - and it is the file's ONE permitted way to name an
+ * in-bundle prefix: the target is always a `Fake.app` built under the test's tmp
+ * directory, never an installed application, and the spawn-site table below
+ * names the single call site allowed to use it.
+ */
+function hostileFixtureEnv(bundleCacheDir) {
+	return {
+		...withoutInheritedPythonEnv(),
+		PYTHONPYCACHEPREFIX: bundleCacheDir,
+	};
+}
+
+/**
+ * The property every prefix this suite asserts on has to hold.
+ *
+ * Not "the app's own cache directory": `withPythonBytecodeCache` deliberately
+ * KEEPS an operator's absolute prefix that is outside every bundle, and an
+ * agent shell already carries one - so the invariant the cases below assert is
+ * the one the module exists for. The userData assertion belongs to the unit
+ * cases above, where the input is a value the test itself wrote.
+ */
+function assertUsablePrefix(prefix, label) {
+	if (typeof prefix !== "string" || prefix.length === 0) {
+		throw new Error(`${label}: expected a prefix, got ${String(prefix)}`);
+	}
+	assert.ok(isAbsolute(prefix), `${label}: ${prefix} must be absolute`);
+	assert.ok(
+		!isInsideAppBundle(prefix),
+		`${label}: ${prefix} is inside a bundle`,
+	);
+}
+
+/** Every `.pyc` under `dir`, as paths relative to it, or `[]` if it is absent. */
+function pycFilesUnder(dir) {
+	const found = [];
+	if (!existsSync(dir)) return found;
+	const walk = (current) => {
+		for (const entry of readdirSync(current, { withFileTypes: true })) {
+			const child = join(current, entry.name);
+			if (entry.isDirectory()) walk(child);
+			else if (entry.name.endsWith(".pyc")) found.push(relative(dir, child));
+		}
+	};
+	walk(dir);
+	return found.sort();
+}
 
 /**
  * Resolve the app's own `?raw` script imports.
@@ -593,25 +794,37 @@ function runMacosInstallScript(scriptText, extraEnv) {
 	);
 	chmodSync(pythonStub, 0o755);
 
-	const env = {
-		...process.env,
-		HOME: home,
-		[VENV_PATH_ENV]: join(home, "selected-environment"),
-		PYTHON_BIN: pythonStub,
-		...extraEnv,
-	};
 	const result = spawnSync("/bin/bash", ["-x", scriptPath], {
-		env,
+		env: pythonChildEnv({
+			// The script's own pythons run under the temp home rather than under a
+			// bundle, and the refusal rides along as the app sets it. `extraEnv` is
+			// applied inside the helper, last, so a case can still unset the prefix
+			// to measure the script's own default.
+			prefix: join(home, "python-bytecode-cache"),
+			extra: {
+				HOME: home,
+				[VENV_PATH_ENV]: join(home, "selected-environment"),
+				PYTHON_BIN: pythonStub,
+				...extraEnv,
+			},
+		}),
 		encoding: "utf8",
 	});
 	return { ...result, home, appDataDir };
 }
 
 after(() => {
-	for (const dir of [PATHS.home, PATHS.userData, mainProcessBundleDir]) {
+	for (const dir of [
+		PATHS.home,
+		PATHS.userData,
+		mainProcessBundleDir,
+		bytecodeScratchRoot,
+	]) {
 		if (dir) rmSync(dir, { recursive: true, force: true });
 	}
+	// biome-ignore lint/performance/noDelete: the harness reads these for PRESENCE (`globalThis.__loSpawns.length`), and this teardown exists to make them absent rather than present-and-empty - which is also what the tests that follow assert.
 	delete globalThis.__loTestPaths;
+	// biome-ignore lint/performance/noDelete: presence, not value - see above.
 	delete globalThis.__loSpawns;
 });
 
@@ -738,8 +951,10 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 	} finally {
 		BackendServiceManager.prototype.loadMacOSEnvironment = originalLoad;
 		if (originalConfigDir === undefined)
+			// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 			delete process.env.LOCAL_OPERATOR_CONFIG_DIR;
 		else process.env.LOCAL_OPERATOR_CONFIG_DIR = originalConfigDir;
+		// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
 		else process.env.PYTHONPYCACHEPREFIX = originalPrefix;
 		for (const manager of managers) {
@@ -768,6 +983,7 @@ test("the belt: shellEnv is corrected after the rc files have been sourced", asy
 		`export PYTHONPYCACHEPREFIX="${INSIDE_BUNDLE_PREFIX}"\n`,
 	);
 	process.env.HOME = PATHS.home;
+	// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 	delete process.env.PYTHONPYCACHEPREFIX;
 
 	const manager = new BackendServiceManager();
@@ -789,6 +1005,7 @@ test("the belt: shellEnv is corrected after the rc files have been sourced", asy
 		);
 	} finally {
 		process.env.HOME = originalHome;
+		// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
 		else process.env.PYTHONPYCACHEPREFIX = originalPrefix;
 		manager.isRunning = false;
@@ -822,7 +1039,7 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 	);
 	assert.match(linuxInstallScript, /^export PYTHONPYCACHEPREFIX$/m);
 	assert.ok(
-		windowsInstallScript.includes(`if (-not $env:PYTHONPYCACHEPREFIX) {`) &&
+		windowsInstallScript.includes("if (-not $env:PYTHONPYCACHEPREFIX) {") &&
 			windowsInstallScript.includes(
 				`PYTHONPYCACHEPREFIX = "$AppDataDir\\\\${dirName}"`,
 			),
@@ -985,7 +1202,9 @@ test("an unpackaged instance hands the script its own environment, not the packa
 		);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		// biome-ignore lint/performance/noDelete: an ABSENT property is not one set to `undefined`, and the installer reads this for presence (`"resourcesPath" in process`).
 		else delete process.resourcesPath;
+		// biome-ignore lint/performance/noDelete: this teardown records "no override", and `delete` says that in one word; the fixture's getter reads the value as `?? true`, so an absent property and an `undefined` one are alike and the rule's suggested rewrite would be equivalent.
 		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
 		else globalThis.__loTestAppIsPackaged = originalPackaged;
 		rmSync(resources, { recursive: true, force: true });
@@ -1015,15 +1234,32 @@ test("an unpackaged instance hands the script its own environment, not the packa
  * rather than what the script resolves.
  */
 test("the install scripts consume the resolved final environment path", async () => {
-	const { linuxInstallScript, macosInstallScript, windowsInstallScript } = await loadInstallScripts();
-	assert.ok(macosInstallScript.includes('VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"'));
-	assert.ok(linuxInstallScript.includes('VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"'));
-	assert.ok(windowsInstallScript.includes('$VenvPath = $env:LOCAL_OPERATOR_VENV_PATH'));
-	const unset = runMacosInstallScript(macosInstallScript, { [VENV_PATH_ENV]: undefined });
+	const { linuxInstallScript, macosInstallScript, windowsInstallScript } =
+		await loadInstallScripts();
+	assert.ok(
+		macosInstallScript.includes('VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"'),
+	);
+	assert.ok(
+		linuxInstallScript.includes('VENV_PATH="$LOCAL_OPERATOR_VENV_PATH"'),
+	);
+	assert.ok(
+		windowsInstallScript.includes("$VenvPath = $env:LOCAL_OPERATOR_VENV_PATH"),
+	);
+	const unset = runMacosInstallScript(macosInstallScript, {
+		[VENV_PATH_ENV]: undefined,
+	});
 	assert.notEqual(unset.status, 0);
 	assert.match(unset.stderr, /Pass the resolved managed environment path/);
-	const selected = join(PATHS.home, "managed-python", "dev", "environments", "selected-generation");
-	const supplied = runMacosInstallScript(macosInstallScript, { [VENV_PATH_ENV]: selected });
+	const selected = join(
+		PATHS.home,
+		"managed-python",
+		"dev",
+		"environments",
+		"selected-generation",
+	);
+	const supplied = runMacosInstallScript(macosInstallScript, {
+		[VENV_PATH_ENV]: selected,
+	});
 	assert.ok(venvAssignment(supplied.stderr, selected));
 });
 
@@ -1051,9 +1287,14 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 		void installer.installEnvironment();
 		const spawned = await waitForSpawn();
 		const env = spawned.options.env;
-		assert.equal(
+		// The invariant, not "the test's temp userData": the operator's own shell may
+		// already carry an absolute, outside-bundle prefix, and this builder keeps it
+		// on purpose. What must hold whatever the caller carried is that some prefix
+		// was set, that it is not inside a bundle, and that the refusal rides with it
+		// (the "the value is the app's own when the operator has none" half is pinned
+		// by the unit cases at the top of this file).
+		assertUsablePrefix(
 			env.PYTHONPYCACHEPREFIX,
-			pythonBytecodeCacheDir(PATHS.userData),
 			"the install script's own python must not write into the bundle",
 		);
 		assert.equal(env.ELECTRON_RESOURCE_PATH, resources);
@@ -1080,6 +1321,7 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 		);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
+		// biome-ignore lint/performance/noDelete: an ABSENT property is not one set to `undefined`, and the installer reads this for presence (`"resourcesPath" in process`).
 		else delete process.resourcesPath;
 		rmSync(resources, { recursive: true, force: true });
 		// `install()` writes its script into the OS temp directory; reclaim it.
@@ -1169,10 +1411,26 @@ test("the update service's python probe runs with the guards in the child's own 
 			"0.54.0",
 			"the probe's output must still parse",
 		);
+		// The invariant rather than equality with the test's temp userData: the
+		// guard is that the child carries a usable prefix and the refusal, and a
+		// caller whose own shell already exports an absolute, outside-bundle prefix
+		// is a case the module keeps on purpose - so equality here made this case
+		// measure the shell it was run from (measured: green on CI, red in an agent
+		// shell, on the operator's machine).
+		//
+		// Split at the LAST space rather than on every one: a real macOS prefix
+		// carries one (`.../Application Support/Local Operator/...`), so a split on
+		// every space would read the prefix's second word as the refusal.
+		const report = readFileSync(envReport, "utf8");
+		const boundary = report.lastIndexOf(" ");
+		assertUsablePrefix(
+			report.slice(0, boundary),
+			"the child's own environment must carry a prefix outside every bundle",
+		);
 		assert.equal(
-			readFileSync(envReport, "utf8"),
-			`${pythonBytecodeCacheDir(PATHS.userData)} 1`,
-			"the child's own environment must carry both guards: the prefix, pointing at the cache rather than into a bundle, and the refusal",
+			report.slice(boundary + 1),
+			"1",
+			"and the refusal beside it: the two are one guarantee, and the child is where it is observed",
 		);
 	} finally {
 		if (interval) clearInterval(interval);
@@ -1366,9 +1624,19 @@ test("a real CPython imports the guard and stops writing bytecode", (t) => {
 	// The mechanism, measured rather than reasoned about: `site` imports
 	// `sitecustomize` from a directory on `sys.path`, so a real interpreter run
 	// with the guard's own bytes on `PYTHONPATH` reports `sys.dont_write_bytecode`
-	// True and leaves no `__pycache__` beside the module it imports. The control
-	// run - the same import without the guard - is asserted beside it, because a
-	// test that cannot produce the write cannot prove it was prevented.
+	// True and leaves no cache for the module it imports. The control run - the
+	// same import without the guard - is asserted beside it, because a test that
+	// cannot produce the write cannot prove it was prevented.
+	//
+	// The two runs differ in exactly ONE thing, the guard on `PYTHONPATH`, and
+	// each states the whole environment it measures through `pythonChildEnv`: its
+	// own scratch prefix, and `PYTHONDONTWRITEBYTECODE` absent in both so that the
+	// refusal under test is the guard's rather than an inherited one. Spreading
+	// `process.env` here was the difference between a green suite on CI and a red
+	// one in an agent shell: measured on this machine, the inherited
+	// `PYTHONDONTWRITEBYTECODE=1` made the control report `True` (so it could not
+	// write) and the inherited `PYTHONPYCACHEPREFIX` decided where the guarded run
+	// would have written - which in the field was inside the installed app.
 	const scratch = mkdtempSync(join(tmpdir(), "lo-guard-real-"));
 	const guardDir = join(scratch, "site-packages");
 	const moduleDir = join(scratch, "modules");
@@ -1380,46 +1648,178 @@ test("a real CPython imports the guard and stops writing bytecode", (t) => {
 	);
 	writeFileSync(join(moduleDir, "lo_probe_module.py"), "VALUE = 1\n");
 
-	const run = (extraEnv) =>
-		spawnSync(
-			"python3",
-			[
-				"-c",
-				`import sys; sys.path.insert(0, ${JSON.stringify(moduleDir)}); import lo_probe_module; print(sys.dont_write_bytecode)`,
-			],
-			{ encoding: "utf8", env: { ...process.env, ...extraEnv } },
-		);
-	const cacheDir = join(moduleDir, "__pycache__");
+	const probe = `import sys; sys.path.insert(0, ${JSON.stringify(moduleDir)}); import lo_probe_module; print(sys.dont_write_bytecode)`;
+	// One call site per arm, so the spawn-site table below can name each one and
+	// the environment it is handed.
+	const control = spawnSync("python3", ["-c", probe], {
+		encoding: "utf8",
+		env: pythonChildEnv({
+			prefix: join(scratch, "control-cache"),
+			write: true,
+		}),
+	});
+	if (control.error) {
+		t.skip(`no python3 on PATH to measure with: ${control.error.message}`);
+		return;
+	}
 	try {
-		const control = run({ PYTHONPATH: "" });
+		assert.equal(
+			control.stdout.trim(),
+			"False",
+			`the control run must be able to write: ${control.stderr}`,
+		);
+		// The write has to be FINDABLE, or the guarded arm below would prove only
+		// that a directory nobody wrote to has nothing in it. Under an explicit
+		// prefix CPython mirrors the source path rather than writing
+		// `modules/__pycache__`, so the assertion is "the control's bytecode landed
+		// under the prefix this run chose", whichever shape the running interpreter
+		// uses.
+		const controlCache = pycFilesUnder(join(scratch, "control-cache"));
+		assert.ok(
+			controlCache.some((file) => file.includes("lo_probe_module")),
+			`the control run must have written its bytecode under the prefix it was given, not somewhere else: ${JSON.stringify(controlCache)}`,
+		);
+
+		const guarded = spawnSync("python3", ["-c", probe], {
+			encoding: "utf8",
+			env: pythonChildEnv({
+				prefix: join(scratch, "guarded-cache"),
+				write: true,
+				// The ONE difference between the arms.
+				extra: { PYTHONPATH: guardDir },
+			}),
+		});
+		assert.equal(
+			guarded.stdout.trim(),
+			"True",
+			`the guard must be imported by site: ${guarded.stderr}`,
+		);
+		// Named for the module rather than "the prefix is empty": a fresh prefix
+		// legitimately receives the stdlib caches the interpreter writes before
+		// `site` imports `sitecustomize` (documented in the guard's own source), so
+		// the property is that nothing cached THIS module anywhere.
+		assert.deepEqual(
+			pycFilesUnder(join(scratch, "guarded-cache")).filter((file) =>
+				file.includes("lo_probe_module"),
+			),
+			[],
+			"a process that imports the guard must write no bytecode for the module it imports, not merely somewhere else",
+		);
+		assert.equal(
+			existsSync(join(moduleDir, "__pycache__")),
+			false,
+			"and nothing beside the source either",
+		);
+	} finally {
+		rmSync(scratch, { recursive: true, force: true });
+	}
+});
+
+test("a hostile PYTHONPYCACHEPREFIX cannot make this suite write into an app bundle", (t) => {
+	// The field incident, as a test. On 2026-09-15 the ambient
+	// `PYTHONPYCACHEPREFIX` on the operator's machine pointed inside the installed
+	// app - `.../Local Operator.app/Contents/Resources/python_aarch64/pycache` -
+	// and a control run from the case above spread it into the child, which wrote
+	// 19 `.pyc` into the app. `codesign` then reported each as `file added:`, the
+	// start-up heal could not recognise that layout, and the app told the operator
+	// its copy "needs replacing".
+	//
+	// Two arms, and the first is what keeps the second honest: the fixture must be
+	// a live write target, so the case asserts that a real interpreter pointed at
+	// it writes there, then that this suite's own spawn environment leaves it
+	// untouched. The fixture is built under this run's tmp directory ALWAYS: no
+	// case may name `/Applications/Local Operator.app`, where a `.pyc` is a real
+	// user's broken install rather than an assertion.
+	const fake = mkdtempSync(join(tmpdir(), "lo-hostile-prefix-"));
+	const app = join(fake, "Fake.app");
+	const bundleCache = join(
+		app,
+		"Contents",
+		"Resources",
+		"python_aarch64",
+		"pycache",
+	);
+	const moduleDir = join(fake, "modules");
+	mkdirSync(bundleCache, { recursive: true });
+	mkdirSync(moduleDir, { recursive: true });
+	writeFileSync(join(moduleDir, "lo_probe_module.py"), "VALUE = 1\n");
+
+	const probe = `import sys; sys.path.insert(0, ${JSON.stringify(moduleDir)}); import lo_probe_module; print(sys.pycache_prefix or '')`;
+
+	// The ambient environment the incident ran under: a prefix inside the bundle,
+	// and no refusal. Set on the real `process.env` rather than handed in as a
+	// base, because inheriting it is the mechanism under test.
+	const originalPrefix = process.env.PYTHONPYCACHEPREFIX;
+	const originalRefusal = process.env.PYTHONDONTWRITEBYTECODE;
+	try {
+		process.env.PYTHONPYCACHEPREFIX = bundleCache;
+		// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
+		delete process.env.PYTHONDONTWRITEBYTECODE;
+
+		const control = spawnSync("python3", ["-c", probe], {
+			encoding: "utf8",
+			env: hostileFixtureEnv(bundleCache),
+		});
 		if (control.error) {
 			t.skip(`no python3 on PATH to measure with: ${control.error.message}`);
 			return;
 		}
 		assert.equal(
 			control.stdout.trim(),
-			"False",
-			`the control run must be able to write: ${control.stderr}`,
+			bundleCache,
+			`the fixture arm must resolve its prefix to the bundle, or it is not the incident's shape: ${control.stderr}`,
 		);
+		const written = pycFilesUnder(app);
 		assert.ok(
-			existsSync(cacheDir),
-			"the control run must have produced a __pycache__",
+			written.length > 0,
+			`the fixture must be a live write target, or the arm below proves nothing: status=${control.status} stderr=${control.stderr}`,
+		);
+		// The mirror layout, which is what made the heal refuse: the prefix
+		// directory, then the absolute source path minus its root - no
+		// `__pycache__` anywhere, which is why `isPythonBytecodePath` had to stop
+		// requiring one.
+		assert.ok(
+			written.some((file) => /lo_probe_module\.cpython-3\d+\.pyc$/.test(file)),
+			`the write must land in the mirrored cache tree the incident produced: ${JSON.stringify(written)}`,
 		);
 
-		rmSync(cacheDir, { recursive: true, force: true });
-		const guarded = run({ PYTHONPATH: guardDir });
-		assert.equal(
-			guarded.stdout.trim(),
-			"True",
-			`the guard must be imported by site: ${guarded.stderr}`,
+		// Empty the fixture, then run the SAME import through this file's own spawn
+		// environment while the hostile value is still ambient: exactly the two
+		// conditions the field had, and the app must be untouched.
+		rmSync(app, { recursive: true, force: true });
+		mkdirSync(bundleCache, { recursive: true });
+
+		const guarded = spawnSync("python3", ["-c", probe], {
+			encoding: "utf8",
+			env: pythonChildEnv(),
+		});
+		assert.equal(guarded.status, 0, `the spawn must run: ${guarded.stderr}`);
+		// Asserted from the child's own report rather than from the object we handed
+		// it: the value that matters is the one CPython resolved.
+		const childPrefix = guarded.stdout.trim();
+		assertUsablePrefix(
+			childPrefix,
+			"the suite's own spawn environment, as the child resolved it",
 		);
-		assert.equal(
-			existsSync(cacheDir),
-			false,
-			"a process that imports the guard must write no bytecode at all, not merely somewhere else",
+		assert.notEqual(
+			childPrefix,
+			bundleCache,
+			"an inherited in-bundle prefix must not survive into a spawn's environment",
+		);
+		assert.deepEqual(
+			pycFilesUnder(app),
+			[],
+			`the suite's own spawn environment must leave the bundle untouched: ${JSON.stringify(pycFilesUnder(app))}`,
 		);
 	} finally {
-		rmSync(scratch, { recursive: true, force: true });
+		// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
+		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
+		else process.env.PYTHONPYCACHEPREFIX = originalPrefix;
+		if (originalRefusal === undefined)
+			// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
+			delete process.env.PYTHONDONTWRITEBYTECODE;
+		else process.env.PYTHONDONTWRITEBYTECODE = originalRefusal;
+		rmSync(fake, { recursive: true, force: true });
 	}
 });
 
@@ -1520,9 +1920,9 @@ function mainProcessSources() {
  * else is skipped — which is also why the receiver is checked rather than the
  * name alone.
  */
-function findChildProcessSites() {
+function findChildProcessSites(files = mainProcessSources()) {
 	const sites = [];
-	for (const file of mainProcessSources()) {
+	for (const file of files) {
 		const raw = readFileSync(file, "utf8");
 		const source = blankComments(raw);
 		const imported = new Set();
@@ -1563,7 +1963,10 @@ function findChildProcessSites() {
 			let end = source.indexOf("(", site.at);
 			for (; end < source.length; end += 1) {
 				if (source[end] === "(") depth += 1;
-				else if (source[end] === ")" && (depth -= 1) === 0) break;
+				else if (source[end] === ")") {
+					depth -= 1;
+					if (depth === 0) break;
+				}
 			}
 			sites.push({
 				file: relative(process.cwd(), file),
@@ -1624,7 +2027,10 @@ function passThrough(file, name, index, why) {
  */
 const SPAWN_SITES = [
 	runsPython(
-		"src/main/backend/managed-python.ts", "spawn", 1, /env:\s*isolated/,
+		"src/main/backend/managed-python.ts",
+		"spawn",
+		1,
+		/env:\s*isolated/,
 		"the owned backend-preparation smoke child; its env is the blocked allowlist bound to withPythonBytecodeCache",
 		/const isolated = withPythonBytecodeCache\(/,
 	),
@@ -1810,6 +2216,122 @@ test("every child-process spawn site is enumerated, and the python ones carry th
 	}
 });
 
+/**
+ * The spawn sites in THIS file, and the environment each one is handed.
+ *
+ * Why the harness needs the same table as the tree it tests: on 2026-09-15 a
+ * case in this file spread `process.env` into a real interpreter, the ambient
+ * `PYTHONPYCACHEPREFIX` pointed inside the operator's installed app, and the
+ * child wrote 19 `.pyc` into `/Applications/Local Operator.app`, which macOS then
+ * reported as `file added:` violations. The suite has to be held to the rule it
+ * asserts of the app, and a new spawn here is the site most likely to break it
+ * silently - which is why an unlisted site fails rather than merely being noted.
+ *
+ * Each row states either the command it must still start, or the environment it
+ * must state itself, or neither (a site whose call text is asserted to carry no
+ * `env:` at all). The failure mode this table is about is a python spawn that
+ * inherits: an `env: { ...process.env }` here would be green on CI, where the
+ * ambient environment carries no `PYTHON*` variables at all, and destructive in
+ * an agent shell, where it does.
+ */
+const SUITE_PATH = relative(process.cwd(), fileURLToPath(import.meta.url));
+
+const SUITE_SPAWN_SITES = [
+	{
+		name: "spawnSync",
+		index: 1,
+		command: /\/bin\/bash/,
+		env: /env:\s*pythonChildEnv\(/,
+		why: "the shipped macOS install script, run under a real bash with the prefix and the refusal stated by pythonChildEnv; the script's own interpreter is a stub, and a case that wants the script's own default passes PYTHONPYCACHEPREFIX: undefined through the helper's extras",
+	},
+	{
+		name: "spawnSync",
+		index: 2,
+		command: /\/bin\/ls/,
+		env: null,
+		why: "`ls -led` reads one path's access-control entries; it is not an interpreter and the row asserts the call carries no `env:` to inherit",
+	},
+	{
+		name: "spawnSync",
+		index: 3,
+		command: /python3/,
+		env: /env:\s*pythonChildEnv\(/,
+		why: "the real-CPython control run: writes enabled, and its cache prefix is this test's own scratch directory",
+	},
+	{
+		name: "spawnSync",
+		index: 4,
+		command: /python3/,
+		env: /env:\s*pythonChildEnv\(/,
+		why: "the same import with the guard on PYTHONPATH and the refusal still absent, so the guard is the only thing preventing the write",
+	},
+	{
+		name: "spawnSync",
+		index: 5,
+		command: /python3/,
+		env: /env:\s*hostileFixtureEnv\(/,
+		why: "THE ONE DELIBERATE EXCEPTION: the fixture arm of the hostile-prefix case, which hands a real interpreter an in-bundle prefix so the case can prove the fixture is a live write target. Its target is always a Fake.app under this run's tmp directory, and the row exists so that a second spawn of this kind cannot appear unnoticed",
+	},
+	{
+		name: "spawnSync",
+		index: 6,
+		command: /python3/,
+		env: /env:\s*pythonChildEnv\(/,
+		why: "the guarded arm of the same case: an ambient in-bundle prefix is stripped, and the bundle has to come back untouched",
+	},
+];
+
+test("every spawn in this suite states its own python environment", () => {
+	const sites = findChildProcessSites([fileURLToPath(import.meta.url)]);
+	assert.ok(
+		sites.length > 0,
+		"the scan found no child-process call sites in this file at all, which means the scan is broken rather than that the suite starts nothing",
+	);
+
+	const key = (site) => `${site.name}#${site.index}`;
+	const rows = new Map(SUITE_SPAWN_SITES.map((row) => [key(row), row]));
+	for (const site of sites) {
+		const id = key(site);
+		assert.ok(
+			rows.has(id),
+			`${SUITE_PATH}:${site.line} ${site.name} #${site.index} is not in SUITE_SPAWN_SITES: ${site.text.replace(/\s+/g, " ").trim().slice(0, 120)}. A new spawn in the suite most likely inherits PYTHONPYCACHEPREFIX from the shell it runs in, which is how this file wrote bytecode into the operator's installed app - add a row stating its environment.`,
+		);
+	}
+	const stale = SUITE_SPAWN_SITES.filter(
+		(row) => !sites.some((site) => key(site) === key(row)),
+	);
+	assert.deepEqual(
+		stale.map(key),
+		[],
+		"SUITE_SPAWN_SITES names a call site this file no longer has; remove the row with the call",
+	);
+
+	for (const site of sites) {
+		const row = rows.get(key(site));
+		const where = `${SUITE_PATH}:${site.line} ${site.name} #${site.index}`;
+		if (row.command) {
+			assert.match(
+				site.text,
+				row.command,
+				`${where} must still start the tool its row names (${row.why})`,
+			);
+		}
+		if (row.env) {
+			assert.match(
+				site.text,
+				row.env,
+				`${where} must state its own environment rather than inheriting one (${row.why})`,
+			);
+		} else {
+			assert.doesNotMatch(
+				site.text,
+				/env:/,
+				`${where} names no environment in its row, so it must pass none: an inherited environment here is the mechanism under test (${row.why})`,
+			);
+		}
+	}
+});
+
 // ---------------------------------------------------------------------------
 // Which interpreter environment an instance uses
 
@@ -1823,7 +2345,10 @@ test("a packaged and an unpackaged instance never share a venv", () => {
 			// Nothing is published in this fixture, so both answers are the sentinel -
 			// and it is spelled so a reader cannot mistake it for a directory
 			// (review N3).
-			assert.match(packaged, /managed-python[/]packaged[/]no-environment-selected$/);
+			assert.match(
+				packaged,
+				/managed-python[/]packaged[/]no-environment-selected$/,
+			);
 			assert.match(dev, /managed-python[/]dev[/]no-environment-selected$/);
 			assert.ok(isUnpreparedVenvPath(packaged));
 			assert.ok(isUnpreparedVenvPath(dev));
@@ -1863,7 +2388,7 @@ test("the bundle a venv's interpreter resolves its stdlib from is read from pyve
 		// tree: same tail, no bundle, nothing to repair from here.
 		writeFileSync(
 			join(venv, "pyvenv.cfg"),
-			`home = /Users/someone/local-operator/resources/python_aarch64/bin\n`,
+			"home = /Users/someone/local-operator/resources/python_aarch64/bin\n",
 		);
 		assert.deepEqual(venvInterpreter(venv), { kind: "none" });
 
@@ -1896,7 +2421,16 @@ test("the bundle a venv's interpreter resolves its stdlib from is read from pyve
  */
 test("constructing the macOS installer does not edit a legacy venv", async () => {
 	const { BackendInstaller } = await loadMainProcess();
-	const legacy = join(PATHS.home, "Library", "Application Support", "Local Operator", "local-operator-venv", "lib", "python3.12", "site-packages");
+	const legacy = join(
+		PATHS.home,
+		"Library",
+		"Application Support",
+		"Local Operator",
+		"local-operator-venv",
+		"lib",
+		"python3.12",
+		"site-packages",
+	);
 	mkdirSync(legacy, { recursive: true });
 	const userGuard = join(legacy, "sitecustomize.py");
 	writeFileSync(userGuard, "# unknown user work\n");
@@ -1916,7 +2450,12 @@ test("the pre-split environments are reported from the paths that actually exist
 	// for the one state the function exists to describe.
 	const home = mkdtempSync(join(tmpdir(), "lo-legacy-venv-"));
 	t.after(() => rmSync(home, { recursive: true, force: true }));
-	const support = join(home, "Library", "Application Support", "Local Operator");
+	const support = join(
+		home,
+		"Library",
+		"Application Support",
+		"Local Operator",
+	);
 	const legacy = join(support, "local-operator-venv");
 	mkdirSync(join(legacy, "bin"), { recursive: true });
 	/*
@@ -1931,12 +2470,15 @@ test("the pre-split environments are reported from the paths that actually exist
 	 * what makes it "bundled" rather than "missing"; nothing is executed.
 	 */
 	const bundle = join(home, "Fixture.app");
-	const bundledBin = join(bundle, "Contents", "Resources", "python_aarch64", "bin");
-	mkdirSync(bundledBin, { recursive: true });
-	writeFileSync(
-		join(legacy, "pyvenv.cfg"),
-		`home = ${bundledBin}\n`,
+	const bundledBin = join(
+		bundle,
+		"Contents",
+		"Resources",
+		"python_aarch64",
+		"bin",
 	);
+	mkdirSync(bundledBin, { recursive: true });
+	writeFileSync(join(legacy, "pyvenv.cfg"), `home = ${bundledBin}\n`);
 
 	// The input the old report used, for the record: neither answer resolves
 	// anything, which is the whole bug.
@@ -1972,7 +2514,10 @@ test("the pre-split environments are reported from the paths that actually exist
 	);
 	const afterReplacement = legacyEnvironmentReport(support);
 	assert.equal(afterReplacement.length, 1);
-	assert.match(afterReplacement[0], /names an interpreter bundle that is not on disk/);
+	assert.match(
+		afterReplacement[0],
+		/names an interpreter bundle that is not on disk/,
+	);
 	assert.ok(afterReplacement[0].includes(gone));
 
 	// And a machine with no pre-split environment says nothing at all.
@@ -1988,7 +2533,9 @@ test("the setup failure dialog says what happened before what was recorded", asy
 	const support = "/Users/someone/Library/Application Support/Local Operator";
 
 	const full = backendSetupFailureDetail(
-		new Error("ditto: /Users/x/Library/Application Support/Local Operator/managed-python/packaged/runtimes/.preparing-a/b: No space left on device"),
+		new Error(
+			"ditto: /Users/x/Library/Application Support/Local Operator/managed-python/packaged/runtimes/.preparing-a/b: No space left on device",
+		),
 		support,
 	);
 	assert.match(full, /^What happened: This Mac ran out of disk space/);
@@ -1999,7 +2546,10 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		new Error("Another Local Operator instance is preparing its backend"),
 		support,
 	);
-	assert.match(concurrent, /^What happened: Another copy of Local Operator is setting up/);
+	assert.match(
+		concurrent,
+		/^What happened: Another copy of Local Operator is setting up/,
+	);
 
 	// Review N6: the two halves of the same bucket, so the correction is targeted
 	// rather than a phrase dropped from a pattern. A backend that really did install
@@ -2014,7 +2564,10 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		),
 		support,
 	);
-	assert.match(smoke, /^What happened: The backend was installed but did not start correctly/);
+	assert.match(
+		smoke,
+		/^What happened: The backend was installed but did not start correctly/,
+	);
 
 	const preparation = backendSetupFailureDetail(
 		new Error(
@@ -2027,7 +2580,10 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		/^What happened: The backend was installed/,
 		"nothing was installed, so the copy must not say it was",
 	);
-	assert.match(preparation, /^What happened: The backend could not be set up on this Mac/);
+	assert.match(
+		preparation,
+		/^What happened: The backend could not be set up on this Mac/,
+	);
 	assert.match(
 		preparation,
 		/The app recorded: Backend preparation did not complete/,
@@ -2040,7 +2596,10 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		support,
 	);
 	assert.doesNotMatch(internal.split("\n")[0], /escaped its managed root/);
-	assert.match(internal, /The app recorded: Runtime directory escaped its managed root/);
+	assert.match(
+		internal,
+		/The app recorded: Runtime directory escaped its managed root/,
+	);
 	assert.doesNotMatch(internal, /\.app/);
 });
 
@@ -2052,8 +2611,13 @@ test("the macOS installer no longer claims to have chosen a Python directory", a
 	const { macosInstallScript } = await loadInstallScripts();
 	assert.doesNotMatch(macosInstallScript, /PYTHON_DIR_NAME/);
 	assert.doesNotMatch(macosInstallScript, /using Python directory name/);
-	const run = runMacosInstallScript(macosInstallScript, { PYTHON_BIN: undefined });
-	assert.doesNotMatch(`${run.stdout}${run.stderr}`, /Detected CPU architecture/);
+	const run = runMacosInstallScript(macosInstallScript, {
+		PYTHON_BIN: undefined,
+	});
+	assert.doesNotMatch(
+		`${run.stdout}${run.stderr}`,
+		/Detected CPU architecture/,
+	);
 	// The refusal it does make is untouched: the caller must say which interpreter.
 	assert.equal(run.status, 1);
 	assert.match(run.stderr, /Pass an external prepared Python executable/);
