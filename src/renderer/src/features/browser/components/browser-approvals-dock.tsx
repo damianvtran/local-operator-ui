@@ -324,7 +324,16 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 											{row.request.authority}
 										</span>
 										{/* WHO is asking, on the row rather than only inside the card it
-										    expands into (UX round 1, U2). */}
+										    expands into (UX round 1, U2). At the dock's 320px width this
+										    is the field that yields, and the floor it does not have is
+										    DELIBERATE rather than forgotten (design round 3, D21): a
+										    floor can only be paid for out of the authority, whose
+										    unshrinkable width is D14's invariant - two rows for one host
+										    must not read identically - or out of the remaining time,
+										    which is the field a durable decision is made on. The full
+										    requester is in the card this row expands into, so the state
+										    is legible rather than lost; giving it a floor is a layout
+										    trade for the design round to settle, not a one-line change. */}
 										<span className="min-w-0 grow truncate text-meta text-ink-muted">
 											{requesterLabel(
 												row.request.requesterSessionId,
