@@ -27,8 +27,8 @@
  *   spelling, and `FleetAgentsUnread` is its block-level half. `FleetNeighbours`
  *   is the section in SITU, with the sessions section directly above it, which is
  *   the only frame that can answer "does this belong to this panel". `FleetNarrow`
- *   is 720px, and the two-clause note at that width is what makes the separator's
- *   wrap safe or not.
+ *   is 720px, and `FleetNoteWraps` is the one frame whose note WRAPS, which is
+ *   where the separator's fix is judged from pixels rather than from a test.
  * - `RemoteHost` is the label that keeps the panel honest when the backend is
  *   not on this machine: the host facts describe the machine the app is
  *   CONNECTED TO, which is why section 2's meta says exactly that.
@@ -575,6 +575,36 @@ export const FleetNarrow: Story = {
 			fleet_subagents_running: 4,
 			fleet_subagents_queued: 3,
 			fleet_trajectories: 6,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The note at the width where it WRAPS — the frame D5's fix never had.
+ *
+ * The separator is non-breaking on both sides so a clause boundary cannot leave
+ * the middot ending a line, and until this story the only proof of it was a unit
+ * test: every other frame's note is short enough to sit on one line, because the
+ * clause that used to force a wrap (`· U did not report`) is exactly the one
+ * D2/D6 removed (QA round 2, Q6). This fixture is the shape that wraps at the
+ * `panels-info` capture width — a busy host, work running and more of it waiting
+ * — so the wrap is photographed and the separator's behaviour at a break is
+ * judged from a picture rather than inferred from the code.
+ */
+export const FleetNoteWraps: Story = {
+	args: {
+		...base,
+		data: fleet({
+			live: 42,
+			total: 42,
+			busy: 41,
+			subagents_reporting: 42,
+			fleet_session_trajectories: 40,
+			fleet_subagents_running: 163,
+			fleet_subagents_queued: 12,
+			fleet_trajectories: 203,
 		}),
 		frontend,
 	},

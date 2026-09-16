@@ -1511,6 +1511,9 @@ export const STORIES = [
 	/* 720px, and the state whose note carries two clauses - the width and the
 	   wrap the other frames cannot show. */
 	["panels-info--fleet-narrow", 720, 1040],
+	/* The one frame whose note WRAPS at the capture width: what D5's non-breaking
+	   separator is for, photographed rather than only asserted. */
+	["panels-info--fleet-note-wraps", 1140, 1040],
 	/* The sixth refusal: a probe that FAILED is an unknown, never a zero - the
 	   field-level spelling, and beside it the block-level one. */
 	["panels-info--fleet-probes-failed", 1140, 1040],
