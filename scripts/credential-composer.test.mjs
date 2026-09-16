@@ -2067,11 +2067,14 @@ test("a real keystroke that moves a cancelled token hands it to the dispatcher (
 	 * command text; `frame.sent.length === 0` is the property that says the secret
 	 * did not travel as prose.
 	 *
-	 * What this case cannot reach: the app-level re-sync that fires the capture's
-	 * arm on a real keystroke (the mechanism Q16 fixed — an arm used to null the
-	 * record). The harness's edit path does not produce it, which is exactly why the
-	 * suite was green while the app sent; QA's re-run on this head is the app-level
-	 * half.
+	 * WHAT THIS CASE DOES NOT PIN, stated because review round 11 measured it: the
+	 * two mutations of the record's lifetime that Q16 is about — restoring the
+	 * arm-time clear, and testing the record's run rather than its word — leave this
+	 * case green, because the harness's edit path never produces the buffer state the
+	 * app reaches (a masked citation, or the token with its trailing space gone). The
+	 * harness proves the gesture survives an edit through the composer's own
+	 * handlers; the app-level half is QA's re-run on this head, and the record's
+	 * lifetime is keyed on the token's WORD for that reason (`message-input.tsx`).
 	 */
 	const ran = [];
 	const frame = await mount({
