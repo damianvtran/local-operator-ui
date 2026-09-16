@@ -79,6 +79,21 @@ export type DisclosureProps = {
 	 */
 	triggerClassName?: string;
 	/**
+	 * Extra classes on the CHEVRON SLOT, for a caller whose mark is not a trace chip.
+	 *
+	 * The slot is painted `ink-disabled` below, which is right for the trace
+	 * hierarchy this primitive was built for: a chevron beside a message is chrome.
+	 * It is wrong for a caller whose chevron is the surface's ONLY affordance, and
+	 * measurably so rather than by taste — `ink-disabled` is the one role exempt
+	 * from every contrast floor (a disabled control that meets 4.5:1 does not read
+	 * as disabled), so a section header's chevron measured 2.70:1 dark / 2.80:1
+	 * light against this repo's 3:1 non-text floor for a mark that carries state
+	 * (design round 1, D1). The prop exists so that caller can fix its own mark
+	 * WITHOUT repainting the trace hierarchy's, which is what a change to the line
+	 * below would have done.
+	 */
+	chevronClassName?: string;
+	/**
 	 * Where the trigger's marks sit against a wrapping summary. Default
 	 * `center`; `firstLine` pins them to the summary's first line (see
 	 * `FIRST_LINE_MARK`).
@@ -203,6 +218,7 @@ export const Disclosure = ({
 	chevron = "leading",
 	className,
 	triggerClassName,
+	chevronClassName,
 	summaryAlign = "center",
 	rowClassName,
 	disabled = false,
@@ -401,7 +417,7 @@ export const Disclosure = ({
 				<button
 					type="button"
 					aria-expanded={isOpen}
-					aria-controls={contentId}
+					aria-controls={children != null ? contentId : undefined}
 					aria-label={triggerLabel}
 					ref={buttonRef}
 					onMouseDown={onMouseDown}
@@ -417,15 +433,34 @@ export const Disclosure = ({
 					)}
 				>
 					{chevron === "leading" && (
-						<span className={cn("flex text-ink-disabled", mark)}>{glyph}</span>
+						<span
+							className={cn("flex text-ink-disabled", mark, chevronClassName)}
+						>
+							{glyph}
+						</span>
 					)}
 					<span className="min-w-0 flex-1">{summary}</span>
 					{chevron === "trailing" && (
-						<span className={cn("flex text-ink-disabled", mark)}>{glyph}</span>
+						<span
+							className={cn("flex text-ink-disabled", mark, chevronClassName)}
+						>
+							{glyph}
+						</span>
 					)}
 				</button>
 			</Tooltip>
-			{isOpen && (
+			{/*
+			 * NO CONTENT BOX WITHOUT CONTENT, and that is a fix rather than a
+			 * tidiness pass. `isOpen` alone used to render the box: a caller with
+			 * nothing to disclose (a section header — its rows are the SECTION's, one
+			 * level out) then announced `aria-controls` at a `display: none` element
+			 * that holds nothing, so all 18 headers told assistive tech they
+			 * controlled a region that does not exist (design round 1, D8). The
+			 * empty `mt-1 pb-1` box also cost every open header 8px, which the one
+			 * such caller patched at its own call site with `[&>div:empty]:hidden`.
+			 * Gating both the box and the attribute on `children` removes the false
+			 * relationship, the 8px, and the workaround. */}
+			{isOpen && children != null && (
 				<div
 					id={contentId}
 					className={cn(
