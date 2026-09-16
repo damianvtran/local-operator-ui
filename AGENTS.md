@@ -374,12 +374,17 @@ written (`applied=evicted`) rather than being silent, because a bound nobody can
 is the same class of silence the park line removed. A park that reaches a renderer
 says so (`applied=delivered`), which is what lets the log answer "did the
 conversation I parked ever arrive?" — the question a park without an ending left
-open. AN ENTRY LEAVES THE QUEUE WHEN ITS SEND HAPPENS, not when a window is created:
-a window closed before its renderer finished loading leaves the conversation queued
-(`applied=left+waiting`) for the next window rather than taking it away silently, and
-anything still waiting when the process quits is written as `trigger=app-quit ...
-applied=dropped+quit`. All of those names come from the app's own `[window-raise]`
-line, and `scripts/window-mode.test.mjs` holds the shapes.
+open. AN ENTRY LEAVES THE QUEUE WHEN IT HAS ACTUALLY REACHED A RENDERER, not when a
+window is created — and that includes the entry that becomes the next window's
+INITIAL SESSION, which is CLAIMED at creation and released when that window's first
+frame has loaded, because a window that dies before its first paint used to destroy
+that one conversation while every other entry survived (review round 4, MAJOR-1). A
+window closed before its renderer finishes loading therefore leaves the conversation
+queued (`applied=left+waiting`, one line PER entry, each with its own requester) for
+the next window rather than taking it away silently, and anything still waiting when
+the process quits is written as `trigger=app-quit ... applied=dropped+quit`. All of
+those names come from the app's own `[window-raise]` line, and
+`scripts/window-mode.test.mjs` holds the shapes.
 
 THE PARK IS A QUEUE, AND THE CREATOR OF A WINDOW ALWAYS WINS IT. Every parked
 request waits, and the next window drains them in ARRIVAL ORDER: the first becomes
