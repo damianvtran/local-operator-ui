@@ -2279,32 +2279,69 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `includes("")` is true for EVERY draft, so an unguarded test would make any
 		 * draft the record's.
 		 */
+		/** The word of the record that owns a token in this draft, or null. */
+		const recordWord = useCallback((draft: string): string | null => {
+			const cancelled = cancelledToken.current;
+			if (
+				cancelled !== null &&
+				cancelled.text.trim().length > 0 &&
+				draft.includes(cancelled.text.trim())
+			) {
+				return cancelled.text.trim();
+			}
+			const pick = pickedToken.current;
+			if (
+				pick !== null &&
+				pick.trim().length > 0 &&
+				draft.includes(pick.trim())
+			) {
+				return pick.trim();
+			}
+			return null;
+		}, []);
 		const gestureFor = useCallback(
-			(draft: string): "send" | "pick" | "typed" => {
-				const cancelled = cancelledToken.current;
-				if (holdsCancelledToken(draft, cancelled)) return "send";
-				const cancelOwned =
-					cancelled !== null &&
-					cancelled.text.trim().length > 0 &&
-					draft.includes(cancelled.text.trim());
-				const pick = pickedToken.current;
-				const pickOwned =
-					pick !== null &&
-					pick.trim().length > 0 &&
-					draft.includes(pick.trim());
-				return cancelOwned || pickOwned ? "pick" : "typed";
-			},
-			[],
+			(draft: string): "send" | "pick" | "typed" =>
+				holdsCancelledToken(draft, cancelledToken.current)
+					? "send"
+					: recordWord(draft) === null
+						? "typed"
+						: "pick",
+			[recordWord],
 		);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
 				const gesture = gestureFor(draft);
 				if (gesture === "send") return { kind: "send" };
-				return gesture === "pick"
-					? planFor(draft, at, "pick")
-					: planFor(draft, at);
+				const plan =
+					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
+				if (gesture !== "pick" || plan.kind !== "send") return plan;
+				/*
+				 * THE CARET IS NOT THE ONLY KEY TO A TOKEN THE BOX WROTE (QA round 10).
+				 *
+				 * `slashTokenSpan` claims the token at the CARET, and `activeSlash`'s claim
+				 * branch returns the running candidate — `null` — when the caret sits exactly
+				 * AT the claiming token's slash (`column > index` is false at equality). The
+				 * caret is left there by the ordinary gesture of typing a prefix in front of
+				 * the token, and the planner then answered `send` three lines before its own
+				 * gesture, span and pick rules were consulted: prose, sent, secret in the
+				 * transcript. So when the caret-led plan finds nothing AND the box recorded
+				 * the gesture itself, the fallback points the planner at the token's own
+				 * position — a positional fact the box holds, which the caret could not
+				 * supply.
+				 *
+				 * WHAT DECIDES IS THE RECORD, which is why the typed rule is untouched: a
+				 * merely typed word has no record, this branch is unreachable for it, and its
+				 * caret rule stands exactly as it was (a typed mid-draft word stays prose, and
+				 * a whole draft runs from any caret). `holdsCancelledToken` still answers
+				 * `send` first, so M6 is untouched.
+				 */
+				const word = recordWord(draft);
+				if (word === null) return plan;
+				const index = draft.indexOf(word);
+				if (index < 0) return plan;
+				return planFor(draft, index + word.length, "pick");
 			},
-			[gestureFor, planFor],
+			[gestureFor, planFor, recordWord],
 		);
 
 		/**
