@@ -145,7 +145,13 @@ export const AgentAndWaiting: Story = {
 				url: "https://reports.example.com/quarterly",
 			}),
 			tab(3, "Login", { owner: "agent" }),
-			tab(4, "Checkout", { handedOver: true }),
+			// THE HANDED-OVER TAB IS AGENT-OWNED, because the host makes it so: handing a tab
+			// over sets `owner = "agent"` AND `handedTo` in one step (`registry.ts:369-372`), so
+			// the strip renders `Agent` and `Shared` together on every such tab. This fixture
+			// used to carry `handedOver` on a user-owned tab - a state the projection cannot
+			// produce - and that unreachable shape is what a round-4 floor premise was read
+			// off (review round 5, MAJOR); the two chips are the real row.
+			tab(4, "Checkout", { owner: "agent", handedOver: true }),
 		],
 		1,
 		{ 4: 1 },
