@@ -1531,6 +1531,80 @@ export const STORIES = [
 	["panels-analytics--dense", 1140, 1100],
 	["panels-analytics--narrow", 720, 980],
 
+	/*
+	 * THE BY-SESSION TABLE'S OWN STATES: paging, sorting, search, the filter.
+	 *
+	 * Two viewports are used for one reason, and it is a property of the host
+	 * rather than of any of these stories: the panel body is capped at
+	 * `min(76vh, 760px)` (`picker-host.tsx`), and the by-session section sits
+	 * below the stat grid and the chart, so NO single frame can hold both the
+	 * strip and the pager. Each state therefore has an at-rest entry — the
+	 * section's top, where the strip, the match line and the header chevrons
+	 * are — and, where the claim is the pager, an `-end` entry parked at the
+	 * body's own end through `scrollToEnd` (the same mechanism
+	 * `panels-analytics--unnamed-sessions` already uses, and for the same
+	 * reason: a scroll offset is browser state no story can set, and a story
+	 * that faked one would be evidence about the fake).
+	 *
+	 * The claims these frames CANNOT carry are asserted in each story's own
+	 * `play` — `aria-sort` on the header cell, the `tbody tr` count, the live
+	 * region's text and where focus is after a page turn — and the model's
+	 * rules are the node suite's (`scripts/analytics-session-table.test.mjs`).
+	 */
+	[
+		"panels-analytics--populated",
+		1140,
+		980,
+		{ dir: "populated-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--dense",
+		1140,
+		1100,
+		{ dir: "dense-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--session-paginated", 1140, 980],
+	[
+		"panels-analytics--session-paginated",
+		1140,
+		980,
+		{ dir: "session-paginated-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--session-page-two",
+		1140,
+		980,
+		{ scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--session-sorted-by-cost", 1140, 980],
+	[
+		"panels-analytics--session-sorted-by-cost",
+		1140,
+		980,
+		{ dir: "session-sorted-by-cost-end", scrollToEnd: "[data-panel-body]" },
+	],
+	/* The label column ascending, at rest: the order AND the chevron are at the
+	   section's top, so this one frame carries both halves of the claim. */
+	["panels-analytics--session-sorted-by-session", 1140, 980],
+	/* The query stories are at rest because the match line lives in the strip;
+	   the empty state fits whole, so it needs no second frame. */
+	["panels-analytics--session-search-match", 1140, 980],
+	["panels-analytics--session-search-empty", 1140, 980],
+	["panels-analytics--session-top-level-only", 1140, 980],
+	[
+		"panels-analytics--session-top-level-only",
+		1140,
+		980,
+		{ dir: "session-top-level-only-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--session-scale-30-d",
+		1140,
+		1020,
+		{ scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--session-narrow-720", 720, 980],
+
 	["panels-session--populated", 1140, 1000],
 	["panels-session--tree-cost", 1140, 1000],
 	["panels-session--tree-cost-unmeasured", 1140, 1000],
