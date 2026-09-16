@@ -341,7 +341,13 @@ keyboard-focused, the last two through the rig's own input because `:hover` and
      `currentTime` — `pause()` and then `currentTime = phaseMs` on every mark in the
      row, through the Web Animations API — so the same story, theme and rig are
      photographed half a turn apart and the pair is re-derivable rather than
-     sampled (measured: three consecutive captures came back byte-identical).
+     sampled (measured: three consecutive captures came back byte-identical, and
+     the two tuples captured at the same phase give two byte-identical frames).
+     What the PAGE differs by is the marks alone — measured by capturing the pair
+     losslessly (PNG): 220/228 differing pixels, all inside the two mark boxes and
+     none outside. The committed WebP files differ in ~7,700/1,700 further pixels at
+     ±1-2/255 across the row's glyphs, which is the lossy encoder's own response to a
+     differing input rather than anything the page paints.
      Round 2's M1 is why that sentence is measured: the rule that preceded this one
      selected `.animate-spin`, a token this mark does not carry
      (`motion-safe:animate-spin` is), so it matched nothing and the pair was
