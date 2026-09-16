@@ -236,11 +236,13 @@ and `box.y` are four of its keys.
 | absent | present | the plan count alone, at the row's start | 24px + gap |
 | present | present | goal chip first, count second | 24px + gap |
 | present, expanded | either | the chips' line, plus the goal's body beneath | up to 160px |
-| any of the above | any | **plus up to two ACTIVITY chips**, after the plan chip: subagents, then jobs (`docs/composer-activity-chips.md`) | see below |
+| any of the above | any | **plus up to three COUNT chips**, after the plan chip: wakes, then subagents and jobs (`docs/composer-wakes.md`, `docs/composer-activity-chips.md`) | see below |
 
 The activity chips are the row's second change, and they are the reason the last
 row of that table can no longer be described as "24px + gap" in the general case:
 four chips do not share a line at any column the app renders, so the row WRAPS.
+The wake chip is the third change and changes none of that — it is a fourth count,
+it is gated the same way, and it only moves the width at which the group wraps.
 Measured on the frames (`docs/evidence/chat-composer-status-row/activity-widths/`,
 which prints its own numbers into the picture):
 
@@ -643,6 +645,30 @@ does, they carry no `aria-pressed` and no pressed ground for § 5.2's reason, an
   keeps the refusal meaningful is that the mark is the roster's existing
   nine-state vocabulary, unchanged and unauthored here, and not a decorative pulse
   invented for the composer. `animate-pulse-visible` remains the skeleton's alone.
+
+### 5.6 The wake chip
+
+**`docs/composer-wakes.md`'s subject**, and the two sentences the plan chip's
+reader needs are § 5.5's over a fourth destination:
+
+- **Same control box, same reveal, one more destination.** The wake chip imports
+  `CHIP_CONTROL` exactly as § 5.1's count chip does, carries no `aria-pressed` and
+  no pressed ground for § 5.2's reason, and files § 5.2's one-shot, nonce'd request
+  with `section: "wakes"`. The pane resolves it through that section's own ref.
+- **It is a MARKED count, and the mark is not the roster's `Info`.** § 6's
+  refusal of a mark on the plan chip was overruled in § 5.5's shape for the
+  activity chips; the wake chip takes the same ruling, with `AlarmClock`. What
+  keeps the refusal meaningful is unchanged and is now stated over three marks:
+  each is an existing glyph whose meaning is fixed elsewhere (`Info` for "this
+  opens the run pane", the roster's nine states, the alarm for a wake), none is a
+  decorative pulse, and `animate-pulse-visible` remains the skeleton's alone. This
+  one is the only count chip on the row that does not move, because an armed
+  schedule is not moving.
+
+It sits BETWEEN the plan chip and the two activity chips, which is the one
+placement sentence this document owes: the goal, the plan and the wakes are what
+the session is set up to do, and the subagents and jobs are what is happening now
+(`docs/composer-wakes.md` § 4 has the rejected alternative).
 
 ---
 
