@@ -74,8 +74,10 @@ export type ThemePalette = {
 	 * loud with it: `deltaE(sunken, surface)` runs 3.75 (iceberg) to 14.94
 	 * (synth) across the twelve palettes, against the ~2 perceptual threshold
 	 * `docs/branding.md` § 3 cites. `sunken` is also the role for wells, tracks
-	 * and code grounds, with ~50 call sites depending on it, so the current row
-	 * could not be quietened by moving that value: the row needed a ground of
+	 * and code grounds, with 97 `*-sunken` utility occurrences across 66 files
+	 * under `src/renderer` depending on it (85 live class usages and 12 inside
+	 * prose, the palettes and the generated stylesheet excluded), so the current
+	 * row could not be quietened by moving that value: the row needed a ground of
 	 * its own.
 	 *
 	 * ## The band, and the two floors it sits between

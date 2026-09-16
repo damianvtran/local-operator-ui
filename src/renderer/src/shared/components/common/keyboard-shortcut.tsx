@@ -38,22 +38,33 @@
  * clipping: the box is a MINIMUM that a word grows out of, with the same floor
  * and the same padding for everything.
  *
- * ## One ink, and why it is `ink-muted`
+ * ## One ink, and why it is `ink-dim`
  *
  * Chosen by measurement rather than by eye, because a cap lands on four different
  * grounds: `surface` (the chat sidebar), `highlight` (a row that is current),
  * `sunken` (the app rail) and `elevated` (the command palette's footer). The
- * contract in `scripts/contrast-contract.mjs` asserts this one at the 4.5:1 text
- * floor on all of them — plus `highlight`, which is the ground this component's
- * own row state introduced — and it measures 5.54:1 at its worst across the
- * twelve palettes (dracula on `elevated`), so one role is legal everywhere a cap
- * renders rather than one role per ground.
+ * contract in `scripts/contrast-contract.mjs` asserts `ink-dim` at the 4.5:1 text
+ * floor on the four grounds a cap renders on, and it measures **4.51:1** at its
+ * worst across the twelve palettes (dracula on `elevated`; 4.72:1 on `highlight`,
+ * 4.65:1 on `sunken`), so one role is legal everywhere a cap lands rather than one
+ * role per ground.
  *
- * `ink-dim` is the alternative, and it is rejected on the measurement
- * `docs/command-palette.md` already records for that same row: 5.76:1 on the
- * rail against the label's 8.94:1, which reads as fine print rather than as a
- * key. The step up is a change, not a hierarchy — the chord and its label share a
- * ground, and the cap is what tells you it is a key.
+ * It spent a round at `ink-muted`, one step up, and the measurement that moved it
+ * back is about the RANK of the thing a cap annotates rather than about the floor
+ * the cap clears on its own. The palette prints its legend labels in `ink-dim`,
+ * so a cap at `ink-muted` outranked the label it annotates — read out of the
+ * committed pairs, a legend cap sat at 6.76-6.83:1 against the bar while its
+ * labels read 4.55:1 and 3.87:1, and on the active row the `Go` verb read 4.54:1
+ * against its own `↵` cap at 7.02:1. That is backwards for an annotation, and the
+ * operator asked for these to be "a bit more subtle", so at `ink-dim` a cap sits
+ * at or below its label and the monospace face and the uniform box are what still
+ * say "this is a key".
+ *
+ * The cost is stated rather than hidden: on the app rail the row's own label is
+ * `ink`, so the chord is the quieter of the two there. That is the intended
+ * relationship — the label is what you read, the cap is what tells you it has a
+ * key — and `docs/command-palette.md` records it the same way, having previously
+ * recorded the opposite for a round.
  *
  * ## Why there is no `size` or `className` prop any more
  *
@@ -94,7 +105,24 @@ const ICON_SIZE = 12;
  * for a shape at control scale, `docs/branding.md` § 5).
  */
 const CAP =
-	"inline-flex h-5 min-w-5 items-center justify-center rounded-xs px-1 font-mono text-ink-muted text-mono-sm";
+	"inline-flex h-5 min-w-5 items-center justify-center rounded-xs px-1 font-mono text-ink-dim text-mono-sm";
+
+/**
+ * The chord's own spacing, and why it is not the caps' default gap.
+ *
+ * The wrapper's gap is the only thing that sets how far apart two caps' INK sit,
+ * because a cap's box is a `min-w-5` floor with its content centred in it: shrinking
+ * a cap's PADDING moves nothing while the box is wider than its content (the content
+ * is re-centred in what is left), so padding is not a lever here and the gap is.
+ * With the box invisible, that ink distance is the whole rhythm of a chord, and at
+ * the wrapper's old `gap-1` it was wider than the box-to-box distance the retired
+ * filled caps read at: measured in the rig's own frames of the New chat row, the
+ * ink gaps were 10px and 11px, where the filled caps had left 5-6px of ground
+ * between a box edge and the joiner. At `gap-0` they measure 6px and 7px, so a
+ * chord reads as one key again — the before/after frames and the numbers are in
+ * `docs/evidence/chat-sidebar-current-row/README.md`.
+ */
+const CHORD = "inline-flex items-center gap-0";
 
 const keyIconMap: Record<string, ElementType> = {
 	"⌘": Command,
@@ -108,15 +136,16 @@ export const KeyboardShortcut: FC<KeyboardShortcutProps> = ({ shortcut }) => {
 	const keys = shortcut.split("+").map((key) => key.trim());
 
 	return (
-		<span className="inline-flex items-center gap-1">
+		<span className={CHORD}>
 			{keys.map((key, index) => {
 				const Icon = keyIconMap[key.toLowerCase()];
 				return (
 					// biome-ignore lint/suspicious/noArrayIndexKey: the same key legitimately repeats in one shortcut ("Meta+Meta" exists in bindings), so position is part of the identity; the shortcut string is a stable prop, never reordered in place.
 					<Fragment key={`${key}-${index}`}>
 						{index > 0 && (
-							/* The joiner between two caps, and not a cap: it is punctuation,
-							   so it keeps the quieter ink the caps were moved off. */
+							/* The joiner between two caps, and not a cap: punctuation carries the
+							   caps' own ink (`ink-dim`) and not the sentence's, so a chord does
+							   not read as three marks joined by a louder one. */
 							<span aria-hidden="true" className="text-mono-sm text-ink-dim">
 								+
 							</span>

@@ -81,11 +81,12 @@ const QUERY_WRITE_BACK_MS = 200;
  * `rounded-xs bg-sunken px-1 py-0.5 font-mono text-ink-dim text-mono-sm` — which
  * is one of the sizes the operator reported as inconsistent: it carried no
  * `min-w-5`, so a single glyph made a cap about 15px wide where the shared
- * component's was 20px, on the same 12px type but one ink step down. The shared
- * component now owns the geometry and the ink (`ink-muted`, the step up
- * `docs/command-palette.md` already records as the fix for this row reading as
- * fine print), and the cap carries no ground of its own, so the footer's
- * `elevated` shows through instead of a `sunken` box.
+ * component's was 20px, on the same 12px type and one ink step down. The shared
+ * component now owns the geometry and the ink (`ink-dim`, the role these keys
+ * ship at — putting the cap a step UP at `ink-muted` made the legend outrank the
+ * labels it annotates, 6.76-6.83:1 against 4.55:1 and 3.87:1, measured in the
+ * committed pairs as design round 1's D2), and the cap carries no ground of its
+ * own, so the footer's `elevated` shows through instead of a `sunken` box.
  */
 /**
  * The command palette.
@@ -796,7 +797,19 @@ export const CommandPalette: FC = () => {
 						{showScopeLegend ? (
 							<>
 								{SCOPE_LEGEND.map((entry) => (
-									<span key={entry.scope} className="flex items-center gap-1.5">
+									/*
+									 * `gap-0`, not the `gap-1.5` the key legend beside it uses, and the
+									 * difference is what the glyph is: these four are TYPED PREFIXES, and a
+									 * prefix has to read as the head of its own token rather than as a mark
+									 * beside a word. Measured in the bar, the comma's ink is 2px wide and
+									 * centred in a 20px box, so at `gap-1.5` it sat 16px from "Settings"
+									 * and 25px from "Agents" — nearer its left neighbour than its own label,
+									 * which is exactly how a glyph reads as stray punctuation (design
+									 * round 1, D4). At `gap-0` the same distance is 10px against 25px: the
+									 * glyph binds to the word it introduces while every cap keeps the one
+									 * uniform box.
+									 */
+									<span key={entry.scope} className="flex items-center gap-0">
 										<KeyboardShortcut shortcut={entry.glyph} />
 										{entry.label}
 									</span>

@@ -19,7 +19,8 @@
  *
  *   1. the GROUND a current row paints is a step off its panel, not a wash —
  *      read off the shipped class strings, because no palette assertion can see
- *      a class and every one of them stayed green while this shipped; *   2. the ground SURVIVES THE POINTER, resolved through the SHIPPED `cn` over
+ *      a class and every one of them stayed green while this shipped;
+ *   2. the ground SURVIVES THE POINTER, resolved through the SHIPPED `cn` over
  *      the expression the component actually passes. This is the instrument
  *      round 1 asked for and the reason this file no longer merges strings it
  *      wrote itself: the property is a tailwind-merge resolution (the two
@@ -322,6 +323,43 @@ test("the current row's ground is a step off its panel, not a wash", () => {
 	assert.ok(
 		rowCurrent.includes("text-ink"),
 		`the ground is a ground for text, and \`ink\` is the role whose 7:1 floor \`highlight\` is asserted on. Got:\n${rowCurrent}`,
+	);
+});
+
+/*
+ * THE SECOND SIGNAL, and why one ground is not enough.
+ *
+ * A ground alone has to outrank the step the rows AROUND it take under the
+ * pointer, and after the selection was quietened it stopped doing so: measured in
+ * the shipped frames, a hovered neighbour paints `elevated` at ΔE00 2.20-4.58 from
+ * the panel while the current row paints `highlight` at 2.18-2.35, so on the dark
+ * palettes the pointer's transient mark became the louder of the two (selection
+ * over hover was 0.93 / 0.97 / 1.89 before this change and 0.48 / 0.52 / 0.49
+ * after — design round 1, D1). The answer is not a louder ground: the operator
+ * asked for a SUBTLE selection, and raising `highlight` would trade that away.
+ * It is the second, non-colour step the settings rail's active row has always
+ * carried — `font-medium` — which is now on both rails rather than one.
+ */
+test("a current row carries a non-colour step, and a row that is not current does not", () => {
+	assert.ok(
+		rowCurrent.includes("font-medium"),
+		`the current row must carry a second signal beside its ground: with the selection quietened, a hovered neighbour's \`elevated\` step outranks \`highlight\` on the dark palettes, so colour alone makes the pointer the louder mark. Got:\n${rowCurrent}`,
+	);
+	const rail = CURRENT.find((site) => site.file === SETTINGS_RAIL);
+	assert.notEqual(
+		rail,
+		undefined,
+		"the settings rail is no longer in `CURRENT`",
+	);
+	const active = merged(rail.file, rail.expression(), rail.stubs);
+	assert.ok(
+		active.includes("font-medium"),
+		`the settings rail's current row no longer carries the step the chat sidebar was moved onto, so the two rails disagree about how a current row is marked:\n${active}`,
+	);
+	const inactive = merged(rail.file, rail.expression(), rail.notCurrent);
+	assert.ok(
+		!inactive.includes("font-medium"),
+		`a row that is NOT current must not be heavier than the one that is:\n${inactive}`,
 	);
 });
 

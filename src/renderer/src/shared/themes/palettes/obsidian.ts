@@ -30,9 +30,10 @@ export const obsidian: ThemeDefinition = {
 		// a C0 value is the absence of the ramp rather than its bottom rung.
 		sunken: "#030307",
 		/*
-		 * The current row's own ground: `surface` mixed 2.9% toward white. ΔE00
-		 * 2.20 from `surface`, and this is the palette that sets the band's own
-		 * ceiling — 2.52 from `elevated`, the row's hover step, against the 2.0 the
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.20 from `surface`, and this is the palette that
+		 * sets the band's own ceiling — 2.52 from `elevated`, the row's hover
+		 * step, against the 2.0 the
 		 * contract floors that pair at. 6.67 from `sunken`.
 		 */
 		highlight: "#1f1f22",

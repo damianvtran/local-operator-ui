@@ -84,8 +84,10 @@ const rowStyle =
  * WHY NOT `sunken`, WHICH IS WHAT THIS USED TO BE. `sunken` is the RECESSED
  * role: a well, a track, a code ground — a hole in the panel rather than a mark
  * on it — and at 3.75-14.94 from `surface` it read as the dark box the operator
- * reported. It is also ~50 call sites that depend on it being deep, so the row
- * could not be quietened by moving the role; the row needed one of its own.
+ * reported. It is also 97 `*-sunken` utility occurrences across 66 files under
+ * `src/renderer` — 85 live class usages and 12 inside prose, the palettes and the
+ * generated stylesheet excluded — so the row could not be quietened by moving
+ * the role; the row needed one of its own.
  *
  * WHY NOT `elevated`. It is the same rows' hover step, so selection and hover
  * would land on the same ground and the current row would be indistinguishable
@@ -93,6 +95,25 @@ const rowStyle =
  * the selection ground was the wash. The contract now asserts `highlight`
  * against `surface`, `elevated` AND `sunken` at the field floor for exactly that
  * reason, with `elevated` the binding pair (worst case 2.52, obsidian).
+ *
+ * AND WHY THE GROUND IS NOT THE ONLY SIGNAL — THE SECOND STEP.
+ * The operator asked for a SUBTLE selection, so the step up is bounded: at ΔE00
+ * 2.18-2.28 `highlight` is deliberately quieter than the `sunken` box it replaced,
+ * and that quietening is what exposed the hazard underneath it. The rows around a
+ * current one carry `hover:bg-elevated`, and `elevated` is a LOUDER step off
+ * `surface` than `highlight` on the dark palettes — measured in the shipped
+ * frames, a hovered neighbour sits ΔE00 2.20-4.58 from the panel while the
+ * current row sits 2.18-2.35, so the pointer's transient mark outranked the
+ * persistent one (selection over hover: 0.93 / 0.97 / 1.89 before this change,
+ * 0.48 / 0.52 / 0.49 after). Raising `highlight` would undo what was asked for,
+ * so the current row carries a SECOND, non-colour step instead: `font-medium`,
+ * exactly as `features/settings/components/settings-sidebar.tsx` already marks
+ * its current destination ("bg-highlight font-medium text-ink
+ * hover:bg-highlight"). That makes the two rails agree rather than inventing an
+ * idiom, and it gives the persistent state a signal the transient one does not
+ * have. The weight is the only thing this adds: the row's box, height, padding
+ * and alignment are unchanged, and the measurement that says so is in
+ * `docs/evidence/chat-sidebar-current-row/README.md`.
  *
  * AND WHY IT IS ON TWO ELEMENTS OF THE ENTITY ROW. The mark cannot be carried by
  * one class there: the name button inside the row carries `rowStyle`, so its
@@ -122,7 +143,7 @@ const rowStyle =
  * `bg-accent-wash` here is invisible in tokyoNight and no palette assertion can
  * see a class.
  */
-const rowCurrent = "bg-highlight text-ink hover:bg-highlight";
+const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
 
 import { ChatSessionStatus } from "./chat-session-status";
 

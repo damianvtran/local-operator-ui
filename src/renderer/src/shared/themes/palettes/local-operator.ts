@@ -53,8 +53,9 @@ export const localOperatorDark: ThemeDefinition = {
 		elevated: "#282318",
 		sunken: "#0f0c08",
 		/*
-		 * The current row's own ground: `surface` mixed 2.9% toward white. ΔE00
-		 * 2.20 from `surface`, 2.87 from `elevated` and 6.39 from `sunken`.
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.20 from `surface`, 2.87 from `elevated` and 6.39
+		 * from `sunken`.
 		 *
 		 * The ink floors are the binding constraint in this palette, and this is
 		 * the tightest case of the twelve: `inkDim` measures 4.72:1 here against
@@ -178,8 +179,9 @@ export const localOperatorLight: ThemeDefinition = {
 		elevated: "#fffefb",
 		sunken: "#efe9db",
 		/*
-		 * The current row's own ground: `surface` mixed 4.4% toward black. ΔE00
-		 * 2.28 from `surface`, 3.98 from `elevated` and 3.24 from `sunken` — the
+		 * The current row's own ground: `surface` stepped -11 on every channel
+		 * toward black. ΔE00 2.28 from `surface`, 3.98 from `elevated` and 3.24
+		 * from `sunken` — the
 		 * three constraints this palette's near-white ladder puts closest
 		 * together, and the reason the step is a step rather than the `sunken`
 		 * well it used to be.

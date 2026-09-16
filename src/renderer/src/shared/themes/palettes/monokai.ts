@@ -24,8 +24,9 @@ export const monokai: ThemeDefinition = {
 		elevated: "#3E3D32",
 		sunken: "#1E1F1A",
 		/*
-		 * The current row's own ground: `surface` mixed 3.1% toward white. ΔE00
-		 * 2.25 from `surface`, 3.21 from `elevated` and 7.31 from `sunken`.
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.25 from `surface`, 3.21 from `elevated` and 7.31
+		 * from `sunken`.
 		 */
 		highlight: "#35362f",
 

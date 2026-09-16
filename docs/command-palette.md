@@ -25,16 +25,28 @@ every route, and it prints the chord so the rail teaches it without being asked.
 
 **The chord is printed one way, and this paragraph used to say two.** The panel's
 footer and the rail both draw it as the app's key cap (`KeyboardShortcut`), which
-is a change from what shipped: the rail printed `⌘+K` as plain monospace at the
-row's own ink (`ink-muted` — it was `ink-dim`, which measured as fine print:
-5.76:1 on the rail against the label's 8.94:1) because a cap was filled
-`bg-sunken` and the rail IS `sunken`, so a cap there would have had no ground of
-its own. That argument was sound about that cap and is why the cap lost its fill
-rather than the rail keeping a second spelling: a cap now carries no ground and no
-border on any surface, so the panel's footer, the rail, the New chat row beside
-the sidebar and the inline editor's footer draw the same box on different grounds
-(design round 1, D6, kept for the ink step — the chord and its label share a role,
-so the cap is what says it is a key).
+is a change from what shipped: the rail printed `⌘+K` as plain monospace because a
+cap was filled `bg-sunken` and the rail IS `sunken`, so a cap there would have had
+no ground of its own. That argument was sound about that cap and is why the cap
+lost its fill rather than the rail keeping a second spelling: a cap now carries no
+ground and no border on any surface, so the panel's footer, the rail, the New chat
+row beside the sidebar and the inline editor's footer draw the same box on
+different grounds (design round 1, D6).
+
+**The cap's ink is `ink-dim`, and the round that raised it to `ink-muted` was
+undone by a measurement on the palette.** The step up was taken to stop the rail's
+chord reading as fine print (it measured 5.76:1 against the label's 8.94:1), and it
+is the wrong trade: `ink-muted` is above `ink-dim`, and `ink-dim` is what this app
+prints a legend's labels in, so the annotation ended up louder than the thing it
+annotated. Read out of the committed frames, a legend cap sat at 6.76–6.83:1
+against the bar while its labels read 4.55:1 and 3.87:1, and on the active row the
+`Go` verb read 4.54:1 against its own `↵` cap at 7.02:1 (design round 1, D2). At
+`ink-dim` the cap clears § 3's 4.5:1 text floor on every ground it renders on
+(worst 4.51:1, dracula on `elevated`), sits at or below its label, and the
+monospace face and the one box are what say "this is a key". The rail is the one
+place the chord is now the QUIETER of the two marks, and that is the intended
+relationship rather than a regression: the label is what you read, the cap is what
+tells you it has a key.
 
 ## What the palette says about itself
 

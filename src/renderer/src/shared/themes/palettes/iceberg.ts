@@ -32,7 +32,8 @@ export const iceberg: ThemeDefinition = {
 		sunken: "#E1E2E7",
 		/*
 		 * The current row's own ground, and the palette where the band is tightest:
-		 * `surface` mixed 4.3% toward black. ΔE00 2.19 from `surface`, but only
+		 * `surface` stepped -10/-10/-11 on R/G/B toward black. ΔE00 2.19 from
+		 * `surface`, but only
 		 * 2.15 from `sunken` — this light ramp has very little room below its page
 		 * ground, so a deeper selection step would have collided with the recessed
 		 * one. 4.21 from `elevated`.

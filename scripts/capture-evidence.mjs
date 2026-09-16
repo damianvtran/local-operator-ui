@@ -820,6 +820,37 @@ export const STORIES = [
 	 */
 	["chat-sidebar-current-row--selected-row", 780, 560],
 	["chat-sidebar-current-row--new-chat-row-current", 780, 560],
+	/*
+	 * The SAME story with a real pointer on the neighbour row ABOVE the current
+	 * one, because the pair it produces is a state a still at rest cannot hold:
+	 * a hover is browser state, so the rig moves a real pointer through the input
+	 * pipeline (`hover`, the option the trigger-hover frames already use) and
+	 * shuts the shutter with the pointer still there.
+	 *
+	 * `data-chat-row:has(+ [data-chat-row][aria-current="page"])` is the row
+	 * immediately BEFORE the current one — the story's roster is newest-first and
+	 * its third row is the selected conversation, so this lands on "Migrate the
+	 * deploy script" while "Quarterly revenue model" is current. That is the pair
+	 * design round 1's D1 is measured on and the one a reader needs to judge the
+	 * hierarchy: the current row paints `highlight` and the row under the pointer
+	 * paints `elevated`, and whether the persistent mark still outranks the
+	 * transient one is a fact about two grounds side by side in one frame.
+	 *
+	 * An entry of its own with a `dir` rather than a second plain tuple: a plain
+	 * tuple for this story would write into `selected-row/` and overwrite the
+	 * resting frame already committed there (the leaf is derived from the story
+	 * id when no `dir` is given). Same arrangement as the activity-stacked hover
+	 * pair above.
+	 */
+	[
+		"chat-sidebar-current-row--selected-row",
+		780,
+		560,
+		{
+			dir: "selected-row-neighbour-hovered",
+			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
+		},
+	],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
@@ -1244,12 +1275,35 @@ export const STORIES = [
 	   pending mark is judged against the same reading at full weight. */
 	["chat-session-status-strip--model-switch-pending", 860, 480],
 
-	/* App shell, swept for the rail-width finding. */
-	["shell-app-shell--settings-appearance", 1280, 800],
+	/*
+	 * App shell, swept for the rail-width finding.
+	 *
+	 * AND WHY THE `settings-appearance` ROW SITS AFTER THE FOUR `agents` ROWS.
+	 * Position in this list is REACHABILITY, not presentation: an offline sweep
+	 * visits these rows in order, and `shell-app-shell--settings-appearance` is
+	 * the row that never clears — it holds `documentElement.dataset.capturePending`
+	 * because the offline settings page never renders the Appearance switch the
+	 * story waits for, so the readiness probe throws at its 60s bound, and the
+	 * story loop has no per-story catch to survive a throw. The sweep therefore
+	 * ENDS there and every row after it is a surface no future sweep can refresh:
+	 * the four `agents` rows alone are 48 frames at twelve themes, plus
+	 * `settings`, `agents-empty` and `rail-collapsed`. `manifest.json`'s
+	 * `keycapsCapture.blocked` records the same measurement, and
+	 * `docs/evidence/chat-sidebar-current-row/README.md` states it as a gap.
+	 *
+	 * That is why this row is not moved earlier for tidiness: the move reads as
+	 * an ordering preference and is in fact a silent shrink of the reachable set,
+	 * and no gate can see it — `check-evidence` validates committed frames against
+	 * their stamps, and an aborted sweep never reaches the manifest write, so the
+	 * frames that stop being re-captured go stale with nothing to report it.
+	 * Giving those rows up is a decision for the set's README and the commit
+	 * message, not a side effect of where a tuple sits.
+	 */
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
 	["shell-app-shell--agents", 800, 800],
+	["shell-app-shell--settings-appearance", 1280, 800],
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],

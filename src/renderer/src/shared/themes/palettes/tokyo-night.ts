@@ -23,8 +23,9 @@ export const tokyoNight: ThemeDefinition = {
 		// levels deeper for a little more separation.
 		sunken: "#14141B",
 		/*
-		 * The current row's own ground: `surface` mixed 3.3% toward white. ΔE00
-		 * 2.23 from `surface`, 3.27 from `elevated` and 10.29 from `sunken`.
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.23 from `surface`, 3.27 from `elevated` and 10.29
+		 * from `sunken`.
 		 */
 		highlight: "#2b2f42",
 
