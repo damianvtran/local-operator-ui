@@ -306,6 +306,33 @@ export const STORIES = [
 	["browser-pane--trigger-no-approval", 560, 84],
 	["browser-pane--trigger-one-approval", 560, 84],
 	["browser-pane--trigger-three-approvals", 560, 84],
+	/*
+	 * The COMPOSED pair (design round 1, D6; review round 1, F1), which is the only
+	 * place the pane's own frame meets a chat column: the seam, the divider, the width
+	 * the conversation keeps and the header's trigger cluster in its real place. Both
+	 * halves of the before/after are here rather than only the after, because "the
+	 * conversation narrows rather than being covered" is a claim about a DIFFERENCE.
+	 *
+	 * 1380 is the design's own composition width (`branding.md`'s reference capture
+	 * size) and the pane's 640 leaves ~740 for the column, which is where the three
+	 * header controls and a two-tab strip are all legible at 1:1.
+	 */
+	["browser-pane--composed-with-pane", 1380, 900],
+	["browser-pane--composed-trigger-only", 1380, 900],
+	/* The dock, which is the only state that paints the tray's header row - and so the
+	 * only frame in which the pane's own `2 approvals for this conversation` exists
+	 * (review round 1, F2), at the pane's default width and at its 480 floor. */
+	["browser-pane--pane-dock-open", 640, 720],
+	["browser-pane--pane-dock-narrow", 480, 720],
+	/* The floor WITH tabs, which `narrow-minimum` cannot answer because it has none. */
+	["browser-pane--narrow-with-tabs", 480, 460],
+	/* A draft: no session, so the switch's conversation side is disabled rather than
+	 * silently meaning All tabs (design round 1, D3). */
+	["browser-pane--draft-conversation", 640, 460],
+	/* Before the first read lands (spec 7.4). */
+	["browser-pane--pane-loading", 640, 460],
+	/* The badge at its cap (design round 1, D5). */
+	["browser-pane--trigger-at-cap", 560, 84],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
