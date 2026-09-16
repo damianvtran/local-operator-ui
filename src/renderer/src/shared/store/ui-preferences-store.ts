@@ -134,6 +134,26 @@ type UiPreferencesState = {
 	restoreDefaultBrowserPanelWidth: () => void;
 
 	/**
+	 * Which list the browser pane's strip shows (spec 7.2).
+	 *
+	 * THE SLOT'S STATE, NOT THE PANE'S, and that placement is the fix rather than a
+	 * preference (UX round 1, U3). The pane remounts when the conversation changes,
+	 * so a `useState` inside it forgot the choice on every switch - while the pane
+	 * itself stayed OPEN at the width the user had dragged, which is the same slot
+	 * persisting and its lens not persisting. `isBrowserPaneOpen` and
+	 * `browserPanelWidth` state the rule this joins: what belongs to the window's
+	 * slot survives a conversation switch, and only what belongs to the conversation
+	 * (the tabs, and the session a `"conversation"` choice resolves to) follows it.
+	 */
+	browserPaneScope: BrowserPaneScope;
+
+	/**
+	 * Set which list the browser pane shows
+	 * @param scope - This conversation's tabs, or all of them
+	 */
+	setBrowserPaneScope: (scope: BrowserPaneScope) => void;
+
+	/**
 	 * A pending request to open the run pane AT one of its sections.
 	 *
 	 * A request rather than a mode, and CONSUMED ONCE: the composer's plan chip
@@ -307,6 +327,17 @@ type UiPreferencesState = {
 export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
 
 /**
+ * Which list the browser pane's strip shows: this conversation's tabs, or all of
+ * them (`docs/design/browser-approval-ux.md` 7.2).
+ *
+ * It is the pane's own vocabulary rather than a `SurfaceScope`, because it is a
+ * CHOICE rather than a scope: `"conversation"` resolves to `{ sessionId }` for
+ * whichever conversation the pane is showing, and only the pane (which knows that
+ * session) can resolve it. The store holds the choice; the scope is derived.
+ */
+export type BrowserPaneScope = "conversation" | "all";
+
+/**
  * Claiming the right slot for one of the THREE panes that can live in it.
  *
  * The slot holds ONE pane, so every claim is "this side wins and the other two are
@@ -382,6 +413,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
+			browserPaneScope: "conversation",
 			isCreateAgentDialogOpen: false,
 
 			openCreateAgentDialog: () => {
@@ -464,6 +496,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			restoreDefaultBrowserPanelWidth: () => {
 				set({
 					browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
+				});
+			},
+
+			setBrowserPaneScope: (scope: BrowserPaneScope) => {
+				set({
+					browserPaneScope: scope,
 				});
 			},
 
