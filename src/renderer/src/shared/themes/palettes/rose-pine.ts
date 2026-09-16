@@ -39,6 +39,15 @@ export const rosePine: ThemeDefinition = {
 		elevated: "#26233a",
 		sunken: "#12101b",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped +7 on every channel toward white — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.21 from `surface`,
+		 * 2.85 from `elevated` and 7.06 from `sunken`.
+		 */
+		highlight: "#262435",
+
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert
 		// rung further down.

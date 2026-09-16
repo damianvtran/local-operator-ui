@@ -34,6 +34,15 @@ export const mintLight: ThemeDefinition = {
 		elevated: "#FBFDFB",
 		sunken: "#D6E9DB",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.29 from `surface`,
+		 * 4.64 from `elevated` and 6.44 from `sunken`.
+		 */
+		highlight: "#E6EDE8",
+
 		ink: "#1C2B21",
 
 		// The TUI's muted, lifted 7.1 L*: 7.01:1 on `sunken`, the ground that caps

@@ -33,6 +33,15 @@ export const paper: ThemeDefinition = {
 		elevated: "#F9F3E6",
 		sunken: "#DFD7C1",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.42 from `surface`,
+		 * 4.81 from `elevated` and 3.02 from `sunken`.
+		 */
+		highlight: "#E4DDCE",
+
 		ink: "#332B20",
 
 		// The TUI's muted, lifted 9.8 L*: 7.11:1 on `sunken`, the ground that caps

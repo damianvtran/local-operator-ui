@@ -44,6 +44,15 @@ export const githubLight: ThemeDefinition = {
 		// The scheme's own recessed grey, one step under the page.
 		sunken: "#DDE2E8",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.31 from `surface`,
+		 * 4.78 from `elevated` and 2.35 from `sunken`.
+		 */
+		highlight: "#E7EAED",
+
 		ink: "#1F2328",
 		// fg.subtle 6E7781 is 3.49:1 on `sunken`, so the readout rung darkens to clear the 4.5
 		// floor — which lands it ΔE00 1.3 from fg.muted, and the two are then one colour. The

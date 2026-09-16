@@ -32,6 +32,16 @@ export const desert: ThemeDefinition = {
 		elevated: "#3A2F21",
 		sunken: "#1D160C",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.080, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.44 from `surface`, 3.35 from `elevated` and 7.25 from
+		 * `sunken`.
+		 */
+		highlight: "#342617",
+
 		ink: "#F0E6D5",
 
 		// The TUI's muted, lifted 1.1 L*: 6.72:1 on `elevated`, the ground that caps

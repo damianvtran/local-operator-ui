@@ -32,6 +32,15 @@ export const ayuLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#DBE4EB",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.29 from `surface`,
+		 * 4.92 from `elevated` and 2.61 from `sunken`.
+		 */
+		highlight: "#E7EDF1",
+
 		ink: "#45494D",
 		inkMuted: "#505357",
 		inkDim: "#5B6675",

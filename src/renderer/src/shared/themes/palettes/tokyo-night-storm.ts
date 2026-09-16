@@ -35,6 +35,16 @@ export const tokyoNightStorm: ThemeDefinition = {
 		elevated: "#333955",
 		sunken: "#1D2032",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.125, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.40 from `surface`, 3.20 from `elevated` and 6.81 from
+		 * `sunken`.
+		 */
+		highlight: "#27304E",
+
 		// Upstream fg C0CAF5 is 7.00:1 on `elevated` — exactly the floor, with no room for
 		// rounding. Lifted along the same periwinkle.
 		ink: "#C1CBF6",

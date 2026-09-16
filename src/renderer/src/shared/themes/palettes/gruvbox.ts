@@ -36,6 +36,19 @@ export const gruvbox: ThemeDefinition = {
 		elevated: "#3C3836",
 		sunken: "#1D2021",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.035, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.63 from `surface`, 3.33 from `elevated` and 7.60 from
+		 * `sunken`.
+		 * This is one of the three casts that overshoot the band's 2.5 top:
+		 * a hex step at this strength is wider than the band, and the step
+		 * below it measures under the rule's own 2.17 floor.
+		 */
+		highlight: "#34302B",
+
 		ink: "#EBDBB2",
 		// Canonical fg2 D5C4A1 is 6.76:1 on `elevated` and only ΔE00 6.3 from fg3, which is
 		// under the 8 ink step. Lifted one step along the same warm grey so the readout rung

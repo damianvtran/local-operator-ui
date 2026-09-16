@@ -39,6 +39,15 @@ export const solarizedLight: ThemeDefinition = {
 		// Upstream base2, the scheme's own recessed tone.
 		sunken: "#EEE8D5",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.26 from `surface`,
+		 * 4.71 from `elevated` and 3.12 from `sunken`.
+		 */
+		highlight: "#F3EFE3",
+
 		ink: "#073642",
 		// Canonical base01 586E75 is 4.39:1 on `sunken` — under the 4.5 floor, and only
 		// ΔE00 3.2 from base00, under the 8 ink step. Seated deeper along the same

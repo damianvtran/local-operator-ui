@@ -37,6 +37,15 @@ export const alucard: ThemeDefinition = {
 		elevated: "#FFFEF9",
 		sunken: "#F1ECD9",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
+		 * 4.24 from `elevated` and 3.15 from `sunken`.
+		 */
+		highlight: "#F1EEE3",
+
 		ink: "#1F1F1F",
 		inkMuted: "#4F4A37",
 		inkDim: "#6C664B",

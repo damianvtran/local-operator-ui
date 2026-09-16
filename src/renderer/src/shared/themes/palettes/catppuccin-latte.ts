@@ -42,6 +42,15 @@ export const catppuccinLatte: ThemeDefinition = {
 		elevated: "#F8F9FA",
 		sunken: "#DCE0E8",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.34 from `surface`,
+		 * 4.26 from `elevated` and 2.34 from `sunken`.
+		 */
+		highlight: "#E4E6EA",
+
 		// Canonical text 4C4F69 is 6.04:1 on `sunken` — under the 7:1 body floor. Deepened
 		// along the same indigo-blue.
 		ink: "#42455E",

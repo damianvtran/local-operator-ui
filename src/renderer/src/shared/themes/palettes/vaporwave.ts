@@ -45,6 +45,16 @@ export const vaporwave: ThemeDefinition = {
 		elevated: "#2F2547",
 		sunken: "#181128",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.115, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.49 from `surface`, 3.66 from `elevated` and 5.75 from
+		 * `sunken`.
+		 */
+		highlight: "#2C1C3A",
+
 		ink: "#EDE8F2",
 		inkMuted: "#C0B2D4",
 		// The TUI `dim` 9184AE lifted in L* with hue held: 4.14 on `elevated`, under

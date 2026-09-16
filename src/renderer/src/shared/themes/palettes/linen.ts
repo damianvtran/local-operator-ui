@@ -33,6 +33,15 @@ export const linen: ThemeDefinition = {
 		elevated: "#F4F4F1",
 		sunken: "#D3D5D0",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.42 from `surface`,
+		 * 4.81 from `elevated` and 2.48 from `sunken`.
+		 */
+		highlight: "#DDDEDB",
+
 		ink: "#2B2E2C",
 
 		// The TUI's muted, lifted 12.0 L*: 7.07:1 on `sunken`, the ground that caps

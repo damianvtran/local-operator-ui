@@ -31,6 +31,16 @@ export const ayuDark: ThemeDefinition = {
 		elevated: "#222834",
 		sunken: "#080A0F",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.065, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.17 from `surface`, 3.80 from `elevated` and 7.56 from
+		 * `sunken`.
+		 */
+		highlight: "#141E2A",
+
 		ink: "#BFBDB6",
 		inkMuted: "#ACB6BF",
 		// the scheme's dim rung, relaxed to clear ΔE00 8 from `inkMuted`.

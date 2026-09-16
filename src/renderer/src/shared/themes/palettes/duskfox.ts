@@ -24,6 +24,15 @@ export const duskfox: ThemeDefinition = {
 		elevated: "#373354",
 		sunken: "#191726",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped +7/+7/+6 on R/G/B toward white — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
+		 * 2.68 from `elevated` and 9.50 from `sunken`.
+		 */
+		highlight: "#34314B",
+
 		ink: "#E0DEF4",
 		inkMuted: "#CDCBE0",
 		inkDim: "#A9A4C4",

@@ -31,6 +31,16 @@ export const rosewood: ThemeDefinition = {
 		elevated: "#332425",
 		sunken: "#170C0D",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.080, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.33 from `surface`, 3.26 from `elevated` and 7.12 from
+		 * `sunken`.
+		 */
+		highlight: "#2D1B1E",
+
 		ink: "#EEE0DC",
 		inkMuted: "#C2ABA6",
 

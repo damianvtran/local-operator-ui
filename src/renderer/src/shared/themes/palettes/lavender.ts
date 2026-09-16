@@ -30,6 +30,16 @@ export const lavender: ThemeDefinition = {
 		elevated: "#2A2638",
 		sunken: "#110F19",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.110, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.27 from `surface`, 3.03 from `elevated` and 7.80 from
+		 * `sunken`.
+		 */
+		highlight: "#221D31",
+
 		ink: "#E6E2F0",
 		inkMuted: "#B3ADC6",
 

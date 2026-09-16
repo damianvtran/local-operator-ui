@@ -37,6 +37,15 @@ export const everforestLight: ThemeDefinition = {
 		elevated: "#FDF6E3",
 		sunken: "#DCD7BC",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.38 from `surface`,
+		 * 4.90 from `elevated` and 2.93 from `sunken`.
+		 */
+		highlight: "#E9E2C9",
+
 		ink: "#394246",
 		inkMuted: "#3D4743",
 		inkDim: "#546058",

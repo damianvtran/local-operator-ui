@@ -31,6 +31,16 @@ export const palenight: ThemeDefinition = {
 		elevated: "#353B4E",
 		sunken: "#232736",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.050, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.38 from `surface`, 3.47 from `elevated` and 5.10 from
+		 * `sunken`.
+		 */
+		highlight: "#313348",
+
 		ink: "#EEFFFF",
 		inkMuted: "#BBC2E3",
 		inkDim: "#A0A5BE",

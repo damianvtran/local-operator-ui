@@ -42,6 +42,16 @@ export const nord: ThemeDefinition = {
 		// nord1 — so the well is derived, and nord3 4C566A is far too light to be a well.
 		sunken: "#272C36",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.080, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.34 from `surface`, 3.82 from `elevated` and 5.53 from
+		 * `sunken`.
+		 */
+		highlight: "#313C49",
+
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",
 		// The scheme's dim tier, lifted to the 4.5:1 corner on the binding ground and then

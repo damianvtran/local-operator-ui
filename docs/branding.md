@@ -37,7 +37,7 @@ One source, two consumers. Do not add a third.
 
 ```mermaid
 graph LR
-  A["palettes/*.ts<br/>ThemePalette x12"] --> B["createBaseTheme()<br/>MUI, hex values"]
+  A["palettes/*.ts<br/>ThemePalette x59"] --> B["createBaseTheme()<br/>MUI, hex values"]
   A --> C["generate-theme-css.mjs<br/>--lo-* variables"]
   C --> D["styles/index.css<br/>@theme role utilities"]
   A --> E["contrast-contract.mjs<br/>the floors"]

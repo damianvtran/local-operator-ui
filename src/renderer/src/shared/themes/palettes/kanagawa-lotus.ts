@@ -30,6 +30,15 @@ export const kanagawaLotus: ThemeDefinition = {
 		elevated: "#F2ECBC",
 		sunken: "#D3CB9C",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
+		 * 4.46 from `elevated` and 3.22 from `sunken`.
+		 */
+		highlight: "#DFD8AC",
+
 		ink: "#363557",
 		inkMuted: "#545363",
 		inkDim: "#57544F",
