@@ -141,6 +141,39 @@ const CASES = [
 		expect: { ran: "none", draft: "/lo hello", list: "Slash commands" },
 	},
 	{
+		name: "ambiguous-enter-at-bare-slash",
+		why: "The popup's FIRST state, and the one a browsing user presses Enter in: `/` matches everything, the candidates share no prefix, so the word cannot grow and Enter is deliberately inert. The line has to name the gestures that act instead (UX round 1, U1-U3).",
+		word: "",
+		key: "Enter",
+		expect: {
+			ran: "none",
+			draft: "/",
+			list: "Slash commands",
+			enterNote:
+				"Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+		},
+	},
+	{
+		name: "ambiguous-enter-at-the-shared-prefix",
+		why: "The same inert key in the state `/l` + Enter just grew into: `/lo` IS the common prefix of `login`, `logout` and `loop`, so a second Enter cannot narrow either, and the same line has to carry it (U2).",
+		word: "lo",
+		key: "Enter",
+		expect: {
+			ran: "none",
+			draft: "/lo",
+			list: "Slash commands",
+			enterNote:
+				"Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+		},
+	},
+	{
+		name: "enter-completes-and-the-next-enter-runs",
+		why: "The U4 arm: `/clear`'s destination declines a POINTER run like `/model`'s, but its completion closes the list, so the NEXT Enter runs it. Its line says so, and that line is in this case's BEFORE frame (the popup is gone by the AFTER one, which is why only the outcome is asserted here — the wording is pinned by `slash-contract.test.mjs`).",
+		word: "clear",
+		key: "Enter",
+		expect: { ran: "none", draft: "/clear ", list: null },
+	},
+	{
 		name: "click-runs-analytics",
 		why: "The pointer arm, which already worked: a click on the row runs the command on the same pick.",
 		word: "ana",
@@ -248,6 +281,14 @@ const READ_STATE = `(() => {
 		rows: options.map((node) => text(node)),
 		active: active ? text(active) : null,
 		ran: text(document.querySelector("[data-slash-dispatched]")),
+		/* The popup's own ENTER line, verbatim: the gesture strip's first
+		   paragraph, which is what the copy findings are about. Read here rather
+		   than from the frame because a reviewer checking "does the line describe
+		   the key" wants the string, and the frame is where they check the
+		   weight and placement. */
+		enterNote: box && box.lastElementChild
+			? text(box.lastElementChild.querySelector("p"))
+			: null,
 	};
 })()`;
 
