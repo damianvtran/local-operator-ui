@@ -71,9 +71,10 @@ const PROBE = `
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, scopeKey, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, scopeFromKey, scopeKey, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 	export function renderBrowserChrome() {
 		const captured = { chrome: null };
@@ -106,6 +107,7 @@ const PROBE = `
 		reconcileResolved,
 		remainingLabel,
 		requestsInScope,
+		scopeFromKey,
 		scopeKey,
 		tabsInScope,
 		waitingOrdinals,
@@ -113,6 +115,7 @@ const PROBE = `
 		BrowserLoadFailure,
 		loadFailureSentence,
 		useCanonicalSessionsStore,
+		useUiPreferencesStore,
 	};
 `;
 
@@ -196,6 +199,7 @@ const {
 	reconcileResolved,
 	remainingLabel,
 	requestsInScope,
+	scopeFromKey,
 	scopeKey,
 	tabsInScope,
 	waitingOrdinals,
@@ -203,6 +207,7 @@ const {
 	BrowserLoadFailure,
 	loadFailureSentence,
 	useCanonicalSessionsStore,
+	useUiPreferencesStore,
 	noteConsentAttention,
 	clearConsentAttention,
 	consentAttentionSnapshot,
@@ -1466,26 +1471,34 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
 	const refresh = source.slice(
-		source.indexOf("export function useBrowserProjection"),
+		source.indexOf("async function readProjection"),
 		source.indexOf("export function useBrowserChrome"),
 	);
 	assert.ok(
-		refresh.includes("setReadError(null)"),
+		/api\.state\(\)[\s\S]*?publishProjection\(\{ state: next, readError: null \}\)/.test(
+			refresh,
+		),
 		"a successful state read clears the READ error only",
+	);
+	assert.ok(
+		/projectionSnapshot, readError: messageOf\(caught\)/.test(refresh),
+		"and a failed one records it on the same slot, which is the only error it owns",
 	);
 	assert.ok(
 		!refresh.includes("setActionError"),
 		"and it cannot touch the action's own refusal",
 	);
-	// The slice's boundary moved with the read itself: `useBrowserProjection` owns
-	// the projection and its error slot, and `useBrowserChrome` composes it. The
-	// rule is unchanged, and it is still the SHIPPED source this reads.
+	// The slice's boundary moved with the read itself, twice now: the read and its
+	// error slot live in `readProjection` / the projection store it publishes to
+	// (review round 1, F5 made them one per window rather than one per hook), and
+	// `useBrowserChrome` composes the hook. The rule is unchanged, and it is still
+	// the SHIPPED source this reads.
 	assert.ok(
 		/setActionError\(null\);\s*clearReadError\(\);/.test(source),
 		"the explicit dismissal clears both, which is the only other way an action error goes away",
 	);
 	assert.ok(
-		/const clearReadError = useCallback\(\(\): void => \{\s*setReadError\(null\);\s*\}, \[\]\)/.test(
+		/const clearReadError = useCallback\(\(\): void => \{\s*publishProjection\(\{ \.\.\.projectionSnapshot, readError: null \}\);\s*\}, \[\]\)/.test(
 			source,
 		),
 		"and the slot it clears is the read's own, so the dismissal is not a second writer of the action's",
@@ -1971,12 +1984,27 @@ test("a scope's KEY is its value, so a host cannot trip the surface's identity m
 	// render, published the clock, and rendered again — a loop on a surface that
 	// still paints. The surface keys on the VALUE now, and this is the value.
 	assert.equal(scopeKey("all"), "all");
-	assert.equal(scopeKey({ sessionId: "session-1f4c" }), "session-1f4c");
+	assert.equal(scopeKey({ sessionId: "session-1f4c" }), "session:session-1f4c");
 	assert.equal(
 		scopeKey({ sessionId: "session-1f4c" }),
 		scopeKey({ sessionId: "session-1f4c" }),
 		"two objects with one value are one key, which is the whole point",
 	);
+	// INJECTIVE (review round 1, NIT A): a session literally named `all` is a
+	// session, not the all-tabs scope, and it has to survive the round trip
+	// through the key the surface rebuilds its scope from.
+	assert.notEqual(
+		scopeKey({ sessionId: "all" }),
+		scopeKey("all"),
+		"a session named `all` must not collapse to the all-tabs scope",
+	);
+	for (const scope of ["all", { sessionId: "all" }, { sessionId: "session-1f4c" }]) {
+		assert.deepEqual(
+			scopeFromKey(scopeKey(scope)),
+			scope,
+			"the key survives the round trip the surface depends on",
+		);
+	}
 });
 
 test("the pane's tray sentence says which list its count is about", () => {
@@ -2130,5 +2158,95 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 	assert.equal(
 		loadFailureSentence("ERR_NAME_NOT_RESOLVED"),
 		"That address does not resolve. Check the spelling.",
+	);
+});
+
+
+/* ---------------------------------------------------------------- */
+/* The third term of the right slot, and the tags a run drives on    */
+/* (review round 1, F3 and F4)                                       */
+/* ---------------------------------------------------------------- */
+
+test("the browser pane is a third term of the right slot, exclusive with both siblings", () => {
+	const store = useUiPreferencesStore;
+	// The canvas/run pair was pinned in `composer-tabs.test.mjs`; the third term is
+	// this change's, and a store rule with no test is the rule a later edit deletes.
+	store.setState({
+		isCanvasOpen: false,
+		isRunPanelOpen: false,
+		isBrowserPaneOpen: false,
+		runPanelReveal: null,
+	});
+	store.getState().setCanvasOpen(true);
+	store.getState().setRunPanelOpen(true);
+	assert.equal(
+		store.getState().isCanvasOpen,
+		false,
+		"opening the run panel closes the canvas",
+	);
+
+	store.getState().setBrowserPaneOpen(true);
+	const afterPane = store.getState();
+	assert.equal(afterPane.isRunPanelOpen, false, "the pane closes the run panel");
+	assert.equal(afterPane.isCanvasOpen, false, "and the canvas");
+	assert.equal(afterPane.isBrowserPaneOpen, true);
+
+	store.getState().setCanvasOpen(true);
+	assert.equal(
+		store.getState().isBrowserPaneOpen,
+		false,
+		"the canvas closes the pane",
+	);
+	store.getState().setBrowserPaneOpen(true);
+	assert.equal(store.getState().isCanvasOpen, false, "and the pane closes it back");
+	store.getState().setRunPanelOpen(true);
+	assert.equal(
+		store.getState().isBrowserPaneOpen,
+		false,
+		"the run panel closes the pane too",
+	);
+
+	// The FOURTH writer is the chip's one-shot reveal, which is the path a user
+	// actually takes to the run panel while the pane is open.
+	store.getState().setBrowserPaneOpen(true);
+	store.getState().revealRunPanelSection("todos");
+	const afterReveal = store.getState();
+	assert.equal(
+		afterReveal.isBrowserPaneOpen,
+		false,
+		"the composer chip's reveal clears the pane as well",
+	);
+	assert.equal(afterReveal.isRunPanelOpen, true);
+	store.setState({
+		isCanvasOpen: false,
+		isRunPanelOpen: false,
+		isBrowserPaneOpen: false,
+		runPanelReveal: null,
+	});
+});
+
+test("each host stamps its own dock tag, so a run can say which dock it drove", () => {
+	// Spec 9's item 4 asks for the tags to be asserted, and the dock's is the one
+	// that cannot be reached by a static render: it mounts only while the surface's
+	// own `dockOpen` state is set. So the pin is on the two hosts' own call sites,
+	// where the tag is chosen - one assertion covering both hosts.
+	const pane = shippedSource(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	const route = shippedSource(
+		"src/renderer/src/features/browser/components/browser-page.tsx",
+	);
+	assert.ok(
+		pane.includes('dockSurfaceTag="browser-pane-dock"'),
+		"the pane names its dock, so a frame of a docked pane is attributable",
+	);
+	assert.ok(
+		route.includes('dockSurfaceTag="browser-approvals-dock"'),
+		"and the route keeps its own",
+	);
+	assert.notEqual(
+		"browser-pane-dock",
+		"browser-approvals-dock",
+		"the two hosts cannot share one dock tag",
 	);
 });
