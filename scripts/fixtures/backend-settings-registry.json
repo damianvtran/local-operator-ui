@@ -1,0 +1,2529 @@
+{
+	"sections": [
+		{
+			"name": "model",
+			"title": "Model",
+			"scope": "new sessions",
+			"description": "Provider, model and reasoning effort for new conversations. Existing sessions keep their model; /model saved adopts the default here."
+		},
+		{
+			"name": "providers",
+			"title": "Wire protocol",
+			"scope": "live",
+			"description": "How direct provider connections are made: API surface and cache TTL."
+		},
+		{
+			"name": "openrouter",
+			"title": "OpenRouter routing",
+			"scope": "live",
+			"description": "How OpenRouter picks a host; unset = sticky routing."
+		},
+		{
+			"name": "failover",
+			"title": "Failover and retry",
+			"scope": "live",
+			"description": "What happens when a provider call fails or a quota runs out."
+		},
+		{
+			"name": "appearance",
+			"title": "Appearance",
+			"scope": "live",
+			"description": "Theme and the terminal features the TUI is allowed to use."
+		},
+		{
+			"name": "keymap",
+			"title": "Hotkeys",
+			"scope": "live",
+			"description": "Keys for starting and resuming conversations. Press enter on a row, then press the key you want."
+		},
+		{
+			"name": "approvals",
+			"title": "Approvals",
+			"scope": "live",
+			"description": "Whether write and command tools prompt, in every running session."
+		},
+		{
+			"name": "session",
+			"title": "Session storage",
+			"scope": "new launch",
+			"description": "Autosave and the cleanup policy."
+		},
+		{
+			"name": "subagents",
+			"title": "Subagents",
+			"scope": "live",
+			"description": "Concurrency cap, who picks a child's model, and the model each tier runs on."
+		},
+		{
+			"name": "runtime",
+			"title": "Runtime",
+			"scope": "live",
+			"description": "How sessions behave when you leave them."
+		},
+		{
+			"name": "compaction",
+			"title": "Compaction",
+			"scope": "live",
+			"description": "When the conversation is summarised to reclaim context."
+		},
+		{
+			"name": "fork",
+			"title": "Fork",
+			"scope": "live",
+			"description": "Where /fork opens the branched conversation."
+		},
+		{
+			"name": "web_tools",
+			"title": "Web tools",
+			"scope": "live",
+			"description": "Whether the search and fetch tools are offered and allowed to run."
+		},
+		{
+			"name": "web_search",
+			"title": "Web search",
+			"scope": "live",
+			"description": "Providers and load balancing for the search tool."
+		},
+		{
+			"name": "web_fetch",
+			"title": "Web fetch",
+			"scope": "live",
+			"description": "Limits and rendering for the fetch tool."
+		},
+		{
+			"name": "tools",
+			"title": "Tools",
+			"scope": "live",
+			"description": "How the built-in tools execute."
+		},
+		{
+			"name": "local_providers",
+			"title": "Local servers",
+			"scope": "new sessions",
+			"description": "Server endpoints and exact-model metadata. Use /login to connect; reselect with /model saved to apply model changes."
+		},
+		{
+			"name": "retired",
+			"title": "Retired",
+			"scope": "new launch",
+			"description": "Keys that are read but no longer do anything."
+		}
+	],
+	"settings": [
+		{
+			"key": "hosting",
+			"section": "model",
+			"label": "Default provider",
+			"kind": "text",
+			"help": "Provider for new conversations. /model saved adopts it here.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "model_name",
+			"section": "model",
+			"label": "Default model",
+			"kind": "text",
+			"help": "Model for new conversations. /model saved adopts it here.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "model_effort",
+			"section": "model",
+			"label": "Default reasoning effort",
+			"kind": "enum",
+			"help": "Effort for new conversations. Unset: the model's default.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "auto",
+					"description": "the model's own default"
+				},
+				{
+					"value": "none",
+					"label": "none",
+					"description": "reasoning off"
+				},
+				{
+					"value": "minimal",
+					"label": "minimal",
+					"description": "the least reasoning the model offers"
+				},
+				{
+					"value": "low",
+					"label": "low",
+					"description": "light reasoning"
+				},
+				{
+					"value": "medium",
+					"label": "medium",
+					"description": "moderate reasoning"
+				},
+				{
+					"value": "high",
+					"label": "high",
+					"description": "deep reasoning"
+				},
+				{
+					"value": "xhigh",
+					"label": "xhigh",
+					"description": "very deep reasoning"
+				},
+				{
+					"value": "max",
+					"label": "max",
+					"description": "the model's deepest reasoning"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openai.use_max_context_window",
+			"section": "providers",
+			"label": "Use maximum OpenAI context",
+			"kind": "bool",
+			"help": "Off: provider default. On: supported max. Applies next request; compaction unchanged.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openai.api",
+			"section": "providers",
+			"label": "OpenAI API surface",
+			"kind": "enum",
+			"help": "Direct OpenAI GPT-5 calls use the Responses API unless opted out.",
+			"value": "responses",
+			"default": "responses",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "responses",
+					"label": "responses",
+					"description": "the public Responses API (default)"
+				},
+				{
+					"value": "chat_completions",
+					"label": "chat_completions",
+					"description": "explicit compatibility opt-out"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.anthropic.cache_ttl_1h_min_context_tokens",
+			"section": "providers",
+			"label": "Anthropic 1h cache above (tokens)",
+			"kind": "int",
+			"help": "Context size from which Anthropic requests use the 1-hour prompt-cache TTL (2x write cost, survives idle gaps over 5 minutes). 0 disables.",
+			"value": 150000,
+			"default": 150000,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 10000000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.provider_affinity",
+			"section": "openrouter",
+			"label": "cache affinity",
+			"kind": "bool",
+			"help": "Reuses the host that served the previous turn so the prompt cache stays warm. Off = OpenRouter's price-weighted load balancing.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.sort",
+			"section": "openrouter",
+			"label": "routing policy",
+			"kind": "enum",
+			"help": "How OpenRouter ranks hosts for this call. May route away from the host holding your warm prompt cache (a cold start on long conversations); 'default' sends no preference at all.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "default",
+					"description": "no preference — sticky routing stays on (warmest cache)"
+				},
+				{
+					"value": "price",
+					"label": "price",
+					"description": "cheapest host first"
+				},
+				{
+					"value": "throughput",
+					"label": "throughput",
+					"description": "highest tokens/sec first"
+				},
+				{
+					"value": "latency",
+					"label": "latency",
+					"description": "lowest response latency first"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.order",
+			"section": "openrouter",
+			"label": "host order",
+			"kind": "list",
+			"help": "Empty = no opinion (sticky routing stays). Comma-separated host slugs tried in this exact order.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "disables sticky routing — prompt cache goes cold",
+			"placeholder": "deepseek, groq, mistral, …"
+		},
+		{
+			"key": "providers.openrouter.only",
+			"section": "openrouter",
+			"label": "allowed hosts",
+			"kind": "list",
+			"help": "Empty = no opinion (sticky routing stays). Comma-separated allow-list of host slugs; every other host is excluded — a forced cold start if the warm host is not on it.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"placeholder": "deepseek, groq, mistral, …"
+		},
+		{
+			"key": "providers.openrouter.ignore",
+			"section": "openrouter",
+			"label": "ignored hosts",
+			"kind": "list",
+			"help": "Empty = no opinion (sticky routing stays). Comma-separated block-list of host slugs to omit (e.g. a host that is failing right now) — may cost you the warm prompt cache.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"placeholder": "deepseek, groq, mistral, …"
+		},
+		{
+			"key": "providers.openrouter.allow_fallbacks",
+			"section": "openrouter",
+			"label": "fallbacks",
+			"kind": "enum",
+			"help": "'default' sends nothing (OpenRouter falls through to another host when the preferred one fails); 'false' fails rather than fall through to a host outside your preferences.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "default",
+					"description": "no preference — OpenRouter's default (fall through)"
+				},
+				{
+					"value": "false",
+					"label": "false",
+					"description": "fail rather than fall through"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.require_parameters",
+			"section": "openrouter",
+			"label": "require parameters",
+			"kind": "enum",
+			"help": "'true' restricts to hosts that support every parameter you send (tools, structured output); 'default' lets OpenRouter silently drop unsupported ones.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "default",
+					"description": "no preference — unsupported parameters may be dropped"
+				},
+				{
+					"value": "true",
+					"label": "true",
+					"description": "only hosts that support every parameter"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.data_collection",
+			"section": "openrouter",
+			"label": "data collection",
+			"kind": "enum",
+			"help": "'deny' excludes hosts that may train on or retain your prompts. 'default' sends no preference (OpenRouter's default: allow).",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "default",
+					"description": "no preference sent"
+				},
+				{
+					"value": "allow",
+					"label": "allow",
+					"description": "hosts may collect data"
+				},
+				{
+					"value": "deny",
+					"label": "deny",
+					"description": "exclude hosts that collect data"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.zdr",
+			"section": "openrouter",
+			"label": "zero data retention",
+			"kind": "enum",
+			"help": "'true': restrict to zero-data-retention endpoints. 'default': nothing sent.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "default",
+					"description": "no preference sent"
+				},
+				{
+					"value": "true",
+					"label": "true",
+					"description": "zero-data-retention endpoints only"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.enforce_distillable_text",
+			"section": "openrouter",
+			"label": "distillable text",
+			"kind": "enum",
+			"help": "'true': restrict to endpoints whose text output may be distilled. 'default': nothing sent.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "",
+					"label": "default",
+					"description": "no preference sent"
+				},
+				{
+					"value": "true",
+					"label": "true",
+					"description": "distillable-text endpoints only"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.quantizations",
+			"section": "openrouter",
+			"label": "quantizations",
+			"kind": "list",
+			"help": "Empty = no opinion. Comma-separated quantization levels the served model may use (e.g. int8, fp8, mxfp4).",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [
+				"int4",
+				"int8",
+				"fp4",
+				"fp6",
+				"fp8",
+				"fp16",
+				"bf16",
+				"fp32",
+				"mxfp4",
+				"nvfp4",
+				"mxfp8",
+				"unknown"
+			],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"placeholder": "int8, fp8, mxfp4, …"
+		},
+		{
+			"key": "providers.openrouter.max_price",
+			"section": "openrouter",
+			"label": "max price",
+			"kind": "text",
+			"help": "{\"prompt\": 1, \"completion\": 2} — USD / million tokens",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"placeholder": "{\"prompt\": 1, \"completion\": 2}"
+		},
+		{
+			"key": "providers.openrouter.preferred_min_throughput",
+			"section": "openrouter",
+			"label": "min throughput (tok/s)",
+			"kind": "float",
+			"help": "Prefer hosts serving at least this many output tokens/sec (p50). 0 sends no preference. A host below the bar is deprioritised, which may cost you a warm prompt cache.",
+			"value": 0.0,
+			"default": 0.0,
+			"is_default": true,
+			"minimum": 0.0,
+			"maximum": 100000.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openrouter.preferred_max_latency",
+			"section": "openrouter",
+			"label": "max latency (s)",
+			"kind": "float",
+			"help": "Prefer hosts whose time-to-first-token stays under this many seconds (p50). 0 sends no preference. A host above the bar is deprioritised, which may cost you a warm prompt cache.",
+			"value": 0.0,
+			"default": 0.0,
+			"is_default": true,
+			"minimum": 0.0,
+			"maximum": 600.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.enabled",
+			"section": "failover",
+			"label": "Retry failed calls",
+			"kind": "bool",
+			"help": "Retry a failed provider call before surfacing the error.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "retry with backoff"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "fail on the first error"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.maxRetries",
+			"section": "failover",
+			"label": "Max retries",
+			"kind": "int",
+			"help": "Fast budget against a reachable provider (5xx, timeout).",
+			"value": 10,
+			"default": 10,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 100,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.baseDelayMs",
+			"section": "failover",
+			"label": "Base delay (ms)",
+			"kind": "int",
+			"help": "First backoff step; later attempts grow from it.",
+			"value": 500,
+			"default": 500,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 60000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.connectivityMaxRetries",
+			"section": "failover",
+			"label": "Connectivity retries",
+			"kind": "int",
+			"help": "Patient budget for a machine that went offline; distinct from max retries.",
+			"value": 15,
+			"default": 15,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 200,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.connectivityBackoffCapMs",
+			"section": "failover",
+			"label": "Connectivity backoff cap (ms)",
+			"kind": "int",
+			"help": "Longest wait between connectivity retries.",
+			"value": 60000,
+			"default": 60000,
+			"is_default": true,
+			"minimum": 1000,
+			"maximum": 600000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.modelFallback",
+			"section": "failover",
+			"label": "Model fallback",
+			"kind": "bool",
+			"help": "Move to the next hop in the cascade when a model keeps failing.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "fall back to the next hop"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "stay on the chosen model"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.usageAwareFallback",
+			"section": "failover",
+			"label": "Usage-aware fallback",
+			"kind": "bool",
+			"help": "Switch before a quota runs out. Costs one quota request per user message.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "check quota at message boundaries"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "only react to failures"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.usageAwareAccountPick",
+			"section": "failover",
+			"label": "Usage-aware account pick",
+			"kind": "bool",
+			"help": "Start new sessions on the same-provider account with the most quota left, read from the cached /usage report. Applies to sessions only.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "prefer the least-loaded account"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "spread by session hash only"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.usageReservePercent",
+			"section": "failover",
+			"label": "Usage reserve (%)",
+			"kind": "float",
+			"help": "Headroom below which an account counts as low; a running session stays on it.",
+			"value": 10.0,
+			"default": 10.0,
+			"is_default": true,
+			"minimum": 0.0,
+			"maximum": 100.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "retry.fallbackChains",
+			"section": "failover",
+			"label": "Failover cascade",
+			"kind": "cascade",
+			"help": "Ordered provider/model hops tried when a call keeps failing.",
+			"value": {},
+			"default": {},
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "tui.theme",
+			"section": "appearance",
+			"label": "Theme",
+			"kind": "enum",
+			"help": "Colour ramp. /theme switches it live with an arrow-key preview.",
+			"value": "dark",
+			"default": "dark",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "dark",
+					"label": "dark",
+					"description": "The island night, the Local Operator default"
+				},
+				{
+					"value": "light",
+					"label": "light",
+					"description": "Warm paper, brand ink"
+				},
+				{
+					"value": "monokai",
+					"label": "monokai",
+					"description": "The classic warm-charcoal editor scheme"
+				},
+				{
+					"value": "dracula",
+					"label": "dracula",
+					"description": "Purple-on-slate night with the famous pink and cyan"
+				},
+				{
+					"value": "catppuccin-mocha",
+					"label": "catppuccin-mocha",
+					"description": "Soothing pastels on a soft charcoal-blue base"
+				},
+				{
+					"value": "catppuccin-latte",
+					"label": "catppuccin-latte",
+					"description": "The Catppuccin pastels poured over warm morning paper"
+				},
+				{
+					"value": "tokyo-night",
+					"label": "tokyo-night",
+					"description": "Neon-lit indigo night, the VS Code favorite"
+				},
+				{
+					"value": "tokyo-night-storm",
+					"label": "tokyo-night-storm",
+					"description": "Tokyo Night's softer storm-blue ground"
+				},
+				{
+					"value": "gruvbox",
+					"label": "gruvbox",
+					"description": "Retro groove, warm bread-crust browns and hard yellows"
+				},
+				{
+					"value": "nord",
+					"label": "nord",
+					"description": "Arctic bluish calm, frost accents on polar night"
+				},
+				{
+					"value": "one-dark",
+					"label": "one-dark",
+					"description": "Atom's cool gray-blue standard, steady and unflashy"
+				},
+				{
+					"value": "solarized-dark",
+					"label": "solarized-dark",
+					"description": "The deep teal lab classic, 16-color discipline"
+				},
+				{
+					"value": "rose-pine",
+					"label": "rose-pine",
+					"description": "All natural pine, faux fur and a bit of soho vibes"
+				},
+				{
+					"value": "rose-pine-moon",
+					"label": "rose-pine-moon",
+					"description": "Rosé Pine's warmer moonlit ground, the soho night one shade up"
+				},
+				{
+					"value": "rose-pine-dawn",
+					"label": "rose-pine-dawn",
+					"description": "Rosé Pine at sunrise, warm paper under a soho morning"
+				},
+				{
+					"value": "alucard",
+					"label": "alucard",
+					"description": "Dracula's official daylight half, warm cream and deep jewel ink"
+				},
+				{
+					"value": "gruvbox-light",
+					"label": "gruvbox-light",
+					"description": "Retro groove by daylight, warm cream and faded ink"
+				},
+				{
+					"value": "tokyo-night-day",
+					"label": "tokyo-night-day",
+					"description": "Tokyo Night at noon, cool paper under the same neon hues"
+				},
+				{
+					"value": "one-light",
+					"label": "one-light",
+					"description": "Atom's daylight standard, cool white with the One accent row"
+				},
+				{
+					"value": "catppuccin-frappe",
+					"label": "catppuccin-frappe",
+					"description": "The middle flavor, warm slate under the Catppuccin pastels"
+				},
+				{
+					"value": "catppuccin-macchiato",
+					"label": "catppuccin-macchiato",
+					"description": "The deep flavor, cool navy-slate under the same pastels"
+				},
+				{
+					"value": "palenight",
+					"label": "palenight",
+					"description": "Material's indigo evening, saturated hues on soft violet-slate"
+				},
+				{
+					"value": "everforest",
+					"label": "everforest",
+					"description": "Warm green-tinted dark, built for long low-strain reading"
+				},
+				{
+					"value": "everforest-light",
+					"label": "everforest-light",
+					"description": "The forest scheme on warm paper, soft and low-glare"
+				},
+				{
+					"value": "kanagawa-wave",
+					"label": "kanagawa-wave",
+					"description": "Hokusai ink-wash night, muted paper tones on deep sumi"
+				},
+				{
+					"value": "kanagawa-lotus",
+					"label": "kanagawa-lotus",
+					"description": "The ink-wash palette on aged paper, warm and low-contrast"
+				},
+				{
+					"value": "ayu-dark",
+					"label": "ayu-dark",
+					"description": "Near-black blue with high-key amber and lime accents"
+				},
+				{
+					"value": "ayu-mirage",
+					"label": "ayu-mirage",
+					"description": "Ayu's slate-blue middle ground, softer than the dark"
+				},
+				{
+					"value": "ayu-light",
+					"label": "ayu-light",
+					"description": "Ayu on near-white paper, crisp with deepened accents"
+				},
+				{
+					"value": "nightfox",
+					"label": "nightfox",
+					"description": "Cool blue-slate night, even-toned and unhurried"
+				},
+				{
+					"value": "duskfox",
+					"label": "duskfox",
+					"description": "Violet-ground dusk, the rose-tinted end of the fox family"
+				},
+				{
+					"value": "synthwave",
+					"label": "synthwave",
+					"description": "Hot pink and cyan on a deep purple-navy night drive"
+				},
+				{
+					"value": "matrix",
+					"label": "matrix",
+					"description": "Phosphor green rain on a near-black terminal screen"
+				},
+				{
+					"value": "tron",
+					"label": "tron",
+					"description": "Electric cyan circuitry on the Grid's blue-black"
+				},
+				{
+					"value": "cyberpunk",
+					"label": "cyberpunk",
+					"description": "Construction yellow and glare cyan over violet-black Night City"
+				},
+				{
+					"value": "vaporwave",
+					"label": "vaporwave",
+					"description": "Dusty pink and faded teal pastels on deep mall-purple"
+				},
+				{
+					"value": "outrun",
+					"label": "outrun",
+					"description": "Sunset magenta and grid cyan racing over midnight blue"
+				},
+				{
+					"value": "neon-noir",
+					"label": "neon-noir",
+					"description": "Rain-dimmed cyan and magenta signs over 3am charcoal"
+				},
+				{
+					"value": "arcade",
+					"label": "arcade",
+					"description": "Candy RGB game states glowing on black CRT glass"
+				},
+				{
+					"value": "radient",
+					"label": "radient",
+					"description": "One signal blue on a blue-tinted near-black (the Radient kit)"
+				},
+				{
+					"value": "sage",
+					"label": "sage",
+					"description": "Parchment dark and sage green, a quiet Hyrule field at dusk"
+				},
+				{
+					"value": "forest",
+					"label": "forest",
+					"description": "Deep pine shadow, moss-green light through the canopy"
+				},
+				{
+					"value": "ocean",
+					"label": "ocean",
+					"description": "Deep-sea blue-green with a pale sea-foam accent"
+				},
+				{
+					"value": "desert",
+					"label": "desert",
+					"description": "Warm dark sand, terracotta glow, a stripe of cactus green"
+				},
+				{
+					"value": "autumn",
+					"label": "autumn",
+					"description": "Dark oak under maple red and harvest amber"
+				},
+				{
+					"value": "lavender",
+					"label": "lavender",
+					"description": "Purple-gray dusk with a soft lavender glow"
+				},
+				{
+					"value": "arctic",
+					"label": "arctic",
+					"description": "Blue-white on slate, lit by an aurora green"
+				},
+				{
+					"value": "rosewood",
+					"label": "rosewood",
+					"description": "Dark rosewood, dried-rose reds, a glint of brass"
+				},
+				{
+					"value": "solarized-light",
+					"label": "solarized-light",
+					"description": "Schoonover's sunlit base3 paper, the classic 16-color science"
+				},
+				{
+					"value": "github-light",
+					"label": "github-light",
+					"description": "Clean Primer white with GitHub's own state colors"
+				},
+				{
+					"value": "paper",
+					"label": "paper",
+					"description": "Warm cream and brown ink, an open book in good light"
+				},
+				{
+					"value": "linen",
+					"label": "linen",
+					"description": "Cool off-white weave, states in soft dusty pastels"
+				},
+				{
+					"value": "high-contrast-light",
+					"label": "high-contrast-light",
+					"description": "Ink on near-white, every state 6:1+, built for legibility"
+				},
+				{
+					"value": "mint-light",
+					"label": "mint-light",
+					"description": "Crisp white with a cool fresh-mint green accent"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.shimmer",
+			"section": "appearance",
+			"label": "Shimmer animation",
+			"kind": "bool",
+			"help": "The animated sheen on the working line.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "animate the working line"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "static working line"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.comfortable_rows",
+			"section": "appearance",
+			"label": "Comfortable action rows",
+			"kind": "bool",
+			"help": "Pad tool and prompt rows so they are easier to click.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "padded, easier to click"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "compact, more history"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.nerd_icons",
+			"section": "appearance",
+			"label": "Nerd Font glyphs",
+			"kind": "enum",
+			"help": "Expanded tool-row icons. Auto reads the terminal emulator's markers.",
+			"value": null,
+			"default": null,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": null,
+					"label": "auto",
+					"description": "decide from the terminal emulator"
+				},
+				{
+					"value": true,
+					"label": "on",
+					"description": "force glyphs on"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "force plain icons"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.heading_markers",
+			"section": "appearance",
+			"label": "Heading markers",
+			"kind": "bool",
+			"help": "Show the literal ### before a heading, as the markdown source writes it.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show ### markers"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "colour and weight only"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.terminal_title",
+			"section": "appearance",
+			"label": "Terminal title",
+			"kind": "bool",
+			"help": "OSC 0 window title carrying the session name and run state.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "set the window title"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "leave the title alone"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.images",
+			"section": "appearance",
+			"label": "Inline images",
+			"kind": "bool",
+			"help": "Screenshots and attachments drawn in the transcript.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "draw images"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "text receipts only"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.notifications",
+			"section": "appearance",
+			"label": "Desktop notifications",
+			"kind": "bool",
+			"help": "Fires only while the terminal is unfocused.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "notify when unfocused"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "never notify"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.notification_session_name",
+			"section": "appearance",
+			"label": "Notification session names",
+			"kind": "bool",
+			"help": "A session's name, last line and error causes appear on banners, including the lock screen.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "name the session"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "keep names off banners"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"gated_by": "display.notifications"
+		},
+		{
+			"key": "display.time_format",
+			"section": "appearance",
+			"label": "Wake time format",
+			"kind": "enum",
+			"help": "Scheduled wake times use your local timezone. Choose a 12- or 24-hour clock.",
+			"value": "12h",
+			"default": "12h",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "12h",
+					"label": "12-hour",
+					"description": "7:52 PM PDT"
+				},
+				{
+					"value": "24h",
+					"label": "24-hour",
+					"description": "19:52 PDT"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "display.dock",
+			"section": "appearance",
+			"label": "Subagent dock",
+			"kind": "enum",
+			"help": "How much room the subagent panel takes when a session starts; ctrl+g cycles it.",
+			"value": "full",
+			"default": "full",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "full",
+					"label": "full",
+					"description": "one row per child, newest first"
+				},
+				{
+					"value": "summary",
+					"label": "summary",
+					"description": "a one-line count"
+				},
+				{
+					"value": "hidden",
+					"label": "hidden",
+					"description": "not shown"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "tui.sidebar_visible",
+			"section": "appearance",
+			"label": "Session sidebar",
+			"kind": "bool",
+			"help": "Active and recent conversations. Ctrl+B toggles the sidebar.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the sidebar"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "keep the full conversation width"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "tui.sidebar_position",
+			"section": "appearance",
+			"label": "Sidebar position",
+			"kind": "enum",
+			"help": "Which side of the conversation holds the session sidebar.",
+			"value": "left",
+			"default": "left",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "left",
+					"label": "left",
+					"description": "sessions to the left of the conversation"
+				},
+				{
+					"value": "right",
+					"label": "right",
+					"description": "sessions to the right of the conversation"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "keymap.new_session",
+			"section": "keymap",
+			"label": "New session",
+			"kind": "hotkey",
+			"help": "Starts a fresh conversation, the same as /new.",
+			"value": "ctrl+n",
+			"default": "ctrl+n",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "keymap.resume",
+			"section": "keymap",
+			"label": "Resume a session",
+			"kind": "hotkey",
+			"help": "Opens the picker of recent conversations, the same as /resume.",
+			"value": "ctrl+s",
+			"default": "ctrl+s",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "tool_approval_mode",
+			"section": "approvals",
+			"label": "Tool approval mode",
+			"kind": "enum",
+			"help": "How every running session treats write and exec tools, from its next call.",
+			"value": "ask",
+			"default": "ask",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "ask",
+					"label": "ask",
+					"description": "prompt before write/exec tools"
+				},
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "run them without asking"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "auto_save_conversation",
+			"section": "session",
+			"label": "Auto-save conversation",
+			"kind": "bool",
+			"help": "Headless REPL launches only; the TUI's runtime does not read it.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "save automatically"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "save on request"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "runtime.background_on_resume",
+			"section": "runtime",
+			"label": "Keep working after /resume",
+			"kind": "bool",
+			"help": "Leave a running turn working when you switch away from its session.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "keep the turn running in the background"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "stop the turn when you leave the session"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "session.cleanup.enabled",
+			"section": "session",
+			"label": "Session cleanup",
+			"kind": "bool",
+			"help": "Off: nothing is ever removed. On: limits below run at launch, sparing the newest 10 + live.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "limits run at launch; newest 10 + live kept"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "nothing is ever removed"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "session.cleanup.max_sessions",
+			"section": "session",
+			"label": "↳ max sessions",
+			"kind": "int",
+			"help": "Needs cleanup on. Keep N newest /resume sessions; 0 = no cap.",
+			"value": 0,
+			"default": 0,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"gated_by": "session.cleanup.enabled"
+		},
+		{
+			"key": "session.cleanup.max_inactive_days",
+			"section": "session",
+			"label": "↳ max inactive days",
+			"kind": "int",
+			"help": "Needs cleanup on. Remove sessions idle this many days; 0 = never.",
+			"value": 0,
+			"default": 0,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"gated_by": "session.cleanup.enabled"
+		},
+		{
+			"key": "session.cleanup.max_total_bytes",
+			"section": "session",
+			"label": "↳ max total bytes",
+			"kind": "int",
+			"help": "Needs cleanup on. Trim oldest past this many bytes; 0 = no cap.",
+			"value": 0,
+			"default": 0,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"gated_by": "session.cleanup.enabled"
+		},
+		{
+			"key": "session.cleanup.remove_empty",
+			"section": "session",
+			"label": "↳ remove empty",
+			"kind": "bool",
+			"help": "Needs cleanup on. Remove dirs that never got a transcript.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "remove transcript-less directories"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "keep them"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"gated_by": "session.cleanup.enabled"
+		},
+		{
+			"key": "runtime.unattended_gate_timeout",
+			"section": "runtime",
+			"label": "Unattended question timeout (h)",
+			"kind": "int",
+			"help": "How long a question waits when you are away. 0 never times out.",
+			"value": 24,
+			"default": 24,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 720,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "subagents.max_running",
+			"section": "subagents",
+			"label": "Max background jobs",
+			"kind": "int",
+			"help": "Ceiling on concurrent subagents and backgrounded bash, which share one pool.",
+			"value": 15,
+			"default": 15,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 64,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "subagents.model_choice",
+			"section": "subagents",
+			"label": "Who picks a subagent's model",
+			"kind": "enum",
+			"help": "Who picks a subagent's tier; the operator pins one in its profile.",
+			"value": "operator",
+			"default": "operator",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "operator",
+					"label": "the operator",
+					"description": "inherits the session model"
+				},
+				{
+					"value": "model",
+					"label": "the model",
+					"description": "may run the subagent on a costlier model"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "subagents.models.lo",
+			"section": "subagents",
+			"label": "Subagent model: lo",
+			"kind": "text",
+			"help": "Bills at that model's rates; empty inherits. See subagents.model_choice",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "subagents.models.med",
+			"section": "subagents",
+			"label": "Subagent model: med",
+			"kind": "text",
+			"help": "Bills at that model's rates; empty inherits. See subagents.model_choice",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "subagents.models.hi",
+			"section": "subagents",
+			"label": "Subagent model: hi",
+			"kind": "text",
+			"help": "Bills at that model's rates; empty inherits. See subagents.model_choice",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "fork.mode",
+			"section": "fork",
+			"label": "Where a fork opens",
+			"kind": "enum",
+			"help": "Choose where the fork opens; unfinished work stays in the original.",
+			"value": "switch",
+			"default": "switch",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "window",
+					"label": "new window",
+					"description": "open the fork elsewhere; this session keeps running"
+				},
+				{
+					"value": "switch",
+					"label": "this terminal",
+					"description": "follow the fork here; return with /resume"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "fork.cmux_placement",
+			"section": "fork",
+			"label": "Where it opens under cmux",
+			"kind": "enum",
+			"help": "Under cmux, whether a fork gets its own workspace or a surface here.",
+			"value": "workspace",
+			"default": "workspace",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "workspace",
+					"label": "new workspace",
+					"description": "a sidebar row of its own"
+				},
+				{
+					"value": "surface",
+					"label": "new surface",
+					"description": "a tab in the current workspace"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.enabled",
+			"section": "compaction",
+			"label": "Compaction",
+			"kind": "bool",
+			"help": "Summarise older history when the context fills.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "compact automatically"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "never compact"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.strategy",
+			"section": "compaction",
+			"label": "Strategy",
+			"kind": "enum",
+			"help": "Which mechanism compacts. Auto picks per model.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "snapcompact for vision models, else context-full"
+				},
+				{
+					"value": "context-full",
+					"label": "context-full",
+					"description": "summarise the whole context"
+				},
+				{
+					"value": "snapcompact",
+					"label": "snapcompact",
+					"description": "snapshot-based, keeps images out"
+				},
+				{
+					"value": "off",
+					"label": "off",
+					"description": "disable the pass"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.threshold_percent",
+			"section": "compaction",
+			"label": "Threshold (% of window)",
+			"kind": "float",
+			"help": "Percentage trigger. 0.80 and 80 both mean 80%.",
+			"value": 0.8,
+			"default": 0.8,
+			"is_default": true,
+			"minimum": 0.0,
+			"maximum": 100.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.threshold_tokens",
+			"section": "compaction",
+			"label": "Threshold (tokens)",
+			"kind": "int",
+			"help": "Absolute trigger. The smaller of this and the percentage wins.",
+			"value": 600000,
+			"default": 600000,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.keep_recent_tokens",
+			"section": "compaction",
+			"label": "Keep recent tokens",
+			"kind": "int",
+			"help": "Recent history kept verbatim across a pass.",
+			"value": 20000,
+			"default": 20000,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.auto_continue",
+			"section": "compaction",
+			"label": "Continue after compaction",
+			"kind": "bool",
+			"help": "Schedule a continuation prompt after a successful post-turn pass.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "continue automatically"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "stop after the pass"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.mid_turn_enabled",
+			"section": "compaction",
+			"label": "Mid-turn compaction",
+			"kind": "bool",
+			"help": "Allow a pass at safe tool-loop boundaries, not only between turns.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "compact mid-turn"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "only between turns"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.wire_bytes_budget",
+			"section": "compaction",
+			"label": "Request size limit (bytes)",
+			"kind": "int",
+			"help": "Hard ceiling on the request. Older screenshots are dropped from the context (never from the transcript) to stay under it. 0 disables.",
+			"value": 24000000,
+			"default": 24000000,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "compaction.wire_bytes_trigger",
+			"section": "compaction",
+			"label": "Request size trigger (bytes)",
+			"kind": "int",
+			"help": "Compact once the request passes this size, so a screenshot-heavy session summarises early instead of dropping frames. 0 disables.",
+			"value": 16000000,
+			"default": 16000000,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.enabled",
+			"section": "web_tools",
+			"label": "Web search",
+			"kind": "bool",
+			"help": "Offer the search tool and let it run; off refuses every call.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "search available"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "search disabled"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.strategy",
+			"section": "web_search",
+			"label": "Load balancing",
+			"kind": "enum",
+			"help": "How the provider list is consumed.",
+			"value": "round_robin",
+			"default": "round_robin",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "round_robin",
+					"label": "round_robin",
+					"description": "rotate across providers"
+				},
+				{
+					"value": "ordered",
+					"label": "ordered",
+					"description": "top of the list first, fall through"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.providers",
+			"section": "web_search",
+			"label": "Providers",
+			"kind": "list",
+			"help": "Comma-separated, in priority order.",
+			"value": ["duckduckgo", "tavily"],
+			"default": ["duckduckgo", "tavily"],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [
+				"duckduckgo",
+				"tavily",
+				"deepseek",
+				"perplexity",
+				"brave",
+				"exa",
+				"serpapi",
+				"searxng"
+			],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.timeout_seconds",
+			"section": "web_search",
+			"label": "Timeout (s)",
+			"kind": "float",
+			"help": "Per-provider request timeout. Clamped to 1-120 when read.",
+			"value": 20.0,
+			"default": 20.0,
+			"is_default": true,
+			"minimum": 1.0,
+			"maximum": 120.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.searxng_endpoint",
+			"section": "web_search",
+			"label": "SearXNG endpoint",
+			"kind": "text",
+			"help": "Base URL of a self-hosted SearXNG instance.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.deepseek_evidence",
+			"section": "web_search",
+			"label": "DeepSeek page evidence",
+			"kind": "bool",
+			"help": "Adds a per-page quote and relevance score after a DeepSeek search.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_search.read_enabled",
+			"section": "web_search",
+			"label": "Read from search",
+			"kind": "bool",
+			"help": "Offer web_read: answer from pages a search already retrieved, no refetch.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.enabled",
+			"section": "web_tools",
+			"label": "Web fetch",
+			"kind": "bool",
+			"help": "Offer the fetch tool and read <url>; off refuses every call.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "fetch available"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "fetch disabled"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.timeout_seconds",
+			"section": "web_fetch",
+			"label": "Timeout (s)",
+			"kind": "float",
+			"help": "Per-request timeout.",
+			"value": 20.0,
+			"default": 20.0,
+			"is_default": true,
+			"minimum": 1.0,
+			"maximum": 300.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.max_bytes",
+			"section": "web_fetch",
+			"label": "Download ceiling (bytes)",
+			"kind": "int",
+			"help": "Enforced during streaming, so a huge page is cut off rather than buffered.",
+			"value": 5242880,
+			"default": 5242880,
+			"is_default": true,
+			"minimum": 1024,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.max_redirects",
+			"section": "web_fetch",
+			"label": "Max redirects",
+			"kind": "int",
+			"help": "Redirect hops followed before giving up.",
+			"value": 5,
+			"default": 5,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 50,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.cache_ttl_seconds",
+			"section": "web_fetch",
+			"label": "Cache TTL (s)",
+			"kind": "int",
+			"help": "0 disables the URL cache entirely.",
+			"value": 900,
+			"default": 900,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.allow_private",
+			"section": "web_fetch",
+			"label": "Allow private addresses",
+			"kind": "bool",
+			"help": "SSRF guard. On permits loopback, private and link-local targets.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "allow private targets"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "block private targets"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.render_backend",
+			"section": "web_fetch",
+			"label": "HTML renderer",
+			"kind": "enum",
+			"help": "Auto uses markdownify when the [fetch] extra is installed.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "markdownify if available, else stdlib"
+				},
+				{
+					"value": "stdlib",
+					"label": "stdlib",
+					"description": "always the bundled renderer"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "web_fetch.enrich",
+			"section": "web_fetch",
+			"label": "Enrich before scraping",
+			"kind": "bool",
+			"help": "Try .md, llms.txt and content negotiation before scraping HTML.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "try cleaner sources first"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "scrape HTML directly"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "bash.shell",
+			"section": "tools",
+			"label": "Bash interpreter",
+			"kind": "text",
+			"help": "Interpreter for the bash tool. Empty uses bash on PATH, else /bin/sh.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "providers.lmstudio.base_url",
+			"section": "local_providers",
+			"label": "LM Studio endpoint",
+			"kind": "text",
+			"help": "HTTP(S) API root. Changing servers requires a new token through /login; existing tokens are never forwarded to another endpoint.",
+			"value": "http://localhost:1234/v1",
+			"default": "http://localhost:1234/v1",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.lmstudio.models",
+			"section": "local_providers",
+			"label": "LM Studio model overrides",
+			"kind": "text",
+			"help": "JSON: {\"model-id\":{\"context_window\":8192}}; server limits still apply.",
+			"value": "{}",
+			"default": "{}",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.ollama.base_url",
+			"section": "local_providers",
+			"label": "Ollama endpoint",
+			"kind": "text",
+			"help": "HTTP(S) API root. Changing servers requires a new token through /login; existing tokens are never forwarded to another endpoint.",
+			"value": "http://localhost:11434/v1",
+			"default": "http://localhost:11434/v1",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.ollama.models",
+			"section": "local_providers",
+			"label": "Ollama model overrides",
+			"kind": "text",
+			"help": "JSON: {\"model-id\":{\"context_window\":8192}}; server limits still apply.",
+			"value": "{}",
+			"default": "{}",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.vllm.base_url",
+			"section": "local_providers",
+			"label": "vLLM endpoint",
+			"kind": "text",
+			"help": "HTTP(S) API root. Changing servers requires a new token through /login; existing tokens are never forwarded to another endpoint.",
+			"value": "http://localhost:8000/v1",
+			"default": "http://localhost:8000/v1",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.vllm.models",
+			"section": "local_providers",
+			"label": "vLLM model overrides",
+			"kind": "text",
+			"help": "JSON: {\"model-id\":{\"context_window\":8192}}; server limits still apply.",
+			"value": "{}",
+			"default": "{}",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.llamacpp.base_url",
+			"section": "local_providers",
+			"label": "llama.cpp endpoint",
+			"kind": "text",
+			"help": "HTTP(S) API root. Changing servers requires a new token through /login; existing tokens are never forwarded to another endpoint.",
+			"value": "http://localhost:8080/v1",
+			"default": "http://localhost:8080/v1",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.llamacpp.models",
+			"section": "local_providers",
+			"label": "llama.cpp model overrides",
+			"kind": "text",
+			"help": "JSON: {\"model-id\":{\"context_window\":8192}}; server limits still apply.",
+			"value": "{}",
+			"default": "{}",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openai-compatible.base_url",
+			"section": "local_providers",
+			"label": "OpenAI-compatible endpoint",
+			"kind": "text",
+			"help": "HTTP(S) API root. Changing servers requires a new token through /login; existing tokens are never forwarded to another endpoint.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "providers.openai-compatible.models",
+			"section": "local_providers",
+			"label": "OpenAI-compatible model overrides",
+			"kind": "text",
+			"help": "JSON: {\"model-id\":{\"context_window\":8192}}; server limits still apply.",
+			"value": "{}",
+			"default": "{}",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "conversation_length",
+			"section": "retired",
+			"label": "Conversation length",
+			"kind": "readonly",
+			"help": "Deprecated. Superseded by the compaction engine.",
+			"value": 100,
+			"default": 100,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "detail_length",
+			"section": "retired",
+			"label": "Detail length",
+			"kind": "readonly",
+			"help": "Deprecated. Superseded by the compaction engine.",
+			"value": 15,
+			"default": 15,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "max_learnings_history",
+			"section": "retired",
+			"label": "Max learnings history",
+			"kind": "readonly",
+			"help": "Deprecated. Superseded by the compaction engine.",
+			"value": 50,
+			"default": 50,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		}
+	]
+}
