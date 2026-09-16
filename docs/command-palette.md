@@ -115,29 +115,43 @@ or found nothing — the two states where a hint is worth its pixels.
 
 ### Panels are destinations, not routes
 
-`/info`, `/usage`, `/analytics` and `/session` present in the chat pane's picker
-slot, whose adapters need that pane's session handle, command catalogue and
-rebind path. The palette therefore does not open them: it writes a request
-(`chat-panel-request-store.ts`), routes to the chat pane when it is elsewhere,
-and the pane's dispatcher consumes it exactly the way a typed command is
-consumed. One presentation slot, one implementation of each panel.
+`/info`, `/usage`, `/analytics` and `/session` present in a picker slot rather
+than at an address — the mental model is "open a panel, Esc closes it", and a
+route would need its own deep-link semantics, its own Esc handling and a
+back/forward story for a modal. The palette therefore does not open them: it
+writes a request (`panel-presentation-store.ts`) and a presenter consumes it
+exactly the way a typed command is consumed. One implementation of each panel,
+and the palette gaining nothing but a way to name one.
 
-The request is one-shot (matched on its own nonce) and expires, because nothing
-can consume it while no chat pane is mounted — an old request means the pane
-never arrived, and acting on it later would open a panel the user asked for in
-another context with nothing on screen to explain it.
+**There are two presenters now**, which is what makes the panels readable from
+any page. `/info`, `/usage` and `/analytics` describe the MACHINE and read no
+conversation: the chat pane presents them whenever it is mounted, and the shell's
+`PanelOutlet` presents them on every route the pane does not own — so choosing
+Analytics while reading Settings opens the panel over Settings rather than
+throwing the user back to chat. Which host acts is decided by a CLAIM rather
+than by the route: the pane claims the slot on mount and releases it on unmount,
+and the shell presents only while no claim is outstanding. A route check would
+have been the tempting predicate and the wrong one, because the chat route also
+paints its connecting and error states, where nothing can present anything.
 
-`Session` and `Analytics` are readings **of a conversation**, so they also
-require a live session: `session.diagnostics` on a draft would report on a
-session that does not exist yet, and Analytics' "this session" scope would have
-nothing to scope to.
+`Session` is a reading **of a conversation**, so it keeps both gates: it needs a
+live session (`session.diagnostics` on a draft would report on a session that
+does not exist yet) and therefore still routes the user to chat. Analytics is in
+neither the pane-only set nor a special case: its conversation half — the "This
+session only" scope — appears only where a conversation is in front of the user,
+which is the pane.
 
-**All four require a pane that can present them.** The pane exists when the
-catalogue capability is live and the route resolves to a session or a draft —
-with the backend down the chat route paints its connecting state instead — so on
-such a machine the palette offers no panel row at all. That is the rule this
+The request is one-shot (matched on its own nonce) and expires, because a request
+nothing consumes is a request the user asked for in another context: with a pane
+mounted the window is one frame, and for the machine panels the shell answers it
+immediately.
+
+**The machine rows are gated on whether the backend is live**, the rule this
 palette holds every row to ("a palette that lists an action it cannot perform is
-worse than one that omits it"), and the driver scene with no backend asserts it.
+worse than one that omits it") — with the backend down the machine panels have
+nothing to read, and the driver scene with no backend asserts that no panel row
+is offered. `/session` additionally requires a pane that can present it, since
+that pane is its only presenter.
 
 ## How matches are ranked
 
