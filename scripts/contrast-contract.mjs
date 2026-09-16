@@ -387,15 +387,45 @@ const CONTROLS = [
 		 * measures 2.51-2.98:1 on graded grounds in seven palettes (the sibling row
 		 * above records the measurement).
 		 *
-		 * TWO grounds, because the same control carries the badge in both hosts: the
-		 * URL bar's `canvas` in the browser surface, and the chat pane header's
-		 * `surface` when PR 2 puts the control there. Measured this round: `ink` on
-		 * `warningWash` 8.39:1 at worst (tokyoNight); `borderControl` 3.34:1 on
-		 * `canvas` and 3.65:1 on `surface` at worst.
+		 * ONE GROUND, and finding that it was two is design round 1's D8: the second
+		 * entry was `surface`, reasoned as "the chat pane header's ground when PR 2 puts
+		 * the control there" - and PR 2 put it on the chat header's `canvas` and on the
+		 * pane header's `sunken`, so the row was measuring the component against a
+		 * ground it is never drawn on, which is the failure mode the row above this one
+		 * explicitly names. Both hosts' badges are drawn on `canvas` (the URL bar row is
+		 * `bg-canvas`, the chat header is the same); the pane's own header carries no
+		 * badge, and if one ever lands there its ground (`sunken`) is a row this file
+		 * would have to grow rather than quietly inherit. Measured this round: `ink` on
+		 * `warningWash` 8.39:1 at worst (tokyoNight), `borderControl` 3.34:1 on `canvas`
+		 * at worst.
 		 */
 		name: "browser approvals badge",
-		on: ["canvas", "surface"],
+		on: ["canvas"],
 		fill: "warningWash",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
+		 * the reason it needs a row of its own: it is the segmented primitive ON A
+		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
+		 * it sits on. Measured this round: the track's fill against its header is
+		 * 1.015:1 / dE00 1.00 in the light brand palette and 1.001:1 / 0.83 in the dark
+		 * one, so the fill carries no boundary at all and the control's extent is drawn
+		 * by its `outline-control` edge instead - which is why the edge is what this row
+		 * asserts. A control's boundary is legal if EITHER its fill or its border clears
+		 * 3:1, and here it is the border: `control` on `sunken` measures 3.19:1 at worst
+		 * across the twelve palettes (the strip's own edge row records the measurement).
+		 *
+		 * The selected pill's step (`surface` on `sunken`, dE00 4.26 / 4.28) is a
+		 * PERCEPTIBLE row rather than this one, and the ink on both sides is covered by
+		 * the INKS loop: `ink` on `surface` for the selected label, `ink-muted` on
+		 * `sunken` for the unselected one.
+		 */
+		name: "browser pane scope switch track",
+		on: ["sunken"],
+		fill: "sunken",
 		border: "borderControl",
 		ink: "ink",
 	},
