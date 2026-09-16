@@ -280,6 +280,20 @@ export type SlashSubmissionArgs = {
 	armedOnlyCommands?: ReadonlySet<string>;
 	/** Whether a boundary slash token is a command at all (the feature is on). */
 	enabled: boolean;
+	/**
+	 * WHICH GESTURE is asking, because the two answers are deliberately different.
+	 *
+	 * A typed word in the middle of a sentence is prose (the operator's rule, and
+	 * this file's reason for existing). A PICK of that command's own row is not a
+	 * typed word: the user chose the command from the popup, so it is a command
+	 * wherever it sits, and the pick's run path reads this to keep the promise the
+	 * footer makes ("Click stages /loop." — peer PR #209's `hoists`/`takesDraft`
+	 * machinery, which postdates the typed rule and would otherwise be inert).
+	 *
+	 * Defaulted to `"typed"`, so every caller that has not thought about it gets the
+	 * conservative answer, and the pick path is the only one that passes anything.
+	 */
+	gesture?: "typed" | "pick";
 };
 
 /** The name/argument separator: the first whitespace character of a token. */
@@ -387,6 +401,7 @@ export function planSlashSubmission({
 	nameListCommands,
 	argumentCommands,
 	enabled,
+	gesture = "typed",
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
 	// nothing is spliced and nothing is lost — the same fallback the model path
@@ -469,7 +484,8 @@ export function planSlashSubmission({
 	// trailing text IS its argument and which a typed draft may hoist at all, is
 	// a command. Anything else is the sentence the user is writing, and it is sent
 	// as written.
-	if (!consumesText || armedOnly || !opensDraft) return { kind: "send" };
+	if (!consumesText || armedOnly) return { kind: "send" };
+	if (!opensDraft && gesture !== "pick") return { kind: "send" };
 
 	/*
 	 * ARMED-ONLY commands take nothing from this key. `/goal` inside a sentence is
