@@ -1,12 +1,12 @@
 {
-  "head": "391bea527f2bfab0c4635b773826ef6c9788a399",
-  "headNote": "THE ROUND-1 REMEDIATION FOLD ONTO MAIN `3f1f4e5a3`. main moved from the reviewed base `0c04cbb09` to `3f1f4e5a3` (PR #255's `highlight` role and key-cap ink step, PR #265's 0.25.14 bump, PR #267's CODEOWNERS routing) and moved BOTH `src/` and `scripts/`, so every stamp in this file was invalid on this branch and `check-evidence` would have failed with \"re-capture and re-stamp\". The fold's one textual conflict is this file (both sides rewrite it) and it resolved the documented way: MAIN's whole record is kept and this branch's own `partialCapture` keys are re-added beside it, because the capture rig rewrites every count and stamp below on the next run anyway. THE ROUND-1 STORIES WERE RE-CAPTURED ON THE MERGED TREE RATHER THAN RE-STAMPED ON TRUST, and the comparison is in `chat-image-expand/README.md`: 24 of 36 frames came back byte-identical and the other twelve differ only inside the picture's own box (AE 0.01-1.3%, RMSE <= 0.1%, identical measured edges), which is re-rasterisation of the scaled `<img>` and not a layout or token change. THIS HEAD IS ALSO THE REMEDIATION PASS: eight new overlay/legacy states and three canonical tool-row surfaces, plus the declared `chat-image-expand-before/` supplementary set that pairs the resting row against `origin/main`'s own component (design D1-5). `partialCapture.imageExpandRound1Remediation` below carries the runs and the measurements; `partialCapture.imageExpandPass` is the round-1 record this pass extends rather than replaces. `dirtyWorkingTree` is TRUE because the capture ran on this round's changes before they were committed — the tree they were painted from is the one the stamps now name, and nothing under `src/` or `scripts/` moved between it and the frames commit.",
-  "srcTree": "f7ed830179359b73a022eb613146c3c1f17f3df9",
-  "scriptsTree": "43af1a548f506d41e69ae50b313e206b43cd322e",
+  "head": "ad3c05af3c28106df3bc47bcdb44364ec3515747",
+  "headNote": "TWO CONVERGENCES IN ONE ROUND, AND BOTH ARE RECORDED. First main moved 0c04cbb09 -> 3f1f4e5a3 (PR #255's `highlight` role and key-cap ink step, PR #265's 0.25.14 bump, PR #267's CODEOWNERS routing); then, while this round's remediation was in review, it moved again to `6da8665ee` (PR #256, the Backend settings rebuild), which touched BOTH `src/` and `scripts/` a second time and invalidated these stamps again. Each fold resolved the same documented way: MAIN's whole record is kept in this file and this branch's own `partialCapture` keys are re-added beside it, because the capture rig rewrites every count and stamp below on the next run anyway. The second fold's textual conflicts were `package.json`'s `test:desktop` list (both sides appended a test file; the union is correct) and this file; `scripts/capture-evidence.mjs` auto-merged. THE ROUND-1 STORIES ARE RE-CAPTURED ON THE MERGED TREE RATHER THAN RE-STAMPED ON TRUST and the comparison is in `chat-image-expand/README.md`: 24 of 36 frames byte-identical after the first fold and the other twelve differing only inside the picture's own box (AE 0.01-1.3%, RMSE <= 0.1%, identical measured edges). THE REMEDIATION'S OWN FRAMES ARE WHAT THE REST OF THIS FILE DESCRIBES: eight new overlay and legacy states, three canonical tool-row surfaces, and the declared `chat-image-expand-before/` supplementary set that pairs the resting row against `origin/main`'s own component (design D1-5). `partialCapture.imageExpandRound1Remediation` carries the runs and the measurements; `partialCapture.imageExpandPass` is the round-1 record this pass extends rather than replaces. `dirtyWorkingTree` is TRUE because those captures ran on this round's changes before they were committed, and the stamps below are re-derived at the tree that ships them.",
+  "srcTree": "b047f7212fb65f59b37c16554efb56ec16433528",
+  "scriptsTree": "11f234964fbbe84e5273c27cb6cf0c328158369e",
   "dirtyWorkingTree": true,
   "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3907,
-  "surfaces": 482,
+  "frames": 3919,
+  "surfaces": 483,
   "themes": 12,
   "countsMean": {
     "frames": "RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
@@ -14,10 +14,10 @@
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-16T19:51:19.936Z",
-    "refreshedAtHead": "391bea527f2bfab0c4635b773826ef6c9788a399",
+    "refreshedAt": "2026-09-16T19:42:18.870Z",
+    "refreshedAtHead": "ad3c05af3c28106df3bc47bcdb44364ec3515747",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 312,
+    "refreshedFrames": 276,
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
       "chat-sidebar-current-row--new-chat-row-current",
@@ -26,19 +26,20 @@
       "command-palette-commandpalette--settings-scope",
       "command-palette-commandpalette--commands-scope",
       "command-palette-commandpalette--no-results",
-      "chat-image-expand--in-thread",
-      "chat-image-expand--expanded",
-      "chat-image-expand--expanded-small-image",
-      "chat-image-expand--expanded-near-viewport",
-      "chat-image-expand--expanded-portrait",
-      "chat-image-expand--expanded-failed",
-      "chat-image-expand--legacy",
-      "chat-tool-rows--screenshots",
-      "chat-tool-rows--screenshots-two",
-      "chat-tool-rows--user-attachments",
-      "chat-image-expand--legacy-hovered",
-      "chat-image-expand--legacy-tabbed",
-      "chat-image-expand--legacy-tabbed-open"
+      "settings-backend--arrival",
+      "settings-backend--all-expanded",
+      "settings-backend--collapsed",
+      "settings-backend--one-section-open",
+      "settings-backend--filtered",
+      "settings-backend--no-results",
+      "settings-backend--changed-rows",
+      "settings-backend--read-only-and-redacted",
+      "settings-backend--gated-children",
+      "settings-backend--deep-link",
+      "settings-backend--dirty",
+      "settings-backend--saving",
+      "settings-backend--save-failed",
+      "settings-backend--narrow"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -54,25 +55,14 @@
       "obsidian",
       "synth"
     ],
-    "addedFrames": 168,
+    "addedFrames": 36,
     "addedSurfaces": [
       "chat-sidebar-current-row/selected-row",
       "chat-sidebar-current-row/new-chat-row-current",
-      "chat-sidebar-current-row/selected-row-neighbour-hovered",
-      "chat-image-expand/expanded-near-viewport",
-      "chat-image-expand/expanded-portrait",
-      "chat-image-expand/expanded-failed",
-      "chat-image-expand/expanded-small-window",
-      "chat-image-expand/legacy",
-      "chat-image-expand/legacy-hovered",
-      "chat-image-expand/legacy-tabbed",
-      "chat-image-expand/legacy-tabbed-open",
-      "chat-tool-rows/screenshots",
-      "chat-tool-rows/screenshots-two",
-      "chat-tool-rows/user-attachments"
+      "chat-sidebar-current-row/selected-row-neighbour-hovered"
     ],
-    "addedAt": "2026-09-16T19:35:59.850Z",
-    "addedAtHead": "391bea527f2bfab0c4635b773826ef6c9788a399",
+    "addedAt": "2026-09-16T16:59:36.522Z",
+    "addedAtHead": "559327ecff583537f817ba1421eacc77f0edc2b6",
     "note": "THE CAPS AND THE HIGHLIGHT (this change), on top of the record below: the current row's ground became the new `highlight` role, the row gained the settings rail's `font-medium` second signal, and every key cap lost its fill - which is visible on two surfaces and one rail. 60 frames were REWRITTEN in `command-palette-commandpalette/` (all five of its stories draw the legend bar whose keys changed) and 36 in `chat-sidebar-current-row/`: the set's two states plus the 12 ADDED `selected-row-neighbour-hovered/` frames that photograph the pointer's mark beside the selection's, so design D1 / QA Q-2's measurement is a committed frame rather than a one-off. `refreshedFromHead` names this pass's own first commit rather than the branch's base, which is what makes `refreshedFrames` the pass's increment and not the branch's whole diff against main: the guard measures 96 rewritten frames over these seven directories and nothing else. The two baseline sets this change declares hold the same stories rendered by an unmodified tree; a declared set is exactly a frame the sweep does not answer for, so their 84 frames are excluded from both terms here and from `frames` above.",
     "refreshedAtHeadNote": "Re-pointed at the tree this capture ran on - `559327ecf`, the rebased head whose `src/` and `scripts/` trees are the ones stamped below - because a rebase rewrote the spelling the capturer stamped, and the frames were RE-TAKEN at it rather than re-stamped. See `rebaseNote`.",
     "keycapsPass": "This change's own increment, recorded beside the accumulated fields above rather than in place of them: 60 frames REWRITTEN in `command-palette-commandpalette/` (all five stories draw the legend bar whose keys changed) and 36 frames in `chat-sidebar-current-row/` (the set's two states and the 12 the round-1 hover entry added). The two baseline sets this change declares hold 84 frames of the same stories rendered by unmodified `origin/main`; they are declared, and a declared set is exactly a frame the sweep does not answer for. On the rebased tree the swept total is main's 3,703 plus these 36 = `frames` 3,739, and `surfaces` is main's 465 plus this change's three directories = 468.",
@@ -1567,6 +1557,22 @@
       "why": [
         "The palette's legend keys are one of the cap idioms this change collapses, and the before half is the only place the old one is visible in the tree: every `kbd` in the footer and on the active row was a filled `bg-sunken` box 15.2 x 21.39px inked `ink-dim`, drawn by a third cap implementation declared inside `command-palette.tsx`.",
         "`command-palette-commandpalette/` is re-shot on this branch, so without this set the comparison would live only in a pull-request description and a reader could not reproduce it from the tree. Declared so `clearSweptFrames` preserves it and the swept count stays honest."
+      ]
+    },
+    {
+      "path": "settings-backend-baseline",
+      "frames": 12,
+      "surfaces": 6,
+      "themes": 2,
+      "source": "The audit rig's own frames (`rig/capture.mjs` and `rig/frames/measurements.json`, in ~/local-operator-ui-worktrees/backend-settings-ux-audit) taken on the base the four audit rounds ran at: the SHIPPED settings page mounted against a stubbed desktop bridge carrying the real `/v1/settings` projection, at 1380x900 and 1000x900, in localOperatorDark and localOperatorLight. RE-EXPORTED at 1x DPR from the same rig on the same head with the same states (`node rig/capture.mjs --dpr=1 --port=6041 --out=...`, the `--dpr` flag added for this round), so what ships here is the audit's own surface at the audit's own head, exported at the after-set's scale",
+      "capturedAt": "2026-09-15T22:45:34Z",
+      "capturedAtHead": "170933c4caf65db42450f130a7cfa30aba5b03a7",
+      "why": [
+        "The redesign's claim is about a surface that had NO frame anywhere in docs/evidence: 99 registry rows in 18 sections, all of them expanded, 10,896.5px of region. An after-frame of a shorter page cannot show what was wrong with the long one, so a small, representative subset of the audit's thirty frames is committed beside it - the same surface at the same two viewports in both brand palettes, before the change.",
+        "Six STATES, chosen for what the redesign is judged on: `top` (arrival, every section expanded), `mid` (the scroll the complaint is about), `collapsed` (the readable index behind 18 clicks), `filter` (a search with the type still in the box), `empty` (a search that matches nothing) and `dirty` (off-default rows, each carrying the `Changed from the default; takes effect ...` sentence the redesign removes). Plus `redacted` and `retired` in dark at 1380, the two row kinds whose wrappers were missing.",
+        "It cannot be regenerated by a sweep: a sweep captures the CURRENT tree, and these have to be the surface as it was. Declared as its own set so the sweep's own frame count stays honest and no reader mistakes a baseline for a current frame.",
+        "The before-NUMBERS beside these frames are not taken from a re-run either. They are the audit's committed readings (`rig/frames/measurements.json`): region 10,896.5px at 1380x900, rows 66.9-181.9px tall, 68 of 99 controls wider than 800px, 90 narrower than 40px, 127 focusables. The after-numbers come from `scripts/backend-settings-geometry.mjs`, which reports the same quantities from the same DOM at the same viewports.",
+        "AND THE ONE THING ABOUT THE PAIR A DESIGN ROUND TRIPS OVER, now half fixed and half stated. The scale half is FIXED: these frames were 2x DPR viewport crops (2760x1800 for the 1380x900 window) against an after-set whose own convention is 1x DPR full content, so a reviewer judged the rebuild across two scales; they have been re-exported at 1x from the audit rig, same head, same states, and the pair now shares its scale and its 1380px width (design round 1, m1 / design round 2, D12). The CROP half cannot be fixed from the audit rig, and the reason is structural rather than an omission: `rig/backend-settings-evidence.tsx` mounts the surface in the app's own viewport (`h-screen w-screen overflow-hidden`, the surface scrolling INSIDE it), so the old surface has no full-content rendering to photograph - the 10,896.5px region never exists as one painted page there. The baseline frames are therefore 1x crops of the top of that surface, and the height difference against the after-set (900px against 1,510px) IS the defect the redesign removes, not a framing accident. A reader comparing the pair at equal scale is comparing the right two things; a reader who wants the old surface at the after-set's exact crop would need it re-mounted as a story, which is the redesign itself."
       ]
     },
     {
