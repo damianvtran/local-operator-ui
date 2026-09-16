@@ -149,16 +149,16 @@ for (const [name, event] of FIRES)
 const REFUSED = [
 	["⌘⇧N", press({ shiftKey: true })],
 	["⌥⌘N", press({ altKey: true })],
-	["a bare n, which belongs to whatever text field has focus", press({ metaKey: false })],
+	[
+		"a bare n, which belongs to whatever text field has focus",
+		press({ metaKey: false }),
+	],
 	["⌘O", press({ key: "o" })],
 	[
 		"a HELD ⌘N, whose repeats would stage a draft each",
 		press({ repeat: true }),
 	],
-	[
-		"a press an inner layer already claimed",
-		press({ defaultPrevented: true }),
-	],
+	["a press an inner layer already claimed", press({ defaultPrevented: true })],
 	[
 		"⌘N pressed mid-IME-composition, whose field this would unmount",
 		press({ isComposing: true }),
@@ -189,7 +189,10 @@ for (const [name, event] of REFUSED)
 
 test("the canvas scope is the pane's own attribute, and a press from it is the canvas's", () => {
 	assert.equal(CANVAS_SHORTCUT_SCOPE_ATTR, "data-canvas-shortcuts");
-	assert.equal(pressBelongsToCanvas(targetInside(CANVAS_SHORTCUT_SCOPE_ATTR)), true);
+	assert.equal(
+		pressBelongsToCanvas(targetInside(CANVAS_SHORTCUT_SCOPE_ATTR)),
+		true,
+	);
 	for (const target of [TARGET_PAGE, { closest: () => null }, null, {}])
 		assert.equal(
 			pressBelongsToCanvas(target),
@@ -229,6 +232,46 @@ const canvas = readFileSync(
 	"utf8",
 );
 
+/*
+ * Those pins as MODULE-level patterns rather than literals inside a test body,
+ * which is what `useTopLevelRegex` asks for: a literal in a function is rebuilt
+ * on every call, and nothing here needs that. None of the five carries `g` or
+ * `y`, so none carries a `lastIndex` from one use to the next and hoisting
+ * cannot change what any of them answers.
+ */
+
+/**
+ * The shell's gate CALL rather than the identifier it is stored in.
+ *
+ * `listener.includes("catalogueReady")` alone would keep passing if the bit or
+ * its version drifted, which is exactly the drift the row's own gate exists to
+ * prevent, so the call itself is what this reads.
+ */
+const CATALOGUE_GATE_CALL =
+	/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_catalogue",\s*2,?\s*\)/;
+
+/** Dispatch on the shared decision, and the two outcomes it can reach. */
+const CANVAS_DISPATCHES_THE_DECISION = /canvasShortcutAction\(event\)/;
+const CANVAS_OPENS_FILE = /action === "open-file"/;
+const CANVAS_STARTS_FILE = /action === "new-file"/;
+
+/*
+ * A selector ASKED FOR with a role list, which the canvas must not hold a copy
+ * of.
+ *
+ * THE `[]` THIS PATTERN USED TO CARRY WAS AN EMPTY CHARACTER CLASS, which
+ * matches nothing, so every `.closest(`/`.querySelector(` call carrying a quoted
+ * `[role=` selector satisfied the `!` assertion below: a green check that was
+ * vacuous rather than a check that passed. It now reads "an opening quote,
+ * apostrophe or backtick, any characters that are not the closing one, then
+ * `[role=`", which matches the violation it is for and still refuses the two
+ * things this pin is deliberately NOT about - a selector naming an attribute
+ * constant - and the prose `role="dialog"` elsewhere in that file, which a
+ * whole-file text check would trip over.
+ */
+const CANVAS_ASKS_FOR_A_ROLE_LIST =
+	/\.(?:closest|querySelector)\(\s*[`'"][^`'"]*\[role=/;
+
 test("the shell binds the chord on the document and asks the rule", () => {
 	assert.ok(
 		app.includes('document.addEventListener("keydown", onKeyDown)'),
@@ -262,9 +305,7 @@ test("the shell binds the chord on the document and asks the rule", () => {
 ${listener}`,
 	);
 	assert.ok(
-		/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_catalogue",\s*2,?\s*\)/.test(
-			app,
-		),
+		CATALOGUE_GATE_CALL.test(app),
 		"`catalogueReady` has to be the same capability bit the sidebar reads, with the same version",
 	);
 });
@@ -295,9 +336,9 @@ test("the canvas answers its own chords through the shared decision, and keeps n
 	 * a presence check cannot see.
 	 */
 	assert.ok(
-		/canvasShortcutAction\(event\)/.test(canvas) &&
-			/action === "open-file"/.test(canvas) &&
-			/action === "new-file"/.test(canvas),
+		CANVAS_DISPATCHES_THE_DECISION.test(canvas) &&
+			CANVAS_OPENS_FILE.test(canvas) &&
+			CANVAS_STARTS_FILE.test(canvas),
 		"the canvas must branch on the shipped decision rather than re-deriving its chords",
 	);
 	assert.ok(
@@ -313,7 +354,7 @@ test("the canvas answers its own chords through the shared decision, and keeps n
 	 * which a whole-file text check would trip over.
 	 */
 	assert.ok(
-		!/\.(?:closest|querySelector)\(\s*[`'"][]\[role=/.test(canvas),
+		!CANVAS_ASKS_FOR_A_ROLE_LIST.test(canvas),
 		"the canvas must not ask for a role list of its own; ask `pressLandsOnOverlay`",
 	);
 	assert.ok(
@@ -323,7 +364,10 @@ test("the canvas answers its own chords through the shared decision, and keeps n
 });
 
 test("the canvas's own chords, driven through the shipped decision", () => {
-	const inPane = { closest: (selector) => (selector.includes(CANVAS_SHORTCUT_SCOPE_ATTR) ? {} : null) };
+	const inPane = {
+		closest: (selector) =>
+			selector.includes(CANVAS_SHORTCUT_SCOPE_ATTR) ? {} : null,
+	};
 	const onPage = { closest: () => null };
 	const cases = [
 		[
@@ -338,7 +382,12 @@ test("the canvas's own chords, driven through the shipped decision", () => {
 		],
 		[
 			"⌘N from <body>, where focus lands when it is lost, is the app's",
-			{ key: "n", metaKey: true, ctrlKey: false, target: { closest: () => null } },
+			{
+				key: "n",
+				metaKey: true,
+				ctrlKey: false,
+				target: { closest: () => null },
+			},
 			null,
 		],
 		[
