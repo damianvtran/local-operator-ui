@@ -23,82 +23,6 @@ import {
 	withoutInheritedPythonEnv,
 } from "./python-child-env.mjs";
 
-/*
- * The regex literals this module uses, hoisted to the top level: the
- * `useTopLevelRegex` rule charges a literal constructed inside a function,
- * and `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
- * is the only thing that would have said so.
- *
- * The `Reflect.deleteProperty` calls below are the `delete` operator spelled
- * the way the lint rule allows. It is not a style choice: assigning
- * `undefined` to a `process.env` key sets the STRING "undefined" instead of
- * unsetting it, which hands a child a different environment than the test
- * means to give it (measured: three cases in this tree failed exactly so).
- */
-const RE = /.*/;
-const RE_0_9A_F_64 = /^[0-9a-f]{64}$/;
-const RE_ALREADY_REFUSES_BYTECODE_W = /already refuses bytecode writes/;
-const RE_APP = /\.app/;
-const RE_BUILT_ON_THE_INTERPRETER_I =
-	/built on the interpreter inside .*Fixture\.app/;
-const RE_DETECTED_CPU_ARCHITECTURE = /Detected CPU architecture/;
-const RE_ELECTRON_ELECTRON_UPDATER =
-	/^(electron|electron-updater|electron-log)$/;
-const RE_ENV_PYTHONDONTWRITEBYTECOD = /^\$env:PYTHONDONTWRITEBYTECODE = "1"$/m;
-const RE_ENV_S_THIS_PYTHONSPAWNENV = /env:\s*this\.pythonSpawnEnv\(\)/;
-const RE_ESCAPED_ITS_MANAGED_ROOT = /escaped its managed root/;
-const RE_EXPORT_PYTHONDONTWRITEBYTE = /^export PYTHONDONTWRITEBYTECODE=1$/m;
-const RE_EXPORT_PYTHONDONTWRITEBYTE_2 =
-	/^\+ export PYTHONDONTWRITEBYTECODE=1$/m;
-const RE_EXPORT_PYTHONPYCACHEPREFIX = /^export PYTHONPYCACHEPREFIX$/m;
-const RE_EXPORT_PYTHONPYCACHEPREFIX_2 = /^\+ export PYTHONPYCACHEPREFIX$/m;
-const RE_FROM_LOCAL_OPERATOR_CLI_IM =
-	/from local_operator.cli import main; main\(\) serve --port/;
-const RE_IS_NOT_OURS = /is not ours/;
-const RE_LEFT_EXACTLY_AS_IT_IS = /left exactly as it is/;
-const RE_MANAGED_PYTHON_DEV_NO_ENVI =
-	/managed-python[/]dev[/]no-environment-selected$/;
-const RE_MANAGED_PYTHON_PACKAGED_NO =
-	/managed-python[/]packaged[/]no-environment-selected$/;
-const RE_NAMES_AN_INTERPRETER_BUNDL =
-	/names an interpreter bundle that is not on disk/;
-const RE_NODE_CHILD_PROCESS = /^node:child_process$/;
-const RE_NO_SITE_PACKAGES = /no site-packages/;
-const RE_OWNED_SERVE_LAUNCH = /owned-serve-launch$/;
-const RE_PASS_AN_EXTERNAL_PREPARED =
-	/Pass an external prepared Python executable/;
-const RE_PASS_THE_RESOLVED_MANAGED =
-	/Pass the resolved managed environment path/;
-const RE_PRE_SPLIT_ENVIRONMENT_AT_L =
-	/pre-split environment at .*local-operator-venv/;
-const RE_PYTHONDONTWRITEBYTECODE_S = /PYTHONDONTWRITEBYTECODE:\s*"1"/;
-const RE_PYTHONPATH_PIP_COMMAND = /pythonPath|pip\.command/;
-const RE_PYTHONPYCACHEPREFIX_S_PREF = /PYTHONPYCACHEPREFIX:\s*prefix/;
-const RE_PYTHON_DIR_NAME = /PYTHON_DIR_NAME/;
-const RE_RAW = /\?raw$/;
-const RE_REQUIRE_NODE_CHILD_PROCESS = /require\("node:child_process"\)/;
-const RE_SH_PS1_RAW = /\.(sh|ps1)\?raw$/;
-const RE_SYS_DONT_WRITE_BYTECODE_TR = /^sys\.dont_write_bytecode = True$/m;
-const RE_S_D_S = /^\s*\d+:\s/;
-const RE_THE_APP_RECORDED_BACKEND_P =
-	/The app recorded: Backend preparation did not complete/;
-const RE_THE_APP_RECORDED_DITTO = /The app recorded: ditto: /;
-const RE_THE_APP_RECORDED_RUNTIME_D =
-	/The app recorded: Runtime directory escaped its managed root/;
-const RE_USING_PYTHON_DIRECTORY_NAM = /using Python directory name/;
-const RE_WHAT_HAPPENED_ANOTHER_COPY =
-	/^What happened: Another copy of Local Operator is setting up/;
-const RE_WHAT_HAPPENED_THE_BACKEND =
-	/^What happened: The backend was installed but did not start correctly/;
-const RE_WHAT_HAPPENED_THE_BACKEND_2 =
-	/^What happened: The backend was installed/;
-const RE_WHAT_HAPPENED_THE_BACKEND_3 =
-	/^What happened: The backend could not be set up on this Mac/;
-const RE_WHAT_HAPPENED_THIS_MAC_RAN =
-	/^What happened: This Mac ran out of disk space/;
-const RE_WHERE_ITS_ENVIRONMENT_LIVE =
-	/Where its environment lives: .*managed-python$/;
-
 /**
  * Contract checks for the interpreter environment the app spawns python with.
  *
@@ -444,14 +368,17 @@ function pycFilesUnder(dir) {
 const rawInstallScriptPlugin = {
 	name: "raw-install-scripts",
 	setup(builder) {
-		builder.onResolve({ filter: RE_SH_PS1_RAW }, (args) => ({
-			path: resolve(args.resolveDir, args.path.replace(RE_RAW, "")),
+		builder.onResolve({ filter: /\.(sh|ps1)\?raw$/ }, (args) => ({
+			path: resolve(args.resolveDir, args.path.replace(/\?raw$/, "")),
 			namespace: "raw-install-script",
 		}));
-		builder.onLoad({ filter: RE, namespace: "raw-install-script" }, (args) => ({
-			contents: readFileSync(args.path, "utf8"),
-			loader: "text",
-		}));
+		builder.onLoad(
+			{ filter: /.*/, namespace: "raw-install-script" },
+			(args) => ({
+				contents: readFileSync(args.path, "utf8"),
+				loader: "text",
+			}),
+		);
 	},
 };
 
@@ -607,12 +534,12 @@ async function loadMainProcess() {
 						setup(builder) {
 							// Launch identity has real-child coverage in owned-serve-lifecycle;
 							// this fixture measures the spawn environment, not installation.
-							builder.onResolve({ filter: RE_OWNED_SERVE_LAUNCH }, () => ({
+							builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
 								path: "launch",
 								namespace: "owned-launch-fixture",
 							}));
 							builder.onLoad(
-								{ filter: RE, namespace: "owned-launch-fixture" },
+								{ filter: /.*/, namespace: "owned-launch-fixture" },
 								() => ({
 									loader: "js",
 									contents: `
@@ -625,14 +552,14 @@ async function loadMainProcess() {
 							);
 
 							builder.onResolve(
-								{ filter: RE_ELECTRON_ELECTRON_UPDATER },
+								{ filter: /^(electron|electron-updater|electron-log)$/ },
 								(args) => ({ path: args.path, namespace: "fixture" }),
 							);
-							builder.onResolve({ filter: RE_NODE_CHILD_PROCESS }, () => ({
+							builder.onResolve({ filter: /^node:child_process$/ }, () => ({
 								path: "child-process-recorder",
 								namespace: "fixture",
 							}));
-							builder.onLoad({ filter: RE, namespace: "fixture" }, (args) => {
+							builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
 								if (args.path === "child-process-recorder") {
 									return fixture(childProcessFixture);
 								}
@@ -790,15 +717,10 @@ after(() => {
 	for (const dir of [PATHS.home, PATHS.userData, mainProcessBundleDir]) {
 		if (dir) rmSync(dir, { recursive: true, force: true });
 	}
-<<<<<<< HEAD
 	// biome-ignore lint/performance/noDelete: the harness reads these for PRESENCE (`globalThis.__loSpawns.length`), and this teardown exists to make them absent rather than present-and-empty - which is also what the tests that follow assert.
 	delete globalThis.__loTestPaths;
 	// biome-ignore lint/performance/noDelete: presence, not value - see above.
 	delete globalThis.__loSpawns;
-=======
-	Reflect.deleteProperty(globalThis, "__loTestPaths");
-	Reflect.deleteProperty(globalThis, "__loSpawns");
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 });
 
 test("every backend spawn carries the prefix even with the shell-env load unresolved", async () => {
@@ -854,19 +776,6 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			manager.checkLocalOperatorExists = async () => globalInstall;
 			manager.resolveGlobalConsole = async () => "/fixture/local-operator";
 			manager.checkHealth = async () => true;
-			/*
-			 * The spawn gate probes the configured origin to refuse to bind onto a port a
-			 * Local Operator daemon is already serving, and the configured origin here is
-			 * the machine's own default (`http://127.0.0.1:1111`), because this suite
-			 * stubs every other transport call for exactly that reason. Left real, the
-			 * gate would answer "occupied" on any developer's machine that is running a
-			 * daemon - which is the whole point of the gate, and not what this test is
-			 * about: the subject here is the spawn ENVIRONMENT. "The port is free" is
-			 * stubbed the way `checkHealth` and the discovery call above already are,
-			 * and the gate has its own coverage in `daemon-health-state`,
-			 * `daemon-observation` and `session-stream-token`.
-			 */
-			manager.configuredOriginOccupancy = async () => null;
 
 			assert.equal(
 				manager.shellEnv.PYTHONPYCACHEPREFIX,
@@ -917,7 +826,7 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 			);
 			assert.match(
 				env.LOCAL_OPERATOR_DESKTOP_TOKEN,
-				RE_0_9A_F_64,
+				/^[0-9a-f]{64}$/,
 				`${label}: the desktop token is still the rotated one`,
 			);
 			assert.notEqual(
@@ -929,7 +838,7 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 				assert.equal(spawned.cmd, "bash", `${label}: the command is unchanged`);
 				assert.match(
 					spawned.args.join(" "),
-					RE_FROM_LOCAL_OPERATOR_CLI_IM,
+					/from local_operator.cli import main; main\(\) serve --port/,
 					`${label}: the command is unchanged`,
 				);
 			}
@@ -937,18 +846,11 @@ test("every backend spawn carries the prefix even with the shell-env load unreso
 	} finally {
 		BackendServiceManager.prototype.loadMacOSEnvironment = originalLoad;
 		if (originalConfigDir === undefined)
-<<<<<<< HEAD
 			// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 			delete process.env.LOCAL_OPERATOR_CONFIG_DIR;
 		else process.env.LOCAL_OPERATOR_CONFIG_DIR = originalConfigDir;
 		// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
-=======
-			Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_CONFIG_DIR");
-		else process.env.LOCAL_OPERATOR_CONFIG_DIR = originalConfigDir;
-		if (originalPrefix === undefined)
-			Reflect.deleteProperty(process.env, "PYTHONPYCACHEPREFIX");
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 		else process.env.PYTHONPYCACHEPREFIX = originalPrefix;
 		for (const manager of managers) {
 			manager.isRunning = false;
@@ -976,12 +878,8 @@ test("the belt: shellEnv is corrected after the rc files have been sourced", asy
 		`export PYTHONPYCACHEPREFIX="${INSIDE_BUNDLE_PREFIX}"\n`,
 	);
 	process.env.HOME = PATHS.home;
-<<<<<<< HEAD
 	// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 	delete process.env.PYTHONPYCACHEPREFIX;
-=======
-	Reflect.deleteProperty(process.env, "PYTHONPYCACHEPREFIX");
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 
 	const manager = new BackendServiceManager();
 	try {
@@ -1002,13 +900,8 @@ test("the belt: shellEnv is corrected after the rc files have been sourced", asy
 		);
 	} finally {
 		process.env.HOME = originalHome;
-<<<<<<< HEAD
 		// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
 		if (originalPrefix === undefined) delete process.env.PYTHONPYCACHEPREFIX;
-=======
-		if (originalPrefix === undefined)
-			Reflect.deleteProperty(process.env, "PYTHONPYCACHEPREFIX");
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 		else process.env.PYTHONPYCACHEPREFIX = originalPrefix;
 		manager.isRunning = false;
 		await manager.stop();
@@ -1031,7 +924,7 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		),
 		"the macOS script must default the prefix itself",
 	);
-	assert.match(macosInstallScript, RE_EXPORT_PYTHONPYCACHEPREFIX);
+	assert.match(macosInstallScript, /^export PYTHONPYCACHEPREFIX$/m);
 	assert.match(
 		linuxInstallScript,
 		new RegExp(
@@ -1039,7 +932,7 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		),
 		"the Linux script must default the prefix itself",
 	);
-	assert.match(linuxInstallScript, RE_EXPORT_PYTHONPYCACHEPREFIX);
+	assert.match(linuxInstallScript, /^export PYTHONPYCACHEPREFIX$/m);
 	assert.ok(
 		windowsInstallScript.includes("if (-not $env:PYTHONPYCACHEPREFIX) {") &&
 			windowsInstallScript.includes(
@@ -1055,17 +948,17 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 	// for a run nobody's app is managing.
 	assert.match(
 		macosInstallScript,
-		RE_EXPORT_PYTHONDONTWRITEBYTE,
+		/^export PYTHONDONTWRITEBYTECODE=1$/m,
 		"the macOS script must refuse bytecode writes as well as redirecting them",
 	);
 	assert.match(
 		linuxInstallScript,
-		RE_EXPORT_PYTHONDONTWRITEBYTE,
+		/^export PYTHONDONTWRITEBYTECODE=1$/m,
 		"the Linux script must refuse bytecode writes as well as redirecting them",
 	);
 	assert.match(
 		windowsInstallScript,
-		RE_ENV_PYTHONDONTWRITEBYTECOD,
+		/^\$env:PYTHONDONTWRITEBYTECODE = "1"$/m,
 		"the Windows script must refuse bytecode writes as well as redirecting them",
 	);
 
@@ -1095,12 +988,12 @@ test("the shipped install scripts default the prefix to the app's own cache dire
 		);
 		assert.match(
 			trace,
-			RE_EXPORT_PYTHONPYCACHEPREFIX_2,
+			/^\+ export PYTHONPYCACHEPREFIX$/m,
 			"the script must export the prefix it defaulted, or the python it runs will not inherit it",
 		);
 		assert.match(
 			trace,
-			RE_EXPORT_PYTHONDONTWRITEBYTE_2,
+			/^\+ export PYTHONDONTWRITEBYTECODE=1$/m,
 			"and it must export the refusal with it, or the pythons it starts can still write into the tree",
 		);
 		assert.ok(
@@ -1204,16 +1097,10 @@ test("an unpackaged instance hands the script its own environment, not the packa
 		);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
-<<<<<<< HEAD
 		// biome-ignore lint/performance/noDelete: an ABSENT property is not one set to `undefined`, and the installer reads this for presence (`"resourcesPath" in process`).
 		else delete process.resourcesPath;
 		// biome-ignore lint/performance/noDelete: this teardown records "no override", and `delete` says that in one word; the fixture's getter reads the value as `?? true`, so an absent property and an `undefined` one are alike and the rule's suggested rewrite would be equivalent.
 		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
-=======
-		else Reflect.deleteProperty(process, "resourcesPath");
-		if (originalPackaged === undefined)
-			Reflect.deleteProperty(globalThis, "__loTestAppIsPackaged");
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 		else globalThis.__loTestAppIsPackaged = originalPackaged;
 		rmSync(resources, { recursive: true, force: true });
 		rmSync(
@@ -1257,11 +1144,7 @@ test("the install scripts consume the resolved final environment path", async ()
 		[VENV_PATH_ENV]: undefined,
 	});
 	assert.notEqual(unset.status, 0);
-<<<<<<< HEAD
 	assert.match(unset.stderr, /Pass the resolved managed environment path/);
-=======
-	assert.match(unset.stderr, RE_PASS_THE_RESOLVED_MANAGED);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 	const selected = join(
 		PATHS.home,
 		"managed-python",
@@ -1333,12 +1216,8 @@ test("the installer's script spawn carries the prefix into the venv it creates",
 		);
 	} finally {
 		if (hadResourcesPath) process.resourcesPath = originalResourcesPath;
-<<<<<<< HEAD
 		// biome-ignore lint/performance/noDelete: an ABSENT property is not one set to `undefined`, and the installer reads this for presence (`"resourcesPath" in process`).
 		else delete process.resourcesPath;
-=======
-		else Reflect.deleteProperty(process, "resourcesPath");
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 		rmSync(resources, { recursive: true, force: true });
 		// `install()` writes its script into the OS temp directory; reclaim it.
 		rmSync(
@@ -1386,7 +1265,7 @@ function aceLines(path) {
 	assert.equal(run.status, 0, `ls -le must report on ${path}: ${run.stderr}`);
 	return run.stdout
 		.split("\n")
-		.filter((line) => RE_S_D_S.test(line))
+		.filter((line) => /^\s*\d+:\s/.test(line))
 		.map((line) => line.trim());
 }
 
@@ -1495,7 +1374,7 @@ test("every python-running runCommand call site in the update service passes the
 	// ships, either by path or through the pip command builder. `codesign` is the
 	// file's other call site and wants the inherited environment, not this one.
 	const pythonCalls = calls.filter(({ text }) =>
-		RE_PYTHONPATH_PIP_COMMAND.test(text),
+		/pythonPath|pip\.command/.test(text),
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
@@ -1513,7 +1392,7 @@ test("every python-running runCommand call site in the update service passes the
 	for (const { line, text } of pythonCalls) {
 		assert.match(
 			text,
-			RE_ENV_S_THIS_PYTHONSPAWNENV,
+			/env:\s*this\.pythonSpawnEnv\(\)/,
 			`the python spawn at src/main/update-service.ts:${line} must pass the guarded environment: ${text.replace(/\s+/g, " ")}`,
 		);
 	}
@@ -1555,12 +1434,15 @@ test("the guard is written into the venv's own site-packages", () => {
 		// The property, not the text: the file turns bytecode writing off, which
 		// is what a process using this venv inherits whether or not it was this
 		// app that started it.
-		assert.match(readFileSync(expected, "utf8"), RE_SYS_DONT_WRITE_BYTECODE_TR);
+		assert.match(
+			readFileSync(expected, "utf8"),
+			/^sys\.dont_write_bytecode = True$/m,
+		);
 
 		// Idempotent by content, because this runs at every start.
 		const second = ensureVenvBytecodeGuard(venvPath);
 		assert.equal(second.written, false);
-		assert.match(second.reason, RE_ALREADY_REFUSES_BYTECODE_W);
+		assert.match(second.reason, /already refuses bytecode writes/);
 	} finally {
 		rmSync(venvPath, { recursive: true, force: true });
 	}
@@ -1572,7 +1454,7 @@ test("a venv without site-packages is reported, not created", () => {
 		const guard = ensureVenvBytecodeGuard(venvPath);
 		assert.equal(guard.path, null);
 		assert.equal(guard.written, false);
-		assert.match(guard.reason, RE_NO_SITE_PACKAGES);
+		assert.match(guard.reason, /no site-packages/);
 		assert.deepEqual(
 			readdirSync(venvPath),
 			[],
@@ -1597,7 +1479,7 @@ test("a sitecustomize.py that is not ours is left exactly as it is", () => {
 	try {
 		const guard = ensureVenvBytecodeGuard(venvPath);
 		assert.equal(guard.written, false);
-		assert.match(guard.reason, RE_IS_NOT_OURS);
+		assert.match(guard.reason, /is not ours/);
 		assert.equal(
 			readFileSync(theirs, "utf8"),
 			ownText,
@@ -1996,25 +1878,12 @@ function findChildProcessSites(files = mainProcessSources()) {
 	for (const file of files) {
 		const raw = readFileSync(file, "utf8");
 		const source = blankComments(raw);
-<<<<<<< HEAD
 		const { named, namespaces } = childProcessBindings(raw);
 		if (
 			named.size === 0 &&
 			namespaces.size === 0 &&
 			!/require\("node:child_process"\)/.test(raw)
 		) {
-=======
-		const imported = new Set();
-		for (const match of raw.matchAll(
-			/import\s*\{([^}]*)\}\s*from\s*"node:child_process"/g,
-		)) {
-			for (const part of match[1].split(",")) {
-				const name = part.trim();
-				if (name) imported.add(name);
-			}
-		}
-		if (imported.size === 0 && !RE_REQUIRE_NODE_CHILD_PROCESS.test(raw)) {
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 			continue;
 		}
 		const found = [];
@@ -2243,12 +2112,12 @@ test("every child-process spawn site is enumerated, and the python ones carry th
 	);
 	assert.match(
 		builder,
-		RE_PYTHONPYCACHEPREFIX_S_PREF,
+		/PYTHONPYCACHEPREFIX:\s*prefix/,
 		"the guarded environment must set PYTHONPYCACHEPREFIX to the prefix it resolved",
 	);
 	assert.match(
 		builder,
-		RE_PYTHONDONTWRITEBYTECODE_S,
+		/PYTHONDONTWRITEBYTECODE:\s*"1"/,
 		"and PYTHONDONTWRITEBYTECODE, unconditionally: the spawns that reach it are the ones we start",
 	);
 
@@ -2814,16 +2683,11 @@ test("a packaged and an unpackaged instance never share a venv", () => {
 			// Nothing is published in this fixture, so both answers are the sentinel -
 			// and it is spelled so a reader cannot mistake it for a directory
 			// (review N3).
-<<<<<<< HEAD
 			assert.match(
 				packaged,
 				/managed-python[/]packaged[/]no-environment-selected$/,
 			);
 			assert.match(dev, /managed-python[/]dev[/]no-environment-selected$/);
-=======
-			assert.match(packaged, RE_MANAGED_PYTHON_PACKAGED_NO);
-			assert.match(dev, RE_MANAGED_PYTHON_DEV_NO_ENVI);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 			assert.ok(isUnpreparedVenvPath(packaged));
 			assert.ok(isUnpreparedVenvPath(dev));
 		} else {
@@ -2969,16 +2833,16 @@ test("the pre-split environments are reported from the paths that actually exist
 
 	const lines = legacyEnvironmentReport(support);
 	assert.equal(lines.length, 1);
-	assert.match(lines[0], RE_PRE_SPLIT_ENVIRONMENT_AT_L);
+	assert.match(lines[0], /pre-split environment at .*local-operator-venv/);
 	// The fixture bundle from this temp directory, by its own path: the assertion
 	// is about what `venvInterpreter` resolves, not about what this machine has
 	// installed.
-	assert.match(lines[0], RE_BUILT_ON_THE_INTERPRETER_I);
+	assert.match(lines[0], /built on the interpreter inside .*Fixture\.app/);
 	assert.ok(
 		lines[0].includes(bundle),
 		`the line must name the bundle the venv actually points at: ${lines[0]}`,
 	);
-	assert.match(lines[0], RE_LEFT_EXACTLY_AS_IT_IS);
+	assert.match(lines[0], /left exactly as it is/);
 
 	// The bundle gone is a DIFFERENT fact, and it is stated as one.
 	const gone = join(home, "Gone.app");
@@ -2988,14 +2852,10 @@ test("the pre-split environments are reported from the paths that actually exist
 	);
 	const afterReplacement = legacyEnvironmentReport(support);
 	assert.equal(afterReplacement.length, 1);
-<<<<<<< HEAD
 	assert.match(
 		afterReplacement[0],
 		/names an interpreter bundle that is not on disk/,
 	);
-=======
-	assert.match(afterReplacement[0], RE_NAMES_AN_INTERPRETER_BUNDL);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 	assert.ok(afterReplacement[0].includes(gone));
 
 	// And a machine with no pre-split environment says nothing at all.
@@ -3016,22 +2876,18 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		),
 		support,
 	);
-	assert.match(full, RE_WHAT_HAPPENED_THIS_MAC_RAN);
-	assert.match(full, RE_THE_APP_RECORDED_DITTO);
-	assert.match(full, RE_WHERE_ITS_ENVIRONMENT_LIVE);
+	assert.match(full, /^What happened: This Mac ran out of disk space/);
+	assert.match(full, /The app recorded: ditto: /);
+	assert.match(full, /Where its environment lives: .*managed-python$/);
 
 	const concurrent = backendSetupFailureDetail(
 		new Error("Another Local Operator instance is preparing its backend"),
 		support,
 	);
-<<<<<<< HEAD
 	assert.match(
 		concurrent,
 		/^What happened: Another copy of Local Operator is setting up/,
 	);
-=======
-	assert.match(concurrent, RE_WHAT_HAPPENED_ANOTHER_COPY);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 
 	// Review N6: the two halves of the same bucket, so the correction is targeted
 	// rather than a phrase dropped from a pattern. A backend that really did install
@@ -3046,14 +2902,10 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		),
 		support,
 	);
-<<<<<<< HEAD
 	assert.match(
 		smoke,
 		/^What happened: The backend was installed but did not start correctly/,
 	);
-=======
-	assert.match(smoke, RE_WHAT_HAPPENED_THE_BACKEND);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 
 	const preparation = backendSetupFailureDetail(
 		new Error(
@@ -3063,10 +2915,9 @@ test("the setup failure dialog says what happened before what was recorded", asy
 	);
 	assert.doesNotMatch(
 		preparation,
-		RE_WHAT_HAPPENED_THE_BACKEND_2,
+		/^What happened: The backend was installed/,
 		"nothing was installed, so the copy must not say it was",
 	);
-<<<<<<< HEAD
 	assert.match(
 		preparation,
 		/^What happened: The backend could not be set up on this Mac/,
@@ -3075,10 +2926,6 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		preparation,
 		/The app recorded: Backend preparation did not complete/,
 	);
-=======
-	assert.match(preparation, RE_WHAT_HAPPENED_THE_BACKEND_3);
-	assert.match(preparation, RE_THE_APP_RECORDED_BACKEND_P);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 
 	// An internal-sounding error is not shown as the user's situation, and the raw
 	// string it came from is still there for the support thread.
@@ -3086,18 +2933,12 @@ test("the setup failure dialog says what happened before what was recorded", asy
 		new Error("Runtime directory escaped its managed root"),
 		support,
 	);
-<<<<<<< HEAD
 	assert.doesNotMatch(internal.split("\n")[0], /escaped its managed root/);
 	assert.match(
 		internal,
 		/The app recorded: Runtime directory escaped its managed root/,
 	);
 	assert.doesNotMatch(internal, /\.app/);
-=======
-	assert.doesNotMatch(internal.split("\n")[0], RE_ESCAPED_ITS_MANAGED_ROOT);
-	assert.match(internal, RE_THE_APP_RECORDED_RUNTIME_D);
-	assert.doesNotMatch(internal, RE_APP);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 });
 
 test("the macOS installer no longer claims to have chosen a Python directory", async () => {
@@ -3106,25 +2947,16 @@ test("the macOS installer no longer claims to have chosen a Python directory", a
 	// perform - it installs from `PYTHON_BIN`. The line stated the opposite of how
 	// the script finds Python.
 	const { macosInstallScript } = await loadInstallScripts();
-<<<<<<< HEAD
 	assert.doesNotMatch(macosInstallScript, /PYTHON_DIR_NAME/);
 	assert.doesNotMatch(macosInstallScript, /using Python directory name/);
-=======
-	assert.doesNotMatch(macosInstallScript, RE_PYTHON_DIR_NAME);
-	assert.doesNotMatch(macosInstallScript, RE_USING_PYTHON_DIRECTORY_NAM);
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 	const run = runMacosInstallScript(macosInstallScript, {
 		PYTHON_BIN: undefined,
 	});
 	assert.doesNotMatch(
 		`${run.stdout}${run.stderr}`,
-<<<<<<< HEAD
 		/Detected CPU architecture/,
-=======
-		RE_DETECTED_CPU_ARCHITECTURE,
->>>>>>> 54caaa437 (fix(scripts): make the touched test files lint-clean, and unset the env properly)
 	);
 	// The refusal it does make is untouched: the caller must say which interpreter.
 	assert.equal(run.status, 1);
-	assert.match(run.stderr, RE_PASS_AN_EXTERNAL_PREPARED);
+	assert.match(run.stderr, /Pass an external prepared Python executable/);
 });
