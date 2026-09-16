@@ -5,10 +5,15 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
+import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { noteConsentAttention } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
@@ -104,6 +109,25 @@ const App: FC = () => {
 	useSuppressBrowserView(isLowCreditsDialogOpen, "low-credits");
 	const navigate = useNavigate(); // For onAgentCreated
 
+	/*
+	 * Whether the session catalogue is usable, which is the gate the shortcut's
+	 * own row keeps.
+	 *
+	 * `chat-sidebar.tsx` disables the New chat row on exactly this capability,
+	 * with the reason beside it: "staging a draft needs the session catalogue".
+	 * A chord that outranked that gate would stage a draft in a state where the
+	 * visible control refuses — a backend older than `session_catalogue` v2, or
+	 * none at all — and would be claiming a capability the app has just said it
+	 * does not have. `capabilities.data` is `undefined` until the answer arrives,
+	 * which is the same closed state the row reads.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const catalogueReady = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue",
+		2,
+	);
+
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
 		closeCreateAgentDialog();
@@ -180,6 +204,52 @@ const App: FC = () => {
 		});
 		return () => unsubscribe?.();
 	}, [navigate]);
+
+	/*
+	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other
+	 * half of the promise the sidebar's New chat row prints as a key cap.
+	 *
+	 * ON THE DOCUMENT, and on the SHELL, for the reason the two halves have:
+	 * `document` is where a press lands whatever has focus, including the
+	 * composer, and the shell is the only component mounted on every route, so a
+	 * cap that advertises "New chat" is not a claim about the chat page while
+	 * the user is somewhere else. Which presses are NOT this shortcut's — the
+	 * canvas's own `⌘N`, an open dialog or menu — is decided in
+	 * `features/chat/new-chat-shortcut.ts`, so the rule is assertable without a
+	 * DOM and the canvas's half of it shares one source with this one.
+	 *
+	 * `stageDraft(undefined, true)` and `navigate("/chat")`: exactly the two steps
+	 * the sidebar row performs through the chat page's `stage`, and the same
+	 * pair the agents page stages an entity chat with. Read through
+	 * `getState()` rather than a selector so this listener is not re-registered
+	 * by a re-render it has no use for.
+	 *
+	 * IT TAKES THE ROW'S OWN GATE, which is what makes "the two steps the row
+	 * performs" true rather than nearly true: `catalogueReady` above is the same
+	 * capability bit the row is disabled on. Without it the chord would stage a
+	 * draft in the one state where the visible control refuses — no backend, or a
+	 * backend older than `session_catalogue` v2 — and the shortcut would be
+	 * claiming a capability the app has just said it does not have.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			/*
+			 * The first-run wizard owns the window until it is answered, and it is a
+			 * modal whose focus lands on its first control one frame after it opens.
+			 * A press in that frame has `<body>` for a target, so the rule's own
+			 * modal check cannot see it — and a draft staged behind a wizard the
+			 * user has not finished would be waiting when they closed it.
+			 */
+			if (isOnboardingActive) return;
+			if (!catalogueReady) return;
+			if (!shouldStartNewChat(event)) return;
+			event.preventDefault();
+			useCanonicalSessionsStore.getState().stageDraft(undefined, true);
+			navigate("/chat");
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [catalogueReady, isOnboardingActive, navigate]);
 
 	return (
 		<OnboardingProvider>

@@ -72,6 +72,16 @@ export const OnboardingDialog = ({
 		 */
 		<Dialog open={open}>
 			<DialogContent
+				/*
+				 * A hook for a HARNESS rather than for the app: the renderer driver's state
+				 * probe answers "is the first-run wizard up?" by looking for this, and the
+				 * Radix content it portals in carries `role="dialog"` - which the command
+				 * palette and every other modal in the app carry too, so a probe on that
+				 * would report whichever dialog happened to be open as the wizard. Nothing
+				 * styles or sizes it. See `src/renderer/src/dev-driver/install.ts`, which
+				 * reads it as `onboardingVisible`.
+				 */
+				data-onboarding-modal=""
 				showClose={false}
 				onEscapeKeyDown={(event) => event.preventDefault()}
 				onPointerDownOutside={(event) => event.preventDefault()}
