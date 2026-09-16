@@ -739,6 +739,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											 * `Loading conversation…` over the splash that way.
 											 */
 											awaitingHydration={canonical.view.awaitingHydration}
+											/*
+											 * The identity the composer BELOW is given as its
+											 * `conversationId`, and deliberately the same local
+											 * const rather than a second spelling of it: the
+											 * conversation input store files a staged quote under
+											 * this key and the composer reads its replies back out
+											 * of it, so two derivations of "which conversation is
+											 * this" is how a Quote press becomes a no-op that looks
+											 * like a broken button (see the transcript's own note).
+											 * That is why the composer's own `conversationId` and
+											 * this one are both this const and not `agentId`
+											 * written twice - they are equal today, and the point
+											 * is that they cannot drift apart.
+											 */
+											conversationId={conversationId}
 											onReconnect={canonical.view.retry}
 											onAnswer={canonical.onAnswer}
 											// The composer's own in-flight flag, reused: one
@@ -812,7 +827,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											}),
 										),
 								)}
-								conversationId={agentId}
+								conversationId={conversationId}
 								messages={
 									canonical
 										? /*
