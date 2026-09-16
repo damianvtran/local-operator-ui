@@ -90,6 +90,18 @@
  *
  * Flags:
  *   --scene <states|new-chat|palette|none>  which built-in scene to run (default: states)
+ *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
+ *                          transport is pointed at it, so a surface gated on a
+ *                          capability can be driven at all. The renderer must have
+ *                          been BUILT against the same URL
+ *                          (VITE_LOCAL_OPERATOR_API_URL) and the bearer read from
+ *                          LOCAL_OPERATOR_DESKTOP_TOKEN; the run asserts both
+ *   --backend-records <dir> the serve record that backend wrote for itself, which
+ *                          `discovery.ts` needs before it admits the daemon
+ *   --seed-onboarding-complete  write the scratch profile's onboarding flags, so a
+ *                          fresh profile in front of a fresh backend is not a
+ *                          first-run user whose six-step wizard is a modal over
+ *                          the window
  *   --out <dir>            where frames go; copied out of the scratch tree when given
  *   --gate-check           measure the fail-closed gate on four real boots
  *   --window-size <WxH>    the window to request (default 1380x900)

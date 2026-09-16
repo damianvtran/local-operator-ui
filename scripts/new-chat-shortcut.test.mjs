@@ -202,11 +202,10 @@ test("the canvas scope is the pane's own attribute, and a press from it is the c
 });
 
 test("the cap is the platform's own spelling, in two caps the component can split", () => {
-	assert.equal(newChatShortcutCap("MacIntel"), "⌘+N");
-	assert.equal(newChatShortcutCap("Win32"), "Ctrl+N");
-	assert.equal(newChatShortcutCap("Linux armv8l"), "Ctrl+N");
-	for (const platform of ["MacIntel", "Win32", "Linux armv8l"]) {
-		const cap = newChatShortcutCap(platform);
+	assert.equal(newChatShortcutCap(true), "⌘+N");
+	assert.equal(newChatShortcutCap(false), "Ctrl+N");
+	for (const isMac of [true, false]) {
+		const cap = newChatShortcutCap(isMac);
 		assert.equal(
 			cap.split("+").length,
 			2,
@@ -268,9 +267,22 @@ const CANVAS_STARTS_FILE = /action === "new-file"/;
  * things this pin is deliberately NOT about - a selector naming an attribute
  * constant - and the prose `role="dialog"` elsewhere in that file, which a
  * whole-file text check would trip over.
+ *
+ * WHY IT BACK-REFERENCES THE OPENING QUOTE (review round 2, F7). "Any characters
+ * that are not the closing one" is not the same as "the same literal": a
+ * selector written as a template literal can hold the OTHER quote characters
+ * before it reaches `[role=` - `closest(\`${q ? "x" : 'y'}[role=dialog]\`)` -
+ * and the first spelling stopped at that `"`, so a violation written that way
+ * passed. Matching to the character the literal OPENED with (a back-reference)
+ * closes it, and the lazy `[\s\S]*?` before it stops at the first `[role=` rather
+ * than running into the next argument. ITS OWN BOUND, stated rather than implied:
+ * this is a source-text pin, not a parser, so a template literal with a NESTED
+ * escaped template before the `[role=` is still not seen. It is a pin over one
+ * file this change owns, and the canvas's own behaviour is asserted separately
+ * below.
  */
 const CANVAS_ASKS_FOR_A_ROLE_LIST =
-	/\.(?:closest|querySelector)\(\s*[`'"][^`'"]*\[role=/;
+	/\.(?:closest|querySelector)\(\s*([`'"])(?:(?!\1)[\s\S])*?\[role=[\s\S]*?\1/;
 
 test("the shell binds the chord on the document and asks the rule", () => {
 	assert.ok(
@@ -317,7 +329,7 @@ test("the New chat row prints the cap from the same module the binding reads", (
 	const button = sidebar.slice(buttonAt, sidebar.indexOf("</button>", labelAt));
 	assert.ok(
 		button.includes("<KeyboardShortcut") &&
-			button.includes("newChatShortcutCap(navigator.platform)"),
+			button.includes("newChatShortcutCap(isMac)"),
 		`the row must render the cap the chord is, from the one module that spells it:\n${button}`,
 	);
 	assert.ok(

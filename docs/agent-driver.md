@@ -258,7 +258,8 @@ release. Add a *verb* only when a scene needs to reach a path none of these can
 is refused on purpose: its blast radius grows with every PR, and the review
 question "what can this reach" would have no answer.
 
-There are two scenes, and the second one is the worked example of that rule:
+There are three scenes, and the second and third are the worked examples of that
+rule:
 
 - **`states`** — the before/after pair of one screen plus a real control press;
 - **`palette`** — the command palette, opened by a pointer sequence on the rail's
@@ -273,6 +274,18 @@ There are two scenes, and the second one is the worked example of that rule:
   settings registry, and the panel rows, which need a live chat pane behind
   them). Those are covered by unit tests over the join and the ranking, and by
   the QA pass against a live backend.
+- **`new-chat`** — the sidebar's `⌘N`, pressed through CDP's own key pipeline
+  (`Input.dispatchKeyEvent`, never a `KeyboardEvent` built inside the page,
+  because the whole claim is that the press reaches the listener) against the
+  BUILT app. It is the scene that needed this harness's three newer flags:
+  `--backend` points the app's own transport at a live, ISOLATED backend the run
+  owns, `--backend-records` hands the app the record that backend wrote for
+  itself (without it `discovery.ts` does not admit the daemon), and
+  `--seed-onboarding-complete` writes the scratch profile's onboarding flags,
+  because a fresh profile in front of a fresh backend is a first-run user whose
+  six-step wizard is a modal over the window. It asserts both halves of the
+  claim: that the chord moves the app to `/chat` and stages a fresh draft, and
+  that with no catalogue answering the press changes nothing at all.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script

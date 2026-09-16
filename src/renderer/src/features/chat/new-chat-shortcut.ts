@@ -106,11 +106,14 @@ export const shouldStartNewChat = (event: NewChatShortcutEvent): boolean => {
 /**
  * The cap the sidebar prints, in the platform's own spelling.
  *
- * Takes the platform rather than reading `navigator` itself so the two
- * spellings are assertable, and so the row keeps the app's existing source for
- * it (`chat-header.tsx` and the undo manager both read `navigator.platform` this
- * way — the capability hook's answer is async, and a row that painted `⌘N`
- * before an awaited platform arrived would flash the wrong cap on Windows).
+ * Takes `isMac` rather than the platform string, which is the shape the palette's
+ * own caps use (`paletteShortcutCaps`): the DECISION stays a pure function of one
+ * boolean, so both spellings are assertable without a DOM, and the boolean is
+ * derived by the caller. The derivation stays at the call site because that is
+ * where this app already does it - `chat-header.tsx`, `sidebar-navigation.tsx` and
+ * the undo manager each read `navigator.platform` that way - and it must stay a
+ * synchronous read: the capability hook's answer is async, and a row that painted
+ * `⌘N` before an awaited platform arrived would flash the wrong cap on Windows.
  */
-export const newChatShortcutCap = (platform: string): string =>
-	platform.toUpperCase().includes("MAC") ? "⌘+N" : "Ctrl+N";
+export const newChatShortcutCap = (isMac: boolean): string =>
+	isMac ? "⌘+N" : "Ctrl+N";

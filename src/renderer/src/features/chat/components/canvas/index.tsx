@@ -475,8 +475,8 @@ const CanvasComponent: FC<CanvasProps> = ({
 			data-tour-tag="canvas-container"
 			/*
 			 * The boundary the canvas's own `⌘N` is scoped to
-			 * (`canvas-shortcut-scope.ts`): a press from inside this element is the
-			 * pane's, and one from the dock's resize divider or the sidebar beside
+			 * (`features/chat/keyboard-scopes.ts`): a press from inside this element
+			 * is the pane's, and one from the dock's resize divider or the sidebar beside
 			 * it is the page's. It sits on the pane's own root rather than on the
 			 * dock wrapper so the divider — chrome, not a document action — is
 			 * outside it.
