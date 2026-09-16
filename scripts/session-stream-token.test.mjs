@@ -8,6 +8,37 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 
 /*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function,
+ * and `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * is the only thing that would have said so.
+ *
+ * The `Reflect.deleteProperty` calls below are the `delete` operator spelled
+ * the way the lint rule allows. It is not a style choice: assigning
+ * `undefined` to a `process.env` key sets the STRING "undefined" instead of
+ * unsetting it, which hands a child a different environment than the test
+ * means to give it (measured: three cases in this tree failed exactly so).
+ */
+const RE = /.*/;
+const RE_401_REFUSED_EVENT_STREAM_I = /401|refused|event stream/i;
+const RE_A_F0_9_64 = /^[a-f0-9]{64}$/;
+const RE_CONFIG = /^\.\/config$/;
+const RE_ELECTRON = /^electron$/;
+const RE_ELECTRON_FIXTURE_CHILD_PRO =
+	/^(electron-fixture|child-process-fixture|backend-logger-fixture|backend-config-fixture)$/;
+const RE_FETCH = /fetch\(/;
+const RE_HTTPS_A_Z0_9_I = /https?:\/\/[a-z0-9.:]+/i;
+const RE_IDENTITY_INSTANCEID_EXPECT =
+	/identity\.instanceId !== expectedInstanceId/;
+const RE_LOCALHOST_1111_ALTURL = /localhost:1111|altUrl/;
+const RE_LOGGER = /^\.\/logger$/;
+const RE_NODE_CHILD_PROCESS = /^node:child_process$/;
+const RE_OWNED_SERVE_LAUNCH = /owned-serve-launch$/;
+const RE_PROBE_DISCOVERDAEMONS = /probe|discoverDaemons/;
+const RE_PROCESS_KILL_PID_0 = /process\.kill\(pid, 0\)/;
+const RE_SERVER_IS_NOT_RUNNING_I = /server is not running/i;
+
+/*
  * The event relay must follow the desktop token, and a watchdog restart must
  * not shoot the machine's other backends.
  *
@@ -111,12 +142,12 @@ const bundle = await build({
 			setup(builder) {
 				// Launch identity has real-child coverage in owned-serve-lifecycle;
 				// this fixture measures the spawn environment, not installation.
-				builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
+				builder.onResolve({ filter: RE_OWNED_SERVE_LAUNCH }, () => ({
 					path: "launch",
 					namespace: "owned-launch-fixture",
 				}));
 				builder.onLoad(
-					{ filter: /.*/, namespace: "owned-launch-fixture" },
+					{ filter: RE, namespace: "owned-launch-fixture" },
 					() => ({
 						loader: "js",
 						contents: `
@@ -131,8 +162,8 @@ const bundle = await build({
 				/** Every substitution names its original, so a reader can see
 				 * exactly what is not shipping code in this run. */
 				const aliases = new Map([
-					[/^electron$/, "electron-fixture"],
-					[/^node:child_process$/, "child-process-fixture"],
+					[RE_ELECTRON, "electron-fixture"],
+					[RE_NODE_CHILD_PROCESS, "child-process-fixture"],
 				]);
 				for (const [filter, name] of aliases) {
 					builder.onResolve({ filter }, () => ({
@@ -144,8 +175,8 @@ const bundle = await build({
 				// `./config` exist in other directories, and replacing the wrong
 				// one would leave the real logger writing to the operator's log.
 				const backendOnly = [
-					[/^\.\/logger$/, "backend-logger-fixture"],
-					[/^\.\/config$/, "backend-config-fixture"],
+					[RE_LOGGER, "backend-logger-fixture"],
+					[RE_CONFIG, "backend-config-fixture"],
 				];
 				for (const [filter, name] of backendOnly) {
 					builder.onResolve({ filter }, (args) =>
@@ -156,8 +187,7 @@ const bundle = await build({
 				}
 				builder.onLoad(
 					{
-						filter:
-							/^(electron-fixture|child-process-fixture|backend-logger-fixture|backend-config-fixture)$/,
+						filter: RE_ELECTRON_FIXTURE_CHILD_PRO,
 						namespace: "fixture",
 					},
 					(args) => {
@@ -380,9 +410,7 @@ const SESSION = "92602660eb9e";
  * at import time - before anything is listening.
  */
 const portReservation = createServer();
-await new Promise((resolve) =>
-	portReservation.listen(0, "127.0.0.1", resolve),
-);
+await new Promise((resolve) => portReservation.listen(0, "127.0.0.1", resolve));
 const PORT = portReservation.address().port;
 await new Promise((resolve) => portReservation.close(resolve));
 
@@ -546,7 +574,7 @@ test("the relay authenticates with the token the current backend was started wit
 		const firstToken = state.spawns.at(-1)?.token;
 		assert.match(
 			firstToken ?? "",
-			/^[a-f0-9]{64}$/,
+			RE_A_F0_9_64,
 			"a managed start must mint a desktop token for the spawned backend",
 		);
 
@@ -677,7 +705,7 @@ test("a watchdog timeout never terminates a still-live owned daemon", async () =
  */
 test("an unpaired app does not adopt a healthy backend it can never authenticate to (Q-1)", async () => {
 	const saved = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
-	delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 	try {
 		// Healthy, answering on the CONFIGURED origin: under the old rule this is
 		// exactly the state that was adopted with no credential at all. The
@@ -707,12 +735,13 @@ test("an unpaired app does not adopt a healthy backend it can never authenticate
 			spawnsBefore + 1,
 			"declining to adopt must fall through to a managed start",
 		);
-		assert.match(state.spawns.at(-1)?.token ?? "", /^[a-f0-9]{64}$/);
+		assert.match(state.spawns.at(-1)?.token ?? "", RE_A_F0_9_64);
 		await manager.stop(true);
 	} finally {
 		state.healthy = false;
 		stopFixture();
-		if (saved === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 		else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = saved;
 	}
 });
@@ -768,7 +797,8 @@ test("a paired app adopts the configured backend, and only once it accepts the t
 		state.healthy = false;
 		state.pairedToken = null;
 		stopFixture();
-		if (saved === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 		else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = saved;
 	}
 });
@@ -784,7 +814,7 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.doesNotMatch(
 		source,
-		/localhost:1111|altUrl/,
+		RE_LOCALHOST_1111_ALTURL,
 		"no hardcoded fallback origin: a configured rig must never adopt a server on a different port",
 	);
 	/*
@@ -809,17 +839,17 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.match(
 		adoption,
-		/probe|discoverDaemons/,
+		RE_PROBE_DISCOVERDAEMONS,
 		"the record-backed adoption path must go through discovery, never a fetch of its own",
 	);
 	assert.doesNotMatch(
 		adoption,
-		/fetch\(/,
+		RE_FETCH,
 		"the record-backed adoption path must not fetch an origin directly: identity comes from the record, through the probe",
 	);
 	assert.doesNotMatch(
 		adoption,
-		/https?:\/\/[a-z0-9.:]+/i,
+		RE_HTTPS_A_Z0_9_I,
 		"no literal origin to fall back to",
 	);
 	/*
@@ -835,7 +865,7 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.match(
 		legacyAdoption,
-		/fetch\(/,
+		RE_FETCH,
 		"the deprecated pre-record fallback is where a direct fetch belongs, because it has no record to identify the daemon with",
 	);
 	// The identity half of the rule, from the module that owns it.
@@ -845,12 +875,12 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.match(
 		discoverySource,
-		/identity\.instanceId !== expectedInstanceId/,
+		RE_IDENTITY_INSTANCEID_EXPECT,
 		"a 200 is not identification: the answering instance must BE the recorded one",
 	);
 	assert.match(
 		discoverySource,
-		/process\.kill\(pid, 0\)/,
+		RE_PROCESS_KILL_PID_0,
 		"pid liveness is checked before any probe, so a dead daemon is never dialled",
 	);
 });
@@ -944,7 +974,7 @@ test("the relay's own refusal detail is the shared vocabulary and maps to the sh
 			streamFailureNotice(DESKTOP_STREAM_DETAIL.ended).statement,
 			"the packaged 401 and the browser proxy's ended must reach the reader as the same sentence",
 		);
-		assert.doesNotMatch(notice.statement, /401|refused|event stream/i);
+		assert.doesNotMatch(notice.statement, RE_401_REFUSED_EVENT_STREAM_I);
 	} finally {
 		relay.dispose();
 		stopFixture();
@@ -1020,7 +1050,7 @@ test("a stream against a backend that is not listening reports the server, not t
 		);
 		assert.match(
 			streamFailureNotice(frames[0].detail).statement,
-			/server is not running/i,
+			RE_SERVER_IS_NOT_RUNNING_I,
 		);
 	} finally {
 		relay.dispose();

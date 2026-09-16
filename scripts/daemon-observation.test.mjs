@@ -53,12 +53,40 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 
 /*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function,
+ * and `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * is the only thing that would have said so.
+ *
+ * The `Reflect.deleteProperty` calls below are the `delete` operator spelled
+ * the way the lint rule allows. It is not a style choice: assigning
+ * `undefined` to a `process.env` key sets the STRING "undefined" instead of
+ * unsetting it, which hands a child a different environment than the test
+ * means to give it (measured: three cases in this tree failed exactly so).
+ */
+const RE_ANSWERED_A_REQUEST = /answered a request/;
+const RE_ANSWERED_WITHOUT_PROVING_I =
+	/answered without proving it is a Local Operator daemon/;
+const RE_CONFIG = /^\.\/config$/;
+const RE_CONNECTED_TO_THE_DAEMON = /Connected to the daemon/;
+const RE_ELECTRON = /^electron$/;
+const RE_ELECTRON_LOGGER_FIXTURE_CO =
+	/^(electron|logger-fixture|config-fixture)$/;
+const RE_IT_KEEPS_PROBING_FOR_A_SER =
+	/It keeps probing for a server it can open/;
+const RE_LOGGER = /^\.\/logger$/;
+const RE_PROCESS_IS_GONE = /process is gone/;
+const RE_THIS_APP_WAS_NOT_GIVEN_THE =
+	/This app was not given the key to that server, so it did not start a second one/;
+const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
+
+/*
  * A pairing token in the operator's environment would let the adoption path
  * reach a daemon no record describes. Every case here goes through the record's
  * own claim key, so the ambient pairing credentials go first.
  */
-delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
-delete process.env.LOCAL_OPERATOR_DESKTOP_ORIGINS;
+Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
+Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_ORIGINS");
 
 const CLAIM_KEY = "c".repeat(64);
 const HOME = mkdtempSync(join(tmpdir(), "daemon-observation-"));
@@ -80,7 +108,7 @@ const bundle = await build({
 		{
 			name: "main-process-fixtures",
 			setup(builder) {
-				builder.onResolve({ filter: /^electron$/ }, () => ({
+				builder.onResolve({ filter: RE_ELECTRON }, () => ({
 					path: "electron",
 					namespace: "fixture",
 				}));
@@ -88,8 +116,8 @@ const bundle = await build({
 				// `./logger` exist in other directories, and substituting the wrong
 				// one would leave the real logger writing to the operator's log.
 				for (const [filter, name] of [
-					[/^\.\/logger$/, "logger-fixture"],
-					[/^\.\/config$/, "config-fixture"],
+					[RE_LOGGER, "logger-fixture"],
+					[RE_CONFIG, "config-fixture"],
 				]) {
 					builder.onResolve({ filter }, (args) =>
 						args.importer.endsWith("main/backend/backend-service.ts")
@@ -99,7 +127,7 @@ const bundle = await build({
 				}
 				builder.onLoad(
 					{
-						filter: /^(electron|logger-fixture|config-fixture)$/,
+						filter: RE_ELECTRON_LOGGER_FIXTURE_CO,
 						namespace: "fixture",
 					},
 					(args) => {
@@ -439,11 +467,11 @@ test("a daemon killed after startup is noticed by the tick adoption armed (Q-1)"
 		);
 		assert.doesNotMatch(
 			snapshot.detail,
-			/Connected to the daemon/,
+			RE_CONNECTED_TO_THE_DAEMON,
 			"and the row must stop describing a dead process as the daemon it is connected to",
 		);
 		assert.equal(snapshot.failures, DEGRADED_AFTER_FAILURES);
-		assert.match(snapshot.detail, /process is gone/);
+		assert.match(snapshot.detail, RE_PROCESS_IS_GONE);
 		assert.ok(
 			pushes.some((pushed) => pushed.state === "detached"),
 			"the renderer has to be PUSHED the correction: a state that only moves in main is still a stale row",
@@ -480,7 +508,7 @@ test("the banner's Retry corrects a stale attachment instead of returning it (Q-
 			"a Retry that answers `attached` for a daemon whose process is gone is the row claiming online while every action fails",
 		);
 		assert.equal(snapshot.state, "detached");
-		assert.match(snapshot.detail, /process is gone/);
+		assert.match(snapshot.detail, RE_PROCESS_IS_GONE);
 		assert.equal(
 			snapshot.failures,
 			DEGRADED_AFTER_FAILURES,
@@ -539,12 +567,12 @@ test("a daemon answering the configured origin is never spawned over (EADDRINUSE
 		);
 		assert.match(
 			snapshot.detail,
-			/This app was not given the key to that server, so it did not start a second one/,
+			RE_THIS_APP_WAS_NOT_GIVEN_THE,
 			"the copy names the path into the state, not a generic failure",
 		);
 		assert.match(
 			snapshot.detail,
-			/It keeps probing for a server it can open/,
+			RE_IT_KEEPS_PROBING_FOR_A_SER,
 			"and the one future this app can actually reach",
 		);
 		/*
@@ -563,7 +591,7 @@ test("a daemon answering the configured origin is never spawned over (EADDRINUSE
 				version: snapshot.version,
 			}),
 		);
-		assert.doesNotMatch(snapshot.detail, /VITE_DISABLE_BACKEND_MANAGER/);
+		assert.doesNotMatch(snapshot.detail, RE_VITE_DISABLE_BACKEND_MANAG);
 		assert.equal(
 			manager.isUsingExternalBackend(),
 			false,
@@ -599,12 +627,12 @@ test("an address that answers a status other than 200 is OCCUPIED, not free (F-2
 		const snapshot = manager.getStatusSnapshot();
 		assert.match(
 			snapshot.detail,
-			/answered without proving it is a Local Operator daemon/,
+			RE_ANSWERED_WITHOUT_PROVING_I,
 			"the copy states the fact it observed rather than naming a daemon it could not identify",
 		);
 		assert.match(
 			snapshot.detail,
-			/It keeps probing for a server it can open/,
+			RE_IT_KEEPS_PROBING_FOR_A_SER,
 			"and the one step this app actually takes about it (design round 1, D7)",
 		);
 		assert.match(snapshot.detail, new RegExp(scene.address));
@@ -656,7 +684,7 @@ test("an unanswered desktop call is not evidence the daemon answered (F-1)", asy
 		);
 		assert.doesNotMatch(
 			detached.detail,
-			/answered a request/,
+			RE_ANSWERED_A_REQUEST,
 			"and the sentence must not claim a daemon answered a request it never saw",
 		);
 	} finally {
@@ -683,7 +711,7 @@ test("an unanswered desktop call is not evidence the daemon answered (F-1)", asy
 			"degraded",
 			"a daemon that answered a request seconds ago is serving, whatever the probes could not read",
 		);
-		assert.match(held.detail, /answered a request/);
+		assert.match(held.detail, RE_ANSWERED_A_REQUEST);
 	} finally {
 		await second.manager.stop(false);
 		await answering.dispose();
