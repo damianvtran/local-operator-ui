@@ -456,7 +456,7 @@ const ManualRemedyNote = ({
 					 * `git_snapshot_notice()` prints "this runtime was built from git; lop update
 					 * will replace it with the PyPI wheel".
 					 */
-					"Run this in a terminal. This install was built from this machine's checkout, so `lop update` installs the published release over it - run `lop-update` afterwards if you want to keep following the checkout."
+					"Run this in a terminal. This install was built from this machine's checkout, so `lop update` installs the published release over it - and if this machine has `lop-update`, the script that rebuilds this install from the checkout, run that afterwards to keep following it."
 				: command
 					? "Run this in a terminal, then check for updates again to pick up the new server version."
 					: "Then check for updates again to pick up the new server version."}
@@ -505,6 +505,38 @@ const readableVersion = (value: string | null | undefined): string | null => {
  * When the two readings agree the sentence does not grow: an ordinary offer reads
  * exactly as it always did.
  */
+/**
+ * WHAT THE CLICK COSTS, chosen by who would actually be restarted (UX U9).
+ *
+ * The sentence the plan carries is the app-owned one, and the plan cannot know
+ * ownership: it classifies the INSTALL. On a machine where discovery adopted a
+ * server, the offer therefore promised "restarts the server it started, so a turn
+ * that is in flight is dropped" - a cost that cannot be incurred there, and one
+ * the app's own completion notice denies four minutes later ("Local Operator does
+ * not restart a server it did not start"). So the arm reads the ownership flag the
+ * event carries (`restartable`) and says what happens to the server the reader is
+ * talking to:
+ *
+ * - app-owned: the restart and its cost, before the press (review U3).
+ * - adopted: the install moves, the server keeps serving the old build until it
+ *   restarts on its own, and nothing in flight is dropped.
+ * - unstated (an older main process sends no flag): the app-owned sentence, which
+ *   is the state this offer was written for - the app spawns the daemon it
+ *   attaches to whenever it can.
+ */
+const managedCostSentence = (info: {
+	restartable?: boolean;
+	remedy?: string;
+}): string => {
+	if (info.restartable === false) {
+		return "The app updates this install itself. The server you are using was started outside Local Operator, so it keeps running the old build until it restarts, and nothing in flight is dropped.";
+	}
+	return (
+		info.remedy ??
+		"The app updates this install and then restarts the server it started."
+	);
+};
+
 const backendVersionSentence = ({
 	latestVersion,
 	installVersion,
@@ -998,7 +1030,7 @@ export const UpdateNotification = ({
 			unattended: boolean;
 			restartable: boolean;
 			kind: "landed" | "up-to-date";
-		}) => {
+		}): boolean => {
 			const install = readableVersion(notice.installVersion);
 			const running = readableVersion(notice.runningVersion);
 			/*
@@ -1018,11 +1050,21 @@ export const UpdateNotification = ({
 			 * null by construction), not that the two differ.
 			 */
 			if (!notice.unattended && (!install || !running || install === running)) {
-				return;
+				return false;
 			}
 			const key = skewKey(notice);
-			if (dismissedSkewRef.current === key) return;
+			if (dismissedSkewRef.current === key) return false;
 			setBackendSkewNotice(notice);
+			/*
+			 * WHETHER IT SPOKE, because one caller must not be left mute by a
+			 * decline (review R2-3). The completion path used to `return` past its
+			 * toast whenever this funnel was reached, so a successful install over an
+			 * adopted daemon whose `/health` read failed - declined here, correctly,
+			 * for want of a reading - ended with no toast, no notice and no error: the
+			 * panel simply went idle. Silence on success is the one outcome this panel
+			 * must not produce, so the caller asks.
+			 */
+			return true;
 		},
 		[],
 	);
@@ -1077,6 +1119,16 @@ export const UpdateNotification = ({
 			backendUpdateAttemptRef.current.inFlight = false;
 			setChecking(false);
 			setUpdatingBackend(false);
+			/*
+			 * The phase is part of the in-flight panel, so it is cleared here with the
+			 * flags that put it up (review R2-5). It used to be reset only by the two
+			 * listeners that carry one - the completed event and an update-phase error
+			 * report - so an attempt answered through the manual-required or
+			 * not-available surface left `"installing"`/`"restarting"` set, and the
+			 * NEXT attempt's panel opened on the previous attempt's sentence until its
+			 * own first progress event arrived.
+			 */
+			setBackendUpdatePhase(null);
 		}
 	}, []);
 
@@ -1412,11 +1464,17 @@ export const UpdateNotification = ({
 				 * the server is still on the old build - while the install being latest
 				 * means no later check ever offers the update again (reviews R1-3, UX
 				 * U1/U6, QA Q-2).
+				 *
+				 * AND ONLY WHEN THE NOTICE ACTUALLY SPEAKS: the funnel declines for an
+				 * adopted daemon whose running reading is missing or already equals the
+				 * landed install, and an early return there would leave the press
+				 * unanswered (review R2-3). Falling through to the toast keeps "the
+				 * update was not a restart" out of the copy while still telling the user
+				 * their press worked.
 				 */
 				if (
 					completion &&
-					(!completion.restarted || completion.unattended === true)
-				) {
+					(!completion.restarted || completion.unattended === true) &&
 					announceBackendSkew({
 						installVersion: completion.installVersion,
 						runningVersion: completion.runningVersion,
@@ -1424,7 +1482,8 @@ export const UpdateNotification = ({
 						unattended: completion.unattended === true,
 						restartable: completion.restartable !== false,
 						kind: "landed",
-					});
+					})
+				) {
 					return;
 				}
 
@@ -1722,7 +1781,7 @@ export const UpdateNotification = ({
 								 */
 								"Installing the new server build. The server you are using keeps serving while this runs, and it restarts once the install lands. This can take a minute or two, and the update can't be interrupted once it has started."
 							: backendUpdatePhase === "restarting"
-								? "The new build has landed. The server is restarting onto it now, so it is offline for a few seconds and anything in flight is dropped."
+								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
 								: "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
@@ -2075,7 +2134,7 @@ export const UpdateNotification = ({
 								);
 							}}
 						>
-							Show update log
+							Reveal update log
 						</Button>
 					</div>
 				)}
@@ -2133,14 +2192,13 @@ export const UpdateNotification = ({
 						 * WHAT THE CLICK COSTS, before the click (review U3). This is the one
 						 * update path where the app knows it will restart something, and the
 						 * fact - the app's own daemon is bounced, dropping a turn in flight -
-						 * first appeared AFTER the press, in the in-flight panel. The sentence
-						 * comes from the plan (`remedy`), so it is the same string the
-						 * main process states about itself, and it is why the managed arm is
-						 * rendered rather than left as dead data (reviews D7, U7).
+						 * first appeared AFTER the press, in the in-flight panel. It is the
+						 * plan's own sentence for a daemon the app started, and the ownership
+						 * reading decides whether that is the sentence this machine gets
+						 * (reviews D7, U7; UX U9) - see `managedCostSentence`.
 						 */}
 						<p className="mt-4 text-body text-ink">
-							{backendUpdateInfo.remedy ??
-								"The app updates this install and then restarts the server it started."}
+							{managedCostSentence(backendUpdateInfo)}
 						</p>
 						<UpdateActions>
 							<Button
@@ -2275,9 +2333,11 @@ export const UpdateNotification = ({
 							: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
 				</p>
 				<p className="mb-2 text-body text-ink-muted">
-					{restartable
-						? "Restart Local Operator and the server comes back on the new build."
-						: "It moves onto the new build when it restarts - Local Operator does not restart a server it did not start."}
+					{unattended && restartable
+						? "Restart Local Operator once more and the server comes back on the new build."
+						: restartable
+							? "Restart Local Operator and the server comes back on the new build."
+							: "It moves onto the new build when it restarts - Local Operator does not restart a server it did not start."}
 				</p>
 				<UpdateActions>
 					<Button

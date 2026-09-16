@@ -509,10 +509,29 @@ test("`lop update` exiting 0 is not evidence that the install moved", () => {
 		didUpgradeLand({ before: "0.56.0", after: "0.56.0", target: "0.56.0" }),
 		true,
 	);
-	// A change is still not evidence of the RIGHT change: a run that lands
-	// somewhere other than the version it was asked for has not landed.
+	/*
+	 * AT OR PAST the target, and past is a landing (review R2-1). The target is the
+	 * version the CHECK read off PyPI; `lop update` installs whatever PyPI has when
+	 * it RUNS, so a release published between the offer and the click lands the
+	 * install one version beyond the string the app asked for. Equality reported
+	 * that correct, newer machine as "the update did not take effect" - R1-1's false
+	 * failure with a narrower trigger.
+	 */
+	assert.equal(
+		didUpgradeLand({ before: "0.55.10", after: "0.56.1", target: "0.56.0" }),
+		true,
+	);
+	// A change is still not evidence of the RIGHT change: a run that lands BEHIND
+	// the version it was asked for has not landed.
 	assert.equal(
 		didUpgradeLand({ before: "0.55.10", after: "0.55.14", target: "0.56.0" }),
+		false,
+	);
+	// Neither has one whose reading cannot be ordered at all: `compareVersions`
+	// answers null for anything that is not `x.y.z`, and an unorderable reading is
+	// not a version at or past the target.
+	assert.equal(
+		didUpgradeLand({ before: "0.55.10", after: "unknown", target: "0.56.0" }),
 		false,
 	);
 	assert.equal(

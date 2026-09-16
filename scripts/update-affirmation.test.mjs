@@ -1398,6 +1398,147 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	);
 });
 
+/**
+ * U9: the offer states the cost THIS machine pays, not the one the layout implies.
+ *
+ * The managed arm's sentence comes from the plan, and the plan is an install
+ * classification: it cannot know whether the daemon serving this app is one the
+ * app started. On a machine where discovery adopted a server the offer therefore
+ * promised "restarts the server it started, so a turn that is in flight is
+ * dropped" - a cost that cannot be incurred there, denied four minutes later by the
+ * app's own completion notice. The event now carries `restartable`, and this case
+ * pins both directions off the SAME payload: only the ownership reading differs.
+ */
+test("the offer names the restart cost only where the app may restart the server", () => {
+	// The plan's own managed sentence, verbatim from `resolveGlobalInstallPlan`.
+	const PLAN_MANAGED_SENTENCE =
+		"The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two.";
+
+	const owned = mountNotification();
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		remedy: PLAN_MANAGED_SENTENCE,
+		restartable: true,
+	});
+	owned.render();
+	const ownedCopy = allCopy(owned).join(" ");
+	assert.match(ownedCopy, /then restarts the server it started/, ownedCopy);
+	assert.match(ownedCopy, /a turn that is in flight is dropped/, ownedCopy);
+
+	const adopted = mountNotification();
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		remedy: PLAN_MANAGED_SENTENCE,
+		restartable: false,
+	});
+	adopted.render();
+	const adoptedCopy = allCopy(adopted).join(" ");
+	assert.match(
+		adoptedCopy,
+		/keeps running the old build until it restarts/,
+		adoptedCopy,
+	);
+	assert.match(adoptedCopy, /nothing in flight is dropped/, adoptedCopy);
+	assert.equal(
+		/restarts the server it started/.test(adoptedCopy),
+		false,
+		`an adopted daemon's offer must not promise a restart: ${adoptedCopy}`,
+	);
+
+	// An older main process sends no ownership reading at all. The app-owned
+	// sentence is the one this offer was written for, so that is the fallback.
+	const unstated = mountNotification();
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		remedy: PLAN_MANAGED_SENTENCE,
+	});
+	unstated.render();
+	assert.match(
+		allCopy(unstated).join(" "),
+		/then restarts the server it started/,
+	);
+});
+
+/**
+ * R2-3: silence on SUCCESS is the one outcome this panel must not produce.
+ *
+ * The completion path routed every `restarted: false` arrival through the skew
+ * funnel and returned past its toast - and the funnel declines when the running
+ * reading is missing. So a successful install over an adopted daemon whose
+ * `/health` read failed rendered nothing at all: no toast, no notice, no error,
+ * and a panel that simply went idle. The funnel now reports whether it spoke.
+ */
+test("a completed install the notice declines still answers the press", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-completed", {
+		installVersion: "0.56.2",
+		// Adopted, and the read failed: the funnel has nothing to compare, so it
+		// declines - correctly, because it cannot claim the server is behind.
+		runningVersion: null,
+		restarted: false,
+		restartable: true,
+	});
+	handle.render();
+
+	const shown = visible(handle);
+	assert.equal(
+		shown.length,
+		1,
+		`the press must be answered: ${JSON.stringify(shown)} ${JSON.stringify(allCopy(handle))}`,
+	);
+	assert.equal(shown[0].variant, "success");
+	assert.match(shown[0].text, /Server update completed successfully/);
+	// ... and it still must not claim the server moved.
+	assert.equal(
+		allCopy(handle).some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(allCopy(handle)),
+	);
+});
+
+/**
+ * R2-5: the phase lives in the same cleanup as the flags that put the panel up.
+ *
+ * `updateBackend`'s `finally` clears `checking`/`updatingBackend` unconditionally
+ * and deliberately not per-branch - and the phase added this round was reset only
+ * by the two listeners that carry one, so an attempt answered through the
+ * by-hand surface left `"installing"` set and the NEXT attempt's panel opened on
+ * the previous attempt's sentence.
+ */
+test("a phase from an attempt answered elsewhere cannot leak into the next", async () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-progress", { phase: "installing" });
+	handle.render();
+	assert.ok(
+		allCopy(handle).some((text) =>
+			/Installing the new server build/.test(text),
+		),
+		JSON.stringify(allCopy(handle)),
+	);
+
+	/*
+	 * The attempt ends WITHOUT a completion and WITHOUT an error report - the shape
+	 * main answers over the by-hand surface, and the one the phase was never cleared
+	 * on: the two listeners that carry a phase are the completed event and an
+	 * update-phase error report, so the flags came down in `updateBackend`'s
+	 * `finally` and the phase stayed set.
+	 */
+	await settleServerUpdate(handle, true);
+
+	// The next attempt opens on the generic sentence, not the last one's.
+	startServerUpdate(handle);
+	handle.render();
+	const copy = allCopy(handle).join(" ");
+	assert.equal(
+		/Installing the new server build/.test(copy),
+		false,
+		`the new attempt must not open on the old attempt's phase: ${copy}`,
+	);
+	assert.match(copy, /Please wait while the server is being updated/, copy);
+});
+
 test("the pinned box holds one message, and the error takes it", () => {
 	const handle = mountNotification();
 	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
