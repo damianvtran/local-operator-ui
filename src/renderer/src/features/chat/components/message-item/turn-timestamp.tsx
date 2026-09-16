@@ -21,6 +21,15 @@
  * lives inside the disclosure and a run of twenty calls therefore stays twenty
  * lines.
  *
+ * IT ALSO OWNS THE TRANSCRIPT'S FOOTER LINE, which states when the last thing in
+ * the conversation happened — the same fact a turn's stamp states, one line
+ * under a turn that may already have said it. That line used to render the hover
+ * row's `MessageTimestamp`, so a screen carried `2025-10-09` under `Oct 9, 2025,
+ * 4:53 AM`: two spellings of one clock in one column, which is the defect class
+ * `date-utils.ts` documents in `formatCalendarDate`'s own comment. One component
+ * also keeps the gating honest — the footer is suppressed when the last row is
+ * a user turn, because that turn's stamp is already one line above it.
+ *
  * GEOMETRY, because the frame is the whole of what a stamp is: it is a
  * sibling of the bubble in a column (`UserRow`), so it sits under the bubble
  * and shares the bubble's own right edge rather than the row content box's —
@@ -46,11 +55,27 @@ import type { FC } from "react";
 export type TurnTimestampProps = {
 	/** The moment itself: epoch ms from a record, or a `Date`. */
 	timestamp: number | Date;
+	/**
+	 * WHICH stamp this is, in the DOM as `data-stamp`.
+	 *
+	 * The transcript carries two of these and they are different facts: a turn's
+	 * own (under its bubble, or at the foot of an open tool call) and the
+	 * transcript's, at the foot, stating when the last thing here happened. They
+	 * render identically on purpose — one fact, one spelling — which is exactly
+	 * why the DOM has to say which is which: the render tests assert that a
+	 * collapsed ledger row paints none of its own while the footer does, and a
+	 * count of `<time>` elements alone cannot tell those apart.
+	 *
+	 * Required rather than defaulted, so a third call site states which of the
+	 * two it is rather than inheriting whichever value happened to be the default.
+	 */
+	scope: "turn" | "footer";
 	className?: string;
 };
 
 export const TurnTimestamp: FC<TurnTimestampProps> = ({
 	timestamp,
+	scope,
 	className,
 }) => {
 	const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
@@ -67,6 +92,7 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 	return (
 		<time
 			dateTime={date.toISOString()}
+			data-stamp={scope}
 			title={formatCalendarDateTime(date)}
 			/*
 			 * `text-ink-dim` + `text-meta` is the contract's own pair for a
