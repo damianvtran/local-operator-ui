@@ -12,6 +12,15 @@ import { type HTMLAttributes, forwardRef } from "react";
  * against `canvas` and `surface`). Solid semantic fills are absent on purpose:
  * there is no `onSuccess` role to put on top of one.
  *
+ * `attention` is the one variant whose edge is NOT its own semantic border, and
+ * the reason is measured rather than aesthetic: `warningBorder` clears 2.51-2.98:1
+ * on graded grounds in seven palettes, so it cannot be the boundary of a count
+ * drawn on a control whose ground moves (the URL bar's `canvas`, the chat pane
+ * header's `surface`). The contrast contract's own answer is `border-control`, and
+ * `ink` on `warningWash` measures 8.62:1 — the sibling chip's measurement. The
+ * alternative — `variant="warning"` plus a `className` that overrides half of it
+ * — is precisely the drift this primitive exists to prevent.
+ *
  * `shape="pill"` is one of the three places `rounded-full` is allowed.
  */
 const badgeVariants = cva(
@@ -30,6 +39,7 @@ const badgeVariants = cva(
 				danger: "border-danger-border bg-danger-wash text-danger",
 				info: "border-info-border bg-info-wash text-info",
 				outline: "border-control bg-transparent text-ink",
+				attention: "border-control bg-warning-wash text-ink",
 			},
 			shape: {
 				rounded: "rounded-sm",
