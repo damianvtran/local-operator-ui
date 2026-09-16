@@ -1,34 +1,62 @@
 /**
  * The full backend settings registry as searchable, typed editors.
  *
- * One destination for every registered key: a top search over labels, help
- * text and keys, with rows grouped under their registry sections. Each section
- * header carries its scope tag, because the moment a write lands and the
- * moment behaviour changes are not the same for most keys. "This device" is
- * the scope the desktop app owns itself (theme, onboarding state); it lives
- * in the page's own sections, not in this backend list.
+ * One destination for every registered key: a top filter bar, then the sections
+ * in the registry's own order (which is a stated priority claim,
+ * `settings_io.py:281-288`), each carrying its scope once and holding rows that
+ * state themselves instead of repeating their scope.
  *
- * Dirty drafts are local to each row and survive failed saves; see
- * BackendSettingRow for that contract.
+ * The orchestrator owns everything the rows must agree about, and that is the
+ * point of this rewrite:
+ *
+ * - THE TIER. The registry is 99 keys in 18 sections and every one of them used
+ *   to ship expanded, which measured 10,896px of region (12.1 screens at
+ *   1380x900) before a reader had done anything. `tierFor` decides which keys a
+ *   reader meets on arrival and which sit one click away, and nothing is hidden
+ *   at any tier: the `approvals` section and every `warning` clause are within
+ *   the core list, search reaches every key at every tier, and the AI cannot gate
+ *   a write.
+ * - THE DRAFTS. A draft lives here, not in the row, for three reasons that are
+ *   all the same reason: the page has to be able to count unsaved changes, save
+ *   them all, and survive a section being collapsed — none of which a row-local
+ *   `useState` can do, because collapsing unmounts the row. The save MODEL is
+ *   untouched (draft plus an explicit Save, per kind).
+ * - THE OPEN STATE, including the two ways it is forced: a search force-opens
+ *   the sections it lands in (it used to be able to hide its own matches behind a
+ *   closed header and say nothing), and a `?setting=` deep link opens the
+ *   section AND the tier its target lives in before it focuses it.
  */
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type {
 	BackendSetting,
 	BackendSettings,
 } from "@shared/api/local-operator/desktop-api";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
-import { Alert, Badge, Button, Input } from "@shared/components/ui";
+import { Alert, Button } from "@shared/components/ui";
 import { useQuery } from "@tanstack/react-query";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BackendSettingRow } from "./backend-setting-row";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type SettingTier,
+	opensOnArrival,
+	tierFor,
+} from "../backend-settings-tiers";
+import { BackendSettingRow, type SettingGate } from "./backend-setting-row";
+import {
+	type SettingDraft,
+	draftFromSetting,
+	editOutcome,
+	isDraftDirty,
+} from "./backend-settings-drafts";
+import { SettingsFilterBar } from "./settings-filter-bar";
+import { SettingsGroupHeader } from "./settings-group-header";
 
 export const backendSettingsKeys = {
 	all: ["desktop", "settings"] as const,
@@ -56,6 +84,27 @@ type BackendSettingsSectionProps = {
 	initialFilter?: string;
 };
 
+/**
+ * How many animation frames a reveal-and-focus waits for its row to exist.
+ *
+ * A deep link has to open a tier and a section before the row is in the DOM, and
+ * how many frames that takes is a property of what else is on the page. A
+ * deadline is the honest bound: it either finds the row or gives up and leaves
+ * the reader where the state actually put them, rather than scrolling to a
+ * position that was measured before the layout settled.
+ */
+const FOCUS_ATTEMPTS = 40;
+
+/** Fold the two separators the registry and its callers disagree about. */
+/*
+ * Registry keys use underscores (`web_search.enabled`) while the words around
+ * them are written with hyphens, so `/search`'s own deep link ("web-search")
+ * matched 0 of 73 settings and the section rendered its empty state (UX U4).
+ * Folding both separators to one makes the two spellings the same search, for
+ * the deep link and for anyone typing.
+ */
+const fold = (value: string) => value.toLowerCase().replace(/[-_]/g, " ");
+
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
 	initialFilter = "",
@@ -63,55 +112,339 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "settings");
 	const [filter, setFilter] = useState(initialFilter);
-	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-	const focusAttempted = useRef(false);
+	const [showAdvanced, setShowAdvanced] = useState(false);
+	const [modifiedOnly, setModifiedOnly] = useState(false);
+	const [drafts, setDrafts] = useState<Record<string, SettingDraft>>({});
+	const [savingKeys, setSavingKeys] = useState<Record<string, boolean>>({});
+	const [errors, setErrors] = useState<Record<string, string | null>>({});
+	const [savingAll, setSavingAll] = useState(false);
+	/** Sections the reader opened or closed themselves, over the arrival layout. */
+	const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+	const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
+	/**
+	 * The last `?setting=` value that has been revealed.
+	 *
+	 * A ref holding the last HANDLED KEY rather than a one-shot boolean: the
+	 * boolean made a second deep link in one mount a dead no-op (the flag was
+	 * already true), so every palette row click after the first left the reader
+	 * looking at the section with the target off screen and nothing moving.
+	 */
+	const handledFocusKey = useRef<string | null>(null);
 
-	const query = useQuery({
+	const settingsQuery = useQuery({
 		queryKey: backendSettingsKeys.all,
 		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
 		enabled,
 		staleTime: 10_000,
 	});
 
-	const settings = query.data;
-	const filtered = useMemo(() => {
-		if (!settings) return null;
-		// Registry keys use underscores (`web_search.enabled`) while the words
-		// around them are written with hyphens, so `/search`'s own deep link
-		// ("web-search") matched 0 of 73 settings and the section rendered its
-		// empty state (UX U4). Folding both separators to one makes the two
-		// spellings the same search, for the deep link and for anyone typing.
-		const fold = (value: string) => value.toLowerCase().replace(/[-_]/g, " ");
-		const needle = fold(filter.trim());
-		if (!needle) return settings.settings;
-		return settings.settings.filter((setting) =>
-			fold(
-				[setting.label, setting.help, setting.key, setting.section].join(" "),
-			).includes(needle),
-		);
-	}, [settings, filter]);
+	const settings = settingsQuery.data;
 
-	// A /settings navigation target reveals its section and focuses the field.
+	/**
+	 * Seed drafts from the server, and re-seed a draft that is no longer dirty.
+	 *
+	 * The asymmetry is the whole contract: a refetch must never overwrite what
+	 * the reader typed (which is what makes a draft survive a failed save and a
+	 * background refetch), but a draft that already equals the server's value is
+	 * not an edit and has to follow the server — otherwise a successful save
+	 * would leave the row reading as unsaved forever.
+	 */
 	useEffect(() => {
-		if (!focusKey || !settings || focusAttempted.current) return;
-		focusAttempted.current = true;
+		if (!settings) return;
+		setDrafts((current) => {
+			let changed = false;
+			const next = { ...current };
+			for (const setting of settings.settings) {
+				const existing = current[setting.key];
+				if (!existing) {
+					next[setting.key] = draftFromSetting(setting);
+					changed = true;
+					continue;
+				}
+				if (isDraftDirty(setting, existing)) continue;
+				const seeded = draftFromSetting(setting);
+				if (
+					seeded.value !== existing.value ||
+					seeded.cascadeBase !== existing.cascadeBase
+				) {
+					next[setting.key] = seeded;
+					changed = true;
+				}
+			}
+			return changed ? next : current;
+		});
+	}, [settings]);
+
+	const isModified = useCallback(
+		(setting: BackendSetting) =>
+			!setting.is_default ||
+			isDraftDirty(setting, drafts[setting.key] ?? draftFromSetting(setting)),
+		[drafts],
+	);
+
+	/**
+	 * The rows the current filter, tier and chips admit.
+	 *
+	 * THE TIER APPLIES ONLY TO THE UNFILTERED LIST. A search reaches every key at
+	 * every tier, and so does `Modified` — both of those ask a question about the
+	 * whole registry, and answering it with "no settings match" while eight keys
+	 * match is the defect this surface shipped with (a search that can hide its
+	 * own matches behind a collapsed header, one tier down). The tier is a view of
+	 * the list, never a gate on a question: it shapes what a reader browses, and
+	 * the moment they name something, they get it.
+	 */
+	const matching = useMemo(() => {
+		if (!settings) return [];
+		const needle = fold(filter.trim());
+		const asking = needle.length > 0 || modifiedOnly;
+		return settings.settings.filter((setting) => {
+			if (!asking && tierFor(setting) === "advanced" && !showAdvanced) {
+				return false;
+			}
+			if (modifiedOnly && !isModified(setting)) return false;
+			if (!needle) return true;
+			return fold(
+				[
+					setting.label,
+					setting.help,
+					setting.key,
+					setting.section,
+					setting.warning ?? "",
+				].join(" "),
+			).includes(needle);
+		});
+	}, [settings, filter, showAdvanced, modifiedOnly, isModified]);
+
+	const filtering = filter.trim().length > 0 || modifiedOnly;
+
+	/**
+	 * The sections that are open, and how each one got there.
+	 *
+	 * A filter SUSPENDS the reader's own choices and force-opens what it landed
+	 * in; clearing it restores the arrival layout rather than "everything open",
+	 * which is why the two sets below are reset when the filter changes.
+	 */
+	const sections = useMemo(() => settings?.sections ?? [], [settings]);
+	const rowsForSection = useCallback(
+		(name: string) =>
+			(settings?.settings ?? []).filter((s) => s.section === name),
+		[settings],
+	);
+	const matchingForSection = (name: string) =>
+		matching.filter((setting) => setting.section === name);
+
+	const isOpen = (name: string) =>
+		opened.has(name)
+			? true
+			: closed.has(name)
+				? false
+				: opensOnArrival(rowsForSection(name));
+
+	const setOpen = (name: string, open: boolean) => {
+		setOpened((current) => {
+			const next = new Set(current);
+			if (open) next.add(name);
+			else next.delete(name);
+			return next;
+		});
+		setClosed((current) => {
+			const next = new Set(current);
+			if (open) next.delete(name);
+			else next.add(name);
+			return next;
+		});
+	};
+
+	const setAllOpen = (open: boolean) => {
+		const names = sections
+			.filter((section) => open || matchingForSection(section.name).length > 0)
+			.map((section) => section.name);
+		setOpened(new Set(open ? names : []));
+		setClosed(new Set(open ? [] : names));
+	};
+
+	/** The gate for a row, when the wire says one exists. */
+	const gateFor = useCallback(
+		(setting: BackendSetting): SettingGate | null => {
+			const key = setting.gated_by;
+			if (!key || !settings) return null;
+			const gate = settings.settings.find((row) => row.key === key);
+			return {
+				key,
+				label: gate?.label ?? key,
+				// The gate is the SERVER's value: a switch that has been flipped but
+				// not saved has not enabled anything yet.
+				on: gate?.value === true || gate?.value === "true",
+			};
+		},
+		[settings],
+	);
+
+	const markSaving = useCallback(
+		(key: string, value: boolean) =>
+			setSavingKeys((current) => ({ ...current, [key]: value })),
+		[],
+	);
+	const setError = useCallback(
+		(key: string, message: string | null) =>
+			setErrors((current) => ({ ...current, [key]: message })),
+		[],
+	);
+
+	/** Write one row's draft, and refetch so the server stays the authority. */
+	const saveRow = useCallback(
+		async (setting: BackendSetting) => {
+			const draft = drafts[setting.key];
+			if (!draft) return false;
+			const outcome = editOutcome(setting, draft);
+			if (!outcome.ok) {
+				setError(setting.key, outcome.error);
+				return false;
+			}
+			markSaving(setting.key, true);
+			setError(setting.key, null);
+			try {
+				await desktopResult(outcome.request);
+				markSaving(setting.key, false);
+				// The refetch is the authority. The failed branch below is the only
+				// one that keeps the draft, which is what "a failed save must not
+				// discard the edit" means in practice.
+				await settingsQuery.refetch();
+				return true;
+			} catch (error) {
+				markSaving(setting.key, false);
+				setError(
+					setting.key,
+					error instanceof Error
+						? error.message
+						: "The setting could not be saved.",
+				);
+				return false;
+			}
+		},
+		[drafts, settingsQuery, markSaving, setError],
+	);
+
+	/**
+	 * Put a row back to the registry's default.
+	 *
+	 * The draft is re-seeded from the default as part of the same interaction:
+	 * `Use default` used to write immediately while the row kept showing the
+	 * reader's draft, so the row and the server disagreed on screen with nothing
+	 * admitting it.
+	 */
+	const resetRow = useCallback(
+		async (setting: BackendSetting) => {
+			markSaving(setting.key, true);
+			setError(setting.key, null);
+			try {
+				await desktopResult({ op: "settings.reset", key: setting.key });
+				setDrafts((current) => ({
+					...current,
+					[setting.key]: draftFromSetting({
+						...setting,
+						value: setting.default,
+						is_default: true,
+					}),
+				}));
+				markSaving(setting.key, false);
+				await settingsQuery.refetch();
+			} catch (error) {
+				markSaving(setting.key, false);
+				setError(
+					setting.key,
+					error instanceof Error
+						? error.message
+						: "The setting could not be reset.",
+				);
+			}
+		},
+		[settingsQuery, markSaving, setError],
+	);
+
+	const dirtySettings = useMemo(
+		() =>
+			(settings?.settings ?? []).filter((setting) =>
+				isDraftDirty(setting, drafts[setting.key] ?? draftFromSetting(setting)),
+			),
+		[settings, drafts],
+	);
+
+	const saveAll = async () => {
+		setSavingAll(true);
+		for (const setting of dirtySettings) {
+			// Sequential on purpose: these are writes to one YAML file behind one
+			// lock, and firing 14 of them at once is how a merge conflict becomes
+			// an intermittent failure instead of a slow success.
+			await saveRow(setting);
+		}
+		setSavingAll(false);
+	};
+
+	const discardAll = () => {
+		if (!settings) return;
+		setDrafts((current) => {
+			const next = { ...current };
+			for (const setting of settings.settings) {
+				next[setting.key] = draftFromSetting(setting);
+			}
+			return next;
+		});
+		setErrors({});
+	};
+
+	/**
+	 * A /settings navigation target reveals its section AND its tier, then
+	 * focuses the field.
+	 *
+	 * The order is the contract: the row does not exist in the DOM until the
+	 * section is open, and an advanced key's row does not exist until the tier is
+	 * shown either. Doing it the other way round is how a deep link "succeeds"
+	 * while leaving the reader looking at a closed header.
+	 */
+	useEffect(() => {
+		if (!focusKey || !settings) return;
+		if (handledFocusKey.current === focusKey) return;
 		const target = settings.settings.find((s) => s.key === focusKey);
 		if (!target) return;
-		setCollapsed((current) => {
-			if (!current.has(target.section)) return current;
+		handledFocusKey.current = focusKey;
+
+		if (tierFor(target) === "advanced") setShowAdvanced(true);
+		// A filter that the destination does not match would leave the row
+		// unmounted, so the deep link wins over it: the navigation named a key,
+		// and a key that cannot be seen is not a destination.
+		const needle = fold(filter.trim());
+		const matchesQuery =
+			!needle ||
+			fold(
+				[target.label, target.help, target.key, target.section].join(" "),
+			).includes(needle);
+		if (!matchesQuery) setFilter("");
+		setModifiedOnly(false);
+		setOpened((current) => new Set(current).add(target.section));
+		setClosed((current) => {
 			const next = new Set(current);
 			next.delete(target.section);
 			return next;
 		});
-		// Focus after the reveal has painted.
-		requestAnimationFrame(() => {
+
+		let frame = 0;
+		let attempts = 0;
+		const step = () => {
 			const el = document.querySelector<HTMLElement>(
 				`[data-setting-key="${CSS.escape(focusKey)}"] input, [data-setting-key="${CSS.escape(focusKey)}"] textarea, [data-setting-key="${CSS.escape(focusKey)}"] button[role="switch"], [data-setting-key="${CSS.escape(focusKey)}"] button`,
 			);
-			el?.focus();
-			el?.scrollIntoView({ block: "center" });
-		});
-	}, [focusKey, settings]);
+			if (el) {
+				el.focus();
+				el.scrollIntoView({ block: "center" });
+				return;
+			}
+			attempts += 1;
+			if (attempts < FOCUS_ATTEMPTS) frame = requestAnimationFrame(step);
+		};
+		frame = requestAnimationFrame(step);
+		return () => cancelAnimationFrame(frame);
+	}, [focusKey, settings, filter]);
 
 	if (capabilities.data && !enabled) {
 		return (
@@ -132,7 +465,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 * beneath a banner saying the opposite. Gating on the capabilities query
 	 * too is what makes the states below mean what they say.
 	 */
-	if (query.isLoading || capabilities.isLoading) {
+	if (settingsQuery.isLoading || capabilities.isLoading) {
 		return (
 			<div className="flex h-40 items-center justify-center">
 				<Spinner size="lg" label="Loading settings" />
@@ -149,13 +482,11 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	// succeeded, so a capabilities error is not by itself evidence that this
 	// section has nothing to render. Treating it as fatal regardless replaced a
 	// fully-loaded page with an error banner on any background refetch failure
-	// -- reachable by alt-tabbing back after `staleTime` (60s) lapses -- and
-	// unmounting the rows destroys the unsaved drafts the header promises will
-	// survive failures.
+	// -- reachable by alt-tabbing back after `staleTime` (60s) lapses.
 	const loadError =
-		(capabilities.data ? null : capabilities.error) ?? query.error;
-	if (loadError || !settings || !filtered) {
-		const retrying = capabilities.isFetching || query.isFetching;
+		(capabilities.data ? null : capabilities.error) ?? settingsQuery.error;
+	if (loadError || !settings) {
+		const retrying = capabilities.isFetching || settingsQuery.isFetching;
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
@@ -179,11 +510,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 							// Retry what actually broke. On the gated path capabilities are
 							// the fault and the reason this query never ran, so re-asking
 							// only the gated query would re-fail against the same unfixed
-							// cause without ever retrying it. (`refetch()` on a disabled
-							// query does fire its queryFn -- measured on query-core 5.73.3 --
-							// so the click would not be inert, merely pointless.)
+							// cause without ever retrying it.
 							if (capabilities.isError) void capabilities.refetch();
-							else void query.refetch();
+							else void settingsQuery.refetch();
 						}}
 						disabled={retrying}
 					>
@@ -194,107 +523,162 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		);
 	}
 
-	const sections = settings.sections.filter((section) =>
-		filtered.some((setting) => setting.section === section.name),
+	const tierCounts = settings.settings.reduce(
+		(counts, setting) => {
+			counts[tierFor(setting)] += 1;
+			return counts;
+		},
+		{ core: 0, advanced: 0 } as Record<SettingTier, number>,
 	);
 
-	const toggle = (name: string) =>
-		setCollapsed((current) => {
-			const next = new Set(current);
-			if (next.has(name)) next.delete(name);
-			else next.add(name);
-			return next;
-		});
+	const matchSections = new Set(matching.map((setting) => setting.section))
+		.size;
 
 	return (
-		<div className="flex flex-col gap-6">
-			<div className="relative">
-				<Search
-					size={16}
-					className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
-					aria-hidden="true"
-				/>
-				<Input
-					value={filter}
-					onChange={(event) => setFilter(event.target.value)}
-					placeholder="Search settings by name, description or key"
-					aria-label="Search settings"
-					className="pl-9"
-				/>
-				{filter && (
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className="absolute top-1/2 right-1 -translate-y-1/2"
-						onClick={() => setFilter("")}
-						aria-label="Clear search"
-					>
-						<X aria-hidden="true" />
-					</Button>
-				)}
-			</div>
+		<div className="flex flex-col gap-4">
+			<SettingsFilterBar
+				query={filter}
+				onQueryChange={setFilter}
+				matchCount={filter.trim() ? matching.length : null}
+				matchSections={matchSections}
+				coreCount={tierCounts.core}
+				advancedCount={tierCounts.advanced}
+				modifiedCount={settings.settings.filter(isModified).length}
+				modifiedOnly={modifiedOnly}
+				onModifiedOnlyChange={setModifiedOnly}
+				showAdvanced={showAdvanced}
+				onShowAdvancedChange={setShowAdvanced}
+				onExpandAll={() => setAllOpen(true)}
+				onCollapseAll={() => setAllOpen(false)}
+				unsavedCount={dirtySettings.length}
+				savingAll={savingAll}
+				onSaveAll={() => void saveAll()}
+				onDiscardAll={discardAll}
+			/>
 
-			{filtered.length === 0 && (
+			{filtering && matching.length === 0 && (
 				<div className="flex flex-col items-center gap-2 py-6 text-center">
 					<p className="text-body-sm text-ink-muted">
 						No settings match this search.
 					</p>
-					<Button variant="secondary" size="sm" onClick={() => setFilter("")}>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => {
+							setFilter("");
+							setModifiedOnly(false);
+						}}
+					>
 						<X aria-hidden="true" />
 						Clear search
 					</Button>
 				</div>
 			)}
 
-			{sections.map((section) => {
-				const rows = filtered.filter(
-					(setting) => setting.section === section.name,
-				);
-				const isCollapsed = collapsed.has(section.name);
-				return (
-					<section
-						key={section.name}
-						data-settings-section={section.name}
-						className="flex flex-col gap-3"
-					>
-						<button
-							type="button"
-							onClick={() => toggle(section.name)}
-							aria-expanded={!isCollapsed}
-							className="flex items-baseline justify-between gap-3 text-left"
+			<div className="flex flex-col gap-1">
+				{/*
+				 * Every section renders, in registry order, even the ones whose rows
+				 * the tier filter is holding back: the index of 18 headers is the
+				 * readable map of the registry, and a section that vanished when its
+				 * rows were filtered would be a section the reader cannot find. A
+				 * header whose rows are all advanced says how many it is holding.
+				 *
+				 * The gap between sections is 4px, one step of the ramp, and the reason
+				 * is arithmetic rather than taste: at 16px, seventeen of them cost 272px
+				 * of the arrival region's budget on their own, and a 40px header followed
+				 * by its rows is already a clear break. An open section keeps 12px under
+				 * its last row, so the next header does not crowd it.
+				 */}
+				{sections.map((section) => {
+					const rows = matchingForSection(section.name);
+					const allRows = rowsForSection(section.name);
+					const advancedHeld =
+						showAdvanced || filtering
+							? 0
+							: allRows.filter((setting) => tierFor(setting) === "advanced")
+									.length;
+					// A filter hides a section entirely: leaving 18 headers standing
+					// over a search that matched four of them is the "immensely long
+					// scroll" this surface is being fixed for, one tier down.
+					if (filtering && rows.length === 0) return null;
+					const open = filtering ? rows.length > 0 : isOpen(section.name);
+					return (
+						<section
+							key={section.name}
+							data-settings-section={section.name}
+							data-open={open}
+							className="flex flex-col"
 						>
-							<span className="flex flex-col gap-0.5">
-								<span className="text-heading text-ink">{section.title}</span>
+							{/*
+							 * `key` carries the open state because `Disclosure` is
+							 * deliberately uncontrolled: a forced-open is a remount, not
+							 * an `open` prop (`backend-settings-tiers`' callers never add
+							 * one). Only the header is remounted — rows are rendered by
+							 * this component, so a collapse cannot take a draft with it.
+							 */}
+							<SettingsGroupHeader
+								key={`${section.name}:${open ? "open" : "closed"}`}
+								title={section.title}
+								rowCount={rows.length}
+								advancedCount={advancedHeld}
+								scope={SCOPE_LABELS[section.scope]}
+								modified={allRows.some(isModified)}
+								defaultOpen={open}
+								onOpenChange={(next) => setOpen(section.name, next)}
+							/>
+							<div hidden={!open} className="flex flex-col pb-3">
 								{section.description && (
-									<span className="text-meta text-ink-dim">
+									<p className="px-1 pb-1 text-meta text-ink-dim">
 										{section.description}
-									</span>
+									</p>
 								)}
-							</span>
-							{/* An unmapped scope hides rather than printing a raw enum in
-							    the user's face: a badge is our sentence about when a
-							    change lands, and we have nothing to say about a value we
-							    do not recognise. The section still renders and still
-							    saves. */}
-							{SCOPE_LABELS[section.scope] && (
-								<Badge variant="neutral">{SCOPE_LABELS[section.scope]}</Badge>
-							)}
-						</button>
-						{!isCollapsed && (
-							<div className="flex flex-col gap-5">
-								{rows.map((setting: BackendSetting) => (
-									<BackendSettingRow
-										key={setting.key}
-										setting={setting}
-										scope={SCOPE_LABELS[section.scope]}
-										onSaved={() => query.refetch()}
-									/>
-								))}
+								{rows.length === 0 ? (
+									// An open section with nothing in it, said out loud
+									// rather than rendered as an empty box. The reveal is
+									// the bar's own control, offered where the reader
+									// noticed the absence.
+									<div className="flex items-center gap-2 px-1 py-2">
+										<p className="text-body-sm text-ink-muted">
+											{advancedHeld > 0
+												? `${advancedHeld} advanced ${advancedHeld === 1 ? "setting is" : "settings are"} hidden here.`
+												: "Nothing in this section matches."}
+										</p>
+										{advancedHeld > 0 && (
+											<Button
+												variant="secondary"
+												size="sm"
+												onClick={() => setShowAdvanced(true)}
+											>
+												Show advanced
+											</Button>
+										)}
+									</div>
+								) : (
+									rows.map((setting: BackendSetting) => (
+										<BackendSettingRow
+											key={setting.key}
+											setting={setting}
+											draft={drafts[setting.key] ?? draftFromSetting(setting)}
+											tier={tierFor(setting)}
+											gate={gateFor(setting)}
+											saving={Boolean(savingKeys[setting.key])}
+											error={errors[setting.key] ?? null}
+											onDraftChange={(draft) =>
+												setDrafts((current) => ({
+													...current,
+													[setting.key]: draft,
+												}))
+											}
+											onSave={() => void saveRow(setting)}
+											onReset={() => void resetRow(setting)}
+										/>
+									))
+								)}
 							</div>
-						)}
-					</section>
-				);
-			})}
+						</section>
+					);
+				})}
+			</div>
 		</div>
 	);
 };
