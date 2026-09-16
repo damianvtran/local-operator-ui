@@ -3,7 +3,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
-import { act, createElement, StrictMode } from "react";
+import { StrictMode, act, createElement } from "react";
 // React DOM feature-detects its host at import time, so the document has to exist
 // before it is loaded (the same bootstrap `suggestion-stack-react.test.mjs` uses).
 const bootstrapDOM = new JSDOM("<!doctype html>");
@@ -85,7 +85,8 @@ await unlink(bundlePath);
  * WITHOUT StrictMode, and the fix it was testing for a row that a strict build
  * never rendered.
  */
-const renderProbe = (Probe) => createElement(StrictMode, null, createElement(Probe));
+const renderProbe = (Probe) =>
+	createElement(StrictMode, null, createElement(Probe));
 
 const request = (overrides) => ({
 	entryId: "entry-1",

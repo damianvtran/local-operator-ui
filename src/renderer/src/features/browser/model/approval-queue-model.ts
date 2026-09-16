@@ -276,10 +276,7 @@ export function reconcileResolved(
 	 * recorded them — without them, two reconciles inside one commit could each
 	 * produce the row.
 	 */
-	const known = new Set([
-		...reported,
-		...resolved.map((row) => row.key),
-	]);
+	const known = new Set([...reported, ...resolved.map((row) => row.key)]);
 	return [...fresh, ...expired]
 		.filter((row) => !known.has(row.key))
 		.concat(resolved)

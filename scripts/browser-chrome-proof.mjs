@@ -2181,7 +2181,10 @@ async function main() {
 					covered,
 					// The specimen, named: how many chips each marked row carries, because the
 					// row's floor is sized for that count (review round 4, MINOR).
-					specimen: marked.map((row) => ({ chips: row.chips, titleBox: row.titleBox })),
+					specimen: marked.map((row) => ({
+						chips: row.chips,
+						titleBox: row.titleBox,
+					})),
 				},
 				null,
 				2,

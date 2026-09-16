@@ -227,7 +227,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							tab.failed,
 							waitingOrdinal !== undefined,
 						].filter(Boolean).length;
-						const marked = chips > 0;
 						const floor =
 							chips >= 3
 								? "min-w-80"
