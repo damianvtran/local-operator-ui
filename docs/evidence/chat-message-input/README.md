@@ -41,11 +41,32 @@ node scripts/capture-evidence.mjs --only=chat-message-input--credential \
 ```
 
 6018 and not the default 6017: a sibling worktree's Storybook already held the
-default, and the frames are whatever the URL you pass is serving. `--allow-backend`
+default. `--allow-backend`
 is the flag a narrowed run needs because the operator's own app is listening on
 1111, and no surface here talks to it. The run was narrowed to these five stories
 and to this surface's directory; `manifest.json`'s `partialCapture` and the
 branch's own `credentialCapture` record the pass.
+
+### Round 1: the WHOLE surface, re-taken
+
+A frame is evidence about a tree, and this branch's round-1 remediation changed
+the composer's own layout in every state — the notice line now holds its space
+whether or not it has a sentence (`docs/design/composer-credential-capture.md`
+§7), so the textarea sits at the same `y` idle, armed, masked and minted. That is
+a change to the ordinary composer as much as to the gesture, so all SEVENTEEN
+states in this directory were re-taken rather than the five credential ones: 204
+frames, twelve themes each.
+
+```
+npx storybook dev -p 6041 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=chat-message-input \
+  --allow-backend http://127.0.0.1:6041
+```
+
+`--only` matches the story ID PREFIX, so one run covers the surface; the port is
+again not the default because a sibling worktree held it. The pass is recorded in
+`manifest.json` under `partialCapture` (`refreshedFrames`, `refreshedAtHead`),
+which is what a reader follows to tell a narrowed re-take from a sweep.
 
 | Frame (`<theme>.webp`) | State, and what the frame is for |
 | --- | --- |
@@ -69,10 +90,17 @@ value is held outside the document and appears in no frame.
 - **Not the store, and not the model's prompt.** The frames end at the composer.
   What reaches the session's credential store, what the citation says to the
   model, and the notice the operator hears are asserted by
-  `scripts/credential-capture.test.mjs` (pure module, 49 cases) and are the QA
-  round's business on the running app.
+  `scripts/credential-capture.test.mjs` (the pure module, 57 cases) and
+  `scripts/credential-composer.test.mjs` (the shipped component's React wiring
+  under jsdom, 13 cases), and are the QA round's business on the running app.
 - **Not the paste route.** No frame here pastes; the paste capture, the
   append-into-a-span case and the blank-paste fall-through are the test file's.
+- **Not the LAYOUT rule the re-take is about.** A still shows where the text
+  sits; it cannot show that it sits in the same place in the state next to it.
+  The reservation is pinned by geometry in the design round's own measurements
+  (the textarea's `y` in idle, armed, masked and minted) and by
+  `credential-composer.test.mjs`'s assertion that the notice SLOT is mounted in
+  the idle composer, empty.
 - **No focus ring and no caret.** A headless capture cannot show a caret, and the
   composer's `:focus-visible` ring belongs to the box, unchanged by this feature.
 - **The pill's geometry is not restated here.** The pill is drawn by a

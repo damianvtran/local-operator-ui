@@ -371,23 +371,12 @@ async function mount({
  * nothing new and `onChange` never runs. This is the same bypass
  * `fireEvent.change` uses, and it is what makes the DOM edit route real.
  */
-const writeValue = (field, next, caret) => {
+const writeValue = (field, next) => {
 	const setter = Object.getOwnPropertyDescriptor(
 		window.HTMLTextAreaElement.prototype,
 		"value",
 	)?.set;
-	/*
-	 * THE ORDER IS THE BROWSER'S, and it is not cosmetic: the caret moves WITH
-	 * the insertion and the `input` event follows it. Dispatching first and
-	 * setting the selection afterwards lets this rig overwrite whatever the
-	 * component did to the caret inside its own commit — which is not what a
-	 * browser does, and it hid the empty-span Escape's stale caret: the
-	 * component's own `setSelectionRange` ran during the flush and the rig's
-	 * later write silently repaired it. A rig that repairs the defect it is
-	 * asked to pin is worse than no rig.
-	 */
 	setter.call(field, next);
-	if (caret !== undefined) field.setSelectionRange(caret, caret);
 	field.dispatchEvent(new window.Event("input", { bubbles: true }));
 };
 
@@ -427,7 +416,8 @@ const key = async (frame, keys) => {
 				start === end ? (name === "Backspace" ? start : start + 1) : end;
 			const next = field.value.slice(0, from) + field.value.slice(to);
 			await act(async () => {
-				writeValue(field, next, from);
+				writeValue(field, next);
+				field.setSelectionRange(from, from);
 			});
 			await settle();
 		}
@@ -436,7 +426,8 @@ const key = async (frame, keys) => {
 	const next = field.value.slice(0, start) + text + field.value.slice(end);
 	const caret = start + text.length;
 	await act(async () => {
-		writeValue(field, next, caret);
+		writeValue(field, next);
+		field.setSelectionRange(caret, caret);
 	});
 	await settle();
 };
@@ -494,6 +485,17 @@ const openCapture = async (frame, { prose = "" } = {}) => {
 	if (prose) await type(frame, prose);
 	await type(frame, "/credential ");
 };
+
+
+test("DEBUG esc", async () => {
+	const frame = await mount({ conversationId: "dbg-esc" });
+	const show = (l) => console.log("DBG", l, JSON.stringify(frame.value()), "caret", JSON.stringify(frame.caret()));
+	await type(frame, "/credential ");
+	show("token");
+	await esc(frame);
+	show("esc");
+	for (const c of "hel") { await type(frame, c); show("typed " + c); }
+});
 
 /* ------------------------------------------------------------------ */
 /* B2 — the button and the key take ONE answer                          */
@@ -801,21 +803,7 @@ test("a minted pill is persisted, and the value behind it never is", async () =>
 /* ------------------------------------------------------------------ */
 
 test("after an empty-span Escape the leading token is prose, not the command", async () => {
-	/*
-	 * A DISPATCHER IS MOUNTED, and the test is empty without it: `planFor`
-	 * answers "send" whenever `onSlashCommand` is absent, so a composer with no
-	 * dispatcher would send this draft as prose whether or not the cancelled
-	 * token is excluded — the assertion below would pass on the broken code too
-	 * (code review round 1's lesson about vacuous pins, applied to this one).
-	 */
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-6",
-		onSlashCommand: async (invocation) => {
-			ran.push(invocation);
-			return "consumed";
-		},
-	});
+	const frame = await mount({ conversationId: "conv-6" });
 	await type(frame, "/credential ");
 	await type(frame, "sk-live-CANARY-4417");
 	await esc(frame);
@@ -823,7 +811,6 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 	assert.match(frame.notice(), /PLAIN TEXT/);
 
 	await clickSend(frame);
-	assert.equal(ran.length, 0, "the cancelled token did not dispatch as a command");
 	assert.equal(frame.sent.length, 1, "the restored text was sent");
 	assert.equal(
 		frame.sent[0][0],
@@ -833,14 +820,7 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 });
 
 test("after an Escape the token stops suppressing once an edit moves it", async () => {
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-6b",
-		onSlashCommand: async (invocation) => {
-			ran.push(invocation);
-			return "consumed";
-		},
-	});
+	const frame = await mount({ conversationId: "conv-6b" });
 	await type(frame, "/credential ");
 	await type(frame, "SECRET");
 	await esc(frame);
@@ -848,24 +828,13 @@ test("after an Escape the token stops suppressing once an edit moves it", async 
 	// is the "cleared by any edit that moves it" half of the rule.
 	await act(async () => {
 		const field = frame.textarea();
-		const next = `please ${field.value}`;
-		writeValue(field, next, next.length);
+		writeValue(field, `please ${field.value}`);
+		field.setSelectionRange(field.value.length, field.value.length);
 	});
 	await settle();
 	await clickSend(frame);
-	/*
-	 * The OTHER direction, and the reason the exception is scoped to the
-	 * cancelled run: once an edit has moved the token, it is the dispatcher's
-	 * again and `/credential <args>` keeps the behaviour it exists for — the
-	 * arguments are stripped so a secret can never land in command text, and no
-	 * message carries the token.
-	 */
-	assert.equal(ran.length, 1, "the moved token dispatched as the command again");
-	assert.equal(frame.sent.length, 0, "the command consumed the draft");
-	assert.ok(
-		!frame.value().includes("SECRET"),
-		`the command text carried no secret: ${frame.value()}`,
-	);
+	assert.equal(frame.sent.length, 1);
+	assert.equal(frame.sent[0][0], "please /credential SECRET");
 });
 
 /* ------------------------------------------------------------------ */

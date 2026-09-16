@@ -209,6 +209,56 @@ test("create success plus admission failure retries exact same session and paylo
 	assert.equal(store.getState().drafts[key], undefined);
 });
 
+test("the admission seam stores against the session the send created, and its answer is what is sent", async () => {
+	reset();
+	const order = [];
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "222222222222",
+				binding: { agent: "reviewer", team: null },
+			};
+		order.push("send");
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const seen = [];
+	await admitChatDraft(
+		key,
+		input,
+		undefined,
+		() => {
+			order.push("echo");
+		},
+		/*
+		 * The composer's own seam, on the pane where the session does not exist
+		 * until this call creates it: it must be handed the id the create
+		 * answered with, and the text it returns is what the owner receives. The
+		 * caller is a credential capture storing a value the message only cites
+		 * (UX round 1, U2) — with the seam ignored, the message would carry the
+		 * citation of a key nothing holds.
+		 */
+		async (sessionId) => {
+			seen.push(sessionId);
+			order.push("seam");
+			return "deploy [credential LOP_SECRET_ABCDEFGH (19 chars)]";
+		},
+	);
+	assert.deepEqual(seen, ["222222222222"], "the seam got the created session");
+	const message = calls.find((request) => request.op === "sessions.message");
+	assert.ok(message, "the message reached the transport");
+	assert.equal(
+		message.text,
+		"deploy [credential LOP_SECRET_ABCDEFGH (19 chars)]",
+		"the substituted text is what the owner receives",
+	);
+	assert.ok(
+		order.indexOf("seam") < order.indexOf("send"),
+		`the store ran before the message left: ${order.join(",")}`,
+	);
+});
+
 test("ambiguous create retains request ID and duplicate concurrent sends allocate once", async () => {
 	reset();
 	let release;
@@ -3100,7 +3150,15 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	);
 	// And the two entry points a user actually submits with both consult it: the
 	// Enter key and the form's submit (the Send button).
-	const plans = composer.match(/planFor\(newMessage, caret\)/g) ?? [];
+	/*
+	 * `planForDraft`, not `planFor`: the composer's inline credential capture adds
+	 * one rule in FRONT of the planner (a token the operator just Esc-cancelled
+	 * submits as prose rather than dispatching as the command, QA round 1 Q2), and
+	 * it does so in a wrapper both call sites share — which is the property this
+	 * assertion is about. Matching the wrapper's name keeps the count of
+	 * SUBMIT call sites, which is what must not drop to one.
+	 */
+	const plans = composer.match(/planFor(?:Draft)?\(newMessage, caret\)/g) ?? [];
 	assert.ok(
 		plans.length >= 2,
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,

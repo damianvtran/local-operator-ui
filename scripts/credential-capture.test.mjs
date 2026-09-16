@@ -526,7 +526,12 @@ test("the citation predicate checks the payload's own index, not just its marker
 	 * fields disagree, which is what this test builds by hand. Deleting the
 	 * index half used to leave the suite green.
 	 */
-	const agreed = { index: 1, key: "LOP_SECRET_ABCDEFGH", value: "s3cret", marker: credentialMarker(1, "s3cret") };
+	const agreed = {
+		index: 1,
+		key: "LOP_SECRET_ABCDEFGH",
+		value: "s3cret",
+		marker: credentialMarker(1, "s3cret"),
+	};
 	assert.deepEqual(citationSpan(`x ${agreed.marker} y`, agreed), {
 		start: 2,
 		end: 2 + agreed.marker.length,
@@ -584,7 +589,10 @@ test("text arriving into an open span ends the capture instead of joining the se
 	editing.type("/credential ");
 	editing.type("abcdef");
 	editing.domEdit(14, 15, "");
-	assert.equal(charsOf(editing.state.buffer).filter((c) => c === MASK_CELL).length, 5);
+	assert.equal(
+		charsOf(editing.state.buffer).filter((c) => c === MASK_CELL).length,
+		5,
+	);
 	assert.equal(charsOf(editing.state.capture.value).length, 5);
 });
 
@@ -612,11 +620,15 @@ test("the list answer's names come from the objects the runtime sends", () => {
 	// Total: anything unexpected is an empty list rather than a crash.
 	assert.deepEqual(credentialNamesFrom(undefined), []);
 	assert.deepEqual(credentialNamesFrom({ data: { credentials: "nope" } }), []);
-	assert.deepEqual(credentialNamesFrom({ data: { credentials: [{}, null, 3] } }), []);
+	assert.deepEqual(
+		credentialNamesFrom({ data: { credentials: [{}, null, 3] } }),
+		[],
+	);
 	// The older spelling still narrows the guard rather than emptying it.
-	assert.deepEqual(credentialNamesFrom({ data: { credentials: ["OLD_NAME"] } }), [
-		"OLD_NAME",
-	]);
+	assert.deepEqual(
+		credentialNamesFrom({ data: { credentials: ["OLD_NAME"] } }),
+		["OLD_NAME"],
+	);
 });
 
 test("a minted name dodges one the session's store already holds", () => {
@@ -637,7 +649,10 @@ test("a minted name dodges one the session's store already holds", () => {
 		charsOf(word).map((char) => CREDENTIAL_KEY_ALPHABET.indexOf(char)),
 	);
 	let at = 0;
-	const key = generateCredentialKey(taken, () => indices[at++ % indices.length]);
+	const key = generateCredentialKey(
+		taken,
+		() => indices[at++ % indices.length],
+	);
 	assert.equal(key, "LOP_SECRET_JKMNPQRS", "the taken name is skipped");
 	// The control: with nothing taken, the very same draw is accepted as it
 	// stands, which is what makes the assertion above about the GUARD rather
@@ -663,7 +678,10 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	composer.type("hunter2");
 	composer.escape();
 	const { token } = composer.state.lastCancel;
-	assert.deepEqual(token, { span: { start: 0, end: 12 }, text: "/credential " });
+	assert.deepEqual(token, {
+		span: { start: 0, end: 12 },
+		text: "/credential ",
+	});
 	assert.ok(holdsCancelledToken(composer.state.buffer, token));
 	// Prose written AROUND the restored characters leaves it standing — this is
 	// the draft the notice is about, and Enter must send it as it reads.
@@ -775,10 +793,13 @@ test("re-location prefers the anchored token, then the only match, then nearest"
 	const secondToken = typedThroughBuffer.lastIndexOf("/credential");
 	const full = secondToken + "/credential".length;
 	assert.equal(secondToken, 21, "the SECOND token sits on the second line");
-	assert.deepEqual(relocateArm(typedThroughBuffer, { start: secondToken, end: full }), {
-		start: secondToken,
-		end: full,
-	});
+	assert.deepEqual(
+		relocateArm(typedThroughBuffer, { start: secondToken, end: full }),
+		{
+			start: secondToken,
+			end: full,
+		},
+	);
 	// One character short of the full spelling, and well past the floor: still
 	// the operator's own gesture, so the arm stays on it.
 	const shortened = typedThroughBuffer.slice(0, -1);
@@ -788,10 +809,16 @@ test("re-location prefers the anchored token, then the only match, then nearest"
 	});
 	// Below the floor the word is a deletion, not a gesture in progress: the
 	// single ordinary token earlier in the buffer is the only answer left.
-	assert.deepEqual(relocateArm("use /credential here\n/cre", { start: secondToken, end: secondToken + 4 }), {
-		start: 4,
-		end: 15,
-	});
+	assert.deepEqual(
+		relocateArm("use /credential here\n/cre", {
+			start: secondToken,
+			end: secondToken + 4,
+		}),
+		{
+			start: 4,
+			end: 15,
+		},
+	);
 	// A LONGER word that merely starts with the token is not a PREFIX of it, so
 	// it is not the operator's gesture either.
 	assert.deepEqual(
@@ -816,20 +843,20 @@ test("a token retyped through a partial spelling keeps the arm, so no secret lan
 	assert.ok(isTyping(composer.state.capture));
 	// Backspace the delimiter, then into the token: the anchor's own word is now
 	// a partial spelling, and the arm must stay on it rather than migrating onto
-		// the earlier mention.
-		composer.backspace();
-		composer.backspace();
+	// the earlier mention.
+	composer.backspace();
+	composer.backspace();
 	assert.equal(
 		composer.state.capture.arm.start,
 		anchor,
 		"the arm did not migrate onto the earlier token",
-		);
+	);
 	composer.type("l ");
 	assert.ok(
 		isTyping(composer.state.capture),
 		"the re-typed opener space opens the span again",
-		);
-		composer.type("S3CRET");
+	);
+	composer.type("S3CRET");
 	assert.equal(composer.state.capture.value, "S3CRET");
 	assert.ok(
 		!composer.state.buffer.includes("S3CRET"),
