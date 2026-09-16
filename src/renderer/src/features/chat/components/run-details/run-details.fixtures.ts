@@ -1349,15 +1349,27 @@ const wakeSchedule = (spec: {
 	dueInMinutes: number;
 	/** `every_ms`: the recurrence interval, in MINUTES for legibility. */
 	everyMinutes?: number;
-	/** `remaining`: deliveries left, for a limit-bounded recurrence. */
-	remaining?: number;
+	/**
+	 * `limit`: how many deliveries the schedule was created to make.
+	 *
+	 * The bounded clause is rendered from `limit - fired_count`, NOT from a
+	 * `remaining` written here, because that is what the wire carries: `remaining`
+	 * is declared on `WakeState` and unpopulated by both publishing paths, which was
+	 * measured against a live backend and is why `run-detail-model.ts` falls back to
+	 * the scheduler's own arithmetic. A fixture that filled `remaining` would render
+	 * the bounded clause off a field the product never sends.
+	 */
+	limit?: number;
+	firedCount?: number;
 }): Record<string, unknown> => ({
 	id: spec.id,
 	message: spec.message,
 	next_due_at: FIXTURE_NOW_MS + spec.dueInMinutes * 60_000,
 	created_at: FIXTURE_NOW_MS - 3_600_000,
 	every_ms: spec.everyMinutes === undefined ? null : spec.everyMinutes * 60_000,
-	remaining: spec.remaining ?? null,
+	remaining: null,
+	limit: spec.limit ?? null,
+	fired_count: spec.firedCount ?? 0,
 });
 
 /** The long prompt, for the row that has to clamp one and keep the whole text. */
@@ -1413,7 +1425,7 @@ export const wakesRecurring = (): RunDetailsInput => ({
 			message: "Summarise the day's failed jobs",
 			dueInMinutes: 1_500,
 			everyMinutes: 360,
-			remaining: 3,
+			limit: 3,
 		}),
 		wakeSchedule({
 			id: "w3",

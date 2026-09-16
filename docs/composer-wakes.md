@@ -65,6 +65,33 @@ than one `toWireInstant`.
 `MAX_WAKE_SCHEDULES = 16` (`local_operator/harness/wake.py:47`) is the most the
 wire can carry. Confirmed by reading that module, not taken from the brief.
 
+### The one field the wire declares and never sends
+
+**`remaining` is on `WakeState` and neither publishing path populates it.** Both
+`frontend_state.py::_wake_state` and `attached.py::_cold_wakes` do
+`WakeState.model_validate(schedule.model_dump())`, and the SCHEDULE
+(`harness/wake.py`) carries `limit: int | None` and `fired_count: int` — there is
+no `remaining` on it, so the model field defaults to `None` on every row. Measured
+rather than read: a schedule created with `--limit 3` against a live backend
+publishes
+
+```json
+{"id": "w3", "next_due_at": 1789528634262, "every_ms": 5400000, "remaining": null, "fired_count": 0, "limit": 3}
+```
+
+`every_ms` 5400000 is the `--every 1h30m` that was asked for, and `remaining` is
+`null` beside a `limit` of 3 — so the bounded clause the brief asks for would be
+**unreachable in the product while rendering in every fixture that filled the
+field**, which is the worst shape a defect can take.
+
+**The boundary this change takes is the UI's.** `run-detail-model.ts` reads
+`remaining` first and falls back to `max(limit - fired_count, 0)` — the backend's
+own arithmetic for the same quantity (`harness/wake.py::due_while_down` bounds a
+catch-up by exactly that expression). No backend change was made: the two fields
+are already published, both paths carry them, and `remaining` wins the moment a
+runtime starts filling it. Reported in the PR rather than repaired here, because
+the field is the backend's to populate and this repository does not own it.
+
 ## 3. The vocabulary: which of the app's two wake wordings this follows, and why
 
 There are two wake vocabularies in the app already, and this change adds a third
@@ -86,8 +113,7 @@ What that means concretely:
 
 - the section's heading is **`Wakes`**, the band's own heading;
 - the cadence is the band's own spelling — `once`, `every 1h30m` — plus the
-  bounded form `every 6h · 3 left` (§ 5);
-- the **chip's** clause is `1 wake armed` / `2 wakes armed`. `armed` is the
+  bounded form `every 6h · 3 left` (§ 5);- the **chip's** clause is `1 wake armed` / `2 wakes armed`. `armed` is the
   operator's own word and it is the right one *on this row*, where the
   neighbouring counts all state a condition (`3 to-dos open`, `2 subagents
   running`); the band's `N scheduled` is that surface's tally for its own heading.
@@ -182,6 +208,10 @@ intended:
 | next fire | the local label (`formatWakeDue`), `text-ink-muted` |
 | cadence | `once` / `every 1h30m` / `every 6h · 3 left`, `text-ink-dim` |
 | prompt | the message, clamped at two lines, on the row's second line |
+
+The bounded clause is `remaining`, or `max(limit - fired_count, 0)` when it is
+absent — which is the case on the wire today (§ 2), and the reason the fallback
+exists rather than a nicer-looking fixture.
 
 **The two ports, and why the app's own helpers were not reused.**
 
@@ -335,6 +365,8 @@ the reveal landing at the top of the pane's own scroll region.
 | J | Widening `hasRunDetails` to cover armed wakes | Refused (§ 5): it means "something is asking for something right now" and an armed wake is a future event; the section already keeps the quiet state unreachable. |
 | K | Making the section's rows open the child/transcript, or offer a cancel | Refused: a schedule has no conversation to open, and cancelling is the agent's own operation (`wake({op:"cancel"})`) — a lit row that opens nothing is worse than a quiet one. |
 | L | A second `wakes` count field on `RunDetails` beside the list | Refused: every row in the list is armed by definition, so `wakes.length` IS the count and a parallel number could only ever disagree with it (unlike `openChildren`/`openJobs`, which are filtered counts over lists that also hold settled rows). |
+| M | Reading only `remaining` for the bounded clause | Refused (§ 2): the field is declared and never populated, so the clause would render in every fixture and in no real session. The fallback is the backend's own arithmetic, and `remaining` still wins when a runtime starts sending it. |
+| N | Writing the fallback's two fields into a fixture's `remaining` instead | Refused: a frame that renders the clause off a field the product does not send is a frame that certifies an unreachable state, which is the failure this whole record is about. The fixtures carry `limit`/`fired_count` and a null `remaining`, exactly as the wire does. |
 
 ## 11. Risks, and what this does not settle
 
@@ -355,3 +387,10 @@ the reveal landing at the top of the pane's own scroll region.
    come from fixtures; a real wake retiring (a one-shot firing, a `--limit`
    running out) is exercised in the PR's live-app testing evidence, and a
    schedule appearing in the pane while it is open is exercised there too.
+6. **The wire's `remaining` is dead, and this change reads around it rather than
+   repairing it** (§ 2). The consequence for a reader of these frames: every
+   limit-bounded row in them renders its bound from `limit - fired_count`, which is
+   what a real session does too. If the backend starts populating `remaining`, the
+   clause silently starts coming from that field instead — the same string, and
+   `scripts/run-detail-model.test.mjs` pins both paths so the switch is visible in
+   the suite rather than only in production.

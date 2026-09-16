@@ -206,13 +206,15 @@ const detailsWith = (jobs, statuses = []) =>
  */
 const WAKE_NOW_MS = Date.parse("2026-03-14T14:26:00Z");
 
-const wireWake = (id, message, dueInMs, everyMs = null, remaining = null) => ({
+const wireWake = (id, message, dueInMs, everyMs = null, limit = null) => ({
 	id,
 	message,
 	next_due_at: WAKE_NOW_MS + dueInMs,
 	created_at: WAKE_NOW_MS - 60_000,
 	every_ms: everyMs,
-	remaining,
+	remaining: null,
+	limit,
+	fired_count: 0,
 });
 
 const HOUR_MS = 3_600_000;
@@ -787,7 +789,8 @@ test("each chip files its own section, and the store carries all four", () => {
 /* ---------------------------------------------------------------- */
 
 /** The section's own file, and the panel that owns its place in the list. */
-const WAKES = "src/renderer/src/features/chat/components/run-details/run-detail-wakes.tsx";
+const WAKES =
+	"src/renderer/src/features/chat/components/run-details/run-detail-wakes.tsx";
 const SECTION_LIST =
 	"src/renderer/src/features/chat/components/run-details/run-details-panel.tsx";
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
@@ -858,7 +861,10 @@ test("the wake chip names the section its press opens, and never toggles", () =>
 		frontend: frontend(""),
 		runDetails: wakesOf([wireWake("w1", "Check the deploy", HOUR_MS)]),
 	});
-	assert.match(markup, /aria-label="Open the wakes in run details — 1 wake armed"/);
+	assert.match(
+		markup,
+		/aria-label="Open the wakes in run details — 1 wake armed"/,
+	);
 	assert.equal(
 		wakeChipLabel(1),
 		"Open the wakes in run details — 1 wake armed",
@@ -899,7 +905,11 @@ test("the section renders one row per armed schedule, soonest first", () => {
 	 * intended: when it next fires, how often, and what it will say.
 	 */
 	assert.match(markup, /Check the deploy/);
-	assert.match(markup, /once/, "a schedule with no `every_ms` is a single shot");
+	assert.match(
+		markup,
+		/once/,
+		"a schedule with no `every_ms` is a single shot",
+	);
 	assert.match(markup, /every 1h/);
 	assert.match(markup, /· 3 left/, "the limit-bounded form");
 });
@@ -952,14 +962,19 @@ test("wakes are absent rather than empty: no section without armed wakes", () =>
 	 */
 	const panel = code(SECTION_LIST);
 	assert.match(panel, /if \(details\.wakes\.length > 0\) \{/);
-	assert.match(panel, /<RunDetailWakes details=\{details\} sectionRef=\{wakesSectionRef\} \/>/);
+	assert.match(
+		panel,
+		/<RunDetailWakes details=\{details\} sectionRef=\{wakesSectionRef\} \/>/,
+	);
 	/*
 	 * ...and the section is in the panel's fixed order: after the tool jobs and
 	 * before the MCP servers, which `docs/run-sidebar.md` § 7.2 fixes as LAST.
 	 */
 	assert.ok(
-		panel.indexOf('key: "wakes"') < panel.indexOf("{mcpServers.length > 0 &&") ||
-			panel.indexOf('key: "wakes"') < panel.indexOf("if (mcpServers.length > 0)"),
+		panel.indexOf('key: "wakes"') <
+			panel.indexOf("{mcpServers.length > 0 &&") ||
+			panel.indexOf('key: "wakes"') <
+				panel.indexOf("if (mcpServers.length > 0)"),
 		"the MCP section is still last",
 	);
 });
@@ -994,7 +1009,10 @@ test("the wake chip, the pane and the page are ONE derivation", () => {
 	 * mis-scrolled pane (see `run-panel.tsx`).
 	 */
 	const panelSource = code(PANEL);
-	assert.match(panelSource, /const wakesSectionRef = useRef<HTMLElement \| null>\(null\);/);
+	assert.match(
+		panelSource,
+		/const wakesSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
 	assert.match(panelSource, /wakes: wakesSectionRef,/);
 	assert.match(panelSource, /wakesSectionRef=\{wakesSectionRef\}/);
 });
@@ -1009,7 +1027,10 @@ test("nothing about the wakes ticks: no clock and no relative time", () => {
 	 * need it.
 	 */
 	const source = code(WAKES);
-	assert.doesNotMatch(source, /useEffect\(|setInterval|requestAnimationFrame|Date\.now\(\)/);
+	assert.doesNotMatch(
+		source,
+		/useEffect\(|setInterval|requestAnimationFrame|Date\.now\(\)/,
+	);
 	assert.doesNotMatch(source, /\bin \$?\{|minutes? from now|in \d+m/);
 	/*
 	 * ...and the panel hands it the untimed model, beside the plan, rather than the
@@ -1281,7 +1302,11 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * pane's own glyph, leading the count, decorative to assistive tech because the
 	 * accessible name already states the action.
 	 */
-	tokens("import { AlarmClock, Info } from", "<Info aria-hidden={true}", "size-3.5");
+	tokens(
+		"import { AlarmClock, Info } from",
+		"<Info aria-hidden={true}",
+		"size-3.5",
+	);
 	/*
 	 * ...and the wake chip leads with `AlarmClock` in the same call, from the same
 	 * import: a mark on the third count chip that is a WAKE's rather than the plan's,

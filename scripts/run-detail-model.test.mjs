@@ -3066,6 +3066,8 @@ const wake = (over) => ({
 	created_at: WAKE_NOW - 60_000,
 	every_ms: null,
 	remaining: null,
+	limit: null,
+	fired_count: 0,
 	...over,
 });
 
@@ -3167,6 +3169,49 @@ test("the cadence is the TUI's duration spelling, not the app's other one", () =
 	 * one row saying one thing twice.
 	 */
 	assert.equal(formatWakeCadence(null, 1), "once");
+});
+
+test("the bounded clause comes off the scheduler's own arithmetic, not a field it never sends", () => {
+	/*
+	 * MEASURED, not assumed: `WakeState` declares `remaining` and NEITHER publishing
+	 * path fills it (`frontend_state.py::_wake_state` and `attached.py::_cold_wakes`
+	 * both validate the schedule's own dump, which carries `limit`/`fired_count`).
+	 * Read against a live backend, a schedule created with `--limit 3` publishes
+	 * `limit: 3, fired_count: 0, remaining: null`. So the row takes
+	 * `max(limit - fired_count, 0)` — the backend's own bound for a catch-up
+	 * (`harness/wake.py::due_while_down`) — and `remaining` wins when it is ever
+	 * populated.
+	 */
+	const bounded = deriveWakes(
+		[wake({ every_ms: 6 * WAKE_HOUR, limit: 3, fired_count: 1 })],
+		WAKE_NOW,
+	)[0];
+	assert.equal(bounded.remaining, 2, "limit - fired_count");
+	assert.equal(bounded.cadence, "every 6h · 2 left");
+
+	/* An exhausted budget is 0 rather than negative. */
+	const spent = deriveWakes(
+		[wake({ every_ms: 6 * WAKE_HOUR, limit: 3, fired_count: 5 })],
+		WAKE_NOW,
+	)[0];
+	assert.equal(spent.remaining, 0);
+	assert.equal(spent.cadence, "every 6h · 0 left");
+
+	/* `remaining` itself still wins, so a runtime that starts sending it is read. */
+	const explicit = deriveWakes(
+		[wake({ every_ms: 6 * WAKE_HOUR, limit: 9, fired_count: 8, remaining: 7 })],
+		WAKE_NOW,
+	)[0];
+	assert.equal(explicit.remaining, 7);
+	assert.equal(explicit.cadence, "every 6h · 7 left");
+
+	/* No `limit` at all is an unbounded recurrence: no clause. */
+	const unbounded = deriveWakes(
+		[wake({ every_ms: 6 * WAKE_HOUR })],
+		WAKE_NOW,
+	)[0];
+	assert.equal(unbounded.remaining, null);
+	assert.equal(unbounded.cadence, "every 6h");
 });
 
 test("epoch milliseconds become the TUI's local due label", () => {
