@@ -24,6 +24,22 @@ export interface BrowserTabView {
 	url: string;
 	/** Who created it. An AGENT tab is marked in the strip (design 11.8). */
 	owner: "user" | "agent";
+	/**
+	 * The conversation this tab belongs to, or `null` when it belongs to none.
+	 *
+	 * One field answers both "created by" and "handed to" because it is the same
+	 * field in the registry: an agent tab carries the session that created it and a
+	 * handed-over user tab carries the session it was handed to
+	 * (docs/design/browser-approval-ux.md 7.2). The pane's "This conversation"
+	 * scope is this field compared to the pane's own session id, which is why the
+	 * host had to project it (`host.ts`'s `chromeState`, and the note there on why
+	 * the name travels and the nonce does not).
+	 *
+	 * `null` is not "unknown": it is a restored tab, a user tab never handed over,
+	 * or one handed back — all of them the user's, not a conversation's, so they
+	 * appear only under All tabs.
+	 */
+	sessionId: string | null;
 	active: boolean;
 	/** Restored from a previous run (design 7). Always user-owned. */
 	restored: boolean;
@@ -131,6 +147,8 @@ function deliverContentRect(rect: ContentRect | null): void {
 }
 
 export interface BrowserChrome {
+	/** The projection main publishes: the tab strip, the URL bar and the pending
+	 * requests all render from this ONE read (see `useBrowserProjection`). */
 	state: BrowserChromeState | null;
 	/**
 	 * Where the user asked to go, while the tab has not committed it.
@@ -172,10 +190,103 @@ export interface BrowserChrome {
 	clearData: (what: "cookies" | "cache" | "everything") => Promise<void>;
 }
 
-export function useBrowserChrome(): BrowserChrome {
+export interface BrowserProjection {
+	/** The projection itself, or `null` before the first read lands. */
+	state: BrowserChromeState | null;
+	/**
+	 * A state read failed: main could not answer, or answered something unusable.
+	 * Separate from the action error, for the reason `error` states.
+	 */
+	readError: string | null;
+	/**
+	 * Re-read the projection.
+	 *
+	 * Returns the state it read as well as setting it, because a caller's own
+	 * consequence of a read — `useBrowserChrome`'s pending-URL note — needs the value
+	 * the read produced rather than the state React is about to render. `null`
+	 * when the bridge is absent or the read failed, which are the two ways there is
+	 * no new state to act on.
+	 */
+	refresh: () => Promise<BrowserChromeState | null>;
+	/**
+	 * Clear a read failure by hand.
+	 *
+	 * It exists because the two error slots are cleared by different events and the
+	 * dismiss control clears BOTH: a successful read clears only `readError`, and
+	 * `useBrowserChrome`'s `dismissError` is the user saying "I have read this" about
+	 * whichever of the two is showing. Exposing the setter rather than re-exporting the
+	 * state is what keeps the read's own lifecycle inside the hook that owns it.
+	 */
+	clearReadError: () => void;
+}
+
+/**
+ * The projection, subscribed — the READ half of the browser chrome, split out so a
+ * second reader can have the same source rather than a second way of getting it.
+ *
+ * WHY THIS IS SEPARATE, and the reason is PR 2's rather than a tidy-up: the chat
+ * header's Globe trigger carries an attention badge counting THIS conversation's
+ * live requests (`docs/design/browser-approval-ux.md` 7.3), and that control is
+ * mounted whether or not the pane is. It needs the projection and none of the
+ * twenty intents `useBrowserChrome` returns, so mounting the whole chrome in the
+ * header would put every tab control in a header that has one badge and no tab
+ * strip. A hand-written second subscription — its own `api.state()`, its own two
+ * event handlers — is the drift this repository refuses everywhere else, so the
+ * read lives here once and `useBrowserChrome` adds the writes on top of it.
+ */
+export function useBrowserProjection(): BrowserProjection {
 	const [state, setState] = useState<BrowserChromeState | null>(null);
-	/** A STATE READ failed: main could not answer, or answered something unusable. */
 	const [readError, setReadError] = useState<string | null>(null);
+	const available = browserBridgeAvailable();
+
+	const refresh = useCallback(async (): Promise<BrowserChromeState | null> => {
+		const api = bridge();
+		if (!api) return null;
+		try {
+			const next = (await api.state()) as BrowserChromeState | null;
+			if (next && Array.isArray(next.tabs)) {
+				setState(next);
+				setReadError(null);
+				return next;
+			}
+			return null;
+		} catch (caught) {
+			setReadError(messageOf(caught));
+			return null;
+		}
+	}, []);
+
+	useEffect(() => {
+		if (!available) return;
+		void refresh();
+		const api = window.api?.browser;
+		if (!api) return;
+		// Two subscriptions rather than one: main emits the consent event for the
+		// approval store's changes (which include the pending set) and the state
+		// event for the registry's. Both land on the same projection, and reading it
+		// twice is cheaper than two projections that can disagree.
+		const offState = api.onStateChanged(() => void refresh());
+		const offConsent = api.onConsentChanged(() => void refresh());
+		return () => {
+			offState();
+			offConsent();
+		};
+	}, [available, refresh]);
+
+	const clearReadError = useCallback((): void => {
+		setReadError(null);
+	}, []);
+
+	return { state, readError, refresh, clearReadError };
+}
+
+export function useBrowserChrome(): BrowserChrome {
+	const {
+		state,
+		readError,
+		refresh: readState,
+		clearReadError,
+	} = useBrowserProjection();
 	/** An ACTION was refused: `nav_failed`, `tab_limit`, `origin_not_allowed`... */
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [pendingUrl, setPendingUrl] = useState<string | null>(null);
@@ -197,38 +308,18 @@ export function useBrowserChrome(): BrowserChrome {
 	 */
 	const error = actionError ?? readError;
 
+	/**
+	 * The projection, read the one way, plus this hook's own consequence of a read:
+	 * the tab has a URL of its own now, so the pending note's job is done.
+	 *
+	 * That is why the read's VALUE is used rather than the `state` React is about to
+	 * render — the note is about the read that just landed, not about the render it
+	 * triggers.
+	 */
 	const refresh = useCallback(async (): Promise<void> => {
-		const api = bridge();
-		if (!api) return;
-		try {
-			const next = (await api.state()) as BrowserChromeState | null;
-			if (next && Array.isArray(next.tabs)) {
-				setState(next);
-				setReadError(null);
-				// The tab has a URL of its own now: the pending note's job is done.
-				if (next.url && next.url !== "about:blank") setPendingUrl(null);
-			}
-		} catch (caught) {
-			setReadError(messageOf(caught));
-		}
-	}, []);
-
-	useEffect(() => {
-		if (!available) return;
-		void refresh();
-		const api = window.api?.browser;
-		if (!api) return;
-		// Two subscriptions rather than one: main emits the consent event for the
-		// approval store's changes (which include the pending set) and the state
-		// event for the registry's. Both land on the same projection, and reading it
-		// twice is cheaper than two projections that can disagree.
-		const offState = api.onStateChanged(() => void refresh());
-		const offConsent = api.onConsentChanged(() => void refresh());
-		return () => {
-			offState();
-			offConsent();
-		};
-	}, [available, refresh]);
+		const next = await readState();
+		if (next?.url && next.url !== "about:blank") setPendingUrl(null);
+	}, [readState]);
 
 	/**
 	 * Run one intent, then re-read.
@@ -259,8 +350,8 @@ export function useBrowserChrome(): BrowserChrome {
 	 * has read does not sit there until something else happens to succeed. */
 	const dismissError = useCallback((): void => {
 		setActionError(null);
-		setReadError(null);
-	}, []);
+		clearReadError();
+	}, [clearReadError]);
 
 	// ---- the rectangle, and the ONE update that must not be throttled --------
 	//

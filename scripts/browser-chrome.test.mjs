@@ -64,14 +64,17 @@ const PROBE = `
 	import { renderToStaticMarkup } from "react-dom/server";
 	import { useBrowserChrome } from "./src/renderer/src/features/browser/hooks/use-browser-chrome";
 
+	import { BrowserPane, PANE_SURFACE_ID } from "./src/renderer/src/features/browser/components/browser-pane";
+	import { BrowserPage } from "./src/renderer/src/features/browser/components/browser-page";
 	import { BrowserConsentBar } from "./src/renderer/src/features/browser/components/browser-consent-bar";
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
-	import { BrowserApprovalsTray, defaultApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
+	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, scopeFromKey, scopeKey, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 	export function renderBrowserChrome() {
 		const captured = { chrome: null };
@@ -91,20 +94,28 @@ const PROBE = `
 		BrowserApprovalsTray,
 		BrowserApprovalsDock,
 		BrowserTabStrip,
+		BrowserPage,
+		BrowserPane,
+		PANE_SURFACE_ID,
 		requesterLabel,
 		defaultApprovalHeaderLabel,
+		paneApprovalHeaderLabel,
 		approvalRows,
 		approvalScopeLabel,
 		liveRequests,
 		originOfUrl,
 		reconcileResolved,
 		remainingLabel,
+		requestsInScope,
+		scopeFromKey,
+		scopeKey,
 		tabsInScope,
 		waitingOrdinals,
 		RESOLVED_KEEP,
 		BrowserLoadFailure,
 		loadFailureSentence,
 		useCanonicalSessionsStore,
+		useUiPreferencesStore,
 	};
 `;
 
@@ -175,20 +186,28 @@ const {
 	BrowserApprovalsTray,
 	BrowserApprovalsDock,
 	BrowserTabStrip,
+	BrowserPage,
+	BrowserPane,
+	PANE_SURFACE_ID,
 	requesterLabel,
 	defaultApprovalHeaderLabel,
+	paneApprovalHeaderLabel,
 	approvalRows,
 	approvalScopeLabel,
 	liveRequests,
 	originOfUrl,
 	reconcileResolved,
 	remainingLabel,
+	requestsInScope,
+	scopeFromKey,
+	scopeKey,
 	tabsInScope,
 	waitingOrdinals,
 	RESOLVED_KEEP,
 	BrowserLoadFailure,
 	loadFailureSentence,
 	useCanonicalSessionsStore,
+	useUiPreferencesStore,
 	noteConsentAttention,
 	clearConsentAttention,
 	consentAttentionSnapshot,
@@ -1313,6 +1332,119 @@ test("the null rect is delivered on the spot, and it cancels a pending frame", (
 	}
 });
 
+// ---- the host handover (design 7.3's REQUIRED test) ------------------------
+
+/**
+ * Two hosts, one rectangle.
+ *
+ * The pane and the route are never co-mounted, so there is exactly one rect
+ * reporter at a time (spec 7.3) — and the handover between them is the moment the
+ * contract can be broken in a way no still frame shows: a stale null landing
+ * AFTER the incoming host's first report leaves main with no rectangle, so every
+ * view is hidden while the surface's own box looks correctly laid out. Frames
+ * cannot see it, because the chrome is DOM and lays out fine either way; the
+ * delivery ORDER is the whole of the claim.
+ *
+ * The outgoing host's last word is a null delivered ON THE SPOT — not on a frame,
+ * because the frame is exactly what the unmount cancels — and this test drives
+ * both hosts' `setContentRect` through the same recorded bridge, in the order the
+ * app produces them.
+ */
+test("the host handover ends with the incoming host's rectangle, not a stale null", () => {
+	const frames = new Map();
+	const delivered = [];
+	const PANE_RECT = { x: 740, y: 84, width: 640, height: 785 };
+	const ROUTE_RECT = { x: 0, y: 84, width: 1380, height: 785 };
+	let nextFrameId = 0;
+	const previousRaf = globalThis.requestAnimationFrame;
+	const previousCancel = globalThis.cancelAnimationFrame;
+	const previousWindow = globalThis.window;
+	const runFrames = () => {
+		for (const id of [...frames.keys()]) {
+			const callback = frames.get(id);
+			frames.delete(id);
+			callback();
+		}
+	};
+	globalThis.requestAnimationFrame = (callback) => {
+		nextFrameId += 1;
+		frames.set(nextFrameId, callback);
+		return nextFrameId;
+	};
+	globalThis.cancelAnimationFrame = (id) => {
+		frames.delete(id);
+	};
+	globalThis.window = {
+		api: {
+			browser: {
+				setContentRect: (rect) => {
+					delivered.push(rect);
+					return Promise.resolve({});
+				},
+				state: async () => null,
+			},
+		},
+	};
+	try {
+		// The pane is on screen and its content element is the narrow column.
+		const pane = renderBrowserChrome();
+		pane.setContentRect(PANE_RECT);
+		runFrames();
+		assert.deepEqual(
+			delivered,
+			[PANE_RECT],
+			"the pane's own report lands first",
+		);
+
+		// `/chat` -> `/browser` with the pane open. The pane unmounts, and its hook's
+		// terminal guarantee delivers the null in the same tick — the delivery is
+		// synchronous and does not wait for the frame the unmount just cancelled for
+		// its own pending sample.
+		pane.setContentRect(PANE_RECT);
+		pane.setContentRect(null);
+		assert.deepEqual(
+			delivered.at(-1),
+			null,
+			"the outgoing host's last word is the hide, delivered on the spot",
+		);
+		assert.equal(frames.size, 0, "and it dropped its own pending sample");
+
+		// The route mounts in the same commit and reports the whole main area, one
+		// frame later.
+		const route = renderBrowserChrome();
+		route.setContentRect(ROUTE_RECT);
+		runFrames();
+		assert.deepEqual(
+			delivered,
+			[PANE_RECT, null, ROUTE_RECT],
+			"in order: the pane's rect, the hide, then the route's rect",
+		);
+		assert.equal(
+			delivered.at(-1)?.width,
+			ROUTE_RECT.width,
+			"the last word belongs to the host that is on screen, so the page is visible once",
+		);
+
+		// THE COUNTERFACTUAL, which is what makes the order a contract rather than a
+		// coincidence: the same two reports with the null arriving last. Main treats a
+		// null rect as "nowhere to paint" and hides every view, so this sequence is
+		// the page invisible on a surface that looks correctly laid out.
+		delivered.length = 0;
+		route.setContentRect(ROUTE_RECT);
+		runFrames();
+		pane.setContentRect(null);
+		assert.equal(
+			delivered.at(-1),
+			null,
+			"a stale null after the new host's report is the failure the ordering prevents",
+		);
+	} finally {
+		globalThis.requestAnimationFrame = previousRaf;
+		globalThis.cancelAnimationFrame = previousCancel;
+		globalThis.window = previousWindow;
+	}
+});
+
 // ---- one error slot per fact (review round 1, R6) --------------------------
 
 /** The shipped source with comments stripped, for the rules a render cannot see. */
@@ -1339,8 +1471,8 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
 	const refresh = source.slice(
-		source.indexOf("const refresh = useCallback"),
-		source.indexOf("const run = useCallback"),
+		source.indexOf("export function useBrowserProjection"),
+		source.indexOf("export function useBrowserChrome"),
 	);
 	assert.ok(
 		refresh.includes("setReadError(null)"),
@@ -1350,9 +1482,18 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		!refresh.includes("setActionError"),
 		"and it cannot touch the action's own refusal",
 	);
+	// The slice's boundary moved with the read itself: `useBrowserProjection` owns
+	// the projection and its error slot, and `useBrowserChrome` composes it. The
+	// rule is unchanged, and it is still the SHIPPED source this reads.
 	assert.ok(
-		/setActionError\(null\);\s*setReadError\(null\);/.test(source),
+		/setActionError\(null\);\s*clearReadError\(\);/.test(source),
 		"the explicit dismissal clears both, which is the only other way an action error goes away",
+	);
+	assert.ok(
+		/const clearReadError = useCallback\(\(\): void => \{\s*setReadError\(null\);\s*\}, \[\]\)/.test(
+			source,
+		),
+		"and the slot it clears is the read's own, so the dismissal is not a second writer of the action's",
 	);
 });
 
@@ -1780,6 +1921,328 @@ test("the scope labels name what each grant is", () => {
 	);
 });
 
+// ---- the conversation's scope (spec 7.2, 7.4) ------------------------------
+
+/**
+ * A pending request, as the host projects it, with only the fields these tests
+ * read spelled out. `requesterSessionId` is the field the scope filter uses; the
+ * rest are the projection's own shape so a wrong key is a failure rather than a
+ * silently-missing field.
+ */
+const pendingRequest = (entryId, origin, requesterSessionId) => ({
+	entryId,
+	origin,
+	authority: origin.replace("https://", ""),
+	broad: null,
+	expiresAt: 1_000,
+	requesterSessionId,
+});
+
+test("a conversation's requests are the ones its agent asked for, and matching an origin is not asking", () => {
+	const requests = [
+		pendingRequest("1", "https://shared.example", "alice"),
+		pendingRequest("2", "https://other.example", "bob"),
+		// THE CASE THE DESIGN REJECTS ORIGIN-MATCHING FOR: a request on the SAME origin
+		// as one of alice's own tabs, raised by someone who is not a session identity.
+		// A filter that matched a request to a conversation by looking at the origin
+		// would show this in alice's tray and let her answer a prompt that is not hers
+		// (spec 7.2, "Alternative rejected").
+		pendingRequest("3", "https://shared.example", null),
+	];
+	assert.deepEqual(
+		requestsInScope(requests, "all").map((entry) => entry.entryId),
+		["1", "2", "3"],
+		"the route shows every request, whoever asked and whether or not they are a session",
+	);
+	assert.deepEqual(
+		requestsInScope(requests, { sessionId: "alice" }).map(
+			(entry) => entry.entryId,
+		),
+		["1"],
+		"a conversation shows the requests its own agent raised, and only those",
+	);
+	assert.deepEqual(
+		requestsInScope(requests, { sessionId: "carol" }),
+		[],
+		"a conversation with no requests of its own sees an empty tray, not everyone else's",
+	);
+});
+
+test("a scope's KEY is its value, so a host cannot trip the surface's identity memos", () => {
+	// The regression this pins was real: everything downstream of the scope keys on
+	// its IDENTITY (the tab and request memos, and the queue model's effects, one of
+	// which publishes the clock and so re-renders the surface). A host that rebuilds
+	// its scope object per render therefore re-ran the model's effect on every
+	// render, published the clock, and rendered again — a loop on a surface that
+	// still paints. The surface keys on the VALUE now, and this is the value.
+	assert.equal(scopeKey("all"), "all");
+	assert.equal(scopeKey({ sessionId: "session-1f4c" }), "session:session-1f4c");
+	assert.equal(
+		scopeKey({ sessionId: "session-1f4c" }),
+		scopeKey({ sessionId: "session-1f4c" }),
+		"two objects with one value are one key, which is the whole point",
+	);
+	// INJECTIVE (review round 1, NIT A): a session literally named `all` is a
+	// session, not the all-tabs scope, and it has to survive the round trip
+	// through the key the surface rebuilds its scope from.
+	assert.notEqual(
+		scopeKey({ sessionId: "all" }),
+		scopeKey("all"),
+		"a session named `all` must not collapse to the all-tabs scope",
+	);
+	for (const scope of [
+		"all",
+		{ sessionId: "all" },
+		{ sessionId: "session-1f4c" },
+	]) {
+		assert.deepEqual(
+			scopeFromKey(scopeKey(scope)),
+			scope,
+			"the key survives the round trip the surface depends on",
+		);
+	}
+});
+
+test("the pane's tray sentence says which list its count is about", () => {
+	assert.equal(defaultApprovalHeaderLabel(1), "1 approval waiting");
+	assert.equal(defaultApprovalHeaderLabel(3), "3 approvals waiting");
+	// The pane's own: two facts, because the pane's strip can be showing every
+	// conversation's tabs while the count stays this conversation's (spec 7.2).
+	assert.equal(paneApprovalHeaderLabel(1), "1 approval for this conversation");
+	assert.equal(paneApprovalHeaderLabel(3), "3 approvals for this conversation");
+});
+
+test("both hosts render the page area under the same spinner, so one selector holds in both", () => {
+	const previousWindow = globalThis.window;
+	// The bridge the hook asks for. No effects run in a static render, so the
+	// surface is captured in its pre-first-read state — which is the state this
+	// assertion is about (spec 7.4: the pane's loading state is the SAME spinner as
+	// the route's, so a QA pass can assert one selector in both hosts).
+	globalThis.window = {
+		api: {
+			browser: { state: async () => null, setContentRect: async () => {} },
+		},
+	};
+	try {
+		const route = render(el(BrowserPage));
+		const pane = render(
+			el(BrowserPane, { sessionId: "session:alice", onClose: () => {} }),
+		);
+		const spinner = /<span role="status"[\s\S]*?<\/span><\/span>/;
+		const routeSpinner = route.match(spinner)?.[0] ?? null;
+		const paneSpinner = pane.match(spinner)?.[0] ?? null;
+		assert.ok(routeSpinner, `the route has no spinner: ${route.slice(0, 400)}`);
+		assert.equal(
+			paneSpinner,
+			routeSpinner,
+			"the pane's loading state is the route's own element, not a second one that resembles it",
+		);
+		assert.ok(
+			routeSpinner.includes("Loading browser"),
+			"and it announces what is loading, so the assertion above is about a labelled spinner",
+		);
+		// The per-host evidence tags, which spec 9's item 4 asks a test to know: the
+		// hosts never co-mount, so the ONLY way a run can say which host it drove is
+		// that each host stamps its own.
+		assert.ok(
+			route.includes('data-tour-tag="browser-route"'),
+			"the route stamps itself as the route",
+		);
+		assert.ok(
+			pane.includes('data-tour-tag="browser-pane-surface"'),
+			"and the pane stamps itself as the pane",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the pane's scope switch is the pane's own, and the conversation side needs a session", () => {
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: { state: async () => null, setContentRect: async () => {} },
+		},
+	};
+	try {
+		const scoped = render(
+			el(BrowserPane, { sessionId: "session:alice", onClose: () => {} }),
+		);
+		assert.ok(
+			scoped.includes("This conversation") && scoped.includes("All tabs"),
+			"the pane offers both scopes, with the words the spec names",
+		);
+		assert.ok(
+			scoped.includes('data-tour-tag="browser-pane-scope-conversation"'),
+			"and the conversation side is addressable as itself",
+		);
+		assert.ok(
+			scoped.includes('[role="tab"') || scoped.includes('role="tab"'),
+			"it is the segmented primitive's own tablist, not a new control",
+		);
+		assert.equal(
+			(scoped.match(/data-disabled=""/g) ?? []).length,
+			0,
+			"with a session, both sides are available",
+		);
+		// A draft: there is no set to scope to yet, so the conversation side is
+		// DISABLED rather than silently showing the same list as All tabs.
+		const draft = render(
+			el(BrowserPane, { sessionId: null, onClose: () => {} }),
+		);
+		assert.equal(
+			(draft.match(/data-disabled=""/g) ?? []).length,
+			1,
+			"with no session, exactly one side is disabled — the conversation side",
+		);
+		assert.ok(
+			draft.includes("This conversation") && draft.includes("All tabs"),
+			"and the switch still states both scopes rather than disappearing",
+		);
+		const route = render(el(BrowserPage));
+		assert.ok(
+			route.includes("This conversation") === false,
+			"the route has no second scope to offer, so it has no switch",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+/* ---------------------------------------------------------------- */
+/* Two scopes, one surface: the switch moves the tabs only           */
+/* (QA round 1, Q1; UX round 1, U1, U3 and U4; QA round 1, Q2)        */
+/* ---------------------------------------------------------------- */
+
+test("the surface feeds the requests the requester's scope and the tabs the switch's", () => {
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	// THE DEFECT, PINNED BOTH WAYS. One `scope` prop fed both filters, so on the
+	// pane's All-tabs side the tray widened to every conversation's requests and,
+	// worse, an entry left the queue model's input while still pending - which the
+	// model resolves as `Withdrawn by the agent`. The line below is the fix; the
+	// assertion above it is the shape a revert has to argue with.
+	assert.ok(
+		surface.includes("requestsInScope(requests ?? [], stableRequestScope)"),
+		"the requests are filtered by the scope whose own key is the requester",
+	);
+	assert.ok(
+		!surface.includes("requestsInScope(requests ?? [], stableScope)"),
+		"and never by the tabs' scope, which is the switch's",
+	);
+	assert.ok(
+		surface.includes("tabsInScope(allTabs ?? [], stableScope)"),
+		"while the tabs keep the scope the host's switch moves",
+	);
+	// Both are props, because a host that had only one could not express the two
+	// questions a pane asks (spec 7.2).
+	assert.ok(
+		surface.includes("tabScope,") && surface.includes("requestScope,"),
+		"and the host chooses both",
+	);
+});
+
+test("the pane's request scope is the conversation, and never the switch", () => {
+	const pane = shippedSource(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	// The request scope's own derivation, read out of the file rather than guessed
+	// at: `scoped` is the switch's term, and it must not appear here at all.
+	const requests = pane.slice(
+		pane.indexOf("const requestScope"),
+		pane.indexOf("const switchValue"),
+	);
+	assert.ok(
+		requests.includes('sessionId !== null ? { sessionId } : "all"'),
+		"the requests follow the session",
+	);
+	assert.ok(
+		!requests.includes("scoped"),
+		"and nothing the user presses on the switch reaches them",
+	);
+	// A draft has no conversation to name, so the tray must not name one (U4): the
+	// conversation's sentence is passed only WITH a conversation.
+	assert.ok(
+		pane.includes("sessionId !== null ? paneApprovalHeaderLabel : undefined"),
+		"the tray's sentence is conditional on there being a conversation to name",
+	);
+	// THE LENS IS THE SLOT'S, NOT THE PANE'S (U3). The pane is remounted by a
+	// conversation switch, so a `useState` here forgot the choice on every switch
+	// while the pane itself stayed open at the width the user had dragged. Its
+	// absence is the pin, because the absence is the fix.
+	assert.ok(
+		!pane.includes("useState"),
+		"the pane holds no local state for the switch to be forgotten in",
+	);
+});
+
+test("the scope the user chose outlives the pane, because the pane does not", () => {
+	const store = useUiPreferencesStore;
+	const pane = shippedSource(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	// THE CHOICE IS THE STORE'S, and the read is what pins it: a fresh mount (which
+	// is what a conversation switch produces) has to find the lens where the last
+	// one left it, and the pane's own header comment claimed exactly that for a
+	// round while the state was local (U3).
+	assert.ok(
+		pane.includes("useUiPreferencesStore((s) => s.browserPaneScope)"),
+		"the pane reads the lens out of the window's slot state",
+	);
+	assert.ok(
+		pane.includes("useUiPreferencesStore((s) => s.setBrowserPaneScope)"),
+		"and writes it back there",
+	);
+	store.setState({ browserPaneScope: "conversation" });
+	store.getState().setBrowserPaneScope("all");
+	assert.equal(
+		store.getState().browserPaneScope,
+		"all",
+		"the store keeps the choice",
+	);
+	store.setState({ browserPaneScope: "conversation" });
+	/*
+	 * WHY THIS IS A SOURCE PIN RATHER THAN A RENDER: a static render cannot see a
+	 * store at all. The store's hook passes `getServerSnapshot`, which is zustand's
+	 * own contract for SSR and returns the INITIAL state, so a rendered pane shows
+	 * the switch's default whatever the store holds - the same limit that makes
+	 * `render` capture the surface before its first projection read. The behavioural
+	 * half is driven in the app by `renderer-driver.mjs --scene browser-pane`, which
+	 * presses the switch, switches conversation and back, and reads the active side.
+	 */
+});
+
+test("the pinned strip control appears only when a tab is off screen, and counts them", () => {
+	const strip = shippedSource(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	// QA round 1 (Q2): the control was drawn whenever the strip held two tabs, on
+	// the route's own 1160px strip where nothing overflows, with an empty own text
+	// and a label reading `All tabs` - so its presence said nothing and its content
+	// said less. The measurement decides both now.
+	assert.ok(
+		strip.includes("{tabsOffScreen > 0 && ("),
+		"the control's presence is the measurement",
+	);
+	assert.ok(
+		!strip.includes("{tabs.length > 1 && ("),
+		"and not the tab count, which is what it was for a round",
+	);
+	assert.ok(
+		strip.includes("+{tabsOffScreen}"),
+		"the count of tabs that are not shown is the control's own text",
+	);
+	assert.ok(
+		strip.includes("aria-label={`All tabs, ${tabsOffScreen} not shown`}"),
+		"and it is in the accessible name, not only in the tooltip",
+	);
+	assert.ok(
+		strip.includes('querySelectorAll("[data-tab-id]")'),
+		"the count is measured from the rows' own boxes",
+	);
+});
+
 // ---- a failed navigation says so (design round 1, D1) ----------------------
 
 test("a failed navigation names the reason in the app's own chrome, and offers a retry", () => {
@@ -1825,5 +2288,118 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 	assert.equal(
 		loadFailureSentence("ERR_NAME_NOT_RESOLVED"),
 		"That address does not resolve. Check the spelling.",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The third term of the right slot, and the tags a run drives on    */
+/* (review round 1, F3 and F4)                                       */
+/* ---------------------------------------------------------------- */
+
+test("the browser pane is a third term of the right slot, exclusive with both siblings", () => {
+	const store = useUiPreferencesStore;
+	// The canvas/run pair was pinned in `composer-tabs.test.mjs`; the third term is
+	// this change's, and a store rule with no test is the rule a later edit deletes.
+	store.setState({
+		isCanvasOpen: false,
+		isRunPanelOpen: false,
+		isBrowserPaneOpen: false,
+		runPanelReveal: null,
+	});
+	store.getState().setCanvasOpen(true);
+	store.getState().setRunPanelOpen(true);
+	assert.equal(
+		store.getState().isCanvasOpen,
+		false,
+		"opening the run panel closes the canvas",
+	);
+
+	store.getState().setBrowserPaneOpen(true);
+	const afterPane = store.getState();
+	assert.equal(
+		afterPane.isRunPanelOpen,
+		false,
+		"the pane closes the run panel",
+	);
+	assert.equal(afterPane.isCanvasOpen, false, "and the canvas");
+	assert.equal(afterPane.isBrowserPaneOpen, true);
+
+	store.getState().setCanvasOpen(true);
+	assert.equal(
+		store.getState().isBrowserPaneOpen,
+		false,
+		"the canvas closes the pane",
+	);
+	store.getState().setBrowserPaneOpen(true);
+	assert.equal(
+		store.getState().isCanvasOpen,
+		false,
+		"and the pane closes it back",
+	);
+	store.getState().setRunPanelOpen(true);
+	assert.equal(
+		store.getState().isBrowserPaneOpen,
+		false,
+		"the run panel closes the pane too",
+	);
+
+	// The FOURTH writer is the chip's one-shot reveal, which is the path a user
+	// actually takes to the run panel while the pane is open.
+	store.getState().setBrowserPaneOpen(true);
+	store.getState().revealRunPanelSection("todos");
+	const afterReveal = store.getState();
+	assert.equal(
+		afterReveal.isBrowserPaneOpen,
+		false,
+		"the composer chip's reveal clears the pane as well",
+	);
+	assert.equal(afterReveal.isRunPanelOpen, true);
+	store.setState({
+		isCanvasOpen: false,
+		isRunPanelOpen: false,
+		isBrowserPaneOpen: false,
+		runPanelReveal: null,
+	});
+});
+
+test("each host stamps its own dock tag, so a run can say which dock it drove", () => {
+	// Spec 9's item 4 asks for the tags to be asserted, and the dock's is the one
+	// that cannot be reached by a static render: it mounts only while the surface's
+	// own `dockOpen` state is set. So the pin is on the two hosts' own call sites,
+	// where the tag is chosen - one assertion covering both hosts.
+	const pane = shippedSource(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	const route = shippedSource(
+		"src/renderer/src/features/browser/components/browser-page.tsx",
+	);
+	/*
+	 * THE TAGS ARE READ OUT OF THE TWO FILES AND THEN COMPARED, rather than two
+	 * literals compared with each other (review round 2, NIT 2). The round-1 version
+	 * closed with `assert.notEqual("browser-pane-dock", "browser-approvals-dock")` -
+	 * two strings typed in the test, which cannot fail and would have passed unchanged
+	 * if both hosts stamped one tag. What the claim needs is the pair as the tree
+	 * spells them, each exactly once: the `deepEqual`s pin the values (they subsume
+	 * the two `includes` pins this test used to carry), and the `notEqual` on the
+	 * parsed pair is what makes "the two hosts cannot share one dock tag" falsifiable.
+	 */
+	const dockTagsIn = (source) =>
+		[...source.matchAll(/dockSurfaceTag="([^"]+)"/g)].map((match) => match[1]);
+	const paneTags = dockTagsIn(pane);
+	const routeTags = dockTagsIn(route);
+	assert.deepEqual(
+		paneTags,
+		["browser-pane-dock"],
+		"the pane names its dock once, and by its own tag, so a frame of a docked pane is attributable",
+	);
+	assert.deepEqual(
+		routeTags,
+		["browser-approvals-dock"],
+		"and the route keeps its own, once",
+	);
+	assert.notEqual(
+		paneTags[0],
+		routeTags[0],
+		"the two hosts cannot share one dock tag, or a run could not say which dock its frames show",
 	);
 });

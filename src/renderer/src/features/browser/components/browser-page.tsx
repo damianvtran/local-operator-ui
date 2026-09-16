@@ -14,14 +14,18 @@ import { BrowserSurface } from "./browser-surface";
  * tabs beside "all tabs" (PR 2). Two hosts is one implementation with a scope, not
  * two implementations, so everything that exists once per host moved into
  * `browser-surface.tsx` and this is the route's own choices and nothing else —
- * `scope="all"`, and its own evidence tags so a run can say which host it drove.
+ * `tabScope="all"` and `requestScope="all"`, and its own evidence tags so a run can
+ * say which host it drove. The route answers both of the surface's questions the
+ * same way because it IS the whole application surface: every tab, every request
+ * (spec 7.2 - `"all"` for the tabs and for the requester alike).
  * The route stays because it is what the rail points at and the only host that can
  * give the page a full window (§7.5); the pane is an additional entry point, never
  * a replacement.
  */
 export const BrowserPage: FC = () => (
 	<BrowserSurface
-		scope="all"
+		tabScope="all"
+		requestScope="all"
 		surfaceTag="browser-route"
 		dockSurfaceTag="browser-approvals-dock"
 	/>

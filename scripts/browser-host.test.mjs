@@ -1661,6 +1661,61 @@ test("through the dispatcher: forgetting a site re-asks in the same conversation
 	);
 });
 
+test("the projection names each tab's conversation — and never its capability", async () => {
+	const { host, registry } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		url: "https://scope.example/",
+	};
+	// An agent's tab: created after the origin is approved, so the projection has a
+	// tab to describe.
+	await host.dispatch("request_access", owner, "req-1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", owner, "open-1");
+
+	const agentTab = registry.requireSurface(opened.tab);
+	// A HANDED-OVER user tab: the same field, filled by the other writer, which is
+	// the whole reason one field answers both questions (spec 7.2).
+	const handed = registry.create({ owner: "user" });
+	registry.handOver(handed.tabId, "session:bob");
+	// A restored tab: nobody's, by design, and null rather than a guessed session.
+	const restored = registry.create({ owner: "user", restored: true });
+
+	const state = host.chromeState();
+	const byId = new Map(state.tabs.map((tab) => [tab.tabId, tab]));
+	assert.equal(
+		byId.get(agentTab.tabId).sessionId,
+		"alice",
+		"an agent tab carries the bare session that created it, which is the spelling the app's own routes and the session list use",
+	);
+	assert.equal(
+		byId.get(handed.tabId).sessionId,
+		"bob",
+		"a handed-over user tab carries the session it was handed to, in the same field",
+	);
+	assert.equal(
+		byId.get(restored.tabId).sessionId,
+		null,
+		"a restored tab is nobody's, and null is how the pane's filter reads it",
+	);
+
+	// THE NONCE RULE, asserted rather than assumed: the name travels and the
+	// capability does not (the note in `chromeState` has the argument). The token is
+	// the one this test can mint from the record, so its absence from the whole
+	// projection is the pin.
+	const token = surfaceToken(agentTab);
+	assert.ok(token, "the agent tab really does hold a capability to leak");
+	const wire = JSON.stringify(state);
+	assert.ok(
+		!wire.includes(token) && !wire.includes(parseSurface(token).nonce),
+		"no tab in the projection carries its nonce, in any form",
+	);
+	assert.ok(
+		!/"nonce"/.test(wire) && !/"handle"/.test(wire),
+		"and no field is named for one either",
+	);
+});
+
 test("the broad-domain scope is unavailable — not silently wrong — without the suffix list", () => {
 	configurePslRules(null);
 	assert.equal(domainScopeAvailable(), false);
