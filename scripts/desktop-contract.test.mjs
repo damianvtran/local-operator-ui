@@ -17,7 +17,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -46,12 +46,16 @@ const bundle = await build({
 const {
 	ViewerRecordPublisher,
 	requestDesktop,
+	requestDesktopOutcome,
 	trustedDesktopFrame,
 	registerDesktopIPC,
 	guardForegroundReceipts,
 	rememberPickedDirectory,
 	withRememberedDirectory,
 	desktopRequestByteBudget,
+	desktopRequestDeadlineMs,
+	desktopRequestDeadlineDetail,
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	MAX_DESKTOP_REQUEST_BYTES,
 	MAX_DESKTOP_ENVELOPE_BYTES,
 	MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES,
@@ -2012,4 +2016,83 @@ test("sessions.move reaches the working-directory route with the path, on the co
 		);
 	}
 	assert.equal(seen.length, count + 2, "no malformed move reached the network");
+});
+
+// The deadline table, and the one failure that used to be indistinguishable
+// from a dead backend.
+//
+// WHY A TABLE. One 20 s literal applied to every op, and for `analytics.get`
+// that was not a bound on the request — it was a bound on how long the app
+// would wait for an answer the daemon was still producing. Measured against one
+// isolated backend and one copy of the ledger: 12.1-17.8 s warm for the 30-day
+// window, 39.6 s cold, 5.6-11.8 s for 7 days. Every read of a cold ledger was
+// therefore abandoned mid-scan, the app's retry put a second scan on the daemon,
+// and the user was told the backend "could not complete this request".
+test("ledger reads get a budget sized for the ledger, and controls keep the short one", () => {
+	// The ledger reads: sized by the worst cold read measured (39.6 s) rather
+	// than by the request.
+	assert.equal(desktopRequestDeadlineMs("analytics.get"), 90000);
+	assert.equal(desktopRequestDeadlineMs("usage.get"), 90000);
+	assert.equal(desktopRequestDeadlineMs("sessions.report"), 90000);
+	// Everything else answers from state already in memory, so twenty seconds of
+	// silence is a failure and must stay one. `info.get` and `sessions.failovers`
+	// are deliberately NOT ledger reads: one is a host snapshot whose slow part
+	// is a child process, the other is routing state.
+	for (const op of [
+		"config.get",
+		"capabilities",
+		"info.get",
+		"sessions.failovers",
+		"sessions.message",
+	])
+		assert.equal(desktopRequestDeadlineMs(op), 20000, op);
+	// The sentence names the budget it ran out of, and says what a ledger read
+	// can be done about; asserting on the number keeps the copy and the constant
+	// from drifting apart, which is the failure mode this whole table exists to
+	// remove.
+	const ledger = desktopRequestDeadlineDetail("analytics.get", 90000);
+	assert.equal(ledger.code, DESKTOP_DEADLINE_EXCEEDED_CODE);
+	assert.match(ledger.message, /90 seconds/);
+	assert.match(ledger.message, /reopen this panel/);
+	const control = desktopRequestDeadlineDetail("config.get", 20000);
+	assert.equal(control.code, DESKTOP_DEADLINE_EXCEEDED_CODE);
+	assert.match(control.message, /20 seconds/);
+});
+
+// The real path, against a real socket that accepts and never answers: what an
+// expired read now returns, and that it is NOT what a dead backend returns.
+//
+// It waits out the control budget for real (20 s). That is the point - the
+// expired path is a clock, and the only honest fixture for it is a listener that
+// stalls - and it is the same trade `desktop-renderer-transport.test.mjs`
+// already makes for the renderer's 30 s deadline.
+test("a request that runs out of its budget answers 504 with its own code, not an unreachable 503", async () => {
+	const stall = createServer(() => {});
+	await new Promise((resolve) => stall.listen(0, "127.0.0.1", resolve));
+	const stallUrl = `http://127.0.0.1:${stall.address().port}`;
+	try {
+		const started = Date.now();
+		const outcome = await requestDesktopOutcome(
+			{ op: "config.get" },
+			stallUrl,
+			token,
+		);
+		const elapsed = Date.now() - started;
+		assert.equal(outcome.response.status, 504);
+		assert.equal(
+			outcome.response.body.detail.code,
+			DESKTOP_DEADLINE_EXCEEDED_CODE,
+		);
+		// Liveness: a timeout that never got a response is not an answered
+		// request, so the daemon state machine must not read it as one. This is
+		// the same distinction the 503 carries, and it is why the flag is left
+		// alone by the branch above.
+		assert.equal(outcome.answered, false);
+		assert.ok(
+			elapsed >= 19000 && elapsed < 40000,
+			`the control budget is 20 s; this took ${elapsed}ms`,
+		);
+	} finally {
+		await new Promise((resolve) => stall.close(resolve));
+	}
 });
