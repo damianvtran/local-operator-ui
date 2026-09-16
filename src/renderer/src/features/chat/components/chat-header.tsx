@@ -273,15 +273,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						>
 							<Globe aria-hidden={true} />
 							{/*
-							 * The URL bar's own badge, at this control's corner rather than outside it
-							 * (`ring-canvas` names the ground behind it so the overlap reads as an
-							 * object on top of the button, and the offset is inward: this header is
-							 * `canvas` with `px-4`, so unlike the URL bar's outer corner there is room
-							 * — the round-2 D3 defect was a badge drawn 7px past the window's edge).
-							 */}
-							{browserAttentionCount > 0 && (
+							 * The same badge the URL bar carries, offset for an ICON control rather than
+							 * for a labelled one. The Approvals control reserves `pr-5` for its badge and
+							 * keeps it at the corner; a 32px `icon` button has no such reserve, and at that
+							 * offset a 16px badge sat across the Globe's own corner — two glyphs on top of
+							 * each other, which is the one thing a badge must not be (measured in the first
+							 * capture of `docs/evidence/browser-pane/trigger-*`). So the offset is OUTWARD,
+								 * far enough for the badge's box to clear the 16px glyph's box, and
+								 * `ring-canvas` still names the ground behind it so it reads as an object
+									* sitting on the corner rather than a notch cut out of the control.
+								 */}
+								{browserAttentionCount > 0 && (
 								<span
-									className={cn("pointer-events-none absolute -top-1 -right-1")}
+									className={cn("pointer-events-none absolute -top-2 -right-2")}
 								>
 									<Badge
 										variant="attention"
