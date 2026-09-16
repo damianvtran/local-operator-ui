@@ -17,6 +17,11 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import {
+	isInsideAppBundle,
+	pythonChildEnv,
+	withoutInheritedPythonEnv,
+} from "./python-child-env.mjs";
 
 /**
  * Contract checks for the interpreter environment the app spawns python with.
@@ -290,120 +295,15 @@ const INSIDE_BUNDLE_PREFIX =
 const PATHS = { home: null, userData: null, appData: null, temp: tmpdir() };
 
 /**
- * Every `PYTHON*` variable, which is the set this suite refuses to inherit.
- *
- * `PYTHONPYCACHEPREFIX` and `PYTHONDONTWRITEBYTECODE` are the two this file is
- * about, but they are not the pair that can make a spawn measure the wrong
- * thing: `PYTHONPATH` puts directories on `sys.path` and `PYTHONHOME` moves the
- * stdlib, so a suite that wants to say where a child's bytecode went has to
- * start from an environment that carries none of them.
+ * The spawn environment is `scripts/python-child-env.mjs`, shared with every
+ * other harness in this tree that starts a real interpreter. It moved out of
+ * this file at review round 1: the incident's mechanism - a `PYTHON*` variable
+ * inherited from the shell that runs the suite - was still live in three other
+ * halves of the same `pnpm test:desktop` run, and a rule only one file keeps is
+ * a rule the next file does not have. The cases below pin the helper's own
+ * contract, and the enumeration at the bottom of this file pins every site in
+ * `scripts/` that starts one.
  */
-const INHERITED_PYTHON_ENV = /^PYTHON/;
-
-/** `env` with every inherited `PYTHON*` variable removed. */
-function withoutInheritedPythonEnv(base = process.env) {
-	const env = {};
-	for (const [key, value] of Object.entries(base)) {
-		if (INHERITED_PYTHON_ENV.test(key)) continue;
-		env[key] = value;
-	}
-	return env;
-}
-
-/**
- * A scratch directory a spawned python may write bytecode into.
- *
- * One root per run, reclaimed by the `after` hook below, so a spawn's cache
- * directory is always this run's own and never a shared one a previous run
- * left something in - the assertion "the control's `.pyc` landed under the
- * prefix" is worth nothing against a directory that was already full.
- */
-let bytecodeScratchRoot = null;
-function bytecodeScratchDir(label) {
-	bytecodeScratchRoot ??= mkdtempSync(join(tmpdir(), "lo-bytecode-spawn-"));
-	return mkdtempSync(join(bytecodeScratchRoot, `${label}-`));
-}
-
-/** A path-segment test for an `.app` bundle, mirroring the shipped module's. */
-function isInsideAppBundle(path) {
-	return path
-		.split(/[\\/]/)
-		.some((segment) => segment.length > 4 && segment.endsWith(".app"));
-}
-
-/**
- * The environment every python this file starts is handed.
- *
- * Why this exists, and why it is not `{ ...process.env }`. This suite measures
- * whether a spawned interpreter writes bytecode and where. Run from the inside
- * of the app it is testing - an agent shell, which is how it is run in the
- * field - the ambient environment already carries the app's own
- * `PYTHONPYCACHEPREFIX` (`~/Library/Application Support/Local Operator/
- * python-bytecode-cache` on this machine) and `PYTHONDONTWRITEBYTECODE=1`, and
- * a test that spreads `process.env` inherits both: measured here, two cases in
- * this file failed for exactly that reason - the control run could not write
- * (`dont_write_bytecode` was True before the interpreter started) and the
- * update service's probe reported the caller's prefix rather than the app's.
- *
- * Inheriting is worse than flaky. On 2026-09-15 the ambient prefix on the
- * operator's machine pointed INSIDE the installed app
- * (`.../Local Operator.app/Contents/Resources/python_aarch64/pycache`) and this
- * file's real-CPython control run - a plain `spawnSync("python3", ..., { env: {
- * ...process.env, ...extraEnv } })` - inherited it and wrote 19 `.pyc` into
- * `/Applications/Local Operator.app`. `codesign` reported every one as
- * `file added:`, the app's start-up pass called the bundle unrepairable, and
- * the operator got "this copy of Local Operator needs replacing" for a bundle
- * that was one file-deletion away from valid (the heal's own inability to
- * recognise that layout is the other half of the fix). So the rule here is not
- * "set the variables we remember": it is that a spawn in this file states the
- * whole python environment it measures, and inherits none of it.
- *
- * - every inherited `PYTHON*` variable is dropped;
- * - the prefix is explicit - the caller's, or a fresh scratch directory under
- *   this run's tmp root - and the effective value is refused if it is relative
- *   or names a path inside a bundle, because those are the two values that put
- *   bytecode somewhere the caller did not choose (a relative prefix resolves
- *   against the child's cwd, which may be inside a bundle);
- * - `PYTHONDONTWRITEBYTECODE` is stated per run: `write: true` sets no refusal at
- *   all, so a run that means to produce a write can produce one, and the default
- *   sets the same refusal the app sets. An inherited `1` can no longer make a
- *   control run silently write nothing.
- */
-function pythonChildEnv({
-	base = process.env,
-	prefix,
-	write = false,
-	extra = {},
-} = {}) {
-	const env = withoutInheritedPythonEnv(base);
-	env.PYTHONPYCACHEPREFIX = prefix ?? bytecodeScratchDir("cache");
-	// Only ever SET, never deleted: the environment this helper builds carries no
-	// `PYTHON*` variable it was not given, so a run that means to write simply
-	// states no refusal.
-	if (!write) env.PYTHONDONTWRITEBYTECODE = "1";
-	// Last, so a caller can state anything this helper does not know about - and
-	// an explicit `undefined` removes a key, which is how the install-script case
-	// reaches the state "the script has to default the prefix itself".
-	for (const [key, value] of Object.entries(extra)) {
-		if (value === undefined) delete env[key];
-		else env[key] = value;
-	}
-	const effective = env.PYTHONPYCACHEPREFIX;
-	if (effective !== undefined) {
-		if (!isAbsolute(effective)) {
-			throw new Error(
-				`pythonChildEnv: ${effective} is relative, so the child would resolve it against its own cwd; state an absolute prefix`,
-			);
-		}
-		if (isInsideAppBundle(effective)) {
-			throw new Error(
-				`pythonChildEnv: ${effective} is inside a bundle, which is the placement this whole suite exists to keep bytecode out of`,
-			);
-		}
-	}
-	return env;
-}
-
 /**
  * The incident's own environment, for one deliberate spawn in this file.
  *
@@ -814,12 +714,7 @@ function runMacosInstallScript(scriptText, extraEnv) {
 }
 
 after(() => {
-	for (const dir of [
-		PATHS.home,
-		PATHS.userData,
-		mainProcessBundleDir,
-		bytecodeScratchRoot,
-	]) {
+	for (const dir of [PATHS.home, PATHS.userData, mainProcessBundleDir]) {
 		if (dir) rmSync(dir, { recursive: true, force: true });
 	}
 	// biome-ignore lint/performance/noDelete: the harness reads these for PRESENCE (`globalThis.__loSpawns.length`), and this teardown exists to make them absent rather than present-and-empty - which is also what the tests that follow assert.
@@ -2327,6 +2222,278 @@ test("every spawn in this suite states its own python environment", () => {
 				site.text,
 				/env:/,
 				`${where} names no environment in its row, so it must pass none: an inherited environment here is the mechanism under test (${row.why})`,
+			);
+		}
+	}
+});
+
+// ---------------------------------------------------------------------------
+// The shared helper, and every harness site that must use it
+
+/**
+ * The helper's own contract, asserted here because every harness depends on it.
+ *
+ * This file's cases above exercise it through real spawns; these are the rules
+ * themselves, so a change to the module has to face them directly rather than
+ * only in the situations a case happens to construct. Every one of them was
+ * live in the incident: an inherited prefix decided where a child wrote, an
+ * inherited refusal stopped a control run writing at all, and a relative value
+ * resolved against a cwd that was inside a bundle.
+ */
+test("the shared child-environment helper states the python variables it wants", () => {
+	const ambient = {
+		PATH: "/usr/bin",
+		HOME: "/Users/someone",
+		PYTHONPATH: "/somewhere/else",
+		PYTHONHOME: "/somewhere/else/lib",
+		PYTHONSTARTUP: "/somewhere/else/startup.py",
+		PYTHONPYCACHEPREFIX: INSIDE_BUNDLE_PREFIX,
+		PYTHONDONTWRITEBYTECODE: "1",
+	};
+
+	// The drop is the whole set, not the two this module sets: PYTHONPATH and
+	// PYTHONHOME decide what a child imports and where its stdlib lives, which is
+	// the same class of accident as the prefix.
+	const stripped = withoutInheritedPythonEnv(ambient);
+	assert.deepEqual(Object.keys(stripped).sort(), ["HOME", "PATH"]);
+	assert.deepEqual(
+		ambient.PYTHONPATH,
+		"/somewhere/else",
+		"the input is not mutated",
+	);
+
+	// A hostile ambient environment cannot survive into the child's own.
+	const env = pythonChildEnv({ base: ambient });
+	assert.equal(env.PYTHONPATH, undefined);
+	assert.equal(env.PYTHONHOME, undefined);
+	assert.equal(env.PATH, "/usr/bin", "everything else is passed through");
+	assert.equal(env.PYTHONDONTWRITEBYTECODE, "1");
+	assertUsablePrefix(env.PYTHONPYCACHEPREFIX, "the default prefix");
+
+	// The two placements that reach a bundle are refused rather than replaced,
+	// because a caller that named one has a bug this has to surface: silently
+	// substituting a scratch directory would leave the caller believing its own
+	// placement was used. `prefix` and a late `extra` are both checked, since the
+	// extras are applied last and could otherwise smuggle one in.
+	for (const [label, options] of [
+		["a relative prefix", { prefix: "relcache" }],
+		["an in-bundle prefix", { prefix: INSIDE_BUNDLE_PREFIX }],
+		[
+			"a relative prefix through extra",
+			{ extra: { PYTHONPYCACHEPREFIX: "./relcache" } },
+		],
+		[
+			"an in-bundle prefix through extra",
+			{ extra: { PYTHONPYCACHEPREFIX: INSIDE_BUNDLE_PREFIX } },
+		],
+	]) {
+		assert.throws(
+			() => pythonChildEnv({ base: ambient, ...options }),
+			/re|lative|inside a bundle/,
+			label,
+		);
+	}
+
+	// `write: true` states NO refusal, which is what lets a control run produce the
+	// write it exists to produce; the key is absent rather than empty, because an
+	// empty value is still a set variable to a shell that tests for one.
+	const writing = pythonChildEnv({ base: ambient, write: true });
+	assert.equal("PYTHONDONTWRITEBYTECODE" in writing, false);
+	assertUsablePrefix(writing.PYTHONPYCACHEPREFIX, "the control run's prefix");
+
+	// And an explicit `undefined` removes a key, which is how the install-script
+	// case reaches "the script under test has to default the prefix itself".
+	const scripted = pythonChildEnv({
+		base: ambient,
+		extra: { PYTHONPYCACHEPREFIX: undefined },
+	});
+	assert.equal("PYTHONPYCACHEPREFIX" in scripted, false);
+});
+
+/**
+ * Every `.mjs` under `scripts/`, except this file.
+ *
+ * This file is excluded because its own sites are pinned by the table above,
+ * with the fixture arm among them; scanning it here too would need a second,
+ * weaker row for the same call site.
+ */
+function scriptSources() {
+	const here = fileURLToPath(import.meta.url);
+	const files = [];
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const child = join(dir, entry.name);
+			if (entry.isDirectory()) walk(child);
+			else if (entry.name.endsWith(".mjs") && child !== here) files.push(child);
+		}
+	};
+	walk(join(process.cwd(), "scripts"));
+	return files.sort();
+}
+
+/**
+ * A python spawn in the harness tree, and how its environment is stated.
+ *
+ * `env` is matched against the call's own argument text (the helper called at
+ * the site). `binding` is matched against the whole file, for the files that
+ * build ONE environment and pass it at every site - the weaker of the two, so a
+ * site that can assert inline does.
+ */
+const HARNESS_PYTHON_SPAWN_SITES = [
+	{
+		file: "scripts/check-evidence.mjs",
+		name: "spawnSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "the flock guard, a real interpreter that holds the sweep's lease and then execs the node worker",
+	},
+	{
+		file: "scripts/daemon-discovery-evidence.mjs",
+		name: "spawn",
+		index: 4,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "the fork-and-do-not-reap parent that keeps a real zombie alive for the pid-state probe",
+	},
+	{
+		file: "scripts/daemon-discovery.test.mjs",
+		name: "spawn",
+		index: 2,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "the same zombie fixture, in the suite",
+	},
+	{
+		file: "scripts/evidence-run-guard.test.mjs",
+		name: "spawnSync",
+		index: 1,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "the lease contender; this file builds ONE environment (also with the CMUX_* scrub) and every site below passes it",
+	},
+	{
+		file: "scripts/evidence-run-guard.test.mjs",
+		name: "spawnSync",
+		index: 4,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "the missing-command contender",
+	},
+	{
+		file: "scripts/evidence-run-guard.test.mjs",
+		name: "spawnSync",
+		index: 5,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "the unavailable-fcntl host fixture, which runs the guard through runpy",
+	},
+	{
+		file: "scripts/evidence-run-guard.test.mjs",
+		name: "spawn",
+		index: 1,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "the live lease holder",
+	},
+	{
+		file: "scripts/evidence-run-guard.test.mjs",
+		name: "spawn",
+		index: 2,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "the dead-metadata contenders, which override HOME/TMPDIR on top of that env",
+	},
+	{
+		file: "scripts/owned-serve-lifecycle.test.mjs",
+		name: "spawnSync",
+		index: 1,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "resolves the reference interpreter this suite builds its fixture venv from",
+	},
+	{
+		file: "scripts/owned-serve-lifecycle.test.mjs",
+		name: "spawnSync",
+		index: 3,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "`python -m venv` for the second claim's environment",
+	},
+	{
+		file: "scripts/owned-serve-lifecycle.test.mjs",
+		name: "spawnSync",
+		index: 4,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "the venv interpreter's own `site` probe",
+	},
+	{
+		file: "scripts/submit-latency.test.mjs",
+		name: "spawn",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the supervisor that spawns the backend and reaps it; its cache lands under the run's config root",
+	},
+];
+
+/**
+ * The harness tree's half of the same rule, enumerated rather than trusted.
+ *
+ * Why this exists beside the table above: at review round 1 the incident's
+ * mechanism was still live in three files this repository runs in the same
+ * `pnpm test:desktop` pass - `check-evidence.mjs`, `daemon-discovery-evidence.mjs`
+ * and the daemon suite's zombie fixture all handed a real interpreter an
+ * inherited environment, and under the field's ambient shape that wrote 35 `.pyc`
+ * into a fixture `.app` while the suite stayed green. A rule that only one file
+ * keeps is a rule the next file does not have, so the check is a scan over the
+ * whole tree, and a new python spawn anywhere under `scripts/` fails here until
+ * it states its environment.
+ *
+ * The scan is textual and filtered on the command text naming a python, which is
+ * what makes it exhaustive over the shape that matters: a site that starts a real
+ * interpreter names one of `python3`, the resolved `python`, or a venv's
+ * `bin/python`. The one thing it cannot see is a real interpreter whose path
+ * contains none of those words, which is why every row also names the reason it is
+ * here - and why a row's `why` is read by a human when a new site appears.
+ */
+test("every python a harness in this tree starts states its own environment", () => {
+	const all = findChildProcessSites(scriptSources());
+	assert.ok(
+		all.length > 0,
+		"the scan found no child-process call sites under scripts/ at all, which means the scan is broken rather than that the harnesses start nothing",
+	);
+	const pythonSites = all.filter((site) => /python/i.test(site.text));
+	assert.ok(
+		pythonSites.length > 0,
+		"the scan found no python spawn under scripts/, which means its filter is broken rather than that the harnesses start none",
+	);
+
+	const key = (site) => `${site.file}#${site.name}#${site.index}`;
+	const rows = new Map(
+		HARNESS_PYTHON_SPAWN_SITES.map((row) => [key(row), row]),
+	);
+	for (const site of pythonSites) {
+		assert.ok(
+			rows.has(key(site)),
+			`${site.file}:${site.line} ${site.name} #${site.index} starts a python and is not in HARNESS_PYTHON_SPAWN_SITES: ${site.text.replace(/\s+/g, " ").trim().slice(0, 140)}. Build its environment with pythonChildEnv from scripts/python-child-env.mjs - an inherited PYTHONPYCACHEPREFIX is how a harness wrote 19 .pyc into the operator's installed app.`,
+		);
+	}
+	assert.deepEqual(
+		HARNESS_PYTHON_SPAWN_SITES.filter(
+			(row) => !pythonSites.some((site) => key(site) === key(row)),
+		).map(key),
+		[],
+		"HARNESS_PYTHON_SPAWN_SITES names a call site the scan no longer finds; remove the row with the call",
+	);
+
+	for (const site of pythonSites) {
+		const row = rows.get(key(site));
+		const where = `${site.file}:${site.line} ${site.name} #${site.index}`;
+		assert.ok(
+			row.env || row.binding,
+			`${where} has a row that asserts nothing about its environment`,
+		);
+		if (row.env) {
+			assert.match(
+				site.text,
+				row.env,
+				`${where} must build its own environment with pythonChildEnv (${row.why})`,
+			);
+		} else {
+			assert.match(
+				readFileSync(join(process.cwd(), row.file), "utf8"),
+				row.binding,
+				`${where} passes an environment that must be bound to pythonChildEnv, not merely named (${row.why})`,
 			);
 		}
 	}
