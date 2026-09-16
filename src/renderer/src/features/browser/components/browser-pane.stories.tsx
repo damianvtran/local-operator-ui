@@ -514,8 +514,17 @@ export const OneTab: Story = {
 };
 
 /** A request this conversation's agent raised, and one another conversation's: the
- * tray's wording ("for this conversation") and the badge's count (1, not 2) are
- * the claim, and the route frame below is the other side of the comparison. */
+ * badge's count (1, not 2) is the claim, and the route frame below is the other side
+ * of the comparison.
+ *
+ * WHAT THIS FRAME DOES NOT CARRY, said out loud because an earlier round's README row
+ * and this docstring both claimed it did (review round 2, MINOR 2): the tray's `for
+ * this conversation` sentence. That sentence lives in the tray's header row, which
+ * renders only when the pane's own scope holds more than one request
+ * (`browser-approvals-tray.tsx`, `rows.length > 1`) or while the dock it opens is
+ * open — and this fixture deliberately puts ONE request in the pane's scope, so the
+ * frame shows the single-request card a user sees every day. The sentence's own frame
+ * is `PaneDockOpen`, where `dockOpen` holds the header row on screen. */
 export const WithApproval: Story = {
 	render: withPane(
 		projection([AGENT_TAB, HANDED_TAB], [REQUESTS[0], REQUESTS[2]]),
