@@ -1015,14 +1015,19 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
   memory (`formatBytes(footprint_bytes ?? rss_bytes)`), and the markers
   (`this session` / `busy` / `needs X`) as badges. Meta: `N live · M total`.
 - **Section 4** answers the terminal's other question — how many agent runtimes
-  and how many agent trajectories this machine is running — and mirrors
-  `info_panel.py::_agents_section` and `_fleet_caveats` exactly. `StatGrid` of
-  four: **Runtimes** (`live + wedged`; the note is `N live`, plus `· M wedged`
-  when there are any), **Trajectories** (`≥M total` — the `≥` only when some
-  runtimes did not report — with `S sessions + B subagents`, then `· Q queued`
-  and `· U did not report` when non-zero), **Agent profiles** and **Teams**
-  (`agents.profiles`/`agents.teams`, rendered `—` when the probe's own name
-  appears in `degraded[]`; a zero from a probe that answered is still a zero).
+  and how many agent trajectories this machine is running — over
+  `info_panel.py::_agents_section` and `_fleet_caveats`. It follows those rules,
+  and departs from them in the five places named at the end of this bullet.
+  `StatGrid` of four: **Runtimes** (`live + wedged`, the value being the
+  denominator of the tally beside it; the note `N live · M wedged` appears only
+  when something is wedged, because with nothing wedged it restates the Live and
+  Wedged tiles directly above it), **Trajectories** (`≥M total` — the `≥` only
+  when some runtimes did not report — with `S sessions + B subagents` and, when
+  the meta does not already say it, `· Q queued`), **Agent profiles** and
+  **Teams** (`agents.profiles`/`agents.teams`, rendered `—` when the probe's own
+  name OR its block prefix appears in `degraded[]` — `("agents", …)` is how a
+  failed agent collection arrives, and its fallback is `profiles: 0, teams: 0`;
+  a zero from a probe that answered is still a zero).
   Meta: `N runtimes · ≥M trajectories`; `N runtimes · trajectories —` when some
   runtimes did not report AND nothing was measured; `N runtimes · none running ·
   Q queued` when the measured total is zero with children waiting;
@@ -1031,12 +1036,43 @@ block first, because both audiences open with it (`info_panel.py:413-421`).
   run(s) an older build and do(es) not report subagents — the fleet total is a
   lower bound.` (both verbs inflect together) and `M session(s) is/are wedged;
   its/their counts are as of its/their last heartbeat.` (the possessives inflect
-  with the subject). Three rules are NOT presentation choices: an unmeasured
-  term is never rendered as `0` (`—` is the unknown spelling), queued children
-  are named BESIDE the trajectory total and never added into it, and `runtimes`
-  is `live + wedged` so the meta agrees with the sum beneath it. Same plural
-  helper for the meta and the rows (`render.py::plural`'s irregular map: `1
-  trajectory` / `N trajectories`).
+  with the subject). Four rules are NOT presentation choices: an unmeasured term
+  is never rendered as `0` (`—` is the unknown spelling), queued children are
+  named BESIDE the trajectory total and never added into it, `runtimes` is
+  `live + wedged` so the meta agrees with the sum beneath it, and **no fact is
+  stated twice in one viewport** — the note and the meta are one viewport here,
+  where the terminal's header is a page-turn away, so the note drops what the
+  meta already says (`Q queued`) and what the caveat line beneath it already says
+  (`U did not report`). Same plural helper for the meta and the rows
+  (`render.py::plural`'s irregular map: `1 trajectory` / `N trajectories`).
+  Two sections share one spelling of a failed scan, from a single exported
+  constant (section 3 and this one); with the scan failed, NEITHER section
+  carries a meta, because the meta is a reading of that scan.
+
+  **The five deliberate departures from the terminal**, all recorded rather than
+  implied, so "mirrors it" is not read as "differs nowhere":
+
+  1. **The lower-bound caveat is suppressed when the total is refused.** The
+     terminal emits `… the fleet total is a lower bound.` whenever
+     `subagents_unreported` is non-zero (`render.py::_fleet_caveats`), including
+     the state in which the panel refuses the total entirely (`trajectories —`
+     in the meta, `—` on the card). A sentence qualifying a total the same
+     viewport refuses to state is the section contradicting itself, so it is
+     dropped there (design round 1, D1); the card's own note — `U of N runtimes
+     did not report` — carries the fact. The terminal's copy of this is a
+     follow-up for the local-operator repository, not a change here.
+  2. **The refused-count note inflects its noun.** `U of N runtime(s) did not
+     report` where `info_panel.py:1080` hard-codes `runtimes`, which reads `1 of
+     1 runtimes did not report` on a single-runtime host (review round 1, N1).
+  3. **The wedged row says `wedged`, the terminal's says `not answering`.** This
+     panel's own section 3 state badge says `wedged` one section above.
+  4. **A failed agent collection is an unknown.** `countOrUnknown` matches the
+     field or its block prefix; the terminal's `_counted` compares the field name
+     only, so `("agents", …)` renders `0` there.
+  5. **With the registry unscanned, this section shows no numbers at all** —
+     where the terminal still prints `agents.profiles`/`agents.teams`, whose
+     collector has its own guard. This section's headline is the fleet answer,
+     which comes from the scan that failed.
 - **Section 5** is the half that keeps `/info` honest on a remote backend: the
   host facts above describe the machine the backend runs on; this section
   describes the window in front of the user. Rows: session id, model
@@ -1063,7 +1099,7 @@ Degrades:
 
 | Condition | Required behaviour |
 |---|---|
-| `sessions.available === false` | Sections 3 and 4 become `PanelNotice kind="unavailable"`: "Could not scan the session registry. Close and reopen this panel to try again." (the desktop has no `r` key; do not borrow the TUI's copy). Section 4 carries **no numbers at all** then — no meta, no cards, no caveat — because every number it has comes from the scan that failed. |
+| `sessions.available === false` | Sections 3 and 4 become `PanelNotice kind="unavailable"`: "Could not scan the session registry. Close and reopen this panel to try again." — one exported constant, rendered by both (the desktop has no `r` key; do not borrow the TUI's copy). **Neither section carries a meta in this state**: the meta is a reading of the scan that failed. Section 4 carries no numbers at all then — no cards, no caveat — because every number it has comes from that scan. |
 | `sessions.usage_available === false` | One line under the table: "Memory could not be measured on this machine." Never a column of `—` (`model.py:192-195`). |
 | `sessions.build_skew === true` | One `PanelNotice kind="degraded"` line: "More than one build is running. A change may look absent in a window that has not been restarted." |
 | `sessions.lines.length === 0` | "No other lop sessions are running on this machine." |
@@ -1382,7 +1418,7 @@ Required stories per panel (the minimum reviewable set):
 | `unavailable` | the failure shape and the backend's own sentence |
 | `narrow` | 720px: bars surrender width first, labels and values hold |
 | `dense` | the largest legal payload: a body that overflows, evidencing the fold rule and the fade |
-| per-panel hard states | `/analytics`: `unpriced` (`cost_known_calls === 0`) and `partial-cost`; `/session`: `tree-cost` (descendants present), `no-tool-calls` (null), `zero-samples`; `/info`: `build-skew`, `roster-unread`, `remote-host`, and the fleet honesty states `fleet-one-does-not-report`, `fleet-nobody-reports`, `fleet-queued-only`, `fleet-all-idle`, `fleet-wedged`, `fleet-unavailable` (the `≥` bound, the `—` refusal, the measured-zero-with-a-queue, the earned `none running`, the wedged split, and the registry that could not be scanned); `/context`: `no-numbers` (pre-`numbers` backend); `/failovers`: `failover-in-force`, `no-chains` |
+| per-panel hard states | `/analytics`: `unpriced` (`cost_known_calls === 0`) and `partial-cost`; `/session`: `tree-cost` (descendants present), `no-tool-calls` (null), `zero-samples`; `/info`: `build-skew`, `roster-unread`, `remote-host`, and the fleet honesty states `fleet-one-does-not-report`, `fleet-nobody-reports`, `fleet-queued-only`, `fleet-all-idle`, `fleet-wedged`, `fleet-unavailable`, `fleet-probes-failed` (the `≥` bound, the `—` refusal, the measured-zero-with-a-queue, the earned `none running`, the wedged split, the registry that could not be scanned, and a probe that failed), plus `fleet-neighbours` (the section in situ, under the sessions section) and `fleet-narrow` (720px, where the note's separator wraps); `/context`: `no-numbers` (pre-`numbers` backend); `/failovers`: `failover-in-force`, `no-chains` |
 
 Then, in the UI PR:
 
