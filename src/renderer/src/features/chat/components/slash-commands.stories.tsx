@@ -346,6 +346,9 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// A story frame has no dispatcher, so the pane cannot address a session
 	// unless a story says otherwise — the same default the composer takes.
 	paneHasSession: false,
+	// This branch's own vocabulary: the commands whose trailing text is an
+	// argument chosen from a list.
+	valueArgumentCommands: new Set(),
 	nameListCommands: new Set(),
 	argumentWords: [],
 	enabled: true,

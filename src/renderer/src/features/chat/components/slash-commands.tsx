@@ -248,6 +248,14 @@ export type SlashCompletionState = {
 	 * (design D3 / UX U1).
 	 */
 	paneHasSession: boolean;
+	/**
+	 * The inline-argument half of the planner's `takesArgument` vocabulary:
+	 * names (primaries and aliases) of commands whose destination carries an
+	 * argument list (`argumentVocabulary` above). Set rather than the array the
+	 * completion spans use, because the planner asks it a membership question per
+	 * keystroke and a scan of the array would be a second copy of the same set.
+	 */
+	valueArgumentCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -388,6 +396,16 @@ export function useSlashCompletion({
 
 	const registry = useMemo(() => query.data ?? [], [query.data]);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);
+	/*
+	 * `argumentWords` lives in completion state because the ARGUMENT spans need a
+	 * list; the planner needs membership in it, and building the Set here rather
+	 * than per keystroke keeps one derivation of "which commands take a value"
+	 * (`argumentVocabulary`) with two shapes for two consumers.
+	 */
+	const valueArgumentCommands = useMemo(
+		() => new Set(vocabulary.words),
+		[vocabulary],
+	);
 	const commandNames = useMemo(() => {
 		const names = new Set<string>();
 		for (const command of registry) {
@@ -667,6 +685,7 @@ export function useSlashCompletion({
 		commandNames,
 		promptCommands,
 		armedOnlyCommands,
+		valueArgumentCommands,
 		nameListCommands: vocabulary.nameList,
 		argumentWords: vocabulary.words,
 		enabled,
