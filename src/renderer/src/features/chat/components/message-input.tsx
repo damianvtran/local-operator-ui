@@ -3585,13 +3585,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 *
 				 * Why the notice is not inside the box, in one measured paragraph: the composer
 				 * is pinned by its BOTTOM edge, so anything added UNDER the box pushes the text
-				 * up. Measured on a populated pane at 1380 with the same rig, a 20px line
-				 * injected below the box moves `textarea.y` 751.30 -> 731.30 (a full 20px),
-				 * while the same line above the box moves it 751.30 -> 751.30 (0.00px): the
+				 * up. Measured on a populated pane at 1380x868 with the same rig, a 20px line
+				 * injected below the box moves `textarea.y` 757.00 -> 737.00 (a full 20.00px),
+				 * while the same line above the box moves it 757.00 -> 757.00 (0.00px): the
 				 * transcript above yields instead. That is what makes "the text the operator is
 				 * typing does not move when the capture arms" hold, and it is why the manager's
 				 * own candidate - the sentence below the box - was measured and rejected: it is
-				 * the one position that costs the typed line the sentence's full height.
+				 * the one position that costs the typed line the sentence's full height. (The
+				 * same experiment on an empty chat, where the band centres the composer rather
+				 * than pinning it, moves it 10.00px either way - see the notice's own comment
+				 * below for that state and the number.)
 				 *
 				 * The wrapper is also the slash popup's anchor. The list renders `absolute
 				 * bottom-full`, so anchoring it HERE - above the sentence - is what keeps the
@@ -3644,7 +3647,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * WHAT IT COSTS, because the numbers above are a decision and not a claim of
 					 * perfection: on an EMPTY chat the band centres the composer (`grow` +
 					 * `justify-center`), so a line added above it moves the group by half its
-					 * height - 10.00px for a 20px injected line, ~9.75px for a one-line sentence.
+					 * height - 10.00px for a 20px injected line and 13.75px for the real 27.5px
+					 * sentence, measured (`textarea.y` 402.25 idle -> 416.00 masked).
 					 * No in-flow placement avoids that there, and an out-of-flow one would paint
 					 * over the transcript's own last line, which is why it is disclosed rather
 					 * than engineered around.
