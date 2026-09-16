@@ -8,17 +8,23 @@ Source, exactly:
 
 ```
 pnpm build-storybook
-npx http-server storybook-static -p 6031 --silent
-node scripts/capture-evidence.mjs http://localhost:6031 \
+npx http-server storybook-static -p 6047 --silent
+node scripts/capture-evidence.mjs http://localhost:6047 \
   --only=settings-appearance--gallery --themes=<all 59 ThemeName ids> --allow-backend
 ```
+
+Those two commands reproduce this set exactly, and a full sweep is neither
+needed nor was one run: `--only` limits the run to this one story, and under
+`--only`, `--themes=` accepts any id in the registry, so one theme re-shoots in
+about four seconds and all fifty-nine in about four minutes. (Port 6031 is
+another worktree's server, which is why this one uses 6047.)
 
 `--only` puts the run in append mode, so this set was added beside the committed
 one instead of sweeping it; `manifest.json`'s `partialCapture` and
 `themePortCapture` record that, and `themes`/`surfaces`/`frames` in the same file
 are the full-set values. The companion set `../settings-appearance-before/` is
-the same story on this branch's base tree, in the twelve palettes this app
-shipped — the other half of the pair.
+the same story on this branch's merge base (`6da8665ee`), in the twelve palettes
+this app shipped — the other half of the pair.
 
 ## Why this surface, and why fifty-nine rather than the sweep's twelve
 
@@ -30,8 +36,8 @@ theme, so a missing story is a missing subject rather than a missing theme.
 
 `scripts/capture-evidence.mjs`'s own `THEMES` list deliberately stays at the
 twelve this app shipped, because every story in that file is captured once per
-theme: sweeping all fifty-nine would take the committed set from 4,379 frames /
-167 MB to roughly 21,000 frames / ~820 MB. So the picker is captured in the whole
+theme: sweeping all fifty-nine would take the committed set from 4,703 frames /
+192 MB to roughly 23,000 frames / ~950 MB. So the picker is captured in the whole
 registry here, once, and everything else keeps its twelve — with
 `pnpm check-themes` asserting every contrast floor over all fifty-nine palettes
 regardless, since it reads the palette directory rather than that list.
@@ -71,3 +77,21 @@ as a picture of a window at 40px tall.
 
 They are also not the sweep. Only the picker's twelve themes are painted on every
 other surface in this directory; the other forty-seven appear in this set alone.
+
+## Re-shot at the rebased head, and what changed
+
+These frames were taken again at `d84d71f7d` (the rebased head, after the
+`highlight` role landed in the palettes) rather than re-stamped, and the before
+half was taken again at the merge base. **All 71 frames came back byte-identical
+to their earlier captures** (`shasum -a 256`, 59 + 12, no exceptions): the
+palette values did not move when the role was authored, the miniature paints
+`canvas`/`surface`/`elevated`/`sunken`/`ink`/`accent` and never `highlight`, and
+the one upstream `src/` change in this story's path is four *added* lines in
+`styles/index.css`. The re-shoot's value is therefore the record — `head`,
+`srcTree` and `scriptsTree` in `manifest.json` now name the tree these frames
+ship in — and the "did the picture move" question is answered by comparing bytes
+rather than by asserting it.
+
+The built bundle is left in place for the review rounds:
+`<worktree>/storybook-static`, served on `http://localhost:6047` by a detached
+`npx http-server storybook-static -p 6047 --silent` run from that worktree.
