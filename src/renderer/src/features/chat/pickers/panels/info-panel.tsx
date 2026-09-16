@@ -8,8 +8,8 @@ import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import type { DesktopInfoData } from "../../../../../../shared/desktop-contract";
-import type { PickerContext } from "../destination-pickers";
 import { PickerHost } from "../picker-host";
+import type { MachinePanelContext } from "../picker-registry";
 import { errorText } from "../use-picker-backend";
 import { formatCount } from "./formatters";
 import {
@@ -263,7 +263,18 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 			shell="panel"
 			bodyLabel="Host info region"
 			title="Info"
-			description="The install, the host this app is connected to, and the conversation in front of you."
+			description={
+				/*
+				 * The third clause is a promise about what is on screen, so a
+				 * sessionless pane must not make it: with no conversation in front of
+				 * the user there is none to name, and the panel's conversation section
+				 * is absent for the same reason (§ 5.1). What replaced it is the
+				 * section that does not need one.
+				 */
+				sessionId === ""
+					? "The install, the host this app is connected to, and the sessions running on it."
+					: "The install, the host this app is connected to, and the conversation in front of you."
+			}
 			body={
 				gated ? (
 					<PanelNotice
@@ -472,15 +483,25 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 									/>
 								))}
 						</PanelSection>
-						<PanelSection
-							title="This conversation"
-							meta="live · this conversation"
-						>
-							<FactsTable
-								label="This conversation"
-								rows={conversationRows(frontend, sessionId)}
-							/>
-						</PanelSection>
+						{/*
+						 * The conversation half exists exactly when a conversation is in front
+						 * of the user, which is what `sessionId` means at the point of paint:
+						 * `""` at the shell host, the live id at the pane. Without this the
+						 * section renders headed "This conversation" over
+						 * `<PanelNotice kind="empty" text="Nothing to report here." />` — the
+						 * heading is the lie, not the notice.
+						 */}
+						{sessionId !== "" ? (
+							<PanelSection
+								title="This conversation"
+								meta="live · this conversation"
+							>
+								<FactsTable
+									label="This conversation"
+									rows={conversationRows(frontend, sessionId)}
+								/>
+							</PanelSection>
+						) : null}
 						<PanelSection
 							title="Environment"
 							meta="backend runtime and this app"
@@ -568,9 +589,9 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 };
 
 /** The adapter the registry mounts: owns the read and the capability gate. */
-export const InfoView: FC<PickerContext> = ({
+export const InfoView: FC<MachinePanelContext> = ({
 	sessionId,
-	canonical,
+	frontend,
 	onClose,
 }) => {
 	const capabilities = useDesktopCapabilities();
@@ -581,7 +602,7 @@ export const InfoView: FC<PickerContext> = ({
 			data={query.data?.data ?? null}
 			loading={!gated && query.isLoading}
 			error={query.isError ? errorText(query.error) : null}
-			frontend={canonical.frontend ?? null}
+			frontend={frontend}
 			sessionId={sessionId}
 			onClose={onClose}
 			gated={gated}
