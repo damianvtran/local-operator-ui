@@ -54,9 +54,9 @@ import type { DesktopChildTranscriptPage } from "../../../../../../shared/deskto
 import { RunChildReader } from "./run-child-reader";
 import {
 	type McpServerRow,
-	OPEN_CHILD_STATUSES,
 	type RunDetails,
 	type SubagentRow,
+	isOpenChildStatus,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
@@ -786,7 +786,7 @@ export const RunPanel = ({
 							: null
 					}
 					pulse={pulses[row.id] ?? 0}
-					live={OPEN_CHILD_STATUSES.includes(row.status)}
+					live={isOpenChildStatus(row.status)}
 					/*
 					 * The reader's clock anchors (`useChildRowClock`): the instants THIS model
 					 * was measured at, so the header's elapsed ticks from the same pinned

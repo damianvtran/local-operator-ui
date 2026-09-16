@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import { act, createElement } from "react";
 
 /*
  * The composer's status row: the goal disclosure and the plan count, above the
@@ -35,6 +37,19 @@ import { build } from "esbuild";
  * tsconfig paths.
  */
 
+/*
+ * React DOM FEATURE-DETECTS THE DOM AT IMPORT TIME, so a document has to exist
+ * before anything imports it. This file's server-rendering tests do not need one,
+ * but the driven test at the end of the file does, and the detection has already
+ * run by then: with no document React concludes the browser needs its legacy
+ * change-event polyfill, and the first focus of a textarea throws
+ * `activeElement.attachEvent is not a function`. `suggestion-stack-react.test.mjs`
+ * bootstraps one at the top of the file for the same reason.
+ */
+const bootstrapDOM = new JSDOM("<!doctype html>");
+globalThis.window = bootstrapDOM.window;
+globalThis.document = bootstrapDOM.window.document;
+
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -42,6 +57,7 @@ const bundle = await build({
 			import { renderToStaticMarkup } from "react-dom/server";
 			import {
 				ComposerStatusRow,
+				shouldRestoreComposerFocus,
 				goalDisclosureLabel,
 				planChipLabel,
 				subagentChipLabel,
@@ -59,7 +75,7 @@ const bundle = await build({
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
-			export { goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, shouldRestoreComposerFocus, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -115,6 +131,8 @@ globalThis.localStorage = {
 };
 const {
 	renderRow,
+	ComposerStatusRow,
+	shouldRestoreComposerFocus,
 	goalDisclosureLabel,
 	planChipLabel,
 	subagentChipLabel,
@@ -1225,26 +1243,105 @@ test("the reveal moves ONE region, and its arithmetic is the region's own", () =
 	assert.equal(region.scrollTop, 0);
 });
 
-test("the row hands focus back to the composer when a chip unmounts under it", () => {
+/**
+ * The shipped row in a DOM, beside the textarea the composer owns.
+ *
+ * `jsdom` is a devDependency this repo already renders shipped components with
+ * (`suggestion-stack-react.test.mjs`), and `react-dom/client` is imported AFTER
+ * the globals exist because it feature-detects `document` at import time.
+ * `cleanup` restores every global it replaced, so the server-rendering tests in
+ * this file are unaffected by the order they run in.
+ */
+async function rowInDom() {
+	const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
+	const { window } = dom;
+	const originals = new Map();
+	const shims = {
+		window,
+		document: window.document,
+		HTMLElement: window.HTMLElement,
+		Node: window.Node,
+		navigator: window.navigator,
+		// The row's own reveal bus dispatches on `document`, and an `Event` built
+		// from Node's global is a different realm's object: jsdom's
+		// `dispatchEvent` refuses it ("parameter 1 is not of type 'Event'").
+		Event: window.Event,
+		CustomEvent: window.CustomEvent,
+		// Radix measures its tooltip content through the global, not through
+		// `window.`: unbound, the call is a ReferenceError inside a portal rather
+		// than a skipped measurement.
+		getComputedStyle: window.getComputedStyle.bind(window),
+		// Floating UI (Radix's tooltip positioning) reaches for these globals by
+		// name, not through `window.`, as soon as a tooltip's trigger mounts.
+		Element: window.Element,
+		SVGElement: window.SVGElement,
+		MouseEvent: window.MouseEvent,
+		KeyboardEvent: window.KeyboardEvent,
+		FocusEvent: window.FocusEvent,
+		// Deliberately NOT jsdom's own: with `pretendToBeVisual` its rAF is a
+		// real frame loop, and floating-ui's `autoUpdate` keeps one running for as
+		// long as a trigger is mounted — which leaves the process with a pending
+		// frame forever and node:test never exits. Nothing here asserts on a
+		// measurement, so the no-op is the honest shim.
+		requestAnimationFrame: () => 0,
+		cancelAnimationFrame: () => {},
+		IS_REACT_ACT_ENVIRONMENT: true,
+		// Radix's tooltip only measures when it opens, but the shim costs nothing
+		// and its absence is a crash deep inside a portal rather than a skip.
+		ResizeObserver: class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	};
+	for (const [key, value] of Object.entries(shims)) {
+		originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+		Object.defineProperty(globalThis, key, {
+			configurable: true,
+			writable: true,
+			value,
+		});
+	}
+	const { createRoot } = await import("react-dom/client");
+	const root = createRoot(window.document.getElementById("root"));
+	return {
+		window,
+		root,
+		cleanup() {
+			root.unmount();
+			window.close();
+			for (const [key, descriptor] of originals) {
+				if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+				else delete globalThis[key];
+			}
+		},
+	};
+}
+
+test("the refocus answers for the focused NODE, not for a chip count", () => {
 	/*
 	 * UX round 1's U1, observed live: `active=BUTTON/jobs` then `active=BODY/None`
 	 * when the last running row settles. The row cannot restore focus itself — the
-	 * composer's textarea is the parent's ref — so the parent passes the target in,
-	 * and the assertion is that BOTH halves are wired: the conditional refocus in the
-	 * row, and the parent's own `textareaRef` behind it.
+	 * composer's textarea is the parent's ref — so the parent passes the target in.
+	 *
+	 * AGENT REVIEW ROUND 2, m2, IS THE CASE A COUNT CANNOT SEE: `frontend.jobs` is
+	 * polled, so a running job settling while a child starts moves the row 1 -> 1,
+	 * the focused chip unmounts, and a count that never moved stays silent. The
+	 * predicate is therefore about the node, and there is no count left in this
+	 * path to be wrong about.
 	 */
 	const row = code(ROW);
 	assert.match(
 		row,
-		/if \(shrank && rowHeldFocus\.current && !holdsFocus\) onFocusComposer\?\.\(\);/,
+		/shouldRestoreComposerFocus\(\s*previouslyFocused\.current,\s*focusedInRow !== null,?\s*\)/,
 	);
-	// The condition's first half: only a SHRINKING row can have lost the chip.
-	assert.match(row, /const shrank = chipCount < previousChipCount\.current;/);
-	// Its second half: the row must have HELD focus last commit, because by the time
-	// the effect runs the browser has already moved it to `<body>` and the evidence
-	// is gone. Without this half every settle would yank focus mid-sentence.
-	assert.match(row, /rowHeldFocus\.current = holdsFocus;/);
-	// And the prop is optional, so a story that renders the row alone need not
+	// The remembered thing is the NODE, and it is dropped whenever the row stops
+	// holding focus — which is what keeps the refocus conditional rather than a
+	// magnet that pulls focus out of a transcript mid-sentence.
+	assert.match(row, /previouslyFocused\.current = focusedInRow;/);
+	assert.match(row, /rowRef\.current\?\.contains\(active\) === true/);
+	assert.doesNotMatch(row, /chipCount/);
+	// The prop is optional, so a story that renders the row alone need not
 	// invent a focus target.
 	assert.match(row, /onFocusComposer\?: \(\) => void;/);
 
@@ -1252,6 +1349,177 @@ test("the row hands focus back to the composer when a chip unmounts under it", (
 	assert.match(
 		composer,
 		/onFocusComposer=\{\(\) => textareaRef\.current\?\.focus\(\)\}/,
+	);
+
+	/*
+	 * The predicate's truth table, over the two facts the effect reads — exported
+	 * so this half needs no renderer. An element that is still connected means the
+	 * user is on a control that still exists; a row that still holds focus means
+	 * they are on another control in it. Neither may move focus, and the swap is
+	 * the first row of the table rather than a special case: it takes no count.
+	 */
+	assert.equal(
+		shouldRestoreComposerFocus({ isConnected: false }, false),
+		true,
+		"the node is gone and the row lost focus: hand it back",
+	);
+	assert.equal(
+		shouldRestoreComposerFocus(null, false),
+		false,
+		"nothing was focused here",
+	);
+	assert.equal(
+		shouldRestoreComposerFocus({ isConnected: true }, false),
+		false,
+		"the node survives",
+	);
+	assert.equal(
+		shouldRestoreComposerFocus({ isConnected: true }, true),
+		false,
+		"still in the row",
+	);
+	assert.equal(
+		shouldRestoreComposerFocus({ isConnected: false }, true),
+		false,
+		"the row still holds it",
+	);
+});
+
+test("the shipped row hands focus back on a same-count swap, driven", async () => {
+	/*
+	 * The driven half, on the SHIPPED component in a DOM, because m2 is about what
+	 * a render does and a shape pin cannot say it. `jsdom` is a devDependency this
+	 * repo already renders shipped components with (`suggestion-stack-react.test.mjs`).
+	 *
+	 * `document.activeElement` IS STUBBED, and that is the one thing this test
+	 * fakes: focusing a Radix tooltip trigger in jsdom starts the popper's own loop,
+	 * and every `act()` that follows then takes between thirty seconds and a minute
+	 * (measured, with and without an rAF shim) — a cost no per-commit suite can pay
+	 * for one assertion. The stub replaces exactly the platform read the effect
+	 * makes; the render, the unmount, the chip's detachment, the effect and the
+	 * parent's callback are all real, and the final assertion drops the stub and
+	 * reads the browser's own `activeElement`, so the focus the callback asks for is
+	 * observed and not assumed.
+	 */
+	const { window: dom, root, cleanup } = await rowInDom();
+	/*
+	 * Radix's tooltip provider settles a state update after a render returns, so
+	 * React prints its own "not wrapped in act" notice. It is harness noise rather
+	 * than evidence about the row, so it is collected and asserted to be exactly
+	 * that — anything else React reports still fails this test.
+	 */
+	const quiet = [];
+	const realError = console.error;
+	console.error = (...args) => void quiet.push(String(args[0]));
+	try {
+		const h = createElement;
+		let refocuses = 0;
+		const composerField = () => dom.document.getElementById("composer");
+		const element = (jobs) =>
+			h(
+				"div",
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontend(""),
+					runDetails: detailsWith(jobs),
+					onFocusComposer: () => {
+						refocuses += 1;
+						composerField().focus();
+					},
+				}),
+				h("textarea", { id: "composer", readOnly: true }),
+			);
+		const running = () => [wireJob("s1", "bash", "running", "bash: sleep 60")];
+		const delegate = () => [
+			wireJob("c1", "task", "running", "Draft the summary"),
+		];
+
+		/*
+		 * The stub is an OWN property so it shadows the prototype's getter, and the
+		 * real one is kept to put back: `delete` is a lint error in this tree, and
+		 * re-defining with the platform's own descriptor is what it was doing anyway.
+		 */
+		const realActiveElement = Object.getOwnPropertyDescriptor(
+			dom.window.Document.prototype,
+			"activeElement",
+		);
+		let active = null;
+		Object.defineProperty(dom.document, "activeElement", {
+			configurable: true,
+			get: () => active,
+		});
+
+		await act(async () => void root.render(element(running())));
+		const chip = dom.document.querySelector("[data-status-jobs]");
+		assert.ok(chip, "a running tool job draws the jobs chip");
+
+		// One tick with unchanged props is what records the focused control, the way
+		// a press renders in the app.
+		active = chip;
+		await act(async () => void root.render(element(running())));
+		assert.equal(refocuses, 0, "nothing is owed while the focused chip lives");
+
+		// THE SWAP, at an unchanged count: one running tool job becomes one running
+		// child. A count-based predicate saw `1 -> 1` and did nothing.
+		active = dom.document.body;
+		await act(async () => void root.render(element(delegate())));
+		assert.ok(
+			!dom.document.body.contains(chip),
+			"the focused chip really unmounted, so this is the swap and not a reuse",
+		);
+		assert.equal(refocuses, 1, "the same-count swap hands focus back");
+		Object.defineProperty(dom.document, "activeElement", realActiveElement);
+		assert.equal(
+			dom.document.activeElement,
+			composerField(),
+			"and the focus the callback asked for is the browser's own",
+		);
+
+		// The control: the focused chip STAYS while the one beside it goes, so the
+		// row still holds focus and nothing may move.
+		Object.defineProperty(dom.document, "activeElement", {
+			configurable: true,
+			get: () => active,
+		});
+		await act(
+			async () => void root.render(element([...delegate(), ...running()])),
+		);
+		const held = dom.document.querySelector("[data-status-jobs]");
+		active = held;
+		await act(
+			async () => void root.render(element([...delegate(), ...running()])),
+		);
+		assert.equal(refocuses, 1, "the row holds focus to begin with");
+		active = composerField();
+		await act(
+			async () => void root.render(element([...delegate(), ...running()])),
+		);
+		assert.ok(
+			dom.document.querySelector("[data-status-jobs]") === held,
+			"the focused chip is the survivor of the two, so the node under test is real",
+		);
+		await act(async () => void root.render(element(running())));
+		assert.equal(
+			refocuses,
+			1,
+			"the chip beside the focused one went, and the row still holds focus",
+		);
+
+		// The other control: a settle while the user is writing leaves them writing.
+		active = composerField();
+		await act(async () => void root.render(element(running())));
+		assert.equal(
+			refocuses,
+			1,
+			"a settle under no focused control pulls nothing",
+		);
+	} finally {
+		console.error = realError;
+		cleanup();
+	}
+	assert.ok(
+		quiet.every((message) => message.includes("not wrapped in act")),
+		`React reported something the harness does not expect: ${quiet.join(" | ")}`,
 	);
 });
 

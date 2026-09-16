@@ -266,12 +266,21 @@ which prints its own numbers into the picture, after `document.fonts.ready`):
 | Column | Row height | `overflowX` | Chips |
 |---|---|---|---|
 | 900px | 32px | 0 | 4 |
-| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 80px | 0 | 4 |
+| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 106px | 0 | 4 |
 | 172px (the floor) | 106px | 0 | 4 |
 
 At 240px the three count chips take the lines under the goal; at the floor the
 row stacks, the goal first and the chips under it. The heights are the cost, and
 § 3's gate is what keeps them from being paid on a session with nothing running.
+
+**The 240px height is 106px, and this table printed 80px until round 2 (m1).**
+The 80px was the pre-group arrangement's number — the goal sharing line 1 with one
+chip and the other two below — and the D2 paragraph below is what replaced it, so
+the row was described by a measurement its own fix had superseded. The delta is the
+fix rather than a regression: the band gained one line (the goal no longer shares
+it) and gave up the tear. `docs/evidence/chat-composer-status-row/README.md` carries
+the same correction with the comparison, and
+`docs/composer-status-tabs.md` § 3.1's matrix prints 106px because it reads this row too.
 
 **The counts are ONE GROUP, and the goal keeps a floor.** Both are design review
 round 1's D2, and both are layout properties rather than taste. With the chips as
@@ -327,10 +336,20 @@ keyboard-focused, the last two through the rig's own input because `:hover` and
      lands visible, in all four bands) and proves nothing about the animation, since
      the animation was off in both frames;
   3. `activity-motion-1/` and `activity-motion-2/` are the pair that shows the spin
-     actually turning: the rig's `{ liveMotion }` tuple skips the override for those
-     two shutters only, so the same story, theme and rig are photographed a rotation
-     angle apart. Their limits are stated with them: they prove the shipped class
-     animates, and they are a Storybook wire fixture rather than a live app.
+     actually turning: the rig's `{ liveMotion, phaseMs }` tuple skips the override
+     for those two shutters only and HOLDS the animation at an explicit
+     `currentTime` — `pause()` and then `currentTime = phaseMs` on every mark in the
+     row, through the Web Animations API — so the same story, theme and rig are
+     photographed half a turn apart and the pair is re-derivable rather than
+     sampled (measured: three consecutive captures came back byte-identical).
+     Round 2's M1 is why that sentence is measured: the rule that preceded this one
+     selected `.animate-spin`, a token this mark does not carry
+     (`motion-safe:animate-spin` is), so it matched nothing and the pair was
+     sampled while three documents claimed otherwise — and a `paused` rule would not
+     have held it either, since it freezes wherever it lands. The rig now FAILS the
+     capture when the hold does not apply. Their limits are stated with them: they
+     prove the shipped class animates, at two points of the shipped keyframes, in a
+     Storybook wire fixture rather than a live app.
 - **No hover ground, no lift, no scale** — hover is the colour step the readings'
   box already ships.
 

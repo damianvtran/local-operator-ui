@@ -198,6 +198,32 @@ export const subagentChipLabel = (tally: ActivityTally): string =>
 export const jobChipLabel = (tally: ActivityTally): string =>
 	`${JOB_ACTION}${LABEL_SEAM}${jobClause(tally)}`;
 
+/**
+ * Whether the row owes the composer its focus back.
+ *
+ * UX round 1's U1 is the hazard and agent review round 2's m2 is the case the
+ * first fix could not see. The predicate is about the node that HAD focus, never
+ * about how many chips the row draws: a count compares the shape of the row, so a
+ * same-count swap — the polled `frontend.jobs` settling a running row while a
+ * child starts, 1 -> 1 — unmounts the focused control and drops focus to `<body>`
+ * with nothing changed for a count to notice. A detached node says it directly.
+ *
+ * `rowHoldsFocus` is the second half and it is what keeps this from being
+ * unconditional: when the row still holds focus the user is on another control in
+ * it, and moving them to the composer would be the same defect pointing the other
+ * way. Both inputs are facts the effect reads from the DOM, which is why they are
+ * the parameters: the truth table is testable without a renderer, and
+ * `composer-tabs.test.mjs` drives the real component through jsdom for the halves
+ * a predicate cannot prove.
+ */
+export const shouldRestoreComposerFocus = (
+	previouslyFocused: { isConnected: boolean } | null,
+	rowHoldsFocus: boolean,
+): boolean =>
+	previouslyFocused !== null &&
+	!previouslyFocused.isConnected &&
+	!rowHoldsFocus;
+
 export type ComposerStatusRowProps = {
 	/**
 	 * The canonical snapshot the readings strip also reads.
@@ -314,11 +340,6 @@ export const ComposerStatusRow = ({
 	 */
 	const children = runDetails ? activityTally(runDetails.subagents) : null;
 	const jobs = runDetails ? activityTally(runDetails.jobs) : null;
-	const chipCount =
-		(showGoal ? 1 : 0) +
-		(showPlan ? 1 : 0) +
-		(children ? 1 : 0) +
-		(jobs ? 1 : 0);
 
 	/*
 	 * The last activity row settling unmounts its chip, and if that chip held focus
@@ -331,25 +352,38 @@ export const ComposerStatusRow = ({
 	 * The trigger above this row already carries this idiom for its own close (the
 	 * button the press landed on unmounts with the pane), and this is the same
 	 * hazard with the same remedy: a CONDITIONAL refocus, never an unconditional
-	 * one. The condition is read from the previous commit — `rowHeldFocus` is
-	 * whether the row held focus when the DOM last settled — because by the time
-	 * this effect runs the browser has already moved focus to `<body>` and the
-	 * evidence that a chip had it is gone. Without that half, every settle in a
-	 * session where the user was typing in the transcript would yank focus into the
-	 * composer.
+	 * one.
+	 *
+	 * WHAT IS REMEMBERED IS THE NODE, not how many chips the row draws (agent
+	 * review round 2, m2). The first version counted chips across commits and
+	 * refocused on a SHRINK, which cannot see the swap this wire makes ordinary:
+	 * `frontend.jobs` is polled, so a running job settling while a child starts —
+	 * or a `bash` row registering — moves the row 1 -> 1, the focused chip
+	 * unmounts, and the browser drops focus with the count unchanged. The fact the
+	 * browser does give us is that the node it was on is DETACHED while the row
+	 * holds NO focus; if the row still holds focus the user is on another control
+	 * in it and nothing should move. The previous commit's answer has to be
+	 * remembered because by the time this effect runs focus is already on
+	 * `<body>` — and the remembered node is dropped the moment the row stops
+	 * holding focus, so a settle in a session whose user is typing in the
+	 * transcript cannot yank focus into the composer.
 	 */
 	const rowRef = useRef<HTMLDivElement | null>(null);
-	const previousChipCount = useRef(chipCount);
-	const rowHeldFocus = useRef(false);
+	const previouslyFocused = useRef<HTMLElement | null>(null);
 	useEffect(() => {
-		const shrank = chipCount < previousChipCount.current;
-		previousChipCount.current = chipCount;
 		const active = document.activeElement;
-		const holdsFocus =
-			active instanceof HTMLElement &&
-			rowRef.current?.contains(active) === true;
-		if (shrank && rowHeldFocus.current && !holdsFocus) onFocusComposer?.();
-		rowHeldFocus.current = holdsFocus;
+		const focusedInRow =
+			active instanceof HTMLElement && rowRef.current?.contains(active) === true
+				? active
+				: null;
+		if (
+			shouldRestoreComposerFocus(
+				previouslyFocused.current,
+				focusedInRow !== null,
+			)
+		)
+			onFocusComposer?.();
+		previouslyFocused.current = focusedInRow;
 	});
 
 	if (!showGoal && !showPlan && !children && !jobs) return null;
