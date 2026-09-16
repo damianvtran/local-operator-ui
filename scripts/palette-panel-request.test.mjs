@@ -26,7 +26,8 @@ const bundle = await build({
 const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { PANEL_REQUEST_TTL_MS, usePanelPresentationStore } = module;
+const { PANEL_REQUEST_TTL_MS, shellHostAction, usePanelPresentationStore } =
+	module;
 
 const store = () => usePanelPresentationStore.getState();
 
@@ -144,4 +145,136 @@ test("the claim is not disturbed by requests coming and going", () => {
 	assert.equal(store().presenterClaimed, true);
 	release();
 	assert.equal(store().presenterClaimed, false);
+});
+
+/*
+ * The invoker, which is what makes closing a shell-presented panel leave the
+ * keyboard where the user was (UX round 1, U1).
+ *
+ * It rides with the request because the requester is the last one who can see
+ * it: the palette holds focus in its own search field, and the panel's mount
+ * removes that field in the same commit — so a host that read
+ * `document.activeElement` when the request ARRIVED recorded a node that was
+ * already gone, and closing the panel dropped focus on `document.body`.
+ */
+
+test("a request carries the control to return focus to", () => {
+	const row = { focus() {} };
+	store().requestPanel("info", row);
+	assert.equal(store().request.invoker, row);
+	/*
+	 * And a caller with no control to name gets `null` rather than a guess: the
+	 * honest fallback is the host's (whatever is focused when it presents), not a
+	 * field silently holding a stale node from the request before this one.
+	 */
+	store().requestPanel("usage");
+	assert.equal(store().request.invoker, null);
+});
+
+/*
+ * What the SHELL host does with a request, which is the arbitration the second
+ * presenter adds — and the one state a render cannot be driven into from a test
+ * (code review round 1, M1).
+ *
+ * The gesture, in full, because the order of the branches is the fix:
+ *
+ *   1. On `/settings` with a session in the store, the palette opens Analytics.
+ *      No pane is mounted, so the shell host presents it.
+ *   2. The palette chord opens again OVER the panel, and the user picks Session —
+ *      a pane-only destination. The palette writes the request and routes to
+ *      `/chat`, so a pane is mounting in the SAME commit, and it will present
+ *      the picker.
+ *   3. The shell host must therefore yield. Before this rule it returned early
+ *      for a destination it cannot present — leaving its own panel up — and the
+ *      pane's picker opened underneath it: two stacked modals, the lower one with
+ *      no cue about where it came from.
+ */
+
+test("the shell host presents a machine request when no pane owns the slot", () => {
+	store().requestPanel("analytics");
+	assert.equal(
+		shellHostAction({
+			request: store().request,
+			presentable: true,
+			claimed: false,
+			now: store().request.requestedAt,
+		}),
+		"present",
+	);
+});
+
+test("the shell host leaves a machine request to the pane that claimed the slot", () => {
+	store().requestPanel("analytics");
+	assert.equal(
+		shellHostAction({
+			request: store().request,
+			presentable: true,
+			claimed: true,
+			now: store().request.requestedAt,
+		}),
+		"hold",
+	);
+});
+
+test("a request the shell host cannot present makes it yield, panel or no panel", () => {
+	store().requestPanel("session.diagnostics");
+	/*
+	 * Both values of `claimed`, because the gesture's own race is which host's
+	 * effect React runs first: the pane claims in the same commit the request
+	 * arrives, so a rule that asked the claim first would have depended on that
+	 * ordering. Yielding on the destination alone does not.
+	 */
+	for (const claimed of [false, true]) {
+		assert.equal(
+			shellHostAction({
+				request: store().request,
+				presentable: false,
+				claimed,
+				now: store().request.requestedAt,
+			}),
+			"yield",
+			`a pane-only request must be handed to the pane (claimed: ${claimed})`,
+		);
+	}
+});
+
+test("a request nothing can still consume is retired rather than acted on", () => {
+	store().requestPanel("info");
+	const request = store().request;
+	assert.equal(
+		shellHostAction({
+			request,
+			presentable: true,
+			claimed: false,
+			now: request.requestedAt + PANEL_REQUEST_TTL_MS + 1,
+		}),
+		"retire",
+	);
+	/*
+	 * And the TTL is asked BEFORE the destination: an expired pane-only request is
+	 * still retired, which is what stops the store holding a destination for the
+	 * life of the window on a route no pane ever mounts on.
+	 */
+	assert.equal(
+		shellHostAction({
+			request,
+			presentable: false,
+			claimed: false,
+			now: request.requestedAt + PANEL_REQUEST_TTL_MS + 1,
+		}),
+		"retire",
+	);
+	store().consumePanel(request.nonce);
+});
+
+test("no request is nothing to do, not a decision", () => {
+	assert.equal(
+		shellHostAction({
+			request: null,
+			presentable: true,
+			claimed: false,
+			now: Date.now(),
+		}),
+		null,
+	);
 });

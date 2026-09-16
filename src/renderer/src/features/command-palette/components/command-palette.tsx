@@ -286,6 +286,30 @@ export const CommandPalette: FC = () => {
 		],
 	);
 
+	/*
+	 * Where focus goes when the palette closes, and where it goes when a row that
+	 * opens a PANEL closes it (see the `panel` arm below — the same node both
+	 * times, so the two exits agree).
+	 *
+	 * Captured as the palette OPENS rather than read at close time: by then the
+	 * focused element is the palette's own field. Three answers, in order, and
+	 * the third is why this exists at all — Radix's modal dialog ends by focusing
+	 * its trigger, and this surface has no trigger (it is opened from a keyboard
+	 * gesture or the sidebar's button), so `triggerRef.current` is null and focus
+	 * used to land on the document body. A user who pressed Escape had to click
+	 * before the keyboard worked again.
+	 *
+	 * The sidebar button is the fallback rather than `body` because that is where
+	 * the user's hand is: it is the palette's one visible door, it is on screen on
+	 * every route, and focusing it means the next Tab or Enter continues from
+	 * somewhere real.
+	 *
+	 * Declared ABOVE the row runners because a row that opens a panel hands this
+	 * node to the host that presents it, and the capture effect below fills it on
+	 * open.
+	 */
+	const returnFocusTo = useRef<HTMLElement | null>(null);
+
 	const runItem = useCallback(
 		(item: PaletteItem) => {
 			switch (item.target.type) {
@@ -322,9 +346,16 @@ export const CommandPalette: FC = () => {
 					 * That single condition is requirement R2: choosing Analytics while
 					 * reading Settings used to throw the user back to chat to show them a page
 					 * about the machine they were already looking at.
+					 *
+					 * The invoker rides along because the row is about to close with the
+					 * palette: the panel that opens is modal, so the last focused control the
+					 * user touched is the palette's own search field, which unmounts in that
+					 * same commit — and the host that restores focus after the panel cannot
+					 * reach a node that no longer exists (UX round 1, U1). This is the same
+					 * node Escape returns to, which is what keeps the two exits agreeing.
 					 */
 					const { destination } = item.target;
-					requestPanel(destination);
+					requestPanel(destination, returnFocusTo.current);
 					closeCommandPalette();
 					if (
 						destinationNeedsSession(destination) &&
@@ -346,23 +377,6 @@ export const CommandPalette: FC = () => {
 
 	/* ------------------------------------------------------------------ focus */
 
-	/*
-	 * Where focus goes when the palette closes.
-	 *
-	 * Captured as the palette OPENS rather than read at close time: by then the
-	 * focused element is the palette's own field. Three answers, in order, and
-	 * the third is why this exists at all — Radix's modal dialog ends by
-	 * focusing its trigger, and this surface has no trigger (it is opened from a
-	 * keyboard gesture or the sidebar's button), so `triggerRef.current` is null
-	 * and focus used to land on the document body. A user who pressed Escape had
-	 * to click before the keyboard worked again.
-	 *
-	 * The sidebar button is the fallback rather than `body` because that is
-	 * where the user's hand is: it is the palette's one visible door, it is on
-	 * screen on every route, and focusing it means the next Tab or Enter
-	 * continues from somewhere real.
-	 */
-	const returnFocusTo = useRef<HTMLElement | null>(null);
 	useEffect(() => {
 		if (!isCommandPaletteOpen) return;
 		const active = document.activeElement;

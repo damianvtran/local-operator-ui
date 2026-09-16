@@ -150,8 +150,14 @@ immediately.
 palette holds every row to ("a palette that lists an action it cannot perform is
 worse than one that omits it") — with the backend down the machine panels have
 nothing to read, and the driver scene with no backend asserts that no panel row
-is offered. `/session` additionally requires a pane that can present it, since
-that pane is its only presenter.
+is offered. They are gated a second time on **main's own answer about the
+credential** (`DaemonStatusSnapshot.desktopAvailable === false`, QA round 1 Q-1):
+`/v1/capabilities` is an unauthenticated route, so a daemon this app cannot
+authenticate to still advertises the features the liveness bit reads, and the row
+would open a panel reading "Desktop authorization is required." in every section.
+Only an explicit `false` closes that gate — a host with no main to ask is not a
+refusal. `/session` additionally requires a pane that can present it, since that
+pane is its only presenter.
 
 ## How matches are ranked
 

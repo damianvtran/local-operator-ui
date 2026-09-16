@@ -49,7 +49,10 @@ const PALETTE =
 const SOURCES =
 	"src/renderer/src/features/command-palette/use-palette-sources.ts";
 const OUTLET = "src/renderer/src/features/chat/pickers/panel-outlet.tsx";
+const STORE = "src/renderer/src/shared/store/panel-presentation-store.ts";
 const HOST = "src/renderer/src/features/chat/pickers/picker-host.tsx";
+const SLASH_COMMANDS =
+	"src/renderer/src/features/chat/components/slash-commands.tsx";
 const APP = "src/renderer/src/app.tsx";
 
 test("the three machine panels are declared as one kind on the table", () => {
@@ -93,13 +96,20 @@ test("destinationNeedsSession is defined once, on the table", () => {
 	);
 });
 
-test("exactly three call sites use the predicate, and they are the three that must", () => {
+test("exactly four call sites use the predicate, and they are the four that must", () => {
 	/*
-	 * Design § 14.1: a FOURTH copy of the predicate is the defect this pins. The
-	 * three are the dispatcher's gate, the composer's staged line and the palette's
-	 * routing — and each is matched with the call it belongs to rather than by
-	 * counting occurrences, because an occurrence can move to a file where it means
-	 * nothing.
+	 * Design § 14.1: a FIFTH copy of the predicate is the defect this pins. The four
+	 * are the dispatcher's gate, the composer's staged line, the composer's Enter
+	 * footer and the palette's routing — and each is matched with the call it
+	 * belongs to rather than by counting occurrences, because an occurrence can move
+	 * to a file where it means nothing.
+	 *
+	 * The footer joined in round 1's remediation (code review m3): it printed "this
+	 * pane needs an open conversation" from the raw pane bit, which is the one
+	 * question the predicate exists to centralise — a machine panel runs on a
+	 * sessionless pane, so the refusal it promised was one the dispatcher no longer
+	 * gives. Unreachable then because no machine panel declares a staging route; a
+	 * false promise the moment one does.
 	 */
 	assert.match(
 		code(DISPATCH),
@@ -110,6 +120,11 @@ test("exactly three call sites use the predicate, and they are the three that mu
 		code(INPUT),
 		/destinationNeedsSession\(row\.command\.destination\)/,
 		"the composer's staged line must fold the predicate in, or it prints the refusal the dispatcher no longer gives",
+	);
+	assert.match(
+		code(SLASH_COMMANDS),
+		/paneHasSession: destinationNeedsSession\(activeDestination\)/,
+		"the Enter footer's pane clause must be folded with the same predicate the note and the dispatcher read",
 	);
 	const palette = code(PALETTE);
 	assert.match(
@@ -124,14 +139,13 @@ test("exactly three call sites use the predicate, and they are the three that mu
 	);
 });
 
-test("the predicate has one definition and exactly three call sites, repo-wide", () => {
+test("the predicate has one definition and exactly four call sites, repo-wide", () => {
 	/*
-	 * Design § 14.1, stated as a count rather than as three separate matches: a
-	 * FOURTH copy of the predicate — a second `Set` of names, a second
-	 * `sessionId ? …` term — is the defect this test exists to prevent, and the
-	 * failure it causes is silent in both directions (a composer promising a
-	 * refusal that no longer happens, or one that never prints it for a command
-	 * that will be refused).
+	 * Design § 14.1, stated as a count rather than as separate matches: a FIFTH copy
+	 * of the predicate — a second `Set` of names, a second `sessionId ? …` term — is
+	 * the defect this test exists to prevent, and the failure it causes is silent in
+	 * both directions (a composer promising a refusal that no longer happens, or one
+	 * that never prints it for a command that will be refused).
 	 *
 	 * Walked rather than listed, because the point is the whole renderer: a new
 	 * file that re-derives the answer must fail this test, and a test that named
@@ -166,16 +180,16 @@ test("the predicate has one definition and exactly three call sites, repo-wide",
 		[REGISTRY],
 		`the predicate must be defined once, on the destination table; found ${definitions.join(", ")}`,
 	);
-	for (const path of [DISPATCH, INPUT, PALETTE]) {
+	for (const path of [DISPATCH, INPUT, SLASH_COMMANDS, PALETTE]) {
 		assert.ok(
 			callers.includes(path),
-			`\`${path}\` is one of the three call sites and must ask the predicate`,
+			`\`${path}\` is one of the four call sites and must ask the predicate`,
 		);
 	}
 	assert.equal(
 		callers.length,
-		3,
-		`exactly three call sites (the dispatcher's gate, the composer's staged line, the palette's routing); found ${callers.join(", ")}`,
+		4,
+		`exactly four call sites (the dispatcher's gate, the composer's staged line, the composer's Enter footer, the palette's routing); found ${callers.join(", ")}`,
 	);
 });
 
@@ -219,17 +233,44 @@ test("PickerOutlet maps a machine panel down to exactly its own context", () => 
 	);
 });
 
-test("the shell host presents only machine panels, only when no pane claims the slot", () => {
+test("the shell host asks the store's decision, and acts on every answer", () => {
 	const outlet = code(OUTLET);
+	/*
+	 * The SEQUENCE lives in `shellHostAction` (the store) and is executed in
+	 * `palette-panel-request.test.mjs`; what is pinned here is that this host asks
+	 * it, with the two facts only the host has — the destination table's own answer,
+	 * and the claim read at the instant the request arrives — and that it acts on
+	 * every answer rather than on the two that existed before M1.
+	 */
 	assert.match(
 		outlet,
-		/if \(usePanelPresentationStore\.getState\(\)\.presenterClaimed\) return;/,
-		"the claim is what arbitrates between two mounted hosts",
+		/const action = shellHostAction\(\{/,
+		"the host must ask the store for the decision rather than chain its own `if`s",
 	);
 	assert.match(
 		outlet,
-		/if \(!machinePanelFor\(request\.destination\)\) return;/,
-		"a destination this host cannot present must be LEFT for the pane rather than consumed",
+		/presentable: Boolean\(machinePanelFor\(request\.destination\)\)/,
+		"whether this host can present the request must be asked of the destination table",
+	);
+	assert.match(
+		outlet,
+		/claimed: usePanelPresentationStore\.getState\(\)\.presenterClaimed/,
+		"the claim is read with `getState()` — a fact about the moment the request ARRIVES, not a subscribed value that would re-run this effect when a claim flips",
+	);
+	assert.match(
+		outlet,
+		/if \(action === "yield"\) \{\s*setPanel\(null\);\s*return;\s*\}/,
+		"a request this host cannot present must make it YIELD — clear its own panel — or the pane's picker opens under a machine panel that never clears (code review round 1, M1)",
+	);
+	assert.match(
+		outlet,
+		/if \(action === "retire"\) \{/,
+		"an expired request is retired rather than acted on",
+	);
+	assert.match(
+		outlet,
+		/if \(action !== "present"\) return;/,
+		"`hold` is the pane's answer to give, so the host must do nothing for it",
 	);
 	assert.match(
 		outlet,
@@ -243,13 +284,18 @@ test("the shell host presents only machine panels, only when no pane claims the 
 	);
 	assert.match(
 		outlet,
-		/PANEL_REQUEST_TTL_MS/,
-		"an expired request is retired rather than acted on",
+		/request\.invoker \?\?/,
+		"the invoker rides on the request, because the palette's own search field unmounts in the same commit (UX round 1, U1)",
 	);
 	assert.match(
 		code(APP),
 		/<PanelOutlet \/>/,
 		"the shell host must be mounted at the shell, not inside the chat route",
+	);
+	assert.match(
+		code(STORE),
+		/export function shellHostAction\(/,
+		"the decision must be exported so the sequence can be executed rather than read",
 	);
 });
 
@@ -279,12 +325,24 @@ test("the picker host hides the native browser view while it is open", () => {
 	);
 });
 
-test("the palette gates the machine rows on liveness and the session row on a pane", () => {
+test("the palette gates the machine rows on liveness, the credential and a pane", () => {
 	const sources = code(SOURCES);
+	/*
+	 * Two gates, one answer each. The machine rows are gated on liveness AND on
+	 * main's own answer about the credential: `/v1/capabilities` is an
+	 * unauthenticated route, so `canStageDraft` alone is satisfied by an origin
+	 * every other op of ours is refused at, and the row then opens a panel reading
+	 * "Desktop authorization is required." per section (QA round 1, Q-1).
+	 */
 	assert.match(
 		sources,
-		/if \(!canStageDraft\) return \[\];/,
-		"the liveness bit is the gate the machine rows keep (a row that could open nothing is the dead control this palette refuses to offer)",
+		/if \(!canStageDraft \|\| desktopPlaneRefused\) return \[\];/,
+		"the liveness bit is the gate the machine rows keep (a row that could open nothing is the dead control this palette refuses to offer), and the credential term is what keeps an unauthenticated origin from offering one",
+	);
+	assert.match(
+		sources,
+		/desktopAvailable === false/,
+		"only main's explicit `false` closes the gate: `null` is a host with no desktop bridge or an answer still in flight, not a refusal",
 	);
 	assert.match(
 		sources,
