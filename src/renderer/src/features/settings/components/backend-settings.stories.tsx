@@ -2,36 +2,53 @@
  * The Backend settings section, in the states a first visit, a search and a deep
  * link can put it in.
  *
- * Why this file exists. This is the largest surface in the app — 99 registry
- * rows in 18 sections — and until now it had NO story, NO fixture and NO
+ * Why this file exists. This is the largest surface in the app - 99 registry
+ * rows in 18 sections - and until now it had NO story, NO fixture and NO
  * committed frame anywhere in `docs/evidence/`. Every claim about it was a claim
- * about a surface nobody could look at, and the redesign that follows has to be
- * judged against the surface as it was.
+ * about a surface nobody could look at, and the redesign it accompanies has to
+ * be judged against what it was.
  *
  * A story rather than a rig, because the one thing a browser cannot supply is
- * `window.api.desktop.request` — the preload bridge `desktop-api.desktopRequest`
+ * `window.api.desktop.request` - the preload bridge `desktop-api.desktopRequest`
  * prefers, and without which every frame would photograph a transport error. The
- * stub below is `mcp-management-section.stories.tsx`'s pattern (the four
- * operations this section issues, and a named refusal for anything else). The
- * section, its query, its search box and its controls are the PRODUCT's.
+ * stub below is `mcp-management-section.stories.tsx`'s pattern (the operations
+ * this section issues, and a named refusal for anything else). The section, its
+ * query, its filter bar and its controls are the PRODUCT's.
  *
  * The payload is not hand-written either. `scripts/fixtures/backend-settings-registry*.json`
  * is the real `/v1/settings` projection: `settings_io.py` serialized exactly as
  * `server/routes/settings.py::list_settings` does it, so a label, a help
  * sentence, an enum's choices or a `warning` clause that is wrong in a frame is
- * wrong in the registry. Two states are committed — a fresh install, and one
+ * wrong in the registry. Two states are committed - a fresh install, and one
  * configured through the registry's own `write_setting` (which is why
  * `is_default` is the product's judgement of each row rather than a flag this
  * file sets).
  *
+ * HOW THE INTERACTIVE FRAMES ARE TAKEN. Storybook's `play` cannot hold a
+ * capture: the harness photographs as soon as the story has elements and the
+ * webfonts have loaded, which is usually before a play has finished driving
+ * anything. So the driven states use this repo's own shutter contract instead
+ * (`app-updates-section.stories.tsx`): a component sets
+ * `documentElement.dataset.capturePending` on mount, runs the script, waits for
+ * the state it claims to show to be ON SCREEN, and only then clears it. A script
+ * whose state never arrives leaves the shutter closed and fails the sweep,
+ * rather than quietly committing a picture of an untouched section.
+ *
+ * The scripts are DOM-level (`element.click()`, a setter plus an `input` event)
+ * rather than `@storybook/test`'s user-event, for the same reason the hold is
+ * imperative: this runs in a layout effect, outside a play, and what it has to
+ * drive is the product's own React handlers.
+ *
  * What the frames are evidence about, and their limit: they are pictures of the
  * RENDERER over a fixture shaped like the wire. Whether the real backend serves
- * that payload is QA's job against a running app, not a frame's.
+ * that payload - and `warning`/`gated_by` in particular, which the current
+ * server does NOT project - is QA's job against a running app, not a frame's.
  */
 
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import type { FC } from "react";
+import { useLayoutEffect } from "react";
 import configuredJson from "../../../../../../scripts/fixtures/backend-settings-registry-configured.json";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
@@ -47,15 +64,15 @@ type BridgeRequest = { op: string; key?: string; value?: unknown };
  * The desktop transport, stubbed.
  *
  * `desktopRequest` prefers `window.api.desktop.request` and falls back to
- * `fetch("/__desktop")`, which Storybook's dev server does not serve — so
+ * `fetch("/__desktop")`, which Storybook's dev server does not serve - so
  * without this every frame would photograph a transport error instead of the
  * section. It answers the four operations this surface issues and refuses
  * anything else BY NAME, so a story that starts issuing a fifth read fails
  * loudly rather than hanging on a promise nothing resolves.
  *
  * `settings.edit`/`settings.reset` mutate the live payload the way the backend
- * does (the value, then `is_default`), because a "saved" or "reset" row is a
- * state this surface has and no static fixture can be in two states at once.
+ * does (the value, then `is_default`), because a saved or reset row is a state
+ * this surface has and one static fixture cannot be in two states at once.
  */
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
@@ -162,16 +179,13 @@ function payloadFor(state: string): BackendSettings {
  * `max-w-4xl` is not a story choice: it is `settings-page.tsx`'s own content
  * column, and it is what makes the column 896px at a 1380px window and 888px at
  * 1000px. A story that mounted the section at some other width would photograph
- * a layout the product never renders — and the section's stacked fallback keys
+ * a layout the product never renders - and the section's stacked fallback keys
  * on the COLUMN, not the window, so the width is the variable under test in the
  * narrow story.
  */
-const Ground = ({
+const Ground: FC<{ initialFilter?: string; focusKey?: string | null }> = ({
 	initialFilter,
 	focusKey,
-}: {
-	initialFilter?: string;
-	focusKey?: string | null;
 }) => (
 	<div className="min-h-screen bg-canvas p-6">
 		<div className="mx-auto w-full max-w-4xl">
@@ -183,103 +197,242 @@ const Ground = ({
 	</div>
 );
 
-/**
- * Install the bridge and mount the ground.
- *
- * Called from each story's `render`, which runs for the story being previewed
- * and not for its siblings — the payload is installed before the mount and
- * before React Query's first fetch.
- */
-const mount = ({
-	state = "fresh",
-	initialFilter,
-	focusKey,
-}: {
-	state?: string;
-	initialFilter?: string;
-	focusKey?: string | null;
-} = {}) => {
-	const payload = payloadFor(state);
-	installBridge(payload);
-	return <Ground initialFilter={initialFilter} focusKey={focusKey} />;
+/* ------------------------------------------------------------- the shutter */
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const nextFrame = () =>
+	new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+/** Wait for a predicate the story's own script is supposed to make true. */
+const waitFor = async (done: () => boolean, attempts = 300) => {
+	for (let i = 0; i < attempts; i++) {
+		if (done()) return true;
+		await sleep(20);
+	}
+	return false;
 };
 
-/* ------------------------------------------------------------------ plays */
+const sectionHeaderTriggers = (expanded: boolean) =>
+	Array.from(
+		document.querySelectorAll<HTMLElement>(
+			`[data-section-header] button[aria-expanded="${expanded}"]`,
+		),
+	);
+
+const clickAll = async (elements: HTMLElement[]) => {
+	for (const el of elements) {
+		el.click();
+		await sleep(10);
+	}
+};
 
 /**
- * Every state below is driven through the section headers themselves rather than
- * through the filter bar's expand/collapse controls, because that is the one
- * handle the pre-redesign surface and the redesigned one both have: the chips are
- * what the redesigned bar ADDS, and a play that depended on them would photograph
- * an error on the surface the before-frames come from.
+ * Open one section by title, and only if it is closed.
+ *
+ * Idempotent on purpose: a layout effect can run twice (React's StrictMode in
+ * development does exactly that), and an unconditional click would toggle the
+ * section straight back shut — a frame of the wrong state that still looks
+ * plausible.
  */
+const openHeader = async (title: string) => {
+	const header = buttonStartingWith(title);
+	if (header?.getAttribute("aria-expanded") === "false") {
+		header.click();
+		await sleep(30);
+	}
+};
+
+/** Reveal the advanced tier, and only if it is not already shown. */
+const ensureAdvanced = async () => {
+	const chip = buttonContaining("Show advanced");
+	if (chip?.getAttribute("aria-pressed") === "false") {
+		chip.click();
+		await sleep(50);
+	}
+};
 
 /**
  * A button whose visible text starts with `text`.
  *
  * Text rather than an accessible name, because a section header's name is a row
  * of marks (title, count, scope, changed dot) whose exact spelling is the
- * redesign's to choose — while the title it starts with is the registry's.
+ * design's to choose - while the title it starts with is the registry's.
  */
 const buttonStartingWith = (text: string) =>
-	screen
-		.queryAllByRole("button")
-		.find((button) => (button.textContent ?? "").trim().startsWith(text));
+	Array.from(document.querySelectorAll<HTMLElement>("button")).find((button) =>
+		(button.textContent ?? "").trim().startsWith(text),
+	);
 
-/** A button whose visible text contains `text`, case-insensitively. */
 const buttonContaining = (text: string) =>
-	screen
-		.queryAllByRole("button")
-		.find((button) =>
-			(button.textContent ?? "").toLowerCase().includes(text.toLowerCase()),
-		);
-
-/** Open every closed section, the way `Expand all` does it. */
-const expandAll = async () => {
-	const sections = await screen.findAllByRole("button", { expanded: false });
-	for (const header of sections) await userEvent.click(header);
-};
-
-/** Close every open section. */
-const collapseAll = async () => {
-	const sections = await screen.findAllByRole("button", { expanded: true });
-	for (const header of sections) await userEvent.click(header);
-};
+	Array.from(document.querySelectorAll<HTMLElement>("button")).find((button) =>
+		(button.textContent ?? "").toLowerCase().includes(text.toLowerCase()),
+	);
 
 /**
- * Turn on the advanced tier, when the surface has one to turn on.
+ * Type into a field the way a person does.
  *
- * The pre-redesign surface has no such control, and `buttonContaining` finding
- * nothing is how this stays a no-op there instead of throwing inside a play
- * (which would leave a frame of a Storybook error rather than of the section).
+ * React reads a controlled input's value from its own tracker, so assigning
+ * `input.value` alone leaves the product's `onChange` looking at the old value.
+ * Going through the prototype's setter and then dispatching `input` is what the
+ * library-free rigs in this repo do (`scripts/renderer-driver.mjs`).
  */
-const toggleShowAdvanced = async () => {
-	const chip = buttonContaining("advanced");
-	if (chip) await userEvent.click(chip);
+const setFieldValue = (input: HTMLInputElement, value: string) => {
+	const setter = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	)?.set;
+	setter?.call(input, value);
+	input.dispatchEvent(new Event("input", { bubbles: true }));
 };
-
-/**
- * Reveal the advanced tier and open one section by its title.
- *
- * Both steps are conditional, which is what keeps one story valid on both
- * surfaces: pre-redesign there is no advanced tier, and every section already
- * open.
- */
-const openSection = async (title: string) => {
-	await toggleShowAdvanced();
-	const header = buttonStartingWith(title);
-	if (header && header.getAttribute("aria-expanded") === "false") {
-		await userEvent.click(header);
-	}
-};
-
-/** The result count the search bar reports, and the empty-state sentence. */
-const RESULT_COUNT = /result/i;
-const NO_MATCH = /no settings match/i;
 
 const typeSearch = async (text: string) => {
-	const input = await screen.findByLabelText("Search settings");
-	await userEvent.type(input, text);
+	const input = document.querySelector<HTMLInputElement>(
+		'input[aria-label="Search settings"]',
+	);
+	if (!input) throw new Error("no search field rendered");
+	input.focus();
+	setFieldValue(input, text);
+};
+
+const rowsOf = (key: string) =>
+	document.querySelector(`[data-setting-key="${key}"]`);
+
+const rowsRendered = () =>
+	document.querySelectorAll("[data-setting-key]").length;
+
+/* ------------------------------------------------------------------ */
+/* States                                                             */
+/* ------------------------------------------------------------------ */
+
+/** A script a story runs before the shutter, and what proves it landed. */
+type Script = { run: () => Promise<void>; expect: () => boolean };
+
+const ALL_EXPANDED: Script = {
+	run: async () => {
+		await clickAll(sectionHeaderTriggers(false));
+	},
+	expect: () => sectionHeaderTriggers(false).length === 0 && rowsRendered() > 0,
+};
+
+const COLLAPSED: Script = {
+	run: async () => {
+		await clickAll(sectionHeaderTriggers(true));
+	},
+	expect: () => sectionHeaderTriggers(true).length === 0,
+};
+
+const ONE_SECTION: Script = {
+	run: async () => {
+		await clickAll(sectionHeaderTriggers(true));
+		await openHeader("Model");
+	},
+	expect: () => Boolean(rowsOf("hosting")),
+};
+
+const FILTERED: Script = {
+	run: async () => {
+		await typeSearch("cache");
+	},
+	expect: () =>
+		/results? in \d+ sections?/.test(document.body.textContent ?? ""),
+};
+
+const NO_RESULTS: Script = {
+	run: async () => {
+		await typeSearch("zzzzzz");
+	},
+	expect: () =>
+		/No settings match this search/.test(document.body.textContent ?? ""),
+};
+
+const REDACTED: Script = {
+	run: async () => {
+		// The redacted endpoint is an advanced key inside a section that is
+		// closed on arrival, so the frame has to reveal the tier and open the
+		// section to show it at all.
+		await ensureAdvanced();
+		await openHeader("Web search");
+	},
+	expect: () => Boolean(rowsOf("web_search.searxng_endpoint")),
+};
+
+const GATED: Script = {
+	run: async () => {
+		await ensureAdvanced();
+		await openHeader("Session storage");
+	},
+	expect: () => Boolean(rowsOf("session.cleanup.max_sessions")),
+};
+
+const DEEP_LINK: Script = {
+	// The reveal is the SECTION's own effect (that is what is under test here);
+	// this script exists only to hold the shutter until it has landed.
+	run: async () => {},
+	expect: () => Boolean(rowsOf("web_search.searxng_endpoint")),
+};
+
+/** The rows a state is about: the frame is not taken before they exist. */
+const dispatchReadiness = async () => {
+	await waitFor(() => rowsRendered() > 0);
+	// One more tick, so the section's own seeding effect has committed and the
+	// controls are bound to drafts rather than rendering their first pass.
+	await sleep(30);
+};
+
+/**
+ * Run a script with the shutter held.
+ *
+ * `capturePending` is set in a LAYOUT effect, so it is on the document before
+ * the harness's readiness probe can see a rendered section - a probe that ran
+ * first would photograph the state before the script touched it.
+ */
+const Driven: FC<{
+	script: Script;
+	initialFilter?: string;
+	focusKey?: string;
+}> = ({ script, initialFilter, focusKey }) => {
+	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let cancelled = false;
+		const run = async () => {
+			await dispatchReadiness();
+			await script.run();
+			await waitFor(script.expect);
+			await nextFrame();
+			await nextFrame();
+			if (!cancelled) delete document.documentElement.dataset.capturePending;
+		};
+		void run();
+		return () => {
+			cancelled = true;
+			delete document.documentElement.dataset.capturePending;
+		};
+	}, [script]);
+	return <Ground initialFilter={initialFilter} focusKey={focusKey} />;
+};
+
+const mount = ({
+	state = "fresh",
+	initialFilter,
+	focusKey,
+	script,
+}: {
+	state?: string;
+	initialFilter?: string;
+	focusKey?: string | null;
+	script?: Script;
+} = {}) => {
+	installBridge(payloadFor(state));
+	if (script) {
+		return (
+			<Driven
+				script={script}
+				initialFilter={initialFilter}
+				focusKey={focusKey ?? undefined}
+			/>
+		);
+	}
+	return <Ground initialFilter={initialFilter} focusKey={focusKey} />;
 };
 
 const meta: Meta = {
@@ -291,63 +444,54 @@ export default meta;
 type Story = StoryObj;
 
 /* ------------------------------------------------------------------ */
-/* Arrival                                                             */
+/* Arrival                                                            */
 /* ------------------------------------------------------------------ */
 
 /**
  * The first paint, no interaction: whatever the section decides to show before
- * the user has done anything.
+ * the reader has done anything.
  *
  * This is the frame the operator's complaint is measured against ("an immensely
- * long scroll"), and the one the region-height target is stated at.
+ * long scroll"), and the one the arrival targets are stated at.
  */
 export const Arrival: Story = {
 	render: () => mount(),
 };
 
-/** Every section open — the whole registry at once, which is the long scroll. */
+/** Every section open — the registry at its own length, advanced still held. */
 export const AllExpanded: Story = {
-	render: () => mount(),
-	play: async () => {
-		await expandAll();
-	},
+	render: () => mount({ script: ALL_EXPANDED }),
 };
 
 /** Nothing open: the readable index of 18 section headers. */
 export const Collapsed: Story = {
-	render: () => mount(),
-	play: async () => {
-		await collapseAll();
-	},
+	render: () => mount({ script: COLLAPSED }),
+};
+
+/** One section open and the rest closed: a header's own geometry in frame. */
+export const OneSectionOpen: Story = {
+	render: () => mount({ state: "changed", script: ONE_SECTION }),
 };
 
 /* ------------------------------------------------------------------ */
-/* Search                                                              */
+/* Search                                                             */
 /* ------------------------------------------------------------------ */
 
 /**
  * A search that matches a handful of rows across several sections.
  *
- * Search suspends the reader's own collapse choices and force-opens the
- * sections it lands in; it also reports how many rows it found, in how many
- * sections, because a search that can hide its own matches behind a closed
- * header is a defect this surface shipped with.
+ * Search suspends the reader's own collapse choices and force-opens the sections
+ * it lands in; it also reports how many rows it found, in how many sections,
+ * because a search that can hide its own matches behind a closed header is a
+ * defect this surface shipped with.
  */
 export const Filtered: Story = {
-	render: () => mount(),
-	play: async () => {
-		await typeSearch("cache");
-		await screen.findByText(RESULT_COUNT);
-	},
+	render: () => mount({ script: FILTERED }),
 };
 
 /** A search that matches nothing, with the way out. */
 export const NoResults: Story = {
-	render: () => mount(),
-	play: async () => {
-		await typeSearch("zzzzzz");
-		await screen.findByText(NO_MATCH);
-	},
+	render: () => mount({ script: NO_RESULTS }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -355,9 +499,10 @@ export const NoResults: Story = {
 /* ------------------------------------------------------------------ */
 
 /**
- * Off-default rows: a changed dot, a `Use default`, and the Save the draft
- * needs. The fixture is the registry's own projection of a configured install,
- * so `is_default` is the registry's judgement, not this file's.
+ * Off-default rows: a changed dot, a `Use default`, and the Save an edit needs.
+ *
+ * The fixture is the registry's own projection of a configured install, so
+ * `is_default` is the registry's judgement and not this file's.
  */
 export const ChangedRows: Story = {
 	render: () => mount({ state: "changed" }),
@@ -371,14 +516,12 @@ export const ChangedRows: Story = {
  * A redacted row and the retired ones.
  *
  * Both keep their wrapper, their label and their `data-setting-key`: they used
- * to return early, which left four keys unfocusable, unanchored by any deep
- * link and unidentifiable — "Retired" read as three bare numbers.
+ * to return early without any of the three, which left four keys unfocusable,
+ * unanchored by any deep link and unidentifiable — "Retired" read as three bare
+ * numbers.
  */
 export const ReadOnlyAndRedacted: Story = {
-	render: () => mount({ state: "redacted" }),
-	play: async () => {
-		await openSection("Web search");
-	},
+	render: () => mount({ state: "redacted", script: REDACTED }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -386,17 +529,14 @@ export const ReadOnlyAndRedacted: Story = {
 /* ------------------------------------------------------------------ */
 
 /**
- * A child of a feature that is switched off.
+ * Children of a feature that is switched off.
  *
  * `session.cleanup.enabled` is false in both committed fixtures, so the four
  * cleanup rows under it render disabled and say which switch they are waiting
  * on — rather than rendering enabled and saveable, which is how they shipped.
  */
 export const GatedChildren: Story = {
-	render: () => mount({ state: "changed" }),
-	play: async () => {
-		await openSection("Session storage");
-	},
+	render: () => mount({ state: "changed", script: GATED }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -404,13 +544,14 @@ export const GatedChildren: Story = {
 /* ------------------------------------------------------------------ */
 
 /**
- * `?setting=web_search.searxng_endpoint` — an advanced, redacted key, which is
- * the hardest arrival a deep link has to survive: the row does not exist in the
- * DOM until both the tier and the section are open, and the reveal has to
- * happen before the focus.
+ * `?setting=web_search.searxng_endpoint` — an advanced key inside a closed
+ * section, which is the hardest arrival a deep link has to survive: the row does
+ * not exist in the DOM until both the tier and the section are open, and the
+ * reveal has to happen before the focus.
  */
 export const DeepLink: Story = {
-	render: () => mount({ focusKey: "web_search.searxng_endpoint" }),
+	render: () =>
+		mount({ focusKey: "web_search.searxng_endpoint", script: DEEP_LINK }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -418,37 +559,13 @@ export const DeepLink: Story = {
 /* ------------------------------------------------------------------ */
 
 /**
- * The column at the width where a row's control and its label stop fitting
- * side by side.
+ * The column at the width where a row's label and its control stop fitting side
+ * by side.
  *
- * The section keys on the COLUMN, not the window: at a 1000px window the column
+ * The row keys on its COLUMN, not on the window: at a 1000px window the column
  * is 888px, only 8px narrower than at 1380px, so a window-width breakpoint would
  * never fire where it is needed.
  */
 export const Narrow: Story = {
-	render: () => mount({ state: "changed" }),
-	play: async () => {
-		await expandAll();
-	},
-};
-
-/* ------------------------------------------------------------------ */
-/* A section, alone                                                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * One section open and the rest closed, with a heading's own geometry in frame:
- * the chevron, the title, the row count, the scope and the changed dot.
- *
- * `within` is used deliberately — the assertion is about the section box, so a
- * mark that leaked to another header would not satisfy it.
- */
-export const OneSectionOpen: Story = {
-	render: () => mount({ state: "changed" }),
-	play: async () => {
-		await collapseAll();
-		const header = buttonStartingWith("Model");
-		if (!header) throw new Error("no Model header rendered");
-		await userEvent.click(header);
-	},
+	render: () => mount({ state: "changed", script: ONE_SECTION }),
 };
