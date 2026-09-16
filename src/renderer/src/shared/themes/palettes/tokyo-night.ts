@@ -23,11 +23,28 @@ export const tokyoNight: ThemeDefinition = {
 		// levels deeper for a little more separation.
 		sunken: "#14141B",
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.23 from `surface`, 3.27 from `elevated` and 10.29
-		 * from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue-purple ramp, and warmed to 1.5x its chroma. ΔE00 4.24 from `surface`,
+		 * 2.47 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 12.66 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries 1.5x the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 3.52 here because `ink-dim` reaches 4.72:1 there and `border-control` 3.15:1.
+		 *
+		 * Ink on this ground: `ink` 8.36:1, `ink-muted` 6.39:1, `ink-dim`
+		 * 5.11:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 3.41:1 against it, over the 3:1 that role's floor
+		 * asks for. The theme in the operator's own screenshot, where the row measured ΔE00 2.23 and read as no mark at all beside a hovered neighbour at 4.58. `ink` is the tight ink here at 8.36:1 against the 7:1 floor, and the chroma lift is 1.5x at the surface's own hue.
 		 */
-		highlight: "#2b2f42",
+		highlight: "#262d4a",
 
 		ink: "#C0CAF5",
 		inkMuted: "#A9B1D6",

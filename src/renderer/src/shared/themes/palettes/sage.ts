@@ -29,13 +29,28 @@ export const sage: ThemeDefinition = {
 		elevated: "#FFFEF9",
 		sunken: "#E9E2D0",
 		/*
-		 * The current row's own ground: `surface` stepped -11/-10/-10 on R/G/B
-		 * toward black — the same move the ramp above already makes, one step
-		 * shallower than the
-		 * recessed one. ΔE00 2.18 from `surface`, 4.41 from `elevated` and 3.77
-		 * from `sunken`.
+		 * The current row's own ground: `surface` stepped down its own warm ramp. ΔE00 4.02 from `surface`,
+		 * 5.89 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 3.25 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries unchanged the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 4.23 here because `border-control` reaches 3.17:1 against it.
+		 *
+		 * Ink on this ground: `ink` 11.42:1, `ink-muted` 6.80:1, `ink-dim`
+		 * 4.75:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 3.20:1 against it, over the 3:1 that role's floor
+		 * asks for. The structural edge is the binding constraint here rather than an ink: `border-control` falls to 3.17:1 against the row at the lightness ceiling, so the step stops where the edge still clears § 3's 3:1 floor on it.
 		 */
-		highlight: "#f0ede2",
+		highlight: "#e8e4da",
 
 		ink: "#222C1F",
 		inkMuted: "#454F3A",

@@ -24,11 +24,28 @@ export const monokai: ThemeDefinition = {
 		elevated: "#3E3D32",
 		sunken: "#1E1F1A",
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.25 from `surface`, 3.21 from `elevated` and 7.31
-		 * from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own olive ramp, and warmed to 1.7x its chroma. ΔE00 4.07 from `surface`,
+		 * 2.51 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 8.85 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries 1.7x the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 3.54 here because `elevated` closes to ΔE00 2.47 of it.
+		 *
+		 * Ink on this ground: `ink` 11.03:1, `ink-muted` 6.40:1, `ink-dim`
+		 * 4.97:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 3.38:1 against it, over the 3:1 that role's floor
+		 * asks for. The hover step is 5.05 from `surface`, so the transient mark is the louder ground here whatever the row's own step does; the structural edge is what keeps the current row above it.
 		 */
-		highlight: "#35362f",
+		highlight: "#37392d",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",

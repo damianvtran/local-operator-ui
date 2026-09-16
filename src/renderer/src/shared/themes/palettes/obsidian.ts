@@ -30,13 +30,28 @@ export const obsidian: ThemeDefinition = {
 		// a C0 value is the absence of the ramp rather than its bottom rung.
 		sunken: "#030307",
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.20 from `surface`, and this is the palette that
-		 * sets the band's own ceiling — 2.52 from `elevated`, the row's hover
-		 * step, against the 2.0 the
-		 * contract floors that pair at. 6.67 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own zinc ramp, and warmed to 1.9x its chroma. ΔE00 4.01 from `surface`,
+		 * 2.36 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 8.37 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries 1.9x the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 2.51 here because `elevated` closes to ΔE00 2.21 of it.
+		 *
+		 * Ink on this ground: `ink` 14.97:1, `ink-muted` 6.10:1, `ink-dim`
+		 * 4.87:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 3.28:1 against it, over the 3:1 that role's floor
+		 * asks for. The palette that used to set the band's own ceiling, and the reason the old ceiling existed: `elevated` is only 4.72 above `surface`, so lightness alone runs out at 2.51. The chroma axis is what opens it — 1.9x at the same hue — and the edge covers the hover step at 4.72 that no step off this `surface` can reach.
 		 */
-		highlight: "#1f1f22",
+		highlight: "#232329",
 
 		ink: "#FAFAFA",
 		inkMuted: "#A1A1AA",

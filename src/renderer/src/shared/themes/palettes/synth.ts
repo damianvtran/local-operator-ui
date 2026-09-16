@@ -21,13 +21,28 @@ export const synth: ThemeDefinition = {
 		elevated: "#2C1D43",
 		sunken: "#06020D",
 		/*
-		 * The current row's own ground: `surface` stepped +8/+8/+7 on R/G/B
-		 * toward white. ΔE00 2.20 from `surface`, 3.39 from `elevated` and 15.43
-		 * from `sunken` — the
-		 * widest gap between the two roles of any palette here, which is what
-		 * `sunken` was doing to this panel.
+		 * The current row's own ground: `surface` stepped up its own neon-purple ramp, and warmed to 1.1x its chroma. ΔE00 4.14 from `surface`,
+		 * 2.37 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 17.33 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries 1.1x the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 3.11 here because `elevated` closes to ΔE00 2.44 of it.
+		 *
+		 * Ink on this ground: `ink` 14.87:1, `ink-muted` 7.54:1, `ink-dim`
+		 * 5.29:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 4.23:1 against it, over the 3:1 that role's floor
+		 * asks for. The hover step is 5.44 from `surface`, so this theme's ordering rests on the edge as well; the ground itself is a straight step up the theme's own purple with its chroma barely moved.
 		 */
-		highlight: "#231236",
+		highlight: "#281641",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are

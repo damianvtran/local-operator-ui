@@ -28,12 +28,28 @@ export const dracula: ThemeDefinition = {
 		elevated: "#3D4055",
 		sunken: "#21222C",
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.26 from `surface`, 2.63 from `elevated` (the same
-		 * row's hover step, so
-		 * the pointer cannot erase the selection) and 8.72 from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue-grey ramp. ΔE00 4.11 from `surface`,
+		 * 2.56 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 11.03 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries 1.2x the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 2.62 here because `elevated` closes to ΔE00 2.37 of it.
+		 *
+		 * Ink on this ground: `ink` 10.05:1, `ink-muted` 5.82:1, `ink-dim`
+		 * 4.74:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 3.17:1 against it, over the 3:1 that role's floor
+		 * asks for. The hover step here is 4.87 from `surface`, further than any step this palette's inks allow the row to take, which is why the row carries a structural edge rather than a louder ground.
 		 */
-		highlight: "#36384d",
+		highlight: "#3a3c56",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",
