@@ -28,6 +28,14 @@ export const sage: ThemeDefinition = {
 		surface: "#FBF7EC",
 		elevated: "#FFFEF9",
 		sunken: "#E9E2D0",
+		/*
+		 * The current row's own ground: `surface` stepped -11/-10/-10 on R/G/B
+		 * toward black — the same move the ramp above already makes, one step
+		 * shallower than the
+		 * recessed one. ΔE00 2.18 from `surface`, 4.41 from `elevated` and 3.77
+		 * from `sunken`.
+		 */
+		highlight: "#f0ede2",
 
 		ink: "#222C1F",
 		inkMuted: "#454F3A",
