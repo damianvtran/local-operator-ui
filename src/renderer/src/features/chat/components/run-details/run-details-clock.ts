@@ -68,19 +68,28 @@ const useClockTick = (active: boolean, seedRealMs: number): number => {
 
 export function useRunDetailsClock(details: RunDetails): RunDetails {
 	/*
-	 * Only a child that has been launched and has not settled has a clock that
-	 * is still running; the predicate is the model's, so what it means is
-	 * asserted in `run-detail-model.test.mjs` rather than only claimed here. A
-	 * settled child is measured against its own `settled_at` and a child with no
-	 * launch time at all shows no duration, so neither of them can go stale —
-	 * and neither of them justifies a timer.
+	 * Only a row that has been launched and has not settled has a clock that is
+	 * still running; the predicate is the model's, so what it means is asserted in
+	 * `run-detail-model.test.mjs` rather than only claimed here. A settled child is
+	 * measured against its own `settled_at` and a child with no launch time at all
+	 * shows no duration, so neither of them can go stale — and neither of them
+	 * justifies a timer.
+	 *
+	 * The TOOL jobs are asked the same question, and that is a change this file's
+	 * section owes: the pane now draws a running `bash` job's elapsed label in the
+	 * Jobs section (`run-detail-jobs.tsx`), so a session whose only live work is a
+	 * backgrounded shell would otherwise have a frozen clock on screen — a
+	 * timestamp that says `3s` forty seconds in, which is worse than no clock at
+	 * all. `retimeRunDetails` re-measures that list on the same tick for the same
+	 * reason, so the two halves cannot disagree.
 	 *
 	 * What this file adds is the timer's LIFETIME, not its rule: the interval is
 	 * created when something live is on screen and cleared when the panel
 	 * closes or the last child settles. That part is a behaviour and is
 	 * exercised against the running panel rather than asserted here.
 	 */
-	const ticking = hasLiveChildClock(details.subagents);
+	const ticking =
+		hasLiveChildClock(details.subagents) || hasLiveChildClock(details.jobs);
 	const tickMs = useClockTick(ticking, details.measuredAtRealMs);
 	if (!ticking) return details;
 	/*

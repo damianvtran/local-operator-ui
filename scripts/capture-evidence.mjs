@@ -527,6 +527,17 @@ export const STORIES = [
 	/* The pane's two animated glyphs with motion reduced: the running child's
 	   spinner and the MCP `connecting` mark. */
 	["chat-run-panel--reduced-motion", 1280, 700, { reducedMotion: true }],
+	/* The JOBS section, which is the pane's third live list: two running tool rows
+	   and one settled row that is on the wire and deliberately not drawn, with a
+	   child above them. The pair with `jobs-only` is the difference `openJobs`
+	   makes — one section and its rows, or a quiet line. */
+	["chat-run-panel--jobs-in-flight", 1280, 700],
+	["chat-run-panel--jobs-only", 1280, 700],
+	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
+	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
+	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
+	   and a still is the only instrument for it. */
+	["chat-run-panel--trigger-activity-dot", 1280, 700],
 	/*
 	 * Settings > Integrations: the surface `/mcp` LANDS ON, and the four states
 	 * that report was about — the deep link revealing a named server, an argument
@@ -690,9 +701,95 @@ export const STORIES = [
 	 * an expanded band are clicked open by the rig's own convention.
 	 */
 	["chat-composer-status-row--states", 1000, 880],
-	["chat-composer-status-row--long-goal", 1000, 360],
+	/* Three bands now: the two goal lengths, plus the long goal beside all four
+	   chips (design review round 1, D4) — the width the goal YIELDS is the change
+	   and it was unmeasured, so the band prints the goal item's box against its
+	   text's `clientWidth`/`scrollWidth`. */
+	["chat-composer-status-row--long-goal", 1000, 560],
 	["chat-composer-status-row--expanded", 1000, 500],
 	["chat-composer-status-row--column-floor", 300, 620],
+	/* The two ACTIVITY chips, one band per state, with the state they must not
+	   render for as the last one — a session whose rows have all settled, where
+	   `frontend.jobs` still holds the rows and the row says nothing about them.
+	   Sized to content for the reason the four above are. */
+	["chat-composer-status-row--activity-chips", 1000, 1000],
+	/* The MIXED open set, which is the ordinary shape of a large delegation rather
+	   than an edge (`DEFAULT_MAX_RUNNING_JOBS = 15` parks the rows a fan-out cannot
+	   run), and the state no committed frame showed — which is why the sentence that
+	   counted parked rows as running survived four review streams (design review
+	   round 2, D6). Three bands: the fan-out QA measured live, the same rule through
+	   the jobs list, and a uniform set as the control. */
+	["chat-composer-status-row--activity-mixed", 1000, 1000],
+	/* The width story, and the only frame that can carry the numbers: each band
+	   prints its own row height and `overflowX` into the picture, because a reader
+	   of a still cannot measure the boxes in it. 900 is the composer's own column,
+	   240 is `CHAT_CHIP_ICON_ONLY_PX`, and 172 is the floor QA measured on the built
+	   app — the three widths at which the row behaves differently. */
+	["chat-composer-status-row--activity-widths", 1000, 1000],
+	/* The activity mark with motion reduced, which is the OTHER half of the paint
+	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
+	   0.01ms rather than cancelling anything, so the frame has to show that the
+	   mark lands on a visible end state and that the shape still reads as the
+	   state it stands for. A second entry with its own `dir` because the state is a
+	   viewport feature, which a story cannot set. */
+	[
+		"chat-composer-status-row--activity-chips",
+		1000,
+		1000,
+		{ dir: "activity-chips-reduced-motion", reducedMotion: true },
+	],
+	/* The 240px arrangement, which is where the row's edges differ (design review
+	   round 1, D2/D5): the goal's line, then the counts as one group. Three tuples
+	   of ONE story, differing only in the browser state the rig applies — at rest,
+	   with a real pointer on the goal's trigger, and with the real Tab key having
+	   walked to a chip. `:hover` and `:focus-visible` are both browser state, so
+	   neither can be a story prop, and a story that faked the class would be a
+	   picture of the fake. */
+	["chat-composer-status-row--activity-stacked", 260, 320],
+	[
+		"chat-composer-status-row--activity-stacked",
+		260,
+		320,
+		{ dir: "activity-stacked-hovered", hover: "[aria-expanded]" },
+	],
+	[
+		"chat-composer-status-row--activity-stacked",
+		260,
+		320,
+		{ dir: "activity-stacked-focused", tabTo: "[data-status-subagents]" },
+	],
+	/* The SECOND hover, on a count chip rather than the goal, because one frame can
+	   hold one pointer: the pair is what shows that the goal's ground (the row's
+	   leading chip, `-ml-1.5`) starts at the row's own edge and the stacked chips'
+	   grounds start at theirs. A hovered frame carries no tooltip, which is why this
+	   pair is the clean way to compare two grounds. */
+	[
+		"chat-composer-status-row--activity-stacked",
+		260,
+		320,
+		{ dir: "activity-stacked-chip-hovered", hover: "[data-status-jobs]" },
+	],
+	/* THE MOTION PAIR, and the only frames in this repository captured with live
+	   animation: the rig's default injects `animation: none !important` before every
+	   shutter, so no two stills of one story could ever differ by a spin. These two
+	   are the same story, the same theme and the same rig, a rotation angle apart -
+	   the composer's running-state mark actually turning. They prove the mark animates
+	   in the built stylesheet; they do NOT prove the mark's resting visibility under
+	   reduced motion (that is the `-reduced-motion` tuple) and they are not a live
+	   app: the wire is a fixture. `docs/evidence/chat-composer-status-row/README.md`
+	   states both limits. */
+	[
+		"chat-composer-status-row--activity-mark-motion",
+		1000,
+		220,
+		{ dir: "activity-motion-1", liveMotion: true, phaseMs: 0 },
+	],
+	[
+		"chat-composer-status-row--activity-mark-motion",
+		1000,
+		220,
+		{ dir: "activity-motion-2", liveMotion: true, phaseMs: 500 },
+	],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
 	   one right edge — and it is swept at two widths because a max-width cap
@@ -1957,13 +2054,80 @@ const main = async () => {
 			 * Hiding it costs nothing: the caret says the input has focus, and
 			 * the focus ring already says that in a frame nobody is typing in.
 			 */
-			await cdp.send("Runtime.evaluate", {
-				expression: `(() => {
-					const s = document.createElement("style");
-					s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
-					document.head.appendChild(s);
-				})()`,
-			});
+			/*
+			 * `{ liveMotion: true }` is the ONE exception to that rule, and it exists
+			 * because exactly one claim in this repository is about motion itself: the
+			 * composer's running-state mark spins (`motion-safe:animate-spin`), and with
+			 * the blanket override above no pair of frames can ever show it - two
+			 * shutters of one story are byte-identical by construction. A tuple that
+			 * asks for live motion therefore gets no ANIMATION override, and the two
+			 * tuples that take it differ in the phase the hold pins each mark to: same
+			 * story, same theme, same rig, half a turn apart.
+			 *
+			 * TRANSITIONS ARE STILL FROZEN in that branch, and every OTHER animation
+			 * is finished before the shutter, because dropping the blanket override
+			 * dropped both controls: a transition or an entrance fade still in flight
+			 * in one of the two frames is a second difference that no hold pins and no
+			 * document declares. (Measured afterwards: freezing them changed no pixel
+			 * of the pair, so nothing was in flight - the controls are prophylaxis, and
+			 * the field round 3's M1' found outside the marks turned out to be the
+			 * lossy encoder's response to a differing input: the same two phases
+			 * captured losslessly differ in 220/228 pixels and all of them are in the
+			 * marks.)
+			 *
+			 * It is deliberately not a general option: every other frame here WANTS the
+			 * settled state (a half-faded paragraph reads as a contrast defect, and the
+			 * caret blink cost a review round). A tuple that sets this is asserting "the
+			 * motion is the subject", and its README entry has to say what the pair
+			 * proves and what it does not.
+			 */
+			/*
+			 * The phase hold, READ BACK - and read back AGAIN at the shutter.
+			 *
+			 * The hold is applied through the Web Animations API, and a re-render
+			 * between the injection and the shutter would start a FRESH animation and
+			 * quietly turn the pair back into a sampled one; the first version of this
+			 * check ran once, several DOM reads and a rAF pair before the shutter
+			 * (round 3's M1'). One function with two call sites, so the two checks
+			 * cannot drift, and the failure says which one fired.
+			 */
+			const assertPhaseHeld = async (when) => {
+				if (!options?.liveMotion || typeof options?.phaseMs !== "number") {
+					return;
+				}
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const row = document.querySelector('[data-composer-status-row]');
+						if (!row) return 'no-row';
+						const marks = [
+							...row.querySelectorAll('[class~="motion-safe:animate-spin"]'),
+						];
+						if (marks.length === 0) return 'no-mark';
+						const animations = marks.flatMap((mark) => mark.getAnimations());
+						if (animations.length === 0) return 'no-animation';
+						return animations
+							.map((a) => a.playState + '@' + a.currentTime)
+							.join(' , ');
+					})()`,
+				});
+				const held = String(result.value);
+				const wanted = `paused@${options.phaseMs}`;
+				if (held.split(" , ").some((entry) => entry !== wanted)) {
+					throw new Error(
+						`${story} @ ${theme}: liveMotion with phaseMs=${options.phaseMs} does not hold ${when} (${held}, wanted ${wanted}). The mark is found by the class TOKEN it carries - motion-safe:animate-spin - and held through the Web Animations API, because a hold that quietly matches nothing turns this pair back into a sampled one.`,
+					);
+				}
+			};
+			if (!options?.liveMotion) {
+				await cdp.send("Runtime.evaluate", {
+					expression: `(() => {
+						const s = document.createElement("style");
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						document.head.appendChild(s);
+					})()`,
+				});
+			}
 			await sleep(120);
 			/* Assert the capture is of a rendered story, not Storybook's own
 			   error page. A screenshot of "Configuration validation failed" is
@@ -2238,6 +2402,49 @@ const main = async () => {
 			 * that matches nothing, and a selector whose matches all sit at offset 0 —
 			 * which is a resting frame filed under a name that claims an end.
 			 */
+			/*
+			 * A KEYBOARD FOCUS RING, for the frames whose claim is one.
+			 *
+			 * `:focus-visible` is browser state like `:hover`, and it is stricter: a
+			 * programmatic `element.focus()` does not match it in Blink unless the last
+			 * interaction was the keyboard, so a story that focused a control on mount
+			 * would photograph the resting state and be filed under a ring. The rig
+			 * therefore presses the real Tab key (`Input.dispatchKeyEvent`) until the
+			 * named element holds focus, and throws rather than photographing the
+			 * unfocused state if it never does.
+			 *
+			 * Bounded, because a selector that matches nothing must fail loudly instead
+			 * of walking every focusable in Storybook's own chrome; the walk passes
+			 * through those on the way, which is what a keyboard user does too.
+			 */
+			if (options?.tabTo) {
+				const focused = async () =>
+					(
+						await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `document.activeElement?.matches(${JSON.stringify(options.tabTo)}) === true`,
+						})
+					).result.value === true;
+				let reached = false;
+				for (let i = 0; i < 24 && !reached; i++) {
+					for (const type of ["rawKeyDown", "keyUp"]) {
+						await cdp.send("Input.dispatchKeyEvent", {
+							type,
+							key: "Tab",
+							code: "Tab",
+							windowsVirtualKeyCode: 9,
+							nativeVirtualKeyCode: 9,
+						});
+					}
+					await sleep(40);
+					reached = await focused();
+				}
+				if (!reached) {
+					throw new Error(
+						`${story} @ ${theme}: the tabTo selector \`${options.tabTo}\` never took focus in 24 Tab presses`,
+					);
+				}
+			}
 			if (options?.scrollToEnd) {
 				const { result: scrolled } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -2259,12 +2466,128 @@ const main = async () => {
 					);
 				}
 			}
+			/*
+			 * THE PHASE HOLD RUNS HERE, at the last moment before the shutter, and
+			 * round 3 is why it moved: it used to run where the story's styles are
+			 * overridden, BEFORE Storybook had mounted anything, and a cold Storybook
+			 * (the first story of a fresh dev server) therefore served an empty
+			 * document - the hold found no row, held nothing and the pair was sampled
+			 * while the check that exists to catch exactly that was reading the same
+			 * empty document. A hold can only mean something once the mark exists, and
+			 * this is the last point at which it does.
+			 */
+			if (options?.liveMotion && typeof options?.phaseMs === "number") {
+				/*
+				 * ...and `{ phaseMs }` HOLDS that live animation at a chosen point of its
+				 * own timeline, because a phase SAMPLED from a running clock is not
+				 * reproducible evidence: measured, three consecutive live captures of one
+				 * story produced two distinct rotations and one repeat, so a committed
+				 * pair could regenerate identical and quietly turn its own README claim
+				 * false.
+				 *
+				 * The hold is `pause()` plus an explicit `currentTime` on the animation
+				 * the mark actually carries - `getAnimations()` returns the CSSAnimation
+				 * the stylesheet started - and it is MEASURED rather than argued: with it
+				 * in place, three consecutive captures of both frames came back
+				 * byte-identical. A stylesheet RULE cannot do it, and round 2's M1 found
+				 * both halves of that in one line: the rule this option used selected
+				 * `.animate-spin`, a token the mark does not have (`motion-safe:animate-spin`
+				 * is), so it matched nothing; and `animation-play-state: paused` freezes
+				 * wherever the rule happens to land, so even with the selector fixed the
+				 * pair would have stayed sampled.
+				 */
+				/*
+				 * The wait is load-bearing, and it is this option's own cost: with no
+				 * blanket override the row's ENTRANCE fade is still in flight, and a
+				 * shutter inside it renders the text at an alpha the other frame of the
+				 * pair does not share — measured, the two frames then differ across every
+				 * glyph on the row (491 pixels, x48-919) and the pair says nothing about
+				 * the mark. Sleeping past the longest entrance (300ms in this system)
+				 * leaves the ONLY live animation the mark's own spin.
+				 */
+				await sleep(700);
+				await cdp.send("Runtime.evaluate", {
+					expression: `(() => {
+						/*
+						 * HOLD THE SPIN AT A PHASE, through the Web Animations API rather
+						 * than through a stylesheet rule. Both halves of that are round 2's
+						 * M1: the rule this replaced selected ".animate-spin", which is NOT
+						 * the token the mark carries - "motion-safe:animate-spin" is
+						 * (run-detail-row-parts.tsx) - so a class selector matched nothing and
+						 * the option silently did nothing; and a paused RULE is not a hold
+						 * either, because "animation-play-state: paused" freezes at whatever
+						 * moment the rule lands, so the pair stays sampled however the
+						 * selector is spelled. pause() followed by an explicit currentTime says
+						 * the phase outright, and re-running lands on it every time. No
+						 * backticks in here: this comment lives inside a template literal.
+						 */
+						const row = document.querySelector('[data-composer-status-row]');
+						/* EVERY mark in the row, not the first one: a band with two
+						   running chips carries two, and holding one leaves the other
+						   spinning freely - caught by re-running the capture and finding
+						   the un-held mark had moved. */
+						const marks = row
+							? [...row.querySelectorAll('[class~="motion-safe:animate-spin"]')]
+							: [];
+						const held = new Set();
+						for (const mark of marks) {
+							for (const animation of mark.getAnimations()) {
+								animation.pause();
+								animation.currentTime = ${options.phaseMs};
+								held.add(animation);
+							}
+						}
+						/*
+						 * ...and EVERY OTHER ANIMATION IS SETTLED, which is the fix
+						 * for round 3's M1' and not a tidy-up: an entrance fade still
+						 * in flight in ONE of the two shutters renders the row's text
+						 * at an alpha the other does not share, and that is a
+						 * sub-perceptual, one-sided, achromatic field across every
+						 * glyph on the row - measured at 7,724 (dark) / 1,682 (light)
+						 * pixels outside the two marks, with only 193/168 of them above
+						 * the 8/255 the README's count used. finish() jumps an
+						 * animation to the state the stylesheet settles on rather than
+						 * removing it; an infinite one that cannot finish is left
+						 * alone, and the marks' own spin is in the held set and is
+						 * never touched here.
+						 */
+						for (const animation of document.getAnimations({ subtree: true })) {
+							if (held.has(animation)) continue;
+							try {
+								animation.finish();
+							} catch {
+								/* an animation that never ends has no settled state */
+							}
+						}
+						/*
+						 * TRANSITIONS FROZEN, animations left live - the split this
+						 * branch needs, and the one the blanket override could not
+						 * express. A transition in flight is a difference between the
+						 * two shutters that the hold does not pin and no document
+						 * declares; the caret is the same argument as above.
+						 */
+						const s = document.createElement("style");
+						s.textContent = "*,*::before,*::after{transition:none !important}*{caret-color:transparent !important}";
+						document.head.appendChild(s);
+					})()`,
+				});
+				await assertPhaseHeld("right after it was applied");
+			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
 				expression:
 					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 			});
+			/*
+			 * ...and the hold is read back here, at the last moment before the shutter
+			 * (round 3's M1'). Everything between the injection and this line - the
+			 * settle, the story-ready probe, a scroll pass, a resize, a rAF pair - is
+			 * an opportunity for a re-render to hand the mark a fresh animation, and a
+			 * pair that was held when it was applied and sampled when it was
+			 * photographed is exactly the state three documents claimed was impossible.
+			 */
+			await assertPhaseHeld("at the shutter");
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
 				quality: 88,

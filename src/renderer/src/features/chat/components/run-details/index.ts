@@ -7,9 +7,13 @@
 
 export {
 	accumulateSeen,
+	activityMark,
+	activityTally,
 	acknowledgeMcpWhileShown,
 	acknowledgeWhileOpen,
 	BRIEF_PREVIEW_LINES,
+	busiestClause,
+	childClause,
 	childStateLabel,
 	deriveMcpServers,
 	deriveRunDetails,
@@ -18,6 +22,8 @@ export {
 	hasRunDetails,
 	hasUnseenFailure,
 	hasUnseenMcpProblem,
+	isOpenRow,
+	jobClause,
 	LABEL_SEAM,
 	mcpErrorTexts,
 	mcpProblemNames,
@@ -42,6 +48,7 @@ export {
 	visibleTodoPhases,
 } from "./run-detail-model";
 export type {
+	ActivityTally,
 	ChildStatus,
 	McpServerRow,
 	McpStatus,
@@ -56,6 +63,7 @@ export type {
 } from "./run-detail-model";
 export { RunChildReader } from "./run-child-reader";
 export type { RunChildReaderProps } from "./run-child-reader";
+export { RunDetailJobs } from "./run-detail-jobs";
 export { RunDetailMcp } from "./run-detail-mcp";
 export { RunDetailSubagents } from "./run-detail-subagents";
 export { RunDetailTodos } from "./run-detail-todos";
