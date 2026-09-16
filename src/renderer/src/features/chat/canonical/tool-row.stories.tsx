@@ -34,13 +34,13 @@ import { peerFields } from "../components/trace/receipt-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
 import {
+	COMPACTED_LINE,
 	EMPTY_TRANSCRIPT,
 	type TranscriptRecord,
 	type TranscriptState,
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
-	compactionSettled,
 	dropLiveRecords,
 } from "./transcript-reducer";
 
@@ -86,6 +86,7 @@ function transcriptOf(
 		// The claim's own start, so the clock the rung derives is a fixed age
 		// rather than whatever the shutter catches (design round 2, D3).
 		compactingSince: compacting ? Date.now() - 47_000 : 0,
+		viewEpoch: 0,
 		oldestId: null,
 		hasMore: false,
 		argsByCall: new Map(),
@@ -550,46 +551,7 @@ export const CompactingSettled: Story = {
 					// literal cannot detect a regression in the copy it claims to show
 					// (design round 2, D4). Same for the sibling below.
 					ts: TS,
-					text: compactionSettled(41_000, 9_000),
-				},
-			]}
-		/>
-	),
-};
-
-/**
- * The other half of the settled copy: a pass whose two figures round to the same
- * step says the number ONCE (`Context compacted to 52.7k tokens`), which is UX
- * round 1's U4 and had no frame at all (design round 2, D4).
- *
- * The mock this pair was measured against formats before and after identically,
- * so this is the branch a user most often sees and the one the switch-line
- * change was written for.
- */
-export const CompactingSettledUnchanged: Story = {
-	render: () => (
-		<Frame
-			height={300}
-			records={[
-				tool({
-					id: "tool:1",
-					toolName: "read",
-					args: { path: "docs/branding.md" },
-					durationS: 0.04,
-					output: "# Branding",
-				}),
-				{
-					kind: "user",
-					id: "u1",
-					ts: TS,
-					text: "Compact the context, then keep going.",
-					images: [],
-				},
-				{
-					kind: "compaction",
-					id: "compaction:1:52700:52700",
-					ts: TS,
-					text: compactionSettled(52_700, 52_700),
+					text: COMPACTED_LINE,
 				},
 			]}
 		/>

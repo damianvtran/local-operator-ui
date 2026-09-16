@@ -32,7 +32,13 @@
  * from the UI, and written into the same file.
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withMockKeychain } from "./chrome-keychain.mjs";
@@ -108,7 +114,10 @@ process.on("unhandledRejection", (error) => {
 /** Chrome prints the DevTools websocket on stderr; there is no other handle. */
 const wsUrl = await new Promise((resolve, reject) => {
 	let buf = "";
-	const timer = setTimeout(() => reject(new Error("Chrome did not report a debug port")), 30_000);
+	const timer = setTimeout(
+		() => reject(new Error("Chrome did not report a debug port")),
+		30_000,
+	);
 	chrome.stderr.on("data", (d) => {
 		buf += d.toString();
 		const m = buf.match(/DevTools listening on (ws:\/\/\S+)/);
@@ -117,7 +126,9 @@ const wsUrl = await new Promise((resolve, reject) => {
 			resolve(m[1]);
 		}
 	});
-	chrome.on("exit", (code) => reject(new Error(`Chrome exited early (${code})`)));
+	chrome.on("exit", (code) =>
+		reject(new Error(`Chrome exited early (${code})`)),
+	);
 });
 
 const { host } = new URL(wsUrl);
@@ -138,7 +149,11 @@ sock.addEventListener("message", (e) => {
 const send = (method, params = {}) =>
 	new Promise((resolve, reject) => {
 		const id = ++seq;
-		pending.set(id, (msg) => (msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result)));
+		pending.set(id, (msg) =>
+			msg.error
+				? reject(new Error(JSON.stringify(msg.error)))
+				: resolve(msg.result),
+		);
 		sock.send(JSON.stringify({ id, method, params }));
 	});
 
@@ -152,7 +167,8 @@ const ev = async (expression) => {
 		returnByValue: true,
 		expression,
 	});
-	if (result.subtype === "error") throw new Error(result.description ?? "evaluate failed");
+	if (result.subtype === "error")
+		throw new Error(result.description ?? "evaluate failed");
 	return result.value;
 };
 
@@ -169,7 +185,8 @@ const waitFor = async (expression, label, timeout = 30_000) => {
 	const deadline = Date.now() + timeout;
 	for (;;) {
 		if (await ev(expression)) return;
-		if (Date.now() > deadline) throw new Error(`timed out waiting for ${label}`);
+		if (Date.now() > deadline)
+			throw new Error(`timed out waiting for ${label}`);
 		await sleep(250);
 	}
 };
@@ -200,7 +217,9 @@ const shot = async (name, note) => {
 };
 
 const click = async (selector) =>
-	ev(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.click(); return true; })()`);
+	ev(
+		`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.click(); return true; })()`,
+	);
 
 /* ---- the run ------------------------------------------------------------ */
 
@@ -212,7 +231,8 @@ await waitFor(
 const harnessError = await ev(
 	`(() => window.__HARNESS_ERROR__ || (document.body.innerText.trim().length ? "" : "no text rendered"))()`,
 );
-if (harnessError) throw new Error(`the harness page did not render: ${harnessError}`);
+if (harnessError)
+	throw new Error(`the harness page did not render: ${harnessError}`);
 
 /*
  * Into a NEW conversation, through the shell's own control.
@@ -262,35 +282,57 @@ if (MODE === "actionable" && plainNewChat) {
 const choseAgent = await ev(
 	`(() => { const el = [...document.querySelectorAll("button,a")].find((x) => /^New chat with /.test(x.getAttribute("aria-label") || "")); if (!el) return false; el.click(); return true; })()`,
 );
-if (!choseAgent) throw new Error("the shell offered no New chat with <agent> control to reach a resolved draft");
+if (!choseAgent)
+	throw new Error(
+		"the shell offered no New chat with <agent> control to reach a resolved draft",
+	);
 await waitFor(
 	`(() => { const b = document.querySelector("button[aria-label^='Model:']"); return !!b && !/none resolved yet/.test(b.getAttribute("aria-label") || ""); })()`,
 	"the draft's model to be resolved by the backend",
 	45_000,
 );
 
-
 if (MODE === "inert") {
-	await ev(`(() => { const el = [...document.querySelectorAll("button,a")].find((x) => /^New chat with /.test(x.getAttribute("aria-label") || "")); if (el) el.click(); return !!el; })()`);
+	await ev(
+		`(() => { const el = [...document.querySelectorAll("button,a")].find((x) => /^New chat with /.test(x.getAttribute("aria-label") || "")); if (el) el.click(); return !!el; })()`,
+	);
 	await sleep(2500);
-	await shot("inert-at-rest", "the same pane on a backend without `draft_selection`: the readings are inert");
+	await shot(
+		"inert-at-rest",
+		"the same pane on a backend without `draft_selection`: the readings are inert",
+	);
 	const opened = await click(`button[aria-label^='Model:']`);
 	await sleep(1500);
 	const dialog = await ev(`!!document.querySelector("[role='dialog']")`);
-	if (dialog) throw new Error("a picker opened on a backend that cannot honour a pick — the gate is not gating");
+	if (dialog)
+		throw new Error(
+			"a picker opened on a backend that cannot honour a pick — the gate is not gating",
+		);
 	numbers.inert = { clicked: opened, dialogOpened: dialog };
-	await shot("inert-no-picker", "the same click, and no picker: this is the negative control");
+	await shot(
+		"inert-no-picker",
+		"the same click, and no picker: this is the negative control",
+	);
 	await report();
 	process.exit(0);
 }
 
-await shot("draft-at-rest", "a NEW conversation pane, capability present: the model and effort readings are controls");
+await shot(
+	"draft-at-rest",
+	"a NEW conversation pane, capability present: the model and effort readings are controls",
+);
 
 /* 1. the model picker, opened from the reading itself. */
 await click(`button[aria-label^='Model:']`);
-await waitFor(`!!document.querySelector("[role='dialog']")`, "the model picker");
+await waitFor(
+	`!!document.querySelector("[role='dialog']")`,
+	"the model picker",
+);
 await sleep(600);
-await shot("picker-open", "the model picker open on a draft pane, at the same dialog a session's reading opens");
+await shot(
+	"picker-open",
+	"the model picker open on a draft pane, at the same dialog a session's reading opens",
+);
 
 /* 2. a model the BACKEND will resolve, found by trying the rows in order. */
 const label = `document.querySelector("button[aria-label^='Model:']").getAttribute("aria-label")`;
@@ -299,7 +341,10 @@ let pickRecord = null;
 for (let attempt = 0; attempt < 6 && !pickRecord; attempt++) {
 	if (!(await ev(`!!document.querySelector("[role='dialog']")`))) {
 		await click(`button[aria-label^='Model:']`);
-		await waitFor(`!!document.querySelector("[role='dialog']")`, "the model picker");
+		await waitFor(
+			`!!document.querySelector("[role='dialog']")`,
+			"the model picker",
+		);
 		await sleep(500);
 	}
 	const chosen = await ev(`(() => {
@@ -321,7 +366,8 @@ for (let attempt = 0; attempt < 6 && !pickRecord; attempt++) {
 		if (Date.now() > deadline) break;
 		await sleep(400);
 	}
-	if (!pickRecord) numbers[`pickRefused-${attempt}`] = { chosen, reading: await ev(label) };
+	if (!pickRecord)
+		numbers[`pickRefused-${attempt}`] = { chosen, reading: await ev(label) };
 }
 if (!pickRecord) {
 	throw new Error(
@@ -329,7 +375,10 @@ if (!pickRecord) {
 	);
 }
 await sleep(600);
-await shot("model-picked", `chosen: ${pickRecord.chosen} — the window, the price pair and the ladder on screen are the backend\'s answer for it`);
+await shot(
+	"model-picked",
+	`chosen: ${pickRecord.chosen} — the window, the price pair and the ladder on screen are the backend\'s answer for it`,
+);
 numbers.modelPick = pickRecord;
 
 /* 3. the effort ladder the CHOSEN model carries, and a rung of it. */
@@ -358,47 +407,85 @@ if (!effortOpen) {
 		})()`),
 		why: "the backend's `sessions.preview` spec carried an empty ladder (reasoning_efforts: []), so no rung is offered on a draft; observed payload recorded in this file rather than worked around in the renderer",
 	};
-	console.log("effort reading absent on this backend build — recorded, not worked around");
+	console.log(
+		"effort reading absent on this backend build — recorded, not worked around",
+	);
 } else {
-await waitFor(`!!document.querySelector("[role='dialog']")`, "the effort picker");
-await sleep(600);
-await shot("effort-picker-open", "the effort ladder of the CHOSEN model, read off the backend's resolution rather than the picker's own row");
-const rung = await ev(`(() => { const r = [...document.querySelectorAll("[role='option']")].find((x) => x.getAttribute("aria-selected") !== "true"); return r ? (r.getAttribute("data-value") || r.textContent.trim().split("\\n")[0]) : null; })()`);
-if (!rung) throw new Error("no second rung to pick");
-await ev(`(() => { const r = [...document.querySelectorAll("[role='option']")].find((x) => x.getAttribute("aria-selected") !== "true"); r.click(); return true; })()`);
-await waitFor(
-	`/Reasoning effort: ${rung}/.test(document.querySelector("button[aria-label^='Reasoning effort:']")?.getAttribute("aria-label") || "")`,
-	"the rung to be recorded",
-	45_000,
-);
-await sleep(600);
-await shot("effort-picked", `chosen rung: ${rung} of the chosen model's ladder`);
-numbers.effortPick = { rung, label: await ev(`document.querySelector("button[aria-label^='Reasoning effort:']").getAttribute("aria-label")`) };
-
+	await waitFor(
+		`!!document.querySelector("[role='dialog']")`,
+		"the effort picker",
+	);
+	await sleep(600);
+	await shot(
+		"effort-picker-open",
+		"the effort ladder of the CHOSEN model, read off the backend's resolution rather than the picker's own row",
+	);
+	const rung = await ev(
+		`(() => { const r = [...document.querySelectorAll("[role='option']")].find((x) => x.getAttribute("aria-selected") !== "true"); return r ? (r.getAttribute("data-value") || r.textContent.trim().split("\\n")[0]) : null; })()`,
+	);
+	if (!rung) throw new Error("no second rung to pick");
+	await ev(
+		`(() => { const r = [...document.querySelectorAll("[role='option']")].find((x) => x.getAttribute("aria-selected") !== "true"); r.click(); return true; })()`,
+	);
+	await waitFor(
+		`/Reasoning effort: ${rung}/.test(document.querySelector("button[aria-label^='Reasoning effort:']")?.getAttribute("aria-label") || "")`,
+		"the rung to be recorded",
+		45_000,
+	);
+	await sleep(600);
+	await shot(
+		"effort-picked",
+		`chosen rung: ${rung} of the chosen model's ladder`,
+	);
+	numbers.effortPick = {
+		rung,
+		label: await ev(
+			`document.querySelector("button[aria-label^='Reasoning effort:']").getAttribute("aria-label")`,
+		),
+	};
 }
 
 /* Close the dialog the way a keyboard user does, so the send is a plain send. */
-await ev(`(() => { document.querySelector("[role='dialog']")?.querySelector("button[aria-label*='Close' i], button[aria-label*='close' i]")?.click(); return true; })()`);
+await ev(
+	`(() => { document.querySelector("[role='dialog']")?.querySelector("button[aria-label*='Close' i], button[aria-label*='close' i]")?.click(); return true; })()`,
+);
 await sleep(800);
 
 /* 4. the send, on the shipped submit path. */
 numbers.beforeSend = await ev(READINGS);
-await ev(`(() => { const t = document.querySelector("textarea"); t.focus(); return true; })()`);
-await send("Input.insertText", { text: "Which model and reasoning level is answering this?" });
-const sendButton = await ev(`(() => { const b = [...document.querySelectorAll("button")].find((x) => /send message/i.test(x.getAttribute("aria-label") || "")); if (!b) return false; b.click(); return true; })()`);
-if (!sendButton) throw new Error("could not find the composer's own Send message control");
+await ev(
+	`(() => { const t = document.querySelector("textarea"); t.focus(); return true; })()`,
+);
+await send("Input.insertText", {
+	text: "Which model and reasoning level is answering this?",
+});
+const sendButton = await ev(
+	`(() => { const b = [...document.querySelectorAll("button")].find((x) => /send message/i.test(x.getAttribute("aria-label") || "")); if (!b) return false; b.click(); return true; })()`,
+);
+if (!sendButton)
+	throw new Error("could not find the composer's own Send message control");
 await waitFor(
 	`(() => { const s = document.querySelector("[data-lo-session-strip]"); return !!s && !s.hasAttribute("data-lo-session-strip-draft"); })()`,
 	"the first receipt, where the draft's strip becomes a session's",
 	60_000,
 );
 await sleep(1200);
-await shot("after-send", "the same pane after send: the draft's strip has become a session's, and the readings did not move");
+await shot(
+	"after-send",
+	"the same pane after send: the draft's strip has become a session's, and the readings did not move",
+);
 
 /* 5. the first turn, in the transcript, and the session's own record. */
-await waitFor(`document.body.innerText.includes("Which model and reasoning level")`, "the first turn in the transcript", 60_000);
+await waitFor(
+	`document.body.innerText.includes("Which model and reasoning level")`,
+	"the first turn in the transcript",
+	60_000,
+);
 await sleep(2500);
-await shot("first-turn", "the first turn, in the transcript of the session the send created");
+await shot(
+	"first-turn",
+	"the first turn, in the transcript of the session the send created",
+);
 
 numbers.firstTurn = await ev(`(() => {
 	const rows = [...document.querySelectorAll("[data-lo-session-strip]")];
@@ -423,14 +510,19 @@ async function report() {
 	const after = MODE === "inert" ? null : await ev(READINGS);
 	if (after) {
 		numbers.afterSend = after;
-		const moved = numbers.beforeSend && JSON.stringify(numbers.beforeSend.strip) !== JSON.stringify(after.strip);
+		const moved =
+			numbers.beforeSend &&
+			JSON.stringify(numbers.beforeSend.strip) !== JSON.stringify(after.strip);
 		numbers.shift = {
 			stripBefore: numbers.beforeSend?.strip,
 			stripAfter: after.strip,
 			moved,
 		};
 	}
-	writeFileSync(join(OUT, "numbers.json"), `${JSON.stringify(numbers, null, 2)}\n`);
+	writeFileSync(
+		join(OUT, "numbers.json"),
+		`${JSON.stringify(numbers, null, 2)}\n`,
+	);
 	console.log(`wrote ${OUT}/numbers.json`);
 }
 
@@ -451,10 +543,15 @@ function readSessionRecord(root) {
 			file: newest.f,
 			model: parsed.model ?? parsed.config?.model ?? null,
 			reasoning_effort:
-				parsed.reasoning_effort ?? parsed.config?.reasoning_effort ?? parsed.config?.model?.reasoning_effort ?? null,
+				parsed.reasoning_effort ??
+				parsed.config?.reasoning_effort ??
+				parsed.config?.model?.reasoning_effort ??
+				null,
 			keys: Object.keys(parsed).slice(0, 24),
 		};
 	} catch (error) {
-		return { note: `could not read the backend's own record: ${String(error)}` };
+		return {
+			note: `could not read the backend's own record: ${String(error)}`,
+		};
 	}
 }

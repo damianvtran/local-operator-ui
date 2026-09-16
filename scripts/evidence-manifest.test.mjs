@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -348,7 +354,9 @@ test("partialCapture's own head citations are checked too", () => {
 	const refreshed = provenanceFailures(
 		{
 			...GOOD,
-			partialCapture: { refreshedAtHead: "6e0d41580e24cacc3de08d659b8f6058d78ead53" },
+			partialCapture: {
+				refreshedAtHead: "6e0d41580e24cacc3de08d659b8f6058d78ead53",
+			},
 		},
 		git,
 	);
@@ -357,12 +365,18 @@ test("partialCapture's own head citations are checked too", () => {
 	// A reachable one passes, and an absent one is not a failure to report.
 	assert.deepEqual(
 		provenanceFailures(
-			{ ...GOOD, partialCapture: { addedAtHead: GOOD.head, refreshedAtHead: undefined } },
+			{
+				...GOOD,
+				partialCapture: { addedAtHead: GOOD.head, refreshedAtHead: undefined },
+			},
 			git,
 		),
 		[],
 	);
-	assert.deepEqual(provenanceFailures({ ...GOOD, partialCapture: {} }, git), []);
+	assert.deepEqual(
+		provenanceFailures({ ...GOOD, partialCapture: {} }, git),
+		[],
+	);
 });
 
 test("a pass that added no frames does not claim to have added them", () => {
@@ -378,7 +392,12 @@ test("a pass that added no frames does not claim to have added them", () => {
 	// The property the caller depends on: an empty overlay, so the spread of the
 	// previous `partialCapture` leaves those four fields exactly as they were.
 	assert.deepEqual(Object.keys(partialAddedFields(0, [], GOOD.head)), []);
-	const added = partialAddedFields(3, ["live"], GOOD.head, "2026-09-13T00:00:00.000Z");
+	const added = partialAddedFields(
+		3,
+		["live"],
+		GOOD.head,
+		"2026-09-13T00:00:00.000Z",
+	);
 	assert.deepEqual(added, {
 		addedFrames: 3,
 		addedSurfaces: ["live"],
@@ -400,13 +419,15 @@ test("a pass that added no frames does not claim to have added them", () => {
  * has no ancestor of `HEAD`, and the Desktop Tests job is that clone, so the
  * term that answers the field there is the one `lsTree` feeds.
  */
-const fakeGitFor = ({ lsTree = null, diff = null } = {}) => (args) => {
-	if (args[0] === "ls-tree")
-		return lsTree === null ? null : lsTree.join("\n");
-	if (args[0] === "diff" && args[1] === "--name-only")
-		return diff === null ? null : diff.join("\n");
-	return null;
-};
+const fakeGitFor =
+	({ lsTree = null, diff = null } = {}) =>
+	(args) => {
+		if (args[0] === "ls-tree")
+			return lsTree === null ? null : lsTree.join("\n");
+		if (args[0] === "diff" && args[1] === "--name-only")
+			return diff === null ? null : diff.join("\n");
+		return null;
+	};
 
 const fakeDiff = (paths) => fakeGitFor({ diff: paths });
 
@@ -529,7 +550,10 @@ test("a repository git cannot read is not a failure", () => {
 	// Nothing to question is not the same as a defect found: a tree with no `.git`
 	// and a checkout that cannot answer either read reports nothing.
 	assert.deepEqual(
-		partialCaptureFailures({ ...GOOD, partialCapture: HONEST_PASS }, () => null),
+		partialCaptureFailures(
+			{ ...GOOD, partialCapture: HONEST_PASS },
+			() => null,
+		),
 		[],
 	);
 });
@@ -600,7 +624,11 @@ test("frames inside a declared set are not demanded of the tally on HEAD's tree 
 		partialCaptureFailures(
 			{
 				...GOOD,
-				partialCapture: { ...HONEST_PASS, refreshedFrames: 0, refreshedStories: [] },
+				partialCapture: {
+					...HONEST_PASS,
+					refreshedFrames: 0,
+					refreshedStories: [],
+				},
 			},
 			fakeGitFor({ lsTree: ["docs/evidence/live/one/dracula.webp"] }),
 		),
@@ -695,7 +723,9 @@ test("a clone with history asks both questions, and a mutated tally answers both
  * commits to be present, and a shallow CI checkout has no such guarantee.
  */
 test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
-	const manifest = JSON.parse(readFileSync("docs/evidence/manifest.json", "utf8"));
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
 	assert.deepEqual(
 		stampFailures(manifest),
 		[],

@@ -485,6 +485,7 @@ updater.onBackendUpdateAvailable = updater.on("backend-update-available");
 updater.onBackendUpdateNotAvailable = updater.on(
 	"backend-update-not-available",
 );
+<<<<<<< HEAD
 updater.onBackendUpdateCompleted = updater.on("backend-update-completed");
 /*
  * The channel the main process has always sent a failed server update on, and
@@ -495,6 +496,8 @@ updater.onBackendUpdateError = updater.on("backend-update-error");
 updater.onBackendUpdateManualRequired = updater.on(
 	"backend-update-manual-required",
 );
+=======
+>>>>>>> 97e3bfebf (fix(chat): one designed pairing, scoped reads, and the guards that were inert)
 updater.onUpdateInstallFailed = updater.on("update-install-failed");
 updater.onUpdateInstallBlocked = updater.on("update-install-blocked");
 updater.onUpdateInstallInFlight = updater.on("update-install-in-flight");
@@ -903,6 +906,7 @@ test("R9: an offer before the check does not rob a later check of the sentence",
 	await answer(handle, CURRENT);
 	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
 });
+<<<<<<< HEAD
 
 /*
  * ------------------------------------------------- a failed server update
@@ -1585,3 +1589,5 @@ test("a rejected invoke leaves the in-flight panel too", async () => {
 	);
 	assert.equal(dangerToasts(handle).length, 0);
 });
+=======
+>>>>>>> 97e3bfebf (fix(chat): one designed pairing, scoped reads, and the guards that were inert)

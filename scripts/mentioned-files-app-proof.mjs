@@ -311,7 +311,13 @@ async function expectedPaths() {
 		await import(
 			`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 		);
-	const file = join(homedir(), ".local-operator", "sessions", SESSION, "transcript.jsonl");
+	const file = join(
+		homedir(),
+		".local-operator",
+		"sessions",
+		SESSION,
+		"transcript.jsonl",
+	);
 	if (!existsSync(file)) return null;
 	const rows = [];
 	let cwd = null;
@@ -337,7 +343,9 @@ async function expectedPaths() {
 	return {
 		records: state.records.length,
 		cwd,
-		paths: extractMentionedPaths(state.records, cwd ?? undefined).map((m) => m.path),
+		paths: extractMentionedPaths(state.records, cwd ?? undefined).map(
+			(m) => m.path,
+		),
 	};
 }
 
@@ -480,7 +488,10 @@ try {
 				head: head ? head.innerText.trim() : null,
 			};
 		})()`);
-		if (samples.length === 0 || sample.count !== samples[samples.length - 1].count)
+		if (
+			samples.length === 0 ||
+			sample.count !== samples[samples.length - 1].count
+		)
 			samples.push(sample);
 		if (sample.count === previousCount) stableFor += 1;
 		else stableFor = 0;
@@ -594,7 +605,10 @@ try {
 			const grid = document.querySelector('[data-tour-tag="files-grid"]');
 			return grid ? [...grid.querySelectorAll("button")].map((b) => b.innerText.trim()) : [];
 		})()`);
-		writeFileSync(`${OUT}/report-geometry.json`, JSON.stringify(report, null, 2));
+		writeFileSync(
+			`${OUT}/report-geometry.json`,
+			JSON.stringify(report, null, 2),
+		);
 		console.log(JSON.stringify(report, null, 2));
 		ws.close();
 		process.exit(await finish(0));

@@ -77,11 +77,14 @@ test("the record carries the keys the backend's reader needs, and nothing else",
 	// rehydrates (m2).
 	assert.equal(record.current_session, "");
 	assert.equal(record.focused_at, 0);
-	assert.deepEqual(record.capabilities.sort(), [
-		DESKTOP_NOTIFY_CAPABILITY,
-		FOCUS_WINDOW_CAPABILITY,
-	].sort());
-	assert.ok(record.control_key.length >= 32, "the key is the whole authorization story");
+	assert.deepEqual(
+		record.capabilities.sort(),
+		[DESKTOP_NOTIFY_CAPABILITY, FOCUS_WINDOW_CAPABILITY].sort(),
+	);
+	assert.ok(
+		record.control_key.length >= 32,
+		"the key is the whole authorization story",
+	);
 	assert.equal(typeof record.heartbeat_at, "number");
 	assert.equal(typeof record.started_at, "number");
 	publisher.stop();
@@ -145,7 +148,19 @@ test("a pane that leaves its conversation withdraws the routing report, identity
 test("the write is staged, so no reader can see a half-written record", () => {
 	const dir = tempDir();
 	publishViewerRecord(
-		{ pid: 4244, surface: "desktop", control_port: 1, control_key: "k", current_session: "", can_switch: true, focused_at: 0, protocol: VIEWER_PROTOCOL, started_at: 0, heartbeat_at: 0, capabilities: [] },
+		{
+			pid: 4244,
+			surface: "desktop",
+			control_port: 1,
+			control_key: "k",
+			current_session: "",
+			can_switch: true,
+			focused_at: 0,
+			protocol: VIEWER_PROTOCOL,
+			started_at: 0,
+			heartbeat_at: 0,
+			capabilities: [],
+		},
 		dir,
 	);
 	// The temporary file is renamed onto the target, so the directory holds the
@@ -158,7 +173,19 @@ test("the write is staged, so no reader can see a half-written record", () => {
 	);
 	// Overwriting an existing record also leaves exactly one file.
 	publishViewerRecord(
-		{ pid: 4244, surface: "desktop", control_port: 2, control_key: "k", current_session: SESSION, can_switch: true, focused_at: 0, protocol: VIEWER_PROTOCOL, started_at: 0, heartbeat_at: 0, capabilities: [] },
+		{
+			pid: 4244,
+			surface: "desktop",
+			control_port: 2,
+			control_key: "k",
+			current_session: SESSION,
+			can_switch: true,
+			focused_at: 0,
+			protocol: VIEWER_PROTOCOL,
+			started_at: 0,
+			heartbeat_at: 0,
+			capabilities: [],
+		},
 		dir,
 	);
 	assert.deepEqual(readdirSync(dir), ["4244.json"]);
@@ -189,12 +216,20 @@ test("navigation and focus are stamped, and stop removes the record", () => {
 	publisher.noteSession(SESSION);
 	assert.equal(readRecord(dir, 4246).current_session, SESSION);
 	publisher.noteSession("");
-	assert.equal(readRecord(dir, 4246).current_session, "", "a closed window shows nothing");
+	assert.equal(
+		readRecord(dir, 4246).current_session,
+		"",
+		"a closed window shows nothing",
+	);
 	const before = readRecord(dir, 4246).focused_at;
 	publisher.noteFocused();
 	assert.ok(readRecord(dir, 4246).focused_at >= before);
 	publisher.stop();
-	assert.deepEqual(readdirSync(dir), [], "a record left behind advertises a dead port");
+	assert.deepEqual(
+		readdirSync(dir),
+		[],
+		"a record left behind advertises a dead port",
+	);
 	// Idempotent: `will-quit` and the record's own teardown can both call it.
 	publisher.stop();
 	unpublishViewerRecord(4246, dir);
@@ -262,7 +297,10 @@ function speak(port, key, frames, { expectAuthRejection = false } = {}) {
 
 test("a bad key closes the conversation without a reply", async (t) => {
 	const endpoint = new ViewerEndpoint(
-		{ resumeSession: () => "should not run", focusWindow: () => "should not run" },
+		{
+			resumeSession: () => "should not run",
+			focusWindow: () => "should not run",
+		},
 		"a".repeat(64),
 	);
 	// `t.after` rather than a trailing call: a failing assertion must not leave a

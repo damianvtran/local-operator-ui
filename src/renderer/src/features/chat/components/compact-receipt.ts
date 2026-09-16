@@ -46,6 +46,9 @@ export function isCompactStartNotice(text: unknown): boolean {
  * WHY TWO, AND WHY THESE. The runtime runs the attempt in a background task
  * after answering, and the refusal is written when that task finishes: measured
  * at 1.47 s from a routed command, so a single immediate read races it. The
+ * measured gap a user therefore sees between the composer emptying and the row
+ * appearing is 1.6-2.5 s (UX round 3, U14 — accepted rather than hidden: the
+ * alternative is no row at all, which is the state this read exists to end). The
  * first delay is therefore just past that measurement and the second is a
  * generous backstop for a busier machine; two reads is the bound, so a runtime
  * that never writes the row costs two cheap tail reads and nothing else. It is
@@ -58,9 +61,10 @@ export const COMPACT_TAIL_READ_DELAYS_MS = [1500, 5000] as const;
  * Ask for the tail at most twice, stopping as soon as the outcome is on screen.
  *
  * The stop condition is the whole point of the shape: `read` resolves true when
- * the page it applied carried a compaction outcome, so a pass that settled (or
- * declined) before the first delay costs exactly one read and a pass that
- * settled on the live channel costs two. A rejected read is not exceptional —
+ * the page it applied carried THIS pass's outcome, so a pass that has already
+ * settled (or declined) by the first delay costs exactly one read, and a pass
+ * still RUNNING at 1.5 s costs two — the second being the backstop that the
+ * scoping above exists to keep alive. A rejected read is not exceptional —
  * the rows already painted are still correct and the next delay is the retry —
  * and the caller is expected to fire this without awaiting it.
  *
@@ -81,4 +85,37 @@ export async function refreshCompactionOutcome(
 			// screen is still correct without it, and the second delay is the retry.
 		}
 	}
+}
+
+/**
+ * Does this tail page carry the outcome of the pass that began at `since`?
+ *
+ * THIS is the schedule's stopping rule, and it is scoped to one pass on purpose.
+ * The unscoped form — "the page carries a compaction row" — reported success on
+ * any session the user had compacted before, because the tail page is the last
+ * hundred entries of the whole session: the schedule then returned after its
+ * first read and its second delay never ran, which removed the backstop exactly
+ * in the repeat case the read exists for (review round 3, R3-2/Q8, with QA's
+ * measurement that the refusal lands at ~1.5 s against a 1500 ms first delay).
+ *
+ * A page entry's `ts` is in SECONDS (the transcript's own field) and `since` is
+ * epoch milliseconds, so the comparison is where the conversion happens — once,
+ * here, rather than at each of the callers.
+ */
+export function tailCarriesOutcome(
+	entries: readonly {
+		ts?: number;
+		type?: string;
+		payload?: { custom_type?: string };
+	}[],
+	since: number,
+): boolean {
+	return entries.some((entry) => {
+		if (Math.round((entry.ts ?? 0) * 1000) < since) return false;
+		return (
+			entry.type === "compaction" ||
+			(entry.type === "message" &&
+				entry.payload?.custom_type === "compaction_refused")
+		);
+	});
 }
