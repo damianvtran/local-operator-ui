@@ -185,8 +185,14 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
 					/*
 					 * The current destination's ground: `highlight`, the role authored for a
-					 * current row, a shallow step off the panel's `surface` in the direction
-					 * the mode runs (ΔE00 2.18-2.28 across the twelve palettes).
+					 * current row, a step off the panel's `surface` in the direction the mode
+					 * runs. It was authored at ΔE00 2.18-2.28 for a selection the operator had
+					 * asked to be SUBTLE; he has since seen it rendered and reported the row as
+					 * being lost beside a hovered neighbour, so the role now carries ΔE00
+					 * 4.0-4.4 from `surface` on eleven of the twelve palettes (3.51 on
+					 * `iceberg`, which its own well caps — see that palette), bought on the
+					 * CHROMA axis at the surface's own hue because that axis costs no ink
+					 * assertion (`docs/branding.md` § 3).
 					 *
 					 * It was `accentWash` before that role existed, which is ΔE00 **1.05** on
 					 * this ground in tokyoNight (`#262B3F` on `#24283B`, the pair the app
@@ -202,11 +208,22 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					 * 3.75-14.94 from `surface` — a dark box rather than a highlight.
 					 * `hover:` states the ground again because a hover variant outranks a
 					 * bare background, so without it the pointer would replace the mark on
-					 * the row the user is already on. Same decision as `rowCurrent` in
-					 * `features/chat/components/chat-sidebar.tsx`, and the same role.
+					 * the row the user is already on.
+					 *
+					 * The 1px `outline-control` edge is the mark's second half and the half
+					 * that does not spend ink headroom: the ink floors cap how far this
+					 * ground can climb (`ink-dim` is drawn inside a current row), and on
+					 * eight palettes the neighbouring rows' hover step is still the larger
+					 * step off `surface` — a bound no palette value lifts, because `elevated`
+					 * is also every menu and popover ground in the app. It clears § 3's 3:1
+					 * structural floor against this ground on all twelve palettes
+					 * (3.17-4.59) and draws outside the box model, so this rail's row box and
+					 * its alignment against the app rail are unchanged. Same two-part mark,
+					 * same roles, same reasoning as `rowCurrent`/`rowCurrentEdge` in
+					 * `features/chat/components/chat-sidebar.tsx`.
 					 */
 					isActive
-						? "bg-highlight font-medium text-ink hover:bg-highlight"
+						? "bg-highlight font-medium text-ink outline-solid outline-1 -outline-offset-1 outline-control hover:bg-highlight"
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>

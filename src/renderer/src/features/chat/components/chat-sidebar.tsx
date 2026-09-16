@@ -62,14 +62,17 @@ const rowStyle =
  * the All chats filter, the New chat row staging an untargeted draft, and the
  * agent or team an untargeted-vs-targeted draft names.
  *
- * WHY THE STEP IS `highlight`. This panel is `bg-surface` (the
- * `nav aria-label="Chats"` root), and a selection needs a step off it that is
- * SEEN and no more than that. `highlight` is the palette role authored for this
- * ground — a shallow step off `surface` in the direction the mode runs, at ΔE00
- * 2.18-2.28 across the twelve palettes the port started from, which is above the
- * perceptual threshold `docs/branding.md` § 3 cites and well under the `sunken`
- * well it replaced (3.75-14.94 from `surface`, the operator's "very dark colour"
- * measured).
+ * WHY THE STEP IS `highlight`, AND WHY IT IS NOW A LARGE ONE. This panel is
+ * `bg-surface` (the `nav aria-label="Chats"` root), and a selection needs a step
+ * off it that is SEEN and no more than that. `highlight` was authored at ΔE00
+ * 2.18-2.28 from `surface` across the twelve palettes the port started from, for
+ * a selection the operator had asked to be SUBTLE; he has since seen that
+ * rendered and reported it as invisible beside a hovered neighbour, so the intent
+ * is reversed: the step is now ΔE00 4.0-4.4 on all twelve. The move is bought on
+ * the CHROMA axis at the surface's own hue rather than with more lightness, which
+ * `docs/branding.md` § 3 names as the cheap one — a contrast ratio has no chroma
+ * term, so warmth at a fixed L* costs no ink assertion, while lightness costs
+ * every ink measured against the ground.
  *
  * WHY NOT THE ACCENT WASH. `accentWash` is ΔE00 **1.05** from `surface` in
  * tokyoNight (#262B3F on #24283B) — the operator's own report, "you can't tell
@@ -100,26 +103,35 @@ const rowStyle =
  * from the one under the pointer — the pair measured ΔE00 0.77 in obsidian when
  * the selection ground was the wash. The contract now asserts `highlight`
  * against `surface`, `elevated` AND `sunken` at the field floor for exactly that
- * reason, with `elevated` the binding pair (worst case 2.52, obsidian).
+ * reason, with `elevated` the binding pair (worst case 2.36, obsidian).
  *
- * AND WHY THE GROUND IS NOT THE ONLY SIGNAL — THE SECOND STEP.
- * The operator asked for a SUBTLE selection, so the step up is bounded: at ΔE00
- * 2.18-2.28 `highlight` is deliberately quieter than the `sunken` box it replaced,
- * and that quietening is what exposed the hazard underneath it. The rows around a
- * current one carry `hover:bg-elevated`, and `elevated` is a LOUDER step off
- * `surface` than `highlight` on the dark palettes — measured in the shipped
- * frames, a hovered neighbour sits ΔE00 2.20-4.58 from the panel while the
- * current row sits 2.18-2.35, so the pointer's transient mark outranked the
- * persistent one (selection over hover: 0.93 / 0.97 / 1.89 before this change,
- * 0.48 / 0.52 / 0.49 after). Raising `highlight` would undo what was asked for,
- * so the current row carries a SECOND, non-colour step instead: `font-medium`,
- * exactly as `features/settings/components/settings-sidebar.tsx` already marks
- * its current destination ("bg-highlight font-medium text-ink
- * hover:bg-highlight"). That makes the two rails agree rather than inventing an
- * idiom, and it gives the persistent state a signal the transient one does not
- * have. The weight is the only thing this adds: the row's box, height, padding
- * and alignment are unchanged, and the measurement that says so is in
- * `docs/evidence/chat-sidebar-current-row/README.md`.
+ * AND WHY THE GROUND IS NOT THE ONLY SIGNAL — ITS OWN EDGE.
+ * A stronger ground is not sufficient on its own, and the measurement says so
+ * rather than the taste: the ink floors cap how far the row's own ground can
+ * climb, because `ink-dim` is drawn INSIDE a current row (the `· lopdev` binding
+ * and the key caps) and holds it to 4.65:1 against that ground. On eight of the
+ * twelve palettes the hover step the neighbouring rows carry is therefore still
+ * the LARGER step off `surface` — 4.49-6.25 against a mark of 4.01-4.39 — and
+ * `elevated` cannot come down to meet it: it is also every menu, popover and
+ * tooltip ground in the app. `font-medium` is the second step this row already
+ * carries and it does not carry the ordering alone. So the row takes a
+ * STRUCTURAL EDGE as well: a 1px `outline-control` ring, measured 3.17-4.59:1
+ * against the row's own ground across the twelve palettes, over § 3's 3:1 floor
+ * for a structural boundary. An outline draws outside the box model, so the
+ * row's box, its height, its padding and its alignment against the rows around
+ * it are all unchanged, and it spends none of the ink headroom the ground is
+ * capped by. `features/chat/pickers/picker-host.tsx` is the same two-part mark
+ * for the same reason, and its comment records the same failure mode measured on
+ * a different surface (the ground alone was invisible in obsidian there).
+ *
+ * AND WHY THE EDGE IS NOT INSIDE THIS STRING. The entity row paints `rowCurrent`
+ * on TWO elements — the wrapper and the name button — because a child's
+ * `hover:bg-elevated` paints over its parent's ground (the entity-row MAJOR
+ * recorded below). An
+ * outline in the shared constant would draw two rings on that one row, which is
+ * a second mark rather than a stronger one. The edge belongs on the row's own
+ * box, so it is a constant of its own, passed at the four boxes and NOT on the
+ * name button.
  *
  * AND WHY IT IS ON TWO ELEMENTS OF THE ENTITY ROW. The mark cannot be carried by
  * one class there: the name button inside the row carries `rowStyle`, so its
@@ -128,8 +140,11 @@ const rowStyle =
  * changed for). The wrapper paints the ground — it fills the gaps and the rounded
  * corners the 24px controls leave — the name button paints it too, because its
  * own `hover:` half is the only thing that beats the step it inherits, and the
- * two 24px controls drop their hover step while the row is current. That is one
- * state spread over three elements by the DOM, not three decisions;
+ * two 24px controls drop their hover step while the row is current. The EDGE
+ * is the wrapper's alone, deliberately: it marks the row's box, and two
+ * rings on one row would be a second mark rather than a stronger one.
+ * That is one state spread over three elements by the DOM, not three
+ * decisions;
  * `scripts/chat-sidebar-selection.test.mjs` resolves each expression through the
  * shipped `cn` for that reason rather than looking for a name.
  *
@@ -150,6 +165,32 @@ const rowStyle =
  * see a class.
  */
 const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";
+
+/**
+ * The current row's structural edge, and the half of the mark that does not
+ * spend ink headroom.
+ *
+ * WHY IT EXISTS BESIDE THE GROUND. The ground above is capped by the ink floors
+ * on it (`ink-dim` at 4.65:1, drawn inside a current row), and on eight of the
+ * twelve palettes the neighbouring rows' hover step is still the larger step off
+ * `surface` — a bound no palette value can lift, because `elevated` is also every
+ * menu and popover ground in the app. A 1px `outline-control` ring clears § 3's
+ * 3:1 structural floor against the row's own ground on all twelve palettes
+ * (3.17-4.59 measured), draws OUTSIDE the box model, and so adds a mark without
+ * touching the row's geometry or any ink ratio. `picker-host.tsx`'s `PickerRow`
+ * carries the same two halves for the same reason.
+ *
+ * WHY NOT INSIDE `rowCurrent` ALONE. See the block above: the entity row paints
+ * that constant on its wrapper AND its name button, so an outline there is two
+ * rings on one row rather than a stronger mark. The four row BOXES pass this;
+ * the name button above does not.
+ *
+ * `scripts/contrast-contract.mjs` pins this string and asserts `border-control`
+ * against `highlight`, because no palette assertion can see a class and the
+ * edge's whole claim is that role's 3:1 floor on that ground.
+ */
+const rowCurrentEdge =
+	"outline-solid outline-1 -outline-offset-1 outline-control";
 
 import { ChatSessionStatus } from "./chat-session-status";
 
@@ -474,6 +515,14 @@ export function ChatSidebar({
 			nested,
 			binding: bindingName(row),
 		});
+		/*
+		 * Whether THIS row is the one the reader is on. Named because three things
+		 * depend on it — the ground, the structural edge that halves the mark, and
+		 * `aria-current` — and writing the predicate out three times is how the
+		 * three drift apart.
+		 */
+		const isCurrent =
+			selectedConversation === row.session_id && !activeDraftKey;
 		return (
 			<button
 				key={row.session_id}
@@ -490,19 +539,14 @@ export function ChatSidebar({
 					rowStyle,
 					"w-full text-left",
 					nested && "pl-7",
-					selectedConversation === row.session_id &&
-						!activeDraftKey &&
-						rowCurrent,
+					isCurrent && rowCurrent,
+					isCurrent && rowCurrentEdge,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
 					// mark arrived, re-truncating text under the reader's cursor;
 					// it lives in the reserved status slot instead (see `Status`).
 				)}
-				aria-current={
-					selectedConversation === row.session_id && !activeDraftKey
-						? "page"
-						: undefined
-				}
+				aria-current={isCurrent ? "page" : undefined}
 				/* The tooltip carries the row's binding and its own state — the facts the
 			   row may not be drawing — and deliberately NOT the search mark's words,
 			   which the row announces itself through the `sr-only` span beside it:
@@ -613,6 +657,7 @@ export function ChatSidebar({
 					className={cn(
 						"group flex h-8 items-center gap-1 rounded-md",
 						staged && rowCurrent,
+						staged && rowCurrentEdge,
 					)}
 				>
 					<button
@@ -1092,7 +1137,12 @@ export function ChatSidebar({
 							   sections above it are entity lists, and this is the control that
 							   widens the list to every conversation. */
 							data-tour-tag="chat-all-chats"
-							className={cn(rowStyle, "w-full", all && rowCurrent)}
+							className={cn(
+								rowStyle,
+								"w-full",
+								all && rowCurrent,
+								all && rowCurrentEdge,
+							)}
 							aria-pressed={all}
 							onClick={() => setAll((value) => !value)}
 						>
@@ -1169,6 +1219,7 @@ export function ChatSidebar({
 								// already highlighting itself, and two rows claiming the
 								// same draft would misreport where the user is.
 								Boolean(activeDraftKey) && !draft?.target && rowCurrent,
+								Boolean(activeDraftKey) && !draft?.target && rowCurrentEdge,
 							)}
 							aria-current={
 								activeDraftKey && !draft?.target ? "page" : undefined
@@ -1193,9 +1244,10 @@ export function ChatSidebar({
 							 * `bg-sunken` fill), so the marks it used to need on this one row —
 							 * the `capEdge` outline, which existed because the cap and the row
 							 * were both `sunken` — have nothing left to separate. The row's own
-							 * `rowCurrent` ground carries the state, and the chord is drawn the
-							 * same way on every ground it lands on, which is what makes it one
-							 * idiom rather than one idiom plus an exception.
+							 * `rowCurrent` ground and its `rowCurrentEdge` ring carry the state on
+							 * the ROW's box, not on the caps, and the chord is drawn the same way
+							 * on every ground it lands on, which is what makes it one idiom rather
+							 * than one idiom plus an exception.
 							 *
 							 * Platform: `isMac` above, derived from `navigator.platform` the way
 							 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
