@@ -10,7 +10,7 @@
   "themes": 12,
   "countsMean": {
     "frames": "3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
-    "surfaces": "394 entries in the `capture-evidence.mjs` STORIES literal, counted the way `check-evidence.mjs` counts them - `^\\t\\[` inside the block, parsed from `HEAD:scripts/capture-evidence.mjs` rather than taken from the writer. Main's 379 entries with all thirteen of #223's present, plus this branch's seven `chat-composer-band` tuples.",
+    "surfaces": "394 entries in the `capture-evidence.mjs` STORIES literal, counted the way `check-evidence.mjs` counts them - `^\\t\\[` inside the block, parsed from `HEAD:scripts/capture-evidence.mjs` rather than taken from the writer. RE-DERIVED off this tree: main alone carries 386 and this branch adds the 8 `chat-composer-band` tuples that frame the wake chip, so the sentence's own arithmetic is 386 + 8 = 394 rather than a carried-forward number.",
     "themes": "12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
