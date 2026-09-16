@@ -1,5 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
+import { screen, userEvent } from "@storybook/test";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
@@ -456,4 +457,281 @@ export const InterruptLeftWorkRunning: Story = {
 			</div>
 		</Frame>
 	),
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE INLINE CREDENTIAL CAPTURE's visible states (design §1-§10)
+ * ---------------------------------------------------------------------------
+ *
+ * Five frames, one per state the operator can be in, and each is driven by REAL
+ * KEYSTROKES against the shipped composer rather than by a prop that fakes the
+ * state. That is the whole point of them: the feature's rules live in the
+ * keyboard/mask/citation path, and a story that rendered `•` directly would
+ * photograph the paint while proving nothing about the gesture. `userEvent.type`
+ * dispatches the same keydowns a person does, so the mask, the mint and the
+ * Escape restore are exercised by the frames.
+ *
+ * The canary value is deliberate. `docs/design/composer-credential-capture.md`
+ * §10 requires that a typed secret is greppable NOWHERE after a store-and-send
+ * cycle, and the frames are the cheapest place to see that it is not: the
+ * bullets are painted by the textarea and the value is held outside the
+ * document, so this string appears in no frame, in no draft, and in nothing the
+ * overlay paints.
+ *
+ * `capturePending` is set on mount and released once the state is on screen,
+ * because the capturer's shutter otherwise races the interaction — a story that
+ * sets no flag produces the result in some themes' frames and not others (the
+ * defect `canvas.stories.tsx` records as design round 1's D1).
+ */
+const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
+
+/* Hoisted, because a matcher built inside a play function is rebuilt on every
+   call and `lint/performance/useTopLevelRegex` is the rule that says so. */
+const ARMED_NOTICE = /armed — add a space/;
+const MASKED_NOTICE = /masked as you type/;
+const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
+
+const holdShutter = () => {
+	document.documentElement.dataset.capturePending = "1";
+};
+
+const releaseShutter = () => {
+	delete document.documentElement.dataset.capturePending;
+};
+
+/**
+ * Whether this story's play has already run on this page.
+ *
+ * STORYBOOK RUNS A PLAY FUNCTION MORE THAN ONCE PER LOAD when the story's args
+ * settle after the first render — which is exactly what happens on the
+ * capturer's second pass, where the theme arrives as an arg (`args=theme:...`)
+ * and the decorator applies it a beat later. Measured, not theorised: the first
+ * pass typed `/credential` and the second typed it AGAIN into the box the first
+ * had filled, so the frame the capturer waited on held `/credential/credential`
+ * — the armed notice correctly absent, the shutter never released, and a
+ * sixty-second "Storybook never finished preparing" instead of a picture. The
+ * guard makes the play idempotent per document; the `clear` below makes it
+ * idempotent even if the guard is ever removed.
+ */
+let played = false;
+
+/** Type `text` into the composer as a person would, one keystroke at a time. */
+const typeIntoComposer = async (
+	canvasElement: HTMLElement,
+	text: string,
+): Promise<HTMLTextAreaElement> => {
+	const box = canvasElement.querySelector<HTMLTextAreaElement>(
+		'textarea[role="combobox"]',
+	);
+	if (!box) throw new Error("the composer's textarea is not in this story");
+	await userEvent.click(box);
+	await userEvent.clear(box);
+	await userEvent.type(box, text);
+	return box;
+};
+
+/** The play's first three lines, in one place: hold, reset, and report. */
+const holdAndReset = (canvasElement: HTMLElement) => {
+	if (played) return false;
+	played = true;
+	holdShutter();
+	return Boolean(canvasElement);
+};
+
+/**
+ * The composer's VALUE, which is where this feature's text actually lives.
+ *
+ * Read from the control rather than from `screen.findByText`: the marker and the
+ * mask cells are the textarea's value, and a textarea has no text children for a
+ * query to find. A play function that asserted through `findByText` would pass
+ * on the overlay's copy in one state and hang in another — which is the class of
+ * false evidence these stories exist to avoid.
+ */
+const composerValue = (box: HTMLTextAreaElement) => box.value;
+
+/**
+ * The gesture ARMED and nothing masked yet: `/credential` has been typed and no
+ * space follows it, so the next space opens the capture. The notice line says so
+ * — the TUI's own sentence — which is what makes the state legible rather than
+ * looking like ordinary prose.
+ */
+export const CredentialArmed: Story = {
+	render: () => (
+		<Frame label="armed: the token is the caret's own tail, so the next space opens a masked capture">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await typeIntoComposer(canvasElement, "/credential");
+		await screen.findByText(ARMED_NOTICE);
+		releaseShutter();
+	},
+};
+
+/**
+ * TYPING: the space has opened the span and every character since is ONE MASK
+ * CELL — never the character. The notice names the mask and both keys, which is
+ * the only place the operator can learn that their keystrokes are being received
+ * as bullets and how the mode ends.
+ *
+ * The count is the frame's own evidence: `sk-live-CANARY-4417` is nineteen
+ * characters, so nineteen cells stand between the token and the end of the line
+ * — the length the receipt will report, which is the operator's only integrity
+ * check once the value can never be displayed again.
+ */
+export const CredentialMasked: Story = {
+	render: () => (
+		<Frame label="masked: one cell per typed character, and the characters are not in the document">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await screen.findByText(MASKED_NOTICE);
+		// The canary must not be in the document: if a regression let a character
+		// through, this throws and no frame is taken for the state.
+		if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+			throw new Error("the typed secret reached the buffer");
+		}
+		if (!composerValue(box).includes("•")) {
+			throw new Error("no mask cells were painted");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The pill INLINE, mid-prose, with the caret past it and the sentence continuing
+ * — the whole point of the gesture ("hand over a secret, then describe it").
+ * Enter minted rather than sent, so the operator's own prose is still being
+ * written after the receipt.
+ */
+export const CredentialPillMidProse: Story = {
+	render: () => (
+		<Frame label="a pill mid-prose: Enter minted it, and the sentence continues after it">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`deploy with /credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, " to the staging box");
+		const value = composerValue(box);
+		if (!value.includes("[Credential #1, 19 chars]")) {
+			throw new Error(`no pill was minted: ${value}`);
+		}
+		if (value.includes(CREDENTIAL_CANARY)) {
+			throw new Error("the secret is in the buffer");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The pill at the START of a line, which is the shape that must NOT read as a
+ * slash command. The token was consumed at mint time, so the line begins with a
+ * marker and the dispatcher's leading-slash plan cannot fire on it.
+ */
+export const CredentialPillAtLineStart: Story = {
+	render: () => (
+		<Frame label="a pill at the start of the line: the token was consumed, so this is prose and not a command">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Enter}");
+		await userEvent.type(box, "is the deploy key, use it for the release");
+		if (
+			!composerValue(box).startsWith(
+				"[Credential #1, 19 chars] is the deploy key",
+			)
+		) {
+			throw new Error(
+				`the pill is not at the head of the line: ${composerValue(box)}`,
+			);
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * ESCAPED: the operator cancelled, and the characters came back as ORDINARY
+ * TEXT. This is the only exit that leaves a secret in the composer, and the
+ * frame cannot say so on its own — the masked span is gone and the composer
+ * looks entirely normal while holding the characters the next Enter will expose
+ * — so the warning sentence is the state, not decoration. It is the one frame
+ * here where the canary IS on screen, and it is there because the operator asked
+ * for it.
+ */
+export const CredentialEscaped: Story = {
+	render: () => (
+		<Frame label="escaped: Esc gave the characters back as plain text, and the composer says so">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await userEvent.type(box, "{Escape}");
+		await screen.findByText(PLAINTEXT_NOTICE);
+		if (!composerValue(box).endsWith(CREDENTIAL_CANARY)) {
+			throw new Error(
+				`the characters did not come back: ${composerValue(box)}`,
+			);
+		}
+		releaseShutter();
+	},
 };

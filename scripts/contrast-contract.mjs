@@ -225,6 +225,35 @@ const CONTROLS = [
 		border: "accent",
 		ink: "accent",
 	},
+	{
+		/*
+		 * The composer's credential pill and mask span (`credential-overlay.tsx`).
+		 *
+		 * Its ink is `ink`, not a semantic: the pill paints NO VISIBLE TEXT — the
+		 * marker's characters are the textarea's, and this element is a
+		 * background-only mirror behind them — so what `ink` measures here is the
+		 * real pair on screen (the textarea's own ink over the wash the pill puts
+		 * behind it). The wash and the edge are the `info` family rather than a new
+		 * role: the pill states a FACT ("a credential is referenced here"), which is
+		 * what that triple means, and reusing it is what lets this row assert on the
+		 * composer's own ground with the rows above.
+		 *
+		 * The EDGE is painted as a 1px `outline`, not a border, and the measurement
+		 * is the same one: an outline does not participate in layout, so the mirror's
+		 * line boxes stay byte-identical to the textarea's and the pill cannot drift
+		 * off the characters it sits under. A border here costs 2px per line and
+		 * misaligns every pill that follows it — measured in the frames.
+		 *
+		 * `surface` is the ground the composer box paints (`COMPOSER_BOX`,
+		 * `border-control` on `bg-surface`), and the rows above cover `canvas` for
+		 * the same component wherever it is drawn on a bare page.
+		 */
+		name: "credential pill",
+		on: ["canvas", "surface"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "ink",
+	},
 	/*
 	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).
 	 *
@@ -848,14 +877,62 @@ const EXCEPTIONS = [
 	 * the text pair above: a shared control's colour, recorded where a reader
 	 * can find it rather than changed in a panel's PR.
 	 */
-	{ theme: "monokai", fg: "dangerBorder", bg: "elevated", got: 2.49, why: "the danger control's only edge on a dialog ground; worst of the eight" },
-	{ theme: "dracula", fg: "dangerBorder", bg: "elevated", got: 2.51, why: "same pair as monokai" },
-	{ theme: "radient", fg: "dangerBorder", bg: "elevated", got: 2.58, why: "same pair as monokai" },
-	{ theme: "synth", fg: "dangerBorder", bg: "elevated", got: 2.6, why: "same pair as monokai" },
-	{ theme: "obsidian", fg: "dangerBorder", bg: "elevated", got: 2.65, why: "same pair as monokai" },
-	{ theme: "tokyoNight", fg: "dangerBorder", bg: "elevated", got: 2.66, why: "same pair as monokai" },
-	{ theme: "neon", fg: "dangerBorder", bg: "elevated", got: 2.78, why: "same pair as monokai" },
-	{ theme: "dune", fg: "dangerBorder", bg: "elevated", got: 2.88, why: "same pair as monokai; 0.12 under the floor" },
+	{
+		theme: "monokai",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.49,
+		why: "the danger control's only edge on a dialog ground; worst of the eight",
+	},
+	{
+		theme: "dracula",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.51,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "radient",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.58,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "synth",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.6,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "obsidian",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.65,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "tokyoNight",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.66,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "neon",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.78,
+		why: "same pair as monokai",
+	},
+	{
+		theme: "dune",
+		fg: "dangerBorder",
+		bg: "elevated",
+		got: 2.88,
+		why: "same pair as monokai; 0.12 under the floor",
+	},
 ];
 
 /*

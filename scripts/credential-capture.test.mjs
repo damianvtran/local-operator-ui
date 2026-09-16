@@ -1,0 +1,1358 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+/*
+ * The composer's inline credential capture, asserted against the TUI semantics
+ * it ports and the contract in `docs/design/composer-credential-capture.md`.
+ *
+ * `credential-capture.ts` is a port of `local_operator/tui/widgets/editor.py`
+ * (`CREDENTIAL_ARM`, `CREDENTIAL_TOKEN`, `CREDENTIAL_ARGUMENT`,
+ * `_sync_credential_arm`, `_open_credential_typing`, `_credential_edit_mirror`,
+ * `_type_credential_char`, `_mint_typed_credential`, `_cancel_credential_typing`,
+ * `_capture_credential`, `Editor._on_paste`, `generate_credential_key`,
+ * `cite`, `credential_payloads`, `substitute_credentials`, `describe_unstored`)
+ * and `local_operator/tui/app.py` (`_capture_inline_credentials`,
+ * `_store_inline_credentials`, `session_credential_names`, the notice strings).
+ *
+ * WHY EVERY RULE HERE IS PINNED BY A TEST. The feature's whole safety argument
+ * is a set of statements about a STRING and an OFFSET — "the secret is never in
+ * the document", "one cell per character", "the citation is only the app's own
+ * when the index AND the marker text match". The TUI lost review rounds to
+ * exactly this class of rule stated in prose and enforced nowhere (the
+ * positional mirror of UX round 1's U1, the Esc re-arm of R1/U2, the
+ * whole-message refusal of review round 1's R1). A green browser pass does not
+ * falsify any of them; these do.
+ *
+ * Bundled rather than imported because the module is TypeScript in the
+ * renderer tree; esbuild into a data: URL is the pattern `slash-token.test.mjs`
+ * established. The module under test is the REAL one — nothing is
+ * re-implemented here.
+ */
+
+const bundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/components/credential-capture";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_KEY_ALPHABET,
+	CREDENTIAL_KEY_PATTERN,
+	CREDENTIAL_KEY_PREFIX,
+	CREDENTIAL_MARKER,
+	CREDENTIAL_TYPING_NOTICE,
+	IDLE_CAPTURE,
+	MASK_CELL,
+	abandonTyping,
+	armSpan,
+	cancelTypedCredential,
+	capturePasted,
+	charsOf,
+	citationSpan,
+	citedPayloads,
+	credentialCitation,
+	credentialMarker,
+	describeUnstored,
+	generateCredentialKey,
+	isArmed,
+	isStorableCredentialKey,
+	isTyping,
+	maskEdit,
+	maskSpan,
+	mintTypedCredential,
+	relocateArm,
+	storedNotice,
+	substituteCredentials,
+	syncCapture,
+	tokenSpans,
+	typeIntoCapture,
+	unredactedNotice,
+	unstoredNotice,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+
+/*
+ * ---------------------------------------------------------------------------
+ * A tiny harness that drives the module the way the composer does.
+ * ---------------------------------------------------------------------------
+ *
+ * Every sequence below is expressed as what the operator DOES — type, move the
+ * caret, paste, press Enter — and the harness applies it through the module's
+ * own entry points, in the order `message-input.tsx` calls them:
+ *
+ *   - a printable keystroke is intercepted BEFORE the DOM (the character never
+ *     reaches the textarea) and applied as a masked edit;
+ *   - a structural edit (Backspace, Delete, a selection, a newline) is applied
+ *     by the DOM and mirrored from the edit it reported;
+ *   - a paste is the credential gate first, then the ordinary paste;
+ *   - a caret move re-syncs the capture (the TUI does this on
+ *     `watch_selection`, because a mouse click and an app-set selection move
+ *     the caret with no caret key pressed).
+ *
+ * `state.buffer` is the document, which is the thing the operator can see;
+ * `state.capture.value` is the thing they cannot.
+ */
+const harness = () => {
+	const state = {
+		buffer: "",
+		caret: 0,
+		capture: IDLE_CAPTURE,
+		/** The payload map: index -> minted credential, as the composer holds it. */
+		payloads: new Map(),
+		nextIndex: 1,
+		/** What the composer's `onSendMessage` was handed, if anything. */
+		sent: null,
+		/** Every buffer the persisted draft was written with. */
+		drafted: [],
+		/** Names the session store already holds, as `list` reported them. */
+		sessionNames: [],
+	};
+	/** The session's names UNION this composer's in-flight keys (§8). */
+	const taken = () => [
+		...state.sessionNames,
+		...[...state.payloads.values()].map((p) => p.key),
+	];
+	const mint = (payload) => {
+		state.payloads.set(payload.index, payload);
+		state.nextIndex = Math.max(state.nextIndex, payload.index + 1);
+	};
+	/* The draft rule (§6): while a masked span is open nothing is persisted. */
+	const draft = () => {
+		if (!isTyping(state.capture)) state.drafted.push(state.buffer);
+	};
+	const apply = ({ buffer, caret }) => {
+		state.buffer = buffer;
+		state.caret = caret;
+	};
+
+	return {
+		state,
+		/** The buffer the DOM would produce for an edit, before masking. */
+		edit(top, bottom, inserted, caretAfter) {
+			const domBuffer =
+				state.buffer.slice(0, top) + inserted + state.buffer.slice(bottom);
+			const caret = caretAfter ?? top + inserted.length;
+			const masked = maskEdit(state.capture, domBuffer, caret, {
+				top,
+				bottom,
+				inserted,
+			});
+			if (masked) {
+				apply(masked);
+				state.capture = masked.capture;
+			} else {
+				apply({ buffer: domBuffer, caret });
+			}
+			state.capture = syncCapture(
+				state.capture,
+				state.buffer,
+				state.caret,
+				"typing",
+			);
+			draft();
+			return this;
+		},
+		/** One intercepted printable keystroke: never reaches the DOM. */
+		typeKeystroke(text) {
+			const typed = typeIntoCapture(
+				state.capture,
+				state.buffer,
+				{ start: state.caret, end: state.caret },
+				text,
+			);
+			apply(typed);
+			state.capture = syncCapture(
+				typed.capture,
+				state.buffer,
+				state.caret,
+				"typing",
+			);
+			draft();
+			return this;
+		},
+		/** Shift+Enter: a typographic edit, not a masked character. */
+		newline() {
+			if (isTyping(state.capture)) state.capture = abandonTyping(state.capture);
+			return this.edit(state.caret, state.caret, "\n");
+		},
+		/** `text` typed character by character, as a person types it. */
+		type(text) {
+			for (const char of charsOf(text)) this.typeKeystroke(char);
+			return this;
+		},
+		backspace() {
+			if (state.caret === 0) return this;
+			return this.edit(state.caret - 1, state.caret, "");
+		},
+		del() {
+			return this.edit(state.caret, state.caret + 1, "");
+		},
+		replaceSelection(to, text) {
+			return this.edit(state.caret, to, text);
+		},
+		caretTo(at) {
+			state.caret = at;
+			// A caret move may keep an arm and RE-OPEN a span, but never arms
+			// (§2): "caret" is its own origin for exactly that reason.
+			state.capture = syncCapture(
+				state.capture,
+				state.buffer,
+				state.caret,
+				"caret",
+			);
+			return this;
+		},
+		/** What the last `paste` did, so a test can read the receipt it minted. */
+		lastPaste: null,
+		paste(text) {
+			const captured = capturePasted({
+				capture: state.capture,
+				buffer: state.buffer,
+				caret: state.caret,
+				selection: { start: state.caret, end: state.caret },
+				pasted: text,
+				index: state.nextIndex,
+				taken: taken(),
+			});
+			state.lastPaste = captured;
+			if (captured) {
+				apply(captured);
+				state.capture = captured.capture;
+				if (captured.payload) mint(captured.payload);
+				draft();
+				return this;
+			}
+			// Nothing to capture: the ordinary paste, which the DOM applies and the
+			// harness mirrors like any other edit.
+			return this.edit(state.caret, state.caret, text);
+		},
+		enter() {
+			const result = mintTypedCredential({
+				capture: state.capture,
+				buffer: state.buffer,
+				caret: state.caret,
+				index: state.nextIndex,
+				taken: taken(),
+			});
+			if (result.minted) {
+				apply(result);
+				state.capture = result.capture;
+				mint(result.payload);
+				draft();
+			}
+			return result;
+		},
+		escape() {
+			const result = cancelTypedCredential(state.capture, state.buffer);
+			if (result.cancelled) {
+				apply(result);
+				state.capture = result.capture;
+				draft();
+			}
+			return result;
+		},
+		/** A value arriving from a route no keystroke produced (§2). */
+		arrive(value, caret) {
+			state.buffer = value;
+			state.caret = caret ?? value.length;
+			state.capture = syncCapture(
+				state.capture,
+				state.buffer,
+				state.caret,
+				"arrival",
+			);
+			draft();
+			return this;
+		},
+		/** Accept the slash row: it inserts the token plus its trailing space. */
+		acceptCompletion(text) {
+			const at = state.caret;
+			state.buffer = state.buffer.slice(0, at) + text + state.buffer.slice(at);
+			state.caret = at + text.length;
+			state.capture = syncCapture(
+				state.capture,
+				state.buffer,
+				state.caret,
+				"completion",
+			);
+			draft();
+			return this;
+		},
+		/** What the submit seam hands the model, after storing cited credentials. */
+		submit({ refused = new Map(), sessionId = "sess-1" } = {}) {
+			const cited = citedPayloads(state.buffer, state.payloads.values());
+			const text = substituteCredentials(
+				state.buffer,
+				state.payloads.values(),
+				refused,
+			);
+			state.sent = { text, cited, sessionId };
+			if (cited.length && refused.size === 0) {
+				for (const payload of cited) state.payloads.delete(payload.index);
+			}
+			return state.sent;
+		},
+	};
+};
+
+/*
+ * Matchers hoisted to module scope: `lint/performance/useTopLevelRegex` is the
+ * scripts tree's own rule, and a literal built inside a test callback is rebuilt
+ * on every case.
+ */
+const ARMING_SHAPE = /^\/(?:credential|cred)[ \t]*$/i;
+const HAS_LINES = /lines/;
+const KEY_SHAPE = /^LOP_SECRET_[ABCDEFGHJKMNPQRSTVWXYZ23456789]{8}$/;
+
+/** A draw that walks a fixed alphabet sequence, so naming is deterministic. */
+const drawFrom = (indices) => {
+	let at = 0;
+	return () => indices[at++ % indices.length];
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * §2 — arming
+ * ---------------------------------------------------------------------------
+ */
+
+test("the arming token is recognised leading, mid-prose and after a newline", () => {
+	// `editor.py:551`, ported verbatim: `(?:^|(?<=\s))/(?:credential|cred)[ \t]*$`.
+	for (const text of [
+		"/credential",
+		"/credential ",
+		"/credential  \t",
+		"deploy with /credential",
+		"deploy with /credential ",
+		"line one\n/credential ",
+		"line one\nuse /cred\t",
+		"/cred ",
+		"/CREDENTIAL ",
+		"/Cred ",
+	]) {
+		const span = armSpan(text, text.length);
+		assert.ok(span, `expected ${JSON.stringify(text)} to arm`);
+		const armed = text.slice(span.start, span.end);
+		assert.match(
+			armed,
+			ARMING_SHAPE,
+			`the arming span is the token itself: ${JSON.stringify(armed)}`,
+		);
+	}
+});
+
+test("the arming token is only counted on the caret's OWN line", () => {
+	/*
+	 * The `$` in `CREDENTIAL_ARM` is "end of the caret's own line", which is why
+	 * a `/credential` used three lines up cannot arm a paste made here.
+	 */
+	const buffer = "line one\n/credential \nline three";
+	assert.equal(armSpan(buffer, buffer.length), null);
+	// The caret at the end of the token's own line still arms.
+	assert.ok(armSpan(buffer, "line one\n/credential ".length));
+});
+
+test("a lookalike token inside a word, or a longer word, does not arm", () => {
+	for (const text of [
+		"am/credential ",
+		"foo /credentials ",
+		"/credentialx ",
+		"/credentials",
+		"http://x/credential ",
+		"deploy with /credentialx",
+	]) {
+		assert.equal(
+			armSpan(text, text.length),
+			null,
+			`${JSON.stringify(text)} is not the gesture`,
+		);
+	}
+});
+
+test("a mention that merely ARRIVES in the buffer never arms", () => {
+	/*
+	 * §2's negative case, and the one a pure predicate cannot express on its own:
+	 * the same string and the same caret are identical whichever route produced
+	 * them, so the route is an argument. A restored draft that ends in
+	 * `/credential ` must not swallow the operator's next paste — the TUI pins
+	 * the same rule as
+	 * `test_a_mention_of_the_command_in_text_never_typed_through_the_arm_does_not_arm`.
+	 */
+	const composer = harness();
+	composer.arrive("/credential ");
+	assert.equal(composer.state.capture.arm, null);
+	assert.equal(isArmed(composer.state.capture), false);
+	// …and the paste that follows is an ordinary paste, not a captured secret.
+	composer.paste("hunter2");
+	assert.equal(composer.state.buffer, "/credential hunter2");
+	assert.equal(composer.state.payloads.size, 0);
+});
+
+test("typing the token arms it, and the arm is latched, not re-derived", () => {
+	const composer = harness();
+	composer.type("/credential");
+	assert.ok(
+		isArmed(composer.state.capture),
+		"the token typed up to its end arms",
+	);
+	composer.typeKeystroke(" ");
+	assert.ok(
+		isTyping(composer.state.capture),
+		"the space opens the masked span",
+	);
+	composer.type("hunter2");
+	// A typed word, a caret move and a newline all KEEP the arm — those are the
+	// edits that used to disarm silently and land the next paste in plaintext.
+	composer.caretTo(2);
+	composer.caretTo(composer.state.buffer.length);
+	composer.edit(composer.state.caret, composer.state.caret, "\n");
+	assert.ok(isArmed(composer.state.capture));
+});
+
+test("the /cred alias arms, and an accepted completion arms its trailing space", () => {
+	const alias = harness();
+	alias.type("/cred ");
+	assert.ok(isTyping(alias.state.capture), "/cred and a space open the span");
+	alias.type("abcd");
+	assert.equal(alias.state.capture.value, "abcd");
+
+	/*
+	 * §1's second door: accepting the `/credential` row inserts `/credential `,
+	 * and the trailing space opens the capture — the same character at the same
+	 * offset as a hand-typed one, which is why the rule is stated about the
+	 * BUFFER rather than about the route that produced the space.
+	 */
+	const picked = harness();
+	picked.type("/cred");
+	picked.acceptCompletion("ential ");
+	assert.ok(
+		isTyping(picked.state.capture),
+		"the completion's own trailing space opens the span",
+	);
+	picked.type("s3cret");
+	assert.equal(picked.state.capture.value, "s3cret");
+	assert.ok(!picked.state.buffer.includes("s3cret"));
+});
+
+test("a flag-shaped tail disarms the latched arm rather than being masked", () => {
+	/*
+	 * `CREDENTIAL_ARGUMENT` (`editor.py:132`): `/credential --forget-all` is the
+	 * operator addressing the COMMAND, and a leading `-` cannot begin a key, so
+	 * the two intents are unambiguous. The operator who wants the destructive
+	 * verb still reaches it by typing it.
+	 */
+	const composer = harness();
+	composer.type("/credential");
+	assert.ok(isArmed(composer.state.capture));
+	composer.type(" --forget-all");
+	assert.equal(
+		composer.state.capture.arm,
+		null,
+		"the flag turns the tail into an argument",
+	);
+	assert.equal(composer.state.buffer, "/credential --forget-all");
+});
+
+test("the arming token survives text edited before it and is dropped with it", () => {
+	// The token slides as the operator edits text ahead of it; the arm follows
+	// the token's own identity, not its old offset (`_relocate_armed_token`).
+	const composer = harness();
+	composer.type("with /credential");
+	composer.caretTo(0);
+	composer.type("deploy ");
+	assert.deepEqual(composer.state.capture.arm, {
+		start: "deploy with /credential".indexOf("/credential"),
+		end: "deploy with /credential".length,
+	});
+	// Deleting the token withdraws the gesture — the visible way to un-arm.
+	composer.caretTo(composer.state.buffer.length);
+	for (let i = 0; i < "/credential".length; i++) composer.backspace();
+	assert.equal(composer.state.capture.arm, null);
+});
+
+test("re-location prefers the anchored token, then the only match, then nearest", () => {
+	assert.deepEqual(tokenSpans("a /cred b /credential c"), [
+		{ start: 2, end: 7 },
+		{ start: 10, end: 21 },
+	]);
+	// The anchored word wins outright.
+	assert.deepEqual(
+		relocateArm("a /cred b /credential c", { start: 10, end: 21 }),
+		{
+			start: 10,
+			end: 21,
+		},
+	);
+	// A single match is the answer however far the text before it moved.
+	assert.deepEqual(
+		relocateArm(`${"x".repeat(400)} /cred`, { start: 2, end: 5 }),
+		{
+			start: 401,
+			end: 406,
+		},
+	);
+	// Two matches and the latch gone from its own offset: nearest wins.
+	assert.deepEqual(
+		relocateArm("a /cred b /credential c", { start: 12, end: 12 }),
+		{ start: 10, end: 21 },
+	);
+	// No token at all: the gesture is gone.
+	assert.equal(relocateArm("nothing here", { start: 0, end: 0 }), null);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §3 — masking
+ * ---------------------------------------------------------------------------
+ */
+
+test("one mask cell per printable character, the delimiter not counted", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	const value = "aZ9!@#$%^&*()_+-=[]{};':\",./<>?";
+	composer.type(value);
+	assert.equal(
+		composer.state.capture.value,
+		value,
+		"punctuation is captured as characters, not as key names",
+	);
+	assert.equal(
+		composer.state.buffer,
+		`/credential ${MASK_CELL.repeat(value.length)}`,
+		"the document holds one cell per character and nothing else",
+	);
+	/*
+	 * WHICH IS THE WHOLE OF THE INVARIANT: not one character of the value is
+	 * anywhere in the document. The gate that decides this is PRINTABLE
+	 * CHARACTERS, never key names — the TUI documents the measured leak this
+	 * fixes (`editor.py:2948-2959`): punctuation keys arrive spelled as words
+	 * (`minus`, `full_stop`), so a `len(key) == 1` gate masked letters and digits
+	 * while every punctuation character fell straight through. The canary
+	 * `zQ7-TYPED-LEAK-CANARY-4417` rendered as `•••-TYPED-LEAK-CANARY-4417`.
+	 */
+	const visible = composer.state.buffer.slice("/credential ".length);
+	for (const char of charsOf(value)) {
+		assert.ok(
+			char === MASK_CELL || char === "-" || !visible.includes(char),
+			`${JSON.stringify(char)} must not be visible`,
+		);
+	}
+	assert.equal(
+		composer.state.capture.value.length,
+		composer.state.buffer.length - "/credential ".length,
+		"the delimiting space is the opener and is not counted",
+	);
+});
+
+test("a space typed inside the span is part of the secret", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("two words");
+	assert.equal(composer.state.capture.value, "two words");
+	assert.equal(
+		composer.state.buffer,
+		`/credential ${MASK_CELL.repeat(9)}`,
+		"nine cells for nine characters, the delimiting space excluded",
+	);
+});
+
+test("a multi-line secret reports characters and never lines", () => {
+	/*
+	 * Through the PASTE route, which takes the whole value in one edit. A typed
+	 * newline does NOT do this — see the shift+enter test below — because a
+	 * newline inside the contiguous cell run desynchronises the mint's splice.
+	 */
+	const composer = harness();
+	composer.type("/credential ");
+	const value = "-----BEGIN KEY-----\nAAAA\n-----END KEY-----";
+	composer.paste(value);
+	const payload = [...composer.state.payloads.values()][0];
+	assert.equal(payload.value, value);
+	// `_credential_label`: `<n> chars`, never `<n> lines`. A line count is the
+	// weakest integrity check exactly where truncation hides, as in a PEM block.
+	assert.equal(payload.marker, `[Credential #1, ${value.length} chars]`);
+	assert.ok(!HAS_LINES.test(payload.marker));
+	// And the document never held any of it.
+	assert.ok(!composer.state.buffer.includes("AAAA"));
+});
+
+test("shift+enter ends the capture rather than being masked", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("abc");
+	composer.newline();
+	assert.equal(isTyping(composer.state.capture), false, "the capture ended");
+	assert.equal(
+		composer.state.capture.value,
+		"",
+		"abandoned, never cancelled: the held characters are not written out",
+	);
+	assert.ok(
+		!composer.state.buffer.includes("abc"),
+		"and never entered the document",
+	);
+	assert.ok(composer.state.buffer.includes("\n"), "the newline lands as usual");
+});
+
+test("a leading - escapes the mask, so /credential --forget-all stays reachable", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("-");
+	assert.equal(
+		composer.state.buffer,
+		"/credential -",
+		"the flag lands as plaintext, not as a masked character",
+	);
+	assert.equal(composer.state.capture.value, "");
+	assert.equal(
+		composer.state.capture.arm,
+		null,
+		"and the flag rule ends the gesture, exactly as it does for a pasted one",
+	);
+	composer.type("-forget-all");
+	assert.equal(composer.state.buffer, "/credential --forget-all");
+	// A `-` that is NOT the first character of the span is part of the secret.
+	const inside = harness();
+	inside.type("/credential ");
+	inside.type("sk-");
+	assert.equal(inside.state.capture.value, "sk-");
+	assert.equal(inside.state.buffer, `/credential ${MASK_CELL.repeat(3)}`);
+});
+
+test("the caret leaving the span ends the typing state without disclosing", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("12345");
+	composer.caretTo(0);
+	assert.equal(isTyping(composer.state.capture), false, "the capture ended");
+	assert.ok(
+		!composer.state.buffer.includes("12345"),
+		"and did not write the secret out",
+	);
+	// The cells stay where they were: a caret move is not a request to delete
+	// what the operator can see, and it is not a request for the plaintext back.
+	assert.equal(composer.state.buffer, `/credential ${MASK_CELL.repeat(5)}`);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §3 — positional edits
+ * ---------------------------------------------------------------------------
+ */
+
+test("arrow-then-type splices the value where the operator watched it land", () => {
+	/*
+	 * UX round 1's U1, the defect the mirror exists for: an append gave the chip
+	 * the right LENGTH with the wrong ORDER, so the integrity check passed on a
+	 * value that can never be displayed again to catch it.
+	 */
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("ABCDEFGH");
+	composer.caretTo(composer.state.caret - 2);
+	composer.type("xy");
+	assert.equal(composer.state.capture.value, "ABCDEFxyGH");
+	assert.equal(composer.state.buffer, `/credential ${MASK_CELL.repeat(10)}`);
+});
+
+test("Backspace and Delete remove the character the cell stood for", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("abcd");
+	composer.backspace();
+	assert.equal(composer.state.capture.value, "abc");
+	assert.equal(composer.state.buffer, `/credential ${MASK_CELL.repeat(3)}`);
+	composer.caretTo(12 + 1);
+	composer.del();
+	assert.equal(
+		composer.state.capture.value,
+		"ac",
+		"Delete takes the cell ahead",
+	);
+	assert.equal(composer.state.buffer, `/credential ${MASK_CELL.repeat(2)}`);
+});
+
+test("select-and-replace lands in the value at the selected cells", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("abcdef");
+	composer.caretTo(12 + 2);
+	composer.replaceSelection(12 + 5, "X");
+	assert.equal(composer.state.capture.value, "abXf");
+	assert.equal(composer.state.buffer, `/credential ${MASK_CELL.repeat(4)}`);
+	// A selection that STRADDLES the span's edge removes only the held part, and
+	// the caret it leaves inside the span keeps the capture open.
+	const straddle = harness();
+	straddle.type("/credential ");
+	straddle.type("abc");
+	straddle.caretTo(12 + 2);
+	straddle.replaceSelection(12 + 20, "");
+	assert.equal(
+		straddle.state.capture.value,
+		"ab",
+		"only the part inside the span",
+	);
+	assert.equal(straddle.state.buffer, `/credential ${MASK_CELL.repeat(2)}`);
+	assert.ok(isTyping(straddle.state.capture));
+});
+
+test("an edit outside the span is ordinary text and never masked", () => {
+	// The caret must be inside the span for the capture to be live at all (§3),
+	// so text typed elsewhere in the buffer is prose.
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("abc");
+	composer.caretTo(0);
+	composer.typeKeystroke("x");
+	assert.equal(composer.state.buffer, `x/credential ${MASK_CELL.repeat(3)}`);
+	assert.equal(isTyping(composer.state.capture), false);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §4 — Enter mints the pill
+ * ---------------------------------------------------------------------------
+ */
+
+test("Enter consumes token + space + every cell in ONE edit and lands past it", () => {
+	const composer = harness();
+	composer.type("deploy with /credential ");
+	composer.type("hunter2");
+	const tokenStart = "deploy with ".length;
+	const before = composer.state.buffer;
+	const result = composer.enter();
+	assert.ok(result.minted);
+	// ONE edit: the only difference between the buffers is the replaced range.
+	assert.equal(
+		result.buffer,
+		"deploy with [Credential #1, 7 chars] ",
+		"the token, its space and every cell are gone; the marker carries its own space",
+	);
+	assert.ok(before.slice(0, tokenStart) === result.buffer.slice(0, tokenStart));
+	// The caret lands after the marker's trailing space, so prose continues
+	// inline in the middle of a sentence.
+	assert.equal(result.caret, "deploy with [Credential #1, 7 chars] ".length);
+	assert.equal(result.payload.marker, "[Credential #1, 7 chars]");
+	// The mint leaves the composer ready for the next sentence, with no capture
+	// open and no value held.
+	assert.equal(result.capture.arm, null);
+	assert.equal(result.capture.typingAt, null);
+	assert.equal(result.capture.value, "");
+});
+
+test("the marker is exactly the TUI's format and parses back to its index", () => {
+	assert.equal(
+		credentialMarker(3, "x".repeat(64)),
+		"[Credential #3, 64 chars]",
+	);
+	CREDENTIAL_MARKER.lastIndex = 0;
+	const match = CREDENTIAL_MARKER.exec("[Credential #3, 64 chars]");
+	assert.ok(match);
+	assert.equal(Number(match[1]), 3);
+	assert.equal(Number(match[2]), 64);
+});
+
+test("an empty span mints nothing and the capture stays open", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	const result = composer.enter();
+	assert.equal(result.minted, false);
+	assert.equal(composer.state.payloads.size, 0, "no key is advertised");
+	assert.ok(isTyping(composer.state.capture), "the capture stays open");
+	assert.equal(
+		composer.state.buffer,
+		"/credential ",
+		"and leaves the token for the dispatcher to consume",
+	);
+});
+
+test("a pill can be minted at the start of a line and mid-prose alike", () => {
+	const leading = harness();
+	leading.type("/credential ");
+	leading.type("aaa");
+	leading.enter();
+	assert.equal(leading.state.buffer, "[Credential #1, 3 chars] ");
+
+	const midLine = harness();
+	midLine.type("use /credential ");
+	midLine.type("bbb");
+	midLine.enter();
+	assert.equal(midLine.state.buffer, "use [Credential #1, 3 chars] ");
+	// The token was consumed, so the line no longer starts with a slash command
+	// — the leading-slash path cannot fire on a minted pill.
+	assert.ok(!midLine.state.buffer.startsWith("/"));
+});
+
+test("the index counts within the composer and resets to the next free number", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("one");
+	composer.enter();
+	composer.type(" and /credential ");
+	composer.type("two");
+	composer.enter();
+	assert.equal(
+		composer.state.buffer,
+		"[Credential #1, 3 chars]  and [Credential #2, 3 chars] ",
+	);
+	assert.deepEqual(
+		[...composer.state.payloads.values()].map((p) => p.index),
+		[1, 2],
+	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §5 — Escape
+ * ---------------------------------------------------------------------------
+ */
+
+test("Esc restores the typed characters as plaintext and reports the length", () => {
+	const composer = harness();
+	composer.type("deploy with /credential ");
+	composer.type("hunter2");
+	const result = composer.escape();
+	assert.ok(result.cancelled);
+	assert.equal(
+		composer.state.buffer,
+		"deploy with /credential hunter2",
+		"the characters come back as ordinary text; the token is left inert",
+	);
+	assert.equal(
+		result.restored,
+		7,
+		"the announcement's length, never the value",
+	);
+	assert.equal(
+		unredactedNotice(result.restored),
+		"7 characters are now PLAIN TEXT in the composer — Enter will expose them",
+	);
+	assert.equal(composer.state.payloads.size, 0, "nothing is held");
+	assert.equal(
+		isArmed(composer.state.capture),
+		false,
+		"and the arm ends with it",
+	);
+});
+
+test("Esc on an empty span ends the mode and leaves the token inert", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	const result = composer.escape();
+	assert.ok(result.cancelled);
+	assert.equal(
+		result.restored,
+		0,
+		"nothing to restore, so nothing to announce",
+	);
+	assert.equal(composer.state.buffer, "/credential ");
+	assert.equal(isArmed(composer.state.capture), false);
+	assert.equal(isTyping(composer.state.capture), false);
+	/*
+	 * THE NO-RE-ARM RULE (the TUI's R1/U2, shipped twice): after the cancel the
+	 * buffer still ends in the token, so a cancel that re-entered the arm sync
+	 * re-armed itself and made Esc inert while the prose typed next became a
+	 * credential. The disarm is explicit, and the operator's next character
+	 * makes the line stop matching on its own.
+	 */
+	const after = syncCapture(
+		composer.state.capture,
+		"/credential H",
+		"/credential H".length,
+		"typing",
+	);
+	assert.equal(after.arm, null, "the prose typed after a cancel never re-arms");
+	// Typing into the restored plaintext is ordinary text, masked nowhere.
+	composer.typeKeystroke("H");
+	assert.equal(composer.state.buffer, "/credential H");
+	assert.equal(isTyping(composer.state.capture), false);
+});
+
+test("Esc while armed with no space does not disarm", () => {
+	// §5's other arm: only the TYPING sub-state has an Escape meaning. With the
+	// popup open it closes the popup; otherwise it keeps its existing meaning.
+	const composer = harness();
+	composer.type("/credential");
+	const result = composer.escape();
+	assert.equal(result.cancelled, false, "no span is open, so Esc is not ours");
+	assert.ok(isArmed(composer.state.capture), "the arm survives");
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §5 — paste
+ * ---------------------------------------------------------------------------
+ */
+
+test("a paste while armed captures instantly, in one edit, and disarms", () => {
+	const composer = harness();
+	composer.type("take this /credential ");
+	composer.paste("  sk-live-0123456789  ");
+	const result = composer.state.lastPaste;
+	assert.equal(result.kind, "minted");
+	assert.equal(
+		composer.state.buffer,
+		"take this [Credential #1, 18 chars] ",
+		"one edit: the token is replaced by the receipt",
+	);
+	assert.equal(
+		result.payload.value,
+		"sk-live-0123456789",
+		"trimmed, never masked",
+	);
+	assert.equal(composer.state.capture.arm, null, "the capture disarms");
+	// A second paste means retyping the token; the first marker stays cited and
+	// its payload untouched — "it is not a replacement".
+	composer.paste("another");
+	assert.equal(
+		composer.state.buffer,
+		"take this [Credential #1, 18 chars] another",
+	);
+	assert.equal(composer.state.payloads.size, 1);
+});
+
+test("a paste into a non-empty span appends to the SAME secret, masked", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("sk-");
+	composer.paste("live-999");
+	assert.equal(composer.state.capture.value, "sk-live-999");
+	assert.equal(
+		composer.state.buffer,
+		`/credential ${MASK_CELL.repeat(11)}`,
+		"the pasted characters never enter the document either",
+	);
+	assert.equal(
+		composer.state.payloads.size,
+		0,
+		"no second pill: one credential",
+	);
+});
+
+test("a paste into an EMPTY open span closes it and mints in place", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	assert.ok(isTyping(composer.state.capture));
+	composer.paste("sk-live-1");
+	assert.equal(composer.state.buffer, "[Credential #1, 9 chars] ");
+	assert.equal(isTyping(composer.state.capture), false);
+	assert.equal(composer.state.payloads.size, 1);
+});
+
+test("an empty or whitespace-only paste captures nothing and lands as text", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.paste("   ");
+	assert.equal(composer.state.payloads.size, 0, "a blank advertises no key");
+	assert.equal(
+		composer.state.buffer,
+		"/credential    ",
+		"the whitespace is the operator's own text, not part of a secret",
+	);
+	assert.equal(composer.state.capture.value, "", "and captures nothing");
+	assert.ok(isTyping(composer.state.capture), "the capture is still open");
+	// The blank did not desynchronise the pair: the next typed character is
+	// still masked, and the receipt counts the secret and not the whitespace.
+	composer.type("ab");
+	assert.equal(composer.state.capture.value, "ab");
+	assert.equal(composer.state.buffer, `/credential    ${MASK_CELL.repeat(2)}`);
+	const empty = harness();
+	empty.type("/credential ");
+	empty.paste("");
+	assert.equal(empty.state.payloads.size, 0);
+	assert.equal(empty.state.buffer, "/credential ");
+});
+
+test("a second capture needs the token retyped, and cites its own payload", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.paste("first");
+	composer.type(" and ");
+	composer.type("/credential ");
+	composer.paste("second");
+	assert.equal(composer.state.payloads.size, 2);
+	assert.deepEqual(
+		[...composer.state.payloads.values()].map((p) => p.value),
+		["first", "second"],
+	);
+	assert.equal(
+		composer.state.buffer,
+		"[Credential #1, 5 chars]  and [Credential #2, 6 chars] ",
+	);
+});
+
+test("the caret returning to the token re-opens the capture", () => {
+	// `test_the_caret_returning_to_the_token_re_opens_the_capture`: the span is
+	// POSITIONAL, open exactly while the caret is in it. Without the re-open, a
+	// token left armed after a caret move kept its span open, so the next typed
+	// character landed in PLAINTEXT — the capture only ever opened on the edit
+	// that inserted the space, and that space had already been typed.
+	const composer = harness();
+	composer.type("/credential ");
+	composer.caretTo(0);
+	assert.equal(isTyping(composer.state.capture), false);
+	composer.caretTo("/credential ".length);
+	assert.ok(
+		isTyping(composer.state.capture),
+		"back in the span, masking again",
+	);
+	composer.type("9999");
+	assert.ok(!composer.state.buffer.includes("9999"));
+});
+
+test("a caret move never arms the gesture by itself", () => {
+	// §2: only typing arms. A click at the end of a restored draft that happens
+	// to read `/credential ` must not turn the next paste into a secret — which
+	// is why the caret's own origin may open an existing arm but never make one.
+	const composer = harness();
+	composer.arrive("deploy with /credential ");
+	composer.caretTo("deploy with /credential ".length);
+	assert.equal(isArmed(composer.state.capture), false);
+	composer.paste("hunter2");
+	assert.equal(composer.state.buffer, "deploy with /credential hunter2");
+	assert.equal(composer.state.payloads.size, 0);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §8 — naming
+ * ---------------------------------------------------------------------------
+ */
+
+test("the name is prefix + 8 symbols from the lookalike-free alphabet", () => {
+	const key = generateCredentialKey([], drawFrom([0, 1, 2, 3, 4, 5, 6, 7]));
+	assert.equal(key, `${CREDENTIAL_KEY_PREFIX}ABCDEFGH`);
+	assert.match(key, KEY_SHAPE);
+	// The alphabet is THIRTY symbols, not the 31 §8 of the design document
+	// claims: `O`, `I`, `L`, `U`, `0` and `1` are excluded against base32's 32.
+	assert.equal(CREDENTIAL_KEY_ALPHABET.length, 30);
+	for (const excluded of ["O", "I", "L", "U", "0", "1"]) {
+		assert.ok(!CREDENTIAL_KEY_ALPHABET.includes(excluded));
+	}
+	// 8 characters over 30 symbols is 39.3 bits, which is the figure the
+	// document's own reasoning gives for this alphabet.
+	assert.ok(Math.abs(Math.log2(30) * 8 - 39.26) < 0.01);
+});
+
+test("the name satisfies the backend's own pattern and length bound", () => {
+	for (let i = 0; i < 200; i++) {
+		const key = generateCredentialKey([]);
+		assert.match(
+			key,
+			CREDENTIAL_KEY_PATTERN,
+			`${key} must round-trip the store`,
+		);
+		assert.ok(isStorableCredentialKey(key));
+	}
+	// The widened fallback is 16 symbols and still storable.
+	assert.ok(
+		isStorableCredentialKey(`${CREDENTIAL_KEY_PREFIX}${"A".repeat(16)}`),
+	);
+	assert.ok(!CREDENTIAL_KEY_PATTERN.test("LOP-SECRET-ABC"));
+});
+
+test("a collision is avoided against the session's names AND the composer's", () => {
+	/*
+	 * A collision SILENTLY REPLACES a live credential (`store_credential`
+	 * overwrites), so `taken` is consulted rather than trusted to probability —
+	 * and it must include the names the session already holds, because the
+	 * composer's own map resets on every submit and cannot see the credential
+	 * handed over ten minutes ago (review round 1, R3).
+	 */
+	const colliding = `${CREDENTIAL_KEY_PREFIX}ABCDEFGH`;
+	const taken = [colliding, `${CREDENTIAL_KEY_PREFIX}ABCDEFGJ`];
+	// The stub draws the colliding name first, then a distinct one, which is the
+	// sequence the guard has to walk past.
+	const draw = drawFrom([0, 1, 2, 3, 4, 5, 6, 7, 9, 1, 2, 3, 4, 5, 6, 7]);
+	const key = generateCredentialKey(taken, draw);
+	assert.ok(!taken.includes(key), `${key} must not clobber a live credential`);
+	assert.equal(key, `${CREDENTIAL_KEY_PREFIX}KBCDEFGH`);
+
+	// The composer's in-flight keys are unioned with the session's names by the
+	// caller (§8), and the union is what the mint consults at Enter time.
+	const composer = harness();
+	composer.state.sessionNames = [`${CREDENTIAL_KEY_PREFIX}ABCDEFGH`];
+	composer.type("/credential ");
+	composer.type("one");
+	const first = composer.enter();
+	assert.notEqual(first.payload.key, `${CREDENTIAL_KEY_PREFIX}ABCDEFGH`);
+	const takenNow = [
+		...composer.state.sessionNames,
+		...[...composer.state.payloads.values()].map((p) => p.key),
+	];
+	assert.ok(
+		takenNow.includes(first.payload.key),
+		"in-flight keys are in `taken`",
+	);
+});
+
+test("the mint can never spin: 16 collisions widen the name instead", () => {
+	// A draw that only ever produces the colliding suffix.
+	const stub = () => 0;
+	const colliding = `${CREDENTIAL_KEY_PREFIX}${"A".repeat(8)}`;
+	const key = generateCredentialKey([colliding], stub);
+	assert.equal(key, `${CREDENTIAL_KEY_PREFIX}${"A".repeat(16)}`);
+	assert.ok(isStorableCredentialKey(key));
+});
+
+test("the value never reaches the outgoing text and the citation does", () => {
+	const composer = harness();
+	composer.type("deploy with /credential ");
+	composer.type("hunter2-canary");
+	composer.enter();
+	const sent = composer.submit();
+	assert.ok(
+		!sent.text.includes("hunter2-canary"),
+		"the bytes are not in the prompt",
+	);
+	CREDENTIAL_MARKER.lastIndex = 0;
+	assert.ok(
+		!CREDENTIAL_MARKER.test(sent.text),
+		"and neither is the composer-local marker",
+	);
+	const key =
+		[...composer.state.payloads.values()][0]?.key ?? sent.cited[0].key;
+	assert.equal(
+		sent.text,
+		`deploy with [credential ${key} (14 chars) — available to bash and eval as $${key}; its value cannot be read] `,
+	);
+	assert.equal(
+		credentialCitation(sent.cited[0]),
+		`[credential ${key} (14 chars) — available to bash and eval as $${key}; its value cannot be read]`,
+	);
+});
+
+test("an uncited marker is never stored", () => {
+	const composer = harness();
+	composer.type("keep /credential ");
+	composer.type("secret");
+	composer.enter();
+	// The operator selects the whole pill and deletes it: nothing cites it now.
+	composer.caretTo(0);
+	composer.replaceSelection(composer.state.buffer.length, "");
+	const sent = composer.submit();
+	assert.deepEqual(sent.cited, [], "a marker that is gone is not a citation");
+	assert.equal(sent.text, "");
+});
+
+test("the not-stored phrase names the cause that actually applied", () => {
+	assert.equal(
+		describeUnstored("unreachable"),
+		"[credential NOT stored — the session could not be reached; try again]",
+	);
+	assert.equal(
+		describeUnstored("rejected-key"),
+		"[credential NOT stored — the store rejected its name]",
+	);
+	assert.equal(
+		describeUnstored("lost"),
+		"[credential NOT stored — its value did not survive; ask the operator to paste it again]",
+	);
+});
+
+test("a refused credential cites honestly beside one that landed", () => {
+	/*
+	 * Review round 1's R1 / QA's Q1 are the defect this pins: the caller used to
+	 * decide once for the whole message, so one refusal among several successes
+	 * still advertised a key nothing held.
+	 */
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("first");
+	composer.enter();
+	composer.type(" and /credential ");
+	composer.type("second");
+	composer.enter();
+	const payloads = [...composer.state.payloads.values()];
+	const refused = new Map([[payloads[1].index, "lost"]]);
+	const sent = composer.submit({ refused });
+	assert.ok(
+		sent.text.includes(`$${payloads[0].key}`),
+		"the stored one names its key",
+	);
+	assert.ok(
+		!sent.text.includes(`$${payloads[1].key}`),
+		"the refused one must not name a key nothing holds",
+	);
+	assert.ok(sent.text.includes(describeUnstored("lost")));
+});
+
+test("every citation is rewritten, stored or not, so no marker reaches the model", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("only");
+	composer.enter();
+	const sent = composer.submit({ refused: new Map([[1, "unreachable"]]) });
+	CREDENTIAL_MARKER.lastIndex = 0;
+	assert.ok(!CREDENTIAL_MARKER.test(sent.text));
+	assert.ok(
+		sent.text.includes(describeUnstored("unreachable")),
+		"the description survives; only the citation changes",
+	);
+});
+
+test("a hand-typed lookalike is prose: never substituted, never stripped", () => {
+	/*
+	 * §4: a citation counts as the app's own only when the marker text matches
+	 * the payload's own recorded marker AND the index matches. Two hand-typed
+	 * shapes are distinguishable from a real citation and neither may be
+	 * touched: the same number with an edited tail, and a number nothing minted.
+	 */
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("real");
+	composer.enter();
+	const payload = [...composer.state.payloads.values()][0];
+	const text = `${composer.state.buffer}my own [Credential #1, 999 chars] note, and [Credential #7, 4 chars]`;
+	assert.equal(citationSpan(text, payload).start, 0);
+	assert.equal(
+		substituteCredentials(text, [payload]).includes(
+			"[Credential #1, 999 chars]",
+		),
+		true,
+		"an edited tail is not the app's citation",
+	);
+	assert.equal(
+		substituteCredentials(text, [payload]).includes("[Credential #7, 4 chars]"),
+		true,
+		"a number nothing minted is prose",
+	);
+	// The grammar itself must not be fooled by a lookalike either.
+	assert.ok(
+		!text
+			.slice(text.indexOf("[Credential #1, 999 chars]"))
+			.startsWith(payload.marker),
+	);
+});
+
+test("a duplicated citation is rewritten once, at its first occurrence", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("dup");
+	composer.enter();
+	const marker = composer.state.buffer.trim();
+	const payload = [...composer.state.payloads.values()][0];
+	const text = `${marker} ${marker}`;
+	const out = substituteCredentials(text, [payload]);
+	assert.ok(out.includes(`$${payload.key}`));
+	assert.ok(
+		out.includes(marker),
+		"the second copy is text the operator duplicated",
+	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * The notices (§4, §5, §9.4) — one authority per phrase
+ * ---------------------------------------------------------------------------
+ */
+
+test("the notices are the TUI's own sentences", () => {
+	assert.equal(
+		CREDENTIAL_ARMED_NOTICE,
+		"armed — add a space, then type or paste the secret",
+	);
+	assert.equal(
+		CREDENTIAL_TYPING_NOTICE,
+		"masked as you type — Enter turns it into a chip, Esc cancels",
+	);
+	assert.equal(
+		unredactedNotice(64),
+		"64 characters are now PLAIN TEXT in the composer — Enter will expose them",
+	);
+	assert.equal(
+		storedNotice(["LOP_SECRET_K3RQ7WZM"]),
+		"Stored LOP_SECRET_K3RQ7WZM. Injected into every bash command as an environment variable; the agent cannot read the value.",
+	);
+	assert.equal(
+		unstoredNotice(["LOP_SECRET_K3RQ7WZM"]),
+		"1 credential could not be stored (LOP_SECRET_K3RQ7WZM); the agent has been told so. Paste the value again after /credential to retry.",
+	);
+	assert.equal(
+		unstoredNotice(["B", "A"]),
+		"2 credentials could not be stored (A, B); the agent has been told so. Paste the value again after /credential to retry.",
+	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * §6 — the draft rule
+ * ---------------------------------------------------------------------------
+ */
+
+test("no persisted draft write happens while a masked capture is open", () => {
+	/*
+	 * §6: the persisted draft keeps the last non-capturing value. `conversation-input-store`
+	 * is persisted to localStorage, so a draft write during a capture would put
+	 * the mask cells on disk with no value behind them — dead text the operator
+	 * cannot use when the draft is restored.
+	 *
+	 * The harness writes the draft exactly where the hook does (after every
+	 * change) and with the hook's own gate, so this is the rule rather than a
+	 * restatement of it.
+	 */
+	const composer = harness();
+	composer.type("prose first");
+	composer.type(" /credential");
+	const writesBeforeCapture = composer.state.drafted.length;
+	composer.typeKeystroke(" ");
+	assert.ok(isTyping(composer.state.capture), "the span is open");
+	composer.type("hunter2");
+	assert.equal(
+		composer.state.drafted.length,
+		writesBeforeCapture,
+		"not one write while the span is open, the delimiter included",
+	);
+	assert.equal(
+		composer.state.drafted[composer.state.drafted.length - 1],
+		"prose first /credential",
+		"the draft keeps the last value with no secret in it — the token, not the space that opened the span",
+	);
+	assert.ok(
+		composer.state.drafted.every((value) => !value.includes(MASK_CELL)),
+		"the mask cells never reach the draft, so no dead text can be restored",
+	);
+	composer.enter();
+	composer.type("after");
+	assert.ok(
+		composer.state.drafted[composer.state.drafted.length - 1].endsWith("after"),
+		"and the draft resumes once the capture is closed",
+	);
+});
+
+test("the map is keyed by index and holds the marker beside the key", () => {
+	// §6: `{ index, key, value, marker }`. The marker rides along because a
+	// restored draft repaints its pill from the text it holds, and the submit
+	// path has to be able to tell the app's own citation from a lookalike.
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("abc");
+	composer.enter();
+	const [payload] = [...composer.state.payloads.values()];
+	assert.deepEqual(Object.keys(payload).sort(), [
+		"index",
+		"key",
+		"marker",
+		"value",
+	]);
+	assert.equal(payload.index, 1);
+	assert.equal(payload.value, "abc");
+	assert.equal(payload.marker, "[Credential #1, 3 chars]");
+	assert.ok(isStorableCredentialKey(payload.key));
+});
+
+test("maskEdit is a no-op outside an open span", () => {
+	assert.equal(
+		maskEdit(IDLE_CAPTURE, "abc", 1, { top: 1, bottom: 1, inserted: "x" }),
+		null,
+	);
+	assert.equal(maskSpan(IDLE_CAPTURE), null);
+});

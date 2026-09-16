@@ -254,6 +254,20 @@ export const refusedSplitNotice = (
 type UseMessageInputOptions = {
 	conversationId?: string;
 	/**
+	 * True while a MASKED credential capture is open (§6).
+	 *
+	 * The persisted draft is not written in that window, and the reason is on
+	 * disk rather than in taste: `conversation-input-store` is `persist`ed to
+	 * localStorage, and what a capture leaves in the buffer is mask cells with the
+	 * value held outside the document. A draft write during the capture would put
+	 * `••••` on disk with nothing behind it — dead text the operator can never use
+	 * when the draft is restored, and text that looks like a secret without being
+	 * one. So the store keeps the last NON-CAPTURING value and the capture is
+	 * in-flight state, exactly as the TUI's encoder keeps the value out of a
+	 * spilled draft (`local_operator/tui/session_drafts.py`).
+	 */
+	draftHeld?: boolean;
+	/**
 	 * Submits the message.
 	 *
 	 * `onEchoPainted` is the seam that lets the composer clear itself at the
@@ -276,6 +290,7 @@ export const useMessageInput = ({
 	conversationId,
 	onSubmit,
 	scrollToBottom,
+	draftHeld = false,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -406,12 +421,18 @@ export const useMessageInput = ({
 		(value: string) => {
 			setInputValue(value);
 			if (conversationId) {
+				// THE ONE GATE ON THE DRAFT WRITE (§6): while a masked capture is open
+				// the box belongs to the operator's keystrokes and the persisted draft
+				// keeps whatever it last held. `lastPushedRef` is left alone with it, so
+				// the adoption effect below still sees the store's value as its own and
+				// cannot mistake it for a restore somebody else made.
+				if (draftHeld) return;
 				lastPushedRef.current = value;
 				setCurrentInput(conversationId, value);
 				resetCurrentHistoryIndex(conversationId);
 			}
 		},
-		[conversationId, setCurrentInput, resetCurrentHistoryIndex],
+		[conversationId, setCurrentInput, resetCurrentHistoryIndex, draftHeld],
 	);
 
 	const submittingRef = useRef(false);

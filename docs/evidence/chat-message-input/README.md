@@ -25,3 +25,57 @@ recovery and before/after failure) is in
 [`../chat-cold-send-browser/README.md`](../chat-cold-send-browser/README.md).
 That separate evidence, rather than these legacy images, carries the new live
 validation claim. D3's previously missing committed state pictures are now here.
+
+## The inline credential capture's five states
+
+Sixty frames the eight above do not account for: five states of the composer's
+inline `/credential` gesture (`docs/design/composer-credential-capture.md`), each
+in all twelve themes, at the same 1024 width.
+
+The exact command that wrote them, from the tree this branch commits:
+
+```
+npx storybook dev -p 6018 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=chat-message-input--credential \
+  --allow-backend http://127.0.0.1:6018
+```
+
+6018 and not the default 6017: a sibling worktree's Storybook already held the
+default, and the frames are whatever the URL you pass is serving. `--allow-backend`
+is the flag a narrowed run needs because the operator's own app is listening on
+1111, and no surface here talks to it. The run was narrowed to these five stories
+and to this surface's directory; `manifest.json`'s `partialCapture` and the
+branch's own `credentialCapture` record the pass.
+
+| Frame (`<theme>.webp`) | State, and what the frame is for |
+| --- | --- |
+| `credential-armed/` | `/credential` typed and no space after it, so the next space opens the capture. The notice line says so — the TUI's own sentence — which is what makes the state legible instead of looking like ordinary prose. |
+| `credential-masked/` | The space has opened the span and every character since is ONE MASK CELL. Nineteen cells against a nineteen-character value: the length is the receipt the pill will carry, and it is the operator's only integrity check once the value can never be displayed again. |
+| `credential-pill-mid-prose/` | Enter minted the pill rather than sending, and the sentence continues after it — the gesture's whole shape ("hand over a secret, then describe it"). |
+| `credential-pill-at-line-start/` | The same pill at the head of the line. The token was consumed at mint time, so this is prose and not a slash command: the leading-slash path cannot fire on it. |
+| `credential-escaped/` | Esc cancelled and the characters came back as ORDINARY TEXT — the one exit that leaves a secret in the composer, with the warning sentence that says so. The canary reads `sk-live-CANARY-4417`. |
+
+**These frames are driven by real keystrokes**, not by a prop that fakes the
+state: each story's `play` types into the shipped composer with `userEvent.type`
+and fails (taking no frame) if its state did not arrive. That matters here more
+than for a colour change, because every rule this feature rests on lives in the
+keyboard path — the mask, the positional mirror, the mint, the Escape restore.
+The one frame where the canary is visible is `credential-escaped`, and it is
+visible there because the operator asked for it with Esc; in the other four the
+value is held outside the document and appears in no frame.
+
+### What these frames do NOT prove
+
+- **Not the store, and not the model's prompt.** The frames end at the composer.
+  What reaches the session's credential store, what the citation says to the
+  model, and the notice the operator hears are asserted by
+  `scripts/credential-capture.test.mjs` (pure module, 49 cases) and are the QA
+  round's business on the running app.
+- **Not the paste route.** No frame here pastes; the paste capture, the
+  append-into-a-span case and the blank-paste fall-through are the test file's.
+- **No focus ring and no caret.** A headless capture cannot show a caret, and the
+  composer's `:focus-visible` ring belongs to the box, unchanged by this feature.
+- **The pill's geometry is not restated here.** The pill is drawn by a
+  background-only overlay behind the textarea, so a frame shows the pill and the
+  marker text in their real positions; the box model that keeps the two aligned
+  is shared by construction (`composerTextBox`) rather than measured in a still.
