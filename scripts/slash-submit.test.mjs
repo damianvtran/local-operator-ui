@@ -27,6 +27,7 @@ const bundle = await build({
 			 * whose staged line did not run (review F1 / QA Q4).
 			 */
 			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
+			'export { argumentShapeVocabulary } from "./src/renderer/src/features/chat/components/slash-submit";',
 			/*
 			 * The tokenizer's own span, so the case below can assert that the planner and
 			 * the span agree about where a token's WORD ends (review F1 is exactly the
@@ -42,6 +43,7 @@ const bundle = await build({
 	write: false,
 });
 const {
+	argumentShapeVocabulary,
 	armedOnlyVocabulary,
 	completionFor,
 	planSlashArming,
@@ -67,6 +69,8 @@ const COMMAND_NAMES = new Set([
 	"theme",
 	"mcp",
 	"clear",
+	"login",
+	"rename",
 ]);
 /** `consumes_prompt: true` in the shared registry. */
 const PROMPT_COMMANDS = new Set([
@@ -970,4 +974,117 @@ test("a reassembled line runs on the next Enter, whatever shape the draft had", 
 	assert.deepEqual(loopPlan("Please fix the flaky test\nand run /loop", 35), {
 		kind: "send",
 	});
+});
+
+test("the wire's argument shapes decide what a whole draft is, and the vocabulary is the fallback", () => {
+	/*
+	 * The operator's single-line case is the reason this field exists: `/mcp
+	 * logout` is a command and `/mcp logout seems to cause a crash` is a message,
+	 * and "the command owns trailing text" cannot tell them apart. The backend
+	 * refuses exactly the whole-draft texts that are VALID under the shape, so the
+	 * composer reads the same field — a whole-draft text the desktop runs is one
+	 * the endpoint refuses, and planning a valid command as prose would hand the
+	 * endpoint a text it refuses (the permanent-refusal class).
+	 */
+	const shapes = argumentShapeVocabulary([
+		{
+			name: "mcp",
+			aliases: [],
+			argument_shape: "subcommand",
+			argument_words: ["logout", "login", "grant"],
+		},
+		{
+			name: "login",
+			aliases: [],
+			argument_shape: "provider",
+			argument_words: ["openai", "anthropic"],
+		},
+		{ name: "usage", aliases: [], argument_shape: "word", argument_words: [] },
+		{ name: "compact", aliases: [], argument_shape: "none" },
+		{ name: "rename", aliases: [], argument_shape: "any" },
+		/*
+		 * THE PRECEDENCE ROWS. A command whose trailing text is carried by
+		 * `consumes_prompt`/`prefixes_text` advertises `argument_shape: "none"` on
+		 * the wire — `none` is that field's word for "no text is ever a SELECTOR
+		 * for this command", not "this command takes no text" — so a planner that
+		 * asked the shape first planned `send` for every one of these and handed
+		 * the endpoint a draft it refuses (the permanent-refusal class). The
+		 * vocabulary is asked first, and these rows are what says so.
+		 */
+		{ name: "team", aliases: [], argument_shape: "none" },
+		{ name: "agent", aliases: [], argument_shape: "none" },
+		{ name: "goal", aliases: [], argument_shape: "none" },
+		{ name: "loop", aliases: [], argument_shape: "none" },
+		{ name: "btw", aliases: [], argument_shape: "none" },
+		{ name: "fork", aliases: [], argument_shape: "none" },
+	]);
+	const shaped = { argumentShapes: shapes };
+
+	// A subcommand with its name: the command.
+	assert.deepEqual(plan("/mcp logout", 11, shaped).command, {
+		name: "mcp",
+		args: "logout",
+	});
+	// The operator's draft: the same word, text that is not that shape's argument.
+	assert.deepEqual(plan("/mcp logout seems to cause a crash", 37, shaped), {
+		kind: "send",
+	});
+	// A selector token, and text that is not one.
+	assert.equal(plan("/usage on", 9, shaped).kind, "whole");
+	assert.deepEqual(plan("/usage more prose", 17, shaped), { kind: "send" });
+	// A provider this install knows, and one it does not.
+	assert.equal(plan("/login openai", 12, shaped).kind, "whole");
+	assert.deepEqual(plan("/login zzz", 10, shaped), { kind: "send" });
+	/*
+	 * And the precedence, on the wire shape those words really carry: a free-text
+	 * command's whole-draft form is a command with ANY text after it, whatever
+	 * `argument_shape` says, because its vocabulary is what the endpoint's
+	 * admission rule reads.
+	 */
+	for (const [draft, command] of [
+		["/team ops fix this", { name: "team", args: "ops fix this" }],
+		["/goal ship it", { name: "goal", args: "ship it" }],
+		["/loop keep going", { name: "loop", args: "keep going" }],
+		["/btw aside", { name: "btw", args: "aside" }],
+		["/fork do it", { name: "fork", args: "do it" }],
+		["/agent do a thing", { name: "agent", args: "do a thing" }],
+		["/team ops", { name: "team", args: "ops" }],
+	]) {
+		const result = plan(draft, draft.length, shaped);
+		assert.equal(result.kind, "whole", `${draft} must stay a command`);
+		assert.deepEqual(result.command, command, draft);
+	}
+
+	// A form field that takes arbitrary text.
+	assert.equal(plan("/rename my thing", 15, shaped).kind, "whole");
+	// And a command that takes nothing keeps eating nothing.
+	assert.deepEqual(plan("/compact hello", 14, shaped), { kind: "send" });
+	assert.equal(plan("/compact", 8, shaped).kind, "whole");
+
+	/*
+	 * PINNED, because it is the one pairing where this planner and the backend's
+	 * admission rule can disagree: a whole-draft `/goal ship it` is a COMMAND (the
+	 * endpoint refuses it, so a `send` plan would be the permanent-refusal class),
+	 * while a draft that merely CONTAINS `/goal` — mid-sentence, or opening a
+	 * multi-line body — stays prose under #209's armedOnly rule, which nothing but
+	 * an explicit pick may hoist.
+	 */
+	assert.deepEqual(plan("/goal ship it", 13, shaped).command, {
+		name: "goal",
+		args: "ship it",
+	});
+	assert.deepEqual(plan("please /goal ship it", 20, shaped), { kind: "send" });
+	assert.deepEqual(plan("/goal\nship the release", 5, shaped), {
+		kind: "send",
+	});
+
+	/*
+	 * The FALLBACK, which is what an older backend gets: no shapes on the wire, so
+	 * the vocabulary this branch has always derived answers instead. `/rename my
+	 * thing` is the visible difference — the composer cannot know a row it has no
+	 * shape for takes text, so it is prose, which is the behaviour that backend
+	 * pairs with.
+	 */
+	assert.deepEqual(plan("/rename my thing", 15), { kind: "send" });
+	assert.deepEqual(plan("/compact hello", 14), { kind: "send" });
 });

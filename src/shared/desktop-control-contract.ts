@@ -38,6 +38,39 @@ export type DesktopCommandMetadata = {
 	 * `features/chat/components/slash-commands.tsx`).
 	 */
 	prefixes_text?: boolean;
+	/**
+	 * What a VALID argument for this command is (`argument_shape` on the wire),
+	 * which is the fact that decides whether a whole-draft `/word …` is the command
+	 * or a message the user is writing.
+	 *
+	 * - `none`: nothing is ever this command's argument, so `/compact hello` is a
+	 *   message;
+	 * - `word`: one whitespace-free selector token (`/usage on` runs, `/usage more
+	 *   prose` is a message);
+	 * - `provider`: one token naming a provider this install knows (`/login openai`
+	 *   runs, `/login zzz` is a message);
+	 * - `subcommand`: `<subcommand> [name]` (`/mcp logout` runs, `/mcp logout seems
+	 *   to cause a crash` is a message);
+	 * - `any`: arbitrary text a form field takes (`/rename my thing`, `/move ~/x`).
+	 *
+	 * The messages endpoint refuses exactly the whole-draft texts that are valid
+	 * under this shape, so the composer and the endpoint read ONE rule: a whole-draft
+	 * text the desktop runs is one the endpoint refuses, and the reverse (the reason
+	 * the renderer must not plan a valid command as prose: it would hand the
+	 * endpoint a text it refuses, which is the permanent-refusal class).
+	 *
+	 * OPTIONAL for the same reason as `prefixes_text`: a backend older than the
+	 * field sends no such key, and the renderer falls back to the vocabulary it has
+	 * always derived (`prefixingVocabulary`) rather than losing the command.
+	 */
+	argument_shape?: "none" | "word" | "provider" | "subcommand" | "any";
+	/**
+	 * The FIRST token's vocabulary for `argument_shape` (`argument_words`):
+	 * provider ids (with their aliases) for `provider`, the MCP subcommands for
+	 * `subcommand`, and nothing at all where any single token will do. Empty means
+	 * "any token", never "no token".
+	 */
+	argument_words?: string[];
 	destination: string;
 	execution: "owner" | "native";
 };
