@@ -45,6 +45,24 @@ type ConversationInputState = {
 	 * A list of attachments to be sent with the next message
 	 */
 	attachments: Attachment[];
+	/**
+	 * How many characters of `currentInput` are characters an Esc unredacted back
+	 * into the composer as PLAIN TEXT, or 0/absent when the draft holds none.
+	 *
+	 * §6 persists the Esc-restored characters deliberately — they are the
+	 * operator's prose by then — and design round 2's D2 found the other half of
+	 * that decision missing: the DISCLOSURE did not survive with them, so a reload
+	 * brought back a composer holding a secret with no notice, no arm and no pill,
+	 * and one Enter exposed it. §5 says that state must never be silent, so the
+	 * count travels with the draft it describes and the composer re-raises the
+	 * same sentence on restore.
+	 *
+	 * A count rather than a sentence, because every phrase the app says about this
+	 * state is built by one authority (`unredactedNotice`) and a stored string
+	 * would be a second copy of the words. A count is also all the disclosure
+	 * needs: the notice says how many characters, never which.
+	 */
+	unredactedChars?: number;
 };
 
 /**
@@ -86,8 +104,24 @@ type ConversationInputStoreState = {
 	 * Set the current input value for a conversation
 	 * @param conversationId - The ID of the conversation
 	 * @param value - The input value to set
+	 * @param unredactedChars - How many characters of `value` were unredacted by an
+	 * Esc cancel; see {@link ConversationInputState.unredactedChars}. Defaulted to
+	 * 0 by every caller that is not the composer's own capture write, so a plain
+	 * draft write states "this draft discloses nothing" rather than leaving a
+	 * previous disclosure pinned to text it no longer describes.
 	 */
-	setCurrentInput: (conversationId: string, value: string) => void;
+	setCurrentInput: (
+		conversationId: string,
+		value: string,
+		unredactedChars?: number,
+	) => void;
+
+	/**
+	 * How many characters of a conversation's draft are disclosed plain text.
+	 * @returns 0 when the conversation holds no draft, or holds one that
+	 * discloses nothing.
+	 */
+	getUnredactedChars: (conversationId: string) => number;
 
 	/**
 	 * Get the current input value for a conversation
@@ -261,7 +295,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				});
 			},
 
-			setCurrentInput: (conversationId, value) => {
+			setCurrentInput: (conversationId, value, unredactedChars = 0) => {
 				const existing = get().inputByConversation[conversationId] || {
 					currentInput: "",
 					submittedMessages: [],
@@ -275,10 +309,24 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 						[conversationId]: {
 							...existing,
 							currentInput: value,
+							/*
+							 * AN EMPTY DRAFT DISCLOSES NOTHING, enforced here rather than at each
+							 * writer so it cannot be forgotten by one of them: the sentence says
+							 * "N characters are now PLAIN TEXT in the composer", and a box holding
+							 * no characters cannot be holding N of them. That is reachable
+							 * through the ordinary edit path — the operator selects all and
+							 * deletes, which writes the empty draft with the disclosure still in
+							 * hand — and a restored notice over an empty box is a claim about
+							 * nothing.
+							 */
+							unredactedChars: value ? unredactedChars : 0,
 						},
 					},
 				});
 			},
+
+			getUnredactedChars: (conversationId) =>
+				get().inputByConversation[conversationId]?.unredactedChars || 0,
 
 			getCurrentInput: (conversationId) => {
 				return get().inputByConversation[conversationId]?.currentInput || "";

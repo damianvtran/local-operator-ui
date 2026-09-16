@@ -249,10 +249,61 @@ export const refusedSplitNotice = (
 };
 
 /**
+ * The disclosure a caller with no capture to report hands over: nothing.
+ *
+ * A named function rather than an inline `() => 0` default, so the identity is
+ * stable across renders — the hook carries `draftUnredacted` in a `useCallback`
+ * dependency list, and a fresh closure per render would rebuild the keystroke
+ * handler on every keystroke.
+ */
+const noDisclosure = () => 0;
+
+/**
  * Options for the useMessageInput hook
  */
 type UseMessageInputOptions = {
 	conversationId?: string;
+	/**
+	 * True while a MASKED credential capture is open (§6).
+	 *
+	 * The persisted draft is not written in that window, and the reason is on
+	 * disk rather than in taste: `conversation-input-store` is `persist`ed to
+	 * localStorage, and what a capture leaves in the buffer is mask cells with the
+	 * value held outside the document. A draft write during the capture would put
+	 * `••••` on disk with nothing behind it — dead text the operator can never use
+	 * when the draft is restored, and text that looks like a secret without being
+	 * one. So the store keeps the last NON-CAPTURING value and the capture is
+	 * in-flight state, exactly as the TUI's encoder keeps the value out of a
+	 * spilled draft (`local_operator/tui/session_drafts.py`).
+	 */
+	draftHeld?: boolean;
+	/**
+	 * How many characters of the current draft are characters an Esc unredacted
+	 * back into the composer as PLAIN TEXT, or 0 (§5, §6).
+	 *
+	 * Written WITH the draft on every write this hook makes, because the two are
+	 * one fact: the persisted characters are on disk (that is what §6 decided), and
+	 * the disclosure that says so has to travel with them or a reload restores a
+	 * secret into an ordinary-looking composer. Design round 2's D2 is exactly
+	 * that: the live state disclosed itself, the restored one did not, and the very
+	 * next Enter exposed the characters.
+	 *
+	 * The count comes from the composer, which is the only thing that knows it (the
+	 * cancel's own answer), and it rides here rather than being written by the
+	 * composer separately so the two halves cannot be written apart — the same
+	 * reason `draftHeld` gates the write in this hook instead of at each caller.
+	 *
+	 * A FUNCTION OF THE VALUE BEING WRITTEN, not a number (UX round 3, U12). The
+	 * write happens inside the keystroke's own handler, so a number captured at
+	 * render time still describes the text BEFORE that keystroke: that is how four
+	 * backspaces left `unredactedChars: 11` persisted beside a seven-character
+	 * remnant, and how typing ordinary prose re-persisted a stale count that a
+	 * reload then rendered as a sentence about nothing. Asking with the value is
+	 * what lets the composer answer "this text discloses nothing" for the text the
+	 * operator just produced, and it keeps that answer in one place
+	 * (`disclosureOver`) instead of in a second reader of the same fact.
+	 */
+	draftUnredacted?: (value: string) => number;
 	/**
 	 * Submits the message.
 	 *
@@ -276,6 +327,8 @@ export const useMessageInput = ({
 	conversationId,
 	onSubmit,
 	scrollToBottom,
+	draftHeld = false,
+	draftUnredacted = noDisclosure,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -406,12 +459,24 @@ export const useMessageInput = ({
 		(value: string) => {
 			setInputValue(value);
 			if (conversationId) {
+				// THE ONE GATE ON THE DRAFT WRITE (§6): while a masked capture is open
+				// the box belongs to the operator's keystrokes and the persisted draft
+				// keeps whatever it last held. `lastPushedRef` is left alone with it, so
+				// the adoption effect below still sees the store's value as its own and
+				// cannot mistake it for a restore somebody else made.
+				if (draftHeld) return;
 				lastPushedRef.current = value;
-				setCurrentInput(conversationId, value);
+				setCurrentInput(conversationId, value, draftUnredacted(value));
 				resetCurrentHistoryIndex(conversationId);
 			}
 		},
-		[conversationId, setCurrentInput, resetCurrentHistoryIndex],
+		[
+			conversationId,
+			setCurrentInput,
+			resetCurrentHistoryIndex,
+			draftHeld,
+			draftUnredacted,
+		],
 	);
 
 	const submittingRef = useRef(false);
