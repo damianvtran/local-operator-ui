@@ -817,11 +817,16 @@ export const STORIES = [
 	   fit-to-viewport rule would smear it. That last frame is sized to itself for
 	   the reason the notification states are: the scrim covers the whole viewport,
 	   so at 1280x900 the frame would be one colour over `check-evidence`'s
-	   uniformity ceiling and a picture of nothing. All three reach the overlay by
-	   pressing the picture; see the story's own note. */
+	   uniformity ceiling and a picture of nothing. The first three reach the overlay
+	   by pressing the picture; see the story's own note. */
 	["chat-image-expand--in-thread", 1280, 900],
-	["chat-image-expand--expanded", 1280, 900],
-	["chat-image-expand--expanded-small-image", 640, 420],
+	["chat-image-expand--expanded", 1280, 900, { press: IMAGE_EXPAND_PICTURE }],
+	[
+		"chat-image-expand--expanded-small-image",
+		640,
+		420,
+		{ press: IMAGE_EXPAND_PICTURE },
+	],
 	/* THE ROUND-1 REVIEW'S SETS (design D1-3/D1-4/D1-5, review R1-1, UX U1-1, QA
 	   Q-3/Q-5), and why each is a tuple rather than a story. `expanded-small-window`
 	   is the STORY `expanded` at the smallest shape the app enforces (800x760, the
@@ -837,10 +842,31 @@ export const STORIES = [
 	   by real Tab presses, and then ACTIVATED by Enter, whose capture fails if the
 	   menu's items never appear — the keyboard half of review R1-1, in the engine
 	   the finding is about. */
-	["chat-image-expand--expanded-near-viewport", 1280, 900],
-	["chat-image-expand--expanded-portrait", 1280, 900],
+	[
+		"chat-image-expand--expanded-near-viewport",
+		1280,
+		900,
+		{ press: IMAGE_EXPAND_PICTURE },
+	],
+	[
+		"chat-image-expand--expanded-portrait",
+		1280,
+		900,
+		{ press: IMAGE_EXPAND_PICTURE },
+	],
+	/* NOT press-driven, and that is the state's own reason rather than an oversight:
+	   the transcript's copy of a picture that failed to decode is `BrokenAttachment`
+	   and not a button, so no press can reach this overlay — the story mounts it and
+	   holds the shutter until the failure copy paints. Its close button therefore
+	   carries the same `:focus-visible` artifact the other five no longer do; the
+	   README names it per frame rather than leaving a reader to guess. */
 	["chat-image-expand--expanded-failed", 1280, 900],
-	["chat-image-expand--expanded", 800, 760, { dir: "expanded-small-window" }],
+	[
+		"chat-image-expand--expanded",
+		800,
+		760,
+		{ dir: "expanded-small-window", press: IMAGE_EXPAND_PICTURE },
+	],
 	["chat-image-expand--legacy", 1280, 900],
 	[
 		"chat-image-expand--legacy",
@@ -2923,6 +2949,90 @@ const main = async () => {
 			 * that tolerates a legitimate scrim over a modal, something no
 			 * equality test on a ground colour can do.
 			 */
+			/*
+			 * A REAL POINTER PRESS, for the frames whose claim is the state a MOUSE
+			 * user gets — and it runs BEFORE the readiness probe, unlike the other
+			 * interactions.
+			 *
+			 * Why the order matters: the probe is what enforces a story's
+			 * `data-capture-pending` latch, so a press that produces the state the
+			 * latch waits for has to happen first or the two deadlock — a story that
+			 * holds the shutter until the EXPANDED picture decodes can never clear it
+			 * while nothing has pressed the picture. Hover, selection and key presses
+			 * stay after the probe because they change how an already-ready state
+			 * looks; a press here is part of ARRIVING at the state, which is why the
+			 * element lookup below waits for the selector instead of demanding it.
+			 *
+			 * `press: <selector>` moves the pointer to the element's centre and sends
+			 * `mousePressed` + `mouseReleased` there, so the click arrives through the
+			 * input pipeline rather than through a script call. That distinction is the
+			 * whole reason this exists (design round 2, D2-4): a programmatic
+			 * `element.click()` is treated as keyboard-ish by Blink for
+			 * `:focus-visible`, so an overlay opened that way photographs the close
+			 * button wearing a focus ring a mouse user never sees. Every overlay frame
+			 * in the image-expand set used to carry one; the five press-reachable
+			 * tuples press instead. A selector that matches nothing THROWS, for the
+			 * same reason `hover`'s does: a rig that cannot find its target must fail
+			 * rather than photograph the resting state under a name that claims
+			 * otherwise.
+			 *
+			 * `pressSettleMs` is for a target whose open state is animated; the
+			 * stories' own `data-capture-pending` latch is what holds the shutter until
+			 * the overlay's picture has decoded, which is a different job.
+			 */
+			if (options?.press) {
+				let target = { value: null };
+				for (let i = 0; i < 100 && !target.value; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(options.press)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					target = result;
+					if (!target.value) await sleep(150);
+				}
+				if (!target.value) {
+					throw new Error(
+						`${story} @ ${theme}: the press selector \`${options.press}\` never appeared (15s) - a press that finds nothing must fail rather than photograph the resting state under a name that claims otherwise`,
+					);
+				}
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mousePressed",
+					x: target.value.x,
+					y: target.value.y,
+					button: "left",
+					buttons: 1,
+					clickCount: 1,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseReleased",
+					x: target.value.x,
+					y: target.value.y,
+					button: "left",
+					buttons: 0,
+					clickCount: 1,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
 			// `let`, and biome must not be allowed to talk you out of it: line
 			// 620 reassigns this. A formatter once rewrote it to `const` while
 			// the file was briefly unparseable - a stray backtick had ended the
@@ -3132,6 +3242,7 @@ const main = async () => {
 				 */
 				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
 			}
+
 			/*
 			 * A REAL HIGHLIGHT, for the frames whose claim is a selection-driven
 			 * control.
