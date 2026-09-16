@@ -170,8 +170,7 @@ test("an appended flag overrides the value the command line already carried", ()
 	);
 	// The size flag follows the same rule.
 	assert.equal(
-		plan({ argv: ["--window-size=1380x900", "--window-size=1024x768"] })
-			.width,
+		plan({ argv: ["--window-size=1380x900", "--window-size=1024x768"] }).width,
 		1024,
 	);
 });
@@ -363,7 +362,10 @@ test("a window created for a request is presented under THAT request's plan", ()
 	 * REQUEST asked, and never as far as this process's launch plan does.
 	 */
 	const presentSites = callArgs("presentWindow");
-	assert.ok(presentSites.length >= 2, `found ${presentSites.length} present sites`);
+	assert.ok(
+		presentSites.length >= 2,
+		`found ${presentSites.length} present sites`,
+	);
 	// Each present site says one of two things and nothing else: the plan of the
 	// REQUEST that caused the window (an identifier of its own, whatever it is
 	// called), or a literal plan where the operator's own request set it. A reach
@@ -456,7 +458,10 @@ test("a window created for a request is presented under THAT request's plan", ()
 	 * conversation that dies with the process is accounted for.
 	 */
 	assert.match(flat, /const PARKED_LAUNCH_LIMIT = \d+;/);
-	assert.match(flat, /if \(parkedLaunches\.length <= PARKED_LAUNCH_LIMIT\) return;/);
+	assert.match(
+		flat,
+		/if \(parkedLaunches\.length <= PARKED_LAUNCH_LIMIT\) return;/,
+	);
 	assert.match(flat, /reportParkedEvicted\(evicted\.session, \{/);
 	assert.match(
 		flat,
@@ -471,7 +476,10 @@ test("a window created for a request is presented under THAT request's plan", ()
 		flat,
 		/readSecondLaunchRequest\(\{ commandLine: process\.argv \}\)\.session/,
 	);
-	assert.match(flat, /the conversation it named \(\$\{session\}\) rides with it/);
+	assert.match(
+		flat,
+		/the conversation it named \(\$\{session\}\) rides with it/,
+	);
 	assert.match(flat, /it named no conversation/);
 	/*
 	 * One present per window (both review streams measured two identical
@@ -1073,7 +1081,9 @@ test("a second launch's intent travels on the request that lost the lock, and th
 		[WINDOW_INTENT_KEY]: { mode: "inactive", cwd: "/tmp/x" },
 	});
 	assert.deepEqual(
-		readWindowIntent(windowIntentPayload("headless", { pid: 7, cwd: "/tmp/x" })),
+		readWindowIntent(
+			windowIntentPayload("headless", { pid: 7, cwd: "/tmp/x" }),
+		),
 		{ mode: "headless", pid: 7, cwd: "/tmp/x" },
 	);
 	/*
@@ -1102,7 +1112,9 @@ test("a second launch's intent travels on the request that lost the lock, and th
 	// The command line is the fallback, for a launch that reaches the window
 	// server through a path which drops the environment (`open --args`).
 	assert.equal(
-		resolveSecondLaunchShow({ argv: ["electron", ".", "--window-mode=headless"] }),
+		resolveSecondLaunchShow({
+			argv: ["electron", ".", "--window-mode=headless"],
+		}),
 		"never",
 	);
 	assert.equal(
@@ -1152,7 +1164,7 @@ test("the requester's identity is read for the log and cannot become a decision"
 	// back to what Electron reports about the second instance (which always has the
 	// working directory, and never has the pid).
 	const request = readSecondLaunchRequest({
-		commandLine: ["electron", ".", "--open-session=" + LAUNCHED_SESSION],
+		commandLine: ["electron", ".", `--open-session=${LAUNCHED_SESSION}`],
 		additionalData: windowIntentPayload("headless", {
 			pid: 4242,
 			cwd: "/tmp/elsewhere",
@@ -1173,14 +1185,18 @@ test("the requester's identity is read for the log and cannot become a decision"
 	 */
 	assert.deepEqual(
 		readWindowIntent(
-			windowIntentPayload("headless", { cwd: "/tmp/one\n[window-raise] forged" }),
+			windowIntentPayload("headless", {
+				cwd: "/tmp/one\n[window-raise] forged",
+			}),
 		),
 		{ mode: "headless", cwd: "/tmp/one [window-raise] forged" },
 	);
 	// Each control character becomes a space, so the forged line break cannot
 	// survive whatever it is spelled with (CR, LF, BEL, DEL, the C0 run).
 	assert.deepEqual(
-		readWindowIntent(windowIntentPayload("headless", { cwd: "/tmp/\u0007bell\r\nx" })),
+		readWindowIntent(
+			windowIntentPayload("headless", { cwd: "/tmp/\u0007bell\r\nx" }),
+		),
 		{ mode: "headless", cwd: "/tmp/ bell  x" },
 	);
 	assert.deepEqual(
@@ -1204,14 +1220,18 @@ test("the requester's identity is read for the log and cannot become a decision"
 		{ mode: "headless", cwd: "/tmp/c1 nel sep par done" },
 	);
 	const long = "a".repeat(400);
-	const capped = readWindowIntent(windowIntentPayload("headless", { cwd: long }))?.cwd;
+	const capped = readWindowIntent(
+		windowIntentPayload("headless", { cwd: long }),
+	)?.cwd;
 	assert.ok(
 		capped?.startsWith("a".repeat(200)) && capped.length <= 204,
 		`cwd not capped to 200 characters plus a marker: ${capped?.length}`,
 	);
 	// A pid that is not a safe integer is not a pid.
 	assert.deepEqual(
-		readWindowIntent(windowIntentPayload("headless", { pid: Number.MAX_VALUE })),
+		readWindowIntent(
+			windowIntentPayload("headless", { pid: Number.MAX_VALUE }),
+		),
 		{ mode: "headless" },
 	);
 	assert.deepEqual(
@@ -1231,11 +1251,14 @@ test("the requester's identity is read for the log and cannot become a decision"
 
 	// Nothing to say at all: null rather than an empty object, so the line prints
 	// no `pid=`/`cwd=` fields instead of empty ones.
-	assert.deepEqual(readSecondLaunchRequest({ commandLine: ["electron", "."] }), {
-		session: null,
-		show: "focus",
-		requester: null,
-	});
+	assert.deepEqual(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		{
+			session: null,
+			show: "focus",
+			requester: null,
+		},
+	);
 });
 
 test("a second launch raises the window only as far as it asked", () => {

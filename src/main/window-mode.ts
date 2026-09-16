@@ -496,23 +496,34 @@ export interface WindowIntent {
 const MAX_DECLARED_CWD = 200;
 
 /**
- * WHAT CAN BREAK A LINE, and therefore what has to be flattened before a declared
- * field reaches the log. The forgeries come from line breaks, so every class that
- * can end a line is covered rather than the ASCII controls alone (review round 3,
- * NIT-2):
+ * CAN THIS CHARACTER END A LINE? Every class that can, rather than the ASCII
+ * controls alone (review round 3, NIT-2):
  *
- *  - C0, `\u0000`-`\u001f` (LF and CR among them);
- *  - DEL, `\u007f`;
- *  - C1, `\u0080`-`\u009f` — where NEL `\u0085` lives, a break to any terminal
- *    that honours it;
- *  - the Unicode LINE and PARAGRAPH SEPARATORS, `\u2028`/`\u2029`, which
+ *  - C0, `0x00`-`0x1f` (LF and CR among them);
+ *  - DEL, `0x7f`;
+ *  - C1, `0x80`-`0x9f` — where NEL `0x85` lives, a break to any terminal that
+ *    honours it;
+ *  - the Unicode LINE and PARAGRAPH SEPARATORS, `0x2028`/`0x2029`, which
  *    JavaScript's own grammar treats as terminators.
  *
  * A path is what a requester declares here and a POSIX path cannot contain any of
  * them, so nothing legitimate is lost; a `cwd` that uses one is a `cwd` trying to
- * write a second line.
+ * write a second line. Written as a predicate rather than a character class
+ * because a class literal has to CONTAIN those characters, and this repository's
+ * linter rejects control characters inside a regex literal
+ * (`lint/suspicious/noControlCharactersInRegex`) — which is the honest form
+ * anyway: the rule is about code points, so the code says code points.
  */
-const DECLARED_FIELD_BREAKS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+function breaksALine(character: string): boolean {
+	const point = character.codePointAt(0) ?? 0;
+	return (
+		point <= 0x1f ||
+		point === 0x7f ||
+		(point >= 0x80 && point <= 0x9f) ||
+		point === 0x2028 ||
+		point === 0x2029
+	);
+}
 
 /**
  * A DECLARED field, made safe to print on a line-oriented log.
@@ -524,7 +535,10 @@ const DECLARED_FIELD_BREAKS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
  */
 function declaredField(value: unknown): string | undefined {
 	if (typeof value !== "string" || value === "") return undefined;
-	const flat = value.replace(DECLARED_FIELD_BREAKS, " ").trim();
+	const flat = [...value]
+		.map((character) => (breaksALine(character) ? " " : character))
+		.join("")
+		.trim();
 	if (flat === "") return undefined;
 	return flat.length > MAX_DECLARED_CWD
 		? `${flat.slice(0, MAX_DECLARED_CWD)}...`

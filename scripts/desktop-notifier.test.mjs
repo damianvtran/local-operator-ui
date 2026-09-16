@@ -1315,7 +1315,9 @@ test("a clicked banner raises the window only as far as the plan allows", async 
 		[
 			"inactive",
 			["send:desktop-open-conversation", "showInactive"],
-			["trigger=banner-click mode=inactive requested=inactive applied=showInactive"],
+			[
+				"trigger=banner-click mode=inactive requested=inactive applied=showInactive",
+			],
 		],
 	];
 	for (const [mode, expected, expectedRaises] of cases) {
@@ -1329,7 +1331,11 @@ test("a clicked banner raises the window only as far as the plan allows", async 
 		// A real click, through the handler the OS would call.
 		banner.handlers.click();
 		assert.deepEqual(calls, expected, `${mode}: the window was raised`);
-		assert.deepEqual(raises, expectedRaises, `${mode}: the raise named its trigger`);
+		assert.deepEqual(
+			raises,
+			expectedRaises,
+			`${mode}: the raise named its trigger`,
+		);
 	}
 
 	// `headless` is covered by the absence of the handler itself: no banner, so
@@ -1568,7 +1574,11 @@ test("a digest click with no window recreates the window on the catalogue", asyn
 	);
 	await settle(100);
 	globalThis.__shown.at(-1).handlers.click();
-	assert.deepEqual(reopened, [null], "the catalogue, not one of the burst's ids");
+	assert.deepEqual(
+		reopened,
+		[null],
+		"the catalogue, not one of the burst's ids",
+	);
 });
 
 test("a single completion still routes its click to its own conversation", async () => {
@@ -1612,7 +1622,11 @@ test("a click for a window that is gone takes the recreate path too", async () =
 	// `closed`, but a click that lands between the destroy and the null must not
 	// send into a dead `webContents`.
 	const reopened = [];
-	const dead = { id: 9, isDestroyed: () => true, webContents: { send: () => {} } };
+	const dead = {
+		id: 9,
+		isDestroyed: () => true,
+		webContents: { send: () => {} },
+	};
 	const notifier = new DesktopNotifier(
 		() => dead,
 		async () => ({ status: 200, body: { result: { claimed: true } } }),
@@ -1784,7 +1798,10 @@ test("a burst digest claims its members, and shows nothing when it wins none", a
 	 */
 	const memberTokens = [
 		{ session_id: SESSION, completion_token: TOKEN },
-		{ session_id: OTHER, completion_token: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" },
+		{
+			session_id: OTHER,
+			completion_token: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+		},
 	];
 	const digest = (id) => ({
 		epoch: "feed1",
@@ -1814,9 +1831,7 @@ test("a burst digest claims its members, and shows nothing when it wins none", a
 	const claimed = all.requests.filter((r) => r?.op === "sessions.notified");
 	assert.deepEqual(
 		claimed.map((r) => [r.sessionId, r.completionToken]).sort(),
-		memberTokens
-			.map((m) => [m.session_id, m.completion_token])
-			.sort(),
+		memberTokens.map((m) => [m.session_id, m.completion_token]).sort(),
 		"each member is claimed through the same call a single frame uses",
 	);
 
@@ -1833,11 +1848,19 @@ test("a burst digest claims its members, and shows nothing when it wins none", a
 			return { status: 200, body: { result: { claimed: !lost } } };
 		},
 		"focus",
-		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: () => undefined,
+		},
 	);
 	partial.observe(OTHER, digest("b"));
 	await settle(50);
-	assert.equal(globalThis.__toasts.length, 1, "a member somebody else delivered is not a reason to say nothing");
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"a member somebody else delivered is not a reason to say nothing",
+	);
 
 	// (3) EVERY MEMBER LOST: nothing is left to announce, and the dedupe key is
 	// released so a later frame can still try rather than being swallowed for the
@@ -1847,11 +1870,19 @@ test("a burst digest claims its members, and shows nothing when it wins none", a
 		() => null,
 		async () => ({ status: 200, body: { result: { claimed: false } } }),
 		"focus",
-		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: () => undefined,
+		},
 	);
 	losing.observe(OTHER, digest("c"));
 	await settle(50);
-	assert.equal(globalThis.__toasts.length, 0, "every member belonged to another surface");
+	assert.equal(
+		globalThis.__toasts.length,
+		0,
+		"every member belonged to another surface",
+	);
 });
 
 test("a burst digest from a backend without member_tokens still renders", async () => {
@@ -1882,12 +1913,11 @@ test("a burst digest from a backend without member_tokens still renders", async 
 	});
 	globalThis.__toasts = [];
 	const claims = recordingSender();
-	const notifier = new DesktopNotifier(
-		() => null,
-		claims.sender,
-		"focus",
-		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
-	);
+	const notifier = new DesktopNotifier(() => null, claims.sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
 	notifier.observe(OTHER, memberlessDigest("a"));
 	await settle(50);
 	assert.equal(
@@ -1909,12 +1939,11 @@ test("a burst digest from a backend without member_tokens still renders", async 
 	 */
 	globalThis.__toasts = [];
 	const empty = recordingSender();
-	const emptyNotifier = new DesktopNotifier(
-		() => null,
-		empty.sender,
-		"focus",
-		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
-	);
+	const emptyNotifier = new DesktopNotifier(() => null, empty.sender, "focus", {
+		windowAlive: () => true,
+		noteDisplayed: () => undefined,
+		reopen: () => undefined,
+	});
 	emptyNotifier.observe(OTHER, {
 		...memberlessDigest("b"),
 		payload: {
@@ -1980,7 +2009,11 @@ test("a ONE-MEMBER burst digest claims its member, and its click lands on it", a
 	});
 	claiming.observe(SESSION, oneMemberDigest("a"));
 	await settle(50);
-	assert.equal(globalThis.__toasts.length, 1, "a one-member burst is still announced");
+	assert.equal(
+		globalThis.__toasts.length,
+		1,
+		"a one-member burst is still announced",
+	);
 	assert.deepEqual(
 		won.requests
 			.filter((r) => r?.op === "sessions.notified")
@@ -1996,7 +2029,11 @@ test("a ONE-MEMBER burst digest claims its member, and its click lands on it", a
 		() => null,
 		async () => ({ status: 200, body: { result: { claimed: false } } }),
 		"focus",
-		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: () => undefined,
+		},
 	);
 	losing.observe(SESSION, oneMemberDigest("b"));
 	await settle(50);
@@ -2019,14 +2056,20 @@ test("a ONE-MEMBER burst digest claims its member, and its click lands on it", a
 		restore: () => undefined,
 		isFocused: () => false,
 		isVisible: () => true,
-		webContents: { send: (channel, payload) => sent.push({ channel, payload }) },
+		webContents: {
+			send: (channel, payload) => sent.push({ channel, payload }),
+		},
 	};
 	globalThis.__toasts = [];
 	const routing = new DesktopNotifier(
 		() => target,
 		async () => ({ status: 200, body: { result: { claimed: true } } }),
 		"focus",
-		{ windowAlive: () => true, noteDisplayed: () => undefined, reopen: () => undefined },
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: () => undefined,
+		},
 	);
 	routing.observe(SESSION, oneMemberDigest("c"));
 	await settle(100);
