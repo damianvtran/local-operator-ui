@@ -1,3 +1,7 @@
+import {
+	DEFAULT_SETTINGS_SECTIONS,
+	SettingsSidebar,
+} from "@features/settings/components/settings-sidebar";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
@@ -5,7 +9,9 @@ import type { FC } from "react";
 import { ChatSidebar } from "./chat-sidebar";
 
 /*
- * The chat sidebar with a row that is CURRENT, and with the New chat row current.
+ * The chat sidebar with a row that is CURRENT, and with the New chat row current —
+ * plus the settings rail's current section, the other panel that paints the same
+ * role.
  *
  * Two states one change touched, photographed on the panel's own ground in every
  * theme. `chat-sidebar-status-feed.stories.tsx` renders this same component for
@@ -15,6 +21,13 @@ import { ChatSidebar } from "./chat-sidebar";
  * which GROUND a row paints is a claim about pixels, not about a class string.
  * `scripts/chat-sidebar-selection.test.mjs` resolves the class expressions, and a
  * green assertion there proves the merge, not that the panel looks right.
+ *
+ * The settings rail is in this file for the reason the set exists: both panels
+ * take ONE role decision from ONE palette value and mark it with one two-part
+ * mark, so a second set would be two instruments for one fact. It was a stated
+ * gap before — the shipped `settings-appearance` story sets `capturePending` and
+ * never clears it offline, which aborts a sweep before it reaches the rail — and
+ * rendering the component directly closes it.
  *
  * ## What is stubbed, and how little
  *
@@ -149,10 +162,11 @@ const Page: FC<{ note: string }> = ({ note }) => (
 			<p className="text-ink">{note}</p>
 			<p>
 				The current row is drawn on <code className="font-mono">highlight</code>
-				, a shallow step off the panel's{" "}
-				<code className="font-mono">surface</code>; the hover step the same rows
-				carry is <code className="font-mono">elevated</code>. The caps carry no
-				fill and no border on any of them.
+				, a step off the panel's <code className="font-mono">surface</code> that
+				carries the same hue at more chroma, and a 1px{" "}
+				<code className="font-mono">outline-control</code> edge; the hover step
+				the same rows carry is <code className="font-mono">elevated</code>. The
+				caps carry no fill and no border on any of them.
 			</p>
 			<p>
 				{selected
@@ -211,6 +225,65 @@ export const NewChatRowCurrent: Story = {
 			activeDraftKey: draftKey,
 			drafts: {},
 		});
+		await sleep(300);
+	},
+};
+
+/*
+ * The fourth row of the default roster. Named rather than inlined so the caption
+ * and the component cannot disagree about which row is marked, and NOT the first
+ * (`general`) deliberately: a current row with a row above it is the arrangement a
+ * hover comparison needs.
+ */
+const RAIL_ACTIVE = "integrations";
+
+/**
+ * The settings rail's current section — the OTHER `surface` panel that paints the
+ * same role with the same two-part mark.
+ *
+ * WHY IT IS IN THIS FILE RATHER THAN A SET OF ITS OWN. It is one role decision on
+ * one ground, taken from one palette value and marked with one class string in two
+ * files, so a second set would be two instruments for one fact — the same reason
+ * `scripts/chat-sidebar-selection.test.mjs` covers both rails. What it is NOT is a
+ * duplicate surface: this rail is a menu, its rows are shorter, and its current row
+ * carries a 16px accent-coloured glyph where the chat panel's carries a status dot,
+ * so whether the mark reads against those is a question only a frame answers.
+ *
+ * `docs/evidence/chat-sidebar-current-row/README.md` records that this surface was
+ * a stated GAP for two rounds — the `settings-appearance` story sets
+ * `capturePending` and never clears it offline, which aborts a sweep before it
+ * reaches the rail. Rendering the rail directly is what closes it: the component
+ * takes `activeSection`, `sections` and a callback, reads no store, and needs no
+ * desktop bridge, so nothing about it has to be stubbed or faked.
+ *
+ * The width matters and is why this story is registered at 1280 rather than the 780
+ * its siblings use: `SettingsSidebar` switches between its labelled and its 48px
+ * icon-only layouts at `(min-width: 1040px)`, and the labelled one is the surface
+ * the current row's ground has to carry text on.
+ */
+export const SettingsRail: Story = {
+	render: () => (
+		<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
+			<div className="w-[280px] shrink-0 border-hairline border-r">
+				<SettingsSidebar
+					activeSection={RAIL_ACTIVE}
+					onSelectSection={() => undefined}
+					sections={DEFAULT_SETTINGS_SECTIONS}
+				/>
+			</div>
+			<div className="w-[420px] shrink-0 space-y-3 p-4 text-meta text-ink-muted">
+				<p className="text-ink">The settings rail's current section</p>
+				<p>
+					A menu row on the SAME <code className="font-mono">surface</code>{" "}
+					ground as the chat panel, carrying the same{" "}
+					<code className="font-mono">highlight</code> ground and the same 1px{" "}
+					<code className="font-mono">outline-control</code> edge.
+				</p>
+				<p>{`activeSection = ${RAIL_ACTIVE}`}</p>
+			</div>
+		</div>
+	),
+	play: async () => {
 		await sleep(300);
 	},
 };

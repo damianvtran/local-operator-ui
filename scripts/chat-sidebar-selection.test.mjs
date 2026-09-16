@@ -464,6 +464,21 @@ test("the edge is a structural role and a solid 1px ring, not a hairline or a fi
 		!rowCurrentEdge.includes("hairline"),
 		`the current row's edge is drawn in \`hairline\`, which is decorative and has no floor — § 3 caps it below 2:1 against these grounds by design, so it is not a mark anyone can see:\n${rowCurrentEdge}`,
 	);
+	/*
+	 * And the mark cannot move the row, asserted rather than promised: every class
+	 * the edge names has to be in the OUTLINE group, which participates in no box
+	 * model. A `border-*` here (the role this replaced on the New chat row), a
+	 * `p*`/`m*`, or a `size-*` would all change the row's box in the current state
+	 * only — the reflow the row's own comment records as the reason a box was
+	 * rejected for the CAP, one element over. An outline is drawn outside layout,
+	 * so this string cannot move the row wherever it is applied.
+	 */
+	for (const token of rowCurrentEdge.split(" ")) {
+		assert.ok(
+			token.startsWith("outline") || token.startsWith("-outline"),
+			`\`${token}\` in the current row's edge is not an outline class, so the mark can change the row's box in one state only:\n${rowCurrentEdge}`,
+		);
+	}
 });
 
 test("every current-row element keeps the ground under the pointer", () => {

@@ -1427,6 +1427,36 @@ export const STORIES = [
 			hover: '[data-chat-row]:has(+ [data-chat-row][aria-current="page"])',
 		},
 	],
+	/*
+	 * The SETTINGS RAIL's current section, which is the other `surface` panel that
+	 * paints this role and the one two earlier rounds stated as a gap: the shipped
+	 * `settings-appearance` story sets `capturePending` and never clears it offline,
+	 * so the sweep waited out its bound there and every row after it went stale. The
+	 * story renders the rail component directly instead, which needs no bridge and
+	 * no store, so the surface is photographed rather than described.
+	 *
+	 * 1280 wide rather than its siblings' 780: `SettingsSidebar` switches between its
+	 * labelled and its 48px icon-only layouts at `(min-width: 1040px)`, and the
+	 * labelled one is the surface whose current row has to carry text on the ground.
+	 */
+	["chat-sidebar-current-row--settings-rail", 1280, 760],
+	/*
+	 * The same rail with the pointer on the row ABOVE the current one, which is the
+	 * pair the chat panel's own neighbour frame exists for: whether the persistent
+	 * mark still out-ranks the transient one is a fact about two grounds side by side
+	 * in ONE frame. The rail's rows are `li`s wrapping their own button, so the
+	 * selector addresses the neighbouring `li` and lands the pointer on the button
+	 * inside it; `aria-current="page"` is the rail's own marking of its current row.
+	 */
+	[
+		"chat-sidebar-current-row--settings-rail",
+		1280,
+		760,
+		{
+			dir: "settings-rail-neighbour-hovered",
+			hover: 'li:has(+ li > button[aria-current="page"]) > button',
+		},
+	],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
