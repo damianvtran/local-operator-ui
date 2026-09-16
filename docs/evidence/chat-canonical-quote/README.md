@@ -56,9 +56,52 @@ unmodified `origin/main` tree, so every pair is measurable:
 | the same two frames on the before tree | **5,872** dark / **2,302** light differ - the strip the pointer used to raise |
 | a sentence highlighted mid-turn, before vs after | **15,222** dark / **10,312** light - from the far right edge of the block to the highlight's own first line |
 | a highlight across two turns, before vs after | **13,107** dark / **20,232** light - one control, at the turn the highlight begins in |
-| a highlight on the pane's top edge, before vs after | **13,466** dark / **14,115** light - and after, the control has flipped below it |
+| a highlight on the pane's top edge, before vs after | **13,466** dark / **14,230** light - and after, the control has flipped below it |
 | `sent-turn-quote` and `scrolled-to-oldest-turn`, before vs after | **0 differing pixels, both themes** - the resting surfaces did not move |
 | `highlight-dismissed` after vs the resting frame | **0** in the dark theme. The light-theme pair differs by 17,410 pixels laid along the composer's own outline and the pane's rules, which the diff shows to be a one-pixel shift of the layout the DRAG left behind - the frames that involve a gesture carry the same residue (a highlighted frame differs by 66,358, the gesture-free `hover-no-highlight` by 0), so it belongs to the gesture and not to anything painted. In both frames the control and the highlight are gone |
+
+**These frames were RE-TAKEN TWICE for round 1's remediation, and the numbers
+above are the second take's.** Two surfaces were added (`highlight-hover/` and
+`selection-at-pane-top-across-turns/`) and the nine the set already had were
+re-captured in five narrowed runs (`--only=chat-canonical-quote` plus three or
+fewer `--themes`, the twelve palettes in all) - once at the head that carries the
+fix, and again after the branch folded onto the 0.25.14 window, whose `#255`
+changed the palettes every frame of every set is painted with. What the two takes
+measure, in order:
+
+- against the frames the branch already carried, **95 of 108 came back
+  byte-identical (md5)** and the other 13 differ **only below a 5% fuzz** - no
+  pixel by 5% in any channel, in any of the twelve themes. That is the fix's own
+  claim: it moved nothing in a state the set already had.
+- against that take, after the fold, **123 of 132 came back byte-identical** and
+  the other nine differ only below the same 5% fuzz. That is the palette change's
+  claim, and it is the one worth stating: `#255` moved nothing a reader can see
+  in this set.
+
+It is also the closest this machine can come to a `pnpm check-evidence` sweep
+(that gate's lease is held by another session, so the sweep stays DEFERRED - the
+manifest says so - and these captures are the re-verification instead).
+
+The first row's byte-identity claim holds in both brand themes and in ten of the
+twelve palettes on the frames this README ships. In the palette or two that
+differ (`monokai` on this take; `dune`, `radient` and `synth` on the take before
+it) the pair differs by 3,900-7,100 pixels, **none of them by 5% in any
+channel**, and every one of them inside the composer band - y >= 487 in a
+640-high frame, with the transcript above it identical - which is the composer's
+own paint landing differently between two shutters rather than anything the
+pointer raises. Recorded rather than re-photographed: which palettes it lands in
+changes with every take, so a run that matched would be evidence about a
+coincidence.
+
+**The pane-top pair's light figure moves with every take of that frame, and the
+number above is this take's.** It has read 14,115 (the first capture), 13,194
+(the round-1 re-take) and 14,230 (this one, after the fold onto the 0.25.14
+window). The frame itself moves by nothing a reader can see - no pixel differs by
+5% in any channel between any two takes of it - and the count moves because `AE`
+counts every pixel that differs at all, so a re-encode that touches 9,000 pixels
+below the 5% fuzz can move a pair whose difference is 14,000. Read it as
+approximate, the way the same sentence would want to be read anywhere else in
+this set.
 
 ## What produced these frames
 
