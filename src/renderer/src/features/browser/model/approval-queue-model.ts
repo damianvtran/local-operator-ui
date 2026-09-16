@@ -272,8 +272,8 @@ export function reconcileResolved(
 	 * BOTH HALVES OF THE DE-DUPE, and the second one is why the bookkeeping could
 	 * move out of the updater without reopening round 3's finding. `reported`
 	 * survives retention's prune of the state; the rows in `resolved` are the same
-	 * memory one render behind, so they cover the window before the effect above has
-	 * recorded them — without them, two reconciles inside one commit could each
+	 * memory one render behind, so they cover the window before the recording
+	 * effect below (in the hook, not in this function) has run — without them, two reconciles inside one commit could each
 	 * produce the row.
 	 */
 	const known = new Set([...reported, ...resolved.map((row) => row.key)]);
