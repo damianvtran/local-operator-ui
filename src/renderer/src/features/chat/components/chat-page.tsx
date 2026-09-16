@@ -1,3 +1,4 @@
+import { useConversationBrowserSummaries } from "@features/browser/hooks/use-conversation-browser-summaries";
 import {
 	desktopResult,
 	userFacingMessage,
@@ -30,6 +31,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -2154,6 +2156,30 @@ export function ChatPage() {
 		setRouteError(null);
 		void openConversation(navigate, id);
 	};
+	/*
+	 * THE BROWSER, FROM A CONVERSATION'S OWN ROW (design R2).
+	 *
+	 * The counts come from the ONE shared projection, read here rather than in each row:
+	 * forty rows subscribing to `/browser-state` is the cost the store exists to remove.
+	 * Read at this level, the sidebar stays a presentational list and a story can hand it
+	 * a fixture map.
+	 */
+	const { summaries: browserSummaries } = useConversationBrowserSummaries();
+	/**
+	 * A press on a conversation's mark. All three effects are in ONE handler so React
+	 * batches them into a single render — select the conversation, scope the pane to it,
+	 * bring the pane up.
+	 *
+	 * THE LENS OVERWRITE IS DELIBERATE (design open question 7): the control says "this
+	 * conversation's browser", so what it opens has to BE that one, even if the user last
+	 * left the pane showing All tabs. One click in the pane's own switch takes the lens
+	 * back, and the switch's value is what the pane shows.
+	 */
+	const openConversationBrowser = (sessionId: string) => {
+		select(sessionId);
+		useUiPreferencesStore.getState().setBrowserPaneScope("conversation");
+		useUiPreferencesStore.getState().setBrowserPaneOpen(true);
+	};
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
 	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`;
 	// `panelSessionIdOfView` is the id this pane reads, extracted so a surface
@@ -2169,6 +2195,8 @@ export function ChatPage() {
 					selectedConversation={active ?? undefined}
 					onSelectConversation={select}
 					onStageDraft={stage}
+					browserSummaries={browserSummaries}
+					onOpenConversationBrowser={openConversationBrowser}
 				/>
 			}
 			content={

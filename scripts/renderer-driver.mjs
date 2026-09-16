@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|none>
+ *   --scene <states|new-chat|settings-model|settings-fields|palette|browser-pane|browser-mark|none>
  *                          which built-in scene to run (default: states)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
@@ -1251,6 +1251,123 @@ function connectionsTo(pid, url) {
  * element a user presses), not by writing the store, and the frames either side
  * of it are the same screen — which is the shape a visual-change review needs.
  */
+/**
+ * The conversation's browser, from its own sidebar row (design R2, R1).
+ *
+ * WHAT ONLY THIS SCENE CAN SHOW. Three claims meet on one row, and none of them is
+ * visible in a Storybook frame: that a tab opened in a conversation is ATTRIBUTED to it
+ * (R1, the fix that made "New tab" put a tab where the user can find it again), that the
+ * row then carries a MARK saying so (R2), and that pressing that mark opens the pane
+ * scoped to that conversation (open question 7 — the lens is set, not inherited). The
+ * three are one flow: each step's preconditions are the previous step's result, so a
+ * frame of any one of them alone would leave the other two to trust.
+ *
+ * IT NEEDS A BACKEND, like the pane scene beside it: the chat route's sidebar list is
+ * behind `session_catalogue`, so without one there is no row to press and the scene says
+ * so rather than pretending.
+ */
+async function sceneBrowserMark(cdp) {
+	note(
+		"scene",
+		"the conversation mark: absent, then drawn from a real tab, then the press that opens the pane scoped to it",
+	);
+	await verb(cdp, "press", { selector: '[data-tour-tag="nav-item-chat"]' });
+	await wait(400);
+	await verb(cdp, "press", { selector: '[data-tour-tag="chat-all-chats"]' });
+	await wait(400);
+	await verb(cdp, "press", { selector: '[data-tour-tag="chat-session-row"]' });
+	await wait(700);
+	const conversation = await cdp.evaluate(
+		`(() => document.querySelector('[data-chat-row][aria-current="page"]')?.getAttribute('title') ?? location.hash)()`,
+	);
+	note("the conversation the walk opened", String(conversation));
+
+	const absent = await markReading(cdp);
+	check(
+		"a conversation with nothing open draws NO mark, rather than an inert one (R2)",
+		absent.count === 0 && absent.labels.length === 0,
+		`${absent.count} mark(s) on the rows: ${JSON.stringify(absent.labels)}`,
+	);
+	const absentFrame = await captureSettled(cdp, "browser-mark-absent");
+	note("frame", JSON.stringify(absentFrame));
+
+	// The pane, from the header, then a tab opened inside it — the user's own path.
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-pane-trigger"]',
+	});
+	await wait(700);
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-surface-new-tab"]',
+	});
+	await wait(1500);
+	const opened = await cdp.evaluate(
+		`window.api.browser.state().then((s) => JSON.stringify({ tabs: s.tabs.map((tab) => ({ id: tab.tabId, sessionId: tab.sessionId })), scope: document.querySelector('[data-tour-tag="browser-pane-scope-conversation"]')?.getAttribute('data-state') }))`,
+	);
+	const openedTabs = JSON.parse(opened);
+	check(
+		"a tab opened from the pane belongs to the conversation the pane is for (R1 — the whole point of the attribution fix)",
+		openedTabs.tabs.length === 1 &&
+			typeof openedTabs.tabs[0].sessionId === "string" &&
+			openedTabs.tabs[0].sessionId.length > 0 &&
+			openedTabs.scope === "active",
+		`tab(s) ${JSON.stringify(openedTabs.tabs)}, scope=conversation is ${openedTabs.scope}`,
+	);
+
+	// Close the pane, so the mark is read on a resting list rather than beside the
+	// surface that explains it.
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-pane-close"]',
+	});
+	await wait(700);
+	const drawn = await markReading(cdp);
+	check(
+		"with a tab open in it, the row carries a mark that counts that tab (R2)",
+		drawn.count === 1 &&
+			drawn.labels.length === 1 &&
+			drawn.labels[0].includes("1 tab") &&
+			drawn.labels[0].includes("Open the browser for"),
+		`${drawn.count} mark(s): ${JSON.stringify(drawn.labels)}`,
+	);
+	const drawnFrame = await captureSettled(cdp, "browser-mark-drawn");
+	note("frame", JSON.stringify(drawnFrame));
+
+	// The press: select + set the lens + open, all three from one control.
+	await verb(cdp, "press", { selector: "[data-browser-mark]" });
+	await wait(900);
+	const after = await cdp.evaluate(`(() => ({
+		pane: Boolean(document.querySelector('[data-tour-tag="browser-pane"]')),
+		scope: document.querySelector('[data-tour-tag="browser-pane-scope-conversation"]')?.getAttribute('data-state'),
+		allScope: document.querySelector('[data-tour-tag="browser-pane-scope-all"]')?.getAttribute('data-state'),
+		scopeKey: document.querySelector('[data-tour-tag="browser-pane-scope-track"]')?.getAttribute('data-scope'),
+		tabs: [...document.querySelectorAll('[role="tab"]')].length,
+	}))()`);
+	check(
+		"the press opens the pane with the lens ON that conversation, not on whatever it was left showing (open question 7)",
+		after.pane === true &&
+			after.scope === "active" &&
+			after.allScope === "inactive" &&
+			after.tabs === 1,
+		`pane=${after.pane}, conversation lens=${after.scope}, all lens=${after.allScope}, ${after.tabs} row(s) in the scoped strip`,
+	);
+	const pressedFrame = await captureSettled(cdp, "browser-mark-pressed");
+	note("frame", JSON.stringify(pressedFrame));
+	note(
+		"not shown",
+		"the mark's loading and approvals states: both need a live agent leg and a live request, which the browser-chrome proof drives against the real host rather than through the chat route",
+	);
+}
+
+/** Every mark on the sidebar, with the words each one would announce. */
+async function markReading(cdp) {
+	return await cdp.evaluate(`(() => {
+		const marks = [...document.querySelectorAll('[data-browser-mark]')];
+		return {
+			count: marks.length,
+			labels: marks.map((mark) => mark.getAttribute('aria-label') ?? ''),
+		};
+	})()`);
+}
+
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -4658,6 +4775,7 @@ async function main() {
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
+			else if (SCENE === "browser-mark") await sceneBrowserMark(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
