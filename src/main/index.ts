@@ -841,7 +841,8 @@ function describeForwardedLaunch(
 	 * conversation`), because "no id" and "an id this line forgot" must not read
 	 * alike (UX round 3, U3).
 	 */
-	const named = session === null ? null : `the conversation it named (${session})`;
+	const named =
+		session === null ? null : `the conversation it named (${session})`;
 	const handed =
 		named === null ? "it named no conversation" : `${named} rides with it`;
 	/*
