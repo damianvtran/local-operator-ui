@@ -927,12 +927,11 @@ test("the section's tally is the chip's own clause, and its cap is a statement",
 	);
 
 	/*
-	 * The cap: six rows and an overflow marker, because the wire can carry
-	 * `MAX_WAKE_SCHEDULES = 16` and sixteen rows of readout would push the plan and
-	 * the roster off the pane. The marker is a STATEMENT rather than a control —
-	 * nothing in this pane can put a shed wake back — so it wears the shared
-	 * `Disclosure` primitive's DISABLED branch, which is the plan's own treatment
-	 * for its shed rows and not the roster's `Show N more`.
+	 * EVERY armed schedule renders, because the wire's own ceiling IS the cap (UX
+	 * round 1's U1): at nine the section draws nine rows and no marker, so the
+	 * operator's ask — "in there, we can see all the armed wakes" — holds for any
+	 * payload a scheduler can actually hold. The marker survives as the footer for a
+	 * payload PAST that ceiling, which is why the case below counts seventeen.
 	 */
 	const many = renderWakes({
 		details: wakesOf(
@@ -946,10 +945,36 @@ test("the section's tally is the chip's own clause, and its cap is a statement",
 			),
 		),
 	});
-	assert.match(many, /3 more wakes/);
-	assert.match(many, /data-run-panel-row="w6"/);
-	assert.doesNotMatch(many, /data-run-panel-row="w7"/, "the cap holds");
+	assert.doesNotMatch(many, /more wakes/, "nothing is hidden at nine");
+	assert.match(many, /data-run-panel-row="w9"/, "the last of nine renders");
 	assert.match(many, /9 wakes armed/, "the tally counts the WHOLE list");
+	/*
+	 * One row past the wire's ceiling. The marker is a STATEMENT rather than a
+	 * control — nothing in this pane can put a shed wake back — so it wears the
+	 * shared `Disclosure` primitive's DISABLED branch, which is the plan's own
+	 * treatment for its shed rows and not the roster's `Show N more`; and the
+	 * section now names who CAN act on the list it just drew (UX round 1's U3).
+	 */
+	const over = renderWakes({
+		details: wakesOf(
+			Array.from({ length: 17 }, (_, index) =>
+				wireWake(
+					`o${index + 1}`,
+					`Wake ${index + 1}`,
+					(index + 1) * HOUR_MS,
+					HOUR_MS,
+				),
+			),
+		),
+	});
+	assert.match(over, /1 more wakes/);
+	assert.match(over, /data-run-panel-row="o16"/);
+	assert.doesNotMatch(over, /data-run-panel-row="o17"/, "the cap holds");
+	assert.match(
+		over,
+		/ask the agent to cancel it/i,
+		"the list names who can act on it",
+	);
 });
 
 test("wakes are absent rather than empty: no section without armed wakes", () => {
@@ -969,12 +994,19 @@ test("wakes are absent rather than empty: no section without armed wakes", () =>
 	/*
 	 * ...and the section is in the panel's fixed order: after the tool jobs and
 	 * before the MCP servers, which `docs/run-sidebar.md` § 7.2 fixes as LAST.
+	 *
+	 * Two comparisons rather than one `||` (agent review round 1's nit 5): the
+	 * first version compared against a literal that occurs nowhere in the panel
+	 * (`{mcpServers.length > 0 &&`, where the file spells `if (...)`), so that arm
+	 * was always false and the assertion passed on its second arm alone. The jobs
+	 * half is checked now, which is what the comment beside it always claimed.
 	 */
 	assert.ok(
-		panel.indexOf('key: "wakes"') <
-			panel.indexOf("{mcpServers.length > 0 &&") ||
-			panel.indexOf('key: "wakes"') <
-				panel.indexOf("if (mcpServers.length > 0)"),
+		panel.indexOf('key: "jobs"') < panel.indexOf('key: "wakes"'),
+		"the wake section comes after the tool jobs",
+	);
+	assert.ok(
+		panel.indexOf('key: "wakes"') < panel.indexOf("if (mcpServers.length > 0)"),
 		"the MCP section is still last",
 	);
 });
@@ -1379,6 +1411,19 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	 */
 	assert.doesNotMatch(source, /aria-pressed/);
 	assert.match(source, /onClick=\{\(\) => revealPlan\("todos"\)\}/);
+});
+
+/*
+ * The wake chip files the WAKES request, and the store test above cannot see it
+ * (agent review round 1's minor 2): driving `revealRunPanelSection` proves the
+ * STORE can hold "wakes", not that the chip asks for it, so a chip wired to
+ * `revealPlan("jobs")` — the one mistake this chip can make that a user notices
+ * immediately — would pass the whole suite. This is the plan chip's own pin, one
+ * chip over, and it is the assertion the PR's coverage claim rests on.
+ */
+test("the wake chip files the wakes section, not its nearest neighbour", () => {
+	const source = code(ROW);
+	assert.match(source, /onClick=\{\(\) => revealPlan\("wakes"\)\}/);
 });
 
 test("the composer's two capped blocks share one whole-line cap", () => {

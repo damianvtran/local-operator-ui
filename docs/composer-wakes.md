@@ -243,11 +243,19 @@ exists rather than a nicer-looking fixture.
   written because the fall-through is `every 0ms`, a row stating a cadence no
   scheduler has.
 
-**The cap is 6 rows, with a statement marker.** `WAKE_ROW_CAP` is the roster's own
-budget rather than the band's three (`MAX_WAKE_ROWS`), and the difference is the
-medium: the band is a handful of rows in a dock that shares one column with the
-plan and the roster and keeps a transcript floor, while this section is one list in
-a pane that scrolls. The caps of all three sections sit under the wire's 16. The
+**The cap is the wire's own ceiling: 16 rows, with a statement marker as the
+footer for anything past it.** `WAKE_ROW_CAP` is `MAX_WAKE_SCHEDULES`
+(`harness/wake.py:47`), and it was six until UX round 1's U1 measured what six cost
+here. The argument for six was the roster's — "this section is one list in a pane
+that scrolls" — and it does not hold: the panes' other list SHEDS per phase rather
+than scrolling (a 24-item plan leaves the whole region 9px of scroll), so six rows
+did not buy the space the sentence claimed. What they bought was the operator's own
+ask unkept: they asked to "see all the armed wakes", and above six the section said
+more existed without saying which. Sixteen is the number the scheduler cannot
+exceed, so a full session is the whole list, and the marker below the list is the
+footer for a payload that exceeds the DECLARED bound (a hand-edited index, or a
+future runtime that raises the limit) rather than the routine truncation it was.
+The
 marker is a **statement, not a control** — nothing in this pane can put a shed wake
 back — so it wears the shared `Disclosure` primitive's `disabled` branch, which is
 the plan's treatment for its own shed rows, and not the roster's `Show N more`,
@@ -343,11 +351,20 @@ never cut mid-word, the unbounded one has a second home.
 `frontend.wakes` stream, so it cannot show a schedule appearing or retiring, and it
 cannot show the *press* that opens the pane at the section — a still of an open pane
 is not a still of the click. The press is carried by
-`scripts/composer-tabs.test.mjs` (the store request the chip files, its section and
-its bumped nonce, and the source pins for the `Record` that resolves it, so a
-destination added to the union and missed in the pane is a type error) and by the
-live-app frames in the PR's testing evidence, which drive the real app and photograph
-the reveal landing at the top of the pane's own scroll region.
+`scripts/composer-tabs.test.mjs` (the request the chip FILES is pinned, its section
+and its bumped nonce, and the source pins for the `Record` that resolves it, so a
+destination added to the union and missed in the pane is a type error) and by
+`docs/evidence/wake-live-app/` — the BUILT app, headless, against a real isolated
+backend with real wakes armed by the real CLI, photographed through the app's own
+`capturePage()` with the click dispatched through CDP's input pipeline. That set
+carries the chip above the composer at one and at eight wakes, the same chip under a
+real pointer and a real keyboard focus, a session with no wakes growing no row at
+all, and the press: `live-wake-pane-press` and `live-wake-pane-many` are the pane
+open at Wakes with the reveal landed.
+
+   The one thing that set does NOT carry is a real wake RETIRING (§ 11.5), because
+the isolated store is credential-less and a wake whose delivery cannot engage is
+retained rather than consumed.
 
 ## 10. Rejected alternatives
 
@@ -383,10 +400,18 @@ the reveal landing at the top of the pane's own scroll region.
    local midnight keeps yesterday's rule until the next frame (§ 6).
 4. **No `24h` preference**, because this app has none — the label follows the TUI's
    default and § 5 says so rather than pretending the two agree everywhere.
-5. **Nothing here is verified against a live scheduler's retirement.** The frames
-   come from fixtures; a real wake retiring (a one-shot firing, a `--limit`
-   running out) is exercised in the PR's live-app testing evidence, and a
-   schedule appearing in the pane while it is open is exercised there too.
+5. **A live scheduler's RETIREMENT is still not verified, and the live frames do
+   not claim it.** What `docs/evidence/wake-live-app/` verifies is the press, the
+   reveal, the chip's two gates and the chip's count against a real armed store
+   (agent review round 1's major 1 was that § 9 claimed this before it existed).
+   The retirement half is unreachable in an isolated credential-less store, and
+   this is measured rather than assumed: with no provider signed in, the
+   supervisor's engage dies at construction
+   (`HostingNotConfiguredError: Hosting platform is not configured`) and the
+   schedule is RETAINED past its due instant rather than consumed, so neither "the
+   chip clears while the reader watches" nor "the receipt row arrives" can be
+   produced here. QA round 1's U2 is the nearest state a live pass reaches, and it
+   is recorded as such rather than dressed as a retirement.
 6. **The wire's `remaining` is dead, and this change reads around it rather than
    repairing it** (§ 2). The consequence for a reader of these frames: every
    limit-bounded row in them renders its bound from `limit - fired_count`, which is

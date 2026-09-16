@@ -196,9 +196,16 @@ export const RunDetailWakes = ({
 				 * `disabled` branch is that row: it keeps the gutter and the row height
 				 * of every other disclosure while dressing this one as what it is.
 				 *
-				 * `pl-9` puts it in the row TEXT column rather than in the mark column,
-				 * the same 12px + 16px + 8px the plan's shed count uses, so the marker
-				 * reads as this list's footer rather than as another row of it.
+				 * `pl-9` puts the LI at the row's own text column — the same 12px + 16px + 8px
+				 * the plan's shed count uses — and the marker's TEXT then lands 20px inside
+				 * that column, because the shared `Disclosure` primitive indents its summary
+				 * by its own `ml-5`. Measured in `wakes-many`: the marker's ink starts at
+				 * x=918 where the rows' labels start at x=897. That is not a defect to fix on
+				 * screen: the plan's shed row is the same component with the same classes, so
+				 * the pane is internally consistent and the 20px is what keeps the marker from
+				 * reading as another row of the list. (Agent review round 1's D6 is right that
+				 * the earlier version of this comment claimed the column was shared exactly;
+				 * the arithmetic above is the correction.)
 				 *
 				 * The wording is the row's own voice (`N hidden` is the plan's, `Show N
 				 * more` is the roster's): "more wakes" names the thing counted, because a
@@ -215,6 +222,25 @@ export const RunDetailWakes = ({
 					</li>
 				)}
 			</ul>
+			{/*
+			 * WHO CAN ACT ON THIS LIST, said once, in the list's own voice (UX round 1's
+			 * U3). The rows are a readout and deliberately not controls — the cancel is
+			 * the AGENT's (`wake({op:"cancel"})`), and before this section existed a wake
+			 * was invisible, so this is the first surface where a reader forms the intent
+			 * to stop one. Leaving the flow to end in silence is the same defect as a
+			 * count with nothing behind it; the fix is copy rather than a control the
+			 * surface should not have.
+			 *
+			 * It sits under the rows rather than in the heading row so the heading keeps
+			 * the four sections' shared label-left/tally-right shape, and it renders only
+			 * when there is a list to act on — an empty section would be explaining a
+			 * control over nothing.
+			 */}
+			{details.wakes.length > 0 && (
+				<p className={cn("px-3 pt-1 text-meta text-ink-dim")}>
+					To stop a wake, ask the agent to cancel it.
+				</p>
+			)}
 		</section>
 	);
 };

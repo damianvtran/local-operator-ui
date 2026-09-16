@@ -1401,8 +1401,14 @@ export const wakesOnly = (): RunDetailsInput => ({
  *
  * `frontend.wakes` is the backend's own schedule order — `w1`..`w16`, which is
  * creation order — so a fixture in due order would hide the sort the section
- * does. Here `w3` fires first, then the unbounded hourly `w2`, then the
- * limit-bounded one, then the undated row last.
+ * does. Here `w3` fires first, then the unbounded `every 1h30m` `w2`, then the
+ * off-day `once` `w1`, and the limit-bounded `w4` last: four DATED rows, in the
+ * order the committed frame prints. (An earlier version of this sentence claimed
+ * the fourth row was undated and skipped `w1`; agent review round 1's nit 4 is
+ * right that this fixture has four dated rows and no undated one. The undated
+ * case is real and is covered where it belongs — `run-detail-model.test.mjs`'s
+ * "a row with no readable instant sorts last" — rather than by a claim about a
+ * fixture that does not contain it.)
  */
 export const wakesRecurring = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,

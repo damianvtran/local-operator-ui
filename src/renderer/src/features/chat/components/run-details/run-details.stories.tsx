@@ -978,10 +978,13 @@ export const WakesOnly: Story = {
  * Three cadences on ONE list, published out of due order.
  *
  * The section's ordering claim, which a fixture in due order would hide: the wire
- * arrives `w2`, `w1`, `w4`, `w3` (the backend's creation order) and the rows must
- * read `w3`, `w2`, `w4`, `w1`. The cadence claim is the other half — `once`, an
- * unbounded `every 1h30m`, and the limit-bounded `every 6h · 3 left` — which is
- * the shape a reader has to be able to tell apart to know which wake is which.
+ * arrives `w2`, `w1`, `w4`, `w3` (the backend's creation order) and the rows read
+ * `w3`, `w2`, `w1`, `w4` — which is what `chat-run-panel/wakes-recurring` shows,
+ * and the sequence this docblock got wrong until agent review round 1's nit 4
+ * checked it against the committed frame. The cadence claim is the other half —
+ * `once`, an unbounded `every 1h30m`, and the limit-bounded `every 6h · 3 left` —
+ * which is the shape a reader has to be able to tell apart to know which wake is
+ * which.
  */
 export const WakesRecurring: Story = {
 	render: () => (

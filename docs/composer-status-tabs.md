@@ -556,14 +556,25 @@ rule is deliberately not copied:
    (the plan is not on screen inside a reader: a reader replaces the panel body
    wholesale, `run-details-trigger.tsx:61-70`);
 3. bring the **To-dos section into view** in the pane's scroll region;
-4. **focus does not move.** `docs/run-sidebar.md` § 9 (line 1317) fixes this:
-   *"Focus does not move into the pane when it opens. Unlike the popover… a pane
+4. **the pane does not take focus.** `docs/run-sidebar.md` § 9 (line 1317) fixes
+   this: *"Focus does not move into the pane when it opens. Unlike the popover… a pane
    is part of the page."* The user pressing this chip is in the composer, usually
    mid-sentence; the app's caret guards exist to keep exactly that
    (`message-input.tsx`'s `composerPointerTouched`/`composerFocusIsOurs`), and a
    control that moved focus into another column would take the caret with it. The
    cost is recorded: a keyboard user who presses the chip stays on the chip, and
    reaches the pane by Tab as they already do from the header trigger.
+
+   **What that does NOT say, and must not be read as saying** (QA round 1's
+   observation): a genuine CLICK still focuses the pressed button, because that is
+   the browser's own behaviour and not this control's decision — measured on the
+   built app, `document.activeElement` after a real hit-tested click is
+   `BUTTON[Open the wakes in run details — 8 wakes armed]`, so a reader mid-sentence
+   who clicks the chip has moved their caret to the chip. It is identical for the
+   three sibling count chips and for the pane's header trigger, so nothing here is
+   a new behaviour to fix; what the rule above fixes is that the PANE takes no
+   focus and no element is teleported. The two claims are separate: **the reveal
+   moves nobody, and a click moves the caret to the button the reader clicked.**
 
 **Why not a toggle, given the trigger is one.** The trigger is a toggle because
 it is the pane's door — it has to close it too, and it has to be pressable while
