@@ -64,12 +64,14 @@ const PROBE = `
 	import { renderToStaticMarkup } from "react-dom/server";
 	import { useBrowserChrome } from "./src/renderer/src/features/browser/hooks/use-browser-chrome";
 
+	import { BrowserPane, PANE_SURFACE_ID } from "./src/renderer/src/features/browser/components/browser-pane";
+	import { BrowserPage } from "./src/renderer/src/features/browser/components/browser-page";
 	import { BrowserConsentBar } from "./src/renderer/src/features/browser/components/browser-consent-bar";
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
-	import { BrowserApprovalsTray, defaultApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
+	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 
@@ -91,14 +93,19 @@ const PROBE = `
 		BrowserApprovalsTray,
 		BrowserApprovalsDock,
 		BrowserTabStrip,
+		BrowserPage,
+		BrowserPane,
+		PANE_SURFACE_ID,
 		requesterLabel,
 		defaultApprovalHeaderLabel,
+		paneApprovalHeaderLabel,
 		approvalRows,
 		approvalScopeLabel,
 		liveRequests,
 		originOfUrl,
 		reconcileResolved,
 		remainingLabel,
+		requestsInScope,
 		tabsInScope,
 		waitingOrdinals,
 		RESOLVED_KEEP,
@@ -175,14 +182,19 @@ const {
 	BrowserApprovalsTray,
 	BrowserApprovalsDock,
 	BrowserTabStrip,
+	BrowserPage,
+	BrowserPane,
+	PANE_SURFACE_ID,
 	requesterLabel,
 	defaultApprovalHeaderLabel,
+	paneApprovalHeaderLabel,
 	approvalRows,
 	approvalScopeLabel,
 	liveRequests,
 	originOfUrl,
 	reconcileResolved,
 	remainingLabel,
+	requestsInScope,
 	tabsInScope,
 	waitingOrdinals,
 	RESOLVED_KEEP,
@@ -1313,6 +1325,119 @@ test("the null rect is delivered on the spot, and it cancels a pending frame", (
 	}
 });
 
+// ---- the host handover (design 7.3's REQUIRED test) ------------------------
+
+/**
+ * Two hosts, one rectangle.
+ *
+ * The pane and the route are never co-mounted, so there is exactly one rect
+ * reporter at a time (spec 7.3) — and the handover between them is the moment the
+ * contract can be broken in a way no still frame shows: a stale null landing
+ * AFTER the incoming host's first report leaves main with no rectangle, so every
+ * view is hidden while the surface's own box looks correctly laid out. Frames
+ * cannot see it, because the chrome is DOM and lays out fine either way; the
+ * delivery ORDER is the whole of the claim.
+ *
+ * The outgoing host's last word is a null delivered ON THE SPOT — not on a frame,
+ * because the frame is exactly what the unmount cancels — and this test drives
+ * both hosts' `setContentRect` through the same recorded bridge, in the order the
+ * app produces them.
+ */
+test("the host handover ends with the incoming host's rectangle, not a stale null", () => {
+	const frames = new Map();
+	const delivered = [];
+	const PANE_RECT = { x: 740, y: 84, width: 640, height: 785 };
+	const ROUTE_RECT = { x: 0, y: 84, width: 1380, height: 785 };
+	let nextFrameId = 0;
+	const previousRaf = globalThis.requestAnimationFrame;
+	const previousCancel = globalThis.cancelAnimationFrame;
+	const previousWindow = globalThis.window;
+	const runFrames = () => {
+		for (const id of [...frames.keys()]) {
+			const callback = frames.get(id);
+			frames.delete(id);
+			callback();
+		}
+	};
+	globalThis.requestAnimationFrame = (callback) => {
+		nextFrameId += 1;
+		frames.set(nextFrameId, callback);
+		return nextFrameId;
+	};
+	globalThis.cancelAnimationFrame = (id) => {
+		frames.delete(id);
+	};
+	globalThis.window = {
+		api: {
+			browser: {
+				setContentRect: (rect) => {
+					delivered.push(rect);
+					return Promise.resolve({});
+				},
+				state: async () => null,
+			},
+		},
+	};
+	try {
+		// The pane is on screen and its content element is the narrow column.
+		const pane = renderBrowserChrome();
+		pane.setContentRect(PANE_RECT);
+		runFrames();
+		assert.deepEqual(
+			delivered,
+			[PANE_RECT],
+			"the pane's own report lands first",
+		);
+
+		// `/chat` -> `/browser` with the pane open. The pane unmounts, and its hook's
+		// terminal guarantee delivers the null in the same tick — the delivery is
+		// synchronous and does not wait for the frame the unmount just cancelled for
+		// its own pending sample.
+		pane.setContentRect(PANE_RECT);
+		pane.setContentRect(null);
+		assert.deepEqual(
+			delivered.at(-1),
+			null,
+			"the outgoing host's last word is the hide, delivered on the spot",
+		);
+		assert.equal(frames.size, 0, "and it dropped its own pending sample");
+
+		// The route mounts in the same commit and reports the whole main area, one
+		// frame later.
+		const route = renderBrowserChrome();
+		route.setContentRect(ROUTE_RECT);
+		runFrames();
+		assert.deepEqual(
+			delivered,
+			[PANE_RECT, null, ROUTE_RECT],
+			"in order: the pane's rect, the hide, then the route's rect",
+		);
+		assert.equal(
+			delivered.at(-1)?.width,
+			ROUTE_RECT.width,
+			"the last word belongs to the host that is on screen, so the page is visible once",
+		);
+
+		// THE COUNTERFACTUAL, which is what makes the order a contract rather than a
+		// coincidence: the same two reports with the null arriving last. Main treats a
+		// null rect as "nowhere to paint" and hides every view, so this sequence is
+		// the page invisible on a surface that looks correctly laid out.
+		delivered.length = 0;
+		route.setContentRect(ROUTE_RECT);
+		runFrames();
+		pane.setContentRect(null);
+		assert.equal(
+			delivered.at(-1),
+			null,
+			"a stale null after the new host's report is the failure the ordering prevents",
+		);
+	} finally {
+		globalThis.requestAnimationFrame = previousRaf;
+		globalThis.cancelAnimationFrame = previousCancel;
+		globalThis.window = previousWindow;
+	}
+});
+
 // ---- one error slot per fact (review round 1, R6) --------------------------
 
 /** The shipped source with comments stripped, for the rules a render cannot see. */
@@ -1339,8 +1464,8 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
 	const refresh = source.slice(
-		source.indexOf("const refresh = useCallback"),
-		source.indexOf("const run = useCallback"),
+		source.indexOf("export function useBrowserProjection"),
+		source.indexOf("export function useBrowserChrome"),
 	);
 	assert.ok(
 		refresh.includes("setReadError(null)"),
@@ -1350,9 +1475,18 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		!refresh.includes("setActionError"),
 		"and it cannot touch the action's own refusal",
 	);
+	// The slice's boundary moved with the read itself: `useBrowserProjection` owns
+	// the projection and its error slot, and `useBrowserChrome` composes it. The
+	// rule is unchanged, and it is still the SHIPPED source this reads.
 	assert.ok(
-		/setActionError\(null\);\s*setReadError\(null\);/.test(source),
+		/setActionError\(null\);\s*clearReadError\(\);/.test(source),
 		"the explicit dismissal clears both, which is the only other way an action error goes away",
+	);
+	assert.ok(
+		/const clearReadError = useCallback\(\(\): void => \{\s*setReadError\(null\);\s*\}, \[\]\)/.test(
+			source,
+		),
+		"and the slot it clears is the read's own, so the dismissal is not a second writer of the action's",
 	);
 });
 
@@ -1778,6 +1912,159 @@ test("the scope labels name what each grant is", () => {
 		["This site", "Whole domain", "This host", "Denied", "This session only"],
 		"the vocabulary moved with the list it labels, unchanged",
 	);
+});
+
+// ---- the conversation's scope (spec 7.2, 7.4) ------------------------------
+
+/**
+ * A pending request, as the host projects it, with only the fields these tests
+ * read spelled out. `requesterSessionId` is the field the scope filter uses; the
+ * rest are the projection's own shape so a wrong key is a failure rather than a
+ * silently-missing field.
+ */
+const pendingRequest = (entryId, origin, requesterSessionId) => ({
+	entryId,
+	origin,
+	authority: origin.replace("https://", ""),
+	broad: null,
+	expiresAt: 1_000,
+	requesterSessionId,
+});
+
+test("a conversation's requests are the ones its agent asked for, and matching an origin is not asking", () => {
+	const requests = [
+		pendingRequest("1", "https://shared.example", "alice"),
+		pendingRequest("2", "https://other.example", "bob"),
+		// THE CASE THE DESIGN REJECTS ORIGIN-MATCHING FOR: a request on the SAME origin
+		// as one of alice's own tabs, raised by someone who is not a session identity.
+		// A filter that matched a request to a conversation by looking at the origin
+		// would show this in alice's tray and let her answer a prompt that is not hers
+		// (spec 7.2, "Alternative rejected").
+		pendingRequest("3", "https://shared.example", null),
+	];
+	assert.deepEqual(
+		requestsInScope(requests, "all").map((entry) => entry.entryId),
+		["1", "2", "3"],
+		"the route shows every request, whoever asked and whether or not they are a session",
+	);
+	assert.deepEqual(
+		requestsInScope(requests, { sessionId: "alice" }).map(
+			(entry) => entry.entryId,
+		),
+		["1"],
+		"a conversation shows the requests its own agent raised, and only those",
+	);
+	assert.deepEqual(
+		requestsInScope(requests, { sessionId: "carol" }),
+		[],
+		"a conversation with no requests of its own sees an empty tray, not everyone else's",
+	);
+});
+
+test("the pane's tray sentence says which list its count is about", () => {
+	assert.equal(defaultApprovalHeaderLabel(1), "1 approval waiting");
+	assert.equal(defaultApprovalHeaderLabel(3), "3 approvals waiting");
+	// The pane's own: two facts, because the pane's strip can be showing every
+	// conversation's tabs while the count stays this conversation's (spec 7.2).
+	assert.equal(paneApprovalHeaderLabel(1), "1 approval for this conversation");
+	assert.equal(paneApprovalHeaderLabel(3), "3 approvals for this conversation");
+});
+
+test("both hosts render the page area under the same spinner, so one selector holds in both", () => {
+	const previousWindow = globalThis.window;
+	// The bridge the hook asks for. No effects run in a static render, so the
+	// surface is captured in its pre-first-read state — which is the state this
+	// assertion is about (spec 7.4: the pane's loading state is the SAME spinner as
+	// the route's, so a QA pass can assert one selector in both hosts).
+	globalThis.window = {
+		api: {
+			browser: { state: async () => null, setContentRect: async () => {} },
+		},
+	};
+	try {
+		const route = render(el(BrowserPage));
+		const pane = render(
+			el(BrowserPane, { sessionId: "session:alice", onClose: () => {} }),
+		);
+		const spinner = /<span role="status"[\s\S]*?<\/span><\/span>/;
+		const routeSpinner = route.match(spinner)?.[0] ?? null;
+		const paneSpinner = pane.match(spinner)?.[0] ?? null;
+		assert.ok(routeSpinner, `the route has no spinner: ${route.slice(0, 400)}`);
+		assert.equal(
+			paneSpinner,
+			routeSpinner,
+			"the pane's loading state is the route's own element, not a second one that resembles it",
+		);
+		assert.ok(
+			routeSpinner.includes("Loading browser"),
+			"and it announces what is loading, so the assertion above is about a labelled spinner",
+		);
+		// The per-host evidence tags, which spec 9's item 4 asks a test to know: the
+		// hosts never co-mount, so the ONLY way a run can say which host it drove is
+		// that each host stamps its own.
+		assert.ok(
+			route.includes('data-tour-tag="browser-route"'),
+			"the route stamps itself as the route",
+		);
+		assert.ok(
+			pane.includes('data-tour-tag="browser-pane-surface"'),
+			"and the pane stamps itself as the pane",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the pane's scope switch is the pane's own, and the conversation side needs a session", () => {
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: { state: async () => null, setContentRect: async () => {} },
+		},
+	};
+	try {
+		const scoped = render(
+			el(BrowserPane, { sessionId: "session:alice", onClose: () => {} }),
+		);
+		assert.ok(
+			scoped.includes("This conversation") && scoped.includes("All tabs"),
+			"the pane offers both scopes, with the words the spec names",
+		);
+		assert.ok(
+			scoped.includes('data-tour-tag="browser-pane-scope-conversation"'),
+			"and the conversation side is addressable as itself",
+		);
+		assert.ok(
+			scoped.includes('[role="tab"') || scoped.includes('role="tab"'),
+			"it is the segmented primitive's own tablist, not a new control",
+		);
+		assert.equal(
+			(scoped.match(/data-disabled=""/g) ?? []).length,
+			0,
+			"with a session, both sides are available",
+		);
+		// A draft: there is no set to scope to yet, so the conversation side is
+		// DISABLED rather than silently showing the same list as All tabs.
+		const draft = render(
+			el(BrowserPane, { sessionId: null, onClose: () => {} }),
+		);
+		assert.equal(
+			(draft.match(/data-disabled=""/g) ?? []).length,
+			1,
+			"with no session, exactly one side is disabled — the conversation side",
+		);
+		assert.ok(
+			draft.includes("This conversation") && draft.includes("All tabs"),
+			"and the switch still states both scopes rather than disappearing",
+		);
+		const route = render(el(BrowserPage));
+		assert.ok(
+			route.includes("This conversation") === false,
+			"the route has no second scope to offer, so it has no switch",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
 });
 
 // ---- a failed navigation says so (design round 1, D1) ----------------------

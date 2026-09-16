@@ -466,6 +466,22 @@ export class BrowserHost implements BrowserActionContext {
 	 * The projection the renderer renders: the tab strip, the URL bar and the
 	 * per-tab ownership markers. It never carries a nonce — the renderer is not an
 	 * agent and has no reason to hold a capability (design 11.7).
+	 *
+	 * `sessionId` IS projected, and the nonce is not, and the difference is the
+	 * whole of the rule rather than an inconsistency to iron out. A conversation's
+	 * pane has to answer "which of these tabs belong to THIS conversation"
+	 * (docs/design/browser-approval-ux.md 7.2), and the registry already answers it
+	 * with one field: an agent tab carries the session that created it
+	 * (`registry.ts:231`) and a handed-over user tab carries the session it was
+	 * handed to (`:371`), so one field answers both questions. That field is a
+	 * NAME — the same id the app already puts in its own chat routes, and the same
+	 * value `handOver` matches against — while the NONCE is the capability that
+	 * lets its holder DRIVE the tab. Projecting the name tells the user which
+	 * conversation a tab belongs to; projecting the nonce would hand the renderer
+	 * (and anything that can read the renderer's IPC) the ability to act as an
+	 * agent, which is exactly what `mayDrive` is the gate for. So the name
+	 * travels and the capability does not (`snapshot()` at `:556-585` carries it
+	 * for the same reason, and this projection is the one the UI reads).
 	 */
 	/**
 	 * Record a main-frame load failure for a tab.
@@ -544,6 +560,13 @@ export class BrowserHost implements BrowserActionContext {
 				title: this.titleForChrome(entry.title) || "New tab",
 				url: entry.url,
 				owner: entry.owner,
+				// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
+				// change adds to the wire. `null` is a real and common value — a restored
+				// tab is nobody's (`registry.ts:231`), a user tab that was never handed
+				// over is nobody's, and a tab handed back goes back to `null` (`:386`) —
+				// and it means "not any conversation's", which is why a conversation's
+				// scope shows it under no scope but `"all"` (spec 7.2).
+				sessionId: entry.sessionId,
 				active: entry.active,
 				restored: entry.restored,
 				handedOver: entry.handedTo !== null,
