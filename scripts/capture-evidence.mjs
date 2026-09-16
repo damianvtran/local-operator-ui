@@ -284,6 +284,29 @@ export const STORIES = [
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
 
+	/*
+	 * The conversation-scoped pane (`docs/design/browser-approval-ux.md` §7),
+	 * captured at the PANE's own width rather than at 1280: an evidence frame of a
+	 * pane should be the pane, so the viewport is the box the user sees — 640, the
+	 * design's default, and 480, the divider's floor. The heights are the frames'
+	 * own, two of them tight to their content: `scope-empty` and the three header
+	 * rows are mostly ground by nature, and a taller box would cross
+	 * `check-evidence`'s uniformity ceiling photographing the emptiest state this
+	 * feature has. The header rows are 84 = the 56px bar plus the 28px caption that
+	 * carries the reported rectangle.
+	 */
+	["browser-pane--this-conversation", 640, 460],
+	["browser-pane--all-tabs", 640, 460],
+	["browser-pane--scope-empty", 640, 380],
+	["browser-pane--show-all-tabs", 640, 460],
+	["browser-pane--one-tab", 640, 460],
+	["browser-pane--with-approval", 640, 720],
+	["browser-pane--narrow-minimum", 480, 460],
+	["browser-pane--route-for-comparison", 1240, 780],
+	["browser-pane--trigger-no-approval", 560, 84],
+	["browser-pane--trigger-one-approval", 560, 84],
+	["browser-pane--trigger-three-approvals", 560, 84],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
