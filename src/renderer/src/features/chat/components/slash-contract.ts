@@ -512,6 +512,20 @@ export type EnterFooterInput = {
 	label: string;
 	nameThenMessage: boolean;
 	runs: boolean;
+	/**
+	 * Whether this command's completion OPENS a list rather than finishing the
+	 * command — i.e. whether its destination declares an inline argument source.
+	 *
+	 * The caller has it (`inlineArgumentFor(destination)`) and this module
+	 * deliberately does not, because it does not import the destination table.
+	 * Needed for one arm of the copy: a row that completes and then OPENS a list
+	 * (`/model`) is finished with after that completion — the next Enter completes
+	 * a VALUE — while a row that completes and closes the list (`/clear`) runs on
+	 * the next Enter. Both are `runs: false` here (the pointer may not run either),
+	 * so without this the two states would get the same sentence and one of them
+	 * would be a lie (UX round 1 U4).
+	 */
+	opensList: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
@@ -548,6 +562,38 @@ export type EnterFooterInput = {
  * prefix when it is not. Both arms read the same two inputs the router decides
  * from, so the line cannot promise a gesture the key does not perform.
  */
+
+/**
+ * What Enter does when it is deliberately inert: nothing, and the line has to
+ * say what does act instead.
+ *
+ * Why the key is inert here rather than acting on the highlighted row: the
+ * highlight is the MATCHER's guess, and completing to an arbitrary survivor of an
+ * ambiguous query is what put the wrong command one Enter away from running — the
+ * rule this branch exists to fix. The defect UX round 1 (U1/U2) measured was the
+ * FEEDBACK around that decision, not the decision: in the bare-`/` state (the
+ * popup's first state, and this string's first outing) three Enters left the
+ * screen byte-identical while a highlighted row sat under the caret and the line
+ * beside this one advertised the POINTER; after `/l` grew to `/lo`, the same
+ * thing repeated under a row that a single arrow key would have made Enter act on.
+ *
+ * Every clause is true of the keys, and this file's test drives them together
+ * rather than trusting the sentence:
+ *
+ *   - `↓` moves the highlight (and is what marks a row CHOSEN, which is the flag
+ *     the ambiguity gate reads), so the row the user lands on is the row Enter
+ *     then acts on — running it, or completing it when its destination opens a
+ *     list;
+ *   - Tab applies the HIGHLIGHTED row and never runs it (`editor.py:3259`), so it
+ *     is the one-gesture route to the row the user is looking at.
+ *
+ * "a row you pick" rather than the reviewer's suggested naming of the highlighted
+ * row (`↓ then Enter runs /analytics`): `↓` moves the highlight OFF that row, so
+ * naming it would be the same class of untruth this change removes.
+ */
+const ENTER_NEEDS_A_PICK =
+	"Enter needs a row you pick: ↓ then Enter · Tab completes this row.";
+
 export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
 	// ("Enter opens the full picker."), so the footer would only repeat it.
@@ -556,18 +602,18 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		if (input.unambiguous)
 			return input.runs
 				? `Enter runs /${input.label}.`
-				: `Enter completes /${input.label}.`;
+				: input.opensList
+					? `Enter completes /${input.label}.`
+					: `Enter completes /${input.label}; Enter again runs it.`;
 		/*
-		 * Ambiguous, so Enter narrows rather than acts — and it narrows only where
-		 * there is somewhere further to go. `sharedCommandPrefix` answers "" for a
-		 * list with nothing in common, and a word that already IS the prefix cannot
-		 * grow either; naming which of the two applies is the difference between a
-		 * promise and a description.
+		 * Ambiguous, so Enter narrows where there is somewhere further to go, and the
+		 * line reports the growth when there is. Where there is not — the word already
+		 * IS the shared prefix, or the candidates share nothing — the key is inert by
+		 * design, and the line names the gestures that act instead rather than
+		 * restating the matcher's reason (UX round 1, U1-U3).
 		 */
-		if (input.prefix.length === 0)
-			return "Enter cannot narrow this: these commands share no prefix.";
-		if (input.prefix.length <= input.query.length)
-			return "Enter keeps the word: it is already the common prefix.";
+		if (input.prefix.length === 0 || input.prefix.length <= input.query.length)
+			return ENTER_NEEDS_A_PICK;
 		return `Enter completes to ${input.prefix}.`;
 	}
 	if (input.nameThenMessage) return "Enter chooses this name.";

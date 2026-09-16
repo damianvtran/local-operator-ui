@@ -665,6 +665,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		label: activeCommand?.label ?? "",
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: pickRuns,
+		/*
+		 * Whether this row's completion OPENS a list, asked of the registry table the
+		 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
+		 * command names. It separates the two `runs: false` command states the copy
+		 * has to word differently (UX round 1, U4): `/model` completes and opens its
+		 * list, `/clear` completes and is run by the NEXT Enter.
+		 */
+		opensList: Boolean(
+			activeCommand && inlineArgumentFor(activeCommand.command.destination),
+		),
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 		unambiguous: activeArgument
