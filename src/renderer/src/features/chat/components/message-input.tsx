@@ -78,6 +78,7 @@ import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
+import { ComposerHighlight, highlightPaints } from "./composer-highlight";
 import { ComposerStatusRow } from "./composer-status-row";
 /*
  * The composer's inline credential capture (design §1-§9). The pure module owns
@@ -166,6 +167,7 @@ import {
  * command runs.
  */
 import type { SlashDispatchOutcome } from "./slash-dispatch";
+import { slashHighlightRuns } from "./slash-highlight";
 import { planSlashArming, planSlashSubmission } from "./slash-submit";
 import type {
 	SlashCommandInvocation,
@@ -1431,6 +1433,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// textarea's own onChange rather than deriving position from the value.
 		const [caret, setCaret] = useState(0);
 		/*
+		 * An IME composition in flight. The composer already consults
+		 * `nativeEvent.isComposing` for Enter; this is the same fact for the highlight,
+		 * which must hand the glyphs back to the browser while a composition string is
+		 * being built.
+		 */
+		const [composing, setComposing] = useState(false);
+		/*
 		 * The live session this composer addresses, or undefined for a draft.
 		 *
 		 * `sessionStatus` is supplied by the page only when a canonical session
@@ -2138,6 +2147,57 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSlashCommand,
 			],
 		);
+
+		/*
+		 * The composer's syntax highlight, and the ONE gate that decides whether the
+		 * transparent-text technique is in play.
+		 *
+		 * `slashHighlightRuns` is the pure port of the TUI's own rule
+		 * (`editor.py:4232-4359`), fed the vocabularies this component already holds
+		 * for the planner plus the roster snapshot the completion list's query already
+		 * holds (`slash.nameChoices`) — no second vocabulary, no new request on the
+		 * render path. `picking` is the list's own open state, which is what
+		 * suppresses the "unknown word" tint while a word is still being chosen.
+		 *
+		 * `composing` is the IME half, and it is why this is one predicate rather than
+		 * two: the composition string is drawn by the BROWSER, is not in the mirror,
+		 * and would therefore be invisible under `text-transparent` while it is being
+		 * typed. Zero runs turns both the mirror and the transparency off together, so
+		 * the native path — including a squiggle the operator never asked to lose — is
+		 * what an ordinary draft gets.
+		 */
+		const slashRuns = useMemo(
+			() =>
+				composing
+					? []
+					: slashHighlightRuns({
+							draft: newMessage,
+							commandNames: slash.commandNames,
+							nameListCommands: slash.nameListCommands,
+							nameChoices: slash.nameChoices,
+							picking: slash.open && slash.matches.length > 0,
+						}),
+			[
+				newMessage,
+				composing,
+				slash.commandNames,
+				slash.nameListCommands,
+				slash.nameChoices,
+				slash.open,
+				slash.matches.length,
+			],
+		);
+		const highlighting = highlightPaints(slashRuns);
+		/*
+		 * The field's own type and padding steps, from ONE expression: the textarea and
+		 * its mirror both take them, and a size class applied to one layer and not the
+		 * other is exactly how the two come to wrap at different characters (the
+		 * mirror is the painter of every glyph once the textarea's text is
+		 * transparent, so a one-character disagreement is a misaligned tint).
+		 */
+		const composerField = isSmallView
+			? "px-1.5 py-1 text-body-sm"
+			: "px-2 py-1.5 text-body";
 
 		/**
 		 * Put a line in the box and say what the key DID NOT do.
@@ -3805,6 +3865,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									fieldRef={textareaRef}
 									isSmallView={isSmallView}
 								/>
+								{/*
+								 * The highlight's two layers. `ComposerHighlight` owns the mirror,
+								 * the scroll write and the geometry correction; this JSX owns the
+								 * input, so the composer's key handling, its autosize and its refs
+								 * are untouched by the paint. The wrapper adds no size of its own —
+								 * the mirror is `absolute` — so the band's layout is exactly what
+								 * the bare textarea produced, and the credential overlay above is a
+								 * SIBLING of it rather than an ancestor.
+								 */}
+								<ComposerHighlight
+									draft={newMessage}
+									runs={slashRuns}
+									textareaRef={textareaRef}
+									fieldClassName={composerField}
+									disabled={isInputDisabled}
+								>
 								<textarea
 									ref={textareaRef}
 									className={cn(
@@ -3828,7 +3904,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										"block",
 										isSmallView ? "max-h-24" : "max-h-28",
 										"resize-none overflow-y-auto bg-transparent",
-										"text-ink outline-none placeholder:text-ink-dim",
+										/*
+										 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit
+										 * because `caret-color: auto` follows `color`, which is
+										 * transparent here — an invisible caret in the app's primary
+										 * input (design round 3 D1).
+										 */
+										highlighting ? "text-transparent caret-ink" : "text-ink",
+										"outline-none placeholder:text-ink-dim",
 										// The disabled state STEPS COLOUR rather than fading
 										// (branding: disabled changes colour, never opacity), and
 										// without this the only signal was `cursor: not-allowed`
@@ -3858,6 +3941,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														: "Ask me for help"
 									}
 									value={newMessage}
+									/*
+									 * The IME half of the highlight: the composition string is
+									 * drawn by the BROWSER, is not in the mirror, and would be
+									 * invisible under `text-transparent`, so `composing` turns
+									 * both the runs and the transparency off while it is typed.
+									 */
+									onCompositionStart={() => setComposing(true)}
+									onCompositionEnd={() => setComposing(false)}
 									onChange={(e) => {
 										/*
 										 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
@@ -4005,7 +4096,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									aria-controls={slash.open ? slash.listId : undefined}
 									aria-activedescendant={slash.activeDescendantId ?? undefined}
 								/>
-							</div>
+								</ComposerHighlight>							</div>
 						)}
 
 						{/*

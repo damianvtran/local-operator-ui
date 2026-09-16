@@ -81,6 +81,7 @@ import {
 	slashKeyIntent,
 	slashRunAllowed,
 } from "./slash-contract";
+import { firstContentLine } from "./slash-highlight";
 import { commandSuggestions, matchChoices } from "./slash-rank";
 /*
  * Imported, not redeclared: the planner owns the words and the destination
@@ -295,6 +296,16 @@ export type SlashCompletionState = {
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
+	/**
+	 * Lower-cased team/agent names the roster list's own query holds, for the
+	 * syntax highlight's NAME run (`slash-highlight.ts`).
+	 *
+	 * The SAME query the list reads (`useEntities`), so a name tinted here is a
+	 * name the list would have offered; it is enabled from the draft's leading
+	 * command word rather than always, so a composer showing ordinary prose asks
+	 * the backend for nothing.
+	 */
+	nameChoices: ReadonlySet<string>;
 	/** Whether the slash feature is on at all. */
 	enabled: boolean;
 };
@@ -436,6 +447,51 @@ export function useSlashCompletion({
 		() => prefixingVocabulary(registry, vocabulary.words),
 		[registry, vocabulary],
 	);
+	/*
+	 * The roster snapshot for the highlight's NAME run, and the ONE place the
+	 * composer reads a name list.
+	 *
+	 * `useEntities` is keyed by session and command, so when the roster list is
+	 * open after `/team ` this IS the list's own cache entry rather than a second
+	 * request; the gate below only decides whether a composer that is not showing
+	 * a name-list draft asks for it at all. Reading the names from the same
+	 * `argumentRows` shaping the list renders is what keeps "a name the highlight
+	 * tinted" and "a name the list offered" the same statement.
+	 *
+	 * `/team`'s `chart` subcommand is excluded by the BUILDER (it is a reserved
+	 * first argument), not here: this is a snapshot of the roster, and the
+	 * tokenizer of the rule is the highlight module.
+	 */
+	const rosterCommand = useMemo((): ArgumentSource | null => {
+		const line = firstContentLine(inputValue);
+		if (line === null) return null;
+		const text = inputValue.slice(line.start, line.end);
+		if (!text.startsWith("/")) return null;
+		const word = text.slice(1).split(WHITESPACE)[0]?.toLowerCase() ?? "";
+		if (!vocabulary.nameList.has(word)) return null;
+		const spec = resolveCommand(registry, word);
+		const inline = spec ? inlineArgumentFor(spec.destination) : undefined;
+		return inline?.nameThenMessage ? inline.source : null;
+	}, [inputValue, vocabulary, registry]);
+	const rosterEntities = useEntities(
+		sessionId ?? "",
+		rosterCommand && rosterCommand !== "theme" ? rosterCommand : "agent",
+		undefined,
+		enabled &&
+			Boolean(sessionId) &&
+			Boolean(rosterCommand) &&
+			rosterCommand !== "theme",
+	);
+	const nameChoices = useMemo(() => {
+		if (!rosterCommand || rosterCommand === "theme") return new Set<string>();
+		return new Set(
+			argumentRows(
+				rosterCommand,
+				rosterEntities.data?.entities ?? [],
+				undefined,
+			).map((row) => row.value.toLowerCase()),
+		);
+	}, [rosterCommand, rosterEntities.data]);
 	const commandNames = useMemo(() => {
 		const names = new Set<string>();
 		for (const command of registry) {
@@ -717,6 +773,7 @@ export function useSlashCompletion({
 		armedOnlyCommands,
 		prefixingCommands,
 		nameListCommands: vocabulary.nameList,
+		nameChoices,
 		argumentWords: vocabulary.words,
 		enabled,
 	};
