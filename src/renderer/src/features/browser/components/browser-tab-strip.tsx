@@ -13,14 +13,26 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Globe,
+	MessagesSquare,
 	MoreHorizontal,
 	Plus,
 	RotateCw,
 	X,
 } from "lucide-react";
 import type { FC } from "react";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+	Fragment,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
+import {
+	groupTabsBySession,
+	sessionDisplayName,
+} from "../model/tab-index-model";
 
 /**
  * The tab strip. Design: docs/design/ui-browser-tab.md 6.1 (the controls), 6.2
@@ -83,6 +95,15 @@ import type { BrowserTabView } from "../hooks/use-browser-chrome";
 
 export interface BrowserTabStripProps {
 	tabs: BrowserTabView[];
+	/** The conversation list, for a group chip's name.
+	 *
+	 * PASSED IN RATHER THAN READ HERE, the same choice the hand-over dialog and the
+	 * consent card make: the grid renders a projection and leaves store reads to the
+	 * host that owns the layout, and the strip has three hosts to serve. An empty
+	 * list is a real state (a route with no conversations loaded) and degrades to
+	 * `sessionDisplayName`'s own fallback — the session id — rather than to a blank
+	 * label. */
+	sessions?: ReadonlyArray<{ session_id: string; title?: string | null }>;
 	activeTabId: number | null;
 	/** tabId -> the ordinal of the live approval request its origin is parked on.
 	 * Built from the same numbered rows as the tray (`approval-queue-model.ts`), so
@@ -165,6 +186,7 @@ const NARROW_REVEAL =
 
 export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
+	sessions = [],
 	activeTabId,
 	waiting,
 	newTabLabel = "New tab",
@@ -248,7 +270,55 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * case the count exists for.
 	 */
 	const [tabsOffScreen, setTabsOffScreen] = useState(0);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when `tabs` changes even though the body never reads it.
+	/*
+	 * THE POOL, GROUPED BY CONVERSATION, AND THE ONE PLACE THE RENDERED ORDER IS
+	 * DECIDED (design R3).
+	 *
+	 * Grouping is a PRESENTATION of the pool, so it lives here rather than in the
+	 * registry: `registry.snapshot()` sorts by `tabId` and the host-proof harnesses
+	 * assert on `state.tabs[0]`, so the registry's order is left exactly where it is.
+	 *
+	 * WHY BLOCKS RATHER THAN CONTIGUOUS RUNS, and why the unattributed run is LAST:
+	 * `groupTabsBySession`'s own doc carries both arguments. The one thing worth
+	 * repeating here is the constraint this component imposes on the rule - a
+	 * hand-over can move a tab between groups, and the `Shared` chip on the moved tab
+	 * is what announces it.
+	 *
+	 * THE ORDER IS DECIDED ONCE. `ordered` is the grouping flattened rather than a
+	 * second pass with its own comparison, so "the order shown" and "the order the
+	 * groups are in" cannot drift; and `groupLeads` gives the row loop the four
+	 * things a chip needs without turning the loop into nested maps, which keeps the
+	 * per-row measurement, the divider rule and the tab-id lookup below untouched.
+	 */
+	const groups = useMemo(() => groupTabsBySession(tabs), [tabs]);
+	const ordered = useMemo(
+		() => groups.flatMap((group) => group.tabs),
+		[groups],
+	);
+	const groupLeads = useMemo(() => {
+		const leads = new Map<
+			number,
+			{ sessionId: string | null; count: number }
+		>();
+		for (const group of groups) {
+			const first = group.tabs[0];
+			if (first)
+				leads.set(first.tabId, {
+					sessionId: group.sessionId,
+					count: group.tabs.length,
+				});
+		}
+		return leads;
+	}, [groups]);
+	/**
+	 * A chip is rendered only when the pool holds MORE THAN ONE conversation, and
+	 * that is what keeps every existing surface visually unchanged: the pane's own
+	 * scope is a single group by construction, so its strip carries no labels at all
+	 * (design R3). A pool of two conversations gets the labels because there the
+	 * labels are the only thing that says which tab is whose.
+	 */
+	const showGroupLabels = groups.length > 1;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when the ordered pool changes even though the body never reads it.
 	useEffect(() => {
 		const strip = scrollerRef.current;
 		if (!strip) return;
@@ -273,7 +343,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			strip.removeEventListener("scroll", measure);
 			observer.disconnect();
 		};
-	}, [tabs]);
+	}, [ordered]);
 
 	return (
 		<div
@@ -337,7 +407,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						"flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px",
 					)}
 				>
-					{tabs.map((tab, index) => {
+					{ordered.map((tab, index) => {
 						const active = tab.tabId === activeTabId;
 						const waitingOrdinal = waiting[tab.tabId];
 						/*
@@ -484,13 +554,87 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										: chips === 1
 											? "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-33"
 											: "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-30";
-						const previous = index > 0 ? tabs[index - 1] : null;
+						const previous = index > 0 ? ordered[index - 1] : null;
+						/**
+						 * The chip this tab leads, when it starts a group and the pool has more than
+						 * one conversation. The name is resolved by the ONE rule for it
+						 * (`sessionDisplayName`, extracted from `requesterLabel`), so a conversation
+						 * reads the same here, in the hand-over dialog and in the consent card; the
+						 * unattributed run is the fixed sentence the design names.
+						 */
+						const group = showGroupLabels
+							? groupLeads.get(tab.tabId)
+							: undefined;
+						const groupLabel = group
+							? {
+									...group,
+									name:
+										group.sessionId === null
+											? "No conversation"
+											: sessionDisplayName(group.sessionId, sessions),
+								}
+							: null;
 						// The divider belongs to the gap between two inactive tabs: the active
-						// one is continuous with the page, so no rule may run into it.
+						// one is continuous with the page, so no rule may run into it — and a tab
+						// that opens a group already has the chip's own rule in front of it, so
+						// two rules in a row would read as a heavier boundary than a group's.
 						const showDivider =
-							previous !== null && !active && previous.tabId !== activeTabId;
+							previous !== null &&
+							!active &&
+							previous.tabId !== activeTabId &&
+							groupLabel === null;
 						return (
 							<Fragment key={tab.tabId}>
+								{groupLabel && (
+									/*
+									 * THE GROUP CHIP, INSIDE THE SCROLLER, IMMEDIATELY BEFORE THE RUN IT NAMES.
+									 *
+									 * INSIDE, and the placement is load-bearing (design R3): the tiers are
+									 * measured against `@container/strip` on the strip's ROW, and putting a
+									 * label that comes and goes outside the scroller would change that
+									 * container's width - which is the documented cause of the historic
+									 * oscillation ("four tabs fitted at the narrow tier, overflowed again at
+									 * the middle one"). Inside, a label can never move a tier, and it scrolls
+									 * with the run it names, which is what makes it read as a heading rather
+									 * than as a fixed column. It also means the active tab's reveal brings
+									 * its group's label with it for free: the strip already scrolls the active
+									 * tab into view, and the chip is the element before it.
+									 *
+									 * NO FILL, because the grammar here says an inactive tab is TEXT IN THE
+									 * WELL (spec 6) and a label is not a control at all: a filled chip beside
+									 * unfilled tabs would read as the most important thing in the strip.
+									 * The 1px rule after it is the same `bg-hairline` divider the tabs use,
+									 * which is what makes the label look like it belongs to the run rather
+									 * than to the row.
+									 *
+									 * THE COUNT IS WHAT LETS THE BULK CLOSE CARRY NO NUMBER (design R5): the
+									 * group's size is on screen here, so `Close all tabs in this conversation`
+									 * in the band's menu does not have to repeat it.
+									 */
+									<div
+										data-tour-tag="browser-tab-group"
+										data-group-id={groupLabel.sessionId ?? ""}
+										className="flex shrink-0 items-center gap-1.5 self-stretch"
+									>
+										<MessagesSquare
+											aria-hidden
+											className="size-3.5 shrink-0 text-ink-dim"
+										/>
+										<span
+											className="max-w-24 shrink-0 truncate text-meta text-ink-dim"
+											title={groupLabel.name}
+										>
+											{groupLabel.name}
+										</span>
+										<span className="shrink-0 tabular-nums text-meta text-ink-dim">
+											{groupLabel.count}
+										</span>
+										<span
+											aria-hidden
+											className="my-2 w-px shrink-0 self-stretch bg-hairline"
+										/>
+									</div>
+								)}
 								{showDivider && (
 									<span
 										aria-hidden

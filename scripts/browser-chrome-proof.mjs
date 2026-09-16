@@ -3214,6 +3214,131 @@ async function main() {
 			`${noTabsSeen.current.tabs.length} tab(s) left; page area "${noTabsSeen.copy.text}"; buttons ${JSON.stringify(noTabsSeen.copy.buttons)}`,
 		);
 		say(`frame: ${join(OUT_DIR, "18-surface-no-tabs-open.png")}`);
+
+		/*
+		 * ---- 19. the pooled strip at scale: 22 tabs across 6 conversations ----
+		 *
+		 * The design's §6.4 scene, and the one state where "can the user see what a
+		 * conversation opened" has an answer that is not obviously yes: at 1160px the
+		 * pool needs roughly four times the scroller it has, so the strip scrolls and
+		 * the group labels are the only thing that says which run is whose (design R3).
+		 *
+		 * THE TABS ARE OPENED THROUGH R1'S OWN PATH, from the renderer, as user tabs
+		 * (`window.api.browser.newTab(sessionId)`) rather than as agent tabs through
+		 * RPC: the agent cap is 8 (`registry.ts`), so twenty agent tabs is not a state
+		 * the product can reach, and a scene built out of them would be measuring a
+		 * world that cannot exist. It also means this step exercises the attribution
+		 * twenty times with real presses of the real control's own intent.
+		 *
+		 * NO BACKEND, SO NO CONVERSATION TITLES (this run's own isolation, not a
+		 * defect): `sessionDisplayName` resolves against the session list, which is
+		 * empty here, so every chip falls back to the session id — which is the rule's
+		 * other half, asserted below rather than glossed over. The named version of
+		 * this state is the `GroupedOverflow` story, which has a session list.
+		 */
+		const POOL_CONVERSATIONS = [
+			"conv-alpha",
+			"conv-beta",
+			"conv-gamma",
+			"conv-delta",
+			"conv-epsilon",
+			"conv-zeta",
+		];
+		const poolOpened = await evaluate(`(async () => {
+			const conversations = ${JSON.stringify(POOL_CONVERSATIONS)};
+			for (let index = 0; index < 18; index += 1) {
+				await window.api.browser.newTab(conversations[index % conversations.length]);
+			}
+			// TWO TABS OF NOBODY'S: the tail run the design puts last, under its own label.
+			await window.api.browser.newTab(null);
+			await window.api.browser.newTab(null);
+			const state = await window.api.browser.state();
+			return {
+				count: state.tabs.length,
+				sessions: state.tabs.map((tab) => tab.sessionId),
+			};
+		})()`);
+		check(
+			"twenty user tabs opened from six conversations are attributed to them, and two belong to none",
+			poolOpened.count === 20 &&
+				poolOpened.sessions.filter((id) => id !== null).length === 18,
+			JSON.stringify(poolOpened),
+		);
+		const reachableRoute = await openBrowserFromRail();
+		check(
+			"the route is the host this scene reads the pool in",
+			typeof reachableRoute === "string" && reachableRoute.includes("/browser"),
+			`location.hash ${reachableRoute}`,
+		);
+		const poolSeen = await waitFor(async () => {
+			const reading = await evaluate(`(() => {
+				const chips = [...document.querySelectorAll('[data-tour-tag="browser-tab-group"]')].map((chip) => chip.innerText.replace(/\\s+/g, ' ').trim());
+				const rows = [...document.querySelectorAll('[data-tour-tag="browser-tab"]')];
+				const titles = rows
+					.map((row) => {
+						const title = row.querySelector('[data-tour-tag="browser-tab-title"]');
+						return title ? Math.round(title.getBoundingClientRect().width) : null;
+					})
+					.filter((width) => width !== null);
+				/* A TITLE BOX IS ONLY A MEASUREMENT IF IT IS ON SCREEN: a row scrolled out
+				   of the scroller has a real box at a real width, off to the side, and
+				   counting those would let a strip that shows nobody's title pass. */
+				const scroller = document.querySelector('[data-tour-tag="browser-tab-strip"]')?.getBoundingClientRect();
+				const visible = titles.filter((_, index) => {
+					const row = rows[index];
+					if (!row || !scroller) return false;
+					const box = row.getBoundingClientRect();
+					return box.left >= scroller.left - 1 && box.right <= scroller.right + 1;
+				});
+				const pin = document.querySelector('[data-tour-tag="browser-tab-overflow"]');
+				return {
+					chips,
+					rows: rows.length,
+					titleWidths: titles,
+					visibleTitleWidths: visible,
+					pin: pin ? pin.innerText.replace(/\\s+/g, ' ').trim() : null,
+					groupIds: [...document.querySelectorAll('[data-tour-tag="browser-tab-group"]')].map((chip) => chip.getAttribute('data-group-id')),
+				};
+			})()`);
+			return reading.chips.length === 7 && reading.rows === 20 ? reading : null;
+		}, "the pooled strip to settle with 20 rows and 7 group labels");
+		const poolFrame = await captureRenderer("19-strip-pooled-22/6");
+		await compose("19-strip-pooled-22/6", poolFrame, null, await contentRect());
+		note("the pooled strip", JSON.stringify(poolSeen, null, 2));
+		check(
+			"the pooled strip groups 20 tabs into their 6 conversations plus the unattributed run, LAST (R3)",
+			poolSeen.chips.length === 7 &&
+				poolSeen.groupIds.slice(0, 6).join("|") ===
+					POOL_CONVERSATIONS.join("|") &&
+				poolSeen.groupIds[6] === "" &&
+				poolSeen.chips[6].startsWith("No conversation"),
+			`labels ${JSON.stringify(poolSeen.chips)}; group ids ${JSON.stringify(poolSeen.groupIds)}`,
+		);
+		check(
+			"each label carries its conversation's name and its tab count (the count is what lets the bulk close carry no number)",
+			poolSeen.chips.every((label) =>
+				/\d+$/.test(label.replace(/\s+/g, " ").trim()),
+			),
+			JSON.stringify(poolSeen.chips),
+		);
+		/*
+		 * THE 85px TITLE FLOOR, measured on the rows that are actually on screen. The
+		 * labels take ~150px each of the scroller, so this is the check that says
+		 * whether they cost the tabs the room the design says they do not - and the
+		 * number the design round judges the labels' width against.
+		 */
+		check(
+			"every tab title that is on screen keeps the 85px floor the file promises, with the group labels in the strip",
+			poolSeen.visibleTitleWidths.length > 0 &&
+				poolSeen.visibleTitleWidths.every((width) => width >= 85),
+			`visible ${JSON.stringify(poolSeen.visibleTitleWidths)} of all ${JSON.stringify(poolSeen.titleWidths)}`,
+		);
+		check(
+			"the pool overflows the strip, so the pinned control says how many tabs are off screen",
+			typeof poolSeen.pin === "string" && /^\+\d+$/.test(poolSeen.pin),
+			`pinned control reads ${JSON.stringify(poolSeen.pin)}`,
+		);
+		say(`frame: ${join(OUT_DIR, "19-strip-pooled-22/6.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);

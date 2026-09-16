@@ -9,6 +9,7 @@ import {
 } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { AlertTriangle, Globe, X } from "lucide-react";
 import type { FC } from "react";
 import {
@@ -201,6 +202,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	onShowAllTabs,
 }) => {
 	const chrome = useBrowserChrome();
+	/**
+	 * The conversation list, read ONCE here and handed to the strip, which needs it
+	 * for a group chip's name (design R3).
+	 *
+	 * WHY THE HOST READS IT rather than the strip: this is the same rule the
+	 * hand-over dialog and the consent card already follow — a store read belongs to
+	 * the component that owns the layout, and the strip has three hosts serving it.
+	 * The selector is the narrow one (`state.sessions`) so a projection tick that
+	 * changes anything else in that store cannot re-render the strip through it.
+	 */
+	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	/**
 	 * What the two `New tab` controls call themselves, from ONE rule.
 	 *
@@ -481,6 +493,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		>
 			<BrowserTabStrip
 				tabs={tabs}
+				sessions={sessions}
 				activeTabId={state?.activeTabId ?? null}
 				waiting={queue.waiting}
 				onActivate={(tabId) => void chrome.activateTab(tabId)}
