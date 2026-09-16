@@ -222,6 +222,77 @@ export const bothInFlight = (): RunDetailsInput => ({
 	todos: phased(),
 });
 
+/**
+ * The Jobs section's own subject: the tool jobs, with one child beside them.
+ *
+ * These rows are the partition's OTHER half — a `bash` row is a backgrounded
+ * shell or a background `eval`, and the roster excludes it deliberately (`§ 4`)
+ * — so this is the fixture that makes the new section, the composer's jobs chip
+ * and the partition itself visible in one frame.
+ *
+ * A SETTLED tool row is carried beside the open ones on purpose: the section's
+ * slice is the model's (`isOpenRow`), and a frame that only ever held open rows
+ * could not show that the settled one is not drawn. Its status word is `completed`
+ * — a word `foldStatus` knows — because the state under test here is the slice,
+ * not the fold's vocabulary.
+ */
+export const jobsInFlight = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		toolJob({
+			id: "job-shell",
+			label: "bash: sleep 150 ; echo child-done",
+			startedSecondsAgo: 131,
+		}),
+		toolJob({
+			id: "job-eval",
+			label: 'bash: python -c "import json; print(json.dumps(rows, indent=2))"',
+			startedSecondsAgo: 12,
+		}),
+		toolJob({
+			id: "job-wc",
+			label: "bash: wc -l invoices/march.csv",
+			status: "completed",
+			startedSecondsAgo: 240,
+			settledSecondsAgo: 236,
+		}),
+		child({
+			id: "job-reconcile",
+			label: "Audit the March invoices against the ledger export",
+			role: "reviewer",
+			status: "running",
+			startedSecondsAgo: 72,
+			progress: "Running pytest tests/unit/server -q",
+			tokens: 92_000,
+			window: 200_000,
+			cost: 0.31,
+		}),
+	],
+	todos: [],
+});
+
+/**
+ * The jobs alone: no child and no plan, which is the chip row's narrowest
+ * activity state — and the pane's, where the Jobs section is the only section
+ * and therefore the only thing the pane has to say.
+ */
+export const jobsOnly = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		toolJob({
+			id: "job-shell",
+			label: "bash: sleep 150 ; echo child-done",
+			startedSecondsAgo: 131,
+		}),
+		toolJob({
+			id: "job-eval",
+			label: 'bash: python -c "import json; print(json.dumps(rows, indent=2))"',
+			startedSecondsAgo: 12,
+		}),
+	],
+	todos: [],
+});
+
 /** One section: three children, no plan at all. */
 export const subagentsOnly = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
@@ -818,6 +889,8 @@ const toolJob = (spec: {
 	status?: string;
 	/** `start_time` in epoch seconds, for a row that is still running. */
 	startedSecondsAgo?: number;
+	/** Its settle instant, for a row that has finished. */
+	settledSecondsAgo?: number;
 }): Record<string, unknown> => ({
 	id: spec.id,
 	type: spec.type ?? "bash",
@@ -836,7 +909,8 @@ const toolJob = (spec: {
 	direct_cost: null,
 	start_time:
 		spec.startedSecondsAgo === undefined ? 0 : at(spec.startedSecondsAgo),
-	settled_at: null,
+	settled_at:
+		spec.settledSecondsAgo === undefined ? null : at(spec.settledSecondsAgo),
 });
 
 /**
