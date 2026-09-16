@@ -22,7 +22,13 @@
  *   state in which `none running` is a measurement) and `FleetWedged` (the
  *   runtime split plus the as-of-its-last-heartbeat caveat). `FleetUnavailable`
  *   is the registry that could not be scanned: the section then carries no
- *   numbers at all, only the notice section 3 shows.
+ *   numbers at all, only the notice section 3 shows. `FleetProbesFailed` is the
+ *   sixth refusal — a probe that failed is `—`, never `0` — in its field-level
+ *   spelling, and `FleetAgentsUnread` is its block-level half. `FleetNeighbours`
+ *   is the section in SITU, with the sessions section directly above it, which is
+ *   the only frame that can answer "does this belong to this panel". `FleetNarrow`
+ *   is 720px, and the two-clause note at that width is what makes the separator's
+ *   wrap safe or not.
  * - `RemoteHost` is the label that keeps the panel honest when the backend is
  *   not on this machine: the host facts describe the machine the app is
  *   CONNECTED TO, which is why section 2's meta says exactly that.
@@ -324,7 +330,15 @@ export const BuildSkew: Story = {
 		...base,
 		data: info({
 			sessions: { ...info().sessions, build_skew: true },
-			degraded: [["sessions.fleet_trajectories", "the registry answered late"]],
+			/*
+			 * A name the harness really emits (`env.tty` is an `isatty` read that can
+			 * fail; `_safe("env.tty", …)` writes this entry). The previous spelling,
+			 * `sessions.fleet_trajectories`, is a field the collector cannot fail on:
+			 * a scan that fails is spelled `available === false`, and now that this
+			 * panel prints numbers from that field, naming it here would make section
+			 * 7 disclaim a reading section 4 renders (review round 1, N3).
+			 */
+			degraded: [["env.tty", "IsattyError: stdout has no terminal"]],
 		}),
 		frontend,
 	},
@@ -523,6 +537,83 @@ export const FleetUnavailable: Story = {
 		...base,
 		data: info({
 			sessions: { ...info().sessions, available: false, lines: [] },
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The section in situ: the sessions section directly above it, both on screen.
+ *
+ * The other `Fleet*` frames open at the section's own heading, so the one thing
+ * they cannot show is whether this section belongs to this panel — the gap above
+ * it, the heading rhythm, and whether the two count sections read as one
+ * document (design round 1, D7). Scrolled to the SESSIONS heading instead, on the
+ * three-row registry that leaves room for both.
+ */
+export const FleetNeighbours: Story = {
+	args: { ...base, data: fleet(), frontend },
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * 720px, and the one state whose note carries TWO clauses.
+ *
+ * The narrow width is what the other frames cannot answer — they are all 1140 —
+ * and the two-clause note is what makes the wrap visible: `2 sessions + 4
+ * subagents · 3 queued` in a 333px card is where the separator lands at the start
+ * of a line if it is breakable (design round 1, D5/D7). The state is an ordinary
+ * one: work running, more of it waiting.
+ */
+export const FleetNarrow: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 2,
+			fleet_session_trajectories: 2,
+			fleet_subagents_running: 4,
+			fleet_subagents_queued: 3,
+			fleet_trajectories: 6,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * A probe that FAILED is `—`, never `0` — the sixth refusal rule, which had no
+ * frame before this round (review round 1, N2).
+ *
+ * The FIELD-level spelling (`agents.profiles`): one probe of the agent block
+ * failed and its neighbour answered, so the cards must differ.
+ */
+export const FleetProbesFailed: Story = {
+	args: {
+		...base,
+		data: info({
+			degraded: [["agents.profiles", "the agent registry could not be read"]],
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The BLOCK-level spelling of the same rule: the whole agent collection failed.
+ *
+ * `_safe("agents", …)` wraps `collect_agents` and its fallback is
+ * `AgentsInfo()` — `profiles: 0`, `teams: 0` — so the wire carries `("agents",
+ * reason)` and BOTH cards must refuse rather than print two plausible zeros
+ * (review round 1, M1). The `Dense` fixture carries this spelling too, but its
+ * frame is scrolled to the Environment section, so it is this story that shows
+ * the cards for the case.
+ */
+export const FleetAgentsUnread: Story = {
+	args: {
+		...base,
+		data: info({
+			degraded: [["agents", "the session roster could not be read"]],
 		}),
 		frontend,
 	},
@@ -736,8 +827,7 @@ export const Dense: Story = {
 			},
 			degraded: [
 				["agents", "the session roster could not be read"],
-				["sessions.fleet_trajectories", "the registry answered late"],
-				["process.memory", "the memory probe timed out"],
+				["env.tty", "IsattyError: stdout has no terminal"],
 			],
 		}),
 	},
