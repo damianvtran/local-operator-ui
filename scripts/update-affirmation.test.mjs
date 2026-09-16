@@ -36,6 +36,16 @@ import { build } from "esbuild";
  * window (`offerSinceCheckStartRef`), so a window with no offer still earns the
  * sentence - both halves are asserted below.
  *
+ * A SECOND SUBJECT was added to this file with the operator's report of
+ * 2026-09-15: the server-update panel that hung on "Updating server" for ever.
+ * Same harness, same boundary - `UpdateNotification` is mounted against the
+ * shipped `window.api.updater` bridge, an offer is emitted, "Update server" is
+ * pressed through its own `onClick`, and the assertions are about which copy and
+ * which toast the panel hands back. What that section adds over the button's own
+ * cases is the exit from the in-flight state: the `backend-update-error` event,
+ * and the invoke resolving `false` with no event at all, which is the shape the
+ * hang came from and the one a `catch` alone cannot see.
+ *
  * HOW THIS HARNESS STANDS IN FOR A DOM, and why that is the honest shape here:
  * this repo has no jsdom and no react-test-renderer and adding one changes the
  * lockfile, so React is a cell-per-hook stand-in (the same approach as
@@ -226,6 +236,14 @@ export const useDeferredValue = (value) => value;
 export const useTransition = () => [false, (fn) => fn()];
 export const Fragment = Symbol.for("react.fragment");
 /*
+ * Real React exports its own version, and a package that reads it at MODULE
+ * SCOPE cannot be bundled without it: html-react-parser compares it against
+ * 16 to decide how it maps custom attributes, and a read of .split on
+ * undefined threw before any case ran. The value is the React the app itself
+ * installs.
+ */
+export const version = "18.3.1";
+/*
  * A real element shape, because the props the component hands its alert ARE
  * the assertion: dropping them would make every case below vacuous.
  */
@@ -247,7 +265,7 @@ export const createElement = (type, props, ...children) => ({
 export const jsx = createElement;
 export const jsxs = createElement;
 export const jsxDEV = createElement;
-export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRef, useCallback, useMemo, useSyncExternalStore, useDebugValue, createElement, Fragment, jsx, jsxs, jsxDEV, forwardRef, memo, createContext, useContext, createRef, cloneElement, isValidElement, Children, useId, useImperativeHandle, startTransition, useDeferredValue, useTransition };`;
+export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRef, useCallback, useMemo, useSyncExternalStore, useDebugValue, createElement, Fragment, version, jsx, jsxs, jsxDEV, forwardRef, memo, createContext, useContext, createRef, cloneElement, isValidElement, Children, useId, useImperativeHandle, startTransition, useDeferredValue, useTransition };`;
 
 const jsxRuntimeStandIn = `export { createElement, jsx, jsxs, jsxDEV, Fragment } from "react";`;
 
@@ -267,6 +285,12 @@ const bundle = await build({
 			 * file could get wrong.
 			 */
 			export { Button } from "@shared/components/ui";
+			/*
+			* The server-update panel is the other half of this file's subject and now
+			* its own sibling cases' mount: the panel the operator's "Updating server"
+			* hang lived in.
+			*/
+			export { UpdateNotification } from "./src/renderer/src/shared/components/common/update-notification";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -329,7 +353,8 @@ const bundle = await build({
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "affirmation-ui" }, () => ({
 					contents: `export const Button = "Button";
-						export const Alert = "Alert";`,
+						export const Alert = "Alert";
+						export const Progress = "Progress";`,
 					loader: "js",
 				}));
 				/*
@@ -350,6 +375,13 @@ const bundle = await build({
 						contents: `export const UpdateType = { UI: "ui", BACKEND: "backend" };
 export const useDeferredUpdatesStore = () => ({
 	clearDeferredUpdate: () => {},
+	/*
+	 * The notification panel asks whether an offer is already deferred before it
+	 * raises one, and defers on its own "Update later". Stubbed to the affirmative
+	 * and to a no-op so a case here can never pass because the STORE decided.
+	 */
+	shouldShowUpdate: () => true,
+	deferUpdate: () => {},
 });`,
 						loader: "js",
 					}),
@@ -386,12 +418,33 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const updater = {
 	handlers: new Map(),
 	checks: [],
+	/**
+	 * Server-update attempts the panel started, each with its own resolver.
+	 *
+	 * `update-backend` is where the reported hang lived: it RESOLVES on failure, so
+	 * a case has to be able to settle that promise by hand and see what the panel
+	 * does with the answer it actually gets.
+	 */
+	backendUpdates: [],
+	updateBackend(targetVersion) {
+		return new Promise((resolve) => {
+			updater.backendUpdates.push({ targetVersion, resolve });
+		});
+	},
 	checkForAllUpdates(options) {
 		return new Promise((resolve) => {
 			updater.checks.push({ options, resolve });
 		});
 	},
+	checkForUpdates(options) {
+		return new Promise((resolve) => {
+			updater.checks.push({ options, resolve });
+		});
+	},
 	getLastInstallAttempt: async () => null,
+	quitAndInstall: async () => false,
+	quitForUpdateInstall: async () => {},
+	downloadUpdate: async () => [],
 	on(event) {
 		return (handler) => {
 			updater.handlers.set(event, [
@@ -417,22 +470,45 @@ updater.onBackendUpdateDevMode = updater.on("backend-update-dev-mode");
 updater.onUpdateAvailable = updater.on("update-available");
 updater.onUpdateNotAvailable = updater.on("update-not-available");
 updater.onUpdateNpxAvailable = updater.on("update-npx-available");
+updater.onUpdateDownloaded = updater.on("update-downloaded");
+updater.onUpdateProgress = updater.on("update-progress");
 updater.onBackendUpdateAvailable = updater.on("backend-update-available");
 updater.onBackendUpdateNotAvailable = updater.on(
 	"backend-update-not-available",
 );
+updater.onBackendUpdateCompleted = updater.on("backend-update-completed");
+/*
+ * The channel the main process has always sent a failed server update on, and
+ * which nothing subscribed to until the reported hang - so a case that does not
+ * wire it would be modelling a renderer that cannot be fixed.
+ */
+updater.onBackendUpdateError = updater.on("backend-update-error");
+updater.onBackendUpdateManualRequired = updater.on(
+	"backend-update-manual-required",
+);
 updater.onUpdateInstallFailed = updater.on("update-install-failed");
+updater.onUpdateInstallBlocked = updater.on("update-install-blocked");
+updater.onUpdateInstallInFlight = updater.on("update-install-in-flight");
 
-globalThis.window = { api: { updater } };
+globalThis.window = {
+	api: {
+		updater,
+		/*
+		 * The version the panel prints beside an offer. A renderer always has this
+		 * bridge, and the notification panel reads it on mount.
+		 */
+		systemInfo: { getAppVersion: async () => "0.25.2" },
+		openExternal: async () => {},
+	},
+};
 
 /*
  * Imported AFTER the bridge exists, because the store module this component
  * imports is created at module scope: it must find the `window` a renderer has
  * rather than the bare global a test process starts with.
  */
-const { CheckForUpdatesButton, FloatingAlert, Button } = await import(
-	bundlePath.href
-);
+const { CheckForUpdatesButton, FloatingAlert, Button, UpdateNotification } =
+	await import(bundlePath.href);
 await unlink(bundlePath);
 
 /*
@@ -812,4 +888,196 @@ test("R9: an offer before the check does not rob a later check of the sentence",
 	press(handle);
 	await answer(handle, CURRENT);
 	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
+});
+
+/*
+ * ------------------------------------------------- a failed server update
+ *
+ * The operator's report (2026-09-15): "Update server" in Settings put the panel
+ * on "Updating server" and left it there forever. The server came back on the
+ * old version, and the only thing that explains why - `backend-update-error`,
+ * which every failing branch of `UpdateService.updateBackend` sends - reached no
+ * listener, because the preload bridge never exposed it. The invoke RESOLVES
+ * false rather than rejecting, and `updateBackend` cleared `checking` only in
+ * its `catch`, so the panel had neither an event nor a rejection to leave on.
+ *
+ * These cases drive the SHIPPED panel through the SHIPPED bridge and assert what
+ * the user is looking at: the in-flight panel is gone, and the reason is on the
+ * danger toast. What they cannot show is pixels - that is the rendered
+ * evidence's job, and QA's browser pass is the independent check of it.
+ */
+
+/**
+ * Mount the shipped notification panel, with its start-up check switched off.
+ *
+ * `autoCheck: false` is deliberate: the panel's mount-time check would put
+ * "Checking for updates" up through a promise no case here holds, and the state
+ * under test is the server update, which every case below raises by emitting the
+ * offer the main process would send.
+ */
+function mountNotification() {
+	standIn.reset();
+	updater.checks.length = 0;
+	updater.backendUpdates.length = 0;
+	/*
+	 * A previous mount's subscriptions are dropped, so an event delivered below
+	 * cannot be handled twice - by the panel under test and by an earlier case's.
+	 */
+	updater.handlers.clear();
+	standIn.render = () => UpdateNotification({ autoCheck: false });
+	const handle = {
+		runtime: standIn,
+		tree: null,
+		render() {
+			handle.tree = standIn.rerender();
+			return handle.tree;
+		},
+	};
+	handle.render();
+	return handle;
+}
+
+/** Whether the panel is carrying this exact line of copy. */
+function showsText(handle, text) {
+	return walk(handle.tree).some((node) => node.props?.children === text);
+}
+
+/** Every danger toast on screen right now, by the props the panel hands it. */
+function dangerToasts(handle) {
+	return visible(handle).filter((alert) => alert.variant === "danger");
+}
+
+/** The panel's control for a given label, found in the tree it rendered. */
+function control(handle, label) {
+	const found = walk(handle.tree).find(
+		(node) => node.type === Button && node.props?.children === label,
+	);
+	assert.ok(found, `the panel must render a "${label}" control`);
+	return found;
+}
+
+/** The server offer the main process sends before it will run pip. */
+const SERVER_UPDATE_OFFER = {
+	currentVersion: "0.55.9",
+	latestVersion: "0.55.10",
+	updateCommand: "",
+	canManageUpdate: true,
+};
+
+/** Press "Update server" and leave the panel in flight. */
+function startServerUpdate(handle) {
+	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
+	handle.render();
+	control(handle, "Update server").props.onClick();
+	handle.render();
+}
+
+/** Settle the in-flight attempt the way the main process would. */
+async function settleServerUpdate(handle, outcome) {
+	const pending = updater.backendUpdates.shift();
+	assert.ok(pending, "the panel must have started a server update to settle");
+	if (outcome instanceof Error) pending.resolve(Promise.reject(outcome));
+	else pending.resolve(outcome);
+	// Two turns: the component's `await` continuation, then its re-render.
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	handle.render();
+}
+
+test("the server-update press carries the offered version and shows the in-flight panel", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	assert.equal(updater.backendUpdates.length, 1);
+	// The version travels with the request: the main process pins the pip
+	// requirement to it, so a stale index cannot satisfy the request with the
+	// version already installed.
+	assert.equal(updater.backendUpdates[0].targetVersion, "0.55.10");
+	assert.ok(
+		showsText(handle, "Updating server"),
+		"the press must put the in-flight panel up",
+	);
+});
+
+test("backend-update-error takes the in-flight panel down and says why", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	assert.ok(showsText(handle, "Updating server"));
+
+	// pip exited 0 having installed nothing, which is the operator's own log line.
+	updater.emit(
+		"backend-update-error",
+		"The server update ran but the installed version did not change (still 0.55.9), so it is reported as failed.",
+	);
+	handle.render();
+
+	assert.equal(
+		showsText(handle, "Updating server"),
+		false,
+		"a reported failure must not leave the panel waiting",
+	);
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.match(toasts[0].text, /did not change/);
+});
+
+test("a resolved false with no event still leaves the panel and says something", async () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	// The shape the renderer has to survive: no event at all, just the resolved
+	// value - `update-backend` reports every failure this way.
+	await settleServerUpdate(handle, false);
+
+	assert.equal(
+		showsText(handle, "Updating server"),
+		false,
+		"the invoke settling is an outcome, not a reason to keep waiting",
+	);
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.ok(
+		toasts[0].text.trim().length > 0,
+		"a failure with no reason still has to say something",
+	);
+});
+
+test("the by-hand panel replaces the in-flight one without a second message", async () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	/*
+	 * A server the app does not own: the main process answers with the by-hand
+	 * panel instead of running pip, and the `false` behind it is the SAME outcome -
+	 * so the toast must not be raised as well.
+	 */
+	updater.emit("backend-update-manual-required", {
+		message:
+			"The server is installed outside the app, so use the tool you installed it with.",
+		command: "uv tool upgrade local-operator",
+		latestVersion: "0.55.10",
+		currentVersion: "0.55.9",
+		sourceBuild: false,
+	});
+	handle.render();
+	assert.ok(showsText(handle, "The server needs updating by hand"));
+
+	await settleServerUpdate(handle, false);
+	assert.equal(
+		dangerToasts(handle).length,
+		0,
+		"one failure is one message, and the panel already carries it",
+	);
+});
+
+test("a rejected invoke leaves the in-flight panel too", async () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	await settleServerUpdate(handle, new Error("channel closed"));
+
+	assert.equal(showsText(handle, "Updating server"), false);
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.match(toasts[0].text, /channel closed/);
 });
