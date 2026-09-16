@@ -20,6 +20,7 @@
  * steps on hover/active, never motion. Sentence case throughout.
  */
 
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -529,6 +530,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 	bodyScrolls = false,
 }) => {
 	const listId = useId();
+	/*
+	 * Hide the native browser view while this modal is up.
+	 *
+	 * `WebContentsView` paints ABOVE all DOM (`browser-view-policy.ts`), so a
+	 * picker opened over `/browser` would be a dialog the user cannot see. That was
+	 * invisible until panels could be opened from a page that is not chat: every
+	 * presentation used to route to `/chat` first, which unmounts the browser
+	 * surface, so the accident of the navigation was what kept the view out of the
+	 * way. Registered here, in the one funnel BOTH hosts render through, rather
+	 * than in each panel, so a picker added tomorrow inherits it.
+	 */
+	useSuppressBrowserView(open, "panel-picker");
 	const [query, setQuery] = useState("");
 	// The keyboard's selection: the row Enter picks, and the row
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
