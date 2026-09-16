@@ -3627,10 +3627,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * transcript above yields instead. That is what makes "the text the operator is
 				 * typing does not move when the capture arms" hold, and it is why the manager's
 				 * own candidate - the sentence below the box - was measured and rejected: it is
-				 * the one position that costs the typed line the sentence's full height. (The
-				 * same experiment on an empty chat, where the band centres the composer rather
-				 * than pinning it, moves it 10.00px either way - see the notice's own comment
-				 * below for that state and the number.)
+				 * the one position that costs the typed line the sentence's full height. (On an
+				 * empty chat the band centres the composer rather than pinning it, so a line above
+				 * the box moves the group by half its height; that pane is answered by the
+				 * sentence's own MIRROR below the group - see the mirror's comment at the end of
+				 * the form - which is what makes the experiment's answer 0.00px on both panes.)
 				 *
 				 * The wrapper is also the slash popup's anchor. The list renders `absolute
 				 * bottom-full`, so anchoring it HERE - above the sentence - is what keeps the
@@ -3693,14 +3694,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * neighbours whose widths used to decide the sentence's fate - are out of the
 					 * argument entirely.
 					 *
-					 * WHAT IT COSTS, because the numbers above are a decision and not a claim of
-					 * perfection: on an EMPTY chat the band centres the composer (`grow` +
-					 * `justify-center`), so a line added above it moves the group by half its
-					 * height - 10.00px for a 20px injected line and 13.75px for the real 27.5px
-					 * sentence, measured (`textarea.y` 402.25 idle -> 416.00 masked).
-					 * No in-flow placement avoids that there, and an out-of-flow one would paint
-					 * over the transcript's own last line, which is why it is disclosed rather
-					 * than engineered around.
+					 * WHAT IT COSTS ON THE CENTRING BAND, and what does not, because the numbers
+					 * above are a decision and not a claim of perfection. On an EMPTY chat the band
+					 * centres the composer (`grow` + `justify-center`), so a line added above the box
+					 * moves the whole group by half its height: measured on the running app, this
+					 * sentence moved the typed line 13.75px (`textarea.y` 402.25 idle -> 416.00
+					 * masked, and back, twice while one command was typed) where live `origin/main`
+					 * holds 402.25 throughout all eleven keystrokes. The MIRROR below the group is
+					 * that fix (UX round 4, U16): the group grows by the sentence's line on BOTH
+					 * sides of the box, so the centring shift cancels for the box, the status row,
+					 * the tip row and the chips, and the greeting above yields the one line the
+					 * sentence needs. Measured on the band rig at 1380x872, before and after: the
+					 * field's `y` 393.40 idle -> 407.20 with the sentence on the reviewed head, and
+					 * 393.40 -> 393.40 now; the tip row 500.4 -> 514.2 then and 500.4 -> 500.4 now,
+					 * with no collision in either state. It renders on that band alone, because on a
+					 * populated pane the band is bottom-anchored and a mirrored line below the box
+					 * would push the typed line up by its full height - the defect U14/design D1
+					 * removed.
 					 *
 					 * AN EMPTY SENTENCE RENDERS NO BOX AT ALL, so the idle composer reserves
 					 * nothing and is geometrically the composer that was there before the gesture

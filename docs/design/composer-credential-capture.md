@@ -272,12 +272,27 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   — Enter is a silent no-op while the sentence above the box says "Enter will
   expose them": the dispatcher refuses the command's arguments and the draft is
   put back, so nothing is sent, nothing is stored, and the box keeps the
-  characters and the sentence. Reproduced byte-identically on the round-3
-  reviewed head (`aaa9e70e7`), so this change neither introduced nor fixed it;
+  characters and the sentence. Reproduced byte-identically on the round-3 BASE
+  (`aaa9e70e7` — the tree the round's four comments scope as `aaa9e70e7..0e3415668f`,
+  i.e. before that round's remediation; this said "the round-3 reviewed head", which
+  sent a reader chasing the Q3 reproduction to the wrong end of the range — code
+  review round 4, MINOR 4), so this change neither introduced nor fixed it;
   it is recorded as a deferred follow-up on PR #238 rather than repaired inside a
   round whose scope is the composer's own layout. What it is not: no leak and no
   loss — the characters survive in the box, no key is invented, and no secret
   reaches the transcript.
+  **THE DEFERRAL CARRIES THE CONSEQUENCE QA NAMED IN ROUND 4** (QA round 4, Q1;
+  its own recommendation, one sentence rather than a second deferred defect): in
+  the branch of this gesture where the buffer SURVIVES the Enter, the same
+  submit also takes the notice DOWN and persists `unredactedChars: 0`, so a reload
+  brings the plaintext back with no warning at all — the characters are still the
+  buffer the disclosure was defined over (`disclosureOver`), and the restore the
+  warning was for is the state that loses it. A repair that keeps this deferral
+  honest has two candidates: retire the notice only on an operator edit rather
+  than on an app-initiated restore, or narrow §5's promise to the states the
+  notice can actually hold over. Neither is in this round's scope, and QA measured
+  the gesture's outcome as unstable between runs of the same keys, so the shape to
+  fix is not yet pinned by a reproduction either.
 - **The disclosure the cancel raises is about ONE buffer, and any edit retires
   it** (UX round 3, U12; code review round 3, MINOR 1). The sentence says how many
   characters are now plain text *in the composer*, and round 2 made it durable by
@@ -361,11 +376,20 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   a marker with no payload used to be painted exactly like a live pill — same
   wash, same edge — so the only way to learn the value had not survived was the
   citation in the message they had already sent. The unbacked marker now takes the
-  design's existing NOT-STORED register: `bg-warning-wash` with a
-  `warning-border` 1px outline (the same wash the armed token uses, plus the edge
-  the pill has), so the box states it before Enter. Both kinds still come from the
-  same location rule (`markerSpans`), so the paint and the submit rewrite cannot
-  drift apart; only the colour differs.
+  WARNING register the unredacted sentence already uses — `bg-warning-wash` with a
+  `warning-border` 1px outline; an on-screen register rather than an existing one,
+  because the design's not-stored state is the TRANSCRIPT citation, so a chip had
+  to be invented either way (code review round 4, NIT 3) — and **its outline is
+  DASHED**, which is round 4's second half (design round 4, D2; code review round
+  4, MINOR 2; UX round 4, U17). The dash is not decoration: measured over the
+  twelve palettes, `warningWash` against the pill's `infoWash` is a fill contrast
+  of **1.01-1.11** (ten of the twelve at or below 1.06), the two edges are
+  **1.00-1.72**, and a greyscale reading of the two fills is **34 vs 35 of 255** —
+  so hue was carrying the whole distinction for a reader who cannot separate a warm
+  brown from a cool blue, in the state that raises no sentence and costs one Enter.
+  Both kinds still come from the same location rule (`markerSpans`), so the paint
+  and the submit rewrite cannot drift apart; what differs is the role AND the
+  edge's style.
 - Clearing the composer, submitting successfully, and disarming all clear or
   drop the map; a **failed send keeps it**, because the operator's unsent draft
   must not lose the value behind a pill they can see.
@@ -416,17 +440,29 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    amber token run and a glyph swap, of which the glyph is the one that survives
    `NO_COLOR` and a monochrome terminal (`local_operator.tcss:624`). A
    `<textarea>` carries no per-run colour and has no glyph to swap, so the port
-   has exactly one channel — a background wash — and it spends that channel on
-   the armed token (`bg-warning-wash`, the role the TUI's amber names), on
-   the pill (the `info` wash plus its 1px outline), and — since round 3 — on the
-   NOT-STORED chip: a marker no payload backs (a restored draft) takes
-   `bg-warning-wash` with a `warning-border` outline, so the one state where the
-   value behind a citation is gone says so in the box rather than only in the
-   citation the model receives (UX round 3, U13). Three states, three treatments,
-   and the contract's `CONTROLS` carries a row per component triple
-   (`credential pill`, `credential pill (unbacked)`). Nothing in this port
-   survives `NO_COLOR`; the notice sentence is the half that does, which is why
-   it is not optional.
+   has one channel for the token and the pill — a background wash — and it spends
+   that channel on the armed token (`bg-warning-wash`, the role the TUI's amber
+   names), on the pill (the `info` wash plus its 1px outline), and — since round 3
+   — on the NOT-STORED chip: a marker no payload backs (a restored draft) takes
+   `bg-warning-wash`, so the one state where the value behind a citation is gone
+   says so in the box rather than only in the citation the model receives (UX
+   round 3, U13). Three states, three treatments, and the contract's `CONTROLS`
+   carries a row per component triple (`credential pill`, `credential pill
+   (unbacked)`).
+   **AND THE WASH ALONE WAS NOT ENOUGH FOR TWO OF THOSE THREE, so round 4 spends
+   a second channel: the outline's STYLE** (design round 4, D2; code review round
+   4, MINOR 2; UX round 4, U17). The warning wash against the pill's info wash is
+   a fill contrast of **1.01-1.11** over the twelve palettes — ten of the twelve
+   at or below 1.06, edges **1.00-1.72**, and a greyscale reading of the two fills
+   **34 vs 35 of 255** — so for a reader who cannot separate a warm brown from a
+   cool blue the not-stored chip and a live pill were the same patch with the same
+   glyphs. The chip's edge is therefore `outline-dashed`: it needs no new token,
+   it survives monochrome, and it is a channel the other two states cannot claim —
+   the armed token has no edge at all, and the pill's is solid. The TUI gets its
+   second channel from a glyph swap; this port has no glyphs of its own to swap,
+   so the DASH is the equivalent, and it is the same argument that made the glyph
+   the load-bearing half there. Nothing in this port survives `NO_COLOR`; the
+   notice sentence is the half that does, which is why it is not optional.
 2. **Key minting reads names asynchronously.** TUI mints synchronously from
    `session_credential_names()`. Here the taken names come from the desktop
    contract's `sessions.credential` / `list` call (which answers objects, not
@@ -499,19 +535,71 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    box at 440 — the box grows by exactly that difference and no more: 118 + (47 -
    28) = 137 and 118 + (67 - 28) = 157, i.e. the sentence contributes 0px at every
    width.
-   **WHAT DOES NOT HOLD, with the number.** On an EMPTY chat the band takes
-   `grow` + `justify-center` and centres the composer instead of pinning it, so a
-   line above the box moves the GROUP by half its height: measured 13.75px for
-   the real 27.5px sentence (`textarea.y` 402.25 idle -> 416.00 masked), and
-   10.00px for the 20px injected line. No in-flow placement avoids it - the same
-   line below the box moves the composer the same distance the other way - and
-   the box's own height is unchanged in all four states (112.00), because the
-   line is outside it. Stated rather than engineered around: the alternative is
-   an out-of-flow sentence painting over the transcript's own last line.
+   **THE EMPTY CHAT WAS THE ONE PANE WHERE THAT DID NOT HOLD, and round 4 fixed
+   it rather than disclosing it** (UX round 4, U16). The band takes `grow` +
+   `justify-center` there and centres the composer instead of pinning it, so a
+   line above the box moved the GROUP by half its height: measured on the running
+   app, `textarea.y` 402.25 idle -> 416.00 armed — and back, TWICE while one
+   command was typed (`/cred` 416.00, `/crede` 402.25, `/credential` 416.00) —
+   where live `origin/main` holds 402.25 through all eleven keystrokes. That is
+   the pane the app OPENS on, so the movement was a defect rather than a
+   disclosed cost.
+   **THE SAME INSTRUMENT, BEFORE AND AFTER** (the band rig, `chat-composer-band`
+   at 1380x872, `getBoundingClientRect` on the field, the box and the tip row, the
+   reviewing round's own probe):
+   | | field `y` | composer box | tip row |
+   | --- | --- | --- | --- |
+   | idle, before AND after | 393.40 | 376.40..488.40 | 500.4 |
+   | capture open, **before** (`4684e1017`) | **407.20** | 390.20..502.20 | 514.2 |
+   | capture open, **after** | **393.40** | 376.40..488.40 | 500.4 |
+   So the sentence moved the composer AND the tip row by **13.80px** on the
+   reviewed head and moves them by **0.00px** now, with the sentence landing at
+   348.90..376.40 — directly above the box, gap 0, and `noticeCollisions`/`boxCollisions`
+   empty in both states. On the app itself the round-4 UX walk measured the same
+   movement as **13.75px** at 1380 (`textarea.y` 402.25 idle -> 416.00 armed, the
+   pane's own longer transcript shifting the whole band), and `origin/main` holds
+   402.25 through all eleven keystrokes.
+   **The device is a MIRROR, not a reservation and not an out-of-flow line.** A
+   second, invisible copy of the sentence renders at the end of the composer's
+   group on that band only, so the group grows by the sentence's line on BOTH
+   sides of the box and the centring shift cancels for everything between them:
+   the box, the status row, the tip row and the chips all sit at their idle `y`,
+   and the sentence paints in the space the group's own top vacates. The two
+   halves share one class list (`credentialNoticeLine`), because the device is
+   arithmetic — two class lists would be two definitions of the line's height.
+   The clearance is structural rather than tuned: the greeting above yields
+   exactly one line, so the sentence's top is always the idle gap below the
+   greeting's bottom (the splash's `gap-6` plus the form's `pt-2`), whatever the
+   sentence's height or the column's width.
+   The two devices it is NOT, and why, because both look cheaper: taking the
+   sentence OUT of the flow adds no height, but on this band the completion list
+   is `absolute bottom-full` above it in the same wrapper, so the list would
+   resolve to the sentence's own strip and paint over it — and that sentence is
+   the only thing that says what Enter will do; RESERVING the line while the
+   sentence is absent moves the IDLE composer, which is `origin/main`'s to the
+   pixel (402.25 on both trees at 1380). It is confined to this band because a
+   mirror below a bottom-anchored band would grow the band downward and push the
+   typed line up by the line's full height — the defect design D1/U14 removed.
    **And the slash popup clears it rather than covering it.** The list is
    `absolute bottom-full` and now anchors to the same wrapper the sentence lives
    in, so the armed state's completion list (830x108, measured on the running app)
    sits above the sentence instead of over it.
+   **AND THAT WRAPPER CARRIES THE SHARED MEASURE, which round 4 had to add**
+   (design round 4, D1 — the round's only MAJOR). A wrapper is a containing block:
+   moving the anchor off the composer box (which carries `CHAT_MEASURE`) onto a
+   `w-full` wrapper silently re-pointed the list's `left-0 right-0` at the COLUMN.
+   Measured on the same story and the same viewport against live `origin/main`:
+   the list was **x 63..961 (w 898)** on `main` and **x 48..976 (w 928)** at the
+   round-3 head — the box itself measuring 62..962 (900) on both — and in a 1332px
+   column **241..1139 (898)** became **48..1332 (1284)**, a **192px** overhang on
+   each side, from the first `/` anyone types. The wrapper now carries
+   `CHAT_MEASURE` and the list spans the composer again — measured on the same
+   instrument, `chat-message-input--idle` with `/l` typed: **62..962 (w 900)** at
+   the 1024 measure and **240..1140 (w 900)** in a 1332px column, i.e. flush with
+   the box's own frame where `main` sat 1px inside it (898, because there the
+   BOX was the list's containing block and its 1px border was the inset). The
+   field's own x is unchanged across the two trees (79..945 and 257..1123), so
+   nothing but the list moved.
    **And the sentence says what Enter will actually do in the state the operator
    is in** (UX round 2, U10; UX round 3, U15). With an EMPTY span Enter does not
    mint: it falls through to the dispatcher, which opens the credential picker in
