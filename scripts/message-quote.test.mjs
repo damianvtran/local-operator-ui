@@ -14,8 +14,9 @@ import { build } from "esbuild";
  * 2. WHAT TEXT IT CARRIES (`quoteText`) - the reader's selection when they made
  *    one, otherwise the turn's own words, and never the `<reply-to>` transport
  *    markup.
- * 3. THE SELECTION RULE (`selectionTextIn`) - which DOM selections count as a
- *    quote of THIS turn. faked here rather than driven in a browser because the
+ * 3. THE SELECTION RULE (`selectionTextIn`, `selectionClippedTo`) - which DOM
+ *    selections count as a quote of THIS turn, and what happens to one that only
+ *    partly lies in it. faked here rather than driven in a browser because the
  *    question is a comparison of node identities, not a paint.
  * 4. THE ROUND TRIP through the shipped send path - `buildSendPayload` prefixes
  *    the markup and `parseReplies` takes it back out, so a staged quote really
@@ -91,12 +92,13 @@ const {
 	isQuotable,
 	quoteText,
 	selectionTextIn,
+	selectionClippedTo,
 	QUOTE_TOOLKIT_ATTR,
 	parseReplies,
 	buildSendPayload,
 } = await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /* ---- fixtures ---------------------------------------------------------- */
 
@@ -178,11 +180,7 @@ test("ledger and receipt rows do not, whatever they carry", () => {
 		{ kind: "custom", text: "a renderer-local line" },
 	];
 	for (const record of others) {
-		assert.equal(
-			offers(record),
-			false,
-			`${record.kind} must not offer Quote`,
-		);
+		assert.equal(offers(record), false, `${record.kind} must not offer Quote`);
 	}
 });
 
@@ -217,6 +215,7 @@ const node = (tag, parent = null) => {
 		tagName: tag,
 		parentElement: parent,
 		children: [],
+		childNodes: [],
 		closest: (selector) => {
 			if (selector === `[${QUOTE_TOOLKIT_ATTR}]` && self.attr) return self;
 			return parent ? parent.closest(selector) : null;
@@ -237,6 +236,52 @@ const select = (range) => {
 			isCollapsed: range?.collapsed === true,
 			getRangeAt: () => range,
 			toString: () => range?.text ?? "",
+		}),
+	};
+};
+
+/**
+ * A range whose text is modelled as the three parts a clip has to choose between:
+ * what lies BEFORE this turn, what lies INSIDE it, and what lies AFTER it.
+ *
+ * The existing fixtures hand `select` a plain `text` string because
+ * `selectionTextIn` never asks which boundary a range has - it answers null and
+ * is done. Clipping does ask, so the fake has to be able to say what was cut:
+ * `toString()` on the clone returns `before + inside` once the end was clamped
+ * to the turn, `inside + after` once the start was, and the whole thing when
+ * neither was touched. That makes each assertion a statement about WHICH part
+ * the returned quote contains - the turn's own words, never the neighbours'.
+ *
+ * This is the same faking the file already does for node identity, and it proves
+ * the same class of thing: which boundaries the rule moved, not what Chromium
+ * paints. The text a real `Range.toString()` yields after a real clamp is the
+ * browser's, and that is measured on the running surface.
+ */
+const clippableRange = ({ before = "", inside = "", after = "", ...rest }) => {
+	let clamped = null;
+	return {
+		...rest,
+		text: before + inside + after,
+		clamped: () => clamped,
+		cloneRange: () => ({
+			setStart: (element, offset) => {
+				// The clip is only ever to THIS turn's own edge; a call with another
+				// node would be clipping to something the reader did not select.
+				assert.equal(element, rest.turn);
+				assert.equal(offset, 0);
+				clamped = "start";
+			},
+			setEnd: (element, offset) => {
+				assert.equal(element, rest.turn);
+				assert.equal(offset, rest.turn.childNodes.length);
+				clamped = "end";
+			},
+			toString: () =>
+				clamped === "start"
+					? inside + after
+					: clamped === "end"
+						? before + inside
+						: before + inside + after,
 		}),
 	};
 };
@@ -342,6 +387,140 @@ test("no turn element and no selection both answer null", () => {
 	assert.equal(selectionTextIn(prose), null);
 });
 
+/* ---- a selection that only partly lies in the turn --------------------- */
+
+/*
+ * `selectionClippedTo` is the half of the selection rule that keeps a press from
+ * WIDENING the quote. These four tests are the four ways a range can relate to a
+ * turn: overshooting past its end, starting before its start, never reaching it,
+ * and lying wholly inside it - which is `selectionTextIn`'s answer and must not
+ * be answered twice.
+ */
+
+test("a drag that overshoots the turn is clipped to it, not widened", () => {
+	// The measured case (UX round 1, U3; QA round 1, Q3): a drag released below
+	// the turn highlighted 132 characters and staged the WHOLE turn, because the
+	// selection failed containment and the whole-turn fallback took over.
+	const turn = node("div");
+	const prose = node("p", turn);
+	const beyond = node("p", node("div"));
+	const range = clippableRange({
+		turn,
+		startContainer: prose,
+		endContainer: beyond,
+		commonAncestorContainer: node("body"),
+		before: "",
+		inside: "was null, and the new column is not null.",
+		after: "\nThe next turn's words",
+	});
+	select(range);
+	assert.equal(
+		selectionClippedTo(turn),
+		"was null, and the new column is not null.",
+	);
+	// And it got there by moving the ONE boundary that pointed outside the turn.
+	assert.equal(range.clamped(), "end");
+});
+
+test("a drag that starts before the turn is clipped to the turn's start", () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	const before = node("p", node("div"));
+	const range = clippableRange({
+		turn,
+		startContainer: before,
+		endContainer: prose,
+		commonAncestorContainer: node("body"),
+		before: "the previous turn's tail",
+		inside: "The other four hundred rows were fine.",
+		after: "",
+	});
+	select(range);
+	assert.equal(
+		selectionClippedTo(turn),
+		"The other four hundred rows were fine.",
+	);
+	assert.equal(range.clamped(), "start");
+});
+
+test("a selection that never reaches the turn is not clipped into it", () => {
+	// Neither endpoint inside: clipping would have to invent a boundary, and the
+	// caller's whole-turn fallback is right for a selection somewhere else.
+	const turn = node("div");
+	node("p", turn);
+	const elsewhere = node("p", node("div"));
+	const range = clippableRange({
+		turn,
+		startContainer: elsewhere,
+		endContainer: elsewhere,
+		commonAncestorContainer: elsewhere,
+		before: "",
+		inside: "",
+		after: "somewhere else entirely",
+	});
+	select(range);
+	assert.equal(selectionClippedTo(turn), null);
+	assert.equal(range.clamped(), null);
+});
+
+test("a selection wholly inside the turn is not clipped twice", () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	const range = clippableRange({
+		turn,
+		startContainer: prose,
+		endContainer: prose,
+		commonAncestorContainer: prose,
+		before: "",
+		inside: "the second clause",
+		after: "",
+	});
+	select(range);
+	assert.equal(selectionClippedTo(turn), null);
+	assert.equal(range.clamped(), null);
+});
+
+test("a clip never reaches into the toolkit", () => {
+	// Refused rather than clamped: clamping this end to the turn's own end would
+	// turn a drag to the strip into a quote of the prose the reader dragged away
+	// from - the same widening, arrived at from the other side.
+	const turn = node("div");
+	const prose = node("p", turn);
+	const toolkit = node("div", turn);
+	toolkit.attr = true;
+	const button = node("button", toolkit);
+	const range = clippableRange({
+		turn,
+		startContainer: prose,
+		endContainer: button,
+		commonAncestorContainer: turn,
+		before: "",
+		inside: "the second clause ",
+		after: "Quote",
+	});
+	select(range);
+	assert.equal(selectionClippedTo(turn), null);
+	assert.equal(range.clamped(), null);
+});
+
+test("a caret and a missing turn clip nothing", () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	select(
+		clippableRange({
+			turn,
+			startContainer: prose,
+			endContainer: prose,
+			inside: "",
+			collapsed: true,
+		}),
+	);
+	assert.equal(selectionClippedTo(turn), null);
+	globalThis.window = { getSelection: () => null };
+	assert.equal(selectionClippedTo(prose), null);
+	assert.equal(selectionClippedTo(null), null);
+});
+
 /* ---- the round trip through the shipped send path ---------------------- */
 
 test("a staged quote survives buildSendPayload and comes back out of parseReplies", () => {
@@ -419,7 +598,10 @@ test("stacked multi-line quotes each come back whole, in order", () => {
 });
 
 test("whitespace and blank lines around the join belong to neither side", () => {
-	const staged = quoteText("  a quoted line\n\nand its second paragraph  ", null);
+	const staged = quoteText(
+		"  a quoted line\n\nand its second paragraph  ",
+		null,
+	);
 	assert.equal(staged, "a quoted line\n\nand its second paragraph");
 	const { replies, remainingContent } = parseReplies(
 		buildSendPayload("  spaced words  ", [{ text: staged }]),
@@ -505,7 +687,9 @@ test("several staged quotes stack, and each is recoverable", () => {
 });
 
 test("quoting a turn that was itself a reply does not nest the markup", () => {
-	const payload = buildSendPayload("Why did it fail?", [{ text: "the failure" }]);
+	const payload = buildSendPayload("Why did it fail?", [
+		{ text: "the failure" },
+	]);
 	const { remainingContent } = parseReplies(payload);
 	// What the toolkit stages for that turn: its BODY, not its raw text.
 	const restaged = quoteText(remainingContent, null);

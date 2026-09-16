@@ -132,6 +132,69 @@ export function selectionTextIn(element: HTMLElement | null): string | null {
 }
 
 /**
+ * The reader's selection CLIPPED to this turn, or `null` when none reaches it.
+ *
+ * This is the second half of the selection rule, and it exists because the two
+ * ways `selectionTextIn` answers `null` are not the same thing. One is "the
+ * reader made no selection", where quoting the turn's own words is the
+ * documented fallback and is honest. The other is "the reader made a selection
+ * I cannot attribute to this turn" - and the fallback answered THAT with the
+ * turn's whole body, which is a silent WIDENING: the reader highlights 132
+ * characters, the chip claims the entire turn, and the chip's one-line
+ * truncation makes the two easy to tell apart only by someone who reads both
+ * ends (UX round 1, U3; QA round 1, Q3, which measured exactly that: a real
+ * drag released 5px below the turn staged the whole body).
+ *
+ * WHY A DRAG THAT LEAVES THE TURN IS CLIPPED RATHER THAN REFUSED. The reader
+ * began the drag inside this turn and dragged past its end - the overshoot
+ * everyone makes selecting to the end of a paragraph by hand. Refusing would
+ * leave the press either a no-op or, worse, exactly the widening above, so the
+ * honest reading is the part of the highlight that lies in this turn.
+ *
+ * THE CLIP NARROWS AND NEVER WIDENS, which is the property this function is
+ * written to hold. A range is ordered, so with one endpoint inside and the
+ * other outside, the outside end is necessarily BEYOND the corresponding edge
+ * of this turn: clamping it to that edge can only drop text the reader did not
+ * highlight in this turn. Both endpoints inside is `selectionTextIn`'s answer
+ * and answers `null` here rather than a second, possibly divergent one; neither
+ * endpoint inside means the selection does not reach this turn at all, where
+ * clipping would have to invent a boundary and the caller's whole-turn
+ * fallback is right.
+ *
+ * The toolkit rule is refused here too, and for the same reason it is refused in
+ * `selectionTextIn`: a drag ending on the strip is a drag to the strip, and
+ * clamping its end to the turn's end would quietly turn that into a quote of
+ * the prose the reader dragged away from.
+ *
+ * Consequence worth naming: a selection that spans two turns now quotes each
+ * turn's own part of it rather than either whole turn. That is a narrowing of
+ * the same defect, not a separate decision - a cross-turn drag was previously
+ * answered with a whole turn the reader had not selected.
+ */
+export function selectionClippedTo(element: HTMLElement | null): string | null {
+	if (!element) return null;
+	const selection = window.getSelection();
+	if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+		return null;
+	}
+	const range = selection.getRangeAt(0);
+	if (
+		toolkitAncestor(range.startContainer) ||
+		toolkitAncestor(range.endContainer)
+	) {
+		return null;
+	}
+	const startInside = element.contains(range.startContainer);
+	const endInside = element.contains(range.endContainer);
+	if (startInside === endInside) return null;
+	const clipped = range.cloneRange();
+	if (!startInside) clipped.setStart(element, 0);
+	if (!endInside) clipped.setEnd(element, element.childNodes.length);
+	const text = clipped.toString().trim();
+	return text.length > 0 ? text : null;
+}
+
+/**
  * The text a quote from a turn carries, or `null` when there is none.
  *
  * There is no truncation here on purpose. A quote is a claim about what was

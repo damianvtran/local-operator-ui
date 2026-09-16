@@ -1439,6 +1439,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * no longer covers every row-less pane, because a pane with a statement of
 				 * its own paints that instead of the placeholder. The proxy stopped
 				 * agreeing with the property it stood for, so the property is read directly.
+				 *
+				 * THE TURN ORDER OF THOSE STOPS IS DOM ORDER, OLDEST FIRST, AND IT IS
+				 * ACCEPTED (UX round 1, U4; QA round 1, Q5). Each quotable turn contributes
+				 * exactly one stop, so a full window of mounted rows costs up to one press
+				 * per row to reach the newest answer - the turn a reader most often wants to
+				 * quote is the farthest away, and the reader walks past every turn they are
+				 * not quoting.
+				 *
+				 * Recorded rather than changed, and the reasons are structural. The stops
+				 * cannot be removed, only reordered: `visibility: hidden` would take Quote
+				 * off the keyboard altogether, and a scrollable, quotable region has to stay
+				 * operable (WCAG 2.1.1) - so "reachability costs a stop per row" is a floor,
+				 * not an oversight. Reordering them would mean painting the rows in reverse
+				 * DOM order, and this scroller is `column-reverse` with the overflow anchor
+				 * for the newest content: inverting the row order inverts the anchoring the
+				 * whole pane's scroll behaviour rests on. And a shortcut key - the third
+				 * option - is a NEW interaction rather than a fix to this one; it belongs to
+				 * a change that argues for it, not to the change that introduced the toolkit.
 				 */
 				tabIndex={transcript.records.length === 0 ? -1 : 0}
 				role="log"
