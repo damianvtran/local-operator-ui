@@ -3918,7 +3918,32 @@ const main = async () => {
 									? (previous.partialCapture?.refreshedFrames ?? 0)
 									: 0) + captured,
 							refreshedStories: [
-								...new Set([...priorStories, ...stories.map(([id]) => id)]),
+								...new Set([
+									...priorStories,
+									/*
+									 * THE DIRECTORY, not the story id, and the difference is not
+									 * cosmetic. A story captured in a SECOND state names its own `dir`
+									 * (see the STORIES header), so one story can write several
+									 * directories - and `check-evidence.mjs` reads this list as
+									 * DIRECTORIES (`<surface>--<leaf>`), asking of each frame a pass
+									 * rewrote whether some entry names the directory it sits in. One
+									 * bare story id can only name one of them, which is measured:
+									 * the quote set's six `dir` states left five directories
+									 * unclaimed and failed `pnpm test:desktop`'s stamp test.
+									 *
+									 * The `@<width>` suffix is deliberately NOT carried: a story swept
+									 * at several widths writes `leaf@800`, `leaf@1024`, ... and the
+									 * gate normalises the suffix away when it reads a frame's
+									 * directory, so the entry has to be the un-suffixed form for the
+									 * same reason - one entry then names every width's directory.
+									 */
+									...stories.map(([id, , , entryOptions]) => {
+										const cut = id.indexOf("--");
+										const surface = cut === -1 ? id : id.slice(0, cut);
+										const leaf = entryOptions?.dir ?? id.slice(cut + 2);
+										return `${surface}--${leaf}`;
+									}),
+								]),
 							],
 							refreshedThemes: [...new Set([...priorThemes, ...themes])],
 							...totals,
