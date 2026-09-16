@@ -627,8 +627,11 @@ test("the settings Retry is wired to the query that actually failed", async () =
 	);
 	// The other half: the ungated path must still re-ask the settings query
 	// itself, or a failure of this query alone would have no retry at all.
+	// The section binds that observer as `settingsQuery` (the page also has a
+	// `filter` state, so `query` was ambiguous to read); the marker is the
+	// binding's own call, not a substring any refetch would satisfy.
 	assert.ok(
-		rendered.includes("query.refetch()"),
+		rendered.includes("settingsQuery.refetch()"),
 		"the settings Retry no longer refetches the settings query",
 	);
 	// The M1 fix is a single expression that a later edit could quietly
@@ -650,9 +653,13 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 	// refetch failed -- and `staleTime: 60_000` + `refetchOnWindowFocus` means
 	// alt-tabbing back after a minute is enough to reach it.
 	//
-	// The cost is data loss, not just a wrong frame: `BackendSettingRow` holds
-	// each draft in local `useState`, and this file's header promises drafts
-	// survive failures. Unmounting the section destroys typed-but-unsaved edits.
+	// The cost is data loss, not just a wrong frame: the SECTION holds every
+	// draft in its own state, and this file's header promises drafts survive
+	// failures. Unmounting the section destroys typed-but-unsaved edits.
+	//
+	// The marker is the row's `data-setting-key` rather than a word from a row's
+	// chrome: a row's copy is the design's to change, while the anchor is the
+	// contract every deep link and every test in this repo reaches for.
 	//
 	// Every other test here seeds capabilities failure with NO prior success, so
 	// `capabilities.data` is undefined in all of them -- which is why the whole
@@ -669,6 +676,11 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 				section: "General",
 				value: "1",
 				type: "string",
+				// The tier a server may carry. Without it this fixture's key is not
+				// in the UI's curation map, so it lands under the advanced tier and
+				// the section opens CLOSED -- the row this test is about would never
+				// render, and the assertion below would be testing an empty page.
+				tier: "core",
 			},
 		],
 	});
@@ -690,8 +702,17 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 	const unsubscribe = capabilities.subscribe(() => {});
 	await new Promise((resolve) => setTimeout(resolve, 40));
 
-	const healthy = text(renderBackendSettings(client));
-	assert.match(healthy, /Use default/, "the seeded healthy frame never loaded");
+	const healthy = renderBackendSettings(client);
+	assert.match(
+		healthy,
+		/data-setting-key="a\.b"/,
+		"the seeded healthy frame never loaded",
+	);
+	assert.match(
+		text(healthy),
+		/Use default/,
+		"the seeded healthy row is not the off-default row this case is about",
+	);
 
 	capabilitiesMode = "fail";
 	await capabilities.refetch();
@@ -706,7 +727,7 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 		"capabilities dropped its data on a failed refetch; this test no longer covers M1",
 	);
 
-	const afterFailure = text(renderBackendSettings(client));
+	const afterFailure = renderBackendSettings(client);
 	assert.doesNotMatch(
 		afterFailure,
 		/Your settings could not be loaded\./,
@@ -714,7 +735,7 @@ test("a failed background capabilities refetch does not blank a loaded settings 
 	);
 	assert.match(
 		afterFailure,
-		/Use default/,
+		/data-setting-key="a\.b"/,
 		"the settings rows are gone after a background capabilities failure",
 	);
 	assert.equal(
