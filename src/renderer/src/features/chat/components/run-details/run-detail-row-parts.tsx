@@ -25,7 +25,12 @@ import {
 	RotateCcw,
 	X,
 } from "lucide-react";
-import type { ChildStatus, SubagentRow } from "./run-detail-model";
+import type { ReactNode } from "react";
+import {
+	type ChildStatus,
+	type SubagentRow,
+	childStateLabel,
+} from "./run-detail-model";
 
 /**
  * One mark per state, ported by meaning rather than by codepoint, exactly as
@@ -96,6 +101,60 @@ export const SubagentStateIcon = ({ status }: { status: ChildStatus }) => {
 		</span>
 	);
 };
+
+/**
+ * One row's CONTENT, shared by every list that draws a row: the state mark, the
+ * label, the state in words and the numbers run.
+ *
+ * Extracted for the reason this file exists at all. It was
+ * `run-detail-subagents.tsx`'s private `body` while the roster was the only list
+ * of rows; the Jobs section draws the same row over a different list
+ * (`run-detail-jobs.tsx`), and two copies of this markup would be two places for
+ * the row's own height contract to drift (`run-detail-subagents.tsx`: `py-1.5`
+ * with the two pinned line-heights is what makes 32/48/64px land on whole
+ * pixels). That failure is silent — both copies still look like a row.
+ *
+ * The second line is a PROP rather than a decision taken here, because the two
+ * lists answer it differently and neither answer is this component's to make: the
+ * roster always gives a child a second line (its activity while it works, its
+ * failure when it does not), and the Jobs section deliberately gives a tool row
+ * none — its rows are a status list, one line each
+ * (`docs/composer-activity-chips.md` § 4).
+ *
+ * The state in WORDS is not optional and is not a caller's choice: the mark is
+ * `aria-hidden`, so without it a row announces a label and a row of numbers and
+ * never whether the work is still going or has failed, which is the one fact the
+ * row exists to carry (`§6.4`).
+ */
+export const SubagentRowBody = ({
+	row,
+	detail = null,
+}: {
+	row: SubagentRow;
+	/** The row's second line, or nothing (see above). */
+	detail?: ReactNode;
+}) => (
+	<>
+		<span className={cn("pt-0.5")}>
+			<SubagentStateIcon status={row.status} />
+		</span>
+		<div className={cn("flex min-w-0 flex-1 flex-col")}>
+			<div className={cn("flex items-baseline gap-2")}>
+				<span
+					className={cn(
+						"min-w-0 flex-1 truncate text-body-sm text-ink leading-5",
+					)}
+					title={row.label}
+				>
+					{row.label}
+				</span>
+				<span className={cn("sr-only")}>{childStateLabel(row)}</span>
+				<NumberRun row={row} />
+			</div>
+			{detail}
+		</div>
+	</>
+);
 
 /**
  * The numbers run: role, elapsed, context, cost (`§4.1`) — and, for the reader's
