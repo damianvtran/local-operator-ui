@@ -26,8 +26,10 @@
 # of opening a PR: add the reviewer by hand at the point the PR is ready to be
 # read, `gh pr edit <n> --add-reviewer <handle>` (no leading `@` -- gh <= 2.100
 # only strips it for `@me` and `@copilot`). Who may be asked: the handles with
-# write access, which are also the only ones GitHub will let review --
-# `damianvtran` (admin), `bbqben`, `jcobhams` (write). Verify a handle before
+# write access, whose approval is the one that counts -- anyone with read access
+# can review and comment, but only a write-access collaborator satisfies an
+# approval rule -- `damianvtran` (admin), `bbqben`, `jcobhams` (write). Verify a
+# handle before
 # relying on it with `gh api repos/damianvtran/local-operator-ui/collaborators`,
 # since a handle without write access is silently ignored by GitHub.
 #
