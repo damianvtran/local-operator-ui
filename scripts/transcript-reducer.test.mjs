@@ -2510,8 +2510,14 @@ test("the settled line prints the live figures, and a cold row prints the bare s
 			tokens_before: before,
 			tokens_after: after,
 		}).records.at(-1);
-	assert.equal(settled(41_000, 9_000).text, "Context compacted, 41.0k to 9.0k tokens");
-	assert.equal(settled(52_700, 52_700).text, "Context compacted to 52.7k tokens");
+	assert.equal(
+		settled(41_000, 9_000).text,
+		"Context compacted, 41.0k to 9.0k tokens",
+	);
+	assert.equal(
+		settled(52_700, 52_700).text,
+		"Context compacted to 52.7k tokens",
+	);
 	// A pass that reports no figures at all cannot print a pair.
 	assert.equal(
 		applyEvent(applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }), {
@@ -2695,7 +2701,12 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 	const settle = (state, before, after, at) =>
 		applyEvent(
 			state,
-			{ type: "compaction_end", success: true, tokens_before: before, tokens_after: after },
+			{
+				type: "compaction_end",
+				success: true,
+				tokens_before: before,
+				tokens_after: after,
+			},
 			at,
 		);
 
@@ -2725,7 +2736,10 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 	const reseeded = applyHistoryPage(once, page, { replace: true });
 	assert.deepEqual(rows(reseeded), rows(once));
 	assert.deepEqual(rows(applyHistoryPage(reseeded, page)), rows(reseeded));
-	assert.deepEqual(rows(applyHistoryPage(reseeded, page, { replace: true })), rows(reseeded));
+	assert.deepEqual(
+		rows(applyHistoryPage(reseeded, page, { replace: true })),
+		rows(reseeded),
+	);
 
 	// Cold reload: the first thing this reader ever sees is the durable row, with
 	// no live sentence to pair and therefore the bare one — correct parity with the
@@ -2761,7 +2775,10 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 		rows(
 			applyHistoryPage(
 				twoPages,
-				pageOf([durableRow("d1", T0 / 1000 + 1), durableRow("d2", T0 / 1000 + 31)]),
+				pageOf([
+					durableRow("d1", T0 / 1000 + 1),
+					durableRow("d2", T0 / 1000 + 31),
+				]),
 			),
 		),
 		rows(twoPages),
@@ -2775,13 +2792,22 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 	);
 	assert.deepEqual(rows(early), ["d1|Context compacted"]);
 	const afterEarly = settle(early, 41_000, 9_000, T0 + 900);
-	assert.deepEqual(rows(afterEarly), ["d1|Context compacted, 41.0k to 9.0k tokens"]);
+	assert.deepEqual(rows(afterEarly), [
+		"d1|Context compacted, 41.0k to 9.0k tokens",
+	]);
 
 	// One durable row, TWO live lines: a long session's tail window can exclude the
 	// older pass's durable row, and then the older pass keeps the live line it has —
 	// one durable row may cover only one pass, or a pass disappears entirely.
-	const latestOnly = applyHistoryPage(both, pageOf([durableRow("d2", T0 / 1000 + 31)]));
-	assert.equal(rows(latestOnly).length, 2, "one row per pass, and neither is lost");
+	const latestOnly = applyHistoryPage(
+		both,
+		pageOf([durableRow("d2", T0 / 1000 + 31)]),
+	);
+	assert.equal(
+		rows(latestOnly).length,
+		2,
+		"one row per pass, and neither is lost",
+	);
 	// The page's single durable row is the pair of the OLDER pass — it is the
 	// nearest at-or-after claim on it — and the newer pass keeps the live row no
 	// durable row has claimed. Either way each pass has exactly one row.
