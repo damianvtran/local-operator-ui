@@ -107,6 +107,16 @@ type BackendUpdateInfo = {
 	 */
 	runningVersion?: string | null;
 	/**
+	 * Whether the app may restart the daemon serving this app.
+	 *
+	 * The reading every sentence on this panel that promises a restart is
+	 * decided by (UX U9, U13): the offer's consequence and the install phase's
+	 * own sentence both used to be chosen by the INSTALL's layout, which cannot
+	 * know who started the server. Absent means an older main process, which
+	 * takes the app-owned answer - see `serverRestartsWithInstall`.
+	 */
+	restartable?: boolean;
+	/**
 	 * True when this event answers a check the user asked for.
 	 *
 	 * The by-hand panel's own copy says to run a command and check again, so the
@@ -506,6 +516,31 @@ const readableVersion = (value: string | null | undefined): string | null => {
  * exactly as it always did.
  */
 /**
+ * WHETHER THIS MACHINE'S SERVER MOVES WITH THE INSTALL (UX U9, U13).
+ *
+ * `restartable` is the app's answer to "is the daemon serving this app one the app
+ * started?", and it is the only thing that decides whether a restart is coming.
+ * The plan cannot answer it - it classifies the INSTALL - and the managed arm is
+ * chosen by the install's LAYOUT, so every sentence that promised a restart was
+ * true only on the layout the app happens to spawn on. Two rounds of copy fixes
+ * each fixed one surface and left the next one promising the same thing (the
+ * offer, then the in-flight install panel), so the reading lives here and every
+ * sentence that used to assume a restart asks this instead.
+ *
+ * `undefined` - an older main process sends no reading - takes the app-owned
+ * answer: the app spawns the daemon it attaches to whenever it can, and that is
+ * the state this copy was written for.
+ */
+const serverRestartsWithInstall = (
+	info:
+		| {
+				restartable?: boolean;
+		  }
+		| null
+		| undefined,
+): boolean => info?.restartable !== false;
+
+/**
  * WHAT THE CLICK COSTS, chosen by who would actually be restarted (UX U9).
  *
  * The sentence the plan carries is the app-owned one, and the plan cannot know
@@ -520,15 +555,14 @@ const readableVersion = (value: string | null | undefined): string | null => {
  * - app-owned: the restart and its cost, before the press (review U3).
  * - adopted: the install moves, the server keeps serving the old build until it
  *   restarts on its own, and nothing in flight is dropped.
- * - unstated (an older main process sends no flag): the app-owned sentence, which
- *   is the state this offer was written for - the app spawns the daemon it
- *   attaches to whenever it can.
+ * - unstated (an older main process sends no reading): see
+ *   `serverRestartsWithInstall`, which owns that rule for every surface.
  */
 const managedCostSentence = (info: {
 	restartable?: boolean;
 	remedy?: string;
 }): string => {
-	if (info.restartable === false) {
+	if (!serverRestartsWithInstall(info)) {
 		return "The app updates this install itself. The server you are using was started outside Local Operator, so it keeps running the old build until it restarts, and nothing in flight is dropped.";
 	}
 	return (
@@ -1045,11 +1079,18 @@ export const UpdateNotification = ({
 			 * three arrivals are one sentence, and the sentence is silent unless it has
 			 * something to say.
 			 *
-			 * The unattended case is the exception, and deliberately: the news there is
-			 * that the attempt landed while no app was watching (its running reading is
-			 * null by construction), not that the two differ.
+			 * NO ARRIVAL IS EXEMPT, and the unattended one is why that is now stated
+			 * rather than assumed (UX U14). It used to be: its running reading travelled
+			 * as null BY CONSTRUCTION, so the guard would have muted the one news the
+			 * event carried. The producer reads the serving daemon now, so the exemption
+			 * has the opposite effect - on the ordinary graceful-quit path the app comes
+			 * back and starts its daemon from the landed install, both readings agree,
+			 * and the exemption was the only thing painting "The server is on an older
+			 * build than the install" over a machine whose Settings row read the new
+			 * version one second later. A reading that cannot be taken is silence for
+			 * the same reason: this panel may not claim a skew it cannot see.
 			 */
-			if (!notice.unattended && (!install || !running || install === running)) {
+			if (!install || !running || install === running) {
 				return false;
 			}
 			const key = skewKey(notice);
@@ -1779,10 +1820,24 @@ export const UpdateNotification = ({
 								 * phase that had not started. The server really is still serving here:
 								 * under generations nothing running is rewritten.
 								 */
-								"Installing the new server build. The server you are using keeps serving while this runs, and it restarts once the install lands. This can take a minute or two, and the update can't be interrupted once it has started."
+								`Installing the new server build. The server you are using keeps serving while this runs${
+									/*
+									 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
+									 * bounce the daemon the reader is talking to, and false on a machine
+									 * where discovery adopted one - where the offer two seconds earlier
+									 * already said so, and where the app's own completion notice says it
+									 * again ("Local Operator does not restart a server it did not
+									 * start"). The sentence keeps every other fact either way.
+									 */
+									serverRestartsWithInstall(backendUpdateInfo)
+										? ", and it restarts once the install lands"
+										: ""
+								}. This can take a minute or two, and the update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
 								? "The new build has landed. The server is restarting onto it now, so it is offline while it comes back - usually a few seconds, up to half a minute - and anything in flight is dropped."
-								: "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
+								: serverRestartsWithInstall(backendUpdateInfo)
+									? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
+									: "Please wait while the server is being updated. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
 				<ProgressContainer>
@@ -2333,11 +2388,9 @@ export const UpdateNotification = ({
 							: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
 				</p>
 				<p className="mb-2 text-body text-ink-muted">
-					{unattended && restartable
-						? "Restart Local Operator once more and the server comes back on the new build."
-						: restartable
-							? "Restart Local Operator and the server comes back on the new build."
-							: "It moves onto the new build when it restarts - Local Operator does not restart a server it did not start."}
+					{restartable
+						? "Restart Local Operator and the server comes back on the new build."
+						: "It moves onto the new build when it restarts - Local Operator does not restart a server it did not start."}
 				</p>
 				<UpdateActions>
 					<Button

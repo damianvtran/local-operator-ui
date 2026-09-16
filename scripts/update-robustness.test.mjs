@@ -6393,6 +6393,14 @@ test("an attempt that landed while no app was watching is reported once, on the 
 		assert.equal(completed.payload.installVersion, "0.56.0");
 		assert.equal(completed.payload.unattended, true);
 		assert.equal(completed.payload.before, "0.55.10");
+		/*
+		 * AND THE SERVING DAEMON'S OWN READING (UX U14). It used to travel as null by
+		 * construction, which left the renderer unable to tell this state from the
+		 * ordinary one - the app coming back and starting its daemon from the landed
+		 * install - so the panel announced a skew it could not see.
+		 */
+		assert.equal(completed.payload.runningVersion, "0.55.10");
+		assert.equal(completed.payload.restartable, true);
 		assert.equal(existsSync(markerPath), false);
 
 		// And once means once: the next check has nothing left to report.
