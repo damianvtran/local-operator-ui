@@ -708,7 +708,6 @@ test("the footer says what Enter will do, in each state", () => {
 });
 
 /*
-<<<<<<< HEAD
  * The line and the KEY, driven together (UX round 1, U1-U4).
  *
  * The cases above assert the copy; this one asserts it is TRUE. Each state below
@@ -899,8 +898,6 @@ test("an unambiguous Enter still asks the destination before it runs", () => {
 });
 
 /*
-=======
->>>>>>> 909e81cac (chore(scripts): make the touched proof harnesses lint-clean)
  * The click footer's claim has to be the one the gesture KEEPS. Both the copy
  * and the pick read the same two inputs — a command row's destination rule
  * (`pointerPickRuns`) and an argument list's own `runs` — so the cases below
@@ -1094,7 +1091,7 @@ test("the empty copy names which of the four causes it is", () => {
 	// (`destination-pickers.tsx` carries the same rule for its dialog).
 	assert.equal(
 		argumentEmptyCopy(list),
-		"Not reported yet. Enter opens the full picker.",
+		"Not reported yet. Enter runs the command.",
 	);
 	assert.equal(
 		argumentEmptyCopy({ ...list, needsSession: true }),
@@ -1112,7 +1109,7 @@ test("the empty copy names which of the four causes it is", () => {
 	// which is the sentence UX round 1 U4 asked for.
 	assert.equal(
 		argumentEmptyCopy({ ...list, rows: [{ value: "delivery" }] }),
-		"No matches. Enter opens the full picker.",
+		"No matches. Enter runs the command.",
 	);
 });
 
@@ -1143,7 +1140,7 @@ test("the no-match state is what typing a missing team produces", () => {
 			error: null,
 			needsSession: false,
 		}),
-		"No matches. Enter opens the full picker.",
+		"No matches. Enter runs the command.",
 	);
 });
 

@@ -67,21 +67,12 @@ import { DESTINATIONS } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
+import {
+	isCompactStartNotice,
+	refreshCompactionOutcome,
+} from "./compact-receipt";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashCommandInvocation } from "./slash-submit";
-
-/**
- * The terminal host's optimistic receipt for a pass that STARTS
- * (`session/runtime/serving.py`, the `SlashResult` the routed command returns
- * before the pass runs).
- *
- * Named here because it is the ONE receipt `/compact` swallows — the working
- * line and the settled info line are the ported surfaces, and a note would
- * announce the same thing a third time — and a suppression keyed on the
- * notice's SHAPE instead of on this sentence also swallowed the refusals the
- * runtime answers in the same tone (review round 1, R2).
- */
-const COMPACT_START_NOTICE = "compacting context…";
 
 type SlashDispatchOptions = {
 	/** Canonical session the commands address. */
@@ -530,7 +521,25 @@ export function useSlashDispatch({
 						 * "a command that appears to do nothing" failure this branch exists to
 						 * avoid, reintroduced by the line that was written to avoid it.
 						 */
-						if (result.text && result.text.trim() !== COMPACT_START_NOTICE) {
+						if (isCompactStartNotice(result.text)) {
+							/*
+							 * The pass was ACCEPTED and the receipt says so, so the working
+							 * line and the settled line are the surfaces — but a pass can
+							 * also DECLINE, and a decline emits no events at all: the
+							 * runtime writes a durable `compaction_refused` row and
+							 * publishes no transcript delta, so a pane that never reads
+							 * history again shows an emptied composer and nothing else
+							 * (U6 = Q2, measured on both an empty pane and one with
+							 * history). This is the read that closes it: at most two
+							 * tail reads, stopping as soon as the outcome is on screen
+							 * (`compact-receipt.ts` states the delays and the bound).
+							 *
+							 * Fired without awaiting, deliberately: the command has
+							 * already returned `consumed`, and the transcript is the only
+							 * thing this touches.
+							 */
+							void refreshCompactionOutcome(() => canonical.refreshTail());
+						} else if (result.text) {
 							note(
 								result.text,
 								result.kind === "error" || result.style === "error",

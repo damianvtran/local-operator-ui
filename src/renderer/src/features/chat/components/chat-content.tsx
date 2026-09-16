@@ -854,6 +854,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												// below reads, so the hint and the rung cannot disagree.
 												compacting:
 													canonical.view.transcript.compacting === true,
+												compactingSince:
+													canonical.view.transcript.compactingSince,
 												starting: canonical.starting === true,
 												startingAfterId: canonical.startingAfterId ?? null,
 												gate: canonical.view.frontend?.pending_gate ?? null,

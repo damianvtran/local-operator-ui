@@ -91,7 +91,7 @@ const COMMANDS: SlashCommandMeta[] = [
 	},
 	{
 		name: "compact",
-		description: "Summarises older history so the next request is smaller.",
+		description: "Compact the context now",
 		aliases: [],
 		arguments: "none",
 		echo: false,
@@ -624,35 +624,49 @@ export const ArgumentPhaseNarrowComposer: Story = {
 };
 
 /**
- * The mid-draft frame the whole change is about, kept as the BEFORE half of the
- * round-1 fix: a command word typed into a sentence, the list open above it, the
- * draft untouched behind it.
+ * The mid-draft state round-1 D1 judged, and the state this change put in its
+ * place — the two cases of one board, which is the only shape that can show the
+ * AFTER half.
  *
- * Rendering this state is the POINT of the story. Design round 1 (D1 = UX U2)
- * judged exactly this frame, and the popup it shows was real product behaviour
- * before this round: the list opened on the tokenizer alone while the submit
- * planner now reads that word as prose, so its footer promised a run that never
- * happened and the first Enter mutated the draft instead of sending it.
- * `caretPhase` asks the planner's own positional question now and this state is
- * unreachable — which is also why there is no "after" frame beside it: the
- * honest after-picture is a composer with NOTHING above it, and the capture rig
- * refuses a story whose subject does not draw (its element floor rejected it
- * when this story was written that way). The rule itself is pinned in
- * `scripts/slash-token.test.mjs` and the state is recorded in the set's README.
+ * A lone composer story counts five elements against the rig's floor of nine, so
+ * the honest picture of "nothing is open" could not be taken that way (design
+ * round 2, D5 measured the floor and pointed at `name-list-completed`, a board,
+ * which photographs the same closed state at twenty-one). Paired, both halves
+ * clear it.
+ *
+ * CASE 1 is the reachable state: a command word typed into a sentence, the
+ * popup open above it, the draft untouched behind it. Design round 1 judged this
+ * frame and it was real product behaviour then — the list opened on the tokenizer
+ * alone while the submit planner reads that word as prose, so its footer promised
+ * a run that never happened and the first Enter mutated the draft instead of
+ * sending it.
+ *
+ * CASE 2 is what the app does now: `commandWordOpensDraft` is the positional rule
+ * (`slash-token.ts`), `caretPhase` gates both phases on it, and the composer
+ * stands alone. The rule is pinned in `scripts/slash-token.test.mjs`; this is
+ * what it looks like.
  */
-export const InlineMidDraftBefore: Story = {
+export const InlineMidDraftPair: Story = {
 	render: () => (
-		<Box width={720} draft="fix this /team">
-			<SlashSuggestionsPopup
-				state={state({
-					phase: "argument",
-					argumentCommand: "team",
-					inline: { source: "team", nameThenMessage: true, runs: false },
-					matches: argumentRowsFor("team", TEAMS, null),
-				})}
-				onPick={noop}
-			/>
-		</Box>
+		<Board caption="A command word inside a sentence: what the list used to offer (case 1) and what the composer does with that draft now (case 2).">
+			<Case width={720} draft="fix this /team" rows={5}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "team",
+						inline: { source: "team", nameThenMessage: true, runs: false },
+						matches: argumentRowsFor("team", TEAMS, null),
+					})}
+					onPick={noop}
+				/>
+			</Case>
+			{/* No popup element at all: the real hook's `visible` needs a phase and
+			    `caretPhase` answers none for this draft, so a rendered box saying "No
+			    commands match" would be a picture of a state the app cannot reach. */}
+			<Case width={720} draft="fix this /team" rows={1}>
+				{null}
+			</Case>
+		</Board>
 	),
 };
 

@@ -57,7 +57,21 @@ import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
 
-export type WorkingLineState = { activity: string; phase: string };
+export type WorkingLineState = {
+	activity: string;
+	phase: string;
+	/**
+	 * When this PHASE began, when the state knows it.
+	 *
+	 * The rung's clock is otherwise anchored to the component's mount, which is
+	 * wrong twice over: a re-mount mid-phase restarts a clock that is reporting
+	 * the phase's duration, and a still of the rung is a function of the
+	 * shutter's timing rather than of the state (design round 2, D3). The
+	 * compacting phase knows its start — the pass's own `compaction_start`
+	 * stamp — so it passes it down and the frame is stable.
+	 */
+	startedAt?: number;
+};
 
 /**
  * The label for a turn this app has admitted and that has produced nothing yet.
@@ -256,6 +270,11 @@ export type WorkingLineInput = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
 	/**
+	 * When the in-flight pass began, on this reader's clock
+	 * (`TranscriptState.compactingSince`), for the phase's own start.
+	 */
+	compactingSince?: number;
+	/**
 	 * A compaction pass is in flight (`TranscriptState.compacting`).
 	 *
 	 * The transcript's own fact, and the reconciliation for every way the pass
@@ -289,6 +308,7 @@ export type WorkingLineInput = {
 export function deriveWorkingLine({
 	waiting,
 	compacting,
+	compactingSince,
 	starting,
 	startingAfterId,
 	gate,
@@ -314,7 +334,15 @@ export function deriveWorkingLine({
 	 */
 	if (compacting) {
 		if (unavailable) return null;
-		return { activity: COMPACTING_ACTIVITY, phase: "compacting" };
+		return {
+			activity: COMPACTING_ACTIVITY,
+			phase: "compacting",
+			// Spread rather than set, so a caller with no stamp produces the SAME
+			// object shape as before this field existed (`tool-row.test.mjs` compares
+			// the derived state deeply, and an explicit `undefined` is a different
+			// object).
+			...(compactingSince === undefined ? {} : { startedAt: compactingSince }),
+		};
 	}
 
 	if (waiting) {
@@ -401,6 +429,7 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
 export function workingLineInputFor(pane: {
 	waiting: boolean;
 	compacting: boolean;
+	compactingSince?: number;
 	starting: boolean;
 	startingAfterId?: string | null;
 	gate?: unknown;
@@ -410,6 +439,7 @@ export function workingLineInputFor(pane: {
 	return {
 		waiting: pane.waiting,
 		compacting: pane.compacting === true,
+		compactingSince: pane.compactingSince,
 		starting: pane.starting,
 		startingAfterId: pane.startingAfterId ?? null,
 		gate: Boolean(pane.gate),

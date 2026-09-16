@@ -222,6 +222,29 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 */
 	retry: () => void;
 	/**
+	 * Read this session's history TAIL once, apply it, and say whether the page
+	 * carried a compaction outcome.
+	 *
+	 * WHY THIS EXISTS AT ALL (UX round 2, U6 = QA round 2, Q2). A DECLINED
+	 * `/compact` leaves a durable `compaction_refused` row and emits NO events
+	 * (`serving.py::_record_compaction_refusal` appends it and calls `_notify()`,
+	 * which publishes busy/pending-gate/projection state rather than a transcript
+	 * delta), so a pane that never reads history again never learns the pass did
+	 * not run: the composer empties and nothing takes its place — and there is no
+	 * dialog to close either, because this change deleted it. Both review rounds
+	 * measured the same thing (zero `/v1/desktop/sessions/*` reads in the 12-60 s
+	 * after the command) and the row DOES paint on the next read, so the missing
+	 * half is the read itself.
+	 *
+	 * `true` means the outcome is on screen now, which is the caller's cue to stop
+	 * asking; `false` covers "nothing there yet", "the read failed" and "that is no
+	 * longer the session on screen", which are the same answer to a bounded
+	 * schedule. Deliberately NOT `loadOlder` (that pages back from the oldest
+	 * painted row) and deliberately not `retry` (that re-arms the stream as well,
+	 * which is a heavier repair than this question needs).
+	 */
+	refreshTail: () => Promise<boolean>;
+	/**
 	 * Whether an authoritative page for THIS session is still owed.
 	 *
 	 * The composed fact the composer band's loading state and the transcript
@@ -1733,6 +1756,47 @@ export function useCanonicalSessionStream(
 		}
 	}, [sessionId]);
 
+	const refreshingTailRef = useRef(false);
+	/*
+	 * The bounded re-read the direct `/compact` path schedules; the handle's own
+	 * note carries the finding it closes. One page, no cursor — the tail, where a
+	 * pass's outcome lands — applied through the same `applyHistoryPage` the
+	 * stream's reconciliation uses.
+	 *
+	 * The in-flight guard is `loadOlder`'s, for the same reason: two overlapping
+	 * schedules would apply the same page twice, and a page resolving after the
+	 * reader moved on describes a transcript that is no longer on screen.
+	 */
+	const refreshTail = useCallback(async (): Promise<boolean> => {
+		if (!sessionId || refreshingTailRef.current) return false;
+		const requested = sessionId;
+		refreshingTailRef.current = true;
+		try {
+			const page = await desktopResult<DesktopHistoryPage>({
+				op: "sessions.history",
+				sessionId: requested,
+				limit: 100,
+			});
+			if (sessionRef.current !== requested) return false;
+			setView((current) => ({
+				...current,
+				transcript: applyHistoryPage(current.transcript, page),
+			}));
+			return page.entries.some(
+				(entry) =>
+					entry.type === "compaction" ||
+					(entry.type === "message" &&
+						entry.payload?.custom_type === "compaction_refused"),
+			);
+		} catch {
+			// The rows already painted are still correct; the next scheduled read is
+			// the retry, and there is no view state to unwind.
+			return false;
+		} finally {
+			refreshingTailRef.current = false;
+		}
+	}, [sessionId]);
+
 	// Registered for as long as this session is on screen, so the store's echo
 	// reaches the transcript the user is looking at. Registration is keyed by
 	// session rather than by panel: two panels for one session would be the same
@@ -1846,6 +1910,7 @@ export function useCanonicalSessionStream(
 			 */
 			awaitingHydration: enabled && Boolean(sessionId) && !view.hydrated,
 			loadOlder,
+			refreshTail,
 			clearView,
 			addNote,
 			paintPendingModel,
@@ -1857,6 +1922,7 @@ export function useCanonicalSessionStream(
 			enabled,
 			sessionId,
 			loadOlder,
+			refreshTail,
 			clearView,
 			addNote,
 			paintPendingModel,

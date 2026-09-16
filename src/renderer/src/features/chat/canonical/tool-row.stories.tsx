@@ -40,6 +40,7 @@ import {
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
+	compactionSettled,
 	dropLiveRecords,
 } from "./transcript-reducer";
 
@@ -82,6 +83,9 @@ function transcriptOf(
 		// itself carries rather than reading off a record, so it is a parameter
 		// here: the compacting stories are the only frames that set it.
 		compacting,
+		// The claim's own start, so the clock the rung derives is a fixed age
+		// rather than whatever the shutter catches (design round 2, D3).
+		compactingSince: compacting ? Date.now() - 47_000 : 0,
 		oldestId: null,
 		hasMore: false,
 		argsByCall: new Map(),
@@ -128,7 +132,7 @@ const Frame = ({
 	 *
 	 * Not `waiting`: the app never knows a pass is coming until the backend says
 	 * one started, and the rung this raises is a different claim with its own
-	 * phase. See `compacting-pass-before` / `compacting-pass-after` below for the
+	 * phase. See `CompactingRung` / `CompactingSettled` below for the
 	 * pair a reviewer needs.
 	 */
 	compacting?: boolean;
@@ -542,8 +546,50 @@ export const CompactingSettled: Story = {
 				{
 					kind: "compaction",
 					id: "compaction:1:41000:9000",
+					// ASKED OF THE RULE, not typed by hand: a frame whose sentence is a
+					// literal cannot detect a regression in the copy it claims to show
+					// (design round 2, D4). Same for the sibling below.
 					ts: TS,
-					text: "Context compacted, 41.0k to 9.0k tokens",
+					text: compactionSettled(41_000, 9_000),
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The other half of the settled copy: a pass whose two figures round to the same
+ * step says the number ONCE (`Context compacted to 52.7k tokens`), which is UX
+ * round 1's U4 and had no frame at all (design round 2, D4).
+ *
+ * The mock this pair was measured against formats before and after identically,
+ * so this is the branch a user most often sees and the one the switch-line
+ * change was written for.
+ */
+export const CompactingSettledUnchanged: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "compaction",
+					id: "compaction:1:52700:52700",
+					ts: TS,
+					text: compactionSettled(52_700, 52_700),
 				},
 			]}
 		/>
@@ -589,7 +635,7 @@ export const CompactingRefused: Story = {
 					id: "refusal:1",
 					ts: TS,
 					level: "warning",
-					text: "Compaction did not run: nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
+					text: "Compaction did not run — nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
 				},
 			]}
 		/>
