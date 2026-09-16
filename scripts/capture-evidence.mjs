@@ -549,7 +549,7 @@ export const STORIES = [
 	/*
 	 * The chat header's whole action cluster, which is one control more than the
 	 * trigger frames above carry: the run trigger, the browser button and the canvas
-	 * button together, at the four spacing states the reservation is judged in.
+	 * button together, at the five spacing states the reservation is judged in.
 	 *
 	 * Its own surface rather than three more entries here, because these frames are
 	 * the pair a fix to the CLUSTER is reviewed against - `chat-header-cluster/` is
@@ -565,6 +565,9 @@ export const STORIES = [
 	["chat-header-cluster--one-approval", 560, 84],
 	["chat-header-cluster--at-cap", 560, 84],
 	["chat-header-cluster--trigger-dot", 560, 84],
+	/* The badge drawn with the canvas button unmounted: the reservation's room is
+	   owed for the box that button owns, so this state must stay at the 8px step. */
+	["chat-header-cluster--canvas-open-badge", 560, 84],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is

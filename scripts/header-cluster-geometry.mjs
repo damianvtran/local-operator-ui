@@ -2,7 +2,7 @@
 /**
  * Measures the chat header's action cluster from the live DOM.
  *
- *     node scripts/header-cluster-geometry.mjs [storybook-origin] [--json]
+ *     node scripts/header-cluster-geometry.mjs [storybook-origin] [--json] [--badge-text=<text>]
  *
  * The operator's report - the gap between the browser button and the canvas
  * button is wider than the gap between the run trigger and the browser button -
@@ -54,6 +54,29 @@
  *    property that carries it animates; if `gap` and `margin` are absent from both
  *    lists, the state change is one frame and a settled frame is the whole story.
  *
+ * AND IT JUDGES, IT DOES NOT ONLY PRINT. Every state is checked against `CONTRACT`
+ * below - the cluster's own gap, both box gaps, whether a badge is drawn, and the
+ * badge's clearance to its neighbour's box - and a state that violates it is
+ * reported as FAIL and makes the run exit 1. A probe that only prints is the
+ * instrument that let a 12px-against-12px badge-free cluster and a negative badge
+ * clearance pass review: both are the exact geometry this change exists to forbid,
+ * and both exit 0 from a table nobody compares against anything. The universal
+ * half of the contract is checked on every state too: `browserMarginRight` must be
+ * `0px` (a non-zero value is the component-owns-its-outer-margin anti-pattern
+ * `docs/branding.md` section 5 forbids) and the two brand palettes must agree field
+ * for field, because a gap is a layout fact and a palette difference would mean
+ * something other than the container is deciding the spacing.
+ *
+ * IT ALSO PRINTS THE CROSS-STATE DELTA - `MOVEMENT`, badge-free against badge
+ * drawn, in the same run and the same theme. That is the quantity round 1's prose
+ * got wrong (the cluster grows 8px, both gaps widen, the trigger absorbs both and
+ * the browser button moves 4px), and it is the number a reviewer should not have to
+ * subtract out of two box rows by hand.
+ *
+ * `--badge-text=<text>` writes that text into the drawn badge before measuring, so
+ * the unreachable three-glyph counterfactual is a command a reader can re-run
+ * rather than a snippet that lived in a pull-request body.
+ *
  * Viewports match `capture-evidence.mjs`'s entries for the same stories, so a
  * number here and a frame there describe one layout rather than two.
  */
@@ -67,6 +90,14 @@ import { withMockKeychain } from "./chrome-keychain.mjs";
 const ARGS = process.argv.slice(2);
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
 const AS_JSON = ARGS.includes("--json");
+/* `--badge-text=100`: measure the badge as if it carried this text. The app caps
+   its glyph run at `9+`, so the three-glyph case is reachable only by writing the
+   text into the rendered page - which is fine for a measurement of the badge's own
+   `absolute` box, and is the one row of the D5 table that cannot be a story. */
+const BADGE_TEXT =
+	ARGS.find((a) => a.startsWith("--badge-text="))?.slice(
+		"--badge-text=".length,
+	) ?? null;
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -76,22 +107,119 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DEBUG_PORT = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 /**
- * The four states the cluster's spacing is judged in, at both brand palettes.
+ * THE CONTRACT, so a reviewer re-running this reads a VERDICT rather than a table.
  *
- * The light pass is not padding: the gap is a layout fact and should be identical
+ *  - `clusterGap`   the value the cluster's own computed `gap` must resolve to, in
+ *    CSS pixels. This is the container's decision, and the field that says the
+ *    spacing left the component.
+ *  - `gaps`         the two box gaps in order (`trigger -> browser`,
+ *    `browser -> canvas`), `null` where the neighbour is not rendered.
+ *  - `badge`        whether a badge must be drawn in that state.
+ *  - `clearanceAtLeast`  the minimum room the badge's painted ring must keep before
+ *    the canvas button's box. `0` means the ring may MEET the box and never enter
+ *    it, which is design round 1's D5 floor; a negative reading is a ring painted
+ *    inside a 32px control's hover target and is the one number this contract
+ *    exists to refuse.
+ *
+ * The five states and why each is judged as it is:
+ *
+ *  - `no-approval` and `trigger-dot` are badge-free, so the cluster owes nothing
+ *    and must sit at the ramp's within-a-component step on BOTH sides. The dot
+ *    state is the counter-example that proves the rule: an object painting 2px
+ *    past its box earns no room, because the ordinary gap still clears it.
+ *  - `one-approval` and `at-cap` are the badge drawn, which is what the 12px is
+ *    for. `at-cap` is the widest the app can reach (`9+` is the badge's own
+ *    grammar), so these two bound the state.
+ *  - `canvas-open-badge` is the badge drawn with the canvas button UNMOUNTED: the
+ *    room is owed for that button's box, so with no box there is nothing to clear
+ *    and the cluster must fall back to 8px rather than pay 12 for a neighbour that
+ *    is not rendered.
+ */
+const CONTRACT = {
+	"chat-header-cluster--no-approval": {
+		clusterGap: 8,
+		gaps: [8, 8],
+		badge: false,
+	},
+	"chat-header-cluster--one-approval": {
+		clusterGap: 12,
+		gaps: [12, 12],
+		badge: true,
+		clearanceAtLeast: 0,
+	},
+	"chat-header-cluster--at-cap": {
+		clusterGap: 12,
+		gaps: [12, 12],
+		badge: true,
+		clearanceAtLeast: 0,
+	},
+	"chat-header-cluster--trigger-dot": {
+		clusterGap: 8,
+		gaps: [8, 8],
+		badge: false,
+	},
+	"chat-header-cluster--canvas-open-badge": {
+		clusterGap: 8,
+		gaps: [8, null],
+		badge: true,
+	},
+};
+
+/**
+ * The badge-free/badge-drawn pair `MOVEMENT` is derived from. They must be the same
+ * viewport and the same theme, which is why the pairing is by story name and the
+ * run walks a theme at a time.
+ */
+const MOVEMENT_PAIR = [
+	"chat-header-cluster--no-approval",
+	"chat-header-cluster--one-approval",
+];
+
+/**
+ * THE CROSS-STATE MOVEMENT THE FIX PROMISES, judged rather than printed.
+ *
+ * This is the quantity round 1's prose stated wrongly - "the cluster grows 4px and
+ * the run trigger's left edge moves 4px", with the browser button said not to move
+ * at all - so the script that produces the numbers is the right place to pin them.
+ * Both of the cluster's two gaps ARE the one `gap` property, so an 8 -> 12 change
+ * widens each of them by 4px, and the run trigger - which sits left of both -
+ * absorbs both. Numbers are deltas from the badge-free state, in CSS pixels.
+ *
+ * The browser button's `-4` is not bookkeeping: its right edge moves 504 -> 500,
+ * and 500 plus the badge's 12px painted ring ends exactly on the canvas button's
+ * box at 512. That is the mechanism that holds design round 1's D5 clearance at the
+ * 0px floor while the badge is drawn, so a future change that stops the browser
+ * button moving has stopped paying for the badge.
+ */
+const MOVEMENT_CONTRACT = {
+	clusterWidth: 8,
+	triggerLeft: -8,
+	browserLeft: -4,
+	canvasLeft: 0,
+	gapTriggerBrowser: 4,
+	gapBrowserCanvas: 4,
+};
+
+/**
+ * The cluster's spacing is judged in these states, at both brand palettes.
+ *
+ * The light pass is not padding: the gap is a layout fact and must be identical
  * in both, and a difference between them would mean something other than the
  * container is deciding the spacing - which is exactly the failure mode a fix on
- * the container is supposed to make impossible.
+ * the container is supposed to make impossible. It is part of the contract rather
+ * than a reading, so the script fails on it.
  */
 const STORIES = [
 	["chat-header-cluster--no-approval", 560, 84, "localOperatorDark"],
 	["chat-header-cluster--one-approval", 560, 84, "localOperatorDark"],
 	["chat-header-cluster--at-cap", 560, 84, "localOperatorDark"],
 	["chat-header-cluster--trigger-dot", 560, 84, "localOperatorDark"],
+	["chat-header-cluster--canvas-open-badge", 560, 84, "localOperatorDark"],
 	["chat-header-cluster--no-approval", 560, 84, "localOperatorLight"],
 	["chat-header-cluster--one-approval", 560, 84, "localOperatorLight"],
 	["chat-header-cluster--at-cap", 560, 84, "localOperatorLight"],
 	["chat-header-cluster--trigger-dot", 560, 84, "localOperatorLight"],
+	["chat-header-cluster--canvas-open-badge", 560, 84, "localOperatorLight"],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -181,11 +309,15 @@ const PROBE = `(() => {
 
 	const header = document.querySelector('[data-tour-tag="chat-header"]');
 	if (!header) return { error: "no chat header on the page" };
-	/* The cluster is the header's own child that holds the canvas button, and it is
+	/* The cluster is the header's own child that holds a CONTROL, and it is
 	   identified by what it HOLDS rather than by a class list, so a change to the
-	   cluster's own utilities cannot make this probe measure the wrong element. */
+	   cluster's own utilities cannot make this probe measure the wrong element. Any
+	   of the three controls identifies it rather than the canvas button alone: the
+	   badge drawn with the canvas OPEN is exactly the arrangement where that button
+	   is unmounted, and keying this on it would make the probe report "no action
+	   cluster" for a state this file exists to judge. */
 	const cluster = [...header.children].find((el) =>
-		el.querySelector('[data-tour-tag="open-canvas-button"]'),
+		el.querySelector('[data-run-panel-trigger], [data-tour-tag="browser-pane-trigger"], [data-tour-tag="open-canvas-button"]'),
 	);
 	if (!cluster) return { error: "no action cluster in the header" };
 
@@ -223,6 +355,7 @@ const PROBE = `(() => {
 		clusterLeft: round(cluster.getBoundingClientRect().left),
 		clusterWidth: round(cluster.getBoundingClientRect().width),
 		badge: bd,
+		badgeText: badge ? badge.textContent : null,
 		badgeRingPx: ring,
 		badgeOuterRight: bd ? round(bd.right + ring) : null,
 		badgeClearance: bd && c ? round(c.left - (bd.right + ring)) : null,
@@ -329,7 +462,11 @@ const main = async () => {
 					)].some((el) => el.getBoundingClientRect().height > 0);
 					if (loading) return false;
 					if (document.fonts.status !== "loaded") return false;
-					return !!document.querySelector('[data-tour-tag="open-canvas-button"]');
+					const header = document.querySelector('[data-tour-tag="chat-header"]');
+					if (!header) return false;
+					return [...header.children].some((el) =>
+						el.querySelector('[data-run-panel-trigger], [data-tour-tag="browser-pane-trigger"], [data-tour-tag="open-canvas-button"]'),
+					);
 				})()`,
 			});
 			ready = result.value === true;
@@ -344,6 +481,35 @@ const main = async () => {
 			expression:
 				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 		});
+		let badgeTextOverridden = false;
+		if (BADGE_TEXT !== null) {
+			/*
+			 * THE THREE-GLYPH COUNTERFACTUAL, as a command rather than a snippet in a
+			 * pull-request body: the app caps its own glyph run at `9+`, so the widest
+			 * badge is unreachable by any story and the only way to measure it is to
+			 * write the text into the rendered page. The badge is `absolute`, so nothing
+			 * about the cluster's layout depends on its own size - which is exactly what
+			 * makes this a pure measurement of the glyph run and the D5 question a fair
+			 * one to ask of it. A state that draws no badge is left alone, and says so: a
+			 * run that asked for the override and silently measured a badge-free state
+			 * would be the same class of claim as the prose this replaces.
+			 */
+			const { result: applied } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const badge = document.querySelector('[data-tour-tag="browser-pane-badge"]');
+					if (!badge) return false;
+					badge.textContent = ${JSON.stringify(BADGE_TEXT)};
+					return true;
+				})()`,
+			});
+			await cdp.send("Runtime.evaluate", {
+				awaitPromise: true,
+				expression:
+					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+			});
+			badgeTextOverridden = applied.value === true;
+		}
 		const { result } = await cdp.send("Runtime.evaluate", {
 			returnByValue: true,
 			expression: PROBE,
@@ -355,14 +521,170 @@ const main = async () => {
 			story,
 			theme,
 			viewport: `${width}x${height}`,
+			badgeTextOverridden,
 			measured: result.value,
 		});
 	}
 
+	/*
+	 * THE VERDICT IS COMPUTED BEFORE ANYTHING IS PRINTED, so the exit code answers
+	 * "is this the geometry the change promises" rather than "did the probe run".
+	 * The three failures a printing-only instrument let through in round 1 are the
+	 * three this refuses: a badge-free cluster that is not uniform on both sides, a
+	 * badge whose ring is painted inside its neighbour's box, and a `margin-right`
+	 * that has crept back onto the component.
+	 */
+	const problems = [];
+	const check = (story, theme, label, actual, expected) => {
+		if (actual !== expected) {
+			problems.push(
+				`${story} @ ${theme}: ${label} is ${actual}, contract says ${expected}`,
+			);
+		}
+	};
+
+	for (const { story, theme, measured: m, badgeTextOverridden } of results) {
+		const contract = CONTRACT[story];
+		if (!contract) {
+			problems.push(`${story}: no contract declares this story's geometry`);
+			continue;
+		}
+		check(story, theme, "clusterGap", m.clusterGap, `${contract.clusterGap}px`);
+		/*
+		 * The two gaps are compared against `null` where the neighbour is unmounted, so
+		 * a state that quietly grew or lost a child cannot pass by measuring a box it
+		 * was never supposed to have.
+		 */
+		check(
+			story,
+			theme,
+			"gap trigger->browser",
+			m.gapTriggerBrowser,
+			contract.gaps[0],
+		);
+		check(
+			story,
+			theme,
+			"gap browser->canvas",
+			m.gapBrowserCanvas,
+			contract.gaps[1],
+		);
+		check(story, theme, "badge drawn", Boolean(m.badge), contract.badge);
+		if (contract.clearanceAtLeast !== undefined && m.badgeClearance !== null) {
+			if (m.badgeClearance < contract.clearanceAtLeast) {
+				problems.push(
+					`${story} @ ${theme}: badgeClearance is ${m.badgeClearance}, contract says >= ${contract.clearanceAtLeast} (the ring must not be painted inside the canvas button's box)`,
+				);
+			}
+		}
+		/* The anti-pattern's own trace, in every state: a component that owns its
+		 * outer margin shows up here and nowhere else. */
+		check(story, theme, "browserMarginRight", m.browserMarginRight, "0px");
+		if (BADGE_TEXT !== null && contract.badge && !badgeTextOverridden) {
+			problems.push(
+				`${story} @ ${theme}: --badge-text=${BADGE_TEXT} was asked for but no badge was on the page to write it into`,
+			);
+		}
+	}
+
+	/*
+	 * PALETTE AGREEMENT is part of the contract rather than a reading: a gap is a
+	 * layout fact, so the two brand palettes must produce identical boxes. A
+	 * difference would mean something other than the container is deciding the
+	 * spacing - the failure a fix on the container exists to make impossible.
+	 */
+	const byStory = new Map();
+	for (const r of results) {
+		byStory.set(r.story, [...(byStory.get(r.story) ?? []), r]);
+	}
+	for (const [story, rows] of byStory) {
+		const [first, ...rest] = rows;
+		for (const other of rest) {
+			if (JSON.stringify(first.measured) !== JSON.stringify(other.measured)) {
+				problems.push(
+					`${story}: ${first.theme} and ${other.theme} disagree - a spacing fact must be palette-independent`,
+				);
+			}
+		}
+	}
+
+	/*
+	 * THE MOVEMENT, judged and printed. This is the number round 1 got wrong, and a
+	 * reviewer should be able to read it here rather than subtract it out of two box
+	 * rows by hand.
+	 */
+	const movement = [];
+	for (const theme of [...new Set(results.map((r) => r.theme))]) {
+		const from = results.find(
+			(r) => r.story === MOVEMENT_PAIR[0] && r.theme === theme,
+		);
+		const to = results.find(
+			(r) => r.story === MOVEMENT_PAIR[1] && r.theme === theme,
+		);
+		if (!from || !to) continue;
+		const rows = [
+			["cluster width", from.measured.clusterWidth, to.measured.clusterWidth],
+			["trigger left", from.measured.trigger.left, to.measured.trigger.left],
+			["browser left", from.measured.browser.left, to.measured.browser.left],
+			["canvas left", from.measured.canvas.left, to.measured.canvas.left],
+			[
+				"gap t->b",
+				from.measured.gapTriggerBrowser,
+				to.measured.gapTriggerBrowser,
+			],
+			[
+				"gap b->c",
+				from.measured.gapBrowserCanvas,
+				to.measured.gapBrowserCanvas,
+			],
+		];
+		const deltas = {
+			clusterWidth: to.measured.clusterWidth - from.measured.clusterWidth,
+			triggerLeft: to.measured.trigger.left - from.measured.trigger.left,
+			browserLeft: to.measured.browser.left - from.measured.browser.left,
+			canvasLeft: to.measured.canvas.left - from.measured.canvas.left,
+			gapTriggerBrowser:
+				to.measured.gapTriggerBrowser - from.measured.gapTriggerBrowser,
+			gapBrowserCanvas:
+				to.measured.gapBrowserCanvas - from.measured.gapBrowserCanvas,
+		};
+		/*
+		 * The cross-state delta is compared per theme rather than once, because a
+		 * palettes-disagree finding above already says the two trees differ - and
+		 * movement is exactly the arithmetic a reader cannot check by eye across two
+		 * stills, which is why this file exists at all.
+		 */
+		for (const [field, expected] of Object.entries(MOVEMENT_CONTRACT)) {
+			if (deltas[field] !== expected) {
+				problems.push(
+					`MOVEMENT @ ${theme}: ${field} moves ${deltas[field]}px, contract says ${expected}px`,
+				);
+			}
+		}
+		const signed = (n) => `${n >= 0 ? "+" : ""}${Math.round(n * 10) / 10}`;
+		movement.push(`  ${theme}`);
+		for (const [label, a, b] of rows) {
+			movement.push(
+				`  ${label.padEnd(15)} ${a} -> ${b}  (${signed(Math.round((b - a) * 10) / 10)})`,
+			);
+		}
+		movement.push(
+			`  ${"badge clearance".padEnd(15)} ${from.measured.badgeClearance} -> ${to.measured.badgeClearance}`,
+		);
+	}
+
 	if (AS_JSON) {
-		console.log(JSON.stringify({ origin: ORIGIN, results }, null, 2));
+		console.log(
+			JSON.stringify(
+				{ origin: ORIGIN, badgeText: BADGE_TEXT, problems, results },
+				null,
+				2,
+			),
+		);
+		if (problems.length) process.exitCode = 1;
 		return;
 	}
+
 	for (const { story, theme, viewport, measured: m } of results) {
 		console.log(`\n${story}  @ ${viewport}  ${theme}`);
 		console.log(
@@ -384,7 +706,7 @@ const main = async () => {
 			`  cluster       left=${m.clusterLeft}  width=${m.clusterWidth}`,
 		);
 		console.log(
-			`  badge         ${m.badge ? `left=${m.badge.left}  right=${m.badge.right}  width=${m.badge.width}  ring=${m.badgeRingPx}  outerRight=${m.badgeOuterRight}  clearance=${m.badgeClearance}  toGlyph=${m.badgeToGlyph}  glyphOverlapY=${m.badgeGlyphBoxOverlapY}` : "none"}`,
+			`  badge         ${m.badge ? `text=${JSON.stringify(m.badgeText)}  left=${m.badge.left}  right=${m.badge.right}  width=${m.badge.width}  ring=${m.badgeRingPx}  outerRight=${m.badgeOuterRight}  clearance=${m.badgeClearance}  toGlyph=${m.badgeToGlyph}  glyphOverlapY=${m.badgeGlyphBoxOverlapY}` : "none"}`,
 		);
 		console.log(
 			`  dot           ${m.dot ? `left=${m.dot.left}  right=${m.dot.right}  overhang=${m.dotOverhang}  clearance=${m.dotClearance}  toGlyph=${m.dotToGlyph}` : "none"}`,
@@ -392,6 +714,29 @@ const main = async () => {
 		console.log(
 			`  transitions   cluster=[${m.transitions.cluster}] ${m.transitions.clusterDuration}  browser=[${m.transitions.browser}] ${m.transitions.browserDuration}`,
 		);
+		const rowProblems = problems.filter((p) =>
+			p.startsWith(`${story} @ ${theme}:`),
+		);
+		console.log(`  VERDICT       ${rowProblems.length ? "FAIL" : "PASS"}`);
+		for (const p of rowProblems) {
+			console.log(`    - ${p.slice(`${story} @ ${theme}: `.length)}`);
+		}
+	}
+
+	if (movement.length) {
+		console.log(`\nMOVEMENT  ${MOVEMENT_PAIR[0]} -> ${MOVEMENT_PAIR[1]}`);
+		console.log(movement.join("\n"));
+	}
+
+	console.log(
+		`\nVERDICT: ${results.length} states checked, ${problems.length ? `${problems.length} contract violation${problems.length === 1 ? "" : "s"}` : "all match the contract"}`,
+	);
+	if (problems.length) {
+		for (const p of problems) console.log(`  - ${p}`);
+		console.log(
+			"This is not the geometry the change promises - see CONTRACT and MOVEMENT_CONTRACT in this file.",
+		);
+		process.exitCode = 1;
 	}
 };
 

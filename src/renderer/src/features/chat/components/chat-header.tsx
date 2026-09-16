@@ -137,26 +137,30 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
 
 	/*
-	 * Two facts about the browser button, read once because the CLUSTER's spacing
-	 * and the button's own render gate are decisions from the same pair.
+	 * Three facts about the cluster's children, read once because the CLUSTER's
+	 * spacing and each child's own render gate are decisions from the same set.
 	 *
-	 * The badge is anchored 10px past this button's corner and paints a 2px ring, so
-	 * a drawn badge needs 12px before the canvas button's box begins (design round 1,
-	 * D5: below that the ring is painted inside a 32px control's hover target). That
-	 * room is the CONTAINER's to give - `docs/branding.md` section 5, "a component
-	 * does not own its outer margin" - so the cluster widens its own gap while an
-	 * overhanging badge is on screen and pays nothing when there is none. A `mr-1`
-	 * on the button used to carry it and could not be conditional without being the
-	 * same anti-pattern: a margin on a component's root element stacks with whatever
-	 * container it is dropped into, which is exactly the silent-mis-spacing failure
-	 * that rule exists to prevent.
+	 * The badge is anchored 10px past the browser button's corner and paints a 2px
+	 * ring, so a drawn badge needs 12px before the CANVAS BUTTON's box begins
+	 * (design round 1, D5: below that the ring is painted inside a 32px control's
+	 * hover target). That room is the CONTAINER's to give - `docs/branding.md`
+	 * section 5, "a component does not own its outer margin" - so the cluster widens
+	 * its own gap while an overhanging badge is on screen and pays nothing when there
+	 * is none. A `mr-1` on the button used to carry it and could not be conditional
+	 * without being the same anti-pattern: a margin on a component's root element
+	 * stacks with whatever container it is dropped into, which is exactly the
+	 * silent-mis-spacing failure that rule exists to prevent.
 	 *
-	 * Both facts are about the BUTTON rather than about the badge, and the pane half
-	 * is why: while the browser pane is open this button is unmounted, so there is
-	 * no badge on screen and no room to reserve, however many approvals are waiting.
+	 * Each fact is about a CHILD rather than about the badge alone, and the two pane
+	 * halves are why: while the browser pane is open the browser button is unmounted,
+	 * so there is no badge on screen and no room to reserve, however many approvals
+	 * are waiting; and while the canvas is open the canvas button is unmounted, so the
+	 * badge has no neighbour's box to land in and the room would be spent on a control
+	 * that is not rendered.
 	 */
 	const browserButtonShown = Boolean(onOpenBrowser) && !isBrowserPaneOpen;
 	const browserBadgeDrawn = browserButtonShown && browserAttentionCount > 0;
+	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
 
 	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the
@@ -295,23 +299,40 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				className={cn(
 					"ml-auto flex items-center",
 					/*
-					 * 8px, the within-a-component step of branding.md's 4px ramp, in every
-					 * state where no child paints outside its own box - which is the state
-					 * the operator reported as uneven, because a `mr-1` on the browser button
-					 * was paying the badge's 12px whether or not a badge was drawn. 12px
-					 * while the badge IS drawn, which is the same room the reserve always
-					 * was: the gap is set on the container so the two states are one spacing
-					 * each and neither is a margin on a component.
+					 * THE RULE THIS APPLIES. The container pays only for ink that would
+					 * otherwise land in a NEIGHBOUR'S BOX - not for every child that paints
+					 * outside itself. The badge earns 12px because without it its ring is
+					 * painted inside the canvas button's hover target (design round 1, D5);
+					 * the run trigger's own attention dot overhangs its box by 2px and earns
+					 * nothing, because 6px of the ordinary 8px gap still separates it from the
+					 * next box. So 12px is owed only while BOTH the badge and the box it has to
+					 * clear are on screen; this is 8px in every other arrangement.
 					 *
-					 * `gap-3` rather than 4px more between those two controls alone: the
-					 * cluster then reads at ONE tier in each state, and the ramp's own warning
-					 * is that mixed spacing tiers are what make a layout look unconsidered
-					 * (branding.md section 5). The cost is stated rather than hidden: when a
-					 * badge appears the cluster grows 8px, which moves the run trigger 8px left
-					 * and leaves the browser and canvas buttons where they were - the cluster is
-					 * `ml-auto`, so the right edge is the fixed end.
+					 * 8px is the within-a-component step of branding.md's 4px ramp, and it is
+					 * the state the operator photographed: a `mr-1` on the browser button paid
+					 * the badge's 12px whether or not a badge was drawn, so the badge-free
+					 * cluster read 8px against 12px. The room is the CONTAINER's now
+					 * (branding.md section 5), so neither state is a margin on a component.
+					 *
+					 * WHAT A BADGE COSTS, in the two comparisons that are easy to conflate:
+					 *
+					 *  - THE BADGE APPEARING, this tree against itself. `gap` resolves from 8
+					 *    to 12, and both of the cluster's gaps ARE that one property, so each
+					 *    widens by 4px: cluster width 112 -> 120 (+8px), the run trigger's left
+					 *    edge 432 -> 424 (-8px), the browser button 472 -> 468 (-4px), and the
+					 *    canvas button pinned at 512 by the `ml-auto` right edge (0px). The
+					 *    browser's -4px is the MECHANISM that keeps D5 rather than a detail:
+					 *    its right edge moves 504 -> 500, so the badge's painted ring ends
+					 *    exactly on the canvas box's left edge, at 0px clearance. "The browser
+					 *    and canvas buttons do not move" is NOT what happens here.
+					 *  - THIS BRANCH AGAINST `main`, in a FIXED state. Badge drawn: the run
+					 *    trigger moves -4px and the browser and canvas buttons do not move at
+					 *    all. Badge-free: the run trigger and the browser button both move
+					 *    +4px, and the canvas does not move. The 4px figures this change is
+					 *    otherwise tempted to quote belong to THIS comparison, not the one
+					 *    above.
 					 */
-					browserBadgeDrawn ? "gap-3" : "gap-2",
+					browserBadgeDrawn && canvasButtonShown ? "gap-3" : "gap-2",
 				)}
 			>
 				<RunDetailsTrigger
@@ -403,7 +424,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						</Button>
 					</Tooltip>
 				)}
-				{onOpenOptions && !isCanvasOpen && (
+				{canvasButtonShown && (
 					<Tooltip
 						content={
 							fileCount > 0

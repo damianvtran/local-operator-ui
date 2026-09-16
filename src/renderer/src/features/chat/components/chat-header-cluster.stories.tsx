@@ -11,7 +11,7 @@
  * a run model and both pane actions, and Storybook is the only instrument here
  * that can supply all of them with no backend and no session.
  *
- * FOUR STATES, and each answers one half of the decision:
+ * FIVE STATES, and each answers one half of the decision:
  *
  * - `no-approval` is the state the operator photographed, and the one the fix is
  *   about: no badge is drawn, so no control is paying for one.
@@ -25,6 +25,12 @@
  *   trigger's own 8px attention dot is anchored 2px past its right edge. A frame
  *   is owed for it because the fix moves the cluster's spacing, and "the dot does
  *   not do what the badge does" is a claim about pixels as much as about geometry.
+ * - `canvas-open-badge` is the badge drawn with the CANVAS BUTTON unmounted, which
+ *   is the arrangement that separates the reservation's two facts: the badge is
+ *   still seeking 12px of room, but the box it exists to clear is not rendered, so
+ *   the cluster must stay at 8px. A frame is owed because the spacing here is a
+ *   pixel a reader can check against `one-approval` (design round 1's D2 rule: the
+ *   container pays only for ink that would land in a neighbour's box).
  *
  * THE CLUSTER IS THE ONLY THING PHOTOGRAPHED. The header is the production
  * component in its production 56px band; the ground under it is deliberately
@@ -65,17 +71,19 @@ type Story = StoryObj;
 const Cluster = ({
 	count,
 	details,
+	canvasOpen = false,
 }: {
 	count: number;
 	details: ReturnType<typeof deriveRunDetails>;
+	canvasOpen?: boolean;
 }) => {
 	useEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: false,
-			isCanvasOpen: false,
+			isCanvasOpen: canvasOpen,
 			isBrowserPaneOpen: false,
 		});
-	}, []);
+	}, [canvasOpen]);
 	return (
 		<div className={cn("flex h-[84px] w-[560px] shrink-0 flex-col bg-canvas")}>
 			<ChatHeader
@@ -115,5 +123,21 @@ export const AtCap: Story = {
 export const TriggerDot: Story = {
 	render: () => (
 		<Cluster count={0} details={deriveRunDetails(fixtures.jobsInFlight())} />
+	),
+};
+
+/**
+ * The badge drawn with the canvas open, so the canvas button - the box the badge's
+ * room exists to clear - is unmounted. The cluster must stay at its 8px step here:
+ * the same rule that earns the badge its 12px is the one that refuses it a
+ * neighbour that is not rendered.
+ */
+export const CanvasOpenBadge: Story = {
+	render: () => (
+		<Cluster
+			count={1}
+			details={deriveRunDetails(fixtures.idle())}
+			canvasOpen={true}
+		/>
 	),
 };
