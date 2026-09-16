@@ -23,16 +23,18 @@ a user who never learns `Cmd+K` would use the palette once, if at all. The row i
 the only control the rail carries besides the account row, it is on screen on
 every route, and it prints the chord so the rail teaches it without being asked.
 
-**The chord is printed two ways, and that is one decision, not an
-inconsistency.** The panel's footer draws its keys as the app's key cap
-(`bg-sunken`); the rail draws `⌘+K` as plain monospace at the row's own ink
-(`ink-muted` — it was `ink-dim`, which measured as fine print: 5.76:1 on the rail
-against the label's 8.94:1). A cap is `sunken`, and the rail IS `sunken`, so a cap
-there would have no ground of its own and would read as a boxless glyph; the panel
-sits on `elevated`, where a cap does have one. Two grounds, two treatments —
-recorded here rather than "fixed" in either direction (design round 1, D6; the
-ink step is a change, not a hierarchy: the chord and the row's label share the
-role).
+**The chord is printed one way, and this paragraph used to say two.** The panel's
+footer and the rail both draw it as the app's key cap (`KeyboardShortcut`), which
+is a change from what shipped: the rail printed `⌘+K` as plain monospace at the
+row's own ink (`ink-muted` — it was `ink-dim`, which measured as fine print:
+5.76:1 on the rail against the label's 8.94:1) because a cap was filled
+`bg-sunken` and the rail IS `sunken`, so a cap there would have had no ground of
+its own. That argument was sound about that cap and is why the cap lost its fill
+rather than the rail keeping a second spelling: a cap now carries no ground and no
+border on any surface, so the panel's footer, the rail, the New chat row beside
+the sidebar and the inline editor's footer draw the same box on different grounds
+(design round 1, D6, kept for the ink step — the chord and its label share a role,
+so the cap is what says it is a key).
 
 ## What the palette says about itself
 

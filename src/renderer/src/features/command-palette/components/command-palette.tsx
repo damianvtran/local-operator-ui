@@ -1,4 +1,5 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
 	Button,
 	Dialog,
@@ -73,18 +74,19 @@ const KIND_VERBS: Record<PaletteItem["kind"], string> = {
 const QUERY_WRITE_BACK_MS = 200;
 
 /**
- * A key on the footer bar and on the active row.
+ * The palette's legend keys are the app's key caps, and the only thing this file
+ * decides about them is where they sit.
  *
- * Monospace because a key legend is machine voice, and `sunken` because a key
- * is a recessed thing — no border, since the ground change already bounds it and
- * this shape repeats several times on one bar.
+ * They used to be a THIRD cap implementation declared right here —
+ * `rounded-xs bg-sunken px-1 py-0.5 font-mono text-ink-dim text-mono-sm` — which
+ * is one of the sizes the operator reported as inconsistent: it carried no
+ * `min-w-5`, so a single glyph made a cap about 15px wide where the shared
+ * component's was 20px, on the same 12px type but one ink step down. The shared
+ * component now owns the geometry and the ink (`ink-muted`, the step up
+ * `docs/command-palette.md` already records as the fix for this row reading as
+ * fine print), and the cap carries no ground of its own, so the footer's
+ * `elevated` shows through instead of a `sunken` box.
  */
-const Key: FC<{ children: string }> = ({ children }) => (
-	<kbd className="rounded-xs bg-sunken px-1 py-0.5 font-mono text-ink-dim text-mono-sm">
-		{children}
-	</kbd>
-);
-
 /**
  * The command palette.
  *
@@ -795,24 +797,24 @@ export const CommandPalette: FC = () => {
 							<>
 								{SCOPE_LEGEND.map((entry) => (
 									<span key={entry.scope} className="flex items-center gap-1.5">
-										<Key>{entry.glyph}</Key>
+										<KeyboardShortcut shortcut={entry.glyph} />
 										{entry.label}
 									</span>
 								))}
 								<span className="ml-auto flex items-center gap-1.5">
-									<Key>esc</Key>
+									<KeyboardShortcut shortcut="esc" />
 									to close
 								</span>
 							</>
 						) : (
 							<>
 								<span className="flex items-center gap-1.5">
-									<Key>↑</Key>
-									<Key>↓</Key>
+									<KeyboardShortcut shortcut="↑" />
+									<KeyboardShortcut shortcut="↓" />
 									to move
 								</span>
 								<span className="flex items-center gap-1.5">
-									<Key>↵</Key>
+									<KeyboardShortcut shortcut="↵" />
 									to run
 								</span>
 								<span className="flex items-center gap-1.5">
@@ -827,7 +829,7 @@ export const CommandPalette: FC = () => {
 								 * (design round 1, D5).
 								 */}
 								<span className="ml-auto flex items-center gap-1.5">
-									<Key>esc</Key>
+									<KeyboardShortcut shortcut="esc" />
 									to close
 								</span>
 							</>
@@ -920,7 +922,7 @@ const PaletteRow: FC<{
 			{isActive && (
 				<span className="flex shrink-0 items-center gap-1.5 text-ink-dim text-meta">
 					{verb}
-					<Key>↵</Key>
+					<KeyboardShortcut shortcut="↵" />
 				</span>
 			)}
 		</button>

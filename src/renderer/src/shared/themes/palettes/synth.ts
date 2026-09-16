@@ -20,6 +20,13 @@ export const synth: ThemeDefinition = {
 		surface: "#1B0A2F",
 		elevated: "#2C1D43",
 		sunken: "#06020D",
+		/*
+		 * The current row's own ground: `surface` mixed 3.3% toward white. ΔE00
+		 * 2.20 from `surface`, 3.39 from `elevated` and 15.43 from `sunken` — the
+		 * widest gap between the two roles of any palette here, which is what
+		 * `sunken` was doing to this panel.
+		 */
+		highlight: "#231236",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are

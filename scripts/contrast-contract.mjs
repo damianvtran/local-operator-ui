@@ -1153,23 +1153,28 @@ const STRUCTURAL_CALL_SITES = [
 		 * Contrast is equally useless as an instrument here: the two colours
 		 * differ in hue rather than luminance, so the pair reads 1.04:1.
 		 *
-		 * WHY A CALL SITE AND NOT A PALETTE ROW. `accent-wash` is not invisible
-		 * everywhere: the app rail paints it on `sunken`, where it measures 9.6 in
-		 * tokyoNight, and the settings rail is the OTHER `surface` panel and is
-		 * fixed with this one (the pin below). Strengthening the role would make
-		 * every hover tint in the app louder to fix the two panels that draw it on
-		 * `surface`. The replacement is `sunken`, which the field-floor loop at the
-		 * bottom of this file already asserts as a perceptible step from `surface`
-		 * AND from `elevated` in all twelve palettes — BOTH pairs pre-date this
-		 * change; only the call-site pins are new — with a worst case of ΔE00 3.75
-		 * against the 2.0 field floor. What no palette assertion can see is the
-		 * CLASS on the row, which is how this shipped: every row in this file stayed
-		 * green while painting a ground the user could not see. Reverting this line
-		 * to a wash fails here and nowhere else in THIS file
-		 * (`scripts/chat-sidebar-selection.test.mjs` catches it too, by resolving the
-		 * row's own class expression through the shipped `cn`); a palette edit that
-		 * collapsed `surface` against `sunken` fails the `["surface", "sunken"]`
-		 * pair in that loop.
+		 * WHY `highlight` AND NOT A PALETTE ROW FOR THE WASH. `accent-wash` is not
+		 * invisible everywhere: the app rail paints it on `sunken`, where it
+		 * measures 9.6 in tokyoNight, and the settings rail is the OTHER `surface`
+		 * panel and is fixed with this one (the pin below). Strengthening the role
+		 * would make every hover tint in the app louder to fix the two panels that
+		 * draw it on `surface`. A role of their own was the alternative, and it is
+		 * what shipped: `highlight`, a shallow step off `surface` in the direction
+		 * the mode runs, asserted against `surface`, `elevated` and `sunken` at the
+		 * field floor in the loop above.
+		 *
+		 * WHY NOT `sunken`, WHICH IS WHAT THIS ROW SPENT A ROUND ON. `sunken` is
+		 * RECESSED — a well, not a mark — and 3.75-14.94 from `surface`, which is
+		 * the dark box the operator reported. It is also the role ~50 call sites
+		 * depend on being deep, so the row could not be quietened by moving it.
+		 * What no palette assertion can see is the CLASS on the row, which is how
+		 * that shipped: every row in this file stayed green while painting a ground
+		 * the user could not see, and later while painting one that shouted.
+		 * Reverting this line to a wash, or to `sunken`, fails here and nowhere
+		 * else in THIS file (`scripts/chat-sidebar-selection.test.mjs` catches it
+		 * too, by resolving the row's own class expression through the shipped
+		 * `cn`); a palette edit that collapsed `highlight` onto `surface`,
+		 * `elevated` or `sunken` fails the `highlight` loop above.
 		 *
 		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
 		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
@@ -1183,8 +1188,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'const rowCurrent = "bg-sunken text-ink hover:bg-sunken";',
-		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05), and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the invisible selection",
+		must: 'const rowCurrent = "bg-highlight text-ink hover:bg-highlight";',
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `highlight` is the role authored for the current row, and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground arriving",
 	},
 	{
 		/*
@@ -1221,52 +1226,6 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
-		 * The New chat row's CAPS while that row is current. The pin has to sit in two
-		 * places to mean anything - the condition that puts the edge on the element
-		 * (this one) and the class it puts there (the entry below) - because a reader
-		 * can leave either intact while deleting the other, and the file then reads as
-		 * a row with an edge on it that has none.
-		 *
-		 * WHY A ROW HERE AT ALL. The pair it depends on is asserted above
-		 * (`borderControl` clears 3:1 on every ground, `sunken` among them), but no
-		 * palette assertion can see a CLASS, and that is exactly the shape of this
-		 * defect: every row in this file stayed green while the caps were drawn on the
-		 * ground they are filled with - 1.00:1, ΔE00 0.00, in all twelve palettes -
-		 * and the visible half of the chord read as plain monospace at the one moment
-		 * the chord had just been used. It is the same hole
-		 * `scripts/chat-sidebar-selection.test.mjs` closes for the row's own ground.
-		 */
-		what: "New chat row cap edge while current",
-		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		/*
-		 * The WHOLE attribute, not the condition alone, and for the reason the
-		 * neighbouring row pin gives: a reader can leave the class declared and the
-		 * predicate intact and still stop passing either to the element - delete the
-		 * `className` prop, or drop `capEdge` from the `cn` call - and a pin over the
-		 * bare expression would still find its substring in the file. This names the
-		 * prop, the `cn` call, the condition and the class together, so the element
-		 * either carries the edge or fails the gate.
-		 */
-		must: "className={cn(\n\t\t\t\t\t\t\t\t\tBoolean(activeDraftKey) && !draft?.target && capEdge,\n\t\t\t\t\t\t\t\t)}",
-		why: "the caps are the visible half of the chord, and the state the chord itself creates is the one state where their fill equals the row's ground; without this the edge never appears and the caps are glyphs there and only there",
-	},
-	{
-		/*
-		 * The edge itself. An OUTLINE rather than a border, and the difference is
-		 * measured rather than stylistic: a border enters the box model and would move
-		 * the caps 1px per side in one state only, which is the same shift this row
-		 * retires `border-control` on the row itself for. `outline-control` against
-		 * `sunken` is 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13),
-		 * clearing `docs/branding.md` § 3's 3:1 structural floor in every one, and it
-		 * is the idiom the picker row already uses for a structural edge.
-		 */
-		what: "New chat row cap edge class",
-		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'const capEdge = "outline-solid outline-1 -outline-offset-1 outline-control";',
-		why: "the roles are the ones the paragraph above measures, and the layout-neutral spelling is what keeps the caps' box - and the row's alignment with the All chats row - identical in both states",
-	},
-	{
-		/*
 		 * The settings rail's current row, which was the same defect on the same
 		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
@@ -1280,8 +1239,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "settings rail current-row ground",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"bg-sunken font-medium text-ink hover:bg-sunken"',
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer",
+		must: '"bg-highlight font-medium text-ink hover:bg-highlight"',
+		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-elevated`, which would otherwise replace the mark under the pointer",
 	},
 	{
 		/*
@@ -1538,6 +1497,13 @@ const assertPair = (theme, p, fg, bg, floor, label) => {
 const REQUIRED_ROLES = [
 	"mode",
 	...GROUNDS,
+	/* The selection ground, and not a fifth STEP on the elevation ladder: it is
+	   the ground of the row a reader is currently ON, a shallow step off
+	   `surface` in the direction the mode runs. Required rather than optional
+	   for the same reason every other role here is: a palette that omits it falls
+	   silently through to MUI's stock palette, and this one is read by a Tailwind
+	   utility (`bg-highlight`) that would then resolve to nothing at all. */
+	"highlight",
 	"ink",
 	"inkMuted",
 	"inkDim",
@@ -1757,6 +1723,59 @@ for (const { id, palette: p } of palettes) {
 				);
 			}
 		}
+	}
+
+	/*
+	 * The selection ground: `highlight`, the current row's own step.
+	 *
+	 * `highlight` is NOT in `GROUNDS`, and must not be. `GROUNDS` is the
+	 * elevation ladder every ink and every structural border is measured
+	 * against, and its members are alternative states of ONE panel — a control
+	 * is drawn on one of them at a time. `highlight` is a state of a ROW inside
+	 * a panel whose ground is still `surface`, so listing it there would assert
+	 * ink, borders and controls against pairings nothing renders, which is the
+	 * mistake the browser chip's own row already records (a ground the component
+	 * never sits on is a measurement of the wrong thing).
+	 *
+	 * What it needs instead is the two facts the row depends on.
+	 *
+	 * 1. That the step off `surface` is PERCEIVABLE. The field floor, because § 3
+	 *    1.03:1 pair floor is a gate floor and not a human threshold, and this is
+	 *    a large plane beside another large plane. The twelve authored values
+	 *    measure 2.18-2.28, inside the 2.0-2.5 band the role's own doc gives;
+	 *    the band's top is not free either, because of the second fact.
+	 * 2. That it is not the same ground as the two it is drawn against. The rows
+	 *    it marks carry `hover:bg-elevated`, so a hovered row has to stay
+	 *    visibly different from the current one (worst pair: obsidian, 2.52); and
+	 *    the panel's wells are `sunken`, which is the role this one replaced and
+	 *    must not collapse onto (worst pair: iceberg, 2.15 — the tightest reading
+	 *    in the set, which is why the light palettes enter the band at its bottom
+	 *    rather than its middle).
+	 *
+	 * The ink floors on it are the other half, and they are what makes "one ink
+	 * for every cap" a claim this file holds up rather than a preference: the
+	 * caps inside a current row are `ink-muted`, and their ground changes when the
+	 * row becomes the current one.
+	 */
+	for (const other of ["surface", "elevated", "sunken"]) {
+		if (!isHex(p.highlight) || !isHex(p[other])) continue;
+		assertions++;
+		const got = deltaE(p.highlight, p[other]);
+		if (got < FIELD_SEPARATION_FLOOR) {
+			fail(
+				`${id}: \`highlight\` ${p.highlight} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]} (need ${FIELD_SEPARATION_FLOOR}) — the current row's ground must be a step the eye can see, and never the same plane as the surface it marks, the hover step above it, or the well below it`,
+			);
+		}
+	}
+	for (const [inkRole, floor] of INKS) {
+		assertPair(
+			id,
+			p,
+			inkRole,
+			"highlight",
+			floor,
+			"body ink on the selection ground",
+		);
 	}
 
 	/* Structural borders. */

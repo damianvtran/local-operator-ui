@@ -44,7 +44,7 @@ graph LR
 ```
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
-  truth. Twelve `ThemePalette` objects, 29 roles each, every value a literal
+  truth. Twelve `ThemePalette` objects, 31 roles each, every value a literal
   string.
 - **MUI** consumes them as hex, because roughly 299 `alpha()` call sites need a
   real colour and cannot take a `var()`. This half shrinks as the port
@@ -78,6 +78,22 @@ A component never names a colour. It names a role — `bg-surface`,
 `canvas` (page) → `surface` (cards, panels, inputs) → `elevated` (menus,
 popovers, tooltips, hovered rows), plus `sunken` (wells, tracks, code grounds)
 recessed below canvas.
+
+There is a fifth ground role that is **not** a rung on that ladder: `highlight`,
+the ground of a row the reader is currently ON. It is a *shallow* step off
+`surface` in the direction the mode runs — darker on light themes, lighter on dark
+ones — authored to land at **ΔE00 2.0–2.5 from `surface`** (the twelve palettes
+measure 2.18–2.28). A selection is a mark on a panel, not a hole in it: `sunken`
+is always recessed and measures 3.75–14.94 from `surface`, which is a dark box
+rather than a highlight, and it is the role ~50 call sites depend on being deep.
+
+`highlight` is not in `check-themes`' `GROUNDS` list, because that list is the set
+a control is drawn on one of at a time and every ink and structural border is
+measured against all of it; a current row still sits INSIDE a `surface` panel. The
+contract asserts what the row actually depends on instead: `highlight` against
+`surface`, `elevated` and `sunken` at the field floor of ΔE00 2.0 (so the row is
+visible, is not confused with the pointer's own hover step, and is not the well
+below it), and `ink` / `ink-muted` / `ink-dim` on it at their usual floors.
 
 **Elevation is a lightness step, not a shadow.** There is exactly one shadow in
 the system and it belongs only to objects that leave the flow: menu, dialog,
@@ -148,6 +164,8 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `on-accent` on the accent fill | 4.5:1 |
 | `border-control` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
+| `highlight` against `surface`, `elevated` and `sunken` | ΔE00 2.0 |
+| `ink` / `ink-muted` / `ink-dim` on `highlight` | 7:1 / 4.5:1 / 4.5:1 |
 | Component triples: ink on its own fill | 4.5:1 |
 | Component triples: edge (fill **or** border) against the ground behind | 3:1 |
 
