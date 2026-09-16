@@ -71,7 +71,7 @@ const PROBE = `
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, scopeKey, tabsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 
@@ -106,6 +106,7 @@ const PROBE = `
 		reconcileResolved,
 		remainingLabel,
 		requestsInScope,
+		scopeKey,
 		tabsInScope,
 		waitingOrdinals,
 		RESOLVED_KEEP,
@@ -195,6 +196,7 @@ const {
 	reconcileResolved,
 	remainingLabel,
 	requestsInScope,
+	scopeKey,
 	tabsInScope,
 	waitingOrdinals,
 	RESOLVED_KEEP,
@@ -1958,6 +1960,22 @@ test("a conversation's requests are the ones its agent asked for, and matching a
 		requestsInScope(requests, { sessionId: "carol" }),
 		[],
 		"a conversation with no requests of its own sees an empty tray, not everyone else's",
+	);
+});
+
+test("a scope's KEY is its value, so a host cannot trip the surface's identity memos", () => {
+	// The regression this pins was real: everything downstream of the scope keys on
+	// its IDENTITY (the tab and request memos, and the queue model's effects, one of
+	// which publishes the clock and so re-renders the surface). A host that rebuilds
+	// its scope object per render therefore re-ran the model's effect on every
+	// render, published the clock, and rendered again — a loop on a surface that
+	// still paints. The surface keys on the VALUE now, and this is the value.
+	assert.equal(scopeKey("all"), "all");
+	assert.equal(scopeKey({ sessionId: "session-1f4c" }), "session-1f4c");
+	assert.equal(
+		scopeKey({ sessionId: "session-1f4c" }),
+		scopeKey({ sessionId: "session-1f4c" }),
+		"two objects with one value are one key, which is the whole point",
 	);
 });
 

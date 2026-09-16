@@ -93,6 +93,28 @@ export interface ApprovalTabInput {
  */
 export type SurfaceScope = "all" | { sessionId: string };
 
+/**
+ * The scope's identity as a PRIMITIVE.
+ *
+ * WHY A SCOPE NEEDS A KEY AT ALL, and it is a defect this fixed rather than a
+ * convenience: everything that consumes a scope keys on its IDENTITY — the
+ * surface's tab and request memos, and the queue model's effects, one of which
+ * publishes the shared clock and so re-renders the surface. A host that builds its
+ * scope object inside its render body (the pane does: `{ sessionId }`) hands down a
+ * new object every render, so a memo keyed on the object recomputes every render,
+ * the model's effect re-runs, the clock publishes, and the surface re-renders — a
+ * loop whose period is the microsecond it takes to run, on a surface that still
+ * paints and therefore looks perfectly fine in a frame.
+ *
+ * So the value — `"all"`, or the session id, both strings — is what the surface
+ * keys on, and the object is rebuilt from it inside the surface rather than trusted
+ * from the caller. A host cannot trip it, which is the right place for that
+ * guarantee: this model owns the rule.
+ */
+export function scopeKey(scope: SurfaceScope): string {
+	return scope === "all" ? "all" : scope.sessionId;
+}
+
 /** One live request, numbered and timed, as every surface renders it. */
 export interface ApprovalRow {
 	request: ApprovalRequestInput;

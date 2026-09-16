@@ -279,11 +279,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * offset a 16px badge sat across the Globe's own corner — two glyphs on top of
 							 * each other, which is the one thing a badge must not be (measured in the first
 							 * capture of `docs/evidence/browser-pane/trigger-*`). So the offset is OUTWARD,
-								 * far enough for the badge's box to clear the 16px glyph's box, and
-								 * `ring-canvas` still names the ground behind it so it reads as an object
-									* sitting on the corner rather than a notch cut out of the control.
-								 */}
-								{browserAttentionCount > 0 && (
+							 * far enough for the badge's box to clear the 16px glyph's box, and
+							 * `ring-canvas` still names the ground behind it so it reads as an object
+							 * sitting on the corner rather than a notch cut out of the control.
+							 */}
+							{browserAttentionCount > 0 && (
 								<span
 									className={cn("pointer-events-none absolute -top-2 -right-2")}
 								>
