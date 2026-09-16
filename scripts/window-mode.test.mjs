@@ -92,7 +92,8 @@ const devDriver = await import(
 		).outputFiles[0].text,
 	).toString("base64")}`
 );
-const { DEV_DRIVER_ENV, DEV_DRIVER_OUT_ENV, resolveDevDriverArming } = devDriver;
+const { DEV_DRIVER_ENV, DEV_DRIVER_OUT_ENV, resolveDevDriverArming } =
+	devDriver;
 
 const plan = (input) => resolveWindowLaunchPlan(input);
 
@@ -384,7 +385,8 @@ test("a caller that cannot say whether it is packaged stays on the historical no
 	// `packaged` is optional, and only an explicit `false` takes part: a caller
 	// that says nothing must keep the behaviour it had before this rule existed.
 	assert.equal(
-		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined, platform: "darwin" }).mode,
+		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined, platform: "darwin" })
+			.mode,
 		"normal",
 	);
 });
@@ -395,7 +397,11 @@ test("a named mode still wins on a launch with no terminal", () => {
 	for (const mode of ["normal", "inactive", "headless"]) {
 		const resolved = plan({ ...DRIVEN, argv: [`--window-mode=${mode}`] });
 		assert.equal(resolved.mode, mode);
-		assert.equal(resolved.assumed, null, `${mode} from the flag is not assumed`);
+		assert.equal(
+			resolved.assumed,
+			null,
+			`${mode} from the flag is not assumed`,
+		);
 	}
 });
 
@@ -468,14 +474,20 @@ test("the dev driver arms on the plan a driven launch resolves", () => {
 	const driven = plan(DRIVEN);
 	assert.equal(driven.mode, "headless");
 	const arming = resolveDevDriverArming({
-		env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames" },
+		env: {
+			[DEV_DRIVER_ENV]: "1",
+			[DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames",
+		},
 		windowMode: driven.mode,
 	});
 	assert.equal(arming.armed, true);
 	// And the same opt-in in the operator's own window is still refused, so the
 	// composition did not widen who may arm.
 	const person = resolveDevDriverArming({
-		env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames" },
+		env: {
+			[DEV_DRIVER_ENV]: "1",
+			[DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames",
+		},
 		windowMode: "normal",
 	});
 	assert.equal(person.armed, false);
