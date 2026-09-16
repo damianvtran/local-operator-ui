@@ -1,12 +1,12 @@
 {
-  "head": "559327ecff583537f817ba1421eacc77f0edc2b6",
+  "head": "2c7ee67483484a27c9b2c72e10b6658e2910b325",
   "headNote": "RE-DERIVED FOR THIS CHANGE, AND RE-DERIVED AGAIN BY ITS REBASE ONTO `main`, where the frames were RE-TAKEN rather than re-stamped. `srcTree`, `scriptsTree`, `frames` and `surfaces` describe the tree these frames ship in, read from that tree rather than carried forward: the rebase moved `scripts/` (main's evidence passes add rows to the sweep and the driver, and this round adds the `key cap ink step` pin) and `src/`. On the rebased tree the swept count is 3,739 = main's 3,703 plus this branch's 36, and `surfaces` is 468 = main's 465 plus this change's three directories; both were re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried from either side. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src` / `HEAD:scripts` for the commit that carries the evidence, which is the commit this field names. The re-capture that re-derived them is measured in `partialCapture.rebaseMeasurement`: nothing main landed invalidates these frames, and the numbers say what each of the ten frames that moved actually moved by.",
-  "srcTree": "4e8455f187fee01f71bf5fbf85d8b87b351d7f0c",
-  "scriptsTree": "34c16e69a140d87034ea9e72c4440b599c2f3a44",
+  "srcTree": "a559a7dcc2bb8ef978ac8842ae137403f2b43f71",
+  "scriptsTree": "63399dfe28139c69727cfe88e9cbee29c595f0c9",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3739,
-  "surfaces": 468,
+  "frames": 3835,
+  "surfaces": 476,
   "themes": 12,
   "countsMean": {
     "frames": "RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
@@ -15,9 +15,9 @@
   },
   "partialCapture": {
     "refreshedAt": "2026-09-16T16:59:36.522Z",
-    "refreshedAtHead": "559327ecff583537f817ba1421eacc77f0edc2b6",
+    "refreshedAtHead": "2c7ee67483484a27c9b2c72e10b6658e2910b325",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 96,
+    "refreshedFrames": 400,
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
       "chat-sidebar-current-row--new-chat-row-current",
@@ -25,22 +25,17 @@
       "command-palette-commandpalette--filtered",
       "command-palette-commandpalette--settings-scope",
       "command-palette-commandpalette--commands-scope",
-      "command-palette-commandpalette--no-results"
+      "command-palette-commandpalette--no-results",
+      "chat-slash-highlight--command-alone",
+      "chat-slash-highlight--disabled-and-placeholder",
+      "chat-slash-highlight--geometry",
+      "chat-slash-highlight--mid-sentence-token",
+      "chat-slash-highlight--prose-leading-command-word",
+      "chat-slash-highlight--start-name-instruction",
+      "chat-slash-highlight--unknown-word",
+      "chat-slash-highlight--unknown-word-picking"
     ],
-    "refreshedThemes": [
-      "localOperatorDark",
-      "localOperatorLight",
-      "dracula",
-      "dune",
-      "sage",
-      "monokai",
-      "tokyoNight",
-      "iceberg",
-      "radient",
-      "neon",
-      "obsidian",
-      "synth"
-    ],
+    "refreshedThemes": 12,
     "addedFrames": 36,
     "addedSurfaces": [
       "chat-sidebar-current-row/selected-row",
@@ -48,7 +43,7 @@
       "chat-sidebar-current-row/selected-row-neighbour-hovered"
     ],
     "addedAt": "2026-09-16T16:59:36.522Z",
-    "addedAtHead": "559327ecff583537f817ba1421eacc77f0edc2b6",
+    "addedAtHead": "2c7ee67483484a27c9b2c72e10b6658e2910b325",
     "note": "THE CAPS AND THE HIGHLIGHT (this change), on top of the record below: the current row's ground became the new `highlight` role, the row gained the settings rail's `font-medium` second signal, and every key cap lost its fill - which is visible on two surfaces and one rail. 60 frames were REWRITTEN in `command-palette-commandpalette/` (all five of its stories draw the legend bar whose keys changed) and 36 in `chat-sidebar-current-row/`: the set's two states plus the 12 ADDED `selected-row-neighbour-hovered/` frames that photograph the pointer's mark beside the selection's, so design D1 / QA Q-2's measurement is a committed frame rather than a one-off. `refreshedFromHead` names this pass's own first commit rather than the branch's base, which is what makes `refreshedFrames` the pass's increment and not the branch's whole diff against main: the guard measures 96 rewritten frames over these seven directories and nothing else. The two baseline sets this change declares hold the same stories rendered by an unmodified tree; a declared set is exactly a frame the sweep does not answer for, so their 84 frames are excluded from both terms here and from `frames` above.",
     "refreshedAtHeadNote": "Re-pointed at the tree this capture ran on - `559327ecf`, the rebased head whose `src/` and `scripts/` trees are the ones stamped below - because a rebase rewrote the spelling the capturer stamped, and the frames were RE-TAKEN at it rather than re-stamped. See `rebaseNote`.",
     "keycapsPass": "This change's own increment, recorded beside the accumulated fields above rather than in place of them: 60 frames REWRITTEN in `command-palette-commandpalette/` (all five stories draw the legend bar whose keys changed) and 36 frames in `chat-sidebar-current-row/` (the set's two states and the 12 the round-1 hover entry added). The two baseline sets this change declares hold 84 frames of the same stories rendered by unmodified `origin/main`; they are declared, and a declared set is exactly a frame the sweep does not answer for. On the rebased tree the swept total is main's 3,703 plus these 36 = `frames` 3,739, and `surfaces` is main's 465 plus this change's three directories = 468.",
@@ -1427,8 +1422,8 @@
       "recapturedAt": "2026-09-16",
       "recaptureNote": "Re-shot because the composer band in the previous frames was the #228 band the tree had retired (design review's convergence round, D1). The rig was a copy of scripts/renderer-driver.mjs with one extra scene, driving the built app headless against the isolated daemon on 8801 with real CLI-armed wakes.",
       "source": "the built app, headless, against an isolated daemon with real wakes armed by the real CLI, photographed through the app's own capturePage(); the press is the driver's hit-tested press on the chip's selector, the focus a real Shift+Tab through CDP's input pipeline",
-      "why": "The WebP-only sweep counts zero frames in this directory: `frames(dir)` in `scripts/check-evidence.mjs` counts `.webp`, and this set's seven frames are `.png` \u2014 they were photographed through the app's own `capturePage()`, which writes PNG. The set is declared so the directory is excluded from the sweep count and the frames stay reachable for a reader, and the frame count is stated as the counter measures it rather than as a second, differently-computed number beside it. The same convention is used by the other PNG-only set in this manifest (`draft-pick-live`).",
-      "capturedAt": "2026-09-16 (the `recapturedAt` of this entry, the pass that produced these PNGs; the earlier frames in this set were taken before that and are not in the tree)",
+      "why": "The WebP-only sweep counts zero frames in this directory: `frames(dir)` in `scripts/check-evidence.mjs` counts `.webp`, and this set's seven frames are `.png`, photographed through the app's own `capturePage()`. The set is declared so the directory is excluded from the sweep and the frames stay reachable; the count is stated as the counter measures it \u2014 the convention the other PNG-only set (`draft-pick-live`) uses.",
+      "capturedAt": "2026-09-16 (this entry's own `recapturedAt`, the pass that produced these PNGs)",
       "pngArtifacts": [
         "live-wake-chip-absent.png",
         "live-wake-chip-focused.png",
