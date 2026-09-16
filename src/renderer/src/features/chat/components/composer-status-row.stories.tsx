@@ -582,6 +582,90 @@ export const ActivityChips: Story = {
 };
 
 /**
+ * A MIXED open set: fifteen children at work and twenty-five parked behind them.
+ *
+ * This is the ORDINARY shape of a large delegation rather than an edge —
+ * `DEFAULT_MAX_RUNNING_JOBS = 15` (`harness/jobs.py:36`) is the pool subagents and
+ * backgrounded shells share — and it is the state design review round 2's D6 was
+ * found in: with the count taken over every open row and the word taken from the
+ * busiest one, the chip read `40 subagents running` while the pane's own tally two
+ * inches away read `15 running · 25 queued · 17 interrupted · 5 done`. The wire
+ * shape here is that snapshot: 15 `running`, 25 `queued`, 17 settled rows of two
+ * kinds (which the gate must NOT count) and 5 children that finished.
+ */
+const FAN_OUT = detailsWith([
+	...Array.from({ length: 15 }, (_, i) =>
+		wireJob(`run-${i}`, "task", "running", `Child ${i}`),
+	),
+	...Array.from({ length: 25 }, (_, i) =>
+		wireJob(`queue-${i}`, "task", "running", `Child ${15 + i}`, true),
+	),
+	...Array.from({ length: 17 }, (_, i) =>
+		wireJob(`stop-${i}`, "task", "interrupted", `Child ${40 + i}`),
+	),
+	...Array.from({ length: 5 }, (_, i) =>
+		wireJob(`done-${i}`, "task", "done", `Child ${57 + i}`),
+	),
+]);
+
+/** The same rule through the jobs list: one parked tool row beside two live ones. */
+const MIXED_JOBS = detailsWith([
+	wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+	wireJob("s2", "bash", "running", "bash: pnpm build"),
+	wireJob("s3", "bash", "running", "bash: pnpm test", true),
+]);
+
+/** The control: a uniform set, where the state word is still the right one. */
+const UNIFORM_QUEUED = detailsWith([
+	...Array.from({ length: 25 }, (_, i) =>
+		wireJob(`queue-${i}`, "task", "running", `Child ${i}`, true),
+	),
+]);
+
+/**
+ * A mixed open set, and the uniform control beside it.
+ *
+ * Design review round 2's D6, in one story: the count is every open row and the
+ * WORD has to survive that, so a mixed set states the family's word
+ * (`40 subagents open`) and a uniform one keeps the state's (`25 subagents
+ * queued`). The busiest state does not vanish — it is in the chip's accessible
+ * name and tooltip, which is the only reading assistive tech gets, because the
+ * mark is `aria-hidden` by the roster's contract.
+ *
+ * Each band prints its own numbers (`RowFacts`), because the claim is about what
+ * that sentence does to the row: the mixed wording is NARROWER than the state word
+ * it replaces (`40 subagents open` against `40 subagents running`), so it cannot
+ * cost the row a line, and the frame is what says so.
+ */
+export const ActivityMixed: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="Forty open, fifteen of them running: the chip states the total with the family's word"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={FAN_OUT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="The same rule on the jobs list: two live tool rows beside a parked one"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={MIXED_JOBS}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="The control — a uniform set, where the state word is still the right one"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={UNIFORM_QUEUED}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
  * The stacked arrangement at the 240px boundary: the row's edges where they
  * actually differ, and where three chips once tore away from the goal.
  *
@@ -655,6 +739,22 @@ export const ActivityWidths: Story = {
 				<Band
 					width={900}
 					label="900: goal, plan, subagents and jobs on one line (the app's own column width)"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={460}
+					label="460: the goal takes its own line, and all three count chips still share the next"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={300}
+					label="300: the plan and subagents chips share a line, the jobs chip drops below"
 					frontend={frontend(SHORT_GOAL)}
 					runDetails={BOTH_ACTIVITY}
 				/>

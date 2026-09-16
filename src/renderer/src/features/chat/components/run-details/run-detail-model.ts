@@ -744,6 +744,22 @@ export function activityMark(
 export type ActivityTally = {
 	count: number;
 	mark: OpenChildStatus;
+	/**
+	 * How many of the open rows are in `mark`'s own state.
+	 *
+	 * Carried because `count` alone cannot say whether the set is UNIFORM, and the
+	 * sentence needs to: `mark` is the busiest state (`activityMark`'s ladder), so
+	 * with `DEFAULT_MAX_RUNNING_JOBS = 15` (`harness/jobs.py:36`) any fan-out above
+	 * fifteen children spends most of its life with rows parked behind the running
+	 * ones, and a clause that puts the busiest state's word beside the OPEN total
+	 * then claims work that is not happening (design round 2, D6: the chip read
+	 * `40 subagents running` while the pane two inches away read `15 running ·
+	 * 25 queued · 17 interrupted · 5 done`).
+	 *
+	 * `markCount === count` is the uniform case and the only one that may use the
+	 * state word; `markCount < count` is the mixed case, whose word is the family's.
+	 */
+	markCount: number;
 };
 
 export function activityTally(
@@ -751,7 +767,12 @@ export function activityTally(
 ): ActivityTally | null {
 	const open = rows.filter(isOpenRow);
 	const mark = activityMark(rows);
-	return mark === null ? null : { count: open.length, mark };
+	if (mark === null) return null;
+	return {
+		count: open.length,
+		mark,
+		markCount: open.filter((row) => row.status === mark).length,
+	};
 }
 
 /* ------------------------------------------------------------------ */
@@ -2669,8 +2690,37 @@ const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
  * It takes the TALLY and not a count (see `activityTally`): the state in the
  * sentence IS the state of the mark, because there is no other way to call it.
  */
+/**
+ * The word a clause uses for the set: the STATE's word when every open row is in
+ * that state, the FAMILY's word when they are not.
+ *
+ * `open` is the model's own vocabulary (`openChildren`, `openJobs`,
+ * `OPEN_CHILD_STATUSES`), and it is the word the plan chip one slot to the left
+ * already teaches (`1 to-do open`). It is true of all three open states by
+ * construction, so the mixed case cannot drift back into a claim the rows deny
+ * (design round 2, D6). It is also NARROWER than the state word it replaces, so it
+ * cannot cost the row a line.
+ */
+const tallyWord = (tally: ActivityTally): string =>
+	tally.markCount === tally.count ? stateWord(tally.mark) : "open";
+
+/**
+ * The busiest state, for the strings that have room for it: the chip's accessible
+ * name and its tooltip, one line above it in the same column.
+ *
+ * The ON-SURFACE text stays the narrow one, and the mark itself is `aria-hidden`
+ * by the roster's contract — so without this the only reading a screen reader gets
+ * of a mixed set would be the family word, which names the count and not the work
+ * that is running. It is the same derivation over the same tally as the clause, so
+ * the two strings cannot state different numbers.
+ */
+export const busiestClause = (tally: ActivityTally): string =>
+	tally.markCount === tally.count
+		? ""
+		: `, ${tally.markCount} ${stateWord(tally.mark)}`;
+
 export const childClause = (tally: ActivityTally): string =>
-	`${plural(tally.count, "subagent")} ${stateWord(tally.mark)}`;
+	`${plural(tally.count, "subagent")} ${tallyWord(tally)}`;
 
 /**
  * The tool-job clause: `1 job running`, `3 jobs running`.
@@ -2689,7 +2739,7 @@ export const childClause = (tally: ActivityTally): string =>
  * avoid. If a future `JobType` can be parked, the clause already says so.
  */
 export const jobClause = (tally: ActivityTally): string =>
-	`${plural(tally.count, "job")} ${stateWord(tally.mark)}`;
+	`${plural(tally.count, "job")} ${tallyWord(tally)}`;
 
 /**
  * The two counts that decide the plan's clause: how much is still open, and how
@@ -2865,7 +2915,7 @@ export function runDetailTriggerLabel(
 	 * Guarded on `openTodos`, so the trigger's name is UNCHANGED by the settled
 	 * spellings above: the trigger answers "is anything asking for something right
 	 * now?" (`hasRunDetails`' own rule, a few hundred lines up), and a settled
-	 * plan is not asking for anything - its outcome is the composer chip's to
+	 * plan is not asking for anything — its outcome is the composer chip's to
 	 * state. Passing the whole `details` is what keeps the two surfaces one
 	 * spelling if that ever changes; keeping the guard is the choice to leave
 	 * this path exactly as it was.

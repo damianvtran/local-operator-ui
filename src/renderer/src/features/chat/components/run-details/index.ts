@@ -12,6 +12,7 @@ export {
 	acknowledgeMcpWhileShown,
 	acknowledgeWhileOpen,
 	BRIEF_PREVIEW_LINES,
+	busiestClause,
 	childClause,
 	childStateLabel,
 	deriveMcpServers,
