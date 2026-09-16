@@ -195,45 +195,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		element?.scrollIntoView({ block: "nearest", inline: "nearest" });
 	}, [activeTabId]);
 
-	/*
-	 * WHETHER THE STRIP CONTINUES PAST ITS RIGHT EDGE, and the same shape the
-	 * canvas's own strip uses for the same problem (`canvas-tabs.tsx`): one
-	 * boolean, recomputed on scroll and on resize, drawn as a mask on the row's
-	 * last 24px. It is a promise that there is more to see, which is the half a
-	 * scrolling row cannot make for itself - macOS draws no scrollbar until the
-	 * user scrolls, and a mouse user has no horizontal wheel at all.
-	 *
-	 * WHY IT TRACKS THE SCROLL POSITION RATHER THAN THE OVERFLOW: drawn from
-	 * `scrollWidth > clientWidth` alone, it ghosts the last tab of a row that has
-	 * been scrolled to its end - the row does continue, just not that way. The
-	 * pinned `All tabs` control beside it is what makes any tab reachable; this is
-	 * only the signal.
-	 */
-	const [hasMoreRight, setHasMoreRight] = useState(false);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when `tabs` changes even though the body never reads it.
-	useEffect(() => {
-		const strip = scrollerRef.current;
-		if (!strip) return;
-
-		const measure = () => {
-			// 1px: `scrollWidth` and `clientWidth` are rounded independently, so a
-			// fully scrolled strip lands a fraction short of equal.
-			setHasMoreRight(
-				strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 1,
-			);
-		};
-
-		measure();
-		strip.addEventListener("scroll", measure, { passive: true });
-		const observer = new ResizeObserver(measure);
-		observer.observe(strip);
-
-		return () => {
-			strip.removeEventListener("scroll", measure);
-			observer.disconnect();
-		};
-	}, [tabs]);
-
 	return (
 		<div
 			// `border-control`, not `hairline`: this is the strip's only boundary
@@ -246,7 +207,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		>
 			{/* `pt-1` and no bottom padding: the tabs sit flush on the strip's own
 			    rule, which is what lets the active tab interrupt it. */}
-			<div className={cn("flex h-9 items-stretch gap-0 px-2 pt-1")}>
+			<div className={cn("flex items-stretch gap-0 px-2 pt-1")}>
 				<div
 					ref={scrollerRef}
 					// `-mb-px` extends the scroll container's clip box 1px down, over the
@@ -259,11 +220,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					// calibrated on the route's 1240px is what hid a whole tab there.
 					className={cn(
 						"@container/strip flex min-w-0 grow items-stretch overflow-x-auto overflow-y-hidden -mb-px",
-						// Native scrollbars steal height from a strip and appear only on
-						// some platforms; the mask below is what says the row continues.
-						"[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-						hasMoreRight &&
-							"[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]",
 					)}
 				>
 					{tabs.map((tab, index) => {

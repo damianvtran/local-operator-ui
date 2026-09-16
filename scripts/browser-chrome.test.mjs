@@ -1471,34 +1471,26 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
 	const refresh = source.slice(
-		source.indexOf("async function readProjection"),
+		source.indexOf("export function useBrowserProjection"),
 		source.indexOf("export function useBrowserChrome"),
 	);
 	assert.ok(
-		/api\.state\(\)[\s\S]*?publishProjection\(\{ state: next, readError: null \}\)/.test(
-			refresh,
-		),
+		refresh.includes("setReadError(null)"),
 		"a successful state read clears the READ error only",
-	);
-	assert.ok(
-		/projectionSnapshot, readError: messageOf\(caught\)/.test(refresh),
-		"and a failed one records it on the same slot, which is the only error it owns",
 	);
 	assert.ok(
 		!refresh.includes("setActionError"),
 		"and it cannot touch the action's own refusal",
 	);
-	// The slice's boundary moved with the read itself, twice now: the read and its
-	// error slot live in `readProjection` / the projection store it publishes to
-	// (review round 1, F5 made them one per window rather than one per hook), and
-	// `useBrowserChrome` composes the hook. The rule is unchanged, and it is still
-	// the SHIPPED source this reads.
+	// The slice's boundary moved with the read itself: `useBrowserProjection` owns
+	// the projection and its error slot, and `useBrowserChrome` composes it. The
+	// rule is unchanged, and it is still the SHIPPED source this reads.
 	assert.ok(
 		/setActionError\(null\);\s*clearReadError\(\);/.test(source),
 		"the explicit dismissal clears both, which is the only other way an action error goes away",
 	);
 	assert.ok(
-		/const clearReadError = useCallback\(\(\): void => \{\s*publishProjection\(\{ \.\.\.projectionSnapshot, readError: null \}\);\s*\}, \[\]\)/.test(
+		/const clearReadError = useCallback\(\(\): void => \{\s*setReadError\(null\);\s*\}, \[\]\)/.test(
 			source,
 		),
 		"and the slot it clears is the read's own, so the dismissal is not a second writer of the action's",
