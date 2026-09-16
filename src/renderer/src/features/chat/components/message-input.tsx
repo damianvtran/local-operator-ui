@@ -2740,6 +2740,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						frontend={sessionStatus?.frontend}
 						runDetails={runDetails}
 						isSmallView={isSmallView}
+						/*
+						 * The row's last activity chip unmounts when its work settles. If
+						 * that chip held focus the browser drops it to `<body>`, so the row
+						 * hands it back HERE rather than finding the box itself: this is
+						 * where the composer's own ref lives, and `textareaRef` is the same
+						 * node the field renders (`UX round 1, U1`).
+						 */
+						onFocusComposer={() => textareaRef.current?.focus()}
 					/>
 				</ErrorBoundary>
 				{(abandonNotice ||
