@@ -589,7 +589,6 @@ export const STORIES = [
 	 */
 	["chat-tool-rows--compacting-rung", 1280, 300],
 	["chat-tool-rows--compacting-settled", 1280, 300],
-	["chat-tool-rows--compacting-settled-unchanged", 1280, 300],
 	/* The third ending, and the one the dialog used to own: a pass that did
 	   NOT run. Added by the round that gave the refusal a row. */
 	["chat-tool-rows--compacting-refused", 1280, 300],

@@ -29,7 +29,11 @@ const sha256 = (text) => createHash("sha256").update(text).digest("hex");
 const DRIVER = 'export const shared = "one";\n';
 
 /** A temp repo root with a manifest, one vendored file and a protocol.ts. */
-function fixture({ protoVersion = 1, provenance, files = { "driver/x.ts": DRIVER } } = {}) {
+function fixture({
+	protoVersion = 1,
+	provenance,
+	files = { "driver/x.ts": DRIVER },
+} = {}) {
 	const root = mkdtempSync(join(tmpdir(), "lo-vendored-"));
 	const vendorDir = join(root, "src", "main", "browser", "vendor");
 	mkdirSync(join(vendorDir, "driver"), { recursive: true });
@@ -80,7 +84,10 @@ test("the repository's own vendored tree matches its manifest", () => {
 test("a hand-edited vendored file fails the gate", () => {
 	const root = fixture();
 	assert.deepEqual(check(root), []);
-	writeFileSync(join(root, "src/main/browser/vendor/driver/x.ts"), `${DRIVER}// a hand-edit\n`);
+	writeFileSync(
+		join(root, "src/main/browser/vendor/driver/x.ts"),
+		`${DRIVER}// a hand-edit\n`,
+	);
 	const problems = check(root);
 	assert.equal(problems.length, 1);
 	assert.match(problems[0], /driver\/x\.ts does not match its recorded sha256/);
@@ -100,7 +107,10 @@ test("a file nobody listed fails the gate", () => {
 		join(root, "src/main/browser/vendor/driver/sneaky.ts"),
 		"export const sneaky = 1;\n",
 	);
-	assert.match(check(root)[0], /driver\/sneaky\.ts is in vendor\/ but is not listed/);
+	assert.match(
+		check(root)[0],
+		/driver\/sneaky\.ts is in vendor\/ but is not listed/,
+	);
 	rmSync(root, { recursive: true, force: true });
 });
 
@@ -148,13 +158,19 @@ test("a manifest claiming an adaptation the file does not carry fails the gate",
 			],
 		},
 	});
-	assert.match(check(root)[0], /claims driver\/x\.ts carries 'configureInjected\(', which is not in the file/);
+	assert.match(
+		check(root)[0],
+		/claims driver\/x\.ts carries 'configureInjected\(', which is not in the file/,
+	);
 	rmSync(root, { recursive: true, force: true });
 });
 
 test("a missing manifest is reported rather than passed", () => {
 	const root = fixture();
 	rmSync(join(root, "src/main/browser/vendor", PROVENANCE_FILENAME));
-	assert.match(check(root)[0], /PROVENANCE\.json is missing: run scripts\/sync-vendored\.mjs/);
+	assert.match(
+		check(root)[0],
+		/PROVENANCE\.json is missing: run scripts\/sync-vendored\.mjs/,
+	);
 	rmSync(root, { recursive: true, force: true });
 });

@@ -42,6 +42,7 @@ import {
 	removeRecord,
 	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
+import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
 import { modelSelector } from "@features/chat/session-status/session-model";
 import {
 	desktopResult,
@@ -223,7 +224,19 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	retry: () => void;
 	/**
 	 * Read this session's history TAIL once, apply it, and say whether the page
-	 * carried a compaction outcome.
+	 * carried the outcome of the pass that STARTED at or after `since` (epoch ms).
+	 *
+	 * `since` is the pass's own instant, taken from the receipt that scheduled the
+	 * read, and it is what makes the read's answer about THAT pass: an unscoped
+	 * "the page carries a compaction row" reported success on any session the user
+	 * had compacted before, which skipped the schedule's own backstop exactly in
+	 * the repeat case it exists for (review round 3, R3-2/Q8).
+	 *
+	 * `epoch` is the view's epoch when the read was scheduled
+	 * (`TranscriptState.viewEpoch`). A `/clear` inside the window bumps it, and a
+	 * page that arrives afterwards is discarded rather than repainting rows the
+	 * user had just emptied — a scheduled read must not reverse an explicit
+	 * command (U11/Q7/R3-7).
 	 *
 	 * WHY THIS EXISTS AT ALL (UX round 2, U6 = QA round 2, Q2). A DECLINED
 	 * `/compact` leaves a durable `compaction_refused` row and emits NO events
@@ -243,7 +256,7 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * painted row) and deliberately not `retry` (that re-arms the stream as well,
 	 * which is a heavier repair than this question needs).
 	 */
-	refreshTail: () => Promise<boolean>;
+	refreshTail: (since: number, epoch: number) => Promise<boolean>;
 	/**
 	 * Whether an authoritative page for THIS session is still owed.
 	 *
@@ -1767,35 +1780,54 @@ export function useCanonicalSessionStream(
 	 * schedules would apply the same page twice, and a page resolving after the
 	 * reader moved on describes a transcript that is no longer on screen.
 	 */
-	const refreshTail = useCallback(async (): Promise<boolean> => {
-		if (!sessionId || refreshingTailRef.current) return false;
-		const requested = sessionId;
-		refreshingTailRef.current = true;
-		try {
-			const page = await desktopResult<DesktopHistoryPage>({
-				op: "sessions.history",
-				sessionId: requested,
-				limit: 100,
-			});
-			if (sessionRef.current !== requested) return false;
-			setView((current) => ({
-				...current,
-				transcript: applyHistoryPage(current.transcript, page),
-			}));
-			return page.entries.some(
-				(entry) =>
-					entry.type === "compaction" ||
-					(entry.type === "message" &&
-						entry.payload?.custom_type === "compaction_refused"),
-			);
-		} catch {
-			// The rows already painted are still correct; the next scheduled read is
-			// the retry, and there is no view state to unwind.
-			return false;
-		} finally {
-			refreshingTailRef.current = false;
-		}
-	}, [sessionId]);
+	const refreshTail = useCallback(
+		async (since: number, epoch: number): Promise<boolean> => {
+			if (!sessionId || refreshingTailRef.current) return false;
+			const requested = sessionId;
+			refreshingTailRef.current = true;
+			try {
+				const page = await desktopResult<DesktopHistoryPage>({
+					op: "sessions.history",
+					sessionId: requested,
+					limit: 100,
+				});
+				if (sessionRef.current !== requested) return false;
+				/*
+				 * The cleared-view guard, and it is the only reason this compares
+				 * epochs: a `/clear` is view-only, so nothing else would notice that the
+				 * view this read was scheduled for is gone — and the page it is holding
+				 * is the durable tail, i.e. exactly the rows `/clear` removed.
+				 */
+				if (viewRef.current.transcript.viewEpoch !== epoch) return false;
+				setView((current) => ({
+					...current,
+					/*
+					 * `keepPaging`: this is a TAIL read, so its `has_more` describes the
+					 * session rather than this reader's position — letting it through put
+					 * "load earlier" back on a fully-loaded transcript and resumed the
+					 * mentioned-files scan's paging (R3-5).
+					 */
+					transcript: applyHistoryPage(current.transcript, page, {
+						keepPaging: true,
+					}),
+				}));
+				/*
+				 * Scoped to THIS pass: an outcome written at or after the receipt that
+				 * scheduled the read. An older pass's row — any session's whose last 100
+				 * entries contain one — reports `false`, which is what keeps the second
+				 * scheduled read a real backstop.
+				 */
+				return tailCarriesOutcome(page.entries, since);
+			} catch {
+				// The rows already painted are still correct; the next scheduled read is
+				// the retry, and there is no view state to unwind.
+				return false;
+			} finally {
+				refreshingTailRef.current = false;
+			}
+		},
+		[sessionId],
+	);
 
 	// Registered for as long as this session is on screen, so the store's echo
 	// reaches the transcript the user is looking at. Registration is keyed by

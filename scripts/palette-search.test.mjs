@@ -240,7 +240,10 @@ test("the browse order is the constant the view renders from", () => {
 	const outcome = searchPalette({ items, raw: "" });
 	const rank = (group) => PALETTE_GROUP_ORDER.indexOf(group);
 	const ranks = groups(outcome).map(rank);
-	assert.deepEqual(ranks, [...ranks].sort((a, b) => a - b));
+	assert.deepEqual(
+		ranks,
+		[...ranks].sort((a, b) => a - b),
+	);
 });
 
 test("clipped means the list dropped rows, not that a cap was consulted", () => {
@@ -250,7 +253,11 @@ test("clipped means the list dropped rows, not that a cap was consulted", () => 
 	 * so a list that fitted exactly printed "showing the best 48 of 48".
 	 */
 	const fits = searchPalette({ items, raw: "" });
-	assert.equal(fits.clipped, false, `everything fits: ${names(fits).join(", ")}`);
+	assert.equal(
+		fits.clipped,
+		false,
+		`everything fits: ${names(fits).join(", ")}`,
+	);
 
 	/*
 	 * The exact fit itself: a scoped query whose two groups fill `TOTAL_CAP`
@@ -277,19 +284,25 @@ test("clipped means the list dropped rows, not that a cap was consulted", () => 
 	 * cap is twenty-four each.
 	 */
 	const exactly = searchPalette({
-		items: [
-			...buildNavigationItems(pages),
-			...buildActionItems(commands),
-		],
+		items: [...buildNavigationItems(pages), ...buildActionItems(commands)],
 		raw: ">retention",
 	});
 	assert.equal(names(exactly).length, TOTAL_CAP);
-	assert.equal(exactly.clipped, false, "nothing was dropped, so nothing is clipped");
+	assert.equal(
+		exactly.clipped,
+		false,
+		"nothing was dropped, so nothing is clipped",
+	);
 
 	// One row past the total is reported rather than silently missing.
 	const doubled = [
 		...pages,
-		{ id: "page-extra", name: "Retention page extra", path: "/page-x", icon: "chat" },
+		{
+			id: "page-extra",
+			name: "Retention page extra",
+			path: "/page-x",
+			icon: "chat",
+		},
 	];
 	const over = searchPalette({
 		items: [...buildNavigationItems(doubled), ...buildActionItems(commands)],
@@ -396,18 +409,18 @@ test("a scope narrows which sources answer at all", () => {
 test("aliases are how the app's vocabulary meets the user's", () => {
 	const outcome = searchPalette({ items, raw: "theme" });
 	/*
-		* "theme" is not a word anywhere in the settings rail, and the row it has to
-		* find is called Appearance. That is the whole job of the alias table: people
+	 * "theme" is not a word anywhere in the settings rail, and the row it has to
+	 * find is called Appearance. That is the whole job of the alias table: people
 	 * search with the words they use for the thing, not with the app's label for
 	 * it.
 	 */
-		assert.deepEqual(names(outcome), ["Appearance"]);
-			assert.ok(
+	assert.deepEqual(names(outcome), ["Appearance"]);
+	assert.ok(
 		names(searchPalette({ items, raw: "delete chat" })).includes(
 			"Clear conversation",
 		),
-		);
-			});
+	);
+});
 
 test("the registry's own spelling of a key finds its row", () => {
 	const outcome = searchPalette({ items, raw: "web_search" });
@@ -497,8 +510,12 @@ test("a group is capped, and a scoped query gives that group more room", () => {
 
 test("the whole list is bounded, whatever the query", () => {
 	const many = [
-		...Array.from({ length: 40 }, (_, index) => chat(`s${index}`, `Alpha ${index}`)),
-		...Array.from({ length: 40 }, (_, index) => chat(`t${index}`, `Alpha beta ${index}`)),
+		...Array.from({ length: 40 }, (_, index) =>
+			chat(`s${index}`, `Alpha ${index}`),
+		),
+		...Array.from({ length: 40 }, (_, index) =>
+			chat(`t${index}`, `Alpha beta ${index}`),
+		),
 	];
 	const outcome = searchPalette({ items: many, raw: "alpha" });
 	const rendered = outcome.sections.reduce(
@@ -511,7 +528,9 @@ test("the whole list is bounded, whatever the query", () => {
 });
 
 test("total counts what matched, not what was rendered", () => {
-	const many = Array.from({ length: 30 }, (_, index) => chat(`s${index}`, `Zeta ${index}`));
+	const many = Array.from({ length: 30 }, (_, index) =>
+		chat(`s${index}`, `Zeta ${index}`),
+	);
 	const outcome = searchPalette({ items: many, raw: "zeta" });
 	assert.equal(outcome.total, 30);
 	assert.equal(outcome.sections[0].items.length, 6);
@@ -533,12 +552,20 @@ test("a chat row opens its session and says which agent owns it", () => {
 });
 
 test("an untitled conversation still has a name", () => {
-	assert.equal(buildChatItem({ session_id: "abc", title: "  " }).name, "Untitled chat");
+	assert.equal(
+		buildChatItem({ session_id: "abc", title: "  " }).name,
+		"Untitled chat",
+	);
 });
 
 test("a registry row deep-links to its own key", () => {
 	const [row] = buildSettingKeyItems([
-		{ key: "web_search.enabled", label: "Web search", section: "Tools", help: "" },
+		{
+			key: "web_search.enabled",
+			label: "Web search",
+			section: "Tools",
+			help: "",
+		},
 	]);
 	assert.equal(row.target.type, "path");
 	assert.equal(row.target.path, "/settings?setting=web_search.enabled");
@@ -546,11 +573,15 @@ test("a registry row deep-links to its own key", () => {
 });
 
 test("a settings section deep-links to its own section", () => {
-	const [row] = buildSettingsSectionItems([{ id: "appearance", label: "Appearance" }]);
+	const [row] = buildSettingsSectionItems([
+		{ id: "appearance", label: "Appearance" },
+	]);
 	assert.equal(row.target.path, "/settings?section=appearance");
 	// The alias table is keyed by id, so an unknown section still renders and
 	// still matches on its own label.
-	const [unknown] = buildSettingsSectionItems([{ id: "brand-new", label: "Brand new" }]);
+	const [unknown] = buildSettingsSectionItems([
+		{ id: "brand-new", label: "Brand new" },
+	]);
 	assert.equal(unknown.name, "Brand new");
 	assert.equal(unknown.icon, "settings");
 });
@@ -612,6 +643,9 @@ test("panels answer to the command scope, so >usage finds one", () => {
 });
 
 test("a panel is found by what it shows, not only by its name", () => {
-	const outcome = searchPalette({ items: buildPanelItems(PANELS), raw: "credits" });
+	const outcome = searchPalette({
+		items: buildPanelItems(PANELS),
+		raw: "credits",
+	});
 	assert.deepEqual(names(outcome), ["Provider usage"]);
 });

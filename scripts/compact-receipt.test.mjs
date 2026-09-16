@@ -24,6 +24,7 @@ const {
 	COMPACT_TAIL_READ_DELAYS_MS,
 	isCompactStartNotice,
 	refreshCompactionOutcome,
+	tailCarriesOutcome,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -110,4 +111,91 @@ test("the tail re-read is bounded at two reads and stops when the outcome lands"
 	}, wait);
 	assert.equal(reads, 2);
 	assert.deepEqual(waited, [1500, 5000]);
+});
+
+test("the read's stop predicate is scoped to THIS pass", () => {
+	/*
+	 * Review round 3, R3-2 / Q8. Unscoped, the predicate reported success on any
+	 * session whose last hundred entries contain an earlier pass's row, so the
+	 * first read stopped the schedule and the second delay — the backstop — never
+	 * ran. QA measured the refusal landing at ~1.47 s against a 1500 ms first
+	 * read: the retry path this read exists for had a 30 ms margin and no second
+	 * chance.
+	 */
+	const NOW = 1_700_000_000_000;
+	const durable = (tsSeconds) => ({ ts: tsSeconds, type: "compaction" });
+	const refusal = (tsSeconds) => ({
+		ts: tsSeconds,
+		type: "message",
+		payload: { custom_type: "compaction_refused" },
+	});
+	// An EARLIER pass on the tail page — the case that used to look like success.
+	assert.equal(tailCarriesOutcome([durable(NOW / 1000 - 600)], NOW), false);
+	assert.equal(tailCarriesOutcome([refusal(NOW / 1000 - 600)], NOW), false);
+	// This pass's own outcome: the durable row, or the refusal that corrects the
+	// optimistic receipt. Both are at or after the receipt that scheduled the read.
+	assert.equal(tailCarriesOutcome([durable(NOW / 1000 + 2)], NOW), true);
+	assert.equal(tailCarriesOutcome([refusal(NOW / 1000 + 1.47)], NOW), true);
+	// Seconds on the wire, milliseconds in the comparison.
+	assert.equal(tailCarriesOutcome([durable(NOW / 1000)], NOW), true);
+	// Nothing relevant on the page.
+	assert.equal(tailCarriesOutcome([], NOW), false);
+	assert.equal(
+		tailCarriesOutcome([{ ts: NOW / 1000 + 5, type: "message" }], NOW),
+		false,
+	);
+});
+
+test("a repeat session still gets the backstop read", async () => {
+	/*
+	 * The end-to-end shape of R3-2, with the real predicate: a session the user has
+	 * compacted BEFORE, then a pass that declines. The first read finds only the
+	 * older pass's row and must NOT stop the schedule.
+	 */
+	const NOW = 1_700_000_000_000;
+	const olderPass = [{ ts: NOW / 1000 - 600, type: "compaction" }];
+	const waits = [];
+	const reads = [];
+	await refreshCompactionOutcome(
+		async () => {
+			reads.push(1);
+			// Read one: the tail page holds the OLD row only. Read two: this pass's row.
+			return tailCarriesOutcome(
+				reads.length === 1
+					? olderPass
+					: [{ ts: NOW / 1000 + 2, type: "compaction" }],
+				NOW,
+			);
+		},
+		(ms) => {
+			waits.push(ms);
+			return Promise.resolve();
+		},
+	);
+	assert.equal(reads.length, 2, "the 5 s backstop must actually run");
+	assert.deepEqual(waits, [1500, 5000]);
+});
+
+test("the read is wired to the scoped predicate, the paging guard and the view epoch", () => {
+	/*
+	 * The read lives in a React hook, so the predicate above is driven directly and
+	 * the wiring — which is where the round-3 findings were — is read from the two
+	 * files that own it. Neutering the predicate (returning a constant) or dropping
+	 * either guard re-fails this test, which is what the reviewer's mutation run
+	 * showed nothing did.
+	 */
+	const hook = readFileSync(
+		"src/renderer/src/shared/hooks/use-canonical-session.ts",
+		"utf8",
+	);
+	assert.match(hook, /tailCarriesOutcome\(page\.entries, since\)/);
+	assert.match(hook, /keepPaging: true/);
+	assert.match(hook, /transcript\.viewEpoch !== epoch/);
+	const dispatch = readFileSync(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+		"utf8",
+	);
+	assert.match(dispatch, /const since = Date\.now\(\)/);
+	assert.match(dispatch, /canonical\.transcript\.viewEpoch/);
+	assert.match(dispatch, /canonical\.refreshTail\(since, epoch\)/);
 });

@@ -556,12 +556,18 @@ test("writeup: neither template shape is annotated, never refused", () => {
 		neither.warnings[0],
 		/neither a `## What's New` heading nor a `Full Changelog` compare link/,
 	);
-	assert.deepEqual(releaseNotesVerdict("## What's New\n\nProse.\n").warnings, []);
+	assert.deepEqual(
+		releaseNotesVerdict("## What's New\n\nProse.\n").warnings,
+		[],
+	);
 	// The same heading in the other case, which is what six of this repository's
 	// own recent releases shipped (v0.23.1 through v0.24.0). The template spells it
 	// `## What's New`; the annotation is about whether a section exists, and letter
 	// case is not part of that shape.
-	assert.deepEqual(releaseNotesVerdict("## What's new\n\nProse.\n").warnings, []);
+	assert.deepEqual(
+		releaseNotesVerdict("## What's new\n\nProse.\n").warnings,
+		[],
+	);
 	assert.deepEqual(
 		releaseNotesVerdict(
 			"Prose.\n\n**Full Changelog**: https://github.com/x/y/compare/v0.14.0...v0.14.1\n",
@@ -1017,7 +1023,16 @@ function withCliFixture(run) {
 	}
 }
 
-function runStateCli(dir, { mode = "finalize", isManual, others = [], assets = COMPLETE, release = {} } = {}) {
+function runStateCli(
+	dir,
+	{
+		mode = "finalize",
+		isManual,
+		others = [],
+		assets = COMPLETE,
+		release = {},
+	} = {},
+) {
 	writeFileSync(
 		join(dir, "gh"),
 		`#!/usr/bin/env node

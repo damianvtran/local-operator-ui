@@ -1,16 +1,16 @@
 import "../../src/renderer/src/styles/index.css";
-import React, { useEffect, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ChatSessionStatus } from "@features/chat/components/chat-session-status";
 import { CanonicalTranscript } from "@features/chat/canonical/canonical-transcript";
 import {
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
 } from "@features/chat/canonical/transcript-reducer";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { ChatSessionStatus } from "@features/chat/components/chat-session-status";
 import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom-button";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 
 // Component/dev proof only: real transcript, receipt hook, status glyph and
 // hidden floating control, using the supported authenticated development proxy.
@@ -110,7 +110,18 @@ function Fixture() {
 				and database.
 			</p>
 			<div className="flex gap-4 py-4">
-				<span>Theme {["localOperatorLight", "localOperatorDark", "dracula"].map(t => <button className="border border-control px-2" key={t} onClick={() => setTheme(t)}>{t}</button>)}</span>
+				<span>
+					Theme{" "}
+					{["localOperatorLight", "localOperatorDark", "dracula"].map((t) => (
+						<button
+							className="border border-control px-2"
+							key={t}
+							onClick={() => setTheme(t)}
+						>
+							{t}
+						</button>
+					))}
+				</span>
 				<span>
 					Visibility{" "}
 					{["covered", "visible", "offscreen", "loading", "empty", "error"].map(

@@ -65,6 +65,7 @@ function transcriptWith(text: string): TranscriptState {
 		// every story here is a settled or answering state, never a compaction.
 		compacting: false,
 		compactingSince: 0,
+		viewEpoch: 0,
 		oldestId: null,
 		hasMore: false,
 		argsByCall: new Map(),

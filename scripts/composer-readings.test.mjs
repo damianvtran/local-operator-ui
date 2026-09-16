@@ -475,7 +475,11 @@ test("a draft whose resolution is still in flight says so instead of offering a 
 		/Choose a model/,
 		"a resolution that has not happened is not a resolution that named nothing",
 	);
-	assert.match(html, /Resolving the model/, "the pending reading is on the pane");
+	assert.match(
+		html,
+		/Resolving the model/,
+		"the pending reading is on the pane",
+	);
 	assert.match(
 		html,
 		/aria-label="Model: resolving the model this conversation will run on\."/,
@@ -547,7 +551,10 @@ test("the pane's resolution state is wired to the strip, not merely supported by
 		"a failed resolution carries the retry, which is the only route back",
 	);
 	assert.match(composer, /draftResolution={sessionStatus\.draftResolution}/);
-	assert.match(page, /frontend: null,\s*\n\s*draft: true,\s*\n\s*draftResolution,/);
+	assert.match(
+		page,
+		/frontend: null,\s*\n\s*draft: true,\s*\n\s*draftResolution,/,
+	);
 });
 
 test("a session with no snapshot is still silent, not pending", () => {

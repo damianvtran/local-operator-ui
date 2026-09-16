@@ -195,15 +195,12 @@ const bundle = await build({
 				 * the same one). Bundling the shipped module is what keeps these tests
 				 * honest about the reference accounting they exist to pin.
 				 */
-				builder.onResolve(
-					{ filter: /^@shared\/lib\/blob-url-cache$/ },
-					() => ({
-						path: resolve(
-							process.cwd(),
-							"src/renderer/src/shared/lib/blob-url-cache.ts",
-						),
-					}),
-				);
+				builder.onResolve({ filter: /^@shared\/lib\/blob-url-cache$/ }, () => ({
+					path: resolve(
+						process.cwd(),
+						"src/renderer/src/shared/lib/blob-url-cache.ts",
+					),
+				}));
 				builder.onLoad({ filter: /^react$/, namespace: "fixture" }, () => ({
 					contents:
 						"export const useState = (...a) => globalThis.__useState(...a);" +

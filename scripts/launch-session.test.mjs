@@ -168,12 +168,17 @@ test("the launch argument outranks the persisted conversation in the merge", () 
 	// after the store is created, and a merge that let the persisted value
 	// through would put the wrong conversation back for exactly as long as the
 	// renderer takes to correct itself - the flash B3 removes.
-	const current = { ...useCanonicalSessionsStore.getState(), activeSessionId: null };
+	const current = {
+		...useCanonicalSessionsStore.getState(),
+		activeSessionId: null,
+	};
 	const persisted = { activeSessionId: OTHER };
 	assert.equal(
-		withLaunchArgument(SESSION, () =>
-			mergePersistedSession(persisted, { ...current, activeSessionId: null })
-				.activeSessionId,
+		withLaunchArgument(
+			SESSION,
+			() =>
+				mergePersistedSession(persisted, { ...current, activeSessionId: null })
+					.activeSessionId,
 		),
 		SESSION,
 		"the launch id wins over the persisted one",
@@ -181,18 +186,22 @@ test("the launch argument outranks the persisted conversation in the merge", () 
 	// With no launch argument the persisted conversation is the user's own last
 	// position and stays untouched.
 	assert.equal(
-		withLaunchArgument(null, () =>
-			mergePersistedSession(persisted, current).activeSessionId,
+		withLaunchArgument(
+			null,
+			() => mergePersistedSession(persisted, current).activeSessionId,
 		),
 		OTHER,
 	);
 	// Everything else hydration restores still comes from storage: the override
 	// is one field, not a merge that discards the persisted state.
 	const restored = withLaunchArgument(SESSION, () =>
-		mergePersistedSession({ activeSessionId: OTHER, cwd: "/tmp/from-storage" }, {
-			...current,
-			cwd: "~",
-		}),
+		mergePersistedSession(
+			{ activeSessionId: OTHER, cwd: "/tmp/from-storage" },
+			{
+				...current,
+				cwd: "~",
+			},
+		),
 	);
 	assert.equal(restored.cwd, "/tmp/from-storage");
 	assert.equal(restored.activeSessionId, SESSION);
@@ -207,7 +216,6 @@ test("a windowless import reads as no launch argument rather than throwing", () 
 	assert.equal(useCanonicalSessionsStore.getState().activeSessionId, null);
 });
 
-
 test("readLaunchTarget resolves three intents, with the named one outranking the catalogue", () => {
 	// The bug this type exists to prevent was two intents sharing a VALUE, so the
 	// three are asserted as three distinct answers rather than as truthiness.
@@ -216,19 +224,27 @@ test("readLaunchTarget resolves three intents, with the named one outranking the
 		kind: "session",
 		sessionId: SESSION,
 	});
-	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG]), { kind: "catalogue" });
+	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG]), {
+		kind: "catalogue",
+	});
 	// Naming a conversation is the more specific instruction, so a launcher that
 	// passes both lands on the conversation rather than on the list.
-	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG, OPEN_SESSION_FLAG, SESSION]), {
-		kind: "session",
-		sessionId: SESSION,
-	});
+	assert.deepEqual(
+		readLaunchTarget([OPEN_CATALOGUE_FLAG, OPEN_SESSION_FLAG, SESSION]),
+		{
+			kind: "session",
+			sessionId: SESSION,
+		},
+	);
 	// A malformed id counts as ABSENT rather than as a session, and the catalogue
 	// flag beside it is then the surviving instruction - a bad launch degrades to
 	// the list rather than to a broken start.
-	assert.deepEqual(readLaunchTarget([OPEN_CATALOGUE_FLAG, OPEN_SESSION_FLAG, "nope"]), {
-		kind: "catalogue",
-	});
+	assert.deepEqual(
+		readLaunchTarget([OPEN_CATALOGUE_FLAG, OPEN_SESSION_FLAG, "nope"]),
+		{
+			kind: "catalogue",
+		},
+	);
 });
 
 test("a catalogue launch clears the persisted conversation instead of restoring it", () => {
@@ -244,19 +260,30 @@ test("a catalogue launch clears the persisted conversation instead of restoring 
 	 * original notifier test (which stops at a mocked `reopen(null)`) could not
 	 * detect it.
 	 */
-	const current = { ...useCanonicalSessionsStore.getState(), activeSessionId: null };
+	const current = {
+		...useCanonicalSessionsStore.getState(),
+		activeSessionId: null,
+	};
 	const persisted = { activeSessionId: OTHER };
 	assert.equal(
-		withLaunchArgument(null, () => mergePersistedSession(persisted, current).activeSessionId, {
-			catalogue: true,
-		}),
+		withLaunchArgument(
+			null,
+			() => mergePersistedSession(persisted, current).activeSessionId,
+			{
+				catalogue: true,
+			},
+		),
 		null,
 		"the catalogue intent did not survive hydration",
 	);
 	// ...and it is still ONE field: the rest of the persisted state comes through.
 	const restored = withLaunchArgument(
 		null,
-		() => mergePersistedSession({ activeSessionId: OTHER, cwd: "/tmp/from-storage" }, current),
+		() =>
+			mergePersistedSession(
+				{ activeSessionId: OTHER, cwd: "/tmp/from-storage" },
+				current,
+			),
 		{ catalogue: true },
 	);
 	assert.equal(restored.cwd, "/tmp/from-storage");
@@ -264,7 +291,10 @@ test("a catalogue launch clears the persisted conversation instead of restoring 
 	// conversation restored. Asserted beside the case above because the fix must
 	// not have turned every windowless launch into a catalogue landing.
 	assert.equal(
-		withLaunchArgument(null, () => mergePersistedSession(persisted, current).activeSessionId),
+		withLaunchArgument(
+			null,
+			() => mergePersistedSession(persisted, current).activeSessionId,
+		),
 		OTHER,
 	);
 	// A named conversation still outranks the persisted one, catalogue or not.
@@ -283,9 +313,13 @@ test("the initial render already reflects a catalogue launch", () => {
 	// value is the first frame a recreated window paints. For a catalogue launch
 	// that must be "no active session" rather than a stale persisted id.
 	assert.equal(
-		withLaunchArgument(null, () => useCanonicalSessionsStore.getState().activeSessionId, {
-			catalogue: true,
-		}),
+		withLaunchArgument(
+			null,
+			() => useCanonicalSessionsStore.getState().activeSessionId,
+			{
+				catalogue: true,
+			},
+		),
 		null,
 	);
 });

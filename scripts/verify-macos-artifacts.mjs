@@ -19,11 +19,25 @@ import { spawnSync } from "node:child_process";
  * Usage: node scripts/verify-macos-artifacts.mjs [--dist dist] [--app path] [--dmg path]
  * Exit: 0 when every check passes, 1 otherwise (including when an artifact is missing).
  */
-import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+	closeSync,
+	existsSync,
+	openSync,
+	readdirSync,
+	rmSync,
+	statSync,
+} from "node:fs";
 import { join } from "node:path";
-import { BYTECODE_TREE_NAMES, seedResourceDir } from "./bundled-python-layout.mjs";
+import {
+	BYTECODE_TREE_NAMES,
+	seedResourceDir,
+} from "./bundled-python-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
-import { finalContainerChecks, finalMetadataChecks, privatePythonSeedCheck } from "./python-artifact-layout.mjs";
+import {
+	finalContainerChecks,
+	finalMetadataChecks,
+	privatePythonSeedCheck,
+} from "./python-artifact-layout.mjs";
 
 const CODESIGN = "/usr/bin/codesign";
 const SPCTL = "/usr/sbin/spctl";
@@ -131,7 +145,9 @@ export function bundledPythonTrees(appPath, { listDir = readdirSync } = {}) {
 	if (!existsSync(resources)) return [];
 	let entries = [];
 	try {
-		entries = listDir(join(resources, "python-runtime-seed")).map((name) => `python-runtime-seed/${name}`);
+		entries = listDir(join(resources, "python-runtime-seed")).map(
+			(name) => `python-runtime-seed/${name}`,
+		);
 	} catch {
 		return [];
 	}
@@ -224,7 +240,8 @@ export function bundledPythonCheck(appPath, options = {}) {
 		passed: false,
 		output,
 	});
-	if (error != null) return fail(`${error}; cannot tell which interpreter this app needs`);
+	if (error != null)
+		return fail(`${error}; cannot tell which interpreter this app needs`);
 	if (archs.length !== 1)
 		return fail(
 			`the app is ${archs.join(" + ")} (not a single architecture); a fat bundle needs both interpreters, and mac.target builds one per architecture`,
@@ -381,7 +398,10 @@ export function discoverArtifacts(distDir, { listDir = readdirSync } = {}) {
 	}
 
 	for (const entry of entries) {
-		if (entry.endsWith(".zip")) { zips.push(join(distDir, entry)); continue; }
+		if (entry.endsWith(".zip")) {
+			zips.push(join(distDir, entry));
+			continue;
+		}
 		if (entry.endsWith(".dmg")) {
 			dmgs.push(join(distDir, entry));
 			continue;
@@ -480,7 +500,9 @@ export function verifyArtifacts({
 	const results = [];
 	const checkApp = (path, arch = null) => [
 		...runChecks({ appPath: path, dmgPath: null, run }),
-		bundledBytecodeCheck(path), bundledPythonCheck(path, { run, expectArch: arch }), privatePythonSeedCheck(path, { expectArch: arch }),
+		bundledBytecodeCheck(path),
+		bundledPythonCheck(path, { run, expectArch: arch }),
+		privatePythonSeedCheck(path, { expectArch: arch }),
 	];
 	for (const appPath of appPaths) {
 		if (!existsSync(appPath)) {
@@ -505,10 +527,19 @@ export function verifyArtifacts({
 		results.push(...runChecks({ appPath: null, dmgPath, run }));
 		results.push(...finalContainerChecks(dmgPath, { run, checkApp }));
 	}
-	for (const zip of discovered.zips ?? []) results.push(...finalContainerChecks(zip, { run, checkApp }));
+	for (const zip of discovered.zips ?? [])
+		results.push(...finalContainerChecks(zip, { run, checkApp }));
 	if (!app && !dmg) {
-		if (!(discovered.zips?.length)) results.push({ id: "final-zip-required", passed: false, description: "in-app update ZIP exists", output: "No ZIP found" });
-		results.push(...finalMetadataChecks(dist, [...dmgPaths, ...(discovered.zips ?? [])]));
+		if (!discovered.zips?.length)
+			results.push({
+				id: "final-zip-required",
+				passed: false,
+				description: "in-app update ZIP exists",
+				output: "No ZIP found",
+			});
+		results.push(
+			...finalMetadataChecks(dist, [...dmgPaths, ...(discovered.zips ?? [])]),
+		);
 	}
 
 	for (const result of results) {

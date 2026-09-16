@@ -538,7 +538,18 @@ export function useSlashDispatch({
 							 * already returned `consumed`, and the transcript is the only
 							 * thing this touches.
 							 */
-							void refreshCompactionOutcome(() => canonical.refreshTail());
+							/*
+							 * The pass's own instant, captured HERE rather than read
+							 * later: the schedule's answer has to be about the pass this
+							 * receipt started, and by the time a read lands the claim may
+							 * already be retired. The view's epoch rides along so a
+							 * `/clear` inside the window wins over the read (U11/Q7).
+							 */
+							const since = Date.now();
+							const epoch = canonical.transcript.viewEpoch;
+							void refreshCompactionOutcome(() =>
+								canonical.refreshTail(since, epoch),
+							);
 						} else if (result.text) {
 							note(
 								result.text,
