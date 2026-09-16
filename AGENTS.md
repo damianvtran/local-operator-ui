@@ -788,50 +788,84 @@ happened to export.
 
 ## The code-sealed bundle, and what may write in it
 
-Two mechanisms keep CPython's bytecode cache out of
-`Contents/Resources/python*`, and they are a pair: change one without reading the
-other's docstring (`src/main/python-bytecode-cache.ts`,
-`sealPythonInterpreterTrees` carries the measurements) and the bug they exist for
-comes back.
+Four mechanisms keep CPython's bytecode cache out of an installed app, and they
+are a set: read `src/main/python-bytecode-cache.ts` and the heal's own docstrings
+in `src/main/update-install.ts` before changing one, because each covers a case
+the others cannot and the bug they exist for comes back when one is dropped on
+the assumption that another already has it.
 
-1. Every spawn that can run the bundled interpreter is handed
-   `PYTHONPYCACHEPREFIX` pointing under the app's userData
-   (`withPythonBytecodeCache`, and the same default in the three shipped install
-   scripts). This is the half that keeps the cache *working*.
-2. On macOS the app also seals the trees themselves at launch, with an
-   access-control entry that denies `add_file`/`add_subdirectory` on every
-   directory and `write`/`append` on existing `.pyc`. That is the half no spawner
-   can evade, and it is needed because the app does not spawn every python that
-   runs this interpreter: the venv's own `python` resolves its stdlib to the
-   bundled tree, and a python started by anything else - a shell, a CLI script,
-   launchd, an agent - carries no `PYTHONPYCACHEPREFIX` at all (measured: a venv
+1. Every python the app spawns is handed `PYTHONPYCACHEPREFIX` pointing under the
+   app's userData, with `PYTHONDONTWRITEBYTECODE=1` beside it
+   (`withPythonBytecodeCache`, and the same defaults in the three shipped install
+   scripts). The prefix is the half that keeps the cache *working* and the flag is
+   the refusal. An operator's own prefix is kept when it is absolute and outside
+   every `.app`, and replaced when it is not - a **relative** value resolves
+   against whatever cwd the writing process happens to have, which may be inside a
+   bundle, so it is not a placement anyone chose.
+2. The pair above reaches only the pythons this app starts, and this app does not
+   start every python that runs under its runtime: one started by a shell, a CLI
+   script, launchd or an agent carries no environment of ours (measured: a venv
    over the bundled tree wrote 25 `.pyc` into it that way, which is the class the
-   operator's own 163 in-bundle `.pyc` belong to). A child can also ignore the
-   environment by design: `-E`/`-I` mean "do not read `PYTHON*`", and the
-   backend's evaluation supervisor spawns workers with `-I -s -E -B`.
+   operator's own 163 in-bundle `.pyc` belong to), and a child can ignore the
+   environment by design - `-I`/`-E` mean "do not read `PYTHON*`", and the app's
+   own smoke child for the managed runtime is started exactly that way (`-I -B`
+   in `src/main/backend/managed-python.ts`) - so an environment alone cannot be
+   the whole answer. The app-managed venv therefore carries the refusal *inside*
+   it:
+   `ensureVenvBytecodeGuard` writes a `sitecustomize.py` into the venv's own
+   `site-packages`, which `site` imports on every start. Since the interpreter
+   moved out of the bundle this guard protects the managed runtime's **identity**
+   - the sha256 of the signed bytes it was copied from, which a stray cache file
+   must not disturb - rather than a sealed tree. It is the cheap half and not
+   sufficient alone: `site.py`'s own startup imports are compiled before
+   `sitecustomize` runs.
+3. Nothing we ship is a `.pyc` at all, and that is enforced at build time
+   (`scripts/setup-python-resource.sh`, with the release gate in
+   `scripts/verify-macos-artifacts.mjs`), because a *shipped* `.pyc` that gets
+   rewritten is `file modified:` - the one class codesign cannot accept again and
+   the heal cannot repair. It is also what makes the next mechanism safe: a
+   `.pyc` found inside the interpreter trees has no legitimate way to be there, so
+   `added` + our tree + `.pyc` is the whole entitlement.
+4. A bundle an interpreter has already written into is repaired in place, at
+   start-up and in the update pre-flight, by `healPythonBytecode`
+   (`update-install.ts`): every path `codesign` reported `file added:` that is a
+   `.pyc` under `BUNDLED_PYTHON_DIRS` in the bundle being healed is unlinked, one
+   file at a time, and a bundle broken any other way keeps the reinstall refusal.
+   There is deliberately **no `__pycache__` segment test** any more: an
+   interpreter under `PYTHONPYCACHEPREFIX` mirrors the absolute source path under
+   the prefix with no such segment, and the field incident of 2026-09-15 was 19
+   added `.pyc` in exactly that layout, which the old test called "outside the
+   bundled python trees" and which cost the operator an in-place repair the heal
+   exists to perform. The directories such a write leaves behind are left behind
+   on purpose - an added empty directory still verifies - so the re-probe, not a
+   tidy tree, is what decides whether the heal worked.
 
-**Do not "simplify" the seal back to `chmod`/mode bits.** One write bit on a
+**The ACL seal that used to be mechanism 2 is retired, deliberately** - no
+`sealPythonInterpreterTrees` symbol exists in `src`. It could not be a
+correctness mechanism: `ditto` carries an access-control entry but the ZIP
+Squirrel stages does not, so a bundle that
+arrives by in-app update is unsealed from the swap until something re-applies it,
+and the writers in that window are pythons this app never starts. Re-applying it
+at startup or from the update watchdog only narrows a race it cannot close. The
+durable half is structural: no venv resolves its stdlib inside any `.app` at all
+(`backend/managed-python.ts`), so there is no interpreter left in a bundle for a
+cache write to land in, and mechanisms 1-4 above are defense in depth for the
+processes that still run one.
+
+**Do not reintroduce a seal built on `chmod`/mode bits.** One write bit on a
 directory covers both creating an entry and unlinking one, so clearing it refuses
 the write but also makes the app undeletable (`rm -rf` exits 1 with `Directory
 not empty`, and emptying the Trash cannot reclaim the tree) and stops the app
-healing its own bundle, because `healPythonBytecode` (`update-install.ts`)
-repairs an unsealed one by *unlinking* the `.pyc` CPython added. Measured on a
-mode-sealed copy: `healable=false removed=0`. Withholding the two rights
-separately is what lets a tree refuse new files and stay deletable and healable
-at once; the symptom of a regression here is a `file added:` violation the heal
-can no longer remove.
-
-Load-bearing, and enforced at build time: nothing may ship a `.pyc` at all
-(`scripts/setup-python-resource.sh`, with the release gate in
-`scripts/verify-macos-artifacts.mjs`), because a *shipped* `.pyc` that gets
-rewritten is `file modified:` - the one class codesign cannot accept again and
-the heal cannot repair.
+healing its own bundle, because mechanism 4 repairs one by *unlinking* the `.pyc`
+CPython added. Measured on a mode-sealed copy: `healable=false removed=0`. The
+symptom of a regression in any of this is a `file added:` violation the heal can
+no longer remove.
 
 ## Updates: the managed runtime, the inert seed, and the start-up repair
 
 The interpreter is the one part of an install that an in-place update must not be
 standing on. Three mechanisms make that true, and they are a set: the seed, the
-managed runtime outside the bundle, and the seal described above.
+managed runtime outside the bundle, and the bytecode guards described above.
 
 **1. The bundle ships the interpreter as inert data, under a namespace of its own.**
 The tree is `Contents/Resources/python-runtime-seed/<arch>` — one architecture per

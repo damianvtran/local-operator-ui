@@ -12,6 +12,7 @@ import {
 	rmSync,
 	rmdirSync,
 	statSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
@@ -477,6 +478,24 @@ function writeAddedPyc(directory, name) {
 	return path;
 }
 
+/**
+ * Write a `.pyc` the way an interpreter under `PYTHONPYCACHEPREFIX` does.
+ *
+ * The layout is the prefix directory followed by the *absolute source path*
+ * minus its root, so there is no `__pycache__` segment to recognise: the field
+ * incident of 2026-09-15 was 19 of these under
+ * `Contents/Resources/python_aarch64/pycache/`, and the predicate's old segment
+ * test called every one of them "outside the bundled python trees". Written
+ * under the bundle root given, so a fixture bundle is the only thing this can
+ * touch.
+ */
+function writeMirroredAddedPyc(bundle, relativePath) {
+	const path = join(bundle, relativePath);
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, "added mirrored bytecode\n", "utf8");
+	return path;
+}
+
 test("codesign's violation lines are parsed as codesign prints them", () => {
 	// Real output, captured from `/usr/bin/codesign --verify --deep --verbose=2`
 	// on a broken ad-hoc-signed fixture, including the canonicalised path.
@@ -560,12 +579,12 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 	assert.equal(planPythonBytecodeHeal(bundle, []).healable, false);
 
 	// The path test is what keeps the heal to our own bytecode: an added file
-	// outside the interpreter trees, a non-bytecode file inside them, and a `.pyc`
-	// outside a `__pycache__` directory are each refused.
+	// outside the interpreter trees, and a non-bytecode file inside them, are each
+	// refused.
 	for (const path of [
 		`${bundle}/Contents/Resources/extra.txt`,
 		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/decoder.py`,
-		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/handwritten.pyc`,
+		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/decoder.cpython-312.pyc.txt`,
 		"/Applications/Other.app/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/x.cpython-312.pyc",
 	]) {
 		assert.equal(isPythonBytecodePath(bundle, path), false, path);
@@ -573,6 +592,33 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 		assert.equal(refused.healable, false, path);
 		assert.match(refused.reason, /outside the bundled python trees/);
 	}
+
+	// A `.pyc` directly inside the tree - no `__pycache__` anywhere - is still our
+	// bytecode, and this is the shape a `PYTHONPYCACHEPREFIX` produces: the prefix
+	// directory followed by the absolute source path minus its root. The field
+	// incident of 2026-09-15 was 19 of these under
+	// `Contents/Resources/python_aarch64/pycache/`, and the predicate's old
+	// `__pycache__` segment test called every one of them "outside the bundled
+	// python trees", which is how a bundle one file-deletion away from valid was
+	// reported unrepairable and the user was sent to reinstall.
+	const mirrored = [
+		`${bundle}/Contents/Resources/python_aarch64/pycache/var/folders/qd/xyz/T/lo-guard-real-79tKWP/modules/lo_probe_module.cpython-314.pyc`,
+		`${bundle}/Contents/Resources/python_aarch64/pycache/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.cpython-314.pyc`,
+		`${bundle}/Contents/Resources/python/lib/python3.12/json/__init__.cpython-312.pyc`,
+	];
+	for (const path of mirrored) {
+		assert.equal(isPythonBytecodePath(bundle, path), true, path);
+		const plan = planPythonBytecodeHeal(bundle, [added(path)]);
+		assert.equal(plan.healable, true, plan.reason);
+		assert.deepEqual(plan.paths, [path]);
+	}
+
+	// The whole set the incident reported, in one plan: one removal per reported
+	// file, and the `pycache/` mirror alongside the `__pycache__` writes the field
+	// install also carried.
+	const incident = planPythonBytecodeHeal(bundle, mirrored.map(added));
+	assert.equal(incident.healable, true, incident.reason);
+	assert.deepEqual(incident.paths, mirrored);
 });
 
 test("the heal knows the namespace the interpreter actually ships in", async () => {
@@ -667,6 +713,67 @@ test("the heal removes exactly what was reported, through an injectable remover"
 	assert.deepEqual(deduped, [path]);
 });
 
+test("a swap under the tree between the plan and the unlink refuses", () => {
+	// Why this case exists (review round 1, R2): the per-file re-check is not a
+	// stale-plan guard - no caller can supply a plan, and the plan was produced by
+	// the same predicate - but it is not a tautology either, because
+	// `isPythonBytecodePath` resolves `realpathSync` at the moment it is called. A
+	// path whose directory is replaced, between the plan and the unlink, by a
+	// symlink out of the bundle resolves somewhere else and is refused. This drives
+	// that window and asserts the refusal, so the docstring's claim is bound to a
+	// measurement rather than to prose.
+	const root = tempDir("lo-recheck-");
+	const bundlePath = join(root, "Fixture.app");
+	const cached = join(
+		bundlePath,
+		"Contents",
+		"Resources",
+		"python_aarch64",
+		"lib",
+		"python3.12",
+		"json",
+		"__pycache__",
+	);
+	const elsewhere = join(root, "elsewhere");
+	mkdirSync(cached, { recursive: true });
+	mkdirSync(elsewhere, { recursive: true });
+	const first = join(cached, "a.cpython-312.pyc");
+	const second = join(cached, "b.cpython-312.pyc");
+	writeFileSync(first, "added bytecode\n", "utf8");
+	writeFileSync(second, "added bytecode\n", "utf8");
+	const violations = [
+		{ kind: "added", path: first },
+		{ kind: "added", path: second },
+	];
+	// The plan itself is fine, which is the point: only the filesystem moved.
+	assert.equal(planPythonBytecodeHeal(bundlePath, violations).healable, true);
+
+	const removed = [];
+	const result = healPythonBytecode(bundlePath, violations, (path) => {
+		removed.push(path);
+		if (path !== first) return;
+		// Between the two unlinks: the directory the second path goes through
+		// becomes a symlink out of the bundle, with a file of the same name behind
+		// it, so the plan's path still exists and still resolves - elsewhere.
+		rmSync(cached, { recursive: true, force: true });
+		symlinkSync(elsewhere, cached);
+		writeFileSync(
+			join(elsewhere, "b.cpython-312.pyc"),
+			"added bytecode\n",
+			"utf8",
+		);
+	});
+
+	assert.deepEqual(removed, [first], "nothing is unlinked after the refusal");
+	assert.equal(result.healable, false);
+	assert.match(result.reason, /refused to remove .*b\.cpython-312\.pyc/);
+	assert.deepEqual(result.removed, [first]);
+	assert.ok(
+		existsSync(join(elsewhere, "b.cpython-312.pyc")),
+		"the file the plan named is still there, and the heal did not chase it",
+	);
+});
+
 test("a bytecode-broken bundle really heals, and a tampered one really does not", async (t) => {
 	if (process.platform !== "darwin") {
 		t.skip("macOS only");
@@ -677,6 +784,11 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 	// claim is about what `/usr/bin/codesign` says next: sign clean, let an
 	// interpreter write bytecode into the bundle, watch the real probe fail with
 	// `file added:`, remove exactly those files, and watch the real probe pass.
+	//
+	// The three writes cover the three shapes the field has produced: the ordinary
+	// `__pycache__` write, one inside a directory that already holds a SEALED
+	// `.pyc` (the case a directory-level `rm -rf` gets wrong), and the
+	// `PYTHONPYCACHEPREFIX` mirror that the 2026-09-15 incident was made of.
 	const fixture = makeBytecodeFixture(tempDir("lo-bytecode-"));
 	assert.deepEqual(evaluateBundleSeal(fixture.probe()), { kind: "sealed" });
 
@@ -690,6 +802,27 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 		join(fixture.pythonRoot, "lib", "python3.12", "encodings"),
 		"aliases.cpython-312.pyc",
 	);
+	// And the incident's own shape: a cache the writing interpreter mirrored under
+	// a prefix it was handed, so there is no `__pycache__` segment anywhere in the
+	// path. `codesign` calls it `file added:` exactly like the two above, and the
+	// heal refused it until `isPythonBytecodePath` stopped requiring that segment.
+	const third = writeMirroredAddedPyc(
+		fixture.app,
+		join(
+			"Contents",
+			"Resources",
+			"python_aarch64",
+			"pycache",
+			"var",
+			"folders",
+			"qd",
+			"1q2xkcls0tg60vh97jjngxc40000gn",
+			"T",
+			"lo-guard-real-79tKWP",
+			"modules",
+			"lo_probe_module.cpython-314.pyc",
+		),
+	);
 
 	const brokenProbe = fixture.probe();
 	const broken = evaluateBundleSeal(brokenProbe);
@@ -697,11 +830,11 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 	assert.match(broken.detail, /a sealed resource is missing or invalid/);
 
 	const violations = parseSealViolations(brokenProbe.stdout);
-	// Both added files, and nothing but them: the verdict on stderr is not a
+	// All three added files, and nothing but them: the verdict on stderr is not a
 	// violation, which is why the parse is over stdout.
 	assert.deepEqual(
 		violations.map((violation) => violation.kind),
-		["added", "added"],
+		["added", "added", "added"],
 	);
 	// codesign reports canonical paths (`/private/var/...` for a `/var/...`
 	// temporary directory), so a plain string comparison against the path we
@@ -715,18 +848,24 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 	}
 	assert.deepEqual(
 		[...violations.map((violation) => violation.path)].sort(),
-		[realpathSync(first), realpathSync(second)].sort(),
+		[realpathSync(first), realpathSync(second), realpathSync(third)].sort(),
 	);
 
 	const heal = healPythonBytecode(fixture.app, violations);
 	assert.equal(heal.healable, true, heal.reason);
-	assert.equal(heal.removed.length, 2);
+	assert.equal(heal.removed.length, 3);
 
 	// The seal is back, measured rather than inferred.
 	assert.deepEqual(evaluateBundleSeal(fixture.probe()), { kind: "sealed" });
 	// And the file that was SEALED is still there: the heal removed reported
-	// files, not the directories that held them.
+	// files, not the directories that held them. The mirrored write's empty
+	// directories are still there too, deliberately - an added empty directory is
+	// not a violation, and the seal above is the proof.
 	assert.ok(existsSync(fixture.sealedPyc));
+	assert.ok(
+		existsSync(join(fixture.pythonRoot, "pycache", "var", "folders", "qd")),
+		"the heal leaves the directories the writes created, as its docstring says",
+	);
 
 	// The negative case, on the same bundle: once a sealed resource is modified,
 	// the heal refuses and the bundle stays refused. A heal that "fixed" this by
@@ -3753,7 +3892,8 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
 		process.env.APPLE_TEAM_ID = "TESTTEAM01";
 		globalThis.__loNotarizeCalls = [];
-		globalThis.__loNotarizeBehavior = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loNotarizeBehavior;
 
 		// The default CI invocation: `--dist` relative to the working directory.
 		const relativeDist = relative(process.cwd(), dist);
@@ -3792,8 +3932,10 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 			if (value === undefined) delete process.env[key];
 			else process.env[key] = value;
 		}
-		globalThis.__loNotarizeCalls = undefined;
-		globalThis.__loNotarizeBehavior = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loNotarizeCalls;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loNotarizeBehavior;
 	}
 });
 
@@ -3864,8 +4006,10 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			if (value === undefined) delete process.env[key];
 			else process.env[key] = value;
 		}
-		globalThis.__loNotarizeCalls = undefined;
-		globalThis.__loNotarizeBehavior = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loNotarizeCalls;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loNotarizeBehavior;
 	}
 
 	// A module resolution hook substitutes the notarizer for the child, because the
@@ -4830,7 +4974,8 @@ test("the banner's remedy names the release the last check read", async () => {
 		assert.equal(targeted[0].payload.latestVersion, "0.99.0");
 	} finally {
 		if (interval) clearInterval(interval);
-		globalThis.__loTestPaths = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -4876,7 +5021,8 @@ test("a failed update-backend reports on backend-update-error and resolves false
 			["an unrecognised startup mode", "SOME_FUTURE_MODE"],
 		]) {
 			sent.length = 0;
-			globalThis.__loIpcHandlers = undefined;
+			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+			delete globalThis.__loIpcHandlers;
 			const updateService = new service.UpdateService(
 				{
 					isDestroyed: () => false,
@@ -4928,8 +5074,10 @@ test("a failed update-backend reports on backend-update-error and resolves false
 			}
 		}
 	} finally {
-		globalThis.__loIpcHandlers = undefined;
-		globalThis.__loTestPaths = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loIpcHandlers;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -5066,7 +5214,8 @@ const loAggregateCheck = async ({
 		 */
 		let verdict;
 		if (ipc) {
-			globalThis.__loIpcHandlers = undefined;
+			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+			delete globalThis.__loIpcHandlers;
 			updateService.setupIpcHandlers();
 			const handler = globalThis.__loIpcHandlers?.["check-for-all-updates"];
 			assert.equal(
@@ -5080,14 +5229,17 @@ const loAggregateCheck = async ({
 		}
 		return { verdict, sent };
 	} finally {
-		globalThis.__loTestAppCheck = undefined;
-		globalThis.__loIpcHandlers = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestAppCheck;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loIpcHandlers;
 		if (interval) clearInterval(interval);
 		if (health) {
 			health.closeAllConnections();
 			health.close();
 		}
-		globalThis.__loTestPaths = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -6207,7 +6359,8 @@ async function loAsArch(arch, run) {
 			value: originalArch,
 			configurable: true,
 		});
-		if (originalProbe === undefined) globalThis.__loUpdaterProbe = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		if (originalProbe === undefined) delete globalThis.__loUpdaterProbe;
 		else globalThis.__loUpdaterProbe = originalProbe;
 	}
 }
@@ -6631,7 +6784,8 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), false);
 	} finally {
 		if (interval) clearInterval(interval);
-		globalThis.__loTestPaths = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -6737,7 +6891,8 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		for (const interval of intervals) {
 			if (interval) clearInterval(interval);
 		}
-		globalThis.__loTestPaths = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -6867,8 +7022,10 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		for (const interval of intervals) {
 			if (interval) clearInterval(interval);
 		}
-		globalThis.__loTestPaths = undefined;
-		globalThis.__loIpcHandlers = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -6987,8 +7144,10 @@ test("the start-up seal pass heals the bundle it runs from, or refuses out loud"
 		assert.doesNotMatch(blocks[0].payload.message, /will refuse/);
 	} finally {
 		if (interval) clearInterval(interval);
-		globalThis.__loTestPaths = undefined;
-		globalThis.__loTestIpcHandlers = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
@@ -7132,11 +7291,13 @@ test("an unpackaged instance leaves the packaged app's install state alone", asy
 		assert.equal(marker.watchdogPid, 77355);
 	} finally {
 		if (interval) clearInterval(interval);
-		if (originalPackaged === undefined)
-			globalThis.__loTestAppIsPackaged = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
 		else globalThis.__loTestAppIsPackaged = originalPackaged;
-		globalThis.__loTestPaths = undefined;
-		globalThis.__loIpcHandlers = undefined;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
