@@ -133,7 +133,7 @@ const rowCurrent = "bg-sunken text-ink hover:bg-sunken";
  * draws outside layout, so the cap's box — and the row's alignment with the All
  * chats row — is identical in both states. `outline-control` against `sunken`
  * measures 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13), clearing
- * `docs/branding.md` § 4's 3:1 structural floor in every one of them, and it is
+ * `docs/branding.md` § 3's 3:1 structural floor in every one of them, and it is
  * the idiom this app already uses for a structural edge on a row
  * (`pickers/picker-host.tsx`). The "the cap steps to `bg-elevated` instead"
  * alternative was measured and rejected: it would raise the one element on a row

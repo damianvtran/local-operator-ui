@@ -180,15 +180,29 @@ both photographed a surface the app no longer paints (the light and the dark was
 and the staged-row frame is also the frame round 2's structural edge first appears
 in. The committed copies are now this head's:
 
-| Frame | AE against the frame it replaces | Where the difference is |
+| Frame | AE against the frame it replaces, at **fuzz 0** (any pixel that differs at all) | Where the difference is |
 | --- | --- | --- |
-| `after-row-staged-light.png` | **30,724 of 128,000 (0.240%)** | one **111x43 device-pixel box at +425+108** — the caps' own box, which is the same box the sidebar frames differ in one row higher, at `+425+1058` |
-| `cmd-n-live-after.png` | **309,458 of 4,790,720 (0.065%)** | much wider — `2678x1016+42+598` — because the frame is re-derived from this head, so the chat pane's own copy and its suggestion chips moved with it and not only the row |
-| `cmd-n-live-before.png` | 1,293 of 4,790,720 (0.00027%) | a `357x28` text box at `+42+1586` in the Agent hub; re-shot with its sibling so the pair is one run, since `after` had to move |
+| `after-row-staged-light.png` | **30,724 of 128,000 = 24.0031%** | the whole **528x64 current-row band at +16+98**, because `#218` repainted that row's ground: **28,064** of the 30,724 lie OUTSIDE the caps' union box (`111x43+425+108`) and **2,660** inside it |
+| `cmd-n-live-after.png` | **309,458 of 4,791,360 = 6.4587%** | much wider — `2678x1016+42+598` — because the frame is re-derived from this head, so the chat pane's own copy and its suggestion chips moved with it and not only the row |
+| `cmd-n-live-before.png` | **1,293 of 4,791,360 = 0.0270%** | a `357x28` text box at `+42+1586` in the Agent hub; re-shot with its sibling so the pair is one run, since `after` had to move |
 
-The box the row frame changed in is the caps' own box and nothing else, which is
-the layout-neutrality claim in pixels: an inset outline cannot move the row, and
-the capture says it did not. **The REST state is untouched, measured three ways**:
+**Those numbers are counts and boxes at different tolerances if they are read the
+old way, so here they are at one.** `magick compare -metric AE` at **fuzz 0** puts the
+change across the whole current-row band rather than in one box: the ground `#218`
+repainted is most of it (28,064 of the 30,724 pixels lie outside the caps' union box,
+and 2,660 inside it). An earlier account in this README paired the fuzz-0 count with
+a box measured at a 10% threshold, which read the change down to the caps; the honest
+pairing is the one above.
+
+**The caps did not move, and that is the layout-neutrality claim in pixels.** Their
+boxes are the SAME rectangles in both frames — the glyph cap `40x28` device px at
+`+425+116`, the letter cap `40x43` at `+496+108` (20 CSS px wide each, `14` and
+`21.5` CSS px tall) — and 596 of the pixels inside them changed: the **508** the new
+edge's own colour accounts for, plus its antialiased corners. Strip a
+two-device-pixel ring from each box and **12** pixels a side differ, the ring's inner
+corners: the fill and the glyphs are where they were, so an inset outline moved
+nothing, and what moved is the ground the caps are drawn on. **The REST state is
+untouched, measured three ways**:
 re-capturing the same two palettes through the same harness at the same viewport
 returns `magick compare -metric AE` **0** for `after-sidebar-dark.png`,
 `after-sidebar-light.png` and `after-row-dark.png`, at the same byte sizes as the
@@ -273,13 +287,15 @@ OUTLINE (`outline-solid outline-1 -outline-offset-1 outline-control`) so that it
 does not enter the box model: an outline draws outside layout, so the caps'
 geometry below is unchanged in both states and the row does not shift as it becomes
 current — the same 1px shift this row retires `border-control` on the ROW itself
-for. In the re-shot frame the edge samples `srgb(132,127,114)`, the palette's own
-`borderControl` `#847F72`, 508 pixels of the caps' box, and it measures
-**3.13-5.91:1** against that ground across the twelve palettes (worst: iceberg
-3.13) — § 4's 3:1 structural floor, cleared in every one. QA's alternative, the cap
-stepping to `bg-elevated` inside a current row, was measured too (1.20-1.55:1
-there, ΔE00 5.85-16.70) and rejected: it raises the one element on a row whose
-whole point is being recessed.
+for. In the re-shot frame the edge samples `srgb(132,127,114)` against the role's
+own `borderControl` `#857f70` — the frames render the role one unit low, exactly as
+they render the grounds — and it measures **3.13-5.91:1** against that ground across
+the twelve palettes (worst: iceberg 3.13): `docs/branding.md` § 3's 3:1 structural
+floor, cleared in every one. QA's alternative, the cap stepping to `bg-elevated`
+inside a current row, was measured too (1.20-1.55:1, ΔE00 5.85-16.70) and rejected
+for a reason that is NOT its contrast — those numbers clear the same ΔE00 3.0
+"perceivable step" bar the rest-state chip is judged by — but the ROLE: it would
+raise the one element on a row whose whole point is being recessed.
 
 **That guarantee is asserted, not described.** A `CONTROLS` row could not carry it
 — the pairing is a class against a role — so it lives in

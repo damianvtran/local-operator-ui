@@ -15,7 +15,7 @@
  * glyphs at the one moment the chord they name has just been used. The New chat
  * row therefore passes `className` carrying a structural edge while it is
  * current: `outline-control`, 3.13-5.91:1 against that ground, clearing
- * `docs/branding.md` § 4's 3:1 structural floor in every palette. An OUTLINE
+ * `docs/branding.md` § 3's 3:1 structural floor in every palette. An OUTLINE
  * rather than a border, and that is not a detail: a border enters the box model
  * and would move the cap by 1px per side in one state only, while this row
  * retires `border-control` for exactly that shift. WHICH CAP GETS THE EDGE IS
