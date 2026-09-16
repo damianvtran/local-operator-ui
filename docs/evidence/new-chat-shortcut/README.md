@@ -2,13 +2,23 @@
 
 > **SUPERSEDED IN PART, 2026-09.** The frames and measurements here are the record
 > of the round that added this chord, and they are still accurate about those
-> frames. Two things they describe have since moved, in
+> frames. What has moved since, in
 > `docs/evidence/chat-sidebar-current-row/`: the caps no longer carry a `bg-sunken`
 > fill (so the geometry table below gives a cap HEIGHT that is now 20 CSS px for
-> every cap rather than 14 px for the `⌘` and 21.5 px for the `N`), and the
+> every cap rather than 14 px for the `⌘` and 21.5 px for the `N`); the
 > `outline-control` edge this row grew while it was current has been retired along
-> with the fill that made it necessary. The chord, the gate and the row's own
-> ground measurements are unaffected.
+> with the fill that made it necessary; the caps' ink is `ink-dim` again, because at
+> `ink-muted` the annotation outranked the label it annotates (6.76-6.83:1 against
+> 4.55:1 and 3.87:1 in the palette's bar) and the operator asked for these to be
+> *more* subtle; and the chord's own spacing went to `gap-0`, so its ink gaps are
+> 6px and 7px where they were 10px and 11px. **The `after-*` and `cmd-n-live-*`
+> PNGs here are therefore the older round's record and were not re-shot for that
+> round** — they come from this set's own browser harness against an isolated
+> backend, and the same surface on the current head is committed in
+> `docs/evidence/chat-sidebar-current-row/` (twelve themes, including the row with
+> its chord) and in `docs/evidence/renderer-driver/palette-*.png` (the app rail's
+> `⌘+K`, from the built app). The chord, the gate and the row's own ground
+> measurements are unaffected.
 
 The operator's request was "make it so that cmd+N (ctrl+N on Win/Linux) starts a
 new chat in local-operator-ui as a shortcut (and show this shortcut with shortcut
