@@ -13,8 +13,8 @@ globalThis.document = bootstrapDOM.window.document;
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
-	delete globalThis.window;
-	delete globalThis.document;
+	globalThis.window = undefined;
+	globalThis.document = undefined;
 });
 
 /*
@@ -136,8 +136,7 @@ async function fixture(run) {
 		},
 		row: () => window.document.querySelector("[data-lo-composer-tip]"),
 		tip: () =>
-			window.document.querySelector("[data-lo-composer-tip] span")
-				?.textContent,
+			window.document.querySelector("[data-lo-composer-tip] span")?.textContent,
 		render: async (suspended = false) => {
 			await act(() =>
 				root.render(

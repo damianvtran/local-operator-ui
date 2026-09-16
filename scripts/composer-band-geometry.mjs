@@ -382,7 +382,8 @@ const main = async () => {
 		/* One settled frame after layout, so the rects are post-reflow. */
 		await cdp.send("Runtime.evaluate", {
 			awaitPromise: true,
-			expression: `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`,
+			expression:
+				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 		});
 		const { result } = await cdp.send("Runtime.evaluate", {
 			returnByValue: true,
@@ -404,9 +405,7 @@ const main = async () => {
 
 	for (const r of results) {
 		console.log(`\n${r.story}  requested ${r.requested}`);
-		console.log(
-			`  viewport      ${r.viewport.width}x${r.viewport.height}`,
-		);
+		console.log(`  viewport      ${r.viewport.width}x${r.viewport.height}`);
 		console.log(
 			`  band          top=${r.band.top} bottom=${r.band.bottom} height=${r.band.height}`,
 		);
@@ -431,9 +430,7 @@ const main = async () => {
 			console.log(
 				`  tip pool      n=${r.tipPool.pool} worst=${r.tipPool.worstWidth}px available=${r.tipPool.available}px fits=${r.tipPool.fits} slack=${r.tipPool.slack}px`,
 			);
-			console.log(
-				`  tip worst     "${r.tipPool.worstSentence}"`,
-			);
+			console.log(`  tip worst     "${r.tipPool.worstSentence}"`);
 		}
 		console.log(
 			`  chips         n=${r.chips.length} rows=${r.rows} tops=[${r.rowTops.join(", ")}]`,
