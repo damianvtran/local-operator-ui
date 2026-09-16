@@ -26,6 +26,7 @@ import {
 	finalizeRelease,
 	missingAssets,
 	openReleaseWindow,
+	releaseNotesVerdict,
 	setReleaseState,
 } from "./release-state.mjs";
 import {
@@ -60,6 +61,31 @@ const EXPECTED_NUMERIC_MISMATCH = new RegExp(
 const EXPECTED_NODE_MISMATCH = new RegExp(
 	`Release ID ${ID} does not match expected release ID ${NODE_ID_OTHER} \\(node id ${NODE_ID}\\)`,
 );
+/**
+ * A hand-written body in the shape `.github/RELEASE_TEMPLATE.md` prescribes.
+ *
+ * The default every fixture carries: a release whose writeup is GitHub's draft
+ * (or is missing) is refused by the gate these suites exist to pin, so a fixture
+ * without a body would exercise the refusal instead of the thing under test.
+ */
+const NOTES = [
+	"## What's New",
+	"",
+	"0.14.1 fixes the thing a user could see.",
+	"",
+	"- **The thing**: it is fixed now - the fix is limited to one code path.",
+	"",
+	"## Impact",
+	"",
+	"- **No breaking changes.**",
+	"",
+	"## PRs",
+	"",
+	"- #1 `fix(thing)` - merge `abc1234` - `Release: patch - the thing is fixed`",
+	"",
+	"**Full Changelog**: https://github.com/damianvtran/local-operator-ui/compare/v0.14.0...v0.14.1",
+	"",
+].join("\n");
 function fixture({
 	tag = TAG,
 	sha = SHA,
@@ -81,6 +107,7 @@ function fixture({
 		prerelease: false,
 		created_at: "2026-09-05T00:00:00Z",
 		published_at: "2026-09-05T00:00:00Z",
+		body: NOTES,
 		...release,
 	};
 	return (path) => {
@@ -114,6 +141,8 @@ for (const manual of [true, false]) {
 			release_id: ID,
 			release_tag: TAG,
 			prerelease: false,
+			// The writeup travels with the pins: the notes gate reads it from here.
+			body: NOTES,
 		});
 	});
 	test(`moved source rejected (manual=${manual})`, () => {
@@ -153,6 +182,8 @@ test("the node id of this release is this release: accepted, and emitted numeric
 		release_id: ID,
 		release_tag: TAG,
 		prerelease: false,
+		// The writeup travels with the pins, in every spelling of the pin.
+		body: NOTES,
 	});
 });
 test("another release is refused in either spelling", () => {
@@ -485,6 +516,126 @@ test("open: a held release names what is still missing", () => {
 		"linux installer",
 		"linux update metadata",
 	]);
+});
+
+/* ---- the release writeup gate -------------------------------------------- */
+
+/** GitHub's own draft, in the shape the Templates API writes it. */
+const GENERATED_NOTES = [
+	"## What's Changed",
+	"* Fix the thing by @someone in https://github.com/damianvtran/local-operator-ui/pull/1",
+	"",
+	"**Full Changelog**: https://github.com/damianvtran/local-operator-ui/compare/v0.14.0...v0.14.1",
+	"",
+].join("\n");
+
+for (const [label, body, refusal] of [
+	["an empty body", "", /Release body is empty/],
+	["a whitespace-only body", "  \n\t\n", /Release body is empty/],
+	["a body that is not a string", null, /Release body is empty/],
+	["GitHub's generated draft", GENERATED_NOTES, /generated-notes draft/],
+]) {
+	test(`writeup: ${label} is refused`, () => {
+		assert.match(releaseNotesVerdict(body).refusal, refusal);
+	});
+}
+
+test("writeup: a hand-written body is accepted, and says nothing", () => {
+	assert.deepEqual(releaseNotesVerdict(NOTES), { refusal: null, warnings: [] });
+});
+
+test("writeup: neither template shape is annotated, never refused", () => {
+	// Non-fatal on purpose. No wording rule can tell a legitimate writeup from an
+	// off-template one, and a gate that blocks a release over a missing heading is
+	// worse than the draft it was aimed at. Either shape alone is enough to stay
+	// silent: this is the test that says which bodies the annotation is for.
+	const neither = releaseNotesVerdict("Prose about what changed.");
+	assert.equal(neither.refusal, null);
+	assert.equal(neither.warnings.length, 1);
+	assert.match(
+		neither.warnings[0],
+		/neither a `## What's New` heading nor a `Full Changelog` compare link/,
+	);
+	assert.deepEqual(releaseNotesVerdict("## What's New\n\nProse.\n").warnings, []);
+	// The same heading in the other case, which is what six of this repository's
+	// own recent releases shipped (v0.23.1 through v0.24.0). The template spells it
+	// `## What's New`; the annotation is about whether a section exists, and letter
+	// case is not part of that shape.
+	assert.deepEqual(releaseNotesVerdict("## What's new\n\nProse.\n").warnings, []);
+	assert.deepEqual(
+		releaseNotesVerdict(
+			"Prose.\n\n**Full Changelog**: https://github.com/x/y/compare/v0.14.0...v0.14.1\n",
+		).warnings,
+		[],
+	);
+});
+
+test("writeup: a generated body on the documented path is refused before anything is built", () => {
+	// The runbook's own path: the owner publishes the Release as a pre-release and
+	// this pipeline starts. The refusal belongs to the window job, and EVERY job
+	// that can ship something depends on it - the three installers, the promote,
+	// and `npm-publish`, which is the one that does not look like shipping - so a
+	// refused writeup skips the registry write as well as the builds rather than
+	// running beside them. That dependency is the assertion, not this comment:
+	// see the window-failure case in `test-publish-workflow.mjs`.
+	assert.throws(
+		() =>
+			windowRun(openReleaseWindow, {
+				prerelease: true,
+				release: { body: GENERATED_NOTES },
+			}),
+		/generated-notes draft/,
+	);
+});
+
+test("writeup: a full Release with a generated body is HELD first, then refused", () => {
+	// ORDERING IS LOAD-BEARING, and this is the assertion for it. A full Release is
+	// in `/releases/latest` with no assets at this moment; refusing before the hold
+	// would leave it there, telling every running app it is up to date - the outage
+	// class the whole window exists to prevent. So the hold PATCH is already out when
+	// the throw unwinds, and the writer is asserted rather than assumed.
+	const writes = [];
+	assert.throws(
+		() =>
+			openReleaseWindow({
+				api: fixture({
+					assets: [],
+					release: { prerelease: false, body: GENERATED_NOTES },
+				}),
+				tag: TAG,
+				expectedSha: SHA,
+				expectedReleaseId: ID,
+				isManual: false,
+				setFlag: (id, state) => writes.push([id, state]),
+			}),
+		/generated-notes draft/,
+	);
+	assert.deepEqual(writes, [HOLD]);
+});
+
+test("writeup: a repair is never blocked by an old Release's body", () => {
+	// A repair exists to re-attach the assets of a Release that was published long
+	// before this gate, so its body is whatever that release shipped with.
+	const run = windowRun(openReleaseWindow, {
+		isManual: true,
+		release: { body: GENERATED_NOTES },
+	});
+	assert.deepEqual(run.writes, []);
+	assert.equal(run.result.reason, "manual dispatch");
+});
+
+test("writeup: a re-run of a complete release is not re-judged", () => {
+	// Deliberate, and the only exemption on the release path: a release that already
+	// carries every installer is a repeat of a run that succeeded, nothing is being
+	// published by it, and failing it over prose would break a green re-run while
+	// changing nothing a user sees.
+	const run = windowRun(openReleaseWindow, {
+		assets: COMPLETE,
+		prerelease: true,
+		release: { body: GENERATED_NOTES },
+	});
+	assert.deepEqual(run.writes, []);
+	assert.equal(run.result.reason, "release is already asset-complete");
 });
 
 test("missing assets are named, so a refusal says what was absent", () => {
@@ -866,7 +1017,7 @@ function withCliFixture(run) {
 	}
 }
 
-function runStateCli(dir, { mode = "finalize", isManual, others = [] } = {}) {
+function runStateCli(dir, { mode = "finalize", isManual, others = [], assets = COMPLETE, release = {} } = {}) {
 	writeFileSync(
 		join(dir, "gh"),
 		`#!/usr/bin/env node
@@ -896,13 +1047,15 @@ process.stdout.write(JSON.stringify(fixtures[key]));
 			prerelease: true,
 			created_at: "2026-09-05T00:00:00Z",
 			published_at: "2026-09-05T00:00:00Z",
+			body: NOTES,
+			...release,
 		},
 		[`/contents/package.json?ref=${SHA}`]: {
 			content: Buffer.from(
 				JSON.stringify({ name: "local-operator-ui", version: TAG.slice(1) }),
 			).toString("base64"),
 		},
-		[`/releases/${ID}/assets?per_page=100&page=1`]: COMPLETE,
+		[`/releases/${ID}/assets?per_page=100&page=1`]: assets,
 		"/releases?per_page=100&page=1": [
 			{
 				id: ID,
@@ -963,6 +1116,40 @@ for (const [label, isManual, expected] of [
 				);
 		}));
 }
+
+test("CLI: the hold PATCH is sent before a refused writeup is thrown", () =>
+	withCliFixture((dir) => {
+		// The ordering rule at the wire, with the real CLI, the real env wiring and a
+		// fixture `gh` as the only one on PATH: the refused body fails the run AND the
+		// hold has already gone out, so the Release is out of `/releases/latest` while
+		// the run is red. Reversing the two in `openReleaseWindow` fails this test on
+		// the assertion below, not on a comment.
+		const { result, patch } = runStateCli(dir, {
+			mode: "open",
+			isManual: "false",
+			assets: [],
+			release: { prerelease: false, body: GENERATED_NOTES },
+		});
+		assert.equal(result.status, 1, result.stdout);
+		assert.deepEqual(patch, [HOLD_ARGV]);
+		assert.match(result.stderr, /generated-notes draft/);
+	}));
+
+test("CLI: an off-template writeup is annotated, not refused", () =>
+	withCliFixture((dir) => {
+		const { result, patch } = runStateCli(dir, {
+			mode: "open",
+			isManual: "false",
+			assets: [],
+			release: { prerelease: true, body: "Prose about what changed.\n" },
+		});
+		assert.equal(result.status, 0, result.stderr);
+		assert.deepEqual(patch, []);
+		assert.match(
+			result.stdout,
+			/::warning title=Release notes look incomplete::v0\.14\.1: the Release body has neither/,
+		);
+	}));
 
 test("CLI: an older release's re-run attaches assets but does not promote", () =>
 	withCliFixture((dir) => {

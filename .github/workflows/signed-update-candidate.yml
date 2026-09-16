@@ -12,9 +12,11 @@ name: Signed update candidate (nonpublishing)
 #    names the Release; the candidate is the commit that Release's tag points at
 #    and the incumbent is the newest release below it that a user could have been
 #    running. `repository_dispatch` is one of the two documented exceptions to the
-#    rule that `GITHUB_TOKEN`-created events start no run, which is why this chain
-#    works at all, and it is the reason this workflow is dispatched rather than
-#    triggered by `workflow_run` on the publish run.
+#    rule that `GITHUB_TOKEN`-created events start no run, which is why that
+#    dispatch reaches this workflow at all, and it is also the reason this workflow
+#    is dispatched rather than triggered by `workflow_run` on the publish run: the
+#    exception covers *starting* a run, and says nothing about a run started that
+#    way producing a `workflow_run` event.
 #  - **by hand**, with `workflow_dispatch`, for a candidate that is not a release
 #    yet — typically unmerged work, which is what the first candidate ever was.
 #    A manual dispatch must still come from `main` (`--ref main`): the workflow
@@ -175,8 +177,8 @@ jobs:
             # return first.
             [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
             node scripts/release-candidate.mjs --release-tag "$RELEASE_TAG" > candidate.json
-            # The refusal the two `auto-release.yml` consumers of a derived document
-            # also make: `jq -r` on an EMPTY file prints nothing and exits 0, so a
+            # The refusal every consumer of a derived document has to make for
+            # itself: `jq -r` on an EMPTY file prints nothing and exits 0, so a
             # candidate that was never resolved writes a `candidate.json` this step
             # then reads as an answer - an empty `source_sha` in `$GITHUB_OUTPUT`,
             # which is what `actions/checkout` falls back to the event ref for. The
@@ -366,6 +368,30 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # The four variables the vite plugin requires, taken from the same
+          # repository secrets every release build uses. They are not decoration:
+          # `scripts/vite-plugins/replace-backend-config.ts` throws
+          # `Error: VITE_GOOGLE_CLIENT_ID is not set` (and the same for each of the
+          # other three) from `loadConfig`, before a single module is compiled, so
+          # this step could not complete while these lines were absent - which is
+          # what EVERY dispatch of this workflow did: seven at the time of writing,
+          # all of them on `main`, from 35009147986 to 35040000402, and every one
+          # of them failed exactly here (`failed to load config from
+          # electron.vite.config.js`), so the
+          # `exact-update` job this workflow exists for - the unmodified incumbent
+          # updater driving itself onto the candidate's exact signed bytes - has
+          # never run once since the workflow was added. `publish.yml` declares
+          # these four in all five of its steps that build or pack the app, and
+          # `scripts/check-build-env.mjs` now fails the release contracts in
+          # `ci.yml` for any build step that omits one, so the omission cannot come
+          # back one step at a time. The names matter as much as the presence: a
+          # mistyped `secrets.*` resolves to the empty string and is the same
+          # `is not set` failure by another route, so the check fails a binding
+          # that disagrees with what the rest of the tree binds too.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
         run: |
           pnpm build
           # The arch flags are pinned here even though `main`'s build.mac.target

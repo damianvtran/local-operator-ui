@@ -33,6 +33,7 @@ const bundle = await build({
 const {
 	DEFAULT_WINDOW_HEIGHT,
 	DEFAULT_WINDOW_WIDTH,
+	LAUNCHER_KEEP_ALIVE_ENV,
 	WINDOW_MAX_EDGE,
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
@@ -41,6 +42,7 @@ const {
 	describeWindowLaunch,
 	parseWindowMode,
 	parseWindowSize,
+	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
@@ -66,7 +68,51 @@ const raise = await import(
 );
 const { presentWindow, raiseWindow } = raise;
 
+/*
+ * The dev-driver arming decision, bundled the same way. It is here rather than
+ * in `dev-driver-gate.test.mjs` because what is being asserted is the
+ * COMPOSITION the driven shape makes reachable — a launch nobody told anything
+ * now resolves `headless`, and a `headless` plan is what turns an opt-in from a
+ * refusal into an armed bridge — so the case needs the resolver and the arming
+ * decision in one process.
+ */
+const devDriver = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/dev-driver";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { DEV_DRIVER_ENV, DEV_DRIVER_OUT_ENV, resolveDevDriverArming } =
+	devDriver;
+
 const plan = (input) => resolveWindowLaunchPlan(input);
+
+/*
+ * The launch shape a tool-spawned run has, pinned to the platform this rule was
+ * MEASURED on rather than left to the ambient `process.platform`.
+ *
+ * Without this, every shape case below would assert `headless` on macOS and
+ * Linux CI and silently assert nothing on a Windows host, where the same input
+ * resolves `normal` by design — so the file would pass on a platform whose
+ * behaviour it does not describe. Passing the platform makes each case a
+ * statement about the rule rather than about the machine running it.
+ */
+const DRIVEN = {
+	packaged: false,
+	stdinIsTTY: undefined,
+	stdoutIsTTY: undefined,
+	platform: "darwin",
+};
 
 test("no input is the shipped behaviour: a focused 1380x900 window", () => {
 	// The default must stay exactly what the released app does today, because
@@ -78,6 +124,8 @@ test("no input is the shipped behaviour: a focused 1380x900 window", () => {
 	assert.equal(resolved.backgroundThrottling, true);
 	assert.equal(resolved.width, DEFAULT_WINDOW_WIDTH);
 	assert.equal(resolved.height, DEFAULT_WINDOW_HEIGHT);
+	// The shipped app is a window somebody starts and finds in the Dock.
+	assert.equal(resolved.hideDock, false);
 	assert.deepEqual(resolved.problems, []);
 });
 
@@ -91,6 +139,12 @@ test("headless creates the window and never shows it, unfocusable and unthrottle
 	assert.equal(resolved.show, "never");
 	assert.equal(resolved.focusable, false);
 	assert.equal(resolved.backgroundThrottling, false);
+	/*
+	 * And no Dock tile. A headless run is the one mode this app is launched in
+	 * tens of times over on one machine, and every tile is an icon that leads
+	 * nowhere: the operator's Dock is where the accumulation was noticed.
+	 */
+	assert.equal(resolved.hideDock, true);
 });
 
 test("inactive shows the window without activating the app", () => {
@@ -101,6 +155,8 @@ test("inactive shows the window without activating the app", () => {
 	// into, so refusing focus permanently would be the wrong half-measure.
 	assert.equal(resolved.focusable, true);
 	assert.equal(resolved.backgroundThrottling, false);
+	// Visible on purpose, so it keeps the tile that makes it findable.
+	assert.equal(resolved.hideDock, false);
 });
 
 test("the mode is read case- and whitespace-insensitively", () => {
@@ -280,6 +336,163 @@ test("silence with no agent switch is still the operator's focused window", () =
 	assert.equal(plan({ argv: [".", "--window-size=1024x673"] }).mode, "normal");
 });
 
+test("a launch with no terminal on either stream is a driven run, and resolves headless", () => {
+	// The shape the agent switches could not see, and the one that was STILL
+	// taking the operator's focus after the switch-based assumption shipped: a
+	// tool booting the app straight out of a checkout with no switch at all.
+	// A tool spawns it with pipes, so neither stream is a terminal, and a
+	// checkout is not a packaged app — together those two facts say this is a
+	// run rather than the operator using the app.
+	const resolved = plan(DRIVEN);
+	assert.equal(resolved.mode, "headless");
+	assert.equal(resolved.show, "never");
+	assert.equal(resolved.focusable, false);
+	assert.equal(resolved.backgroundThrottling, false);
+	assert.deepEqual(resolved.problems, []);
+	assert.match(resolved.assumed ?? "", /no terminal/);
+});
+
+test("a terminal on either stream is a person, and keeps the focused window", () => {
+	// A person runs `pnpm dev` in a terminal, and a person who redirects the log
+	// (`local-operator-ui > app.log &`) still has stdin ON the terminal — the
+	// pair is what makes this safe to pair with `packaged: false`, so each half
+	// is asserted on its own.
+	for (const streams of [
+		{ stdinIsTTY: true, stdoutIsTTY: true },
+		{ stdinIsTTY: true, stdoutIsTTY: undefined },
+		{ stdinIsTTY: undefined, stdoutIsTTY: true },
+	]) {
+		const resolved = plan({ ...DRIVEN, ...streams });
+		assert.equal(resolved.mode, "normal", JSON.stringify(streams));
+		assert.equal(resolved.assumed, null, JSON.stringify(streams));
+	}
+});
+
+test("the packaged app is never assumed headless, however it was started", () => {
+	// A double-clicked `.app` has no terminal either, so `packaged` is the whole
+	// reason a person's own app cannot be hidden by the rule above. This is the
+	// assertion that keeps the shipped release rendering a window.
+	const resolved = plan({
+		packaged: true,
+		stdinIsTTY: undefined,
+		stdoutIsTTY: undefined,
+	});
+	assert.equal(resolved.mode, "normal");
+	assert.equal(resolved.assumed, null);
+});
+
+test("a caller that cannot say whether it is packaged stays on the historical normal", () => {
+	// `packaged` is optional, and only an explicit `false` takes part: a caller
+	// that says nothing must keep the behaviour it had before this rule existed.
+	assert.equal(
+		plan({ stdinIsTTY: undefined, stdoutIsTTY: undefined, platform: "darwin" })
+			.mode,
+		"normal",
+	);
+});
+
+test("a named mode still wins on a launch with no terminal", () => {
+	// The escape hatch, on the new path: a person who launches the checkout from
+	// a non-terminal launcher keeps `normal` by naming it.
+	for (const mode of ["normal", "inactive", "headless"]) {
+		const resolved = plan({ ...DRIVEN, argv: [`--window-mode=${mode}`] });
+		assert.equal(resolved.mode, mode);
+		assert.equal(
+			resolved.assumed,
+			null,
+			`${mode} from the flag is not assumed`,
+		);
+	}
+});
+
+test("an agent switch is the stronger reason and is what the line names", () => {
+	// Both signals can be true at once, and the line has to name the specific
+	// one: "a rig passed --user-data-dir" is what a reader can act on.
+	const both = plan({ ...DRIVEN, argv: ["--user-data-dir=/tmp/rig"] });
+	assert.equal(both.mode, "headless");
+	assert.match(both.assumed ?? "", /user-data-dir/);
+	assert.doesNotMatch(both.assumed ?? "", /no terminal/);
+});
+
+test("a mistyped or empty mode beside a terminal-less launch still reports rather than assumes", () => {
+	// Reaching for the mode is asking to be told. A typo keeps the report and
+	// the `normal` fallback; an empty value names nothing and takes the new
+	// assumption exactly as it takes the switch-based one.
+	const typo = plan({ ...DRIVEN, env: { [WINDOW_MODE_ENV]: "headles" } });
+	assert.equal(typo.mode, "normal");
+	assert.equal(typo.assumed, null);
+	assert.match(typo.problems[0], /headles/);
+
+	const blank = plan({ ...DRIVEN, env: { [WINDOW_MODE_ENV]: "" } });
+	assert.equal(blank.mode, "headless");
+	assert.match(blank.assumed ?? "", /no terminal/);
+	assert.doesNotMatch(blank.problems[0], /using normal/);
+});
+
+test("a person who detaches BOTH streams is hidden, deliberately and asserted", () => {
+	// The trade this rule makes, pinned here so it cannot drift into an untested
+	// gap: `pnpm dev < /dev/null > /tmp/dev.log 2>&1 &` is indistinguishable from
+	// the tool spawns the rule exists to stop. It is announced on the launch's own
+	// stdout line and one flag restores the window, which is why the rule is
+	// preferred over the focus grab it prevents — but a person CAN meet it.
+	const detached = plan(DRIVEN);
+	assert.equal(detached.mode, "headless");
+	assert.match(detached.assumed ?? "", /no terminal/);
+});
+
+test("Windows keeps the historical normal: the shape signal was not measured there", () => {
+	// Electron takes a Windows GUI process's stdio through `AttachConsole`, not an
+	// inherited handle, so `isTTY` there is not the terminal fact it is on macOS
+	// (the platform this rule was measured on). Rather than hide a window on a
+	// signal nobody has measured, the rule does not fire on win32 and rigs there
+	// name the mode — which is what they had to do before it existed anyway.
+	for (const platform of ["win32"]) {
+		const resolved = plan({
+			packaged: false,
+			stdinIsTTY: undefined,
+			stdoutIsTTY: undefined,
+			platform,
+		});
+		assert.equal(resolved.mode, "normal", platform);
+		assert.equal(resolved.assumed, null, platform);
+	}
+	// The switch-based assumption is platform-independent and still fires there.
+	const withSwitch = plan({
+		...DRIVEN,
+		argv: ["--user-data-dir=/tmp/rig"],
+		platform: "win32",
+	});
+	assert.equal(withSwitch.mode, "headless");
+	assert.match(withSwitch.assumed ?? "", /user-data-dir/);
+});
+
+test("the dev driver arms on the plan a driven launch resolves", () => {
+	// The composition this change makes reachable, asserted end to end rather
+	// than in two halves: before it, a flagless rig that set the opt-in met the
+	// refusal at the arming decision because its mode was `normal`. Now the same
+	// launch resolves `headless`, and `headless` is what arms.
+	const driven = plan(DRIVEN);
+	assert.equal(driven.mode, "headless");
+	const arming = resolveDevDriverArming({
+		env: {
+			[DEV_DRIVER_ENV]: "1",
+			[DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames",
+		},
+		windowMode: driven.mode,
+	});
+	assert.equal(arming.armed, true);
+	// And the same opt-in in the operator's own window is still refused, so the
+	// composition did not widen who may arm.
+	const person = resolveDevDriverArming({
+		env: {
+			[DEV_DRIVER_ENV]: "1",
+			[DEV_DRIVER_OUT_ENV]: "/tmp/lo-dev-driver-frames",
+		},
+		windowMode: "normal",
+	});
+	assert.equal(person.armed, false);
+});
+
 test("the startup line says the mode was assumed, and why", () => {
 	// This line is what a rig greps and what a person reads after a window did
 	// not appear. "headless" with no reason would be indistinguishable from a
@@ -343,15 +556,131 @@ test("the startup line cannot describe the wrong behaviour", () => {
 	// "focused" for a headless plan would be worse than no line at all.
 	const headless = describeWindowLaunch(
 		plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+		"darwin",
 	);
 	assert.match(headless, /never shown/);
 	assert.match(headless, /1380x900/);
 	assert.match(headless, /throttling off/);
-	assert.match(
-		describeWindowLaunch(plan({ env: { [WINDOW_MODE_ENV]: "inactive" } })),
-		/without activating/,
+	assert.match(headless, /no Dock tile/);
+	/*
+	 * And nothing about the launcher. `headless` can be opted out of the watch or
+	 * already detached, so a mode line claiming "quits when its launcher goes"
+	 * would contradict the policy line printed straight after it in exactly the
+	 * cases where a run does NOT leave by itself — the first line being the one a
+	 * rig greps. The lifetime sentence belongs to `resolveLauncherWatchPlan`'s
+	 * `reason`, which knows the answer.
+	 */
+	assert.doesNotMatch(headless, /launcher/i);
+	const inactive = describeWindowLaunch(
+		plan({ env: { [WINDOW_MODE_ENV]: "inactive" } }),
+		"darwin",
 	);
-	assert.match(describeWindowLaunch(plan()), /shown and focused/);
+	assert.match(inactive, /without activating/);
+	assert.doesNotMatch(inactive, /no Dock tile/);
+	assert.doesNotMatch(inactive, /launcher/i);
+	assert.match(describeWindowLaunch(plan(), "darwin"), /shown and focused/);
+	// The Dock is a macOS object, so the claim is mac-only: a Linux or Windows
+	// rig naming a Dock tile would be describing something that platform has not.
+	assert.doesNotMatch(
+		describeWindowLaunch(
+			plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+			"linux",
+		),
+		/no Dock tile/,
+	);
+	// The mac line names the tile; asserted as the whole sentence, because an
+	// alternation with a word the renderer never emits cannot fail on its own
+	// (round 2, N8).
+	assert.equal(
+		describeWindowLaunch(
+			plan({ env: { [WINDOW_MODE_ENV]: "headless" } }),
+			"darwin",
+		),
+		"window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
+	);
+});
+
+test("the assumed line and the Dock clause are one sentence, on the platform that has a Dock", () => {
+	/*
+	 * The sync onto main put two suffixes on this line: main's assumption clause
+	 * (WHICH signal said this launch is a run rather than a person) and this
+	 * branch's Dock clause (what the mac window does about the tile). Each half has
+	 * its own assertion above, and the two never meet: the assumption test asserts
+	 * fragments, and the whole-sentence test above passes a NAMED mode, which by
+	 * construction carries no assumption at all. The platform was left to the
+	 * default too, so on CI — `Desktop Tests` runs on ubuntu-latest, where
+	 * `process.platform` is not darwin — the composed mac line was never rendered
+	 * by any assertion (round 4, R11).
+	 *
+	 * Both spellings are pinned as whole sentences, because the join is the part the
+	 * sync introduced and the Linux one is where the mac-only clause must not be.
+	 * The aside trails the sentence since design round 4's D18 measured where an
+	 * infix put the mode's colon and the facts a wrapped row starts with.
+	 */
+	assert.equal(
+		describeWindowLaunch(
+			plan({ argv: ["--user-data-dir=/tmp/rig"] }),
+			"darwin",
+		),
+		"window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile (mode assumed: --user-data-dir marks an agent-driven launch, and no window mode was named)",
+	);
+	assert.equal(
+		describeWindowLaunch(plan({ argv: ["--user-data-dir=/tmp/rig"] }), "linux"),
+		"window mode headless: 1380x900, window created and never shown, page throttling off (mode assumed: --user-data-dir marks an agent-driven launch, and no window mode was named)",
+	);
+});
+
+test("only a headless run with a launcher watches that launcher", () => {
+	const watch = (input) => resolveLauncherWatchPlan(input);
+
+	// The default: an app a person started, in the Dock, closed by them.
+	const normal = watch({ mode: "normal", launcherPid: 4242 });
+	assert.equal(normal.watch, false);
+	assert.equal(normal.launcherPid, null);
+	assert.match(normal.reason, /not launcher-bound/);
+
+	// `inactive` is a run somebody may be watching, so it is not bound either.
+	assert.equal(watch({ mode: "inactive", launcherPid: 4242 }).watch, false);
+
+	// The case this exists for: a harness booted the app and may go away.
+	const headless = watch({ mode: "headless", launcherPid: 4242 });
+	assert.equal(headless.watch, true);
+	assert.equal(headless.launcherPid, 4242);
+	assert.match(headless.reason, /pid 4242/);
+
+	// A run that detached on purpose has no launcher to watch, and is not
+	// guessed at: `ppid 1` is the launcher being absent, not a launcher that
+	// died, and only the second one is a leak.
+	for (const pid of [0, 1, -1, 4242.5, Number.NaN]) {
+		const detached = watch({ mode: "headless", launcherPid: pid });
+		assert.equal(detached.watch, false, `pid ${pid}`);
+		assert.equal(detached.launcherPid, null, `pid ${pid}`);
+		assert.match(detached.reason, /already detached/, `pid ${pid}`);
+	}
+});
+
+test("the keep-alive opt-out is read tightly, and only for headless runs", () => {
+	const withEnv = (value) =>
+		resolveLauncherWatchPlan({
+			mode: "headless",
+			launcherPid: 4242,
+			env: { [LAUNCHER_KEEP_ALIVE_ENV]: value },
+		});
+	for (const value of ["1", "true", "TRUE", " yes ", "On"]) {
+		const opted = withEnv(value);
+		assert.equal(opted.watch, false, value);
+		assert.match(opted.reason, /outlives its launcher/, value);
+	}
+	// Anything else — including a value that merely looks like a falsy one —
+	// leaves the default in place, because the default is the one that does not
+	// accumulate instances and a typo must not choose the leaky branch.
+	for (const value of ["0", "false", "", "  ", "no", "maybe"]) {
+		assert.equal(withEnv(value).watch, true, value);
+	}
+	assert.equal(
+		resolveLauncherWatchPlan({ mode: "headless", launcherPid: 4242 }).watch,
+		true,
+	);
 });
 
 test("the raise policy is the only thing that decides how a window comes forward", () => {

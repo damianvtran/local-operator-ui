@@ -10,12 +10,16 @@
  * runs happen without the grab: `headless` creates the window and never shows
  * it, `inactive` shows it without activating the app.
  *
- * Naming no mode is not the same as naming `normal`. A launch carrying one of
- * `AGENT_LAUNCH_FLAGS` — a scratch `--user-data-dir`, a
- * `--remote-debugging-port` — has said that it is a run rather than a person
- * using the app, so it resolves to `headless` and the startup line reports the
- * assumption. A launch that says nothing at all is still the operator's own
- * app, and still `normal`.
+ * Naming no mode is not the same as naming `normal`. A launch has said that it
+ * is a run rather than a person using the app in two different ways, and each
+ * resolves to `headless` with the startup line reporting the assumption. The
+ * first is a switch only a rig passes: one of `AGENT_LAUNCH_FLAGS` — a scratch
+ * `--user-data-dir`, a `--remote-debugging-port`. The second is shape: a launch
+ * that is not a packaged app and has no terminal on either stream, which is
+ * what a tool-spawned run looks like — and which is read on macOS and Linux
+ * only, since `isTTY` is not the same fact on Windows (see `driven` below). A
+ * launch that names no mode, passes neither switch, and is either packaged or
+ * still attached to a terminal is the operator's own app, and stays `normal`.
  *
  * Read once, at module load, from `LOCAL_OPERATOR_UI_WINDOW_MODE` or the
  * `--window-mode=<mode>` argument (the flag wins). The `env` a caller passes
@@ -69,6 +73,32 @@ export const AGENT_LAUNCH_FLAGS = [
 ] as const;
 
 /**
+ * The opt-out from the launcher watch below, for a run that MEANS to detach.
+ *
+ * It exists because the watch is a default, not a law: a harness that
+ * deliberately outlives its launcher (`setsid`, `nohup`, a CI step that hands a
+ * built app to something else) says so here rather than having to defeat the
+ * watch by pointing it at a process it cannot observe.
+ */
+export const LAUNCHER_KEEP_ALIVE_ENV = "LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE";
+
+/**
+ * How often a headless run asks whether its launcher is still there. Two
+ * seconds is a compromise between the cost of asking (a `kill(pid, 0)`, which
+ * is a syscall and no scheduling) and how long an abandoned instance is allowed
+ * to hold ~150 MB and a Dock tile after the harness that started it died.
+ */
+export const LAUNCHER_POLL_INTERVAL_MS = 2_000;
+
+/**
+ * How long a headless run may take to leave after its launcher goes, before it
+ * exits without waiting for the owned backend cleanup. The graceful path is
+ * still tried first (`app.quit()`); this is only the bound on it, because the
+ * failure this whole module guards against is an instance that never leaves.
+ */
+export const LAUNCHER_EXIT_DEADLINE_MS = 10_000;
+
+/**
  * The layout is verified at these dimensions and not below: the app rail, the
  * per-route list pane and the canvas each have their own minimum, and past
  * 800x600 they start taking room from each other rather than from the window.
@@ -97,11 +127,13 @@ export interface WindowLaunchPlan {
 	 * Why the mode was ASSUMED rather than named, or null when the caller said
 	 * what it wanted and `problems` is the only thing worth reporting.
 	 *
-	 * Non-null exactly when the launch named no mode at all and one of
-	 * `AGENT_LAUNCH_FLAGS` was present, which is what makes `headless` the
-	 * default there. The reason travels with the plan so the startup line can
-	 * say the run was headless *because* of the scratch profile it named,
-	 * rather than leaving a reader to guess whether a mode was typed.
+	 * Non-null exactly when the launch named no mode at all and either one of
+	 * `AGENT_LAUNCH_FLAGS` was present or the launch had the driven shape (not
+	 * packaged, no terminal on either stream, and a platform where that signal is
+	 * read) — the two signals that make `headless` the default there. The reason
+	 * travels with the plan so the startup line can say the run was headless
+	 * *because* of the scratch profile it named or the shape it had, rather than
+	 * leaving a reader to guess whether a mode was typed.
 	 */
 	assumed: string | null;
 	/** What `ready-to-show` does: raise and focus, raise without focusing, or nothing. */
@@ -110,6 +142,17 @@ export interface WindowLaunchPlan {
 	focusable: boolean;
 	/** `webPreferences.backgroundThrottling`, true only in `normal`. */
 	backgroundThrottling: boolean;
+	/**
+	 * `app.dock.hide()` on macOS: true only in `headless`.
+	 *
+	 * A `headless` run is not an app the operator is using, and a Dock tile
+	 * says otherwise — it is an icon that cannot be clicked into anything (the
+	 * window is never shown) and that a matrix of boots multiplies. Measured on
+	 * this repo, one evidence session left ~30 running apps in the Dock, all of
+	 * them headless runs whose launcher had gone; the tile is the half of that
+	 * the operator sees first.
+	 */
+	hideDock: boolean;
 	/** The window size that will actually exist, after the floor and ceiling. */
 	width: number;
 	height: number;
@@ -124,6 +167,7 @@ interface WindowBehaviour {
 	show: WindowShow;
 	focusable: boolean;
 	backgroundThrottling: boolean;
+	hideDock: boolean;
 }
 
 /**
@@ -138,9 +182,26 @@ interface WindowBehaviour {
  * decides about windows nobody is looking at.
  */
 const WINDOW_BEHAVIOUR: Record<WindowMode, WindowBehaviour> = {
-	normal: { show: "focus", focusable: true, backgroundThrottling: true },
-	inactive: { show: "inactive", focusable: true, backgroundThrottling: false },
-	headless: { show: "never", focusable: false, backgroundThrottling: false },
+	normal: {
+		show: "focus",
+		focusable: true,
+		backgroundThrottling: true,
+		hideDock: false,
+	},
+	inactive: {
+		show: "inactive",
+		focusable: true,
+		backgroundThrottling: false,
+		// Visible on purpose, so it keeps its tile: a run somebody wants to
+		// watch has to be findable in the Dock.
+		hideDock: false,
+	},
+	headless: {
+		show: "never",
+		focusable: false,
+		backgroundThrottling: false,
+		hideDock: true,
+	},
 };
 
 /** Read `--name=value` or `--name value` from an argument vector. */
@@ -210,6 +271,37 @@ export function resolveWindowLaunchPlan(
 	input: {
 		env?: Record<string, string | undefined>;
 		argv?: readonly string[];
+		/**
+		 * `app.isPackaged`. False for `electron .` in a checkout, for a `/tmp` copy
+		 * of one, and for the npm CLI (`npx local-operator-ui` runs Electron on
+		 * `out/main/index.js`, which Electron does not consider an app bundle) —
+		 * true for the installed `.app` a person double-clicks. Optional so a
+		 * caller that cannot say stays on the historical `normal`; only an
+		 * explicit `false` takes part in the assumption below.
+		 */
+		packaged?: boolean;
+		/**
+		 * `process.platform`, defaulting to the real one. On Windows the shape
+		 * signal below is NOT read, deliberately: a Windows GUI-subsystem process
+		 * takes its stdio through `AttachConsole` rather than an inherited handle
+		 * (electron/electron#4552), so `process.stdin.isTTY`/`stdout.isTTY` there
+		 * are not the terminal fact they are on macOS and Linux — and this rule was
+		 * measured on macOS only. Windows keeps the historical `normal` for a
+		 * flagless launch rather than being hidden by a signal nobody has
+		 * measured there; rigs on Windows name the mode, as they had to before.
+		 * Enabling it is one measured Windows boot away, which is why the branch is
+		 * written as a platform check rather than left unstated.
+		 *
+		 * Typed as `NodeJS.Platform` rather than `string` on purpose: this clause is
+		 * the one place a wrong value would ENABLE the shape rule on the platform it
+		 * was deliberately scoped off, so a `"windows"` typo has to be a type error
+		 * rather than a silent no-op.
+		 */
+		platform?: NodeJS.Platform;
+		/** `process.stdin.isTTY`. See `isDrivenLaunch`. */
+		stdinIsTTY?: boolean | undefined;
+		/** `process.stdout.isTTY`. See `isDrivenLaunch`. */
+		stdoutIsTTY?: boolean | undefined;
 	} = {},
 ): WindowLaunchPlan {
 	const env = input.env ?? {};
@@ -265,13 +357,58 @@ export function resolveWindowLaunchPlan(
 	 * by naming a mode, and printed on stdout — while the false negative is the
 	 * focus grab this block exists to stop. The asymmetry is the point.
 	 */
-	const agentFlag =
-		!modeFlag.found && modeRaw === undefined
-			? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
-			: undefined;
+	const unnamed = !modeFlag.found && modeRaw === undefined;
+	const agentFlag = unnamed
+		? AGENT_LAUNCH_FLAGS.find((flag) => readFlag(argv, flag).found)
+		: undefined;
+	/*
+	 * The second way a launch says it is a run without naming a mode, and the one
+	 * the switches could not see.
+	 *
+	 * `AGENT_LAUNCH_FLAGS` catches the rigs that pass a scratch profile or a
+	 * devtools port. It does not catch the other half of what agents actually do
+	 * on this machine: boot the app straight out of a checkout with NO switch at
+	 * all — `node out/main/index.js` from a QA matrix copied into `/tmp`, a rig
+	 * that forgot the flag it was told to pass, the npm CLI started with
+	 * `--open-session`. Measured on this machine while writing this: every launch
+	 * in one afternoon's shared app log ran `normal`, including a burst of ten
+	 * boots in seven minutes from a flagless harness, so the assumption above was
+	 * firing for nobody.
+	 *
+	 * What those launches DO look like, and what a person's launch does not, is a
+	 * process with no terminal on either stream: a tool spawns the app with pipes,
+	 * so `isTTY` is undefined on both, while a person's terminal launch has at
+	 * least one stream on the terminal — both, normally, and a person who
+	 * redirects only the log keeps stdin on it. A person who detaches BOTH
+	 * (`pnpm dev < /dev/null > /tmp/dev.log 2>&1 &`) is hidden by this rule, which
+	 * is a deliberate, asserted trade: that shape is indistinguishable from the
+	 * tool spawns this exists to stop, it is announced on the launch's own stdout
+	 * line — which for this shape is the very log it was piped into — and one
+	 * flag restores the window.
+	 * Pairing that with `packaged === false` keeps the shipped app out of it
+	 * entirely — the `.app` a person double-clicks is packaged and can never be
+	 * assumed headless by this rule, whatever its streams look like — and a
+	 * non-terminal launcher of the unpackaged CLI keeps the escape hatch every
+	 * launch has: name `--window-mode=normal`, which the startup line then prints.
+	 *
+	 * The asymmetry is the one the module argues throughout: a run hidden by this
+	 * rule announces itself on stdout and is one flag from being visible again,
+	 * while the focus grab it prevents is the interruption the whole default
+	 * exists to stop.
+	 */
+	const platform = input.platform ?? process.platform;
+	const driven =
+		unnamed &&
+		agentFlag === undefined &&
+		input.packaged === false &&
+		platform !== "win32" &&
+		input.stdinIsTTY !== true &&
+		input.stdoutIsTTY !== true;
 	const assumed = agentFlag
 		? `${agentFlag} marks an agent-driven launch, and no window mode was named`
-		: null;
+		: driven
+			? "the launch is not a packaged app and has no terminal on either stream, so it is a driven run rather than the operator using the app"
+			: null;
 	if (modeFlag.found && modeFlag.value === undefined) {
 		problems.push(
 			`${WINDOW_MODE_FLAG} needs a value: ${WINDOW_MODES.join("|")}`,
@@ -340,23 +477,141 @@ export function resolveWindowLaunchPlan(
 }
 
 /**
+ * Which process ends this run, if any — the second half of the launch policy.
+ *
+ * Why this exists. A `headless` run is launched by a harness: the dev driver, a
+ * QA rig, a shell that boots the built app and drives it over CDP. Nothing in
+ * the app used to tie its life to the launcher's, and the app cannot be closed
+ * the way a window can — the window is never shown, and macOS keeps a
+ * windowless process alive by design (`window-all-closed` is a no-op there). So
+ * a harness that died, or that stopped the launcher wrapper rather than the app
+ * (the `node` process the pnpm shim `exec`s — which is what `stopApp()` in
+ * `scripts/renderer-driver.mjs` signals), left the app running with no launcher
+ * and no driver. Measured on this repo: one QA round's 13 boots left 13
+ * survivors, all `ppid 1`, and an evidence matrix left ~30 of them holding a
+ * Dock tile each.
+ *
+ * The watch is deliberately narrow. It applies only to `headless` — the mode an
+ * agent-driver run uses — and only when there is a launcher to outlive, so:
+ *
+ * - a human's `normal` app is never affected, even launched from a terminal;
+ * - a run with no launcher at startup is left alone rather than guessed at,
+ *   with `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE` as the explicit way to say so;
+ * - the smoke-test path exits before any of this runs, so its marker line and
+ *   exit code are unchanged.
+ *
+ * The `ppid 1` case, precisely, because the mechanism is easy to name wrongly:
+ * neither `detached: true` nor `setsid(2)` reparents a child — only the parent's
+ * exit does. So a harness that spawns with `detached: true` still shows up here
+ * with a real launcher pid and IS watched; what `ppid 1` at startup means is
+ * that the run was already orphaned before it could look, which is why it is the
+ * one case this module refuses to guess about.
+ */
+export interface LauncherWatchPlan {
+	/** True when this run must not outlive the process that launched it. */
+	watch: boolean;
+	/** The pid to watch, or null when there is nothing to outlive. */
+	launcherPid: number | null;
+	/**
+	 * One line for the startup log. Set even when `watch` is false, so a rig
+	 * reading stdout can tell why a run is not launcher-bound instead of
+	 * assuming the watch is broken.
+	 */
+	reason: string;
+}
+
+/** Values of `LOCAL_OPERATOR_UI_HEADLESS_KEEP_ALIVE` that ask for detachment. */
+const KEEP_ALIVE_VALUES = ["1", "true", "yes", "on"];
+
+/**
+ * Decide whether a run watches its launcher. Pure: the caller supplies the
+ * launch mode, the launcher pid and the environment, so the policy is testable
+ * without a process, a parent or Electron.
+ */
+export function resolveLauncherWatchPlan(input: {
+	mode: WindowMode;
+	launcherPid: number;
+	env?: Record<string, string | undefined>;
+}): LauncherWatchPlan {
+	const env = input.env ?? {};
+	const keepAlive = (env[LAUNCHER_KEEP_ALIVE_ENV] ?? "").trim().toLowerCase();
+	if (KEEP_ALIVE_VALUES.includes(keepAlive)) {
+		return {
+			watch: false,
+			launcherPid: null,
+			reason: `${LAUNCHER_KEEP_ALIVE_ENV}=${keepAlive} was set, so this run outlives its launcher`,
+		};
+	}
+	if (input.mode !== "headless") {
+		return {
+			watch: false,
+			launcherPid: null,
+			reason: `window mode ${input.mode} is not launcher-bound: a person can close it`,
+		};
+	}
+	if (!Number.isInteger(input.launcherPid) || input.launcherPid <= 1) {
+		return {
+			watch: false,
+			launcherPid: null,
+			reason: "headless run already detached (no launcher to outlive)",
+		};
+	}
+	return {
+		watch: true,
+		launcherPid: input.launcherPid,
+		reason: `headless run launched by pid ${input.launcherPid}; it quits when that process goes`,
+	};
+}
+
+/**
  * One line naming what the window will do, for the startup log. Rigs read the
  * process's stdout, so this is how a run says out loud that it is headless
  * rather than looking identical to one that popped a window.
+ *
+ * It describes the MODE and nothing that depends on a later resolution. The
+ * lifetime policy is deliberately not here: it depends on `LauncherWatchPlan`
+ * (a `headless` run can be opted out or already detached), and a mode line that
+ * claimed "quits when its launcher goes" would contradict the policy line
+ * printed immediately after it in exactly the two cases where a run does not
+ * leave by itself. Callers print the plan's own `reason` for that.
  *
  * It reports the WINDOW size and deliberately not a content size: the CSS
  * viewport is the window minus whatever chrome the platform draws, so it has
  * to be read from the page (`innerWidth`/`innerHeight`, or the frame's own
  * pixels) rather than derived here from a constant that is only true on one
- * platform.
+ * platform. For the same reason the Dock claim is mac-only: `hideDock` is an
+ * `app.dock` call, so a Linux or Windows rig naming a Dock tile would be
+ * describing something that platform does not have.
  */
-export function describeWindowLaunch(plan: WindowLaunchPlan): string {
+export function describeWindowLaunch(
+	plan: WindowLaunchPlan,
+	platform: string = process.platform,
+): string {
 	const behaviour =
 		plan.show === "never"
 			? "window created and never shown"
 			: plan.show === "inactive"
 				? "window shown without activating the app"
 				: "window shown and focused";
-	const assumption = plan.assumed ? ` (assumed: ${plan.assumed})` : "";
-	return `window mode ${plan.mode}${assumption}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}`;
+	/*
+	 * Two facts ride on the one sentence, and the order is deliberate: the mode is
+	 * the subject and keeps its colon where every reader expects it, the geometry
+	 * and behaviour follow, the mac Dock clause closes the clause list, and the
+	 * assumption's aside comes LAST.
+	 *
+	 * The aside used to sit between the mode and its colon. Design round 4 (D18)
+	 * measured what that cost on this line: the aside is 86 characters, so the
+	 * colon moved to offset 120 and a wrapped row began at `: 1380x900, ...` with
+	 * nothing in it a reader could anchor on, while the two spellings of the same
+	 * line no longer shared the prefix a rig greps (`window mode headless: `).
+	 * Trailing it keeps that anchor on both spellings and keeps the facts in the
+	 * first rows; the aside is the only part a reader can skip without losing what
+	 * the line is about.
+	 */
+	const assumption = plan.assumed ? ` (mode assumed: ${plan.assumed})` : "";
+	const extras = [
+		plan.hideDock && platform === "darwin" ? "no Dock tile" : null,
+	].filter((part): part is string => part !== null);
+	const suffix = extras.length === 0 ? "" : `, ${extras.join(", ")}`;
+	return `window mode ${plan.mode}: ${plan.width}x${plan.height}, ${behaviour}, page throttling ${plan.backgroundThrottling ? "on" : "off"}${suffix}${assumption}`;
 }

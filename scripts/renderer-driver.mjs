@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|none>  which built-in scene to run (default: states)
+ *   --scene <states|new-chat|palette|none>  which built-in scene to run (default: states)
  *   --out <dir>            where frames go; copied out of the scratch tree when given
  *   --gate-check           measure the fail-closed gate on four real boots
  *   --window-size <WxH>    the window to request (default 1380x900)
@@ -113,6 +113,7 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = process.cwd();
 
@@ -560,7 +561,15 @@ async function launchApp({
 	envExtra = {},
 }) {
 	writeAppCwdEnv(dotenvLines);
-	const env = {
+	/*
+	 * `withNotificationsOff`: this rig boots the real app, whose backend
+	 * announces a parked gate through `osascript` on macOS — a banner in the
+	 * operator's Notification Center from a harness run. The window mode below
+	 * silences the app's own banner and has no reach into the backend's, so the
+	 * switch goes into the environment this child is handed. See
+	 * `notifications-off.mjs`.
+	 */
+	const env = withNotificationsOff({
 		...process.env,
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
@@ -568,7 +577,7 @@ async function launchApp({
 		// No backend manager: this run must not install or start a Local Operator
 		// backend in the scratch HOME.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
-	};
+	});
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
@@ -1492,6 +1501,215 @@ async function sceneNewChat(cdp) {
 	return frames;
 }
 
+/**
+ * `palette`: the command palette, driven the way it is actually opened.
+ *
+ * ## Why this scene exists, and what it is evidence for
+ *
+ * The palette's visual states are captured from Storybook
+ * (`docs/evidence/command-palette-commandpalette/`, twelve themes per story),
+ * and a story cannot show the two things this surface is: it is opened by a
+ * press on the rail's Search row, and it is driven by the keyboard. So this
+ * scene presses that row in the BUILT app, types into the field through CDP's
+ * own input pipeline (`Input.insertText`, the same domain `click-proof.mjs`
+ * dispatches through — not a synthetic DOM event from inside the page), walks
+ * nothing by hand, and photographs the result.
+ *
+ * It also asserts what the frames cannot: that Escape closed the dialog and
+ * that focus came back to the row that opened it. That last one is a defect the
+ * surface shipped with — Radix's modal dialog ends by focusing its trigger, and
+ * this palette has no trigger, so focus landed on `document.body` and a user
+ * who pressed Escape had to click before the keyboard worked again.
+ *
+ * What it does NOT show: the conversation and settings-registry groups, which
+ * need a backend (a driver run has none), and the chat route's own rows. Those
+ * are in the live-app evidence instead.
+ */
+async function scenePalette(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		/Electron/i.test(hello.userAgent),
+		hello.userAgent,
+	);
+	/*
+	 * The harness's own invariants, which `--scene states` states in full. This
+	 * scene repeats the two that would make its frames a different app than the
+	 * one they claim to be (a window that is shown or a mode that fell back to
+	 * `normal` is an interruption, and a frame from it is not reproducible).
+	 */
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/*
+	 * Before: the rail, with the palette's own door on it. The frame is what shows
+	 * the door exists at all and where it was put — above the account row, below
+	 * the destinations — which is the half of this change a palette-only capture
+	 * could not show.
+	 */
+	const before = await captureSettled(cdp, "palette-rail-dark");
+	/*
+	 * The same row in a LIGHT theme, because it is the one treatment in this
+	 * change the twelve-theme story sweep cannot reach: the rail's chord is plain
+	 * monospace on a `sunken` ground rather than the panel's key caps, and a
+	 * contrast question about it is only answerable in more than one ground
+	 * (design round 1, D4).
+	 */
+	await verb(cdp, "setTheme", "localOperatorLight");
+	const railLight = await captureSettled(cdp, "palette-rail-light");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	// The open itself: a real pointer sequence at the row's painted centre, the
+	// same element a user clicks. `press` reports what it hit, and the scene fails
+	// on a press that landed somewhere else.
+	/*
+	 * The press is a pointer SEQUENCE dispatched at the row's own box, and one
+	 * thing it deliberately does not do is move focus: `dispatchEvent` cannot,
+	 * where a real click on macOS Chromium focuses the button. That makes this
+	 * the harder case rather than the easier one - the palette opens with
+	 * `document.activeElement` on the body - and the assertion after Escape holds
+	 * the app to landing focus somewhere real anyway, because `Cmd+K` with
+	 * nothing focused reaches the same state.
+	 */
+	const opened = await verb(cdp, "press", "[data-command-palette-trigger]");
+	note("pressed the rail's Search row", JSON.stringify(opened));
+	check(
+		"the rail's Search row is what received the press",
+		opened.hitTest === true,
+		JSON.stringify(opened),
+	);
+	const openedState = await cdp.evaluate(
+		"({ active: document.activeElement?.id ?? null, dialog: Boolean(document.querySelector('[data-tour-tag=\"command-palette-dialog\"]')) })",
+	);
+	note("after the press", JSON.stringify(openedState));
+	check(
+		"pressing it opened the palette",
+		openedState.dialog === true,
+		JSON.stringify(openedState),
+	);
+	check(
+		"focus is in the query field, not left on the row",
+		openedState.active === "command-palette-input",
+		JSON.stringify(openedState),
+	);
+	const browse = await captureSettled(cdp, "palette-browse-dark");
+
+	// Typed through the browser's own input pipeline into whatever the page has
+	// focused — the query field, which the assertion above just proved.
+	await cdp.send("Input.insertText", { text: "setting" });
+	const query = await cdp.evaluate(
+		"document.querySelectorAll('#command-palette-results [role=\"option\"]').length",
+	);
+	note("rows the query admitted", query);
+	check(
+		"typing in the field narrows the list",
+		typeof query === "number" && query > 0,
+		`${query} rows`,
+	);
+	const filtered = await captureSettled(cdp, "palette-query-dark");
+
+	// Escape, dispatched as a real key event rather than by calling the handler.
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	const afterEscape = await cdp.evaluate(
+		"({ dialog: Boolean(document.querySelector('[data-tour-tag=\"command-palette-dialog\"]')), focusReturned: document.activeElement?.hasAttribute('data-command-palette-trigger') === true, active: document.activeElement?.tagName ?? null })",
+	);
+	note("after Escape", JSON.stringify(afterEscape));
+	check("Escape closed the palette", afterEscape.dialog === false);
+	check(
+		"focus went back to the row that opened it",
+		afterEscape.focusReturned === true,
+		JSON.stringify(afterEscape),
+	);
+	const dismissed = await captureSettled(cdp, "palette-dismissed-dark");
+
+	/*
+	 * The panel rows, and why this run has none.
+	 *
+	 * `/info`, `/usage`, `/analytics` and `/session` are presented by the CHAT PANE,
+	 * whose adapters need that pane's session handle, command catalogue and rebind
+	 * path - so the palette does not open them, it ASKS (`chat-panel-request-store`)
+	 * and the pane answers. This run has no backend, so the chat route paints its
+	 * connecting state with no pane behind it, and the palette offers no panel row at
+	 * all: a row there would close the palette and open nothing. That is the gate
+	 * working, not a capture missing, and the assertion says so rather than leaving a
+	 * reader to wonder why `provider usage` finds nothing.
+	 *
+	 * The panels themselves are exercised against a live backend in the QA pass; no
+	 * driver scene can reach them, and pretending otherwise would mean pointing this
+	 * harness at the operator's own daemon.
+	 */
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	await cdp.send("Input.insertText", { text: "provider usage" });
+	const offline = await cdp.evaluate(
+		"({ palette: Boolean(document.querySelector('[data-tour-tag=\"command-palette-dialog\"]')), rows: document.querySelectorAll('#command-palette-results [role=\"option\"]').length, text: (document.querySelector('[data-tour-tag=\"command-palette-dialog\"]')?.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 80) })",
+	);
+	note("a panel query with no pane to present it", JSON.stringify(offline));
+	check(
+		"no panel row is offered while no pane can present one",
+		offline.palette === true && offline.rows === 0,
+		JSON.stringify(offline),
+	);
+
+	const frames = [before, railLight, browse, filtered, dismissed];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}, waited ${frame.toastWaitMs}ms for toasts`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map((f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`)
+			.join(" | "),
+	);
+	/*
+	 * The pair has to be two renders. The same check `--scene states` makes, for
+	 * the same reason: a before/after that is one frame written twice is exactly
+	 * what once shipped as `chat-light.png` being a byte copy of `chat-dark.png`.
+	 */
+	check(
+		"the rail frame and the palette frame are different renders",
+		!readFileSync(before.path).equals(readFileSync(browse.path)),
+		`${before.bytes}B vs ${browse.bytes}B`,
+	);
+	return frames;
+}
+
 // ---- gate-check --------------------------------------------------------------
 
 /**
@@ -2050,6 +2268,7 @@ async function main() {
 			}
 			if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
+			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

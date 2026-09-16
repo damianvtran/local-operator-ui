@@ -41,8 +41,8 @@ import {
 	lstatSync,
 	mkdirSync,
 	mkdtempSync,
-	readdirSync,
 	readFileSync,
+	readdirSync,
 	realpathSync,
 	rmSync,
 	symlinkSync,
@@ -54,7 +54,9 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 /** The shipped directory, resolved to the module loader's own (physical) URL. */
-const SCRIPTS = dirname(fileURLToPath(new URL("./entry-point.mjs", import.meta.url)));
+const SCRIPTS = dirname(
+	fileURLToPath(new URL("./entry-point.mjs", import.meta.url)),
+);
 
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
@@ -93,7 +95,7 @@ function stubBin(root) {
 			"#!/bin/sh",
 			'case "$*" in',
 			`  *repos/*/releases*) printf '%s' '${JSON.stringify(RELEASES)}' ;;`,
-			"  *) echo \"stub gh: unmodelled call: gh $*\" >&2; exit 1 ;;",
+			'  *) echo "stub gh: unmodelled call: gh $*" >&2; exit 1 ;;',
 			"esac",
 			"",
 		].join("\n"),
@@ -128,34 +130,6 @@ function caseEnv(bin, extra = {}) {
 	return env;
 }
 
-/** A scratch git repository: `v0.24.0` tagged on the released tree, then one
- * landing. `tip` is the landing's shape — a `feat:` commit, or a bump commit
- * (which has no parent content and must be read as the release commit). */
-function scratchRepo(root, { tip }) {
-	const dir = join(root, `repo-${tip}`);
-	mkdirSync(dir, { recursive: true });
-	const git = (...args) =>
-		execFileSync("git", args, {
-			cwd: dir,
-			encoding: "utf8",
-			env: caseEnv(join(root, "unused")),
-		});
-	git("init", "--quiet", "-b", "main");
-	writeFileSync(join(dir, "package.json"), packageJson("0.24.0"));
-	writeFileSync(join(dir, "file.txt"), "one\n");
-	git("add", "-A");
-	git("commit", "--quiet", "-m", "chore: the released state");
-	git("tag", "v0.24.0");
-	if (tip === "bump") {
-		writeFileSync(join(dir, "package.json"), packageJson("0.24.1"));
-		git("commit", "--quiet", "-am", "chore(release): bump version to 0.24.1");
-	} else {
-		writeFileSync(join(dir, "file.txt"), "two\n");
-		git("commit", "--quiet", "-am", "feat(panels): a real feature");
-	}
-	return dir;
-}
-
 /**
  * The scripts this file drives, and for each: an invocation that decides something
  * without a forge or a network, and what the PHYSICAL run of it does.
@@ -173,8 +147,6 @@ function scratchRepo(root, { tip }) {
  * steps themselves; this table is what proves the scripts can no longer produce it.
  */
 function cases(root) {
-	const featRepo = scratchRepo(root, { tip: "feat" });
-	const bumpRepo = scratchRepo(root, { tip: "bump" });
 	const plain = join(root, "plain");
 	mkdirSync(plain, { recursive: true });
 	writeFileSync(join(plain, "package.json"), packageJson("0.24.1"));
@@ -183,18 +155,8 @@ function cases(root) {
 	// it rather than report success over an artifact set that is not there.
 	const emptyDist = join(root, "empty-dist");
 	mkdirSync(emptyDist, { recursive: true });
+	const scriptsScope = scriptsScopeRepo(root);
 	return [
-		{
-			// The next command in the workflow's own `run:` block, and the one whose
-			// silence was reported as `### No release` with an empty reason.
-			script: "derive-release.mjs",
-			args: ["--json"],
-			cwd: featRepo,
-			env: {},
-			status: 0,
-			stdout: /"release": true/,
-			stderr: /^$/,
-		},
 		{
 			// The only case that MUTATES its working directory: each spelling gets its
 			// own, or the second would be tested against the first's edit.
@@ -266,18 +228,6 @@ function cases(root) {
 			stderr: /PR_TITLE is not set/,
 		},
 		{
-			// The published gate the guard was fixed alone in #204 for: kept in the table
-			// so the refactor onto `entry-point.mjs` is covered the same way as the eight
-			// beside it.
-			script: "release-push-guard.mjs",
-			args: ["--json", "--released-tag", "v0.24.0"],
-			cwd: bumpRepo,
-			env: {},
-			status: 0,
-			stdout: /"skip": true/,
-			stderr: /^$/,
-		},
-		{
 			// `publish.yml` runs this three times and `signed-update-candidate.yml`
 			// once, over the artifact set the build produced; an empty `dist` is the
 			// refusal every one of those steps must see rather than a silent pass.
@@ -327,7 +277,67 @@ function cases(root) {
 			stdout: /production dependencies, all on the runtime allowlist/,
 			stderr: /^$/,
 		},
+		{
+			// `ci.yml`'s release contracts step. Derives the workflows directory, the
+			// plugin's guard list and the script table from its own module URL, so the
+			// answer is the same summary whatever the working directory is.
+			script: "check-build-env.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /build steps carry all \d+ variables/,
+			stderr: /^$/,
+		},
+		{
+			// `ci.yml`'s Lint job, on a scratch repository whose `main` is HEAD: the whole
+			// verdict path runs (base resolution, merge base, changed-file scan) and
+			// answers in its own words, with no biome invocation to depend on and nothing
+			// to clean up. A gate that exits 0 without printing is the shape
+			// `require-report.sh` refuses in the step, and this is what proves this script
+			// cannot produce it.
+			script: "check-scripts-lint.mjs",
+			args: [],
+			cwd: scriptsScope,
+			env: {},
+			status: 0,
+			stdout: /check-scripts-lint: no file under scripts\/ changed since main/,
+			stderr: /^$/,
+		},
 	];
+}
+
+/**
+ * The one case in this table that needs a git checkout rather than a directory.
+ *
+ * `check-scripts-lint.mjs` resolves the repository root with `git rev-parse
+ * --show-toplevel` and compares against a base branch, so a plain folder cannot
+ * drive it at all. Here `main` IS `HEAD`, which is what makes the case free: the
+ * gate's whole verdict path runs - base resolution, merge base, changed-file scan
+ * over a tree that has one committed file under `scripts/` - and it answers in its
+ * own words, so the assertion is that this script cannot be a silent zero rather
+ * than that biome happened to agree about something.
+ */
+function scriptsScopeRepo(root) {
+	const dir = join(root, "scripts-scope");
+	mkdirSync(join(dir, "scripts"), { recursive: true });
+	writeFileSync(join(dir, "package.json"), packageJson("0.24.1"));
+	writeFileSync(join(dir, "scripts", "clean.mjs"), "export const value = 1;\n");
+	const git = (...args) =>
+		execFileSync("git", args, {
+			cwd: dir,
+			encoding: "utf8",
+			env: caseEnv(join(root, "unused")),
+		});
+	git("init", "--quiet", "-b", "main");
+	git("add", "-A");
+	git(
+		"commit",
+		"--quiet",
+		"-m",
+		"a checkout the scope gate can read a base from",
+	);
+	return dir;
 }
 
 /** A directory holding one `package.json`, made fresh for a single invocation. */
@@ -420,7 +430,12 @@ test("a script reached through a symlinked NAME answers too, not just a symlinke
 			true,
 			"the fixture has to be a symlink, or this case exercises nothing",
 		);
-		const kase = { script: "check-runtime-deps.mjs", args: [], cwd: root, env: {} };
+		const kase = {
+			script: "check-runtime-deps.mjs",
+			args: [],
+			cwd: root,
+			env: {},
+		};
 		const byName = run(target, kase, bin, root);
 		const byAlias = run(alias, kase, bin, root);
 		assert.match(
@@ -448,7 +463,9 @@ test("a script this file drives produces its answer, not a silent zero", () => {
 		for (const kase of cases(root)) {
 			const physical = run(join(SCRIPTS, kase.script), kase, bin, root);
 			assert.ok(
-				physical.status !== 0 || physical.stdout !== "" || physical.stderr !== "",
+				physical.status !== 0 ||
+					physical.stdout !== "" ||
+					physical.stderr !== "",
 				`${kase.script} exited 0 and said nothing, which is indistinguishable from not having run`,
 			);
 		}
@@ -513,7 +530,9 @@ function workflowInvokedScripts() {
 		for (const match of text.matchAll(/\bpnpm\s+([\w:.-]+)/g))
 			pnpmScripts.add(match[1]);
 	}
-	const pkg = JSON.parse(readFileSync(join(SCRIPTS, "..", "package.json"), "utf8"));
+	const pkg = JSON.parse(
+		readFileSync(join(SCRIPTS, "..", "package.json"), "utf8"),
+	);
 	for (const name of pnpmScripts) {
 		const body = pkg.scripts?.[name];
 		if (typeof body !== "string") continue;
@@ -528,7 +547,8 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
-	"check-edit-diffs.mjs": "`pnpm check-edit-diffs`; runs at import, and exits on its own result",
+	"check-edit-diffs.mjs":
+		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",
 	"run-desktop-tests.mjs": "`pnpm test:desktop`'s runner; runs at import",
 	"verify-signed-update.mjs": "`signed-update-candidate.yml`; runs at import",

@@ -765,3 +765,43 @@ export type DesktopMoveReceipt = {
 	outcome: "cold" | "rebound" | "unchanged";
 	will_wait: boolean;
 };
+
+/**
+ * What an interrupt did, and what it left behind.
+ *
+ * Mirrors the backend's `InterruptReceipt` (`POST
+ * /v1/desktop/sessions/{id}/interrupt`). The route exists because the composer's
+ * Stop control used to post `{command: "stop"}` to `sessions.command`, which is
+ * a catalogue entry answered with a presentation form - HTTP 200, a
+ * `native_action` asking the client to open the session-stop picker, and a turn
+ * still streaming.
+ *
+ * Three facts are deliberately separate rather than folded into one sentence:
+ *
+ * - `status` is the route's own vocabulary and `"idle"` is a SUCCESS, not a
+ *   failure. An interrupt on a session with no turn running - or on a COLD
+ *   session, which is never engaged to answer this - changed nothing and says
+ *   so. The UI renders nothing for it: telling a user their own press worked is
+ *   the notification the transcript's `interrupted` exclusion already refuses.
+ * - `children_running` and `background_jobs` are read by the runtime from its
+ *   published roster AFTER the interrupt, so the client words its own notice
+ *   from NUMBERS rather than by parsing `receipt`, which is prose the runtime
+ *   owns and may rephrase. `children_running` counts subagents and team members
+ *   the abort did NOT settle - the roster's remainder, read after the interrupt,
+ *   which is what `_running_work_counts` filters for and what makes a non-zero
+ *   count the thing worth telling the user about; `background_jobs` counts the
+ *   session's detached
+ *   `bash` jobs, which an interrupt deliberately does NOT touch (they are not
+ *   this turn's work) and which therefore need the user to be told.
+ * - `receipt` is the runtime's own sentence, carried verbatim and available for
+ *   the cases the counts cannot express - it names, for instance, a child that
+ *   refused to die. Nothing in the UI requires it to be phrased any particular
+ *   way.
+ */
+export type DesktopInterruptReceipt = {
+	status: "interrupted" | "idle";
+	receipt: string;
+	children_running: number;
+	background_jobs: number;
+	replayed: boolean;
+};

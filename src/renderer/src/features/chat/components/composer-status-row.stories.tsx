@@ -70,8 +70,14 @@ const detailsOf = (statuses: string[]): RunDetails =>
 /** Nothing at all: the state the row must render nothing for. */
 const EMPTY: RunDetails = deriveRunDetails({ jobs: [], todos: [] });
 
-/** A finished plan: two done, one dropped, nothing open. */
+/**
+ * A finished plan with an abandoned item: two done, one dropped, nothing open.
+ * It is the case that decides between the two settled spellings.
+ */
 const FINISHED = detailsOf(["done", "done", "dropped"]);
+
+/** A plan that finished cleanly: every item done, so nothing was dropped. */
+const RESOLVED = detailsOf(["done", "done", "done"]);
 
 /** In flight: two done, two pending, one blocked — five items, three open. */
 const IN_FLIGHT = detailsOf(["done", "pending", "blocked", "done", "pending"]);
@@ -254,7 +260,12 @@ export const States: Story = {
 				runDetails={IN_FLIGHT}
 			/>
 			<Band
-				label="A finished plan still renders, and says 0 to-dos open"
+				label="A plan every item of which is done: All to-dos resolved"
+				frontend={frontend("")}
+				runDetails={RESOLVED}
+			/>
+			<Band
+				label="A finished plan with an abandoned item: All to-dos closed, and deliberately not resolved"
 				frontend={frontend("")}
 				runDetails={FINISHED}
 			/>
