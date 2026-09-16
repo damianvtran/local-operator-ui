@@ -1419,14 +1419,26 @@
     },
     {
       "path": "wake-live-app",
-      "frames": 7,
+      "frames": 0,
       "surfaces": 1,
       "themes": 1,
       "capturedAtHead": "f4308eb27c7455dad83c357c074bc11c81994247",
       "capturedAtHeadNote": "Re-shot at `f4308eb27` on the trees of `a7615472f`; the sync onto main since then touches `chat-page.tsx`'s draft-key banner and the browser consent authority, and NOT the composer row, the pane or any wake surface (`git diff --name-only 4188ab9ef..origin/main` carries none of them), so the frames still describe what they show and only the tree stamps move.",
       "recapturedAt": "2026-09-16",
       "recaptureNote": "Re-shot because the composer band in the previous frames was the #228 band the tree had retired (design review's convergence round, D1). The rig was a copy of scripts/renderer-driver.mjs with one extra scene, driving the built app headless against the isolated daemon on 8801 with real CLI-armed wakes.",
-      "source": "the built app, headless, against an isolated daemon with real wakes armed by the real CLI, photographed through the app's own capturePage(); the press is the driver's hit-tested press on the chip's selector, the focus a real Shift+Tab through CDP's input pipeline"
+      "source": "the built app, headless, against an isolated daemon with real wakes armed by the real CLI, photographed through the app's own capturePage(); the press is the driver's hit-tested press on the chip's selector, the focus a real Shift+Tab through CDP's input pipeline",
+      "why": "The WebP-only sweep counts zero frames in this directory: `frames(dir)` in `scripts/check-evidence.mjs` counts `.webp`, and this set's seven frames are `.png` \u2014 they were photographed through the app's own `capturePage()`, which writes PNG. The set is declared so the directory is excluded from the sweep count and the frames stay reachable for a reader, and the frame count is stated as the counter measures it rather than as a second, differently-computed number beside it. The same convention is used by the other PNG-only set in this manifest (`draft-pick-live`).",
+      "capturedAt": "2026-09-16 (the `recapturedAt` of this entry, the pass that produced these PNGs; the earlier frames in this set were taken before that and are not in the tree)",
+      "pngArtifacts": [
+        "live-wake-chip-absent.png",
+        "live-wake-chip-focused.png",
+        "live-wake-chip-hover.png",
+        "live-wake-chip-many.png",
+        "live-wake-chip-one.png",
+        "live-wake-pane-many.png",
+        "live-wake-pane-press.png"
+      ],
+      "framesNote": "Seven PNGs, zero WebP: the count above is what the gate's counter can see, which is why it reads 0 while the directory holds seven frames. The provenance fields (`why`, `capturedAt`) were missing from this entry at `6fc4a5f70` too \u2014 the round-2 remediation fixed the count and claimed the provenance half, and it was never applied \u2014 and the rebase onto `main` reverted the count as well, because the rebuilt manifest took main's byte-equal-for-this-entry version."
     },
     {
       "path": "browser-composition",
