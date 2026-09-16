@@ -31,11 +31,18 @@ import "./session-switch.css";
  * than of the product. */
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { openConversation } from "@features/chat/open-conversation";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
-import { HashRouter, Route, Routes } from "react-router-dom";
+import {
+	HashRouter,
+	type NavigateFunction,
+	Route,
+	Routes,
+	useNavigate,
+} from "react-router-dom";
 import {
 	type BridgeHandle,
 	type BridgeLatency,
@@ -228,9 +235,20 @@ type Probe = {
 	 * same way `raceTo` reads it; the property asserted of every sequence is the
 	 * same one, that the LAST row clicked is the one the view lands on.
 	 */
-	raceMany: (
-		sequences: Array<Array<{ id: string; gapAfter: number }>>,
-	) => Promise<RaceTrial[]>;
+	raceMany: (sequences: ClickSpec[][]) => Promise<RaceTrial[]>;
+	/**
+	 * The same write-gated race, with the entrance of each click named.
+	 *
+	 * `raceAtWrite` is this with both entrances a row; the palette arm is this with
+	 * the palette's, because the defect was the DEFERRAL and every entrance that
+	 * still defers carries it.
+	 */
+	raceEntrances: (
+		first: string,
+		second: string,
+		firstVia: "row" | "palette",
+		secondVia: "row" | "palette",
+	) => Promise<RaceResult>;
 	record: () => RecordHandle;
 };
 
@@ -242,6 +260,24 @@ type Probe = {
  * is whether the paint can disagree with the store, and a sample taken from the
  * store can only ever report the store.
  */
+/**
+ * One dispatch of a switch, and WHICH entrance it comes from.
+ *
+ * The switch has three entrances that all end in `openConversation` - a sidebar
+ * row, a command-palette pick, and the `/chat` slash rebind - and they were three
+ * copies of one deferral until they shared it. An arm that only ever clicks rows
+ * therefore covers one of the three, so the spec carries the entrance and the
+ * palette's is dispatched through the palette's own rule rather than through a
+ * row that stands in for it.
+ */
+type ClickSpec = {
+	id: string;
+	gapAfter: number;
+	/** Wait for this session's URL write instead of for the gap. */
+	when?: string;
+	via?: "row" | "palette";
+};
+
 type RaceSample = {
 	t: number;
 	active: string | null;
@@ -271,6 +307,8 @@ type RaceResult = {
 
 /** One click sequence: what was clicked, in order, and where the view settled. */
 type RaceTrial = {
+	/** The entrance each click came from, in order. */
+	vias: Array<"row" | "palette">;
 	/** Every id clicked, in order - the last one is the one that must win. */
 	clicks: string[];
 	gapsMs: number[];
@@ -379,6 +417,9 @@ const rowFor = (id: string) => {
 };
 
 const probe = window as unknown as { __lopSwitch?: Probe };
+
+/** Set by `NavigationHandle`, for the arms that dispatch a palette pick. */
+let paletteNavigate: NavigateFunction | null = null;
 
 const latencyOf = () => ({
 	"sessions.get": param("get", 12),
@@ -555,9 +596,7 @@ const openCalls: Array<{
  * at `sum(gaps) + 10 s`, and a run that hits the bound is REPORTED
  * (`timedOut: true`) rather than read as a settled one.
  */
-const runSequence = (
-	clicks: Array<{ id: string; gapAfter: number; when?: string }>,
-) =>
+const runSequence = (clicks: ClickSpec[]) =>
 	new Promise<{
 		samples: RaceSample[];
 		clickTimes: number[];
@@ -601,13 +640,31 @@ const runSequence = (
 		sample();
 		const clickTimes: number[] = [];
 		const activeBefore: Array<string | null> = [];
-		const dispatch = (click: { id: string; gapAfter: number }) => {
-			const row = rowFor(click.id);
-			if (!row) throw new Error(`no sidebar row for ${click.id}`);
+		/** Every click in the sequence is dispatched exactly once, by the loop or by a watcher. */
+		let dispatched = 0;
+		const dispatch = (click: ClickSpec) => {
 			const store = useCanonicalSessionsStore.getState();
+			dispatched += 1;
 			clickTimes.push(performance.now());
 			activeBefore.push(store.activeSessionId);
 			sample();
+			/*
+			 * THE PALETTE'S ENTRANCE IS NOT A ROW. It calls the same rule a row calls,
+			 * with no row in the path, so reaching it any other way would be asking a
+			 * question about a code path the user does not use. The handle is the
+			 * router's own `navigate`, taken from inside the router by
+			 * `NavigationHandle` below.
+			 */
+			if (click.via === "palette") {
+				if (!paletteNavigate)
+					throw new Error(
+						"the palette entrance needs the router's navigate handle; NavigationHandle mounts inside it",
+					);
+				void openConversation(paletteNavigate, click.id);
+				return;
+			}
+			const row = rowFor(click.id);
+			if (!row) throw new Error(`no sidebar row for ${click.id}`);
 			row.click();
 		};
 		/*
@@ -667,7 +724,22 @@ const runSequence = (
 		const tick = () => {
 			sample();
 			const quiet = performance.now() - lastChangeAt >= QUIET_MS;
-			const ready = quiet && transcriptHasContent() && nothingInFlight();
+			/*
+			 * A RUN IS NOT OVER UNTIL EVERY CLICK HAS BEEN DISPATCHED. The quiet
+			 * window is shorter than the longest gap the arms use (900 ms, in the
+			 * fuzz list), so a gate that only asks "has the view stopped moving"
+			 * can resolve BETWEEN two clicks - and a sequence whose second click
+			 * had not arrived yet then reads as "the first conversation won" while
+			 * the view is exactly where it should be. The stray click lands in the
+			 * NEXT trial, which is how the same bug showed up as a trial whose
+			 * readback contradicted its own timeline (measured: the n=900 fuzz
+			 * sequence, `--race-get-a=0 --race-get-b=900`).
+			 */
+			const ready =
+				quiet &&
+				dispatched === clicks.length &&
+				transcriptHasContent() &&
+				nothingInFlight();
 			if (ready || performance.now() > deadline) {
 				sample();
 				resolve({ samples, clickTimes, activeBefore, timedOut: !ready });
@@ -963,10 +1035,12 @@ const api: Probe = {
 			samples: run.samples,
 		};
 	},
-	raceAtWrite: async (first, second) => {
+	raceAtWrite: (first, second) =>
+		api.raceEntrances(first, second, "row", "row"),
+	raceEntrances: async (first, second, firstVia, secondVia) => {
 		const run = await runSequence([
-			{ id: first, gapAfter: 0 },
-			{ id: second, gapAfter: 0, when: first },
+			{ id: first, gapAfter: 0, via: firstVia },
+			{ id: second, gapAfter: 0, when: first, via: secondVia },
 		]);
 		const [clickAt = 0, secondClickAt = 0] = run.clickTimes;
 		return {
@@ -1011,6 +1085,8 @@ const api: Probe = {
 			trials.push({
 				clicks: sequence.map((click) => click.id),
 				gapsMs: sequence.map((click) => click.gapAfter),
+				/* Which entrance each click came from; the driver prints it when one was the palette's. */
+				vias: sequence.map((click) => click.via ?? "row"),
 				from,
 				activeBefore: run.activeBefore,
 				timedOut: run.timedOut,
@@ -1160,6 +1236,19 @@ const ShellFrame = ({ children }: { children: React.ReactNode }) => (
  */
 if (!window.location.hash) window.location.hash = "#/chat";
 
+/*
+ * The palette entrance needs the ROUTER'S `navigate`, and only a component inside
+ * the router can have it. It is also the honest way to reach that entrance from
+ * here: the palette itself is not mounted in this page (it is a dialog of the
+ * shell), so the arm calls the rule the palette calls rather than a row standing
+ * in for it, and the wiring that makes the palette call that rule is pinned by
+ * the source test in `session-switch.test.mjs`.
+ */
+const NavigationHandle = () => {
+	paletteNavigate = useNavigate();
+	return null;
+};
+
 createRoot(document.getElementById("app") as HTMLElement).render(
 	<QueryClientProvider client={queryClient}>
 		{/*
@@ -1170,6 +1259,7 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 		 * page's route identity and its route-to-store effect come alive.
 		 */}
 		<HashRouter>
+			<NavigationHandle />
 			<ShellFrame>
 				<Routes>
 					<Route path="/chat" element={<ChatPage />} />

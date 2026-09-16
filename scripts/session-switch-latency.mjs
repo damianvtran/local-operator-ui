@@ -80,6 +80,13 @@ const RACE_FAIL_A = ARGS.includes("--race-fail-a");
 const RACE_FAIL_B = ARGS.includes("--race-fail-b");
 /** The fuzz over click SEQUENCES, on the same recorded latencies. */
 const RACE_FUZZ = ARGS.includes("--race-fuzz");
+/*
+ * The same write-gated race, reached through the command palette instead of a
+ * sidebar row. The palette was a second copy of the deferral the rows had, so it
+ * needs its own arm rather than an inference from the row one: a defect removed
+ * from one entrance and left in another is exactly what this checks for.
+ */
+const RACE_PALETTE = ARGS.includes("--race-palette");
 /**
  * The two-click race with the second click dispatched AT the first click's URL
  * write rather than a deadline, so the ordering is taken rather than raced for.
@@ -435,13 +442,48 @@ const RACE_RUN = (writeGated) => `(async () => {
  * a real user's third and fourth clicks are made from, and the one a single-shot
  * arm never reaches.
  */
+const PALETTE_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const A = meta.raceFirst;
+	const B = meta.raceSecond;
+	/*
+	 * The entrance pairs that put the palette on the near side, on the far side and
+	 * on both: the palette is how a user crosses conversations by TYPING, and its
+	 * pick is not a row, so no row-clicking arm can stand in for it.
+	 */
+	const cases = [
+		["palette A, then row B", await probe.raceEntrances(A, B, "palette", "row")],
+		["row A, then palette B", await probe.raceEntrances(A, B, "row", "palette")],
+		["palette A, then palette B", await probe.raceEntrances(A, B, "palette", "palette")],
+	];
+	return {
+		meta,
+		cases,
+		latency: probe.bridge.log.latency,
+		getRequests: probe.bridge.log.requests
+			.filter((request) => request.op === "sessions.get")
+			.map(
+				(request) =>
+					request.sessionId +
+					" @" +
+					Math.round(request.startedAt) +
+					"-" +
+					Math.round(request.settledAt),
+			),
+		openCalls: probe.openCalls().map(
+			(call) => "@" + call.t + " " + call.id + " from " + call.from,
+		),
+	};
+})()`;
+
 const FUZZ_RUN = `(async () => {
 	const probe = window.__lopSwitch;
 	const meta = probe.snapshot();
 	const A = meta.raceFirst;
 	const B = meta.raceSecond;
 	const O = meta.outgoing;
-	const click = (id, gapAfter) => ({ id, gapAfter });
+	const click = (id, gapAfter, via) => ({ id, gapAfter, via });
 	const sequences = [
 		/*
 		 * ONE CLICK, dispatched the moment the reset switch has COMMITTED.
@@ -465,6 +507,14 @@ const FUZZ_RUN = `(async () => {
 		[click(O, 0), click(A, 0), click(B, ${RACE_GAP})],
 		[click(A, 0), click(B, 60), click(B, 600)],
 		[click(A, 0), click(B, 900)],
+		/*
+		 * THREE SEQUENCES THROUGH THE PALETTE. Its pick calls the same rule a row
+		 * does and it is the entrance a row-clicking arm cannot reach, so the arm
+		 * that asserts "the last choice wins" has to include it on both sides.
+		 */
+		[click(A, 0, "palette"), click(B, 20)],
+		[click(A, 0), click(B, 20, "palette")],
+		[click(A, 0, "palette"), click(B, 20, "palette")],
 	];
 	const trials = await probe.raceMany(sequences);
 	return {
@@ -1001,7 +1051,7 @@ const main = async () => {
 	for (const [key, value] of Object.entries(SCENARIO))
 		if (value !== null && value !== undefined) query.set(key, value);
 	if (FAIL_GET) query.set("fail", "incoming");
-	if (RACE || RACE_FUZZ) {
+	if (RACE || RACE_FUZZ || RACE_PALETTE) {
 		query.set("race", "1");
 		query.set("raceGap", String(RACE_GAP));
 		query.set("raceGetA", RACE_GET_A);
@@ -1146,13 +1196,15 @@ const main = async () => {
 		]);
 
 	const { result } = await runWithDeadline(
-		RACE_FUZZ
-			? FUZZ_RUN
-			: RACE
-				? RACE_RUN(RACE_WRITE)
-				: FAIL_GET
-					? FAIL_RUN
-					: RUN(SWITCHES),
+		RACE_PALETTE
+			? PALETTE_RUN
+			: RACE_FUZZ
+				? FUZZ_RUN
+				: RACE
+					? RACE_RUN(RACE_WRITE)
+					: FAIL_GET
+						? FAIL_RUN
+						: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -1160,6 +1212,56 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (RACE_PALETTE) {
+		const { meta, cases, latency, getRequests, openCalls } = result.value;
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		console.log(
+			"entrance race - a palette pick and a row click are one switch",
+		);
+		console.log(
+			`  A=${meta.raceFirst} ("${meta.raceFirstTitle}")  B=${meta.raceSecond} ("${meta.raceSecondTitle}")  boot=${meta.outgoing}`,
+		);
+		console.log(
+			`  scripted owner latencies (ms): ${JSON.stringify(latency)}  ·  per-session: ${JSON.stringify({ A: RACE_GET_A, B: RACE_GET_B, streamA: RACE_STREAM_A, streamB: RACE_STREAM_B })}`,
+		);
+		console.log(
+			`  load average ${loads.join(" ")} on ${cpus().length} cores  ·  the second choice is dispatched AT the first one's URL write`,
+		);
+		let failures = 0;
+		for (const [label, race] of cases) {
+			/*
+			 * The same five claims the row arm makes, asked of a race that started at
+			 * the palette: an entrance that still defers its URL write fails the URL
+			 * claim first, and the store claim with it - and the palette pick is not a
+			 * row, so nothing in the row arm reaches this path.
+			 */
+			const verdict = {
+				"the second choice is the committed one":
+					race.active === meta.raceSecond,
+				"the URL names the second choice":
+					race.path === `/chat/${meta.raceSecond}`,
+				"the painted transcript is the second choice's":
+					race.painted.length === 1 && race.painted[0] === meta.raceSecond,
+				"the sidebar's current row is the second choice's":
+					race.selectedIsSecond,
+				"the run settled rather than hit its deadline": race.settled,
+			};
+			const passed = Object.values(verdict).every(Boolean);
+			if (!passed) failures += 1;
+			console.log(
+				`  ${passed ? "PASS" : "FAIL"}  ${label}  (active=${race.active} path=${race.path} painted=${JSON.stringify(race.painted)})`,
+			);
+			for (const [claim, held] of Object.entries(verdict))
+				console.log(`        ${held ? "PASS" : "FAIL"}  ${claim}`);
+			if (!passed)
+				console.log(`        timeline: ${JSON.stringify(race.samples)}`);
+		}
+		console.log(`  guard reads: ${getRequests.join(", ")}`);
+		console.log("  openSession calls:");
+		for (const call of openCalls) console.log(`    ${call}`);
+		if (failures > 0) process.exitCode = 1;
+		return;
+	}
 	if (RACE_FUZZ) {
 		const { meta, trials, streams, getRequests, openCalls } = result.value;
 		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
@@ -1188,8 +1290,16 @@ const main = async () => {
 			const broken = Object.entries(held)
 				.filter(([, value]) => !value)
 				.map(([name]) => name);
+			/*
+			 * The entrance of each click is printed only when one of them was the
+			 * palette's, so a sequence that a row arm already covers keeps the line it
+			 * had: the reader has to be able to tell which arm produced a failure.
+			 */
+			const entrances = trial.vias.includes("palette")
+				? `  ·  entrances ${trial.vias.join(",")}`
+				: "";
 			console.log(
-				`  ${passed ? "PASS" : "FAIL"}  ${trial.clicks.join(" -> ")}  (gaps ${trial.gapsMs.join(",")})  active=${trial.active} path=${trial.path} painted=${JSON.stringify(trial.painted)}${passed ? "" : `  broken: ${broken.join(", ")}`}`,
+				`  ${passed ? "PASS" : "FAIL"}  ${trial.clicks.join(" -> ")}  (gaps ${trial.gapsMs.join(",")}${entrances})  active=${trial.active} path=${trial.path} painted=${JSON.stringify(trial.painted)}${passed ? "" : `  broken: ${broken.join(", ")}`}`,
 			);
 			if (!passed) {
 				console.log(

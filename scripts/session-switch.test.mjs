@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -888,4 +889,79 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 			);
 		});
 	}
+});
+
+/*
+ * THE ONE-PLACE RULE, PINNED WHERE IT CANNOT ROT.
+ *
+ * The race this branch fixes was never one bug: the sidebar's rows, the command
+ * palette and the `/chat` slash rebind each wrote a switch's URL BEHIND the guard
+ * read, so fixing one and leaving the others would have left the same defect
+ * behind a different finger. They share one rule now
+ * (`features/chat/open-conversation.ts`), and the properties that make that true
+ * are structural: every entrance calls the shared rule, none of them chains a URL
+ * write on the read's answer, and the rule's own delayed write is the REFUSAL
+ * path only. A behavioural arm can only ask about the entrance it drives, which
+ * is why these are asserted on the source here and the behaviour is asserted by
+ * the arms in `session-switch-latency.mjs` (`--race`, `--race-write`,
+ * `--race-palette`, `--race-fuzz`).
+ */
+const ENTRANCE_FILES = {
+	"chat-page.tsx": "src/renderer/src/features/chat/components/chat-page.tsx",
+	"command-palette.tsx":
+		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+};
+const readSource = (path) =>
+	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("every entrance writes the switch's URL with the commit, through one rule", () => {
+	const rule = readSource(
+		"src/renderer/src/features/chat/open-conversation.ts",
+	);
+	/* The rule is where a switch's URL is written, and it writes it before the read answers. */
+	assert.match(rule, /navigate\(`\/chat\/\$\{sessionId\}`\)/);
+	assert.ok(
+		rule.indexOf("navigate(`/chat/${sessionId}`)") <
+			rule.indexOf("void pending.then("),
+		"the rule must write the URL with the commit, not from the read's answer",
+	);
+	/*
+	 * The rule's only delayed write is the REFUSAL: `replace` back to the store's
+	 * rollback target, so a failed switch cannot leave the address bar on a chat
+	 * nobody is in. Asserted so that moving the deferral into the rule - the shape
+	 * this test exists to catch - fails here rather than passing by construction.
+	 */
+	assert.match(rule, /if \(ok\) return;/);
+	assert.match(rule, /\{ replace: true \}/);
+	for (const [name, path] of Object.entries(ENTRANCE_FILES)) {
+		const text = readSource(path);
+		assert.ok(
+			text.includes("openConversation("),
+			`${name} does not call the shared rule`,
+		);
+		/*
+		 * And no entrance defers its URL write behind the read: the exact shape the
+		 * defect had was `openSession(...).then((ok) => { if (ok) navigate(...) })`,
+		 * so it is asserted as the absence of an `openSession` call chained to a
+		 * `then`. The route-to-store effect's own `store.openSession(id);` is not
+		 * chained and is deliberately still there - it is what makes a deep link and
+		 * Back work.
+		 */
+		assert.doesNotMatch(
+			text,
+			/openSession\([^)]*\)\s*\.then\(/,
+			`${name} chains its URL write on the guard read`,
+		);
+	}
+	/* Two entrances live in `chat-page` (the sidebar's row and the `/chat` rebind); the palette's is the third. */
+	assert.equal(
+		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
+			.length - 1,
+		2,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")
+			.length - 1,
+		1,
+	);
 });
