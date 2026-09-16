@@ -7,6 +7,12 @@ type Props = {
 	band: HTMLDivElement | null;
 	splash: HTMLDivElement | null;
 	suggestions: readonly string[];
+	/**
+	 * Whether the chips are inert. Covers the composer being unavailable (a
+	 * send in flight, recording, transcribing) AND the composer holding a draft,
+	 * where a press would replace what the user is writing. The caller decides;
+	 * this component only paints the state.
+	 */
 	disabled: boolean;
 	onSelect: (suggestion: string) => void;
 	focusComposer: () => void;
@@ -138,14 +144,27 @@ export const MeasuredSuggestionStack = ({
 					 * `px-2` rather than `px-3`: 12px existed to keep a label off its own
 					 * border, and there is no longer a border to keep it off. Separation
 					 * between chips is `gap-2` plus both paddings, i.e. 24px edge to edge.
+					 *
+					 * THE DISABLED STATE is the app's existing contract, not a new one: a
+					 * colour step to the disabled ink role (which `ghost` already carries)
+					 * and never opacity, with the hover ground neutralised so an inert chip
+					 * cannot light up under the pointer - the same pair `chat-sidebar.tsx`
+					 * uses on its own disabled row. The box is untouched, deliberately: the
+					 * caller disables these while the composer holds a draft, and the band
+					 * must not move while the user types (`message-input.tsx`'s
+					 * `suggestionsDisabled` has the why).
 					 */
 					<Button
 						key={suggestion}
 						variant="ghost"
 						size="sm"
-						className="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"
+						className="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 						style={hidden ? { visibility: "hidden" } : undefined}
 						aria-hidden={hidden || undefined}
+						// Stated as well as set: the attribute is how a chip is announced,
+						// and the state is the composer holding a draft rather than the chip
+						// being unavailable in principle.
+						aria-disabled={disabled || undefined}
 						disabled={disabled || hidden}
 						onClick={() => {
 							if (!hidden && !disabled) onSelect(suggestion);

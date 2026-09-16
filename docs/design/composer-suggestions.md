@@ -279,7 +279,7 @@ A new element between the composer box and the suggestion row.
 | Placement | **below the composer box, above the suggestions**, 12px (`mt-3`) | The composer's own footnote. § 2.2's captured render puts Codex's hint/status row under the composer; § 2.3's capture puts Claude Code's status row under the composer. The suggestions stay last: they are the thing the user acts on, so they belong at the end of the reading order. |
 | Left edge | the measure's left edge — the same edge the composer box's border draws | `CHAT_MEASURE`'s own docstring: "a single outer edge rather than two that happen to agree". |
 | Height | **20px**, fixed (`h-5`), `leading-5` | `leading-5` is already the app's stated line box for a capped block (`CAPPED_BLOCK` in `chat-measure.ts`). A fixed height is what makes the rotation geometrically inert. |
-| Glyph | lucide **`Info`, `size={12}`, `ink-dim`, `shrink-0`**, `gap-1.5` (6px) to the sentence | § 2.5's TUI uses the app's own `info` mark rather than the word `tip:`. § 5's icon table makes 12px legal only at `ink-dim` or darker, which this is; `size={12}` is an existing call shape in the tree (`app-updates-section.tsx:237`). |
+| Glyph | lucide **`Info`, `size={12}`, `ink-dim`, `shrink-0`**, `gap-1.5` (6px) to the sentence | § 2.5's TUI uses the app's own `info` mark rather than the word `tip:`. § 5's icon table makes 12px legal only at `ink-dim` or darker, which this is; `size={12}` is an existing call shape in the tree (`app-updates-section.tsx:237`). The size rule is about the ramp; the mark's contrast account is separate and is held to the 3:1 non-text floor — § 10 item 2. |
 | Sentence | `text-body-sm` (13px), **`ink-dim`** | § 2.5's reasoning ports directly: `ink-dim` is the quietest ink the app will set a whole sentence in — the composer's own placeholder role (`message-input.tsx:2104`). The desktop's ink ramp has no step between `ink-dim` and `ink-disabled`, and reaching for `ink-disabled` would repeat the exact defect the `/usage` unmeasured-window rule was fixed for (`contrast-contract.mjs`, `usage unmeasured window rule`). |
 | No truncation in practice | the row is hidden below its width threshold instead | § 2.5's contract: the presence answer must be the same for every entry, and a truncated tip is "a fragment rather than a tip". Here the threshold is free: the whole prompt only renders when the column is ≥ 550px (`isSmallView`), and the longest proposed tip measures ≈374px at 13px against the 502px that column gives it — see § 8. |
 | Motion | **none.** No transition, no fade, no slide. | § 2.5: "a text change on a slow timer, not an animation". A fade would also walk the row's ink *down* through the 4.5:1 floor mid-cycle, which is the "decorative animation taking a step the user is meant to see" defect the `--animate-pulse-visible` comment in `index.css` records. |
@@ -437,18 +437,22 @@ Worst case across the twelve, for every pairing the direction introduces:
 | `ink-muted` on `canvas` | chip label at rest | **6.74:1** (iceberg) | 4.5:1 | clears, asserted by the contract's `INKS` rows |
 | `ink` on `elevated` | chip label while hovered | **7.64:1** (tokyoNight) | 7:1 | clears; the identical triple is already pinned by the `ask option button (hover)` row |
 | ΔE00(`canvas`, `elevated`) | the hover ground step | **4.21** (iceberg) | aim ≥ 2 (§ 3) | clears with room; the step is perceivable in every theme |
-| `ink-dim` on `canvas` | the tip sentence and its glyph | **4.95:1** (localOperatorLight) | 4.5:1 | clears everywhere, with only **0.45** of headroom on the light brand palette |
+| `ink-dim` on `canvas` | the tip SENTENCE | **4.95:1** (localOperatorLight) | 4.5:1 | clears everywhere, with only **0.45** of headroom on the light brand palette |
+| `ink-dim` on `canvas` | the tip glyph, **as painted** | **3.30:1** (iceberg) | 3:1 (non-text) | clears; the painted 1px arc never reaches its own token (3.30-3.68 across four palettes) and is held to the non-text floor because it is decoration (design round 1, D2) |
 
 Three consequences worth stating plainly.
 
-**The tip row has almost no headroom on the light brand palette.** 4.95:1 against
+**The tip sentence has almost no headroom on the light brand palette.** 4.95:1 against
 a 4.5:1 floor. That is the whole argument for `ink-dim` being the floor of this
 design and for the row having **no opacity, no fade and no wash**: any treatment
 that composites the sentence below `ink-dim` walks it under the floor in
 `localOperatorLight`, and the two themes above it (sage 5.21, iceberg 5.19) are
 close enough that a partial fade would do the same there. The contract's own
 `FLOOR.text` is 4.5 and `ink-dim` is asserted on all four grounds — this row must
-stay on `canvas` and on nothing else.
+stay on `canvas` and on nothing else. The glyph beside that sentence is the one
+element in the row that is NOT held to this floor: it is a decorative,
+`aria-hidden` mark, so it owes 3:1 as a non-text mark, and its rendered 1px arc
+measures 3.30-3.68:1 (§ 10 item 2).
 
 **The hover state is already covered, and the chip deliberately gets no
 `CONTROLS` row.** The pairings are: `ink-muted` on `canvas` at rest (an existing
@@ -558,79 +562,149 @@ the screen moves.
 
 ## 8. Copy
 
+**Both pools below are the SHIPPED copy, not the drafts.** The drafts this
+section opened with were reviewed in round 1 and three of them did not survive
+contact: the suggestion pool's head was re-ordered (D1, major) and the tip pool
+was rewritten entry by entry (D3, D4). What each change was, in one line, at the
+place it happened.
+
 ### 8.1 The suggestion pool
 
-`DEFAULT_MESSAGE_SUGGESTIONS` (`chat-content.tsx:60-86`) is 25 entries of a
+`DEFAULT_MESSAGE_SUGGESTIONS` (`chat-content.tsx:60-86`) was 25 entries of a
 generic assistant: trending stocks, WallStreetBets, MNIST, space invaders,
-"Organize my desktop". None of it describes this product. Replace the pool:
+"Organize my desktop". None of it describes this product. It ships as:
 
 ```ts
 const DEFAULT_MESSAGE_SUGGESTIONS = [
-	"Set up the Linear MCP server for me",
-	"Set up the mobile relay and tunnel",
+	"Set up Linear MCP for me",
 	"Create a team of agents",
-	"Create a new agent",
-	"Schedule a wake for tomorrow morning",
+	"Turn on phone access",
 	"Show me what the agent did last turn",
-	"Search my past sessions for this",
-	"Turn on notifications for a long run",
+	"Build a code-review agent",
+	"Wake me tomorrow morning with a summary",
+	"Schedule a task that runs every morning",
+	"Review this repo and open a pull request",
 ];
 ```
 
-Five of the eight are the operator's own examples; the other three are affordances
-that exist in this tree (`chat-search` evidence set; the run panel; the desktop
-notifier). Every entry names something the app can actually do, in sentence case,
-in the user's terms — which is § 8 of the branding contract's voice rule applied
-to the one surface that has no conversation to be specific about.
+Three of the four head entries were reworded from the draft, and one of them
+twice. The draft's head
+(`Set up the Linear MCP server for me` / `Set up the mobile relay and tunnel` /
+`Create a team of agents` / `Create a new agent`) is the pinned opening sample,
+so it is the first screen every user sees — and read as a set it repeated two
+leading verbs (`Set up …`, `Set up …`, `Create …`, `Create …`) and spent two of
+its four slots on the same job (a team, an agent). D1's direction, now a rule in
+`composer-suggestions.ts`: **no two entries share a leading verb, and the pool
+keeps at most one create-an-agent entry.** The head therefore became MCP, teams,
+phone access and session insight — four capabilities — and the mobile-relay
+wording moved to the tail as `Turn on phone access`, whose register also matches
+the tip row's sentence for the same thing. `Create a new agent` left the pool in
+favour of `Build a code-review agent`, which is a job rather than a repetition of
+`Create a team of agents`.
 
-`MAX_SUGGESTIONS` becomes **4**; the existing sampling stays, with the first
-sample of a session pinned to the pool's first four (§ 3.1).
+**`Turn on phone access` is the one place the copy was shortened for geometry,
+and it was MEASURED rather than estimated.** The recommended wording
+(`Turn on phone access for this session`) put the pinned four on **three** rows at
+the 550px column floor: its 249.2px chip plus the 246.2px chip beside it is
+495.4px against the 494px of usable width left by the 8px gap, so the wrap
+spilled to a third row (measured with `scripts/composer-band-geometry.mjs`). The
+pinned head taking **two** rows at the floor is the documented ceiling, so the
+label lost its qualifier rather than the pin losing its count: the shortened head
+measures one row at the 900px measure (759.7px used) and two rows at the floor
+(35.5px pitch, 63px stack), which is what the committed frames show. The
+session-scoped half of the sentence is not lost from the band — the tip row
+carries `ask for phone access to drive this session from your phone`.
 
-**The pool's labels carry a length budget, and it is why the pool is not longer.**
-The first four (35, 34, 23 and 18 characters) fit one 900px row. A later random
-sample can be wider: the four longest labels total ≈1,030px at ~6.6px per
-character plus padding and gaps, which is **two** rows. Two rows is the ceiling
-and that is a real property to hold — at the narrowest column the row renders in
-(550px) the two longest labels need ≈502px including padding and the gap, so any
-sample of four stays within two rows there with ~48px to spare. That is the
-tightest number in this document. If a sample ever takes three rows, the pool's
-labels are too long and the copy is what changes — not the count, and not the
-padding. Nothing moves *while* a user looks at the row (the sample is drawn when
-the empty chat mounts, not on a timer), which is why a 1-or-2-row stack is
-acceptable here where the same variability is refused for the tip row.
+Five of the eight are the operator's own examples; the other three are
+affordances that exist in this tree (chat search; the run panel; the agent
+cursor). Every entry names something the app can actually do, in sentence case,
+in the user's terms, and each is cited against the tree in the PR body.
+
+`MAX_SUGGESTIONS` is **4**; the first sample of a session is pinned to the
+pool's first four (§ 3.1), and the sample is held for the mount of the composer
+that owns it (round 1, R3).
+
+**The pool's labels carry a length budget, and what it guarantees is narrower
+than "any four fit" — this is MEASURED, not estimated.** Two facts, both from
+`scripts/composer-band-geometry.mjs` at the committed viewports:
+
+- **The pinned head is the sample the frames show and it is bounded by geometry
+  that holds.** One row at the 900px measure (759.7px of chips and gaps), two rows
+  at the 550px column floor (173.6/164.2 on the first, 151.7/246.2 on the second,
+  35.5px pitch, 63px stack), and the tip sentence is `clipped=false` at both.
+  This is why the head's wording is what was shortened for width (§ above): the
+  ceiling for the pinned sample is two rows at the floor, and it is worth
+  defending.
+- **A later RANDOM draw can be wider, and at the floor it can take more than two
+  rows.** The pool's longest entries are the same ones it had before this change
+  (the reorder moved labels, it did not lengthen them): the four longest measure
+  two rows at the 620px column (`long-labels/`), and the same four at the 550px
+  column would wrap past two because the widest of them is 291.1px against 502px
+  of row width. That is the tail's real ceiling and it is NOT 1,000px of copy — it
+  is the pool's four longest labels, which a draw can pick.
+
+So the honest statement of the rule is: **the pinned opening sample is held to
+one row at the measure and two at the floor; a later draw is allowed to wrap
+further, and the stack's cap (`suggestion-stack.ts`) is what keeps that honest
+for the band's height.** At the floor the allowance is 263.6px against a 63px
+stack, so a wider draw has room before the cap binds — the cap exists for the
+pane, not for the copy. What the pool's own budget buys is that no single entry
+can truncate (356px worst against 484px at the floor) and that the pinned head
+keeps its two rows. Nothing moves *while* a user looks at the row (the sample is
+drawn once per mount), which is why a variable-height stack is acceptable here
+where the same variability is refused for the tip row.
 
 ### 8.2 The tip pool
 
-UI-flavoured ports of the TUI's `TIPS` (`welcome.py:404`). The TUI's pool is
-slash-command shaped because its surface is a terminal; this product's affordances
-are the surfaces in front of the user. Same discipline, different surface:
+UI-flavoured ports of the TUI's `TIPS` (`welcome.py:404`). It ships as:
 
-| TUI tip (`welcome.py:404`) | UI tip |
-| --- | --- |
-| `/resume picks up a recent session where you left off` | `search finds sessions from months ago` |
-| `/team <name> <message> sends work to the manager` | `a team runs one request through several agents` |
-| `/model <provider>/<id> switches this session only` | `switching the model changes this session only` |
-| `/approvals <ask\|auto> sets whether tools ask first` | `the settings page sets whether tools ask first` |
-| `esc stops the agent without ending the session` | `esc stops the agent without ending the session` |
-| `Ask for parallel work and the agent fans out subagents` | `ask for parallel work and the agent fans out subagents` |
-| `! on an empty composer runs a shell command` | `the run panel shows what each turn did` |
-| — (no TUI equivalent) | `the paperclip attaches a file, or paste one in` |
-| — | `the integrations page connects MCP servers` |
-| — | `the canvas keeps a long document beside the chat` |
-| — | `schedules run a prompt on a timer` |
+```ts
+const COMPOSER_TIPS = [
+	"search chats and agents to reopen an earlier session",
+	"ask for a team and several agents run one request",
+	"type /approvals to set whether tools ask first",
+	"ask for parallel work and the agent fans out subagents",
+	"open the run panel to see a turn's plan and subagents",
+	"attach a file with the paperclip, or paste one in",
+	"connect MCP servers in settings to give the agent tools",
+	"open a document in the canvas to keep it beside the chat",
+	"set a schedule to run a prompt on a timer",
+	"ask for phone access to drive this session from your phone",
+];
+```
 
-The pool is prose in `text-body-sm`, so it carries no markup, no monospace and no
-glyph of its own. Keep the TUI's rule that **presence is a function of width
+**What changed from the draft, and why.** The TUI's pool is slash-command shaped
+because its surface is a terminal, and there every entry *is* the syntax you type
+— `/resume picks up a recent session where you left off` teaches a command by
+showing it. Seven of this pool's draft entries instead named where a feature
+lives (`the canvas keeps a long document beside the chat`, `schedules run a
+prompt on a timer`), which teaches a reader sitting in a composer nothing they
+can do next (D4). The rewrite's rule, now stated in `composer-tips.ts`: **every
+entry names a move the user can make** — ask, type, open, attach, set — rather
+than a pane's address. Two entries were also wrong as rendered English and had
+to go regardless: the pinned first tip's `the chat list search` is a three-noun
+compound the product does not use (the app says "Search chats and agents"), and
+`settings connects MCP servers` was ungrammatical with no named destination
+(D3). The TUI's own wording for the approvals tip survives, because the desktop
+ows `/approvals` and the picker's own copy is the same claim.
+
+The pool is prose in `text-body-sm`, so it carries no markup, no monospace and
+no glyph of its own. Keep the TUI's rule that **presence is a function of width
 alone**: the row renders or does not render for the whole pool, never per entry,
-so the band cannot gain and lose a row as the reel turns.
+so the band cannot gain and lose a row as the reel turns. That rule is only
+honest while no entry can truncate, so the pool carries a character budget
+asserted in `scripts/composer-suggestions.test.mjs` (round 1, D5).
 
-The longest entry above is 54 characters (`ask for parallel work and the agent
-fans out subagents`), which at ~6.6px per character is ≈356px plus the 12px glyph
-and 6px gap ≈ **374px**. The narrowest column the prompt renders in is 550px, less
-the 24px inset each side = **502px** — so the row fits without truncation at the
-smallest size where it exists, with ~128px of slack. That estimate is the number
-to check on the frame; if the longest entry measures over 502px, shorten the copy
-rather than introducing a per-entry length test.
+The longest shipped entry is 56 characters (`ask for phone access to drive this
+session from your phone`), which **measures 356px** in the row's own element at
+the narrowest column that renders it (the rig clones the real span rather than
+estimating per character), against **484px** available there — the 502px column
+less the 12px glyph and the 6px gap. So the row fits without truncation at the
+smallest size where it exists, with **128px** of slack, and `clipped=false` for
+all ten entries. That is a MEASURED number and it is the one the character budget
+in `scripts/composer-suggestions.test.mjs` (62 chars) keeps true: if an entry ever
+measures over 484px, shorten the copy rather than introducing a per-entry length
+test.
 
 ---
 
@@ -663,16 +737,37 @@ rather than introducing a per-entry length test.
    than dropping the count or shrinking padding below `py-1` — 27.5px is already
    the WCAG 2.2 SC 2.5.8 floor's margin (24px minimum target, and this is not a
    touch target but it should not get smaller than a link row).
-2. **Confirm the 12px `Info` glyph reads as a mark and not as a thin speck**
-   beside 13px `ink-dim` text. `size={12}` is what § 5 permits at that ink; if it
-   reads thin, the answer is the fallback in § 2.4 — a plain sentence with no
-   glyph, which the captured Gemini welcome state shows working — not a heavier
-   stroke (§ 5: one pen, never two).
-3. **Confirm the left-aligned suggestion row** against the centred greeting
-   (§ 3.1). This is the recommendation I would expect the design round to test
-   hardest.
-4. **Decide the pool's size.** Eight entries × 4 shown is a guess at how much
-   variety is useful; the mechanism (pin the first, sample after) does not depend
-   on it.
+2. **Settled, with a corrected account (design round 1, D2). The 12px `Info`
+   glyph reads as a mark and not as a thin speck — but the justification the
+   first version of this item gave was wrong.** `size={12}` is what § 5 permits
+   for an icon at this ink, and the glyph is legible as a mark at 1:1 and at
+   250% in all four palettes the design round measured. What it does NOT have
+   is the contrast its TOKEN suggests: `ink-dim` clears 4.5:1 on canvas (4.95
+   worst), but the PAINTED mark is a 1px rendered arc whose core antialiases to
+   **3.30-3.68:1** (light 3.35, dark 3.68, iceberg 3.30, sage 3.43) against the
+   sentence's 5.44-5.77 beside it. That is above the **3:1 non-text floor** and
+   the mark is decorative with no informational role, so it is held to that
+   floor and not to the text floor — it is the weakest thing in the band and it
+   is allowed to be. `composer-tip.tsx` carries this account. Do not reach for a
+   heavier stroke to close the gap (§ 5: one pen, never two); the available
+   quieter step, if a later round wants one, is dropping the glyph entirely —
+   the plain sentence § 2.4's captured Gemini welcome state shows working.
+3. **Settled: the left-aligned suggestion row is right, and the fallback is not
+   needed (design round 1, N1).** The band has one axis, not two. Measured on
+   the frames: the composer's border box and the chips' own control boxes and
+   the tip glyph all land on the same left edge (240 at 1380, 164 at the column
+   floor), while the greeting is centred *within* the measure. The three
+   different ink-left-edges inside the band (tip glyph 240, chip label 248, tip
+   sentence 258, composer placeholder 265) are each component's own padding,
+   not a second axis: a glyph-prefixed row and a padded control row cannot share
+   a text edge without hanging the glyph outside the column or bleeding the
+   chip's hover ground past the measure. Recorded so a future round does not
+   re-open it.
+4. **Settled: eight entries × 4 shown, and the head is held to two rules
+   (D1).** The mechanism (pin the first, sample after) does not depend on the
+   pool's size, and the pool's contents were left open here deliberately —
+   round 1 re-ordered the head, and the rules that came out of it (no two
+   entries share a leading verb; at most one create-an-agent entry) are stated
+   in `composer-suggestions.ts` and asserted in the unit test.
 5. **Add the call-site pin and the `PERCEPTIBLE` row** (§ 6), and say in the
    commit why the chip has no `CONTROLS` row.

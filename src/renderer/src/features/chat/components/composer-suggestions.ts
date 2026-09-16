@@ -10,11 +10,36 @@
  * so every entry is a promise the app can keep; the verification citation for
  * each lives in the PR that introduced this pool.
  *
+ * ## The two rules the ORDER is held to
+ *
+ * The head of this array is not an incidental ordering: it is the pinned
+ * opening sample (below), so it is the four labels every first-run user meets
+ * on the one screen that has no conversation to be specific about. Read as a
+ * set they must not repeat themselves, so the head is held to two rules:
+ *
+ * 1. **No two entries share a leading verb.** Two labels that open with the
+ *    same word read as one request said twice, which is what the first pinned
+ *    sample did (`Set up …`, `Set up …`, `Create …`, `Create …`).
+ * 2. **At most one entry creates an agent.** A team and a single agent are
+ *    different jobs, but "create an agent" twice is not, and the pool's
+ *    neighbours (`create a team of agents`, `build a code-review agent`) make
+ *    that collision easy to reintroduce.
+ *
+ * The four together span four different capabilities — MCP, teams, phone
+ * access, session insight — so the first screen shows a spread of what the
+ * product does rather than four variations of one job.
+ *
  * ## Why the first four are pinned and the rest sampled
  *
  * A new chat shows {@link MAX_SUGGESTIONS} of them. That sample is drawn when
- * the empty chat mounts, not on a timer, so nothing under the user's eye ever
- * changes while they read it.
+ * the empty chat mounts and HELD for that mount, not re-derived on every
+ * change of the prompt's visibility and not on a timer, so nothing under the
+ * user's eye changes while they read it. The prompt's gate flips for reasons
+ * that are not a new chat (the canvas opens, the column crosses `isSmallView`)
+ * and re-deriving on that flip would re-draw the row from a sampler whose pin
+ * is already consumed — a random four replacing the four being read. Only a
+ * genuinely NEW empty chat draws again, and a new chat is a new identity, so
+ * the chat page remounts the composer that owns the sample.
  *
  * The FIRST sample of a session is the pool's own head rather than a random
  * draw, and that is the TUI's device (`tui/widgets/welcome.py:359-360`,
@@ -23,6 +48,13 @@
  * costs — the first empty chat of a session is the same screen for every user
  * and for every committed frame, and a screenshot of it is reproducible
  * instead of a different four labels each run.
+ *
+ * The two pins have DIFFERENT scopes, deliberately and worth stating so a
+ * later reader does not read one from the other: the suggestion pin is per
+ * APP RUN (`sessionSuggestionSample`, module scope — the renderer process is
+ * the session), while the tip row's opening frame is per MOUNT
+ * (`composer-tips.ts`). Both are "the first thing you see is not random"; only
+ * the suggestion pin survives a second empty chat in the same run.
  *
  * ## Why the sample is a real shuffle
  *
@@ -45,13 +77,25 @@
  */
 
 export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
-	"Set up the Linear MCP server for me",
-	"Set up the mobile relay and tunnel",
+	// The pinned opening four: one verb each, four different capabilities.
+	"Set up Linear MCP for me",
 	"Create a team of agents",
-	"Create a new agent",
-	"Schedule a task that runs every morning",
-	"Wake me tomorrow morning with a summary",
+	/*
+	 * Shortened from the recommended "Turn on phone access for this session".
+	 * Measured at the 550px column floor, the longer wording put the pinned four
+	 * on THREE rows: 249.2px + 246.2px is 495.4px against 494px of usable width
+	 * beside an 8px gap, and two rows at the floor is the pinned head's
+	 * documented ceiling. The tip row carries the session-scoped sentence, so the
+	 * band still says what phone access is for, and the 900px measure is
+	 * unaffected either way.
+	 */
+	"Turn on phone access",
 	"Show me what the agent did last turn",
+	// The tail, sampled after the first draw: still one verb each, still four
+	// different jobs.
+	"Build a code-review agent",
+	"Wake me tomorrow morning with a summary",
+	"Schedule a task that runs every morning",
 	"Review this repo and open a pull request",
 ];
 

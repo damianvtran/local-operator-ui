@@ -813,17 +813,38 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const showEmptyChatPrompt =
 			messages.length === 0 && !isHydrating && !isSmallView;
 
+		/*
+		 * The empty chat's sample, drawn once and HELD for this composer's mount.
+		 *
+		 * A ref rather than the memo's deps, because `showEmptyChatPrompt` is not "a
+		 * new chat": the canvas opening or the column crossing `isSmallView` flips it
+		 * too, and re-running the draw there re-sampled the row under the reader's
+		 * eye - by then the session's pin is consumed, so the second draw is a random
+		 * four replacing the four being read (review round 1, R3). The mount is the
+		 * unit that owns the sample in both directions: a genuinely new empty chat is
+		 * a new identity, and the chat page keys the panel on that identity
+		 * (`chat-page.tsx`), so a new chat remounts this composer and draws again.
+		 *
+		 * The draw still happens during render, and still only while the prompt is
+		 * shown: a resumed session that is never empty must not consume the opening
+		 * sample the first empty chat of the session is pinned to. Holding it also
+		 * keeps the array identity stable across a gate flip, so
+		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
+		 */
+		const heldSample = useRef<readonly string[] | null>(null);
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
 			/*
-			 * Nothing is sampled while the prompt is hidden. The sample is drawn when
-			 * the empty chat mounts, not on a timer, so nothing under the user's eye
-			 * changes while they read it - and the session's FIRST draw is the pool's
-			 * head, which is what makes a committed frame of this surface
-			 * reproducible (`composer-suggestions.ts` has the whole argument).
+			 * Nothing is sampled while the prompt is hidden, and the session's FIRST
+			 * draw is the pool's head, which is what makes a committed frame of this
+			 * surface reproducible (`composer-suggestions.ts` has the whole
+			 * argument).
 			 */
 			if (!showEmptyChatPrompt) return [];
-			return sampleSuggestions(initialSuggestions);
+			if (heldSample.current === null) {
+				heldSample.current = sampleSuggestions(initialSuggestions);
+			}
+			return heldSample.current;
 		}, [initialSuggestions, showEmptyChatPrompt]);
 
 		// Node-valued callback refs follow conditional splash remounts; a stable
@@ -1415,6 +1436,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const isInputDisabled = unavailable || isBusy;
 
 		/*
+		 * Whether the suggestion chips are inert.
+		 *
+		 * The draft case is not the composer being disabled - the box is very much
+		 * live - it is that a suggestion press REPLACES what the box holds, so while
+		 * the user is mid-draft the chips are disabled rather than the press being
+		 * allowed to clobber a sentence they are writing (round 1, U2). DISABLED, not
+		 * hidden: the band must not move while they type, and a chip vanishing under
+		 * a keystroke is a reflow they watch. The styling is the app's existing
+		 * disabled contract, which is a colour change and never opacity - the
+		 * disabled ink role, as `variant="ghost"` already carries.
+		 *
+		 * Defined here rather than beside the sample because it reads the box's
+		 * CURRENT text, which `useMessageInput` owns further down.
+		 */
+		const suggestionsDisabled =
+			isInputDisabled ||
+			isRecording ||
+			isTranscribing ||
+			newMessage.trim().length > 0;
+
+		/*
 		 * Grow with the draft up to `max-h`, then scroll. Runs on every value
 		 * change — typed, transcribed, or restored from the draft store —
 		 * because a native textarea does not grow on its own.
@@ -1671,17 +1713,40 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		};
 
-		const handleSuggestionClick = async (suggestion: string) => {
+		/*
+		 * A suggestion FILLS the composer; it does not send.
+		 *
+		 * WHAT CHANGED UNDER THIS HANDLER. It is byte-identical on `main`, where the
+		 * pool was a toy assistant's errands (trending stocks, MNIST, space invaders)
+		 * and one press spending a demo request on tokens was cheap. This change
+		 * replaced that pool with imperative asks that carry real side effects on the
+		 * user's machine - set up the mobile relay and tunnel, review the repo and
+		 * open a pull request, create a team - so the cost of a single click moved
+		 * with the copy without the interaction being revisited. The app's own
+		 * convention on this same surface is the opposite one: the slash picker under
+		 * the same composer COMPLETES rather than runs ("Enter completes the command.
+		 * Click completes /approvals."). The composer's own Send therefore stays the
+		 * single place a message leaves, and `onSendMessage` is no longer reachable
+		 * from the band at all.
+		 *
+		 * It also closes the draft loss at its source. The old handler cleared the box
+		 * AND the persisted per-conversation draft (`setNewMessage("")`), so a stray
+		 * press while the user was writing erased their sentence with no undo
+		 * (round 1, U2). Filling would still REPLACE such a draft, which is why the
+		 * chips are disabled outright while the box holds one - see
+		 * `suggestionsDisabled` above.
+		 */
+		const handleSuggestionClick = (suggestion: string) => {
 			if (isInputDisabled) return;
-			const accepted = await onSendMessage(
-				suggestion,
-				attachments.map((a) => a.path),
-			);
-			if (accepted === false) return;
-			if (conversationId) {
-				clearAttachments(conversationId);
-			}
-			setNewMessage("");
+			setNewMessage(suggestion);
+			/*
+			 * The press lands on the chip, so the chip holds focus. Handing it back to
+			 * the box is what makes the interaction "complete this, then edit it"
+			 * rather than "complete this, then hunt for where to type": the caret is in
+			 * the sentence the user just chose, which is the same place the slash
+			 * picker's completion leaves them.
+			 */
+			textareaRef.current?.focus();
 		};
 
 		const shortcutText = useMemo(() => {
@@ -2784,7 +2849,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							band={band}
 							splash={splash}
 							suggestions={suggestions}
-							disabled={isInputDisabled || isRecording || isTranscribing}
+							disabled={suggestionsDisabled}
 							onSelect={handleSuggestionClick}
 							focusComposer={() => textareaRef.current?.focus()}
 						/>

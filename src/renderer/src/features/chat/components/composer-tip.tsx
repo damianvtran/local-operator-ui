@@ -86,9 +86,25 @@ export const ComposerTipRow = ({ suspended }: Props) => {
 			className={cn("flex h-5 items-center gap-1.5")}
 		>
 			{/*
-			 * 12px is the size the icon ramp permits at an ink this quiet, and it
-			 * is an existing call shape in the tree (app-updates-section.tsx:237).
-			 * The stroke weight is lucide's default and is deliberately not
+			 * The mark's CONTRAST ACCOUNT, which is not the one its token suggests.
+			 *
+			 * `ink-dim` clears 4.5:1 on canvas (4.95 worst, `localOperatorLight`),
+			 * but the PAINTED mark never reaches its own token: a 12px lucide circle
+			 * at lucide's default stroke renders a 1px arc whose core antialiases to
+			 * 3.30-3.68:1 across the four palettes measured (light 3.35, dark 3.68,
+			 * iceberg 3.30, sage 3.43), against the sentence's
+			 * 5.44-5.77 beside it. That is above the 3:1 NON-TEXT floor and this is a
+			 * purely decorative `aria-hidden` mark with no informational role, so it
+			 * is held to that floor rather than to the text floor - it is the
+			 * weakest thing in the band and it is allowed to be.
+			 *
+			 * Do not reach for a heavier stroke to close that gap: branding § 5
+			 * keeps one pen at every size. If a later round wants the row quieter
+			 * still, the available step is dropping the glyph entirely (the plain
+			 * sentence the design record's § 2.4 fallback shows), not thickening it.
+			 *
+			 * 12px is an existing call shape in the tree (app-updates-section.tsx:237),
+			 * and the stroke weight is lucide's default and is deliberately not
 			 * restated: one pen at every size.
 			 */}
 			<Info size={12} aria-hidden="true" className="shrink-0 text-ink-dim" />

@@ -19,8 +19,10 @@ import { build } from "esbuild";
  * reproducibility under a seeded source. Nothing here is a claim about pixels:
  * whether four labels take one row or two, and whether the longest tip clears
  * the narrowest column untruncated, are measurements on a rendered frame, and
- * they live in `docs/evidence/composer-suggestions/README.md` where the frames
- * and their numbers are.
+ * they live in `docs/evidence/chat-composer-band/README.md` where the frames
+ * and their numbers are. What IS guarded here is the copy's character budget -
+ * the property that keeps those measurements true, and the only half of them a
+ * unit test can hold.
  *
  * Both modules import nothing, so each bundle is one file and no React is
  * involved.
@@ -91,12 +93,26 @@ test("the suggestion pool is the product's own requests, and nothing else", () =
 	assert.deepEqual(
 		DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS),
 		[
-			"Set up the Linear MCP server for me",
-			"Set up the mobile relay and tunnel",
+			"Set up Linear MCP for me",
 			"Create a team of agents",
-			"Create a new agent",
+			"Turn on phone access",
+			"Show me what the agent did last turn",
 		],
 		"the pinned opening sample is the pool's first four, in this order",
+	);
+	/*
+	 * The head's two rules (`composer-suggestions.ts` states them with the why):
+	 * no two entries share a leading verb, so the four do not read as one request
+	 * said twice; and the pool keeps at most one create-an-agent entry. Asserted
+	 * rather than only written down because the collision is easy to reintroduce
+	 * - the pool already carries `create a team of agents` beside
+	 * `build a code-review agent`.
+	 */
+	const head = DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS);
+	assert.equal(
+		new Set(head.map((label) => label.split(" ")[0])).size,
+		head.length,
+		"no two of the pinned four share a leading verb",
 	);
 });
 
@@ -187,15 +203,30 @@ test("two sessions do not share an opening sample", () => {
 	);
 });
 
-test("the tip pool is distinct and every entry fits one row", () => {
+test("the tip pool is distinct, non-empty and inside its character budget", () => {
 	assert.equal(COMPOSER_TIPS.length, 10);
 	assert.equal(
 		new Set(COMPOSER_TIPS).size,
 		COMPOSER_TIPS.length,
 		"the rotation's no-immediate-repeat guarantee rests on the labels being distinct",
 	);
+	/*
+	 * The tip pool's own length budget, the chip pool's 42-character rule applied
+	 * to the other row. The row's presence is a function of WIDTH ALONE
+	 * (`composer-tips.ts` property 2), which is only honest while no entry can
+	 * truncate: the row's `truncate` would turn an over-long entry into a fragment
+	 * of a sentence, and a fragment is not a tip. The measured ceiling is 58
+	 * characters / 369px at the narrowest column that renders the row (484px
+	 * available, `docs/evidence/chat-composer-band/README.md`), so 62 leaves
+	 * headroom for a future reword while still failing anything long enough to
+	 * clip.
+	 */
 	for (const tip of COMPOSER_TIPS) {
 		assert.ok(tip.length > 0, "no empty tip");
+		assert.ok(
+			tip.length <= 62,
+			`"${tip}" is ${tip.length} chars: the row renders for the whole pool or not at all, so an entry long enough to truncate would make its presence a function of the entry's length`,
+		);
 		assert.equal(
 			tip,
 			tip.trim(),
