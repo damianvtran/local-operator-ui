@@ -1385,28 +1385,39 @@ test("every python-running runCommand call site in the update service passes the
 	}
 
 	// Which of them run python: the command handed in is the interpreter this app
-	// ships, either by path or through the pip command builder. `codesign` is the
-	// file's other call site and wants the inherited environment, not this one.
+	// ships, either by path or through the pip command builder - or, for the global
+	// install's own `lop update` child, the resolved console script, which is that
+	// install's interpreter by a shebang. `codesign` is the file's other call site
+	// and wants the inherited environment, not this one.
 	const pythonCalls = calls.filter(({ text }) =>
-		/pythonPath|pip\.command/.test(text),
+		/pythonPath|pip\.command|consolePath/.test(text),
 	);
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
-	// finding nothing: the probe and the pip upgrade are the two that exist.
+	// finding nothing: the probe, the pip upgrade and the global install's update
+	// child are the three that exist.
 	assert.equal(
 		calls.length,
-		3,
-		`expected the file's three runCommand call sites, found ${calls.length}`,
+		4,
+		`expected the file's four runCommand call sites, found ${calls.length}`,
 	);
 	assert.equal(
 		pythonCalls.length,
-		2,
-		`expected two python-running call sites, found ${pythonCalls.length}`,
+		3,
+		`expected three python-running call sites, found ${pythonCalls.length}`,
 	);
 	for (const { line, text } of pythonCalls) {
+		/*
+		 * The env has to BE the guarded one. Two spellings are accepted because only
+		 * one of the three children can take it unmodified: the update child needs
+		 * `PATH` set to the installer directories as well (its `lop update` reaches
+		 * `uv` by bare name), so it SPREADS the guarded environment rather than
+		 * passing it through - and a spread is still the guard, where a call site
+		 * that built its own environment from `process.env` would not be.
+		 */
 		assert.match(
 			text,
-			/env:\s*this\.pythonSpawnEnv\(\)/,
+			/env:\s*(this\.pythonSpawnEnv\(\)|\{[^}]*\.\.\.this\.pythonSpawnEnv\(\))/,
 			`the python spawn at src/main/update-service.ts:${line} must pass the guarded environment: ${text.replace(/\s+/g, " ")}`,
 		);
 	}

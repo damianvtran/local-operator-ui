@@ -2230,6 +2230,24 @@ export type InstallIdentity = {
 	 * told them to install a wheel over their own checkout (review Q5).
 	 */
 	editable?: boolean;
+	/**
+	 * The distribution version this install reports, from its dist-info name.
+	 *
+	 * Read shell-free and kept apart from the running daemon's `/health` version
+	 * on purpose: `/health` describes the install a PROCESS was started from, and
+	 * the install on disk is what an update moves. Right after an update those two
+	 * disagree until the daemon is restarted, and a panel that cannot name both
+	 * describes one install as if it were the other.
+	 */
+	version?: string | null;
+	/**
+	 * The first token of `.lop-source` at this install's venv root, or null.
+	 *
+	 * The install's provenance rather than the machine's: see
+	 * `isSourceBuildRef` for why the token, and not the presence of a
+	 * `lop-update` script, is the signal.
+	 */
+	sourceRef?: string | null;
 	/** `uv tool list` output, when the uv CLI could be run. */
 	uvToolList?: string | null;
 	/** `pipx list` output, when the pipx CLI could be run. */
@@ -2266,6 +2284,91 @@ const PYTHON_LIB_DIR = /^python\d/;
 const LOCAL_OPERATOR_DIST_INFO = /^local[-_]operator[-_]/;
 
 /**
+ * The first token `lop-update` writes into `.lop-source` for a PyPI install.
+ *
+ * Mirrors `PYPI_SOURCE_TOKEN` in `local_operator/update.py`: a sentinel rather
+ * than a fake commit, because a wheel genuinely has no git ref and copying the
+ * previous install's sha forward is the lie the marker exists to stop.
+ */
+const PYPI_SOURCE_TOKEN = "pypi";
+
+/** `<prefix>/.lop-source`'s token list: whitespace-separated, two tokens at most. */
+const SOURCE_MARKER_SEPARATOR = /\s+/;
+
+/**
+ * Whether a `.lop-source` token names a git commit, as opposed to a sentinel.
+ *
+ * Mirrors `_looks_like_git_sha` in `local_operator/update.py`, shape for shape:
+ * 7-40 hex characters is a commit, and `pypi` (or an unrecognised token, or no
+ * file at all) is a release build. Discriminating on SHAPE rather than on an
+ * allow-list is what lets the two writers - `lop-update` and `lop update` -
+ * agree on nothing but the format, and it is why a future sentinel must not be
+ * hex: it would read as a commit rather than degrading to "no ref".
+ *
+ * Why this predicate exists at all: the source-build sentence has to describe
+ * the INSTALL. The signal it replaces - "a `lop-update` script exists on this
+ * machine" - was a fact about the machine, so an install that had already been
+ * replaced by a wheel was still described to its owner as following a checkout.
+ */
+export function isSourceBuildRef(token: string | null | undefined): boolean {
+	if (typeof token !== "string") return false;
+	const trimmed = token.trim();
+	if (trimmed.length < 7 || trimmed.length > 40) return false;
+	for (const char of trimmed) {
+		if (!"0123456789abcdefABCDEF".includes(char)) return false;
+	}
+	// `pypi` cannot reach here - it is not hex - and the check is written out
+	// anyway so a reader does not have to prove that to themselves.
+	return trimmed.toLowerCase() !== PYPI_SOURCE_TOKEN;
+}
+
+/**
+ * The first whitespace-delimited token of `<prefix>/.lop-source`, or null.
+ *
+ * The marker sits at the venv root beside the interpreters and names what is
+ * installed there: `<git-sha> <ref>` from `lop-update`, `pypi <version>` from
+ * `lop update`. Absent (never upgraded through either writer, an editable
+ * checkout), unreadable, or empty all answer null - "no provenance" is a real
+ * answer, and the caller renders it as a release build rather than as a guess.
+ */
+export function readSourceRef(prefix: string): string | null {
+	try {
+		const raw = readFileSync(join(prefix, ".lop-source"), "utf8");
+		const token = raw.split(SOURCE_MARKER_SEPARATOR).filter(Boolean)[0];
+		return token && token.length > 0 ? token : null;
+	} catch {
+		// Missing or unreadable: a fact about the install we can support (absent),
+		// and not a failure worth propagating out of a version check.
+		return null;
+	}
+}
+
+/** `local_operator-0.56.0.dist-info`, in either separator spelling. */
+const LOCAL_OPERATOR_DIST_INFO_VERSION =
+	/^local[-_]operator[-_](.+)\.dist-info$/;
+
+/**
+ * Whether `candidate` is the newer of two dist-info version spellings.
+ *
+ * A prefix can hold more than one dist-info: an upgrade that was interrupted
+ * between uninstall and install leaves the previous distribution beside the new
+ * one. The reading has to be the NEWEST, because this version is half of the
+ * only evidence that the install moved - reporting the older directory would
+ * make an update that landed read as one that did not. A spelling neither side
+ * can parse falls back to the lexicographic answer, so the result is always
+ * deterministic rather than dependent on `readdir` order.
+ */
+function newerDistInfoVersion(
+	candidate: string,
+	current: string | null,
+): boolean {
+	if (current === null) return true;
+	const order = compareVersions(candidate, current);
+	if (order !== null) return order > 0;
+	return compareVersions(current, candidate) === null && candidate > current;
+}
+
+/**
  * The two files in a `local-operator` dist-info that state who owns an install.
  *
  * Read from disk rather than inferred from a layout, because two of the install
@@ -2285,6 +2388,13 @@ const LOCAL_OPERATOR_DIST_INFO = /^local[-_]operator[-_]/;
  *   `pip install --upgrade local-operator` would put a wheel over the code the
  *   user is working in (review Q5).
  *
+ * The VERSION and the PROVENANCE are read here too, because this is the one
+ * place that already knows where the resolved install's metadata lives: the
+ * version out of the dist-info directory's own name, and the first token of
+ * `.lop-source` at the venv root. Both describe the INSTALL rather than the
+ * running daemon - the daemon's `/health` lags an install by a restart - which
+ * is what the update prompt needs to describe the state after an update.
+ *
  * Every `site-packages` under the prefix is read, and `editable` wins over
  * `installer`: a prefix rebuilt against a second interpreter leaves the previous
  * one's dist-info behind, and the order `install_kind()` uses is the checkout
@@ -2294,6 +2404,10 @@ const LOCAL_OPERATOR_DIST_INFO = /^local[-_]operator[-_]/;
 export function resolveDistributionMarkers(prefix: string): {
 	installer: string | null;
 	editable: boolean;
+	/** The version the dist-info directory NAME carries, or null when absent. */
+	version: string | null;
+	/** The first token of `<prefix>/.lop-source`, or null when there is none. */
+	sourceRef: string | null;
 } {
 	const sitePackages: string[] = [];
 	// POSIX: `<prefix>/lib/pythonX.Y/site-packages`. Windows: `Lib/site-packages`.
@@ -2311,6 +2425,7 @@ export function resolveDistributionMarkers(prefix: string): {
 
 	let installer: string | null = null;
 	let editable = false;
+	let version: string | null = null;
 	for (const dir of sitePackages) {
 		let entries: string[];
 		try {
@@ -2324,6 +2439,11 @@ export function resolveDistributionMarkers(prefix: string): {
 			if (!LOCAL_OPERATOR_DIST_INFO.test(entry)) continue;
 			if (!entry.endsWith(".dist-info")) continue;
 			const distInfo = join(dir, entry);
+			// The directory NAME is the version, which is what `importlib.metadata`
+			// reads on the Python side (`installed_build`, `local_operator/update.py`):
+			// no subprocess, no import, and therefore no interpreter to find.
+			const parsed = LOCAL_OPERATOR_DIST_INFO_VERSION.exec(entry)?.[1]?.trim();
+			if (parsed && newerDistInfoVersion(parsed, version)) version = parsed;
 			try {
 				const installerText = readFileSync(join(distInfo, "INSTALLER"), "utf8");
 				installer = installerText.trim().toLowerCase() || installer;
@@ -2343,7 +2463,7 @@ export function resolveDistributionMarkers(prefix: string): {
 		}
 	}
 
-	return { installer, editable };
+	return { installer, editable, version, sourceRef: readSourceRef(prefix) };
 }
 
 /** Trailing slashes in a PATH entry, which `join` would faithfully double. */
@@ -2390,9 +2510,43 @@ function commandSearchDirs(env: NodeJS.ProcessEnv, home: string): string[] {
 	add(join(home, ".local", "bin"));
 	add("/opt/homebrew/bin");
 	add("/usr/local/bin");
-	add("/usr/bin");
-	add("/bin");
 	return dirs;
+}
+
+/**
+ * The PATH an installer CHILD needs, built from the app's own search list.
+ *
+ * This is a second consumer of `commandSearchDirs`, not a second list: the
+ * update child has to find the same installers this app resolved the install
+ * from. `lop update` reaches `uv` by BARE NAME through the child's PATH
+ * (`installer_invocation` -> `_run_installer` -> `subprocess.run(argv)`,
+ * `local_operator/update.py`), and a LaunchServices-launched app has
+ * `/usr/bin:/bin:/usr/sbin:/sbin` with no `uv` in it - on this machine `uv` is
+ * `/opt/homebrew/bin/uv`. Without this the feature fails on exactly the machines
+ * it exists for, with an `installer exited 127` that reads as an installer bug
+ * rather than as a missing PATH entry.
+ *
+ * The installers' own bin directories LEAD and the inherited PATH follows, which
+ * is `commandSearchDirs`'s list REORDERED rather than a different list: the
+ * child must answer with the install this app classified, so a
+ * `UV_TOOL_BIN_DIR`, an XDG layout or `~/.local/bin` has to outrank whatever an
+ * inherited entry would otherwise answer with. Nothing is dropped - every
+ * inherited entry is kept, after ours, so a uv or pipx that only the user's
+ * shell knows about is still reachable.
+ */
+export function installerSearchPath(
+	env: NodeJS.ProcessEnv = process.env,
+	home: string = homedir(),
+): string {
+	const inherited = (env.PATH ?? "")
+		.split(delimiter)
+		.map((dir) => dir.replace(TRAILING_SLASHES, ""))
+		.filter((dir) => dir.length > 0);
+	const inheritedSet = new Set(inherited);
+	const ours = commandSearchDirs(env, home).filter(
+		(dir) => !inheritedSet.has(dir),
+	);
+	return [...ours, ...inherited].join(delimiter);
 }
 
 /**
@@ -2595,7 +2749,62 @@ export function readInstallIdentity(shimPath: string | null): InstallIdentity {
 		venvPrefix: existsSync(join(prefix, "pyvenv.cfg")) ? prefix : null,
 		installer: markers.installer,
 		editable: markers.editable,
+		version: markers.version,
+		sourceRef: markers.sourceRef,
 	};
+}
+
+/**
+ * The `generations/<id>` root this install is launched from, or null.
+ *
+ * This is the predicate the update path's safety rests on, and it answers a
+ * question about the LAYOUT rather than about a version. Present means the
+ * install implements the atomic handover: one tree per build behind a `current`
+ * pointer (`docs/design-install-generations.md`), so an install lands in a tree
+ * no running process is reading and the handover is a pointer flip. Absent
+ * means the installer rewrites the shared environment in place - the shape that
+ * killed 36 sessions with no exit record under a uv rewrite on 2026-09-15, and
+ * not something the app may start on a user's behalf.
+ *
+ * A VERSION IS DELIBERATELY NOT THE TEST. The capability arrived in 0.56.0, but
+ * the version is a proxy for the layout and the layout is the capability: a
+ * hand-made 0.56 tree installed in place has the version and not the layout, and
+ * the gate would wave its owner into the in-place rewrite. The `current` entry
+ * is the second half for the same reason - a `generations/` directory with no
+ * pointer is a tree nothing launches from, so the layout is not in use and must
+ * not be reported as if it were.
+ *
+ * Never throws. It runs inside a version check, and a check that throws is a
+ * check that reports nothing: a missing path, an unresolvable one (a symlink
+ * loop raises ELOOP from the resolver), and an unreadable tree all answer null,
+ * which the plan renders as "the app names the command but will not run it".
+ */
+export function generationInstallRoot(
+	identity: InstallIdentity,
+): string | null {
+	const resolved = identity.realPath ?? identity.path;
+	if (!resolved) return null;
+	let executable: string;
+	try {
+		executable = realpathSync(resolved);
+	} catch {
+		return null;
+	}
+	// The resolved path is `<stable>/generations/<id>/...`, and the generation
+	// root is the path element directly under `generations`. Walked by name
+	// rather than by a fixed depth, because the two layouts in the wild differ
+	// below that point (`generations/<id>/bin/...` for a generation's own
+	// console scripts, `generations/<id>/tools/local-operator/bin/...` for the
+	// venv a uv install writes) and only the root itself is the same in both.
+	let dir = executable;
+	for (;;) {
+		const parent = dirname(dir);
+		if (parent === dir) return null;
+		if (basename(parent) === "generations") {
+			return existsSync(join(dirname(parent), "current")) ? dir : null;
+		}
+		dir = parent;
+	}
 }
 
 /**
@@ -2662,14 +2871,16 @@ export function classifyGlobalInstall(
  */
 export function resolveGlobalInstallPlan(input: {
 	identity: InstallIdentity;
-	lopUpdatePath: string | null;
 }): BackendPlan {
 	const kind = classifyGlobalInstall(input.identity);
-	// A uv tool built by `lop-update` and the checkout itself both report the
+	// A uv tool built from a git snapshot and the checkout itself both report the
 	// CHECKOUT's version after they are updated, so neither can be promised the
-	// version the app offered (review U12).
+	// version the app offered (review U12). Which of the two it is now comes from
+	// the install's own `.lop-source` rather than from a `lop-update` script
+	// existing on this machine, which described the machine and not the install.
 	const sourceBuild =
-		kind === "editable" || (kind === "uv-tool" && Boolean(input.lopUpdatePath));
+		kind === "editable" ||
+		(kind === "uv-tool" && isSourceBuildRef(input.identity.sourceRef));
 	const detail = input.identity.path
 		? `local-operator resolves to ${input.identity.path}${
 				input.identity.realPath &&
@@ -2677,7 +2888,7 @@ export function resolveGlobalInstallPlan(input: {
 					? ` (${input.identity.realPath})`
 					: ""
 			}, classified as ${kind}${
-				sourceBuild
+				kind === "editable"
 					? ", built from source on this machine, so it follows the checkout rather than the published release"
 					: ""
 			}`
@@ -2699,16 +2910,41 @@ export function resolveGlobalInstallPlan(input: {
 		};
 	}
 	if (kind === "uv-tool") {
-		const useLopUpdate = Boolean(input.lopUpdatePath);
+		/*
+		 * One command for both audiences, and the layout - not the version - decides
+		 * which audience. `lop update` IS the install's front end: it detects the
+		 * kind, honours the `editable`/`unknown` refusals, writes the `.lop-source`
+		 * marker that makes runtimes converge, prunes, and refreshes the daemons it
+		 * supervises. Both commands this branch used to name are broken remedies:
+		 * `lop-update` is the release owner's out-of-tree script (a checkout at a
+		 * hardcoded path, `uv tool install --force --from`, and an outright refusal
+		 * when the local ref is behind or diverged from its remote - a remedy that
+		 * can refuse is not a remedy), and `uv tool upgrade local-operator` is
+		 * documented in the harness as failing for a git-snapshot install or a
+		 * pinned receipt (`local_operator/update.py`).
+		 *
+		 * `canManageUpdate` is the generation layout and nothing else. On that layout
+		 * an install lands in a tree no running process is reading, so the app may
+		 * run it while sessions are mid-turn; on the legacy layout the same command
+		 * rewrites `site-packages` under every live runtime, which is the incident
+		 * this gate exists to keep the app out of. The gate clears itself: one manual
+		 * `lop update` puts the host on the generation layout and the button works
+		 * from then on.
+		 */
+		const managed = generationInstallRoot(input.identity) !== null;
+		const provenance = sourceBuild
+			? ", built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice"
+			: "";
+		const layout = managed
+			? ""
+			: "; this install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn";
 		return {
-			canManageUpdate: false,
-			updateCommand: useLopUpdate
-				? "lop-update"
-				: "uv tool upgrade local-operator",
-			remedy: useLopUpdate
-				? "The server is a uv tool install built from source on this machine, so update it from your terminal:"
-				: "The server is a uv tool install, so update it from your terminal:",
-			detail,
+			canManageUpdate: managed,
+			updateCommand: "lop update",
+			remedy: managed
+				? "The server is a uv tool install managed by lop, so update it from your terminal:"
+				: "This install predates the non-disruptive installer, so update it once from your terminal; the app manages updates after that:",
+			detail: `${detail}${provenance}${layout}`,
 			sourceBuild,
 		};
 	}
