@@ -243,6 +243,12 @@ const CHROME_LAUNCH_SITES = [
 		"the Storybook sweep across all twelve themes, which is the rig behind the committed frames",
 	),
 	guarded(
+		"scripts/composer-band-geometry.mjs",
+		"spawn",
+		1,
+		"measures the composer band's empty-chat geometry, chips and tip row from the live DOM (this branch's rig)",
+	),
+	guarded(
 		"scripts/chat-alignment-geometry.mjs",
 		"spawn",
 		1,
