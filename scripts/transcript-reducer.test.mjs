@@ -2763,32 +2763,93 @@ test("a tail read never answers the paging question, and never repaints a cleare
 	 */
 	const cleared = clearTranscript(loaded);
 	assert.deepEqual(rows(cleared), []);
-	const afterTail = applyHistoryPage(cleared, page, { keepPaging: true });
+	// The read's own instant — the command receipt that started the pass — which is
+	// what scopes the rows a cleared view will accept (Q14).
+	const since = at + 50;
+	const afterTail = applyHistoryPage(cleared, page, {
+		keepPaging: true,
+		outcomeSince: since,
+	});
 	assert.deepEqual(
 		rows(afterTail),
 		["compaction"],
 		"the pass's row is the only thing a tail read paints into a cleared view",
 	);
 
-	// The SECOND read, after that row is on screen: still only the outcome rows.
-	const secondRead = applyHistoryPage(afterTail, page, { keepPaging: true });
+	// The SECOND read, after that row is on screen: still only the pass's own row.
+	const secondRead = applyHistoryPage(afterTail, page, {
+		keepPaging: true,
+		outcomeSince: since,
+	});
 	assert.deepEqual(
 		rows(secondRead),
 		["compaction"],
 		"a non-empty cleared view is still a cleared view",
 	);
 
-	// And the reviewer's own path: `/clear`, then a new message (the operator's
-	// next turn), then the pass — the same page must not put the pre-clear rows back.
+	/*
+	 * Q14 — the two-pass page. "Outcome rows" was too wide: the pre-clear passes'
+	 * rows are outcome rows too, so a cleared view showed a bare line per old pass
+	 * under the new one (measured on four sessions, two heads). The scope is the
+	 * read's own instant, so an OLDER pass's row is not admitted and this pass's is.
+	 */
+	const twoPasses = {
+		...pageOf([
+			{
+				id: "old_pass",
+				// Before the receipt that scheduled this read.
+				ts: (since - 60_000) / 1000,
+				type: "compaction",
+				payload: { tokens_before: 25 },
+			},
+			{
+				id: "this_pass",
+				ts: (since + 100) / 1000,
+				type: "compaction",
+				payload: { tokens_before: 41_000 },
+			},
+		]),
+		has_more: true,
+	};
+	// Cleared from a view that HAD rows: `clearTranscript` is a no-op on an empty
+	// transcript (it early-returns), so the epoch only moves when there was
+	// something to clear — which is exactly the state the operator is in.
+	const bulkCleared = clearTranscript(loaded);
+	assert.ok(bulkCleared.viewEpoch > 0, "the clear moved the epoch");
+	assert.deepEqual(
+		applyHistoryPage(bulkCleared, twoPasses, {
+			keepPaging: true,
+			outcomeSince: since,
+		}).records.map((record) => record.id),
+		["this_pass"],
+		"a cleared view keeps this pass's outcome row and no earlier pass's",
+	);
+
+	// And the bracket QA ran: `/clear`, a new message, then the pass — the page
+	// carrying both the old pass and this one must not put the old one back.
 	const afterNewMessage = appendPendingUser(afterTail, "and now compact again");
 	assert.deepEqual(rows(afterNewMessage), ["compaction", "user"]);
-	const afterSecondPass = applyHistoryPage(afterNewMessage, page, {
+	const afterSecondPass = applyHistoryPage(afterNewMessage, twoPasses, {
 		keepPaging: true,
+		outcomeSince: since,
 	});
+	// `d1` is the earlier read's own pass row (its ts is after this read's instant,
+	// so it is this read's pass), `old_pass` is the pre-clear one that must not come
+	// back, and the page's `u1` is not an outcome row at all.
+	assert.ok(
+		!afterSecondPass.records.some((record) => record.id === "old_pass"),
+		"the pre-clear pass stays gone through a later /compact",
+	);
 	assert.deepEqual(
-		rows(afterSecondPass),
-		["compaction", "user"],
-		"the rows cleared before the new message stay cleared",
+		afterSecondPass.records.map((record) => record.id),
+		["d1", "this_pass", "and now compact again"],
+	);
+
+	// The ordinary read is untouched: it still repaints the rows `/clear` removed
+	// (parity with `origin/main`, and deliberately not this branch's to change).
+	assert.ok(
+		applyHistoryPage(cleared, twoPasses).records.length > 1,
+		"a non-tail read still repaints",
 	);
 });
 

@@ -1546,33 +1546,50 @@ function durableRecord(
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
-	options: { replace?: boolean; keepPaging?: boolean } = {},
+	options: {
+		replace?: boolean;
+		keepPaging?: boolean;
+		/**
+		 * The instant this read was scheduled for: the command receipt that started
+		 * the pass, which `slash-dispatch.ts` takes with `Date.now()` and the stop
+		 * predicate already compares against (`tailCarriesOutcome`).
+		 *
+		 * A CLEARED view is scoped by it, and that is the whole reason it is here:
+		 * "outcome rows" alone was too wide, because the pre-clear passes' rows are
+		 * outcome rows too — `/clear`, keep working, `/compact` re-admitted them
+		 * (QA round 6's Q14, measured on four sessions and two heads). The pass the
+		 * read exists for is the one at or after this instant, so that is what a
+		 * cleared view keeps.
+		 */
+		outcomeSince?: number;
+	} = {},
 ): TranscriptState {
 	/*
-	 * A view the user has CLEARED is answered with the pass's own outcome only.
-	 * `/clear` is view-only by contract, so a page read afterwards would repaint
-	 * every row it removed — measured as the in-place variant of review round 3's
-	 * U11 (UX round 4's U17): `/compact`, then `/clear`, then `/compact` again put
-	 * the cleared conversation back. The tail read exists for ONE row (a pass's
-	 * settled line, or its refusal), and `keepPaging` is the flag only that read
-	 * sets, so this is where the distinction can be drawn without a second
-	 * mechanism. A read that is not the tail read still repaints, which is
-	 * pre-existing behaviour of a view-only clear rather than this branch's.
-	 */
-	/*
-	 * The test is the EPOCH, not "is the view empty": the first read painting the
-	 * pass's own outcome row is enough to make the view non-empty, and the second
-	 * scheduled read would then land whole — the same defect through the other door
-	 * (review round 5, R5-2: `/clear`, keep working, `/compact` restored the
-	 * pre-clear conversation, reproduced with the second read bracketed in the
-	 * backend's request log). `keepPaging` is set by exactly one caller (the tail
-	 * read) and the epoch is bumped by exactly one function (`clearTranscript`), so
-	 * this is the narrowest statement of the rule.
+	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
+	 * and with nothing else. Three facts make that test exact, and each was a defect
+	 * on its own:
+	 *
+	 * - `/clear` is view-only by contract, so a page read afterwards repaints every
+	 *   row it removed (`/compact`, `/clear`, `/compact` put the conversation back —
+	 *   UX round 4's U17);
+	 * - the test is the EPOCH, not "is the view empty": the first read painting the
+	 *   pass's own row made the view non-empty, so the second scheduled read landed
+	 *   whole (round 5's R5-2/U20, bracketed in the backend's request log);
+	 * - and the row set is scoped by the read's OWN instant, because "outcome rows"
+	 *   includes the pre-clear passes' rows, which is what put a bare
+	 *   `Context compacted` per old pass back under the new one (round 6's Q14).
+	 *
+	 * `keepPaging` is set by exactly one caller (the tail read), the epoch is bumped
+	 * by exactly one function (`clearTranscript`) and `outcomeSince` is the instant
+	 * that same read was scheduled for — so nothing here needs new state to be true.
+	 * A read that is not the tail read still repaints, which is parity with
+	 * `origin/main` and deliberately unchanged.
 	 */
 	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
-		if (clearedView && !isCompactionOutcome(entry)) continue;
+		if (clearedView && !isCompactionOutcome(entry, options.outcomeSince))
+			continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. Handing it to `durableRecord` is what lets an unchanged
 		// `images` array keep its reference through a replayed page.
@@ -2574,15 +2591,27 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 	};
 }
 
-/** Whether a durable entry is a compaction pass's own outcome row. */
+/**
+ * Whether a durable entry is a compaction pass's own outcome row, optionally
+ * scoped to the pass a read was scheduled for.
+ *
+ * `since` is a pass scope rather than a filter the caller re-derives: it is the
+ * same instant `tailCarriesOutcome` compares against, so the row a cleared view
+ * paints and the row the stop predicate is waiting for are the same pass by
+ * construction. Without it, every pass's outcome row qualifies — which is how a
+ * cleared view re-admitted the pre-clear ones (QA round 6, Q14).
+ */
 function isCompactionOutcome(
 	entry: DesktopHistoryPage["entries"][number],
+	since?: number,
 ): boolean {
-	return (
+	const outcome =
 		entry.type === "compaction" ||
 		(entry.type === "message" &&
-			entry.payload?.custom_type === "compaction_refused")
-	);
+			entry.payload?.custom_type === "compaction_refused");
+	if (!outcome) return false;
+	if (since === undefined) return true;
+	return Math.round((entry.ts ?? 0) * 1000) >= since;
 }
 
 /** A token count as the settled line prints it: `41.0k`, `864`. */
