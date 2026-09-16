@@ -807,9 +807,11 @@ the assumption that another already has it.
    script, launchd or an agent carries no environment of ours (measured: a venv
    over the bundled tree wrote 25 `.pyc` into it that way, which is the class the
    operator's own 163 in-bundle `.pyc` belong to), and a child can ignore the
-   environment by design - `-E`/`-I` mean "do not read `PYTHON*`", and the
-   backend's evaluation supervisor spawns workers with `-I -s -E -B`. So the
-   app-managed venv carries the refusal *inside* it:
+   environment by design - `-I`/`-E` mean "do not read `PYTHON*`", and the app's
+   own smoke child for the managed runtime is started exactly that way (`-I -B`
+   in `src/main/backend/managed-python.ts`) - so an environment alone cannot be
+   the whole answer. The app-managed venv therefore carries the refusal *inside*
+   it:
    `ensureVenvBytecodeGuard` writes a `sitecustomize.py` into the venv's own
    `site-packages`, which `site` imports on every start. Since the interpreter
    moved out of the bundle this guard protects the managed runtime's **identity**

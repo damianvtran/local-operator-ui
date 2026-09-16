@@ -12,6 +12,7 @@ import {
 	rmSync,
 	rmdirSync,
 	statSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
@@ -710,6 +711,67 @@ test("the heal removes exactly what was reported, through an injectable remover"
 		(target) => deduped.push(target),
 	);
 	assert.deepEqual(deduped, [path]);
+});
+
+test("a swap under the tree between the plan and the unlink refuses", () => {
+	// Why this case exists (review round 1, R2): the per-file re-check is not a
+	// stale-plan guard - no caller can supply a plan, and the plan was produced by
+	// the same predicate - but it is not a tautology either, because
+	// `isPythonBytecodePath` resolves `realpathSync` at the moment it is called. A
+	// path whose directory is replaced, between the plan and the unlink, by a
+	// symlink out of the bundle resolves somewhere else and is refused. This drives
+	// that window and asserts the refusal, so the docstring's claim is bound to a
+	// measurement rather than to prose.
+	const root = tempDir("lo-recheck-");
+	const bundlePath = join(root, "Fixture.app");
+	const cached = join(
+		bundlePath,
+		"Contents",
+		"Resources",
+		"python_aarch64",
+		"lib",
+		"python3.12",
+		"json",
+		"__pycache__",
+	);
+	const elsewhere = join(root, "elsewhere");
+	mkdirSync(cached, { recursive: true });
+	mkdirSync(elsewhere, { recursive: true });
+	const first = join(cached, "a.cpython-312.pyc");
+	const second = join(cached, "b.cpython-312.pyc");
+	writeFileSync(first, "added bytecode\n", "utf8");
+	writeFileSync(second, "added bytecode\n", "utf8");
+	const violations = [
+		{ kind: "added", path: first },
+		{ kind: "added", path: second },
+	];
+	// The plan itself is fine, which is the point: only the filesystem moved.
+	assert.equal(planPythonBytecodeHeal(bundlePath, violations).healable, true);
+
+	const removed = [];
+	const result = healPythonBytecode(bundlePath, violations, (path) => {
+		removed.push(path);
+		if (path !== first) return;
+		// Between the two unlinks: the directory the second path goes through
+		// becomes a symlink out of the bundle, with a file of the same name behind
+		// it, so the plan's path still exists and still resolves - elsewhere.
+		rmSync(cached, { recursive: true, force: true });
+		symlinkSync(elsewhere, cached);
+		writeFileSync(
+			join(elsewhere, "b.cpython-312.pyc"),
+			"added bytecode\n",
+			"utf8",
+		);
+	});
+
+	assert.deepEqual(removed, [first], "nothing is unlinked after the refusal");
+	assert.equal(result.healable, false);
+	assert.match(result.reason, /refused to remove .*b\.cpython-312\.pyc/);
+	assert.deepEqual(result.removed, [first]);
+	assert.ok(
+		existsSync(join(elsewhere, "b.cpython-312.pyc")),
+		"the file the plan named is still there, and the heal did not chase it",
+	);
 });
 
 test("a bytecode-broken bundle really heals, and a tampered one really does not", async (t) => {
