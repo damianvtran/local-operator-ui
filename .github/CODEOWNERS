@@ -24,12 +24,14 @@
 #
 # When a human review IS wanted it is a deliberate act rather than a side effect
 # of opening a PR: add the reviewer by hand at the point the PR is ready to be
-# read, `gh pr edit <n> --add-reviewer <handle>`. Who may be asked -- the handles
-# that carry write access and may approve on behalf of the project:
-# `damianvtran` (admin), `bbqben` (write). Verify before relying on either with
-# `gh api repos/damianvtran/local-operator-ui/collaborators`, since a handle
-# without write access is silently ignored by GitHub.
+# read, `gh pr edit <n> --add-reviewer <handle>` (no leading `@` -- gh <= 2.100
+# only strips it for `@me` and `@copilot`). Who may be asked: the handles with
+# write access, which are also the only ones GitHub will let review --
+# `damianvtran` (admin), `bbqben`, `jcobhams` (write). Verify a handle before
+# relying on it with `gh api repos/damianvtran/local-operator-ui/collaborators`,
+# since a handle without write access is silently ignored by GitHub.
 #
-# Validate any future edit with GitHub's own parser rather than by eye:
-# `gh api repos/damianvtran/local-operator-ui/codeowners/errors` (it validates
-# the default branch; an empty list means the file parsed).
+# Validate any future edit with GitHub's own parser rather than by eye, and pin
+# the ref or it silently validates the default branch instead of your branch:
+# `gh api 'repos/damianvtran/local-operator-ui/codeowners/errors?ref=<branch>'`
+# (an empty error list means the file parsed).
