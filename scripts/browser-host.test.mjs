@@ -252,8 +252,13 @@ const requests = [];
 
 before(async () => {
 	root = mkdtempSync(join(tmpdir(), "lo-browser-host-"));
+	// Hoisted out of the `key:` slot it used to be assigned in: biome's
+	// `noAssignInExpressions` flags the assignment-in-expression, and this file has to
+	// be lint-clean for `pnpm lint:scripts` to pass over a change that touches it. The
+	// order is identical — the key is minted before `startRpcServer` runs.
+	sessionKey = mintSessionKey();
 	server = await startRpcServer({
-		key: (sessionKey = mintSessionKey()),
+		key: sessionKey,
 		dispatch: async (method, params, requestId) => {
 			requests.push({ method, params, requestId });
 			if (method === "status") return { ok: true };
@@ -1044,6 +1049,234 @@ test("revoking every approval leaves no grant and no pending entry", () => {
 	assert.equal(store.describe().allowed_origins, 0);
 });
 
+/*
+ * REQUEST_ACCESS ANSWERS FROM THE GATE'S OWN AUTHORITY (shipped consent defect).
+ *
+ * `request_access` used to answer from a RECEIPT — a copy of a decision with its
+ * own 15-minute life — while the gate that admits or refuses a navigation read
+ * the GRANT. The two disagree the moment a grant ends: a spent `once` grant, or a
+ * grant the user forgot, left `request_access` answering `allowed` for a
+ * navigation the very next `open` refused with `origin_not_allowed`, and the
+ * consent band was never raised, so the request was dropped without ever being
+ * put back to the user. It is per-CONVERSATION because the receipt is: a fresh
+ * conversation, holding no receipt, re-asked — which is what proved the state
+ * was the receipt's rather than the grant's. The deny direction was the same bug
+ * reversed: a durable denial read back from a receipt stopped being answered once
+ * the receipt expired, re-prompting a user who had already pressed "Don't
+ * allow".
+ *
+ * The fix is one predicate — `ApprovalStore.liveAuthority`, which the gate and
+ * `request_access` both read now — so the two cannot disagree by construction.
+ * These tests pin both directions: no `allowed` followed by a refusal, and no
+ * `allowed` lost, and no prompt re-raised, for authority that IS live. The last
+ * two tests drive the same sequence through the RPC dispatcher and assert the
+ * band the renderer paints (`chromeState().pendingConsent`).
+ */
+
+// The two TTLs this defect straddles, both in `vendor/driver/access-queue.ts`
+// (which this test bundle does not re-export): a decision receipt lives 15
+// minutes, an unspent once grant 10. These offsets land past one, inside the
+// other.
+const PAST_ONCE_GRANT_MS = 11 * 60_000;
+const PAST_DECISION_RECEIPT_MS = 16 * 60_000;
+
+test("a spent one-time grant goes back to the user instead of answering allowed", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-spent-grant") });
+	const url = safeHttpUrl("https://spent.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "once");
+	// The navigation that spends it: no later call can repeat this.
+	assert.equal(store.ensureTopLevelAccess(url, "session:a").viaOnceGrant, true);
+
+	const asked = store.requestAccess(url.href, "session:a", "async", "req-2");
+	assert.equal(
+		asked.state,
+		"pending",
+		"a spent grant is not authority: the user is asked again",
+	);
+	assert.equal(
+		store.pendingEntries().length,
+		1,
+		"and the band has something to render",
+	);
+	assert.equal(store.accessStateFor(url.href, "session:a").state, "pending");
+	assert.throws(() => store.ensureTopLevelAccess(url, "session:a"), {
+		code: "origin_not_allowed",
+	});
+});
+
+test("a site the user forgot is asked about again in the conversation that earned the grant", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-forgotten") });
+	const url = safeHttpUrl("https://forgotten.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "site");
+	assert.equal(store.originAllowed(url), true);
+	assert.ok(store.revokeOrigin(url.href) > 0, "forget-site retires the grant");
+
+	const asked = store.requestAccess(url.href, "session:a", "async", "req-2");
+	assert.equal(
+		asked.state,
+		"pending",
+		"the receipt outlived the grant the user withdrew",
+	);
+	assert.equal(store.pendingEntries().length, 1);
+	assert.throws(() => store.ensureTopLevelAccess(url, "session:a"), {
+		code: "origin_not_allowed",
+	});
+});
+
+test("an expired one-time grant raises the band rather than answering from its live receipt", () => {
+	let clock = 1_700_000_000_000;
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-expired-grant"),
+		now: () => clock,
+	});
+	const url = safeHttpUrl("https://expired-grant.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "once");
+	// Past the grant's own life, inside the receipt's: the receipt is live and the
+	// authority it stood for is not.
+	clock += PAST_ONCE_GRANT_MS;
+
+	const asked = store.requestAccess(url.href, "session:a", "async", "req-2");
+	assert.equal(asked.state, "pending", "an expired grant is not an approval");
+	assert.equal(store.pendingEntries().length, 1);
+});
+
+test("a durable denial outlives its receipt, and await_access reads it as denied", () => {
+	let clock = 1_700_000_000_000;
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-durable-deny"),
+		now: () => clock,
+	});
+	const url = safeHttpUrl("https://durable-deny.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "deny");
+
+	// The same answer the allow path gives for authority still in force: `none` is
+	// the word for "no request exists for you", which an agent narrates to the
+	// user as "the user has not answered" while the user has in fact refused.
+	assert.equal(
+		store.accessStateFor(url.href, "session:a").state,
+		"denied",
+		"await_access reads a no as a no",
+	);
+
+	clock += PAST_DECISION_RECEIPT_MS;
+	const asked = store.requestAccess(url.href, "session:a", "async", "req-2");
+	assert.equal(
+		asked.state,
+		"denied",
+		"the verdict is durable: re-prompting here is the nag the deny button exists to stop",
+	);
+	assert.equal(store.accessStateFor(url.href, "session:a").state, "denied");
+	assert.equal(
+		store.pendingEntries().length,
+		0,
+		"and no band is raised for a site the user refused",
+	);
+});
+
+test("a live grant still answers allowed, and still admits its navigation", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-live-grant") });
+	const url = safeHttpUrl("https://live-grant.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "site");
+
+	assert.equal(
+		store.requestAccess(url.href, "session:a", "async", "req-2").state,
+		"allowed",
+	);
+	assert.equal(store.ensureTopLevelAccess(url, "session:a").allowed, true);
+	assert.equal(store.pendingEntries().length, 0);
+});
+
+test("an unspent one-time grant answers allowed, and the navigation then spends it", () => {
+	const store = new ApprovalStore({
+		dir: join(root, "approvals-unspent-grant"),
+	});
+	const url = safeHttpUrl("https://unspent.example/");
+	const first = store.requestAccess(url.href, "session:a", "async", "req-1");
+	store.respond(first.entry_id, "once");
+
+	// Asked BEFORE the navigation: the grant is live authority, so this must not
+	// raise a second prompt — and it must not consume the grant either.
+	const asked = store.requestAccess(url.href, "session:a", "async", "req-2");
+	assert.equal(asked.state, "allowed");
+	assert.equal(
+		store.pendingEntries().length,
+		0,
+		"no second prompt for a grant the user already gave",
+	);
+	assert.equal(store.ensureTopLevelAccess(url, "session:a").viaOnceGrant, true);
+});
+
+test("a request the user has not decided still raises the band", () => {
+	const store = new ApprovalStore({ dir: join(root, "approvals-undecided") });
+	const url = safeHttpUrl("https://undecided.example/");
+	const asked = store.requestAccess(url.href, "session:a", "async", "req-1");
+
+	assert.equal(asked.state, "pending");
+	assert.equal(store.pendingEntries().length, 1);
+	assert.equal(store.accessStateFor(url.href, "session:a").state, "pending");
+	assert.throws(
+		() => store.ensureTopLevelAccess(url, "session:a"),
+		{ code: "origin_not_allowed" },
+		"default-deny: nothing is admitted before the user answers",
+	);
+});
+
+test("through the dispatcher: a spent one-time grant re-asks and raises the consent band", async () => {
+	const { host } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		url: "https://spent-host.example/",
+	};
+	assert.equal(
+		(await host.dispatch("request_access", owner, "req-1")).state,
+		"pending",
+	);
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
+	await host.dispatch("open", owner, "open-1");
+
+	const asked = await host.dispatch("request_access", owner, "req-2");
+	assert.equal(asked.state, "pending");
+	assert.equal(
+		host.chromeState().pendingConsent.length,
+		1,
+		"the band the renderer paints is up, so the user can answer",
+	);
+	assert.equal(
+		(await host.dispatch("await_access", { ...owner, timeout_ms: 1 }, "req-3"))
+			.state,
+		"pending",
+	);
+	await assert.rejects(
+		() => host.dispatch("open", owner, "open-2"),
+		(error) => error.code === "origin_not_allowed",
+	);
+});
+
+test("through the dispatcher: forgetting a site re-asks in the same conversation", async () => {
+	const { host } = makeHost({ forgetSiteData: async () => {} });
+	const owner = {
+		requester: "session:alice",
+		url: "https://forgotten-host.example/",
+	};
+	await host.dispatch("request_access", owner, "req-1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", owner, "open-1");
+	await host.forgetSite(owner.url);
+
+	const asked = await host.dispatch("request_access", owner, "req-2");
+	assert.equal(asked.state, "pending");
+	assert.equal(host.chromeState().pendingConsent.length, 1);
+	await assert.rejects(
+		() => host.dispatch("open", owner, "open-2"),
+		(error) => error.code === "origin_not_allowed",
+	);
+});
+
 test("the broad-domain scope is unavailable — not silently wrong — without the suffix list", () => {
 	configurePslRules(null);
 	assert.equal(domainScopeAvailable(), false);
@@ -1599,8 +1832,7 @@ test("a click whose document lands on an unapproved origin still fails the resul
 				"click",
 			),
 		(error) =>
-			error.code === "origin_not_allowed" &&
-			error.data.reason === "unapproved",
+			error.code === "origin_not_allowed" && error.data.reason === "unapproved",
 	);
 });
 
@@ -1642,14 +1874,9 @@ test("a document change under any non-navigating action discards its result", as
 	]) {
 		await assert.rejects(
 			() =>
-				host.dispatch(
-					method,
-					{ ...params, tab: opened.tab, ...extra },
-					method,
-				),
+				host.dispatch(method, { ...params, tab: opened.tab, ...extra }, method),
 			(error) =>
-				error.code === "origin_not_allowed" &&
-				error.data.reason === "changed",
+				error.code === "origin_not_allowed" && error.data.reason === "changed",
 			`${method} returned a result from a document it did not authorize`,
 		);
 	}
@@ -1701,7 +1928,11 @@ test("the per-hop gate is armed for the actions that can navigate, and only thos
 	];
 	for (const [method, extra] of cases) {
 		const before = armed();
-		await host.dispatch(method, { ...params, tab: opened.tab, ...extra }, method);
+		await host.dispatch(
+			method,
+			{ ...params, tab: opened.tab, ...extra },
+			method,
+		);
 		assert.equal(armed(), before, `${method} armed the navigation gate`);
 	}
 	for (const method of ["click", "type"]) {
@@ -1711,7 +1942,11 @@ test("the per-hop gate is armed for the actions that can navigate, and only thos
 			{ ...params, tab: opened.tab, selector: "body", text: "x" },
 			method,
 		);
-		assert.equal(armed(), before + 1, `${method} did not arm the navigation gate`);
+		assert.equal(
+			armed(),
+			before + 1,
+			`${method} did not arm the navigation gate`,
+		);
 	}
 });
 
@@ -1919,10 +2154,7 @@ test("both per-origin controls a user clicks retire an unspent once grant", asyn
 			url: "https://approved.example/",
 		};
 		await host.dispatch("request_access", owner, "request");
-		host.respondToConsent(
-			host.chromeState().pendingConsent[0].entryId,
-			"once",
-		);
+		host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 		// The grant is live but unspent, which is the state a revoke has to retire:
 		// it admits the origin without ever having written a durable row.
 		assert.equal(
@@ -1959,16 +2191,16 @@ test("both per-origin controls a user clicks retire an unspent once grant", asyn
 	// The BULK control is pinned here too, because it is the limb the old test
 	// exercised: removing it above must not quietly drop its coverage.
 	const { host } = makeHost();
-	const owner = { requester: "session:alice", url: "https://approved.example/" };
+	const owner = {
+		requester: "session:alice",
+		url: "https://approved.example/",
+	};
 	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 	assert.equal(host.revokeAllApprovals().removed > 0, true);
 	assert.throws(
 		() =>
-			host.approvals.ensureTopLevelAccess(
-				new URL(owner.url),
-				owner.requester,
-			),
+			host.approvals.ensureTopLevelAccess(new URL(owner.url), owner.requester),
 		{ code: "origin_not_allowed" },
 	);
 });
@@ -1983,7 +2215,10 @@ test("an explicit deny stops a live receipt immediately", async () => {
 	// document, a SECOND requester's prompt for the same origin is denied, and the
 	// first requester's live receipt must stop working.
 	const { host } = makeHost();
-	const owner = { requester: "session:alice", url: "https://approved.example/" };
+	const owner = {
+		requester: "session:alice",
+		url: "https://approved.example/",
+	};
 	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 	const opened = await host.dispatch("open", owner, "open");
@@ -2005,7 +2240,8 @@ test("an explicit deny stops a live receipt immediately", async () => {
 	// drafter as much as for anyone else.
 	await assert.rejects(
 		() => host.dispatch("read", { ...owner, tab: opened.tab }, "denied"),
-		(error) => error.code === "origin_not_allowed" && error.data.reason === "denied",
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "denied",
 	);
 });
 
@@ -2295,18 +2531,29 @@ test("a background capture retries a stalled attempt, and does not retry a real 
 	let captures = 0;
 	let seenDeadline;
 	cdp.send = async (contents, method, sent, options) => {
-		if (method !== "Page.captureScreenshot") return realSend(contents, method, sent, options);
+		if (method !== "Page.captureScreenshot")
+			return realSend(contents, method, sent, options);
 		captures += 1;
 		seenDeadline = options?.deadlineMs;
 		if (captures === 1) {
-			const stalled = new Error("Page.captureScreenshot did not respond within 5000ms");
+			const stalled = new Error(
+				"Page.captureScreenshot did not respond within 5000ms",
+			);
 			stalled.data = { stalled: "Page.captureScreenshot" };
 			throw stalled;
 		}
 		return realSend(contents, method, sent, options);
 	};
-	assert.equal((await host.dispatch("screenshot", { ...params, tab: opened.tab }, "r3")).data, "iVBORw0KGgo=");
-	assert.equal(captures, 2, "a stalled background capture is retried exactly once");
+	assert.equal(
+		(await host.dispatch("screenshot", { ...params, tab: opened.tab }, "r3"))
+			.data,
+		"iVBORw0KGgo=",
+	);
+	assert.equal(
+		captures,
+		2,
+		"a stalled background capture is retried exactly once",
+	);
 	assert.equal(
 		seenDeadline,
 		5000,
@@ -2322,7 +2569,9 @@ test("a background capture retries a stalled attempt, and does not retry a real 
 		}
 		return realSend(contents, method, sent, options);
 	};
-	await assert.rejects(() => host.dispatch("screenshot", { ...params, tab: opened.tab }, "r4"));
+	await assert.rejects(() =>
+		host.dispatch("screenshot", { ...params, tab: opened.tab }, "r4"),
+	);
 	assert.equal(captures, 1, "a typed failure is reported, not retried");
 });
 
@@ -2820,15 +3069,29 @@ test("a restore allocates the whole strip before it returns, and serves while a 
 	const { registry, views } = makeHangingRegistry();
 	const { host } = makeHost({ registry });
 	const recorded = [
-		{ owner: "user", active: false, entries: [{ url: "https://example.com/a" }], activeIndex: 0 },
-		{ owner: "user", active: true, entries: [{ url: "https://example.com/b" }], activeIndex: 0 },
+		{
+			owner: "user",
+			active: false,
+			entries: [{ url: "https://example.com/a" }],
+			activeIndex: 0,
+		},
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://example.com/b" }],
+			activeIndex: 0,
+		},
 	];
 
 	const state = host.restoreTabs(recorded);
 
 	// Allocated, and the recorded active tab, before any page has loaded.
 	assert.equal(views.size, 2, "one view per recorded tab, immediately");
-	assert.equal(state.tabs.length, 2, "and the strip is complete on the first read");
+	assert.equal(
+		state.tabs.length,
+		2,
+		"and the strip is complete on the first read",
+	);
 	const active = state.tabs.find((tab) => tab.active);
 	assert.equal(
 		active.url === "about:blank" || active.tabId === state.activeTabId,
@@ -2844,7 +3107,10 @@ test("a restore allocates the whole strip before it returns, and serves while a 
 	// The claim the round-1 finding is about: the host serves while a page hangs.
 	// Nothing here waits on `whenRestored`, and the page never answers.
 	const status = await host.dispatch("status", {}, "restore-status");
-	assert.ok(status && typeof status === "object", "the host answered while a page was hung");
+	assert.ok(
+		status && typeof status === "object",
+		"the host answered while a page was hung",
+	);
 
 	// And the hydration pass is genuinely still outstanding, rather than having
 	// finished silently: it is a background obligation, not a startup gate.
@@ -2852,7 +3118,11 @@ test("a restore allocates the whole strip before it returns, and serves while a 
 		host.whenRestored().then(() => "settled"),
 		Promise.resolve("still-loading"),
 	]);
-	assert.equal(settled, "still-loading", "the restore is still in flight, and the host did not wait for it");
+	assert.equal(
+		settled,
+		"still-loading",
+		"the restore is still in flight, and the host did not wait for it",
+	);
 });
 
 test("an empty restore still comes back as the blank tab it always did", async () => {
@@ -2934,7 +3204,11 @@ test("a main-frame load refusal is published for its tab, and cleared by the nex
 	const { host, registry } = makeHost();
 	const first = registry.create({ owner: "user" });
 	const second = registry.create({ owner: "agent", sessionId: "alice" });
-	assert.equal(host.chromeState().navFailure, null, "a healthy tab reports no failure");
+	assert.equal(
+		host.chromeState().navFailure,
+		null,
+		"a healthy tab reports no failure",
+	);
 
 	host.recordLoadFailure(second.tabId, {
 		code: -324,
@@ -2965,12 +3239,23 @@ test("a main-frame load refusal is published for its tab, and cleared by the nex
 	});
 	state = host.chromeState();
 	assert.equal(state.navFailure.description, "ERR_EMPTY_RESPONSE");
-	assert.equal(state.navFailure.url, "http://127.0.0.1:9/", "the attempted address rides with it");
+	assert.equal(
+		state.navFailure.url,
+		"http://127.0.0.1:9/",
+		"the attempted address rides with it",
+	);
 
 	host.clearLoadFailure(first.tabId);
 	state = host.chromeState();
-	assert.equal(state.navFailure, null, "the next navigation on that tab retires the failure");
-	assert.equal(state.tabs.find((tab) => tab.tabId === first.tabId).failed, false);
+	assert.equal(
+		state.navFailure,
+		null,
+		"the next navigation on that tab retires the failure",
+	);
+	assert.equal(
+		state.tabs.find((tab) => tab.tabId === first.tabId).failed,
+		false,
+	);
 
 	// A closed tab cannot leave a failure behind for whatever reuses the id.
 	host.recordLoadFailure(first.tabId, {
@@ -2979,15 +3264,27 @@ test("a main-frame load refusal is published for its tab, and cleared by the nex
 		url: "http://nope.invalid/",
 	});
 	host.closeTab(first.tabId);
-	assert.equal(host.chromeState().navFailure, null, "a closed tab's failure goes with it");
+	assert.equal(
+		host.chromeState().navFailure,
+		null,
+		"a closed tab's failure goes with it",
+	);
 });
 
 test("a refused load is reported only when it is one a user can act on", () => {
 	// ERR_ABORTED is a stop, a redirect hop and a superseded navigation - browsing
 	// working, not a refusal - and ERR_ABORTED is emitted far more often than any
 	// other code on a normal session.
-	assert.equal(isReportableLoadFailure(-3), false, "ERR_ABORTED is not a failure to show");
-	assert.equal(isReportableLoadFailure(0), false, "a zero code names no failure");
+	assert.equal(
+		isReportableLoadFailure(-3),
+		false,
+		"ERR_ABORTED is not a failure to show",
+	);
+	assert.equal(
+		isReportableLoadFailure(0),
+		false,
+		"a zero code names no failure",
+	);
 	assert.equal(isReportableLoadFailure(-324), true);
 	assert.equal(isReportableLoadFailure(-105), true);
 });
@@ -3067,7 +3364,10 @@ test("the browser host is attached inside the window factory, so every creation 
 	 * working host — that is the native lifecycle evidence, and this records the
 	 * shape the code must keep for it.
 	 */
-	const source = readFileSync(new URL("../src/main/index.ts", import.meta.url), "utf8");
+	const source = readFileSync(
+		new URL("../src/main/index.ts", import.meta.url),
+		"utf8",
+	);
 
 	const createCalls = source.match(/=\s*createWindow\(/g) ?? [];
 	assert.equal(
@@ -3116,7 +3416,10 @@ test("the browser host is attached inside the window factory, so every creation 
 	// The setup must NOT attach: that is the shape round 2 had, and it is what let
 	// a differently-built window through. Asserted in the negative so a later
 	// re-introduction of the old arrangement fails here.
-	const setup = functionBody(source, "function setupMainWindowWithUpdateService(");
+	const setup = functionBody(
+		source,
+		"function setupMainWindowWithUpdateService(",
+	);
 	assert.doesNotMatch(
 		setup,
 		/startBrowserHostForWindow\(/,
