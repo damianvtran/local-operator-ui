@@ -56,7 +56,14 @@ export const BackendCompatibilityBanner = () => {
 		setUpdating(true);
 		setUpdateError(null);
 		try {
-			await window.api.updater.updateBackend();
+			const started = await window.api.updater.updateBackend();
+			// The invoke RESOLVES false when the update was refused or failed, so a
+			// resolved promise is not success: taking it for one told the user the
+			// update had been started and left them on a server that never moved.
+			if (started === false) {
+				setUpdateError("The backend update could not start.");
+				return;
+			}
 			retry();
 		} catch (error) {
 			setUpdateError(

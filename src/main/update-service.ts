@@ -3280,6 +3280,17 @@ export class UpdateService {
 						`Unknown startup mode: ${startupMode}`,
 						LogFileType.UPDATE_SERVICE,
 					);
+					/*
+					 * Every other failing branch above reports on `backend-update-error`,
+					 * and this one used to leave the renderer with nothing: `update-backend`
+					 * RESOLVES false, so a renderer reading only the rejection kept its
+					 * in-flight panel up with no reason on it. "Say so on every failure" is
+					 * the rule this branch was the exception to.
+					 */
+					this.sendToRenderer(
+						"backend-update-error",
+						"The app could not tell how this server was started, so it did not update it. See the update service log.",
+					);
 					return false;
 			}
 
@@ -3332,7 +3343,13 @@ export class UpdateService {
 				return false;
 			}
 
-			const pip = buildPipUpgradeCommand(pythonPath);
+			/*
+			 * The target travels into the requirement, so pip cannot satisfy the user's
+			 * request with the version it is already standing on: the app promised a
+			 * specific release, and an index page that predates it (a cached one, or an
+			 * unreachable one) has to fail here rather than report success.
+			 */
+			const pip = buildPipUpgradeCommand(pythonPath, targetVersion ?? null);
 
 			// Read what the environment has NOW. "pip exited 0" is not evidence that
 			// anything was installed - pip reports success when the requirement is

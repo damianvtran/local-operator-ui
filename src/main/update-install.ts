@@ -2693,18 +2693,67 @@ export function resolveGlobalInstallPlan(input: {
 }
 
 /**
+ * A version safe to put in a `local-operator==<version>` requirement.
+ *
+ * The target crosses the IPC boundary as an arbitrary string, so it is pinned
+ * only when it actually looks like a release - digits, dots, and the PEP 440
+ * pre-release/dev/local spellings - and never when it carries whitespace, a
+ * shell metacharacter or a flag. Anything that does not match keeps the
+ * unpinned requirement rather than reaching the command line.
+ */
+const PINNABLE_VERSION_REGEX =
+	/^[0-9]+(?:\.[0-9]+)+(?:(?:a|b|rc|\.post|\.dev)[0-9]+)?(?:[-+][0-9A-Za-z.]+)?$/;
+
+/** Whether a target is a release version, and so may be pinned in a requirement. */
+export function isPinnableVersion(
+	target: string | null | undefined,
+): target is string {
+	return (
+		typeof target === "string" && PINNABLE_VERSION_REGEX.test(target.trim())
+	);
+}
+
+/**
  * The pip invocation used for the app's own bundled environment.
  *
  * `--no-input` keeps a prompt from hanging an install with no console attached,
  * and `--disable-pip-version-check` keeps pip's self-update notice out of the
  * output we read the installed version back from.
+ *
+ * `--no-cache-dir` is NOT a pointless slowdown, so do not delete it as one. pip's
+ * HTTP cache holds the PACKAGE INDEX pages it fetched, not only the wheels, and
+ * the bundled environment's cache is populated when the venv is built. A cache
+ * written while version N was newest keeps serving that simple-index page after
+ * N+1 is published, so `pip install --upgrade local-operator` resolves against a
+ * page that predates the release and answers "Requirement already satisfied" -
+ * exit 0, no error, nothing installed. That is the operator's report of
+ * 2026-09-15: the app's own update check read 0.55.10 from PyPI, this command
+ * installed nothing, and the log says `version 0.55.9 -> 0.55.9`. Measured in a
+ * scratch venv against the cache the app itself used: `pip index versions
+ * local-operator` answers 0.55.9 with the cache and 0.55.10 with
+ * `--no-cache-dir`. A server update is a rare, explicitly requested,
+ * network-bound operation, so paying a fresh index read for it is the intended
+ * trade.
+ *
+ * When the caller knows which release it promised the user, the requirement is
+ * pinned to it (`local-operator==0.55.10`). A pin cannot be satisfied by the
+ * version that is already installed, so a stale or unreachable index fails
+ * loudly here instead of resolving to nothing and reporting success. The
+ * unpinned form is kept for callers that name no target - the compatibility
+ * banner asks for "the current server", and it has no version to pin.
  */
-export function buildPipUpgradeCommand(pythonPath: string): {
+export function buildPipUpgradeCommand(
+	pythonPath: string,
+	targetVersion?: string | null,
+): {
 	command: string;
 	args: string[];
 	/** The same thing, for the log line and any message shown to the user. */
 	display: string;
 } {
+	const requirement = isPinnableVersion(targetVersion)
+		? `local-operator==${targetVersion.trim()}`
+		: "local-operator";
 	const args = [
 		"-m",
 		"pip",
@@ -2712,7 +2761,8 @@ export function buildPipUpgradeCommand(pythonPath: string): {
 		"--upgrade",
 		"--no-input",
 		"--disable-pip-version-check",
-		"local-operator",
+		"--no-cache-dir",
+		requirement,
 	];
 	return {
 		command: pythonPath,

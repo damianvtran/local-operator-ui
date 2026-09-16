@@ -28,6 +28,18 @@ import {
 const RELEASE_ARTIFACT_ERROR_REGEX =
 	/cannot find .* in the latest release artifacts/i;
 
+/**
+ * What the panel says when the server update failed without naming a reason.
+ *
+ * `update-backend` RESOLVES false rather than rejecting, so an attempt that ends
+ * false with no event is a real outcome to report - not a silent clear. It should
+ * be unreachable: every failing branch in `UpdateService.updateBackend` sends
+ * `backend-update-error` first. It is the backstop that means the panel can never
+ * hang on a main process that answered without saying why.
+ */
+const SERVER_UPDATE_FAILED_MESSAGE =
+	"The server update did not complete. See the update service log, then try again.";
+
 type BackendUpdateInfo = {
 	currentVersion: string;
 	latestVersion: string;
@@ -471,6 +483,20 @@ export const UpdateNotification = ({
 		target: null,
 		sourceBuild: false,
 	});
+	/**
+	 * Whether THIS server-update attempt has already been answered by an event.
+	 *
+	 * A failed `update-backend` is reported twice over: once on
+	 * `backend-update-error`, and once by the invoke resolving `false`. Both are
+	 * true statements about one failure, so the attempt records that a terminal
+	 * event arrived - completed, error, or the by-hand panel replacing the panel -
+	 * and the resolved value is only read when nothing did. The ref is per attempt
+	 * (rewritten when the button is pressed) so a late event from an earlier
+	 * attempt cannot silence, or double-report, the one in flight.
+	 */
+	const backendUpdateAttemptRef = useRef<{ terminal: boolean }>({
+		terminal: false,
+	});
 
 	/** True while `Install now` has been pressed and the pre-flight is running. */
 	const [installing, setInstalling] = useState(false);
@@ -630,20 +656,39 @@ export const UpdateNotification = ({
 
 	// Update the backend
 	const updateBackend = useCallback(async () => {
+		backendUpdateAttemptRef.current = { terminal: false };
 		try {
 			setChecking(true);
 			setUpdatingBackend(true);
 			setError(null);
 			// The target version travels with the request so the main process can
 			// confirm the restarted server actually reports it.
-			await window.api.updater.updateBackend(
+			const result = await window.api.updater.updateBackend(
 				backendUpdateInfoRef.current?.latestVersion,
 			);
+			/*
+			 * `false` is a failure, not a quiet no-op: this invoke resolves false on
+			 * every failing branch, so reading only its rejection - which is what this
+			 * component used to do - left "Updating server" up forever because the
+			 * `catch` never ran (operator report, 2026-09-15). An event that already
+			 * reported the same failure wins, so one failure is one message.
+			 */
+			if (result === false && !backendUpdateAttemptRef.current.terminal) {
+				setError(SERVER_UPDATE_FAILED_MESSAGE);
+				setSnackbarOpen(true);
+			}
 		} catch (err) {
-			setError(
-				`Error updating server: ${err instanceof Error ? err.message : String(err)}`,
-			);
-			setSnackbarOpen(true);
+			if (!backendUpdateAttemptRef.current.terminal) {
+				setError(
+					`Error updating server: ${err instanceof Error ? err.message : String(err)}`,
+				);
+				setSnackbarOpen(true);
+			}
+		} finally {
+			// Unconditional, and deliberately not per-branch: no path through
+			// `update-backend` may leave the in-flight panel up. The error event's own
+			// listener clears these too, but a main process that answered without one
+			// still has to hand the panel back to the user.
 			setChecking(false);
 			setUpdatingBackend(false);
 		}
@@ -733,6 +778,9 @@ export const UpdateNotification = ({
 		// Backend update requires a manual command (a server the app does not own)
 		const removeBackendManualRequiredListener =
 			window.api.updater.onBackendUpdateManualRequired((info) => {
+				// The by-hand panel replaces this one, so the attempt is answered and the
+				// resolved `false` behind it must not add a second message.
+				backendUpdateAttemptRef.current.terminal = true;
 				// The panel has to know which version it is waiting for, so it can name it
 				// and clear itself once the server reaches it. The producer sends it; the
 				// offer that preceded the attempt is the fallback for a producer that
@@ -890,6 +938,7 @@ export const UpdateNotification = ({
 		// Backend update completed
 		const removeBackendUpdateCompletedListener =
 			window.api.updater.onBackendUpdateCompleted(() => {
+				backendUpdateAttemptRef.current.terminal = true;
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
 				setChecking(false);
@@ -900,6 +949,26 @@ export const UpdateNotification = ({
 				setTimeout(() => {
 					setBackendUpdateCompleted(false);
 				}, 6000);
+			});
+
+		/**
+		 * A server update that failed, with the main process's own reason.
+		 *
+		 * This is the channel every failing branch of `UpdateService.updateBackend`
+		 * reports on, and nothing subscribed to it until now - so pip's output, the
+		 * unreadable venv and the "version did not change" verdict were all written
+		 * to a channel with no reader, and the in-flight panel had no way to learn the
+		 * update was over. Same surface as every other failure here (`setError` feeds
+		 * the FloatingAlert toast), and the same two flags `checkForUpdates` clears in
+		 * its `finally`.
+		 */
+		const removeBackendUpdateErrorListener =
+			window.api.updater.onBackendUpdateError((message) => {
+				backendUpdateAttemptRef.current.terminal = true;
+				setError(message);
+				setSnackbarOpen(true);
+				setChecking(false);
+				setUpdatingBackend(false);
 			});
 
 		// Check for updates on mount if autoCheck is true
@@ -917,6 +986,7 @@ export const UpdateNotification = ({
 			removeBackendUpdateAvailableListener();
 			removeBackendUpdateNotAvailableListener();
 			removeBackendUpdateCompletedListener();
+			removeBackendUpdateErrorListener();
 			removeBackendManualRequiredListener();
 			removeInstallBlockedListener();
 			removeInstallFailedListener();

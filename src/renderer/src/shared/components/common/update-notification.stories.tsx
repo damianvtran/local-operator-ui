@@ -57,6 +57,12 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateDevMode: () => () => {},
 			onBackendUpdateNotAvailable: () => () => {},
 			onBackendUpdateCompleted: () => () => {},
+			/*
+			 * A failed server update, which the panel now leaves its in-flight state on.
+			 * The stub has to exist or the panel's own subscription throws before the
+			 * story renders.
+			 */
+			onBackendUpdateError: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -185,6 +191,14 @@ const mockUpdaterApi = () => {
 			if (window.triggerBackendUpdateCompleted) {
 				// Immediately trigger the callback
 				callback();
+			}
+			return () => {};
+		},
+		onBackendUpdateError: (callback: (message: string) => void) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateError) {
+				// Immediately trigger the callback
+				callback("The server update failed to install.");
 			}
 			return () => {};
 		},
@@ -451,6 +465,7 @@ declare global {
 		triggerBackendUpdateAvailable?: boolean;
 		triggerBackendUpdateNotAvailable?: boolean;
 		triggerBackendUpdateCompleted?: boolean;
+		triggerBackendUpdateError?: boolean;
 		triggerBackendUpdateDevMode?: boolean;
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
