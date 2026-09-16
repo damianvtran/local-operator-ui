@@ -1665,6 +1665,33 @@ export const STORIES = [
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
+	/* The operator's own alert, over the screen they were working on: their
+	   update-service.log holds this exact transport code at 09:03:12 on
+	   2026-09-16, reported from a silent background check on a machine with
+	   continuous internet. The story renders the shipped alert and holds it open
+	   (the app gives it six seconds, which a still cannot catch); the wiring is
+	   scripts/update-affirmation.test.mjs. */
+	["common-updatenotification--error-state", 1280, 900],
+	/*
+	 * The same alert for the WRAPPED feed failure, which is the shape the copy's
+	 * prefix rule is about (design round 1, D1 asked for exactly this frame): the
+	 * sentence must stand alone, with the machine's words subordinate rather than
+	 * welded to the front of it.
+	 */
+	["common-updatenotification--error-state-wrapped", 1280, 900],
+	/*
+	 * The retry IN FLIGHT, which no frame showed: the card used to unmount the moment
+	 * it was pressed, so "a check is running" and "the problem is fixed" looked the
+	 * same for the app's 1 s + 3 s ladder (design round 2, D13; UX U7). The pressed
+	 * control is what says which one it is.
+	 */
+	["common-updatenotification--error-state-retrying", 1280, 900],
+	/*
+	 * A DOWNLOAD-stage failure: the copy names the surface that owns the retry rather
+	 * than the box it is not in, and no control is offered for a stage a check cannot
+	 * answer (design round 2, D9; UX U9).
+	 */
+	["common-updatenotification--error-state-download", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own
@@ -2091,6 +2118,13 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 	["common-connectivity-banner--unattachable", 1024, 300],
+	/* The machine-offline claim itself, and the one state the internet banner may
+	   paint: a negative reading that has held across the grace and been confirmed
+	   by a second one. Its companion - the same reading BEFORE the grace, which
+	   paints nothing - has no frame on purpose: a still of an absent banner cannot
+	   be told from a story that never mounted (the trap `attached` documents), so
+	   the rule is pinned by its own cases instead. */
+	["common-connectivity-banner--internet-offline-confirmed", 1024, 420],
 ];
 
 /**

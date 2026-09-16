@@ -6,6 +6,7 @@ import {
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { updateMessageOf } from "@shared/utils/update-error-copy";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -20,6 +21,16 @@ export const CheckForUpdatesButton = () => {
 	const [checking, setChecking] = useState(false);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+	/**
+	 * A failed check, held as the raw message so the alert can map it.
+	 *
+	 * WHY IT IS NOT `snackbarMessage`: the copy for this box is the shared rule's
+	 * (`updateErrorCopy`), and the box has to stay up until it is read and offer
+	 * the retry the sentence names - a message that dismisses itself in six
+	 * seconds, or that paints whatever string the producer happened to set, is the
+	 * defect this change exists to remove (design D2/D3, UX U1/U3, UX U6). The
+	 * unrelated confirmations below keep the plain snackbar.
+	 */
 	const [snackbarSeverity, setSnackbarSeverity] = useState<
 		"success" | "info" | "warning" | "danger"
 	>("info");
@@ -161,15 +172,6 @@ export const CheckForUpdatesButton = () => {
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(message: string) => {
 				if (!manualCheckRef.current) return;
-				// Only suppress known spurious errors
-				const suppressedPatterns = [
-					"ENOENT: no such file or directory, open", // e.g. missing update yml
-					"Could not get code signature for running application", // macOS spurious
-					"Cannot find latest.yml", // electron-updater
-				];
-				const isSuppressed = suppressedPatterns.some((pat) =>
-					message.includes(pat),
-				);
 
 				if (message.includes("manually")) {
 					// Legacy wording from a main process that named pip for every
@@ -191,9 +193,18 @@ export const CheckForUpdatesButton = () => {
 					setSnackbarMessage(null);
 					setSnackbarSeverity("warning");
 					setSnackbarOpen(true);
-				} else if (!isSuppressed) {
-					showMessage(message, "danger");
 				}
+				/*
+				 * AND NOTHING FOR AN ORDINARY FAILURE. This branch used to paint one here
+				 * through the shared copy (review round 1, UX U6) while the app-level alert
+				 * painted the same event - two boxes for one failure, which is QA round 3's
+				 * Q-1. `UpdateNotification` owns it: it is mounted on every screen this
+				 * button is, its alert is held until dismissed, it carries the retry, and
+				 * `updateMessageFate` is what decides whether a message is shown at all
+				 * (main's `shouldFilterUpdateError` having already declined the known
+				 * non-failures), so this listener needs neither its own copy nor its own
+				 * suppression list.
+				 */
 			},
 		);
 
@@ -278,7 +289,14 @@ export const CheckForUpdatesButton = () => {
 		};
 	}, []);
 
-	// Check for updates
+	/**
+	 * Check for updates, from this surface's own control.
+	 *
+	 * It reports nothing itself: a failure this check meets is emitted as
+	 * `update-error` and painted by the app-level alert, which is the single owner of
+	 * that box (QA round 3, Q-1). What is left here is the component's own state -
+	 * the acknowledgement sentence and the panels about the server and the bundle.
+	 */
 	const checkForUpdates = async () => {
 		if (isDevelopmentMode()) {
 			showMessage(
@@ -296,6 +314,11 @@ export const CheckForUpdatesButton = () => {
 		 * reported contradiction, reproduced one check later.
 		 */
 		const seq = ++checkSeqRef.current;
+		/*
+		 * A new check retires the previous verdict's sentence before it resolves: this
+		 * is the reader asking again, so what the last check concluded is no longer
+		 * what the app knows.
+		 */
 		dismissAffirmation();
 		// This check's own window for offers opens here: anything raised from now
 		// until its verdict lands is something this verdict may not paint over.
@@ -357,11 +380,16 @@ export const CheckForUpdatesButton = () => {
 			// confirmation and error messages.
 		} catch (error) {
 			if (seq !== checkSeqRef.current) return;
-			showMessage(
-				`Error checking for updates: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-				"danger",
+			/*
+			 * LOGGED, NOT PAINTED, and deliberately: the main process emits
+			 * `update-error` for every failure it reports, and the app-level alert is
+			 * what a reader sees for it (QA round 3, Q-1). A second paint from the
+			 * invoke's own rejection is the duplicate this round removes, and a failure
+			 * main declined to report - the release-artifact family - must stay silent
+			 * rather than be re-raised from here.
+			 */
+			console.warn(
+				`Update check failed; the app-level alert owns the report: ${updateMessageOf(error)}`,
 			);
 		} finally {
 			/*
@@ -377,10 +405,13 @@ export const CheckForUpdatesButton = () => {
 		}
 	};
 
-	// Handle snackbar close
+	/**
+	 * Handle snackbar close
+	 *
+	 * Dismissal by the user or by the timer is also the end of the claim: a later
+	 * offer must not try to take back something nobody is showing.
+	 */
 	const handleSnackbarClose = () => {
-		// Dismissal by the user or by the timer is also the end of the claim: a
-		// later offer must not try to take back something nobody is showing.
 		showingAffirmationRef.current = false;
 		setSnackbarOpen(false);
 		setSnackbarMessage(null);
@@ -447,8 +478,8 @@ export const CheckForUpdatesButton = () => {
 				</FloatingAlert>
 			)}
 
-			{/* General info, success, or error messages */}
-			{snackbarMessage && (
+			{/* General info, success, or warning messages */}
+			{snackbarMessage && snackbarSeverity !== "danger" && (
 				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
@@ -458,6 +489,22 @@ export const CheckForUpdatesButton = () => {
 					{snackbarMessage}
 				</FloatingAlert>
 			)}
+
+			{/*
+			 * AND NO FAILURE ALERT HERE, which is the one-painter rule (QA round 3,
+			 * Q-1/Q-2). This component used to render `UpdateErrorAlert` for a check it
+			 * ran, while `UpdateNotification` - mounted at the app root - rendered one
+			 * for the same `update-error` event: two boxes, one failure, each with its
+			 * own Copy details and Try again inside the same 400x192 rect at the same
+			 * z-index, and each clearing only itself. After a retry SUCCEEDED the reader
+			 * could be left looking at a card that still said the app could not reach
+			 * the update server. The app-level alert is the single owner now: it is
+			 * mounted wherever this button is, it holds until dismissed, it carries the
+			 * retry, and a successful check clears it. What stays here is this
+			 * component's OWN surfaces - the by-hand panel, the install-blocked panel
+			 * and the confirmation - because those are about the server and the bundle
+			 * rather than about the check.
+			 */}
 		</>
 	);
 };

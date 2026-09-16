@@ -196,6 +196,29 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE FAILURE ALERT'S OWN CONTROL, which design round 2 (D10) found
+		 * unasserted while it was on screen in two palettes.
+		 *
+		 * A control painted ON a wash needs its own row: the rows above cover an
+		 * outlined control on the four grounds and callouts on `canvas`/`surface`,
+		 * and none of them says anything about an edge drawn against `dangerWash`.
+		 * The alert's retry was `outline` when this row was written, and an outlined
+		 * button's only boundary is `border-control` against that wash - 2.98:1 in
+		 * iceberg, under the 3:1 floor, with sage 3.09 and localOperatorLight 3.32
+		 * behind it. The alert's control is `primary` now, whose accent fill clears
+		 * the wash in all twelve palettes (edge 4.44-16.29, `on-accent` ink
+		 * 5.26-19.06), and THIS row is what keeps that true: moving it back to a
+		 * variant whose face collapses into the wash fails here rather than in a
+		 * theme nobody runs.
+		 */
+		name: "primary button on the danger wash",
+		on: ["dangerWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		/*
 		 * The picker row's pointer mark and in-flight mark.
 		 *
 		 * A row's edge inside the dialog: the pointer's own position, and the row
@@ -979,6 +1002,20 @@ const PERCEPTIBLE = [
  *     worth a parser.
  */
 const STRUCTURAL_CALL_SITES = [
+	{
+		/*
+		 * WHY THIS PIN EXISTS ALONGSIDE THE PALETTE ROW. The row
+		 * "primary button on the danger wash" proves a filled control is legal on the
+		 * wash the failure alert is painted on; only this pin can see the edit that
+		 * moves the alert's retry back to `outline`, whose sole boundary would then be
+		 * `border-control` against that wash - 2.98:1 in iceberg, under the 3:1 floor,
+		 * with sage and localOperatorLight behind it (design round 2, D10).
+		 */
+		what: "the failure alert's retry is a filled control on the wash",
+		file: "src/renderer/src/shared/components/common/update-error-alert.tsx",
+		must: 'variant="primary"',
+		why: "an outlined control's only boundary is its own edge against `dangerWash`, which is below the 3:1 floor in three palettes; the palette rows cannot see which variant a component uses, so green output about the pair would outlive the fix",
+	},
 	{
 		/*
 		 * The approvals dock's left edge. It is the sole boundary between the app's own

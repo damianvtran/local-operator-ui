@@ -4815,6 +4815,30 @@ const loadUpdateServiceModule = async () => {
 								export const nativeTheme = { shouldUseDarkColors: false, on: () => {} };
 								export const Menu = { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) };
 								export const session = { defaultSession: { webRequest: { onHeadersReceived: () => {} } } };
+								/*
+								 * net.isOnline() is the pre-flight gate's reading (this machine
+								 * believes it has no network), and it is answerable from a case
+								 * through the same global the rest of the fixture uses: an ABSENT
+								 * global means the stub does not answer, which the service reads as
+								 * reachable, so every case that says nothing keeps the behaviour it
+								 * had before the gate. No backticks in this comment: it lives inside
+								 * a template literal, and one would end it here.
+								 */
+								export const net = {
+									isOnline: () => globalThis.__loTestNetIsOnline ?? true,
+								};
+								/*
+								 * powerMonitor RECORDS its listeners rather than dropping them:
+								 * the wake-armed check is registered in the constructor, and a case
+								 * that cannot fire the event could only assert that a line of source
+								 * exists.
+								 */
+								export const powerMonitor = {
+									on: (event, handler) => {
+										(globalThis.__loPowerMonitorHandlers ??= {})[event] = handler;
+										return powerMonitor;
+									},
+								};
 							`);
 						}
 						if (args.path === "electron-updater") {
@@ -4873,6 +4897,17 @@ const loadUpdateServiceModule = async () => {
 									autoInstallOnAppQuit: false,
 									logger: null,
 								};
+								/*
+								 * Reachable from a case, because the library's two halves
+								 * of one failure are the point: doCheckForUpdates EMITS
+								 * the error event on the updater and then rejects with it,
+								 * so a case about one failure reported twice has to do
+								 * both. Assigned HERE rather than above the object, since
+								 * the declaration is below that point. No backticks in
+								 * this comment: it lives inside a template literal, and
+								 * one would end it here.
+								 */
+								globalThis.__loAutoUpdater = autoUpdater;
 							`);
 						}
 						return fixture(`
@@ -5153,6 +5188,38 @@ const loAggregateCheck = async ({
 	 * case in this file.
 	 */
 	npxVersion = null,
+	/*
+	 * The backoff between attempts at one app-channel feed fetch. The SHIPPED
+	 * value is 1s then 3s (`UpdateService.appFeedRetryDelaysMs`, asserted as a
+	 * value in its own case below); a case that is about what the retries DO
+	 * narrows it here rather than spending four seconds per assertion.
+	 */
+	retryDelaysMs = [5, 5],
+	/*
+	 * What the machine's own network reading says, for the pre-flight gate.
+	 * `null` leaves the stub answering `true`, which is every case from before
+	 * the gate existed.
+	 */
+	netIsOnline = null,
+	/*
+	 * Drive the scheduled check instead of the aggregate one - the five-minute
+	 * `checkForUpdates(true)` the operator's log opens with. This is the path
+	 * whose silence the double report defeated.
+	 */
+	silentAppCheck = false,
+	/*
+	 * The updater stage a failure happens in. `idle` is an availability check;
+	 * anything else is a download or an install the user asked for, which is the
+	 * condition under which the `error` handler still reports during a check.
+	 */
+	stage = "idle",
+	/*
+	 * A hook that runs while the fixture is still standing, for the cases about
+	 * the `error` event arriving when NO check is in flight - a state a case
+	 * cannot reach from outside the helper, because the check is what it would
+	 * have to interrupt. Its return value comes back as `probeResult`.
+	 */
+	probe = null,
 }) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-verdict-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-verdict-userdata-"));
@@ -5166,6 +5233,7 @@ const loAggregateCheck = async ({
 	const sent = [];
 	let interval = null;
 	let health = null;
+	if (netIsOnline !== null) globalThis.__loTestNetIsOnline = netIsOnline;
 	try {
 		health = createServer((request, response) => {
 			if (!request.url?.startsWith("/health")) {
@@ -5206,6 +5274,8 @@ const loAggregateCheck = async ({
 			updateService.getLatestNpmVersion = async () => npxVersion;
 		}
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
+		updateService.appFeedRetryDelaysMs = retryDelaysMs;
+		updateService.updateStage = stage;
 		globalThis.__loTestAppCheck = appCheck;
 		/*
 		 * The fixture's `ipcMain.handle` RECORDS the handlers (see its own comment),
@@ -5213,21 +5283,56 @@ const loAggregateCheck = async ({
 		 * route the quit-for-update-install case above takes to its decision.
 		 */
 		let verdict;
-		if (ipc) {
+		let probeResult;
+		/** The error a handler rejected with, when the case drove one. */
+		let rejected = null;
+		if (silentAppCheck) {
+			verdict = await updateService.checkForUpdates(true);
+		} else if (ipc) {
 			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 			delete globalThis.__loIpcHandlers;
 			updateService.setupIpcHandlers();
-			const handler = globalThis.__loIpcHandlers?.["check-for-all-updates"];
+			/*
+			 * Which handler the case drives. `check-for-all-updates` is the aggregate
+			 * the button and the tiles use; `check-for-updates` is the app channel
+			 * alone, which is what the failure alert's own retry calls - and the one
+			 * whose rejection the renderer paints from.
+			 */
+			const channel = ipc.handler ?? "check-for-all-updates";
+			const handler = globalThis.__loIpcHandlers?.[channel];
 			assert.equal(
 				typeof handler,
 				"function",
-				"the aggregate check must have a handler for the renderer to invoke",
+				`${channel} must have a handler for the renderer to invoke`,
 			);
-			verdict = await handler({}, ipc.options);
+			try {
+				verdict = await handler({}, ipc.options);
+			} catch (error) {
+				/*
+				 * A handler that REJECTS is an outcome a case has to be able to assert:
+				 * `check-for-updates` answers a check the user asked for with a rejection,
+				 * and that rejection is what the renderer's copy path runs on. Recorded
+				 * rather than propagated, so a case can say which of the two it got.
+				 */
+				rejected = error;
+			}
 		} else {
 			verdict = await updateService.checkForAllUpdates(false);
 		}
-		return { verdict, sent };
+		if (probe) {
+			probeResult = await probe(updateService, sent);
+		}
+		/*
+		 * Any wake-armed timer a probe left behind is cleared here: it is unref'd,
+		 * but a case that fires the `resume` listener leaves a 20 s handle behind,
+		 * and a suite whose timers outlive it is a suite whose teardown cannot be
+		 * trusted.
+		 */
+		if (updateService.postWakeCheckTimer) {
+			clearTimeout(updateService.postWakeCheckTimer);
+			updateService.postWakeCheckTimer = null;
+		}
+		return { verdict, sent, probeResult, rejected, service: updateService };
 	} finally {
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
@@ -5238,6 +5343,8 @@ const loAggregateCheck = async ({
 			health.closeAllConnections();
 			health.close();
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestNetIsOnline;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
@@ -5868,6 +5975,1019 @@ test("the affirmation is earned by both channels current and by nothing else", a
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+// ---------------------------------------------------------------------------
+// One failure, one message: the transient transport classifier and its retries
+// ---------------------------------------------------------------------------
+
+/**
+ * Why this section exists. The operator's machine showed a red alert over the
+ * chat screen reading, exactly, `net::ERR_INTERNET_DISCONNECTED`, while it had
+ * had continuous internet and everything worked. Their own
+ * `~/Library/Application Support/Local Operator/logs/update-service.log` holds
+ * the failure - a five-minute scheduled check, `silent mode: true`, whose feed
+ * fetch died inside Electron's `net` module:
+ *
+ *     [2026-09-16 09:03:12.362] [info]  Running scheduled update check (every 5 minutes)
+ *     [2026-09-16 09:03:12.362] [info]  Checking for updates... (silent mode: true)
+ *     [2026-09-16 09:03:12.370] [error] Error: Error: net::ERR_INTERNET_DISCONNECTED
+ *     [2026-09-16 09:03:12.370] [error] Update error: Error: net::ERR_INTERNET_DISCONNECTED
+ *     [2026-09-16 09:03:12.370] [info]  Checking if error should be filtered: net::ERR_INTERNET_DISCONNECTED
+ *     [2026-09-16 09:03:12.371] [error] Error checking for updates: Error: Error: net::ERR_INTERNET_DISCONNECTED
+ *
+ * and 90 such failures over four days (CONNECTION_RESET 36, TIMED_OUT 24,
+ * CONNECTION_REFUSED 14, NETWORK_CHANGED 8, INTERNET_DISCONNECTED 8, plus a
+ * `getaddrinfo ENOTFOUND pypi.org` at the same instant), every one of them
+ * followed by a check five minutes later that succeeded.
+ *
+ * The cases below are the ones whose absence produced that, and each is about a
+ * property of the shipped code rather than about the string: a transient
+ * failure is RETRIED instead of reported, a background check reports nothing, a
+ * failure has ONE owner so it cannot be reported twice, a download that dies is
+ * still reported, and neither `net::ERR_*` nor an errno form can be the
+ * sentence a person reads.
+ */
+
+/**
+ * The pure modules this section drives, bundled with no fixture and no stubs.
+ *
+ * Kept beside the service rather than reached through it, for the same reason
+ * `loadVerdictRule` is: the classifier is shared BY both processes, and a case
+ * that reached it through the main-process graph could not tell the two apart.
+ * The caller removes the temp directory.
+ */
+const loadPureModule = async (entry, prefix) => {
+	const built = await build({
+		stdin: {
+			contents: `export * from "./${entry}";`,
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const dir = mkdtempSync(join(tmpdir(), `lo-${prefix}-`));
+	const file = join(dir, `${prefix}.mjs`);
+	writeFileSync(file, built.outputFiles[0].text);
+	return { module: await import(file), dir };
+};
+
+/**
+ * A feed fetch that fails the way the operator's log did.
+ *
+ * The library emits `error` on the updater AND rejects with the same error
+ * (`AppUpdater.doCheckForUpdates`, AppUpdater.js:264-273). A fixture that only
+ * rejected would not exercise the second producer at all, and that producer is
+ * the one the operator's alert came from - which is why `attempts` is recorded
+ * here rather than by the caller: the count is what says whether a transient
+ * failure was retried.
+ */
+const loFailingFeed = (message, attempts) => () => {
+	attempts.push(Date.now());
+	const error = new Error(message);
+	globalThis.__loAutoUpdater?.emit("error", error);
+	throw error;
+};
+
+/** The wrapper shape one real log line carries, as an `err.message`. */
+const LO_WRAPPED_FEED_FAILURE =
+	"Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: Error: net::ERR_NETWORK_CHANGED";
+
+test("the skip-list the retries are measured against is the shipped one", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-retry-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-retry-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		/*
+		 * The bound as a VALUE, because every other case in this section narrows
+		 * it to milliseconds: without this one, the shipped backoff could become
+		 * anything - including nothing - and the rest would still pass.
+		 */
+		assert.deepEqual(
+			updateService.appFeedRetryDelaysMs,
+			[1000, 3000],
+			"two retries, so three attempts at one feed fetch",
+		);
+	} finally {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+test("the classifier knows the family the log holds, and refuses the rest", async () => {
+	const { module: transport, dir } = await loadPureModule(
+		"src/shared/transport-failure",
+		"transport",
+	);
+	try {
+		/*
+		 * Every Chromium code the log holds, plus the neighbours a resolver or a
+		 * proxy produces the same way. The `net::` spelling is what Electron's
+		 * `net.request` reports; the bare form is what a string that travelled
+		 * through a page carries.
+		 */
+		const transient = [
+			"net::ERR_INTERNET_DISCONNECTED",
+			"net::ERR_NETWORK_CHANGED",
+			"net::ERR_TIMED_OUT",
+			"net::ERR_CONNECTION_RESET",
+			"net::ERR_CONNECTION_REFUSED",
+			"net::ERR_CONNECTION_CLOSED",
+			"net::ERR_CONNECTION_FAILED",
+			"net::ERR_CONNECTION_TIMED_OUT",
+			"net::ERR_NAME_NOT_RESOLVED",
+			"net::ERR_ADDRESS_UNREACHABLE",
+			"net::ERR_NETWORK_IO_SUSPENDED",
+			"net::ERR_PROXY_CONNECTION_FAILED",
+			"ERR_INTERNET_DISCONNECTED",
+			"Error: net::ERR_NETWORK_CHANGED",
+			"Error: Error: net::ERR_TIMED_OUT",
+			LO_WRAPPED_FEED_FAILURE,
+			new Error("net::ERR_INTERNET_DISCONNECTED"),
+			"getaddrinfo ENOTFOUND pypi.org",
+			"connect ETIMEDOUT 140.82.121.4:443",
+			"read ECONNRESET",
+			"EAI_AGAIN api.github.com",
+			"EHOSTUNREACH 2606:50c0:8000::153",
+			"ENETUNREACH",
+		];
+		for (const value of transient) {
+			assert.equal(
+				transport.isTransientTransportFailure(value),
+				true,
+				`${String(value)} is a transient transport failure`,
+			);
+		}
+
+		/*
+		 * The negatives are the half that keeps the retry honest: a server that
+		 * answered, a refusal that is about the peer rather than the network, and
+		 * a certificate verdict are all failures no amount of retrying fixes.
+		 * `ERR_SSL_PROTOCOL_ERROR` and the `ERR_CERT_*` family are in the request
+		 * for exactly this reason - a TLS verdict is not a network blip.
+		 */
+		const notTransient = [
+			"HttpError: 404 Not Found (latest-mac.yml)",
+			"Cannot find latest-mac.yml in the latest release artifacts",
+			"net::ERR_SSL_PROTOCOL_ERROR",
+			"net::ERR_CERT_AUTHORITY_INVALID",
+			"net::ERR_CERT_DATE_INVALID",
+			"net::ERR_BLOCKED_BY_CLIENT",
+			"Error: Invalid API key",
+			"SDK error: bad credentials",
+			"Failed to fetch conversation messages",
+			"",
+			null,
+			undefined,
+		];
+		for (const value of notTransient) {
+			assert.equal(
+				transport.isTransientTransportFailure(value),
+				false,
+				`${String(value)} must not be retried or reported as transient`,
+			);
+		}
+
+		/*
+		 * The code comes back in its canonical spelling, and the offsets are
+		 * offsets into the STRIPPED message: a consumer that keeps an authored
+		 * prefix and replaces only the machine fragment computes its slice from
+		 * these two numbers.
+		 */
+		assert.equal(
+			transport.transientTransportCode(LO_WRAPPED_FEED_FAILURE),
+			"net::ERR_NETWORK_CHANGED",
+		);
+		const wrapped = transport.stripErrorPrefixes(LO_WRAPPED_FEED_FAILURE);
+		const fragment = transport.transientTransportFragment(wrapped);
+		assert.deepEqual(
+			wrapped.slice(fragment.start, fragment.end),
+			"net::ERR_NETWORK_CHANGED",
+		);
+		// The doubled prefix, gone at the source: the log's own shape.
+		assert.equal(
+			transport.stripErrorPrefixes("Error: Error: net::ERR_TIMED_OUT"),
+			"net::ERR_TIMED_OUT",
+		);
+		assert.equal(
+			transport.stripErrorPrefixes("Parse Error: unexpected token"),
+			"Parse Error: unexpected token",
+			"prose with the word in it is not a prefix",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/*
+ * The literals the update-copy assertions read, hoisted to module scope.
+ *
+ * `lint/performance/useTopLevelRegex` is this file's own lint rule, and the reason is
+ * measurable here: a regex literal inside a test body adds a warning whose JSON form
+ * carries the surrounding code, and this file's report is large enough that the
+ * scripts gate's own buffer is a real constraint - it tripped `ENOBUFS` on the run
+ * that first added these.
+ */
+const OFFLINE_CODE_PREFIX = /^net::ERR_INTERNET_DISCONNECTED\b/;
+const NO_REQUEST_MADE = /no request was made/;
+const TRANSPORT_CODE = /net::ERR_/;
+const DOWNLOAD_LABEL = /^Error downloading/;
+const STAGE_SENTENCE_CASES = [
+	[
+		"Error downloading update: net::ERR_TIMED_OUT",
+		/could not be downloaded/i,
+		/start the download again/i,
+	],
+	[
+		"Error starting the update: net::ERR_CONNECTION_RESET",
+		/could not be installed/i,
+		/start it again from the update panel/i,
+	],
+	[
+		"Error quitting for the update: net::ERR_TIMED_OUT",
+		/could not quit to finish the install/i,
+		/quit the app yourself/i,
+	],
+];
+
+test("an update failure says what happened, and keeps the machine's words subordinate", async () => {
+	const { module: copy, dir } = await loadPureModule(
+		"src/renderer/src/shared/utils/update-error-copy",
+		"update-copy",
+	);
+	try {
+		/*
+		 * The operator's alert, as copy: the sentence is a person's and the code
+		 * is the machine's, on its own line. Asserted from the SHIPPED module, so
+		 * a reworded sentence cannot pass an assertion that repeats old words.
+		 */
+		const bare = copy.updateErrorCopy("net::ERR_INTERNET_DISCONNECTED");
+		assert.match(bare.sentence, /update server/i);
+		assert.match(bare.sentence, /connection/i);
+		assert.equal(bare.sentence.includes("net::"), false, bare.sentence);
+		assert.equal(bare.detail, "net::ERR_INTERNET_DISCONNECTED");
+
+		/*
+		 * A PREFIX THE APP DOES NOT WRITE IS NOT COPY, and the CHECK-stage spelling is the
+		 * case that proves it: `Error checking for updates:` is a line main's LOGGER writes
+		 * (`update-service.ts`), not a message it sends, so a payload carrying it is one no
+		 * producer emits - and the sentence stands alone rather than welding a label that
+		 * came from nowhere onto the front of a sentence (review round 4, and the same
+		 * condition that emptied `APP_AUTHORED_LABELS`).
+		 */
+		for (const unseenLabel of [
+			"Error checking for updates: net::ERR_TIMED_OUT",
+			"Error installing update: net::ERR_TIMED_OUT",
+		]) {
+			const unwritten = copy.updateErrorCopy(unseenLabel);
+			assert.match(
+				unwritten.sentence,
+				/^The app could not reach the update server/,
+			);
+			assert.equal(unwritten.sentence.includes("Error "), false);
+			assert.equal(unwritten.detail, "net::ERR_TIMED_OUT");
+		}
+		/*
+		 * AND A PREFIX THAT IS NOT THE APP'S IS NOT COPY (design round 2, D-14). The
+		 * rule is the app's own label set rather than a length, because short library
+		 * narration passed the length: these two shapes are electron-updater's, not
+		 * this app's, and the sentence has to stand alone over their code.
+		 */
+		for (const narration of [
+			"Cannot parse releases feed: net::ERR_NETWORK_CHANGED",
+			"Request timed out after 30000ms: net::ERR_CONNECTION_RESET",
+		]) {
+			const shown = copy.updateErrorCopy(narration);
+			assert.match(
+				shown.sentence,
+				/^The app could not reach the update server/,
+				`${narration} must not weld its narration onto the sentence`,
+			);
+			assert.equal(shown.sentence.includes("Cannot parse"), false);
+			assert.equal(shown.sentence.includes("Request timed out"), false);
+			assert.match(shown.detail, TRANSPORT_CODE);
+		}
+
+		/*
+		 * The wrapped shape, which is where the surviving prefix turned out to be
+		 * the defect (design round 1, D1; UX U2). electron-updater builds 200
+		 * characters of parse narration around the code - a URL and an instruction
+		 * for the release owner among them - and keeping it welded a paragraph to
+		 * the front of a sentence written for a person.
+		 */
+		const wrapped = copy.updateErrorCopy(
+			`Error invoking remote method 'check-for-updates': ${LO_WRAPPED_FEED_FAILURE}`,
+		);
+		assert.equal(
+			wrapped.sentence,
+			"The app could not reach the update server. Check this machine's connection, then try again.",
+			"the sentence stands alone: nothing the machine wrapped it in survives",
+		);
+		assert.equal(wrapped.sentence.includes("github.com"), false);
+		assert.equal(wrapped.detail, "net::ERR_NETWORK_CHANGED");
+		assert.equal(
+			wrapped.action,
+			"check",
+			'and its "then try again" has an owner',
+		);
+
+		/*
+		 * An errno form, the shape the server channel really carries. The machine
+		 * line keeps the phrase the token came from: a bare `ENOTFOUND` has no
+		 * subject, and `Failed to fetch` says what the sentence above already said
+		 * (design round 1, D8).
+		 */
+		const errno = copy.updateErrorCopy("getaddrinfo ENOTFOUND pypi.org");
+		assert.equal(errno.sentence.includes("ENOTFOUND"), false, errno.sentence);
+		assert.equal(errno.detail, "getaddrinfo ENOTFOUND pypi.org");
+		assert.equal(
+			copy.updateErrorCopy("Failed to fetch").detail,
+			null,
+			"an engine phrase the sentence has already said leaves no machine line",
+		);
+
+		/*
+		 * A failure the classifier does not know still says what happened and what
+		 * to do (review U4): a feed that answers 404 is not a transport failure, and
+		 * it used to be painted as the developer's own string with no next step.
+		 */
+		const answered = copy.updateErrorCopy(
+			"HttpError: 404 Not Found (latest-mac.yml)",
+		);
+		assert.equal(
+			answered.sentence.includes("HttpError"),
+			false,
+			answered.sentence,
+		);
+		/*
+		 * AND IT PROMISES NOTHING A RETRY CANNOT DELIVER (design round 2, D12). The
+		 * classifier excludes this family precisely because another attempt does not
+		 * fix it, so the copy says what is true - the check did not finish and the app
+		 * will ask again on its own schedule - and offers no retry control.
+		 */
+		assert.match(answered.sentence, /could not finish/i);
+		assert.match(answered.sentence, /next check/i);
+		assert.equal(answered.action, null, "no retry it cannot deliver");
+		assert.equal(answered.detail, "HttpError: 404 Not Found (latest-mac.yml)");
+		// A certificate the machine refuses is the same shape, not the connection.
+		const certificate = copy.updateErrorCopy("net::ERR_CERT_DATE_INVALID");
+		assert.match(certificate.sentence, /could not finish/i);
+		assert.equal(certificate.action, null);
+		assert.equal(certificate.detail, "net::ERR_CERT_DATE_INVALID");
+		// A status line the server really answered with, and the reason phrase is what
+		// makes it a status rather than a number.
+		const gateway = copy.updateErrorCopy("Error: 502 Bad Gateway");
+		assert.match(gateway.sentence, /could not finish/i);
+		assert.equal(gateway.action, null);
+		/*
+		 * R2-3: the mark that makes text "machine" used to be any three-digit 4xx/5xx
+		 * number, which demoted a real remedy to the generic line - this exact sentence
+		 * is the one the reviewer measured, and `400 MB` is not a status code.
+		 */
+		const diskSpace = copy.updateErrorCopy(
+			"Not enough free disk space to install the update. Free at least 400 MB and try again.",
+		);
+		assert.match(
+			diskSpace.sentence,
+			/^Not enough free disk space/,
+			"an authored sentence mentioning a size stays the sentence",
+		);
+		assert.equal(diskSpace.detail, null);
+
+		/*
+		 * A message the app WROTE for a person is already the sentence - no
+		 * invented cause, and no machine line under it - and it arrives without
+		 * the nesting the wrapper brought.
+		 */
+		const other = copy.updateErrorCopy(
+			"Error: The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+		);
+		assert.match(other.sentence, /^The installed server version/);
+		assert.equal(other.detail, null);
+		/*
+		 * A download failure is not answered by another check, so the copy offers no
+		 * control for it - and it must not instruct the reader to use one either
+		 * (design round 2, D9; UX U9): the stage's sentence names the surface that
+		 * DOES own the retry, which is the panel behind this alert.
+		 */
+		const download = copy.updateErrorCopy(
+			"Error downloading update: net::ERR_TIMED_OUT",
+		);
+		assert.equal(download.action, null);
+		assert.match(download.sentence, /could not be downloaded/i);
+		assert.match(download.sentence, /start the download again/i);
+		assert.equal(
+			download.sentence.includes("then try again"),
+			false,
+			"no action the box cannot offer",
+		);
+		// The same sentence for the download stage's non-transport shapes.
+		assert.match(
+			copy.updateErrorCopy("Error downloading update: ENOENT: no such file")
+				.sentence,
+			/could not be downloaded/i,
+		);
+		/*
+		 * ONE SENTENCE PER STAGE (design round 3, D-17; review R3-1). All three labels
+		 * are live producers, and one sentence for the family told a reader whose
+		 * download had already landed that the download failed - sending them to a
+		 * control that re-downloads an artifact they already have.
+		 */
+		for (const [label, sentence, next] of STAGE_SENTENCE_CASES) {
+			const stageCopy = copy.updateErrorCopy(label);
+			assert.match(stageCopy.sentence, sentence, label);
+			assert.match(
+				stageCopy.sentence,
+				next,
+				`${label} names its own next step`,
+			);
+			assert.equal(stageCopy.action, null, `${label} offers no check control`);
+			assert.match(
+				stageCopy.detail,
+				TRANSPORT_CODE,
+				`${label} keeps the code subordinate`,
+			);
+			assert.equal(
+				stageCopy.sentence.includes("could not be downloaded"),
+				DOWNLOAD_LABEL.test(label),
+				`${label} must not blame the download`,
+			);
+		}
+
+		/*
+		 * ONE verdict per message, on either channel: the release-artifact wording
+		 * that is a known non-failure, and everything else. The `by-hand` route on
+		 * the substring "manually" is gone (review R4): main's only producer of that
+		 * wording was replaced by the structured `backend-update-manual-required`
+		 * event, so the route could not match anything and read as a live rule.
+		 */
+		assert.equal(
+			copy.updateMessageFate("Please update manually with pip"),
+			"show",
+		);
+		assert.equal(
+			copy.updateMessageFate(
+				"Error: Cannot find latest-mac.yml in the latest release artifacts",
+			),
+			"muted",
+		);
+		assert.equal(
+			copy.updateMessageFate("net::ERR_INTERNET_DISCONNECTED"),
+			"show",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the invoke envelope is unwrapped rather than shown, once per nesting", async () => {
+	const { module: ipc, dir } = await loadPureModule(
+		"src/renderer/src/shared/utils/ipc-error-message",
+		"ipc-message",
+	);
+	try {
+		// The measured shape: Electron wraps the rejection, and the message inside
+		// it already carries the error's own name prefix.
+		assert.equal(
+			ipc.unwrapIpcErrorMessage(
+				new Error(
+					"Error invoking remote method 'check-for-updates': Error: net::ERR_TIMED_OUT",
+				),
+			),
+			"Error: net::ERR_TIMED_OUT",
+		);
+		// Nested, which happens when a handler's own work goes through another
+		// invoke: unwrapped until there is nothing left to unwrap.
+		assert.equal(
+			ipc.unwrapIpcErrorMessage(
+				"Error invoking remote method 'check-for-all-updates': Error invoking remote method 'check-for-updates': Error: net::ERR_TIMED_OUT",
+			),
+			"Error: net::ERR_TIMED_OUT",
+		);
+		// A thrown string, which is not an Error but is still a rejection.
+		assert.equal(
+			ipc.unwrapIpcErrorMessage(
+				"Error invoking remote method 'update-backend': backend refused",
+			),
+			"backend refused",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a negative internet reading is not evidence until a second one agrees", async () => {
+	const { module: offline, dir } = await loadPureModule(
+		"src/renderer/src/shared/utils/offline-confirmation",
+		"offline",
+	);
+	try {
+		const grace = offline.OFFLINE_CONFIRMATION_GRACE_MS;
+		// One reading - the Wi-Fi roam, the wake, the resolver switch - reports
+		// nothing. This is the frame the operator saw: a banner over a machine
+		// that was online.
+		const first = offline.observeConnectivityReading(
+			offline.noOfflineConfirmation(),
+			{ isOnline: false, at: 1_000 },
+		);
+		assert.equal(first.report, false);
+		// The same answer after the grace is what it is allowed to act on.
+		const second = offline.observeConnectivityReading(first.state, {
+			isOnline: false,
+			at: 1_000 + grace,
+		});
+		assert.equal(second.report, true);
+		// Still inside the grace, still nothing.
+		assert.equal(
+			offline.observeConnectivityReading(first.state, {
+				isOnline: false,
+				at: 1_000 + grace - 1,
+			}).report,
+			false,
+		);
+		// A positive reading clears immediately, from any state.
+		assert.deepEqual(
+			offline.observeConnectivityReading(second.state, {
+				isOnline: true,
+				at: 1_000 + grace + 1,
+			}),
+			{ state: offline.noOfflineConfirmation(), report: false },
+		);
+		/*
+		 * The wait is measured from the FIRST negative reading, not from the most
+		 * recent one: a poll that re-runs the effect must shorten the wait rather
+		 * than push it away, or a genuinely offline machine would never be
+		 * reported at all.
+		 */
+		assert.equal(
+			offline.msUntilOfflineReportable(first.state, 1_000 + grace - 500),
+			500,
+		);
+		assert.equal(
+			offline.msUntilOfflineReportable(first.state, 1_000 + grace + 900),
+			0,
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The operator's alert itself: a five-minute silent check whose feed fetch hit
+ * a transport failure. It must produce NOTHING on the renderer - no
+ * `update-error`, and nothing else a person could read - while still leaving
+ * the check's conclusion honest.
+ */
+test("a transient failure on a background check tells the renderer nothing", async () => {
+	const attempts = [];
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loFailingFeed("net::ERR_INTERNET_DISCONNECTED", attempts),
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		silentAppCheck: true,
+	});
+
+	assert.equal(
+		attempts.length,
+		3,
+		"three attempts: the fetch and its two retries",
+	);
+	assert.deepEqual(
+		sent.map(({ channel }) => channel),
+		[],
+		"a silent check reports nothing at all, on any channel",
+	);
+	/*
+	 * `checkForUpdates` answers with the CHANNEL status, and an unfetched feed is
+	 * `unavailable` - never `current`. That distinction is the reason this change
+	 * is a retry rather than an extra entry in the error filter, whose branch
+	 * would have turned "could not find out" into "nothing newer".
+	 */
+	assert.equal(verdict, "unavailable");
+});
+
+/**
+ * The retry that succeeds, which is what every one of the log's 90 failures was
+ * followed by: a check five minutes later that answered normally. Nothing is
+ * shown, and the check still concludes what it found.
+ */
+test("a transient failure that succeeds on retry tells the renderer nothing", async () => {
+	const attempts = [];
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: () => {
+			attempts.push(1);
+			if (attempts.length === 1) {
+				const error = new Error("net::ERR_NETWORK_CHANGED");
+				globalThis.__loAutoUpdater?.emit("error", error);
+				throw error;
+			}
+			return loAppCurrent();
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+
+	assert.equal(
+		attempts.length,
+		2,
+		"the first attempt and the retry that worked",
+	);
+	assert.equal(verdict.app, "current", JSON.stringify(verdict));
+	/*
+	 * The trace a retried failure must leave is NONE of the failure: no
+	 * `update-error`, and no offer either. `update-not-available` is legitimate
+	 * here and is the positive half of the claim - the retry really did read the
+	 * feed, which said nothing newer.
+	 */
+	assert.deepEqual(
+		sent.filter(
+			({ channel }) =>
+				channel === "update-error" || channel === "update-available",
+		),
+		[],
+		"a retried failure leaves no trace for the user",
+	);
+	assert.ok(
+		sent.some(({ channel }) => channel === "update-not-available"),
+		"the retry read the feed, which is what makes the first attempt's failure silent",
+	);
+});
+
+/**
+ * Retries exhausted on a check the user asked for: EXACTLY one message, and the
+ * message is not the raw transport string. Both halves matter - the operator's
+ * log reported one failure twice, and what reached the screen was the code.
+ */
+test("retries exhausted report once, in the app's own words", async () => {
+	const { module: copy, dir } = await loadPureModule(
+		"src/renderer/src/shared/utils/update-error-copy",
+		"update-copy-reader",
+	);
+	try {
+		const attempts = [];
+		const { sent } = await loAggregateCheck({
+			appCheck: loFailingFeed(
+				"Cannot parse releases feed: Error: net::ERR_NETWORK_CHANGED",
+				attempts,
+			),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+		});
+
+		assert.equal(attempts.length, 3);
+		const errors = sent.filter(({ channel }) => channel === "update-error");
+		assert.equal(
+			errors.length,
+			1,
+			`exactly one message, not one per channel: ${JSON.stringify(sent.map(({ channel }) => channel))}`,
+		);
+		assert.equal(
+			errors[0].payload,
+			"Cannot parse releases feed: net::ERR_NETWORK_CHANGED",
+			"the machine's own words, with the nested Error: prefix gone at the source",
+		);
+		// What the person reads, from the shipped copy rather than from a copy of it.
+		const shown = copy.updateErrorCopy(errors[0].payload);
+		assert.equal(shown.sentence.includes("net::"), false, shown.sentence);
+		assert.match(shown.sentence, /update server/i);
+		assert.equal(shown.detail, "net::ERR_NETWORK_CHANGED");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The actionable path, which must not be silenced by the fix: a failure during
+ * a download or an install the user asked for is reported even while an
+ * availability check is in flight. That is the condition the `error` handler's
+ * own gate tests first, and the check spends its whole retry sequence
+ * in-flight - so this is the case that would go quiet if the gate were written
+ * the other way round.
+ */
+test("a failure the user asked for is still reported during a check", async () => {
+	const attempts = [];
+	const { sent } = await loAggregateCheck({
+		appCheck: () => {
+			attempts.push(1);
+			const error = new Error("net::ERR_CONNECTION_RESET");
+			/*
+			 * The download that died, ONCE - modelled by the `error` event the
+			 * updater raises for it, inside the window the check is in flight for.
+			 * A real download failure happens once; a fixture that raised it per
+			 * attempt would report once per attempt, which is a property of this
+			 * fixture rather than of the app.
+			 */
+			if (attempts.length === 1) {
+				globalThis.__loAutoUpdater.emit("error", error);
+			}
+			throw error;
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		silentAppCheck: true,
+		stage: "downloading",
+	});
+
+	assert.equal(
+		attempts.length,
+		3,
+		"the check still retried its own transient failure",
+	);
+	const errors = sent.filter(({ channel }) => channel === "update-error");
+	assert.equal(
+		errors.length,
+		1,
+		JSON.stringify(sent.map(({ channel }) => channel)),
+	);
+	assert.equal(
+		errors[0].payload,
+		"net::ERR_CONNECTION_RESET",
+		"the actionable failure is reported even while a check is in flight",
+	);
+});
+
+/**
+ * An `error` event with NO check in flight - a failure from the updater's own
+ * internals - still reports, and it reports the machine's words stripped of the
+ * nested `Error: ` prefix rather than as the log wrote them.
+ */
+test("an error outside any check is reported, cleaned of its prefixes", async () => {
+	const { sent, probeResult } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		probe: async (service) => {
+			globalThis.__loAutoUpdater.emit(
+				"error",
+				new Error("Error: net::ERR_CONNECTION_RESET"),
+			);
+			return service.appChecksInFlight;
+		},
+	});
+
+	assert.equal(probeResult, 0, "the probe runs with no check in flight");
+	const errors = sent.filter(({ channel }) => channel === "update-error");
+	assert.equal(
+		errors.length,
+		1,
+		JSON.stringify(sent.map(({ channel }) => channel)),
+	);
+	assert.equal(
+		errors[0].payload,
+		"net::ERR_CONNECTION_RESET",
+		"the doubled prefix is fixed at the source, not only at the paint",
+	);
+});
+
+/**
+ * The other half of the retry's contract: a failure the network cannot fix gets
+ * ONE attempt. A 404 for the channel file is the server having answered, and a
+ * backoff there would delay a verdict it cannot change.
+ */
+test("a failure that is not transient is not retried", async () => {
+	const attempts = [];
+	const { sent } = await loAggregateCheck({
+		appCheck: () => {
+			attempts.push(1);
+			throw new Error("HttpError: 404 Not Found (latest-mac.yml)");
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+
+	assert.equal(attempts.length, 1, "no retry for a failure a retry cannot fix");
+	assert.equal(
+		sent.filter(({ channel }) => channel === "update-error").length,
+		1,
+		"and it is still reported",
+	);
+});
+
+/**
+ * The same silence on the OTHER half, which review round 1 (R-2) found: a
+ * background check reports nothing even when the failure is one no retry can
+ * fix. That is the operator's rule rather than an accident of the gate - "if
+ * updates can't be checked then that should be an error that only pops up if
+ * clicking the button to check for updates" - and this case exists because the
+ * gate's own comment used to claim the opposite ("if the retries are exhausted
+ * its own path says so once"), which is true for a click and false here.
+ */
+test("a background check reports nothing even when the failure is not transient", async () => {
+	const attempts = [];
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: () => {
+			attempts.push(1);
+			// Not a transport failure at all: a credential the release feed
+			// refuses. Nothing about this changes five minutes later.
+			throw new Error("Error: Invalid API key");
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		silentAppCheck: true,
+	});
+
+	assert.equal(
+		attempts.length,
+		1,
+		"the retry rule is unchanged: nothing a retry cannot fix is retried",
+	);
+	assert.deepEqual(
+		sent.map(({ channel }) => channel),
+		[],
+		"an app-initiated check reports nothing, transient or not",
+	);
+	assert.equal(verdict, "unavailable", "and it still may not claim anything");
+});
+
+/**
+ * The root cause, at the surface it was found on: the tick that lands during a
+ * dark wake, before Wi-Fi is back. `net.isOnline()` answers "this machine
+ * believes it has no network", and the check spends NO request and reports
+ * nothing - leaving the verdict where a check that did not run belongs.
+ *
+ * Why this is the fix rather than three more retries: the operator's log has the
+ * wake reason (`smc.sysState.Wake(0x70070000) wifibt`) in the same second as
+ * `net::ERR_INTERNET_DISCONNECTED`, with the machine's own resolver answering
+ * `getaddrinfo ENOTFOUND pypi.org` at that instant - a request made then cannot
+ * succeed, and retrying it twice more only spends three failures.
+ */
+test("a check the machine has no network for spends no request", async () => {
+	const attempts = [];
+	const { verdict, sent } = await loAggregateCheck({
+		appCheck: loFailingFeed("net::ERR_INTERNET_DISCONNECTED", attempts),
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		netIsOnline: false,
+		silentAppCheck: true,
+	});
+
+	assert.equal(
+		attempts.length,
+		0,
+		"the gate answers before the fetch, so not even the first attempt happens",
+	);
+	assert.deepEqual(
+		sent.map(({ channel }) => channel),
+		[],
+		"an app-initiated check that could not run says nothing, on either channel",
+	);
+	assert.equal(
+		verdict,
+		"unavailable",
+		"a check that did not run never reports nothing-newer (or current)",
+	);
+});
+
+/**
+ * R2-1: the click is the ONE path the operator's rule exists for, and the gate was
+ * silently resolving it - `net.isOnline()` false returned before the ladder, the
+ * invoke resolved, and a resolved invoke is not a failure, so the renderer's catch
+ * never ran and the button painted nothing at all. The gate is now an ATTEMPT in
+ * the ladder, so a manual check fails with the code the machine's own stack gives
+ * for this state and is answered by the copy that already exists.
+ */
+test("a check the user asked for still reports when the machine has no network", async () => {
+	const { module: copy, dir } = await loadPureModule(
+		"src/renderer/src/shared/utils/update-error-copy",
+		"offline-copy-reader",
+	);
+	try {
+		const attempts = [];
+		const { sent, rejected } = await loAggregateCheck({
+			appCheck: loFailingFeed("net::ERR_INTERNET_DISCONNECTED", attempts),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			netIsOnline: false,
+			// The app channel alone: what the failure alert's own retry invokes.
+			ipc: { handler: "check-for-updates", options: { manual: true } },
+		});
+
+		assert.equal(attempts.length, 0, "still no request spent while offline");
+		assert.ok(
+			rejected instanceof Error,
+			"the click is answered with a failure, not a resolved invoke - a resolved one is how it said nothing at all",
+		);
+		assert.match(
+			rejected.message,
+			OFFLINE_CODE_PREFIX,
+			"the code the machine's own stack gives for this state",
+		);
+		/*
+		 * AND THE MESSAGE SAYS THE REQUEST WAS NEVER MADE (review round 3, R3-3): a
+		 * grep for the code would otherwise find a line that reads like a fetch which
+		 * went out and came back refused.
+		 */
+		assert.match(rejected.message, NO_REQUEST_MADE);
+		/*
+		 * And the renderer has copy for it: the same sentence the alert paints for a
+		 * real fetch that failed this way, with the code subordinate.
+		 */
+		const shown = copy.updateErrorCopy(rejected.message);
+		assert.match(shown.sentence, /could not reach the update server/i);
+		assert.match(shown.detail, OFFLINE_CODE_PREFIX);
+		assert.equal(shown.action, "check", "and the retry it names has an owner");
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"one owner: the rejection IS the report, so no event doubles it",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The cost QA measured on a down network (round 1, Q-2): the renderer's mount
+ * check and this process's own launch check both run at start-up, and with the
+ * retries applied per check that was six fetches in 6.6 s where the base made
+ * two. The fetch is the same request for the same feed, so the second check
+ * rides the first one's attempt sequence.
+ */
+test("two overlapping checks share one attempt sequence", async () => {
+	let fetches = 0;
+	const { probeResult } = await loAggregateCheck({
+		appCheck: async () => {
+			fetches += 1;
+			// Long enough that the second check is genuinely concurrent.
+			await new Promise((resolve) => setTimeout(resolve, 25));
+			return null;
+		},
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		silentAppCheck: true,
+		probe: async (service) => {
+			const before = fetches;
+			await Promise.all([
+				service.checkForUpdates(true),
+				service.checkForUpdates(true),
+			]);
+			return fetches - before;
+		},
+	});
+
+	assert.equal(
+		probeResult,
+		1,
+		"two concurrent checks made ONE fetch between them, not one each",
+	);
+});
+
+/**
+ * The wake half of the root cause: a resume arms ONE check a moment later, so
+ * the tick that lands before the network is back is not the only one this
+ * machine gets. What is pinned here is the bound - a night of maintenance wakes
+ * cannot accumulate timers, which is the difference between arming a check and
+ * building a storm.
+ */
+test("a resume arms one check, and a second resume adds no timer", async () => {
+	const { probeResult } = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+		probe: async (service) => {
+			const handlers = globalThis.__loPowerMonitorHandlers;
+			assert.equal(
+				typeof handlers?.resume,
+				"function",
+				"the service must listen for this machine resuming",
+			);
+			handlers.resume();
+			const first = service.postWakeCheckTimer;
+			handlers.resume();
+			return {
+				armed: Boolean(first),
+				sameTimer: service.postWakeCheckTimer === first,
+			};
+		},
+	});
+
+	assert.equal(probeResult.armed, true, "a resume arms a check");
+	assert.equal(
+		probeResult.sameTimer,
+		true,
+		"a second resume leaves that one timer alone rather than arming another",
+	);
 });
 
 // ---------------------------------------------------------------------------
