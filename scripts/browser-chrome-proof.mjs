@@ -3216,7 +3216,7 @@ async function main() {
 		say(`frame: ${join(OUT_DIR, "18-surface-no-tabs-open.png")}`);
 
 		/*
-		 * ---- 19. the pooled strip at scale: 22 tabs across 6 conversations ----
+		 * ---- 19. the pooled strip at scale: 20 tabs across 6 conversations ----
 		 *
 		 * The design's §6.4 scene, and the one state where "can the user see what a
 		 * conversation opened" has an answer that is not obviously yes: at 1160px the
@@ -3302,8 +3302,13 @@ async function main() {
 			})()`);
 			return reading.chips.length === 7 && reading.rows === 20 ? reading : null;
 		}, "the pooled strip to settle with 20 rows and 7 group labels");
-		const poolFrame = await captureRenderer("19-strip-pooled-22/6");
-		await compose("19-strip-pooled-22/6", poolFrame, null, await contentRect());
+		const poolFrame = await captureRenderer("19-strip-pooled-20-over-6");
+		await compose(
+			"19-strip-pooled-20-over-6",
+			poolFrame,
+			null,
+			await contentRect(),
+		);
 		note("the pooled strip", JSON.stringify(poolSeen, null, 2));
 		check(
 			"the pooled strip groups 20 tabs into their 6 conversations plus the unattributed run, LAST (R3)",
@@ -3338,7 +3343,7 @@ async function main() {
 			typeof poolSeen.pin === "string" && /^\+\d+$/.test(poolSeen.pin),
 			`pinned control reads ${JSON.stringify(poolSeen.pin)}`,
 		);
-		say(`frame: ${join(OUT_DIR, "19-strip-pooled-22/6.png")}`);
+		say(`frame: ${join(OUT_DIR, "19-strip-pooled-20-over-6.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);

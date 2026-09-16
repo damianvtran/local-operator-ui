@@ -164,6 +164,120 @@ const tabLabel = (title: string): string => {
 };
 
 /**
+ * The state chips a row can carry, IN SURVIVAL ORDER — the order the cap spends.
+ *
+ * WHY THE ORDER IS THIS ONE, most load-bearing first (design R4, fix 1; open
+ * question 9):
+ *
+ * 1. `Request n` is an ASK, and its number is the tie to the tray's chip and the
+ *    dock's row (§5.2) — dropping it hides the one chip that asks the user for
+ *    something.
+ * 2. `Agent` is the only thing that distinguishes an agent tab from the user's own,
+ *    and QA asserts on it.
+ * 3. `Failed` is a background tab's only signal: a refused main-frame load leaves
+ *    Chromium's blank surface in the view, so without the chip there is nothing on
+ *    screen that says the tab failed.
+ * 4. `Shared` is implied by `Agent` today (`registry.ts:369-372` sets `owner` and
+ *    `handedTo` together), so it is real information at the lowest value of the four.
+ * 5. `Restored` is useful once — "why am I signed out" — and recoverable from the
+ *    tab's own tooltip, so it yields first.
+ */
+const CHIP_PRIORITY = [
+	"request",
+	"agent",
+	"failed",
+	"shared",
+	"restored",
+] as const;
+
+type StateChip = (typeof CHIP_PRIORITY)[number];
+
+/** Each chip's own word, for the collapsed chip's tooltip and for the sentence
+ * assistive technology reads. The same words the chips render. */
+const CHIP_WORD: Record<StateChip, string> = {
+	request: "Request",
+	agent: "Agent",
+	failed: "Failed",
+	shared: "Shared",
+	restored: "Restored",
+};
+
+/**
+ * HOW MANY STATE CHIPS A ROW SHOWS BEFORE IT COLLAPSES THE REST.
+ *
+ * WHY A CAP AT ALL (design R4, fix 1). The width policy pays the strips's floors
+ * from a budget: `title = floor − 32 − chips − 6 x (pills + 1)`, and five chips are
+ * 244px of a 384px floor, which leaves the title 72px — the committed `worst-case`
+ * frame reads `Check...`. The two ways out were rejected: paying the floors at five
+ * chips needs a 465px floor (one pathological row taking that much scroll order
+ * ahead of every ordinary tab), and dropping a chip hides a state the design round
+ * approved. So the row keeps the three that matter most and says how many it hid.
+ *
+ * THREE, because that is the count at which the floor arithmetic clears the 85px
+ * this file promises at every reachable row (the invariant is asserted in
+ * `scripts/browser-chrome.test.mjs`, not asserted here).
+ */
+const MAX_INLINE_CHIPS = 3;
+
+/**
+ * Which chips a row shows and which it collapses.
+ *
+ * A `Set` rather than the surviving array, because the only thing the render needs
+ * is "does this chip appear" — and the chips render in the strip's own long-standing
+ * order (marker, then state) rather than in survival order, which is a separate
+ * decision the design round made and this cap does not touch.
+ */
+export function stateChips(
+	tab: BrowserTabView,
+	waitingOrdinal: number | undefined,
+): { shown: Set<StateChip>; collapsed: StateChip[] } {
+	const present = {
+		request: waitingOrdinal !== undefined,
+		agent: tab.owner === "agent",
+		failed: tab.failed,
+		shared: tab.handedOver,
+		restored: tab.restored,
+	};
+	const ordered = CHIP_PRIORITY.filter((chip) => present[chip]);
+	return {
+		shown: new Set(ordered.slice(0, MAX_INLINE_CHIPS)),
+		collapsed: ordered.slice(MAX_INLINE_CHIPS),
+	};
+}
+
+/**
+ * The floor rung for a row: the Tailwind width classes, per tier.
+ *
+ * EXTRACTED AS A FUNCTION RATHER THAN INLINED IN THE ROW so the invariant behind it
+ * can be TESTED rather than read (design R4: "the invariant is a pure function and
+ * belongs in `browser-chrome.test.mjs`"). The test takes this function's own answer,
+ * maps each tier's token to the pixel width the spacing scale gives it, and asserts
+ * the title each rung leaves - so a rung edited without redoing the arithmetic fails
+ * the test rather than a frame.
+ *
+ * THE TIERS ARE RANGES, not two stacked `max-` variants: the narrow one is
+ * everything under 672px (42rem), the middle one 672..1152, and the bare `min-w-*`
+ * takes the rest. They are read in that order by `@container/strip` on the strip's
+ * ROW - not on the scroller, whose width changes when the pinned control appears,
+ * which is the feedback loop that once made the strip oscillate (see the scroller's
+ * own note).
+ */
+export function tabFloor(active: boolean, pills: number): string {
+	if (active) {
+		if (pills >= 4) return "min-w-[26rem] @max-2xl:min-w-62";
+		if (pills === 3) return "min-w-96 @max-2xl:min-w-56";
+		if (pills === 2) return "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-50";
+		if (pills === 1) return "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-33";
+		return "min-w-56 @max-2xl:min-w-30";
+	}
+	if (pills >= 4) return "min-w-96 @max-2xl:min-w-62";
+	if (pills === 3) return "min-w-80 @max-2xl:min-w-56";
+	if (pills === 2) return "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-50";
+	if (pills === 1) return "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-33";
+	return "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-30";
+}
+
+/**
  * Reveal-on-hover-or-focus, the treatment a row's chrome gets when the strip has
  * no room to keep it in flow. Literal class names rather than a template string,
  * because Tailwind's scanner reads the source text.
@@ -411,149 +525,83 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const active = tab.tabId === activeTabId;
 						const waitingOrdinal = waiting[tab.tabId];
 						/*
-						 * THE FLOOR IS SIZED FOR THE CHIPS THE ROW ACTUALLY CARRIES, AND FOR THE
-						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW (review rounds 5 and 6).
+						 * THE ROW'S PILLS, AND THE CAP THAT BOUNDS THEM (design R4, fix 1).
 						 *
-						 * THE COMBINATIONS ARE ENUMERATED FROM THE REGISTRY, NOT FROM THE STORY.
-						 * Round 4 assumed the five markers were mutually exclusive; `Shared` is not
-						 * exclusive with `Agent`, it is IMPLIED by it - `handOver` sets
-						 * `owner = "agent"` AND `handedTo = sessionId` (`registry.ts:369-372`),
-						 * `host.ts:549` projects `handedOver`, and the two chips render on
-						 * independent conditions, so every handed-over tab carries both.
-						 * `revokeHandOver` clears both together; `restored` is set only at creation,
-						 * for a tab that is always user-owned, and is never cleared - so
-						 * `Shared => Agent` and `Agent AND Restored => Shared`, and `failed` and a
-						 * waiting `Request n` stack on either. Reachable, by count:
+						 * `stateChips` (module scope) is the one place the cap is applied: at most
+						 * THREE state chips are drawn inline, in survival order, and the rest
+						 * collapse into one `+n` chip. So a row carries 0-4 pills, and that bound is
+						 * what lets the ladder below be a short one.
 						 *
-						 *   1-2 chips  Agent, Shared, Restored, Failed, Request n, and the pairs
-						 *              those implications allow
-						 *   3 chips    Agent + Shared + (Failed | Request n),
-						 *              Agent + Shared + Restored,
-						 *              Agent + Failed + Request n,
-						 *              Restored + Failed + Request n
-						 *   4 chips    Agent + Shared + Failed + Request n,
-						 *              Agent + Shared + Restored + Failed,
-						 *              Agent + Shared + Restored + Request n
-						 *   5 chips    Restored + Agent + Shared + Failed + Request n
+						 * WHY A CAP RATHER THAN A BIGGER FLOOR, and the choice was made from this
+						 * file's own committed evidence: five chips are 244px, and at the 384px floor
+						 * that leaves the title 72px - the `worst-case` frame reads `Check...`. Paying
+						 * the floors at five chips needs a 465px floor, which hands one pathological
+						 * row (restored, handed over, failed AND waiting, and NOT the tab being read)
+						 * that much scroll order ahead of every ordinary tab. Dropping a chip was the
+						 * other option and it hides a state the design round approved. A number is the
+						 * honest third: nothing is hidden, the count says how much is collapsed on its
+						 * face, and the three that survive are the three that carry information.
+						 */
+						const { shown: shownChips, collapsed: collapsedChips } = stateChips(
+							tab,
+							waitingOrdinal,
+						);
+						const pills = shownChips.size + (collapsedChips.length ? 1 : 0);
+						/*
+						 * THE FLOOR IS SIZED FOR THE PILLS THE ROW ACTUALLY CARRIES, AND FOR THE
+						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW.
 						 *
-						 * MEASURED CHIP WIDTHS (`px-1` pills): Agent 43, Shared 43, Restored 48,
-						 * Failed 48, Request n 62. The widest set at each count is therefore 62,
-						 * 105, 158, 196, 244. `px-2` is 16px TOTAL, the mark is 16px, and each of
-						 * the chips+1 gaps is 6px, so a row's title is
-						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` and the active row pays a
-						 * further 68px for the cluster in flow plus the gap before it:
+						 * MEASURED PILL WIDTHS (`px-1` pills): Agent 43, Shared 43, Restored 48,
+						 * Failed 48, Request n 62, and the collapsed `+n` 36. The widest set at each
+						 * reachable count is therefore 0, 62, 105, 153, 189 - the last being three
+						 * chips plus the collapse chip, and it is the same 189 whether one state was
+						 * collapsed or two, because the collapse is ONE pill whatever it hides.
+						 * `px-2` is 16px TOTAL, the mark is 16px, and each of the gaps is 6px, so a
+						 * row's title is `floor - 32 - pills - 6 x (pills + 1)` and the active row
+						 * pays a further 68px for the cluster in flow plus the gap before it:
 						 *
-						 *   inactive   0:176->144  1:224->118  2:288->133  3:320->106
-						 *              4:384->126  5:384->72   (the five-chip title yields)
-						 *   active     0:224->124  1:320->146  2:384->161  3:384->102
-						 *              4:416->90   5:480->100
+						 *   inactive   0:176->138  1:224->118  2:288->133  3:320->111  4:384->133
+						 *   active     0:224->124  1:320->146  2:384->161  3:384->107  4:416->97
 						 *
-						 * EVERY ACTIVE ROW CLEARS THE 85px THIS FILE PROMISES, at every count, and
-						 * the active rows are the ones that take steps past the spacing scale:
-						 * `{Agent, Shared, Failed, Request n}` is the tab a user clicks precisely
-						 * BECAUSE it needs approval, and at the standard `min-w-96` its title was
-						 * 58px - under the 60px floor the harness itself asserts - so it is
-						 * `min-w-[26rem]`, and the widest row the projection can produce, active, is
-						 * `min-w-[30rem]` for 100px of title. Named as steps past the scale rather
-						 * than pretending a standard step fits. Round 6, MAJOR 2.
+						 * EVERY ROW AT EVERY RUNG OF THE BASE AND MIDDLE TIERS CLEARS THE 85px THIS
+						 * FILE PROMISES, and that is the whole point of the cap: before it, the
+						 * five-chip inactive row yielded to 72px. The invariant is `title >= 85` at
+						 * every reachable count, asserted where a pure function belongs
+						 * (`scripts/browser-chrome.test.mjs`) rather than read off a frame.
 						 *
-						 * THE INACTIVE FIVE-CHIP ROW IS WHERE THE TITLE YIELDS, and that is the
-						 * deliberate half. Fitting 244px of chips plus the mark and the gaps at 85px
-						 * of title needs a 465px floor, and handing one pathological state -
-						 * restored, handed over, failed AND waiting at once, and NOT the tab the user
-						 * is looking at - that much of the strip's scroll order, ahead of every
-						 * ordinary tab, is a worse trade than the title yielding: the
-						 * `browser-tab-strip--worst-case` frame is that row at 72px, reading
-						 * `Check...`. Dropping a chip was the other option and it hides a state the
-						 * design round approved. Its chips stay whole - 312px of content inside
-						 * 384px - and the BUTTON clips at its own edge (above) as the backstop that
-						 * keeps a chip from ever painting over the neighbouring tab, the
-						 * `bg-canvas`-over-`bg-canvas` defect design round 3 filed as MAJOR. At the
-						 * widths measured here that clip cannot fire: the widest reachable content
-						 * is 380px against a 416px floor, so it is a backstop for a sixth marker or
-						 * a wider chip, NOT the evidence for the sizes above - the sizes are the
-						 * evidence (review round 6, MINOR 2).
+						 * THE NARROW TIER MAKES A SMALLER PROMISE AND ALWAYS DID: at the pane's own
+						 * width the floors are a step down, the title yields past two pills, and the
+						 * button's clip is the backstop - `min-w-30` is 120px, which cannot hold a
+						 * mark, a chip and 85px of title at any arithmetic. What the cap owes that
+						 * tier is that it never makes a row WORSE, and that is asserted too: the same
+						 * rung is kept for the same count and the collapse chip (36px) is narrower
+						 * than the two pills it replaces (43 and 48), so every capped row's title
+						 * widens.
+						 *
+						 * THE ACTIVE ROW STILL TAKES ONE STEP PAST THE SPACING SCALE, and it is named
+						 * rather than hidden: `min-w-[26rem]` is the only arbitrary length left, for
+						 * the widest active row (three chips plus the collapse chip, 97px of title),
+						 * because the tab a user clicks BECAUSE it needs approval is exactly that
+						 * row. Before the cap there were two such steps (`min-w-[26rem]` and
+						 * `min-w-[30rem]`); the cap is what collapsed them into one.
+						 *
+						 * THE BUTTON STILL CLIPS AT ITS OWN EDGE (review round 6, MAJOR 1), and it
+						 * remains a backstop rather than the evidence for these sizes: at the widths
+						 * above the widest reachable content is 189 + 32 + 30 = 251px against a 384px
+						 * floor, so the clip cannot fire. It is there for a sixth marker or a wider
+						 * chip, not as the reason any number here is what it is (review round 6,
+						 * MINOR 2).
+						 *
+						 * PAST TWO PILLS THE MIDDLE TIER INHERITS THE BASE RUNG rather than stepping
+						 * down again, and the invariant decides the rung rather than an aesthetic: at the
+						 * middle tier's old `min-w-72` a three-pill row had 79px of title, under the promise
+						 * this file makes. Two pills at `min-w-60` is exactly 85px, which is where the
+						 * ladder stops stepping down.
 						 *
 						 * Roles rather than computed pixels: the contract's spacing steps are the
 						 * vocabulary here, and the one arbitrary length is called out above.
 						 */
-						const chips = [
-							tab.owner === "agent",
-							tab.handedOver,
-							tab.restored,
-							tab.failed,
-							waitingOrdinal !== undefined,
-						].filter(Boolean).length;
-						/*
-						 * THE SAME LADDER, ONE STEP DOWN, WHEN THE STRIP ITSELF IS NARROW
-						 * (design round 1, D1; QA round 1, Q2; the designer's round-1
-						 * remainder). The rungs above are sized for the route's 1240px, where
-						 * the agent tab's `min-w-80` is 26% of the strip; in the pane's own
-						 * default 640 it is 50%, so a WHOLE TAB was off-screen with nothing on
-						 * screen saying so - the state the pane exists to show.
-						 *
-						 * THREE TIERS, EACH ONE A RANGE, OVER A CONTAINER THAT CANNOT MOVE:
-						 * the narrow one is everything under 672px (42rem), the middle one is
-						 * 672..1152, and the base rungs take the rest. Ranges rather than
-						 * stacked `max-` variants because both would claim the pane and the
-						 * winner would be whichever Tailwind sorted last; a container on the
-						 * strip ROW rather than on the scroller because the scroller's width
-						 * changes when the pinned control appears - and the control's own
-						 * presence is decided by the floors the tier sets, so measured on the
-						 * scroller the two fed each other and the strip oscillated between
-						 * fitting four tabs and not fitting them (caught in a frame: a `+2`
-						 * control over a strip whose four rows did fit).
-						 *
-						 * WHAT THE NARROW RUNGS BUY, by chip count, from the same
-						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` arithmetic as the comment
-						 * above and with the pane's own room (640 strip, about 546px of scroller
-						 * once the control and the new-tab button have taken theirs):
-						 *   no chips 120 -> 82px of title   four rows = 480  (room to spare)
-						 *   1 chip   132 -> 45px of title   four rows = 528  (FOUR FIT, which is
-						 *                                    the case D1 filed and the case the
-						 *                                    pane's default width exists for)
-						 *   2 chips  200 -> 45px of title   three fit, the rest are counted
-						 * A 45px title is FIVE OR SIX CHARACTERS, not the 85px this file promises
-						 * at the route's width, and that is the trade this tier makes out loud:
-						 * the row keeps its mark, every one of its chips and the hover/focus
-						 * chrome, the whole name is in the native `title` and in the pinned
-						 * control's menu, and the pane's own divider is how a user buys the
-						 * measure back. A tier that kept the 85px promise would show three rows
-						 * and cut the fourth, which is the defect D1 filed; at 480, or with six
-						 * tabs, even this tier runs out and the control's COUNT is what says so.
-						 * The two halves are one answer: the floors decide how many fit, and the
-						 * control says how many did not.
-						 *
-						 * THE NARROW TIER HAS NO ACTIVE/INACTIVE SPLIT, because the active row's
-						 * chrome is overlaid there rather than in flow (see the cluster below):
-						 * its 68px of permanent controls is exactly what stopped four rows
-						 * fitting.
-						 *
-						 * Literal class names rather than a template string, because Tailwind's
-						 * scanner reads the source text: a class assembled at runtime is a class
-						 * it cannot see.
-						 */
-						const floor = active
-							? chips >= 5
-								? "min-w-[30rem] @max-2xl:min-w-[17rem]"
-								: chips === 4
-									? "min-w-[26rem] @max-2xl:min-w-62"
-									: chips === 3
-										? "min-w-96 @max-2xl:min-w-56"
-										: chips === 2
-											? "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-50"
-											: chips === 1
-												? "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-33"
-												: "min-w-56 @max-2xl:min-w-30"
-							: chips >= 4
-								? "min-w-96 @2xl:@max-6xl:min-w-80 @max-2xl:min-w-62"
-								: chips === 3
-									? "min-w-80 @2xl:@max-6xl:min-w-72 @max-2xl:min-w-56"
-									: chips === 2
-										? "min-w-72 @2xl:@max-6xl:min-w-60 @max-2xl:min-w-50"
-										: chips === 1
-											? "min-w-56 @2xl:@max-6xl:min-w-48 @max-2xl:min-w-33"
-											: "min-w-44 @2xl:@max-6xl:min-w-36 @max-2xl:min-w-30";
+						const floor = tabFloor(active, pills);
 						const previous = index > 0 ? ordered[index - 1] : null;
 						/**
 						 * The chip this tab leads, when it starts a group and the pool has more than
@@ -688,7 +736,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										data-tour-tag="browser-tab"
 									>
 										<TabMark tab={tab} />
-										{tab.owner === "agent" && (
+										{shownChips.has("agent") && (
 											// Sentence case, informational, and the element a QA pass
 											// asserts on: the marker is the ONLY thing that distinguishes
 											// an agent tab from a user tab in the strip.
@@ -699,7 +747,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Agent
 											</span>
 										)}
-										{tab.handedOver && (
+										{shownChips.has("shared") && (
 											// One pill shape for every state marker, differing by role only
 											// (design round 2, D11): `Restored` used to be bare dim text with no
 											// frame at all, which read as a caption beside the four framed
@@ -708,7 +756,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Shared
 											</span>
 										)}
-										{tab.restored && (
+										{shownChips.has("restored") && (
 											// Restored tabs are worth marking, because a restored tab is a
 											// FRESH navigation to the same URL (design 7.3): a page that
 											// logged out since shows logged out, and saying "restored"
@@ -717,7 +765,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Restored
 											</span>
 										)}
-										{tab.failed && (
+										{shownChips.has("failed") && (
 											// Marked per tab, not only on the active one: a background tab whose
 											// load was refused shows a blank page and nothing else, and the
 											// failure panel belongs to whichever tab the user is looking at
@@ -729,7 +777,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												Failed
 											</span>
 										)}
-										{waitingOrdinal !== undefined && (
+										{shownChips.has("request") && (
 											// The tab is parked on an origin the agent has not been approved
 											// for. Marked on the TAB rather than only in the band, because with
 											// several tabs open the band's sentence names an origin and the user
@@ -750,6 +798,34 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												 * inferred.
 												 */}
 												Request {waitingOrdinal}
+											</span>
+										)}
+										{collapsedChips.length > 0 && (
+											/*
+											 * THE COLLAPSE CHIP (design R4, fix 1). It is HONEST ABOUT WHAT IT HIDES, and
+											 * in three places rather than one: the visible `+n` is the count, its `title`
+											 * names the states, and an `sr-only` span inside the button carries the words
+											 * so assistive technology reads `, 2 more: Restored, Shared` rather than a bare
+											 * number. The tab's own `title` and the actions band name the full state
+											 * too, so nothing is unrecoverable.
+											 *
+											 * THE RESTORED/SHARED TRIPLE, not a new one (`border-control`, `ink-dim`), so
+											 * a pill that says "some states are hidden" is drawn in the same grammar as the
+											 * states it hides and needs no new `CONTROLS` row in the contrast contract.
+											 */
+											<span
+												title={collapsedChips
+													.map((chip) => CHIP_WORD[chip])
+													.join(", ")}
+												className="shrink-0 rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums"
+												data-tour-tag="browser-tab-chips-collapsed"
+											>
+												+{collapsedChips.length}
+												<span className="sr-only">
+													{`, ${collapsedChips.length} more: ${collapsedChips
+														.map((chip) => CHIP_WORD[chip])
+														.join(", ")}`}
+												</span>
 											</span>
 										)}
 										{/*

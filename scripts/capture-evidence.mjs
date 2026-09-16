@@ -615,6 +615,17 @@ export const STORIES = [
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
 	["browser-tab-strip--actions-expanded", 1280, 180],
+	/* THE GROUPING AND THE CHIP CAP (design R3, R4 - the conversation-browser
+	   change). `grouped` is three conversations plus the unattributed run at the
+	   route's own 1280; `grouped-overflow` is 20 tabs over 6 conversations at
+	   1160px, which is the scale R3's arithmetic is about and the state open
+	   question 3 says to revisit if the labels start crowding the tabs;
+	   `chips-collapsed` is the five-state row at the PANE's 640, where the cap is
+	   what stands between a legible title and a clipped one - the pane's width
+	   rather than the route's, because that is the tier the cap was argued for. */
+	["browser-tab-strip--grouped", 1280, 140],
+	["browser-tab-strip--grouped-overflow", 1280, 140],
+	["browser-tab-strip--chips-collapsed", 640, 140],
 	/* The dock, which replaced the Sites sheet. It is a full-height in-flow panel,
 	   so the declared height is the panel's; `narrow` is captured in a 560px
 	   viewport because the dock's own width classes are the product's (`w-80` below
