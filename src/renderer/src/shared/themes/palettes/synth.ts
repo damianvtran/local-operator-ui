@@ -40,6 +40,10 @@ export const synth: ThemeDefinition = {
 		accent: "#FF4081",
 		accentHover: "#FF79B0",
 		accentActive: "#F50057",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.2 from `accent` and 7.65:1 on surface, where the accent
+		// itself is 5.57:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#FF7BA8",
 		accentWash: "#2E0E2C",
 		// The old theme paired white with this pink, which measures 3.2:1. Ink on
 		// the accent fill is the page ground instead, at 4.8:1.

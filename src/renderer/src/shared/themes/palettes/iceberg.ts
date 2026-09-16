@@ -48,6 +48,10 @@ export const iceberg: ThemeDefinition = {
 		accent: "#2D539E",
 		accentHover: "#1E3A7D",
 		accentActive: "#162E63",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 10.18:1 on surface, where the accent
+		// itself is 6.66:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#1F396C",
 		accentWash: "#D5DAE4",
 		onAccent: "#F2F5F9",
 

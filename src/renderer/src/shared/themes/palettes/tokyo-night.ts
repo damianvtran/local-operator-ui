@@ -39,6 +39,10 @@ export const tokyoNight: ThemeDefinition = {
 		accent: "#7AA2F7",
 		accentHover: "#9EBCFF",
 		accentActive: "#6D8FDA",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 8.25:1 on surface, where the accent
+		// itself is 5.78:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#AAC3FA",
 		accentWash: "#262B3F",
 		onAccent: "#1A1B26",
 
