@@ -146,7 +146,7 @@ const REVEAL_ON_HOVER_OR_FOCUS =
 
 /**
  * The same treatment, applied only while the strip is narrow, for the chrome that a
- * WIDE strip keeps permanent (the active row's cluster, below `@xl`).
+ * WIDE strip keeps permanent (the active row's cluster, below `@max-2xl`).
  *
  * It exists as its own constant because the two are not interchangeable: the first
  * is unconditional, and the second has to lose to `opacity-100` above the tier while
@@ -662,7 +662,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														// THE ACTIVE ROW'S CLUSTER STEPS OUT OF FLOW IN A NARROW STRIP (D1's
 														// remainder). 68px of permanent controls is what stopped four rows
 														// fitting the pane's 567px scroller - the floors in this file can
-														// shrink, controls cannot - so below `@xl` the active row takes exactly
+														// shrink, controls cannot - so below `@max-2xl` (42rem, measured on the
+														// strip's own container) the active row takes exactly
 														// the treatment every inactive row has had since D13: overlaid on the
 														// row's right end, revealed on hover or focus, with the elevated
 														// ground so the title it covers is not read through it. It stays
@@ -700,7 +701,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											// is open. On an INACTIVE tab it holds no width at all, so the reveal
 											// costs the title nothing (D13); on the ACTIVE one it sits in flow beside
 											// the permanent close control and keeps its 28px, which is part of why an
-											// active marked row needs the wider floor above - and, below `@xl`, why
+											// active marked row needs the wider floor above - and, below
+											// `@max-2xl`, why
 											// the whole cluster steps out of flow and takes the reveal with it.
 											className={cn(
 												"transition-opacity",
@@ -728,9 +730,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												// opacity step, never a layout shift - and on the active tab,
 												// where this control is permanent, it is IN FLOW, so the title
 												// truncates before it instead of running under it (review
-												// round 3, MAJOR). Below `@xl` - the pane's own width and
-												// narrower - the whole cluster is overlaid instead, for the
-												// reason the container class above states.
+												// round 3, MAJOR). Below `@max-2xl` - below 672px, which
+												// is the pane's own 640 and every width up to the
+												// route's 1160, and not the 576px `@xl` this used to
+												// name before the container moved to the strip's row - the
+												// whole cluster is overlaid instead, for the reason the
+												// container class above states.
 												className={cn(
 													"transition-opacity",
 													active
