@@ -50,6 +50,14 @@ import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+/*
+ * The switch every headless Chrome in this repository is launched with. A
+ * scratch `HOME` has no login keychain, so Chrome tries to CREATE one and
+ * macOS puts an authorization dialog on the operator's screen for a test run -
+ * see `chrome-keychain.mjs`. `chrome-keychain.test.mjs` walks every launch site
+ * in `scripts/`, so a rig that spawns Chrome without this fails the suite.
+ */
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://localhost:6006";
@@ -136,15 +144,18 @@ const CASES = [
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const dataDir = mkdtempSync(join(tmpdir(), "slash-enter-proof-"));
-const chrome = spawn(CHROME, [
-	"--headless=new",
-	"--no-sandbox",
-	"--disable-gpu",
-	"--hide-scrollbars",
-	`--user-data-dir=${dataDir}`,
-	"--remote-debugging-port=0",
-	"about:blank",
-]);
+const chrome = spawn(
+	CHROME,
+	withMockKeychain([
+		"--headless=new",
+		"--no-sandbox",
+		"--disable-gpu",
+		"--hide-scrollbars",
+		`--user-data-dir=${dataDir}`,
+		"--remote-debugging-port=0",
+		"about:blank",
+	]),
+);
 
 const wsUrl = await new Promise((resolve, reject) => {
 	let buf = "";
