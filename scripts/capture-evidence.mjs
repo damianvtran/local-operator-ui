@@ -547,6 +547,25 @@ export const STORIES = [
 	/* The badge at its cap (design round 1, D5). */
 	["browser-pane--trigger-at-cap", 560, 84],
 	/*
+	 * The chat header's whole action cluster, which is one control more than the
+	 * trigger frames above carry: the run trigger, the browser button and the canvas
+	 * button together, at the four spacing states the reservation is judged in.
+	 *
+	 * Its own surface rather than three more entries here, because these frames are
+	 * the pair a fix to the CLUSTER is reviewed against - `chat-header-cluster/` is
+	 * the fixed tree and `chat-header-cluster/before/` is the same stories rendered
+	 * by `origin/main`'s `chat-header.tsx` (see that set's declared source in the
+	 * manifest) - and a pair needs its own directory to be re-captured into.
+	 *
+	 * 560x84 is the size the trigger frames use, so a reviewer can put these beside
+	 * those. `no-approval` is the operator's own state: no badge drawn, and the
+	 * asymmetry visible as 8px against 12px before the fix.
+	 */
+	["chat-header-cluster--no-approval", 560, 84],
+	["chat-header-cluster--one-approval", 560, 84],
+	["chat-header-cluster--at-cap", 560, 84],
+	["chat-header-cluster--trigger-dot", 560, 84],
+	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
 	 * the claim: four tabs fit a 640 pane whole and six do not, and where they do not
