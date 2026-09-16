@@ -49,6 +49,30 @@ Nothing here took the operator's focus.
 | `live-wake-chip-many` | `b7a48cc57f6f`, eight armed | `8 wakes armed`, with the run pane still open from the press in the row above (the pane is identical to the frame below; only the composer's focus ring differs, so the chip-alone-at-eight state is not in this set). |
 | `live-wake-pane-many` | the same | The section with **all eight** schedules, soonest first, no marker — the count the chip states and the list the chip opens agreeing on one payload from a real store. |
 
+## The band in these frames is the previous window, and these frames do not deny it
+
+Design review's convergence round (D1) measured it, and it is confirmed here from the tree
+the branch ships: **the composer band in all seven frames is one this head no longer
+draws.** The frames were taken at `d372cbf36` on that head's built app, and the band they
+show — centred bordered chips reading `Trending stocks on WallStreetBets`, `MNIST`, … — is
+the `#228` band. None of those strings exists in this head's `src/`
+(`grep -rl "WallStreetBets" src` → 0 files), and at the same 1380px width this head draws
+its product chips borderless with the tip line where they were. What the frames still show
+correctly is exactly what `docs/composer-wakes.md` § 9 points at them for — the chip's real
+mark, a real pointer's tooltip, a real `Shift+Tab` focus ring, the hit-tested press and the
+reveal landing on the heading — and those four claims stand on their own pixels.
+
+**Not re-shot in this pass, and here is why rather than a guess.** The wake-specific
+sequence is not reachable from any committed entry point: `scripts/renderer-driver.mjs`
+ships three scenes (`states`, `palette`, `none`), and none of them arms a wake or opens a
+session that has one, so re-driving hover/focus/press needs the bespoke harness the frames'
+own pass used and did not commit. The daemon half *is* reproducible and was re-verified in
+this pass — `LOCAL_OPERATOR_CONFIG_DIR=/tmp/wakes-live2 HOME=/tmp/wakes-live2/home … cli
+serve --port 8801` → `health 200` on the isolated store — so the gap is the renderer-side
+sequence alone. Recorded as an open finding (design D1) rather than annotated as current;
+the set's manifest entry keeps `declaredAtHead: 48296702b` and gains nothing it cannot
+claim.
+
 ## What it does not show, and cannot
 
 A wake **retiring**. The isolated store has no provider signed in, so the

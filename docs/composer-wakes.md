@@ -3,8 +3,10 @@
 The design record for the fourth count chip on the composer's status row and the
 run pane's fifth section. `docs/composer-status-tabs.md` is the row's own record,
 `docs/composer-activity-chips.md` is the third chip's, and `docs/run-sidebar.md`
-§ 7.2 is the pane's section order; each carries the amendment this change made to
-it.
+§ 7.2 is the pane's section order. The amendment this change makes to all three —
+the fourth chip, the fifth section, and its place in the order — is recorded HERE
+rather than in them: `composer-activity-chips.md` carries no wake text at all, and
+`run-sidebar.md` names the section without listing it.
 
 ## 0. The ask, verbatim
 
@@ -247,7 +249,7 @@ exists rather than a nicer-looking fixture.
   written because the fall-through is `every 0ms`, a row stating a cadence no
   scheduler has.
 
-**The cap is the wire's own ceiling: 16 rows, with a statement marker as the
+**The cap is the tool path's ceiling: 16 rows, with a statement marker as the
 footer for anything past it.** `WAKE_ROW_CAP` is `MAX_WAKE_SCHEDULES`
 (`harness/wake.py:47`), and it was six until UX round 1's U1 measured what six cost
 here. The argument for six was the roster's — "this section is one list in a pane
@@ -255,7 +257,7 @@ that scrolls" — and it does not hold: the panes' other list SHEDS per phase ra
 than scrolling (a 24-item plan leaves the whole region 9px of scroll), so six rows
 did not buy the space the sentence claimed. What they bought was the operator's own
 ask unkept: they asked to "see all the armed wakes", and above six the section said
-more existed without saying which. Sixteen is the number the scheduler cannot
+more existed without saying which. Sixteen is the number `build_wake_schedule` refuses past
 exceed, so a full session is the whole list, and the marker below the list is the
 footer for a payload that exceeds the DECLARED bound (a hand-edited index, or a
 future runtime that raises the limit) rather than the routine truncation it was.
