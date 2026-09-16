@@ -193,9 +193,38 @@ export const LEADING_SLASH_CODE = "leading_slash_message";
  * What is true is that the user's draft is still in the composer and has two
  * fixes, both in front of them — so the sentence names them (branding section 8:
  * what happened, what it means, what to do).
+ *
+ * Reworded with the narrowing of the admission rule, and the rewording is
+ * load-bearing rather than cosmetic: "a message can't start with /" was true of
+ * the OLD policy and is now false as a general statement, since a draft that
+ * merely begins with a command word is accepted as a message. What survives is
+ * the whole-draft case, so the sentence names that one and says what to do with
+ * it. (User-visible copy: proposed here, ratified by the design round.)
  */
 export const LEADING_SLASH_MESSAGE =
-	"A message can't start with / — that is a command. Move it below your text, or send it on its own.";
+	"That line is a command, so it was not sent as a message. Send the command on its own, or move it below your text.";
+
+/**
+ * The same refusal, on a backend that still applies the OLD blanket policy.
+ *
+ * Appended by the composer only when the backend's `commands` capability is
+ * below 2, i.e. when the endpoint would still refuse a message that merely
+ * begins with a command word. It is a version skew rather than a user error on
+ * that pairing, and the app can install its own backend, so the sentence says
+ * what the situation is and the alert offers the update beside it.
+ */
+export const LEADING_SLASH_OLDER_BACKEND_MESSAGE =
+	"This backend is older than this app and still refuses messages that begin with a command word. Updating the backend fixes that.";
+
+/**
+ * The fallback sentence for a backend update that did not start.
+ *
+ * Used only when the failure carries no message of its own: the remedy is a
+ * button, and a button that reports nothing is worse than no button, so this
+ * surface always has something to say about an attempt that failed.
+ */
+export const SLASH_UPDATE_FAILED_MESSAGE =
+	"The backend update could not start.";
 
 /**
  * Whether a refused send is the leading-slash policy refusal.

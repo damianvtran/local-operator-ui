@@ -346,6 +346,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// A story frame has no dispatcher, so the pane cannot address a session
 	// unless a story says otherwise — the same default the composer takes.
 	paneHasSession: false,
+	prefixingCommands: new Set(),
 	nameListCommands: new Set(),
 	argumentWords: [],
 	enabled: true,

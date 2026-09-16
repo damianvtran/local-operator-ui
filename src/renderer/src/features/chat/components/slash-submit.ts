@@ -22,33 +22,48 @@
  * SECOND decision. So the split lives here, where the span is known to end at
  * its own line end, and the dispatcher is handed the answer.
  *
- * Rule order, one-to-one with the TUI:
+ * Rule order:
  *
  *   0. The capability is off → send. Nothing is spliced on a host that could not
  *      run the command it was deleted for.
  *   1. The token at the CARET (`slashTokenSpan`, which is what
  *      `_run_command_from_buffer` itself calls first) defines the span the run
- *      owns. No token at the caret → prose; send it. The whole-draft shape is
- *      NOT tested first, it is a CONSEQUENCE of this: a `/usage` on line 1 of a
- *      two-line draft is a token on its own LINE, so the caret on line 2 finds
- *      no token and the draft is prose (round 1 R2 = Q1 = U1).
- *   2. Nothing survives removing the span → the token IS the draft → whole.
- *   3. A slash-shaped token that names no command → `unrecognised`: report it
- *      through the normal dispatch (which owns the "did you mean" note) and keep
- *      the ORIGINAL draft, so a misspelt inline command is there to fix rather
- *      than gone (round 1 U8).
- *   4. An ARMED-ONLY command's word is not hoisted by this key at all: the
- *      draft goes back as PROSE, in the order it was typed. The arming is an
- *      explicit gesture, and it happens somewhere else entirely
- *      (`planSlashArming`, called by the popup's pick).
- *   5. A free-text command → reassemble to the front, STAGED, never submitted.
- *      Exception: a NAME+message command (`/team`, `/agent`) with no name typed
- *      yet does NOT reassemble on the word alone — the name is picked from the
- *      argument list first, and leaving that list open IS the interaction.
- *   6. Otherwise splice the token out and run it; the surrounding draft
- *      survives.
+ *      owns. The rule below is then applied to that span.
+ *   2. No token at the caret → the DRAFT-OPENING fallback, and only that: the
+ *      draft's LEADING line is evaluated as if the caret were inside its command
+ *      word. Without it the caret decides an outcome it cannot express — a
+ *      `/model gpt-5\nplease check the logs` whose caret reached column 0 (Home,
+ *      or select-all collapsed to the start) planned `send`, while the same
+ *      draft ran the command a keystroke earlier. It cannot fire on a draft that
+ *      does not OPEN with a command word, so a slash mid-sentence, on a later
+ *      line, or in ordinary prose is unaffected (prose → send).
+ *   3. A slash-shaped token that names no command: the token IS the whole draft
+ *      → `unrecognised`, so the dispatcher's "did you mean" note still answers a
+ *      misspelling and the draft is kept to fix (round 1 U8). Anything else →
+ *      prose, because a `/` inside a sentence is punctuation until its word is
+ *      picked as a command.
+ *   4. The token is the ENTIRE draft (nothing outside its span):
+ *      - the word is followed by nothing, or the command takes an argument →
+ *        `whole`: `/compact`, `/model gpt-5`, `/goal ship it`;
+ *      - a command that takes NO argument has text after its word
+ *        (`/compact hello`) → send. This is the operator's own report: `/compact
+ *        hello` used to run and eat `hello`.
+ *   5. The token OPENS the draft (its span begins at the first non-space
+ *      character) AND the command takes an argument AND it is not armed-only →
+ *      a command, with the sub-rules kept from the old rule:
+ *      - a free-text command reassembles to the front, STAGED, never submitted.
+ *        Exception: a NAME+message command (`/team`, `/agent`) with no name typed
+ *        yet does NOT reassemble on the word alone — the name is picked from the
+ *        argument list first, and leaving that list open IS the interaction;
+ *      - everything else splices the token out and runs it; the surrounding
+ *        draft survives.
+ *   6. Anything else — mid-sentence, on a later line, a leading token whose
+ *      command takes no argument (`please /compact this`, `/usage\nfix this`),
+ *      or an armed-only command that merely opens the draft → send. The draft
+ *      reaches the model as written.
  *
- * ONE DELIBERATE DEVIATION FROM THE TUI, and the only one in this file: rule 4.
+ * ONE DELIBERATE DEVIATION FROM THE TUI, and the only one in this file: rule 5's
+ * and rule 6's armed-only clause.
  * The reference reassembles a free-text command typed into a sentence, and that
  * is right where the assembled line is what the user asked to read before it
  * ran. For `/goal` it made the arming IMPLICIT and the Enter lossy: the operator
@@ -180,6 +195,21 @@ export type SlashSubmissionArgs = {
 	/** Names (primaries and aliases) of commands with `consumes_prompt: true`. */
 	promptCommands: ReadonlySet<string>;
 	/**
+	 * Names (primaries and aliases) of commands whose trailing text is an
+	 * ARGUMENT the command owns, over and above the free-text prompt: the value
+	 * commands (`/model gpt-5`, `/theme dark`, `/effort high`), whose trailing
+	 * text is a value chosen from a list rather than a message.
+	 *
+	 * Fed from the registry row's own `prefixes_text` field when the backend
+	 * carries it, and from the inline argument lists the renderer already
+	 * derives (`argumentVocabulary` in `slash-commands.tsx`, from
+	 * `picker-registry`'s `inline` field) when it does not — an older backend
+	 * must not change behaviour here. With `promptCommands` this is the
+	 * `consumesText` vocabulary; the union is taken in the rule rather than
+	 * passed in as one set, so each half keeps its own single derivation.
+	 */
+	prefixingCommands: ReadonlySet<string>;
+	/**
 	 * Names (primaries and aliases) of commands whose arming is EXPLICIT: a
 	 * free-text command this key never hoists, because the only gesture that arms
 	 * it is a PICK of its own row in the popup (`planSlashArming`). Derived from
@@ -195,6 +225,9 @@ export type SlashSubmissionArgs = {
 
 /** The name/argument separator: the first whitespace character of a token. */
 const WHITESPACE = /\s/;
+
+/** The first non-whitespace character of a draft, or -1. */
+const FIRST_CONTENT = /\S/;
 
 /**
  * The lower-cased command word of a token's text, `/team ops` → `team`.
@@ -284,13 +317,144 @@ function oneLine(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
 
+type Vocabularies = {
+	commandNames: ReadonlySet<string>;
+	promptCommands: ReadonlySet<string>;
+	prefixingCommands: ReadonlySet<string>;
+	nameListCommands: ReadonlySet<string>;
+	armedOnlyCommands: ReadonlySet<string>;
+};
+
+/**
+ * The plan a span earns, given the vocabularies. The ONE implementation of the
+ * rule: the caret path and the draft-opening fallback both come through here,
+ * which is what makes their outcome identical by construction rather than by
+ * two branches being kept in step by hand.
+ */
+function planForSpan(
+	draft: string,
+	span: { start: number; end: number },
+	{
+		commandNames,
+		promptCommands,
+		prefixingCommands,
+		nameListCommands,
+		armedOnlyCommands,
+	}: Vocabularies,
+): SlashSubmissionPlan {
+	const spliced = replaceSpan(draft, span.start, span.end, "");
+	const commandText = draft.slice(span.start, span.end).trim();
+	const command = invocationOf(commandText);
+	const word = wordOf(commandText);
+
+	/*
+	 * The two positional facts the whole rule is written against, each read ONCE
+	 * from the span rather than re-derived downstream.
+	 *
+	 * `wholeDraft` is "nothing survives removing the span", the shape the plan
+	 * kind `whole` is named for. `opensDraft` is "the span begins at the draft's
+	 * first non-space character", which is the operator's "at the start of the
+	 * input". They overlap (a whole draft opens it) and they are asked in that
+	 * order because the whole-draft form is the stricter one and has sub-rules of
+	 * its own.
+	 */
+	const wholeDraft = spliced.text.trim() === "";
+	const opensDraft = draft.slice(0, span.start).trim() === "";
+
+	// Slash-shaped but not a command this host knows. The misspelling is the
+	// thing to fix, so the caller reports it and keeps the draft rather than
+	// consuming it (round 1 U8) — but only where the token WAS the draft: a `/`
+	// inside a sentence nobody picked is punctuation, and a "did you mean" for it
+	// would be a note about a word the user never offered as a command.
+	if (!commandNames.has(word))
+		return wholeDraft ? { kind: "unrecognised", command } : { kind: "send" };
+
+	/*
+	 * Whether this command's trailing text is its ARGUMENT — the single test the
+	 * rule turns on. `promptCommands` is the free-text half (`consumes_prompt`),
+	 * `prefixingCommands` is the value half (`prefixes_text`, or the renderer's
+	 * own `inlineArgumentFor` derivation against an older backend).
+	 */
+	const consumesText = promptCommands.has(word) || prefixingCommands.has(word);
+	/*
+	 * And whether the word is armed ONLY by an explicit pick. This narrows the
+	 * DRAFT-OPENING branch alone, never the whole-draft one, because that is what
+	 * the rule it comes from says: `/goal ship the release` (the whole draft) runs
+	 * on one Enter, while a `/goal` that merely opens a longer draft is prose
+	 * until the pick arms it (peer PR #209, rows 1 and 6).
+	 */
+	const armedOnly = armedOnlyCommands.has(word);
+
+	if (wholeDraft) {
+		// The token is the draft. With nothing after the word it is the command
+		// (`/compact`, `/usage`); with text after it, that text is the command's
+		// argument only if the command takes one (`/model gpt-5`, `/goal ship
+		// it`). A no-argument command with trailing text is the operator's own
+		// report — `/compact hello` ran and ate `hello` — so the draft is prose.
+		if (!consumesText && command.args) return { kind: "send" };
+		return { kind: "whole", command };
+	}
+
+	// Not the whole draft: only a token that OPENS the draft, for a command whose
+	// trailing text IS its argument and which a typed draft may hoist at all, is
+	// a command. Anything else is the sentence the user is writing, and it is sent
+	// as written.
+	if (!consumesText || armedOnly || !opensDraft) return { kind: "send" };
+
+	if (promptCommands.has(word)) {
+		// A name-list command with no name typed yet: `_apply_command` has
+		// already completed the word to `/team ` and opened the roster list;
+		// leaving it open is the whole interaction, and reassembly happens when
+		// a NAME row is chosen (TUI `editor.py:8219-8222`).
+		if (nameListCommands.has(word) && !command.args)
+			return { kind: "list-open", command };
+		const rest = spliced.text.trim();
+		const text = rest ? `${commandText} ${rest}` : `${commandText} `;
+		return { kind: "reassemble", text, caret: text.length };
+	}
+
+	return {
+		kind: "splice",
+		start: span.start,
+		end: span.end,
+		command,
+		text: spliced.text,
+		caret: spliced.caret,
+	};
+}
+
+/**
+ * The span of the command word that OPENS the draft, or `null`.
+ *
+ * Asked only when no token sits at the caret, and answered by the SAME
+ * tokenizer the caret path uses: the caret is placed just inside the leading
+ * `/`, so the span is whatever `slashTokenSpan` says it is — including its
+ * end-of-LINE rule and its CRLF handling. A third line-based reading of the
+ * draft here is exactly how the two hosts would drift apart again.
+ *
+ * It cannot claim prose: the leading character must be a `/`, and everything
+ * after it is judged by `planForSpan` (which sends anything whose word is not a
+ * command, and anything whose command takes no argument).
+ */
+function draftOpeningSpan(
+	draft: string,
+	commandNames: ReadonlySet<string>,
+): { start: number; end: number } | null {
+	const start = draft.search(FIRST_CONTENT);
+	if (start === -1 || draft[start] !== "/") return null;
+	const span = slashTokenSpan(draft, start + 1, commandNames);
+	if (span === null || span.start !== start) return null;
+	return span;
+}
+
 export function planSlashSubmission({
 	draft,
 	caret,
 	commandNames,
 	promptCommands,
-	armedOnlyCommands,
+	prefixingCommands,
 	nameListCommands,
+	armedOnlyCommands,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
@@ -298,6 +462,14 @@ export function planSlashSubmission({
 	// already has. A splice that ran here would delete text on a backend that
 	// cannot run the command it was deleted for.
 	if (!enabled) return { kind: "send" };
+
+	const vocabularies: Vocabularies = {
+		commandNames,
+		promptCommands,
+		prefixingCommands,
+		nameListCommands,
+		armedOnlyCommands,
+	};
 
 	/*
 	 * The token at the CARET decides first, and the whole-draft shape is then a
@@ -310,64 +482,23 @@ export function planSlashSubmission({
 	 * calls `slash_token_span` first for the same reason (`editor.py:8184-8197`).
 	 */
 	const span = slashTokenSpan(draft, caret, commandNames);
-	if (span === null) return { kind: "send" };
-
-	const spliced = replaceSpan(draft, span.start, span.end, "");
-	const commandText = draft.slice(span.start, span.end).trim();
-	const command = invocationOf(commandText);
-	if (spliced.text.trim() === "") return { kind: "whole", command };
-
-	const word = wordOf(commandText);
-	// Slash-shaped but not a command this host knows: the misspelling is the
-	// thing to fix, so the caller reports it and keeps the draft rather than
-	// consuming the token (round 1 U8).
-	if (!commandNames.has(word)) return { kind: "unrecognised", command };
+	if (span !== null) return planForSpan(draft, span, vocabularies);
 
 	/*
-	 * ARMED-ONLY commands take nothing from this key. `/goal` inside a sentence is
-	 * prose: the draft goes back UNTOUCHED and in its own order rather than being
-	 * moved to the front, because moving a user's sentence is not an arming
-	 * gesture and the Enter that did it sent nothing (the operator's report). The
-	 * one gesture that arms the command is the popup pick, which is where the
-	 * hoisting lives now — and the pick's own note says what the next Enter does,
-	 * so the user is told the arming happened instead of inferring it from a box
-	 * that silently changed.
-	 *
-	 * The command is still RECOGNISED here (the `unrecognised` branch above is
-	 * unaffected), so a misspelt armed command is still reported rather than sent.
+	 * No token at the caret. The DRAFT-OPENING branch is then evaluated from the
+	 * draft's LEADING line, because "this draft opens with a command" is a fact
+	 * about the TEXT and the caret cannot express it: `slashTokenSpan` anchors on
+	 * the caret's own line and its argument ends at that line's end, so a caret
+	 * moved into the body (or to column 0, where a claiming command's own word
+	 * excludes it) made the same draft prose. Start commands whose instruction
+	 * spans lines are the case this exists for; the whole-draft shape, the
+	 * mid-sentence token and the later-line token all still answer `send` here
+	 * (§1.2 rows 3, 7, 8, 10, 11, 13), because `planForSpan` sends whatever does
+	 * not open the draft with a command that consumes what follows.
 	 */
-	if (armedOnlyCommands.has(word)) return { kind: "send" };
-
-	if (promptCommands.has(word)) {
-		// The typed argument is the SAME split the command posts (`invocationOf`
-		// above), for the reason `wordOf` states: a literal-space split read
-		// `/team\tops` as one word with no argument, so a name-aware row took the
-		// `list-open` branch on a name the user had already typed. It is also the
-		// trimmed form, which is what the emptiness test below means.
-		const typedArgument = command.args;
-		// A name-list command with no name typed yet: `_apply_command` has
-		// already completed the word to `/team ` and opened the roster list;
-		// leaving it open is the whole interaction, and reassembly happens when
-		// a NAME row is chosen (TUI `editor.py:8219-8222`).
-		if (nameListCommands.has(word) && !typedArgument.trim())
-			return { kind: "list-open", command };
-		const rest = spliced.text.trim();
-		// The staged line is one line, both halves collapsed — see the invariant on
-		// `stagedLine`. A two-line draft staged here put the command's span on its
-		// first line, so the next Enter answered `send` and the literal `/loop …`
-		// went to the model as prose while the note said it would run (review F1 /
-		// QA Q3-1).
-		return { kind: "reassemble", ...stagedLine(commandText, rest) };
-	}
-
-	return {
-		kind: "splice",
-		start: span.start,
-		end: span.end,
-		command,
-		text: spliced.text,
-		caret: spliced.caret,
-	};
+	const opening = draftOpeningSpan(draft, commandNames);
+	if (opening === null) return { kind: "send" };
+	return planForSpan(draft, opening, vocabularies);
 }
 
 /**
