@@ -66,8 +66,12 @@ the default port makes this one fail to bind while still printing a normal log.
 
 The **after** half of this surface needs no rig: it is the shipping tree's own
 transcript, where the pass narrates itself — see
-[`../chat-tool-rows/compacting-pass-before`](../chat-tool-rows/compacting-pass-before/)
-and its `-after` sibling, the frames on either side of the info line.
+[`../chat-tool-rows/compacting-rung`](../chat-tool-rows/compacting-rung/)
+and [`compacting-settled`](../chat-tool-rows/compacting-settled/), the frames on
+either side of the info line. (The pair was called `compacting-pass-before` /
+`-after` when this README was written; the names now say which STATE each frame
+is, because every other `-before`/`-after` pair in this repo means before/after
+the change — review round 1, R5.)
 
 ## The other half of the change is not a picture
 

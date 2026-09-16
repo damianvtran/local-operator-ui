@@ -589,6 +589,7 @@ export const STORIES = [
 	 */
 	["chat-tool-rows--compacting-rung", 1280, 300],
 	["chat-tool-rows--compacting-settled", 1280, 300],
+	["chat-tool-rows--compacting-settled-unchanged", 1280, 300],
 	/* The third ending, and the one the dialog used to own: a pass that did
 	   NOT run. Added by the round that gave the refusal a row. */
 	["chat-tool-rows--compacting-refused", 1280, 300],
@@ -1828,10 +1829,12 @@ export const STORIES = [
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
 	/* A command typed into a sentence, the list above the prose. */
-	/* The mid-draft state round-1 D1 judged, kept as the BEFORE half (the fix's
-	   own after-picture is absence, which this rig's element floor refuses to
-	   photograph), and the `/compact` row a reader meets when they type `/comp`. */
-	["chat-slash-completion--inline-mid-draft-before", 768, 340],
+	/* The mid-draft state round-1 D1 judged AND the state the fix puts in its
+	   place, as the two cases of one board — the after-picture is absence, and a
+	   lone composer story counts five elements against this rig's floor of nine,
+	   so a board is the only shape that can carry it (round 2, D5). Then the
+	   `/compact` row a reader meets when they type `/comp`. */
+	["chat-slash-completion--inline-mid-draft-pair", 768, 640],
 	["chat-slash-completion--compact-row", 768, 340],
 	/* The state a name pick produces: list closed, caret after the space. */
 	["chat-slash-completion--name-list-completed", 768, 260],
