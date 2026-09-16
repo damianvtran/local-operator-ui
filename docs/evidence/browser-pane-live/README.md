@@ -1,6 +1,6 @@
 # The pane in the app: opened by a press, with live requests, against an isolated backend
 
-Twelve frames from `scripts/renderer-driver.mjs`'s `browser-pane` scene — the
+Thirteen frames from `scripts/renderer-driver.mjs`'s `browser-pane` scene — the
 scene §10.3 of `docs/design/browser-approval-ux.md` names — photographed through
 the app's own `capturePage()` in the headless window mode, with the pane opened
 by a hit-tested press on the chat header's Globe trigger.
@@ -49,6 +49,14 @@ claim):
 [PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
 [PASS] with a backend the chat route renders its header, and the trigger with it
 [PASS] the press opens the pane, in the store the slot reads
+[PASS] the track's ring PAINTS: a solid outline of the control role, on an element the primitive does not own
+        {"style":"solid","width":"1px","color":"rgb(131, 124, 109)","listInline":"outline: none;","listStyle":"none"}
+[PASS] and the primitive's own suppression stays on the LIST, where it is meant, rather than on the track
+[PASS] the strip's height does not step when the first tab arrives (D9): at most 2px between the empty
+        row and one tab
+        {"empty":{"height":36,"rows":0},"oneTab":{"height":36,"rows":1}}
+[PASS] and the empty strip is a real row rather than a collapsed one
+        {"height":36,"rows":0}
 [PASS] the pane occupies the right slot
         {"x":740,"y":0,"width":640,"height":868}
 [PASS] the pane takes its width OUT of the column rather than covering it: the slot ends at
@@ -102,6 +110,7 @@ is a frame of a screen this feature does not change).
 | `browser-pane-dock.png` | The pane's dock, opened from the URL bar's Approvals control — the state §7.4 and D7 are about, at the pane's real width in the real app |
 | `browser-pane-requests-scope-conversation.png` | The tray with the switch on `This conversation`: `2 approvals for this conversation`, two chips, nothing in the resolved list. The app holds THREE pending at this instant (one belongs to another conversation) |
 | `browser-pane-requests-scope-all.png` | The same instant with the switch on `All tabs`: **the same two chips and the same sentence.** This is the frame QA round 1 (Q1) and UX round 1 (U1) could not get: before the fix this pair read `3 approvals for this conversation` with the third chip naming another conversation, and pressing back printed `Withdrawn by the agent` over a request that was still pending — the scene asserts the count, the chips, the resolved list and the app's own pending list at each step, in both directions |
+| `browser-pane-strip-one.png` | One tab, and the same strip box as the frame before it: `{"empty":{"height":36,"rows":0},"oneTab":{"height":36,"rows":1}}` — a zero-pixel step where design round 2 (D9) measured 32 (the page's rect moved from `y 450 h 418` to `y 482 h 386`). The pair is also a story pair, `scope-empty` and `one-tab`, both captured at 640x460 with `reported content rect: 640x316 at 0,118` in each |
 | `browser-pane-strip-four.png` | Four tabs of this conversation in the pane's own strip at its 640 default: `rows 4, whole 4`, `clientWidth 595 = scrollWidth 595`, **no pinned control** — D1's remainder, which was that a whole tab was off screen here with nothing saying so |
 | `browser-pane-strip-overflow.png` | Two more tabs, and the honest half: `rows 6, whole 4`, `clientWidth 567, scrollWidth 797`, and the pinned control reading `+2` with the label `All tabs, 2 not shown` — the count is the number of rows whose boxes are not inside the scroller, not the tab count |
 | `browser-pane-lens-after-switch.png` | `All tabs` after a conversation switch and back (UX round 1, U3): the pane stays open, its content follows the session, and the lens the user chose is still chosen — the reason it lives in the window's slot state rather than in the pane |
@@ -124,6 +133,7 @@ is a frame of a screen this feature does not change).
 - **The pane's page.** No frame in either set can contain it (a native view is not
   in the renderer's pixels); the frames that do contain a real page are
   `../browser-composition/` for the route.
+- **The scope switch's ring, measured as PIXELS here rather than as a computed style.** The live scene asserts the computed `outline: solid 1px` of the control role on the wrapper the ring is drawn on; the pixel count is the story frames' own, in the sibling set: the switch's box holds 18px (dark) / 35px (light) of the control colour BEFORE the fix and 220px / 284px after, with the top and bottom edges of the ring at ~118px each - calibrated against the same colour's full-width rule in the same frame, which paints 638px of a 640px frame.
 - **The pane's error and paused states.** They are the surface's own, shared with
   the route and photographed in `../browser-pane/`; nothing in this run can make
   the pane's own page fail.
