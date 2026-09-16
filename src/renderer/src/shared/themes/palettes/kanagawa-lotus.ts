@@ -32,7 +32,7 @@ export const kanagawaLotus: ThemeDefinition = {
 
 		/*
 		 * The current row's own ground:
-		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * `surface` stepped -10 on every channel toward black — the neutral step the
 		 * twelve use, and branch L of this port's selection rule; the ramp
 		 * affords it here, so the row takes no cast. ΔE00 2.27 from `surface`,
 		 * 4.46 from `elevated` and 3.22 from `sunken`.

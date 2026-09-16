@@ -26,7 +26,8 @@ import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
  * shared. Measured on `bg-*-wash` across every palette, the semantic inks
  * floor at
  * 4.50:1 (`warning`, rosePineDawn) while `ink` on the same washes floors at
- * 4.78:1 (`success`, everforestLight) — per semantic, 4.78 vs 4.53 for
+ * 4.78:1 (`success`, catppuccinMocha; everforestLight is where the semantic
+ * ink floors, at 4.53) — per semantic, 4.78 vs 4.53 for
  * success, 5.42 vs 4.50 for warning, 7.02 vs 4.52 for danger, and 6.99 vs 4.55
  * for info. Those are the all-fifty-nine figures: over the twelve palettes the
  * port started from the same measurement read 8.15-8.62 against 4.62-4.66, so

@@ -1,4 +1,4 @@
-import { Tooltip } from "@shared/components/ui/tooltip";
+import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
@@ -25,11 +25,11 @@ import {
 	Disc3,
 	Droplet,
 	Droplets,
-	Eclipse,
 	Fish,
 	Flame,
 	Flower,
 	Flower2,
+	Ghost,
 	Github,
 	Guitar,
 	Hexagon,
@@ -42,6 +42,7 @@ import {
 	Moon,
 	MoonStar,
 	Mountain,
+	MountainSnow,
 	Radio,
 	Sailboat,
 	Shirt,
@@ -51,7 +52,6 @@ import {
 	Stars,
 	Sun,
 	SunDim,
-	SunMedium,
 	Sunrise,
 	Sunset,
 	Tent,
@@ -66,7 +66,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { useMemo } from "react";
-import type { FC } from "react";
+import type { FC, KeyboardEvent } from "react";
 
 /**
  * The mark shown beside each theme's name.
@@ -98,6 +98,23 @@ import type { FC } from "react";
  * No two entries share a glyph and all fifty-nine resolve; `Record<ThemeName,
  * LucideIcon>` makes the first half structural (a theme with no entry does not
  * compile), and the uniqueness is held by hand — nothing asserts it.
+ *
+ * ## Why the light group's near-pairs are told apart by ADJACENCY (round 1, D7)
+ *
+ * The design round measured the light group as the closest in the set (grounds
+ * 1.07-1.48 apart in three of its pairs) and found four of its tiles wearing the
+ * sun family — `Sun`, `SunMedium`, `Sunrise`, `CloudSun` — with `Eclipse` and
+ * `Lightbulb` beside them. At 12px in the label column those read as one glyph
+ * with small variations, in the one group whose tiles already need the marks to
+ * distinguish them. So the map is re-slotted on adjacency rather than on family:
+ * the light grid is five across in registry order, and two of the family pairs
+ * sat side by side or stacked there — `SunMedium` at row 2 col 3 beside
+ * `Lightbulb` at col 4, and `Eclipse` at row 2 col 1 directly under `Sun` at row
+ * 1 col 1. Both are gone: `tokyoNightDay` takes `MountainSnow` (the light half of
+ * `tokyoNight`'s `Mountain`, which is the pair the name already promises) and
+ * `alucard` takes `Ghost` (the light half of `dracula`'s `Skull`). `Sun`,
+ * `Sunrise` and `CloudSun` stay — the sun is what those names mean and none of
+ * them is adjacent to another sun-family mark.
  */
 const THEME_ICONS: Record<ThemeName, LucideIcon> = {
 	localOperatorDark: Moon,
@@ -128,9 +145,9 @@ const THEME_ICONS: Record<ThemeName, LucideIcon> = {
 	rosePineDawn: CloudSun,
 
 	/* companions */
-	alucard: Eclipse,
+	alucard: Ghost,
 	gruvboxLight: Disc3,
-	tokyoNightDay: SunMedium,
+	tokyoNightDay: MountainSnow,
 	oneLight: Lightbulb,
 	catppuccinFrappe: CupSoda,
 	catppuccinMacchiato: IceCreamBowl,
@@ -174,6 +191,19 @@ const THEME_ICONS: Record<ThemeName, LucideIcon> = {
 	highContrastLight: Aperture,
 	mintLight: Candy,
 };
+
+/**
+ * The selected tile's ground, and the disc the check sits on.
+ *
+ * The accent at 8% over the palette's own `accentWash`. The palette is frozen
+ * and upstream-faithful, and the wash alone is not always the stronger of the
+ * two readings the pointer produces — see the tile's own note for the measured
+ * worst case over all fifty-nine. Stated in `srgb` so the painted colour is the
+ * one the measurement computes, and naming two roles rather than a value, which
+ * is what lets it survive a theme swap.
+ */
+const SELECTED_TILE_GROUND =
+	"bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-accent-wash))]";
 
 /**
  * A miniature of the app in one theme.
@@ -264,10 +294,42 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  * The twelve-theme picker measured 1105px tall: 92.1px of height per theme,
  * from a 16:10 preview that grew with its 277px column, a name row and a
  * description line. Fifty-nine of those is a 5,400px scroll, which is not a
- * picker any more. The tile is now a fixed 40px thumbnail and a name row —
- * 71.4px of tile in a 5-across grid at the settings page's column — so the
- * measured cost is 18.5px per theme, and all 59 land in 1091px against the
- * 1105px the 12 take today.
+ * picker any more. The tile is now a fixed 40px thumbnail and a name row.
+ *
+ * ## The density is a band, not a number (round 1, U1)
+ *
+ * The 896px column these figures were first taken in is the STORY's frame: the
+ * story renders the section on its own with no rails, and `max-w-4xl` is a
+ * maximum, so at every window width it shows the 5-column band and nothing else.
+ * In the app the grid's column is set by the two rails around it, so the cost per
+ * theme is a band — measured in the app (UX round 1) at each window width, 868px
+ * of viewport height in every case:
+ *
+ * | window | grid column | columns | rows | tile w | grid span | per theme |
+ * |---|---|---|---|---|---|---|
+ * | 1000 | 660 | 3 | 20 | 214.7 | 1621px | 27.5px |
+ * | 1020 | 680 | 4 | 16 | 164.0 | 1304px | 22.1px |
+ * | 1040 | 528 | 3 | 20 | 170.7 | 1621px | 27.5px |
+ * | 1300 | 788 | 4 | 16 | 191.0 | 1304px | 22.1px |
+ * | 1380 | 868 | 5 | 13 | 167.2 | 1066px | 18.1px |
+ *
+ * So the honest figure is 27.5px per theme at 1000px and 18.1px at 1380px,
+ * against 92.1px for the twelve. The 1040 row is TALLER than the 1020 row
+ * because the window got wider, and that is a known property of the page around
+ * this grid rather than something to tune away: crossing 1040 expands the
+ * settings rail from 48px to 220px inside the same window
+ * (`settings-page.tsx`'s `w-12 min-[1040px]:w-55`), which eats two columns'
+ * worth of tiles while the window gains 20px. 5 columns needs a window of about
+ * 1344px — the app's own default 1380 clears it by 36px — and 1040 to ~1175 is
+ * the sparser middle band, so widening the window can make the picker sparser.
+ * The grid's minimum cannot be tightened to flatten it without truncating
+ * `Catppuccin Macchiato` (see the label row below), so it is recorded.
+ *
+ * The "shorter than the twelve" comparison therefore holds only where both grids
+ * are at their widest count: at the story's own 896px column the tile grid is
+ * 1090.9px against the card grid's 1105.2px, 14px shorter. At the narrower bands
+ * the two are not comparable on that axis, because the card grid and the tile
+ * grid change column count at different widths.
  *
  * The description cannot stay in the tile at that size. The registry's
  * descriptions are 241-348px of `text-meta` and the name has 121px of box to
@@ -279,55 +341,77 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  * carries the description to a screen reader. That focus path is the point —
  * a tooltip is not a hover-only affordance here.
  *
- * ## Why 12px, no bold, and a check that stays
+ * ## Why 12px, and what the name's box actually is
  *
- * Measured, not chosen by eye: at 5 columns the name box is 120.8px, and the
- * longest current name ("Local Operator Dark") needs 124.3px at `text-body-sm`
- * against 114.7px at `text-meta`. So the name takes the dense step — the card's
- * old 13px would ellipsis the two `Local Operator` themes, which is precisely
- * the pair a new user confuses — and the icon takes the 12px slot that belongs
- * with `meta`.
+ * Measured in the app, in the app's own font at 12px: the longest name in the
+ * set is `Catppuccin Macchiato` at **126.5px**, and the names it is usually
+ * confused with need less — `Local Operator Light` 115.8px, `Local Operator
+ * Dark` 113.7px. The tile is 163.2px wide at the picker's 5-column band, the
+ * label row inside it is 155.2px, and the 12px icon plus its 6px gap leave the
+ * name **137.2px**.
+ *
+ * That box is the same in both states on purpose, and this is round 1's D2: the
+ * check used to sit in this row and cost the name 18px, so a SELECTED
+ * `Catppuccin Macchiato` had 119.2px against the 126.5px it needs and ellipsised
+ * to `Catppuccin Macchi…` while every unselected name printed in full — the one
+ * truncated name in the picker was the one the user had just chosen. The check
+ * now overlays the preview's own corner, so the name is charged for the icon
+ * only and has 10.7px of headroom at the tightest column the app renders (more
+ * columns means narrower tiles, and the 5-column band is the narrowest).
+ *
+ * So the name takes the dense step: the card's old 13px would ellipsis the two
+ * `Local Operator` themes, which is precisely the pair a new user confuses, and
+ * the icon takes the 12px slot that belongs with `meta`.
  *
  * `font-medium` on the selected name is gone with it. It was a fourth selected
  * signal on a tile that is documented to carry three, it is the widest state of
  * the widest string, and at this width it is the state most likely to truncate.
  * The three that remain are the ones the criterion names: the wash on the tile,
  * the accent frame on the preview, and the check.
+ *
+ * ## The selected ground, and why it is not the palette's wash alone (D1)
+ *
+ * The tile's selected ground is `accentWash` carrying 8% of `accent`. The design
+ * round measured the pair the wash forms with `canvas` over all fifty-nine
+ * palettes and found the selection was not always the stronger of the two
+ * readings the pointer can produce: `gruvboxLight`'s hover step is 3.58 ΔE00
+ * while its wash is 2.36, and in seven themes the hover is within 0.3 of the
+ * selection. The wash cannot be moved (the palettes are frozen and upstream-
+ * faithful) and the hover cannot be made quieter without making it a JND in half
+ * the set, so the picker strengthens its own ground: measured over all 59 with
+ * `scripts/color.mjs`'s `deltaE`, the selection's worst separation from `canvas`
+ * rises from 2.21 to 3.52 and the ordering margin (selection minus hover) from
+ * -1.23 to +1.13, with the hover's own step left exactly as designed. 8% is the
+ * smallest step in 2% increments that clears a full ΔE00 of margin everywhere.
+ * The mix is stated in `srgb` so the painted colour is the one the measurement
+ * computes, and it names two roles rather than a value.
  */
 const ThemeOptionTile: FC<{
 	id: ThemeName;
 	name: string;
 	description: string;
 	isSelected: boolean;
+	/** Whether this tile is the picker's single tab stop (see `ThemeSelector`). */
+	isTabStop: boolean;
 	onSelect: () => void;
-}> = ({ id, name, description, isSelected, onSelect }) => {
+}> = ({ id, name, description, isSelected, isTabStop, onSelect }) => {
 	const Icon = THEME_ICONS[id];
 
 	return (
 		<Tooltip
 			side="bottom"
 			align="start"
-			content={
-				<>
-					{/*
-					 * The name is already this tile's own label, so the copy here is for
-					 * the eye only: left in the accessible description it would arrive
-					 * twice, once as the name and once inside the description.
-					 */}
-					<span aria-hidden="true" className="block text-ink">
-						{name}
-					</span>
-					{description}
-				</>
-			}
+			content={description}
 		>
 			<button
 				type="button"
+				data-theme-tile={id}
 				aria-pressed={isSelected}
+				tabIndex={isTabStop ? 0 : -1}
 				onClick={onSelect}
 				className={cn(
-					"flex flex-col gap-1.5 rounded-md p-1 text-left transition-colors duration-fast ease-out-quart",
-					isSelected ? "bg-accent-wash" : "hover:bg-surface",
+					"relative flex flex-col gap-1.5 rounded-md p-1 text-left transition-colors duration-fast ease-out-quart",
+					isSelected ? SELECTED_TILE_GROUND : "hover:bg-surface",
 				)}
 			>
 				{/*
@@ -341,18 +425,46 @@ const ThemeOptionTile: FC<{
 				 */}
 				<span
 					className={cn(
-						"block h-10 overflow-hidden rounded-sm border transition-colors duration-fast ease-out-quart",
+						"relative block h-10 overflow-hidden rounded-sm border transition-colors duration-fast ease-out-quart",
 						isSelected ? "border-accent" : "border-hairline",
 					)}
 				>
 					<ThemeSwatch id={id} />
+					{/*
+					 * The check is not decoration: the wash and the accent frame are both
+					 * colour, and colour alone is not a state. It sits over the preview's
+					 * corner rather than in the name row because in the row it costs the
+					 * name 18px, and 18px is more than the longest name in the set can
+					 * spare — the selected `Catppuccin Macchiato` ellipsised while every
+					 * unselected name printed in full (round 1, D2).
+					 *
+					 * The disc under it is the tile's OWN ground, not the preview's: the
+					 * previewed palette is one of fifty-nine and the check is drawn in the
+					 * active theme's accent, so a preview whose canvas happens to sit near
+					 * that accent would swallow it. On the tile's ground the pairing is the
+					 * one the component already relies on — accent on the wash.
+					 */}
+					{isSelected && (
+						<span
+							className={cn(
+								"pointer-events-none absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full",
+								SELECTED_TILE_GROUND,
+							)}
+						>
+							<Check size={12} className="text-accent" aria-hidden="true" />
+						</span>
+					)}
 				</span>
 				{/*
 				 * No horizontal padding on this row, so the icon and the name start at the
-				 * thumbnail's own left edge rather than 4px inside it. That is both the
-				 * alignment the eye expects and 4px of box the longest name in the set
-				 * needs: measured against the tile's font, "Catppuccin Macchiato" wants
-				 * 126.6px and the box is 121px with padding, 129px without it. */}
+				 * thumbnail's own left edge rather than 4px inside it, and the name is
+				 * charged for the icon only: the row is 155.2px, the 12px icon and its 6px
+				 * gap take 18, and the name keeps 137.2px against the 126.5px
+				 * `Catppuccin Macchiato` needs — in BOTH states, because the check left
+				 * this row (round 1, D2). One measured figure, not two: the earlier note
+				 * here quoted `Local Operator Dark`'s 114.7px and `Catppuccin Macchiato`'s
+				 * 126.6px as if they were the same question (round 1, N-3).
+				 */}
 				<span className="flex items-center gap-1.5">
 					<Icon
 						size={12}
@@ -362,15 +474,6 @@ const ThemeOptionTile: FC<{
 					<span className="min-w-0 flex-1 truncate text-meta text-ink">
 						{name}
 					</span>
-					{/* The check is not decoration: the wash and the accent frame are
-					    both colour, and colour alone is not a state. */}
-					{isSelected && (
-						<Check
-							size={12}
-							className="shrink-0 text-accent"
-							aria-hidden="true"
-						/>
-					)}
 				</span>
 			</button>
 		</Tooltip>
@@ -384,10 +487,11 @@ const ThemeOptionTile: FC<{
  *
  * The registry goes from twelve palettes to fifty-nine. At the old card
  * treatment — a 16:10 preview per theme — that is a 5,600px scroll, and a
- * picker you cannot take in at a glance is a list you have to search. The
- * tiles are therefore thumbnail-first and compact: measured on the real render
- * at the settings page's column, 59 themes take 1091px against the 1105px the
- * 12 take today, and the cost falls from 92.1px per theme to 18.5px.
+ * picker you cannot take in at a glance is a list you have to search. The tiles
+ * are therefore thumbnail-first and compact: the cost falls from 92.1px per
+ * theme to 27.5px at a 1000px window and 18.1px at 1380px, and `ThemeOptionTile`
+ * carries the measured band table, including the 1040px band where widening the
+ * window makes the grid SPARSER rather than denser.
  *
  * ## Why it is grouped by mode
  *
@@ -396,6 +500,26 @@ const ThemeOptionTile: FC<{
  * everyone makes. Splitting on the palette's own `mode` — rather than on a
  * list maintained here — means a new palette lands in the right group with no
  * code change, which is the same property the swatch has.
+ *
+ * ## Why the grid is one tab stop (round 1, U2)
+ *
+ * Fifty-nine native `button`s in a grid are fifty-nine tab stops: measured in
+ * the app, the picker cost a keyboard user 28 presses to reach its first tile
+ * and 59 to cross it, and ArrowRight/ArrowDown/End did nothing. So the tiles use
+ * the roving-tabindex pattern: exactly one tile is in the tab order — the
+ * selected one, or the first when nothing is selected yet — and the arrows move
+ * focus across the whole grid in visual order (the two groups are one flat list
+ * there, because DOM order is visual order and both grids take their column
+ * count from the same column width), with Home/End at the ends. Enter and Space
+ * still select, because the tile is still a real button, and the column count is
+ * measured from the DOM rather than hardcoded: `auto-fill` decides it from the
+ * column width, so it is 3, 4 or 5 depending on the window.
+ *
+ * No role is added to say "grid". A `role="grid"` owes its reader rows and
+ * gridcells, which this DOM does not have, and a role that lies about the
+ * structure is worse than none: the buttons keep their own semantics and their
+ * `aria-pressed`, and the arrow keys are an addition to the tab order rather
+ * than a claim about a widget type.
  *
  * ## Why the selected tile is not four signals
  *
@@ -410,6 +534,17 @@ const ThemeOptionTile: FC<{
  * The options are buttons rather than clickable `div`s so they are reachable by
  * keyboard, and the selected one is marked with `aria-pressed`.
  */
+
+/** The keys the grid answers. Modifiers and everything else are left alone. */
+const GRID_NAV_KEYS = new Set([
+	"ArrowLeft",
+	"ArrowRight",
+	"ArrowUp",
+	"ArrowDown",
+	"Home",
+	"End",
+]);
+
 export const ThemeSelector: FC = () => {
 	const { themeName, setTheme } = useUiPreferencesStore();
 
@@ -427,41 +562,104 @@ export const ThemeSelector: FC = () => {
 		].filter((group) => group.items.length > 0);
 	}, []);
 
+	/*
+	 * The one tile in the tab order. The selected one, which is the tile a
+	 * keyboard user is looking for; the first when the stored name is not in the
+	 * rendered set, so the picker is never unreachable.
+	 */
+	const tabStop = useMemo(() => {
+		const order = groups.flatMap((group) => group.items.map((item) => item.id));
+		return order.includes(themeName) ? themeName : order[0];
+	}, [groups, themeName]);
+
+	/**
+	 * Move focus by arrow, Home or End. Reads the tiles out of the DOM in their
+	 * own order rather than keeping a second copy here, so a group gaining a
+	 * palette needs no change. `columns` is measured from the first row, which is
+	 * always full, because `auto-fill` decides the count from the column width and
+	 * a hardcoded number would be wrong at every width but one.
+	 */
+	const moveFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (!GRID_NAV_KEYS.has(event.key)) return;
+		const tiles = [
+			...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+				"[data-theme-tile]",
+			),
+		];
+		const index = tiles.indexOf(event.target as HTMLButtonElement);
+		if (index < 0) return;
+		/* Handled: stop ArrowDown/Up from scrolling the page under the grid. */
+		event.preventDefault();
+		const rowTop = tiles[0].getBoundingClientRect().top;
+		const columns =
+			tiles.filter(
+				(tile) => Math.abs(tile.getBoundingClientRect().top - rowTop) < 1,
+			).length || 1;
+		const offsets: Record<string, number> = {
+			ArrowLeft: index - 1,
+			ArrowRight: index + 1,
+			ArrowUp: index - columns,
+			ArrowDown: index + columns,
+			Home: 0,
+			End: tiles.length - 1,
+		};
+		const next = Math.max(0, Math.min(tiles.length - 1, offsets[event.key] ?? index));
+		if (next !== index) tiles[next].focus();
+	};
+
 	return (
-		<div className="flex flex-col gap-6">
-			{groups.map((group) => (
-				<div key={group.label}>
-					<h3 className="px-1 pb-2 text-meta text-ink-dim">{group.label}</h3>
-					{/*
-					 * `auto-fill` on a minimum column rather than viewport
-					 * breakpoints, the same idiom `InfoGrid` uses. This grid lives in
-					 * a measured column inside two rails, so its width and the
-					 * window's width are different questions: a `lg:grid-cols-3` fixes
-					 * three columns at a viewport size that says nothing about how
-					 * much room the previews actually have, and at 1024 it would
-					 * squeeze three 165px thumbnails into a 530px column.
-					 *
-					 * 160px is the width at which the name box still holds the
-					 * longest theme name at `text-meta` beside its icon and its
-					 * check (120.8px of room against 114.7px needed — see
-					 * `ThemeOptionTile`). At the settings page's 896px column that is
-					 * five across, which is what puts all 59 themes in less height
-					 * than the 12 took before.
-					 */}
-					<div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2">
-						{group.items.map(({ id, name, description }) => (
-							<ThemeOptionTile
-								key={id}
-								id={id}
-								name={name}
-								description={description}
-								isSelected={id === themeName}
-								onSelect={() => setTheme(id)}
-							/>
-						))}
+		/*
+		 * One provider for the whole grid. Every tile used to self-provide because
+		 * the settings page mounts none, so the shared `skipDelayDuration` grace —
+		 * the thing that lets the pointer sweep a row without re-waiting on each
+		 * tile — never applied, and 59 tiles meant 59 providers holding 59 timers
+		 * (round 1, M-3). `agents-sidebar.tsx` sets the precedent: the component
+		 * that renders the list owns the provider, with this surface's own delays.
+		 */
+		<TooltipProvider>
+			<div
+				onKeyDown={moveFocus}
+				className="flex flex-col gap-6"
+			>
+				{groups.map((group) => (
+					<div key={group.label}>
+						<h3 className="px-1 pb-2 text-meta text-ink-dim">{group.label}</h3>
+						{/*
+						 * `auto-fill` on a minimum column rather than viewport
+						 * breakpoints, the same idiom `InfoGrid` uses. This grid lives in
+						 * a measured column inside two rails, so its width and the
+						 * window's width are different questions: a `lg:grid-cols-3` fixes
+						 * three columns at a viewport size that says nothing about how
+						 * much room the previews actually have, and at 1024 it would
+						 * squeeze three 165px thumbnails into a 530px column.
+						 *
+						 * 160px is the width at which the name box still holds the
+						 * longest theme name at `text-meta` beside its icon: 137.2px of
+						 * room against the 126.5px `Catppuccin Macchiato` needs, with the
+						 * check out of that row, in both states (see `ThemeOptionTile`).
+						 * At the settings page's 896px column that is five across, which
+						 * is the widest band the app renders and 10.7px of headroom —
+						 * the tightest it gets, since a narrower column means fewer, wider
+						 * tiles. Tightening this minimum is what truncated that name
+						 * (round 1, D2), and raising it drops the grid to four columns
+						 * at the widest band, so it stays.
+						 */}
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2">
+							{group.items.map(({ id, name, description }) => (
+								<ThemeOptionTile
+									key={id}
+									id={id}
+									name={name}
+									description={description}
+									isSelected={id === themeName}
+									isTabStop={id === tabStop}
+									onSelect={() => setTheme(id)}
+								/>
+							))}
+						</div>
 					</div>
-				</div>
-			))}
-		</div>
+				))}
+			</div>
+		</TooltipProvider>
 	);
 };

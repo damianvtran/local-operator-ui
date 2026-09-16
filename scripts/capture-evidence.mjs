@@ -146,11 +146,22 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * holds them: those twelve are painted on every surface in this file, which is
  * what makes a frame comparable with the ones committed before it, and they
  * span both modes and the two brand ramps. The registry now carries
- * fifty-nine, and sweeping all of them would take this set from 4,379 committed
- * frames (167 MB, 3,762 of them outside the declared supplementary sets) to
- * roughly 21,000 frames and three quarters of a gigabyte, with a full run going
- * from about half an hour to several — on a box that five other worktrees are
- * working in at the same time. The twelve stay the spine because the
+ * fifty-nine, so a full sweep is a 59/12 multiple of the swept set: from the
+ * **4,851** frames committed today — `find docs/evidence -name '*.webp' | wc
+ * -l` — holding **195 MB** on disk — `du -sh docs/evidence`, the filesystem
+ * figure rather than the 133 MB the files' own bytes sum to — of which **4,110**
+ * stand outside the declared supplementary sets (the value `manifest.json`'s own
+ * `frames` carries), to roughly **24,000 frames and ~950 MB**. A run goes from
+ * about half an hour to several — on a box that several other worktrees are
+ * working in at the same time.
+ *
+ * Re-derive those three numbers from the tree this note ships in rather than
+ * carrying them forward, and name the commands: an earlier revision of this note
+ * quoted 4,379 / 167 MB / 3,762 and a projection of ~21,000, and none of the
+ * four matched any tree in this branch's history (review round 1, M-2; QA round
+ * 1, Q-1 — the same defect, found twice). The conclusion survives the correction:
+ * a full sweep is roughly five times this set and close to a gigabyte of WebP.
+ * The twelve stay the spine because the
  * forty-seven they do not cover are covered where it matters rather than
  * silently dropped:
  *
