@@ -23,7 +23,7 @@ with a frame:
 | `signed-in` | the same grid with the viewer's own likes and favourites filled from one batched read |
 | `loading` | the first paint, before the list answers |
 | `empty` | a hub with nothing published |
-| `load-failed` | the list read refused |
+| `load-failed` | the list read failed — the backend did not answer, so the read is not retried and the state is on screen from the first paint |
 | `empty-category` | a category that holds nothing, reached by clicking the rail |
 | `page-change-keeps-the-grid` | page 2 in flight over page 1's records |
 
