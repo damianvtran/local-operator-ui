@@ -1,12 +1,16 @@
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
-import { withPathBreaks } from "@shared/lib/path-breaks";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import {
+	updateErrorMessage,
+	updateMessageFate,
+	updateMessageOf,
+} from "@shared/utils/update-error-copy";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy } from "lucide-react";
@@ -18,15 +22,14 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { PanelDetails } from "./panel-details";
+import { UpdateErrorAlert } from "./update-error-alert";
 import {
 	type ManualUpdateExpectation,
 	atLeastVersion,
 	manualPanelClearedByAvailable,
 	manualPanelClearedByCheck,
 } from "./update-manual-state";
-
-const RELEASE_ARTIFACT_ERROR_REGEX =
-	/cannot find .* in the latest release artifacts/i;
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -250,49 +253,6 @@ export const UpdateHeading = ({
 		{children}
 	</h2>
 );
-
-/**
- * Machine voice at the bottom of a panel, labelled and copyable.
- *
- * It used to sit directly above the buttons, unlabelled and at 12px mono, so the
- * last thing the eye crossed before the primary action was an OSStatus code -
- * and the only way to get that code into a support report was to hand-select a
- * wrapped path (reviews D2, D6, U11). It is below the actions now, it says what
- * it is, and one click copies it, which is the affordance the rest of the app
- * already has for the same job.
- */
-export const PanelDetails = ({ detail }: { detail: string }) => {
-	const [copied, setCopied] = useState(false);
-	return (
-		<div className="mt-4 flex items-start gap-2">
-			<span className="shrink-0 text-meta text-ink-dim">Details:</span>
-			{/* `font-mono` and not only `text-mono-sm`: the latter is a SIZE token
-			    (0.75rem), so the value rendered in the body face and a path or an
-			    OSStatus constant lost the distinction between l/I/1 and 0/O that
-			    monospace exists for here, while the evidence README claimed the
-			    machine voice (review D10). The label stays sans: it is a word. */}
-			<span className="min-w-0 flex-1 break-words font-mono text-mono-sm text-ink-dim">
-				{withPathBreaks(detail)}
-			</span>
-			{/* Named, not a bare "Copy": both by-hand panels carry a copy button
-			    beside the command well as well as this one, and only position said
-			    which copied what (review D12). */}
-			<Button
-				variant="ghost"
-				size="sm"
-				onClick={() => {
-					void navigator.clipboard
-						.writeText(detail)
-						.then(() => setCopied(true))
-						.catch(() => undefined);
-				}}
-			>
-				{copied ? <Check /> : <Copy />}
-				{copied ? "Copied" : "Copy details"}
-			</Button>
-		</div>
-	);
-};
 
 /**
  * A command the user has to run themselves, with a way to take it with them.
@@ -567,6 +527,43 @@ export const UpdateNotification = ({
 	}, []);
 
 	/**
+	 * One verdict for one update-path message, on whichever channel it arrived.
+	 *
+	 * WHY ONE FUNCTION. The same failure reaches this component twice - as the
+	 * `update-error` event and as the rejection of the invoke the check was made
+	 * through, because electron-updater emits on the updater AND rethrows - and
+	 * the two producers used to decide its fate with DIFFERENT rules in the same
+	 * state slot: the event path routed the legacy "manually" wording to the
+	 * by-hand panel and showed everything else, while the invoke path silenced a
+	 * missing release artifact and prefixed everything else with its own spelling
+	 * of the failure. Which text the reader got was therefore a race between two
+	 * channels carrying one failure, and a failure silenced on one channel could
+	 * be painted by the other. Both callers ask this function now, so a message
+	 * has ONE fate (`updateMessageFate`) and one spelling.
+	 *
+	 * Returns true when the message was SHOWN, so a caller can clear the flags
+	 * that describe a check it was waiting on.
+	 */
+	const reportUpdateMessage = useCallback((message: string): boolean => {
+		switch (updateMessageFate(message)) {
+			case "muted":
+				/*
+				 * A release with no artifact for this build is a known non-failure, so
+				 * it is logged rather than painted - the same silence on both channels
+				 * now, instead of on whichever one the renderer happened to observe.
+				 */
+				console.warn(
+					`Update check reported no artifact for this build: ${message}`,
+				);
+				return false;
+			default:
+				setError(message);
+				setSnackbarOpen(true);
+				return true;
+		}
+	}, []);
+
+	/**
 	 * Check for updates.
 	 *
 	 * `manual` marks a check the user asked for. It travels to the main process so
@@ -576,28 +573,66 @@ export const UpdateNotification = ({
 	 * remedy was inert for the rest of the session (reviews R3, U3).
 	 */
 	const checkForUpdates = useCallback(
-		async (options?: { manual?: boolean }) => {
+		async (options?: { manual?: boolean; keepFailure?: boolean }) => {
 			try {
 				setChecking(true);
-				setError(null);
-				await window.api.updater.checkForUpdates(options);
+				/*
+				 * A CHECK THE FAILURE CARD ITSELF STARTED DOES NOT BLANK THE CARD: it stays
+				 * up with its own button in the in-progress state while the app's 1 s + 3 s
+				 * retry ladder runs, because clearing `error` first unmounted it for those
+				 * four seconds with nothing else on screen saying a check was running - so a
+				 * person could not tell "it is working" from "it is fixed" (UX round 2, U7).
+				 * A check that SUCCEEDS clears it below; every other caller still starts from
+				 * a clean box.
+				 */
+				if (options?.keepFailure !== true) setError(null);
+				await window.api.updater.checkForUpdates(
+					/*
+					 * The reporting fact is forwarded as it always was, and NOTHING ELSE:
+					 * `keepFailure` is this component's own bookkeeping, and a payload that
+					 * carries it would be a second thing for main to read and ignore.
+					 */
+					options?.manual === undefined
+						? undefined
+						: { manual: options.manual },
+				);
+				if (options?.keepFailure === true) setError(null);
 			} catch (err) {
-				const errorMessage = err instanceof Error ? err.message : String(err);
-				// If the error is because the release artifact is not found, don't show an error
-				if (RELEASE_ARTIFACT_ERROR_REGEX.test(errorMessage)) {
+				/*
+				 * ONLY A CHECK THE USER ASKED FOR REPORTS (the operator's rule of
+				 * 2026-09-16). This callback serves two callers: the mount effect, which
+				 * is the app's own start-up check, and the panels' buttons. A start-up
+				 * check's failure is logged by main and shown nowhere - and the defer
+				 * listeners above mean the mount check still gets its events, so nothing
+				 * about stale state changes here.
+				 */
+				if (options?.manual !== true) return;
+				/*
+				 * The SAME verdict as the `update-error` event path above, on the same
+				 * string: this rejection and that event are two reports of one failure
+				 * (electron-updater emits and rethrows), so the rules that decide
+				 * whether the reader is told - and what they are told - are one rule.
+				 * The artifact wording used to be silenced here ALONE, while the same
+				 * failure arriving as an event painted the alert, which is the race
+				 * this closes.
+				 *
+				 * The invoke envelope and the nested `Error: ` prefixes come off in one
+				 * call (`updateMessageOf`): Electron wraps a rejection as `Error invoking
+				 * remote method '<channel>': <error>`, which is wire framing rather
+				 * than a message, and it used to reach the reader with its `Error: `
+				 * inside it.
+				 */
+				const errorMessage = updateMessageOf(err);
+				if (updateMessageFate(errorMessage) === "muted") {
 					setUpdateAvailable(false);
 					setUpdateInfo(null);
-					console.warn(`Error checking for updates: ${errorMessage}`);
-					return;
 				}
-
-				setError(`Error checking for updates: ${errorMessage}`);
-				setSnackbarOpen(true);
+				reportUpdateMessage(errorMessage);
 			} finally {
 				setChecking(false);
 			}
 		},
-		[],
+		[reportUpdateMessage],
 	);
 
 	/**
@@ -613,14 +648,13 @@ export const UpdateNotification = ({
 			setError(null);
 			await window.api.updater.checkForAllUpdates({ manual: true });
 		} catch (err) {
-			setError(
-				`Error checking for updates: ${err instanceof Error ? err.message : String(err)}`,
-			);
-			setSnackbarOpen(true);
+			// The same verdict as every other check producer (see
+			// `reportUpdateMessage`), on the message `updateMessageOf` unwraps.
+			reportUpdateMessage(updateMessageOf(err));
 		} finally {
 			setChecking(false);
 		}
-	}, []);
+	}, [reportUpdateMessage]);
 
 	// Download the update
 	const downloadUpdate = useCallback(async () => {
@@ -629,9 +663,7 @@ export const UpdateNotification = ({
 			setError(null);
 			await window.api.updater.downloadUpdate();
 		} catch (err) {
-			setError(
-				`Error downloading update: ${err instanceof Error ? err.message : String(err)}`,
-			);
+			setError(`Error downloading update: ${updateMessageOf(err)}`);
 			setDownloading(false);
 			setSnackbarOpen(true);
 		}
@@ -659,9 +691,7 @@ export const UpdateNotification = ({
 			}
 		} catch (err) {
 			setInstalling(false);
-			setError(
-				`Error starting the update: ${err instanceof Error ? err.message : String(err)}`,
-			);
+			setError(`Error starting the update: ${updateMessageOf(err)}`);
 			setSnackbarOpen(true);
 		}
 	}, []);
@@ -679,9 +709,7 @@ export const UpdateNotification = ({
 		try {
 			await window.api.updater.quitForUpdateInstall();
 		} catch (err) {
-			setError(
-				`Error quitting for the update: ${err instanceof Error ? err.message : String(err)}`,
-			);
+			setError(`Error quitting for the update: ${updateMessageOf(err)}`);
 			setSnackbarOpen(true);
 		}
 	}, []);
@@ -739,9 +767,14 @@ export const UpdateNotification = ({
 		} catch (err) {
 			if (!backendUpdateAttemptRef.current.terminal) {
 				setBackendUpdateFailure(
-					`The server update could not be started: ${
-						err instanceof Error ? err.message : String(err)
-					}`,
+					/*
+					 * The app's own sentence leads and the machine's words are its
+					 * tail: this string is a panel heading, and running the caught
+					 * value through `updateErrorMessage` here would weld a SECOND
+					 * sentence - about the check - onto a sentence about the update
+					 * that was pressed.
+					 */
+					`The server update could not be started: ${updateMessageOf(err)}`,
 				);
 			}
 		} finally {
@@ -859,24 +892,16 @@ export const UpdateNotification = ({
 		// Frontend update error - also handle manual update requirements
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
-				if (errorMessage.includes("manually")) {
-					// Legacy wording from a main process that named pip for every
-					// unmanaged server. No command is offered here any more: the app
-					// cannot tell which installer owns an environment from a string it
-					// was handed, and naming the wrong one is the defect this whole change
-					// exists to fix (reviews U4, D4).
-					setManualUpdateRequired(true);
-					setManualUpdateInfo({
-						message:
-							"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
-						command: "",
-					});
-					setSnackbarOpen(true);
-				} else {
-					setError(errorMessage);
+				/*
+				 * `stripErrorPrefixes` at the boundary as well as at the paint: the state
+				 * is also read by paths that do not go through `UpdateErrorAlert`, and a
+				 * failure should not change its text depending on which surface it
+				 * reached.
+				 */
+				const message = updateMessageOf(errorMessage);
+				if (reportUpdateMessage(message)) {
 					setChecking(false);
 					setDownloading(false);
-					setSnackbarOpen(true);
 				}
 			},
 		);
@@ -1102,12 +1127,18 @@ export const UpdateNotification = ({
 		const removeBackendUpdateErrorListener =
 			window.api.updater.onBackendUpdateError((report) => {
 				if (report.phase === "update" && answerBackendUpdateAttempt()) {
-					setBackendUpdateFailure(report.message);
+					/*
+					 * This channel's real strings are Node errno forms - the operator's
+					 * log shows `getaddrinfo ENOTFOUND pypi.org` on the version read
+					 * during a check - so it goes through the same copy as the app
+					 * channel rather than being painted as the machine wrote it.
+					 */
+					setBackendUpdateFailure(updateErrorMessage(report.message));
 					setChecking(false);
 					setUpdatingBackend(false);
 					return;
 				}
-				setError(report.message);
+				setError(updateMessageOf(report.message));
 				setSnackbarOpen(true);
 			});
 
@@ -1136,6 +1167,7 @@ export const UpdateNotification = ({
 		answerBackendUpdateAttempt,
 		autoCheck,
 		checkForUpdates,
+		reportUpdateMessage,
 		shouldShowUpdate,
 	]);
 
@@ -1165,18 +1197,30 @@ export const UpdateNotification = ({
 	 * place. `closeSnackbar` clears the error, so the box is free again the
 	 * moment the reader has dismissed it.
 	 */
+	/*
+	 * NO SELF-DISMISS TIMER ON THE FAILURE ALERT (design D2, UX U1/U3). It had
+	 * six seconds, which was written for a one-line machine string; the alert now
+	 * carries a sentence that has to be read and acted on, and `closeSnackbar`
+	 * clears the `error` with the box - so the timer firing was the whole record of
+	 * a failure the user had asked for, gone. Worse, the action the copy names had
+	 * no owner: the app's own retries had already run, and the only control was
+	 * the X. It is held until dismissed and its sentence's "then try again" is the
+	 * button beside it, which is the affordance `FloatingAlert` already supports
+	 * (the connectivity banner's own Retry).
+	 */
 	const withErrorToast = (panel: ReactNode, notice?: ReactNode) => (
 		<>
 			{panel}
 			{error !== null ? (
-				<FloatingAlert
+				<UpdateErrorAlert
 					open={snackbarOpen}
-					autoHideDuration={6000}
+					message={error}
 					onClose={closeSnackbar}
-					variant="danger"
-				>
-					{error}
-				</FloatingAlert>
+					onRetry={() =>
+						void checkForUpdates({ manual: true, keepFailure: true })
+					}
+					retrying={checking}
+				/>
 			) : (
 				notice
 			)}

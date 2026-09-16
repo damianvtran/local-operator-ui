@@ -1,0 +1,97 @@
+REMEDIATION ROUND 1 — the operator's rule, the root cause, and every gate on this head.
+
+Worktree ~/local-operator-ui-worktrees/network-warnings, branch
+`fix/no-spurious-network-warnings`, base main `0c04cbb09`. What follows is the
+real output of the commands named, run at the head this commit carries (the
+manifest stamps are re-derived by the capture runs below).
+
+=== pnpm lint ===
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 47.
+Checked 645 files in 290ms. No fixes applied.
+Found 67 warnings.
+
+=== pnpm lint:scripts ===
+  scripts/capture-evidence.mjs
+  scripts/toast-lifetime.test.mjs
+  scripts/update-affirmation.test.mjs
+  scripts/update-robustness.test.mjs
+check-scripts-lint: 5 changed file(s) under scripts/ are lint-clean against origin/main (0c04cbb).
+
+=== pnpm check-types ===
+> local-operator-ui@0.25.13 check-types:main /Users/damian/local-operator-ui-worktrees/network-warnings
+> tsc --noEmit -p tsconfig.node.json
+> local-operator-ui@0.25.13 check-types:renderer /Users/damian/local-operator-ui-worktrees/network-warnings
+> tsc --noEmit -p tsconfig.app.json
+
+=== pnpm build ===
+✓ built in 3.14s
+✓ built in 40ms
+✓ built in 19.35s
+> local-operator-ui@0.25.13 postbuild /Users/damian/local-operator-ui-worktrees/network-warnings
+
+=== touched suites ===
+desktop tests: 5 files, concurrency 7 (cpu share 0.5 of 14 cores; 7.3 GB available)
+✖ the SHIPPED manifest's stamps describe the tree it ships in (665.73225ms)
+✖ the operator's own install is classified rather than told to use pip (6.831708ms)
+✖ a version read that never answers is killed, not left running (1069.060334ms)
+ℹ tests 214
+ℹ pass 211
+ℹ fail 3
+✖ failing tests:
+✖ the SHIPPED manifest's stamps describe the tree it ships in (665.73225ms)
+✖ the operator's own install is classified rather than told to use pip (6.831708ms)
+✖ a version read that never answers is killed, not left running (1069.060334ms)
+
+## Two red cases in that suite line, and what each of them is
+
+- `the operator's own install is classified rather than told to use pip` — PRE-EXISTING
+  on this machine and unrelated: it reads the operator's own install and finds
+  `pip` where it expects `uv`. It fails identically with this round's work stashed.
+- `a version read that never answers is killed, not left running` — a LOAD FLAKE of
+  a 1-second bound in that case, not a regression: run alone it passes
+  (`node --test --test-name-pattern "a version read that never answers is killed"
+  scripts/update-robustness.test.mjs` -> 1 pass), and the failing run had five
+  suites sharing 7-way concurrency. Nothing this round touches the version-read
+  bound; the gate below runs before that read.
+
+## The manifest stamps
+
+`the SHIPPED manifest's stamps describe the tree it ships in` fails in the
+working tree BEFORE this commit and passes after it, and the reason is worth
+recording because it looks like a defect and is not one: `check-evidence.mjs`
+reads the declared story count out of `HEAD:scripts/capture-evidence.mjs`, so an
+uncommitted `STORIES` entry is one story ahead of what the committed script
+declares. Committing is the fix, not a re-stamp.
+
+## The frames this round adds
+
+    node scripts/capture-evidence.mjs http://localhost:6705 \
+      --only=common-updatenotification--error-state \
+      --themes=localOperatorDark,localOperatorLight --allow-backend
+    Captured 4 frames into ... at ae87de3f9
+
+(The `--only` filter is a substring match, so that one run wrote both the
+`error-state` and the `error-state-wrapped` pairs.) Frames:
+
+    docs/evidence/common-updatenotification/error-state/{localOperatorDark,localOperatorLight}.webp
+    docs/evidence/common-updatenotification/error-state-wrapped/{localOperatorDark,localOperatorLight}.webp
+
+The first capture of the wrapped frame was READ, not trusted: the machine line
+`net::ERR_NETWORK_CHANGED` wrapped mid-token (`..._CHAN` / `GED`) because the
+label, the code and a named copy button measured past the alert's 400px content
+width. `PanelDetails` gained a stacked arrangement for the alert only, the frame
+was re-captured, and the code now sits whole under its `Details:` label. The
+panels keep the row arrangement, so their committed frames are untouched.
+
+## pnpm check-evidence
+
+    $ pnpm check-evidence
+    Evidence check DEFERRED: another sweep (or its image child) holds the machine
+    lease; retry after it finishes. No frames checked. Do not delete the lock file.
+    ELIFECYCLE  Command failed with exit code 75.
+
+Still DEFERRED on this head - the machine-wide lease has been held by other
+sessions' sweeps all session. What is verified without it: the manifest
+arithmetic and the head citations (`scripts/evidence-manifest.test.mjs`, 28/28
+once the STORIES entry is committed), and both frames read by eye.

@@ -1,0 +1,90 @@
+ROOT CAUSE — the scheduled check fires DURING a macOS dark wake, before the network is back.
+
+Captured for PR #262 (fix/no-spurious-network-warnings), remediation round 1. The
+conclusion is the manager's (the finding was theirs); every command and output
+below was RE-RUN here on this machine, and the ones that could not be re-run are
+named as such.
+
+## 1. The 09:03:12 failure is a dark-wake instant, to the second
+
+$ pmset -g log | grep -E 'DarkWake from Deep Idle' | grep '2026-09-16'
+
+2026-09-16 08:42:02 -0400 DarkWake            	DarkWake from Deep Idle [CDN] : due to NUB.SPMI0Sw3IRQ nub-spmi0.0x02 rtc/Maintenance Using BATT (Charge:80%) 45 secs   
+2026-09-16 09:03:12 -0400 DarkWake            	DarkWake from Deep Idle [CDN] : due to smc.sysState.Wake(0x70070000) wifibt SMC.OutboxNotEmpty/ Using BATT (Charge:80%) 45 secs   
+2026-09-16 09:04:08 -0400 DarkWake            	DarkWake from Deep Idle [CDN] : due to smc.sysState.Wake(0x70070000) USB-C_plug SMC.OutboxNotEmpty nub-spmi-a0.0x59/ Using BATT (Charge:80%) 0 secs
+
+The wake reason at 09:03:12 names the Wi-Fi/BT stack (`wifibt`), and the app's own
+update-service log has the failed feed fetch at 09:03:12.370 - the same second:
+
+    [2026-09-16 09:03:12.362] [info]  Running scheduled update check (every 5 minutes)
+    [2026-09-16 09:03:12.362] [info]  Checking for updates... (silent mode: true)
+    [2026-09-16 09:03:12.370] [error] Error: Error: net::ERR_INTERNET_DISCONNECTED
+    [2026-09-16 09:03:12.376] [error] Error fetching from PyPI: Error: getaddrinfo ENOTFOUND pypi.org
+
+(That log has since rotated; the PR's own
+`docs/evidence/update-robustness/transient-transport-log-excerpts.txt` is the
+record of the lines above.)
+
+## 2. Wi-Fi was not associated at that moment
+
+$ log show --start '2026-09-16 09:02:30' --end '2026-09-16 09:04:30' \
+      --predicate 'process == "airportd"' | grep hasAssocToWiFi1
+
+hasAssocToWiFi1 = 0;
+    hasAssocToWiFi1 = 0;
+    hasAssocToWiFi1 = 0;
+
+## 3. NOT an outage, and no proxy in the path
+
+$ scutil --proxy
+
+<dictionary> {
+  ExceptionsList : <array> {
+    0 : *.local
+    1 : 169.254/16
+  }
+  FTPPassive : 1
+}
+
+(No HTTPProxy/HTTPSProxy key: only FTPPassive and the default exceptions.)
+
+$ for u in <the three endpoints>; do curl -s -o /dev/null -L -w "$u %{http_code} %{time_total}s\n" "$u"; done
+
+https://github.com/damianvtran/local-operator-ui/releases/latest 200 0.810980s
+https://registry.npmjs.org/local-operator-ui 200 0.147857s
+https://pypi.org/pypi/local-operator/json 200 0.082460s
+
+Every endpoint answers 200 in well under a second, now and at the time of writing.
+
+## 4. The gate's own reading, through Electron itself
+
+The fix uses `net.isOnline()` - "this machine believes it has no network", which is
+exactly the dark-wake state above (`node_modules/electron/electron.d.ts:10311`).
+Read for real, through Electron 44.3.0, by a two-line script that creates no window:
+
+    // probe.js
+    const { app, net } = require("electron");
+    app.dock?.hide();
+    app.whenReady().then(() => { console.log("net.isOnline():", net.isOnline()); app.quit(); });
+
+$ npx electron probe.js --user-data-dir=/tmp/lo-net-probe/ud
+
+net.isOnline(): true
+
+TRUE is the expected reading on a machine with a working network; what the gate
+acts on is the FALSE one, which is the dark-wake window's state and which cannot
+be manufactured here. The gate's DECISION (skip the attempt, report nothing, leave
+the verdict `unavailable`) is exercised against the shipped module in
+`scripts/update-robustness.test.mjs` ("a check the machine has no network for
+spends no request").
+
+## 5. What the fix does about it
+
+- `UpdateService.networkIsReachable()` gates the app-channel fetch and the server
+  channel's two reads: a machine that reports no network spends NO request and
+  reports nothing, and the verdict stays `unavailable` (never `current`, never
+  "nothing newer").
+- `powerMonitor.on("resume")` arms ONE check `POST_WAKE_CHECK_DELAY_MS` (20 s)
+  later - past the ~12 s association the log above shows, and far inside the next
+  five-minute tick - so the tick that lands on the wake instant is not the only
+  one the machine gets. One timer: a second resume leaves the armed one alone.

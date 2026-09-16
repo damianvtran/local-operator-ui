@@ -6,7 +6,7 @@ import parse from "html-react-parser";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
 import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
-import { FloatingAlert } from "./floating-alert";
+import { UpdateErrorAlert } from "./update-error-alert";
 import {
 	ProgressContainer,
 	RELEASE_NOTES_PROSE,
@@ -879,54 +879,125 @@ export const Downloaded: Story = {
 };
 
 /**
- * Shows the notification when there's an error checking for updates.
+ * The alert the operator photographed, on the screen they were working on.
+ *
+ * WHY IT RENDERS THE SHIPPED COMPONENT AND NOT A COPY OF IT. This story used to
+ * draw its own `FloatingAlert` around a hardcoded sentence, which is how a
+ * fixture drifts from the component it stands for: the surface with NO frame in
+ * the tree was the one whose message the operator's report is about, and the
+ * message it drew was a string ("Failed to check for updates: Network error")
+ * that no producer in the app ever wrote. The message below is the operator's
+ * own - their `update-service.log` holds `net::ERR_INTERNET_DISCONNECTED` at
+ * 09:03:12 on 2026-09-16, on a machine with continuous internet, as a red alert
+ * over the chat screen.
+ *
+ * WHY IT IS HELD OPEN. `UpdateErrorAlert` renders through `FloatingAlert`, and
+ * the app gives it a six-second lifetime - a still cannot photograph a message
+ * that dismisses itself while the rig is resizing, so the frame holds it, the
+ * same way the refusal story holds its own. The WIRING (event or invoke
+ * rejection, one verdict, the sentence a person reads and the code beneath it)
+ * is not what a still can prove; it is
+ * `scripts/update-affirmation.test.mjs`, which drives the real component's
+ * listeners and reads both lines of the alert.
  */
 export const ErrorState: Story = {
 	args: {
 		autoCheck: false,
 	},
-	parameters: {
-		triggerUpdateError: true,
-	},
-	render: () => {
-		// Create a component that directly renders the error state
-		const ErrorComponent = () => {
-			// Use state to force the component to render with error state
-			const [error, setError] = useState(
-				"Failed to check for updates: Network error",
-			);
-			const [open, setOpen] = useState(true);
-
-			useEffect(() => {
-				// Set the state immediately
-				setError("Failed to check for updates: Network error");
-				setOpen(true);
-
-				// Set the trigger flag
-				window.triggerUpdateError = true;
-			}, []);
-
-			// If there's an error, render the UI directly
-			if (error) {
-				return (
-					<FloatingAlert
-						open={open}
-						autoHideDuration={6000}
-						onClose={() => setOpen(false)}
-						variant="danger"
-					>
-						{error}
-					</FloatingAlert>
-				);
-			}
-
-			// Fallback to the actual component
-			return <UpdateNotification autoCheck={false} />;
-		};
-
-		return <ErrorComponent />;
-	},
+	render: () => (
+		<div className="min-h-screen bg-canvas">
+			<div className="flex h-full flex-col gap-3 p-6">
+				<h1 className="font-medium text-body text-ink">Conversations</h1>
+				<ul className="flex max-w-xl flex-col gap-2">
+					{[
+						"Deploy the staging cluster",
+						"Review the paging change",
+						"Triage the support queue",
+					].map((row) => (
+						<li
+							key={row}
+							className="flex items-center justify-between rounded-md border border-hairline bg-surface px-3 py-2"
+						>
+							<span className="text-body-sm text-ink">{row}</span>
+							<span className="text-meta text-ink-dim">idle</span>
+						</li>
+					))}
+				</ul>
+			</div>
+			<UpdateErrorAlert
+				open
+				message="net::ERR_INTERNET_DISCONNECTED"
+				onClose={() => {}}
+				/*
+				 * The retry the sentence names, exactly as the app passes it: a
+				 * still of the failure without it would photograph a state no user
+				 * reaches (design round 1, D3 - the copy said "then try again" and
+				 * the only control was the X).
+				 */
+				onRetry={() => {}}
+			/>
+		</div>
+	),
 };
+
+/**
+ * The same alert for the failure the PR's own log holds, which is the one the
+ * copy's prefix rule is about (design round 1, D1; UX U2).
+ *
+ * WHY THIS FRAME IS THE POINT OF THE RULE. electron-updater wraps a failed feed
+ * fetch in 200 characters of its own parse narration - "Cannot parse releases
+ * feed: Unable to find latest version on GitHub (https://...), please ensure a
+ * production release exists: net::ERR_NETWORK_CHANGED" - and keeping that as the
+ * sentence's prefix produced a six-line run-on with a URL in it, addressed to
+ * the release owner rather than to the person reading it. The message below is
+ * the string as the app receives it, and the frame is what the rule produces:
+ * the sentence alone, the machine's words subordinate.
+ */
+export const ErrorStateWrapped: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => (
+		<div className="min-h-screen bg-canvas">
+			<div className="flex h-full flex-col gap-3 p-6">
+				<h1 className="font-medium text-body text-ink">Conversations</h1>
+				<ul className="flex max-w-xl flex-col gap-2">
+					{[
+						"Deploy the staging cluster",
+						"Review the paging change",
+						"Triage the support queue",
+					].map((row) => (
+						<li
+							key={row}
+							className="flex items-center justify-between rounded-md border border-hairline bg-surface px-3 py-2"
+						>
+							<span className="text-body-sm text-ink">{row}</span>
+							<span className="text-meta text-ink-dim">idle</span>
+						</li>
+					))}
+				</ul>
+			</div>
+			<UpdateErrorAlert
+				open
+				message={WRAPPED_FEED_FAILURE}
+				onClose={() => {}}
+				onRetry={() => {}}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The wrapped shape the log actually holds, as the app receives it.
+ *
+ * Kept beside the story rather than imported from the test harness: a fixture
+ * that reads the failure out of a test file is a fixture that can drift from
+ * what main sends, and this string is a transcription of
+ * `docs/evidence/update-robustness/transient-transport-log-excerpts.txt` section
+ * 4 (2026-09-15 21:52).
+ */
+const WRAPPED_FEED_FAILURE =
+	"Cannot parse releases feed: Unable to find latest version on GitHub (https://github.com/damianvtran/local-operator-ui/releases/latest), please ensure a production release exists: net::ERR_NETWORK_CHANGED";
 
 type UpdaterTriggerFlag =
 	| "triggerUpdateDownloaded"
@@ -1145,4 +1216,55 @@ export const BackendUpdateInFlight: Story = {
 export const BackendUpdateFailed: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="failed" />,
+};
+
+/**
+ * The retry IN FLIGHT, which is the state the reader sees for the four seconds the
+ * app's own ladder runs - and which no frame showed (design round 2, D13; UX U7).
+ *
+ * WHY IT NEEDED ONE. The card used to unmount the moment `Try again` was pressed,
+ * because the component cleared the failure before it awaited, so this state was
+ * unreachable and "a check is running" was indistinguishable from "the problem is
+ * fixed" - the same press reads as success for its first seconds. With the card
+ * held, the pressed control is what says so: `retrying` renders "Checking..." on it
+ * and disables it. This story draws exactly that pair, over the plain canvas rather
+ * than the conversation list: the state under test is the card and its control, and
+ * `ErrorState` above is the composed frame.
+ */
+export const ErrorStateRetrying: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<div className="h-screen bg-canvas">
+			<UpdateErrorAlert
+				open
+				message="net::ERR_CONNECTION_REFUSED"
+				onClose={() => {}}
+				onRetry={() => {}}
+				retrying
+			/>
+		</div>
+	),
+};
+
+/**
+ * A DOWNLOAD-stage failure, which is where "then try again" told the reader to use
+ * a control the box does not carry (design round 2, D9; UX U9).
+ *
+ * The stage is what the copy keys on: a check stands a chance of answering this
+ * again, a download does not, so the sentence names the surface that owns the
+ * retry - the update panel behind this alert - and the box offers no control. The
+ * frame is the check on that rule, next to `ErrorState`'s, which does carry one.
+ */
+export const ErrorStateDownload: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<div className="h-screen bg-canvas">
+			<UpdateErrorAlert
+				open
+				message="Error downloading update: net::ERR_TIMED_OUT"
+				onClose={() => {}}
+				onRetry={() => {}}
+			/>
+		</div>
+	),
 };

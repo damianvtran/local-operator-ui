@@ -28,6 +28,10 @@ Copied from the audit of the operator's machine
 | [leftover-shipit-job.txt](leftover-shipit-job.txt) | What the failed install left *running* on the operator's machine: the ShipIt launchd job in a respawn loop and the staging tree beside it. This is what the app now reaps itself, and why. |
 | [remediation-round-1.txt](remediation-round-1.txt) | Every gate run on the review remediation: lint, typecheck, theme contract, the desktop suite, the build, the artifact gate against the real 0.17.0 artifacts, and the environment checks behind the classification and the watchdog. |
 | [remediation-round-2.txt](remediation-round-2.txt) | The same gates on the second remediation, plus the measurements the watchdog's bound is derived from: every ShipIt attempt in this log by timestamp (255 s slowest), the `plutil` read the swap check makes against the real bundle, and the launchd answer for a job that is not loaded (exit 3, no output) that Q4 is about. |
+| [transient-transport-log-excerpts.txt](transient-transport-log-excerpts.txt) | The other half of the same log: the 90 Chromium transport failures (`net::ERR_CONNECTION_RESET` 36, `net::ERR_TIMED_OUT` 24, `net::ERR_CONNECTION_REFUSED` 14, `net::ERR_NETWORK_CHANGED` 8, `net::ERR_INTERNET_DISCONNECTED` 8, plus `getaddrinfo ENOTFOUND pypi.org`) that were each reported to the user as a red alert reading the raw code. It also records the two producers of one message and the wrapped `Cannot parse releases feed: ... Error: net::ERR_NETWORK_CHANGED` shape the classifier matches on. The file has since rotated under the running app, which is why this is an excerpt. |
+| [transient-transport-round-1.txt](transient-transport-round-1.txt) | Every gate on the change that retired those alerts: lint and the scripts gate (including the one error the scripts gate caught), typecheck, the real build, the desktop suites with their runner's concurrency line, and the two capture runs - with the first banner capture recorded as a frame of the defect (9,140 bytes of plain ground) and the config stub the story needed. `pnpm check-evidence` was DEFERRED at the time of writing (exit 75, another sweep held the machine lease). |
+| [root-cause-dark-wake.txt](root-cause-dark-wake.txt) | WHY the failures happen at all, and what the fix does about it: the 09:03:12 fetch is a macOS DARK WAKE to the second (`wifibt` in the wake reason), Wi-Fi was not associated (`hasAssocToWiFi1 = 0`), the endpoints answer 200 and no proxy is configured, and `net.isOnline()` read for real through Electron. All but the rotated log lines re-run at capture time. |
+| [transient-transport-round-2.txt](transient-transport-round-2.txt) | The gates on the review remediation, including the operator's rule that an app-initiated check reports nothing, the pre-flight gate's own case, the collapsed overlapping fetch, and the frames this round added. `pnpm check-evidence` is recorded there with the outcome it actually had. |
 
 ## The gate, run against the shipped 0.17.0 release
 
@@ -247,6 +251,23 @@ alone — they are the only record of why the install failed, and the failure
 detail points at them. See [leftover-shipit-job.txt](leftover-shipit-job.txt).
 
 ## The frames
+
+### The two alert frames, and what they are not
+
+| Surface | Frame | State |
+| --- | --- | --- |
+| update-error (a check the user asked for) | [dark](common-updatenotification/error-state/localOperatorDark.webp) · [light](common-updatenotification/error-state/localOperatorLight.webp) | The sentence *"The app could not reach the update server. Check this machine's connection, then try again."* with `net::ERR_INTERNET_DISCONNECTED` below it under the `Details:` label, the retry the sentence names beside the message, and no self-dismiss timer. |
+| update-error (the wrapped feed failure) | [dark](common-updatenotification/error-state-wrapped/localOperatorDark.webp) · [light](common-updatenotification/error-state-wrapped/localOperatorLight.webp) | The same surface for the shape the log actually holds - `Cannot parse releases feed: ... net::ERR_NETWORK_CHANGED` - where the sentence must stand ALONE: the wrapper's URL and its release-owner instruction are not part of what a person reads. |
+| update-error (the wrapped feed failure) | [dark](common-updatenotification/error-state-wrapped/localOperatorDark.webp) · [light](common-updatenotification/error-state-wrapped/localOperatorLight.webp) | The same surface for the shape the log actually holds - `Cannot parse releases feed: ... net::ERR_NETWORK_CHANGED` - where the sentence must stand ALONE: the wrapper's URL and its release-owner instruction are not part of what a person reads. |
+| update-error (the retry in flight) | [dark](common-updatenotification/error-state-retrying/localOperatorDark.webp) · [light](common-updatenotification/error-state-retrying/localOperatorLight.webp) | The same card held across its OWN retry: pressing `Try again` leaves it mounted with the control reading "Checking..." and disabled, instead of unmounting for the app's 1 s + 3 s ladder with nothing saying a check is running (UX round 2, U7; design round 2, D13). The control is a filled `primary` button here rather than the outlined one round 2 replaced (design D10). |
+| update-error (a failed download) | [dark](common-updatenotification/error-state-download/localOperatorDark.webp) · [light](common-updatenotification/error-state-download/localOperatorLight.webp) | The download stage's own sentence - "The update could not be downloaded. Check this machine's connection, then start the download again." - with the code under `Details:` and NO retry control, because a check cannot re-download (design round 2, D9; UX U9). Each stage has its own sentence (design round 3, D17). |
+
+**There is no "before" frame in this directory, and the pair is therefore half
+present (design round 1, D7).** The before is the operator's own screenshot: a red
+alert, same corner, whose entire message was `net::ERR_INTERNET_DISCONNECTED`. It
+exists as the report quoted in the PR body, not as a file here, and it is not
+this directory's to publish - the frame above is the REPLACEMENT for it, not the
+same artifact.
 
 Captured with `node scripts/capture-evidence.mjs http://localhost:6006
 --only=common-updatenotification --themes=localOperatorDark,localOperatorLight
