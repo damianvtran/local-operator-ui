@@ -2522,6 +2522,17 @@ type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
  * A settled plan prints a clause rather than nothing: see
  * `docs/composer-status-tabs.md` § 5.1 for why the composer's chip must not
  * vanish when the last item closes.
+ *
+ * BOTH settled spellings assume the plan has at least one ITEM, and this
+ * function cannot know that: a plan that arrived as one named empty phase has
+ * `openTodos === 0` and `droppedTodos === 0` too, and `All to-dos resolved` over
+ * it would be a claim about work that does not exist. The ONLY thing keeping
+ * that case off screen is the caller's own item-count gate —
+ * `composer-status-row.tsx`'s `showPlan`, `totalTodos > 0`, pinned by
+ * `scripts/composer-tabs.test.mjs` — so the coupling is recorded here rather
+ * than left for whoever relaxes that gate to rediscover (agent review round 1,
+ * nit 3). Widening it is not a copy change: it needs a spelling for "a plan with
+ * nothing in it", which is a state this row deliberately does not render.
  */
 export const todoClause = (counts: TodoClauseCounts): string => {
 	if (counts.openTodos > 0) {

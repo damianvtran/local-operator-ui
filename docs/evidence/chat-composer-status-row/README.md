@@ -70,7 +70,7 @@ record's arithmetic — and stated because four of them are what the record's
 
 **The settled chips are wider than the count chip, and the frames say by how
 much.** Read off the re-captured `states` pair the same way the table above was
-read: the count chip's ink spans x=40–139, `All to-dos closed` x=40–154 and
+read: the count chip's ink spans x=40–139, `All to-dos closed` x=40–155 and
 `All to-dos resolved` x=40–165, all three starting at the same leading edge and
 occupying the same 14px mark-and-label line — so the settled copy adds up to
 26px to a chip that is already `shrink-0`, and changes no band's height. The
@@ -95,6 +95,16 @@ number here is what the frame contains, and whether a ~136px measure is acceptab
 at the floor is the design round's call rather than this set's claim.
 
 ## What this set does NOT prove
+
+- **The widest chip this row can render against the floor's content box.**
+  `column-floor` photographs the count form, so the settled chips at the 172px
+  floor are arithmetic on two frames that share one scale (~138px for
+  `All to-dos resolved` and ~128px for `All to-dos closed` against a measured
+  156px content box), not a picture. The chip is `shrink-0` and carries no
+  `truncate`, so a chip that ever exceeded its box would spill rather than wrap:
+  the overflow guarantee for the widest case is a measurement here, and a frame
+  of the settled band at the floor is what would make it a photograph (design
+  review round 1, D3).
 
 - **Not the live composer.** The row's real neighbours in the app are the send
   alert and the composer box, whose widths come from the chat column and the

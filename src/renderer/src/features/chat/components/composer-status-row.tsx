@@ -203,10 +203,11 @@ export const ComposerStatusRow = ({
 	 * real state rather than a hypothetical. `RunDetails.todos` is the PHASE list,
 	 * and the model decodes a phase record with no items to a phase with no items —
 	 * so `todos.length > 0` calls a plan that arrived as one empty named phase a
-	 * plan, and the chip would print `0 to-dos open` for a session that has no
-	 * to-dos at all, which reads as a finished plan. `totalTodos` is the item count
-	 * over the whole wire list: it is zero only when there is genuinely nothing to
-	 * be in the middle of.
+	 * plan, and the chip would state a FINISHED plan over a plan that has no items at
+	 * all (`All to-dos resolved`, `todoClause`'s settled clause, since this follow-up;
+	 * `0 to-dos open` when this gate was first argued, which read as a finished plan
+	 * too). `totalTodos` is the item count over the whole wire list: it is zero only
+	 * when there is genuinely nothing to be in the middle of.
 	 */
 	const showPlan = Boolean(runDetails && runDetails.totalTodos > 0);
 
