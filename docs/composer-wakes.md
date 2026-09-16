@@ -410,10 +410,10 @@ retained rather than consumed.
    (`HostingNotConfiguredError: Hosting platform is not configured`) and the
    schedule is RETAINED past its due instant rather than consumed, so neither "the
    chip clears while the reader watches" nor "the receipt row arrives" can be
-   produced here. QA round 1's U2 is the nearest state a live pass reaches, and it
+   produced here. UX round 1's U2 is the nearest state a live pass reaches, and it
    is recorded as such rather than dressed as a retirement.
 6. **The chip and the tally are a READING of the last canonical state, not a live
-   watch of the wake index.** QA round 1's U2 measured the gap on a COLD session:
+   watch of the wake index.** UX round 1's U2 measured the gap on a COLD session:
    with the pane open, emptying the session's schedule in an isolated index produced
    no update across 45 samples over 132s (`1 wake armed` throughout), and re-entering
    the conversation cleared both surfaces cleanly — no stranded heading, the pane

@@ -1442,11 +1442,15 @@ export const wakesRecurring = (): RunDetailsInput => ({
 });
 
 /**
- * Over the cap: nine schedules, so the section shows six rows and its marker.
+ * Nine schedules — all nine drawn, because the cap IS the wire's own ceiling.
  *
- * The wire can carry `MAX_WAKE_SCHEDULES = 16`, so this is the ordinary
- * full-scheduler state rather than an extreme, and the frame's job is the
- * overflow marker's own copy.
+ * `WAKE_ROW_CAP` is `MAX_WAKE_SCHEDULES = 16`, so nine is an ordinary full
+ * scheduler and this fixture renders nine rows with no overflow marker. (It said
+ * "six rows and its marker" until round 2: that was written against the six-row
+ * cap and was falsified by the frame it feeds the moment UX round 1's U1 moved
+ * the number. A payload past 16 — which no fixture here can produce, and which
+ * `run-detail-model.test.mjs` builds by hand for the marker's own case — is what
+ * the marker is for.)
  */
 export const wakesMany = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
