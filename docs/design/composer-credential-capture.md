@@ -737,7 +737,7 @@ on a minted pill.
   the bytes.
 - A store that fails produces the honest citation and a notice, never a key
   nothing holds.
-- The pill and the masked span are legible in **all twelve themes** (contrast
+- The pill and the masked span are legible in **every theme** (contrast
   floors from the branding contract), not only the two brand palettes.
 
 ## 11. Out of scope

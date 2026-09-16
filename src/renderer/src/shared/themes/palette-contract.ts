@@ -8,21 +8,20 @@
  *
  * ## Why this exists
  *
- * Before this contract, each of the twelve themes was a standalone
- * `createTheme()` of 209–252 lines, and only ~33% of those lines were colour.
- * The other ~67% — breakpoints, typography, and the `MuiAppBar` /
- * `MuiListItemButton` / `MuiIconButton` / `MuiButton` / `MuiCard` /
- * `MuiContainer` overrides — was copied twelve times. A single type-scale
- * change was a twelve-file diff, and the twelfth file is the one that gets
- * missed.
+ * Before this contract, every theme was a standalone `createTheme()` of
+ * 209–252 lines, and only ~33% of those lines were colour. The other ~67% —
+ * breakpoints, typography, and the `MuiAppBar` / `MuiListItemButton` /
+ * `MuiIconButton` / `MuiButton` / `MuiCard` / `MuiContainer` overrides — was
+ * copied into every one of them. A type-scale change was a diff across every
+ * theme file, and the last file is the one that gets missed.
  *
- * Worse, eleven of the twelve never authored `divider`, `action`, `success`,
- * `warning`, `info`, `grey` or `common` at all, while application code reads
- * those 409 times. Those values were coming from MUI's stock palette — a blue
- * `info` and a red `error` that appeared in no theme file and that no theme
- * author had ever seen, let alone checked for contrast. Making the roles
- * mandatory here is what closes that hole: a palette that omits one no longer
- * compiles.
+ * Worse, eleven of the twelve themes that existed then never authored
+ * `divider`, `action`, `success`, `warning`, `info`, `grey` or `common` at
+ * all, while application code reads those 409 times. Those values were coming
+ * from MUI's stock palette — a blue `info` and a red `error` that appeared in
+ * no theme file and that no theme author had ever seen, let alone checked for
+ * contrast. Making the roles mandatory here is what closes that hole: a
+ * palette that omits one no longer compiles.
  *
  * ## Roles, not hexes
  *

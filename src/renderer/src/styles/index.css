@@ -8,7 +8,7 @@
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css
  * and generated from the ThemePalette objects. Everything else — type, space,
  * radii, motion — is palette-independent and lives here as literal values,
- * once, instead of being repeated in twelve theme files as it was before.
+ * once, instead of being repeated in every theme file as it was before.
  *
  * @see docs/branding.md for the reasoning behind each ramp.
  */

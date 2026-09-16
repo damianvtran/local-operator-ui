@@ -35,13 +35,12 @@ import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 
 /*
  * Like and favourite carry the `danger` and `warning` hues when active.
- * Neither is a warning about anything — the palette has no
- * "liked" role to spend, and those two families are where the red and the
- * amber a person expects behind a heart and a star live. They replace the
- * MUI-era `#e53935` and `#ffb300`, which ignored all twelve palettes and put
- * the favourited star at 1.62:1 on `iceberg`, under half the 3:1 floor a
- * meaningful graphic owes its ground. `agent-card` renders the same pair the
- * same way.
+ * Neither is a warning about anything — the palette has no "liked" role to
+ * spend, and those two families are where the red and the amber a person
+ * expects behind a heart and a star live. They replace the MUI-era `#e53935`
+ * and `#ffb300`, which ignored the user's own palette and put the favourited
+ * star at 1.62:1 on `iceberg`, under half the 3:1 floor a meaningful graphic
+ * owes its ground. `agent-card` renders the same pair the same way.
  */
 
 const CountDisplay: React.FC<{ children: React.ReactNode }> = ({

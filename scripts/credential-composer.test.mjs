@@ -1389,7 +1389,7 @@ const painted = () => {
 		 * THE EDGE'S STYLE, which round 4 made the not-stored chip's second
 		 * distinction (design round 4, D2; code review round 4, MINOR 2; UX round 4,
 		 * U17). Hue alone does not separate the chip from a live pill: measured over
-		 * the twelve palettes the two washes sit at 1.01-1.11 fill contrast and a
+		 * the generated palettes the two washes sit at 1.00-1.63 fill contrast and a
 		 * greyscale reading of 34 vs 35 of 255. A dashed edge costs no token and
 		 * survives monochrome.
 		 */
@@ -1532,11 +1532,11 @@ test("a marker whose payload did not survive is painted, and sent as the not-sto
 	 * AND THE CHIP'S EDGE IS DASHED, which is the second distinction and the one
 	 * that does not need colour to be seen (design round 4, D2; code review round
 	 * 4, MINOR 2; UX round 4, U17). The warning pair against the info pair is a
-	 * HUE difference and almost nothing else - the two washes sit at 1.01-1.11
-	 * fill contrast across the twelve palettes, and a greyscale reading of them is
-	 * 34 vs 35 of 255 - so a reader who cannot separate a warm brown from a cool
-	 * blue had no cue at all before pressing Enter. This assertion fails if the
-	 * edge goes back to `outline-solid`.
+	 * HUE difference and almost nothing else - the two washes sit at 1.00-1.63
+	 * fill contrast across the generated palettes, and a greyscale reading of
+	 * them is 34 vs 35 of 255 - so a reader who cannot separate a warm brown from
+	 * a cool blue had no cue at all before pressing Enter. This assertion fails
+	 * if the edge goes back to `outline-solid`.
 	 */
 	assert.equal(
 		painted().filter((s) => s.dashed).length,

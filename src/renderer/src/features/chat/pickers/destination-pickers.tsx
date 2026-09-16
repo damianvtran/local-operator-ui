@@ -2551,9 +2551,9 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
  *
  * `pickers/panels/` is also where the panel primitives live (the region frame,
  * the four states, the stat card, the share meter, the bounded table and the
- * ONE chart wrapper), because a primitive that only one panel uses still has to
- * be named once: every chart in the app resolves its colours in one place, or
- * the twelve-theme promise is checked in twelve places.
+ * ONE chart wrapper), because a primitive that only one panel uses still has
+ * to be named once: every chart in the app resolves its colours in one place,
+ * or the theme promise has to be re-checked in every one of them.
  *
  * Re-exported here so `picker-registry.tsx` keeps importing every adapter from
  * one module.

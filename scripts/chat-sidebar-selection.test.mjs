@@ -38,7 +38,7 @@
  *      rail's row are one fact.
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*. That is a property of the
- * role against its neighbours across twelve palettes, and it is
+ * role against its neighbours across every palette, and it is
  * `scripts/contrast-contract.mjs`'s job — it asserts `highlight` against
  * `surface`, `elevated` and `sunken` at the field floor of ΔE00 2.0, with the
  * authored values measuring 2.18-2.28 from `surface`, 2.52-5.05 from `elevated`
@@ -508,7 +508,8 @@ test("no current-row class literal in either panel is on the wash", () => {
 		assert.deepEqual(
 			washes,
 			[],
-			`a class literal in ${file} is back on the wash, which is invisible on \`surface\` (tokyoNight ΔE00 1.05) — and below the 2.0 field floor in exactly that one of the twelve palettes, the next lowest being dracula at 3.28: ${JSON.stringify(washes)}`,
+			`a class literal in ${file} is back on the wash, which is invisible on \`surface\` (tokyoNight ΔE00 1.05) — and below the 2.0 field floor in seven of the fifty-nine palettes (worst
+			catppuccinMacchiato 0.80, then tokyoNight 1.05): ${JSON.stringify(washes)}`,
 		);
 	}
 });
