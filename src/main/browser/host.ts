@@ -463,27 +463,6 @@ export class BrowserHost implements BrowserActionContext {
 
 	// ---- operations the app's own chrome uses (design 11.2, 6.1) -------------
 	/**
-	 * The projection the renderer renders: the tab strip, the URL bar and the
-	 * per-tab ownership markers. It never carries a nonce — the renderer is not an
-	 * agent and has no reason to hold a capability (design 11.7).
-	 *
-	 * `sessionId` IS projected, and the nonce is not, and the difference is the
-	 * whole of the rule rather than an inconsistency to iron out. A conversation's
-	 * pane has to answer "which of these tabs belong to THIS conversation"
-	 * (docs/design/browser-approval-ux.md 7.2), and the registry already answers it
-	 * with one field: an agent tab carries the session that created it
-	 * (`registry.ts:231`) and a handed-over user tab carries the session it was
-	 * handed to (`:371`), so one field answers both questions. That field is a
-	 * NAME — the same id the app already puts in its own chat routes, and the same
-	 * value `handOver` matches against — while the NONCE is the capability that
-	 * lets its holder DRIVE the tab. Projecting the name tells the user which
-	 * conversation a tab belongs to; projecting the nonce would hand the renderer
-	 * (and anything that can read the renderer's IPC) the ability to act as an
-	 * agent, which is exactly what `mayDrive` is the gate for. So the name
-	 * travels and the capability does not (`snapshot()` at `:556-585` carries it
-	 * for the same reason, and this projection is the one the UI reads).
-	 */
-	/**
 	 * Record a main-frame load failure for a tab.
 	 *
 	 * Called from the view's own `did-fail-load`, which is the only place that knows a
@@ -541,6 +520,32 @@ export class BrowserHost implements BrowserActionContext {
 		return record.view.webContents.isLoading();
 	}
 
+	/**
+	 * The projection the renderer renders: the tab strip, the URL bar and the
+	 * per-tab ownership markers. It never carries a nonce — the renderer is not an
+	 * agent and has no reason to hold a capability (design 11.7).
+	 *
+	 * `sessionId` IS projected, and the nonce is not, and the difference is the
+	 * whole of the rule rather than an inconsistency to iron out. A conversation's
+	 * pane has to answer "which of these tabs belong to THIS conversation"
+	 * (docs/design/browser-approval-ux.md 7.2), and the registry already answers it
+	 * with one field: an agent tab carries the session that created it
+	 * (`registry.ts:231`) and a handed-over user tab carries the session it was
+	 * handed to (`:371`), so one field answers both questions. That field is a
+	 * NAME — the same id the app already puts in its own chat routes, and the same
+	 * value `handOver` matches against — while the NONCE is the capability that
+	 * lets its holder DRIVE the tab. Projecting the name tells the user which
+	 * conversation a tab belongs to; projecting the nonce would hand the renderer
+	 * (and anything that can read the renderer's IPC) the ability to act as an
+	 * agent, which is exactly what `mayDrive` is the gate for. So the name
+	 * travels and the capability does not — `registry.snapshot()` carries it for the
+	 * same reason, and THIS projection is the one the UI reads.
+	 *
+	 * It sits on this member rather than where it was written: it was left as a
+	 * detached block after this class's section rule, with `recordLoadFailure`'s own
+	 * doc directly beneath it, so the most load-bearing prose in the main-process
+	 * change documented nothing (review round 1, NIT B).
+	 */
 	chromeState(): Record<string, unknown> {
 		// `active` is dropped when its webContents is already dead: `snapshot()`
 		// guards each read the same way, and a read that landed between destruction

@@ -27,6 +27,7 @@ import {
 	type SurfaceScope,
 	originOfUrl,
 	requestsInScope,
+	scopeFromKey,
 	scopeKey,
 	tabsInScope,
 	useApprovalQueue,
@@ -187,7 +188,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 */
 	const scopeField = scopeKey(scope);
 	const stableScope = useMemo<SurfaceScope>(
-		() => (scopeField === "all" ? "all" : { sessionId: scopeField }),
+		() => scopeFromKey(scopeField),
 		[scopeField],
 	);
 
