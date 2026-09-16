@@ -83,6 +83,20 @@ export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
  * under the reader at whatever label change happened next, which is the defect
  * the working line's contract calls out. A pass also outranks `waiting`: it is
  * the more specific statement about why this session is busy.
+ *
+ * AND WHAT OWNING A PHASE COSTS, decided rather than left to be discovered
+ * (design round 1, D4: the backend CAN emit `compaction_start` inside a live
+ * turn — `session.py:_run_compaction` is called mid-turn when the context
+ * crosses its threshold — so the row can read `running 3 tools` ->
+ * `compacting context` -> `running 3 tools`). The clock rests at 0s at BOTH
+ * boundaries, and that is the right reading: the clock's contract is "how long
+ * has THIS phase been running", the phase is the pass's own span, and a pass's
+ * duration is exactly what the operator asked to see. Keeping one clock across
+ * the interruption would print a turn's age beside the word `compacting`,
+ * which is the same lie in the other direction. The rejected alternative —
+ * folding the pass into the turn's phase so the clock never rests — was
+ * rejected because it makes the row's duration report the TURN while claiming
+ * to report the pass.
  */
 export const COMPACTING_ACTIVITY = "compacting context";
 
@@ -288,8 +302,15 @@ export function deriveWorkingLine({
 	 * that claims a compaction is progressing beside a pane that is saying the
 	 * transport died is claiming progress nobody can vouch for. The check sits
 	 * here rather than in the reducer because suppressing a claim and retiring a
-	 * fact are different repairs — a reconnect during a pass that is genuinely
-	 * still running restores the rung from the backend's own replayed start.
+	 * fact are different repairs — a dead transport hides the rung without
+	 * deciding the pass is over, and a later end frame still paints its line.
+	 *
+	 * Review round 1 (R4) asked what restores the rung after a reconnect, and the
+	 * answer is nothing does: the seed's `live_events` fold carries no
+	 * `compaction_start` (the reducer's `applyLiveSeed` names the fold), so a
+	 * reconnect mid-pass drops the rung and the pass keeps running. Withholding
+	 * it is the safe direction and the claim is the thing this ladder refuses to
+	 * invent.
 	 */
 	if (compacting) {
 		if (unavailable) return null;

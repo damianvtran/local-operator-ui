@@ -2419,3 +2419,110 @@ test("a compaction pass is claimed from its start and retired by every stop", ()
 		true,
 	);
 });
+
+test("a refused pass paints the runtime's own row, in the tier it derives", () => {
+	/*
+	 * U1 (UX round 1) = Q2 (QA round 1): a manual `/compact` on a conversation
+	 * with nothing to compact painted NOTHING. The refusal emits no
+	 * `compaction_start` — the runtime answers the routed command with an
+	 * optimistic receipt and the pass declines before the start event — so the
+	 * durable `compaction_refused` row is the only record, and it was listed as
+	 * bookkeeping. With the dialog gone, that silence was the surface the dialog
+	 * used to occupy.
+	 */
+	const refused = (detail) =>
+		applyHistoryPage(
+			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+			pageOf([
+				messageEntry("m1", 10, {
+					kind: "custom",
+					custom_type: "compaction_refused",
+					details: { detail },
+				}),
+			]),
+		);
+	const decline = refused(
+		"nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
+	);
+	const row = decline.records.at(-1);
+	assert.equal(row.kind, "notice");
+	assert.equal(row.id, "m1");
+	assert.equal(
+		row.text,
+		"Compaction did not run: nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
+	);
+	assert.equal(
+		row.level,
+		"warning",
+		"a DECLINE is the backend's warning tier, not this file's choice",
+	);
+	assert.equal(decline.compacting, false, "the row is the pass saying it is over");
+
+	/*
+	 * And the other half of the same rule: a FAILED pass is the system saying it
+	 * could not, which the runtime's shared helper inks differently from a
+	 * decline, so a reader can tell "not worth it" from "I tried and broke".
+	 */
+	const failure = refused("compaction failed: provider unreachable");
+	assert.equal(failure.records.at(-1).level, "error");
+});
+
+test("a pass that changed nothing says the number once, and a failure takes its own ink", () => {
+	/*
+	 * U4 (UX round 1): three consecutive passes read `Context compacted, 52.7k
+	 * to 52.7k tokens` — a sentence that reads as "compacted and changed
+	 * nothing". The pair is printed only when the two figures differ.
+	 */
+	const settled = (before, after) =>
+		applyEvent(applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }), {
+			type: "compaction_end",
+			success: true,
+			tokens_before: before,
+			tokens_after: after,
+		}).records.at(-1);
+	assert.equal(
+		settled(52_700, 52_700).text,
+		"Context compacted to 52.7k tokens",
+	);
+	assert.equal(
+		settled(41_000, 9_000).text,
+		"Context compacted, 41.0k to 9.0k tokens",
+	);
+
+	// The failed end is a notice so it can carry the tier; the compaction record
+	// has no ink of its own and read in the success line's tone (design D2).
+	const failed = applyEvent(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+		{
+			type: "compaction_end",
+			success: false,
+			detail: "compaction failed: provider unreachable",
+		},
+	).records.at(-1);
+	assert.equal(failed.kind, "notice");
+	assert.equal(failed.level, "error");
+});
+
+test("a replayed outcome cannot retire a claim made after the pass it carries", () => {
+	/*
+	 * The retirement U1's fix needed is keyed on NEW ids: a history refresh that
+	 * replays an already-painted outcome must not take down a pass that started
+	 * since, which is the "a page is not a signal about the present" rule the
+	 * transcript's other merges follow.
+	 */
+	const entry = messageEntry("m1", 10, {
+		kind: "custom",
+		custom_type: "compaction_refused",
+		details: { detail: "nothing to compact" },
+	});
+	const once = applyHistoryPage(EMPTY_TRANSCRIPT, pageOf([entry]));
+	assert.equal(once.records.length, 1);
+	const running = applyEvent(once, { type: "compaction_start" });
+	assert.equal(running.compacting, true);
+	const replayed = applyHistoryPage(running, pageOf([entry]));
+	assert.equal(
+		replayed.compacting,
+		true,
+		"the outcome is already painted, so it retires nothing",
+	);
+});

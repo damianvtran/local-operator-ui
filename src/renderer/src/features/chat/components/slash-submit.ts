@@ -34,12 +34,23 @@
  * from a list, not a free-text prompt, and their trailing text is still their
  * argument. The vocabulary is therefore `promptCommands` UNION the inline
  * argument lists the registry already derives (`argumentVocabulary`,
- * `slash-commands.tsx`); no third list of command names exists, here or there.
+ * `slash-commands.tsx`) UNION the registry's own `arguments` declaration, which
+ * is the only one of the three that `/login`/`/logout`/`/stop`/`/fast`/`/move`
+ * appear in (review round 1, R1: without it those whole-draft commands stopped
+ * running and their text went to a transport that refuses a leading slash). No
+ * hand-kept list of command names exists, here or there.
  * `armedOnlyCommands` is the one narrowing on top of that union and it applies
  * to the DRAFT-OPENING branch alone: a word in it is never hoisted by a typed
  * draft that merely opens with it, only by the explicit pick (peer PR #209's
  * `/goal` rule), while its whole-draft form is untouched. The input stays
  * generic — this file names no command.
+ *
+ * THE POSITIONAL RULE IS SHARED WITH THE POPUP. `opensDraft` is
+ * `commandWordOpensDraft` (`slash-token.ts`), and `caretPhase` — the popup's own
+ * "which list is up" — calls the same function. A mid-draft word therefore
+ * opens no list, which is what stops the popup recruiting a word this planner
+ * reads as prose and consuming the first Enter to complete it (design round 1,
+ * D1 = UX U2). Asking it in two places would have been two rules again.
  *
  * THE ONE DECISION. This function is the only thing that answers "what does
  * this draft submit?" — it hands back a plan, and the plan carries the command
@@ -114,7 +125,7 @@
  * of the user to read before Enter.
  */
 
-import { replaceSpan, slashTokenSpan } from "./slash-token";
+import { commandWordOpensDraft, replaceSpan, slashTokenSpan } from "./slash-token";
 
 /**
  * The destinations whose command is armed EXPLICITLY and never inferred.
@@ -232,6 +243,24 @@ export type SlashSubmissionArgs = {
 	 * one set, so each half keeps its own single derivation.
 	 */
 	valueArgumentCommands: ReadonlySet<string>;
+	/**
+	 * Names (primaries and aliases) of commands whose registry entry declares an
+	 * argument at all — `SlashCommandMeta.arguments` is `optional` or
+	 * `required` (`slash-commands.tsx`, off the backend's own catalogue).
+	 *
+	 * THE THIRD SOURCE, and it is not a convenience: the other two are narrower
+	 * than the field they approximate. `/login openai` is `arguments:
+	 * "required"` with no inline list and no free-text prompt — the desktop
+	 * forwards the typed word as the SELECTION
+	 * (`desktop_commands.py:127`, `selection=args`) — so a union of those two
+	 * read `/login openai` as prose and stopped a command that runs today
+	 * (review round 1, R1; QA Q1 measured the live consequence: the send was
+	 * refused, because a message may not start with `/`).
+	 *
+	 * Optional so a caller that has not wired it composes exactly as before
+	 * rather than failing to build; the composer wires it.
+	 */
+	argumentCommands?: ReadonlySet<string>;
 	/** Names of commands whose argument list is open before any name is typed. */
 	nameListCommands: ReadonlySet<string>;
 	/**
@@ -352,6 +381,7 @@ export function planSlashSubmission({
 	armedOnlyCommands,
 	valueArgumentCommands,
 	nameListCommands,
+	argumentCommands,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
@@ -390,7 +420,7 @@ export function planSlashSubmission({
 	 * its own.
 	 */
 	const wholeDraft = spliced.text.trim() === "";
-	const opensDraft = draft.slice(0, span.start).trim() === "";
+	const opensDraft = commandWordOpensDraft(draft, span.start);
 
 	// Slash-shaped but not a command this host knows. The misspelling is the
 	// thing to fix, so the caller reports it and keeps the draft rather than
@@ -402,11 +432,16 @@ export function planSlashSubmission({
 
 	/*
 	 * Whether this command's trailing text is its ARGUMENT — the single test the
-	 * rule turns on. `promptCommands` is the free-text half (`consumes_prompt`),
-	 * `valueArgumentCommands` is the list-chosen half (`inlineArgumentFor`).
+	 * rule turns on. Three sources, because the registry declares the fact three
+	 * ways and none of them covers the others: `consumes_prompt` is the free-text
+	 * half, `valueArgumentCommands` is the list-chosen half
+	 * (`inlineArgumentFor`), and `argumentCommands` is the declaration itself
+	 * (`arguments`), which is the only one `/login` appears in (R1).
 	 */
 	const consumesText =
-		promptCommands.has(word) || valueArgumentCommands.has(word);
+		promptCommands.has(word) ||
+		valueArgumentCommands.has(word) ||
+		(argumentCommands ?? EMPTY_COMMANDS).has(word);
 	/*
 	 * And whether the word is armed ONLY by an explicit pick. This narrows the
 	 * DRAFT-OPENING branch alone, never the whole-draft one, because that is what

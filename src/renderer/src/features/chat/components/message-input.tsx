@@ -2131,6 +2131,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// replaces.
 					armedOnlyCommands: slash.armedOnlyCommands,
 					valueArgumentCommands: slash.valueArgumentCommands,
+					// The registry's own declaration of an argument, which is the
+					// only one of the three vocabularies `/login`, `/logout`,
+					// `/credential`, `/stop`, `/fast` and `/move` appear in.
+					argumentCommands: slash.argumentCommands,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -2139,6 +2143,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.promptCommands,
 				slash.armedOnlyCommands,
 				slash.valueArgumentCommands,
+				slash.argumentCommands,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,

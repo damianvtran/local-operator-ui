@@ -172,3 +172,27 @@ test("replaceSpan removes exactly one adjoining separator", () => {
 		caret: 9,
 	});
 });
+
+test("a mid-draft command word opens no list, because the planner reads it as prose", () => {
+	/*
+	 * Design round 1, D1 = UX U2. The list used to open on the tokenizer alone,
+	 * so `fix this /team` offered a roster whose footer promised the command
+	 * would run, while the planner — rewritten by this change — sends that draft
+	 * to the model as written; the first Enter then completed a word the planner
+	 * refuses, and only the second Enter sent anything. `caretPhase` now asks the
+	 * same positional question the planner asks (`commandWordOpensDraft`), so the
+	 * popup and the submit rule cannot disagree about whether a word is a command.
+	 */
+	assert.equal(caretPhase("fix this /team", 13, VOCAB, ARGUMENT_COMMANDS), null);
+	assert.equal(caretPhase("hello /compact", 14, VOCAB, ARGUMENT_COMMANDS), null);
+	assert.equal(
+		caretPhase("fix this /model gpt-5", 20, VOCAB, ARGUMENT_COMMANDS),
+		null,
+	);
+	// The legitimate positions are untouched: the whole draft, and the draft's
+	// opening word with its own argument list.
+	assert.equal(caretPhase("/team", 5, VOCAB, ARGUMENT_COMMANDS), "command");
+	assert.equal(caretPhase("/model ", 7, VOCAB, ARGUMENT_COMMANDS), "argument");
+	// Leading whitespace is still the start of the draft, not a position after it.
+	assert.equal(caretPhase("  /team", 7, VOCAB, ARGUMENT_COMMANDS), "command");
+});
