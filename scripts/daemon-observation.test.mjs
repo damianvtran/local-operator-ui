@@ -44,8 +44,14 @@
  */
 
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -879,5 +885,127 @@ test("a launch re-attaches to the daemon the previous run left running, via the 
 		await withoutToken.stop(false);
 		await reattaching?.stop(false).catch(() => {});
 		await scene.dispose();
+	}
+});
+
+/*
+ * Which install the app runs, and where that answer comes from.
+ *
+ * The DECISION (`checkLocalOperatorExists`) and the SPAWN
+ * (`resolveGlobalConsole`) have to name the same install, and both have to be
+ * able to name it from a launchd-shaped environment: the app is started by
+ * LaunchServices, whose PATH is `/usr/bin:/bin:/usr/sbin:/sbin`, and
+ * `~/.local/bin` - where uv and pipx link their console scripts, and where
+ * `lop-update` installs - is not on it. The shell probe this pair used to share
+ * answered "not found globally" for exactly that reason, so the app fell through
+ * to its own bundled environment and ran a backend the operator never updates
+ * (measured 2026-09-16: bundled 0.55.9 against the installed 0.55.10).
+ *
+ * The shell probe is kept IN this case rather than described, because its empty
+ * answer is the bug: if a later change reinstates it, the assertion that has to
+ * fail is the one about the decision, not a sentence in a comment.
+ */
+const LAUNCHD_PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
+const ENTRY_POINT = "from local_operator.cli import main";
+/** A console script, as uv writes one: an interpreter shebang and the entry point. */
+const consoleScript = (interpreter) => `#!${interpreter}\n${ENTRY_POINT}\n`;
+
+test("the install is named without a shell, and the decision agrees with the spawn", async () => {
+	const savedPath = process.env.PATH;
+	const savedHome = process.env.HOME;
+	/*
+	 * The PATH a GUI-launched app is given, and the home the electron stub hands
+	 * `app.getPath("home")` - the same one `homedir()` must answer, so an install
+	 * written under the fixture home is both searched for and eligible for the
+	 * legacy-environment refusal.
+	 */
+	process.env.PATH = LAUNCHD_PATH;
+	process.env.HOME = HOME;
+	const binDir = join(HOME, ".local", "bin");
+	const shim = join(binDir, "local-operator");
+	const lopShim = join(binDir, "lop");
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	try {
+		mkdirSync(binDir, { recursive: true });
+		writeFileSync(shim, consoleScript(process.execPath));
+
+		assert.equal(
+			spawnSync("/bin/sh", ["-c", "command -v local-operator"], {
+				env: process.env,
+				encoding: "utf8",
+			}).stdout.trim(),
+			"",
+			"the shell probe must find nothing here: that empty answer is the bug this case exists for",
+		);
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			true,
+			"the install is on this machine's disk, and the decision has to reach it without a shell",
+		);
+		assert.equal(
+			await manager.resolveGlobalConsole(),
+			shim,
+			"and the spawn has to name the same script the decision counted",
+		);
+
+		/*
+		 * The fallback name, for an install whose older console script is gone. The
+		 * exact path is asserted only where nothing else on the machine can answer to
+		 * `local-operator` first: a Homebrew or /usr/local copy would win the search
+		 * ahead of this synthetic `lop`, and the assertion would then be about the
+		 * machine rather than about the rule.
+		 */
+		rmSync(shim, { force: true });
+		writeFileSync(lopShim, consoleScript(process.execPath));
+		const anotherInstall = ["/opt/homebrew/bin", "/usr/local/bin"].some((dir) =>
+			existsSync(join(dir, "local-operator")),
+		);
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			true,
+			"`lop` alone is still the operator's install, not a reason to use the bundled environment",
+		);
+		if (!anotherInstall) {
+			assert.equal(
+				await manager.resolveGlobalConsole(),
+				lopShim,
+				"and the fallback name is the one that gets spawned",
+			);
+		}
+
+		/*
+		 * A launcher whose shebang points into the app's own PRE-SPLIT environment is
+		 * not the operator's install: it is the environment the app replaced, and the
+		 * app prepares a split one instead of adopting what it left behind. Asserted
+		 * on macOS alone, because that is where the refusal is applied - the directory
+		 * it names is the macOS application-support one.
+		 */
+		if (process.platform === "darwin") {
+			writeFileSync(
+				shim,
+				consoleScript(
+					join(
+						HOME,
+						"Library",
+						"Application Support",
+						"Local Operator",
+						"local-operator-venv",
+						"bin",
+						"python3",
+					),
+				),
+			);
+			assert.equal(
+				await manager.checkLocalOperatorExists(),
+				false,
+				"a launcher inside the app's own former environment must not be adopted as the operator's install",
+			);
+		}
+	} finally {
+		process.env.PATH = savedPath;
+		process.env.HOME = savedHome;
+		rmSync(binDir, { recursive: true, force: true });
+		await manager.stop(false).catch(() => {});
 	}
 });

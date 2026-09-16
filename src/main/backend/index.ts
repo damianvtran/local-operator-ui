@@ -9,8 +9,9 @@ export {
 	BackendServiceManager,
 	showErrorDialog,
 	// The quit path's failsafe derives from these bounds rather than restating
-	// them, so they are part of the module's surface (review round 3, F12).
-	CONSOLE_RESOLUTION_WORST_MS,
+	// them, so they are part of the module's surface (review round 3, F12). The
+	// console term this list used to carry is gone with the execs it bounded: the
+	// launcher is resolved synchronously now, by `globalConsoleScript`.
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend-service";

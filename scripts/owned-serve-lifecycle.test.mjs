@@ -157,7 +157,6 @@ const {
 	consoleInterpreter,
 	windowsInterpreterCandidates,
 	windowsPathInterpreterCandidates,
-	CONSOLE_RESOLUTION_WORST_MS,
 	INTERPRETER_RESOLUTION_WORST_MS,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
@@ -564,7 +563,6 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			logger: { error: (message) => errors.push(String(message)) },
 			LogFileType: { BACKEND: "backend" },
 			// The derivation's terms, as the module under test imports them.
-			CONSOLE_RESOLUTION_WORST_MS,
 			INTERPRETER_RESOLUTION_WORST_MS,
 			OWNED_STOP_WORST_MS,
 			READINESS_POLL_INTERVAL_MS,
@@ -636,7 +634,6 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		// magnitude above them either. Asserting a bare `<= 60_000` is what forbade
 		// the correct bound and let the 60 s constant survive its own arithmetic.
 		const derived =
-			CONSOLE_RESOLUTION_WORST_MS +
 			INTERPRETER_RESOLUTION_WORST_MS +
 			OWNED_STOP_WORST_MS +
 			READINESS_POLL_INTERVAL_MS;
