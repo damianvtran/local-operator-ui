@@ -41,8 +41,8 @@ import {
 	lstatSync,
 	mkdirSync,
 	mkdtempSync,
-	readdirSync,
 	readFileSync,
+	readdirSync,
 	realpathSync,
 	rmSync,
 	symlinkSync,
@@ -54,7 +54,9 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 /** The shipped directory, resolved to the module loader's own (physical) URL. */
-const SCRIPTS = dirname(fileURLToPath(new URL("./entry-point.mjs", import.meta.url)));
+const SCRIPTS = dirname(
+	fileURLToPath(new URL("./entry-point.mjs", import.meta.url)),
+);
 
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
@@ -93,7 +95,7 @@ function stubBin(root) {
 			"#!/bin/sh",
 			'case "$*" in',
 			`  *repos/*/releases*) printf '%s' '${JSON.stringify(RELEASES)}' ;;`,
-			"  *) echo \"stub gh: unmodelled call: gh $*\" >&2; exit 1 ;;",
+			'  *) echo "stub gh: unmodelled call: gh $*" >&2; exit 1 ;;',
 			"esac",
 			"",
 		].join("\n"),
@@ -153,6 +155,7 @@ function cases(root) {
 	// it rather than report success over an artifact set that is not there.
 	const emptyDist = join(root, "empty-dist");
 	mkdirSync(emptyDist, { recursive: true });
+	const scriptsScope = scriptsScopeRepo(root);
 	return [
 		{
 			// The only case that MUTATES its working directory: each spelling gets its
@@ -286,7 +289,55 @@ function cases(root) {
 			stdout: /build steps carry all \d+ variables/,
 			stderr: /^$/,
 		},
+		{
+			// `ci.yml`'s Lint job, on a scratch repository whose `main` is HEAD: the whole
+			// verdict path runs (base resolution, merge base, changed-file scan) and
+			// answers in its own words, with no biome invocation to depend on and nothing
+			// to clean up. A gate that exits 0 without printing is the shape
+			// `require-report.sh` refuses in the step, and this is what proves this script
+			// cannot produce it.
+			script: "check-scripts-lint.mjs",
+			args: [],
+			cwd: scriptsScope,
+			env: {},
+			status: 0,
+			stdout: /check-scripts-lint: no file under scripts\/ changed since main/,
+			stderr: /^$/,
+		},
 	];
+}
+
+/**
+ * The one case in this table that needs a git checkout rather than a directory.
+ *
+ * `check-scripts-lint.mjs` resolves the repository root with `git rev-parse
+ * --show-toplevel` and compares against a base branch, so a plain folder cannot
+ * drive it at all. Here `main` IS `HEAD`, which is what makes the case free: the
+ * gate's whole verdict path runs - base resolution, merge base, changed-file scan
+ * over a tree that has one committed file under `scripts/` - and it answers in its
+ * own words, so the assertion is that this script cannot be a silent zero rather
+ * than that biome happened to agree about something.
+ */
+function scriptsScopeRepo(root) {
+	const dir = join(root, "scripts-scope");
+	mkdirSync(join(dir, "scripts"), { recursive: true });
+	writeFileSync(join(dir, "package.json"), packageJson("0.24.1"));
+	writeFileSync(join(dir, "scripts", "clean.mjs"), "export const value = 1;\n");
+	const git = (...args) =>
+		execFileSync("git", args, {
+			cwd: dir,
+			encoding: "utf8",
+			env: caseEnv(join(root, "unused")),
+		});
+	git("init", "--quiet", "-b", "main");
+	git("add", "-A");
+	git(
+		"commit",
+		"--quiet",
+		"-m",
+		"a checkout the scope gate can read a base from",
+	);
+	return dir;
 }
 
 /** A directory holding one `package.json`, made fresh for a single invocation. */
@@ -379,7 +430,12 @@ test("a script reached through a symlinked NAME answers too, not just a symlinke
 			true,
 			"the fixture has to be a symlink, or this case exercises nothing",
 		);
-		const kase = { script: "check-runtime-deps.mjs", args: [], cwd: root, env: {} };
+		const kase = {
+			script: "check-runtime-deps.mjs",
+			args: [],
+			cwd: root,
+			env: {},
+		};
 		const byName = run(target, kase, bin, root);
 		const byAlias = run(alias, kase, bin, root);
 		assert.match(
@@ -407,7 +463,9 @@ test("a script this file drives produces its answer, not a silent zero", () => {
 		for (const kase of cases(root)) {
 			const physical = run(join(SCRIPTS, kase.script), kase, bin, root);
 			assert.ok(
-				physical.status !== 0 || physical.stdout !== "" || physical.stderr !== "",
+				physical.status !== 0 ||
+					physical.stdout !== "" ||
+					physical.stderr !== "",
 				`${kase.script} exited 0 and said nothing, which is indistinguishable from not having run`,
 			);
 		}
@@ -472,7 +530,9 @@ function workflowInvokedScripts() {
 		for (const match of text.matchAll(/\bpnpm\s+([\w:.-]+)/g))
 			pnpmScripts.add(match[1]);
 	}
-	const pkg = JSON.parse(readFileSync(join(SCRIPTS, "..", "package.json"), "utf8"));
+	const pkg = JSON.parse(
+		readFileSync(join(SCRIPTS, "..", "package.json"), "utf8"),
+	);
 	for (const name of pnpmScripts) {
 		const body = pkg.scripts?.[name];
 		if (typeof body !== "string") continue;
@@ -487,7 +547,8 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
-	"check-edit-diffs.mjs": "`pnpm check-edit-diffs`; runs at import, and exits on its own result",
+	"check-edit-diffs.mjs":
+		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",
 	"run-desktop-tests.mjs": "`pnpm test:desktop`'s runner; runs at import",
 	"verify-signed-update.mjs": "`signed-update-candidate.yml`; runs at import",
