@@ -52,6 +52,19 @@ export const localOperatorDark: ThemeDefinition = {
 		surface: "#1e1a14",
 		elevated: "#282318",
 		sunken: "#0f0c08",
+		/*
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.20 from `surface`, 2.87 from `elevated` and 6.39
+		 * from `sunken`.
+		 *
+		 * The ink floors are the binding constraint in this palette, and this is
+		 * the tightest case of the twelve: `inkDim` measures 4.72:1 here against
+		 * the 4.5:1 floor (§ 3), because the brand ramp is already carrying the
+		 * warm chroma that keeps a step legible without more lightness. A deeper
+		 * `highlight` would spend that headroom, which is why the band is entered
+		 * at its bottom rather than its middle.
+		 */
+		highlight: "#25211b",
 
 		ink: "#f1eee6",
 		inkMuted: "#b5afa2",
@@ -165,6 +178,15 @@ export const localOperatorLight: ThemeDefinition = {
 		surface: "#faf8f1",
 		elevated: "#fffefb",
 		sunken: "#efe9db",
+		/*
+		 * The current row's own ground: `surface` stepped -11 on every channel
+		 * toward black. ΔE00 2.28 from `surface`, 3.98 from `elevated` and 3.24
+		 * from `sunken` — the
+		 * three constraints this palette's near-white ladder puts closest
+		 * together, and the reason the step is a step rather than the `sunken`
+		 * well it used to be.
+		 */
+		highlight: "#efede6",
 
 		ink: "#211e18",
 		inkMuted: "#565147",

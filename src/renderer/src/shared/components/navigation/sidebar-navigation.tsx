@@ -2,6 +2,7 @@ import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { Button, Tooltip } from "@shared/components/ui";
@@ -229,11 +230,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * ## Why a visible chord
 	 *
 	 * The gesture is what makes this surface fast, and a user who never learns it
-	 * uses the palette once. The chord is written on the row (dim, monospace,
-	 * because it is machine voice) rather than in a tooltip, so the rail teaches
-	 * Cmd+K without being asked. Not `KeyboardShortcut`'s caps, though the same
-	 * text is used: a cap is `bg-sunken`, and this rail IS `sunken`, so a cap here
-	 * would be a key with no key around it.
+	 * uses the palette once. The chord is written on the row (the app's key cap, the
+	 * same one the palette's own footer prints) rather than in a tooltip, so the rail
+	 * teaches Cmd+K without being asked. It used to be plain monospace HERE and caps
+	 * there, on the argument that a cap is `bg-sunken` and this rail IS `sunken`, so a
+	 * cap would be a key with no key around it — true of that cap, and the reason the
+	 * cap lost its fill rather than keeping two spellings of one thing
+	 * (`docs/command-palette.md` records the single idiom).
 	 *
 	 * The macOS spelling rides a real platform check rather than a guess: off
 	 * macOS the same row reads Ctrl+K.
@@ -255,21 +258,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			<Search size={16} aria-hidden="true" className="shrink-0" />
 			<span className="truncate">Search</span>
 			{/*
-			 * Decorative: the accessible name above already carries the chord.
+			 * Decorative: the accessible name above already carries the chord, so the
+			 * caps are hidden from a screen reader rather than announced beside it.
 			 *
-			 * Plain monospace rather than the app's key cap, because a cap is
-			 * `bg-sunken` and this rail IS `sunken`: the cap's own ground would
-			 * vanish into the row and leave a boxless glyph. The panel's footer
-			 * prints the same chips on `elevated`, where a cap is visible; the two
-			 * idioms are one decision and `docs/command-palette.md` records it. One
-			 * ink step up from the row's label, so the chord reads as a chord rather
-			 * than as fine print (design round 1, D6).
+			 * The app's own key cap, on the rail's own `sunken` ground. That is only
+			 * possible because a cap has no fill of its own: the `bg-sunken` this
+			 * component used to paint would vanish into this row exactly as the comment
+			 * above says, which is why this row was monospace text for a round while
+			 * the panel's footer drew caps. One idiom, one geometry, one ink. The ink is
+			 * a step up from the row's label, so the chord reads as a chord rather than
+			 * as fine print (design round 1, D6).
 			 */}
-			<span
-				aria-hidden="true"
-				className="ml-auto font-mono text-ink-muted text-mono-sm"
-			>
-				{paletteShortcutCaps(isMac)}
+			<span aria-hidden="true" className="ml-auto">
+				<KeyboardShortcut shortcut={paletteShortcutCaps(isMac)} />
 			</span>
 		</button>
 	) : (
