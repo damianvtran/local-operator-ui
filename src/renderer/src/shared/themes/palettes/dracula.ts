@@ -28,8 +28,9 @@ export const dracula: ThemeDefinition = {
 		elevated: "#3D4055",
 		sunken: "#21222C",
 		/*
-		 * The current row's own ground: `surface` mixed 3.5% toward white. ΔE00
-		 * 2.26 from `surface`, 2.63 from `elevated` (the same row's hover step, so
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.26 from `surface`, 2.63 from `elevated` (the same
+		 * row's hover step, so
 		 * the pointer cannot erase the selection) and 8.72 from `sunken`.
 		 */
 		highlight: "#36384d",

@@ -23,8 +23,9 @@ export const radient: ThemeDefinition = {
 		elevated: "#282D47",
 		sunken: "#0A0D12",
 		/*
-		 * The current row's own ground: `surface` mixed 3.1% toward white. ΔE00
-		 * 2.21 from `surface`, 5.05 from `elevated` and 10.06 from `sunken`.
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.21 from `surface`, 5.05 from `elevated` and 10.06
+		 * from `sunken`.
 		 */
 		highlight: "#212636",
 

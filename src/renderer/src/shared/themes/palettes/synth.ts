@@ -21,8 +21,9 @@ export const synth: ThemeDefinition = {
 		elevated: "#2C1D43",
 		sunken: "#06020D",
 		/*
-		 * The current row's own ground: `surface` mixed 3.3% toward white. ΔE00
-		 * 2.20 from `surface`, 3.39 from `elevated` and 15.43 from `sunken` — the
+		 * The current row's own ground: `surface` stepped +8/+8/+7 on R/G/B
+		 * toward white. ΔE00 2.20 from `surface`, 3.39 from `elevated` and 15.43
+		 * from `sunken` — the
 		 * widest gap between the two roles of any palette here, which is what
 		 * `sunken` was doing to this panel.
 		 */

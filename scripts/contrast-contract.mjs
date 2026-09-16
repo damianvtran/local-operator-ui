@@ -1165,8 +1165,11 @@ const STRUCTURAL_CALL_SITES = [
 		 *
 		 * WHY NOT `sunken`, WHICH IS WHAT THIS ROW SPENT A ROUND ON. `sunken` is
 		 * RECESSED — a well, not a mark — and 3.75-14.94 from `surface`, which is
-		 * the dark box the operator reported. It is also the role ~50 call sites
-		 * depend on being deep, so the row could not be quietened by moving it.
+		 * the dark box the operator reported. It is also the role 97 `*-sunken`
+		 * utility occurrences across 66 files under `src/renderer` depend on being
+		 * deep (85 live class usages and 12 inside prose, the palettes and the
+		 * generated stylesheet excluded), so the row could not be quietened by moving
+		 * it.
 		 * What no palette assertion can see is the CLASS on the row, which is how
 		 * that shipped: every row in this file stayed green while painting a ground
 		 * the user could not see, and later while painting one that shouted.
@@ -1175,6 +1178,16 @@ const STRUCTURAL_CALL_SITES = [
 		 * too, by resolving the row's own class expression through the shipped
 		 * `cn`); a palette edit that collapsed `highlight` onto `surface`,
 		 * `elevated` or `sunken` fails the `highlight` loop above.
+		 *
+		 * AND WHY `font-medium` IS IN THIS PIN, NOT JUST THE ROLE. A quietened ground
+		 * does not survive its neighbours on its own: the rows around a current one
+		 * carry `hover:bg-elevated`, which is a LOUDER step off `surface` than
+		 * `highlight` on the dark palettes (measured in the shipped frames: hovered
+		 * neighbour 2.20-4.58, current row 2.18-2.35, so selection over hover fell
+		 * from 0.93 / 0.97 / 1.89 to 0.48 / 0.52 / 0.49). The second, non-colour step
+		 * is what keeps the persistent state legible beside the pointer, it is the
+		 * step the settings rail's active row already carries (the pin below), and it
+		 * is in the pin for that reason rather than as a style.
 		 *
 		 * The `hover:` half is part of the ground, not decoration: `rowStyle`
 		 * carries `hover:bg-elevated`, and the hover variant outranks a bare
@@ -1188,8 +1201,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat sidebar current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'const rowCurrent = "bg-highlight text-ink hover:bg-highlight";',
-		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `highlight` is the role authored for the current row, and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground arriving",
+		must: 'const rowCurrent = "bg-highlight font-medium text-ink hover:bg-highlight";',
+		why: "the panel's ground is `surface`, where a wash selection is invisible in tokyoNight (ΔE00 1.05) and `sunken` is a 3.75-14.94 recessed box; `highlight` is the role authored for the current row, `font-medium` is the non-colour step that keeps the persistent mark legible beside a hovered neighbour's louder `elevated` step, and a bare background loses to `rowStyle`'s hover step on the row the user is already on; no palette assertion can see a class, so this is the only place in this file that can catch the wrong ground or a lost second signal arriving",
 	},
 	{
 		/*
@@ -1754,8 +1767,9 @@ for (const { id, palette: p } of palettes) {
 	 *
 	 * The ink floors on it are the other half, and they are what makes "one ink
 	 * for every cap" a claim this file holds up rather than a preference: the
-	 * caps inside a current row are `ink-muted`, and their ground changes when the
-	 * row becomes the current one.
+	 * caps inside a current row sit on this ground at `ink-dim` (the role the
+	 * caps moved to, measured worst 4.72:1 here against the 4.5:1 floor), and
+	 * their ground changes when the row becomes the current one.
 	 */
 	for (const other of ["surface", "elevated", "sunken"]) {
 		if (!isHex(p.highlight) || !isHex(p[other])) continue;

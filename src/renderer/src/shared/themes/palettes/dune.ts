@@ -23,8 +23,9 @@ export const dune: ThemeDefinition = {
 		// measures under the 1.03:1 separation floor.
 		sunken: "#050403",
 		/*
-		 * The current row's own ground: `surface` mixed 2.8% toward white. ΔE00
-		 * 2.20 from `surface`, 3.72 from `elevated` and 6.63 from `sunken`.
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.20 from `surface`, 3.72 from `elevated` and 6.63
+		 * from `sunken`.
 		 */
 		highlight: "#211e1b",
 

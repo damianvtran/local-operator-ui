@@ -85,7 +85,16 @@ the ground of a row the reader is currently ON. It is a *shallow* step off
 ones — authored to land at **ΔE00 2.0–2.5 from `surface`** (the twelve palettes
 measure 2.18–2.28). A selection is a mark on a panel, not a hole in it: `sunken`
 is always recessed and measures 3.75–14.94 from `surface`, which is a dark box
-rather than a highlight, and it is the role ~50 call sites depend on being deep.
+rather than a highlight, and it is the role 97 `*-sunken` utility occurrences
+across 66 files under `src/renderer` depend on being deep (85 live class usages
+and 12 inside prose, the palettes and the generated stylesheet excluded).
+
+A mark also needs to survive the pointer, which is the second half of the same
+problem: a row's hover step is `elevated`, which is LARGER than `highlight` on the
+dark palettes, so a current row marked by ground alone reads as the less
+important of the two. The second signal is `font-medium`, the step the settings
+rail's active row already carried; the two rails now mark a current row the same
+way.
 
 `highlight` is not in `check-themes`' `GROUNDS` list, because that list is the set
 a control is drawn on one of at a time and every ink and structural border is
@@ -313,8 +322,10 @@ exactly 1px there — the weight the paragraph above calls a divider. It holds
 only because weight is stroke times contrast: a `hairline` is the faintest
 border in the system and a 12px glyph is `ink-dim` or darker. There is no
 margin left below it. So the answer under 12 is to stop shrinking, not to
-thicken — `inline-edit` puts 10px glyphs inside keyboard shortcut caps and is
-the one site in the tree that goes lower. A named exception, not a step.
+thicken — and there is now no site in the tree that goes lower: the keyboard
+cap's glyphs are drawn at the 12px its own text is set in, and the
+`inline-edit` footer, which used to pin them to 10px with `[&_svg]:size-2.5`,
+scopes its override to the caps at `size-3` instead (design round 1, D5).
 
 Above 24 is illustration rather than iconography: 28 in the onboarding
 congratulations, 32 in the installer carousel and the two file dropzones, 48
