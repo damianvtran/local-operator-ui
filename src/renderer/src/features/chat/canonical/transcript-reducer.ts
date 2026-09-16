@@ -1546,23 +1546,31 @@ function durableRecord(
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
-	options: {
-		replace?: boolean;
-		keepPaging?: boolean;
-		/**
-		 * The instant this read was scheduled for: the command receipt that started
-		 * the pass, which `slash-dispatch.ts` takes with `Date.now()` and the stop
-		 * predicate already compares against (`tailCarriesOutcome`).
-		 *
-		 * A CLEARED view is scoped by it, and that is the whole reason it is here:
-		 * "outcome rows" alone was too wide, because the pre-clear passes' rows are
-		 * outcome rows too — `/clear`, keep working, `/compact` re-admitted them
-		 * (QA round 6's Q14, measured on four sessions and two heads). The pass the
-		 * read exists for is the one at or after this instant, so that is what a
-		 * cleared view keeps.
-		 */
-		outcomeSince?: number;
-	} = {},
+	options: { replace?: boolean } & (
+		| {
+				keepPaging: true;
+				/**
+				 * The instant this read was scheduled for: the command receipt that
+				 * started the pass, which `slash-dispatch.ts` takes with `Date.now()`
+				 * and the stop predicate already compares against
+				 * (`tailCarriesOutcome`).
+				 *
+				 * A CLEARED view is scoped by it, and that is the whole reason it is
+				 * here: "outcome rows" alone was too wide, because the pre-clear
+				 * passes' rows are outcome rows too — `/clear`, keep working,
+				 * `/compact` re-admitted them (QA round 6's Q14, measured on four
+				 * sessions and two heads).
+				 *
+				 * REQUIRED wherever `keepPaging` is set, which is a TYPE rather than
+				 * a test: the pair is one fact (this read, for this pass), and a
+				 * caller that dropped the instant would leave a cleared view
+				 * unscoped — the defect returning silently. The wiring test pins the
+				 * value; this makes its absence uncompilable.
+				 */
+				outcomeSince: number;
+		  }
+		| { keepPaging?: false; outcomeSince?: never }
+	) = {},
 ): TranscriptState {
 	/*
 	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
