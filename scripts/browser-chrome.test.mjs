@@ -2373,17 +2373,33 @@ test("each host stamps its own dock tag, so a run can say which dock it drove", 
 	const route = shippedSource(
 		"src/renderer/src/features/browser/components/browser-page.tsx",
 	);
-	assert.ok(
-		pane.includes('dockSurfaceTag="browser-pane-dock"'),
-		"the pane names its dock, so a frame of a docked pane is attributable",
+	/*
+	 * THE TAGS ARE READ OUT OF THE TWO FILES AND THEN COMPARED, rather than two
+	 * literals compared with each other (review round 2, NIT 2). The round-1 version
+	 * closed with `assert.notEqual("browser-pane-dock", "browser-approvals-dock")` -
+	 * two strings typed in the test, which cannot fail and would have passed unchanged
+	 * if both hosts stamped one tag. What the claim needs is the pair as the tree
+	 * spells them, each exactly once: the `deepEqual`s pin the values (they subsume
+	 * the two `includes` pins this test used to carry), and the `notEqual` on the
+	 * parsed pair is what makes "the two hosts cannot share one dock tag" falsifiable.
+	 */
+	const dockTagsIn = (source) =>
+		[...source.matchAll(/dockSurfaceTag="([^"]+)"/g)].map((match) => match[1]);
+	const paneTags = dockTagsIn(pane);
+	const routeTags = dockTagsIn(route);
+	assert.deepEqual(
+		paneTags,
+		["browser-pane-dock"],
+		"the pane names its dock once, and by its own tag, so a frame of a docked pane is attributable",
 	);
-	assert.ok(
-		route.includes('dockSurfaceTag="browser-approvals-dock"'),
-		"and the route keeps its own",
+	assert.deepEqual(
+		routeTags,
+		["browser-approvals-dock"],
+		"and the route keeps its own, once",
 	);
 	assert.notEqual(
-		"browser-pane-dock",
-		"browser-approvals-dock",
-		"the two hosts cannot share one dock tag",
+		paneTags[0],
+		routeTags[0],
+		"the two hosts cannot share one dock tag, or a run could not say which dock its frames show",
 	);
 });
