@@ -706,6 +706,18 @@ function stubDaemon(port, state) {
 					],
 					truncated: false,
 					limit: 500,
+					/*
+					 * The reads this daemon could not answer, additive and optional
+					 * (local-operator #1170). Absent for every other scene, so the
+					 * default rendering stays the one the other frames photograph;
+					 * the flap scene sets it to `liveness` because a daemon under a
+					 * probe it cannot meet is exactly the machine that cannot read
+					 * which chats are running (design round 2, D11 - the state had no
+					 * frame at all until this scene carried it).
+					 */
+					...(state.degradedReads?.length
+						? { degraded: state.degradedReads }
+						: {}),
 				},
 			});
 			return;
@@ -891,6 +903,14 @@ async function sceneFlap() {
 		 * is not part of the scene.
 		 */
 		features: { session_catalogue: 2, profile_catalogue: 1, team_catalogue: 1 },
+		/*
+		 * And the marker #1170 added, so the Active section's own sentence is in
+		 * the frame: the flap is a daemon that cannot answer a probe, which is the
+		 * same condition as a liveness read that did not answer, and the sidebar
+		 * has to say so rather than claim nothing is running over rows it holds
+		 * (design round 2, D11).
+		 */
+		degradedReads: ["liveness"],
 	};
 	const server = stubDaemon(port, state);
 	// A record this time, so the app ATTACHES to the stub: the flap is a change in

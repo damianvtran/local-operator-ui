@@ -1140,7 +1140,7 @@ export function ChatSidebar({
 											.filter((row) => row.active)
 											.map((row) => sessionRow(row))
 									) : (
-										<p className="px-2 text-meta text-ink-muted">
+										<p className="px-2 text-meta text-ink-dim">
 											{livenessUnread
 												? "The daemon could not read which chats are running, so this list may be incomplete."
 												: "Nothing running right now."}
