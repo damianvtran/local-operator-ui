@@ -69,10 +69,13 @@ import {
 	candidateKey,
 	chosenByHandSurvives,
 	clickFooter,
+	commandChoiceUnambiguous,
+	commandLabels,
 	enterFooter,
 	phaseLabel,
 	pickArmsCommand,
 	rowId,
+	sharedCommandPrefix,
 	slashDestructive,
 	slashKeyIntent,
 	slashRunAllowed,
@@ -206,6 +209,15 @@ export type SlashCompletionState = {
 	inline: InlineArgumentSource | undefined;
 	/** The argument text typed so far, for the ambiguity gate. */
 	argumentQuery: string;
+	/**
+	 * The COMMAND word typed so far, without its slash.
+	 *
+	 * The command phase's mirror of `argumentQuery`, and added for the same reason
+	 * the two footers read the same inputs the router does: Enter's meaning in the
+	 * command phase is decided by comparing this word against the active row's
+	 * label, so the popup cannot state it without holding it.
+	 */
+	commandQuery: string;
 	/** The argument list's own loading/error/empty state. */
 	argumentList: SlashArgumentListState;
 	close(): void;
@@ -635,6 +647,7 @@ export function useSlashCompletion({
 		argumentCommand: argumentWord,
 		inline,
 		argumentQuery: argumentContext?.value ?? "",
+		commandQuery: commandContext?.query ?? "",
 		argumentList,
 		close,
 		setActive,
@@ -696,6 +709,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const argument = state.phase === "argument";
 	const activeRow = state.matches[state.active];
 	const activeArgument = activeRow?.kind === "argument" ? activeRow.row : null;
+	const activeCommand = activeRow?.kind === "command" ? activeRow : null;
 	/*
 	 * The footer names what Enter does in the state the user is looking at. The
 	 * four meanings of Enter (complete, complete-and-wait, run, stage) are real
@@ -703,6 +717,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	 * which one was next; the gate that decides run-vs-complete is invisible too
 	 * (round 1 UX U2). Staging is announced by its own note instead — it happens
 	 * on a composer Enter with the list already closed.
+	 *
+	 * Both phases answer from the SAME decision the router reads, so the line
+	 * cannot promise a gesture the key does not perform: the argument phase's
+	 * `slashRunAllowed`, the command phase's `commandChoiceUnambiguous`. Its `runs`
+	 * is `pickRuns` for the same reason — those are the two halves of what Enter
+	 * does to a command row (may it run, and does its destination).
 	 */
 	/*
 	 * The active row's ROUTE, read ONCE because BOTH lines of copy below are read
@@ -730,9 +750,19 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const footer = enterFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,
-		label: activeRow?.kind === "command" ? activeRow.label : "",
+		label: activeCommand?.label ?? "",
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: pickRuns,
+		/*
+		 * Whether this row's completion OPENS a list, asked of the registry table the
+		 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
+		 * command names. It separates the two `runs: false` command states the copy
+		 * has to word differently (UX round 1, U4): `/model` completes and opens its
+		 * list, `/clear` completes and is run by the NEXT Enter.
+		 */
+		opensList: Boolean(
+			activeCommand && inlineArgumentFor(activeCommand.command.destination),
+		),
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 		/*
@@ -756,7 +786,6 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
 		paneHasSession: state.paneHasSession,
 		hoists: state.hoists,
-		chosenByHand: state.chosenByHand,
 		unambiguous: activeArgument
 			? slashRunAllowed({
 					argumentQuery: state.argumentQuery,
@@ -768,7 +797,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					),
 					chosenByHand: state.chosenByHand,
 				})
-			: false,
+			: activeCommand
+				? commandChoiceUnambiguous({
+						query: state.commandQuery,
+						label: activeCommand.label,
+						total: state.matches.length,
+						chosenByHand: state.chosenByHand,
+					})
+				: false,
+		/*
+		 * The ambiguous line's two inputs: the word typed and the prefix the
+		 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
+		 * the copy cannot claim a growth the key will not make (it is a no-op when
+		 * the word is already the prefix, and when the candidates share nothing).
+		 */
+		query: state.commandQuery,
+		prefix: sharedCommandPrefix(commandLabels(state.matches)),
 	});
 	const click = clickFooter({
 		phase: argument ? "argument" : "command",
@@ -996,8 +1040,11 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
  * and the ambiguity gate — the TUI's own split (`editor.py:_resolve_argument`,
  * `:8060-8115`):
  *
- *   - command phase: complete the word, replace the token span, open the
- *     argument list when the destination has one; NEVER submit.
+ *   - command phase, Tab: complete the word, replace the token span, open the
+ *     argument list when the destination has one; never submit.
+ *   - command phase, Enter: the same completion, PLUS a run when the choice is
+ *     unambiguous. An ambiguous query grows the word to the matches' common
+ *     prefix instead and leaves the list open.
  *   - argument phase, NAME+message command: fill the name and a space, close the
  *     list, never submit. For these "a name is chosen" is not "run it", it is
  *     "ready for the message" (`editor.py:NAME_ARGUMENT_COMMANDS`).
@@ -1011,6 +1058,7 @@ export function handleSlashKeyDown(
 	event: KeyboardEvent<HTMLTextAreaElement>,
 	state: SlashCompletionState,
 	onPick: (row: CompletionRow, disposition: { run: boolean }) => void,
+	onExtend: (word: string) => void,
 ): boolean {
 	/*
 	 * The decision itself is `slashKeyIntent`, which is pure and bundled by
@@ -1026,12 +1074,11 @@ export function handleSlashKeyDown(
 		active: state.active,
 		matches: state.matches,
 		argumentQuery: state.argumentQuery,
+		commandQuery: state.commandQuery,
 		argumentCommand: state.argumentCommand,
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: state.inline?.runs ?? false,
 		chosenByHand: state.chosenByHand,
-		armedOnlyCommands: state.armedOnlyCommands,
-		hoists: state.hoists,
 	});
 	switch (intent.kind) {
 		case "move":
@@ -1052,6 +1099,14 @@ export function handleSlashKeyDown(
 			onPick(row, { run: intent.run });
 			return true;
 		}
+		case "extend":
+			/*
+			 * The ambiguous Enter. The draft is rewritten to the common prefix and the
+			 * list is LEFT OPEN — no pick, no close — which is the whole difference
+			 * between this and a completion (`_extend_to_common_prefix`).
+			 */
+			onExtend(intent.prefix);
+			return true;
 		case "close":
 			// Closes the popup and latches the phase; the draft is untouched.
 			state.close();
@@ -1070,4 +1125,10 @@ export function handleSlashKeyDown(
  * (review F1 / QA Q4) was invisible to a suite that hand-built the string the
  * pick writes (review F7). A component file cannot be bundled there: it imports
  * React, the desktop hooks and the whole picker registry.
+ *
+ * `extensionFor` lived here and was MOVED to `slash-contract.ts` in round 1: it
+ * is a pure function of the draft, the caret and the word span, which is exactly
+ * the contract module's remit, and it is what lets
+ * `scripts/slash-contract.test.mjs` bundle and execute the shipped splice rather
+ * than trusting it by eye. Find it there.
  */

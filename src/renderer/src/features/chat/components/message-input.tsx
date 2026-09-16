@@ -87,7 +87,14 @@ import {
 	useSlashCompletion,
 } from "./slash-commands";
 import { completionFor } from "./slash-completion";
+/*
+ * `extensionFor` comes from the CONTRACT module rather than from the popup
+ * component: the ambiguous Enter's splice is a pure function of the draft, the
+ * caret and the word span, and living there is what lets
+ * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
+ */
 import {
+	extensionFor,
 	pickArmsCommand,
 	pointerPickRuns,
 	reassembledNote,
@@ -1308,9 +1315,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * declares it (`slash.inline.runs`: `/model` runs its choice, `/team` and
 				 * `/theme` never do). A COMMAND row's DESTINATION declares it
 				 * (`pointerPickRuns`), which is the rule that lets a click open a panel
-				 * instead of only completing the word. The keyboard never runs a command
-				 * row - `handleSlashKeyDown` hands every one of them `run: false` - so
-				 * that half is the pointer path only.
+				 * instead of only completing the word.
+				 *
+				 * That destination rule is the ONE predicate both gestures read, and it is
+				 * read HERE rather than at either caller so a click and an unambiguous
+				 * Enter cannot disagree about whether `/model` runs: the keyboard's own
+				 * answer is the ambiguity gate alone, and a destination with an inline
+				 * list refuses a run on both paths. It is also why `window.close`,
+				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
+				 * single keystroke never detaches the app or clears the transcript view,
+				 * which is the behaviour they already had.
 				 */
 				const shouldRun =
 					disposition.run &&
@@ -1344,10 +1358,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				paneHasSession,
 			],
 		);
+		/*
+		 * The AMBIGUOUS Enter's half of the pick path: grow the typed command word
+		 * to the matches' common prefix and leave the popup open.
+		 *
+		 * A second entry point rather than a flag on `handleSlashPick`, because the
+		 * two are genuinely different gestures: a pick APPLIES a row, closes the
+		 * list and may run a command, while this one writes part of the word, keeps
+		 * the list up and never acts on a row. Sharing one callback would mean a
+		 * disposition that means "do not act" (`_extend_to_common_prefix`,
+		 * `editor.py:8326-8345`).
+		 *
+		 * The caret is placed at the new END OF THE WORD rather than at the end of
+		 * the draft, so a user narrowing a command in front of a written message
+		 * keeps typing where they were.
+		 */
+		const handleSlashExtend = useCallback(
+			(prefix: string) => {
+				const extension = extensionFor(
+					newMessage,
+					caret,
+					prefix,
+					slash.commandNames,
+				);
+				if (!extension) return;
+				pendingCaret.current = extension.caret;
+				setNewMessage(extension.text);
+				setCaret(extension.caret);
+			},
+			[newMessage, caret, slash.commandNames, setNewMessage],
+		);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
-				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
+				if (
+					handleSlashKeyDown(event, slash, handleSlashPick, handleSlashExtend)
+				) {
 					event.preventDefault();
 					return;
 				}
@@ -1409,6 +1455,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[
 				slash,
 				handleSlashPick,
+				handleSlashExtend,
 				handleKeyDown,
 				planFor,
 				applyPlan,
@@ -1933,6 +1980,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						frontend={sessionStatus?.frontend}
 						runDetails={runDetails}
 						isSmallView={isSmallView}
+						/*
+						 * The row's last activity chip unmounts when its work settles. If
+						 * that chip held focus the browser drops it to `<body>`, so the row
+						 * hands it back HERE rather than finding the box itself: this is
+						 * where the composer's own ref lives, and `textareaRef` is the same
+						 * node the field renders (`UX round 1, U1`).
+						 */
+						onFocusComposer={() => textareaRef.current?.focus()}
 					/>
 				</ErrorBoundary>
 				{(abandonNotice ||
