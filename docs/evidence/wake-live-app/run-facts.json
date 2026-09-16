@@ -1,38 +1,91 @@
 {
-  "hello": {
-    "armed": true,
-    "outDir": "/tmp/wakes-live2/drive/frames",
-    "title": "Local Operator",
-    "route": "/chat",
-    "href": "file:///Users/damian/local-operator-ui-worktrees/composer-wakes/out/renderer/index.html#/chat",
-    "theme": "localOperatorDark",
-    "viewport": {
-      "width": 1380,
-      "height": 868,
-      "devicePixelRatio": 2
-    },
-    "visibilityState": "visible",
-    "hasFocus": false,
-    "apiBaseUrl": "http://127.0.0.1:8801",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+ "hello": {
+  "armed": true,
+  "outDir": "/tmp/wakes-live3",
+  "title": "Local Operator",
+  "route": "/chat",
+  "href": "file:///Users/damian/local-operator-ui-worktrees/composer-wakes/out/renderer/index.html#/chat",
+  "theme": "localOperatorDark",
+  "viewport": {
+   "width": 1380,
+   "height": 868,
+   "devicePixelRatio": 2
   },
-  "facts": {
-    "windowMode": "headless",
-    "appVersion": "44.3.0",
-    "platform": "darwin",
-    "title": "Local Operator",
-    "windowSize": {
-      "width": 1380,
-      "height": 900
-    },
-    "contentBounds": {
-      "width": 1380,
-      "height": 868
-    },
-    "visible": false,
-    "focused": false,
-    "minimized": false,
-    "frames": [],
-    "outDir": "/tmp/wakes-live2/drive/frames"
+  "visibilityState": "visible",
+  "hasFocus": false,
+  "apiBaseUrl": "http://127.0.0.1:8801",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.25.6 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+ },
+ "facts": {
+  "windowMode": "headless",
+  "appVersion": "0.25.6",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+   "width": 1380,
+   "height": 900
+  },
+  "contentBounds": {
+   "width": 1380,
+   "height": 868
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/tmp/wakes-live3"
+ },
+ "sessions": {
+  "empty": "38729b6c9750",
+  "one": "209652f679c8",
+  "many": "b7a48cc57f6f"
+ },
+ "noChip": {
+  "present": false,
+  "row": false
+ },
+ "one": {
+  "chipLabel": "Open the wakes in run details \u2014 1 wake armed",
+  "chips": {
+   "goal": false,
+   "plan": false,
+   "wakes": true,
+   "subagents": false,
+   "jobs": false
   }
+ },
+ "hover": {
+  "tooltipOpen": true
+ },
+ "focus": {
+  "activeElement": "Open the wakes in run details \u2014 1 wake armed"
+ },
+ "press": {
+  "runPanelOpen": true,
+  "rows": 1
+ },
+ "many": {
+  "chipLabel": "Open the wakes in run details \u2014 8 wakes armed",
+  "rows": 8
+ },
+ "viewport": {
+  "width": 1380,
+  "height": 868,
+  "devicePixelRatio": 2
+ },
+ "hasFocus": false,
+ "apiBaseUrl": "http://127.0.0.1:8801",
+ "capture": {
+  "scene": "wakes (the rig in scripts/wake-rig.mjs, deleted before the commit)",
+  "head": "c7793869e227757393e865ed48fb1b10ec7732e7",
+  "why": "The set this replaces photographed a composer band #228 had already retired; this run re-shoots all seven frames at the head that ships.",
+  "command": "WAKE_RIG_API_URL=http://127.0.0.1:8801 WAKE_RIG_HOME=/tmp/wakes-live2/home WAKE_RIG_CONFIG=/tmp/wakes-live2 WAKE_RIG_TOKEN=<rig token> LOCAL_OPERATOR_UI_WINDOW_MODE=headless node scripts/wake-rig.mjs --scene wakes --out /tmp/wakes-live3",
+  "daemon": "LOCAL_OPERATOR_CONFIG_DIR=/tmp/wakes-live2 HOME=/tmp/wakes-live2/home LOCAL_OPERATOR_DESKTOP_TOKEN=<rig token> python -m local_operator.cli serve --port 8801",
+  "sessions": {
+   "one": "209652f679c8 (1 schedule, armed by the real CLI)",
+   "many": "b7a48cc57f6f (8 schedules)",
+   "empty": "38729b6c9750 (nothing armed)"
+  },
+  "onboarding": "completed the app's own persisted flag in the isolated profile and reloaded, because the modal otherwise covers the composer in every frame"
+ }
 }

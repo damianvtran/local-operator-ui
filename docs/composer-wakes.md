@@ -362,7 +362,12 @@ and its bumped nonce, and the source pins for the `Record` that resolves it, so 
 destination added to the union and missed in the pane is a type error) and by
 `docs/evidence/wake-live-app/` — the BUILT app, headless, against a real isolated
 backend with real wakes armed by the real CLI, photographed through the app's own
-`capturePage()` with the click dispatched through CDP's input pipeline. That set
+`capturePage()`, with the press dispatched by the driver's own hit-tested `press`
+verb on the chip's selector (a real event on a real control, and the verb reports
+whether the element's box received the point) and the keyboard focus a real
+`Shift+Tab` through CDP's input pipeline. That set is re-shot at this head, so the
+composer band in it is the band the tree ships rather than the `#228` band a
+release earlier. It
 carries the chip above the composer at one and at eight wakes, the same chip under a
 real pointer and a real keyboard focus, a session with no wakes growing no row at
 all, and the press: `live-wake-pane-press` and `live-wake-pane-many` are the pane
