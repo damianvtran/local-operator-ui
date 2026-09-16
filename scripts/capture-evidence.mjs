@@ -982,6 +982,14 @@ export const STORIES = [
 	["chat-composer-band--long-labels", 900, 572],
 	["chat-composer-band--draft-held", 1380, 872],
 	["chat-composer-band--reduced-motion", 1380, 872, { reducedMotion: true }],
+	/*
+	 * AND THE CAPTURE OPEN ON THE SAME BAND (UX round 4, U16). The band centres
+	 * its group only while the transcript is empty, and that is exactly the state
+	 * in which the sentence above the box used to move the whole group by half
+	 * its height - the movement live `origin/main` does not have. The two frames
+	 * are the pair: `empty-chat` with no sentence, this one with the capture open.
+	 */
+	["chat-composer-band--empty-chat-credential", 1380, 872],
 	[
 		"chat-composer-band--empty-chat",
 		1380,
@@ -1033,6 +1041,46 @@ export const STORIES = [
 	   are the pair a reviewer reads, and the notice is its own frame. */
 	["chat-message-input--stop-control-while-streaming", 1024, 300],
 	["chat-message-input--stop-control-without-capability", 1024, 300],
+	/* THE INLINE CREDENTIAL CAPTURE, one frame per state the operator can be in
+	   (design §1-§10), on the composer's own 1024 measure so they read beside the
+	   rows above. Every one of them is driven by REAL KEYSTROKES in its play
+	   function - `userEvent.type` dispatches the same keydowns a person does -
+	   so the mask, the mint and the Escape restore are exercised by the frames
+	   rather than photographed from a prop that fakes the state, and each play
+	   fails loudly rather than releasing the shutter if its state did not
+	   arrive. `escaped` is the one CREDENTIAL state where the canary is ON SCREEN,
+	   and that is the point of it: it is the only exit that leaves a secret in the
+	   composer, and it is there because the operator asked for it with Esc. That is
+	   also why the draft store is cleared between frames: the escaped plaintext is
+	   PERSISTED (design §6), so without the clear the six states captured after it
+	   restored it and were photographed holding a secret they have nothing to do
+	   with (design round 2, D1). */
+	["chat-message-input--credential-armed", 1024, 300],
+	["chat-message-input--credential-masked", 1024, 300],
+	["chat-message-input--credential-pill-mid-prose", 1024, 300],
+	["chat-message-input--credential-pill-at-line-start", 1024, 300],
+	/*
+	 * THE MARKER NOTHING BACKS (design round 4, D3). The state is a restored
+	 * draft's: the marker text is persisted (§6) and the payload map is a ref, so
+	 * a reload paints a citation nothing holds - in the NOT-STORED register, which
+	 * round 3 gave a dashed edge (design round 4, D2) so its meaning survives its
+	 * hue. The row above is its pair: the same characters, the same position, and
+	 * a live payload.
+	 */
+	["chat-message-input--credential-pill-unbacked", 1024, 300],
+	["chat-message-input--credential-escaped", 1024, 300],
+	/* THE TWO SURFACES ROUND 3 FOUND UNPHOTOGRAPHED (design D3, D4), and the
+	   reason the round-2 "the row grows by at most 7.5px" bound was wrong: the
+	   five states above render on a bare 1024px column with no working-directory
+	   chip and no readings strip, so no frame showed the sentence beside the two
+	   neighbours whose widths decided whether it wrapped - and none paired
+	   `isSmallView` with the capture at all, though the small-view rung is where
+	   the bound measured 11px. `masked-session-pane` carries the chip and the
+	   readings with the sentence; `masked-small-view` is the shipped compact rung
+	   (a 440px column) with the capture open, at the same 300px height so the two
+	   read beside the states above. */
+	["chat-message-input--credential-masked-session-pane", 1024, 300],
+	["chat-message-input--credential-masked-small-view", 440, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
 	   notice branches (design round 1's N2), and the version-skew line. The
@@ -2118,6 +2166,26 @@ const main = async () => {
 
 	/* zustand persist key for the UI preferences store. */
 	const PREFS_KEY = "ui-preferences-storage";
+	/*
+	 * THE DRAFT STORE IS CLEARED FOR EVERY FRAME, and this is a correctness rule
+	 * rather than tidiness. `conversation-input-store` is zustand's `persist`, so
+	 * it outlives the document — and the credential stories TYPE into a composer
+	 * keyed `story`, one of them (the Esc restore) leaving a live canary in the
+	 * persisted draft on purpose. The NEXT story that mounts a composer for the
+	 * same conversation therefore restored that canary and was photographed
+	 * holding it: six states, seventy-two frames, beginning with
+	 * `interrupt-left-work-running`, all of them pictures of a composer the story
+	 * never asked for (design round 2, D1). The mechanism is §6's own decision to
+	 * persist the Esc-restored characters, so the fix is not a code change: each
+	 * frame now starts from the draft state its own story declares, the same way
+	 * each frame already starts from its own theme.
+	 *
+	 * Nothing is lost by it: a story that needs a draft seeds one itself, in its
+	 * own play function (the composer-band and quote stories do exactly that,
+	 * after this script has run), which is the only honest way to photograph a
+	 * restored draft anyway.
+	 */
+	const DRAFT_KEY = "conversation-input-store";
 	let seedScript = null;
 	let captured = 0;
 	for (const [story, width, height, options = {}] of stories) {
@@ -2203,7 +2271,7 @@ const main = async () => {
 			({ identifier: seedScript } = await cdp.send(
 				"Page.addScriptToEvaluateOnNewDocument",
 				{
-					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); } catch {}`,
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)}); } catch {}`,
 				},
 			));
 

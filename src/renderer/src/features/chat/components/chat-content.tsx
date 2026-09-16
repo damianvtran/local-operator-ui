@@ -98,6 +98,12 @@ type ChatContentProps = {
 		 * not against a payload a staged reply has already wrapped.
 		 */
 		typed?: string,
+		/**
+		 * See `MessageInputProps.onSendMessage` - the seam between the session
+		 * being created and the message being admitted, which is where a
+		 * credential handed over in a conversation's first message is stored.
+		 */
+		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 	) => SendOutcome | Promise<SendOutcome>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
