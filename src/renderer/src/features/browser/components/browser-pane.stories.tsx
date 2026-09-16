@@ -362,7 +362,8 @@ const CompositionGround: FC<{
 						browserAttentionCount={count}
 						/* The run trigger, so the cluster really does carry all three of
 						   the right slot's choices (design round 1, D6): the badge's corner
-						   and its `mr-1` are about the neighbours it sits between. */
+						   and the room the CLUSTER reserves for it are about the neighbours
+						   it sits between. */
 						runDetails={details}
 					/>
 					<div className="flex min-h-0 grow flex-col gap-3 p-4">

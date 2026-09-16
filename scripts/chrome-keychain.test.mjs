@@ -261,6 +261,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the transcript's horizontal geometry from the live DOM",
 	),
 	guarded(
+		"scripts/header-cluster-geometry.mjs",
+		"spawn",
+		1,
+		"measures the chat header's action cluster - the three controls' boxes, the two gaps between them and the attention badge's ring and clearance - from the live DOM",
+	),
+	guarded(
 		"scripts/click-proof.mjs",
 		"spawn",
 		1,
