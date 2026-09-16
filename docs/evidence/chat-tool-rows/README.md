@@ -145,6 +145,20 @@ line.
   (`lastRecord.kind !== "user"`), because on a conversation asked and not yet answered it
   printed the same clock twice with nothing between them — which is what these frames caught
   on their first take and what the `admitted-send-*` frames would otherwise show.
+- **And it states that time in the same words.** The footer line answers the same question a
+  turn's stamp answers, so it renders the same component; it used to render the HOVER row's
+  `MessageTimestamp`, which formats for a reader already looking at the message, and the two
+  shapes met in one column as `2025-10-09` directly under `Oct 9, 2025, 4:53 AM` — visible in
+  [`../chat-notification-feed-states/cached-paint/`](../chat-notification-feed-states/cached-paint/),
+  where the same frame now carries three stamps in one shape. This is the defect class
+  `date-utils.ts` records in `formatCalendarDate`'s own comment (`August 5, 2026` beside
+  `8/5/2026, 10:40:00 AM`), so it is fixed here rather than left as a follow-up.
+  **What that second pass moved, measured** (`magick compare -metric AE` against the frames the
+  first pass committed): **97 frames, 28px to 50,981px**, every one of them a frame with a footer
+  stamp in it. The two new stories are the one case where the movement is NOT the footer alone:
+  their instants are relative to the capture, so their clock reads a few minutes later than the
+  first pass's (`2:14 PM` against `2:27 PM`) — which is those frames' documented behaviour rather
+  than a defect, and the reason the pair's own comparison is made on the deterministic stories.
 
 ### Theme coverage for this pass
 
