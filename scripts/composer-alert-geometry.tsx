@@ -26,6 +26,8 @@
  * here that could drift from it.
  */
 
+import { CssBaseline } from "@mui/material";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -33,14 +35,8 @@ import {
 import type { Message } from "@renderer/features/chat/types/message";
 import { unreadableAttachmentRefusal } from "@renderer/features/chat/utils/attachment-read";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
-import {
-	DEFAULT_THEME,
-	applyThemeToDocument,
-	getTheme,
-} from "@shared/themes";
+import { DEFAULT_THEME, applyThemeToDocument, getTheme } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
-import { CssBaseline } from "@mui/material";
-import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";

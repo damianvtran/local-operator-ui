@@ -178,7 +178,9 @@ export function assertHealthyFrame(frame, options = {}) {
 	}
 
 	if (requireSignals && typeof frame.navScroll !== "number") {
-		fail("carries no scroll readback, so nothing here rules out a scrolled panel");
+		fail(
+			"carries no scroll readback, so nothing here rules out a scrolled panel",
+		);
 	}
 	if (typeof frame.navScroll === "number" && frame.navScroll > 0) {
 		fail(

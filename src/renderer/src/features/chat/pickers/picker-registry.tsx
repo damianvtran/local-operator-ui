@@ -12,7 +12,8 @@
  *     either a decision picker or, for the read-only diagnostics, one of the
  *     panel views (`destination-pickers` re-exports them from `./panels`).
  *   - `navigate`: an existing settings surface; the picker would duplicate it.
- *   - `direct`: an immediate local action with no UI (clear, exit).
+ *   - `direct`: an immediate local action with no UI (clear, exit, compact -
+ *     the last one runs the owner command itself; see its row below).
  */
 
 import type { FC } from "react";
@@ -23,7 +24,6 @@ import {
 	AnalyticsView,
 	ApprovalsPicker,
 	AsidePicker,
-	CompactView,
 	ContextView,
 	CopyPicker,
 	CredentialPicker,
@@ -87,7 +87,7 @@ export type DestinationEntry =
 	  } & ArgsBehavior)
 	| ({
 			kind: "direct";
-			action: "clear" | "exit" | "focus-cwd-chip";
+			action: "clear" | "exit" | "focus-cwd-chip" | "compact";
 	  } & ArgsBehavior);
 
 /**
@@ -202,7 +202,19 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"session.goal": { kind: "picker", component: GoalPicker },
 	"session.loop": { kind: "picker", component: LoopPicker },
 	"session.aside": { kind: "picker", component: AsidePicker },
-	"session.compact": { kind: "picker", component: CompactView },
+	/*
+	 * `/compact`: a DIRECT destination, the way `/clear` is, because there is no
+	 * decision to present. It used to be a picker whose only job was to run the
+	 * command and then wait for the canonical `compaction` record before it would
+	 * say the pass had finished - a wait nothing retired when the record never
+	 * landed, so the dialog stayed up over a finished pass and only the manual
+	 * Close could dismiss it. The pass narrates itself now: the working line shows
+	 * `compacting context` while it runs and the info line is painted when it
+	 * settles, so the dialog had nothing left to say. `slash-dispatch.ts`'s direct
+	 * branch owns the owner call and why a `native_action` for this destination
+	 * can never mount a picker.
+	 */
+	"session.compact": { kind: "direct", action: "compact" },
 	"session.approvals": {
 		kind: "picker",
 		component: ApprovalsPicker,

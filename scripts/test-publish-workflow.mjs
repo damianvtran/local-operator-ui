@@ -227,7 +227,10 @@ test("every scripts checkout in this workflow carries the whole import closure",
 	// The count is the point of the assertion: a fifth checkout is a new list this
 	// test has just started covering, and a missing one would mean this test stopped
 	// looking at a job without saying so.
-	assert.ok(checkouts >= 4, `only ${checkouts} scripts checkouts found in publish.yml`);
+	assert.ok(
+		checkouts >= 4,
+		`only ${checkouts} scripts checkouts found in publish.yml`,
+	);
 });
 for (const [job, mode] of windowJobs) {
 	test(`${job} runs ${mode} with both pins and its imports checked out`, () => {

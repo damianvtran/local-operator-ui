@@ -19,8 +19,8 @@ type ReplyPreviewProps = {
  * the recessed ground and the left rule already say "this is quoted".
  *
  * ONE TRUNCATED LINE, ON BOTH SURFACES, AND THE FULL TEXT ONE HOVER AWAY (design
- * round 1, D5). The truncation is not the quote: `quoteText` never truncates and
- * the wire carries the whole turn, so a chip is a one-line CLAIM about a quote
+ * round 1, D5). The truncation is not the quote: the quote path never truncates
+ * and the wire carries the whole turn, so a chip is a one-line CLAIM about a quote
  * that is routinely several paragraphs, and every consumer of this block is
  * looking at a composer or a record rather than at the quote itself. On the sent
  * path that left the reader no view of what a message was replying to - the
