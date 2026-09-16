@@ -123,7 +123,6 @@ export function withMockKeychain(args) {
 	return args;
 }
 
-
 /**
  * The comment blanker the scan in `chrome-keychain.test.mjs` runs before it looks
  * for call sites, exported so the tests can pin it directly (round 3, R3-1): it

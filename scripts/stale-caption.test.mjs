@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import { unlink, writeFile } from "node:fs/promises";
+import { test } from "node:test";
 import { build } from "esbuild";
 
 /*

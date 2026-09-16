@@ -1029,10 +1029,14 @@ export type EmptyArgumentList = {
  * design made honest about the three empty causes (round 1 UX U4).
  *
  * The route is named because that is the promise §C16 makes and because the
- * user is otherwise at a dead end holding the command. "Enter opens the full
- * picker" is TRUE in every empty state here: the token is the whole line, so
- * Enter falls through to the composer's planner, which runs the command the
- * user typed and opens its picker (round 1 D2).
+ * user is otherwise at a dead end holding the command — but the route is "the
+ * command runs", not "a picker opens". The old sentence promised the picker and
+ * that is not what Enter does: it falls through to the composer's planner,
+ * which runs the command with what has been typed, and whether that opens a
+ * control is the DESTINATION's decision (measured, UX round 2, U10: `/model
+ * gpt-5` + Enter switches the model and opens nothing). Saying "Enter runs the
+ * command" is true in every empty state here and promises nothing the app does
+ * not do.
  *
  * It lives here, beside the Enter footer, because it is the other line of copy
  * whose correctness is a decision rather than a rendering, and because the
@@ -1047,6 +1051,6 @@ export function argumentEmptyCopy(list: EmptyArgumentList): string {
 	if (list.loading) return "Loading…";
 	// Rows exist, the query excluded all of them: "not reported yet" would be a
 	// lie about the source rather than a fact about the filter.
-	if (list.rows.length > 0) return "No matches. Enter opens the full picker.";
-	return "Not reported yet. Enter opens the full picker.";
+	if (list.rows.length > 0) return "No matches. Enter runs the command.";
+	return "Not reported yet. Enter runs the command.";
 }

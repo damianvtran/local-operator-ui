@@ -57,7 +57,21 @@ import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
 
-export type WorkingLineState = { activity: string; phase: string };
+export type WorkingLineState = {
+	activity: string;
+	phase: string;
+	/**
+	 * When this PHASE began, when the state knows it.
+	 *
+	 * The rung's clock is otherwise anchored to the component's mount, which is
+	 * wrong twice over: a re-mount mid-phase restarts a clock that is reporting
+	 * the phase's duration, and a still of the rung is a function of the
+	 * shutter's timing rather than of the state (design round 2, D3). The
+	 * compacting phase knows its start — the pass's own `compaction_start`
+	 * stamp — so it passes it down and the frame is stable.
+	 */
+	startedAt?: number;
+};
 
 /**
  * The label for a turn this app has admitted and that has produced nothing yet.
@@ -68,6 +82,37 @@ export type WorkingLineState = { activity: string; phase: string };
  * comment for why it does not name the runtime or the model.
  */
 export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
+
+/**
+ * The label for a compaction pass in flight, and the phase its clock runs in.
+ *
+ * The copy is the terminal host's own — `local_operator/tui/app.py`'s
+ * working-line fallback for `on_compaction_started` is literally `compacting
+ * context` — because a reader who learned the phrase in the terminal should not
+ * learn a second one here (the same reason the rest of this ladder is the
+ * harness's vocabulary).
+ *
+ * WHY IT IS ITS OWN PHASE. Phases are what the clock is keyed to, and a pass is
+ * a fact with its own duration: folded into `thinking` the clock would restart
+ * under the reader at whatever label change happened next, which is the defect
+ * the working line's contract calls out. A pass also outranks `waiting`: it is
+ * the more specific statement about why this session is busy.
+ *
+ * AND WHAT OWNING A PHASE COSTS, decided rather than left to be discovered
+ * (design round 1, D4: the backend CAN emit `compaction_start` inside a live
+ * turn — `session.py:_run_compaction` is called mid-turn when the context
+ * crosses its threshold — so the row can read `running 3 tools` ->
+ * `compacting context` -> `running 3 tools`). The clock rests at 0s at BOTH
+ * boundaries, and that is the right reading: the clock's contract is "how long
+ * has THIS phase been running", the phase is the pass's own span, and a pass's
+ * duration is exactly what the operator asked to see. Keeping one clock across
+ * the interruption would print a turn's age beside the word `compacting`,
+ * which is the same lie in the other direction. The rejected alternative —
+ * folding the pass into the turn's phase so the clock never rests — was
+ * rejected because it makes the row's duration report the TURN while claiming
+ * to report the pass.
+ */
+export const COMPACTING_ACTIVITY = "compacting context";
 
 /**
  * A send this pane made that the owner has not answered: the request id its
@@ -225,6 +270,23 @@ export type WorkingLineInput = {
 	/** The owner is generating and nothing has painted yet for this turn. */
 	waiting: boolean;
 	/**
+	 * When the in-flight pass began, on this reader's clock
+	 * (`TranscriptState.compactingSince`), for the phase's own start.
+	 */
+	compactingSince?: number;
+	/**
+	 * A compaction pass is in flight (`TranscriptState.compacting`).
+	 *
+	 * The transcript's own fact, and the reconciliation for every way the pass
+	 * stops lives in the reducer that owns it: `compaction_end` (success, refusal
+	 * or failure), a replaced/durable transcript, a new turn, and a receipt gap
+	 * that drops live-only claims. A DEAD TRANSPORT is the one case handled here
+	 * rather than there, because it is this row's rule and not the flag's: an
+	 * unavailable transport suppresses the rung instead of being cleared by it, so
+	 * a reconnection cannot resurrect a claim by leaving the flag set.
+	 */
+	compacting: boolean;
+	/**
 	 * A send from this conversation has been admitted and the owner has not
 	 * answered it. The app's own fact, not the owner's; see the file comment for
 	 * why its window is the whole wait rather than the request.
@@ -245,6 +307,8 @@ export type WorkingLineInput = {
 
 export function deriveWorkingLine({
 	waiting,
+	compacting,
+	compactingSince,
 	starting,
 	startingAfterId,
 	gate,
@@ -252,6 +316,34 @@ export function deriveWorkingLine({
 	records,
 }: WorkingLineInput): WorkingLineState | null {
 	if (gate) return null;
+
+	/*
+	 * The pass outranks `waiting`, and `unavailable` outranks the pass: a rung
+	 * that claims a compaction is progressing beside a pane that is saying the
+	 * transport died is claiming progress nobody can vouch for. The check sits
+	 * here rather than in the reducer because suppressing a claim and retiring a
+	 * fact are different repairs — a dead transport hides the rung without
+	 * deciding the pass is over, and a later end frame still paints its line.
+	 *
+	 * Review round 1 (R4) asked what restores the rung after a reconnect, and the
+	 * answer is nothing does: the seed's `live_events` fold carries no
+	 * `compaction_start` (the reducer's `applyLiveSeed` names the fold), so a
+	 * reconnect mid-pass drops the rung and the pass keeps running. Withholding
+	 * it is the safe direction and the claim is the thing this ladder refuses to
+	 * invent.
+	 */
+	if (compacting) {
+		if (unavailable) return null;
+		return {
+			activity: COMPACTING_ACTIVITY,
+			phase: "compacting",
+			// Spread rather than set, so a caller with no stamp produces the SAME
+			// object shape as before this field existed (`tool-row.test.mjs` compares
+			// the derived state deeply, and an explicit `undefined` is a different
+			// object).
+			...(compactingSince === undefined ? {} : { startedAt: compactingSince }),
+		};
+	}
 
 	if (waiting) {
 		const runningTools = records.filter(
@@ -336,6 +428,8 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
  */
 export function workingLineInputFor(pane: {
 	waiting: boolean;
+	compacting: boolean;
+	compactingSince?: number;
 	starting: boolean;
 	startingAfterId?: string | null;
 	gate?: unknown;
@@ -344,6 +438,8 @@ export function workingLineInputFor(pane: {
 }): WorkingLineInput {
 	return {
 		waiting: pane.waiting,
+		compacting: pane.compacting === true,
+		compactingSince: pane.compactingSince,
 		starting: pane.starting,
 		startingAfterId: pane.startingAfterId ?? null,
 		gate: Boolean(pane.gate),

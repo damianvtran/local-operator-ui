@@ -223,7 +223,9 @@ test("the composer is given the composed fact, not the raw one", () => {
 		// No handle at all.
 		null,
 	];
-	const expected = probes.map((probe) => probe?.view.awaitingHydration ?? false);
+	const expected = probes.map(
+		(probe) => probe?.view.awaitingHydration ?? false,
+	);
 
 	let actual;
 	try {
@@ -247,8 +249,6 @@ test("the composer is given the composed fact, not the raw one", () => {
 		"`hydrated` answers 'has an authoritative page been applied for this session', which is false forever on a pane that has no session - the composer must not read it directly (use the handle's composed field). Asserted on the prop's own expression, not file-wide: a later legitimate reader of that field elsewhere in this file is not this defect (code review round 1, N4).",
 	);
 });
-
-
 
 /*
  * THE PANE'S HALF OF THE SAME SCREEN.
@@ -279,9 +279,10 @@ const paneBundle = await build({
 	platform: "node",
 	write: false,
 });
-const { transcriptPaneCollapses, transcriptPaneHoldsPlaceholder } = await import(
-	`data:text/javascript;base64,${Buffer.from(paneBundle.outputFiles[0].text).toString("base64")}`
-);
+const { transcriptPaneCollapses, transcriptPaneHoldsPlaceholder } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(paneBundle.outputFiles[0].text).toString("base64")}`
+	);
 
 test("a New chat's draft leaves the pane with nothing to claim", () => {
 	// The acceptance bar, on the SHIPPED handle feeding the SHIPPED rule: a

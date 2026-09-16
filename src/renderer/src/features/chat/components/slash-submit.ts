@@ -1,11 +1,56 @@
 /**
  * What Enter does with a draft that holds a slash command.
  *
- * The renderer twin of `Editor._run_command_from_buffer`
- * (`editor.py:8166-8227`), kept pure so the whole rule is testable without a
- * browser. The token at the caret is spliced out and run, the surviving draft
- * stays in the composer, and a command whose argument is FREE TEXT is
- * reassembled to the front and STAGED rather than run.
+ * The renderer's own rule, deliberately NOT the renderer twin of
+ * `Editor._run_command_from_buffer` (`editor.py:8166-8227`) any more, and the
+ * deviation from it is stated below rather than left to be rediscovered. It is
+ * kept pure so the whole rule is testable without a browser: the token at the
+ * caret is spliced out and run, the surviving draft stays in the composer, and
+ * a command whose argument is FREE TEXT is reassembled to the front and STAGED
+ * rather than run.
+ *
+ * THE DEVIATION, and the operator's reason for it. The terminal host's rule is
+ * "a command typed mid-draft is a command", and "a command owns the rest of its
+ * own line". That is right for a terminal, where the buffer IS the command
+ * line. Here a draft is a message someone is writing, and the operator's report
+ * was that both halves of the old rule ate his text: `fix this /usage` spliced
+ * the command out of the middle of his sentence, and `/compact hello` ran
+ * `/compact` and silently discarded `hello`. His decision, recorded here so the
+ * next reader does not restore parity: a typed command word is PROSE unless the
+ * user meant it, and it is meant only when it is the ENTIRE draft, or when it
+ * OPENS the draft and the command consumes what follows as its argument.
+ * Everything else goes to the model, untouched, with no note and nothing eaten.
+ *
+ * WHAT STILL RUNS, exhaustively: the whole-draft command (`/compact`, `/usage`,
+ * `/model gpt-5`, `/goal ship it`), and a draft-OPENING command whose
+ * destination consumes its trailing text (`/model gpt-5` above a paragraph, or
+ * `/goal ship it`). The explicit-pick path is untouched: Enter on a highlighted
+ * row completes the word, a pointer pick that runs still runs, and
+ * `POINTER_PICK_NEVER_RUNS` still keeps a stray click from spending a
+ * compaction.
+ *
+ * WHY THE ARGUMENT VOCABULARY IS NOT THE `promptCommands` SET. `consumes_prompt`
+ * is half the answer — `/model gpt-5` and `/theme dark` consume a VALUE chosen
+ * from a list, not a free-text prompt, and their trailing text is still their
+ * argument. The vocabulary is therefore `promptCommands` UNION the inline
+ * argument lists the registry already derives (`argumentVocabulary`,
+ * `slash-commands.tsx`) UNION the registry's own `arguments` declaration, which
+ * is the only one of the three that `/login`/`/logout`/`/stop`/`/fast`/`/move`
+ * appear in (review round 1, R1: without it those whole-draft commands stopped
+ * running and their text went to a transport that refuses a leading slash). No
+ * hand-kept list of command names exists, here or there.
+ * `armedOnlyCommands` is the one narrowing on top of that union and it applies
+ * to the DRAFT-OPENING branch alone: a word in it is never hoisted by a typed
+ * draft that merely opens with it, only by the explicit pick (peer PR #209's
+ * `/goal` rule), while its whole-draft form is untouched. The input stays
+ * generic — this file names no command.
+ *
+ * THE POSITIONAL RULE IS SHARED WITH THE POPUP. `opensDraft` is
+ * `commandWordOpensDraft` (`slash-token.ts`), and `caretPhase` — the popup's own
+ * "which list is up" — calls the same function. A mid-draft word therefore
+ * opens no list, which is what stops the popup recruiting a word this planner
+ * reads as prose and consuming the first Enter to complete it (design round 1,
+ * D1 = UX U2). Asking it in two places would have been two rules again.
  *
  * THE ONE DECISION. This function is the only thing that answers "what does
  * this draft submit?" — it hands back a plan, and the plan carries the command
@@ -22,7 +67,7 @@
  * SECOND decision. So the split lives here, where the span is known to end at
  * its own line end, and the dispatcher is handed the answer.
  *
- * Rule order, one-to-one with the TUI:
+ * Rule order:
  *
  *   0. The capability is off → send. Nothing is spliced on a host that could not
  *      run the command it was deleted for.
@@ -32,35 +77,43 @@
  *      NOT tested first, it is a CONSEQUENCE of this: a `/usage` on line 1 of a
  *      two-line draft is a token on its own LINE, so the caret on line 2 finds
  *      no token and the draft is prose (round 1 R2 = Q1 = U1).
- *   2. Nothing survives removing the span → the token IS the draft → whole.
- *   3. A slash-shaped token that names no command → `unrecognised`: report it
- *      through the normal dispatch (which owns the "did you mean" note) and keep
- *      the ORIGINAL draft, so a misspelt inline command is there to fix rather
- *      than gone (round 1 U8).
- *   4. An ARMED-ONLY command's word is not hoisted by this key at all: the
- *      draft goes back as PROSE, in the order it was typed. The arming is an
- *      explicit gesture, and it happens somewhere else entirely
- *      (`planSlashArming`, called by the popup's pick).
- *   5. A free-text command → reassemble to the front, STAGED, never submitted.
- *      Exception: a NAME+message command (`/team`, `/agent`) with no name typed
- *      yet does NOT reassemble on the word alone — the name is picked from the
- *      argument list first, and leaving that list open IS the interaction.
- *   6. Otherwise splice the token out and run it; the surrounding draft
- *      survives.
+ *   2. A slash-shaped token that names no command: the token IS the whole draft
+ *      → `unrecognised`, so the dispatcher's "did you mean" note still answers a
+ *      misspelling and the draft is kept to fix (round 1 U8). Anything else →
+ *      prose, because a `/` inside a sentence is punctuation until its word is
+ *      picked as a command.
+ *   3. The token is the ENTIRE draft (nothing outside its span):
+ *      - the word is followed by nothing, or the command takes an argument →
+ *        `whole`: `/compact`, `/model gpt-5`, `/goal ship it`;
+ *      - a command that takes NO argument has text after its word
+ *        (`/compact hello`) → send. This is the operator's own report: `/compact
+ *        hello` used to run and eat `hello`.
+ *   4. The token OPENS the draft (its span begins at the first non-space
+ *      character) AND the command takes an argument → a command, with the
+ *      sub-rules kept from the old rule:
+ *      - a free-text command reassembles to the front, STAGED, never submitted.
+ *        Exception: a NAME+message command (`/team`, `/agent`) with no name typed
+ *        yet does NOT reassemble on the word alone — the name is picked from the
+ *        argument list first, and leaving that list open IS the interaction;
+ *      - everything else splices the token out and runs it; the surrounding
+ *        draft survives.
+ *   5. Anything else — mid-sentence, on a later line, or a leading token with
+ *      text after a command that takes no argument (`please /compact this`, or
+ *      a `/usage` line above prose) → send. The draft reaches the model as
+ *      written.
  *
- * ONE DELIBERATE DEVIATION FROM THE TUI, and the only one in this file: rule 4.
- * The reference reassembles a free-text command typed into a sentence, and that
- * is right where the assembled line is what the user asked to read before it
- * ran. For `/goal` it made the arming IMPLICIT and the Enter lossy: the operator
- * typed a request, appended `/goal`, pressed Enter, and got his own sentence
- * rearranged with a note — nothing was sent, the words had moved, and a second
- * Enter was needed. A word sitting in a sentence names no gesture, so the
- * desktop arms `/goal` only from an explicit choice of its own row in the popup
- * (a click, or a key press on a row the user moved the marker to by hand), and an
- * Enter over a draft that merely CONTAINS the word sends the draft as written. WHICH words this holds for is the registry's business
- * (`armedOnlyCommands`), never a name written into this function.
+ * TWO DELIBERATE DEVIATIONS FROM THE TUI, and the only two in this file, each
+ * landed by a different round and both stated here rather than in the parser. The
+ * first is rule 4's positional premise: the reference treats a command typed
+ * mid-draft as a command, owning the rest of its own line, where a word sitting
+ * in a sentence names no gesture — so only a token that OPENS the draft, or is
+ * the whole of it, is one. The second is main's own and this branch keeps it
+ * working: an ARMED-ONLY command (`armedOnlyCommands`, today `/goal`) is never
+ * hoisted by this key at all, because its arming is an explicit PICK of its own
+ * row in the popup (`planSlashArming`) — the report behind it was a request
+ * rearranged with a note and a second Enter needed. WHICH words each holds for is
+ * the registry's business, never a name written into this function.
  *
- * "WHICH LINE THE COMMAND OWNS", the rule this file exists to state: a command
  * owns its word plus the rest of ITS OWN LINE, never the lines around it. That
  * is why the span ends at the line end (`slash-token.ts` `slashTokenSpan`) and
  * why a message meant to survive a run sits BEFORE the slash or on another
@@ -72,7 +125,11 @@
  * of the user to read before Enter.
  */
 
-import { replaceSpan, slashTokenSpan } from "./slash-token";
+import {
+	commandWordOpensDraft,
+	replaceSpan,
+	slashTokenSpan,
+} from "./slash-token";
 
 /**
  * The destinations whose command is armed EXPLICITLY and never inferred.
@@ -180,17 +237,63 @@ export type SlashSubmissionArgs = {
 	/** Names (primaries and aliases) of commands with `consumes_prompt: true`. */
 	promptCommands: ReadonlySet<string>;
 	/**
-	 * Names (primaries and aliases) of commands whose arming is EXPLICIT: a
-	 * free-text command this key never hoists, because the only gesture that arms
-	 * it is a PICK of its own row in the popup (`planSlashArming`). Derived from
-	 * the registry's destinations, so the set follows the catalogue rather than a
-	 * name written down here.
+	 * Names (primaries and aliases) of commands whose destination carries an
+	 * inline argument list (`argumentVocabulary` in `slash-commands.tsx`, derived
+	 * from `picker-registry`'s `inline` field).
+	 *
+	 * With `promptCommands` this is the `takesArgument` vocabulary: a command's
+	 * trailing text is its argument if it consumes a free-text prompt OR a value
+	 * chosen from a list. The union is taken in the rule rather than passed in as
+	 * one set, so each half keeps its own single derivation.
 	 */
-	armedOnlyCommands: ReadonlySet<string>;
+	valueArgumentCommands: ReadonlySet<string>;
+	/**
+	 * Names (primaries and aliases) of commands whose registry entry declares an
+	 * argument at all — `SlashCommandMeta.arguments` is `optional` or
+	 * `required` (`slash-commands.tsx`, off the backend's own catalogue).
+	 *
+	 * THE THIRD SOURCE, and it is not a convenience: the other two are narrower
+	 * than the field they approximate. `/login openai` is `arguments:
+	 * "required"` with no inline list and no free-text prompt — the desktop
+	 * forwards the typed word as the SELECTION
+	 * (`desktop_commands.py:127`, `selection=args`) — so a union of those two
+	 * read `/login openai` as prose and stopped a command that runs today
+	 * (review round 1, R1; QA Q1 measured the live consequence: the send was
+	 * refused, because a message may not start with `/`).
+	 *
+	 * Optional so a caller that has not wired it composes exactly as before
+	 * rather than failing to build; the composer wires it.
+	 */
+	argumentCommands?: ReadonlySet<string>;
 	/** Names of commands whose argument list is open before any name is typed. */
 	nameListCommands: ReadonlySet<string>;
+	/**
+	 * Names (primaries and aliases) a typed draft may never hoist by opening with
+	 * one: only an explicit pick arms such a command (peer PR #209's `/goal` rule,
+	 * wired there from the registry's own `session.goal` rows).
+	 *
+	 * It narrows the draft-opening branch alone — the whole-draft `/goal <text>`
+	 * form runs untouched — and it is optional, so a caller that has not wired it
+	 * behaves exactly as the rest of this rule says. Generic on purpose: this file
+	 * names no command, and the pick path cannot be affected by it.
+	 */
+	armedOnlyCommands?: ReadonlySet<string>;
 	/** Whether a boundary slash token is a command at all (the feature is on). */
 	enabled: boolean;
+	/**
+	 * WHICH GESTURE is asking, because the two answers are deliberately different.
+	 *
+	 * A typed word in the middle of a sentence is prose (the operator's rule, and
+	 * this file's reason for existing). A PICK of that command's own row is not a
+	 * typed word: the user chose the command from the popup, so it is a command
+	 * wherever it sits, and the pick's run path reads this to keep the promise the
+	 * footer makes ("Click stages /loop." — peer PR #209's `hoists`/`takesDraft`
+	 * machinery, which postdates the typed rule and would otherwise be inert).
+	 *
+	 * Defaulted to `"typed"`, so every caller that has not thought about it gets the
+	 * conservative answer, and the pick path is the only one that passes anything.
+	 */
+	gesture?: "typed" | "pick";
 };
 
 /** The name/argument separator: the first whitespace character of a token. */
@@ -212,6 +315,10 @@ const WHITESPACE = /\s/;
  * dispatcher posts, and two answers to "what is this token's word" have to be
  * the same answer.
  */
+/** The default for an input a caller has not wired yet; never mutated. */
+const EMPTY_COMMANDS: ReadonlySet<string> = new Set<string>();
+
+/** The lower-cased command word of a token's text, `/team ops` → `team`. */
 function wordOf(commandText: string): string {
 	return invocationOf(commandText).name.toLowerCase();
 }
@@ -290,8 +397,11 @@ export function planSlashSubmission({
 	commandNames,
 	promptCommands,
 	armedOnlyCommands,
+	valueArgumentCommands,
 	nameListCommands,
+	argumentCommands,
 	enabled,
+	gesture = "typed",
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
 	// nothing is spliced and nothing is lost — the same fallback the model path
@@ -315,13 +425,67 @@ export function planSlashSubmission({
 	const spliced = replaceSpan(draft, span.start, span.end, "");
 	const commandText = draft.slice(span.start, span.end).trim();
 	const command = invocationOf(commandText);
-	if (spliced.text.trim() === "") return { kind: "whole", command };
-
 	const word = wordOf(commandText);
-	// Slash-shaped but not a command this host knows: the misspelling is the
+
+	/*
+	 * The two positional facts the whole rule is written against, each read ONCE
+	 * from the span rather than re-derived downstream.
+	 *
+	 * `wholeDraft` is "nothing survives removing the span", the shape the plan
+	 * kind `whole` is named for. `opensDraft` is "the span begins at the draft's
+	 * first non-space character", which is the operator's "at the start of the
+	 * input". They overlap (a whole draft opens it) and they are asked in that
+	 * order because the whole-draft form is the stricter one and has sub-rules of
+	 * its own.
+	 */
+	const wholeDraft = spliced.text.trim() === "";
+	const opensDraft = commandWordOpensDraft(draft, span.start);
+
+	// Slash-shaped but not a command this host knows. The misspelling is the
 	// thing to fix, so the caller reports it and keeps the draft rather than
-	// consuming the token (round 1 U8).
-	if (!commandNames.has(word)) return { kind: "unrecognised", command };
+	// consuming it (round 1 U8) — but only where the token WAS the draft: a `/`
+	// inside a sentence nobody picked is punctuation, and a "did you mean" for it
+	// would be a note about a word the user never offered as a command.
+	if (!commandNames.has(word))
+		return wholeDraft ? { kind: "unrecognised", command } : { kind: "send" };
+
+	/*
+	 * Whether this command's trailing text is its ARGUMENT — the single test the
+	 * rule turns on. Three sources, because the registry declares the fact three
+	 * ways and none of them covers the others: `consumes_prompt` is the free-text
+	 * half, `valueArgumentCommands` is the list-chosen half
+	 * (`inlineArgumentFor`), and `argumentCommands` is the declaration itself
+	 * (`arguments`), which is the only one `/login` appears in (R1).
+	 */
+	const consumesText =
+		promptCommands.has(word) ||
+		valueArgumentCommands.has(word) ||
+		(argumentCommands ?? EMPTY_COMMANDS).has(word);
+	/*
+	 * And whether the word is armed ONLY by an explicit pick. This narrows the
+	 * DRAFT-OPENING branch alone, never the whole-draft one, because that is what
+	 * the rule it comes from says: `/goal ship the release` (the whole draft) runs
+	 * on one Enter, while a `/goal` that merely opens a longer draft is prose
+	 * until the pick arms it (peer PR #209, rows 1 and 6).
+	 */
+	const armedOnly = (armedOnlyCommands ?? EMPTY_COMMANDS).has(word);
+
+	if (wholeDraft) {
+		// The token is the draft. With nothing after the word it is the command
+		// (`/compact`, `/usage`); with text after it, that text is the command's
+		// argument only if the command takes one (`/model gpt-5`, `/goal ship
+		// it`). A no-argument command with trailing text is the operator's own
+		// report — `/compact hello` ran and ate `hello` — so the draft is prose.
+		if (!consumesText && command.args) return { kind: "send" };
+		return { kind: "whole", command };
+	}
+
+	// Not the whole draft: only a token that OPENS the draft, for a command whose
+	// trailing text IS its argument and which a typed draft may hoist at all, is
+	// a command. Anything else is the sentence the user is writing, and it is sent
+	// as written.
+	if (!consumesText || armedOnly) return { kind: "send" };
+	if (!opensDraft && gesture !== "pick") return { kind: "send" };
 
 	/*
 	 * ARMED-ONLY commands take nothing from this key. `/goal` inside a sentence is
@@ -336,7 +500,7 @@ export function planSlashSubmission({
 	 * The command is still RECOGNISED here (the `unrecognised` branch above is
 	 * unaffected), so a misspelt armed command is still reported rather than sent.
 	 */
-	if (armedOnlyCommands.has(word)) return { kind: "send" };
+	if (armedOnly) return { kind: "send" };
 
 	if (promptCommands.has(word)) {
 		// The typed argument is the SAME split the command posts (`invocationOf`

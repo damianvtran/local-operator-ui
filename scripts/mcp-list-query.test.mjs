@@ -158,11 +158,7 @@ test("the envelope a second unwrap would read carries no servers", () => {
 });
 
 test("one key for one document, with no session in it to drift", () => {
-	assert.deepEqual(mcpKeys.list("session-1"), [
-		"desktop",
-		"mcp",
-		"session-1",
-	]);
+	assert.deepEqual(mcpKeys.list("session-1"), ["desktop", "mcp", "session-1"]);
 	// Invalidation callers pass the session id, so the key must be a function of
 	// it and nothing else.
 	assert.notDeepEqual(mcpKeys.list("a"), mcpKeys.list("b"));

@@ -87,7 +87,11 @@ globalThis.__gapRequest = async (request) => {
 		return globalThis.__gapTail(request);
 	}
 	if (request.op === "sessions.message")
-		return { status: "admitted", command_id: request.requestId, duplicate: false };
+		return {
+			status: "admitted",
+			command_id: request.requestId,
+			duplicate: false,
+		};
 	return {};
 };
 
@@ -208,8 +212,7 @@ function makeRuntime() {
 			return [
 				cell.state,
 				(value) => {
-					const next =
-						typeof value === "function" ? value(cell.state) : value;
+					const next = typeof value === "function" ? value(cell.state) : value;
 					if (Object.is(next, cell.state)) return;
 					cell.state = next;
 					rerender();
@@ -310,7 +313,10 @@ const openFrame = (seq, gap) => ({
  * drain therefore bounds the page at the steer row while later rows are already
  * durable.
  */
-const snapshotFrame = (seq, { cursor, entries, liveEvents = [], streaming = true }) => ({
+const snapshotFrame = (
+	seq,
+	{ cursor, entries, liveEvents = [], streaming = true },
+) => ({
 	session_id: SESSION_A,
 	epoch: "bridge-epoch",
 	seq,
@@ -437,7 +443,8 @@ async function pump() {
 }
 
 const settle = async () => {
-	for (let i = 0; i < 4; i++) await new Promise((resolve) => setImmediate(resolve));
+	for (let i = 0; i < 4; i++)
+		await new Promise((resolve) => setImmediate(resolve));
 };
 
 const ids = (transcript) => transcript.records.map((record) => record.id);
@@ -483,7 +490,9 @@ const SNAPSHOT_PAGE = 100;
  * Asserting on entry ids alone would look for a row that never exists.
  */
 const recordIdOf = (entry) =>
-	entry.payload.role === "tool" ? `tool:${entry.payload.tool_call_id}` : entry.id;
+	entry.payload.role === "tool"
+		? `tool:${entry.payload.tool_call_id}`
+		: entry.id;
 
 /** The reported shape: a short conversation whose steer row is the page's end. */
 function conversation({ withSteer, awayRows = 2 }) {
@@ -708,7 +717,7 @@ async function driveEmptyPainted({ frame }) {
 	const plan = longConversation({ awayRows: 0, total: LONG });
 	reset({ transcript: makeTranscript(plan.rows) });
 	const runtime = makeRuntime();
-	let sessionId = SESSION_A;
+	const sessionId = SESSION_A;
 	let handle;
 	runtime.render = () => {
 		handle = useCanonicalSessionStream(sessionId, Boolean(sessionId));
@@ -719,7 +728,8 @@ async function driveEmptyPainted({ frame }) {
 	deliver(frame);
 	await pump();
 	return {
-		reads: requests.filter((request) => request.op === "sessions.history").length,
+		reads: requests.filter((request) => request.op === "sessions.history")
+			.length,
 		painted: ids(handle.transcript),
 		plan,
 	};
@@ -827,13 +837,21 @@ test("a snapshot's EMPTY page does not stand in for a history nobody read", asyn
 	);
 	await pump();
 
-	assert.equal(handle.transcript.records.length, 0, "nothing is painted to claim");
+	assert.equal(
+		handle.transcript.records.length,
+		0,
+		"nothing is painted to claim",
+	);
 	assert.equal(
 		handle.hydrated,
 		false,
 		"an empty snapshot page is not proof the conversation is empty",
 	);
-	assert.equal(handle.status, "live", "the stream itself is up; it is the read that is owed");
+	assert.equal(
+		handle.status,
+		"live",
+		"the stream itself is up; it is the read that is owed",
+	);
 	// The retry is scheduled rather than run: this harness owns the clock, and
 	// what it asserts is the state the reader is left in while the read is owed.
 

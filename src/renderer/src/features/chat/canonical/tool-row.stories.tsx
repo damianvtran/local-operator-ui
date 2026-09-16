@@ -40,6 +40,7 @@ import {
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
+	compactionSettledLine,
 	dropLiveRecords,
 } from "./transcript-reducer";
 
@@ -70,11 +71,22 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	...over,
 });
 
-function transcriptOf(records: TranscriptRecord[]): TranscriptState {
+function transcriptOf(
+	records: TranscriptRecord[],
+	compacting = false,
+): TranscriptState {
 	return {
 		records,
 		index: new Map(records.map((record, position) => [record.id, position])),
 		generation: 1,
+		// The pass claim is the ONLY thing on this state that the transcript
+		// itself carries rather than reading off a record, so it is a parameter
+		// here: the compacting stories are the only frames that set it.
+		compacting,
+		// The claim's own start, so the clock the rung derives is a fixed age
+		// rather than whatever the shutter catches (design round 2, D3).
+		compactingSince: compacting ? Date.now() - 47_000 : 0,
+		viewEpoch: 0,
 		oldestId: null,
 		hasMore: false,
 		argsByCall: new Map(),
@@ -86,6 +98,7 @@ const Frame = ({
 	width = "100%",
 	height = 300,
 	waiting = false,
+	compacting = false,
 	starting = false,
 	startingAfterId = null,
 	status = "live",
@@ -115,6 +128,15 @@ const Frame = ({
 	 */
 	height?: number;
 	waiting?: boolean;
+	/**
+	 * A compaction pass in flight (`TranscriptState.compacting`).
+	 *
+	 * Not `waiting`: the app never knows a pass is coming until the backend says
+	 * one started, and the rung this raises is a different claim with its own
+	 * phase. See `CompactingRung` / `CompactingSettled` below for the
+	 * pair a reviewer needs.
+	 */
+	compacting?: boolean;
 	/**
 	 * A send this conversation has admitted and that has produced nothing yet —
 	 * the cold-engage window, before the owner's first frame.
@@ -174,7 +196,7 @@ const Frame = ({
 			style={{ width, height }}
 		>
 			<CanonicalTranscript
-				transcript={transcriptOf(records)}
+				transcript={transcriptOf(records, compacting)}
 				gate={null}
 				waiting={waiting}
 				starting={starting}
@@ -453,6 +475,177 @@ export const Working: Story = {
  * the row after it fell back to the wider `item` gap. An invisible record must
  * not be able to push visible rows apart.
  */
+/**
+ * A compaction pass in flight: the aggregate working line is the only thing on
+ * screen that says so, and its label is the terminal host's own.
+ *
+ * The two states of the change that deleted `/compact`'s dialog, named for the
+ * STATE rather than for a before/after pair — every other `-before`/`-after`
+ * directory in this repo means before/after THE CHANGE, and this pair is one
+ * tree photographed either side of the pass settling (review round 1, R5).
+ * The dialog used to be the whole of the surface's answer to the command, and it
+ * stayed up over a pass that had already finished; the transcript now carries
+ * the fact itself — this rung while the pass runs, the info line below once it
+ * settles (`CompactingSettled`, the same transcript with the `compaction` record
+ * the reducer paints and no pass in flight).
+ *
+ * The clock is left at 0s deliberately: this story is about the copy and the
+ * fact, and `Working` above is the story that pins the ticking clock.
+ */
+export const CompactingRung: Story = {
+	render: () => (
+		<Frame
+			compacting
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The same transcript once the pass has settled: the rung is gone and the
+ * reducer's own info line is what took its place, carrying the token counts the
+ * backend reported.
+ *
+ * Both frames are one change, which is why they are a pair rather than two
+ * stories: the dialog this replaces was what used to stand between them.
+ */
+export const CompactingSettled: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "compaction",
+					id: "compaction:1:41000:9000",
+					// ASKED OF THE RULE, not typed by hand: a frame whose sentence is a
+					// literal cannot detect a regression in the copy it claims to show
+					// (design round 2, D4). The figures are the LIVE sentence, which is
+					// the one the pairing carries onto the durable row (round 4); a cold
+					// reader's bare sentence is the rule's other half and has its own
+					// test rather than a frame.
+					ts: TS,
+					text: compactionSettledLine(41_000, 9_000),
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The other half of the settled copy: a pass whose two figures round to the same
+ * step says the number ONCE (`Context compacted to 52.7k tokens`), which is UX
+ * round 1's U4 and had no frame until design round 2's D4.
+ *
+ * It was deleted for a round while the copy carried no figures at all; the rule
+ * prints the pair again, so the branch is back and so is its frame — a branch of
+ * the copy that only a test can see is the thing D4 was about.
+ */
+export const CompactingSettledUnchanged: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "compaction",
+					id: "compaction:1:52700:52700",
+					ts: TS,
+					text: compactionSettledLine(52_700, 52_700),
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The third ending: a pass that did NOT run.
+ *
+ * A refusal emits no `compaction_start` — the runtime answers the routed command
+ * with an optimistic receipt and the pass declines before the start event — so
+ * this row is the pass's ONLY record, and until this round the reducer listed it
+ * as bookkeeping and painted nothing at all (UX round 1, U1 = QA Q2). With the
+ * dialog gone that silence was the surface the dialog used to occupy, and the
+ * operator's own gesture is what reaches it: the shipped default keeps 20,000
+ * tokens verbatim, so `/compact` on a young conversation declines.
+ *
+ * The ink is the backend's, not this story's: `harness/rows.py`'s
+ * `compaction_refused_notice` derives `warning` for a decline and `error` for a
+ * failure, and the phone and the terminal host both render through it.
+ */
+export const CompactingRefused: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "notice",
+					id: "refusal:1",
+					ts: TS,
+					level: "warning",
+					text: "Compaction did not run — nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
+				},
+			]}
+		/>
+	),
+};
+
 export const OperatorSpacingCases: Story = {
 	render: () => (
 		<div className="flex flex-col gap-8 p-6">

@@ -64,16 +64,35 @@ test("the operator's own remedy line resolves to the server it names", () => {
 });
 
 test("unknown verbs and extra targets cannot select a configured token", () => {
-	for (const asked of ["hubspot notion", "hubspot reauth", "future hubspot", "login hubspot notion"]) {
-		assert.deepEqual(resolveMcpServerTarget(asked, NAMES), {kind: "miss", asked});
+	for (const asked of [
+		"hubspot notion",
+		"hubspot reauth",
+		"future hubspot",
+		"login hubspot notion",
+	]) {
+		assert.deepEqual(resolveMcpServerTarget(asked, NAMES), {
+			kind: "miss",
+			asked,
+		});
 	}
 });
 
 test("a typo cannot target a server named like a verb", () => {
 	const names = [...NAMES, "login"];
-	assert.deepEqual(resolveMcpServerTarget("login hubspo", names), {kind: "miss", asked: "login hubspo"});
-	assert.deepEqual(resolveMcpServerTarget("login hubspot", names), {kind: "matched", name: "hubspot", unresolved: null});
-	assert.deepEqual(resolveMcpServerTarget("login", names), {kind: "matched", name: "login", unresolved: null});
+	assert.deepEqual(resolveMcpServerTarget("login hubspo", names), {
+		kind: "miss",
+		asked: "login hubspo",
+	});
+	assert.deepEqual(resolveMcpServerTarget("login hubspot", names), {
+		kind: "matched",
+		name: "hubspot",
+		unresolved: null,
+	});
+	assert.deepEqual(resolveMcpServerTarget("login", names), {
+		kind: "matched",
+		name: "login",
+		unresolved: null,
+	});
 });
 
 test("an argument that names nothing is a stated miss, not a silent no-op", () => {
@@ -114,6 +133,10 @@ test("the borrowed conversation is the newest roster row", () => {
 	// No timestamps at all: the roster's own order is the answer, because the
 	// backend lists newest first and an untimestamped row is not a reason to
 	// borrow an older one.
-	assert.equal(newestRosterRow([{ session_id: "first" }, { session_id: "second" }])?.session_id, "first");
+	assert.equal(
+		newestRosterRow([{ session_id: "first" }, { session_id: "second" }])
+			?.session_id,
+		"first",
+	);
 	assert.equal(newestRosterRow([]), null);
 });
