@@ -1,4 +1,5 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
 	Button,
 	Dialog,
@@ -73,18 +74,20 @@ const KIND_VERBS: Record<PaletteItem["kind"], string> = {
 const QUERY_WRITE_BACK_MS = 200;
 
 /**
- * A key on the footer bar and on the active row.
+ * The palette's legend keys are the app's key caps, and the only thing this file
+ * decides about them is where they sit.
  *
- * Monospace because a key legend is machine voice, and `sunken` because a key
- * is a recessed thing — no border, since the ground change already bounds it and
- * this shape repeats several times on one bar.
+ * They used to be a THIRD cap implementation declared right here —
+ * `rounded-xs bg-sunken px-1 py-0.5 font-mono text-ink-dim text-mono-sm` — which
+ * is one of the sizes the operator reported as inconsistent: it carried no
+ * `min-w-5`, so a single glyph made a cap about 15px wide where the shared
+ * component's was 20px, on the same 12px type and one ink step down. The shared
+ * component now owns the geometry and the ink (`ink-dim`, the role these keys
+ * ship at — putting the cap a step UP at `ink-muted` made the legend outrank the
+ * labels it annotates, 6.76-6.83:1 against 4.55:1 and 3.87:1, measured in the
+ * committed pairs as design round 1's D2), and the cap carries no ground of its
+ * own, so the footer's `elevated` shows through instead of a `sunken` box.
  */
-const Key: FC<{ children: string }> = ({ children }) => (
-	<kbd className="rounded-xs bg-sunken px-1 py-0.5 font-mono text-ink-dim text-mono-sm">
-		{children}
-	</kbd>
-);
-
 /**
  * The command palette.
  *
@@ -794,25 +797,37 @@ export const CommandPalette: FC = () => {
 						{showScopeLegend ? (
 							<>
 								{SCOPE_LEGEND.map((entry) => (
-									<span key={entry.scope} className="flex items-center gap-1.5">
-										<Key>{entry.glyph}</Key>
+									/*
+									 * `gap-0`, not the `gap-1.5` the key legend beside it uses, and the
+									 * difference is what the glyph is: these four are TYPED PREFIXES, and a
+									 * prefix has to read as the head of its own token rather than as a mark
+									 * beside a word. Measured in the bar, the comma's ink is 2px wide and
+									 * centred in a 20px box, so at `gap-1.5` it sat 16px from "Settings"
+									 * and 25px from "Agents" — nearer its left neighbour than its own label,
+									 * which is exactly how a glyph reads as stray punctuation (design
+									 * round 1, D4). At `gap-0` the same distance is 10px against 25px: the
+									 * glyph binds to the word it introduces while every cap keeps the one
+									 * uniform box.
+									 */
+									<span key={entry.scope} className="flex items-center gap-0">
+										<KeyboardShortcut shortcut={entry.glyph} />
 										{entry.label}
 									</span>
 								))}
 								<span className="ml-auto flex items-center gap-1.5">
-									<Key>esc</Key>
+									<KeyboardShortcut shortcut="esc" />
 									to close
 								</span>
 							</>
 						) : (
 							<>
 								<span className="flex items-center gap-1.5">
-									<Key>↑</Key>
-									<Key>↓</Key>
+									<KeyboardShortcut shortcut="↑" />
+									<KeyboardShortcut shortcut="↓" />
 									to move
 								</span>
 								<span className="flex items-center gap-1.5">
-									<Key>↵</Key>
+									<KeyboardShortcut shortcut="↵" />
 									to run
 								</span>
 								<span className="flex items-center gap-1.5">
@@ -827,7 +842,7 @@ export const CommandPalette: FC = () => {
 								 * (design round 1, D5).
 								 */}
 								<span className="ml-auto flex items-center gap-1.5">
-									<Key>esc</Key>
+									<KeyboardShortcut shortcut="esc" />
 									to close
 								</span>
 							</>
@@ -920,7 +935,7 @@ const PaletteRow: FC<{
 			{isActive && (
 				<span className="flex shrink-0 items-center gap-1.5 text-ink-dim text-meta">
 					{verb}
-					<Key>↵</Key>
+					<KeyboardShortcut shortcut="↵" />
 				</span>
 			)}
 		</button>

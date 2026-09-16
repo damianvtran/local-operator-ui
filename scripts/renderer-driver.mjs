@@ -2477,10 +2477,13 @@ async function scenePalette(cdp) {
 	const before = await captureSettled(cdp, "palette-rail-dark");
 	/*
 	 * The same row in a LIGHT theme, because it is the one treatment in this
-	 * change the twelve-theme story sweep cannot reach: the rail's chord is plain
-	 * monospace on a `sunken` ground rather than the panel's key caps, and a
-	 * contrast question about it is only answerable in more than one ground
-	 * (design round 1, D4).
+	 * change the twelve-theme story sweep cannot reach: the rail prints the chord
+	 * on its own `sunken` ground, and a contrast question about it is only
+	 * answerable in more than one ground (design round 1, D4). It is the app's key
+	 * cap now rather than the plain monospace this scene was written against —
+	 * the cap carries no fill, which is what made a cap possible on this ground at
+	 * all — and the pair of frames is kept because the rail is still the one
+	 * surface where a cap sits on `sunken`.
 	 */
 	await verb(cdp, "setTheme", "localOperatorLight");
 	const railLight = await captureSettled(cdp, "palette-rail-light");
