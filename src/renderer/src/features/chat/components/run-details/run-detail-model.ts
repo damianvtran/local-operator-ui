@@ -102,11 +102,23 @@ export type ChildStatus =
  * the desktop frontend, and §10 records that follow-up with the mechanism the
  * harness actually allows.
  */
-export const OPEN_CHILD_STATUSES: readonly ChildStatus[] = [
-	"running",
-	"queued",
-	"paused",
-];
+export const OPEN_CHILD_STATUSES = ["running", "queued", "paused"] as const;
+
+/**
+ * The three states a row can be in and still be OPEN work — the mark's own union.
+ *
+ * It is DERIVED from the list above rather than written beside it, and that is
+ * the point of the double assertion: `ActivityTally.mark` and the clause's table
+ * lookup are both over this type, so the word a chip prints is a total lookup with
+ * no fallback arm to be unreachable (agent review round 2, n2).
+ */
+export type OpenChildStatus = (typeof OPEN_CHILD_STATUSES)[number];
+
+/** Whether a folded state is one of the three open ones. */
+export const isOpenChildStatus = (
+	status: ChildStatus,
+): status is OpenChildStatus =>
+	OPEN_CHILD_STATUSES.some((open) => open === status);
 
 /** Every to-do state the panel draws, from the TUI's `STATUS_MARKS` (`:177`). */
 export type TodoItemStatus = "pending" | "done" | "dropped" | "blocked";
@@ -661,8 +673,7 @@ const foldStatus = (raw: string, queued: boolean): ChildStatus => {
 };
 
 /** Whether a folded state has settled. */
-const isSettled = (status: ChildStatus): boolean =>
-	!OPEN_CHILD_STATUSES.includes(status);
+const isSettled = (status: ChildStatus): boolean => !isOpenChildStatus(status);
 
 /**
  * Whether a row is still OPEN — running, queued or paused (`§3.3`).
@@ -700,7 +711,9 @@ export const isOpenRow = (row: SubagentRow): boolean => !isSettled(row.status);
  * cannot come apart. `run-detail-model.test.mjs` pins that equivalence for both
  * lists.
  */
-export function activityMark(rows: readonly SubagentRow[]): ChildStatus | null {
+export function activityMark(
+	rows: readonly SubagentRow[],
+): OpenChildStatus | null {
 	const open = rows.filter(isOpenRow);
 	for (const status of OPEN_CHILD_STATUSES) {
 		if (open.some((row) => row.status === status)) return status;
@@ -730,7 +743,7 @@ export function activityMark(rows: readonly SubagentRow[]): ChildStatus | null {
  */
 export type ActivityTally = {
 	count: number;
-	mark: ChildStatus;
+	mark: OpenChildStatus;
 };
 
 export function activityTally(
@@ -2637,9 +2650,13 @@ const plural = (count: number, noun: string): string =>
  * `CHILD_STATE_WORD` is the roster's own table, so the chips say what a roster
  * row says about the same state — `queued` and `paused` included, which is the
  * half that was missing while the clause hardcoded `running`.
+ *
+ * The parameter is `OpenChildStatus`, the mark's own union, rather than a looser
+ * `ChildStatus` with a cast: `activityMark` can only return one of the three, all
+ * three are keys of the table, so the lookup is total and there is no
+ * unreachable `?? state` arm (agent review round 2, n2).
  */
-const stateWord = (state: ChildStatus): string =>
-	CHILD_STATE_WORD[state as Exclude<ChildStatus, "unknown">] ?? state;
+const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
 
 /**
  * The subagent clause: `1 subagent running`, `2 subagents queued`.

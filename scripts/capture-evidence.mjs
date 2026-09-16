@@ -1999,11 +1999,18 @@ const main = async () => {
 				 * reproducible evidence: measured, three consecutive live captures of one
 				 * story produced two distinct rotations and one repeat, so a committed
 				 * pair could regenerate identical and quietly turn its own README claim
-				 * false. A negative `animation-delay` with the animation paused renders
-				 * the element at that point of the shipped keyframes
-				 * (`animate-spin` is Tailwind's `spin 1s linear infinite`, so -500ms is
-				 * half a turn), and re-running the sweep lands on the same angle every
-				 * time.
+				 * false.
+				 *
+				 * The hold is `pause()` plus an explicit `currentTime` on the animation
+				 * the mark actually carries - `getAnimations()` returns the CSSAnimation
+				 * the stylesheet started - and it is MEASURED rather than argued: with it
+				 * in place, three consecutive captures of both frames came back
+				 * byte-identical. A stylesheet RULE cannot do it, and round 2's M1 found
+				 * both halves of that in one line: the rule this option used selected
+				 * `.animate-spin`, a token the mark does not have (`motion-safe:animate-spin`
+				 * is), so it matched nothing; and `animation-play-state: paused` freezes
+				 * wherever the rule happens to land, so even with the selector fixed the
+				 * pair would have stayed sampled.
 				 */
 				/*
 				 * The wait is load-bearing, and it is this option's own cost: with no
@@ -2017,11 +2024,69 @@ const main = async () => {
 				await sleep(700);
 				await cdp.send("Runtime.evaluate", {
 					expression: `(() => {
+						/*
+						 * HOLD THE SPIN AT A PHASE, through the Web Animations API rather
+						 * than through a stylesheet rule. Both halves of that are round 2's
+						 * M1: the rule this replaced selected ".animate-spin", which is NOT
+						 * the token the mark carries - "motion-safe:animate-spin" is
+						 * (run-detail-row-parts.tsx) - so a class selector matched nothing and
+						 * the option silently did nothing; and a paused RULE is not a hold
+						 * either, because "animation-play-state: paused" freezes at whatever
+						 * moment the rule lands, so the pair stays sampled however the
+						 * selector is spelled. pause() followed by an explicit currentTime says
+						 * the phase outright, and re-running lands on it every time. No
+						 * backticks in here: this comment lives inside a template literal.
+						 */
+						const row = document.querySelector('[data-composer-status-row]');
+						/* EVERY mark in the row, not the first one: a band with two
+						   running chips carries two, and holding one leaves the other
+						   spinning freely - caught by re-running the capture and finding
+						   the un-held mark had moved. */
+						const marks = row
+							? [...row.querySelectorAll('[class~="motion-safe:animate-spin"]')]
+							: [];
+						for (const mark of marks) {
+							for (const animation of mark.getAnimations()) {
+								animation.pause();
+								animation.currentTime = ${options.phaseMs};
+							}
+						}
 						const s = document.createElement("style");
-						s.textContent = '[data-composer-status-row] .animate-spin,[data-composer-status-row] .animate-spin *{animation-play-state:paused !important;animation-delay:-${options.phaseMs}ms !important}*{caret-color:transparent !important}';
+						s.textContent = "*{caret-color:transparent !important}";
 						document.head.appendChild(s);
 					})()`,
 				});
+				/*
+				 * And the hold is ASSERTED rather than assumed, which is the other half
+				 * of M1: the version this replaces shipped for a whole round matching
+				 * nothing while three documents claimed a held angle, and a silent no-op
+				 * is invisible in the frames it produces. The run fails loudly if there is
+				 * no mark under the row, if the mark has no animation to hold, or if one
+				 * is left running or at another phase.
+				 */
+				const { result: phaseHold } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const row = document.querySelector('[data-composer-status-row]');
+						if (!row) return 'no-row';
+						const marks = [
+							...row.querySelectorAll('[class~="motion-safe:animate-spin"]'),
+						];
+						if (marks.length === 0) return 'no-mark';
+						const animations = marks.flatMap((mark) => mark.getAnimations());
+						if (animations.length === 0) return 'no-animation';
+						return animations
+							.map((a) => a.playState + '@' + a.currentTime)
+							.join(' , ');
+					})()`,
+				});
+				const held = String(phaseHold.value);
+				const wanted = `paused@${options.phaseMs}`;
+				if (held.split(" , ").some((entry) => entry !== wanted)) {
+					throw new Error(
+						`liveMotion with phaseMs=${options.phaseMs}: the phase hold did not apply (${held}, wanted ${wanted}). The mark is found by the class TOKEN it carries - motion-safe:animate-spin - and held through the Web Animations API, because a hold that quietly matches nothing turns this pair back into a sampled one.`,
+					);
+				}
 			}
 			await sleep(120);
 			/* Assert the capture is of a rendered story, not Storybook's own
@@ -2182,9 +2247,7 @@ const main = async () => {
 			}
 			if (!prepared) {
 				throw new Error(
-					`${story} @ ${theme}: Storybook never finished preparing the story (60s). ` +
-						`Last probe: ${JSON.stringify(probe)}. ` +
-						"`counted` is the story's own elements with the decorator's two excluded, and `drawn` false with `loading`/`pending`/`fonts` clear means the element floor in `storyDrew` rejected it",
+					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
 				);
 			}
 			/*
@@ -2366,7 +2429,8 @@ const main = async () => {
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
-				expression: `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`,
+				expression:
+					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 			});
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
