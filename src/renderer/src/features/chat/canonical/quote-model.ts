@@ -151,15 +151,43 @@ export function selectionTextIn(element: HTMLElement | null): string | null {
  * leave the press either a no-op or, worse, exactly the widening above, so the
  * honest reading is the part of the highlight that lies in this turn.
  *
- * THE CLIP NARROWS AND NEVER WIDENS, which is the property this function is
- * written to hold. A range is ordered, so with one endpoint inside and the
- * other outside, the outside end is necessarily BEYOND the corresponding edge
- * of this turn: clamping it to that edge can only drop text the reader did not
- * highlight in this turn. Both endpoints inside is `selectionTextIn`'s answer
- * and answers `null` here rather than a second, possibly divergent one; neither
- * endpoint inside means the selection does not reach this turn at all, where
- * clipping would have to invent a boundary and the caller's whole-turn
- * fallback is right.
+ * A NON-EMPTY CLIP NARROWS AND NEVER WIDENS, which is the property this
+ * function is written to hold. A range is ordered, so with one endpoint inside
+ * and the other outside, the outside end is necessarily BEYOND the
+ * corresponding edge of this turn: clamping it to that edge can only drop text
+ * the reader did not highlight in this turn. Both endpoints inside is
+ * `selectionTextIn`'s answer and answers `null` here rather than a second,
+ * possibly divergent one; neither endpoint inside means the selection does not
+ * reach this turn at all, where clipping would have to invent a boundary and
+ * the caller's whole-turn fallback is right.
+ *
+ * THE EMPTY CLIP IS THE BOUNDARY WHERE THAT STOPS HOLDING, and this paragraph
+ * exists because three round-2 streams read the sentence above as an absolute
+ * and each found the exception (code review, MINOR 2; UX round 2, U8; QA round
+ * 2, Q8, which reproduced it with a real drag). The clip is measured as a
+ * RANGE, and a range whose in-turn part holds no characters is empty: a drag
+ * that starts inside and releases on the turn's exact first character, or one
+ * that begins in the whitespace past the last line's ink and never crosses it,
+ * both leave `clipped.toString().trim()` at `""`. An empty clip is answered as
+ * `null`, and `null` is also the answer for "no selection reaches this turn",
+ * so the caller cannot tell the two apart and stages the turn's WHOLE BODY. The
+ * reader therefore gets a LONGER quote than they highlighted - the widening U3
+ * was filed for, narrowed to a character-exact boundary rather than removed.
+ *
+ * WHY THAT FALLBACK IS THE CHOSEN ONE RATHER THAN A REFUSAL. Refusing the
+ * press means making the empty clip distinguishable at the call site (which
+ * `quoteText` can no longer do, since it reads an empty string as "no
+ * selection"), and it buys a silent no-op on a gesture that reads as a quote -
+ * while the boundary it refuses on is not one a reader can aim at. The
+ * zero-character clip needs the release, or the press anchor, to land on an
+ * exact character boundary; a release inside the turn, below it, or spanning two
+ * turns clips to the words that were actually highlighted and behaves (UX round
+ * 2's boundary table; QA's boundary pair). What the reader sees is then the same
+ * thing a press with nothing selected shows: the composer's chip paints the
+ * turn's opening words truncated to one line, the sent block repeats it above
+ * the body, and the whole text goes on the wire. A gesture that caught no ink of
+ * this turn is, at this boundary, indistinguishable from one that selected
+ * nothing in it, so it gets the turn's own words rather than nothing.
  *
  * The toolkit rule is refused here too, and for the same reason it is refused in
  * `selectionTextIn`: a drag ending on the strip is a drag to the strip, and
@@ -190,6 +218,13 @@ export function selectionClippedTo(element: HTMLElement | null): string | null {
 	const clipped = range.cloneRange();
 	if (!startInside) clipped.setStart(element, 0);
 	if (!endInside) clipped.setEnd(element, element.childNodes.length);
+	/*
+	 * An empty clip answers the SAME `null` as "no selection reaches this turn",
+	 * so the caller's `??` chain passes it through and `quoteText` falls back to
+	 * the whole body. That widening is deliberate and bounded - the doc comment
+	 * above says why it is not refused - so it is stated here rather than left
+	 * to be rediscovered as a bug in this line.
+	 */
 	const text = clipped.toString().trim();
 	return text.length > 0 ? text : null;
 }
