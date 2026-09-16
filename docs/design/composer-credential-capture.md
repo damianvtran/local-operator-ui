@@ -266,6 +266,18 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   closes the popup; otherwise it keeps its existing meaning. The arm survives.
 - The Escape restore must not re-arm: the TUI nests the restore in
   `_suspend_credential_sync = True` for exactly this reason.
+- **One shape of that promise is unmet, measured, and deliberately NOT repaired
+  in round 3** (QA round 3, Q3). With the whole box being `/credential <the
+  restored characters>` — the token at offset 0 with the unredacted text after it
+  — Enter is a silent no-op while the sentence above the box says "Enter will
+  expose them": the dispatcher refuses the command's arguments and the draft is
+  put back, so nothing is sent, nothing is stored, and the box keeps the
+  characters and the sentence. Reproduced byte-identically on the round-3
+  reviewed head (`aaa9e70e7`), so this change neither introduced nor fixed it;
+  it is recorded as a deferred follow-up on PR #238 rather than repaired inside a
+  round whose scope is the composer's own layout. What it is not: no leak and no
+  loss — the characters survive in the box, no key is invented, and no secret
+  reaches the transcript.
 - **The disclosure the cancel raises is about ONE buffer, and any edit retires
   it** (UX round 3, U12; code review round 3, MINOR 1). The sentence says how many
   characters are now plain text *in the composer*, and round 2 made it durable by
@@ -473,13 +485,20 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    its height and the box's height are identical in idle, armed, masked and
    unredacted (1380: 757.00 / 34.00 / 112.00; 950 and 800: 755.00 / 28.00 /
    118.00), and the cwd chip's width is untouched in every state at every width
-   (260 / 244 / 96 / 44px). The composer is `origin/main`'s to the pixel in the
-   same fresh-idle state, measured on both trees with the same rig: 112.00 at
-   1380 and 124.00 at 950, 800 and 440, with the field's own height (34.00) and
-   position (757.00) equal on the two trees. Where the field is taller than one
-   line - a secret long enough to wrap in a 172px box at 440 - the box grows by
-   exactly that difference and no more: 118 + (47 - 28) = 137 and
-   118 + (67 - 28) = 157, i.e. the sentence contributes 0px at every width.
+   (260 / 244 / 96 / 44px). **The composer is `origin/main`'s, state for state,**
+   measured on both trees with the same rig and the same viewport: field `y`
+   402.25 / 408.00 / 411.00 / 411.00 and field height 34.00 / 34.00 / 28.00 /
+   28.00 at 1380 / 950 / 800 / 440, with the box 112.00 at 1380 and 124.00 (fresh)
+   / 118.00 (after an edit) at the three narrow rungs — the same two numbers on
+   the same tree on both sides of the diff. (The fresh/after-edit pair is the
+   field's own rows-based height following its line box once it has held a value:
+   27.5px of content at the small rung against 33.7 at the wide one. It is not a
+   difference between the trees — that was the one state round 3's own numbers
+   were taken in, and it is named here rather than left to look like one.) Where
+   the field is taller than one line — a secret long enough to wrap in a 172px
+   box at 440 — the box grows by exactly that difference and no more: 118 + (47 -
+   28) = 137 and 118 + (67 - 28) = 157, i.e. the sentence contributes 0px at every
+   width.
    **WHAT DOES NOT HOLD, with the number.** On an EMPTY chat the band takes
    `grow` + `justify-center` and centres the composer instead of pinning it, so a
    line above the box moves the GROUP by half its height: measured 13.75px for
