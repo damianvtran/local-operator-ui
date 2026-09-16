@@ -80,49 +80,77 @@ export const SettingsGroupHeader = ({
 			defaultOpen={defaultOpen}
 			onOpenChange={onOpenChange}
 			/*
-			 * The trigger's own ink is `ink-dim` for a trace chip; a section heading
-			 * is a heading, so the resting ink steps up to `ink` and the hover step
-			 * disappears with it — there is nothing for it to step up TO. The
-			 * override is passed here rather than styled around the component
-			 * because the primitive owns the button.
+			 * Two overrides, and both are corrections rather than preferences.
+			 *
+			 * INK. The trigger's own resting ink is `ink-dim` for a trace chip; a
+			 * section heading is a heading, so the resting ink steps up to `ink`.
+			 *
+			 * THE HOVER STEP. The override used to be `text-ink hover:text-ink`,
+			 * which cancels the primitive's only hover step (`disclosure.tsx`'s
+			 * `hover:text-ink-muted`) without putting anything in its place — so
+			 * hovering a 40px header changed nothing at all and the surface's
+			 * primary interaction had cursor-only feedback (design round 1, D1b).
+			 * The ground is the app's own list-row hover (`settings-sidebar`,
+			 * `credential-card`), not a new treatment, and `hover:text-ink` stays
+			 * because the primitive would otherwise step a heading DOWN in ink on
+			 * hover.
 			 */
-			triggerClassName="text-ink hover:text-ink"
-			/* One shape for all 18 headers, which is what makes the arrival index
-		   scan as a list rather than as 18 differently-sized things.
+			triggerClassName="text-ink hover:bg-elevated hover:text-ink"
+			/*
+			 * The chevron is this surface's only affordance, so it is the one mark
+			 * that must clear the 3:1 non-text floor: the primitive paints the slot
+			 * `ink-disabled` (2.70:1 dark / 2.80:1 light measured), which is the
+			 * role reserved for controls that are NOT operable. `ink-dim` measures
+			 * 5.81:1 / 5.31:1 beside the title it belongs to, and taking it here
+			 * rather than changing the primitive's line leaves the trace
+			 * hierarchy's chrome exactly as designed.
+			 */
+			chevronClassName="text-ink-dim"
+			/* One shape for all 19 headers, which is what makes the arrival index
+			   scan as a list rather than as 19 differently-sized things.
 
-			   `[&>div:empty]:hidden` is not decoration: the primitive renders its
-			   disclosed-content box whenever it is open, and this header discloses
-			   nothing - the rows are the SECTION's, one level out, which is what keeps
-			   them mounted across a collapse. Left alone, that empty box (`mt-1 pb-1`)
-			   made every OPEN header 48px and every closed one 40px, so the index grew
-			   8px per open section and "the same 40px shape" was false in the one way
-			   nobody would notice. */
+			   The empty disclosed-content box this header used to grow is gone from
+			   the primitive itself (`children != null` now gates it), which removes the
+			   `[&>div:empty]:hidden` workaround that was here: with no children there is
+			   no box, so the 8px, the `aria-controls` at a `display: none` target and
+			   the workaround all went with it. */
 			rowClassName="min-h-10 py-0"
-			className="w-full [&>div:empty]:hidden"
+			className="w-full"
 			summary={
 				/* Marks, and only marks. The section's own description is NOT here:
 			   it renders inside the section when it is open, because a second
 			   line under every title is what turned the index into 18 blocks
-			   and made the region 12 screens tall. */
-				<span className="flex min-w-0 items-center gap-2">
-					<span className="truncate text-heading text-ink">{title}</span>
-					{/* The count is stated only when there is one to state: a section whose
-						   rows the tier filter is holding back reads `14 advanced`, not
-					    `0 settings, 14 advanced`. */}
-					{rowCount > 0 && (
-						<span className="shrink-0 text-meta text-ink-dim">
-							{rowCount === 1 ? "1 setting" : `${rowCount} settings`}
-						</span>
-					)}
-					{scope && (
-						<span className="shrink-0 text-meta text-ink-dim">{scope}</span>
-					)}
-					{advancedCount > 0 && (
-						<span className="shrink-0 text-meta text-ink-dim">
-							{advancedCount} advanced
-						</span>
-					)}
-					{modified && <ChangedDot />}
+			   and made the region 12 screens tall.
+
+					 `w-full` on this span and `ml-auto` on the dot are one decision: the
+					 changed dot is an INDEX. Trailing variable-width copy put it at ten
+						   distinct x positions across ten dotted headers (214px of spread,
+					    measured in `changed-rows`), so the one question the mark answers -
+					 which sections have I changed? - could not be swept down a column
+						(design round 1, D4). Pinned to the trigger's right edge it can, and
+							the title keeps its rail because the cluster beside it still hugs
+						the left. */
+				<span className="flex w-full min-w-0 items-center gap-2">
+					<span className="flex min-w-0 items-center gap-2">
+						<span className="truncate text-heading text-ink">{title}</span>
+						{/* The count is stated only when there is one to state: a section whose
+							   rows the tier filter is holding back reads `14 advanced`, not
+						    `0 settings, 14 advanced`. */}
+						{rowCount > 0 && (
+							<span className="shrink-0 text-meta text-ink-dim">
+								{rowCount === 1 ? "1 setting" : `${rowCount} settings`}
+							</span>
+						)}
+						{scope && (
+							<span className="shrink-0 text-meta text-ink-dim">{scope}</span>
+						)}
+						{advancedCount > 0 && (
+							<span className="shrink-0 text-meta text-ink-dim">
+								{advancedCount} advanced
+							</span>
+						)}
+					</span>
+					{modified && <ChangedDot className="ml-auto" />}
 				</span>
 			}
 		/>

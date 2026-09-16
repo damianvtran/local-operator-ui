@@ -56,12 +56,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /**
  * The two windows the acceptance targets are stated at — the app's default, and
  * the step below 1040px where the settings rail collapses to its icon column —
- * plus a narrow one where the column, not the window, is what makes the rows
- * stack.
+ * plus the audit's 1280x800, where the rows-per-screen target is NOT met at the
+ * same pitch, and a narrow one where the column, not the window, is what makes
+ * the rows stack.
  */
 const VIEWPORTS = [
 	{ label: "1380x900", width: 1380, height: 900 },
 	{ label: "1000x900", width: 1000, height: 900 },
+	/*
+	 * The audit's OTHER window, added because the `>= 14 rows per screen` target
+	 * was quoted as though it held at every size: at 1380x900 the 60.4px row pitch
+	 * fits 14.9, and at 1280x800 the same pitch fits 13.2 (design round 1, D10).
+	 * A target that is true at one height and not the other has to be measured at
+	 * both, or the claim is a claim about a window rather than about the surface,
+	 */
+	{ label: "1280x800", width: 1280, height: 800 },
 	{ label: "620x900", width: 620, height: 900 },
 ];
 
@@ -85,7 +94,7 @@ const STATES = {
 		for (const el of closed) el.click();
 		return closed.length;
 	}`,
-	/** Nothing open: the readable index of 18 headers. */
+	/** Nothing open: the readable index of 19 headers. */
 	collapsed: `() => {
 		const open = [...document.querySelectorAll('[data-section-header] button[aria-expanded="true"]')];
 		for (const el of open) el.click();
@@ -277,7 +286,7 @@ const PROBE = `(() => {
 	 * ROWS PER SCREEN, which is a question about the LIST rather than about the
 	 * index above it: the region is scrolled so its first row is at the top of
 	 * the viewport and the rows that then fit are counted. Answering it from the
-	 * region's own top would count the 18 headers, which is the arrangement the
+	 * region's own top would count the 19 headers, which is the arrangement the
 	 * reader has already scrolled past.
 	 */
 	const firstRow = rows.find((row) => row.height > 0);

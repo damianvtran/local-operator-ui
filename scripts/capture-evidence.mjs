@@ -702,10 +702,10 @@ export const STORIES = [
 	["settings-integrations--no-servers", 1000, 860],
 
 	/*
-	 * Backend settings: the whole registry — 99 keys in 18 sections — which had no
-	 * frame, no story and no fixture in this set until now. The four states that
-	 * matter most are arrival (nothing touched), all-expanded (the long scroll the
-	 * complaint is about), filtered (a search that force-opens the sections it
+	 * Backend settings: the whole registry — 102 keys in 19 sections — which had no
+	 * frame, no story and no fixture in this set until the redesign. The four states
+	 * that matter most are arrival (nothing touched), all-expanded (the long scroll
+	 * the complaint is about), filtered (a search that force-opens the sections it
 	 * lands in and says how many rows it found) and one-section-open (a header's
 	 * own geometry).
 	 *
@@ -721,6 +721,15 @@ export const STORIES = [
 	 * fixture — off-default rows, changed dots, `Use default` — and the other
 	 * three are the states a reader reaches by searching, by a deep link and by a
 	 * gate that is switched off.
+	 *
+	 * `dirty`, `saving` and `save-failed` are the SAVE MODEL, which is the half of
+	 * this redesign that had no frame at all: eleven stories and 144 frames showed
+	 * no draft, so "saving is no longer silent" was unit-test-only evidence (design
+	 * round 1, D3). All three drive the registry's one `cascade` row through a
+	 * stubbed transport that hangs and then refuses, because the cascade is also
+	 * the row that used to keep claiming unsaved after a save that had landed
+	 * (review round 1, M1; QA round 1, Q3) — the frame and the fix are about the
+	 * same row.
 	 */
 	["settings-backend--arrival", 1380, 900],
 	["settings-backend--arrival", 1000, 900],
@@ -733,6 +742,9 @@ export const STORIES = [
 	["settings-backend--read-only-and-redacted", 1380, 900],
 	["settings-backend--gated-children", 1380, 900],
 	["settings-backend--deep-link", 1380, 900],
+	["settings-backend--dirty", 1380, 900],
+	["settings-backend--saving", 1380, 900],
+	["settings-backend--save-failed", 1380, 900],
 	["settings-backend--narrow", 620, 900],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a

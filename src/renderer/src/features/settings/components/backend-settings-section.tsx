@@ -9,13 +9,14 @@
  * The orchestrator owns everything the rows must agree about, and that is the
  * point of this rewrite:
  *
- * - THE TIER. The registry is 99 keys in 18 sections and every one of them used
+ * - THE TIER. The registry is 102 keys in 19 sections and every one of them used
  *   to ship expanded, which measured 10,896px of region (12.1 screens at
- *   1380x900) before a reader had done anything. `tierFor` decides which keys a
+ *   1380x900, on the 99-key registry this rewrite was measured against) before a
+ *   reader had done anything. `tierFor` decides which keys a
  *   reader meets on arrival and which sit one click away, and nothing is hidden
- *   at any tier: the `approvals` section and every `warning` clause are within
- *   the core list, search reaches every key at every tier, and the AI cannot gate
- *   a write.
+ *   at any tier: the `approvals` section is within the core list, every
+ *   `warning` clause renders on its row at whatever tier that row occupies,
+ *   search reaches every key at every tier, and the AI cannot gate a write.
  * - THE DRAFTS. A draft lives here, not in the row, for three reasons that are
  *   all the same reason: the page has to be able to count unsaved changes, save
  *   them all, and survive a section being collapsed — none of which a row-local
@@ -40,7 +41,6 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -100,10 +100,15 @@ const FOCUS_ATTEMPTS = 40;
  * Registry keys use underscores (`web_search.enabled`) while the words around
  * them are written with hyphens, so `/search`'s own deep link ("web-search")
  * matched 0 of 73 settings and the section rendered its empty state (UX U4).
- * Folding both separators to one makes the two spellings the same search, for
- * the deep link and for anyone typing.
+ * Folding both separators to one made the two spellings the same search, for
+ * the deep link and for anyone typing; the DOT is folded for the other half of
+ * the same defect — a reader who names a setting they can see on screen
+ * (`session.cleanup.max_sessions`) got "No settings match this search." for
+ * `cleanup max`, because 43 of the 102 keys are dotted and the section's own
+ * words became unreachable once they crossed one. A sentence is worth reading;
+ * a key is worth being able to find.
  */
-const fold = (value: string) => value.toLowerCase().replace(/[-_]/g, " ");
+const fold = (value: string) => value.toLowerCase().replace(/[-_.]/g, " ");
 
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
@@ -122,6 +127,28 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
 	const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
 	/**
+	 * Sections the reader closed in the FILTERED view: the same question, asked
+	 * about a different list.
+	 *
+	 * A search force-opens the sections it matched, which is the fix for the old
+	 * blocker (a collapsed section used to hide its own matches) and has to stay:
+	 * the reader's pre-search collapse is a choice about the full list, and a query
+	 * is a request to see what matched. But a click on a header WHILE that query is
+	 * live has to do something honest — the trigger used to flip its `aria-expanded`
+	 * and chevron while every matched row stayed on screen, and the click was
+	 * deferred rather than dropped, so clearing the search then collapsed a section
+	 * the reader never collapsed in the unfiltered view (UX round 1, U1).
+	 *
+	 * Two sets, because the two gestures are not the same gesture: this one is the
+	 * search's, it is cleared when the search is, and it therefore cannot leak into
+	 * the reader's own layout. Collapsing here hides the rows immediately; clearing
+	 * the search puts the pre-search layout back, which is what the already-verified
+	 * `search-restores-user-layout` requires.
+	 */
+	const [filterClosed, setFilterClosed] = useState<ReadonlySet<string>>(
+		new Set(),
+	);
+	/**
 	 * The last `?setting=` value that has been revealed.
 	 *
 	 * A ref holding the last HANDLED KEY rather than a one-shot boolean: the
@@ -130,6 +157,14 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 * looking at the section with the target off screen and nothing moving.
 	 */
 	const handledFocusKey = useRef<string | null>(null);
+	/**
+	 * The last `?setting=` value whose row has actually been REACHED.
+	 *
+	 * Separate from `handledFocusKey` because the two answer different questions:
+	 * "has this navigation been actioned?" and "has the reader's cursor arrived?".
+	 * Collapsing them is what broke the filtered deep link (UX round 1, U2).
+	 */
+	const revealedFocusKey = useRef<string | null>(null);
 
 	const settingsQuery = useQuery({
 		queryKey: backendSettingsKeys.all,
@@ -221,8 +256,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 * The sections that are open, and how each one got there.
 	 *
 	 * A filter SUSPENDS the reader's own choices and force-opens what it landed
-	 * in; clearing it restores the arrival layout rather than "everything open",
-	 * which is why the two sets below are reset when the filter changes.
+	 * in; clearing it restores the reader's own layout rather than "everything
+	 * open", so the two sets are not reset on a filter change at all — they persist
+	 * across a search, which is what makes a collapse survive one.
 	 */
 	const sections = useMemo(() => settings?.sections ?? [], [settings]);
 	const rowsForSection = useCallback(
@@ -233,6 +269,15 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const matchingForSection = (name: string) =>
 		matching.filter((setting) => setting.section === name);
 
+	/**
+	 * The open state of one section: the reader's choice, or the filter's.
+	 *
+	 * A filter SUSPENDS the reader's own choices and force-opens what it landed in;
+	 * clearing it restores the reader's OWN layout rather than "everything open" —
+	 * so `opened`/`closed` are not reset on a filter change at all, which is what
+	 * makes a collapse survive a search. The only thing a filter adds is its own
+	 * `filterClosed` set (see above).
+	 */
 	const isOpen = (name: string) =>
 		opened.has(name)
 			? true
@@ -240,6 +285,16 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				? false
 				: opensOnArrival(rowsForSection(name));
 
+	/**
+	 * Record a header click in the UNFILTERED list: the reader's own layout.
+	 *
+	 * While a filter is up the click is the filter's business instead, and is
+	 * routed to `filterClosed` at the call site — it must not write these sets,
+	 * because that is how a search came to rewrite the reader's layout behind
+	 * their back (UX round 1, U1: the click was recorded while all the matched rows
+	 * stayed on screen, and clearing the search then collapsed a section the reader
+	 * never collapsed in the unfiltered view).
+	 */
 	const setOpen = (name: string, open: boolean) => {
 		setOpened((current) => {
 			const next = new Set(current);
@@ -255,13 +310,41 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		});
 	};
 
+	/**
+	 * Record a header click in the FILTERED list, which is a different question.
+	 *
+	 * The collapse takes effect on this render — the chevron, `aria-expanded` and
+	 * the rows agree — and it lasts exactly as long as the search does.
+	 */
+	const setFilteredOpen = (name: string, open: boolean) => {
+		setFilterClosed((current) => {
+			const next = new Set(current);
+			if (open) next.delete(name);
+			else next.add(name);
+			return next;
+		});
+	};
+
 	const setAllOpen = (open: boolean) => {
 		const names = sections
 			.filter((section) => open || matchingForSection(section.name).length > 0)
 			.map((section) => section.name);
 		setOpened(new Set(open ? names : []));
 		setClosed(new Set(open ? [] : names));
+		// `Expand all` / `Collapse all` are read as being about the list on screen,
+		// so while a filter is up they reach the filtered view too — otherwise the
+		// one control whose whole job is to move every section would be the one
+		// control a search made inert. The reader's own sets are still written, so
+		// the choice survives the query being cleared.
+		setFilterClosed(new Set(open ? [] : names));
 	};
+
+	// The filter's own collapse state is the filter's: it goes when the filter
+	// does. Deliberately not on every keystroke — a reader who pushes a noisy match
+	// group aside and then refines the SAME query should not have it spring back.
+	useEffect(() => {
+		if (!filter.trim()) setFilterClosed(new Set());
+	}, [filter]);
 
 	/** The gate for a row, when the wire says one exists. */
 	const gateFor = useCallback(
@@ -291,7 +374,25 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		[],
 	);
 
-	/** Write one row's draft, and refetch so the server stays the authority. */
+	/**
+	 * Write one row's draft, and re-seed it from the server that has just accepted it.
+	 *
+	 * The re-seed is the save path's half of a contract `resetRow` already keeps,
+	 * and without it the row LIES about a write that landed: `isDraftDirty`
+	 * returns true unconditionally while `cascadeBase !== null` (a chain edit has
+	 * no comparable server value until it is submitted), so a cascade draft stayed
+	 * dirty forever — the row kept its `Save`, `Use default` and changed dot, the
+	 * page kept saying "1 unsaved change", `Save all` re-submitted the same write,
+	 * and the only way to clear the false state was `Use default`, which discards
+	 * the edit that had already been saved (review round 1, M1; QA round 1, Q3,
+	 * reproduced end to end against a real backend).
+	 *
+	 * The refetch stays the authority for the VALUE; this only puts the draft back
+	 * in agreement with it. A draft the reader changed while the write was in
+	 * flight is left alone — the row is disabled while `saving`, but the refetch
+	 * outlives that flag, so the comparison is what makes this safe rather than
+	 * the timing.
+	 */
 	const saveRow = useCallback(
 		async (setting: BackendSetting) => {
 			const draft = drafts[setting.key];
@@ -306,10 +407,21 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			try {
 				await desktopResult(outcome.request);
 				markSaving(setting.key, false);
-				// The refetch is the authority. The failed branch below is the only
-				// one that keeps the draft, which is what "a failed save must not
-				// discard the edit" means in practice.
-				await settingsQuery.refetch();
+				const refreshed = await settingsQuery.refetch();
+				const fresh = refreshed.data?.settings.find(
+					(candidate) => candidate.key === setting.key,
+				);
+				if (fresh) {
+					setDrafts((current) => {
+						const live = current[setting.key];
+						const untouched =
+							live &&
+							live.value === draft.value &&
+							live.cascadeBase === draft.cascadeBase;
+						if (!untouched) return current;
+						return { ...current, [setting.key]: draftFromSetting(fresh) };
+					});
+				}
 				return true;
 			} catch (error) {
 				markSaving(setting.key, false);
@@ -394,13 +506,23 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	};
 
 	/**
-	 * A /settings navigation target reveals its section AND its tier, then
-	 * focuses the field.
+	 * A /settings navigation target reveals its section AND its tier.
 	 *
 	 * The order is the contract: the row does not exist in the DOM until the
 	 * section is open, and an advanced key's row does not exist until the tier is
 	 * shown either. Doing it the other way round is how a deep link "succeeds"
 	 * while leaving the reader looking at a closed header.
+	 *
+	 * This effect owns the NAVIGATION only. Focusing is a second effect below, and
+	 * the split is the fix for a defect this one carried: it also held the reveal
+	 * loop, and its dependency list includes `filter` — which it clears itself
+	 * when the destination does not match the active query. `setFilter("")`
+	 * re-runs the effect, React runs the cleanup first, and the cleanup cancelled
+	 * the pending reveal before the row could exist; the re-run then returned early
+	 * on `handledFocusKey` and nothing else ever tried. So the ONE case the
+	 * comment below promises to handle — a deep link that has to clear a search —
+	 * was the case that did nothing at all: the field cleared, 0px moved, focus
+	 * stayed in the search box (UX round 1, U2).
 	 */
 	useEffect(() => {
 		if (!focusKey || !settings) return;
@@ -427,16 +549,57 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			next.delete(target.section);
 			return next;
 		});
+	}, [focusKey, settings, filter]);
 
+	/**
+	 * Whether the deep link's destination is actually on screen yet.
+	 *
+	 * The reveal loop is waiting for a row to EXIST, and a row exists only when
+	 * three things agree: the registry has the key, the filter admits it, and — if
+	 * it is an advanced key — the tier is showing. Expressing that as one derived
+	 * value is what replaced a retry loop keyed on frame counts, and it is also
+	 * what makes the loop survive the navigation effect above clearing the filter:
+	 * the earlier version keyed the loop on `filter` directly, so React ran its
+	 * cleanup (cancelling the pending frame) the moment `setFilter("")`
+	 * committed, and the re-run bailed on the already-handled key — leaving the one
+	 * path the navigation effect exists to serve (`?setting=web_search.enabled`
+	 * under a live search) doing nothing at all (UX round 1, U2).
+	 */
+	const destinationReady = useMemo(() => {
+		if (!focusKey || !settings) return false;
+		const target = settings.settings.find((s) => s.key === focusKey);
+		if (!target) return false;
+		if (tierFor(target) === "advanced" && !showAdvanced) return false;
+		const needle = fold(filter.trim());
+		if (!needle) return true;
+		return fold(
+			[target.label, target.help, target.key, target.section].join(" "),
+		).includes(needle);
+	}, [focusKey, settings, filter, showAdvanced]);
+
+	/**
+	 * Close the distance: focus the named row's control once it is on screen.
+	 *
+	 * Keyed on `destinationReady` rather than on the filter, so a filter-clearing
+	 * re-run RESTARTS the loop instead of cancelling it with nothing left to try.
+	 */
+	useEffect(() => {
+		if (!destinationReady || !focusKey) return;
+		if (revealedFocusKey.current === focusKey) return;
 		let frame = 0;
 		let attempts = 0;
 		const step = () => {
+			// Scoped to the row's CONTROL SLOT. Unscoped, this selector matched the
+			// row's `Use default`/`Save` buttons first — they precede the control in
+			// document order — so an off-default row was focused on its reset button
+			// rather than on its field (review round 1, n4).
 			const el = document.querySelector<HTMLElement>(
-				`[data-setting-key="${CSS.escape(focusKey)}"] input, [data-setting-key="${CSS.escape(focusKey)}"] textarea, [data-setting-key="${CSS.escape(focusKey)}"] button[role="switch"], [data-setting-key="${CSS.escape(focusKey)}"] button`,
+				`[data-setting-key="${CSS.escape(focusKey)}"] [data-setting-control] :is(input, textarea, select, button[role="switch"], button)`,
 			);
 			if (el) {
 				el.focus();
 				el.scrollIntoView({ block: "center" });
+				revealedFocusKey.current = focusKey;
 				return;
 			}
 			attempts += 1;
@@ -444,7 +607,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		};
 		frame = requestAnimationFrame(step);
 		return () => cancelAnimationFrame(frame);
-	}, [focusKey, settings, filter]);
+	}, [destinationReady, focusKey]);
 
 	if (capabilities.data && !enabled) {
 		return (
@@ -557,34 +720,31 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			/>
 
 			{filtering && matching.length === 0 && (
-				<div className="flex flex-col items-center gap-2 py-6 text-center">
+				// ONE statement, and it is the live region's. The centred pair this
+				// replaces said the same thing twice — `0 results in 0 sections` under
+				// the field AND this sentence with a `Clear search` button that carried
+				// the same accessible name as the field's own ✕ — so the button went
+				// with the duplicate (design round 1, D11). The sentence stays: it is
+				// the only thing that speaks to a reader looking at the list rather
+				// than at the bar, and it names the way out that is actually there.
+				<div className="flex flex-col items-center py-6 text-center">
 					<p className="text-body-sm text-ink-muted">
-						No settings match this search.
+						No settings match this search. Clear the search field to see every
+						setting again.
 					</p>
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => {
-							setFilter("");
-							setModifiedOnly(false);
-						}}
-					>
-						<X aria-hidden="true" />
-						Clear search
-					</Button>
 				</div>
 			)}
 
 			<div className="flex flex-col gap-1">
 				{/*
 				 * Every section renders, in registry order, even the ones whose rows
-				 * the tier filter is holding back: the index of 18 headers is the
+				 * the tier filter is holding back: the index of 19 headers is the
 				 * readable map of the registry, and a section that vanished when its
 				 * rows were filtered would be a section the reader cannot find. A
 				 * header whose rows are all advanced says how many it is holding.
 				 *
 				 * The gap between sections is 4px, one step of the ramp, and the reason
-				 * is arithmetic rather than taste: at 16px, seventeen of them cost 272px
+				 * is arithmetic rather than taste: at 16px, eighteen of them cost 288px
 				 * of the arrival region's budget on their own, and a 40px header followed
 				 * by its rows is already a clear break. An open section keeps 12px under
 				 * its last row, so the next header does not crowd it.
@@ -592,16 +752,27 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				{sections.map((section) => {
 					const rows = matchingForSection(section.name);
 					const allRows = rowsForSection(section.name);
-					const advancedHeld =
-						showAdvanced || filtering
-							? 0
-							: allRows.filter((setting) => tierFor(setting) === "advanced")
-									.length;
-					// A filter hides a section entirely: leaving 18 headers standing
+					/*
+					 * The advanced split is stated whenever it is TRUE, including with the tier
+					 * revealed — which used to be the one moment it vanished: `Show advanced`
+					 * set this to 0, so `10 settings · 9 advanced` became a bare `10 settings`
+					 * and the distinction the whole model is built on disappeared exactly while
+					 * the reader was exploring it (design round 1, D5). A filter still blanks
+					 * it, for a reason that outlives the fix: a filtered header counts MATCHES,
+					 * and "9 advanced" beside "3 results" would be counting two different
+					 * things in one line.
+					 */
+					const advancedHeld = filtering
+						? 0
+						: allRows.filter((setting) => tierFor(setting) === "advanced")
+								.length;
+					// A filter hides a section entirely: leaving 19 headers standing
 					// over a search that matched four of them is the "immensely long
 					// scroll" this surface is being fixed for, one tier down.
 					if (filtering && rows.length === 0) return null;
-					const open = filtering ? rows.length > 0 : isOpen(section.name);
+					const open = filtering
+						? rows.length > 0 && !filterClosed.has(section.name)
+						: isOpen(section.name);
 					return (
 						<section
 							key={section.name}
@@ -624,7 +795,11 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 								scope={SCOPE_LABELS[section.scope]}
 								modified={allRows.some(isModified)}
 								defaultOpen={open}
-								onOpenChange={(next) => setOpen(section.name, next)}
+								onOpenChange={(next) =>
+									filtering
+										? setFilteredOpen(section.name, next)
+										: setOpen(section.name, next)
+								}
 							/>
 							<div hidden={!open} className="flex flex-col pb-3">
 								{section.description && (
@@ -636,11 +811,15 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 									// An open section with nothing in it, said out loud
 									// rather than rendered as an empty box. The reveal is
 									// the bar's own control, offered where the reader
-									// noticed the absence.
+									// noticed the absence — and its label names the COUNT and
+									// its own scope, because the bar above carries a control
+									// with the same two words for the whole registry (design
+									// round 1, D6: "two doors, one phrase"). The sentence
+									// dropped its own count so the number is stated once.
 									<div className="flex items-center gap-2 px-1 py-2">
 										<p className="text-body-sm text-ink-muted">
 											{advancedHeld > 0
-												? `${advancedHeld} advanced ${advancedHeld === 1 ? "setting is" : "settings are"} hidden here.`
+												? "Advanced settings are hidden here."
 												: "Nothing in this section matches."}
 										</p>
 										{advancedHeld > 0 && (
@@ -649,7 +828,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 												size="sm"
 												onClick={() => setShowAdvanced(true)}
 											>
-												Show advanced
+												Show {advancedHeld} advanced
 											</Button>
 										)}
 									</div>

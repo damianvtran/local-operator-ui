@@ -6,9 +6,9 @@
  * over a list every section of which shipped open. Four things were missing from
  * that surface and are the whole reason this bar exists:
  *
- * - a BOUNDED field. The registry is 99 keys in 18 sections; a search box as wide
+ * - a BOUNDED field. The registry is 102 keys in 19 sections; a search box as wide
  *   as the page says nothing about what it will find, so the field is 400px and
- *   the line under it states the scope being searched (`25 core settings, 74
+ *   the line under it states the scope being searched (`12 core settings, 90
  *   advanced`) or the result (`9 results in 4 sections`) — a count, never a
  *   promise.
  * - the TIER as a filter rather than a second page. `Show advanced` reveals the
@@ -17,7 +17,7 @@
  *   (`settings_io.py:126-127`): physically merging or re-partitioning them would
  *   express a renderer's layout preference on the wire.
  * - `Modified (n)`, so the thing a reader most often wants — what have I changed
- *   on this machine — is one press rather than 99 rows.
+ *   on this machine — is one press rather than 102 rows.
  * - the UNSAVED count. The save model (draft + explicit Save, per kind) is
  *   unchanged and deliberately so; what changes is that it stopped being silent.
  *   A draft that survives a failed save is a promise this surface made and only
@@ -95,6 +95,16 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 				<Input
 					value={query}
 					onChange={(event) => onQueryChange(event.target.value)}
+					/*
+					 * Escape clears, because the field is where a reader who wants their
+					 * list back is already looking: without it the only way out of a
+					 * search was the ✕ (a mouse) or select-all-and-delete (UX round 1,
+					 * U5). It clears only when there is something to clear, so Escape
+					 * stays available to whatever else on the page may want it.
+					 */
+					onKeyDown={(event) => {
+						if (event.key === "Escape" && query) onQueryChange("");
+					}}
 					placeholder="Search settings by name, description or key"
 					aria-label="Search settings"
 					className="pl-9"
@@ -187,13 +197,24 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 
 		{/* One line, and it answers the question the field raises: how much is
 		    there, and what did my query find. Stated in the registry's own units
-		    ("settings"), never in rows or matches the user cannot count. */}
+		    ("settings"), never in rows or matches the user cannot count.
+
+		    Four states, because three of them used to read as the arrival scope:
+		    a search reports its own result, `Modified` reports ITS result (it
+		    changed the list while the line went on stating the whole registry —
+		    UX round 1, U12), and `Show advanced` says what it just admitted
+		    rather than leaving the reader to discover that the chip reveals rows
+		    inside sections they have not opened (UX round 1, U3). */}
 		<p className="text-meta text-ink-dim" aria-live="polite">
-			{matchCount === null
-				? `${coreCount} core settings, ${advancedCount} advanced`
-				: `${matchCount} ${matchCount === 1 ? "result" : "results"} in ${matchSections} ${
+			{matchCount !== null
+				? `${matchCount} ${matchCount === 1 ? "result" : "results"} in ${matchSections} ${
 						matchSections === 1 ? "section" : "sections"
-					}`}
+					}`
+				: modifiedOnly
+					? `${modifiedCount} modified ${modifiedCount === 1 ? "setting" : "settings"}`
+					: showAdvanced
+						? `${advancedCount} advanced settings shown — Expand all to see them`
+						: `${coreCount} core settings, ${advancedCount} advanced`}
 		</p>
 	</div>
 );
