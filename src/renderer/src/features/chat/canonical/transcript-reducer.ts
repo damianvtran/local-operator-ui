@@ -877,21 +877,39 @@ export function collapseSettledCompactions(
 		);
 		if (match) pair(row, match);
 	}
-	// Then the window, for a durable row with no figure to match on.
+	/*
+	 * Then the window, and ONLY for a durable row that carries no figure at all.
+	 *
+	 * WHY THE EXCLUSION IS THE FIX, not a refinement (UX round 5, U19 = R5-3). The
+	 * fallback as first written considered every unclaimed row and took the
+	 * nearest, so a live line whose own durable row had not arrived yet could claim
+	 * the PREVIOUS pass's row — 30 s inside the window, and the nearest candidate
+	 * there was. Measured live: durable figures 25 / 3781 / 5301, and the pane read
+	 * `to 3.8k` on pass 1's slot, `to 5.3k` on pass 2's, pass 3 bare — each row
+	 * carrying the NEXT pass's figures, stable and wrong. A row that HAS a
+	 * fingerprint says which pass it belongs to; a live line whose figure differs is
+	 * a different pass, so the row is not a candidate — not a worse one.
+	 *
+	 * What remains is the case this existed for: an older transcript whose rows
+	 * predate the field. There the pair is chosen by DISTANCE — every live/durable
+	 * combination ranked globally, nearest first, each side claimed once — rather
+	 * than oldest-live-first, because oldness was the old rule's reasoning and it
+	 * contradicts the sentence this function states.
+	 */
+	const pairs: { live: Settled; durable: Settled; distance: number }[] = [];
 	for (const row of ordered) {
 		if (dropped.has(row.id)) continue;
-		let nearest: Settled | null = null;
-		let distance = Number.POSITIVE_INFINITY;
 		for (const candidate of durable) {
-			if (claimed.has(candidate.id)) continue;
-			const delta = Math.abs(candidate.ts - row.ts);
-			if (delta > SETTLED_PAIRING_WINDOW_MS) continue;
-			if (delta < distance) {
-				distance = delta;
-				nearest = candidate;
-			}
+			if (candidate.before !== undefined) continue;
+			const distance = Math.abs(candidate.ts - row.ts);
+			if (distance > SETTLED_PAIRING_WINDOW_MS) continue;
+			pairs.push({ live: row, durable: candidate, distance });
 		}
-		if (nearest) pair(row, nearest);
+	}
+	pairs.sort((a, b) => a.distance - b.distance);
+	for (const { live: row, durable: candidate } of pairs) {
+		if (dropped.has(row.id) || claimed.has(candidate.id)) continue;
+		pair(row, candidate);
 	}
 	if (dropped.size === 0) return records;
 	return records
@@ -1278,10 +1296,17 @@ function bounded(headline: string): string {
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
-	 * The record already painted for this id, if any. Passed only so an
-	 * unchanged `images` array keeps its REFERENCE across a re-read of the same
-	 * history page — `shallowEqual` compares by `!==`, so a freshly built array
-	 * would report every replayed row as changed and re-render it.
+	 * The record already painted for this id, if any. It carries TWO facts, and
+	 * neither is optional:
+	 *
+	 * - an unchanged `images` array keeps its REFERENCE across a re-read of the
+	 *   same history page — `shallowEqual` compares by `!==`, so a freshly built
+	 *   array would report every replayed row as changed and re-render it;
+	 * - a compaction row keeps the SENTENCE it already carries, which is the live
+	 *   line the pairing moved onto it. The durable entry has no sentence of its
+	 *   own to replace it with, and recomputing one would strip the figures on the
+	 *   very next read — that is what makes `collapseSettledCompactions`
+	 *   idempotent.
 	 */
 	previous?: TranscriptRecord,
 ): TranscriptRecord | null {
@@ -1534,10 +1559,17 @@ export function applyHistoryPage(
 	 * mechanism. A read that is not the tail read still repaints, which is
 	 * pre-existing behaviour of a view-only clear rather than this branch's.
 	 */
-	const clearedView =
-		options.keepPaging === true &&
-		state.records.length === 0 &&
-		state.viewEpoch > 0;
+	/*
+	 * The test is the EPOCH, not "is the view empty": the first read painting the
+	 * pass's own outcome row is enough to make the view non-empty, and the second
+	 * scheduled read would then land whole — the same defect through the other door
+	 * (review round 5, R5-2: `/clear`, keep working, `/compact` restored the
+	 * pre-clear conversation, reproduced with the second read bracketed in the
+	 * backend's request log). `keepPaging` is set by exactly one caller (the tail
+	 * read) and the epoch is bumped by exactly one function (`clearTranscript`), so
+	 * this is the narrowest statement of the rule.
+	 */
+	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
 		if (clearedView && !isCompactionOutcome(entry)) continue;
