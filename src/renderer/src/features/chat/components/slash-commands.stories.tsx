@@ -348,6 +348,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	paneHasSession: false,
 	prefixingCommands: new Set(),
 	nameListCommands: new Set(),
+	nameChoices: new Set(),
 	argumentWords: [],
 	enabled: true,
 	...over,

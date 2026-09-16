@@ -1820,6 +1820,31 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 	["common-connectivity-banner--unattachable", 1024, 300],
+
+	/* The composer's slash SYNTAX HIGHLIGHT, which is a tint on tokens the
+	   composer recognises: the command word, and the roster NAME after a
+	   `/team`·`/agent` command, with the instruction set left in prose. Swept
+	   because the tints are role-based and the twelve palettes are where a
+	   contrast defect hides, and because the two negative frames are the rule:
+	   a word that names no command is dimmed while the list is closed and
+	   NOTHING is painted while it is choosing, and a slash token inside a
+	   sentence paints nothing at all. Sized to the band (and taller for the
+	   open list, which floats above the composer) rather than to a window,
+	   because a band frame that is mostly ground crosses `check-evidence`'s
+	   uniformity ceiling. */
+	["chat-slash-highlight--command-alone", 900, 240],
+	["chat-slash-highlight--start-name-instruction", 900, 330],
+	["chat-slash-highlight--unknown-word", 900, 240],
+	["chat-slash-highlight--unknown-word-picking", 900, 390],
+	["chat-slash-highlight--prose-leading-command-word", 900, 240],
+	["chat-slash-highlight--mid-sentence-token", 900, 240],
+	["chat-slash-highlight--disabled-and-placeholder", 900, 460],
+	/* The readback as a frame: the mirror's client width against the textarea's,
+	   the computed font of each, the row counts, each run's y against
+	   `paddingTop + newlines x lineHeight`, and the right-padding correction — the
+	   four ways the two layers can drift, in every palette. Wider and taller than
+	   the others because it carries the numbers as well as the tint. */
+	["chat-slash-highlight--geometry", 1000, 2150],
 ];
 
 /**
