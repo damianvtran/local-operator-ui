@@ -965,6 +965,19 @@ type CanonicalSessionsState = {
 	 * health; only the user can clear this, by navigating again.
 	 */
 	navigationError: string | null;
+	/**
+	 * Which reads the daemon could not answer on the last successful session
+	 * list, in the daemon's own vocabulary (`liveness`, `wakes`, `attention`), or
+	 * empty when it answered every one of them.
+	 *
+	 * WHY it is carried rather than dropped on the floor. A swallowed liveness
+	 * read publishes `active: false` for every row, and the sidebar renders that
+	 * as "Nothing running right now." - a claim about the machine derived from a
+	 * read that FAILED. The field is additive and optional: a daemon that
+	 * predates it sends nothing, this stays empty, and every surface renders
+	 * exactly as it did before it existed.
+	 */
+	statusUnavailable: string[];
 	loading: boolean;
 	truncated: boolean;
 	error: string | null;
@@ -1315,6 +1328,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			navigationError: null,
 			loading: false,
 			truncated: false,
+			statusUnavailable: [],
 			error: null,
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
@@ -1325,6 +1339,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const result = await desktopResult<{
 						sessions: BackendSessionRow[];
 						truncated?: boolean;
+						/**
+						 * The reads the daemon could not answer, additive and optional. A
+						 * daemon that sends nothing here is one that answered all of them.
+						 */
+						degraded?: string[];
 					}>({ op: "sessions.list", limit });
 					if (generation !== refreshGeneration) return;
 					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
@@ -1337,6 +1356,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						sessions: replaceSessionRows(state.sessions, rows),
 						loading: false,
 						truncated: result.truncated === true,
+						/*
+						 * Read only from an answer that arrived: a failed read leaves the last
+						 * known list in place (and says so through `error`), so the marker that
+						 * belonged to those rows is the honest thing to keep beside them.
+						 */
+						statusUnavailable: Array.isArray(result.degraded)
+							? result.degraded.filter((read) => typeof read === "string")
+							: [],
 					}));
 				} catch (error) {
 					if (generation === refreshGeneration)

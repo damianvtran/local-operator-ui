@@ -1,3 +1,4 @@
+import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -46,6 +47,7 @@ import {
 } from "../chat-search";
 import { clearSearch } from "../clear-search";
 import { newChatShortcutCap } from "../new-chat-shortcut";
+import { catalogueGate } from "../sidebar-catalogue-gate";
 
 type Props = {
 	selectedConversation?: string;
@@ -176,20 +178,46 @@ export function ChatSidebar({
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
+	/*
+	 * The two store fields the gate reads are subscribed BEFORE it, which is the only
+	 * reason this sits above hooks it is unrelated to: `lastKnownRows` is a statement
+	 * about what is on screen and `storeFailed` is a statement about the store's own
+	 * read, so the gate cannot decide either without the store. Nothing here is
+	 * conditional, so the order is a readability choice rather than a hooks rule.
+	 */
+	const sessions = useCanonicalSessionsStore((s) => s.sessions);
+	const error = useCanonicalSessionsStore((s) => s.error);
 	const ready = desktopFeatureEnabled(
 		capabilities.data,
 		"session_catalogue",
 		2,
 	);
-	// Losing the backend mid-session must not look like an empty catalogue. Once
-	// the sidebar has been ready we keep its structure and last-known rows
-	// mounted through a capability error, marked stale, instead of replacing the
-	// whole list with a bare error paragraph the user cannot act on.
+	/*
+	 * Losing the backend mid-session must not look like an empty catalogue, and
+	 * neither must losing the GATE. Once the sidebar has been ready we keep its
+	 * structure and last-known rows mounted through a capability error or a
+	 * capability answer that withdraws the catalogue, marked stale, instead of
+	 * replacing the whole list with a bare paragraph the user cannot act on. The
+	 * decision itself lives in `sidebar-catalogue-gate.ts` so that it is driven by
+	 * tests rather than by this file's source text; that module's docstring carries
+	 * the report it answers and why the withdrawn case is not the error case.
+	 */
 	const searchRef = useRef<HTMLInputElement>(null);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
-	const stale = Boolean(capabilities.error) && wasReady.current;
-	const showList = ready || stale;
+	const { stale, showList, notice } = catalogueGate({
+		ready,
+		failed: Boolean(capabilities.error),
+		answered: Boolean(capabilities.data),
+		wasReady: wasReady.current,
+		// Read here rather than inside the module: the gate is a decision, and the
+		// store is a subscription.
+		rows: sessions.length,
+		storeFailed: Boolean(error),
+		// The banner's own condition, read through the same predicate it uses, so
+		// the two cannot drift into stating one condition twice (design round 1, D3).
+		coveredByCompatibilityBanner: compatibilityBannerShown(capabilities.data),
+	});
 	/*
 	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY
 	 * on purpose: it is the same `navigator.platform` read `chat-header.tsx` and
@@ -204,11 +232,15 @@ export function ChatSidebar({
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
-	const sessions = useCanonicalSessionsStore((s) => s.sessions);
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
-	const error = useCanonicalSessionsStore((s) => s.error);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
+	// The daemon's own marker for reads it could not answer. Empty for any daemon
+	// that predates it, which is what keeps this additive.
+	const statusUnavailable = useCanonicalSessionsStore(
+		(s) => s.statusUnavailable,
+	);
+	const livenessUnread = statusUnavailable.includes("liveness");
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
 	const [query, setQuery] = useState("");
@@ -940,7 +972,7 @@ export function ChatSidebar({
 			</p>
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
-					<p aria-live="polite" className="text-meta text-ink-muted">
+					<p aria-live="polite" className="text-meta text-ink-dim">
 						Connecting to chats…
 					</p>
 				)}
@@ -959,20 +991,43 @@ export function ChatSidebar({
 						</button>
 					</div>
 				)}
-				{capabilities.data && !ready && !capabilities.error && (
-					<p role="alert" className="text-body-sm text-warning">
-						Update the backend to use canonical chats. Existing histories are
-						unchanged.
-					</p>
+				{/*
+				    The sentence is the gate's, not this file's (see the module): which half of
+				    the gate closed, whether the store's own read has already failed (the D9 rule
+				    this file applies to the feed line below - two statements about one backend is
+				    one too many), and whether there are last-known rows to speak for are three
+				    inputs a test can drive, and a JSX condition is not. Retry is re-negotiation
+				    rather than recovery: the poll in `useDesktopCapabilities` re-asks on its own
+				    cadence, and this is the same control the error branch above offers.
+				 */}
+				{notice && (
+					<div role="alert" className="space-y-1 text-body-sm text-warning">
+						<p>{notice}</p>
+						<button
+							type="button"
+							className="underline"
+							onClick={() => void capabilities.refetch()}
+						>
+							Retry
+						</button>
+					</div>
 				)}
+				{/*
+				    The state is carried by the sentence, never by a treatment on the rows
+				    (branding § 6 and § 9: disabled changes colour, and opacity is not a state
+				    signal at all - it composites `ink` down to ~6:1 on this palette and below
+				    the 4.5:1 floor on four of the twelve, which `check-themes` cannot see
+				    because it does not evaluate alpha). These rows are also the only way to
+				    reach a conversation, so dimming them says "unavailable" about the one
+				    thing that still works. Design round 1, D1. */}
 				{showList && (
-					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
+					<div className="space-y-4 pb-2">
 						<section>
 							{heading("agents", "Agents", true)}
 							{(query || isOpen("agents", true)) && (
 								<>
 									{profiles.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-muted">
+										<p aria-live="polite" className="text-meta text-ink-dim">
 											Loading agents…
 										</p>
 									)}
@@ -994,6 +1049,11 @@ export function ChatSidebar({
 							{heading("teams", "Teams", true)}
 							{(query || isOpen("teams", true)) && (
 								<>
+									{teams.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-dim">
+											Loading teams…
+										</p>
+									)}
 									{teams.data?.map((team) => entity("team", team.name))}
 									<button
 										type="button"
@@ -1014,12 +1074,7 @@ export function ChatSidebar({
 			    and its disclosure became easy to miss, so it is pinned below the
 			    scrolling entity region and owns its own scroll area. */}
 			{showList && (
-				<div
-					className={cn(
-						"mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2",
-						stale && "opacity-60",
-					)}
-				>
+				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2">
 					<section>
 						<button
 							type="button"
@@ -1074,24 +1129,23 @@ export function ChatSidebar({
 						    not a free tidy-up for a later reader. */}
 						<button
 							type="button"
-							// DEFENSIVE, not currently reachable — and the earlier comment
-							// here named the stale state as the case that makes it live,
-							// which measurement disproved. `stale` requires
-							// `capabilities.error`, and react-query retains the last good
-							// `data` across a failed refetch (`retry: false`, no reset), so
-							// `ready` is still true there and this row renders enabled.
-							// With `showList = ready || stale` there is no state that
-							// renders the row while `ready` is false.
+							// REACHABLE now, and this is the state that makes it live: a gate that
+							// withdraws without an error leaves `showList` true (the last-known
+							// rows stay mounted) while `ready` is false, so this row renders
+							// disabled and refuses to stage a draft against an absent catalogue.
+							// Before the withdrawn case was handled, the only way here was a
+							// capability error, and react-query keeps the last good `data`
+							// across a failed refetch (`retry: false`, no reset) - so `ready`
+							// stayed true there and this was defensive rather than reachable.
 							//
-							// Kept because the pairing is what makes decoupling them safe:
-							// staging a draft needs the session catalogue, so if `showList`
-							// ever admits a not-ready state the row must disable rather
-							// than stage against an absent catalogue. Only a focusable row
-							// is a stop in the arrow ring — `keyDown` moves by calling
-							// `.focus()` on the next `[data-chat-row]` and a disabled
-							// button silently refuses it — so the attribute has to drop out
-							// in exactly the states the button is disabled, or a keyboard
-							// user strands here.
+							// Kept and now load-bearing, because the pairing is what makes
+							// decoupling `showList` from `ready` safe: staging a draft needs the
+							// session catalogue, so a not-ready render must disable rather than
+							// stage against nothing. Only a focusable row is a stop in the arrow
+							// ring - `keyDown` moves by calling `.focus()` on the next
+							// `[data-chat-row]` and a disabled button silently refuses it - so the
+							// attribute has to drop out in exactly the states the button is
+							// disabled, or a keyboard user strands here.
 							data-chat-row={ready || undefined}
 							className={cn(
 								rowStyle,
@@ -1167,8 +1221,10 @@ export function ChatSidebar({
 											.filter((row) => row.active)
 											.map((row) => sessionRow(row))
 									) : (
-										<p className="px-2 text-meta text-ink-muted">
-											Nothing running right now.
+										<p className="px-2 text-meta text-ink-dim">
+											{livenessUnread
+												? "The daemon could not read which chats are running, so this list may be incomplete."
+												: "Nothing running right now."}
 										</p>
 									))}
 							</section>

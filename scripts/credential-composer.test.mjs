@@ -1257,8 +1257,15 @@ test("the empty span's sentence names what Enter does in a LIVE session", async 
 	 * opens the credential picker; on a pane without one it cannot store at all.
 	 * The two states say so, in their own words — and this is the live one.
 	 */
+	/*
+	 * A conversation id of its own, and not `2e0e7dbc066a`: the rig reuses ONE
+	 * root, so two cases that name the same conversation re-render the same
+	 * component instance — and the arm-time names fetch is guarded by a ref that
+	 * would then already be stamped (`fetchedNamesFor`), silently removing the
+	 * read the §8 case below asserts. Distinct ids keep each case's refs its own.
+	 */
 	const frame = await mount({
-		conversationId: "2e0e7dbc066a",
+		conversationId: "7a1b2c3d4e5f",
 		sessionStatus: { frontend: null },
 	});
 	await openCapture(frame);

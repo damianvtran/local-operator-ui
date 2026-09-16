@@ -42,8 +42,9 @@ content, and the longest banner (two sentences) is what made the difference.
 | `no-spawn` | the same sentence + "A local daemon may still be running, but could not be attached. Waiting without starting a duplicate." | warning |
 | `unclaimed` | the same sentence + "A daemon is running at http://127.0.0.1:1111, but it refused this app's credential for its desktop plane. The daemon is running." | warning |
 | `stopped` | "The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears." + "The daemon's process is gone." | danger |
-| `wedged` | "A Local Operator server is running but has stopped publishing its own heartbeat, so this app is not attaching to it and is not starting a second one." + main's pid sentence | danger |
-| `no-bridge` | "Not connected to a Local Operator server." | danger |
+| `wedged` | "A Local Operator server is running on this machine and this app is not attached to it." + main's own sentence about the path taken | warning |
+| `unattachable` | the same sentence + main's spawn-gate detail: the path taken (this app was not given the key to that server), that no second daemon was started, and that it keeps probing for one it can open | warning |
+| `no-bridge` | nothing — **no banner renders**: with no desktop bridge the health query has no answer and the hook's own fallback reads the server as online (design round 2, D12) | — |
 
 Three things the table is measuring, each of which was a finding in round 1:
 
@@ -67,26 +68,61 @@ Three things the table is measuring, each of which was a finding in round 1:
 
 The variant is part of the claim rather than decoration: a state the app is
 expected to recover from on its own (reconnecting, offline-internet) is `warning`,
-and one that needs the operator (stopped, wedged, no bridge to ask) is `danger`.
-That is what makes `identity-failed` and `stopped` visibly different pictures
-rather than the same red box with different words.
+and so is a daemon that is RUNNING while this app is not attached to it (`wedged`,
+`unattachable`) - that copy asserts the opposite of a failure, and painting it in
+the danger triple said the opposite of what it said (design round 1, D6). `danger`
+is left to the paths that ARE failures: the server stopped, or a connection that
+is not coming back. What this leaves is the pair that has to be visibly
+different - `identity-failed` and `stopped` - rather than the same red box with
+different words.
+
+`wedged` and `unattachable` share a title and differ in their detail, which is the
+readback the two producers need: the title states the connection fact, true of
+both, and the detail says which path reached it. The `wedged` title quoted here
+used to assert one path ("has stopped publishing its own heartbeat"), which is a
+false sentence for a daemon that is running and healthy and that this app merely
+holds no credential for - the same class of mistake as calling a serving daemon
+offline, one state over.
 
 ## The identities, measured
 
-Sixteen frames, two palettes, eight stories.
+Eighteen frames, two palettes, nine stories.
 
 - `attached` is byte-identical to `degraded`
   (`b03d4c15…` dark, `f705c0db…` light). **That identity is the claim**: a missed
   probe must not produce a banner, and the two frames being one picture is the
   measurement of it.
-- Every other story has its own bytes in both palettes:
+- **`no-bridge` shares that identity, and there it is a contradiction rather than
+  a claim** (design round 2, D12): the pair is byte-identical to `attached` /
+  `degraded` (`b03d4c15…` dark, `f705c0db…` light) because the state renders NO
+  BANNER. With no desktop bridge the health query has no answer, and
+  `useConnectivityStatus` falls back to `serverHealth?.online ?? true`, so
+  `hasConnectivityIssue` is false, so `showBanner` never becomes true.
+  The contract DOES carry the sentence for this state
+  (`shared/backend-status.ts`'s `serverBannerCopy(null)`: "Not connected to a Local
+  Operator server.", with a comment naming the weaker self-probed answer it stands
+  for) and no surface can reach it while the gate reads an absent bridge as
+  online - that is the inconsistency, and it is why the story's own `play` failed
+  and why the capture came back as the no-banner ground. Which side should move -
+  the hook's fallback, or the unreachable sentence - is a product question for the
+  design round, not one this round decides; the frame, the table row and the play
+  now agree on what ships.
+- The other stories have their own bytes in both palettes:
   `identity-failed` `8a143ffa…` / `61759812…`, `no-spawn` `df00bab6…` /
   `89c6af28…`, `unclaimed` `9638ffdb…` / `eafeb7c3…`, `stopped` `7479dbae…` /
-  `19edc379…`, `wedged` `fb14248e…` / `b9b421b2…`, `no-bridge` `3ea04c1f…` /
-  `b08e1435…`.
+  `19edc379…`, `wedged` `791cda99…` / `f086b507…`, `unattachable` `e71a3016…` /
+  `a6e0bc0e…`. This list is hand-maintained and every re-capture moves it, so
+  refresh it in the pass that renews the frames or read the files themselves: two
+  of its entries were stale when round 2 measured them (`wedged` and `no-bridge`),
+  which is exactly the drift a hand-written list accumulates.
+- `unattachable` was the story whose hashes this readback could not state while its
+  copy was being corrected; it no longer is. The pair committed here carries the
+  corrected sentence ("This app was not given the key to that server, so it did
+  not start a second one. It keeps probing for a server it can open."), captured
+  through this directory's own command, and its hashes are in the list above.
 - The two-sentence states are visibly taller than the one-sentence ones, which is
   the second line being main's detail rather than a different sentence count.
-- Two consecutive runs of this surface at this head produce all 16 frames byte for
+- Two consecutive runs of this surface at this head produce all 18 frames byte for
   byte. The rig gained a pointer reset before every navigation while this set was
   being taken (a hover entry was leaving the pointer where it stopped, and a
   tooltip opened on a delay in a later frame); every hash above is from after it.
@@ -109,9 +145,12 @@ listening. Nothing is stubbed in the baseline frame: a Storybook origin cannot
 read `/health` on the daemon's origin (that is the defect stated as a mechanism),
 so main's banner reaches its offline branch on its own, and it says the same
 bytes whether the server is up or gone.
-- **after**: eight frames, six of which are different sentences, `attached` and
-`degraded` rendering no banner at all, and no server sentence containing the word
-"offline" anywhere.
+- **after**: nine frames, six of which render a banner, `attached`, `degraded`
+and `no-bridge` rendering none at all (the last one measured rather than
+intended: D12 above), and no server sentence containing the word "offline"
+anywhere. `wedged` and `unattachable` are the pair that says what the
+title and the detail are each for: one title between them, because the
+connection fact is the same, and two details, because the paths are not.
 
 ## What these frames do not prove
 
