@@ -2949,6 +2949,7 @@ test("the bundled pip invocation is non-interactive and version-verified", () =>
 		"--upgrade",
 		"--no-input",
 		"--disable-pip-version-check",
+		"--no-cache-dir",
 		"local-operator",
 	]);
 	assert.match(pip.display, /--no-input/);
@@ -2984,6 +2985,79 @@ test("the bundled pip invocation is non-interactive and version-verified", () =>
 		didUpgradeLand({ before: null, after: "0.54.18", target: null }),
 		false,
 	);
+});
+
+/**
+ * The stale-index defect, and the pin that makes it loud instead of silent.
+ *
+ * The operator's report (2026-09-15): the app offered 0.55.10, the update
+ * service ran `pip install --upgrade local-operator`, pip printed "Requirement
+ * already satisfied: local-operator ... (0.55.9)", exited 0, and the log
+ * recorded `version 0.55.9 -> 0.55.9`. pip's HTTP cache holds the simple-index
+ * PAGE for a package, not only its wheels, and the bundled venv's cache was
+ * populated while 0.55.9 was the newest release - so the resolution happened
+ * against a page that predated 0.55.10. Measured in the bundled environment:
+ * `pip index versions local-operator` says LATEST 0.55.9 and the same command
+ * with --no-cache-dir says 0.55.10.
+ *
+ * Two properties are asserted here, and they are the whole fix for that half:
+ * the command never reads pip's index cache, and when the caller named a release
+ * the requirement is PINNED to it, so no index page can satisfy the request with
+ * the version already installed.
+ */
+test("the bundled pip invocation bypasses pip's index cache and pins the promised release", () => {
+	// The unpinned form is the compatibility banner's: it asks for "the current
+	// server" and has no version to name.
+	const unpinned = buildPipUpgradeCommand("/venv/bin/python3");
+	assert.ok(
+		unpinned.args.includes("--no-cache-dir"),
+		JSON.stringify(unpinned.args),
+	);
+	assert.equal(unpinned.args.at(-1), "local-operator");
+
+	const pinned = buildPipUpgradeCommand("/venv/bin/python3", "0.55.10");
+	assert.deepEqual(pinned.args.slice(-2), [
+		"--no-cache-dir",
+		"local-operator==0.55.10",
+	]);
+	// The log line has to name the release too, or a reader cannot tell which
+	// version an attempt was aiming at.
+	assert.match(pinned.display, /local-operator==0\.55\.10$/);
+
+	// A target that is not a release keeps the unpinned requirement rather than
+	// reaching the command line: this value crosses IPC as an arbitrary string.
+	for (const target of [
+		null,
+		undefined,
+		"",
+		"   ",
+		"latest",
+		"v0.55.10",
+		"0.55.x",
+		"0.55.10 --extra-index-url http://evil.example",
+		"0.55.10;rm -rf /",
+	]) {
+		const built = buildPipUpgradeCommand("/venv/bin/python3", target);
+		assert.equal(
+			built.args.at(-1),
+			"local-operator",
+			`target ${JSON.stringify(target)} must not be pinned`,
+		);
+	}
+
+	// The PEP 440 spellings a real release can carry still pin, because refusing
+	// to pin them would send the pre-release case back to an unpinned resolve.
+	for (const [target, requirement] of [
+		["0.55.10", "local-operator==0.55.10"],
+		[" 0.55.10 ", "local-operator==0.55.10"],
+		["0.56.0b1", "local-operator==0.56.0b1"],
+		["0.55.10.post1", "local-operator==0.55.10.post1"],
+	]) {
+		assert.equal(
+			buildPipUpgradeCommand("/venv/bin/python3", target).args.at(-1),
+			requirement,
+		);
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -4727,6 +4801,100 @@ test("the banner's remedy names the release the last check read", async () => {
 		assert.equal(targeted[0].payload.latestVersion, "0.99.0");
 	} finally {
 		if (interval) clearInterval(interval);
+		globalThis.__loTestPaths = undefined;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+// ---------------------------------------------------------------------------
+// A failed server update has to SAY so, on the channel the renderer listens to
+// ---------------------------------------------------------------------------
+
+/**
+ * `update-backend` reports its failure on `backend-update-error`, and RESOLVES
+ * false rather than rejecting.
+ *
+ * Both halves are the operator's report of 2026-09-15. The channel carried every
+ * failing branch's own sentence - pip's output, the missing environment, the
+ * "version did not change" verdict - and had no subscriber at all, so all of it
+ * was dropped; and because the failure crosses the IPC boundary as a resolved
+ * `false`, a renderer that cleared its in-flight panel only in its `catch` kept
+ * "Updating server" up forever. Nothing below asserts the renderer (that is the
+ * sibling case's job): this pins the main-process half of the contract, through
+ * the handler the renderer actually invokes.
+ *
+ * Two failing branches, chosen because one is reachable today and one is the
+ * branch a future startup mode would fall into - the second had NO report at all
+ * before this change, which is the trap this case exists to keep closed.
+ */
+test("a failed update-backend reports on backend-update-error and resolves false", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-backend-failure-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-backend-failure-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const sent = [];
+	let interval = null;
+	try {
+		for (const [name, startupMode] of [
+			["no python server", service.LocalOperatorStartupMode.NOT_STARTED],
+			["an unrecognised startup mode", "SOME_FUTURE_MODE"],
+		]) {
+			sent.length = 0;
+			globalThis.__loIpcHandlers = undefined;
+			const updateService = new service.UpdateService(
+				{
+					isDestroyed: () => false,
+					webContents: {
+						send: (channel, payload) => sent.push({ channel, payload }),
+						isDestroyed: () => false,
+					},
+				},
+				{ getStartupMode: () => startupMode },
+			);
+			interval = updateService.updateCheckInterval;
+			// Keep the health probe off anything real, as the sibling cases do.
+			updateService.backendUrl = "http://127.0.0.1:9";
+			try {
+				updateService.setupIpcHandlers();
+				const handler = globalThis.__loIpcHandlers?.["update-backend"];
+				assert.equal(
+					typeof handler,
+					"function",
+					"the renderer must have an update-backend handler to invoke",
+				);
+
+				// Resolved, not rejected: this is the shape every failing branch sends,
+				// and the reason the renderer cannot leave its in-flight state to a
+				// `catch` alone.
+				const result = await handler({}, "0.55.10");
+				assert.equal(result, false, name);
+
+				const errors = sent.filter(
+					({ channel }) => channel === "backend-update-error",
+				);
+				assert.equal(errors.length, 1, `${name}: ${JSON.stringify(sent)}`);
+				assert.equal(typeof errors[0].payload, "string", name);
+				assert.ok(errors[0].payload.trim().length > 0, name);
+				// A failure is not a completion: the renderer's "up to date" path must
+				// not be reachable from it.
+				assert.ok(
+					!sent.some(({ channel }) => channel === "backend-update-completed"),
+					name,
+				);
+			} finally {
+				if (interval) clearInterval(interval);
+				interval = null;
+			}
+		}
+	} finally {
+		globalThis.__loIpcHandlers = undefined;
 		globalThis.__loTestPaths = undefined;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
