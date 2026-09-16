@@ -1,23 +1,23 @@
 {
-  "head": "3f1f4e5a387a949c77da67780019520023077946",
-  "headNote": "RE-DERIVED FOR THIS CHANGE, AND RE-DERIVED AGAIN BY ITS REBASE ONTO `main`, where the frames were RE-TAKEN rather than re-stamped. `srcTree`, `scriptsTree`, `frames` and `surfaces` describe the tree these frames ship in, read from that tree rather than carried forward: the rebase moved `scripts/` (main's evidence passes add rows to the sweep and the driver, and this round adds the `key cap ink step` pin) and `src/`. On the rebased tree the swept count is 3,739 = main's 3,703 plus this branch's 36, and `surfaces` is 468 = main's 465 plus this change's three directories; both were re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried from either side. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src` / `HEAD:scripts` for the commit that carries the evidence, which is the commit this field names. The re-capture that re-derived them is measured in `partialCapture.rebaseMeasurement`: nothing main landed invalidates these frames, and the numbers say what each of the ten frames that moved actually moved by.",
-  "srcTree": "4e8455f187fee01f71bf5fbf85d8b87b351d7f0c",
-  "scriptsTree": "34c16e69a140d87034ea9e72c4440b599c2f3a44",
-  "dirtyWorkingTree": true,
+  "head": "46302682b3b335c5564cd536e57f762d3d771f94",
+  "headNote": "RE-DERIVED FOR THIS CHANGE ON THE REBASED TREE. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the rebased head this commit names, and they MOVED (b047f7212/11f234964 -> 3626e2834/8ab24f0df) because the fold onto main brought its Backend settings feature into `src/` and `scripts/`. `surfaces` is 487 = main's 483 plus this change's four story rows, and `frames` is re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried forward - it is main's 3,919 plus this change's 8 swept frames, with the pair's 8 before frames excluded by their declaration. Nothing main landed invalidates any committed frame for THIS change: both halves of the new pair were re-captured on the rebased tree and came back byte-identical.",
+  "srcTree": "3626e283489cae33a1172436a033d05cf78c718c",
+  "scriptsTree": "cf81b1586a9391feeb4eb90c8276ab46d12febc9",
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3755,
-  "surfaces": 472,
+  "frames": 3927,
+  "surfaces": 487,
   "themes": 12,
   "countsMean": {
-    "frames": "RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
-    "surfaces": "RE-DERIVED ON THE REBASED TREE: 468 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal = main's 465 plus this change's three `chat-sidebar-current-row--*` rows, counted the same way `check-evidence.mjs` counts them (`^\\t\\[` inside the block). 397 entries in the merged `capture-evidence.mjs` STORIES literal, derived from its `^\\t[` rows in `HEAD:scripts/capture-evidence.mjs`. Main's incoming commits bring rows of their own and this pass adds the three `chat-sidebar-status-feed--*` ones, which is why the count is re-derived from the merged literal rather than carried from either side. 394 entries in the `capture-evidence.mjs` STORIES literal, counted the way `check-evidence.mjs` counts them - `^\\t\\[` inside the block, parsed from `HEAD:scripts/capture-evidence.mjs` rather than taken from the writer. RE-DERIVED off this tree: main alone carries 386 and this branch adds the 8 `chat-composer-band` tuples that frame the wake chip, so the sentence's own arithmetic is 386 + 8 = 394 rather than a carried-forward number.",
+    "frames": "RE-DERIVED ON THE REBASED TREE (`3f24f2dbd`) with `check-evidence.mjs`'s own `frames()` walker against this tree: main's 3,919 plus this change's 8 swept frames = 3,927, with the pair's 8 before frames excluded by their `chat-header-cluster/before` declaration. Earlier derivations, kept in their own words: RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
+    "surfaces": "487 = main's 483 story rows in `capture-evidence.mjs`'s STORIES literal plus this change's four `chat-header-cluster--*` rows, counted the way `check-evidence.mjs` counts them (lines starting with a tab and an opening bracket inside the STORIES block). Earlier: RE-DERIVED ON THE REBASED TREE: 468 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal = main's 465 plus this change's three `chat-sidebar-current-row--*` rows, counted the same way `check-evidence.mjs` counts them (`^\\t\\[` inside the block). 397 entries in the merged `capture-evidence.mjs` STORIES literal, derived from its `^\\t[` rows in `HEAD:scripts/capture-evidence.mjs`. Main's incoming commits bring rows of their own and this pass adds the three `chat-sidebar-status-feed--*` ones, which is why the count is re-derived from the merged literal rather than carried from either side. 394 entries in the `capture-evidence.mjs` STORIES literal, counted the way `check-evidence.mjs` counts them - `^\\t\\[` inside the block, parsed from `HEAD:scripts/capture-evidence.mjs` rather than taken from the writer. RE-DERIVED off this tree: main alone carries 386 and this branch adds the 8 `chat-composer-band` tuples that frame the wake chip, so the sentence's own arithmetic is 386 + 8 = 394 rather than a carried-forward number.",
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-16T20:10:08.173Z",
-    "refreshedAtHead": "3f1f4e5a387a949c77da67780019520023077946",
+    "refreshedAt": "2026-09-16T20:16:42.949Z",
+    "refreshedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 112,
+    "refreshedFrames": 292,
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
       "chat-sidebar-current-row--new-chat-row-current",
@@ -26,6 +26,20 @@
       "command-palette-commandpalette--settings-scope",
       "command-palette-commandpalette--commands-scope",
       "command-palette-commandpalette--no-results",
+      "settings-backend--arrival",
+      "settings-backend--all-expanded",
+      "settings-backend--collapsed",
+      "settings-backend--one-section-open",
+      "settings-backend--filtered",
+      "settings-backend--no-results",
+      "settings-backend--changed-rows",
+      "settings-backend--read-only-and-redacted",
+      "settings-backend--gated-children",
+      "settings-backend--deep-link",
+      "settings-backend--dirty",
+      "settings-backend--saving",
+      "settings-backend--save-failed",
+      "settings-backend--narrow",
       "chat-header-cluster--no-approval",
       "chat-header-cluster--one-approval",
       "chat-header-cluster--at-cap",
@@ -55,10 +69,10 @@
       "chat-header-cluster/at-cap",
       "chat-header-cluster/trigger-dot"
     ],
-    "addedAt": "2026-09-16T20:10:08.174Z",
-    "addedAtHead": "3f1f4e5a387a949c77da67780019520023077946",
+    "addedAt": "2026-09-16T20:16:42.949Z",
+    "addedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
     "note": "THE CAPS AND THE HIGHLIGHT (this change), on top of the record below: the current row's ground became the new `highlight` role, the row gained the settings rail's `font-medium` second signal, and every key cap lost its fill - which is visible on two surfaces and one rail. 60 frames were REWRITTEN in `command-palette-commandpalette/` (all five of its stories draw the legend bar whose keys changed) and 36 in `chat-sidebar-current-row/`: the set's two states plus the 12 ADDED `selected-row-neighbour-hovered/` frames that photograph the pointer's mark beside the selection's, so design D1 / QA Q-2's measurement is a committed frame rather than a one-off. `refreshedFromHead` names this pass's own first commit rather than the branch's base, which is what makes `refreshedFrames` the pass's increment and not the branch's whole diff against main: the guard measures 96 rewritten frames over these seven directories and nothing else. The two baseline sets this change declares hold the same stories rendered by an unmodified tree; a declared set is exactly a frame the sweep does not answer for, so their 84 frames are excluded from both terms here and from `frames` above.",
-    "refreshedAtHeadNote": "Re-pointed at the tree this capture ran on - `559327ecf`, the rebased head whose `src/` and `scripts/` trees are the ones stamped below - because a rebase rewrote the spelling the capturer stamped, and the frames were RE-TAKEN at it rather than re-stamped. See `rebaseNote`.",
+    "refreshedAtHeadNote": "RE-POINTED AT THE REBASED HEAD, `3f24f2dbd`, and the frames were RE-TAKEN at it rather than re-stamped: the fold onto main moved `scripts/` (main's Backend settings evidence pass adds rows to the sweep and a geometry rig) and `src/`, and every frame in this file's two sets was re-captured on the rebased tree. Both halves of `chat-header-cluster/` came back byte-identical to the pre-fold capture, which is the measurement this field rests on.",
     "keycapsPass": "This change's own increment, recorded beside the accumulated fields above rather than in place of them: 60 frames REWRITTEN in `command-palette-commandpalette/` (all five stories draw the legend bar whose keys changed) and 36 frames in `chat-sidebar-current-row/` (the set's two states and the 12 the round-1 hover entry added). The two baseline sets this change declares hold 84 frames of the same stories rendered by unmodified `origin/main`; they are declared, and a declared set is exactly a frame the sweep does not answer for. On the rebased tree the swept total is main's 3,703 plus these 36 = `frames` 3,739, and `surfaces` is main's 465 plus this change's three directories = 468.",
     "passScopeNote": "This record describes THIS CHANGE's pass alone. The branch's earlier passes, and main's own, are not folded into the totals: `check-evidence.mjs` asks the fields about the run they name, and the run is seven directories wide. Main's record as it stood when this branch was rebased is preserved verbatim under `preRebaseRecord` beside this key rather than overwritten, which is the same treatment this file gives every earlier pass.",
     "rebaseNote": "REBASED onto `origin/main` = `0c04cbb09`, 56 commits on from this branch's previous base (`647396910`) - the 0.25.12 and 0.25.13 windows, their `chore(release)` bumps, the composer-credential work and a dozen evidence passes of main's own. The two files outside the evidence set that both sides touch were resolved by hand: `scripts/capture-evidence.mjs` keeps main's new STORIES rows AND this branch's story order and hover entry (the `settings-appearance` row is back after the four `agents` rows, where both bases had it, because a sweep aborts on that story, so putting it earlier shrinks every future sweep's reachable set), and `scripts/contrast-contract.mjs` keeps main's 21 pins, drops this change's two retired `capEdge` rows, and gains the `key cap ink step` pin. The manifest conflicts by construction and takes the by-meaning resolution this file has used at every fold: main's whole record is the base, this branch's records are re-applied onto it, and main's pass is preserved verbatim under `preRebaseRecord`.",
@@ -859,6 +873,26 @@
         "addedFrames": 6,
         "note": "This branch's own pass, folded into the accumulated fields rather than replacing them, and given its own key so THIS pass's record - `capturedFromHead`, the stories it wrote, the frames it wrote them from - stays separable from the accumulated fields instead of blurring into them. It wrote the six frames of `chat-run-panel/{back-to-roster,back-pop,close-from-reader}` at the two brand themes, and the SIX BEFORE halves of the same three stories live in the declared supplementary set `run-panel-back-before/`, captured from the same tree with `origin/main`'s component swapped in. RE-TAKEN AT `dd5f20e0d`, NOT CARRIED: the first pass took these frames at `68946d867`, before this branch merged `origin/main` (`647396910`), and that merge moved three modules every one of these stories mounts - `chat-header.tsx` (+173), `ui-preferences-store.ts` (+129), `chat-content.tsx` (+102) - so both halves were re-captured at the reviewed head rather than re-stamped. THE MEASUREMENT THAT CAME BACK: all twelve frames are byte-identical to the pre-merge capture (`shasum -a 256`), i.e. the new controls do not enter this story's frame, and the pair carrying the defect still differs by 463,363 dark / 457,994 light pixels. WHAT THAT DOES NOT SAY, and a future reader needs it: AE-counting a frame against the committed set is NOT a staleness instrument. The designer's independent re-shoot at `b872ba01f` found 27 unrelated paths differing by glyph rasterisation alone and one reader frame by 175 px at max 4/255, none of which is a change in the surface - so pixels-against-pixels answers noise, while `head` and the two tree stamps are what answer whether a set is current. `addedFrames` counts the six after frames as ADDED because the before half was moved out of `chat-run-panel/` between the two runs; no surface was added by this pass. Earlier wording here said the key existed so main's `addedAtHead`/`refreshedAtHead` would keep naming main's passes; that is no longer true of this pass, because re-capturing the frames MOVED both onto `dd5f20e0d` - and reachability is read from exactly those two fields, so they say what they are. (Reviewer R2-4.)"
       }
+    },
+    "headerClusterSpacingPass": {
+      "refreshedAt": "2026-09-16T20:16:42.949Z",
+      "capturedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
+      "capturedFrom": "the rebased head, both halves re-captured rather than re-stamped (see the note)",
+      "refreshedStories": [
+        "chat-header-cluster--no-approval",
+        "chat-header-cluster--one-approval",
+        "chat-header-cluster--at-cap",
+        "chat-header-cluster--trigger-dot"
+      ],
+      "refreshedFrames": 8,
+      "addedSurfaces": [
+        "chat-header-cluster/no-approval",
+        "chat-header-cluster/one-approval",
+        "chat-header-cluster/at-cap",
+        "chat-header-cluster/trigger-dot"
+      ],
+      "addedFrames": 16,
+      "note": "THE ACTION CLUSTER'S SPACING (this change), recorded beside the accumulated fields rather than in place of them. Four new stories in `chat-header-cluster--*`, captured at the two brand palettes: `no-approval` is the badge-free state the operator reported, `one-approval` and `at-cap` are the badge drawn (the constraint the whole reservation exists for), and `trigger-dot` is the run trigger's own attention dot. 8 frames are the fixed tree's (swept, in `frames`); the 8 BEFORE halves are the same four stories rendered by `origin/main`'s `chat-header.tsx` with this branch's story file, in the DECLARED set `chat-header-cluster/before/` whose README carries the four-command reproduction. TWO THEMES, NOT TWELVE, and the reason is measured rather than assumed: a gap is palette-independent, and `scripts/header-cluster-geometry.mjs` reads the same 8/8 or 12/12 in both brand palettes - the claim this pair carries is two numbers the eye cannot compare across two stills, not a colour. RE-CAPTURED AFTER THE REBASE, and the re-capture is what makes the re-stamp honest: after the fold onto main (`6da8665ee`, which moved `scripts/` and `src/` and would otherwise invalidate every stamp here), both halves were taken again on the rebased tree and ALL SIXTEEN frames came back byte-identical (`cmp`, per file, dark and light, before and after) - so nothing main landed enters these frames, and the tree stamps below are re-derived from the rebased head rather than carried."
     }
   },
   "supplementary": [
@@ -1526,6 +1560,36 @@
         "The palette's legend keys are one of the cap idioms this change collapses, and the before half is the only place the old one is visible in the tree: every `kbd` in the footer and on the active row was a filled `bg-sunken` box 15.2 x 21.39px inked `ink-dim`, drawn by a third cap implementation declared inside `command-palette.tsx`.",
         "`command-palette-commandpalette/` is re-shot on this branch, so without this set the comparison would live only in a pull-request description and a reader could not reproduce it from the tree. Declared so `clearSweptFrames` preserves it and the swept count stays honest."
       ]
+    },
+    {
+      "path": "settings-backend-baseline",
+      "frames": 12,
+      "surfaces": 6,
+      "themes": 2,
+      "source": "The audit rig's own frames (`rig/capture.mjs` and `rig/frames/measurements.json`, in ~/local-operator-ui-worktrees/backend-settings-ux-audit) taken on the base the four audit rounds ran at: the SHIPPED settings page mounted against a stubbed desktop bridge carrying the real `/v1/settings` projection, at 1380x900 and 1000x900, in localOperatorDark and localOperatorLight. RE-EXPORTED at 1x DPR from the same rig on the same head with the same states (`node rig/capture.mjs --dpr=1 --port=6041 --out=...`, the `--dpr` flag added for this round), so what ships here is the audit's own surface at the audit's own head, exported at the after-set's scale",
+      "capturedAt": "2026-09-15T22:45:34Z",
+      "capturedAtHead": "170933c4caf65db42450f130a7cfa30aba5b03a7",
+      "why": [
+        "The redesign's claim is about a surface that had NO frame anywhere in docs/evidence: 99 registry rows in 18 sections, all of them expanded, 10,896.5px of region. An after-frame of a shorter page cannot show what was wrong with the long one, so a small, representative subset of the audit's thirty frames is committed beside it - the same surface at the same two viewports in both brand palettes, before the change.",
+        "Six STATES, chosen for what the redesign is judged on: `top` (arrival, every section expanded), `mid` (the scroll the complaint is about), `collapsed` (the readable index behind 18 clicks), `filter` (a search with the type still in the box), `empty` (a search that matches nothing) and `dirty` (off-default rows, each carrying the `Changed from the default; takes effect ...` sentence the redesign removes). Plus `redacted` and `retired` in dark at 1380, the two row kinds whose wrappers were missing.",
+        "It cannot be regenerated by a sweep: a sweep captures the CURRENT tree, and these have to be the surface as it was. Declared as its own set so the sweep's own frame count stays honest and no reader mistakes a baseline for a current frame.",
+        "The before-NUMBERS beside these frames are not taken from a re-run either. They are the audit's committed readings (`rig/frames/measurements.json`): region 10,896.5px at 1380x900, rows 66.9-181.9px tall, 68 of 99 controls wider than 800px, 90 narrower than 40px, 127 focusables. The after-numbers come from `scripts/backend-settings-geometry.mjs`, which reports the same quantities from the same DOM at the same viewports.",
+        "AND THE ONE THING ABOUT THE PAIR A DESIGN ROUND TRIPS OVER, now half fixed and half stated. The scale half is FIXED: these frames were 2x DPR viewport crops (2760x1800 for the 1380x900 window) against an after-set whose own convention is 1x DPR full content, so a reviewer judged the rebuild across two scales; they have been re-exported at 1x from the audit rig, same head, same states, and the pair now shares its scale and its 1380px width (design round 1, m1 / design round 2, D12). The CROP half cannot be fixed from the audit rig, and the reason is structural rather than an omission: `rig/backend-settings-evidence.tsx` mounts the surface in the app's own viewport (`h-screen w-screen overflow-hidden`, the surface scrolling INSIDE it), so the old surface has no full-content rendering to photograph - the 10,896.5px region never exists as one painted page there. The baseline frames are therefore 1x crops of the top of that surface, and the height difference against the after-set (900px against 1,510px) IS the defect the redesign removes, not a framing accident. A reader comparing the pair at equal scale is comparing the right two things; a reader who wants the old surface at the after-set's exact crop would need it re-mounted as a story, which is the redesign itself."
+      ]
+    },
+    {
+      "path": "chat-header-cluster/before",
+      "frames": 8,
+      "surfaces": 4,
+      "themes": 2,
+      "source": "scripts/capture-evidence.mjs against origin/main's `chat-header.tsx` (3f1f4e5a3 = this branch's fork point) with this branch's story file and STORIES rows unchanged: `git checkout origin/main -- src/renderer/src/features/chat/components/chat-header.tsx`, then `node scripts/capture-evidence.mjs http://localhost:6017 --only=chat-header-cluster --themes=localOperatorDark,localOperatorLight --allow-backend`, then the four leaf directories moved under `before/` and the fixed file restored with `git checkout HEAD --`. The same four-step recipe is in the directory's README.md.",
+      "why": [
+        "The fixed frames cannot show what was wrong, and this pair cannot be regenerated by a sweep: a sweep captures the CURRENT tree, while these need `main`'s `chat-header.tsx` under the same stories. It is declared as its own set so `clearSweptFrames` preserves it and the sweep's own count stays honest about what it can still take.",
+        "They carry the operator's report as pixels: badge-free, the shipped tree spaced `trigger -> browser` 8px and `browser -> canvas` 12px, because the browser button's unconditional `mr-1` paid the attention badge's 12px room in every render. Compare against `chat-header-cluster/no-approval/`, the same story and viewport, which is 8px across."
+      ],
+      "capturedAt": "2026-09-16T20:16:42.949Z",
+      "capturedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
+      "capturedAtHeadNote": "The commit this branch LANDS the frames in, not the tree they were painted from: they are `origin/main`'s `chat-header.tsx` rendered with this branch's story file, a combination no commit contains on its own. Re-captured after the fold onto main and byte-identical to the pre-fold capture."
     }
   ],
   "remediationRecord": {
