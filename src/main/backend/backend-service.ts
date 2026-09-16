@@ -241,7 +241,8 @@ export class BackendServiceManager {
 	 * stop saying about a server that answers (#1170: an unreadable session store
 	 * answers 503 instead of an empty 200).
 	 */
-	private answeredButUnusable: { address: string; status: number } | null = null;
+	private answeredButUnusable: { address: string; status: number } | null =
+		null;
 	/**
 	 * Records discovery found alive but unresponsive (pid alive, heartbeat
 	 * stopped). They are why no candidate exists AND why spawning is forbidden,

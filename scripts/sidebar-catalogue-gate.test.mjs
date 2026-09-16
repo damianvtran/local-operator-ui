@@ -36,6 +36,23 @@ import { build } from "esbuild";
 
 const ROOT = process.cwd();
 
+/*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function, and
+ * `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * (`pnpm lint:scripts`) is the only thing that would have said so.
+ */
+const RE_TANSTACK_REACT_QUERY = /^@tanstack\/react-query$/;
+const RE_REACT_QUERY = /^react-query$/;
+const RE_CANNOT_USE_THE_BACKEND_S_DESKTOP =
+	/cannot use the backend's desktop controls/;
+const RE_SHOWING_THE_LAST_CHATS_AND_TEAMS =
+	/Showing the last chats and teams that loaded\./;
+const RE_UPDATE_THE_BACKEND = /Update the backend/;
+const RE_LAST_CHATS_AND_TEAMS_THAT_LOADED = /last chats and teams that loaded/;
+const RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL =
+	/^Update the backend to use canonical chats\./;
+
 const gateBundle = await build({
 	stdin: {
 		contents:
@@ -68,12 +85,12 @@ const hookBundle = await build({
 		{
 			name: "react-query-recorder",
 			setup(builder) {
-				builder.onResolve({ filter: /^@tanstack\/react-query$/ }, () => ({
+				builder.onResolve({ filter: RE_TANSTACK_REACT_QUERY }, () => ({
 					path: "react-query",
 					namespace: "fixture",
 				}));
 				builder.onLoad(
-					{ filter: /^react-query$/, namespace: "fixture" },
+					{ filter: RE_REACT_QUERY, namespace: "fixture" },
 					() => ({
 						contents: `
 							export const useQuery = (options) => {
@@ -167,13 +184,10 @@ test("one statement per condition: the banner's condition silences the gate's", 
 	);
 	assert.match(
 		uncovered.notice ?? "",
-		/cannot use the backend's desktop controls/,
+		RE_CANNOT_USE_THE_BACKEND_S_DESKTOP,
 		"a plane that is unavailable is not a backend to update",
 	);
-	assert.match(
-		uncovered.notice ?? "",
-		/Showing the last chats and teams that loaded\./,
-	);
+	assert.match(uncovered.notice ?? "", RE_SHOWING_THE_LAST_CHATS_AND_TEAMS);
 });
 
 test("the error arm behaves exactly as it did", () => {
@@ -212,8 +226,8 @@ test("a first load that cannot use the plane says so instead of naming an update
 		inputs({ ready: false, wasReady: false, rows: 0, planeAvailable: false }),
 	);
 	assert.equal(gate.showList, false);
-	assert.match(gate.notice ?? "", /cannot use the backend's desktop controls/);
-	assert.doesNotMatch(gate.notice ?? "", /Update the backend/);
+	assert.match(gate.notice ?? "", RE_CANNOT_USE_THE_BACKEND_S_DESKTOP);
+	assert.doesNotMatch(gate.notice ?? "", RE_UPDATE_THE_BACKEND);
 });
 
 test("a store that genuinely emptied still reads as empty", () => {
@@ -229,7 +243,7 @@ test("a store that genuinely emptied still reads as empty", () => {
 	);
 	assert.equal(gate.showList, true);
 	assert.equal(gate.lastKnownRows, false);
-	assert.doesNotMatch(gate.notice ?? "", /last chats and teams that loaded/);
+	assert.doesNotMatch(gate.notice ?? "", RE_LAST_CHATS_AND_TEAMS_THAT_LOADED);
 });
 
 test("a mount that lost its own memory keeps the rows the store still holds", () => {
@@ -271,10 +285,7 @@ test("the version half keeps the remedy that exists", () => {
 	// A plane that IS available and merely does not advertise the catalogue is a
 	// backend to update, and that is the one place "Update the backend" is true.
 	const gate = catalogueGate(inputs({ ready: false, planeAvailable: true }));
-	assert.match(
-		gate.notice ?? "",
-		/^Update the backend to use canonical chats\./,
-	);
+	assert.match(gate.notice ?? "", RE_UPDATE_THE_BACKEND_TO_USE_CANONICAL);
 });
 
 test("the capabilities query watches the open plane, and re-negotiates a shut one", () => {
