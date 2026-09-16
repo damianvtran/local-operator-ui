@@ -85,6 +85,75 @@ type UiPreferencesState = {
 	setRunPanelOpen: (open: boolean) => void;
 
 	/**
+	 * Whether the conversation's browser pane is open (global, not per conversation).
+	 *
+	 * The third occupant of the window's right slot, added by the
+	 * conversation-scoped browser (`docs/design/browser-approval-ux.md` 7.3). Global
+	 * and persisted for the reason `isRunPanelOpen` states — the pane is a property
+	 * of the window's slot rather than of one conversation — and that is exactly why
+	 * it SURVIVES a conversation switch with its content following the session: the
+	 * user opened it deliberately, and a pane that closed itself because they
+	 * changed conversation would be the persistence the operator asked for, undone.
+	 */
+	isBrowserPaneOpen: boolean;
+
+	/**
+	 * Set the browser pane open state.
+	 *
+	 * Opening it closes the other two occupants of the slot, by the same
+	 * construction as the other two setters: one slot, one pane, and the exclusion
+	 * lives in `claimRightSlot` so no call site has to remember it.
+	 *
+	 * @param open - Whether the browser pane should be open
+	 */
+	setBrowserPaneOpen: (open: boolean) => void;
+
+	/**
+	 * The width of the browser pane in pixels.
+	 *
+	 * 640, and the reason is a page rather than a roster: at the canvas's 800 the
+	 * pane takes two thirds of a default window for something the user reads beside
+	 * the conversation, and at the run pane's 420 a page is a mobile column with its
+	 * own layout broken. 640 is the design's number (spec 7.3) and the divider's own
+	 * floor is 480, so the range the user can drag over is 480..1200 — a floor
+	 * BELOW the default, which the other two panes do not have (their floors are
+	 * 320/400 against defaults of 420/800): a page narrower than ~480px stops being
+	 * a page, and the floor is what stops the drag there.
+	 */
+	browserPanelWidth: number;
+
+	/**
+	 * Set the width of the browser pane
+	 * @param width - The new width in pixels
+	 */
+	setBrowserPanelWidth: (width: number) => void;
+
+	/**
+	 * Restore the browser pane width to its default value
+	 */
+	restoreDefaultBrowserPanelWidth: () => void;
+
+	/**
+	 * Which list the browser pane's strip shows (spec 7.2).
+	 *
+	 * THE SLOT'S STATE, NOT THE PANE'S, and that placement is the fix rather than a
+	 * preference (UX round 1, U3). The pane remounts when the conversation changes,
+	 * so a `useState` inside it forgot the choice on every switch - while the pane
+	 * itself stayed OPEN at the width the user had dragged, which is the same slot
+	 * persisting and its lens not persisting. `isBrowserPaneOpen` and
+	 * `browserPanelWidth` state the rule this joins: what belongs to the window's
+	 * slot survives a conversation switch, and only what belongs to the conversation
+	 * (the tabs, and the session a `"conversation"` choice resolves to) follows it.
+	 */
+	browserPaneScope: BrowserPaneScope;
+
+	/**
+	 * Set which list the browser pane shows
+	 * @param scope - This conversation's tabs, or all of them
+	 */
+	setBrowserPaneScope: (scope: BrowserPaneScope) => void;
+
+	/**
 	 * A pending request to open the run pane AT one of its sections.
 	 *
 	 * A request rather than a mode, and CONSUMED ONCE: the composer's plan chip
@@ -258,9 +327,20 @@ type UiPreferencesState = {
 export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
 
 /**
- * Claiming the right slot for one of the two panes that can live in it.
+ * Which list the browser pane's strip shows: this conversation's tabs, or all of
+ * them (`docs/design/browser-approval-ux.md` 7.2).
  *
- * The slot holds ONE pane, so every claim is "this side wins and the other side is
+ * It is the pane's own vocabulary rather than a `SurfaceScope`, because it is a
+ * CHOICE rather than a scope: `"conversation"` resolves to `{ sessionId }` for
+ * whichever conversation the pane is showing, and only the pane (which knows that
+ * session) can resolve it. The store holds the choice; the scope is derived.
+ */
+export type BrowserPaneScope = "conversation" | "all";
+
+/**
+ * Claiming the right slot for one of the THREE panes that can live in it.
+ *
+ * The slot holds ONE pane, so every claim is "this side wins and the other two are
  * cleared" - a rule that was written out at each of the three call sites until
  * agent review round 1 (M4) counted them. Three copies is not redundant, it is
  * drift waiting for a reason to happen: the next person to add a term to the rule
@@ -269,14 +349,23 @@ export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
  * them because a request and the pane it targets have to land in ONE update - the
  * request must never exist against a closed pane.
  *
+ * The third pane arrived exactly as that comment predicted, and this is the whole
+ * of what it cost: one more name in the union and one more `===` below. The
+ * browser pane (`docs/design/browser-approval-ux.md` 7.3) is the window's, not the
+ * conversation's, so it belongs in this rule rather than beside it.
+ *
  * So the rule lives here, the caller names only what it is claiming, and the
  * losing side is not something any call site has to remember.
  */
 const claimRightSlot = (
-	pane: "isRunPanelOpen" | "isCanvasOpen",
-): Pick<UiPreferencesState, "isRunPanelOpen" | "isCanvasOpen"> => ({
+	pane: "isRunPanelOpen" | "isCanvasOpen" | "isBrowserPaneOpen",
+): Pick<
+	UiPreferencesState,
+	"isRunPanelOpen" | "isCanvasOpen" | "isBrowserPaneOpen"
+> => ({
 	isRunPanelOpen: pane === "isRunPanelOpen",
 	isCanvasOpen: pane === "isCanvasOpen",
+	isBrowserPaneOpen: pane === "isBrowserPaneOpen",
 });
 
 /**
@@ -304,6 +393,9 @@ export type RunPanelReveal = {
 const DEFAULT_CANVAS_WIDTH = 800;
 const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
 const DEFAULT_RUN_PANEL_WIDTH = 420;
+/** The browser pane's default, and the design's number rather than a fit: see
+ * `browserPanelWidth` for why a page wants 640 where a roster wants 420. */
+const DEFAULT_BROWSER_PANEL_WIDTH = 640;
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -317,8 +409,11 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
+			isBrowserPaneOpen: false,
 			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
+			browserPaneScope: "conversation",
 			isCreateAgentDialogOpen: false,
 
 			openCreateAgentDialog: () => {
@@ -382,6 +477,32 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set(
 					open ? claimRightSlot("isRunPanelOpen") : { isRunPanelOpen: false },
 				);
+			},
+
+			setBrowserPaneOpen: (open: boolean) => {
+				set(
+					open
+						? claimRightSlot("isBrowserPaneOpen")
+						: { isBrowserPaneOpen: false },
+				);
+			},
+
+			setBrowserPanelWidth: (width: number) => {
+				set({
+					browserPanelWidth: width,
+				});
+			},
+
+			restoreDefaultBrowserPanelWidth: () => {
+				set({
+					browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
+				});
+			},
+
+			setBrowserPaneScope: (scope: BrowserPaneScope) => {
+				set({
+					browserPaneScope: scope,
+				});
 			},
 
 			revealRunPanelSection: (section: RunPanelSection) => {
