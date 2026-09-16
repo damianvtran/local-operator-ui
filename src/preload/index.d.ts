@@ -197,6 +197,10 @@ declare global {
 					callback: (info: { version: string }) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (callback: () => void) => () => void;
+				/** A server update that failed, with the reason from the main process. */
+				onBackendUpdateError: (
+					callback: (message: string) => void,
+				) => () => void;
 				onBackendUpdateManualRequired: (
 					callback: (info: {
 						message: string;

@@ -175,7 +175,15 @@ export const RunPanel = ({
 		setUpdatingBackend(true);
 		setUpdateBackendError(null);
 		try {
-			await window.api.updater.updateBackend();
+			const started = await window.api.updater.updateBackend();
+			// `false` rather than a rejection is how this invoke reports a refused or
+			// failed update, so reading only the `catch` treated "the update did not
+			// run" as "the update ran" and left the reader with a backend that never
+			// changed and nothing to explain it.
+			if (started === false) {
+				setUpdateBackendError("The backend update could not start.");
+				return;
+			}
 			retryCapabilities();
 		} catch {
 			setUpdateBackendError("The backend update could not start.");

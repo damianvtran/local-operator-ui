@@ -334,6 +334,24 @@ const api = {
 			};
 		},
 		/**
+		 * A server update that failed, with the reason the main process wrote.
+		 *
+		 * The main process has always sent this - it is how a failed pip run, an
+		 * unreadable venv or a server that did not come back up is reported - and
+		 * nothing subscribed to it. The channel was therefore dead, and the panel the
+		 * renderer keeps up while an update is in flight had only the invoke's own
+		 * rejection to leave on: `update-backend` RESOLVES false on failure, so the
+		 * panel stayed on "Updating server" forever while the message that explains
+		 * why was dropped (operator report, 2026-09-15).
+		 */
+		onBackendUpdateError: (callback: (message: string) => void) => {
+			const handler = (_event, message) => callback(message);
+			ipcRenderer.on("backend-update-error", handler);
+			return () => {
+				ipcRenderer.removeListener("backend-update-error", handler);
+			};
+		},
+		/**
 		 * A server the app cannot update itself, with the command that can.
 		 *
 		 * The main process has always sent this; nothing subscribed to it, so the
