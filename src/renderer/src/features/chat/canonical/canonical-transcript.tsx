@@ -74,6 +74,7 @@ import {
 	MessageContainer,
 } from "../components/message-item/message-container";
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
+import { ReplyPreview } from "../components/reply-preview";
 import {
 	AgentQuestion,
 	AskOptions,
@@ -99,8 +100,11 @@ import {
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
 import { WorkingLine } from "../components/trace/working-line";
+import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import { isQuotable } from "./quote-model";
+import { QuoteToolkit } from "./quote-toolkit";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -235,6 +239,19 @@ export type CanonicalTranscriptProps = {
 	 */
 	attachmentScope?: AttachmentScope | null;
 	/**
+	 * The conversation a quote from a row is staged under.
+	 *
+	 * Handed in by `chat-content.tsx` as the SAME expression the composer is
+	 * given as its `conversationId`, and the value is load-bearing: the
+	 * conversation input store's replies (and the composer's `ReplyPreview`
+	 * above them) are keyed per conversation, so a transcript that invented its
+	 * own id here would stage a quote into a key nobody paints and the press
+	 * would look like a no-op. Absent on a surface with no composer to receive
+	 * it (stories, the run panel's child reader), which is why it is optional
+	 * and why the toolkit does not mount without it.
+	 */
+	conversationId?: string;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -280,14 +297,42 @@ const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
+	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	conversationId?: string;
 }) {
+	/*
+	 * The element a selection has to lie inside to count as a quote of THIS
+	 * turn. The `group` wrapper rather than the bubble's inner box: the bubble
+	 * is the whole of a user turn, so a selection anywhere in it is a selection
+	 * of this turn's words.
+	 */
+	const turnRef = useRef<HTMLDivElement>(null);
+	/*
+	 * The turn's own text, split from the reply markup a quoted send carries.
+	 *
+	 * This is the canonical path's half of what `message-paper.tsx` does on the
+	 * legacy one, and it is not cosmetic: `buildSendPayload` prefixes
+	 * `<reply-to>…</reply-to>` onto the payload at the send boundary, so without
+	 * this split a turn that was itself a reply paints its own tags as literal
+	 * text through `MarkdownRenderer`. Memoized because `parseReplies` mints a
+	 * fresh uuid per reply, so an unmemoized call would hand `ReplyPreview` a new
+	 * key on every render of every row.
+	 *
+	 * `parseReplies` reads that prefix across newlines, which is what makes this
+	 * hold for the multi-paragraph turn that is the common case rather than for
+	 * one-line ones only.
+	 */
+	const { replies, remainingContent } = useMemo(
+		() => parseReplies(record.text),
+		[record.text],
+	);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
-			<div className="group relative flex w-full justify-end">
+			<div ref={turnRef} className="group relative flex w-full justify-end">
 				<div
 					className={cn(
 						// `border-control`, not `hairline`. The bubble keeps its own
@@ -305,7 +350,11 @@ const UserRow = memo(function UserRow({
 					)}
 				>
 					<div className={cn("relative", MEASURE)}>
-						<MarkdownRenderer content={record.text} />
+						{/* The quote a quoted turn was sent with, rendered as the same
+						    recessed block the composer stages it in - the reader sees one
+						    idiom for "this is quoted" whether it is pending or sent. */}
+						{replies.length > 0 && <ReplyPreview replies={replies} />}
+						<MarkdownRenderer content={remainingContent} />
 						{record.images.length > 0 && (
 							<div className={cn("mt-2 flex flex-col gap-2")}>
 								{record.images.map((image, index) => (
@@ -324,6 +373,13 @@ const UserRow = memo(function UserRow({
 						)}
 					</div>
 				</div>
+				{conversationId && isQuotable(record, remainingContent) && (
+					<QuoteToolkit
+						conversationId={conversationId}
+						bodyText={remainingContent}
+						turnRef={turnRef}
+					/>
+				)}
 			</div>
 		</MessageContainer>
 	);
@@ -333,11 +389,31 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	showAvatar,
+	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
+	conversationId?: string;
 }) {
+	const turnRef = useRef<HTMLDivElement>(null);
+	/*
+	 * The assistant side of the split `UserRow` documents. Kept on both kinds
+	 * rather than only on `user` because the markup is a property of the
+	 * PAYLOAD and not of the speaker: the composer's `buildSendPayload` prefixes
+	 * it onto whatever the turn carries (the `ask` gate's answer is one such
+	 * send), so a model that echoed a quoted prompt would otherwise paint raw
+	 * tags at agent-output weight, which § 7 is the most explicit about.
+	 *
+	 * `parseReplies` reads that markup as a leading run only, which is what makes
+	 * this safe for the other half of the same case: an answer that merely
+	 * DISCUSSES the wire format - this codebase's own sessions do - keeps its
+	 * words instead of having them moved into a "Replying to" block.
+	 */
+	const { replies, remainingContent } = useMemo(
+		() => parseReplies(record.text),
+		[record.text],
+	);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -356,12 +432,14 @@ const AssistantRow = memo(function AssistantRow({
 			 * share both edges structurally rather than by agreement.
 			 */}
 			<div
+				ref={turnRef}
 				className={cn("group relative w-full break-words text-ink")}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
 			>
+				{replies.length > 0 && <ReplyPreview replies={replies} />}
 				<MarkdownRenderer
-					content={record.text}
+					content={remainingContent}
 					className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 					styleProps={{
 						fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
@@ -372,6 +450,13 @@ const AssistantRow = memo(function AssistantRow({
 					<p className="mt-1 text-ink-dim text-meta">
 						Stopped before finishing
 					</p>
+				)}
+				{conversationId && isQuotable(record, remainingContent) && (
+					<QuoteToolkit
+						conversationId={conversationId}
+						bodyText={remainingContent}
+						turnRef={turnRef}
+					/>
 				)}
 			</div>
 		</MessageContainer>
@@ -806,11 +891,13 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView,
 	nameColumn,
 	scope,
+	conversationId,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
+	conversationId?: string;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -818,7 +905,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	switch (record.kind) {
 		case "user":
 			body = (
-				<UserRow record={record} isSmallView={isSmallView} scope={scope} />
+				<UserRow
+					record={record}
+					isSmallView={isSmallView}
+					scope={scope}
+					conversationId={conversationId}
+				/>
 			);
 			break;
 		case "assistant":
@@ -827,6 +919,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					showAvatar={row.showAvatar}
+					conversationId={conversationId}
 				/>
 			);
 			break;
@@ -913,6 +1006,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	stale = false,
 	missing = false,
 	attachmentScope,
+	conversationId,
 	onReconnect,
 	onAnswer,
 	answering = false,
@@ -1345,6 +1439,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * no longer covers every row-less pane, because a pane with a statement of
 				 * its own paints that instead of the placeholder. The proxy stopped
 				 * agreeing with the property it stood for, so the property is read directly.
+				 *
+				 * THE TURN ORDER OF THOSE STOPS IS DOM ORDER, OLDEST FIRST, AND IT IS
+				 * ACCEPTED (UX round 1, U4; QA round 1, Q5). Each quotable turn contributes
+				 * exactly one stop, so a full window of mounted rows costs up to one press
+				 * per row to reach the newest answer - the turn a reader most often wants to
+				 * quote is the farthest away, and the reader walks past every turn they are
+				 * not quoting.
+				 *
+				 * Recorded rather than changed, and the reasons are structural. The stops
+				 * cannot be removed, only reordered: `visibility: hidden` would take Quote
+				 * off the keyboard altogether, and a scrollable, quotable region has to stay
+				 * operable (WCAG 2.1.1) - so "reachability costs a stop per row" is a floor,
+				 * not an oversight. Reordering them would mean painting the rows in reverse
+				 * DOM order, and this scroller is `column-reverse` with the overflow anchor
+				 * for the newest content: inverting the row order inverts the anchoring the
+				 * whole pane's scroll behaviour rests on. And a shortcut key - the third
+				 * option - is a NEW interaction rather than a fix to this one; it belongs to
+				 * a change that argues for it, not to the change that introduced the toolkit.
 				 */
 				tabIndex={transcript.records.length === 0 ? -1 : 0}
 				role="log"
@@ -1547,6 +1659,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								isSmallView={isSmallView}
 								nameColumn={nameColumn}
 								scope={mediaScope}
+								conversationId={conversationId}
 							/>
 						))}
 

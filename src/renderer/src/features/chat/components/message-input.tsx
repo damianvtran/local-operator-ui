@@ -56,7 +56,10 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
-import { COMPOSER_TEXTAREA_SELECTOR } from "../composer-field";
+import {
+	COMPOSER_TEXTAREA_SELECTOR,
+	registerComposerFocus,
+} from "../composer-field";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -498,6 +501,16 @@ const firstLiveAnswerOption = (): HTMLElement | null =>
  */
 const composerBox = (): HTMLTextAreaElement | null =>
 	document.querySelector<HTMLTextAreaElement>(COMPOSER_TEXTAREA_SELECTOR);
+
+/**
+ * A staged quote's own remove control, as the removal's focus hand-off finds it.
+ *
+ * The accessible name is the handle rather than a `data-` attribute, because it
+ * is the same one `reply-preview.tsx` labels the control with and the same one a
+ * screen reader announces - a second name for the same button is how the
+ * control and its selector stop meaning the same thing.
+ */
+const REPLY_CHIP_REMOVE_SELECTOR = '[aria-label="Remove reply"]';
 
 /**
  * Whether the user has POINTED at the composer since it was last handed focus.
@@ -1287,20 +1300,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const cwdChipRef = useRef<DirectoryIndicatorHandle>(null);
 
+		/*
+		 * The one place focus is given to this box, and the reason it is one place:
+		 * handing focus over is the moment the box becomes ours again, so a pointer
+		 * interaction from BEFORE the call stops counting as the user's and the ask
+		 * gate may hand focus here again. Both the imperative handle and the
+		 * handler registry below (see `composer-field.ts`) publish THIS function
+		 * rather than a copy, so a new call site cannot forget the reset.
+		 */
+		const focusInput = useCallback(() => {
+			composerPointerTouched = false;
+			textareaRef.current?.focus();
+		}, [textareaRef]);
+
 		useImperativeHandle(ref, () => ({
-			focusInput: () => {
-				/*
-				 * Handing focus over is the moment the box becomes ours again, so a
-				 * pointer interaction from BEFORE this call stops counting as the
-				 * user's. See `composerPointerTouched`.
-				 */
-				composerPointerTouched = false;
-				textareaRef.current?.focus();
-			},
+			focusInput,
 			openWorkingDirectoryMenu: () => {
 				cwdChipRef.current?.openMenu();
 			},
 		}));
+
+		/*
+		 * The composer's focus hand-off, published to the surfaces that are not
+		 * handed this component's handle - today the transcript's Quote toolkit,
+		 * which stages a quote and then wants the caret in the box (design round 1,
+		 * D2; UX round 1, U1). Registered here rather than rebuilt there so that
+		 * `focusInput` stays the single place focus is given, flag reset included;
+		 * see `composer-field.ts`.
+		 */
+		useEffect(() => registerComposerFocus(focusInput), [focusInput]);
 
 		/*
 		 * Two reasons a composer refuses input, kept apart (design review round
@@ -1592,11 +1620,45 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			return "Ctrl+Shift+S";
 		}, [platform]);
 
+		/*
+		 * WHERE FOCUS GOES WHEN A STAGED QUOTE IS REMOVED (UX round 1, U2).
+		 *
+		 * `removeReply` unmounts the chip whose own remove control held focus, and the
+		 * browser then drops focus to `document.body` - no ring anywhere on the page,
+		 * measured after both a pointer press and a keyboard Enter. The reader's next
+		 * act is either removing the next quote or writing, so focus goes to the chip
+		 * that takes the removed one's place (the list closes upward, so that is the
+		 * next chip, or the last one when the removed chip was last) and to the
+		 * composer once nothing is staged.
+		 *
+		 * The index is recorded HERE and the focus applied in an effect below, because
+		 * the button that should take focus does not exist until the store change has
+		 * rendered: `removeReply` is synchronous and the DOM is not. Reaching for the
+		 * next chip by index is what makes repeated removals one Tab apart, which is
+		 * the thing the reader is doing when they hit this.
+		 */
+		const pendingChipFocus = useRef<number | null>(null);
+
 		const handleRemoveReply = (replyId: string) => {
-			if (conversationId) {
-				removeReply(conversationId, replyId);
-			}
+			if (!conversationId) return;
+			pendingChipFocus.current = replies.findIndex(
+				(reply) => reply.id === replyId,
+			);
+			removeReply(conversationId, replyId);
 		};
+
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `replies` is the TRIGGER, not a value the body reads - the effect runs once per list change and reads the index the removal recorded, so listing the chips themselves would only re-run it against an already-cleared intent.
+		useEffect(() => {
+			const at = pendingChipFocus.current;
+			if (at === null) return;
+			pendingChipFocus.current = null;
+			const chips = document.querySelectorAll<HTMLElement>(
+				REPLY_CHIP_REMOVE_SELECTOR,
+			);
+			const next = chips[Math.min(at, chips.length - 1)];
+			if (next) next.focus();
+			else focusInput();
+		}, [replies, focusInput]);
 
 		/*
 		 * What the alert should actually say and offer, given what is in the box.
