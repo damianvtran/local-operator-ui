@@ -230,7 +230,8 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   now PLAIN TEXT in the composer — Enter will expose them"). The `/credential `
   token is left behind as inert literal text. With no characters to restore the
   cancel still ends the mode (the TUI's R1/U2 regression: it used to re-arm
-  itself and capture the prose that followed).- **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
+  itself and capture the prose that followed).
+- **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
   `editor.py:6452`), and the port needs the equivalent for the EMPTY sub-state: a
   cancel that restores nothing produces no buffer change, so an edit the cancel
   posts cannot be seen by the change handler that would re-arm from it. Two round
@@ -265,6 +266,21 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   closes the popup; otherwise it keeps its existing meaning. The arm survives.
 - The Escape restore must not re-arm: the TUI nests the restore in
   `_suspend_credential_sync = True` for exactly this reason.
+- **The disclosure the cancel raises is about ONE buffer, and any edit retires
+  it** (UX round 3, U12; code review round 3, MINOR 1). The sentence says how many
+  characters are now plain text *in the composer*, and round 2 made it durable by
+  persisting a count beside the draft. A count is not the text it describes: four
+  backspaces after `/credential BACKSPACE-1` left the sentence claiming eleven
+  characters over a seven-character remnant, and a cleared box that was retyped
+  with ordinary prose re-persisted the stale seven — which a reload then rendered
+  as a sentence about nothing, and which could ride a minted marker. So the
+  disclosure is held as the count **and the buffer it is about**, and it stands
+  only while the box still holds that buffer: the rendered sentence comes down on
+  the first edit (it is a derivation, so it cannot lag), and the write that edit
+  makes carries 0 (the store's own rule zeroes it for an empty value, and this is
+  the half that covers every other edit). The durable half round 2 added
+  survives untouched for the case it was written for — an Esc, then a reload with
+  no edit in between still restores the characters *and* the warning.
 
 ## 6. Where the value lives, and what is persisted
 
@@ -297,6 +313,18 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   in the draft store as `unredactedChars`, written with the draft on every write
   the composer or its hook makes, and an empty draft discloses nothing — enforced
   at the one place the pair is written rather than at each caller.
+  **And the count is only ever written with the text it DESCRIBES** (UX round 3,
+  U12; code review round 3, MINOR 1). A count on its own can outlive its
+  characters: four backspaces after `/credential BACKSPACE-1` left the sentence
+  claiming eleven characters over a seven-character remnant, and a cleared box
+  retyped with ordinary prose re-persisted the stale seven under text that is not
+  plaintext secret characters at all — a reload then rendered a sentence about
+  nothing. So the disclosure is held as the count AND the buffer it is about, and
+  it stands only while the box still holds that buffer: the rendered sentence is
+  a DERIVATION, so it comes down on the first edit, and the write that edit makes
+  carries 0. An edit therefore retires the disclosure; an Esc followed by a
+  reload with no edit in between still restores the characters and the warning,
+  which is the case this durability exists for.
 - **A marker no payload backs repaints its pill and is rewritten at submit.** A
   restored draft's marker has no value behind it — the map is a ref, so a new
   document starts empty and a conversation switch retires it on purpose — and it
@@ -312,8 +340,20 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   with no notice, no arm and no pill — one Enter away from exposing the
   characters the previous session had warned about. The count (never the value,
   never the sentence) travels in the draft store as `unredactedChars`, and the
-  composer raises the same `unredactedNotice` from it on arrival; an empty draft
-  discloses nothing, enforced at the one place the pair is written.
+  composer raises the same `unredactedNotice` from it on arrival — but only over
+  the text the store itself names as that draft, and only until the operator
+  edits it (round 3 above); an empty draft discloses nothing, enforced at the one
+  place the pair is written.
+  - **And the raised chip says the value is GONE, before the send** (UX round 3,
+  U13). The story above is about the model's citation; the operator's half is that
+  a marker with no payload used to be painted exactly like a live pill — same
+  wash, same edge — so the only way to learn the value had not survived was the
+  citation in the message they had already sent. The unbacked marker now takes the
+  design's existing NOT-STORED register: `bg-warning-wash` with a
+  `warning-border` 1px outline (the same wash the armed token uses, plus the edge
+  the pill has), so the box states it before Enter. Both kinds still come from the
+  same location rule (`markerSpans`), so the paint and the submit rewrite cannot
+  drift apart; only the colour differs.
 - Clearing the composer, submitting successfully, and disarming all clear or
   drop the map; a **failed send keeps it**, because the operator's unsent draft
   must not lose the value behind a pill they can see.
@@ -365,8 +405,14 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    `NO_COLOR` and a monochrome terminal (`local_operator.tcss:624`). A
    `<textarea>` carries no per-run colour and has no glyph to swap, so the port
    has exactly one channel — a background wash — and it spends that channel on
-   the armed token (`bg-warning-wash`, the role the TUI's amber names) and on
-   the pill (the `info` wash plus its 1px outline). Nothing in this port
+   the armed token (`bg-warning-wash`, the role the TUI's amber names), on
+   the pill (the `info` wash plus its 1px outline), and — since round 3 — on the
+   NOT-STORED chip: a marker no payload backs (a restored draft) takes
+   `bg-warning-wash` with a `warning-border` outline, so the one state where the
+   value behind a citation is gone says so in the box rather than only in the
+   citation the model receives (UX round 3, U13). Three states, three treatments,
+   and the contract's `CONTROLS` carries a row per component triple
+   (`credential pill`, `credential pill (unbacked)`). Nothing in this port
    survives `NO_COLOR`; the notice sentence is the half that does, which is why
    it is not optional.
 2. **Key minting reads names asynchronously.** TUI mints synchronously from
@@ -390,33 +436,73 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    returns. Without it the most likely first use — a brand-new chat whose first
    message hands over an API key — silently degraded to the not-stored citation
    (UX round 1, U2).
-5. **The notice lives on a row the composer already has.** It is a second line of
-   prose the TUI keeps in its notice row, and here it rides the composer's own
-   control row — between the attach/`cwd` group and the mic/send controls, with
-   the readings still immediately after the chip. Round 1 put it in a band of its
-   own ABOVE the textarea and reserved a line box for it, because mounting it
-   conditionally pushed the typed line down 35.5px mid-word and the mint moved it
-   back (design round 1, D3). Both halves of that cost were measured in round 2
-   (D3/D4): the reservation was 19.5px while a populated sentence is 23.5px, so
-   arming still moved the typed line and the whole control row by 4px — and the
-   reserved band was the composer's STANDING shape in every state, which dropped
-   the idle composer's ring 38px below the composer it replaced. The control row
-   is 32px tall at every width in every state (its icon buttons size it), so a
-   19.5px sentence inside it costs nothing at all: the textarea's `y` is identical
-   in all four states — idle, armed, masked and minted — and an idle composer has
-   no sentence and no reserved line, so it is the composer that was there before
-   the gesture existed. The sentence WRAPS rather than truncating when a narrow
-   column cannot hold it (the row then grows by at most 7.5px, against the 23.5px
-   a band of its own would have cost at every width), because this sentence is the
-   one channel the state has that survives `NO_COLOR` (§7.1) and a clipped
-   "…Esc cancels" would be the sentence failing at its only job.
+5. **The notice sits ABOVE the composer box, in the band's own flow.** It is a
+   second line of prose the TUI keeps in its notice row; here it is a full-width
+   `<output>` line on the composer's own measure, immediately above the box, and
+   that is round 3's placement (design D1; UX U14; code review MAJOR 1; QA
+   Q1/Q2).
+   ROUNDS 1 AND 2 BOTH KEPT IT INSIDE THE COMPOSER, and both paid the same
+   currency: the composer's own height changed when the sentence arrived, so the
+   line the operator was typing moved under their caret. Round 1 reserved a band
+   above the textarea (4px of reflow on arming, and 38px of standing height in
+   every state); round 2 moved the sentence onto the composer's control row, on
+   the argument that a row sized by its icon buttons absorbs a 19.5px line.
+   Round 3 measured where that ends: the row has 296.55px of free space at 1380
+   against a 353.86px sentence, so it wrapped to two lines and grew the row
+   32 -> 39px; at 950 it became a 168x78 block and squeezed the working-directory
+   chip's label from 236px to 96px; at 800 - this app's own `WINDOW_MIN_WIDTH` -
+   it was a 76.7px-wide ribbon 175.5px tall with the row tripled. A row that also
+   holds a chip, a readings strip and three controls cannot carry a sentence of
+   this length at any of them.
+   **What a line costs on each side of the box** decides the new home, measured
+   on the app with the same rig, viewport and state on both trees (populated
+   pane, 1380x868, `getBoundingClientRect`, dpr 2; the injected line is 20px of
+   the same width as the box):
+   | what | `textarea.y` | composer box |
+   | --- | --- | --- |
+   | idle | 757.00 | 740.25..852.00 (112.00) |
+   | a 20px line injected ABOVE the box | **757.00** | 740.25..852.00 (112.00) |
+   | a 20px line injected BELOW the box | 737.00 | 720.25..832.00 (112.00) |
+   | armed, masked and unredacted (the real sentence, above the box) | 757.00 | 740.25..852.00 (112.00) |
+   The band pins the box's BOTTOM edge, so anything added under the box pushes
+   the typed line up by its full height and anything added over it pushes the
+   TRANSCRIPT instead. The sentence therefore costs the typed line nothing, and it
+   takes the composer's own width (832px at 1380) rather than the row's
+   leftovers, which is what stops the ribbon.
+   **The four states are one geometry.** At 1380, 950 and 800 the textarea's `y`,
+   its height and the box's height are identical in idle, armed, masked and
+   unredacted (1380: 757.00 / 34.00 / 112.00; 950 and 800: 755.00 / 28.00 /
+   118.00), and the cwd chip's width is untouched in every state at every width
+   (260 / 244 / 96 / 44px). The composer is `origin/main`'s to the pixel in the
+   same fresh-idle state, measured on both trees with the same rig: 112.00 at
+   1380 and 124.00 at 950, 800 and 440, with the field's own height (34.00) and
+   position (757.00) equal on the two trees. Where the field is taller than one
+   line - a secret long enough to wrap in a 172px box at 440 - the box grows by
+   exactly that difference and no more: 118 + (47 - 28) = 137 and
+   118 + (67 - 28) = 157, i.e. the sentence contributes 0px at every width.
+   **WHAT DOES NOT HOLD, with the number.** On an EMPTY chat the band takes
+   `grow` + `justify-center` and centres the composer instead of pinning it, so a
+   line above the box moves the GROUP by half its height: measured 13.75px for
+   the real 27.5px sentence (`textarea.y` 402.25 idle -> 416.00 masked), and
+   10.00px for the 20px injected line. No in-flow placement avoids it - the same
+   line below the box moves the composer the same distance the other way - and
+   the box's own height is unchanged in all four states (112.00), because the
+   line is outside it. Stated rather than engineered around: the alternative is
+   an out-of-flow sentence painting over the transcript's own last line.
+   **And the slash popup clears it rather than covering it.** The list is
+   `absolute bottom-full` and now anchors to the same wrapper the sentence lives
+   in, so the armed state's completion list (830x108, measured on the running app)
+   sits above the sentence instead of over it.
    **And the sentence says what Enter will actually do in the state the operator
-   is in** (UX round 2, U10). With an EMPTY span, Enter does not mint: it falls
-   through to the dispatcher, which opens the credential picker in a session and
-   cannot store at all on a pane with no session yet. So there are three
-   sentences, not two: armed; masking-and-filled; masking-and-empty (in a session,
-   or on a draft pane).
-
+   is in** (UX round 2, U10; UX round 3, U15). With an EMPTY span Enter does not
+   mint: it falls through to the dispatcher, which opens the credential picker in
+   a session and, on a pane with no session yet, answers that the command needs an
+   open conversation. So there are three sentences, not two: armed;
+   masking-and-filled; masking-and-empty (in a session, or on a draft pane) - and
+   the draft one now says what Enter DOES ("runs /credential, which needs an open
+   conversation") instead of what it cannot do, because U8's repair made the old
+   wording false about the pane: this pane stores the credential fine once a
+   character arrives.
 Everything else — the regex, the mask cell, the marker format, the citation
 phrases, the naming convention, the disarm rules, the whole-buffer teardown
 (§3), the typed-through re-anchor (§2) — is ported exactly, because those are

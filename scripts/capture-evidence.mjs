@@ -983,6 +983,18 @@ export const STORIES = [
 	["chat-message-input--credential-pill-mid-prose", 1024, 300],
 	["chat-message-input--credential-pill-at-line-start", 1024, 300],
 	["chat-message-input--credential-escaped", 1024, 300],
+	/* THE TWO SURFACES ROUND 3 FOUND UNPHOTOGRAPHED (design D3, D4), and the
+	   reason the round-2 "the row grows by at most 7.5px" bound was wrong: the
+	   five states above render on a bare 1024px column with no working-directory
+	   chip and no readings strip, so no frame showed the sentence beside the two
+	   neighbours whose widths decided whether it wrapped - and none paired
+	   `isSmallView` with the capture at all, though the small-view rung is where
+	   the bound measured 11px. `masked-session-pane` carries the chip and the
+	   readings with the sentence; `masked-small-view` is the shipped compact rung
+	   (a 440px column) with the capture open, at the same 300px height so the two
+	   read beside the states above. */
+	["chat-message-input--credential-masked-session-pane", 1024, 300],
+	["chat-message-input--credential-masked-small-view", 440, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
 	   notice branches (design round 1's N2), and the version-skew line. The

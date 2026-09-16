@@ -2,6 +2,7 @@ import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent } from "@storybook/test";
 import { useState } from "react";
+import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";
@@ -967,6 +968,131 @@ export const CredentialEscaped: Story = {
 			throw new Error(
 				`the characters did not come back: ${composerValue(box)}`,
 			);
+		}
+		releaseShutter();
+	},
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * ROUND 3: THE SENTENCE ABOVE THE BOX, AT THE TWO SURFACES NO FRAME HELD
+ * ---------------------------------------------------------------------------
+ *
+ * Design round 3 (D3, D4) named this gap: every credential story renders the
+ * composer on a bare 1024px column with no working-directory chip and no
+ * readings strip, so no frame showed the sentence beside the two neighbours
+ * whose widths used to decide whether it wrapped — and no story paired
+ * `isSmallView` with the capture at all, even though the small-view rung is
+ * where the round-2 wrap bound ("at most 7.5px") measured 11px.
+ *
+ * The placement these two frames are about: the sentence now sits ABOVE the
+ * composer box, in the band's own flow (round 3's remediation of design D1, UX
+ * U14, code review MAJOR 1 and QA Q1/Q2), so the row beside it keeps its chip,
+ * its readings and its controls at their own widths and the box's pinned bottom
+ * edge cannot be pushed by a line arriving over it.
+ */
+
+/**
+ * The session's readings, as the strip reads them.
+ *
+ * A fixture, cast at the boundary, and deliberately the device the strip's own
+ * story and `composer-status-row.stories.tsx` both use: `CanonicalFrontendState`
+ * carries around thirty required fields and these frames need the handful the
+ * readings paint. What the frame has to show is not the numbers but a REAL
+ * readings strip sharing the row with a real chip and a credential sentence.
+ */
+const READINGS_MODEL = {
+	provider: "openrouter",
+	model_id: "openai/gpt-5-mini",
+	display_name: "OpenAI: GPT-5 mini",
+	reasoning: true,
+	reasoning_effort: "medium",
+	reasoning_efforts: ["minimal", "low", "medium", "high"],
+	reasoning_default_effort: null,
+	context_window: 400_000,
+	max_context_window: null,
+};
+
+const SESSION_READINGS = {
+	frontend: {
+		context_tokens: 41_000,
+		context_window: 400_000,
+		context_is_estimate: false,
+		cumulative_parent_cost: null,
+		child_costs: {},
+		subagent_cost: null,
+		subagent_cost_knowledge: null,
+		cost_knowledge: "unknown",
+		selected_model: READINGS_MODEL,
+		effective_model: READINGS_MODEL,
+		active_duration_s: 372,
+		activity_started_at: null,
+	} as CanonicalFrontendState,
+};
+
+/**
+ * The masked sentence WITH the working-directory chip and the readings on the
+ * row beside it, at the composer's own 1024px measure (design round 3, D4).
+ */
+export const CredentialMaskedSessionPane: Story = {
+	render: () => (
+		<Frame label="masked with a live working-directory chip and the session's readings on the row: the sentence is above the box and neither neighbour moves">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					cwd="/Users/you/src/project"
+					sessionStatus={SESSION_READINGS}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await screen.findByText(MASKED_NOTICE);
+		if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+			throw new Error("the typed secret reached the buffer");
+		}
+		releaseShutter();
+	},
+};
+
+/**
+ * The shipped SMALL-VIEW rung — a column under 550px, where the composer
+ * compacts — WITH the capture open: the rung design round 3's D3 measured and no
+ * frame held, and the width at which the sentence used to become a 76px ribbon.
+ */
+export const CredentialMaskedSmallView: Story = {
+	render: () => (
+		<Frame label="small view (a 440px column): the masked sentence above the box, at the composer's own width rather than in a narrow ribbon">
+			<div className={cn("@container/chatcol")} style={{ width: 440 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					isSmallView={true}
+					cwd="/Users/you/src/project"
+					sessionStatus={SESSION_READINGS}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeIntoComposer(
+			canvasElement,
+			`/credential ${CREDENTIAL_CANARY}`,
+		);
+		await screen.findByText(MASKED_NOTICE);
+		if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+			throw new Error("the typed secret reached the buffer");
 		}
 		releaseShutter();
 	},

@@ -357,6 +357,25 @@ async function mount({
 				?.textContent ?? null,
 		button: () =>
 			window.document.querySelector(`button[aria-label="${SEND_LABEL}"]`),
+		/*
+		 * The composer BOX (the control the focus ring is promoted to), which since
+		 * round 3 is the element the sentence sits ABOVE rather than inside.
+		 */
+		box: () =>
+			window.document.querySelector('[data-tour-tag="chat-input-textarea"]'),
+		/*
+		 * §5's disclosure AS IT IS PERSISTED, read from the store the app writes:
+		 * `undefined` when the conversation holds no draft at all, and the store's
+		 * own 0 when it holds one that discloses nothing. A count written with text
+		 * it does not describe is visible here and nowhere else.
+		 */
+		disclosure: () => {
+			const raw = window.localStorage.getItem("conversation-input-store");
+			if (!raw) return undefined;
+			const parsed = JSON.parse(raw);
+			return parsed?.state?.inputByConversation?.[conversationId]
+				?.unredactedChars;
+		},
 		value: () => window.document.querySelector("textarea").value,
 		caret: () => {
 			const field = window.document.querySelector("textarea");
@@ -589,6 +608,26 @@ test("an empty span reaches the picker from the button as it does from the key",
 	// mint a pill here, it falls through to the dispatcher, so the notice names
 	// the door instead of promising one.
 	assert.equal(frame.notice(), CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE);
+	/*
+	 * AND IT DESCRIBES THE GESTURE THE OPERATOR IS STANDING IN (UX round 3, U15).
+	 * The round-2 sentence ("a new chat has no open conversation yet, so Enter
+	 * cannot store a credential") was true when U8 was open and false about this
+	 * pane once it was repaired: typing a secret into the span and sending now
+	 * stores it. What is still true is narrower - with the span EMPTY, Enter falls
+	 * through to the dispatcher, which runs `/credential` and answers that it needs
+	 * an open conversation - so the sentence names that and the action that works.
+	 * Pinned on the WORDS, not on the constant, because the constant is what the
+	 * last round's copy change edited in place.
+	 */
+	assert.match(
+		frame.notice(),
+		/Enter runs \/credential/,
+		"the draft pane's empty-span sentence says what Enter actually does",
+	);
+	assert.ok(
+		!/cannot store a credential/.test(frame.notice()),
+		"and does not attribute the empty span's dead end to the missing conversation, which this pane no longer is",
+	);
 	await clickSend(frame);
 	await settle();
 	assert.equal(frame.sent.length, 0, "an empty span is not a message");
@@ -930,22 +969,30 @@ test("after an Escape the token stops suppressing once an edit moves it", async 
 /* its line                                                             */
 /* ------------------------------------------------------------------ */
 
-test("the notice is tied to the field, lives on the composer's own control row, and reserves nothing", async () => {
+test("the notice is tied to the field, sits ABOVE the composer box in the band's flow, and reserves nothing", async () => {
 	const frame = await mount({ conversationId: "conv-7" });
 	/*
-	 * D3 + D4 (design round 2). The element exists with NO sentence — so it is
-	 * discoverable and the field can name it the moment one arrives — but it is
-	 * mounted on the row the composer ALREADY has, not in a band of its own above
-	 * the textarea.
+	 * ROUND 3'S PLACEMENT (design D1; UX U14; code review MAJOR 1; QA Q1/Q2).
 	 *
-	 * That home is what makes the reservation unnecessary: the row is sized by
-	 * its icon buttons (32px measured), so a 19.5px line inside it adds no height
-	 * in any of the four states, and an EMPTY element generates no line box at all,
-	 * so the idle composer is geometrically the composer that was here before this
-	 * feature (before: `min-h-[19.5px]` pinned a line above the textarea even when
-	 * the sentence was absent). jsdom has no layout engine, so what is asserted
-	 * here is the STRUCTURE that produces it; the four measured `y` values are the
-	 * design round's own numbers, taken from a rendered frame.
+	 * The sentence used to ride the composer's own control row, on the argument
+	 * that the row is 32px tall and is sized by its icon buttons, so a 19.5px line
+	 * inside it adds no height. Measured on the running app that holds only where
+	 * the row has free space to spare, and a working-directory chip removes it: at
+	 * 1380 the sentence needs ~353.86px and the row has 296.55px, so it wrapped to
+	 * two lines and grew the row 32 -> 39px, moving the typed line 3.5px (band
+	 * centred) or 7px (band bottom-anchored); at 950 it became a 168x78 block and
+	 * squeezed the cwd chip's label from 236px to 96px; at 800 - this app's own
+	 * `WINDOW_MIN_WIDTH` - it was a 76.7px-wide ribbon 175.5px tall with the row
+	 * tripled. The band pins the box's BOTTOM edge, so anything inside the box that
+	 * makes it taller pushes the typed line up.
+	 *
+	 * So the sentence lives OUTSIDE the box and ABOVE it, in the band's own flow on
+	 * the composer's measure, where the pinned edge cannot be pushed by it.
+	 * MEASURED, not asserted structurally: a 20px line injected above the box moves
+	 * `textarea.y` by 0.00px on a populated pane (751.30 -> 751.30 at 1380), and the
+	 * same line injected below it moves it by a full 20px (751.30 -> 731.30). jsdom
+	 * has no layout engine, so what this test pins is the STRUCTURE that produces
+	 * that; the numbers are the live rig's.
 	 */
 	const idle = window.document.getElementById("composer-credential-notice");
 	assert.ok(idle, "the notice slot is mounted in the idle composer");
@@ -958,20 +1005,76 @@ test("the notice is tied to the field, lives on the composer's own control row, 
 		null,
 		"an idle composer is not described by an empty element",
 	);
-	// One of the composer's own rows, and the send control's own row at that:
-	// nothing above the textarea is reserved for this sentence any more.
-	const row = idle.parentElement;
+	/*
+	 * The two halves that make the placement what it is: the sentence is out of
+	 * the box (so the box's own height cannot change when it arrives), and it is
+	 * between the box and whatever the transcript above it is doing (so the box is
+	 * the element the flow's bottom edge pins). The box is asserted to be the
+	 * notice's NEXT SIBLING, which is the structural form of "above the box".
+	 */
+	const box = frame.box();
+	assert.ok(box, "the composer box is mounted");
 	assert.ok(
-		row.contains(frame.button()),
-		"the notice shares the row that holds the composer's controls",
+		!box.contains(idle),
+		"the sentence is not inside the composer box: a line in there grows the box, and the box grows upward",
+	);
+	assert.equal(
+		box.previousElementSibling,
+		idle,
+		"the sentence is the box's own previous sibling, i.e. immediately above it",
+	);
+	/*
+	 * And the slash popup shares that anchoring wrapper, so the completion list
+	 * clears the sentence instead of painting over it: the popup is `absolute
+	 * bottom-full`, so its bottom edge IS the wrapper's top edge, and the wrapper's
+	 * top edge is the sentence's own while there is one. The popup renders only
+	 * when it has something to list, so this test asserts the half it can see in an
+	 * idle document (the wrapper is a positioned ancestor, and the sentence and the
+	 * box share it) and `canonical-chat.test.mjs`'s clipping guard asserts the half
+	 * that is readable in the source: the popup's own parent is that wrapper.
+	 */
+	const wrapper = idle.parentElement;
+	assert.equal(
+		box.parentElement,
+		wrapper,
+		"the sentence and the box share one anchoring wrapper",
 	);
 	assert.ok(
-		!row.contains(frame.textarea()),
-		"and that row is NOT the textarea's, so a sentence in it cannot move the typed line",
+		/(^|["\s])relative(["\s]|$)/.test(
+			`${wrapper.getAttribute("class") ?? ""} `,
+		),
+		"the wrapper is the positioned ancestor the popup's `bottom-full` resolves against",
 	);
 	assert.ok(
 		!(idle.className || "").includes("min-h-"),
-		"no reserved line box is pinned on the element: the row's own height absorbs it",
+		"no reserved line box is pinned on the element",
+	);
+	/*
+	 * And the field states its own DISPLAY, which is the composer-height half of
+	 * round 3 (design D1; code review MAJOR 1's sibling; QA Q2). jsdom has no layout
+	 * engine, so this is the structural stand-in for a measured fact: the overlay's
+	 * wrapper is a block container, and a textarea left at its default
+	 * `inline-block` sits in a LINE BOX inside it. Live, that came out as a 39.7px
+	 * wrapper around a 34px field and a composer box 5.7px taller than `origin/main`
+	 * in EVERY state, idle included (61.4..179.1 against 61.4..173.4 at the
+	 * 1024x300 story; 124.69 against 117.69 on the app at 1380), moving the ring,
+	 * the control row and the box's bottom edge. `block` removes the line box, and
+	 * with it the diff: the app now measures 112.00px against `origin/main`'s
+	 * 112.00px with the field at the same `y` in all four states.
+	 */
+	assert.ok(
+		/\bblock\b/.test(frame.textarea().className),
+		"the field declares its own `block` box, so the wrapper cannot place it in a line box",
+	);
+	/*
+	 * The idle slot is HIDDEN rather than merely empty, which is the other half of
+	 * "reserves nothing": an empty `<output>` with the sentence's padding would
+	 * still be a box the band has to lay out. `hidden` is asserted on the CLASS
+	 * because jsdom does not apply the stylesheet.
+	 */
+	assert.ok(
+		/\bhidden\b/.test(idle.className),
+		`an empty sentence renders no box at all: ${idle.className}`,
 	);
 
 	await type(frame, "/credential ");
@@ -983,10 +1086,97 @@ test("the notice is tied to the field, lives on the composer's own control row, 
 		frame.textarea().getAttribute("aria-describedby"),
 		"composer-credential-notice",
 	);
-	assert.match(frame.notice(), /masked as you type/);
+	assert.equal(
+		frame.notice(),
+		"masked as you type — Enter turns it into a pill, Esc cancels",
+	);
+	assert.ok(
+		!/\bhidden\b/.test(idle.className),
+		"a sentence takes the box back",
+	);
 	assert.ok(
 		!/chip/.test(frame.notice()),
 		"the marker is a pill here; this composer's chip is the directory control",
+	);
+});
+
+/*
+ * THE DISCLOSURE IS RETIRED BY AN EDIT, AND IS NEVER PERSISTED WITH TEXT IT DOES
+ * NOT DESCRIBE (UX round 3, U12; code review round 3, MINOR 1).
+ *
+ * Both halves in one case, because each half alone leaves the other broken: a
+ * count that keeps describing text the operator has since changed survives a
+ * reload as a plaintext draft under a sentence about different characters, and a
+ * rendered sentence that cannot come down says so over a box holding nothing.
+ * The numbers are the ones the UX round measured on the running app - four
+ * backspaces after `/credential BACKSPACE-1`, and a select-all-Delete followed by
+ * ordinary prose.
+ */
+test("an edit retires the disclosure, and the draft never carries a count it does not describe", async () => {
+	const frame = await mount({ conversationId: "conv-retire" });
+	await openCapture(frame);
+	await type(frame, "BACKSPACE-1");
+	await esc(frame);
+	assert.equal(
+		frame.notice(),
+		unredactedNotice(11),
+		"the Esc discloses the eleven characters it put back",
+	);
+	assert.equal(
+		frame.disclosure(),
+		11,
+		"and the count is persisted WITH the text it describes",
+	);
+
+	// Repro A: four backspaces take the box to "/credential BACKSPA".
+	for (let i = 0; i < 4; i++) await key(frame, { key: "Backspace" });
+	assert.equal(frame.value(), "/credential BACKSPA");
+	assert.equal(
+		frame.notice(),
+		"",
+		"the sentence comes down on the edit instead of still claiming eleven characters",
+	);
+	assert.equal(
+		frame.disclosure(),
+		0,
+		"and the count is not written beside the seven-character remnant",
+	);
+
+	// Repro B: cleared, retyped, and reloaded.
+	await type(frame, "hi /credential STALE-1");
+	assert.equal(
+		frame.disclosure(),
+		0,
+		"typing the characters back does not re-raise a count: the disclosure is retired for good by the first edit",
+	);
+	const field = frame.textarea();
+	await act(async () => {
+		field.setSelectionRange(0, field.value.length);
+	});
+	await key(frame, { key: "Delete" });
+	assert.equal(frame.value(), "");
+	assert.equal(frame.notice(), "", "an empty draft renders no sentence");
+	assert.equal(frame.disclosure(), 0, "and writes none");
+
+	await type(frame, "just some prose");
+	assert.equal(
+		frame.disclosure(),
+		0,
+		"ordinary prose is never written with a count it does not describe",
+	);
+	assert.equal(frame.notice(), "");
+
+	// The reload that used to bring the false sentence back.
+	const reloaded = await mount({
+		conversationId: "conv-retire",
+		keepWorld: true,
+		remount: true,
+	});
+	assert.equal(reloaded.value(), "just some prose");
+	assert.equal(
+		reloaded.notice(),
+		"",
+		"a reload restores the prose without the claim that it is plaintext secret characters",
 	);
 });
 /* ------------------------------------------------------------------ */
@@ -1012,7 +1202,20 @@ const painted = () => {
 	return [...overlay.children].map((span) => ({
 		text: span.textContent,
 		pill: span.className.includes("bg-info-wash"),
-		armed: span.className.includes("bg-warning-wash"),
+		/*
+		 * ROUND 3 (UX U13) SPLIT THE WARNING ROLE IN TWO, so the background no
+		 * longer identifies a span on its own: the armed TOKEN is the wash alone
+		 * (the ordinary word the operator just typed, marked), and the not-stored
+		 * CHIP is the wash PLUS an edge (a citation nothing holds, marked as one
+		 * the operator cannot rely on). The class list is what tells them apart,
+		 * and both are asserted below rather than collapsed into one flag.
+		 */
+		unbacked:
+			span.className.includes("bg-warning-wash") &&
+			span.className.includes("outline-warning-border"),
+		armed:
+			span.className.includes("bg-warning-wash") &&
+			!span.className.includes("outline-warning-border"),
 	}));
 };
 
@@ -1127,9 +1330,22 @@ test("a marker whose payload did not survive is painted, and sent as the not-sto
 	});
 	assert.equal(reloaded.value(), "[Credential #1, 19 chars] ");
 	assert.equal(
-		painted().filter((s) => s.pill).length,
+		painted().filter((s) => s.unbacked).length,
 		1,
-		"an unbacked marker is painted as a pill, not left as literal text",
+		"an unbacked marker is painted in the not-stored state, not left as literal text",
+	);
+	/*
+	 * AND NOT WITH THE LIVE PILL'S OWN TREATMENT (UX round 3, U13). Round 2
+	 * painted both states with the same wash and edge, so a chip nothing held was
+	 * pixel-identical to one that was fine and the operator learned the value was
+	 * gone only from the citation in their own sent message. The two states must
+	 * differ on screen before the send: this assertion is the half that fails if
+	 * the not-stored kind is folded back into `pill`.
+	 */
+	assert.equal(
+		painted().filter((s) => s.pill).length,
+		0,
+		"the unbacked marker is NOT painted with the live pill's treatment",
 	);
 
 	await clickSend(reloaded);

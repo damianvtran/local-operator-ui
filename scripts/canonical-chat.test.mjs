@@ -2684,14 +2684,17 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	const popup = popups[0];
 
 	// The anchor premise: `absolute bottom-full` positions against the
-	// nearest positioned ancestor, which the source documents is the composer
-	// box itself. If that `relative` goes, the popup anchors to some distant
-	// ancestor and floats away from the composer -- a different defect, and
-	// this is where it is caught.
+	// nearest positioned ancestor. Round 3 moved the popup's anchor ONE
+	// element out — from the composer box to the wrapper that also carries
+	// the capture's sentence (design round 3, D1; UX round 3, U14) — because
+	// the sentence now sits above the box and the popup has to clear it.
+	// Whoever the parent is, it must declare `relative`: without it the popup
+	// anchors to some distant ancestor and floats away from the composer,
+	// which is a different defect and this is where it is caught.
 	const parent = byId.get(popup.parentId);
 	assert.ok(
-		parent?.tagText.includes('"relative"'),
-		"the composer box (the slash popup's direct parent) no longer declares `relative`, so the popup no longer anchors to the box it is meant to escape",
+		/(^|["\s])relative(["\s]|$)/.test(parent?.tagText ?? ""),
+		"the slash popup's direct parent (the composer's anchoring wrapper since round 3) no longer declares `relative`, so the popup no longer anchors to the element it is meant to escape",
 	);
 
 	const ancestorsOf = (el) => {

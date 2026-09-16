@@ -268,6 +268,29 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	/*
+	 * The not-stored chip's own treatment — the SAME chip, in the warning role
+	 * (`credential-overlay.tsx`'s `CREDENTIAL_NOT_STORED_ROLE`, UX round 3, U13).
+	 *
+	 * A row of its own rather than a second note on the pill's, because it is a
+	 * second component triple with its own fill and its own edge (branding.md §
+	 * "adding a component with its own fill and border means adding a row"): the
+	 * marker text the textarea paints sits on `warningWash` with `warningBorder`
+	 * drawn as its 1px outline, and both halves have to clear their floors on the
+	 * two grounds the composer can sit on. The pill's row above says nothing about
+	 * this pair — a green run over there is not evidence about a chip nobody listed.
+	 *
+	 * `ink` is the ink for the same reason the pill's is: this element paints no
+	 * visible text at all, so `ink` here measures the pair actually on screen — the
+	 * textarea's own glyphs over the wash the overlay puts behind them.
+	 */
+	{
+		name: "credential pill (unbacked)",
+		on: ["canvas", "surface"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "ink",
+	},
+	/*
 	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).
 	 *
 	 * `on: ["canvas"]` is the measurement that shaped the component. These sit
