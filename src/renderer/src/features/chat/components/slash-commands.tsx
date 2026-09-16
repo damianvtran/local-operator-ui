@@ -92,7 +92,13 @@ import { commandSuggestions, matchChoices } from "./slash-rank";
  * them, and a second public path with no caller is only a place for the next
  * reader to look (review N1).
  */
-import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
+import {
+	type ArgumentShapeCatalogueRow,
+	type ArgumentShapeRow,
+	type ArmingCatalogueRow,
+	argumentShapeVocabulary,
+	armedOnlyVocabulary,
+} from "./slash-submit";
 import {
 	caretPhase,
 	replaceSpan,
@@ -293,6 +299,8 @@ export type SlashCompletionState = {
 	/** The `prefixes_text` half, or the inline argument lists on an older
 	 *  backend (`prefixingVocabulary`). */
 	prefixingCommands: ReadonlySet<string>;
+	/** Per-word `argument_shape`/`argument_words`, empty on an older backend. */
+	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -519,6 +527,16 @@ export function useSlashCompletion({
 	 */
 	const armedOnlyCommands = useMemo(
 		() => armedOnlyVocabulary(registry as ArmingCatalogueRow[]),
+		[registry],
+	);
+	/*
+	 * The argument SHAPES, derived the same way and from the same rows. Absent on
+	 * an older backend, which is why the planner falls back to the vocabulary sets
+	 * above rather than defaulting a missing shape to `any`: a default would make
+	 * every older backend's rows accept arbitrary text.
+	 */
+	const argumentShapes = useMemo(
+		() => argumentShapeVocabulary(registry as ArgumentShapeCatalogueRow[]),
 		[registry],
 	);
 
@@ -772,6 +790,7 @@ export function useSlashCompletion({
 		promptCommands,
 		armedOnlyCommands,
 		prefixingCommands,
+		argumentShapes,
 		nameListCommands: vocabulary.nameList,
 		nameChoices,
 		argumentWords: vocabulary.words,

@@ -148,6 +148,88 @@ export function armedOnlyVocabulary(
 }
 
 /**
+ * What a VALID argument for a command is, as the wire reports it.
+ *
+ * The field exists because "does this command own its trailing text" turned out
+ * to be too coarse to answer the operator's report: `/mcp logout` is a command
+ * and `/mcp logout seems to cause a crash` is a message, and both are "a command
+ * word with text after it". The endpoint refuses exactly the whole-draft texts
+ * that are valid under a shape, so the composer reads the same field rather than
+ * guessing at the boundary.
+ */
+export type ArgumentShape = "none" | "word" | "provider" | "subcommand" | "any";
+
+/** One row's shape, and the vocabulary its first token must come from. */
+export type ArgumentShapeRow = {
+	shape: ArgumentShape;
+	/** Empty means ANY single token, never "no token at all". */
+	words: ReadonlySet<string>;
+};
+
+/** A registry row, as far as the shapes are concerned. */
+export type ArgumentShapeCatalogueRow = {
+	name: string;
+	aliases: readonly string[];
+	argument_shape?: ArgumentShape;
+	argument_words?: readonly string[];
+};
+
+/**
+ * The shapes, keyed by every primary and alias.
+ *
+ * A row that carries no `argument_shape` is LEFT OUT rather than defaulted to
+ * `any`: absence is the backend predating the field, which is the one case the
+ * planner answers from its own vocabulary (`prefixingVocabulary`) instead. The
+ * distinction matters — a default would silently make every older backend's rows
+ * accept arbitrary text.
+ */
+export function argumentShapeVocabulary(
+	commands: readonly ArgumentShapeCatalogueRow[],
+): Map<string, ArgumentShapeRow> {
+	const shapes = new Map<string, ArgumentShapeRow>();
+	for (const command of commands) {
+		if (!command.argument_shape) continue;
+		const row: ArgumentShapeRow = {
+			shape: command.argument_shape,
+			words: new Set(
+				(command.argument_words ?? []).map((word) => word.toLowerCase()),
+			),
+		};
+		shapes.set(command.name.toLowerCase(), row);
+		for (const alias of command.aliases) shapes.set(alias.toLowerCase(), row);
+	}
+	return shapes;
+}
+
+/**
+ * Whether `args` is a valid argument for `shape` — the same test the messages
+ * endpoint's admission rule applies to a whole draft.
+ *
+ * The empty string is deliberately NOT answered here: "the word and nothing
+ * else" is the whole-draft form the rule states separately, and answering it
+ * from a shape would make `/rename` (shape `any`) depend on its vocabulary
+ * rather than on being a complete command.
+ */
+export function argumentFits(shape: ArgumentShapeRow, args: string): boolean {
+	const trimmed = args.trim();
+	if (trimmed === "") return false;
+	const tokens = trimmed.split(WHITESPACE);
+	const firstKnown =
+		shape.words.size === 0 || shape.words.has(tokens[0].toLowerCase());
+	switch (shape.shape) {
+		case "none":
+			return false;
+		case "word":
+		case "provider":
+			return tokens.length === 1 && firstKnown;
+		case "subcommand":
+			return tokens.length <= 2 && firstKnown;
+		case "any":
+			return true;
+	}
+}
+
+/**
  * A command the dispatcher can post without asking anything about its text.
  *
  * Produced by `planSlashSubmission` and by the controls that name a command
@@ -210,6 +292,13 @@ export type SlashSubmissionArgs = {
 	 */
 	prefixingCommands: ReadonlySet<string>;
 	/**
+	 * Per-word argument SHAPES from the wire (`argument_shape`/`argument_words`),
+	 * keyed by every primary and alias. Present only for a backend that sends the
+	 * field; a word absent from the map is answered by the vocabulary fallback
+	 * below, which is what an older backend gets for every word.
+	 */
+	argumentShapes?: ReadonlyMap<string, ArgumentShapeRow>;
+	/**
 	 * Names (primaries and aliases) of commands whose arming is EXPLICIT: a
 	 * free-text command this key never hoists, because the only gesture that arms
 	 * it is a PICK of its own row in the popup (`planSlashArming`). Derived from
@@ -222,6 +311,13 @@ export type SlashSubmissionArgs = {
 	/** Whether a boundary slash token is a command at all (the feature is on). */
 	enabled: boolean;
 };
+
+/**
+ * The shapes an older backend leaves: none. Named rather than a bare `new Map()`
+ * at the use so "the wire said nothing" is a value the planner can be read
+ * against — and it selects the fallback path, never a defaulted shape.
+ */
+const NO_SHAPES: ReadonlyMap<string, ArgumentShapeRow> = new Map();
 
 /** The name/argument separator: the first whitespace character of a token. */
 const WHITESPACE = /\s/;
@@ -323,6 +419,7 @@ type Vocabularies = {
 	prefixingCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	armedOnlyCommands: ReadonlySet<string>;
+	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
 };
 
 /**
@@ -340,6 +437,7 @@ function planForSpan(
 		prefixingCommands,
 		nameListCommands,
 		armedOnlyCommands,
+		argumentShapes,
 	}: Vocabularies,
 ): SlashSubmissionPlan {
 	const spliced = replaceSpan(draft, span.start, span.end, "");
@@ -388,11 +486,31 @@ function planForSpan(
 	if (wholeDraft) {
 		// The token is the draft. With nothing after the word it is the command
 		// (`/compact`, `/usage`); with text after it, that text is the command's
-		// argument only if the command takes one (`/model gpt-5`, `/goal ship
-		// it`). A no-argument command with trailing text is the operator's own
-		// report — `/compact hello` ran and ate `hello` — so the draft is prose.
-		if (!consumesText && command.args) return { kind: "send" };
-		return { kind: "whole", command };
+		// argument only if a valid argument is what it is (`/model gpt-5`, `/goal
+		// ship it`, `/mcp logout`), and a draft whose trailing text is not one is a
+		// message (`/compact hello`, `/mcp logout seems to cause a crash`, the
+		// operator's own report).
+		if (command.args === "") return { kind: "whole", command };
+		/*
+		 * THE VOCABULARY FIRST, and unconditionally: `consumes_prompt ∪
+		 * prefixes_text` is "this command's trailing text is its argument", so the
+		 * whole-draft form of such a command is a command with ANY text after it.
+		 * The endpoint refuses exactly that, and checking the shape first inverted
+		 * the precedence on the words that carry `argument_shape: "none"` — `none`
+		 * describes the OTHER half (a command whose text is a selector, where no
+		 * text is ever its argument), and reading it first sent every
+		 * `/team ops fix this`-shaped draft to the endpoint to be refused.
+		 */
+		if (consumesText) return { kind: "whole", command };
+		const shape = argumentShapes.get(word);
+		if (shape) {
+			return argumentFits(shape, command.args)
+				? { kind: "whole", command }
+				: { kind: "send" };
+		}
+		// Neither: an older backend's row the renderer's own derivation does not
+		// know takes text, so the draft is prose.
+		return { kind: "send" };
 	}
 
 	// Not the whole draft: only a token that OPENS the draft, for a command whose
@@ -400,6 +518,21 @@ function planForSpan(
 	// a command. Anything else is the sentence the user is writing, and it is sent
 	// as written.
 	if (!consumesText || armedOnly || !opensDraft) return { kind: "send" };
+	/*
+	 * And the command's own LINE has to be an argument its shape accepts: a
+	 * `/mcp logout` line whose body continues below it is prose, because the body
+	 * is not part of what that command takes and running it would drop the body —
+	 * which is the operator's report in its multi-line form. The empty argument is
+	 * excluded because a word that opens a draft and takes nothing yet is the
+	 * `list-open`/reassembly shape below, not a shape question.
+	 */
+	const openingShape = argumentShapes.get(word);
+	if (
+		openingShape &&
+		command.args !== "" &&
+		!argumentFits(openingShape, command.args)
+	)
+		return { kind: "send" };
 
 	if (promptCommands.has(word)) {
 		// A name-list command with no name typed yet: `_apply_command` has
@@ -408,9 +541,10 @@ function planForSpan(
 		// a NAME row is chosen (TUI `editor.py:8219-8222`).
 		if (nameListCommands.has(word) && !command.args)
 			return { kind: "list-open", command };
-		const rest = spliced.text.trim();
-		const text = rest ? `${commandText} ${rest}` : `${commandText} `;
-		return { kind: "reassemble", text, caret: text.length };
+		return {
+			kind: "reassemble",
+			...stagedLine(commandText, spliced.text.trim()),
+		};
 	}
 
 	return {
@@ -455,6 +589,7 @@ export function planSlashSubmission({
 	prefixingCommands,
 	nameListCommands,
 	armedOnlyCommands,
+	argumentShapes,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
@@ -469,6 +604,7 @@ export function planSlashSubmission({
 		prefixingCommands,
 		nameListCommands,
 		armedOnlyCommands,
+		argumentShapes: argumentShapes ?? NO_SHAPES,
 	};
 
 	/*

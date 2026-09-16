@@ -347,6 +347,12 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// unless a story says otherwise — the same default the composer takes.
 	paneHasSession: false,
 	prefixingCommands: new Set(),
+	/*
+	 * No wire shapes in a hand-built state either: these frames are about the
+	 * popup, and the empty map is the older-backend path, so a row the story
+	 * gives a shape to must pass the whole map through `over`.
+	 */
+	argumentShapes: new Map(),
 	nameListCommands: new Set(),
 	nameChoices: new Set(),
 	argumentWords: [],
