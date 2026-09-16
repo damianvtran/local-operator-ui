@@ -1170,6 +1170,112 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
 }
 
 /**
+ * How long a desktop request may run before the transport stops waiting for it.
+ *
+ * WHY PER OP RATHER THAN ONE LITERAL. Twenty seconds is right for the controls:
+ * a write, a settings read or a catalogue call answers in milliseconds, so
+ * twenty seconds of silence is a failure rather than a wait. The ledger reads
+ * are a different shape, and they are a different shape for a reason the
+ * message budgets above already know about — the work is a function of how much
+ * a user has USED this machine, not of request size.
+ *
+ * Measured against one isolated backend and one copy of the ledger (1,153,206
+ * rows, 341 MB), same query, back to back: `analytics.get` for 30 days answered
+ * in 12.1-17.8 s warm and 39.6 s with a cold page cache; for 7 days, 5.6-11.8 s.
+ * The variance is the page cache, not the window. So a 20 s budget does not
+ * bound a slow read, it GUARANTEES the read is abandoned part-way — and an
+ * aborted `fetch` does not cancel the daemon's aggregation. Measured through a
+ * timing tap in front of the same backend: the app gave up on a read the daemon
+ * then completed 9.2 s later, and the app's retry put a second full scan on the
+ * daemon while the first was still running.
+ *
+ * 90 s is 2.3x the worst cold read measured here, which is the headroom a cold
+ * ledger needs on a machine that is also doing something else. It is still a
+ * bound rather than an absence of one: a wedged backend ends the wait, and the
+ * sentence it ends with says which of the two happened
+ * ({@link desktopRequestDeadlineDetail}).
+ */
+const DESKTOP_CONTROL_DEADLINE_MS = 20_000;
+const DESKTOP_LEDGER_READ_DEADLINE_MS = 90_000;
+
+/**
+ * Ops whose answer is an aggregate over the local usage ledger.
+ *
+ * Listed by SHAPE, because that is what the budget is sized for: each of these
+ * reads `<config dir>/analytics.db` on the same machine as the app, so its cost
+ * follows the ledger's size and whatever the page cache is holding rather than
+ * anything about the request. `analytics.get` is the one measured above;
+ * `usage.get` is the same ledger over the same span for the `/usage` panel, and
+ * `sessions.report` walks a session's subtree in the same ledger (measured
+ * 0.65-2.2 s here, which is inside the control budget today and on this list
+ * because the scan behind it is the same one, not because it was seen to
+ * exceed 20 s).
+ *
+ * NOT listed, deliberately: `info.get` (a host snapshot, and the parallel
+ * backend change is the one that bounds its `top -l1` child — measured 0.3 s
+ * warm here) and `sessions.failovers` (routing state already in memory). An op
+ * moves onto the long budget when its shape says the ledger decides its cost,
+ * not because its name sounds like a read.
+ */
+const LEDGER_READ_OPS: ReadonlySet<string> = new Set([
+	"analytics.get",
+	"usage.get",
+	"sessions.report",
+]);
+
+/** The deadline one op's request may run for. */
+export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
+	return LEDGER_READ_OPS.has(op)
+		? DESKTOP_LEDGER_READ_DEADLINE_MS
+		: DESKTOP_CONTROL_DEADLINE_MS;
+}
+
+/**
+ * The code a request that ran out of its own budget carries.
+ *
+ * A string, read off `DesktopControlError.code`, for the reason
+ * `ReadFileBytesFailure` is a string: it has to survive IPC and a re-throw, and
+ * the callers that act on it are deciding whether to run an expensive read
+ * again rather than catching a class.
+ */
+export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
+
+/**
+ * What a request that ran out of its budget says, and which failure it was.
+ *
+ * The transport had ONE sentence for every failure it could produce: "The
+ * backend could not complete this request. Check its connection and try again."
+ * For a refused socket that is true. For a ledger read that was still running
+ * when the app stopped waiting it is false twice over — the backend WAS
+ * completing that request, and "try again" asks the user to start a second
+ * multi-second scan against a daemon that is still executing the first one.
+ *
+ * So the two are separated by both a sentence and a status: this outcome is a
+ * 504, which is what a gateway timeout means, and it is deliberately NOT a 503 —
+ * `backendErrorKind` reads 503 and `null` as "unreachable" and answers them
+ * with a remedy ("Restart the app") that is wrong for a slow read.
+ *
+ * Both sentences name what happened, what it means, and what to do, in that
+ * order, the order `panel-states.tsx` sets for panel copy.
+ */
+export function desktopRequestDeadlineDetail(
+	op: DesktopRequest["op"],
+	deadlineMs: number,
+): { code: string; message: string } {
+	const seconds = Math.round(deadlineMs / 1000);
+	if (LEDGER_READ_OPS.has(op)) {
+		return {
+			code: DESKTOP_DEADLINE_EXCEEDED_CODE,
+			message: `The ledger read did not finish within ${seconds} seconds, so the app stopped waiting for it. Nothing was read; reopen this panel to ask again.`,
+		};
+	}
+	return {
+		code: DESKTOP_DEADLINE_EXCEEDED_CODE,
+		message: `This request did not finish within ${seconds} seconds, so the app stopped waiting for it. Nothing was changed or read.`,
+	};
+}
+
+/**
  * The largest budget any op may claim.
  *
  * The dev proxy reads its request body as a stream and cannot know the op
