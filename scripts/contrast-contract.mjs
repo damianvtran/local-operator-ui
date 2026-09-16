@@ -1239,6 +1239,38 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * The key cap's INK STEP, which is a RANK rather than a floor — and the
+		 * reason it is a pin here instead of a row above.
+		 *
+		 * Both roles clear `docs/branding.md` § 3's 4.5:1 text floor on every ground
+		 * a cap renders on, so no palette assertion in this file can tell the two
+		 * apart as a decision: `inkDim` on the four grounds runs 4.51-6.90:1 and its
+		 * neighbour one step up runs 5.54-6.90:1. What separates them is the rank of
+		 * the thing a cap annotates, and the app prints a legend's LABELS in
+		 * `ink-dim`, so a cap at the step above outranks what it explains. Measured in
+		 * the committed pairs before this pin existed: the palette's legend caps read
+		 * 6.76-6.83:1 against their own bar while the labels beside them read 4.55:1
+		 * and 3.87:1, and on the active row the `Go` verb read 4.54:1 against its own
+		 * `\u21b5` cap at 7.02:1 — an inversion of the annotation over the content, in
+		 * a change whose instruction was to make the caps MORE subtle.
+		 *
+		 * Why a pin and not a comment: this exact move was made once already for the
+		 * opposite reason (the rail's chord read as fine print at 5.76:1 against the
+		 * label's 8.94:1) and reverting it costs nothing any palette row can see, so
+		 * the drift that produced the inversion is one word in a class string behind a
+		 * green gate. The pin names the ink step and the register it is set in, not the
+		 * whole geometry constant: the box's `min-w-5`/`h-5` is the other half of the
+		 * operator's report and a separate decision, and freezing it here would fail
+		 * this row on a legitimate padding tweak. It fails closed on a reorder, which
+		 * is the accepted cost the section above records.
+		 */
+		what: "key cap ink step",
+		file: "src/renderer/src/shared/components/common/keyboard-shortcut.tsx",
+		must: "font-mono text-ink-dim text-mono-sm",
+		why: "a cap annotates rather than states, so its ink has to sit at or BELOW the label it explains; the step above (`ink-muted`) is the role this app prints legend labels in, and at that step the palette's keys measured 6.76-6.83:1 against labels at 4.55:1 and 3.87:1 (and the active row's `Go` 4.54:1 against its own `\u21b5` cap at 7.02:1) — an inversion no floor row can see, because both roles clear every floor on every ground a cap renders on",
+	},
+	{
+		/*
 		 * The settings rail's current row, which was the same defect on the same
 		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
