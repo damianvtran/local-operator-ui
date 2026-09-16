@@ -280,8 +280,30 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		>
 			{/* `pt-1` and no bottom padding: the tabs sit flush on the strip's own
 			    rule, which is what lets the active tab interrupt it. */}
+			{/* THE STRIP'S HEIGHT IS STABLE ACROSS THE EMPTY AND POPULATED CASES
+			    (design round 2, D9). The row's height comes from the tabs in it, so with
+			    none the container collapsed to its own `pt-1` — measured in the app as 5px
+			    against 37px with one tab — and the page below stepped 32px in position AND
+			    in height the moment a tab appeared, which reads as the pane re-laying
+			    itself out for no reason.
+
+			    A MINIMUM rather than a fixed height, and the distinction is load-bearing:
+			    in the populated case the content is already taller than this floor, so
+			    nothing stretches, the rows keep their natural box, and the active tab's
+			    notch (1px at `-bottom-px`, which depends on the row's own bottom edge)
+			    paints exactly where it did. Pinned with `h-9` instead, the rows would be
+			    stretched into a box 1px short of the notch and the notch would be clipped:
+			    that is how a fixed height here failed the proof harness on an earlier
+			    round, and why the floor is what stayed.
+
+			    The remaining step is at most 1px, stated rather than hidden: the floor is
+			    a spacing step and the content's height is font-dependent, so the two agree
+			    to within a pixel rather than exactly. */}
 			<div
-				className={cn("@container/strip flex items-stretch gap-0 px-2 pt-1")}
+				className={cn(
+					"@container/strip flex min-h-9 items-stretch gap-0 px-2 pt-1",
+				)}
+				data-tour-tag="browser-tab-strip-row"
 			>
 				<div
 					ref={scrollerRef}
