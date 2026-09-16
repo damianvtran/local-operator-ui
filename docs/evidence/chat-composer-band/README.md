@@ -14,6 +14,17 @@ node scripts/capture-evidence.mjs http://localhost:6027 \
   --themes=localOperatorDark,localOperatorLight --allow-backend
 ```
 
+Round 4 added the eighth state (`empty-chat-credential/`) on the same two themes
+this surface uses, because the surface's own rule is `branding.md` § 9.9's minimum
+rather than the twelve-palette sweep — a two-theme surface with one twelve-theme
+story in it would be a second convention inside one directory. The rest of the set
+was re-taken at the same time and came back as re-encode noise and nothing else:
+measured against `4684e1017`'s copies, every pre-existing frame has 6.4k-26.6k
+pixels differing at all (of 1.2M) but only **2-17 at a 3% fuzz and 0 at a 5%**,
+with per-channel peaks of **12-18/255**, and the ink rows of the tip line, the
+chips and the composer sit at the same `y` in both. So `empty-chat-credential/` is
+the only new directory and no frame moved.
+
 Round 1's remediation re-took seven of these frames (the six after states plus
 `chip-hover/`, which the set did not carry before) with the same command on
 **port 6041**, chosen over 6027 because another worktree's Storybook was already
@@ -107,6 +118,7 @@ a sweep of this head's `src`: their provenance is the command above.
 | `long-labels/` | The pool's longest four labels at a 620px column — the worst wrap a later sample can draw. `composer-suggestions.ts` returns a pool no larger than the sample whole and in order, so this is a draw the sampler really can produce rather than strings invented to overflow. |
 | `draft-held/` | The same band with a draft in the box. The clock is suspended there and the ROW STAYS PAINTED — a still cannot show a clock, so what this frame proves is its own precondition: the row is on screen, at its usual place, with text in the composer beside it and the send control lit. It is also the chips' **disabled** frame: with a draft held, the chips take the disabled ink role at the same size and position, because a press would otherwise replace the sentence being written (round 1, U2). |
 | `reduced-motion/` | `empty-chat` with `prefers-reduced-motion: reduce` **emulated by the rig** (`{ reducedMotion: true }`), which is the only honest way to photograph this state: the app's own cap is a media block. Measured against `empty-chat`, the two frames differ by more than 5% in **9 px** (dark) and **3 px** (light) below the story label, and by 2004/2083 px **within** it — i.e. the whole difference is the label's own text, by design. The tip holds one entry instead of rotating. |
+| `empty-chat-credential/` | `empty-chat` with the credential capture OPEN (round 4, UX U16): `/credential` typed and every character after it a mask cell, so the sentence is up above the box. It is the frame for the movement that pane used to have — the band centres its group while the transcript is empty, so the sentence's line moved the composer and the tip row by 13.80px (measured on the band rig: field `y` 393.40 -> 407.20 on the reviewed head, and 393.40 -> 393.40 with the round-4 mirror). A still cannot show "did not move", which is why the pair with `empty-chat/` is the picture and the rig's numbers are the evidence; what the frame adds is that the sentence takes the composer's own measure above the box without landing on the greeting, the chips or the tip row. |
 | `chip-hover/` | `empty-chat` with one chip under the real pointer (`{ hover: "[data-lo-suggestion-stack] button", dir: "chip-hover" }`), which is the one state where a borderless control's control-ness has to hold: the ground steps to `elevated` and the label `ink-muted` → `ink`, with no border and no lift, and the hovered chip's own box starts on the composer's measure. Added after the design round flagged its absence (round 1, N3). |
 
 ## The numbers the frames are measured at
