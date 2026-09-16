@@ -1,12 +1,12 @@
 {
-  "head": "ad3c05af3c28106df3bc47bcdb44364ec3515747",
+  "head": "d03181a06a8bf8d50da5aa3665173e0bb4b8d183",
   "headNote": "TWO CONVERGENCES IN ONE ROUND, AND BOTH ARE RECORDED. First main moved 0c04cbb09 -> 3f1f4e5a3 (PR #255's `highlight` role and key-cap ink step, PR #265's 0.25.14 bump, PR #267's CODEOWNERS routing); then, while this round's remediation was in review, it moved again to `6da8665ee` (PR #256, the Backend settings rebuild), which touched BOTH `src/` and `scripts/` a second time and invalidated these stamps again. Each fold resolved the same documented way: MAIN's whole record is kept in this file and this branch's own `partialCapture` keys are re-added beside it, because the capture rig rewrites every count and stamp below on the next run anyway. The second fold's textual conflicts were `package.json`'s `test:desktop` list (both sides appended a test file; the union is correct) and this file; `scripts/capture-evidence.mjs` auto-merged. THE ROUND-1 STORIES ARE RE-CAPTURED ON THE MERGED TREE RATHER THAN RE-STAMPED ON TRUST and the comparison is in `chat-image-expand/README.md`: 24 of 36 frames byte-identical after the first fold and the other twelve differing only inside the picture's own box (AE 0.01-1.3%, RMSE <= 0.1%, identical measured edges). THE REMEDIATION'S OWN FRAMES ARE WHAT THE REST OF THIS FILE DESCRIBES: eight new overlay and legacy states, three canonical tool-row surfaces, and the declared `chat-image-expand-before/` supplementary set that pairs the resting row against `origin/main`'s own component (design D1-5). `partialCapture.imageExpandRound1Remediation` carries the runs and the measurements; `partialCapture.imageExpandPass` is the round-1 record this pass extends rather than replaces. `dirtyWorkingTree` is TRUE because those captures ran on this round's changes before they were committed, and the stamps below are re-derived at the tree that ships them.",
-  "srcTree": "b047f7212fb65f59b37c16554efb56ec16433528",
-  "scriptsTree": "11f234964fbbe84e5273c27cb6cf0c328158369e",
-  "dirtyWorkingTree": true,
+  "srcTree": "5483ea5b5888e32b5a771b30b4b5118b41a6f3cb",
+  "scriptsTree": "161f4840523709d4a3db728bf2e0ee1915c0c513",
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3919,
-  "surfaces": 483,
+  "frames": 4087,
+  "surfaces": 497,
   "themes": 12,
   "countsMean": {
     "frames": "RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
@@ -14,10 +14,10 @@
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-16T19:42:18.870Z",
-    "refreshedAtHead": "ad3c05af3c28106df3bc47bcdb44364ec3515747",
+    "refreshedAt": "2026-09-16T20:34:45.801Z",
+    "refreshedAtHead": "d03181a06a8bf8d50da5aa3665173e0bb4b8d183",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 276,
+    "refreshedFrames": 444,
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
       "chat-sidebar-current-row--new-chat-row-current",
@@ -39,7 +39,20 @@
       "settings-backend--dirty",
       "settings-backend--saving",
       "settings-backend--save-failed",
-      "settings-backend--narrow"
+      "settings-backend--narrow",
+      "chat-image-expand--in-thread",
+      "chat-image-expand--expanded",
+      "chat-image-expand--expanded-small-image",
+      "chat-image-expand--expanded-near-viewport",
+      "chat-image-expand--expanded-portrait",
+      "chat-image-expand--expanded-failed",
+      "chat-image-expand--legacy",
+      "chat-tool-rows--screenshots",
+      "chat-tool-rows--screenshots-two",
+      "chat-tool-rows--user-attachments",
+      "chat-image-expand--legacy-hovered",
+      "chat-image-expand--legacy-tabbed",
+      "chat-image-expand--legacy-tabbed-open"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -890,7 +903,8 @@
       "newSurfaces": "chat-image-expand/expanded-near-viewport, expanded-portrait, expanded-failed, expanded-small-window, legacy, legacy-hovered, legacy-tabbed, legacy-tabbed-open; chat-tool-rows/screenshots, screenshots-two, user-attachments.",
       "measurements": "The numbers each new frame carries are in `chat-image-expand/README.md`: the close button's clearance measured against its 48px ring reach (52px where a bare 90vh left 45), the failure box (549x57 where the induced collapse was 1152x38), and the byte/pixel comparison of the twelve re-taken frames that differ from their committed copies (24 of 36 byte-identical; the other twelve differ only inside the picture's own box, AE 0.01-1.3%, RMSE <= 0.1%).",
       "statedGap": "The overlay's failure state is proven by its own frame rather than by a test, because jsdom cannot be made to report an image error without leaving work that fails after the window closes — measured five ways in `scripts/chat-image-expand.test.mjs`, where the note is. That story's latch waits for the failure copy to paint, so the capture throws rather than photographing the wrong state.",
-      "countsRepaired": "The rig's own tally for this pass came out 36 frames short (`frames` 3871 against 3907 on disk) because the `legacy` tuple was re-taken in a LATER run than the tool-row runs, after the pass's count had already been folded; `scripts/evidence-manifest.test.mjs` caught it on the branch and both fields were re-derived from the tree rather than carried forward - `frames` from `docs/evidence` outside every declared set, and `refreshedStories` re-accumulated so the two directories the narrowed `--only=chat-image-expand--legacy` run rewrote are named beside the earlier runs' entries instead of replacing them."
+      "countsRepaired": "The rig's own tally for this pass came out 36 frames short (`frames` 3871 against 3907 on disk) because the `legacy` tuple was re-taken in a LATER run than the tool-row runs, after the pass's count had already been folded; `scripts/evidence-manifest.test.mjs` caught it on the branch and both fields were re-derived from the tree rather than carried forward - `frames` from `docs/evidence` outside every declared set, and `refreshedStories` re-accumulated so the two directories the narrowed `--only=chat-image-expand--legacy` run rewrote are named beside the earlier runs' entries instead of replacing them.",
+      "countsRepairedAgain": "The second convergence re-ran three partial captures on the merged tree and the rig under-counted `frames` a second time (3919 against 4087 on disk) and again replaced `refreshedStories` with the narrowed run's own list rather than accumulating onto it, so the two `dir`-variant directories went unnamed. Both fields are re-derived from the tree here, exactly as the gate's own message prescribes, and `scripts/evidence-manifest.test.mjs` is what found both - twice, in one round. That is a defect in `capture-evidence.mjs`'s partial-run accounting rather than in this branch's frames, and it is reported as such rather than worked around quietly."
     }
   },
   "supplementary": [
