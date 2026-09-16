@@ -2187,3 +2187,41 @@ test("a token moved to the END of the buffer still reaches the dispatcher (round
 		"so the secret is never sent as message text",
 	);
 });
+
+test("the caret immediately before a moved token does not make it prose (QA round 10)", async () => {
+	/*
+	 * QA round 10's isolated variable: the CARET. Typing a prefix leaves the caret
+	 * immediately BEFORE the token, and `activeSlash`'s claim branch returns the
+	 * running candidate — `null` — when the caret sits exactly at the claiming
+	 * token's `/` (`column > index` is false at equality), so `slashTokenSpan`
+	 * answers null and the planner returns `send` three lines before the gesture,
+	 * the span and the pick rule are consulted. Same draft, same live record, moved
+	 * caret: SENT, with the secret as message text.
+	 *
+	 * The caret placement IS the fact under test, so it is written directly: the
+	 * app leaves it there after a typed prefix, which is the shape every other case
+	 * in this file misses (`writeValue(..., next.length)` always ends at the end).
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-caret-before",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, "SECRET");
+	await esc(frame);
+	const field = frame.textarea();
+	await act(async () => {
+		// `please |/credential SECRET` — the caret at the token's own slash.
+		writeValue(field, "please /credential SECRET", "please ".length);
+	});
+	await settle();
+	assert.equal(frame.value(), "please /credential SECRET");
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 1, "a gesture-owned token dispatches, caret or not");
+	assert.equal(frame.sent.length, 0, "so the secret is never sent as message text");
+});
