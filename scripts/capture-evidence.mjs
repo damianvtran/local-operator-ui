@@ -1098,8 +1098,10 @@ export const STORIES = [
 	 * Captured at the picker's own height rather than the 900 default: the frame
 	 * IS the grid, and a viewport that clips the light group cannot answer the
 	 * question the tiles exist for — whether fifty-nine palettes read as a set
-	 * you can take in at a glance. The height is 1420, read off the rendered
-	 * column (see `docs/evidence/settings-appearance/README.md`).
+	 * you can take in at a glance. The rendered column measures 1200.8px at this
+	 * width; 1420 is that plus the ground the pair shares with the before frames
+	 * in `docs/evidence/settings-appearance-before/`, which are taken at the
+	 * same viewport so the two are a like-for-like comparison.
 	 */
 	["settings-appearance--gallery", 1000, 1420],
 	/*

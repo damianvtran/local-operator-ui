@@ -214,7 +214,7 @@ const THEME_ICONS: Record<ThemeName, LucideIcon> = {
  * ## Why the height is fixed at 40px
  *
  * It used to be `aspect-16/10`, so a preview grew with its column: at the
- * settings page's measured 896px column a card was 293 x 183. That is fine for
+ * settings page's measured 896px column a card was 277 x 254. That is fine for
  * twelve themes and impossible for 59, and it has a second cost that only shows
  * once there are many — two previews of the same palette are different sizes
  * depending on which column they land in, and comparing near-identical
@@ -261,13 +261,13 @@ const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
  *
  * ## Why the tile is a thumbnail and a name, and the description is a tooltip
  *
- * The twelve-theme picker measured 1145px tall: 95.4px of height per theme,
- * from a 16:10 preview that grew with its 293px column, a name row and a
- * description line. Fifty-nine of those is a 5,600px scroll, which is not a
+ * The twelve-theme picker measured 1105px tall: 92.1px of height per theme,
+ * from a 16:10 preview that grew with its 277px column, a name row and a
+ * description line. Fifty-nine of those is a 5,400px scroll, which is not a
  * picker any more. The tile is now a fixed 40px thumbnail and a name row —
  * 71.4px of tile in a 5-across grid at the settings page's column — so the
- * measured cost is 17.1px per theme, and all 59 land in 1012px against the
- * 1145px the 12 take today.
+ * measured cost is 18.5px per theme, and all 59 land in 1091px against the
+ * 1105px the 12 take today.
  *
  * The description cannot stay in the tile at that size. The registry's
  * descriptions are 241-348px of `text-meta` and the name has 121px of box to
@@ -386,8 +386,8 @@ const ThemeOptionTile: FC<{
  * treatment — a 16:10 preview per theme — that is a 5,600px scroll, and a
  * picker you cannot take in at a glance is a list you have to search. The
  * tiles are therefore thumbnail-first and compact: measured on the real render
- * at the settings page's column, 59 themes take 1012px against the 1145px the
- * 12 take today, and the cost falls from 95.4px per theme to 17.1px.
+ * at the settings page's column, 59 themes take 1091px against the 1105px the
+ * 12 take today, and the cost falls from 92.1px per theme to 18.5px.
  *
  * ## Why it is grouped by mode
  *
