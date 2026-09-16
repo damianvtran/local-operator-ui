@@ -1193,7 +1193,7 @@ Degrades:
 
 1. **One series per chart.** The only chart hue is `accent` (via `fill-accent`
    / `stroke-accent`), which `check-themes` already asserts at ≥ 4.5:1 as text on
-   `canvas` and `surface` in all twelve palettes (`branding.md:143-152`). A
+   `canvas` and `surface` in every palette (`branding.md:143-152`). A
    second series colour is not available: `branding.md:109-116` gives the accent
    a budget of about three spends per screen, and re-purposing `success` /
    `info` decoratively would invent a semantic that the contrast contract has no

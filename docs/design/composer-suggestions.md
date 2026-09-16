@@ -353,8 +353,9 @@ implement. Four structural facts carry it, and each is countable:
    grid of controls.
 
 What is *not* claimed: that the chips become invisible. `ink-muted` on `canvas` is
-6.74:1 at its worst across the twelve themes — more contrast than the tip row and
-than the placeholder. The chips stay as legible as they are today; what they lose
+5.16:1 at its worst across every palette — measured over all fifty-nine, where
+the twelve this started from bottomed out at 6.74:1 on `iceberg` — more contrast
+than the tip row and than the placeholder. The chips stay as legible as they are today; what they lose
 is the *boundary* that told the eye they were a menu.
 
 ---
@@ -434,7 +435,7 @@ Worst case across the twelve, for every pairing the direction introduces:
 
 | Pairing | Where it is used | Worst of twelve | Floor | Verdict |
 | --- | --- | --- | --- | --- |
-| `ink-muted` on `canvas` | chip label at rest | **6.74:1** (iceberg) | 4.5:1 | clears, asserted by the contract's `INKS` rows |
+| `ink-muted` on `canvas` | chip label at rest | **5.16:1** (kanagawaLotus) | 4.5:1 | clears, asserted by the contract's `INKS` rows |
 | `ink` on `elevated` | chip label while hovered | **7.64:1** (tokyoNight) | 7:1 | clears; the identical triple is already pinned by the `ask option button (hover)` row |
 | ΔE00(`canvas`, `elevated`) | the hover ground step | **4.21** (iceberg) | aim ≥ 2 (§ 3) | clears with room; the step is perceivable in every theme |
 | `ink-dim` on `canvas` | the tip SENTENCE | **4.95:1** (localOperatorLight) | 4.5:1 | clears everywhere, with only **0.45** of headroom on the light brand palette |
