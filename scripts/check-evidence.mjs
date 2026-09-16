@@ -42,6 +42,7 @@ import { STORIES } from "./capture-evidence.mjs";
 import { deltaE, r2 } from "./color.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { loadPalettes } from "./palette-source.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -1027,7 +1028,11 @@ if (isEntryPoint(import.meta.url)) {
 			"--eval",
 			`const { main } = await import(${JSON.stringify(import.meta.url)}); main(3);`,
 		],
-		{ stdio: "inherit" },
+		// The guard is a real interpreter, so it is handed an environment whose
+		// `PYTHON*` variables this process decided (scripts/python-child-env.mjs)
+		// rather than whatever the shell that ran the sweep carried: an ambient
+		// prefix inside an installed `.app` is how a harness wrote a cache into one.
+		{ env: pythonChildEnv(), stdio: "inherit" },
 	);
 	if (result.error || result.signal) {
 		console.error(

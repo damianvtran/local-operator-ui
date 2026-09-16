@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 
 /**
  * Keep CPython's bytecode cache out of the application bundle.
@@ -50,8 +50,11 @@ import { join } from "node:path";
  * `PYTHONDONTWRITEBYTECODE=1` rides beside the prefix on every spawn, and the
  * two are not redundant. The prefix is a *redirect*: it decides where a write
  * goes, so it protects the bundle only while the value is absolute, points
- * somewhere writable, and is still read by the interpreter that writes. The flag
- * is a *refusal*: `sys.dont_write_bytecode` is true before the first import, so
+ * somewhere writable, and is still read by the interpreter that writes - which is
+ * why `withPythonBytecodeCache` replaces an operator's *relative* value rather
+ * than passing it through (a relative prefix resolves against the writing
+ * process's own cwd, which can be inside a bundle; see `isUsablePrefix`). The
+ * flag is a *refusal*: `sys.dont_write_bytecode` is true before the first import, so
  * such a process has nothing to redirect and nothing to lose if the prefix is
  * absent, relative, unwritable, or dropped by an intermediate shell. What the
  * pair costs is stated in `withPythonBytecodeCache`, which is where the
@@ -149,15 +152,43 @@ export function withPythonBytecodeCache(
 	userDataDir: string,
 ): Record<string, string | undefined> {
 	const existing = env.PYTHONPYCACHEPREFIX?.trim();
-	const prefix =
-		existing && !insideAppBundle(existing)
-			? existing
-			: pythonBytecodeCacheDir(userDataDir);
+	const prefix = isUsablePrefix(existing)
+		? existing
+		: pythonBytecodeCacheDir(userDataDir);
 	return {
 		...env,
 		PYTHONPYCACHEPREFIX: prefix,
 		PYTHONDONTWRITEBYTECODE: "1",
 	};
+}
+
+/**
+ * Whether a `PYTHONPYCACHEPREFIX` the operator set is one that may be kept.
+ *
+ * Two conditions, and the second is the one the docstring above already
+ * asserted while the code did not check it:
+ *
+ * - the value must not name a path inside an `.app` bundle, which is the
+ *   configuration this module exists to prevent;
+ * - and it must be **absolute**, because a relative value is resolved against
+ *   whatever working directory the writing process happens to have. That is not
+ *   a theoretical placement: `insideAppBundle` cannot see it (a relative value
+ *   has no `.app` segment), so it used to pass straight through, and measured on
+ *   this machine with the cwd inside a bundle's own python directory,
+ *   `env -u PYTHONDONTWRITEBYTECODE PYTHONPYCACHEPREFIX=relcache python3 -c
+ *   "import encodings"` wrote `<cwd>/relcache/opt/homebrew/...` - i.e. the
+ *   redirect itself put bytecode into the sealed tree it exists to keep
+ *   bytecode out of. A relative value is therefore replaced with the app's own
+ *   cache directory, the same outcome as a value pointing into a bundle.
+ *
+ * The two conditions are checked here together rather than folded into
+ * `insideAppBundle`, because that predicate answers a narrower question - is
+ * this path inside a bundle - and a relative path is not what it is for.
+ */
+function isUsablePrefix(value: string | undefined): value is string {
+	if (!value) return false;
+	if (!isAbsolute(value)) return false;
+	return !insideAppBundle(value);
 }
 
 /*
