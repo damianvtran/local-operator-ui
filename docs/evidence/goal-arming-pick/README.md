@@ -62,6 +62,25 @@ did not move, and the entry in
 `docs/evidence/manifest.json` states, string by string, why nothing they render
 moved.
 
+Rounds 5 and 6 RE-DROVE the set instead of re-taking it, and **no frame was
+re-taken in either, because none of their pixels moved** — measured rather than
+assumed. Round 5 merged `#228` (the composer-suggestions round, which restyles
+the very stack this composer sits under) and re-drove all fifteen states at the
+merged tree against the bytes that ship. Round 6 merged the 0.25.8 window (the
+browser consent fix and the release bumps — a window containing no
+`src/renderer` file and no `scripts/capture-evidence.mjs` change at all) and
+re-drove nine states, one per distinct surface: `popup-goal`,
+`popup-goal-nosession`, `popup-loop`, `enter-loop-staged`, `pick-arms-hand`,
+`pick-arms-click` (with its `composer-armed` crop), `plain-enter-prose`,
+`tab-no-arm` and the hand-typed state behind `composer-hand-typed`. The result
+in both rounds: byte-identical over the whole frame for the six
+popup/staged/prose/Tab states, byte-identical for the two composer crops, and
+byte-identical over the witness rows and the composer (y>520) for the two
+`pick-arms-*` states — whose only differing pixels are in the harness's own
+control row, which has grown since those two were captured. States, recipes and
+claims are unchanged by either round; `docs/evidence/manifest.json` carries the
+mechanism and the stamps re-derived at each merge.
+
 | frame | state | what it settles |
 | --- | --- | --- |
 | `popup-goal/localOperatorDark.webp` (re-taken, round 4) | popup open on the `/goal` row over `I approve spend /goal`, no arrow pressed | review F2 / QA Q5 / UX U2 / design D1-D2, in the composed contract: the row's two lines read `Enter stages /goal; the next Enter runs it.` / `Click stages /goal.` — Enter's line is what the key does on the row the popup is showing, and the line below it names the pointer's own path. Round 3's `Enter sends this draft as prose.` described a rule #221 replaced: an unambiguous Enter ACTS on the row, and on this row the act is the arm |
