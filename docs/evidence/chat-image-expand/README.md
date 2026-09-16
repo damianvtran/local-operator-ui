@@ -83,13 +83,21 @@ the margin this set exists to show.
 
 - The picture is **alone on the scrim** — no `bg-elevated` surface, no border, no
   padding, no title bar, no shadow-boxed card — with the conversation visible
-  behind it. The scrim is `bg-scrim`, a per-theme role: it reads warm-grey at
-  0.35 alpha in the six light themes and near-black at 0.6-0.65 in the dark ones,
-  which is the reason a hardcoded black alpha is wrong here.
+  behind it. The scrim is `bg-scrim`, a per-theme role, and the population is
+  THREE themes rather than six (design round 2, D2-2 — round 1 corrected this
+  count in the thread and not in the artifact): `themes.generated.css` carries
+  0.35 on exactly the three `mode: "light"` palettes — `iceberg`
+  (`rgb(38 42 63 / 0.35)`, a cool blue-grey), `localOperatorLight`
+  (`rgb(20 17 12 / 0.35)`, the only warm one) and `sage` (`rgb(34 44 31 / 0.35)`)
+  — and 0.6 or 0.65 on the other nine. The reasoning a hardcoded black alpha is
+  wrong here still holds, and it holds for those three.
 - The close button is a ghost `icon-sm` in the viewport's top-right corner, clear
   of the picture in both overlay frames (the picture's top edge is 234px down in
   `expanded`, and the button ends at 44px).
-- **The close button carries a focus ring in every overlay frame.** That is
+- **The close button used to carry a focus ring in every overlay frame** — the
+  press-driven ones no longer do (design D2-4, see "Fold 4" below) and the twelve
+  failure frames still do, for the reason given there. In the frames that had it,
+  the ring is
   Radix's modal autofocus landing on the first tabbable element inside the
   dialog, and this composition has exactly one — so it lands there. It is not
   new behaviour and not specific to this surface: the shared primitive's own
@@ -98,11 +106,14 @@ the margin this set exists to show.
   the same browser. **UX round 1 settled what it is**: opening the overlay with a
   real pointer press in the built app leaves the close button focused with
   `outline: none`, and the ring appears only once Tab is pressed — so the ring in
-  these frames is an artifact of the story pressing the picture programmatically
+  those frames was an artifact of the story pressing the picture programmatically
   (`button.click()`, which Blink treats as keyboard-ish for `:focus-visible`), not
-  something a mouse user sees. It is recorded as REJECTED on that measurement
-  rather than re-captured, and the story's press is left as it is because a
-  synthetic click is the only press a story can make.
+  something a mouse user sees. **The disposition is unchanged and the reason for
+  not re-shooting was wrong**: round 2's D2-4 pointed out that a synthetic click is
+  not the only press this rig can make — it dispatches real pointer input elsewhere
+  in this very set — so the five press-reachable tuples are opened by a real press
+  and their frames now show the state a mouse user gets, with the failure tuple
+  named as the one that cannot be.
 
 ## The frames are one half of the evidence
 
@@ -177,7 +188,7 @@ Measured off the committed frames, with the 48px ring reach as the reference:
 | frame | viewport | measured picture | margins | clearance to the ring |
 | --- | --- | --- | --- | --- |
 | `expanded-near-viewport` | 1280x900 | **1132x796 at +74,+52** | 74/74, 52/52 | **+4px on the top edge**, +26px on the right |
-| `expanded-portrait` | 1280x900 | **633x796 at +191,+52** | 191/455, 52/52 | +4px top, +441px right |
+| `expanded-portrait` | 1280x900 | **368x796 at +456,+52** | 456/456, 52/52 | +4px top, **+408px right** |
 | `expanded-small-window` | 800x760 | **696x261 at +52,+250** | 52/52, 250/249 | +202px top, **+4px right** |
 | `expanded` (the round-1 control) | 1280x900 | **1152x432 at +64,+234** | 64/64, 234/234 | +186px top, +16px right |
 
@@ -186,17 +197,53 @@ round-1 numbers to the pixel (1152x432 at +64,+234). A picture at the viewport's
 own aspect used to leave 45px; it now leaves 52, and the frame shows the ring
 outside the picture's corner rather than across it.
 
+**Two corrections to this table, both from design round 2 and QA round 2 (D2-3,
+Q2-1), and both measured off the committed frame and reproduced here.**
+
+The portrait row used to read `633x796 at +191,+52` with `+441px right`, and that
+row does not reproduce. At y=450 of `expanded-portrait/localOperatorDark` the
+first pixel of the 828x1792 fixture is **x=456** `rgb(142,67,67)` — scrim at
+x=190-455 — and its last is x=823, so the picture is **368x796 at +456,+52**, the
+width 828x1792 fitted to the 796px height cap, centred by the `m-auto` the
+round-1 note establishes. Two things produced the old figure: the **transcript's
+own thumbnail behind the scrim** (a second colour-bar block at x 191..301, dimmed
+by the scrim but reachable by a saturation test that does not account for the
+dimming) was unioned into the picture, and the `+441` was measured against the
+close button's **16px inset** where every other row measures against its **48px
+ring reach** (which gives 408). The row's claim — a phone-aspect picture is
+photographed height-capped, 52px top and bottom, clear of the ring — is unchanged,
+and the true 368 is *further* from the button than 633 was.
+
+**Every row is measured to the picture's first and last painted pixel**, which is
+the convention the numbers above use: a stricter colour threshold reads the
+near-viewport row as 1126-1129px rather than 1132 (its edges are antialiased where
+the flat bands meet the scrim), and the small-window row as 694-696. The
+convention is stated rather than left implicit because the difference is 2-4px and
+a reader checking by hand deserves to know which edge is being quoted.
+
 ## The failure state, measured (review R1-4, QA Q-1)
 
 QA induced the old failure and measured the layer collapsing to **1152x38** — a
 strip of label text on an empty scrim, for a canonical row the single word
 "Screenshot". The overlay now draws the caller's own `BrokenAttachment` inside a
-reserved box (`min-h-16 min-w-64` plus the layer's padding), and the frame
-measures **549x57 at +364,+423** in `localOperatorDark` and **548x52 at
-+364,+428** in `iceberg` — centred on both axes, carrying the icon and the store's
+reserved box (`min-h-16 min-w-64` plus the layer's padding), and the frame's
+**drawn card measures 543x38 at +369,+431** in `localOperatorDark` and **544x42 at
++368,+429** in `iceberg` — centred on both axes, carrying the icon and the store's
 own sentence ("Screenshot could not be displayed. Its stored copy is not
 available to this reader."), which is the copy the transcript uses for a digest
-rather than the on-disk "moved, renamed, or deleted" sentence.
+rather than the on-disk "moved, renamed, or deleted" sentence. (QA's own hand
+reading of the same two frames is 536x38 at +372,+431 and 542x38 at +369,+431: the
+borders are a 1px hairline and the two methods differ by where they put it.)
+
+**The earlier figures for this box — `549x57 at +364,+423` and `548x52 at
++364,+428` — were a measurement error and are corrected here** (review R2, QA Q2-1,
+design D2-3 all caught it). They came from a bound of "every pixel differing from
+the scrim's modal colour by one unit", which over a webp-encoded frame includes the
+encoder's dithering around the card as well as the card: the same frame read that
+way is 549x57 at +364,+423, while the card itself is 543x38 at +369,+431. The
+live state agrees with the card: measured in the induced state, the reserved box's
+**layout rect is 590x86**, which is 543 + the layer's 2x24px padding on the width
+and 38 + 48 on the height.
 
 This is the assertion for that state, and it is a frame rather than a test on
 purpose: **jsdom cannot be made to report an image error without leaving a
@@ -219,17 +266,31 @@ shape — but not in this round, and not in the picture:
   geometry-identical to the round-1 commit (the picture's edges measure 208-825 at
   y=300 in both, and in all four themes re-checked), which is why the drift below
   is raster-only;
-- **the round-1 diff did**: against the base, the card's own width changed. On
-  `origin/main` the legacy attachment is a **900px-wide** `sunken` card with the
-  picture (632px) centred inside it; on this branch the card is **632px wide** and
-  sits at the column's left edge. The `div` -> `button` swap is what did it (a
-  button shrink-wraps where a block `div` filled the column).
-- That makes the legacy surface agree with the CANONICAL one, which has always
-  hugged its picture (`canonical-image.tsx` wraps it in `inline-block`), so it is
-  a consistency gain rather than obviously a regression — but it is a silent
-  change to a reviewed surface and the design round owns the call, so it is
-  measured here rather than argued: the frame pair is the evidence, and the
-  decision is a class on the wrapper either way.
+- **the round-1 diff did, on the CANONICAL surface** (design round 2, D2-1 —
+  the earlier wording named the legacy one and its own call sites contradict that).
+  The base rendered `onClick ? <button className="block max-w-full cursor-pointer">
+  : <div className="block max-w-full">`, and the head's button carries the
+  identical class string; BOTH legacy callers (`message-item/index.tsx`,
+  `streaming-message.tsx`) passed `onClick={handleFileClick}`, so production's
+  legacy attachment was already that shrink-wrapping button — already hugging,
+  already flush left. The `<div>` branch the before frame photographs is reached
+  in production by the CANONICAL surface, `canonical-image.tsx`, whose own comment
+  says it passes no `onClick`, and which is the surface the operator reported and
+  the `in-thread` story reproduces. So the change is: the canonical card was a
+  **~900px-wide** `sunken` panel with the 640px picture centred in it (card ground
+  visible at x 189..319 and x 960..1089, picture at 320..959) and is now a
+  **~642px** card hugging the picture at the column's left edge (picture
+  191..830) — the widths quoted to the same first-and-last-pixel convention as the
+  table above, and ±2px of QA's independent reading of the same frames.
+- **The design round accepted the hugging shape on those corrected facts**
+  (D2-1), and the decision is recorded where the wrapper is rather than only here:
+  `image-attachment.tsx`'s own doc comment carries the accepted shape and the
+  constraint that the wrapper's display is what decides it (D2-5). A wide picture
+  now shares the message column's left edge instead of floating centred in dead
+  ground; a narrow one, which used to get that whole panel of ground around it, is
+  unchanged. The `<div>` -> `<button>` swap is what carried it (a button
+  shrink-wraps where a block `div` filled the column), and the canonical and
+  legacy surfaces now agree on one shape.
 
 ## What the re-take changed in the existing frames (review R1-2's convergence)
 
@@ -239,15 +300,61 @@ tree rather than re-stamped on trust. Byte-comparison against their committed
 copies, per frame:
 
 - **24 of 36 are byte-identical**;
-- **12 differ**, and every one of them differs ONLY inside the picture's own box
-  (`expanded/monokai` 199 px, `expanded/neon` 1851, `expanded/radient` 7374,
+- **12 differ**, and every one of them differs MOSTLY inside the picture's own
+  box (`expanded/monokai` 199 px, `expanded/neon` 1851, `expanded/radient` 7374,
   `expanded-small-image/{dune,localOperatorLight,obsidian,sage,synth}` 105-4089,
-  `in-thread/{dracula,iceberg,neon,radient}` 673-14478) — AE 105 to 14,478 pixels
-  of 1,152,000 (0.01% to 1.3%), RMSE <= 0.1% in every case, and the card's own
-  measured edges are identical in each theme re-checked. That is re-rasterisation
-  of the scaled `<img>`, not a layout, token or geometry change: same class as QA
-  round 1's Q-6, and the same reason the round-1 note records a re-take rather
-  than an argument.
+  `in-thread/{dracula,iceberg,neon,radient}` 673-14478) — AE 105 to 14,478 px,
+  which is **0.039% to 1.257% of each frame's own pixels**, and worst-case RMSE
+  **0.1055%** (`expanded-small-image/obsidian`), and the card's own measured edges
+  are identical in each theme re-checked. That is re-rasterisation of the scaled
+  `<img>`, not a layout, token or geometry change: same class as QA round 1's Q-6,
+  and the same reason the round-1 note records a re-take rather than an argument.
+  **"Inside the picture's own box" was too strong and is qualified here** (review
+  round 2, R2-5): two of the twelve reach past it — `in-thread/dracula` differs at
+  x 32..51 and `expanded-small-image/dune` at x 32..199, i.e. in the frame area the
+  transcript's own thumbnail occupies under the scrim, where the same scaled
+  `<img>` is repainted a second time. No frame moves the picture's box, and the
+  conclusion is unchanged; the wording now says "mostly" rather than "only".
 
 The `in-thread`/`expanded`/`expanded-small-image` frames are therefore
 pixel-current on the merged tree, and the rest of the set is new work.
+
+### Folds 2, 3 and 4, on the same terms
+
+`origin/main` moved three more times after that first fold, and each one was
+treated the same way: establish what it touched, re-capture if any frame's subject
+moved, and re-stamp only if none did.
+
+| fold | main's commit | what it was | what it cost |
+| --- | --- | --- | --- |
+| 2 | `6da8665ee` | PR #256, the Backend settings rebuild | **re-capture**: 108 of 132 frames byte-identical; the 30 that moved differ by AE 17..35,907 px — **0.0015%..5.906% of each frame's own pixels**, worst RMSE **0.1618%** — with the picture's measured box identical old against new (x 52..747, y 250..510 at 800x760, four themes re-checked) and the best-fit integer shift (0,0) over ±2px (the reviewer's own measurement, `sharp`-decoded and agreeing with ImageMagick). The 35,907 px frame is the 800x760 one, so its share is 5.9% of that frame and not 3.1% of a 1280x900 one (Q2-1's denominator correction). |
+| 3 | `5b0544c3f` | PR #274, the collapse guard in CI | **re-stamp only**: its diff touches CI, `package.json`, one test under `scripts/` and the manifest, and **nothing under `src/`**, so no frame's subject moved. |
+| 4 | `da9e75a61` | PR #233 (compact without a dialog), PR #261 (the quote toolbar) and PR #279 (0.25.16) | **re-capture**: three PRs' worth of `src/` moved. See below. |
+
+### Fold 4, and the frames the press changed (design D2-4)
+
+Every overlay frame in the set used to be opened by a programmatic
+`button.click()`, which Blink treats as keyboard-ish for `:focus-visible`, so **all
+72 overlay frames carried a close-button focus ring a mouse user never sees** —
+the artifact design D1-2 was filed about, and round 2's D2-4 asked the artifact to
+match the rig's own capability rather than excuse itself. The rig now has a
+`press` option (real `mousePressed`/`mouseReleased` at a selector's centre, run
+before the readiness probe so a story's own latch cannot deadlock against it), and
+the five press-reachable overlay tuples press the picture the way a user does. The
+failure tuple does not, and its own comment says why: the transcript's copy of a
+picture that failed is not a button, so no press reaches that overlay.
+
+Measured on the committed frames of this fold, in the close button's own lane:
+
+| frames | saturated pixels in the button's lane | what it means |
+| --- | --- | --- |
+| the 60 press-driven overlay frames (5 tuples x 12) | **0** | no ring — the state a mouse user gets |
+| the 12 failure frames | 323 (`localOperatorDark`) / 571 (`iceberg`) | the ring is still there, because that overlay is still mounted rather than pressed, and the README says so per frame rather than leaving a reader to guess |
+
+Against the previous head this fold changes 80 frames: those 60 (the ring
+leaving), and 20 more whose difference is encoder-level — a content change in a
+webp frame shifts the encoder's own block decisions, so the mean channel
+difference over such a frame is 0.06% with the maximum at the ring itself. Where
+nothing changed the frames are simply identical: `in-thread`, `legacy` and
+`expanded-failed` came back **byte-identical** in the themes checked, and the one
+tool-row frame that moved differs by 95 px with a maximum channel delta of 5/255.

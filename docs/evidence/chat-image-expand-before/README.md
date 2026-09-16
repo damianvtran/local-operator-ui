@@ -29,24 +29,50 @@ tuple was added to the base worktree's own `STORIES` list (uncommitted there),
 which `--only` filters against. The frames were then copied into this checkout
 and the directives above name what produced them.
 
-What the pair is FOR, in one line: the `div` -> `button` swap this branch made is
-exactly the change that moves a row silently (design round 1, D1-5), and the only
-honest before-frame is the old component rendering the same fixture at the same
-viewport. What it shows, measured at y=300 of the committed frames:
+## Which surface this pair is about (corrected in round 2)
+
+**This is the CANONICAL surface's before/after, not the legacy one** — design round
+2's D2-1 caught the attribution and it matters, because it is the canonical row the
+operator reported. The base rendered
+`onClick ? <button className="block max-w-full cursor-pointer"> : <div
+className="block max-w-full">`, and the head's button carries the identical class
+string. Both legacy callers (`message-item/index.tsx`, `streaming-message.tsx`)
+passed `onClick={handleFileClick}`, so production's legacy attachment was ALREADY
+the shrink-wrapping button: already hugging, already flush left. The `<div>` branch
+this set photographs is the one `canonical-image.tsx` reached, because that caller
+passes no `onClick` — and the story here mounts `ImageAttachment` with no handler,
+which is that branch. So the pair answers the question about the surface whose
+production rendering changed.
+
+What it shows, measured at y=300 of the committed frames, on the first-and-last-
+pixel convention:
 
 | frame | the card | the picture |
 | --- | --- | --- |
-| `in-thread/<theme>` (this branch) | 632px wide, at the column's left edge | 632x240, filling it |
-| `chat-image-expand-before/in-thread/<theme>` | **900px** wide — the column's full measure — with the `sunken` ground visible on both sides (x 192-315 and 976-1087) | 632x240, centred inside it at x 324-955 |
+| `in-thread/<theme>` (this branch) | ~642px wide, at the column's left edge | ~640x240, filling it |
+| `chat-image-expand-before/in-thread/<theme>` | **~900px** wide — the column's full measure — with the `sunken` ground visible on both sides (x 189..319 and x 960..1089) | ~640x240, centred inside it at x 320..959 |
 
-So the swap did change the resting row: the legacy card used to span the column
-and now hugs the picture. It also makes the legacy surface agree with the
-canonical one, which has always hugged (`canonical-image.tsx` wraps it in
-`inline-block`) — so it is a consistency gain rather than obviously a regression,
-and the design round owns the call rather than this set. What this set exists to
-do is put the pair in front of that round instead of an argument.
+**The design round accepted the hugging shape on these facts** (D2-1): a wide
+picture now shares the message column's left edge instead of floating centred in a
+panel wider than itself, which is a gain where the picture is the row's content,
+and a narrow picture — which used to get that whole panel of dead ground around
+it — is unchanged. The accepted shape is recorded in `image-attachment.tsx`'s own
+doc comment (D2-5), beside the affordance decision, because the wrapper's display
+is what decides it and that is where the next author meets the constraint.
+
+The widths above are quoted to the first and last painted pixel; the earlier
+figures (632/900) were 8-10px narrower because they measured to a nominal box
+rather than to the pixels (D2-1's own note).
 
 It also settles what the drift in the re-take is: the re-captured `in-thread`
 frame is geometry-identical to the round-1 commit (the picture's edges measure the
 same at y=300 in every theme re-checked), so the sub-percent pixel differences
 that round-1 re-take reported are re-rasterisation and not a moved row.
+
+**This set was not re-captured for round 2, and that is a measurement rather than
+an omission**: `git diff --name-only <the base it was taken from>..origin/main` over
+everything it photographs — `image-attachment.tsx`, `attachment-frame.tsx` and
+`src/renderer/src/styles/` — is EMPTY, so the component and the tokens under these
+frames have not moved and the twelve frames are still what `origin/main` renders.
+(A fold that moved any of those would have required re-shooting it, as folds 1, 2
+and 4 required for the branch's own set.)
