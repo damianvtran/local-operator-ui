@@ -51,6 +51,7 @@ const {
 	IDLE_CAPTURE,
 	MASK_CELL,
 	abandonTyping,
+	applyDomEdit,
 	armSpan,
 	cancelTypedCredential,
 	capturePasted,
@@ -59,14 +60,17 @@ const {
 	citedPayloads,
 	credentialCitation,
 	credentialMarker,
+	credentialNamesFrom,
 	describeUnstored,
 	generateCredentialKey,
+	holdsCancelledToken,
 	isArmed,
 	isStorableCredentialKey,
 	isTyping,
 	maskEdit,
 	maskSpan,
 	mintTypedCredential,
+	paintPlan,
 	relocateArm,
 	storedNotice,
 	substituteCredentials,
@@ -157,6 +161,28 @@ const harness = () => {
 				state.caret,
 				"typing",
 			);
+			draft();
+			return this;
+		},
+		/**
+		 * One edit through the PRODUCTION DOM seam: `applyDomEdit`, which is what the
+		 * textarea's own `onChange` calls. The verbs above drive `maskEdit` directly,
+		 * which is the mirror the seam delegates to; a rule that lives IN the seam
+		 * (the refusal of text arriving into an open span) is only pinned here.
+		 */
+		domEdit(top, bottom, inserted, caretAfter) {
+			const domBuffer =
+				state.buffer.slice(0, top) + inserted + state.buffer.slice(bottom);
+			const caret = caretAfter ?? top + inserted.length;
+			const applied = applyDomEdit(
+				state.capture,
+				state.buffer,
+				domBuffer,
+				caret,
+				"typing",
+			);
+			apply(applied);
+			state.capture = applied.capture;
 			draft();
 			return this;
 		},
@@ -252,6 +278,7 @@ const harness = () => {
 		},
 		escape() {
 			const result = cancelTypedCredential(state.capture, state.buffer);
+			state.lastCancel = result;
 			if (result.cancelled) {
 				apply(result);
 				state.capture = result.capture;
@@ -259,6 +286,8 @@ const harness = () => {
 			}
 			return result;
 		},
+		/** What the last `escape` answered, so a test can read the token it left. */
+		lastCancel: null,
 		/** A value arriving from a route no keystroke produced (§2). */
 		arrive(value, caret) {
 			state.buffer = value;
@@ -444,10 +473,10 @@ test("the /cred alias arms, and an accepted completion arms its trailing space",
 
 test("a flag-shaped tail disarms the latched arm rather than being masked", () => {
 	/*
-	 * `CREDENTIAL_ARGUMENT` (`editor.py:132`): `/credential --forget-all` is the
-	 * operator addressing the COMMAND, and a leading `-` cannot begin a key, so
-	 * the two intents are unambiguous. The operator who wants the destructive
-	 * verb still reaches it by typing it.
+	 * `CREDENTIAL_ARGUMENT` (`editor.py:630`, matched ANCHORED at `editor.py:5916`):
+	 * `/credential --forget-all` is the operator addressing the COMMAND, and a
+	 * leading `-` cannot begin a key, so the two intents are unambiguous. The
+	 * operator who wants the destructive verb still reaches it by typing it.
 	 */
 	const composer = harness();
 	composer.type("/credential");
@@ -459,6 +488,231 @@ test("a flag-shaped tail disarms the latched arm rather than being masked", () =
 		"the flag turns the tail into an argument",
 	);
 	assert.equal(composer.state.buffer, "/credential --forget-all");
+});
+
+test("only a LEADING flag disarms: a `-` later in the tail stays armed", () => {
+	/*
+	 * The reference matches the flag at the START of the tail (`.match`,
+	 * `editor.py:5916`), not anywhere in it. Unanchored, prose that happens to
+	 * contain a hyphen after the token — `/credential the prod-key name` —
+	 * disarmed the gesture, and the operator's next paste landed in the document:
+	 * the false-negative direction, which no keystroke undoes (code review round
+	 * 1, MINOR-2).
+	 */
+	const opened = { arm: { start: 4, end: 16 }, typingAt: null, value: "" };
+	const armOf = (buffer) =>
+		syncCapture(opened, buffer, buffer.length, "typing").arm;
+	assert.ok(
+		armOf("use /credential the prod-key name"),
+		"a hyphen later in the tail is prose, not the command",
+	);
+	assert.ok(
+		armOf("use /credential foo -"),
+		"a `-` that is not the FIRST thing after the blanks is not the flag",
+	);
+	assert.equal(
+		armOf("use /credential --forget-all"),
+		null,
+		"the command's own flag still disarms",
+	);
+});
+
+test("the citation predicate checks the payload's own index, not just its marker text", () => {
+	/*
+	 * §4 states the citation rule as "index AND marker text", and both halves
+	 * have to be able to say no (code review round 1, MINOR-1). Every payload
+	 * this module BUILDS has the two in agreement — `credentialMarker` writes
+	 * both from one index — so the halves are separable only for a payload whose
+	 * fields disagree, which is what this test builds by hand. Deleting the
+	 * index half used to leave the suite green.
+	 */
+	const agreed = { index: 1, key: "LOP_SECRET_ABCDEFGH", value: "s3cret", marker: credentialMarker(1, "s3cret") };
+	assert.deepEqual(citationSpan(`x ${agreed.marker} y`, agreed), {
+		start: 2,
+		end: 2 + agreed.marker.length,
+	});
+	// The marker TEXT is present, so the buffer can be walked to it — and the
+	// payload's own index still says no.
+	const disagreed = { ...agreed, index: 2 };
+	assert.equal(
+		citationSpan(`x ${agreed.marker} y`, disagreed),
+		null,
+		"a payload whose index and marker disagree cites nothing",
+	);
+	assert.equal(citedPayloads(`x ${agreed.marker} y`, [disagreed]).length, 0);
+	// And the text half still says no on its own.
+	assert.equal(citationSpan("nothing here", agreed), null);
+});
+
+test("text arriving into an open span ends the capture instead of joining the secret", () => {
+	/*
+	 * The reference refuses to mirror it (`editor.py:6312-6323`) — "leave the
+	 * value untouched rather than silently corrupting it" — and the port takes
+	 * that answer as an ABANDONED capture, because the arriving text would
+	 * otherwise sit among the mask cells and desynchronise the run the mint
+	 * splices (`pastePassthrough` takes the same answer for the blank-paste case,
+	 * citing this same reference). Dropping a filename onto the composer used to
+	 * append it to the held value: the pill's count changed and the secret was
+	 * wrong (code review round 1, MINOR-3).
+	 */
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("sk-");
+	const span = maskSpan(composer.state.capture);
+	assert.deepEqual(span, { start: 12, end: 15 });
+	// A drop lands INSIDE the span, as the DOM would apply it.
+	composer.domEdit(13, 13, "dropped-file.txt");
+	assert.equal(
+		composer.state.capture.value,
+		"",
+		"the dropped text did not join the held value",
+	);
+	assert.equal(
+		isTyping(composer.state.capture),
+		false,
+		"the typed capture ended rather than absorbing the drop",
+	);
+	assert.ok(
+		isArmed(composer.state.capture),
+		"the ARM survives, so the gesture is still one space away",
+	);
+	assert.ok(composer.state.buffer.includes("dropped-file.txt"));
+	// A DELETION is still the operator's own edit and is still mirrored: the
+	// cells and the held value can never disagree in LENGTH, which is the
+	// invariant the pill's count and the mint's splice both rest on.
+	const editing = harness();
+	editing.type("/credential ");
+	editing.type("abcdef");
+	editing.domEdit(14, 15, "");
+	assert.equal(charsOf(editing.state.buffer).filter((c) => c === MASK_CELL).length, 5);
+	assert.equal(charsOf(editing.state.capture.value).length, 5);
+});
+
+test("the list answer's names come from the objects the runtime sends", () => {
+	/*
+	 * `{"ok": true, "credentials": [{"key": …, "source": …}]}`
+	 * (`local_operator/session/credential_ops.py:59-64`). Read as `string[]`, the
+	 * guard's `taken` set never matched a name the session already held, so §8's
+	 * "consulted rather than trusted to probability" was inert — and
+	 * `CredentialPicker` rendered the object as a React child and crashed the
+	 * renderer (React #31). One reading, both callers (QA round 1, Q3).
+	 */
+	assert.deepEqual(
+		credentialNamesFrom({
+			data: {
+				ok: true,
+				credentials: [
+					{ key: "LOP_SECRET_ABCDEFGH", source: "command" },
+					{ key: "LOP_SECRET_JKMNPQRSTV", source: "command" },
+				],
+			},
+		}),
+		["LOP_SECRET_ABCDEFGH", "LOP_SECRET_JKMNPQRSTV"],
+	);
+	// Total: anything unexpected is an empty list rather than a crash.
+	assert.deepEqual(credentialNamesFrom(undefined), []);
+	assert.deepEqual(credentialNamesFrom({ data: { credentials: "nope" } }), []);
+	assert.deepEqual(credentialNamesFrom({ data: { credentials: [{}, null, 3] } }), []);
+	// The older spelling still narrows the guard rather than emptying it.
+	assert.deepEqual(credentialNamesFrom({ data: { credentials: ["OLD_NAME"] } }), [
+		"OLD_NAME",
+	]);
+});
+
+test("a minted name dodges one the session's store already holds", () => {
+	/*
+	 * §8's collision guard, end to end on the real path: the names come from the
+	 * list answer through the SAME reader the composer uses, and the draw is
+	 * forced to offer the taken name first. With the misparse in place the set
+	 * was empty, so the guard accepted the first candidate it drew.
+	 */
+	const taken = credentialNamesFrom({
+		data: { credentials: [{ key: "LOP_SECRET_ABCDEFGH" }] },
+	});
+	assert.deepEqual(taken, ["LOP_SECRET_ABCDEFGH"]);
+	// The draw is a per-character index into the alphabet, so the two candidates
+	// are spelled as two runs of indices the way `cryptoDraw` supplies them.
+	const drawn = ["ABCDEFGH", "JKMNPQRSTV"];
+	const indices = drawn.flatMap((word) =>
+		charsOf(word).map((char) => CREDENTIAL_KEY_ALPHABET.indexOf(char)),
+	);
+	let at = 0;
+	const key = generateCredentialKey(taken, () => indices[at++ % indices.length]);
+	assert.equal(key, "LOP_SECRET_JKMNPQRS", "the taken name is skipped");
+	// The control: with nothing taken, the very same draw is accepted as it
+	// stands, which is what makes the assertion above about the GUARD rather
+	// than about the draw.
+	let again = 0;
+	assert.equal(
+		generateCredentialKey([], () => indices[again++ % indices.length]),
+		"LOP_SECRET_ABCDEFGH",
+	);
+});
+
+test("an Esc cancel reports the token it left inert, and an edit that moves it ends that", () => {
+	/*
+	 * The submission seam's half of §5 (QA round 1, Q2): the notice promises
+	 * "Enter will expose them", and the dispatcher then took the leading token as
+	 * the COMMAND — opening the picker and stripping the restored prose out of
+	 * the operator's sentence. The composer asks `holdsCancelledToken` instead,
+	 * which is a question about the buffer and so is cleared by precisely the
+	 * edits that move the token.
+	 */
+	const composer = harness();
+	composer.type("/credential ");
+	composer.type("hunter2");
+	composer.escape();
+	const { token } = composer.state.lastCancel;
+	assert.deepEqual(token, { span: { start: 0, end: 12 }, text: "/credential " });
+	assert.ok(holdsCancelledToken(composer.state.buffer, token));
+	// Prose written AROUND the restored characters leaves it standing — this is
+	// the draft the notice is about, and Enter must send it as it reads.
+	assert.ok(holdsCancelledToken("/credential hunter2 tonight", token));
+	// An edit that MOVES the token clears it.
+	assert.equal(holdsCancelledToken("please /credential hunter2", token), false);
+	assert.equal(holdsCancelledToken("/cred hunter2", token), false);
+	assert.equal(holdsCancelledToken("", token), false);
+	// An EMPTY-span cancel owes the promise to nobody, so it reports no token and
+	// `/credential ` + Enter still reaches the picker (design §1, UX round 1 U3).
+	const empty = harness();
+	empty.type("/credential ");
+	empty.escape();
+	assert.equal(empty.state.lastCancel.token, null);
+	assert.equal(empty.state.lastCancel.restored, 0);
+});
+
+test("the armed token is painted, not only announced", () => {
+	/*
+	 * Design round 1, D2. The TUI marks the armed token twice over
+	 * (`local_operator.tui.local_operator.tcss:624`: the amber run and the glyph
+	 * swap); the port carried neither, so the only cue was one muted sentence.
+	 * The mirror can carry one of them, and this is the plan that does it.
+	 */
+	const armed = { arm: { start: 4, end: 16 }, typingAt: null, value: "" };
+	const plan = paintPlan("use /credential", new Map(), armed);
+	assert.deepEqual(plan, [
+		{ kind: "plain", text: "use " },
+		{ kind: "armed", text: "/credential" },
+	]);
+	// While the span is open the token is STILL the armed token, and the mask is
+	// the run after it — the two never overlap.
+	const typingComposer = harness();
+	typingComposer.type("use /credential ");
+	typingComposer.type("sk");
+	const maskedPlan = paintPlan(
+		typingComposer.state.buffer,
+		new Map(),
+		typingComposer.state.capture,
+	);
+	assert.deepEqual(
+		maskedPlan.map((segment) => segment.kind),
+		["plain", "armed", "mask"],
+	);
+	// An idle capture paints nothing, which is what keeps the overlay unmounted
+	// for every composer that is not in this gesture.
+	assert.deepEqual(paintPlan("just prose", new Map(), IDLE_CAPTURE), [
+		{ kind: "plain", text: "just prose" },
+	]);
 });
 
 test("the arming token survives text edited before it and is dropped with it", () => {
@@ -506,6 +760,81 @@ test("re-location prefers the anchored token, then the only match, then nearest"
 	);
 	// No token at all: the gesture is gone.
 	assert.equal(relocateArm("nothing here", { start: 0, end: 0 }), null);
+	/*
+	 * The U6 TYPED-THROUGH CASE (UX round 2, U6; code review round 1, MAJOR 1).
+	 *
+	 * While the operator re-types the token it armed on — `/credential` seen
+	 * again one character at a time — the middle spellings match NEITHER token
+	 * regex, so without rule 0 the latched arm found nothing at its own anchor
+	 * and the nearest-match tie-break handed it to the `/credential` earlier in
+	 * the line. That migration is one-way, so the arm never came home, the
+	 * opener space never opened a span, and the next secret was typed into the
+	 * document in plaintext.
+	 */
+	const typedThroughBuffer = "use /credential here\n/credential";
+	const secondToken = typedThroughBuffer.lastIndexOf("/credential");
+	const full = secondToken + "/credential".length;
+	assert.equal(secondToken, 21, "the SECOND token sits on the second line");
+	assert.deepEqual(relocateArm(typedThroughBuffer, { start: secondToken, end: full }), {
+		start: secondToken,
+		end: full,
+	});
+	// One character short of the full spelling, and well past the floor: still
+	// the operator's own gesture, so the arm stays on it.
+	const shortened = typedThroughBuffer.slice(0, -1);
+	assert.deepEqual(relocateArm(shortened, { start: secondToken, end: full }), {
+		start: secondToken,
+		end: shortened.length,
+	});
+	// Below the floor the word is a deletion, not a gesture in progress: the
+	// single ordinary token earlier in the buffer is the only answer left.
+	assert.deepEqual(relocateArm("use /credential here\n/cre", { start: secondToken, end: secondToken + 4 }), {
+		start: 4,
+		end: 15,
+	});
+	// A LONGER word that merely starts with the token is not a PREFIX of it, so
+	// it is not the operator's gesture either.
+	assert.deepEqual(
+		relocateArm("use /credential here\n/credentials", {
+			start: secondToken,
+			end: secondToken + 12,
+		}),
+		{ start: 4, end: 15 },
+	);
+});
+
+test("a token retyped through a partial spelling keeps the arm, so no secret lands as text", () => {
+	const composer = harness();
+	// The buffer ARRIVES with the earlier mention in it (nothing armed), and the
+	// operator types the second token — which is the shape that arms the LATER
+	// token and is the only shape rule 0 can protect.
+	composer.arrive("use /credential here\n");
+	assert.equal(composer.state.capture.arm, null);
+	composer.type("/credential ");
+	const anchor = composer.state.capture.arm.start;
+	assert.equal(anchor, 21, "the SECOND token is the one armed");
+	assert.ok(isTyping(composer.state.capture));
+	// Backspace the delimiter, then into the token: the anchor's own word is now
+	// a partial spelling, and the arm must stay on it rather than migrating onto
+		// the earlier mention.
+		composer.backspace();
+		composer.backspace();
+	assert.equal(
+		composer.state.capture.arm.start,
+		anchor,
+		"the arm did not migrate onto the earlier token",
+		);
+	composer.type("l ");
+	assert.ok(
+		isTyping(composer.state.capture),
+		"the re-typed opener space opens the span again",
+		);
+		composer.type("S3CRET");
+	assert.equal(composer.state.capture.value, "S3CRET");
+	assert.ok(
+		!composer.state.buffer.includes("S3CRET"),
+		"the secret is held, never in the document",
+	);
 });
 
 /*
@@ -1260,9 +1589,22 @@ test("the notices are the TUI's own sentences", () => {
 		CREDENTIAL_ARMED_NOTICE,
 		"armed — add a space, then type or paste the secret",
 	);
+	/*
+	 * `pill`, NOT the TUI's `chip` (UX round 1, U5). The two sentences are the
+	 * TUI's verbatim except for this one word, and the exception is forced by
+	 * this composer's own furniture: its working-directory control is a chip
+	 * with its own menu, so "turns it into a chip" named the wrong object in the
+	 * one sentence that says what Enter does. The marker is called a pill
+	 * everywhere else in the design record and in this module, and the word is
+	 * five characters shorter, so the overflow behaviour cannot regress on it.
+	 */
 	assert.equal(
 		CREDENTIAL_TYPING_NOTICE,
-		"masked as you type — Enter turns it into a chip, Esc cancels",
+		"masked as you type — Enter turns it into a pill, Esc cancels",
+	);
+	assert.ok(
+		!CREDENTIAL_TYPING_NOTICE.includes("chip"),
+		"the notice must not call the marker a chip",
 	);
 	assert.equal(
 		unredactedNotice(64),

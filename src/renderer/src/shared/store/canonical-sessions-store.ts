@@ -567,6 +567,30 @@ export async function admitChatDraft(
 	 * with the answer (see `PendingEcho` in `use-canonical-session`).
 	 */
 	onEchoPainted?: () => void,
+	/**
+	 * The seam between "the session exists" and "the message is admitted".
+	 *
+	 * It exists for one caller and one reason: a CREDENTIAL handed over in a
+	 * conversation's FIRST message. The composer must store the value into the
+	 * session's tool environment before the message that cites it leaves, §9's
+	 * whole point — but on a draft pane the session is created INSIDE this call,
+	 * so before it there is genuinely nothing to store into and the store's only
+	 * honest answer is "no session to reach". The most likely first use of the
+	 * feature (a brand-new chat whose first message hands over an API key)
+	 * therefore could not work at all, and degraded silently to the not-stored
+	 * citation (UX round 1, U2; code review round 1, MINOR-4).
+	 *
+	 * Called with the id this call has resolved — the one it created, or the one
+	 * it was handed — and BEFORE the optimistic echo and the transport, which is
+	 * the only window in which the answer can still change what is sent. The
+	 * returned string, when there is one, is what the echo paints and what the
+	 * message carries; `undefined` keeps `input.text`.
+	 *
+	 * It runs after `sessions.create` and before `admissionAttempted`, so a
+	 * throw here is still "nothing was admitted": the composer gets its text
+	 * back rather than a held claim about a message the owner never saw.
+	 */
+	beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	/*
@@ -707,6 +731,11 @@ export async function admitChatDraft(
 		}
 		// From here the outcome is unknowable on failure: the owner may have
 		// admitted the command before the response was lost.
+		// THE SEAM, before the echo and before the wire: see `beforeAdmission`.
+		// `text` stays the payload IDENTITY for the guard below (it is the string
+		// the composer will send again on a retry, markers and all), while
+		// `rendered` is what the operator sees echoed and what the owner receives.
+		const rendered = beforeAdmission ? ((await beforeAdmission(id)) ?? text) : text;
 		store.updateDraft(key, { admissionAttempted: true });
 		/*
 		 * Paint the message BEFORE the await, not after it.
@@ -736,7 +765,7 @@ export async function admitChatDraft(
 		echoPendingUser(
 			id,
 			draft.admissionRequestId,
-			text,
+			rendered,
 			images.map((image, index) => ({
 				// Same id shape `extractImages` gives the owner's row, so the
 				// coalesced record keeps its image keys across the swap.
@@ -752,7 +781,7 @@ export async function admitChatDraft(
 			op: "sessions.message",
 			sessionId: id,
 			requestId: draft.admissionRequestId,
-			text,
+			text: rendered,
 			images: images.length ? images : undefined,
 			mode,
 		});

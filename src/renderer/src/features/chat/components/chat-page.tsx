@@ -841,6 +841,15 @@ function SessionPanel({
 		 * so the gate path reads one value whichever door the text came through.
 		 */
 		typed?: string,
+		/*
+		 * The composer's seam between `sessions.create` answering and the message
+		 * being admitted: the one window in which a credential handed over in a
+		 * conversation's FIRST message can still be stored into the session that
+		 * send is creating. Threaded straight through to `admitChatDraft`, which
+		 * explains why it exists and what its answer means; `undefined` on every
+		 * other door through this function.
+		 */
+		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		// Same identity the view reads, so a send can never address a different
@@ -980,6 +989,7 @@ function SessionPanel({
 				},
 				sessionId,
 				onEchoPainted,
+				beforeAdmission,
 			);
 			if (!id) return false;
 			/*

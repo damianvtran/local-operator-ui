@@ -37,6 +37,7 @@ import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
+import { credentialNamesFrom } from "../components/credential-capture";
 import type {
 	DesktopLoopState,
 	DesktopModelCatalogue,
@@ -2320,15 +2321,24 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 	const list = useQuery({
 		queryKey: ["desktop", "credentials", sessionId],
 		queryFn: () =>
-			desktopResult<{ data: { ok: boolean; credentials: string[] } }>({
+			desktopResult<unknown>({
 				op: "sessions.credential",
 				sessionId,
 				action: "list",
 			}),
 	});
+	/*
+	 * THE ANSWER IS OBJECTS, NOT STRINGS: `{"credentials": [{"key": …, "source":
+	 * …}]}` (`local_operator/session/credential_ops.py:59-64`). Read as
+	 * `string[]`, every row reached React as an object and this panel crashed the
+	 * renderer on its FIRST successful list — error #31, "Something went wrong",
+	 * on the door §1 keeps open for the store, the list and the forget verbs (QA
+	 * round 1, Q3). The reading lives in `credential-capture.ts` beside the mint
+	 * guard that needs the same names, so the two cannot drift apart again.
+	 */
 	const options = useMemo<PickerOption[]>(
 		() =>
-			(list.data?.data.credentials ?? []).map((name) => ({
+			credentialNamesFrom(list.data).map((name) => ({
 				value: name,
 				label: name,
 				meta: "stored",
