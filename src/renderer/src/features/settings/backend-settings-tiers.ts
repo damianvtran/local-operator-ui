@@ -283,10 +283,17 @@ export function opensOnArrival(
  *    press and a cleared query, Model was shut and three sections the query never
  *    touched were open).
  *
- * Exported for the same reason `opensOnArrival` is: the decision is pure, the
- * sequence that broke it is not reachable from this repository's renderer tests,
- * and a unit assertion over this function is therefore the arm the regression
- * needs (`scripts/backend-settings-tiers.test.mjs`).
+ * Exported for the same reason `opensOnArrival` is: the decision is pure, so the
+ * behavior can be asserted from a unit test — and it is, in
+ * `scripts/backend-settings-tiers.test.mjs`. That arm binds the DECISION, not
+ * this file's caller, so `scripts/backend-settings-collapse.test.mjs` renders the
+ * shipped component and drives the reader's real sequence (`Collapse all`, then
+ * a query). An earlier version of this comment claimed the sequence was "not
+ * reachable from this repository's renderer tests", which overstated the cost:
+ * the repository already carried jsdom + React harnesses for other surfaces, and
+ * with the handler reverted to its pre-fix inline form while this function stayed
+ * exported and intact, the decision arm is 11/11 green while the rendered arm
+ * fails 3/3 — the regression lived in the CALL (agent review round 3, M4).
  */
 export function allOpenTargets(
 	open: boolean,
