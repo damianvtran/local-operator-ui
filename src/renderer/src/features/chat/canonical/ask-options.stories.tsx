@@ -61,6 +61,9 @@ function transcriptWith(text: string): TranscriptState {
 		records,
 		index: new Map(records.map((record, position) => [record.id, position])),
 		generation: 1,
+		// No pass in flight: the working line's `compacting` rung reads this, and
+		// every story here is a settled or answering state, never a compaction.
+		compacting: false,
 		oldestId: null,
 		hasMore: false,
 		argsByCall: new Map(),

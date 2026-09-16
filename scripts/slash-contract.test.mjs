@@ -83,8 +83,9 @@ const {
  * The pick rule's inputs are the DESTINATION TABLE's own fields — a
  * destination's kind and whether it declares an inline list — so the cases
  * below read them off `picker-registry.tsx` rather than restating them: a table
- * edit that gave `/analytics` a list, or made `session.compact` routable, has to
- * turn this file red instead of passing against a stale copy.
+ * edit that gave `/analytics` a list, or moved `session.compact` out of the
+ * protected set, has to turn this file red instead of passing against a stale
+ * copy.
  *
  * The table cannot be IMPORTED. Its entries hold the picker components as
  * values, so bundling it pulls the whole renderer and every package it imports
@@ -1203,12 +1204,18 @@ test("a list-bearing command completes and never runs", () => {
 });
 
 test("the three protected destinations are protected by id, not by kind", () => {
-	// Two are `direct` and one is a `picker` with no inline list, so a rule
-	// written off the kind alone would run all three — and a stray click would
-	// detach the app, wipe the transcript view or start a compaction.
+	// All three are `direct` now, and a rule written off the kind alone would run
+	// every one of them — a stray click would detach the app, wipe the transcript
+	// view or start a compaction. That is exactly why the protection is a set of
+	// IDs rather than a property of the kind: `/compact` moving from a picker to a
+	// direct destination must not make a stray click able to spend a pass.
 	assert.equal(registryEntry("window.close")?.kind, "direct");
 	assert.equal(registryEntry("transcript.clear")?.kind, "direct");
-	assert.equal(registryEntry("session.compact")?.kind, "picker");
+	assert.equal(
+		registryEntry("session.compact")?.kind,
+		"direct",
+		"`/compact` presents by running, not by opening a dialog",
+	);
 	assert.equal(
 		registryEntry("session.compact")?.inline,
 		undefined,

@@ -1804,7 +1804,7 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, COMPACTING_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1815,6 +1815,7 @@ const workingLineBundle = await build({
 const {
 	deriveWorkingLine,
 	ADMITTED_SEND_ACTIVITY,
+	COMPACTING_ACTIVITY,
 	admittedSendFor,
 	ownerAnswered,
 	turnStopped,
@@ -1907,6 +1908,7 @@ const ECHO = "admission-1";
 const admitted = (records, over = {}) =>
 	deriveWorkingLine({
 		waiting: false,
+		compacting: false,
 		starting: true,
 		startingAfterId: ECHO,
 		gate: false,
@@ -1933,6 +1935,7 @@ test("the wait sits on the ladder's own phase, so one wait keeps one clock", () 
 	// wait to the reader.
 	const plainWaiting = deriveWorkingLine({
 		waiting: true,
+		compacting: false,
 		starting: false,
 		gate: false,
 		unavailable: false,
@@ -2015,6 +2018,7 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 	assert.equal(
 		deriveWorkingLine({
 			waiting: false,
+			compacting: false,
 			starting: false,
 			gate: false,
 			unavailable: false,
@@ -2142,6 +2146,7 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 	const pane = (over = {}) =>
 		workingLineInputFor({
 			waiting: false,
+			compacting: false,
 			starting: true,
 			startingAfterId: ECHO,
 			gate: false,
@@ -2173,6 +2178,30 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 		workingLineClaimed(pane({ waiting: true, records: [userRow(ECHO, "go")] })),
 		true,
 	);
+	/*
+	 * A compaction pass, which the modal used to speak for. It is the more
+	 * specific fact than `waiting` — a pass is why the session is busy — so the
+	 * label is the pass's and the phase is its own, which is what the clock times.
+	 * The literal is asserted rather than the exported constant: this is the one
+	 * place that pins the COPY, and the copy is the terminal host's own
+	 * (`local_operator/tui/app.py`'s `compacting context` fallback) so a reader who
+	 * learned the phrase there does not learn a second one here.
+	 */
+	const pass = pane({ compacting: true, waiting: true });
+	assert.deepEqual(deriveWorkingLine(pass), {
+		activity: "compacting context",
+		phase: "compacting",
+	});
+	assert.equal(COMPACTING_ACTIVITY, "compacting context");
+	assert.equal(workingLineClaimed(pass), true);
+	// A pending question still outranks it: the user is blocked on a decision.
+	assert.equal(deriveWorkingLine(pane({ compacting: true, gate: true })), null);
+	// And a dead transport suppresses the rung rather than being cleared by it,
+	// so a reconnect cannot resurrect a claim by leaving the flag standing.
+	assert.equal(workingLineClaimed(pane({ compacting: true, unavailable: true })), false);
+	// With no pass in flight nothing changes: the flag is an addition to the
+	// ladder, not a replacement for it.
+	assert.equal(workingLineClaimed(pane({ compacting: false })), true);
 	// Nothing happening at all: neither.
 	assert.equal(
 		workingLineClaimed(pane({ starting: false, records: [userRow("u1", "go")] })),

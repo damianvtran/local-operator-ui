@@ -2300,3 +2300,112 @@ test("a history_delta that states reset replaces the viewport it cannot extend",
 		["old", "g1"],
 	);
 });
+
+test("a compaction pass is claimed from its start and retired by every stop", () => {
+	/*
+	 * The working line's `compacting context` rung reads exactly one thing, and
+	 * it is this flag. It is a TRANSCRIPT fact rather than a latch, so the four
+	 * ways a pass can stop are asserted here, where they are decided — a rung
+	 * that outlives its pass claims work nobody is doing, which is the defect
+	 * class the whole change this tests belongs to.
+	 */
+	let state = EMPTY_TRANSCRIPT;
+	assert.equal(state.compacting, false, "an empty transcript claims nothing");
+
+	// 1. A pass in flight, and a replay of the same start is idempotent.
+	state = applyEvent(state, { type: "compaction_start" });
+	assert.equal(state.compacting, true);
+	const replayed = applyEvent(state, { type: "compaction_start" });
+	assert.equal(replayed.compacting, true);
+	assert.equal(replayed, state, "a replayed start returns the same state");
+
+	// 2. A success settles it and paints the existing info line.
+	const settled = applyEvent(state, {
+		type: "compaction_end",
+		success: true,
+		tokens_before: 41_000,
+		tokens_after: 9_000,
+	});
+	assert.equal(settled.compacting, false);
+	const record = settled.records.at(-1);
+	assert.equal(record.kind, "compaction");
+	assert.equal(record.text, "Context compacted, 41.0k to 9.0k tokens");
+
+	// 3. A failure and a refusal stop it too: the pass is over either way, so the
+	// rung must not stand over the row that says it did not run.
+	const failed = applyEvent(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+		{ type: "compaction_end", success: false, detail: "nothing to compact" },
+	);
+	assert.equal(failed.compacting, false);
+	assert.equal(
+		failed.records.at(-1).text,
+		"Compaction did not run: nothing to compact",
+	);
+
+	/*
+	 * 4. A REPLAYED end whose record is already painted still retires the claim.
+	 * This is the reconnect order rather than a hypothetical: the transcript is
+	 * re-seeded from a snapshot whose compacted row is already in it, and the
+	 * end frame then arrives again. An early return on the idempotence guard
+	 * would leave the rung standing over a finished pass forever.
+	 */
+	const once = applyEvent(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+		{ type: "compaction_end", success: true, tokens_before: 1_000, tokens_after: 900 },
+	);
+	const again = applyEvent(once, {
+		type: "compaction_end",
+		success: true,
+		tokens_before: 1_000,
+		tokens_after: 900,
+	});
+	assert.equal(again.compacting, false);
+	assert.equal(again.records.length, once.records.length, "the row is not doubled");
+
+	// 5. A NEW TURN stops it: a session running a pass is not starting a turn, so
+	// a turn starting means the claim was never retired.
+	const newTurn = applyEvent(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+		{ type: "agent_start", generation: 4 },
+	);
+	assert.equal(newTurn.compacting, false);
+	assert.equal(newTurn.generation, 4);
+
+	/*
+	 * 6. A LIVE SEED does not carry the claim: a reconnect must not resurrect
+	 * one. The seed's own replayed `compaction_start` puts it back when the pass
+	 * is really still running — which is the second half of this case, and the
+	 * reason the clear is a reset rather than a removal.
+	 */
+	const seeded = applyLiveSeed(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+		{ streaming: false, generation: 0, live_events: [] },
+	);
+	assert.equal(seeded.compacting, false);
+	const reseeded = applyLiveSeed(EMPTY_TRANSCRIPT, {
+		streaming: false,
+		generation: 0,
+		live_events: [{ type: "compaction_start" }],
+	});
+	assert.equal(reseeded.compacting, true);
+
+	// 7. A receipt GAP drops it, on the same terms `dropLiveRecords` drops the
+	// other live-only claims: the reconnect replays a start if one is really in
+	// flight, and guessing is what a gap forbids.
+	const afterGap = dropLiveRecords(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }),
+	);
+	assert.equal(afterGap.compacting, false);
+
+	// 8. A VIEW clear keeps it: `/clear` empties the painted transcript and does
+	// not stop a backend pass.
+	const cleared = applyEvent(EMPTY_TRANSCRIPT, {
+		type: "message_start",
+		message: user("u1", "hi"),
+	});
+	assert.equal(
+		clearTranscript(applyEvent(cleared, { type: "compaction_start" })).compacting,
+		true,
+	);
+});

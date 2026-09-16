@@ -27,10 +27,11 @@
  * request. That request is resolved through `pickers/picker-registry`: a
  * picker adapter mounts in the host, a navigate destination routes to the
  * existing settings surface, and the direct actions run here (`/clear`
- * view-only, `/exit` detach-only, and a bare `/move` focusing the composer's
+ * view-only, `/exit` detach-only, a bare `/move` focusing the composer's
  * own working-directory chip - resolved locally rather than by mounting a
- * dialog, because the control it opens already exists in the composer). An
- * unknown command names the closest matches so the user can fix the typo
+ * dialog, because the control it opens already exists in the composer - and
+ * `/compact`, which asks the owner to start a pass and mounts nothing at all).
+ * An unknown command names the closest matches so the user can fix the typo
  * rather than guess.
  */
 
@@ -235,11 +236,7 @@ function closestCommands(
 		.map((entry) => `/${entry.name}`);
 }
 
-const PRESENT_DIRECTLY = new Set([
-	"session.goal",
-	"session.context",
-	"session.compact",
-]);
+const PRESENT_DIRECTLY = new Set(["session.goal", "session.context"]);
 
 export function useSlashDispatch({
 	sessionId,
@@ -460,6 +457,79 @@ export function useSlashDispatch({
 			if (entry?.kind === "direct") {
 				if (entry.action === "focus-cwd-chip") {
 					presentCwdChip(spec.name);
+					return "consumed";
+				}
+				if (entry.action === "compact") {
+					/*
+					 * `/compact`: the ONE direct destination that asks the owner to do
+					 * something rather than acting on this surface. It posts the owner
+					 * command the way every non-direct destination does, from here.
+					 *
+					 * WHY THIS CANNOT MOUNT A PICKER, which is the regression this
+					 * change must not have: the destination table says `direct` for
+					 * `session.compact`, so this block answers it and RETURNS — and the
+					 * `setPicker` call site below, the one a `native_action` reaches, is
+					 * never executed for this destination. The branch is keyed on the
+					 * table's own `kind`, so the guarantee is structural rather than a
+					 * second list of names kept in step with it.
+					 */
+					if (!sessionId) {
+						note(
+							`/${spec.name} needs an open conversation. Start one first.`,
+							true,
+						);
+						return "consumed";
+					}
+					try {
+						const receipt = await desktopResult<DesktopCommandReceipt>({
+							op: "sessions.command",
+							sessionId,
+							requestId: uuidv4(),
+							command: spec.name,
+							args,
+						});
+						const result = receipt.result;
+						if (isNativeAction(result)) {
+							// A backend that still presents the pass as a dialog is asking
+							// this surface for a control it no longer has. Reported rather
+							// than mounted, and reported rather than swallowed: a command
+							// that appears to do nothing is the failure mode this branch
+							// exists to avoid.
+							note(
+								`/${spec.name} asked for a dialog this build does not have, so nothing ran. Run it in the terminal with local-operator.`,
+								true,
+							);
+							return "consumed";
+						}
+						/*
+						 * The receipt of a pass that STARTS is the terminal host's own
+						 * optimistic notice (`compacting context…`), and it is deliberately
+						 * NOT ported. The operator asked for the working line while the pass
+						 * runs and the compaction info line when it settles; a note on top
+						 * of both would announce the same thing a third time. A receipt that
+						 * is not that notice IS the command's own answer — a refusal, or a
+						 * crash reported before the canonical events could carry it — so it
+						 * is reported like any other refusal.
+						 */
+						if (
+							result.text &&
+							!(result.kind === "notice" && result.style === "info")
+						) {
+							note(
+								result.text,
+								result.kind === "error" || result.style === "error",
+							);
+						}
+					} catch (error) {
+						note(
+							`/${spec.name} could not run: ${
+								error instanceof Error
+									? error.message
+									: "the backend refused it"
+							}`,
+							true,
+						);
+					}
 					return "consumed";
 				}
 				if (entry.action === "clear") {

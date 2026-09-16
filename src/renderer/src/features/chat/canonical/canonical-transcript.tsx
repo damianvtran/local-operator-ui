@@ -1326,6 +1326,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			deriveWorkingLine(
 				workingLineInputFor({
 					waiting,
+					// The pass is the transcript's own fact, read here rather than
+					// latched in this view: one source for the rung and the composer's
+					// hint (see `transcript-reducer`'s `compacting`).
+					compacting: transcript.compacting,
 					starting,
 					startingAfterId,
 					gate,
@@ -1349,6 +1353,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[
 			waiting,
+			transcript.compacting,
 			starting,
 			startingAfterId,
 			gate,
