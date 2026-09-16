@@ -63,10 +63,13 @@ first-run user whose six-step wizard is a modal over the window.
 
 **The gate run's transcript** (`cmd-n-no-backend`, and this is the shape of the
 review round's first finding): `with no backend ⌘N is inert, exactly as the New
-chat row is disabled on the same capability — route /agent-hub after 5023 ms,
+chat row is disabled on the same capability — route /agent-hub after 5012 ms,
 activeDraftKey null -> null`. The two frames of that pair are **byte-identical**
-(`162962` bytes each, `magick compare -metric AE` = **0**): with no catalogue the
-press changes nothing at all, which is the state the row is absent in.
+(`167486` bytes each, `magick compare -metric AE` = **0**): with no catalogue the
+press changes nothing at all, which is the state the row is absent in. The frame
+committed here is that run's `after` (the state the inert press left), and it is
+the run of round 3's re-shoot rather than round 2's — see the note on the pair at
+the end of this section.
 
 The draft key is read from the store's own persistence
 (`canonical-sessions-storage`, which is where `stageDraft` puts it), so this is
@@ -231,11 +234,22 @@ re-capturing the same two palettes through the same harness at the same viewport
 returns `magick compare -metric AE` **0** for `after-sidebar-dark.png`,
 `after-sidebar-light.png` and `after-row-dark.png`, at the same byte sizes as the
 committed files (76,991 / 76,734 / 8,656) — that is the measurement saying this
-round changed the current-row state and nothing else. `cmd-n-no-backend.png` was
-NOT re-shot, and the reason is stated rather than implied: its subject is the gate
-(the press changing nothing with no catalogue), no part of this round touches that
-path, and its byte-identical-to-its-own-`before` claim belongs to the run that
-produced it.
+round changed the current-row state and nothing else.
+
+**`cmd-n-no-backend.png` was re-shot in round 3, and the reason given for not
+re-shooting it was beside the point.** Round 2 left it alone because its SUBJECT —
+the gate, the press changing nothing with no catalogue — was untouched by that
+round's change, and that was true; but the frame was a capture of an older tree
+regardless, and QA's round 3 measured it away from this head by **1,293 pixels
+(0.0270% of the frame) inside `357x28+42+1586`**: the rail's own `Search` row and
+its `⌘+K` hint, which this head paints where that capture had nothing — the row
+entered the rail with the command-palette work (`e4c19e289`), after the capture.
+The frame committed now is this head's, from the documented no-backend run
+(`--scene new-chat` with no `--backend`), whose transcript is above; the pair is
+byte-identical at 167,486 bytes each, which is the property the set claims for it.
+Nothing about the subject changed, which is exactly why the old frame's periphery
+was the only thing wrong with it and why "the subject is untouched" was never the
+question this frame's freshness turned on.
 
 | State | Before | After |
 | --- | --- | --- |
@@ -243,8 +257,8 @@ produced it.
 | Sidebar at rest, `localOperatorLight` | [`before-sidebar-light`](before-sidebar-light.png) | [`after-sidebar-light`](after-sidebar-light.png) |
 | The row block, 2x (device pixels) | [`before-row-dark`](before-row-dark.png) | [`after-row-dark`](after-row-dark.png) |
 | After the row's own action | *(no before: the marking is unchanged)* | [`after-row-staged-light`](after-row-staged-light.png) — the staged draft marks the row current, and the caps carry the structural edge that says they are caps on it (`sunken` on `sunken`, 1.00:1, is what this frame showed before round 2's fix — see below) |
-| The chord in the built app, against a real backend | [`cmd-n-live-before`](cmd-n-live-before.png) — Agent hub | [`cmd-n-live-after`](cmd-n-live-after.png) — the chat route 6 ms later, the staged draft's pane, and the row holding its current marking with the same edge on its caps |
-| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before`. NOT re-shot in round 2: its subject is the gate, nothing in that round touches it, and its byte-identical claim belongs to the run that produced it |
+| The chord in the built app, against a real backend | [`cmd-n-live-before`](cmd-n-live-before.png) — Agent hub | [`cmd-n-live-after`](cmd-n-live-after.png) — the chat route 2 ms later, the staged draft's pane, and the row holding its current marking with the same edge on its caps |
+| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before` (167,486 bytes each, AE 0). Re-shot in round 3 because its rail periphery was an older tree than this head's (`Search ⌘+K` is `e4c19e289`'s row); the subject did not move, and the re-shoot is what makes that claim about THIS head |
 
 ## The measurements behind the pixels
 
