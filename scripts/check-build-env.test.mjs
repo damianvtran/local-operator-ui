@@ -82,7 +82,15 @@ function tree({
 		configPath = join(root, "electron.vite.config.js");
 		writeFileSync(configPath, config);
 	}
-	return { root, workflowsDir, packageJson, pluginPath, pluginDir, configPath, binDir };
+	return {
+		root,
+		workflowsDir,
+		packageJson,
+		pluginPath,
+		pluginDir,
+		configPath,
+		binDir,
+	};
 }
 
 /**
@@ -533,13 +541,16 @@ const bindingFixture = (wrong) =>
 
 test("a mistyped secrets.* name fails, naming the variable and both spellings", () => {
 	const fixture = bindingFixture({
-		VITE_GOOGLE_CLIENT_ID: "\${{ secrets.GOOGLE_CLIENTID }}",
+		VITE_GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENTID }}",
 	});
 	const report = verdict(fixture);
 	assert.equal(report.ok, false, report.lines.join("\n"));
 	const text = report.lines.join("\n");
 	assert.match(text, /candidate\.yml, job "build", step "Build the app"/);
-	assert.match(text, /binds VITE_GOOGLE_CLIENT_ID to `secrets\.GOOGLE_CLIENTID`/);
+	assert.match(
+		text,
+		/binds VITE_GOOGLE_CLIENT_ID to `secrets\.GOOGLE_CLIENTID`/,
+	);
 	assert.match(text, /bind it to `secrets\.GOOGLE_CLIENT_ID`/);
 	assert.match(text, /is not set/);
 	assert.deepEqual(
@@ -564,13 +575,19 @@ test("a mistyped secrets.* name fails, naming the variable and both spellings", 
 
 test("a swapped secrets.* binding fails, naming the variable and both names", () => {
 	const fixture = bindingFixture({
-		VITE_GOOGLE_CLIENT_ID: "\${{ secrets.GOOGLE_CLIENT_SECRET }}",
+		VITE_GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENT_SECRET }}",
 	});
 	const report = verdict(fixture);
 	assert.equal(report.ok, false, report.lines.join("\n"));
 	const text = report.lines.join("\n");
-	assert.match(text, /binds VITE_GOOGLE_CLIENT_ID to `secrets\.GOOGLE_CLIENT_SECRET`/);
-	assert.match(text, /where the repository's build steps bind it to `secrets\.GOOGLE_CLIENT_ID`/);
+	assert.match(
+		text,
+		/binds VITE_GOOGLE_CLIENT_ID to `secrets\.GOOGLE_CLIENT_SECRET`/,
+	);
+	assert.match(
+		text,
+		/where the repository's build steps bind it to `secrets\.GOOGLE_CLIENT_ID`/,
+	);
 	// The swap is the quiet half: it does not fail the build, it ships a bundle
 	// wired to the wrong client, which is why the message has to say so.
 	assert.match(text, /ships a bundle wired to the wrong client/);
@@ -581,7 +598,7 @@ test("a binding the tree disagrees about with no majority is reported as ambiguo
 		workflows: {
 			"a.yml": boundWorkflow(bindings()),
 			"b.yml": boundWorkflow(
-				bindings({ VITE_GOOGLE_CLIENT_ID: "\${{ secrets.GOOGLE_CLIENTID }}" }),
+				bindings({ VITE_GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENTID }}" }),
 			),
 		},
 	});
@@ -605,7 +622,9 @@ test("an empty binding fails rather than counting as set", () => {
 
 test("a variable set at WORKFLOW level counts, because that is the third place it is really set", () => {
 	const fixture = tree({
-		workflows: { "build.yml": boundWorkflow(bindings(), { level: "workflow" }) },
+		workflows: {
+			"build.yml": boundWorkflow(bindings(), { level: "workflow" }),
+		},
 	});
 	const report = verdict(fixture);
 	assert.equal(report.ok, true, report.lines.join("\n"));
@@ -622,7 +641,9 @@ test("an invocation that is neither a script nor a binary is reported rather tha
 	const fixture = tree({
 		workflows: {
 			"a.yml": boundWorkflow(bindings()),
-			"candidate.yml": boundWorkflow(bindings(), { command: "pnpm nosuchscript" }),
+			"candidate.yml": boundWorkflow(bindings(), {
+				command: "pnpm nosuchscript",
+			}),
 		},
 	});
 	const result = check(fixture);

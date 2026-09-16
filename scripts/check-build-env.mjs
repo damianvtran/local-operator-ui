@@ -131,7 +131,11 @@ export const DEFAULT_VITE_CONFIG = join(repoRoot, "electron.vite.config.js");
 export const DEFAULT_BIN_DIR = join(repoRoot, "node_modules", ".bin");
 
 /** Where the plugins the config imports live. */
-export const DEFAULT_VITE_PLUGIN_DIR = join(repoRoot, "scripts", "vite-plugins");
+export const DEFAULT_VITE_PLUGIN_DIR = join(
+	repoRoot,
+	"scripts",
+	"vite-plugins",
+);
 
 /**
  * The import a plugin arrives through, clause and all. The binding matters
@@ -177,7 +181,12 @@ export function defaultVitePlugins(
 			match.groups.only,
 			...(match.groups.named ?? "")
 				.split(",")
-				.map((entry) => entry.trim().split(/\s+as\s+/).pop())
+				.map((entry) =>
+					entry
+						.trim()
+						.split(/\s+as\s+/)
+						.pop(),
+				)
 				.filter(Boolean),
 		].filter(Boolean);
 		if (!bindings.some((binding) => new RegExp(`\\b${binding}\\b`).test(body)))
