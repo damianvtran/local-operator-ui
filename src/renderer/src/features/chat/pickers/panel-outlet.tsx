@@ -37,6 +37,22 @@
  * subscribing would re-run this effect when a claim flips, which is a different
  * question (and would consume a request that has already been answered).
  *
+ * Which of the four things to do is `shellHostAction`'s decision, in the store,
+ * rather than a chain of `if`s here: the sequence that matters most — a request
+ * this host cannot present arriving while it is ALREADY showing a panel — is one
+ * a render cannot be driven into from a test, so it is pinned as a function
+ * instead (code review round 1, M1).
+ *
+ * ## Yielding, and what "one panel at a time" costs here
+ *
+ * A request this host cannot present means the pane is about to present one, and
+ * the shell's own panel must go first: otherwise the pane's picker opens under a
+ * machine panel that never clears, two modals deep, with no cue about where the
+ * lower one came from. "Already showing a panel" is not by itself a reason to
+ * close one — a route move must not close a panel the user opened over another
+ * page (§ 8) — so `shellHostAction` yields on the REQUEST's destination and
+ * leaves the claim to the branch that also asks what this host can present.
+ *
  * ## The one race, and why there is not one
  *
  * A request written in the same React commit that mounts a pane would be decided
@@ -49,7 +65,7 @@
  */
 
 import {
-	PANEL_REQUEST_TTL_MS,
+	shellHostAction,
 	usePanelPresentationStore,
 } from "@shared/store/panel-presentation-store";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
@@ -67,10 +83,9 @@ export const PanelOutlet: FC = () => {
 	const consumePanel = usePanelPresentationStore((state) => state.consumePanel);
 	const [panel, setPanel] = useState<PresentedMachinePanel | null>(null);
 	/*
-	 * The control that was focused when the request arrived, so Escape lands
-	 * somewhere the user recognises. Recorded rather than assumed: the palette
-	 * row that asked for this closed with the palette, and restoring focus to a
-	 * node the palette removed is what the pane's own rule exists to avoid.
+	 * The control that was focused when the request ARRIVED, so Escape lands
+	 * somewhere the user recognises. Taken off the request rather than read here:
+	 * the requester is the only one who can still see it (see `PanelRequest.invoker`).
 	 */
 	const invoker = useRef<HTMLElement | null>(null);
 
@@ -94,29 +109,49 @@ export const PanelOutlet: FC = () => {
 
 	useEffect(() => {
 		if (!request) return;
-		if (usePanelPresentationStore.getState().presenterClaimed) return;
+		const action = shellHostAction({
+			request,
+			presentable: Boolean(machinePanelFor(request.destination)),
+			claimed: usePanelPresentationStore.getState().presenterClaimed,
+			now: Date.now(),
+		});
 		/*
-		 * Past the TTL nothing is waiting for this request, so it is retired
-		 * rather than acted on. Any host may do it — the pane's consumer makes the
-		 * same decision — and doing it here is what keeps the store from holding a
-		 * stale destination for the life of the window on the routes no pane ever
-		 * mounts on.
+		 * Past the TTL nothing is waiting for this request, so it is retired rather
+		 * than acted on. Any host may do it — the pane's consumer makes the same
+		 * decision — and doing it here is what keeps the store from holding a stale
+		 * destination for the life of the window on the routes no pane ever mounts.
 		 */
-		if (Date.now() - request.requestedAt > PANEL_REQUEST_TTL_MS) {
+		if (action === "retire") {
 			consumePanel(request.nonce);
 			return;
 		}
 		/*
-		 * A destination this host cannot present is LEFT in the store: the pane is
-		 * its presenter, and the palette's navigation is what mounts one. Consuming
-		 * it here would turn a pane-only row into a control that closes the palette
-		 * and opens nothing.
+		 * A destination this host cannot present is LEFT in the store — the pane is
+		 * its presenter, and the palette's navigation is what mounts one — and this
+		 * host's own panel yields first, or the pane's picker would open underneath
+		 * it (M1). Consuming the request here instead would turn a pane-only row into
+		 * a control that closes the palette and opens nothing.
 		 */
-		if (!machinePanelFor(request.destination)) return;
+		if (action === "yield") {
+			setPanel(null);
+			return;
+		}
+		if (action !== "present") return;
+		/*
+		 * The invoker comes off the REQUEST when the requester could name one. The
+		 * palette does, and it is the only writer: its focus lives in its own search
+		 * field, which unmounts in this same commit, so reading
+		 * `document.activeElement` here would record a node that is already gone and
+		 * closing the panel would strand the keyboard on `body` (UX round 1, U1).
+		 * The fallback stays for a request written by anything without a control to
+		 * name — the onboarding tour driving the store, a future second requester —
+		 * where whatever is focused now is the honest answer.
+		 */
 		invoker.current =
-			document.activeElement instanceof HTMLElement
+			request.invoker ??
+			(document.activeElement instanceof HTMLElement
 				? document.activeElement
-				: null;
+				: null);
 		consumePanel(request.nonce);
 		setPanel({
 			destination: request.destination,
@@ -138,8 +173,17 @@ export const PanelOutlet: FC = () => {
 	if (!panel || !Component) return null;
 	/*
 	 * `frontend: null` for the same reason as `session_id: ""`: the conversation
-	 * facts live on the pane's canonical handle, which is not mounted. The panel
-	 * renders its machine half and omits the conversation half by construction.
+	 * facts live on the pane's canonical handle, which is not mounted here.
+	 *
+	 * That handle is the ONLY copy — the frontend is published by the stream hook
+	 * the pane mounts, and `paint-cache.ts` records why nothing carries it into a
+	 * store (a cached `attention` would be a fabricated epoch beside a real
+	 * sequence) — so this host cannot reach a live copy for the conversation the
+	 * user may well have open on another route. The panel therefore renders
+	 * § 8's "nothing was read here" spelling for the facts that live on it: the
+	 * MCP row says `—` with the note saying so, and the failure table under it is
+	 * omitted rather than empty. Showing a machine panel a state it did not read is
+	 * the failure this field exists to keep out (design round 1, D1).
 	 */
 	return (
 		<Component

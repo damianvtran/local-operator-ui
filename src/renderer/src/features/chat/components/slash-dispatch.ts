@@ -644,6 +644,14 @@ export function useSlashDispatch({
 				commandArgs: string,
 				presentedSessionId: string,
 			) => {
+				/*
+				 * The ONE place this branch records its invoker. Both of its call sites used
+				 * to set the same ref from the same expression immediately before calling
+				 * in here, which is idempotent and therefore harmless but reads as two
+				 * rules — code review round 1 (n4). A path whose invoker is not the focused
+				 * element should say so at its own call site rather than inherit a
+				 * second, contradictory assignment.
+				 */
 				invoker.current =
 					document.activeElement instanceof HTMLElement
 						? document.activeElement
@@ -691,10 +699,6 @@ export function useSlashDispatch({
 					);
 					return "consumed";
 				}
-				invoker.current =
-					document.activeElement instanceof HTMLElement
-						? document.activeElement
-						: null;
 				presentMachinePanel(spec, args, "");
 				return "consumed";
 			}
@@ -717,10 +721,6 @@ export function useSlashDispatch({
 			 * the first place.
 			 */
 			if (entry?.kind === "machine-panel") {
-				invoker.current =
-					document.activeElement instanceof HTMLElement
-						? document.activeElement
-						: null;
 				presentMachinePanel(spec, args, sessionId);
 				return "consumed";
 			}

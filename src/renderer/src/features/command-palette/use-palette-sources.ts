@@ -45,6 +45,7 @@ import {
 	useChatSearch,
 } from "@shared/api/local-operator/session-search";
 import { useAgents } from "@shared/hooks/use-agents";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useQuery } from "@tanstack/react-query";
@@ -205,6 +206,30 @@ export function usePaletteItems({
 		"session_catalogue",
 		2,
 	);
+	/*
+	 * Whether MAIN has an answer about the credential, which is a different fact
+	 * from the capability above.
+	 *
+	 * `/v1/capabilities` is an UNAUTHENTICATED route: a daemon this app cannot
+	 * authenticate to still answers it, and answers with its own
+	 * `desktop_available: true`, so `canStageDraft` is satisfied by an origin every
+	 * other op of ours is refused at (QA round 1, Q-1). Main is the process that
+	 * knows — it sets `desktopAvailable` when the daemon proves it accepts this
+	 * app's bearer and never for one that did not
+	 * (`shared/backend-status.ts`, `DaemonStatusSnapshot.desktopAvailable`) — so the
+	 * machine rows ask it, and a daemon that refused the credential stops offering
+	 * a row whose panel could only repeat "Desktop authorization is required." per
+	 * section.
+	 *
+	 * ONLY AN EXPLICIT `false` CLOSES THE GATE. `null` is a host with no main to ask
+	 * (Storybook, the browser dev server) or an answer still in flight, and turning
+	 * "nobody has answered" into "the backend refused you" would be the second
+	 * opinion this palette keeps refusing to hold — on a host with no bridge there
+	 * is no desktop transport at all, so there is nothing to mislead.
+	 */
+	const { data: serverHealth } = useServerHealth();
+	const desktopPlaneRefused =
+		serverHealth?.snapshot?.desktopAvailable === false;
 
 	/* ---------------------------- conversations ---------------------------- */
 
@@ -426,12 +451,17 @@ export function usePaletteItems({
 	 * the operator's first requirement. `/info`, `/usage` and `/analytics` describe
 	 * the machine and read no conversation, so they are gated on liveness alone
 	 * — `canStageDraft`, the same capability bit the chat route and the sidebar
-	 * read. Gating them on a pane, as every row here once was, hid them from the
-	 * palette on exactly the pages they are now readable from, and a driver run
-	 * with no backend found the other half of the same defect: a row that closes
-	 * the palette and opens nothing is a dead control, which is why the liveness
-	 * bit is still required (the chat route paints "Connecting to the backend..."
-	 * where a pane would be, and a machine panel there has nothing to answer it).
+	 * read — plus one term about the CREDENTIAL (`desktopPlaneRefused`, above):
+	 * an origin that answers `/v1/capabilities` but refuses every desktop op this
+	 * app makes offers no row here, because a row that opens a panel reading
+	 * "Desktop authorization is required." per section is the dead control this
+	 * palette refuses to offer, reached by a longer route. Gating them on a pane,
+	 * as every row here once was, hid them from the palette on exactly the pages
+	 * they are now readable from — and a driver run with no backend found the other
+	 * half of the same defect, which is why the liveness bit stays: with no backend
+	 * the rows are absent rather than offered and inert (the chat route paints
+	 * "Connecting to the backend..." where a pane would be, and nothing at all can
+	 * answer a machine panel there).
 	 *
 	 * `Session` and `Analytics`' conversation half additionally need a real
 	 * conversation, which is why `/session` keeps the pane gate: it reports on a
@@ -476,7 +506,7 @@ export function usePaletteItems({
 	const sessionPanelsAvailable = Boolean(activeSessionId);
 
 	const panelItems = useMemo(() => {
-		if (!canStageDraft) return [];
+		if (!canStageDraft || desktopPlaneRefused) return [];
 		return buildPanelItems([
 			{
 				id: "info",
@@ -549,7 +579,12 @@ export function usePaletteItems({
 				],
 			},
 		]);
-	}, [canStageDraft, paneCanPresent, sessionPanelsAvailable]);
+	}, [
+		canStageDraft,
+		desktopPlaneRefused,
+		paneCanPresent,
+		sessionPanelsAvailable,
+	]);
 
 	/* ------------------------ destinations and actions ---------------------- */
 

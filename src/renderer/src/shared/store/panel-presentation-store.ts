@@ -58,6 +58,24 @@ export type PanelRequest = {
 	 */
 	nonce: number;
 	requestedAt: number;
+	/**
+	 * The control that was focused when the request was raised, or null.
+	 *
+	 * IT TRAVELS WITH THE REQUEST because the requester is the only one who can
+	 * still see it: the palette holds focus in its own search field while it is
+	 * open, and that field is unmounted in the same commit the panel mounts — so a
+	 * host that read `document.activeElement` when the request ARRIVED recorded
+	 * the palette's field, which the `isConnected` guard then skipped, and closing
+	 * the panel dropped the keyboard on `document.body` (UX round 1, U1). The
+	 * palette already captures the pre-open focus for its own Escape
+	 * (`command-palette.tsx`), and that is exactly the node both gestures should
+	 * return to, so it is passed rather than rediscovered.
+	 *
+	 * Read by the SHELL host. The pane's own close path keeps its rule (null here,
+	 * composer on close, `slash-dispatch.ts`) because the pane has a composer to
+	 * fall back to and is where the user's hand already is.
+	 */
+	invoker: HTMLElement | null;
 };
 
 /**
@@ -71,8 +89,13 @@ export const PANEL_REQUEST_TTL_MS = 10_000;
 
 type PanelPresentationState = {
 	request: PanelRequest | null;
-	/** Ask a presenter to present a destination. */
-	requestPanel: (destination: string) => void;
+	/**
+	 * Ask a presenter to present a destination.
+	 *
+	 * `invoker` is the control to hand focus back to when the panel closes
+	 * (see `PanelRequest.invoker`); omitted only where the caller has none to name.
+	 */
+	requestPanel: (destination: string, invoker?: HTMLElement | null) => void;
 	/** Retire a request, by nonce. */
 	consumePanel: (nonce: number) => void;
 	/**
@@ -88,6 +111,56 @@ type PanelPresentationState = {
 	 */
 	claimPresenter: () => () => void;
 };
+
+/**
+ * What the SHELL host does with the request in the store, decided in one place.
+ *
+ * WHY THIS IS A FUNCTION AND NOT FOUR `if`s IN THE EFFECT. The shell's host is
+ * the second presenter, and the states it has to get right are exactly the ones
+ * no render can be driven into from a test: a request it cannot present arriving
+ * while it already shows a panel (which is what let two modals stack — code
+ * review round 1, M1), a request arriving while a pane owns the slot, and a
+ * request past its TTL. Extracted, the sequence the reviewer reproduced is an
+ * assertion rather than a code reading (`scripts/palette-panel-request.test.mjs`).
+ *
+ * `presentable` is passed in rather than resolved here because it is asked of the
+ * destination TABLE (`machinePanelFor`), which this module deliberately does not
+ * import: it is a store of requests, not a registry of destinations.
+ *
+ * `null` means "do nothing": there is no request, and a host with no request has
+ * no state to change.
+ */
+export type ShellHostAction = "present" | "yield" | "hold" | "retire";
+
+export function shellHostAction(input: {
+	request: PanelRequest | null;
+	/** The registry has a machine panel for this request's destination. */
+	presentable: boolean;
+	/** A mounted host currently owns the chat pane's presentation slot. */
+	claimed: boolean;
+	now: number;
+}): ShellHostAction | null {
+	const { request } = input;
+	if (!request) return null;
+	if (input.now - request.requestedAt > PANEL_REQUEST_TTL_MS) return "retire";
+	/*
+	 * BEFORE the claim check, and that order is the fix for M1 rather than a
+	 * preference. A request this host cannot present belongs to the pane, and the
+	 * pane is about to open it: the destination is pane-only BECAUSE the palette
+	 * routed to `/chat` for it, so a pane is mounting in the same commit. Asking
+	 * the claim first made the outcome depend on which host's effect React ran
+	 * first — the pane claims in that commit too, and if the claim were visible by
+	 * then this host returned early and its own panel stayed up under the pane's.
+	 * Yielding on the destination alone is a fact about the request, not a race.
+	 *
+	 * What it deliberately is NOT: a reaction to `presenterClaimed` itself. A
+	 * route move that mounts a pane must not close a panel the user opened over
+	 * another page (§ 8) — that state has no new request, so it never reaches here.
+	 */
+	if (!input.presentable) return "yield";
+	if (input.claimed) return "hold";
+	return "present";
+}
 
 let nextNonce = 0;
 
@@ -107,10 +180,15 @@ let claims = 0;
 export const usePanelPresentationStore = create<PanelPresentationState>(
 	(set) => ({
 		request: null,
-		requestPanel: (destination) => {
+		requestPanel: (destination, invoker) => {
 			nextNonce += 1;
 			set({
-				request: { destination, nonce: nextNonce, requestedAt: Date.now() },
+				request: {
+					destination,
+					nonce: nextNonce,
+					requestedAt: Date.now(),
+					invoker: invoker ?? null,
+				},
 			});
 		},
 		consumePanel: (nonce) =>
