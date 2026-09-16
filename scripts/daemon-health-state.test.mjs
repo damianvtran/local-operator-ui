@@ -186,7 +186,8 @@ test("a stale heartbeat with a live daemon is reported as WEDGED, not as detache
 	assert.equal(
 		machine.observe({
 			kind: "heartbeat-stale",
-			detail: "a Local Operator daemon is running (pid 4242), but it stopped publishing its heartbeat",
+			detail:
+				"a Local Operator daemon is running (pid 4242), but it stopped publishing its heartbeat",
 		}),
 		"wedged",
 	);
@@ -219,10 +220,7 @@ test("a stale heartbeat with a live daemon is reported as WEDGED, not as detache
 		serverBannerCopy(machine.snapshot()).detail,
 		/stopped publishing its heartbeat/,
 	);
-	assert.doesNotMatch(
-		serverBannerCopy(machine.snapshot()).title,
-		/heartbeat/,
-	);
+	assert.doesNotMatch(serverBannerCopy(machine.snapshot()).title, /heartbeat/);
 });
 
 test("a quiet record never demotes a connection this app is using", () => {
@@ -452,7 +450,11 @@ test("the same misses detach once the transport has been silent as long as they 
 	}
 	now += TRANSPORT_EVIDENCE_MS + 1;
 	assert.equal(
-		machine.observe({ kind: "unanswered", cause: "timeout", detail: "no answer" }),
+		machine.observe({
+			kind: "unanswered",
+			cause: "timeout",
+			detail: "no answer",
+		}),
 		"detached",
 		"stale transport evidence does not excuse a silent daemon forever",
 	);
@@ -466,7 +468,11 @@ test("a corroborated absence bypasses the transport gate: a gone pid is a gone p
 
 test("an answer after the misses puts the connection back, and says so once", () => {
 	const machine = attached();
-	machine.observe({ kind: "unanswered", cause: "timeout", detail: "no answer" });
+	machine.observe({
+		kind: "unanswered",
+		cause: "timeout",
+		detail: "no answer",
+	});
 	assert.equal(machine.getState(), "degraded");
 	assert.equal(
 		machine.recordTransportSuccess(),
@@ -487,7 +493,7 @@ test("a daemon this app may not drive is WEDGED with its own path named, not det
 	machine.observe({
 		kind: "unattachable",
 		detail:
-			"A Local Operator daemon is running at http://127.0.0.1:1111 (pid 42411, v0.55.6) and no serve record this app can read describes that address, so this app holds no credential for it.",
+			"This app was not given the key to that server, so it did not start a second one. It keeps probing for a server it can open.",
 	});
 	assert.equal(machine.getState(), "wedged");
 	assert.equal(
@@ -496,8 +502,15 @@ test("a daemon this app may not drive is WEDGED with its own path named, not det
 		"this app is not attached, and must not pretend a read would work",
 	);
 	const copy = serverBannerCopy(machine.snapshot());
-	assert.match(copy.title, /is running on this machine and this app is not attached/);
-	assert.match(copy.detail, /pid 42411/, "the detail names what was observed");
+	assert.match(
+		copy.title,
+		/is running on this machine and this app is not attached/,
+	);
+	assert.match(
+		copy.detail,
+		/keeps probing for a server it can open/,
+		"the detail says what the app does about it",
+	);
 	assert.doesNotMatch(
 		copy.title,
 		/heartbeat/,

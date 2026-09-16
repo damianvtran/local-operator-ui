@@ -144,9 +144,15 @@ export async function requestDesktopOutcome(
 						"The backend could not complete this request. Check its connection and try again.",
 				},
 			},
-			// `answered` survives the catch: a timeout ABORT or a body that failed
-			// to parse still reached a listener, and saying otherwise would let a
-			// slow daemon be detached as though it were absent.
+			/*
+			 * `answered` survives the catch, and the ONE case it is true in there is a
+			 * listener that answered with a body this process could not parse: the flag
+			 * was set when `fetch` resolved, so a malformed answer is still an answer and
+			 * must not let a serving daemon be detached as though it were absent. A
+			 * timeout ABORT does NOT reach here as `true` - it throws out of `fetch`
+			 * before the assignment, so it returns `answered: false` like a refused
+			 * socket (review round 2, MINOR-1; the earlier wording claimed otherwise).
+			 */
 			answered,
 		};
 	}

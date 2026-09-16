@@ -296,8 +296,12 @@ export async function requestDesktopMediaOutcome(
 				detail:
 					"The backend could not complete this request. Check its connection and try again.",
 			},
-			// Survives the catch for the same reason as its JSON twin: a timeout
-			// abort or a body that failed to parse still reached a listener.
+			/*
+			 * Survives the catch for the same reason as its JSON twin, and with the same
+			 * one case: a body that failed to parse was already `answered: true`, while a
+			 * timeout abort throws out of `fetch` first and returns `false` (review
+			 * round 2, MINOR-1).
+			 */
 			answered,
 		};
 	}

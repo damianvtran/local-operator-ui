@@ -2370,23 +2370,25 @@ export class BackendServiceManager {
 	private observeOriginOccupancy(occupancy: OriginOccupancy): void {
 		const daemonLine = occupancy.kind === "daemon";
 		const what = daemonLine
-			? `A Local Operator daemon is running at ${this.backendUrl}${occupancy.pid ? ` (pid ${occupancy.pid}${occupancy.version ? `, v${occupancy.version}` : ""})` : ""} and no serve record this app can read describes that address, so this app holds no credential for it`
-			: `${this.backendUrl} did not prove itself free (${occupancy.detail})`;
+			? "This app was not given the key to that server, so it did not start a second one"
+			: `${this.backendUrl} answered without proving it is a Local Operator daemon, so this app did not start one there`;
 		/*
+		 * The sentence, and what it may and may not spend words on (design round 1,
+		 * D7). It used to be ~470 characters that restated its own title twice,
+		 * narrated what a program WOULD do ("a new daemon there would fail to bind
+		 * while that answer stands") rather than what happened, and named the serve
+		 * record twice - once as the cause and once as the condition for attaching.
+		 * § 8 asks for the event and the app's own next step, in the operator's
+		 * words: one path, one action, and the identifiers set apart as machine
+		 * voice rather than wrapped in prose (the identity line is the banner's; see
+		 * the note on what this string deliberately no longer carries).
+		 *
 		 * The tail is a PROMISE, so it may only name futures this app can actually
-		 * reach (review round 1, F-3). It used to end "...as soon as the address is
-		 * free or admits it", and nothing ever attempts admission against the
-		 * configured origin: candidates come only from serve records, the legacy
-		 * fixed-port fallback runs only when there are no records at all, and this
-		 * gate never claims with the persisted token. With any record present that
-		 * does not describe this address, the app re-probed, re-marked `wedged` and
-		 * neither attached nor started, indefinitely, while the sentence told the
-		 * operator to wait for an attach that configuration could not perform. What
-		 * IS reachable is written here instead, including the fact that the attach
-		 * half is not this window's to produce - which is the honest answer to "and
-		 * what do I do about it".
+		 * reach (review round 1, F-3). What IS reachable is "keeps probing" and "does
+		 * not start a second one here" - and the attach half is not this window's to
+		 * produce, which is why the sentence no longer offers it.
 		 */
-		const detail = `${what}. Nothing was started on that port: a new daemon there would fail to bind while that answer stands. This app keeps probing and starts a daemon there as soon as the address is free; attaching to the daemon already there needs a serve record describing it, which only that daemon can publish.`;
+		const detail = `${what}. It keeps probing for a server it can open.`;
 		this.daemonState.observe(
 			occupancy.kind === "silent"
 				? { kind: "unanswered", cause: occupancy.cause, detail }
