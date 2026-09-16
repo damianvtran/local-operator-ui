@@ -62,8 +62,12 @@ out on the contract type, on `WakeRow.nextDueAt`, on `formatWakeDue` and in the
 fixtures' own helper, and the fixture helpers are deliberately two functions rather
 than one `toWireInstant`.
 
-`MAX_WAKE_SCHEDULES = 16` (`local_operator/harness/wake.py:47`) is the most the
-wire can carry. Confirmed by reading that module, not taken from the brief.
+`MAX_WAKE_SCHEDULES = 16` (`local_operator/harness/wake.py:47`) is the ceiling the
+**agent-tool path** enforces: `build_wake_schedule` refuses past it while the CLI's
+`wake create` writes past it (QA round 2's Q3 armed a seventeenth and the backend
+published it). It is therefore a bound on one writer and not a guarantee about the
+payload, which is why the reader does not assume it and the overflow marker stays
+reachable. Confirmed by reading that module, not taken from the brief.
 
 ### The one field the wire declares and never sends
 

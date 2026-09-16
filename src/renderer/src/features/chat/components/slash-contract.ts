@@ -20,6 +20,7 @@
  */
 import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
+import { slashContext } from "./slash-token";
 
 /**
  * The minimum a row must say for routing, copy and list identity to be decided.
@@ -39,6 +40,15 @@ export type SlashKeyIntent =
 	| { kind: "move"; index: number }
 	/** Apply `matches[index]`; `run` is false when Enter may only complete. */
 	| { kind: "apply"; index: number; run: boolean }
+	/**
+	 * Replace the typed command word with `prefix` and leave the list open.
+	 *
+	 * The ambiguous-Enter path, and the one intent that does NOT act on a row: the
+	 * word grows to what every candidate agrees on and the user keeps narrowing.
+	 * Carries the prefix rather than an index because the answer is not one of the
+	 * rows — that is the whole point of the gesture.
+	 */
+	| { kind: "extend"; prefix: string }
 	| { kind: "close" }
 	| { kind: "pass" };
 
@@ -51,6 +61,15 @@ export type SlashKeyInput = {
 	matches: readonly RoutableRow[];
 	/** The argument typed so far, compared against the row's value by the gate. */
 	argumentQuery: string;
+	/**
+	 * The COMMAND word typed so far, without its slash.
+	 *
+	 * The command phase's own query, and the one the ambiguity gate reads there —
+	 * `_picker_query()` in the TUI. A sibling of `argumentQuery` rather than the
+	 * same field: the two phases compare different text against different values,
+	 * and the argument phase's field is empty while the command list is up.
+	 */
+	commandQuery: string;
 	/** The command word whose argument list is up, when in the argument phase. */
 	argumentCommand: string | null;
 	nameThenMessage: boolean;
@@ -79,6 +98,120 @@ export function slashRunAllowed(input: {
 		input.destructive,
 		input.chosenByHand,
 	);
+}
+
+/**
+ * Whether Enter may RUN the active COMMAND row rather than only complete it.
+ *
+ * The TUI's command-phase arm of `Editor._picker_choice_is_unambiguous`
+ * (`editor.py:7731-7765`), whose three answers are: the user arrowed onto the
+ * row, the typed word IS the row's label, or the row is the only match. Read
+ * through the same `isUnambiguous` the argument phase uses, so the two phases
+ * cannot drift — with `destructive` FALSE here on purpose: the danger flag
+ * protects a list of VALUES being deleted (`/logout`'s credentials), and the
+ * command phase is a list of NAMES (`_argument_is_destructive` has nothing to
+ * read before a list is open).
+ *
+ * WHY the command phase needs the gate at all, having had none: a bare `/mo`
+ * leaves one row today and two tomorrow, and "Enter runs whatever the matcher
+ * picked FIRST" is what the terminal's own comment calls out — `/lo` highlights
+ * `loop` while `login` and `logout` also match, so a reflex second keystroke
+ * could start autonomous work for a user reaching for login. The gate is what
+ * makes that keystroke complete to the shared prefix instead.
+ */
+export function commandChoiceUnambiguous(input: {
+	/** The typed command word, without its slash — the matcher's own query. */
+	query: string;
+	/** The active row's label: the name or alias that matched. */
+	label: string;
+	/** How many rows the query left, which is the single-survivor arm. */
+	total: number;
+	chosenByHand: boolean;
+}): boolean {
+	return isUnambiguous(
+		input.query,
+		input.label,
+		input.total,
+		false,
+		input.chosenByHand,
+	);
+}
+
+/**
+ * The prefix every candidate label agrees on, case-insensitively.
+ *
+ * A port of `Editor._extend_to_common_prefix` (`editor.py:8326-8345`), which is
+ * what an AMBIGUOUS Enter does: `names[0]` is trimmed against each later name
+ * until it is a prefix of all of them, and the result keeps the FIRST name's own
+ * casing because the query is matched case-insensitively (so the registry's
+ * spelling of a command is what lands in the composer, not the user's). An empty
+ * answer is a real one — `co` for `compact`/`context`/`commands`, but nothing at
+ * all for a bare `/` — and the caller grows to it, which for the empty case means
+ * the word does not move and the list stays up.
+ *
+ * The narrowness is the point rather than a limitation: the prefix cannot be the
+ * wrong command by construction, since it is the part every candidate agrees on,
+ * while completing to the highlighted row put the highest-blast-radius candidate
+ * in the buffer ready to run.
+ */
+export function sharedCommandPrefix(labels: readonly string[]): string {
+	const [first, ...rest] = labels;
+	if (!first) return "";
+	let shared = first;
+	for (const label of rest) {
+		while (shared && !label.toLowerCase().startsWith(shared.toLowerCase())) {
+			shared = shared.slice(0, -1);
+		}
+		if (!shared) return "";
+	}
+	return shared;
+}
+
+/**
+ * The buffer and caret an AMBIGUOUS Enter produces: the command word grows to
+ * `prefix` and nothing else moves.
+ *
+ * The same span arithmetic as `completionFor` and deliberately NOT that
+ * function, in TWO ways that review round 1 measured:
+ *
+ * 1. It splices the WORD SPAN itself, the way the terminal does
+ *    (`_extend_to_common_prefix`, `editor.py:8350-8359`:
+ *    `f"{text[:context.start]}/{shared}{text[context.end:]}"`). `replaceSpan`
+ *    must NOT be reused here: it carries a separator-absorbing rule for a
+ *    non-empty replacement that begins at index 0
+ *    (`slash-token.ts:301-303`), which exists because a COMPLETION writes
+ *    `/<label> ` WITH its own trailing space — absorbing the separator after the
+ *    word keeps one space instead of two. An extension carries no trailing space
+ *    (it is a prefix of the word, not a whole command), so the same rule deleted
+ *    the separator and welded the next word on: `/lo hello` became `/loghello`
+ *    and `/lo\nwrite a poem` became `/logwrite a poem`.
+ *
+ * 2. It refuses to write at all when the result would not GROW the word — the
+ *    reference's own guard (`len(shared) <= len(context.query): return`,
+ *    `editor.py:8347-8349`), which is why the comparison is by LENGTH rather
+ *    than equality: the shared prefix can also come out SHORTER than what the
+ *    user typed (a fuzzy query that no candidate extends), and shortening a word
+ *    the user is still typing is a mutation no keystroke asked for. `null` is the
+ *    no-op answer, and the caller's contract makes it one: `handleSlashExtend`
+ *    returns without touching the draft, the caret or the store.
+ *
+ * The caret lands at the new end of the word rather than at the end of the draft,
+ * so a user narrowing a command in front of a written message keeps typing where
+ * they were.
+ */
+export function extensionFor(
+	draft: string,
+	caret: number,
+	prefix: string,
+	commands: ReadonlySet<string>,
+): { text: string; caret: number } | null {
+	const word = slashContext(draft, caret, commands);
+	if (!word) return null;
+	if (prefix.length <= word.query.length) return null;
+	return {
+		text: `${draft.slice(0, word.start)}/${prefix}${draft.slice(word.end)}`,
+		caret: word.start + 1 + prefix.length,
+	};
 }
 
 /**
@@ -185,9 +318,20 @@ export function pointerPickRuns(
 }
 
 /**
+ * The labels of a command-phase list, in the order the popup shows them.
+ *
+ * Exported because the POPUP's footer needs the same set the router extends to
+ * (the ambiguous line names the prefix these produce), and a second copy of the
+ * filter would be a second answer to "what is in this list".
+ */
+export const commandLabels = (rows: readonly RoutableRow[]): string[] =>
+	rows.flatMap((row) => (row.kind === "command" ? [row.label] : []));
+
+/**
  * Route one key press.
  *
- * Ported from `editor.py:_resolve_argument` / `:8060-8115` and pinned by
+ * Ported from `editor.py:_resolve_argument` / `:8060-8115`, `_picker_choice_is_unambiguous`
+ * / `:7731-7765` and `_extend_to_common_prefix` / `:8326-8345`, and pinned by
  * `slash-contract.test.mjs`, because this is the one place where a wrong answer
  * deletes a credential instead of completing a word.
  */
@@ -207,10 +351,55 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 		case "Tab": {
 			const row = input.matches[input.active];
 			if (!row) return { kind: "pass" };
-			// A command row COMPLETES only: sending here would submit a
-			// half-typed command word.
-			if (row.kind === "command")
-				return { kind: "apply", index: input.active, run: false };
+			if (row.kind === "command") {
+				/*
+				 * Tab is the completion key in BOTH phases: it takes the highlighted
+				 * row whatever the query says and never runs, which is what makes it
+				 * the safe key while a list is being narrowed
+				 * (`editor.py:3259`).
+				 */
+				if (input.key === "Tab")
+					return { kind: "apply", index: input.active, run: false };
+				/*
+				 * Enter NAMES a command, so it may also run it — but only when the
+				 * choice is unambiguous (`commandChoiceUnambiguous`). An ambiguous
+				 * one grows the word to the common prefix and leaves the list up, and
+				 * that is where the extra keystroke belongs: it appears exactly where
+				 * the intent genuinely is not clear. Completing to the HIGHLIGHTED
+				 * row instead put the highest-blast-radius candidate into the buffer
+				 * ready to run.
+				 *
+				 * `run` is the ROW's answer here; the DESTINATION's answer is applied by
+				 * the one adapter every pick passes through (`message-input.tsx`),
+				 * which gates a command row on `pointerPickRuns`. So a destination that
+				 * opens an inline list (`/model`, `/team`, `/theme`, `/agent`,
+				 * `/effort`, `/approvals`) still only completes and opens its list,
+				 * exactly as a click on that row does.
+				 */
+				const unambiguous = commandChoiceUnambiguous({
+					query: input.commandQuery,
+					label: row.label,
+					total: input.matches.length,
+					chosenByHand: input.chosenByHand,
+				});
+				if (!unambiguous) {
+					const prefix = sharedCommandPrefix(commandLabels(input.matches));
+					return {
+						kind: "extend",
+						/*
+						 * Never SHORTER than what is typed: `_extend_to_common_prefix`
+						 * returns having changed nothing when the word is already the common
+						 * prefix, and the key is consumed either way, so the caller is handed
+						 * the word it already holds.
+						 */
+						prefix:
+							prefix.length > input.commandQuery.length
+								? prefix
+								: input.commandQuery,
+					};
+				}
+				return { kind: "apply", index: input.active, run: true };
+			}
 			// A NAME+message list (`/team`, `/agent`) fills the name and nothing
 			// else: "a name is chosen" is "ready for the message", not "run it".
 			if (input.nameThenMessage)
@@ -319,12 +508,42 @@ export type EnterFooterInput = {
 	phase: "command" | "argument";
 	/** The command word whose argument list is up, without its slash. */
 	command: string | null;
+	/** The active COMMAND row's matched label (the alias that matched). */
+	label: string;
 	nameThenMessage: boolean;
 	runs: boolean;
+	/**
+	 * Whether this command's completion OPENS a list rather than finishing the
+	 * command — i.e. whether its destination declares an inline argument source.
+	 *
+	 * The caller has it (`inlineArgumentFor(destination)`) and this module
+	 * deliberately does not, because it does not import the destination table.
+	 * Needed for one arm of the copy: a row that completes and then OPENS a list
+	 * (`/model`) is finished with after that completion — the next Enter completes
+	 * a VALUE — while a row that completes and closes the list (`/clear`) runs on
+	 * the next Enter. Both are `runs: false` here (the pointer may not run either),
+	 * so without this the two states would get the same sentence and one of them
+	 * would be a lie (UX round 1 U4).
+	 */
+	opensList: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
 	unambiguous: boolean;
+	/**
+	 * The command phase's ambiguous arm: the word typed so far, and the prefix
+	 * every candidate shares (both without the slash).
+	 *
+	 * Here because the ambiguous line has THREE outcomes rather than one, and only
+	 * the caller can tell them apart: the word GROWS to `prefix` when the prefix is
+	 * longer than what was typed, and the keystroke is a no-op — the reference's own
+	 * guard, `editor.py:8347-8349` — when it is not. The two no-op cases have
+	 * different reasons and therefore different copy: the word is already the
+	 * prefix, or the candidates share nothing at all. Measured in review round 1
+	 * (N2): the single line promised a change in both.
+	 */
+	query: string;
+	prefix: string;
 };
 
 /**
@@ -336,12 +555,67 @@ export type EnterFooterInput = {
  * left the user to remember it (UX round 1 U2). `stage` is deliberately absent:
  * staging happens on a composer Enter with the list already closed, and it is
  * announced there by its own note (see `message-input.tsx`, UX round 1 U7).
+ *
+ * The command phase used to have ONE line — "Enter completes the command." —
+ * which stopped being true the round Enter stopped being completion-only: it now
+ * runs the row when the choice is unambiguous, and grows the word to the common
+ * prefix when it is not. Both arms read the same two inputs the router decides
+ * from, so the line cannot promise a gesture the key does not perform.
  */
+
+/**
+ * What Enter does when it is deliberately inert: nothing, and the line has to
+ * say what does act instead.
+ *
+ * Why the key is inert here rather than acting on the highlighted row: the
+ * highlight is the MATCHER's guess, and completing to an arbitrary survivor of an
+ * ambiguous query is what put the wrong command one Enter away from running — the
+ * rule this branch exists to fix. The defect UX round 1 (U1/U2) measured was the
+ * FEEDBACK around that decision, not the decision: in the bare-`/` state (the
+ * popup's first state, and this string's first outing) three Enters left the
+ * screen byte-identical while a highlighted row sat under the caret and the line
+ * beside this one advertised the POINTER; after `/l` grew to `/lo`, the same
+ * thing repeated under a row that a single arrow key would have made Enter act on.
+ *
+ * Every clause is true of the keys, and this file's test drives them together
+ * rather than trusting the sentence:
+ *
+ *   - `↓` moves the highlight (and is what marks a row CHOSEN, which is the flag
+ *     the ambiguity gate reads), so the row the user lands on is the row Enter
+ *     then acts on — running it, or completing it when its destination opens a
+ *     list;
+ *   - Tab applies the HIGHLIGHTED row and never runs it (`editor.py:3259`), so it
+ *     is the one-gesture route to the row the user is looking at.
+ *
+ * "a row you pick" rather than the reviewer's suggested naming of the highlighted
+ * row (`↓ then Enter runs /analytics`): `↓` moves the highlight OFF that row, so
+ * naming it would be the same class of untruth this change removes.
+ */
+const ENTER_NEEDS_A_PICK =
+	"Enter needs a row you pick: ↓ then Enter · Tab completes this row.";
+
 export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
 	// ("Enter opens the full picker."), so the footer would only repeat it.
 	if (!input.matched) return null;
-	if (input.phase === "command") return "Enter completes the command.";
+	if (input.phase === "command") {
+		if (input.unambiguous)
+			return input.runs
+				? `Enter runs /${input.label}.`
+				: input.opensList
+					? `Enter completes /${input.label}.`
+					: `Enter completes /${input.label}; Enter again runs it.`;
+		/*
+		 * Ambiguous, so Enter narrows where there is somewhere further to go, and the
+		 * line reports the growth when there is. Where there is not — the word already
+		 * IS the shared prefix, or the candidates share nothing — the key is inert by
+		 * design, and the line names the gestures that act instead rather than
+		 * restating the matcher's reason (UX round 1, U1-U3).
+		 */
+		if (input.prefix.length === 0 || input.prefix.length <= input.query.length)
+			return ENTER_NEEDS_A_PICK;
+		return `Enter completes to ${input.prefix}.`;
+	}
 	if (input.nameThenMessage) return "Enter chooses this name.";
 	if (!input.runs) return "Enter completes the value.";
 	if (!input.unambiguous) return "Enter completes; Enter again runs.";

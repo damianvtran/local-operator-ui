@@ -46,6 +46,10 @@ export const radient: ThemeDefinition = {
 		accent: "#91B7E9",
 		accentHover: "#BDF0FD",
 		accentActive: "#6E9AD4",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.1 from `accent` and 11.15:1 on surface, where the accent
+		// itself is 7.93:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#C1D7F3",
 		accentWash: "#1F2835",
 		// The old theme paired white with this blue, which measures 2.2:1. Ink on
 		// the accent fill is the page ground instead.

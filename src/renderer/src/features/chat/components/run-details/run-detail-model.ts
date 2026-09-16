@@ -183,7 +183,11 @@ export const TODO_ITEM_CAP = 10;
  *
  * The number is **the wire's own limit**, `MAX_WAKE_SCHEDULES = 16`
  * (`local_operator/harness/wake.py:47`), and it is deliberately not a smaller
- * house number (UX round 1's U1). The first version capped at six, borrowed from
+ * house number (UX round 1's U1). **It is a ceiling on the tool path, not a
+ * guarantee about the payload** (QA round 2's Q3): `build_wake_schedule` refuses
+ * past it, while `lop wake create` on the CLI writes past it — QA armed a
+ * seventeenth and the backend published it. So the reader does not assume the
+ * bound and the marker stays reachable by design. The first version capped at six, borrowed from
  * the roster (`SUBAGENT_ROW_CAP`), on the argument that "this section is one list
  * inside a pane that scrolls" — and the review measured that argument false in
  * every state it could reach: with a 24-item plan the WHOLE pane region had 9px
@@ -192,8 +196,9 @@ export const TODO_ITEM_CAP = 10;
  * ask, unkept: they asked to "see all the armed wakes", and above six the section
  * told the reader more existed and could not show which.
  *
- * Sixteen is the honest number because it is the one the scheduler cannot exceed:
- * a full session is sixteen rows, about 600-850px, which this region holds by
+ * Sixteen is the honest number because it is the ceiling `MAX_WAKE_SCHEDULES`
+ * declares and the agent-tool path enforces: a full session is sixteen rows,
+ * about 600-850px, which this region holds by
  * scrolling. The marker below the list stays as the footer for a payload that
  * exceeds the DECLARED bound — a hand-edited index, or a future backend that
  * raises the limit — rather than as a routine truncation of the shipping wire.
@@ -828,6 +833,22 @@ export function activityMark(
 export type ActivityTally = {
 	count: number;
 	mark: OpenChildStatus;
+	/**
+	 * How many of the open rows are in `mark`'s own state.
+	 *
+	 * Carried because `count` alone cannot say whether the set is UNIFORM, and the
+	 * sentence needs to: `mark` is the busiest state (`activityMark`'s ladder), so
+	 * with `DEFAULT_MAX_RUNNING_JOBS = 15` (`harness/jobs.py:36`) any fan-out above
+	 * fifteen children spends most of its life with rows parked behind the running
+	 * ones, and a clause that puts the busiest state's word beside the OPEN total
+	 * then claims work that is not happening (design round 2, D6: the chip read
+	 * `40 subagents running` while the pane two inches away read `15 running ·
+	 * 25 queued · 17 interrupted · 5 done`).
+	 *
+	 * `markCount === count` is the uniform case and the only one that may use the
+	 * state word; `markCount < count` is the mixed case, whose word is the family's.
+	 */
+	markCount: number;
 };
 
 export function activityTally(
@@ -835,7 +856,12 @@ export function activityTally(
 ): ActivityTally | null {
 	const open = rows.filter(isOpenRow);
 	const mark = activityMark(rows);
-	return mark === null ? null : { count: open.length, mark };
+	if (mark === null) return null;
+	return {
+		count: open.length,
+		mark,
+		markCount: open.filter((row) => row.status === mark).length,
+	};
 }
 
 /* ------------------------------------------------------------------ */
@@ -3123,18 +3149,52 @@ const plural = (count: number, noun: string): string =>
 const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
 
 /**
- * The subagent clause: `1 subagent running`, `2 subagents queued`.
+ * The word a clause uses for the set: the STATE's word when every open row is in
+ * that state, the FAMILY's word when they are not.
+ *
+ * `open` is the model's own vocabulary (`openChildren`, `openJobs`,
+ * `OPEN_CHILD_STATUSES`), and it is the word the plan chip one slot to the left
+ * already teaches (`1 to-do open`). It is true of all three open states by
+ * construction, so the mixed case cannot drift back into a claim the rows deny
+ * (design round 2, D6). It is also NARROWER than the state word it replaces, so it
+ * cannot cost the row a line.
+ */
+const tallyWord = (tally: ActivityTally): string =>
+	tally.markCount === tally.count ? stateWord(tally.mark) : "open";
+
+/**
+ * The busiest state, for the strings that have room for it: the chip's accessible
+ * name and its tooltip, one line above it in the same column.
+ *
+ * The ON-SURFACE text stays the narrow one, and the mark itself is `aria-hidden`
+ * by the roster's contract — so without this the only reading a screen reader gets
+ * of a mixed set would be the family word, which names the count and not the work
+ * that is running. It is the same derivation over the same tally as the clause, so
+ * the two strings cannot state different numbers.
+ */
+export const busiestClause = (tally: ActivityTally): string =>
+	tally.markCount === tally.count
+		? ""
+		: `, ${tally.markCount} ${stateWord(tally.mark)}`;
+
+/**
+ * The subagent clause: `1 subagent running`, `2 subagents queued` when the open set
+ * is uniform, `40 subagents open` when it is not.
  *
  * EXPORTED for the same reason as `todoClause` below, and by the same precedent:
  * the composer's subagents chip states the fact the trigger's tooltip states, one
  * above the other in the same column, and a second pluralisation is how the two
  * come to disagree about one number.
  *
- * It takes the TALLY and not a count (see `activityTally`): the state in the
- * sentence IS the state of the mark, because there is no other way to call it.
+ * It takes the TALLY and not a count (see `activityTally`), and it takes the WORD
+ * from `tallyWord` rather than from the mark directly: the count is every OPEN row
+ * and the mark is the busiest one, so the mark's own word beside the open total
+ * would claim work that is not happening whenever rows are parked behind a running
+ * few (design round 2, D6). Uniform, the state's word; mixed, the family's — and
+ * the busiest state then travels in `busiestClause`, on the accessible name.
  */
 export const childClause = (tally: ActivityTally): string =>
-	`${plural(tally.count, "subagent")} ${stateWord(tally.mark)}`;
+	`${plural(tally.count, "subagent")} ${tallyWord(tally)}`;
 
 /**
  * The tool-job clause: `1 job running`, `3 jobs running`.
@@ -3145,35 +3205,88 @@ export const childClause = (tally: ActivityTally): string =>
  * headed `Jobs` for the same reason, and these two are the pair that has to
  * agree — the chip names the count and the section names the rows.
  *
- * The clause carries the MARK's word rather than a hardcoded `running`, and the
+ * The clause carries the LADDER's word rather than a hardcoded `running`, and the
  * docblock that used to argue `running` was "safe here" because a tool row is
  * running-or-queued is gone with the argument: the ladder is shared, the wire's
  * `queued` flag is minted only for `task` rows today, and a sentence that is true
  * because of a claim about the backend is the kind of thing this file exists to
  * avoid. If a future `JobType` can be parked, the clause already says so.
+ *
+ * Since design round 2's D6 the word comes from `tallyWord`, so what the clause
+ * says is the state's word when every open tool row shares it and the family's
+ * (`3 jobs open`) when they do not — the same rule as the subagent clause, one
+ * surface over, and the busiest state reaches the chip's accessible name through
+ * `busiestClause`.
  */
 export const jobClause = (tally: ActivityTally): string =>
-	`${plural(tally.count, "job")} ${stateWord(tally.mark)}`;
+	`${plural(tally.count, "job")} ${tallyWord(tally)}`;
 
 /**
- * The plan's count, in the app's one spelling of it: `1 to-do open`,
- * `4 to-dos open`, `0 to-dos open`.
+ * The two counts that decide the plan's clause: how much is still open, and how
+ * much was abandoned rather than finished.
+ *
+ * Both are read off one `RunDetails`, and the pair is the parameter's whole
+ * point: a settled plan's clause depends on how it settled, so there is no
+ * shape of this call that can claim the plan finished cleanly without being
+ * handed the dropped count that would contradict it.
+ */
+type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
+
+/**
+ * The plan's clause, in the app's one spelling of it: `1 to-do open`,
+ * `4 to-dos open`, `All to-dos resolved`, `All to-dos closed`.
  *
  * EXPORTED, and deliberately not re-derived anywhere (round 1's U1-7/Q7 is the
  * precedent this follows): the composer's plan chip states the very fact the
  * trigger's tooltip states, and those two surfaces are read together in one
  * glance — the chip above the box and the button's tooltip two rows below it.
  * A second pluralisation, or a second tally, is how `1 to-dos open` reaches a
- * user on one of them and nothing but review would catch it. Callers pass
- * `RunDetails["openTodos"]` — pending plus blocked, over the WHOLE wire list —
- * so the count has exactly one derivation and this function only spells it.
+ * user on one of them and nothing but review would catch it. Callers pass a
+ * `RunDetails` — `openTodos` is pending plus blocked over the WHOLE wire list,
+ * `droppedTodos` its abandoned items — so the count has exactly one derivation
+ * and this function only spells it.
  *
- * A settled plan prints `0 to-dos open` rather than nothing: see
+ * A SETTLED plan stops spelling a count (operator follow-up, in their words:
+ * "instead of saying 0 to-dos open, show better copy like All to-dos
+ * resolved"). `0 to-dos open` states the remainder and leaves the reader to do
+ * the subtraction that turns it into a fact about the plan, and on the plan
+ * chip it read as the absence of a plan rather than the end of one. What a
+ * settled plan may SAY depends on HOW it settled, which is why this reads the
+ * counts instead of a numeral and why it has two settled spellings rather than
+ * one:
+ *
+ * - nothing open and nothing dropped — every item finished, so `All to-dos
+ *   resolved` is a claim a reader can check against the pane.
+ * - nothing open with items dropped — `All to-dos closed`, the word the pane's
+ *   own tally already uses for done plus dropped (`todoTally`, and the TUI's
+ *   `RESOLVED_STATUSES` behind it). "Resolved" here would be an adjective doing
+ *   a verb's job: it would report a plan that abandoned part of itself as one
+ *   that got everything done, which is the reading `todoTally`'s own docblock
+ *   refuses when it keeps `dropped` beside the fraction.
+ *
+ * A settled plan prints a clause rather than nothing: see
  * `docs/composer-status-tabs.md` § 5.1 for why the composer's chip must not
  * vanish when the last item closes.
+ *
+ * BOTH settled spellings assume the plan has at least one ITEM, and this
+ * function cannot know that: a plan that arrived as one named empty phase has
+ * `openTodos === 0` and `droppedTodos === 0` too, and `All to-dos resolved` over
+ * it would be a claim about work that does not exist. The ONLY thing keeping
+ * that case off screen is the caller's own item-count gate —
+ * `composer-status-row.tsx`'s `showPlan`, `totalTodos > 0`, pinned by
+ * `scripts/composer-tabs.test.mjs` — so the coupling is recorded here rather
+ * than left for whoever relaxes that gate to rediscover (agent review round 1,
+ * nit 3). Widening it is not a copy change: it needs a spelling for "a plan with
+ * nothing in it", which is a state this row deliberately does not render.
  */
-export const todoClause = (count: number): string =>
-	count === 1 ? "1 to-do open" : `${count} to-dos open`;
+export const todoClause = (counts: TodoClauseCounts): string => {
+	if (counts.openTodos > 0) {
+		return counts.openTodos === 1
+			? "1 to-do open"
+			: `${counts.openTodos} to-dos open`;
+	}
+	return counts.droppedTodos > 0 ? "All to-dos closed" : "All to-dos resolved";
+};
 
 const failureClause = (count: number): string =>
 	`${plural(count, "subagent")} failed`;
@@ -3278,7 +3391,17 @@ export function runDetailTriggerLabel(
 	 */
 	const jobs = activityTally(details.jobs);
 	if (jobs) counts.push(jobClause(jobs));
-	if (details.openTodos > 0) counts.push(todoClause(details.openTodos));
+	/*
+	 * Guarded on `openTodos`, so the trigger's name is UNCHANGED by the settled
+	 * spellings above: the trigger answers "is anything asking for something right
+	 * now?" (`hasRunDetails`' own rule, a few hundred lines up), and a settled
+	 * plan is not asking for anything — its outcome is the composer chip's to
+	 * state. Passing the whole `details` is what keeps the two surfaces one
+	 * spelling if that ever changes; keeping the guard is the choice to leave
+	 * this path exactly as it was.
+	 */
+	if (details.openTodos > 0) counts.push(todoClause(details));
+
 	const clauses = [...attention, ...counts];
 	if (clauses.length === 0) return prefix;
 

@@ -36,9 +36,21 @@ three are byte-identical to the round-1 commit, which is itself the check that t
 wrap fix did not reach them.
 
 `--themes` is the two brand palettes, which is `branding.md` § 9.9's minimum, and
-the light pass is where contrast defects hide. The tree is the commit that added
-this surface; `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carry
-it, as they do for every frame here.
+the light pass is where contrast defects hide. The tree that added this surface
+is what `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carried
+then, as they do for every frame here.
+
+**The `states` pair was re-taken for the settled-plan copy** (`fix(composer):
+state a settled plan instead of a zero count`): the chip's finished case printed
+`0 to-dos open`, which stated the remainder rather than the plan's ending, and it
+now says what settled. The two bands that carry that pair are `All to-dos
+resolved` (every item done) and `All to-dos closed` (one dropped, and
+deliberately not `resolved`) — the sixth band's label says the second half out
+loud so the difference is not left to the reader's eye. The run above is that
+pass, and `partialCapture` records it at the head that made the change. The other
+three directories were re-written by the same run and came back byte-identical,
+which is what says the copy change moved no height, no in-flight count and
+nothing at the column floor.
 
 ## What is in each frame, and what it proves
 
@@ -53,11 +65,12 @@ legible; it contains no controls, and nothing in these frames is a claim about i
 
 | Frame (`<theme>.webp`) | Bands, and what they show |
 | --- | --- |
-| `states/` | The matrix in the record's order. **Band 1 is the state that most needs pinning: the row renders NOTHING**, so that band IS the pre-change composer — the box with no row above it, which is what every session with no goal and no plan looked like before this change. Then: goal alone, plan alone at the row's start, both, and a finished plan still saying `0 to-dos open`. |
+| `states/` | The matrix in the record's order. **Band 1 is the state that most needs pinning: the row renders NOTHING**, so that band IS the pre-change composer — the box with no row above it, which is what every session with no goal and no plan looked like before this change. Then: goal alone, plan alone at the row's start, both, a plan whose every item is done (`All to-dos resolved`), and a finished plan with an abandoned item (`All to-dos closed`, and deliberately not `resolved`). |
 | `long-goal/` | Three bands: a goal that fits (the chip is content-sized), a 300-character goal (the snippet truncates), and — added by round 1's D4 — **that same long goal with all four chips**. The truncation claim needs the first band to be legible at all: an ellipsis only says anything beside a value that does not need one, and the third band is where the goal's new width is legible, since the goal is the item that yields when the counts arrive. Its caption prints the measurement: **`900px column · row 32px tall · overflowX 0px · 4 chips · goal 484px (text 414/1956)`** — a 484px item whose text needs 1956px, against 698px of client width before the activity chips existed. `RowFacts` prints the goal's own numbers whenever a band has a goal, which is also why `activity-widths` and `activity-stacked` carry them. |
 | `expanded/` | The collapsed row above its own expanded form at a 900px column, the second opened by CLICKING the real trigger. The vertical cost is the difference between the two bands; the body's cap is the whole-line ceiling `CAPPED_BLOCK` sets (120px, six lines at `leading-5`), which the frames show ending on a complete line rather than through a seventh line's glyphs. |
 | `column-floor/` | The same pair at a **172px** column — the width the app's chat column actually reaches with the canvas open (QA round 1, measured on the built app; this set was captured at 220px before that correction, which meant it pinned a large-view inset at a width where the product renders the small-view step). The story derives `isSmallView` from its own band width, so the row takes `px-2 pb-1` and the stand-in box `p-2` exactly as the app does. Collapsed, the row stacks with its label visible; expanded, the body takes the row's own width less the primitive's 20px indent. |
 | `activity-chips/` | The two activity chips (`docs/composer-activity-chips.md`), one band per state of the count gate: both lists in flight (four chips), the jobs chip alone at the row's start (no goal, no plan — so the first-chip rule falls to it), a PARKED child (open, so the chip renders, and nothing spins because nothing is running), and settled work, where the rows are still on the wire and **no chip is drawn for them**. Read the last band against the first: that pair is the gate. |
+| `activity-mixed/` | **The state no committed frame showed until design review round 2 (D6), and the ordinary one for a large delegation.** Three bands on the shipped row: the fan-out QA measured live (15 children running, 25 parked behind the fifteen-job pool, 17 settled rows the gate must NOT count, 5 finished — 40 open in all), the same rule through the jobs list (two live tool rows beside a parked one), and a uniform set as the control. The chip states the count whole with the FAMILY's word when the set is mixed — **`40 subagents open`**, accessible name `Open the subagents in run details — 40 subagents open, 15 running` — because the state word beside the open total claimed work that was not happening, and the pane's own tally two inches away read `15 running · 25 queued · 17 interrupted · 5 done` (`docs/composer-activity-chips.md` § 2). Band 2 inherits it through `jobClause` (`3 jobs open`, `… — 3 jobs open, 2 running`) and band 3 is the control, unchanged: `25 subagents queued`. Each band prints its own numbers, and the row stays **32px tall with `overflowX 0`** in all three — the mixed wording is narrower than the state word it replaces, so the fix costs the row nothing. |
 | `activity-widths/` | The width story. (This row called it "the only frame that carries its own numbers" until design round 1's D5: `wake-widths` prints numbers into all four of its bands too, through the same `RowFacts`, so the claim was about to stop being true the moment the wake set landed.) Three bands — 900px (the app's column), 240px (`CHAT_CHIP_ICON_ONLY_PX`) and the 172px floor — each MEASURING the row it contains after `document.fonts.ready` and printing `Npx column · row Npx tall · overflowX Npx · N chips` beneath it. Measured at this commit: **900 → 32px tall, overflowX 0, 4 chips; 240 → 106px tall, 0, 4; 172 → 106px tall, 0, 4.** The arrangement is visible in the picture (at 240 and at 172 the goal keeps the line and the three counts share the lines below it as one left-aligned group) and `overflowX 0` at all three is the property, not a hope: the group shrinks and wraps INSIDE the column rather than painting past it. **240 read 80px in round 1 and reads 106px now, which is the wrap fix and not a regression**: the old arrangement put the goal on the first line with ONE count chip pushed to the right margin and the other two on a left column below, so it was 26px shorter and the goal was truncated to `Goal: Rec…`; today the goal has the line to itself (`Goal: Reconcile the March i…`) and the counts are one column under it (`docs/composer-activity-chips.md` § 7, design review round 1, D2). |
 | `activity-stacked/` | The 240px arrangement on its own, with its own numbers, and the two browser states a story cannot set (round 1's D5): `activity-stacked-hovered/` puts a real pointer on the GOAL's trigger and `activity-stacked-chip-hovered/` puts it on the jobs CHIP, which is the pair that shows the row's edge rule — the goal is the row's leading chip and its ground starts at the row's own edge (`-ml-1.5`), where the stacked chips' grounds start at theirs. `activity-stacked-focused/` walks the real `Tab` key to the subagents chip (`{ tabTo }`), so the ring in the frame is a genuine `:focus-visible` rather than a class; its tooltip is open in the picture, which is the state focus actually produces, and it covers part of the goal line above. |
 | `wake-chip/` | The wake chip (`docs/composer-wakes.md`), five bands: **one armed wake** with nothing else in the row (`1 wake armed`, the state nothing in this app could show before this change), a plan-and-wakes pair (two count chips in one gutter), **nine armed schedules**, the **no-wakes CONTROL band** (the same plan and activity with NO wake chip, so the gate is legible as an absence), and all five chips on one line at 900px. Hover and focus for this chip are carried by the LIVE set, `docs/evidence/wake-live-app/` — the bullet in "What this set does NOT prove" now names it, because two states that this set re-derives for the activity chips are in no frame here for the wake chip. |
@@ -85,9 +98,20 @@ record's arithmetic — and stated because four of them are what the record's
 | Goal snippet, 240 vs 172 (`activity-widths`) | — | `Goal: Reconcile the March i…` | `Goal: Reconcile t…` |
 | Expanded body measure | (see below) | — | **136px** client, **120px** tall (six whole lines) against **300px** of content — the cap and its own scroller |
 
+**The settled chips are wider than the count chip, and the frames say by how
+much.** Read off the re-captured `states` pair the same way the table above was
+read: the count chip's ink spans x=40–139, `All to-dos closed` x=40–155 and
+`All to-dos resolved` x=40–165, all three starting at the same leading edge and
+occupying the same 14px mark-and-label line — so the settled copy adds up to
+26px to a chip that is already `shrink-0`, and changes no band's height. The
+widest settled chip is therefore ~137px of box against the floor's 156px content
+box; that case is arithmetic here rather than a frame, because `column-floor`
+photographs the count form and this pass did not add a settled band to it.
+
 Measured with a real browser on these stories, out of the live DOM — not
 re-derived from the record's arithmetic, which is what made the first version of
-this table wrong in two rows. The two corrections worth naming: the floor is 172px
+this table wrong in two rows.
+The two corrections worth naming: the floor is 172px
 and takes the small-view step (so 54px, not 58px, and the body is 136px, not the
 168px a large-view inset produced), and the goal's label is VISIBLE at the floor
 rather than `sr-only` (design review round 1, D3 and D4).
@@ -101,6 +125,16 @@ number here is what the frame contains, and whether a ~136px measure is acceptab
 at the floor is the design round's call rather than this set's claim.
 
 ## What this set does NOT prove
+
+- **The widest chip this row can render against the floor's content box.**
+  `column-floor` photographs the count form, so the settled chips at the 172px
+  floor are arithmetic on two frames that share one scale (~138px for
+  `All to-dos resolved` and ~128px for `All to-dos closed` against a measured
+  156px content box), not a picture. The chip is `shrink-0` and carries no
+  `truncate`, so a chip that ever exceeded its box would spill rather than wrap:
+  the overflow guarantee for the widest case is a measurement here, and a frame
+  of the settled band at the floor is what would make it a photograph (design
+  review round 1, D3).
 
 - **Not the live composer.** The row's real neighbours in the app are the send
   alert and the composer box, whose widths come from the chat column and the

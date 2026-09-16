@@ -85,6 +85,34 @@ state by construction, so the two cannot drift back apart. The roster's own
 `CHILD_STATE_WORD` supplies the word (`running` / `queued` / `paused`), and
 `todoClause` is untouched — to-dos have one open state.
 
+**...and the WORD depends on whether the set is uniform (design review round 2,
+D6).** The count is every OPEN row and `mark` is the BUSIEST one, so putting the
+mark's word beside the open total claims work that is not happening whenever rows
+are parked behind a running few — and that is the ordinary shape of a large
+delegation, not an edge: `DEFAULT_MAX_RUNNING_JOBS = 15` (`harness/jobs.py:36`,
+the pool subagents and backgrounded shells share) parks everything a fan-out
+cannot run, so QA's live capture read `40 subagents running` on the chip while the
+pane's own tally read `15 running · 25 queued · 17 interrupted · 5 done` on the
+same screen — one word, two numbers, for the same rows, two inches apart. The rule
+now is:
+
+| the open set | the clause (chip's visible text, trigger's tooltip) | the chip's accessible name |
+|---|---|---|
+| uniform — `markCount === count` | `1 subagent running`, `25 subagents queued`: the STATE's word, unchanged | the same string |
+| mixed — `markCount < count` | `40 subagents open`: the FAMILY's word | `… — 40 subagents open, 15 running` |
+
+`open` is the model's own vocabulary (`openChildren`, `openJobs`,
+`OPEN_CHILD_STATUSES`) and the word the plan chip one slot to the left already
+teaches (`1 to-do open`); it is true of all three open states by construction, so
+the mixed case cannot drift back into a claim the rows deny. The busiest state does
+not vanish — it moves to the strings with room for it, because the mark is
+`aria-hidden` and the sentence is otherwise the whole message a screen reader gets.
+The mixed string is also NARROWER than the state word it replaces, so it cannot
+cost the row a line (photographed: `activity-mixed/`, three bands — the fan-out, the
+same rule through the jobs list, and a uniform set as the control). `tally.markCount`
+is derived in the same `activityTally` call as `count` and `mark`, so no reader
+re-derives it and the two strings cannot state different numbers.
+
 **The mark is the roster's, not a new one.** `SubagentStateIcon`
 (`run-detail-row-parts.tsx:74-96`) already encodes the whole contract — one mark
 per state, `motion-safe:animate-spin` for `running` and nothing else, shape as the
@@ -265,13 +293,25 @@ which prints its own numbers into the picture, after `document.fonts.ready`):
 
 | Column | Row height | `overflowX` | Chips |
 |---|---|---|---|
-| 900px | 32px | 0 | 4 |
-| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 106px | 0 | 4 |
-| 172px (the floor) | 106px | 0 | 4 |
+| 900px | 32px | 0 | 4, one line |
+| 460px | 54px | 0 | 4: goal, then all three |
+| 300px | 80px | 0 | 4: goal / plan + subagents / jobs |
+| 240px (`CHAT_CHIP_ICON_ONLY_PX`) | 106px | 0 | 4: one per line |
+| 172px (the floor) | 106px | 0 | 4: one per line, narrower goal |
 
-At 240px the three count chips take the lines under the goal; at the floor the
-row stacks, the goal first and the chips under it. The heights are the cost, and
-§ 3's gate is what keeps them from being paid on a session with nothing running.
+**Three heights, not two, and the band in between is the one the operator hits.**
+This table printed 900 and 240/172 only until design review round 2 (N2): the group
+packs greedily as the column narrows, so the wrap regime has its own steps — 54px
+once the goal takes its own line, 80px when the jobs chip drops below the plan and
+subagents pair, 106px from about 265px down, where the 150px subagents chip and the
+107px jobs chip stop fitting on one line together. The 460px and 300px bands are
+photographed in `activity-widths/` and print their own numbers, which is where the
+54px and 80px above are read from; the same numbers were measured independently on
+this head with QA round 2's rig extended to those widths, reproducing 900/240/172
+exactly (`32/106/106px`, `overflowX` 0) before adding them. At 240px the three
+count chips take the lines under the goal; at the floor the row stacks, the goal
+first and the chips under it. The heights are the cost, and § 3's gate is what
+keeps them from being paid on a session with nothing running.
 
 **The 240px height is 106px, and this table printed 80px until round 2 (m1).**
 The 80px was the pre-group arrangement's number — the goal sharing line 1 with one
@@ -298,10 +338,28 @@ is what makes the row wrap the WHOLE group under the goal instead of letting the
 two share a squeezed line — and 140px is the width at which the chip still says
 something (its chevron, `Goal:` and padding measure ~75px of fixed ink).
 
-The arrangement is photographed at three widths and in three browser states
-(`activity-widths/`, and `activity-stacked/` at 240px at rest, hovered and
-keyboard-focused, the last two through the rig's own input because `:hover` and
-`:focus-visible` are browser state a story cannot set).
+The arrangement is photographed at FIVE widths (`activity-widths/`) and in four
+browser states (`activity-stacked/` at 240px at rest, `activity-stacked-hovered/`
+with the pointer on the goal, `activity-stacked-chip-hovered/` with it on the jobs
+chip, and `activity-stacked-focused/` with a real Tab on the subagents chip — the
+last three through the rig's own input, because `:hover` and `:focus-visible` are
+browser state a story cannot set).
+
+**In the stacked column the goal's hover ground and a chip's start on two different
+left edges, and that is intended** (design review round 2, N1 — recorded with the
+numbers rather than fixed). Measured in the frames at 240px: the goal's wash spans
+x25→249 (224px, the goal item's own width) and the jobs chip's x32→138 (106px), the
+two box edges **7px apart**; the DOM says the same from the other side, the goal's
+item box at x=2 against the count chips' at x=8 in the same column, a **+23/+24**
+offset between the story's own frame and that DOM rather than a third measurement
+(the pixels read 25 and 32 for those two edges; the frames carry the story's inset,
+the DOM does not). The 7px of the frames, 6px of the DOM, is the `FIRST_CHIP`
+`-ml-1.5` cancelling padding on the FIRST chip, which is the goal — the INK columns
+agree (goal chevron 36, count marks 38/39), which is the doctrine that flag exists
+for. Two object kinds, two ground shapes: a
+full-width row wash on an item that yields, content-sized control pills beside it.
+A reader hovering down the stacked column sees the row's leading edge move by those
+6-7px, and only in that arrangement.
 
 ## 8. Colour, motion and the contrast contract
 
@@ -364,7 +422,8 @@ keyboard-focused, the last two through the rig's own input because `:hover` and
 | Frame set | What it is |
 |---|---|
 | `docs/evidence/chat-composer-status-row/activity-chips/` | The gate, per state: both lists in flight, jobs alone at the row's start, a parked child (Clock, nothing spinning), and settled work with no chip at all. |
-| `docs/evidence/chat-composer-status-row/activity-widths/` | The width story at 900 / 240 / 172, each band printing its own row height, `overflowX` and chip count into the picture. |
+| `docs/evidence/chat-composer-status-row/activity-mixed/` | The MIXED open set (design review round 2, D6): the fan-out QA measured live, the same rule through the jobs list, and a uniform set as the control — three bands printing their own numbers, on the ordinary shape of a large delegation. |
+| `docs/evidence/chat-composer-status-row/activity-widths/` | The width story at 900 / 460 / 300 / 240 / 172, each band printing its own row height, `overflowX` and chip count into the picture. |
 | `docs/evidence/chat-composer-status-row/activity-chips-reduced-motion/` | The same states with `prefers-reduced-motion: reduce`: the mark is a visible shape, not a paused animation. |
 | `docs/evidence/chat-run-panel/jobs-in-flight/`, `--jobs-only/` | The section: two running tool rows, a settled row on the wire and deliberately not drawn, and the jobs-alone pane. |
 | `docs/evidence/chat-run-panel/trigger-activity-dot/` | The blip: pane closed, a child running, the dot in `info`. |

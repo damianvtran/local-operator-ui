@@ -70,8 +70,14 @@ const detailsOf = (statuses: string[]): RunDetails =>
 /** Nothing at all: the state the row must render nothing for. */
 const EMPTY: RunDetails = deriveRunDetails({ jobs: [], todos: [] });
 
-/** A finished plan: two done, one dropped, nothing open. */
+/**
+ * A finished plan with an abandoned item: two done, one dropped, nothing open.
+ * It is the case that decides between the two settled spellings.
+ */
 const FINISHED = detailsOf(["done", "done", "dropped"]);
+
+/** A plan that finished cleanly: every item done, so nothing was dropped. */
+const RESOLVED = detailsOf(["done", "done", "done"]);
 
 /** In flight: two done, two pending, one blocked — five items, three open. */
 const IN_FLIGHT = detailsOf(["done", "pending", "blocked", "done", "pending"]);
@@ -404,7 +410,12 @@ export const States: Story = {
 				runDetails={IN_FLIGHT}
 			/>
 			<Band
-				label="A finished plan still renders, and says 0 to-dos open"
+				label="A plan every item of which is done: All to-dos resolved"
+				frontend={frontend("")}
+				runDetails={RESOLVED}
+			/>
+			<Band
+				label="A finished plan with an abandoned item: All to-dos closed, and deliberately not resolved"
 				frontend={frontend("")}
 				runDetails={FINISHED}
 			/>
@@ -652,6 +663,90 @@ export const ActivityChips: Story = {
 };
 
 /**
+ * A MIXED open set: fifteen children at work and twenty-five parked behind them.
+ *
+ * This is the ORDINARY shape of a large delegation rather than an edge —
+ * `DEFAULT_MAX_RUNNING_JOBS = 15` (`harness/jobs.py:36`) is the pool subagents and
+ * backgrounded shells share — and it is the state design review round 2's D6 was
+ * found in: with the count taken over every open row and the word taken from the
+ * busiest one, the chip read `40 subagents running` while the pane's own tally two
+ * inches away read `15 running · 25 queued · 17 interrupted · 5 done`. The wire
+ * shape here is that snapshot: 15 `running`, 25 `queued`, 17 settled rows of two
+ * kinds (which the gate must NOT count) and 5 children that finished.
+ */
+const FAN_OUT = detailsWith([
+	...Array.from({ length: 15 }, (_, i) =>
+		wireJob(`run-${i}`, "task", "running", `Child ${i}`),
+	),
+	...Array.from({ length: 25 }, (_, i) =>
+		wireJob(`queue-${i}`, "task", "running", `Child ${15 + i}`, true),
+	),
+	...Array.from({ length: 17 }, (_, i) =>
+		wireJob(`stop-${i}`, "task", "interrupted", `Child ${40 + i}`),
+	),
+	...Array.from({ length: 5 }, (_, i) =>
+		wireJob(`done-${i}`, "task", "done", `Child ${57 + i}`),
+	),
+]);
+
+/** The same rule through the jobs list: one parked tool row beside two live ones. */
+const MIXED_JOBS = detailsWith([
+	wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+	wireJob("s2", "bash", "running", "bash: pnpm build"),
+	wireJob("s3", "bash", "running", "bash: pnpm test", true),
+]);
+
+/** The control: a uniform set, where the state word is still the right one. */
+const UNIFORM_QUEUED = detailsWith([
+	...Array.from({ length: 25 }, (_, i) =>
+		wireJob(`queue-${i}`, "task", "running", `Child ${i}`, true),
+	),
+]);
+
+/**
+ * A mixed open set, and the uniform control beside it.
+ *
+ * Design review round 2's D6, in one story: the count is every open row and the
+ * WORD has to survive that, so a mixed set states the family's word
+ * (`40 subagents open`) and a uniform one keeps the state's (`25 subagents
+ * queued`). The busiest state does not vanish — it is in the chip's accessible
+ * name and tooltip, which is the only reading assistive tech gets, because the
+ * mark is `aria-hidden` by the roster's contract.
+ *
+ * Each band prints its own numbers (`RowFacts`), because the claim is about what
+ * that sentence does to the row: the mixed wording is NARROWER than the state word
+ * it replaces (`40 subagents open` against `40 subagents running`), so it cannot
+ * cost the row a line, and the frame is what says so.
+ */
+export const ActivityMixed: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="Forty open, fifteen of them running: the chip states the total with the family's word"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={FAN_OUT}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="The same rule on the jobs list: two live tool rows beside a parked one"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={MIXED_JOBS}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="The control — a uniform set, where the state word is still the right one"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={UNIFORM_QUEUED}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
  * The stacked arrangement at the 240px boundary: the row's edges where they
  * actually differ, and where three chips once tore away from the goal.
  *
@@ -702,21 +797,28 @@ export const ActivityMarkMotion: Story = {
  * line.
  *
  * `docs/composer-status-tabs.md` § 5.4 budgets ~168px of a 204px content box for
- * ONE count chip; this row now holds a goal and three of them. The three widths are
- * the ones the record and the frames argue about:
+ * ONE count chip; this row now holds a goal and three of them. The FIVE widths are
+ * the ones the record and the frames argue about, and the two in the middle exist
+ * because the wrap regime has three heights rather than one (design review round
+ * 2, N2):
  *
- * - 900, the composer's own column width, where all four share a line;
+ * - 900, the composer's own column width, where all four share a line (row 32px);
+ * - 460, where the goal takes its own line and all three counts still share the
+ *   next (row 54px);
+ * - 300, where the plan and subagents chips share a line and the jobs chip drops
+ *   below them (row 80px);
  * - 240, `CHAT_CHIP_ICON_ONLY_PX`, the boundary where the composer's chrome stops
  *   sharing one line — and where the row is still a line, so the chips must WRAP
- *   rather than paint past the column;
+ *   rather than paint past the column (row 106px);
  * - 172, the app's real floor with the canvas open (QA round 1, measured), where
  *   the row stacks: the goal takes the row's width, the chips follow it, and there
- *   is no wrap to do because there is no line to wrap out of.
+ *   is no wrap to do because there is no line to wrap out of (row 106px).
  *
  * Every band prints its own numbers (`RowFacts`), and the one that matters is
- * `overflowX 0` at all three. The heights are the other half: the row's height
- * changes when a chip appears, when a chip wraps, and when it stacks — which is
- * the cost this design accepts rather than hides.
+ * `overflowX 0` at all five. The heights are the other half — 32 / 54 / 80 / 106 /
+ * 106px band by band: the row's height changes when a chip appears, when a chip
+ * wraps among its siblings, and when the row stacks, which is the cost this design
+ * accepts rather than hides.
  */
 export const ActivityWidths: Story = {
 	render: () => (
@@ -725,6 +827,22 @@ export const ActivityWidths: Story = {
 				<Band
 					width={900}
 					label="900: goal, plan, subagents and jobs on one line (the app's own column width)"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={460}
+					label="460: the goal takes its own line, and all three count chips still share the next"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={BOTH_ACTIVITY}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={300}
+					label="300: the plan and subagents chips share a line, the jobs chip drops below"
 					frontend={frontend(SHORT_GOAL)}
 					runDetails={BOTH_ACTIVITY}
 				/>

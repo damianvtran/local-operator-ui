@@ -22,6 +22,10 @@
  *   exists, and a header that disagreed with the axis is the defect it fixes.
  * - A table's bar column is a fixed width, so the bars stack into one column
  *   and the numbers form one right edge.
+ * - The `Cache hit` column is a RATE per row, read from that row's own
+ *   aggregate: `79%` beside a provider that reads its cache, `0%` for one that
+ *   did not, and `—` for a row whose calls reported no context total at all,
+ *   which is a different claim from a measured zero.
  * - `—` and `0` are different claims: an unpriced window shows `—` and a
  *   sentence, never `$0.00`.
  */
@@ -59,14 +63,39 @@ const aggregate = (
 	...over,
 });
 
-const provider = (calls: number, tokens: number, cost: number) =>
+const provider = (
+	calls: number,
+	tokens: number,
+	cost: number,
+	cacheShare = 0,
+) => {
+	const context = tokens - Math.round(tokens * 0.2);
+	return aggregate({
+		calls,
+		ok_calls: calls,
+		context_tokens: context,
+		output_tokens: tokens - context,
+		cache_read_tokens: Math.round(context * cacheShare),
+		cost_micro: cost,
+		cost_known_calls: calls,
+	});
+};
+
+/**
+ * A row whose calls reported no read context at all.
+ *
+ * The `Cache hit` column divides by `context_tokens`, so this is the shape that
+ * produces `—` rather than `0%`: a provider that gave no context total is not a
+ * provider whose cache missed, and the fixture has to carry both or the column's
+ * two spellings are indistinguishable in every frame. The output tokens are real
+ * for the same reason — an unknown input is not a zero-token turn.
+ */
+const noContextTotal = (calls: number, output: number) =>
 	aggregate({
 		calls,
 		ok_calls: calls,
-		context_tokens: tokens - Math.round(tokens * 0.2),
-		output_tokens: Math.round(tokens * 0.2),
-		cost_micro: cost,
-		cost_known_calls: calls,
+		context_tokens: 0,
+		output_tokens: output,
 	});
 
 /**
@@ -125,16 +154,17 @@ const populated: AnalyticsData = {
 		cost_micro: 18_402_000,
 		cost_known_calls: 128,
 		by_provider: {
-			anthropic: provider(74, 1_240_000, 12_840_000),
-			openai: provider(38, 620_000, 4_120_000),
-			google: provider(16, 190_000, 1_442_000),
+			anthropic: provider(74, 1_240_000, 12_840_000, 0.79),
+			openai: provider(38, 620_000, 4_120_000, 0),
+			google: provider(16, 190_000, 1_442_000, 0.63),
+			local: noContextTotal(4, 12_400),
 		},
 		by_session: {
-			a1b2c3d4e5f6: provider(52, 900_000, 8_120_000),
-			b2c3d4e5f6a1: provider(31, 480_000, 4_260_000),
-			c3d4e5f6a1b2: provider(21, 320_000, 3_010_000),
-			d4e5f6a1b2c3: provider(14, 210_000, 1_940_000),
-			e5f6a1b2c3d4: provider(10, 150_000, 1_072_000),
+			a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.66),
+			b2c3d4e5f6a1: provider(31, 480_000, 4_260_000, 0),
+			c3d4e5f6a1b2: provider(21, 320_000, 3_010_000, 0.48),
+			d4e5f6a1b2c3: provider(14, 210_000, 1_940_000, 0.31),
+			e5f6a1b2c3d4: noContextTotal(10, 42_000),
 		},
 	}),
 	daily: daily(DAILY),
@@ -227,6 +257,55 @@ export const Refreshing: Story = {
 		data: populated,
 		loading: false,
 		refreshing: true,
+		error: null,
+	},
+};
+
+/**
+ * The same payload with the pointer resting on the chart's first bar.
+ *
+ * The story adds nothing to `Populated`, and that is the point: what it exists
+ * for is the hover GROUND, and `:hover` is browser state rather than story state
+ * — no story can force it, and a story that faked the class would be evidence
+ * about the fake. `scripts/capture-evidence.mjs` moves a real pointer at the
+ * bar's own rectangle for this id (its `{ hover }` entry), which is what makes
+ * this the frame that shows what the pointer does to the mark it is on.
+ */
+export const PopulatedHover: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+	},
+};
+
+/**
+ * The same panel with a NEAR-ZERO day under the pointer.
+ *
+ * Review round 1 (D7) left this case unverified: every hover frame pointed at
+ * Sep 7, the shortest NON-zero bar, which at 834k of the peak's 1.9M is a tall
+ * bar by any measure. What that cannot answer is whether a fill step is findable
+ * on a bar of a few pixels, where the step has almost no area to read — and
+ * `obsidian` and `monokai` are the two palettes where the answer is not obvious.
+ *
+ * So the first day here carries 60k against the same 1.9M peak, about 3 percent
+ * — a bar a few pixels tall — and the FIRST bar is what the rig's hover selector
+ * lands on, so the same entry that produces `populated-hover` produces this one.
+ * The ZERO day (Sep 9) is deliberately not the target: a zero bucket renders no
+ * rectangle at all, so the rig's own "a selector that matched nothing THROWS"
+ * rule would reject the frame rather than photograph an unreadable one.
+ */
+export const PopulatedHoverShallow: Story = {
+	args: {
+		...base,
+		data: {
+			...populated,
+			daily: daily([["2026-09-07", 20_000, 200_000], ...DAILY.slice(1)]),
+		},
+		loading: false,
+		refreshing: false,
 		error: null,
 	},
 };
@@ -336,7 +415,17 @@ export const ThirtyDays: Story = {
 	},
 };
 
-/** This session only: the aggregate narrows, the daily chart says it does not. */
+/**
+ * This session only: the aggregate narrows, the daily chart says it does not.
+ *
+ * The scoped aggregate is the ONE provider's own, spread rather than restated
+ * (review round 1, D5): the previous fixture narrowed `calls`, `ok_calls` and
+ * the cost and left the TOKEN fields at their all-sessions values, so the
+ * `Tokens` and `Cache hit rate` tiles showed the wide scope's numbers beside a
+ * scoped `Requests` and `Cost` — and beside a table reading the narrow ones,
+ * which is how the designer found it. The panel is not at fault: all four tiles
+ * read `data.aggregate`, and all four move together once the fixture narrows it.
+ */
 export const ThisSessionOnly: Story = {
 	args: {
 		...base,
@@ -344,13 +433,9 @@ export const ThisSessionOnly: Story = {
 		data: {
 			...populated,
 			aggregate: aggregate({
-				...populated.aggregate,
-				calls: 52,
-				ok_calls: 52,
-				cost_micro: 8_120_000,
-				cost_known_calls: 52,
-				by_provider: { anthropic: provider(52, 900_000, 8_120_000) },
-				by_session: { a1b2c3d4e5f6: provider(52, 900_000, 8_120_000) },
+				...provider(52, 900_000, 8_120_000, 0.72),
+				by_provider: { anthropic: provider(52, 900_000, 8_120_000, 0.72) },
+				by_session: { a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.72) },
 			}),
 		},
 		loading: false,
@@ -428,6 +513,7 @@ export const Dense: Story = {
 							100 - index * 9,
 							(9 - index) * 420_000,
 							(9 - index) * 3_140_000,
+							0.05 + index * 0.08,
 						),
 					]),
 				),
@@ -438,6 +524,7 @@ export const Dense: Story = {
 							60 - index * 3,
 							(17 - index) * 210_000,
 							(17 - index) * 640_000,
+							0.11 + index * 0.04,
 						),
 					]),
 				),
@@ -492,9 +579,9 @@ export const Narrow: Story = {
 			aggregate: aggregate({
 				...populated.aggregate,
 				by_session: {
-					a1b2c3d4e5f6: provider(52, 900_000, 8_120_000),
-					b2c3d4e5f6a1: provider(31, 480_000, 4_260_000),
-					c3d4e5f6a1b2: provider(21, 320_000, 3_010_000),
+					a1b2c3d4e5f6: provider(52, 900_000, 8_120_000, 0.62),
+					b2c3d4e5f6a1: provider(31, 480_000, 4_260_000, 0.08),
+					c3d4e5f6a1b2: provider(21, 320_000, 3_010_000, 0),
 				},
 			}),
 			session_names: {},
