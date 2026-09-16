@@ -74,6 +74,7 @@ import {
 	MessageContainer,
 } from "../components/message-item/message-container";
 import { MessageTimestamp } from "../components/message-item/message-timestamp";
+import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import {
 	AgentQuestion,
@@ -332,54 +333,81 @@ const UserRow = memo(function UserRow({
 	);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
-			<div ref={turnRef} className="group relative flex w-full justify-end">
-				<div
-					className={cn(
-						// `border-control`, not `hairline`. The bubble keeps its own
-						// ground (`surface`) on a column that is `canvas` for the working
-						// surface's sake (see chat-content.tsx), so the fill is a
-						// lightness step as well as this edge - but a step is not an
-						// edge, and this border is still the boundary the design contract
-						// asks for. Because the agent side has no bubble at all, the edge
-						// is also the whole visual distinction between the two speakers.
-						// Removing it would lose information, which is the contract's own
-						// test for a structural boundary, so it takes the role with the
-						// 3:1 floor rather than the decorative one with no floor.
-						"relative rounded-frame border border-control bg-surface text-ink break-words",
-						isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
-					)}
-				>
-					<div className={cn("relative", MEASURE)}>
-						{/* The quote a quoted turn was sent with, rendered as the same
-						    recessed block the composer stages it in - the reader sees one
-						    idiom for "this is quoted" whether it is pending or sent. */}
-						{replies.length > 0 && <ReplyPreview replies={replies} />}
-						<MarkdownRenderer content={remainingContent} />
-						{record.images.length > 0 && (
-							<div className={cn("mt-2 flex flex-col gap-2")}>
-								{record.images.map((image, index) => (
-									<CanonicalImage
-										key={image.id}
-										image={image}
-										scope={scope}
-										label={
-											record.images.length === 1
-												? "Attached image"
-												: `Attached image ${index + 1}`
-										}
-									/>
-								))}
-							</div>
+			{/*
+			 * The turn is a COLUMN - the bubble's row, then its stamp - and the
+			 * stamp is a sibling of the bubble rather than a line inside it.
+			 *
+			 * `items-end` on the column is what puts the stamp against the
+			 * BUBBLE's right edge: the bubble's row is justified to the same edge,
+			 * so both resolve to it, while an agent-side row's shared content box
+			 * (§ 7's one left rail and one right edge) is not where a reader looks
+			 * for the time of their own message. The measure of the bubble, not of
+			 * the column, is the thing a user turn reads as - so the stamp
+			 * measures with it.
+			 *
+			 * The stamp is OUTSIDE `turnRef` on purpose: `turnRef` is the element
+			 * a selection must lie inside to count as a quote of this turn, and a
+			 * drag that swept over a time would otherwise quote it as part of the
+			 * words.
+			 */}
+			<div className={cn("flex w-full flex-col items-end gap-1")}>
+				<div ref={turnRef} className="group relative flex w-full justify-end">
+					<div
+						className={cn(
+							// `border-control`, not `hairline`. The bubble keeps its own
+							// ground (`surface`) on a column that is `canvas` for the working
+							// surface's sake (see chat-content.tsx), so the fill is a
+							// lightness step as well as this edge - but a step is not an
+							// edge, and this border is still the boundary the design contract
+							// asks for. Because the agent side has no bubble at all, the edge
+							// is also the whole visual distinction between the two speakers.
+							// Removing it would lose information, which is the contract's own
+							// test for a structural boundary, so it takes the role with the
+							// 3:1 floor rather than the decorative one with no floor.
+							"relative rounded-frame border border-control bg-surface text-ink break-words",
+							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 						)}
+					>
+						<div className={cn("relative", MEASURE)}>
+							{/* The quote a quoted turn was sent with, rendered as the same
+							    recessed block the composer stages it in - the reader sees one
+							    idiom for "this is quoted" whether it is pending or sent. */}
+							{replies.length > 0 && <ReplyPreview replies={replies} />}
+							<MarkdownRenderer content={remainingContent} />
+							{record.images.length > 0 && (
+								<div className={cn("mt-2 flex flex-col gap-2")}>
+									{record.images.map((image, index) => (
+										<CanonicalImage
+											key={image.id}
+											image={image}
+											scope={scope}
+											label={
+												record.images.length === 1
+													? "Attached image"
+													: `Attached image ${index + 1}`
+											}
+										/>
+									))}
+								</div>
+							)}
+						</div>
 					</div>
+					{conversationId && isQuotable(record, remainingContent) && (
+						<QuoteToolkit
+							conversationId={conversationId}
+							bodyText={remainingContent}
+							turnRef={turnRef}
+						/>
+					)}
 				</div>
-				{conversationId && isQuotable(record, remainingContent) && (
-					<QuoteToolkit
-						conversationId={conversationId}
-						bodyText={remainingContent}
-						turnRef={turnRef}
-					/>
-				)}
+				{/*
+				 * One stamp per turn, always visible (the operator's request). The
+				 * record's own `ts` is the moment the message was sent, which the
+				 * reducer sets from the owner's frame rather than from paint time -
+				 * § 7's "rows are placed by the time they carry, never by the moment
+				 * the reader happened to see them".
+				 */}
+				<TurnTimestamp timestamp={record.ts} />
 			</div>
 		</MessageContainer>
 	);
@@ -510,7 +538,7 @@ const ToolRow = memo(function ToolRow({
 		!composing && isBareToolName(summary, record.toolName)
 			? outputFallbackLine(record.output)
 			: null;
-	const details =
+	const body =
 		// The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
 		// when a settled, SUCCESSFUL `write`/`edit` reported a diff, the expansion is
 		// the DIFF ALONE. The arguments of a `write` are the whole new file content —
@@ -535,6 +563,48 @@ const ToolRow = memo(function ToolRow({
 				isError={record.isError}
 			/>
 		) : undefined;
+	/*
+	 * The stamp at the foot of the EXPANDED section, and the reason it is a
+	 * sibling of the body rather than a line inside `ToolDetail`.
+	 *
+	 * The operator asked for the time "at the bottom right of the expanded
+	 * section", and the expanded section is this composition — the arguments or
+	 * the diff, then the result — not the pane component alone. Both body shapes
+	 * get the stamp from here: a settled `write`/`edit` whose expansion is the
+	 * DIFF (`isDiffBodyRow`) never mounts `ToolDetail` at all, so a stamp handled
+	 * inside the pane would be missing from exactly the rows whose payload is
+	 * longest and whose time is most worth knowing.
+	 *
+	 * It is also the only placement that survives the pane's own scrolling.
+	 * `ToolDetail`'s two sections are each their own `overflow-auto` box with a
+	 * `detailOverflowLabel` report under them, and that report is deliberately
+	 * OUTSIDE its scroller so it stays true at rest; anything INSIDE the pane is
+	 * scrolled away at rest on a long payload, which is a stamp that is not "at
+	 * the bottom of the expanded section" for the rows that most need one. Below
+	 * the pane there is nothing to scroll: the stamp is on screen the moment the
+	 * row opens, with the last line that is true of the payload immediately above
+	 * it.
+	 *
+	 * The air above it is the disclosure content's own `gap-2`
+	 * (`shared/components/ui/disclosure.tsx`), which is the one spacing the shared
+	 * idiom owns; the stamp takes the rhythm of the section it sits in rather than
+	 * adding a margin of its own. Its right edge is the pane's, because both are
+	 * in the same indented column.
+	 *
+	 * A COLLAPSED row has no body at all — `hasDetail`/`isDiffBodyRow` return
+	 * false and the ledger row renders its disabled branch, which structurally
+	 * cannot render children — so a run of twenty calls stays twenty quiet lines
+	 * with no stamps. That quiet is what the hover-only model was protecting, and
+	 * it is why the stamp lives inside the disclosure instead of under every row.
+	 */
+	const details = body ? (
+		<>
+			{body}
+			<div className={cn("flex justify-end")}>
+				<TurnTimestamp timestamp={record.ts} />
+			</div>
+		</>
+	) : undefined;
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
 	// being fixed, not a smaller version of it.
@@ -1793,10 +1863,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    The composer's version wins because it offers the action; this
 				    one only described the situation. */}
 					{/* Gated on `missing` for the same reason as the history slot: the
-				    failure path keeps the cached rows, so an ungated footer left a bare
-				    timestamp floating bottom-right under a state that says this
-				    conversation does not exist here (design review round 1, D2). */}
-					{lastRecord && !missing && (
+					    failure path keeps the cached rows, so an ungated footer left a bare
+					    timestamp floating bottom-right under a state that says this
+					    conversation does not exist here (design review round 1, D2).
+
+					    AND NOT UNDER A USER TURN, which now carries its own stamp one line
+					    above it. This line states when the last thing in the transcript
+					    happened, and on a conversation asked and not yet answered the last
+					    thing is the user's own turn - so an ungated footer printed the SAME
+					    clock twice with nothing between them (`12:13 PM` over `12:13 PM` in
+					    the `turn-timestamps` frame this change is judged on, which is where
+					    the defect was found). The footer keeps its job on every other last
+					    row: an answer or a ledger line carries no stamp of its own, and for
+					    those this is the only time on screen. */}
+					{lastRecord && !missing && lastRecord.kind !== "user" && (
 						<div className="mt-1 flex justify-end">
 							<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
 						</div>
