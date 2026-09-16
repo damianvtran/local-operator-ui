@@ -1,12 +1,12 @@
 {
-  "head": "e406482467597cb5eaa83490d1f699c9380b6859",
-  "headNote": "SIXTH FOLD OF A MOVED `main` IN THIS ROUND, AND THE SIXTEENTH RE-STAMP: this fold was called for `811ff0773` (#205, `fix/daemon-attach-robustness`), and by the time it ran `main` had already reached `a3e3547b2` - #252's 0.25.11 window, two version-bump commits over #205 - so it takes the NEWER tip, which contains #205 whole. A MERGE, NEVER A REBASE: the round-3 and round-4 reports on this PR are pinned to `f41ad9944`, `ee72635c5` and `582e4de93`, and a head a round is pinned to has to stay resolvable.\n\n---\n\nA PURE FEDERATION, UNLIKE THE FOLD BEFORE IT: exactly two files conflicted and both are derived artifacts - this record and `package.json`. Four of this change's own paths also moved across the fold and all four federationed EXACTLY, checked by diffing the merged blob against BOTH parents rather than trusting the clean auto-merge: `scripts/capture-evidence.mjs` (merged-minus-`582e4de93` is main's own 1+/0-, merged-minus-`origin/main` is this branch's own 12+/0-), `app-updates-and-info.stories.tsx` (2+/0- against 30+/12-), `app-updates-and-info-narrow.stories.tsx` (2+/0- against 31+/12-) and `backend-compatibility-banner.tsx` (4+/10- against 39+/4-). No hunk of this branch's sits inside a region upstream rewrote, so no resolution was owed inside any of the four.\n\n---\n\nWHAT DID NOT MOVE. The other seventeen source and test files are byte-identical across this fold, and `run-panel.tsx` needed no re-read in the first place: `git diff --name-only 60b934172 a3e3547b2` names neither it nor any file of this change's beyond the six above, so nothing upstream lands on the surface this change owns.\n\n---\n\nTHE STAMPS. `srcTree`/`scriptsTree` re-derived from the MERGED tree (`933ea0590`/`107002a9c`, read off the index that was committed), not carried from either side. `frames` 3413: main's 3389 swept frames at `a3e3547b2`, two more than the 3387 this branch last stamped because #205 adds the `common-connectivity-banner/unattachable` pair, plus this branch's 24 `common-updatenotification` frames - and the declared-set split moved with it, 4024 committed WebP on disk against 611 inside the same 57 declared sets, so the unclaimed side of the walk is exactly 3413. `surfaces` 420: the STORIES literal of the MERGED `capture-evidence.mjs`, counted the way `check-evidence.mjs` counts it - main's 418 at `a3e3547b2` plus this branch's two `common-updatenotification--backend-update-{failed,in-flight}` rows.\n\n---\n\nNO FRAME WAS RE-TAKEN, and none was owed: `git diff 582e4de93 <this fold's head> -- docs/evidence/common-updatenotification/` is empty - this branch's 24 frames are byte-identical across the fold - and the upstream delta renders no surface this change owns.\n\n---\n\n`package.json` CARRIES MAIN'S VERSION AND BOTH SIDES' `test:desktop` ADDITIONS. The file conflicted on one line because both sides appended to the same script: this branch `scripts/preload-updater-surface.test.mjs`, main `scripts/sidebar-catalogue-gate.test.mjs`. The union is kept for 109 entries, where each side carried 108 over the merge base's 107, and the version is main's 0.25.11 - a feature branch carrying its own bump is a defect here, and this one carries none.\n\n---\n\n`refreshedFrames` MOVED 1348 -> 1354, AND THE GATE IS WHY. The field is one-sided by design and read by `check-evidence.mjs` as a floor against the frames standing in the directories `refreshedStories` names, so it has to be re-asked after every fold: main's delta adds THREE entries to that list - `common-connectivity-banner--no-bridge`, `--unattachable` and `--wedged`, auto-merged in beside this branch's own 168 - which brings 6 frames (three story pairs, two themes each) under a list this branch's pass had claimed a total for. Measured with the gate's own `partialCaptureFailures` at each head: 1348 standing and 1348 claimed at `582e4de93` (clean), 1354 standing at this fold's head with the same claim (fired), 1354 claimed after the re-derivation (clean). The list was NOT narrowed to make the old total true - narrowing a list together with its total is the defect term 2 exists to catch.",
-  "srcTree": "933ea0590cc82dbd723e04d0a219c44f213e05de",
-  "scriptsTree": "107002a9c98af30c56375d9bee193bc46b5dbd02",
-  "dirtyWorkingTree": true,
+  "head": "b7184c1bb988e15f7db901e600a42259b091ada8",
+  "headNote": "RE-DERIVED FOR THIS SYNC, AND THE TRACE IS THE EVIDENCE - the frames were NOT re-taken, because this move cannot paint this panel. `main` advanced to `b41834a7f` (#239, the server-update stale-cache and stall fix) and moved 47 files, nine of them renderer files: `features/chat/components/run-details/run-panel.tsx`, `features/settings/components/app-updates-and-info{,-narrow}.stories.tsx`, `features/settings/components/app-updates-section.stories.tsx`, `shared/components/common/backend-compatibility-banner.tsx`, `shared/components/common/check-for-updates-button.stories.tsx`, `shared/components/common/update-notification{,.stories}.tsx` and `shared/components/navigation/shell.stories.tsx`. The panel's import closure - resolved transitively from `info-panel.tsx` and `info-model.ts`, relative specifiers plus the `@shared/` `@features/` `@assets/` aliases from `tsconfig.app.json` - is 105 modules, and the intersection with those 47 files is EMPTY, so a re-stamp is the honest response to this sync rather than 348 pictures of an unchanged surface. This is the tenth sync under this branch, and the syncs now split cleanly between the two responses, which is what makes the rule checkable: the SIXTH (`ac81ce9ac`, an additive `badge.tsx` variant), SEVENTH (`658c01673`, the slash-command table, contract and submit path) and NINTH (`a3e3547b2`, `backend-error.ts`, `desktop-hooks.ts`, `canonical-sessions-store.ts`) each moved a closure module and were each answered by a re-capture - the ninth one, the most recent, re-took all twenty-nine `panels-info` stories across the twelve themes (348 frames, twelve of them the new `fleet-note-wraps` story) and measured 331 of the 336 pre-existing frames byte-identical with five jitter-only differences, checked against the frames themselves; the EIGHTH (`bf05c4894`) and this TENTH moved no closure module and are answered by a re-derivation. The earlier passes' differing frames are the same story as the ninth's. Both tree stamps are re-derived from THIS commit (`git rev-parse HEAD:src` / `HEAD:scripts`), `frames` from the tree (`3557` WebP files outside the declared sets), `surfaces` from the merged STORIES literal (`432`, 29 of them `panels-info`) and `themes` is `12`. WHAT A READER SHOULD LOOK AT: `fleet-note-wraps` (the wrapped note, where D5's non-breaking separator is judged from pixels - the break lands between `163` and `subagents`, never before the middot), `fleet-nobody-reports` (the refused total, with no caveat beneath it), `fleet-one-does-not-report` (the `>=` bound, the silent-runtime count stated once - by the caveat), `fleet-queued-only` (the queue on the meta, not repeated on the card), `fleet-wedged` (the split note), `fleet-neighbours` (the section under the sessions section), `fleet-narrow` (720px), `fleet-probes-failed` and `fleet-agents-unread` (a failed probe by field and by block), and `dense` (a fixture whose degraded names are ones the harness emits). `pnpm check-evidence` - the full sweep and its image loop - is DEFERRED on this machine (exit 75: another sweep or its image child holds the machine lease), so this pass is recorded and NOT certified.",
+  "srcTree": "fbbee3eea396ee303b5697dd5ab36973a1370e8e",
+  "scriptsTree": "fc154fcbd0ad2bd0251859f928c5c1a0898572d9",
+  "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3413,
-  "surfaces": 420,
+  "frames": 3557,
+  "surfaces": 432,
   "themes": 12,
   "countsMean": {
     "frames": "3413 committed WebP files, outside the 57 declared supplementary sets below. Re-derived the way `check-evidence.mjs` derives them - every `.webp` on disk outside a declared set - off the MERGED tree at THIS fold: main's 3389 swept frames at `a3e3547b2` (two more than the 3387 the previous fold stamped, #205 adding the `common-connectivity-banner/unattachable` pair) with this branch's 24 `common-updatenotification/backend-update-{failed,in-flight}` frames added, none of which sits inside a declared set. 4024 committed WebP stand on disk in total, 611 of them inside the 57 declared sets.",
@@ -15,8 +15,8 @@
   },
   "partialCapture": {
     "refreshedAt": "2026-09-16T04:02:09.445Z",
-    "refreshedAtHead": "fabee1805489bde283d4824a006d814559531169",
-    "refreshedFrames": 1354,
+    "refreshedAtHead": "b7184c1bb988e15f7db901e600a42259b091ada8",
+    "refreshedFrames": 1702,
     "refreshedStories": [
       "browser-approvals-dock--approved",
       "browser-approvals-dock--denied",
@@ -156,6 +156,9 @@
       "command-palette-commandpalette--filtered",
       "command-palette-commandpalette--no-results",
       "command-palette-commandpalette--settings-scope",
+      "common-connectivity-banner--no-bridge",
+      "common-connectivity-banner--unattachable",
+      "common-connectivity-banner--wedged",
       "common-updatenotification--backend-manual-required",
       "common-updatenotification--backend-manual-required-existing-server",
       "common-updatenotification--backend-update-failed",
@@ -184,11 +187,37 @@
       "panels-analytics--unnamed-sessions",
       "panels-analytics--unnamed-sessions-end",
       "panels-analytics--unpriced",
+      "panels-info--behind",
+      "panels-info--build-skew",
+      "panels-info--dense",
+      "panels-info--fleet-agents-unread",
+      "panels-info--fleet-all-idle",
+      "panels-info--fleet-all-reporting",
+      "panels-info--fleet-narrow",
+      "panels-info--fleet-neighbours",
+      "panels-info--fleet-nobody-reports",
+      "panels-info--fleet-note-wraps",
+      "panels-info--fleet-one-does-not-report",
+      "panels-info--fleet-probes-failed",
+      "panels-info--fleet-queued-only",
+      "panels-info--fleet-unavailable",
+      "panels-info--fleet-wedged",
+      "panels-info--gated",
+      "panels-info--live-half-unmeasured",
+      "panels-info--loading",
+      "panels-info--many-sessions",
+      "panels-info--mcp-settling",
+      "panels-info--narrow",
+      "panels-info--never-checked",
+      "panels-info--no-memory",
+      "panels-info--nothing-read",
+      "panels-info--populated",
+      "panels-info--registry-unavailable",
+      "panels-info--remote-host",
+      "panels-info--roster-unread",
+      "panels-info--unavailable",
       "panels-settings--usage-chart-credits",
-      "panels-settings--usage-chart-tokens",
-      "common-connectivity-banner--no-bridge",
-      "common-connectivity-banner--unattachable",
-      "common-connectivity-banner--wedged"
+      "panels-settings--usage-chart-tokens"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -920,7 +949,9 @@
         "fixtureLegSkipped": "Both update suites ran with `LO_UI_DMG_FIXTURE` pointed at a path that does not exist, which skips ONE leg inside `update-robustness.test.mjs`: the operator's own 366 MB `~/Downloads/local-operator-ui-0.17.0-universal.dmg` checked with real `codesign`/`spctl`/`stapler`, network-bound against Apple's notarization service (measured in the previous fold at 45 s and killed, rc 124, which hung that run). It is the test's own documented escape hatch and the same leg CI skips by construction; the synthetic codesign/staple case above it still ran and still asserts `dmg-spctl`+`dmg-stapler`.",
         "evidenceSweep": "NOT re-run, deliberately: this fold re-shoots no frame and moves no pixel, and the operator's instruction for this fold was to leave the sweep alone. The stamps it would check were re-derived by hand off the merged tree and then verified against the gate's own fast predicates (`stampFailures` + `partialCaptureFailures`, no image read): 0 failures at the fold head."
       }
-    }
+    },
+    "refreshedAtHeadNote": "Re-pointed at this branch's frames commit - the tree the frames were taken from and the commit that carries them - because every rebase and amend rewrote the spelling the capturer stamped. The pass it names is the twenty-nine-story `panels-info` pass, unchanged by this sync.",
+    "thisPass": "`refreshedFrames` is the accumulation the capturer's own rule defines and this branch's pass is the increment: the value main's pass recorded (1354) plus the 348 frames the twenty-nine-story `panels-info` pass rewrote, which is what stands in the directories `refreshedStories` names at HEAD."
   },
   "supplementary": [
     {
