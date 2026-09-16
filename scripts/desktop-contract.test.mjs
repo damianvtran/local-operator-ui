@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -897,7 +903,10 @@ test("a watch release withdraws the record's conversation, so a later click swit
 		async () => ({ status: 200, body: { result: {} } }),
 		undefined,
 		undefined,
-		{ releaseWatch: (windowId, sessionId) => released.push([windowId, sessionId]) },
+		{
+			releaseWatch: (windowId, sessionId) =>
+				released.push([windowId, sessionId]),
+		},
 		(sessionId) => {
 			released.push(["record", sessionId]);
 			publisher.releaseSession(sessionId);
@@ -1810,7 +1819,7 @@ test("a dot-only key is refused by the contract and never addressed", () => {
 			`/v1/desktop/sessions/${SESSION}/variables/${encodeURIComponent(key)}`,
 		);
 	}
-	});
+});
 test("sessions.presence claims the kinds and the window the delivery lease reads", async () => {
 	// B1. The lease is what makes rung 2 eligible, and it reads three fields
 	// beside `can_notify`: the kinds this app can deliver, the conversation a
@@ -1893,7 +1902,11 @@ test("sessions.presence claims the kinds and the window the delivery lease reads
 	// The vocabulary stays closed: a partial window object would let the
 	// renderer's assumptions about which fields the backend reads drift silently.
 	for (const bad of [
-		{ op: "sessions.presence", subscriptionId: "c".repeat(32), canNotify: true },
+		{
+			op: "sessions.presence",
+			subscriptionId: "c".repeat(32),
+			canNotify: true,
+		},
 		{
 			op: "sessions.presence",
 			subscriptionId: "c".repeat(32),
@@ -1999,4 +2012,44 @@ test("sessions.move reaches the working-directory route with the path, on the co
 		);
 	}
 	assert.equal(seen.length, count + 2, "no malformed move reached the network");
+});
+
+test("the command row the composer types against IS the contract row", () => {
+	/*
+	 * `prefixes_text` answers "is the text after this command's word an argument
+	 * the command owns", and it decides whether a draft is a control or a
+	 * message. Three places must agree on it: the shared contract row, the
+	 * renderer's composer row, and the planner that reads it. The first two are
+	 * asserted here at the SOURCE, because a type is the one thing this suite
+	 * cannot import and run — and the third by naming the renderer's row an alias
+	 * of the contract's, so a field the backend starts sending cannot be dropped
+	 * on the way in without failing the typecheck.
+	 *
+	 * It is the row's cheapest pin: the field is additive and optional (an older
+	 * backend sends no such key), so nothing else in the tree would notice it
+	 * disappearing except the fallback derivation quietly taking over — which is
+	 * exactly the silent behaviour change this asserts against.
+	 */
+	const contract = readFileSync(
+		"src/shared/desktop-control-contract.ts",
+		"utf8",
+	);
+	const row = contract.slice(
+		contract.indexOf("export type DesktopCommandMetadata"),
+		contract.indexOf("export type DesktopLoopState"),
+	);
+	assert.match(
+		row,
+		/prefixes_text\?: boolean;/,
+		"the commands wire row must carry the optional prefixes_text field",
+	);
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/slash-commands.tsx",
+		"utf8",
+	);
+	assert.match(
+		composer,
+		/export type SlashCommandMeta = DesktopCommandMetadata;/,
+		"the composer's row must BE the contract row, not a second declaration of it",
+	);
 });

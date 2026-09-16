@@ -20,6 +20,24 @@ export type DesktopCommandMetadata = {
 	arguments: "none" | "optional" | "required";
 	echo: boolean;
 	consumes_prompt: boolean;
+	/**
+	 * Whether text typed AFTER this command's word is an argument the command
+	 * owns on the desktop: `/model gpt-5` is the model command with its value,
+	 * while `/mcp logout seems to be broken` is a message that merely opens with
+	 * a command word.
+	 *
+	 * The union of the two things a composer can complete after the word — the
+	 * free-text prompt (`consumes_prompt`) and a value chosen from a list. One
+	 * fact, sent on every row so the renderer does not derive a second vocabulary
+	 * of its own, and read by the messages endpoint's admission test for the same
+	 * reason (`whole_draft_command` in `slash_commands.py`).
+	 *
+	 * OPTIONAL because a backend older than this field sends no such key: absence
+	 * means "this row predates the field", not "false", and the renderer falls
+	 * back to its own derivation (see `prefixingVocabulary` in
+	 * `features/chat/components/slash-commands.tsx`).
+	 */
+	prefixes_text?: boolean;
 	destination: string;
 	execution: "owner" | "native";
 };

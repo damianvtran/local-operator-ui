@@ -15,8 +15,11 @@ import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
+	LEADING_SLASH_CODE,
+	LEADING_SLASH_OLDER_BACKEND_MESSAGE,
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	SLASH_UPDATE_FAILED_MESSAGE,
 	UNCONFIRMED_SEND_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
@@ -1533,6 +1536,57 @@ function SessionPanel({
 	 * the very resend that lost it (round 7, R17).
 	 */
 	const refusedAttachments = refusedBeforeAdmissionAttachments(draft);
+	/*
+	 * The one remedy a leading-slash refusal can still have: a backend older than
+	 * the narrowing.
+	 *
+	 * After the planner's change the only draft a correct composer submits as a
+	 * control is the whole-draft command, so this refusal is unreachable through
+	 * the composer — a refusal that arrives anyway means the backend is still
+	 * applying its blanket "starts with /" policy to ordinary messages.
+	 * `commands` at version 2 is the capability that says it no longer does
+	 * (`capabilities.py`), and it is the ONE decision this side can make: an
+	 * older backend accepts a message that merely begins with a command word
+	 * after an update, and this app already installs its own backend.
+	 *
+	 * So the alert offers the update path the app already has — the same
+	 * `window.api.updater.updateBackend` call the compatibility banner and the run
+	 * panel make, rather than a second update path with its own confirmation,
+	 * failure copy and restart advice. On a backend that DOES carry the
+	 * capability the refusal is a client bug: the sentence stays (it is still the
+	 * honest description of what happened) and no update is offered, because no
+	 * update is its remedy.
+	 */
+	const slashRefusalNeedsNewerBackend =
+		activeErrorCode === LEADING_SLASH_CODE &&
+		!desktopFeatureEnabled(capabilities.data, "commands", 2);
+	const canUpdateBackend = Boolean(window.api?.updater?.updateBackend);
+	const [slashBackendUpdate, setSlashBackendUpdate] = useState<{
+		running: boolean;
+		error: string | null;
+	}>({ running: false, error: null });
+	/*
+	 * The failure is REPORTED rather than swallowed: a button that quietly does
+	 * nothing is worse than no button, and the alert's own copy is where this
+	 * surface has room to say so (the compatibility banner's update does the same
+	 * thing with the same sentence). The capability is re-read on success because
+	 * it is what the remedy is derived from — without it the alert would keep
+	 * offering an update that has already run.
+	 */
+	const updateBackendForSlashRefusal = useCallback(async () => {
+		setSlashBackendUpdate({ running: true, error: null });
+		try {
+			await window.api.updater.updateBackend();
+			void capabilities.refetch();
+			setSlashBackendUpdate({ running: false, error: null });
+		} catch (error) {
+			setSlashBackendUpdate({
+				running: false,
+				error:
+					error instanceof Error ? error.message : SLASH_UPDATE_FAILED_MESSAGE,
+			});
+		}
+	}, [capabilities]);
 	const releaseHeld = () => {
 		if (draftIdentity)
 			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
@@ -1541,7 +1595,16 @@ function SessionPanel({
 	const composerSendError =
 		activeError || heldText !== undefined || refusedText !== undefined
 			? {
-					message: activeError ?? undefined,
+					message:
+						[
+							activeError,
+							slashRefusalNeedsNewerBackend
+								? LEADING_SLASH_OLDER_BACKEND_MESSAGE
+								: null,
+							slashBackendUpdate.error,
+						]
+							.filter((part): part is string => Boolean(part))
+							.join(" ") || undefined,
 					// The "what to do" half of the error contract travels with the
 					// message. An unresolved attachment needs a profile chosen; an
 					// unreachable registry needs the agents page. Any other code has no
@@ -1582,7 +1645,16 @@ function SessionPanel({
 												onClick: () => navigate("/agents"),
 											},
 										]
-									: undefined,
+									: slashRefusalNeedsNewerBackend && canUpdateBackend
+										? [
+												{
+													label: slashBackendUpdate.running
+														? "Updating backend"
+														: "Update backend",
+													onClick: () => void updateBackendForSlashRefusal(),
+												},
+											]
+										: undefined,
 					/*
 					 * The held payload itself, so the composer can put it back.
 					 *

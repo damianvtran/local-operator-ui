@@ -1532,7 +1532,13 @@ test("the click line is the row's real route, for the prompt row too", () => {
 		false,
 	);
 	assert.equal(picked.text, "please run /loop  on 3 tasks");
-	assert.equal(submissionFor(picked.text, picked.caret).kind, "reassemble");
+	/*
+	 * And the next Enter does NOT run it: the picked word is mid-sentence, which
+	 * this branch's rule sends as prose (spec rows 10/13). The pick still stages
+	 * nothing here — the line below is the copy question, which is #209's family
+	 * and unchanged by this branch.
+	 */
+	assert.equal(submissionFor(picked.text, picked.caret).kind, "send");
 
 	const line = clickFooter({
 		phase: "command",
@@ -1697,8 +1703,8 @@ test("the free-text row names the key that moves the draft", () => {
 	);
 	assert.equal(
 		submissionFor("please run /loop on 3 tasks", 16).kind,
-		"reassemble",
-		"and that is the plan the composer's next Enter takes",
+		"send",
+		"and that is the plan the composer's next Enter takes: mid-sentence, the rule this branch installs sends the sentence as prose rather than running the word",
 	);
 
 	// Nothing to move: the bare word completes and the next Enter RUNS it, so the

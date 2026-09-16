@@ -52,6 +52,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { DesktopCommandMetadata } from "../../../../../shared/desktop-control-contract";
 import { useEntities } from "../pickers/destination-pickers";
 import {
 	DESTINATIONS,
@@ -81,15 +82,6 @@ import {
 	slashRunAllowed,
 } from "./slash-contract";
 import { commandSuggestions, matchChoices } from "./slash-rank";
-import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
-import {
-	caretPhase,
-	replaceSpan,
-	slashArgumentContext,
-	slashContext,
-	slashTokenSpan,
-} from "./slash-token";
-
 /*
  * Imported, not redeclared: the planner owns the words and the destination
  * set (`slash-submit.ts`), and its test suite executes them. A component file
@@ -99,17 +91,26 @@ import {
  * them, and a second public path with no caller is only a place for the next
  * reader to look (review N1).
  */
+import { type ArmingCatalogueRow, armedOnlyVocabulary } from "./slash-submit";
+import {
+	caretPhase,
+	replaceSpan,
+	slashArgumentContext,
+	slashContext,
+	slashTokenSpan,
+} from "./slash-token";
 
-export type SlashCommandMeta = {
-	name: string;
-	description: string;
-	aliases: string[];
-	arguments: "none" | "optional" | "required";
-	echo: boolean;
-	consumes_prompt: boolean;
-	destination: string;
-	execution: "owner" | "native";
-};
+/**
+ * A row of the shared registry, exactly as the desktop control plane reports it.
+ *
+ * The renderer does not re-declare this shape: it IS the wire row
+ * (`src/shared/desktop-control-contract.ts`), so a field the backend starts
+ * sending cannot be silently dropped here — the addition lands on the composer
+ * as a compile error about a type it already names, which is the cheapest place
+ * to notice a new registry fact. `prefixes_text` (below) is the field that
+ * arrived this way.
+ */
+export type SlashCommandMeta = DesktopCommandMetadata;
 
 const MAX_VISIBLE_ROWS = 6;
 
@@ -156,6 +157,46 @@ export function resolveCommand(
 			command.aliases.some((alias) => alias.toLowerCase() === wanted),
 		)
 	);
+}
+
+/**
+ * The vocabulary the planner treats as "this command consumes its trailing
+ * text" — the names whose argument the command OWNS.
+ *
+ * ONE derivation, from the registry row's `prefixes_text` when the backend
+ * carries it, because that is the same fact the messages endpoint's admission
+ * test reads (`whole_draft_command` in `slash_commands.py`): `/model gpt-5` is
+ * a control on both hosts rather than a control there and a message here. On a
+ * backend that predates the field, no row carries it and the renderer falls
+ * back to the union it has always derived — `consumes_prompt` (the free-text
+ * half, added by the caller) with the inline argument lists below (the value
+ * half) — so the wire field is additive in practice, not a version gate.
+ *
+ * The fallback is PER ROW and not all-or-nothing: a row the backend
+ * labelled uses that label, and only a row that carries nothing is read from
+ * the renderer's own derivation. An older backend carries no label anywhere,
+ * so the whole set is today's derivation and nothing changes; a backend that
+ * carries one is answering a question the renderer had been guessing at, and a
+ * `false` there is a fact rather than an absence.
+ */
+function prefixingVocabulary(
+	commands: readonly SlashCommandMeta[],
+	inlineWords: readonly string[],
+): Set<string> {
+	const inline = new Set(inlineWords);
+	const words = new Set<string>();
+	for (const command of commands) {
+		const names = [command.name, ...command.aliases].map((name) =>
+			name.toLowerCase(),
+		);
+		const prefixing =
+			typeof command.prefixes_text === "boolean"
+				? command.prefixes_text
+				: names.some((name) => inline.has(name));
+		if (!prefixing) continue;
+		for (const name of names) words.add(name);
+	}
+	return words;
 }
 
 /**
@@ -248,6 +289,9 @@ export type SlashCompletionState = {
 	 * (design D3 / UX U1).
 	 */
 	paneHasSession: boolean;
+	/** The `prefixes_text` half, or the inline argument lists on an older
+	 *  backend (`prefixingVocabulary`). */
+	prefixingCommands: ReadonlySet<string>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -388,6 +432,10 @@ export function useSlashCompletion({
 
 	const registry = useMemo(() => query.data ?? [], [query.data]);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);
+	const prefixingCommands = useMemo(
+		() => prefixingVocabulary(registry, vocabulary.words),
+		[registry, vocabulary],
+	);
 	const commandNames = useMemo(() => {
 		const names = new Set<string>();
 		for (const command of registry) {
@@ -667,6 +715,7 @@ export function useSlashCompletion({
 		commandNames,
 		promptCommands,
 		armedOnlyCommands,
+		prefixingCommands,
 		nameListCommands: vocabulary.nameList,
 		argumentWords: vocabulary.words,
 		enabled,
