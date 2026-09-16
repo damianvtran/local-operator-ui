@@ -417,7 +417,15 @@ async function captureOnce(debugPort, path) {
  * about what a reader sees.
  */
 const READ_PAGE = `(async () => {
-	const banner = document.querySelector('[role="alert"]');
+	/*
+	 * The first alert that actually SAYS something: a bare querySelector for a
+	 * role=alert element picks whichever empty live region the app mounted first,
+	 * which read as "no banner" over a window that was carrying one.
+	 */
+	const banner =
+		[...document.querySelectorAll('[role="alert"]')]
+			.map((node) => node.innerText.replace(/\\s+/g, " ").trim())
+			.filter(Boolean)[0] ?? null;
 	/*
 	 * The seeded conversation as the sidebar actually renders it. TWO markers,
 	 * because two kinds of scene seed a catalogue: the live attached scene starts
@@ -448,7 +456,7 @@ const READ_PAGE = `(async () => {
 	return JSON.stringify({
 		viewport: window.innerWidth + "x" + window.innerHeight,
 		dpr: window.devicePixelRatio,
-		banner: banner ? banner.innerText.replace(/\\s+/g, " ").trim() : null,
+		banner,
 		seeded_row_visible: seededRow,
 		composer_present: Boolean(composer),
 		snapshot: snapshot && typeof snapshot === "object"
@@ -464,6 +472,17 @@ const READ_PAGE = `(async () => {
 		 * screen with a sentence beside it, or gone with nothing said.
 		 */
 		sidebar: (document.querySelector('nav[aria-label="Chats"]')?.innerText ?? "").replace(/\\s+/g, " ").trim().slice(0, 600),
+		/*
+		 * The full-bleed band at the top of the window. It has NO role of its own -
+		 * the compatibility banner is a setup state and deliberately does not
+		 * announce itself assertively - so the only honest read is the position both
+		 * banners share. Without it this rig reported "no banner" over a window
+		 * carrying one, which is how a frame that was correct got reported as missing
+		 * the statement it was showing.
+		 */
+		band: ([...document.querySelectorAll(".fixed.inset-x-0.top-0")]
+			.map((node) => node.innerText.replace(/\\s+/g, " ").trim())
+			.filter(Boolean)[0] ?? null),
 		first_lines: text.split("\\n").filter(Boolean).slice(0, 14),
 	});
 })()`;
