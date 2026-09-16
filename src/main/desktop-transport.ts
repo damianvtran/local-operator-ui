@@ -2,6 +2,8 @@ import {
 	type DesktopResponse,
 	desktopEndpoint,
 	desktopRequestByteBudget,
+	desktopRequestDeadlineDetail,
+	desktopRequestDeadlineMs,
 	desktopRequestSchema,
 	desktopRequestTooLargeDetail,
 } from "../shared/desktop-contract";
@@ -84,6 +86,13 @@ export async function requestDesktopOutcome(
 	 * answered badly rather than one that did not answer.
 	 */
 	let answered = false;
+	/*
+	 * This op's own budget, from the contract that declares the schemas - not one
+	 * literal for every op. A ledger read's cost follows the ledger, and the 20 s
+	 * control budget was cutting those reads off mid-scan and reporting it as a
+	 * dead backend; see `desktopRequestDeadlineMs` for the measurements.
+	 */
+	const deadlineMs = desktopRequestDeadlineMs(request.op);
 	try {
 		const body =
 			target.body === undefined ? undefined : JSON.stringify(target.body);
@@ -122,7 +131,7 @@ export async function requestDesktopOutcome(
 			},
 			body,
 			redirect: "error",
-			signal: AbortSignal.timeout(20000),
+			signal: AbortSignal.timeout(deadlineMs),
 		});
 		answered = true;
 		const result = response.status === 204 ? null : await response.json();
@@ -135,7 +144,35 @@ export async function requestDesktopOutcome(
 			response: { status: response.status, body: result },
 			answered: true,
 		};
-	} catch {
+	} catch (error) {
+		/*
+		 * Which failure this was decides what the user is told, so it is read off
+		 * the error rather than collapsed into one sentence. `AbortSignal.timeout`
+		 * rejects with a `TimeoutError` DOMException and a refused socket is a
+		 * `TypeError`, and the difference is the whole point: one of them is this
+		 * process giving up on a backend that is still working, the other is a
+		 * backend that never answered. A 504 with its own code is the first; the
+		 * 503 the second keeps is what the connectivity banner reads as
+		 * "unreachable" (`backendErrorKind`), which is true for a refused socket and
+		 * false for a slow read.
+		 */
+		if (deadlineExceeded(error)) {
+			return {
+				response: {
+					status: 504,
+					body: {
+						detail: desktopRequestDeadlineDetail(request.op, deadlineMs),
+					},
+				},
+				/*
+				 * Carried through the same way as the 503 below, and it means the same
+				 * thing here: an abort during the body read is an answer this process
+				 * received and could not finish, which is still liveness evidence, while
+				 * an abort that never got a response is not.
+				 */
+				answered,
+			};
+		}
 		return {
 			response: {
 				status: 503,
@@ -167,6 +204,22 @@ export async function requestDesktop(
 	token: string | null,
 ): Promise<DesktopResponse> {
 	return (await requestDesktopOutcome(input, backendUrl, token)).response;
+}
+
+/**
+ * Whether a transport failure was this process running out of its own budget.
+ *
+ * Both names are accepted because both are reachable: `AbortSignal.timeout`
+ * rejects with `TimeoutError`, while an abort that arrives through the same
+ * signal for any other reason arrives as `AbortError`. Reading the NAME rather
+ * than `instanceof DOMException` keeps this correct across the runtimes this
+ * file is bundled for (the desktop test runner evaluates it in bare Node), where
+ * DOMException is present but is not always the same constructor the fetch
+ * implementation raised.
+ */
+function deadlineExceeded(error: unknown): boolean {
+	const name = (error as { name?: unknown } | null)?.name;
+	return name === "TimeoutError" || name === "AbortError";
 }
 
 export function trustedDesktopFrame(actual: string, expected: string): boolean {

@@ -4,6 +4,10 @@ import type {
 	DesktopRequest,
 	DesktopResponse,
 } from "../../../../../shared/desktop-contract";
+import {
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	desktopRequestDeadlineMs,
+} from "../../../../../shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
 
 export type {
@@ -18,15 +22,25 @@ export type {
 /**
  * How long the renderer waits for ANY desktop control before calling it dead.
  *
- * Deliberately longer than the main process's own 20s `fetch` deadline in
- * `desktop-transport.ts`, so a backend that answers slowly is still reported by
- * the layer that actually knows the HTTP status. This bound only covers the
- * case main can never report: the IPC round trip itself never settling.
+ * Deliberately longer than the main process's own `fetch` deadline for the same
+ * op — `desktopRequestDeadlineMs` plus this margin, rather than the 30 s literal
+ * that used to sit here against main's flat 20 s. The invariant is the thing
+ * worth keeping: the renderer's bound only covers the case main can never
+ * report (the IPC round trip itself never settling), so a backend that answers
+ * slowly is still reported by the layer that actually knows the HTTP status.
+ * Splitting it per op is what keeps that true now that main's deadline is not
+ * one number: a flat 30 s against a 90 s ledger-read budget would have made the
+ * renderer the layer that gives up first, and its copy cannot name the reason.
  *
  * It does NOT cover `desktopMedia`, whose transport allows 120s for speech and
  * agent-ZIP transfers; that path is bounded separately and is not routed here.
  */
-const DESKTOP_REQUEST_TIMEOUT_MS = 30000;
+const DESKTOP_DEADLINE_MARGIN_MS = 5000;
+
+/** The renderer's own deadline for one op, derived from the transport's. */
+export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
+	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
+}
 
 export async function desktopRequest(
 	request: DesktopRequest,
@@ -49,7 +63,10 @@ export async function desktopRequest(
 			// `isLoading` permanently, which is what issue 89 saw as a Settings
 			// spinner that never resolves. Bound it here, once, so every desktop
 			// control fails honestly instead of hanging.
-			return await withDeadline(window.api.desktop.request(request));
+			return await withDeadline(
+				window.api.desktop.request(request),
+				request.op,
+			);
 		} catch (cause) {
 			if (cause instanceof DesktopControlError) throw cause;
 			throw new DesktopControlError(
@@ -91,9 +108,15 @@ export async function desktopRequest(
  * a stalled control as "not answering" rather than "needs an update". The
  * pending IPC promise is left to settle or not on its own; there is no way to
  * cancel an `invoke`, and abandoning it is exactly the point.
+ *
+ * The deadline it waits out is the op's own, because both sides now size it per
+ * op: a ledger read that legitimately takes 40 s is not a stalled control, and a
+ * renderer that gave up at 30 s would reject the request main was still going to
+ * answer.
  */
 function withDeadline(
 	pending: Promise<DesktopResponse>,
+	op: DesktopRequest["op"],
 ): Promise<DesktopResponse> {
 	let timer: ReturnType<typeof setTimeout>;
 	return Promise.race([
@@ -107,7 +130,7 @@ function withDeadline(
 							"Desktop controls could not reach the backend process.",
 						),
 					),
-				DESKTOP_REQUEST_TIMEOUT_MS,
+				desktopRequestTimeoutMs(op),
 			);
 		}),
 	]).finally(() => clearTimeout(timer));
@@ -225,6 +248,21 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 		);
 	}
 	return envelope?.result as T;
+}
+
+/**
+ * Whether the failure is a read this app stopped waiting for.
+ *
+ * The transport answers 504 plus `DESKTOP_DEADLINE_EXCEEDED_CODE` when it runs
+ * out of its own budget for an op, which is the one failure a retry cannot
+ * repair: the query behind it is still executing on the backend, so asking
+ * again adds a second scan on top of the first. Callers that read the ledger
+ * use this to decide against a retry; the status alone would be enough today,
+ * and the code is what makes the check survive copy or status changes.
+ */
+export function isDeadlineExceeded(error: unknown): boolean {
+	if (!(error instanceof DesktopControlError)) return false;
+	return error.code === DESKTOP_DEADLINE_EXCEEDED_CODE || error.status === 504;
 }
 
 /**
