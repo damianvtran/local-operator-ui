@@ -16,6 +16,15 @@ export type ReusableProfile = {
 	delegate: boolean;
 	seed_origin?: string | null;
 	divergent_fields?: string[];
+	/**
+	 * Set by `profiles.install` when the copy was already there.
+	 *
+	 * ADDITIVE and optional: install is idempotent, and the backend that answers
+	 * this gains the field alongside the hub standard. A backend older than that
+	 * omits it, which the caller reads as "installed" rather than as a failure —
+	 * see `install-builtin-agents.tsx` for why that is the honest reading.
+	 */
+	already_installed?: boolean;
 };
 export type TeamMember = {
 	role: string;

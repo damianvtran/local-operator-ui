@@ -19,6 +19,7 @@ import type {
 	AgentComment,
 	AgentFavourite,
 	AgentLike,
+	AgentViewerStatus,
 	CountResponse,
 	CreateAgentCommentRequest,
 	CreateAgentRequest,
@@ -236,6 +237,30 @@ export async function getAgentFavourite(
 	return radientProxyEnvelope<AgentFavourite | Record<string, never>>({
 		operation: "agents.favourited",
 		agentId,
+	});
+}
+
+/**
+ * The viewer's like and favourite state for a whole page of agents, in one call.
+ *
+ * The hub reads this instead of one `getAgentLike` plus one `getAgentFavourite`
+ * per card, which is what made a twelve-card page cost twenty-four requests
+ * before it painted. Ids travel as a comma-joined `agent_ids` query value; the
+ * backend bounds how many it will accept and answers 404 when it is a version
+ * that predates the op, which the caller is expected to survive (see
+ * `use-agent-statuses-query`).
+ *
+ * `agent_ids` is sent in the caller's order and the result is keyed by id, so a
+ * caller never has to pair a positional list with its input.
+ */
+export async function getAgentStatuses(
+	agentIds: readonly string[],
+): Promise<RadientApiResponse<{ statuses: Record<string, AgentViewerStatus> }>> {
+	return radientProxyEnvelope<{
+		statuses: Record<string, AgentViewerStatus>;
+	}>({
+		operation: "agents.statuses",
+		query: { agent_ids: agentIds.join(",") },
 	});
 }
 

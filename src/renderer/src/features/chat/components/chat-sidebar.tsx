@@ -8,6 +8,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
@@ -279,6 +280,18 @@ export function ChatSidebar({
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
+	);
+	/*
+	 * The catalogue lists packaged profiles beside the user's own, which is why
+	 * this section used to read as "agents you have" while showing six the user
+	 * had never installed. Two lists, one question each: what the user holds, and
+	 * what is still available to install.
+	 */
+	const ownAgents = (profiles.data ?? []).filter(
+		(profile) => profile.source !== "builtin",
+	);
+	const availableBuiltins = (profiles.data ?? []).filter(
+		(profile) => profile.source === "builtin",
 	);
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
@@ -1232,8 +1245,37 @@ export function ChatSidebar({
 											Loading agents…
 										</p>
 									)}
-									{profiles.data?.map((profile) =>
-										entity("agent", profile.name),
+									{/*
+									    A user with no agents of their own gets the shortcut as the
+									    next step rather than as a quiet line: on a fresh install this
+									    section previously showed six rows the user had not installed
+									    and no way to tell them from their own. `profiles.data` being
+									    empty is the degenerate case of the same state — nothing to
+									    list, and nothing to install either, so only the create row
+									    remains.
+									*/}
+									{!profiles.isLoading && ownAgents.length === 0 ? (
+										<div
+											className="flex flex-col gap-2 px-3 py-2"
+											data-testid="agents-sidebar-empty"
+										>
+											<p className="text-body-sm text-ink">No agents yet</p>
+											<p className="text-meta text-ink-muted">
+												Built-in agents are ready to install. They give you roles
+												for coding, review, design, research and coordination — you
+												can edit them once installed.
+											</p>
+											<InstallBuiltinAgents
+												builtins={availableBuiltins}
+												presentation="primary"
+											/>
+										</div>
+									) : (
+										<>
+											{ownAgents.map((profile) => entity("agent", profile.name))}
+											{/* Renders nothing once every built-in is installed. */}
+											<InstallBuiltinAgents builtins={availableBuiltins} />
+										</>
 									)}
 									<button
 										type="button"

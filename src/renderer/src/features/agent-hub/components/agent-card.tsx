@@ -7,10 +7,6 @@ import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAgentDownloadCountQuery } from "../hooks/use-agent-download-count-query";
-import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
-import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
-import { useDownloadAgentMutation } from "../hooks/use-download-agent-mutation";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
 
 type AgentCardProps = {
@@ -19,8 +15,26 @@ type AgentCardProps = {
 	isFavourited: boolean;
 	onLikeToggle: (agentId: string) => void;
 	onFavouriteToggle: (agentId: string) => void;
+	/** Omit to render the card without a download action (onboarding does). */
+	onDownload?: (agent: Agent) => void;
 	isLikeActionLoading?: boolean;
 	isFavouriteActionLoading?: boolean;
+	isDownloading?: boolean;
+	/**
+	 * The sentence for the last action that failed on THIS card, and how to try
+	 * it again. The hub used to answer a failed card action with a toast and
+	 * nothing else while a failed read rendered into the surface, so the same
+	 * feature spoke two error languages; the card is now where a card's failure
+	 * is read, beside the control that produced it.
+	 */
+	actionError?: string | null;
+	onRetryAction?: () => void;
+	/**
+	 * Whether the card's own action row renders. This prop existed and did
+	 * nothing: the onboarding step that passes `false` still showed a Get button
+	 * it did not want, and the hub passed `isAuthenticated` while downloads need
+	 * no account. It is honoured now, and the caller's own flow is what decides.
+	 */
 	showActions?: boolean;
 };
 
@@ -34,6 +48,12 @@ type AgentCardProps = {
  * "open details" affordance), and like/favourite/download live in their own
  * bar beside it. A card-wide click target with nested buttons would need
  * `stopPropagation` hacks and focus traps; two adjacent targets need neither.
+ *
+ * THE COUNTS COME FROM THE RECORD. `like_count`, `favourite_count` and
+ * `download_count` are on every record the list returns, so this card prints
+ * what it was handed: it used to run three count queries of its own, which is
+ * thirty-six requests for a twelve-card page that had already been told the
+ * same three numbers.
  */
 export const AgentCard: React.FC<AgentCardProps> = ({
 	agent,
@@ -41,26 +61,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	isFavourited,
 	onLikeToggle,
 	onFavouriteToggle,
+	onDownload,
 	isLikeActionLoading = false,
 	isFavouriteActionLoading = false,
+	isDownloading = false,
+	actionError = null,
+	onRetryAction,
+	showActions = true,
 }) => {
 	const navigate = useNavigate();
-	const downloadMutation = useDownloadAgentMutation();
 	const { isAuthenticated } = useRadientAuth();
-
-	const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery(
-		{
-			agentId: agent.id,
-		},
-	);
-	const { data: favouriteCount, isLoading: isLoadingFavourites } =
-		useAgentFavouriteCountQuery({
-			agentId: agent.id,
-		});
-	const { data: downloadCount, isLoading: isLoadingDownloads } =
-		useAgentDownloadCountQuery({
-			agentId: agent.id,
-		});
 
 	const description = agent.description ?? "";
 
@@ -202,12 +212,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 									fill={isLiked ? "currentColor" : "none"}
 									data-testid="agent-like-heart"
 								/>
-								<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted">
-									{isLoadingLikes ? (
-										<Skeleton className="h-3 w-4" />
-									) : (
-										(likeCount ?? 0)
-									)}
+								<span
+									data-testid="agent-like-count"
+									className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
+								>
+									{agent.like_count ?? 0}
 								</span>
 							</Button>
 						</span>
@@ -232,12 +241,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 									fill={isFavourited ? "currentColor" : "none"}
 									data-testid="agent-favourite-star"
 								/>
-								<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted">
-									{isLoadingFavourites ? (
-										<Skeleton className="h-3 w-4" />
-									) : (
-										(favouriteCount ?? 0)
-									)}
+								<span
+									data-testid="agent-favourite-count"
+									className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted"
+								>
+									{agent.favourite_count ?? 0}
 								</span>
 							</Button>
 						</span>
@@ -245,11 +253,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					<Tooltip content="Downloads">
 						<span className="ml-1 inline-flex items-center gap-1 pr-1 text-ink-dim">
 							<Download aria-hidden="true" className="size-3.5" />
-							<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm">
-								{isLoadingDownloads || downloadMutation.isPending ? (
+							<span className="inline-flex h-4 min-w-6 items-center font-mono text-mono-sm">
+								{isDownloading ? (
 									<Skeleton className="h-3 w-6" />
 								) : (
-									(downloadCount ?? 0).toLocaleString()
+									(agent.download_count ?? 0).toLocaleString()
 								)}
 							</span>
 						</span>
@@ -258,27 +266,43 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 				{/* `ml-auto` rather than `justify-between`: it holds the action at the
 				    right edge on the wrapped line too, where a lone flex item would
 				    otherwise sit at the start. */}
-				<div className="ml-auto flex shrink-0 items-center">
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => {
-							if (!downloadMutation.isPending) {
-								downloadMutation.mutate({
-									agentId: agent.id,
-									agentName: agent.name,
-								});
-							}
-						}}
-						disabled={downloadMutation.isPending}
-						aria-label={`Download ${agent.name}`}
-						data-tour-tag="agent-hub-download-button"
-					>
-						<Download data-testid="agent-download" />
-						Get
-					</Button>
-				</div>
+				{showActions && onDownload && (
+					<div className="ml-auto flex shrink-0 items-center">
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => onDownload(agent)}
+							disabled={isDownloading}
+							aria-label={`Download ${agent.name}`}
+							data-tour-tag="agent-hub-download-button"
+						>
+							<Download data-testid="agent-download" />
+							Get
+						</Button>
+					</div>
+				)}
 			</div>
+			{actionError && (
+				/*
+				 * `role="status"` rather than `alert`: the failure is already the
+				 * answer to something the user just pressed, so it is read as the
+				 * outcome of that action rather than interrupting with a second
+				 * announcement. Sentence case, and the retry is a control rather
+				 * than a phrase, so the way out is reachable by keyboard.
+				 */
+				<div
+					role="status"
+					data-testid="agent-card-error"
+					className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-hairline px-3 py-2 text-body-sm text-danger"
+				>
+					<span className="min-w-0 flex-1">{actionError}</span>
+					{onRetryAction && (
+						<Button variant="ghost" size="sm" onClick={onRetryAction}>
+							Try again
+						</Button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 };

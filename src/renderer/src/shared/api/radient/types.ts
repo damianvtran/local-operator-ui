@@ -655,6 +655,22 @@ export type AgentFavourite = {
 };
 
 /**
+ * One viewer's relationship to one agent, as the batched read reports it.
+ *
+ * Both halves are answered by the same op so a hub page can ask once for the
+ * whole grid instead of twice per card. `AGENT_STATUS_UNKNOWN` is deliberately
+ * NOT a third state here: a backend that cannot answer the batch op returns no
+ * entry at all, and the hub renders an absent entry the same way it renders
+ * `false` — an unfilled control whose toggle is still correct, because the
+ * upstream like and favourite endpoints are idempotent (`already_liked` /
+ * `already_favourited` come back as success, not as a conflict).
+ */
+export type AgentViewerStatus = {
+	liked: boolean;
+	favourited: boolean;
+};
+
+/**
  * API response for generic success/failure.
  */
 export type APIResponse = {
