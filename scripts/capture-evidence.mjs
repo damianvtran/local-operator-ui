@@ -651,13 +651,33 @@ export const STORIES = [
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
 	/*
-	 * The sidebar's session-status mark, in the one place it can be photographed:
-	 * the sidebar itself has no story (see the note below), so the read/unread
-	 * specimen matrix is the surface that carries this mark's pixels. Added by
-	 * the receipt round, whose whole visible delta is one glyph's resting state
+	 * The sidebar's session-status mark, in the one place it can be photographed
+	 * as a specimen: the read/unread matrix, every code beside its own name (see
+	 * the note below for why the live sidebar frames are not a substitute). Added
+	 * by the receipt round, whose whole visible delta is one glyph's resting state
 	 * -- without a frame here, that change had no evidence anywhere.
+	 *
+	 * Still the specimen frame now that the sidebar HAS a story: the matrix covers
+	 * every code twice at one size, where `chat-sidebar-status-feed--*` below shows
+	 * three of them in their own rows, which is what a transition needs and not what
+	 * a vocabulary needs.
 	 */
 	["chat-session-status--neighbours", 860, 600],
+	/*
+	 * The conversation sidebar's row status, delivered by the machine-wide feed
+	 * rather than by a catalogue read. THREE frames, and the pair they are half of
+	 * is the claim: `chat-sidebar-status-feed-baseline/` is the same story captured
+	 * from unmodified `origin/main`, where the frame type is unknown to the renderer
+	 * and is ignored - so the branch's frame moves the row and the pre-change tree's
+	 * does not. The width is the sidebar's own 360px column plus the readout that
+	 * names the value under the pixels; the height holds three rows and the caption.
+	 * Before this, the sidebar had no story at all and its frames came from live
+	 * captures (`new-chat-row/`, `sidebar-new-chat/`), which cannot produce a
+	 * before/after pair of one transition on two trees.
+	 */
+	["chat-sidebar-status-feed--gate-answered", 780, 560],
+	["chat-sidebar-status-feed--gate-parked", 780, 560],
+	["chat-sidebar-status-feed--completion-unseen", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
@@ -1528,9 +1548,11 @@ export const STORIES = [
  * Why this is not a plain `rmSync(OUT)`: not every frame in the tree comes
  * from this script. A surface whose claim is a click that changes STORE state,
  * or a flow against a live backend, cannot be photographed from Storybook, and
- * some of them - the chat sidebar among them - have no story at all, so a
- * blanket wipe destroys frames this script cannot re-derive. (A pointer HOVER
- * used to belong on that list and no longer does: the tuple's `hover` option
+ * several of them - the sidebar's own live frames (`new-chat-row/`,
+ * `sidebar-new-chat/`, `session-status-live/`) among them - are captures of the
+ * RUNNING app rather than of a story, so a blanket wipe destroys frames this
+ * script cannot re-derive. (A pointer HOVER used to belong on that list and no
+ * longer does: the tuple's `hover` option
  * moves a real pointer through the input pipeline, so the trigger's hover
  * grounds are swept frames now rather than a bolted-on set.) It used to destroy
  * their manifest entry in the same pass, which was the dangerous part: the
