@@ -93,11 +93,11 @@ import { commandSuggestions, matchChoices } from "./slash-rank";
  * reader to look (review N1).
  */
 import {
-	type ArgumentShapeCatalogueRow,
 	type ArgumentShapeRow,
 	type ArmingCatalogueRow,
 	argumentShapeVocabulary,
 	armedOnlyVocabulary,
+	wirelessArgumentShapes,
 } from "./slash-submit";
 import {
 	caretPhase,
@@ -290,6 +290,14 @@ export type SlashCompletionState = {
 	 */
 	hoists: boolean;
 	/**
+	 * Whether the word OPENS the draft — nothing but whitespace before the command
+	 * token on its line. This is the fact the planner turns on (`opensDraft` in
+	 * `slash-submit.ts`) and therefore the fact the popup's staging sentences must
+	 * turn on too: a token inside a sentence is completed by the key, never run and
+	 * never staged (design D5, UX U3).
+	 */
+	opensDraft: boolean;
+	/**
 	 * Whether this pane can address a session — the dispatcher's question, read
 	 * from the caller. The arming lines decline to promise a run where it is
 	 * false, because that promise is one keystroke ahead of the refusal
@@ -301,6 +309,10 @@ export type SlashCompletionState = {
 	prefixingCommands: ReadonlySet<string>;
 	/** Per-word `argument_shape`/`argument_words`, empty on an older backend. */
 	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
+	/** The same question answered from what an older backend DOES send — the
+	 *  wire's `arguments` mode and the inline argument lists
+	 *  (`wirelessArgumentShapes`). */
+	wirelessShapes: ReadonlyMap<string, ArgumentShapeRow>;
 	nameListCommands: ReadonlySet<string>;
 	/** The words whose argument phase is live, for the completion span lookup. */
 	argumentWords: readonly string[];
@@ -334,6 +346,11 @@ function useArgumentRows(
 	activeTeam: unknown,
 	activeAgent: unknown,
 	enabled: boolean,
+	/*
+	 * Whether this pane can ADDRESS a session, which is the difference between a
+	 * query that failed and a query that was never asked (UX round 1 U7).
+	 */
+	paneHasSession: boolean,
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	// Hooks cannot be called conditionally, so the entity query always runs and
@@ -391,6 +408,17 @@ function useArgumentRows(
 			// command that was never asked.
 			return { rows: [], loading: false, error: null, needsSession: true };
 		}
+		/*
+		 * A FAILED query on a pane that cannot address a session is not "try
+		 * again": nothing was asked (the request the user saw on screen was never
+		 * sent) and a retry cannot succeed until the conversation exists. The
+		 * component owns the right sentence for that state and this is what reaches
+		 * it (UX round 1 U7 — the retry hint stood over a list the app had not
+		 * asked for, and Enter then consumed the draft).
+		 */
+		if (entities.isError && !paneHasSession) {
+			return { rows: [], loading: false, error: null, needsSession: true };
+		}
 		return {
 			rows: argumentRows(source, entities.data?.entities ?? [], current),
 			loading: entities.isLoading,
@@ -405,6 +433,7 @@ function useArgumentRows(
 		entities.data,
 		entities.isLoading,
 		entities.isError,
+		paneHasSession,
 		current,
 		sessionId,
 	]);
@@ -536,8 +565,21 @@ export function useSlashCompletion({
 	 * every older backend's rows accept arbitrary text.
 	 */
 	const argumentShapes = useMemo(
-		() => argumentShapeVocabulary(registry as ArgumentShapeCatalogueRow[]),
+		() => argumentShapeVocabulary(registry),
 		[registry],
+	);
+	/*
+	 * And the fallback the SAME rows imply when the wire publishes no shape: the
+	 * released backend (`features.commands: 1`) is that pairing, and answering it
+	 * with "no text is ever an argument" stopped `/mcp logout` and `/login openai`
+	 * from running at all (QA Q1, measured against `main`). Derived from the same
+	 * two facts the popup already has — the wire's `arguments` mode and the inline
+	 * argument lists `vocabulary` is built from — so there is still one
+	 * vocabulary, not a second list of command names.
+	 */
+	const wirelessShapes = useMemo(
+		() => wirelessArgumentShapes(registry, new Set(vocabulary.words)),
+		[registry, vocabulary.words],
 	);
 
 	// The caret's phase decides which list is up, and the two are mutually
@@ -589,6 +631,17 @@ export function useSlashCompletion({
 		if (!span) return false;
 		return replaceSpan(inputValue, span.start, span.end, "").text.trim() !== "";
 	}, [inputValue, selectionStart, commandNames]);
+	/*
+	 * And whether that same word OPENS the line it sits on. Read off the token's own
+	 * start (`commandContext`), which is the span the key acts on, so a word typed
+	 * after a sentence is not "the line's command" for either layer.
+	 */
+	const opensDraft = useMemo(
+		() =>
+			commandContext !== null &&
+			inputValue.slice(0, commandContext.start).trim() === "",
+		[inputValue, commandContext],
+	);
 
 	const commandMatches = useMemo(() => {
 		if (!commandContext) return [];
@@ -611,6 +664,7 @@ export function useSlashCompletion({
 		activeProfile?.team,
 		activeProfile?.agent,
 		enabled,
+		paneHasSession,
 	);
 
 	const argumentMatches = useMemo(
@@ -783,6 +837,7 @@ export function useSlashCompletion({
 		 * so neither can describe the other's gesture.
 		 */
 		hoists,
+		opensDraft,
 		isLoading: enabled && query.isLoading,
 		available: enabled,
 		commands: registry,
@@ -791,6 +846,7 @@ export function useSlashCompletion({
 		armedOnlyCommands,
 		prefixingCommands,
 		argumentShapes,
+		wirelessShapes,
 		nameListCommands: vocabulary.nameList,
 		nameChoices,
 		argumentWords: vocabulary.words,
@@ -800,7 +856,10 @@ export function useSlashCompletion({
 
 type SlashSuggestionsPopupProps = {
 	state: SlashCompletionState;
-	onPick: (row: CompletionRow, disposition: { run: boolean }) => void;
+	onPick: (
+		row: CompletionRow,
+		disposition: { run: boolean; chosenByHand: boolean },
+	) => void;
 };
 
 /** Detail-column visibility threshold, in the popup's own width.
@@ -899,7 +958,11 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		 */
 		arms:
 			activeRow?.kind === "command"
-				? pickArmsCommand(activeRow, state.armedOnlyCommands)
+				? pickArmsCommand(
+						activeRow,
+						state.armedOnlyCommands,
+						state.chosenByHand,
+					)
 				: false,
 		// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
 		// instead of running, which is what their two lines have to say (UX U2/U3).
@@ -911,6 +974,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
 		paneHasSession: state.paneHasSession,
 		hoists: state.hoists,
+		opening: state.opensDraft,
 		unambiguous: activeArgument
 			? slashRunAllowed({
 					argumentQuery: state.argumentQuery,
@@ -950,11 +1014,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		// pick hoists the draft (UX U2 / design D1).
 		arms:
 			activeRow?.kind === "command"
-				? pickArmsCommand(activeRow, state.armedOnlyCommands)
+				? pickArmsCommand(
+						activeRow,
+						state.armedOnlyCommands,
+						state.chosenByHand,
+					)
 				: false,
 		takesDraft:
 			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
 		hoists: state.hoists,
+		opening: state.opensDraft,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 	});
@@ -1049,7 +1118,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// A click names one exact row with a pointer, which is not the
 									// guess the keyboard's ambiguity gate protects against — so a
 									// pointer pick of a runnable row runs it (`editor.py:8040`).
-									onPick(row, { run: true });
+									onPick(row, { run: true, chosenByHand: true });
 								}}
 								onMouseEnter={() => state.setActiveHover(index)}
 							>
@@ -1182,7 +1251,10 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 export function handleSlashKeyDown(
 	event: KeyboardEvent<HTMLTextAreaElement>,
 	state: SlashCompletionState,
-	onPick: (row: CompletionRow, disposition: { run: boolean }) => void,
+	onPick: (
+		row: CompletionRow,
+		disposition: { run: boolean; chosenByHand: boolean },
+	) => void,
 	onExtend: (word: string) => void,
 ): boolean {
 	/*
@@ -1221,7 +1293,7 @@ export function handleSlashKeyDown(
 		case "apply": {
 			const row = state.matches[intent.index];
 			if (!row) return false;
-			onPick(row, { run: intent.run });
+			onPick(row, { run: intent.run, chosenByHand: intent.chosenByHand });
 			return true;
 		}
 		case "extend":

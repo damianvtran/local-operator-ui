@@ -139,6 +139,27 @@ state, focus ring. A second decorative hue is not available.
 If a screen needs the accent a fourth time, something on it is not as important
 as it thinks.
 
+### The composer's structured-token ink
+
+`tokenCommand` is the leading `/word` a user typed into the composer. It is its
+own role rather than `info`, and the reason was measured rather than argued:
+that run is painted inside a sentence, beside prose `ink`, beside `accent`
+(already spent three times on the same screen) and beside `success` (the
+resolved roster name on the same line). Across the twelve palettes `info` is the
+accent's twin in dune, neon and radient (ΔE00 0.0) and the ink's twin in
+obsidian (0.0), so no shipped text role could carry it — and the only existing
+pair that clears every floor is `warning` + `danger`, i.e. the app's two alarm
+inks on the composer's two most ordinary tokens. A hue nobody can distinguish is
+the defect § 2 already names, so the system supplied the missing role.
+
+The TUI's composer reached the same answer independently: its command word is
+`$lo-signal`, a dedicated cool role, with the file stating the rule — "a
+recognized command word is structure, not activity". `tokenCommand` is that
+role's desktop counterpart; `success` carries the resolved name, as the TUI's
+`$lo-string` does. obsidian is the pinned monochrome exception: `info` IS its
+`ink` IS its `accent`, so the run is separated by the semibold step alone, which
+is the same concession `code-mirror-theme.ts` already records there.
+
 ### Semantic
 
 `success`, `warning`, `danger`, `info`, each a triple of colour, `-wash` (the
@@ -520,6 +541,29 @@ A short checklist, in the order that catches problems earliest.
    border, add it to `CONTROLS` in the contrast script.
 9. Screenshot it in `localOperatorLight` and `localOperatorDark` at minimum. The
    light themes are where contrast defects hide.
+
+### A palette edit that adds or moves a TEXT role
+
+A palette is a contract, not a set of colours: `ThemePalette` makes every role
+mandatory (a palette that omits one does not compile) and `REQUIRED_ROLES` in
+`scripts/contrast-contract.mjs` makes the gate say so. Four roles are read as
+text inside the SAME box, so moving one is never a local change:
+
+| role | floor |
+| --- | --- |
+| `ink` | 4.5:1 on every ground — the prose everything else is read against |
+| `tokenCommand` | 4.5:1 on `surface` and `elevated`, and ΔE00 ≥ 8 from `ink`, from `accent` **and** from `success` |
+| `success` | 4.5:1, and ΔE00 ≥ 8 from `ink` (the roster name is a run, not prose) |
+
+That ΔE00 8 is a floor, not a design: radient's `accentHover` and
+`chartBarHover`, and neon's `accentActive`, all clear it while being steps of
+`accent`'s own ramp. Pick a value for its hue and let the gate confirm it, never
+the other way round. obsidian is the one pinned exception, and
+`COMMAND_TOKEN_PINNED` records its two 0.0 numbers so a later edit to its `ink`
+or `accent` re-litigates the pin instead of silently inheriting it.
+
+Run `pnpm gen-themes` after a palette edit (the generated stylesheet is checked
+for freshness) and `pnpm check-themes`, which is where these floors live.
 
 ### Disclosure
 

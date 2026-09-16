@@ -46,6 +46,9 @@ export const neon: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 15.58:1 on surface, where the accent
 		// itself is 12.83:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#B0FAFF",
+		tokenCommand: "#FFA500",
+		/* This palette's second hue: its `info` IS its accent, so the token takes
+		   the hue the same palette's editor already paints string literals in. */
 		// The cyan at a faint tint. The theme's own hover fills used the same cyan
 		// at 10 to 15 percent, so this is the value it was already reaching for.
 		accentWash: "#072734",

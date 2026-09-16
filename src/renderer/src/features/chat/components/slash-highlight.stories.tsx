@@ -630,12 +630,20 @@ export const StartNameInstruction: Story = {
 	),
 };
 
-/** A word that names no command, with the list closed: inert text, dimmed. */
+/**
+ * A word that names no command, with the list closed: inert text, dimmed.
+ *
+ * The BARE word, and that is the rule rather than the state that was convenient:
+ * `unknown` means "inert text that WILL be sent", and a line of the form
+ * `/teem fix this` is neither sent nor run — the dispatcher answers "unknown
+ * command" and keeps the draft, so the tint would claim something the app does
+ * not do (design round 1 D6). With text after it the word takes plain prose ink.
+ */
 export const UnknownWord: Story = {
 	name: "unknown-word",
 	render: () => (
 		<Frame label="unknown-word — /teem, the command list closed">
-			<Draft label="unknown-word" draft="/teem fix this" />
+			<Draft label="unknown-word" draft="/teem" />
 		</Frame>
 	),
 };
@@ -774,6 +782,22 @@ const GeometryProbe = ({
 				const box0 = mirror.getBoundingClientRect();
 				entry["mirror clientWidth"] = `${mirror.clientWidth}px`;
 				entry["fonts equal"] = String(m.font === t.font);
+				/*
+				 * The WEIGHT channel, as a number. It is the whole of obsidian's
+				 * separation (its `info` IS its `ink` IS its `accent`, so the command
+				 * run is distinguished by the semibold step alone — the pinned case in
+				 * `palette-contract.ts`), and a still cannot show it: the design round
+				 * asked for the run's and the prose's `fontWeight` beside the tint's
+				 * numbers so the claim is read off the frame set rather than argued.
+				 */
+				entry["run fontWeights"] =
+					[...mirror.querySelectorAll<HTMLElement>("[data-slash-run]")]
+						.map(
+							(el) =>
+								`${el.dataset.slashRun}=${getComputedStyle(el).fontWeight}`,
+						)
+						.join(",") || "none";
+				entry["prose fontWeight"] = m.fontWeight;
 				entry["mirror rows"] = String(
 					Math.round(
 						(mirror.scrollHeight -

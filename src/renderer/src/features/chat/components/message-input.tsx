@@ -2126,7 +2126,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * is ever spliced on a path that could not run it.
 		 */
 		const planFor = useCallback(
-			(draft: string, at: number) =>
+			(
+				draft: string,
+				at: number,
+				/*
+				 * `enabled` may be OVERRIDDEN by a caller asking a question about
+				 * the DRAFT rather than about this mount: the syntax highlight wants
+				 * "is this word a command in this draft" (`enabled: true`), not "can
+				 * the dispatcher run it here", which is false in every harness that
+				 * mounts the composer without a dispatcher — the story frames did
+				 * exactly that and the tint vanished from all of them.
+				 */
+				over: { enabled?: boolean } = {},
+			) =>
 				planSlashSubmission({
 					draft,
 					caret: at,
@@ -2135,8 +2147,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					armedOnlyCommands: slash.armedOnlyCommands,
 					prefixingCommands: slash.prefixingCommands,
 					argumentShapes: slash.argumentShapes,
+					wirelessShapes: slash.wirelessShapes,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
+					/* LAST, so a caller asking about the DRAFT (`enabled: true`) wins
+					   over this mount's own capability. */
+					...over,
 				}),
 			[
 				slash.commandNames,
@@ -2144,6 +2160,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.armedOnlyCommands,
 				slash.prefixingCommands,
 				slash.argumentShapes,
+				slash.wirelessShapes,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,
@@ -2168,27 +2185,50 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the native path — including a squiggle the operator never asked to lose — is
 		 * what an ordinary draft gets.
 		 */
-		const slashRuns = useMemo(
-			() =>
-				composing
-					? []
-					: slashHighlightRuns({
-							draft: newMessage,
-							commandNames: slash.commandNames,
-							nameListCommands: slash.nameListCommands,
-							nameChoices: slash.nameChoices,
-							picking: slash.open && slash.matches.length > 0,
-						}),
-			[
-				newMessage,
-				composing,
-				slash.commandNames,
-				slash.nameListCommands,
-				slash.nameChoices,
-				slash.open,
-				slash.matches.length,
-			],
-		);
+		const slashRuns = useMemo(() => {
+			if (composing) return [];
+			const runs = slashHighlightRuns({
+				draft: newMessage,
+				commandNames: slash.commandNames,
+				nameListCommands: slash.nameListCommands,
+				nameChoices: slash.nameChoices,
+				picking: slash.open && slash.matches.length > 0,
+			});
+			if (runs.length === 0) return runs;
+			/*
+			 * THE TINT HAS TO MEAN WHAT ENTER DOES. The run rule is the TUI's, and it
+			 * paints a word that OPENS the line whether or not this host will run it:
+			 * on this composer a single-line draft whose trailing text the command does
+			 * not own is SENT as a message (design D6, UX U4, QA Q4 — `/compact hello`
+			 * wore the command tint while Enter posted it to the model, and the
+			 * operator's own first line wore it while the messages endpoint refused it).
+			 * So the plan is asked here, once, and a draft Enter will not run paints
+			 * nothing — which also makes two line counts of the same prose agree, since
+			 * the multi-line rule already paints nothing.
+			 *
+			 * The `unknown` run is narrowed the same way: `/teem` is a word whose own
+			 * line the app refuses (the "unknown command" note keeps the draft), so its
+			 * documented meaning — "inert text that WILL be sent" — only holds where the
+			 * word is the whole line. With text after it nothing is painted.
+			 */
+			const plan = planFor(newMessage, caret, { enabled: true });
+			if (plan.kind === "send") return [];
+			return runs.filter(
+				(run) =>
+					run.kind !== "unknown" ||
+					newMessage.slice(run.start, run.end).trim() === newMessage.trim(),
+			);
+		}, [
+			newMessage,
+			caret,
+			composing,
+			planFor,
+			slash.commandNames,
+			slash.nameListCommands,
+			slash.nameChoices,
+			slash.open,
+			slash.matches.length,
+		]);
 		const highlighting = highlightPaints(slashRuns);
 		/*
 		 * The field's own type and padding steps, from ONE expression: the textarea and
@@ -2362,7 +2402,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		const handleSlashPick = useCallback(
-			async (row: CompletionRow, disposition: { run: boolean }) => {
+			async (
+				row: CompletionRow,
+				disposition: { run: boolean; chosenByHand: boolean },
+			) => {
 				const completion = completionFor(
 					newMessage,
 					caret,
@@ -2401,7 +2444,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (
 					row.kind === "command" &&
 					disposition.run &&
-					pickArmsCommand(row, slash.armedOnlyCommands)
+					disposition.chosenByHand &&
+					pickArmsCommand(
+						row,
+						slash.armedOnlyCommands,
+						disposition.chosenByHand,
+					)
 				) {
 					const armed = planSlashArming({
 						draft: completion.text,

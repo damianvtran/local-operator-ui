@@ -55,6 +55,8 @@ export const dracula: ThemeDefinition = {
 		// accent ramp: ΔE00 10.2 from `accent` and 7.29:1 on surface, where the accent
 		// itself is 5.28:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#D3B8FB",
+		tokenCommand: "#8BE9FD",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#3A374D",
 		onAccent: "#282A36",
 

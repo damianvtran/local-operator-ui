@@ -393,8 +393,8 @@ export function useSlashDispatch({
 				const suggestions = closestCommands(word, commands);
 				note(
 					suggestions.length > 0
-						? `Unknown command /${word}. Did you mean ${suggestions.join(", ")}? Type / for the full list.`
-						: `Unknown command /${word}. Type / for the full list.`,
+						? `Unknown command /${word}. Did you mean ${suggestions.join(", ")}? Nothing was sent — type / for the full list, or start the line with a word to send it as a message.`
+						: `Unknown command /${word}. Nothing was sent — type / for the full list, or start the line with a word to send it as a message.`,
 					true,
 				);
 				return "consumed";

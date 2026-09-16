@@ -282,7 +282,7 @@ test("an arrow that does not move the marker is not a hand-made choice", () => {
 			commandQuery: "",
 			chosenByHand: true,
 		}),
-		{ kind: "apply", index: 1, run: true },
+		{ kind: "apply", index: 1, run: true, chosenByHand: true },
 	);
 });
 
@@ -296,13 +296,13 @@ test("Enter runs a command row when the choice is unambiguous", () => {
 	// Typed in full: the user NAMED the command rather than accepting a guess.
 	assert.deepEqual(
 		route({ matches: commandRows("analytics"), commandQuery: "analytics" }),
-		{ kind: "apply", index: 0, run: true },
+		{ kind: "apply", index: 0, run: true, chosenByHand: false },
 	);
 	// The single survivor of a short word is unambiguous too, which is the arm
 	// that makes `/ana` behave the way the terminal does.
 	assert.deepEqual(
 		route({ matches: commandRows("analytics"), commandQuery: "an" }),
-		{ kind: "apply", index: 0, run: true },
+		{ kind: "apply", index: 0, run: true, chosenByHand: false },
 	);
 	// An arrow press is the explicit choice, whatever the query left.
 	assert.deepEqual(
@@ -312,7 +312,7 @@ test("Enter runs a command row when the choice is unambiguous", () => {
 			active: 1,
 			chosenByHand: true,
 		}),
-		{ kind: "apply", index: 1, run: true },
+		{ kind: "apply", index: 1, run: true, chosenByHand: true },
 	);
 	// A list with no row at the marker completes nothing and is not a key the
 	// popup consumed.
@@ -425,7 +425,7 @@ test("Tab completes a command row and never runs it, ambiguous or not", () => {
 			matches: commandRows("analytics"),
 			commandQuery: "analytics",
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 	assert.deepEqual(
 		route({
@@ -433,7 +433,7 @@ test("Tab completes a command row and never runs it, ambiguous or not", () => {
 			matches: commandRows("commands", "compact"),
 			commandQuery: "cm",
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 });
 
@@ -446,7 +446,7 @@ test("a name-list row fills the name and never runs", () => {
 			runs: false,
 			argumentQuery: "delivery",
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 });
 
@@ -457,7 +457,7 @@ test("Tab completes the value, never runs, on a runnable list", () => {
 			matches: [argumentRow("auto"), argumentRow("ask")],
 			argumentQuery: "auto",
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 });
 
@@ -467,7 +467,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 	// The single survivor of a query on a non-destructive list.
 	assert.deepEqual(
 		route({ matches: [argumentRow("auto")], argumentQuery: "auto" }),
-		{ kind: "apply", index: 0, run: true },
+		{ kind: "apply", index: 0, run: true, chosenByHand: false },
 	);
 
 	// Typed in full: the user NAMED the row rather than accepting a guess.
@@ -475,6 +475,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 		kind: "apply",
 		index: 1,
 		run: true,
+		chosenByHand: false,
 	});
 
 	// Hand-moved: an explicit arrow press is the direct answer to "the matcher
@@ -486,7 +487,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 			active: 1,
 			chosenByHand: true,
 		}),
-		{ kind: "apply", index: 1, run: true },
+		{ kind: "apply", index: 1, run: true, chosenByHand: true },
 	);
 
 	// Several rows, a query that is neither the row's value nor a single
@@ -495,6 +496,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 		kind: "apply",
 		index: 0,
 		run: false,
+		chosenByHand: false,
 	});
 
 	// A destructive list is never run on a SINGLE SURVIVOR — the matcher is a
@@ -507,7 +509,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 			argumentCommand: "logout",
 			runs: true,
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 	// ... but typing the id IN FULL is an explicit choice and still runs, on a
 	// destructive list too. That arm is deliberately not conditioned on the
@@ -519,7 +521,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 			argumentCommand: "logout",
 			runs: true,
 		}),
-		{ kind: "apply", index: 0, run: true },
+		{ kind: "apply", index: 0, run: true, chosenByHand: false },
 	);
 
 	// The row can also declare the danger itself.
@@ -528,7 +530,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 			matches: [argumentRow("anthropic", { alert: true })],
 			argumentQuery: "anth",
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 
 	// `runs: false` (the `/theme` inline list) completes even on a single
@@ -539,7 +541,7 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 			argumentQuery: "dracula",
 			runs: false,
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 });
 
@@ -627,6 +629,11 @@ test("the footer says what Enter will do, in each state", () => {
 		   registry with `inlineArgumentFor`, and it is the one input that separates
 		   `/model` from `/clear` below. */
 		opensList: false,
+		/* Whether the word OPENS the draft — production passes the popup's own
+		   `opensDraft`. Default TRUE here: these rows describe the state where the
+		   word IS the line, and the mid-sentence states get their own rows below
+		   because the sentence differs. */
+		opening: true,
 	};
 	/*
 	 * The command phase has FOUR answers now, and they are read off the same inputs
@@ -669,6 +676,7 @@ test("the footer says what Enter will do, in each state", () => {
 		["", ""],
 	]) {
 		const line = enterFooter({
+			opening: true,
 			...base,
 			phase: "command",
 			unambiguous: false,
@@ -765,6 +773,7 @@ test("the Enter line names what the key actually does, in every state", () => {
 		const runs = pickRuns(c.destination);
 		const opensList = Boolean(registryEntry(c.destination)?.inline);
 		const line = enterFooter({
+			opening: true,
 			phase: "command",
 			command: null,
 			label: c.labels[0],
@@ -914,6 +923,9 @@ test("the click footer says what a click will do, in each state", () => {
 		runs: true,
 		value: "openai/gpt-5",
 		matched: true,
+		/* See the Enter-footer fixture: these rows describe a word that OPENS the
+		   draft, which is where a click runs rather than completes. */
+		opening: true,
 	};
 	assert.equal(
 		clickFooter({ ...base, phase: "command" }),
@@ -963,6 +975,7 @@ test("the click footer never claims a run the pick does not perform", () => {
 	for (const [id, label] of states) {
 		const runs = pickRuns(id);
 		const line = clickFooter({
+			opening: true,
 			phase: "command",
 			command: null,
 			label,
@@ -981,6 +994,7 @@ test("the click footer never claims a run the pick does not perform", () => {
 	// false for a reason the row does not show, and the pointer line must say
 	// what it does rather than promise a run.
 	const name = clickFooter({
+		opening: true,
 		phase: "argument",
 		command: "team",
 		label: "team",
@@ -1021,6 +1035,7 @@ test("the two footer lines cannot disagree about the active row", () => {
 	];
 	for (const row of rows) {
 		const click = clickFooter({
+			opening: true,
 			...row,
 			nameThenMessage: false,
 			value: "v",
@@ -1037,6 +1052,7 @@ test("the two footer lines cannot disagree about the active row", () => {
 			 * computes (`commandChoiceUnambiguous` and `pickRuns`).
 			 */
 			const enter = enterFooter({
+				opening: true,
 				phase: "command",
 				command: null,
 				label: row.label,
@@ -1065,6 +1081,7 @@ test("the two footer lines cannot disagree about the active row", () => {
 			);
 			assert.equal(
 				enterFooter({
+					opening: true,
 					phase: "command",
 					command: null,
 					label: row.label,
@@ -1301,11 +1318,23 @@ const PICKED = completionFor(
 ).text;
 
 test("a pick of the armed row hoists and stages; other rows are unchanged", () => {
-	assert.equal(pickArmsCommand(armedRow("goal"), ARMED_ONLY), true);
+	// Chosen by hand — an arrow key or a click — is the gesture that arms it.
+	assert.equal(pickArmsCommand(armedRow("goal"), ARMED_ONLY, true), true);
+	/*
+	 * And the PRE-SELECTED row is not a choice (#209's own words: "the pick is a
+	 * CLICK, or Enter/Tab on a row the user put the marker on by hand"), which is
+	 * what UX round 1 U2 measured the absence of: a sentence that merely mentions
+	 * `/goal` rearranged its own words on a plain Enter.
+	 */
+	assert.equal(
+		pickArmsCommand(armedRow("goal"), ARMED_ONLY, false),
+		false,
+		"the row the matcher pre-selected does not arm",
+	);
 	// An ALIAS arms too: the row carries whichever of the two matched, and the set
 	// holds the primaries and the aliases together, exactly as `commandNames` does.
 	assert.equal(
-		pickArmsCommand(armedRow("goals"), new Set(["goal", "goals"])),
+		pickArmsCommand(armedRow("goals"), new Set(["goal", "goals"]), true),
 		true,
 	);
 	/*
@@ -1314,12 +1343,12 @@ test("a pick of the armed row hoists and stages; other rows are unchanged", () =
 	 * the user asked to read before it ran, and nothing about the goal report
 	 * moves it.
 	 */
-	assert.equal(pickArmsCommand(armedRow("team"), ARMED_ONLY), false);
-	assert.equal(pickArmsCommand(armedRow("model"), ARMED_ONLY), false);
+	assert.equal(pickArmsCommand(armedRow("team"), ARMED_ONLY, true), false);
+	assert.equal(pickArmsCommand(armedRow("model"), ARMED_ONLY, true), false);
 	// An argument row never arms: an arming gesture NAMES a command.
-	assert.equal(pickArmsCommand(argumentRow("gpt-5"), ARMED_ONLY), false);
+	assert.equal(pickArmsCommand(argumentRow("gpt-5"), ARMED_ONLY, true), false);
 	// The comparison is the vocabulary's case handling, not the row's spelling.
-	assert.equal(pickArmsCommand(armedRow("Goal"), ARMED_ONLY), true);
+	assert.equal(pickArmsCommand(armedRow("Goal"), ARMED_ONLY, true), true);
 
 	/*
 	 * And the route's own write, which is the half a user sees: the picked word is
@@ -1377,6 +1406,7 @@ test("the keyboard rule is the popup's own, and the arm belongs to the pick", ()
 		kind: "apply",
 		index: 0,
 		run: true,
+		chosenByHand: false,
 	});
 	// Tab is the completing key: it applies and never acts, which is what makes it
 	// the safe key while a list is narrowed (#221's rule, kept exactly).
@@ -1384,6 +1414,7 @@ test("the keyboard rule is the popup's own, and the arm belongs to the pick", ()
 		kind: "apply",
 		index: 0,
 		run: false,
+		chosenByHand: false,
 	});
 	// Ambiguous: the row is not acted on. This is the state a bare `/` over the
 	// whole catalogue is in, and the reason nothing arms from a stray press.
@@ -1401,7 +1432,7 @@ test("the keyboard rule is the popup's own, and the arm belongs to the pick", ()
 			argumentQuery: "al",
 			nameThenMessage: true,
 		}),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 });
 
@@ -1424,7 +1455,7 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 	assert.ok(entry, "session.goal is a destination the picker registry routes");
 
 	// The row half, from the vocabulary the catalogue derives.
-	const arms = pickArmsCommand(armedRow("goal"), ARMED_ONLY);
+	const arms = pickArmsCommand(armedRow("goal"), ARMED_ONLY, true);
 	assert.equal(arms, true, "a pick of the goal row arms it");
 
 	// `pointerPickRuns` still answers TRUE for this destination (a picker with no
@@ -1466,21 +1497,31 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 		destination: "session.goal",
 		paneHasSession: true,
 		hoists: true,
+		/*
+		 * The word sits INSIDE a sentence here — text survives it (`hoists`) — and
+		 * that is the fact the planner turns on: `I approve spend /goal` is sent as
+		 * written, so neither "Enter stages" nor "the next Enter runs it" is true of
+		 * this state and the copy must not claim either (design D5, UX U2). The
+		 * staging sentence still belongs to the word that OPENS the line, which is
+		 * the state the free-text rows below cover.
+		 */
+		opening: false,
 		value: "",
 		matched: true,
 		unambiguous: true,
 	};
 	const enterLine = enterFooter(composed);
-	assert.equal(enterLine, "Enter stages /goal; the next Enter runs it.");
-	assert.equal(enterLine.includes("completes"), false);
-	assert.equal(clickFooter(composed), "Click stages /goal.");
-	assert.equal(clickFooter(composed).includes("runs"), false);
+	assert.equal(
+		enterLine,
+		"Enter completes /goal; the next Enter sends this as written.",
+	);
+	assert.equal(clickFooter(composed), "Click completes /goal.");
 
 	// Nothing survives the word — a bare `/goal` — so the pick completes it and the
 	// bare form is run by the next Enter. That is #221's own answer and it stays.
 	assert.equal(
 		enterFooter({ ...composed, hoists: false }),
-		"Enter runs /goal.",
+		"Enter completes /goal; the next Enter sends this as written.",
 	);
 
 	// The KEY those lines describe: #221's rule, with the staging decided by the
@@ -1491,12 +1532,13 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 			kind: "apply",
 			index: 0,
 			run: true,
+			chosenByHand: false,
 		},
 	);
 	// ...while Tab completes and never acts, so it never arms either.
 	assert.deepEqual(
 		route({ matches: [armedRow("goal")], commandQuery: "goal", key: "Tab" }),
-		{ kind: "apply", index: 0, run: false },
+		{ kind: "apply", index: 0, run: false, chosenByHand: false },
 	);
 });
 
@@ -1541,6 +1583,7 @@ test("the click line is the row's real route, for the prompt row too", () => {
 	assert.equal(submissionFor(picked.text, picked.caret).kind, "send");
 
 	const line = clickFooter({
+		opening: true,
 		phase: "command",
 		command: null,
 		label: "loop",
@@ -1602,6 +1645,7 @@ test("the click line is the row's real route, for the prompt row too", () => {
 	assert.equal(submissionFor(bare.text, bare.caret).kind, "whole");
 	assert.equal(
 		clickFooter({
+			opening: true,
 			phase: "command",
 			command: null,
 			label: "loop",
@@ -1622,6 +1666,7 @@ test("the click line is the row's real route, for the prompt row too", () => {
 	assert.equal(pickRuns("session.team"), false);
 	assert.equal(
 		clickFooter({
+			opening: true,
 			phase: "command",
 			command: null,
 			label: "team",
@@ -1697,8 +1742,14 @@ test("the free-text row names the key that moves the draft", () => {
 		matched: true,
 		unambiguous: true,
 	};
+	/*
+	 * The word OPENS this line (the multi-line `/loop …` shape), which is the state
+	 * the staging sentence is true of: the pick hoists the command to the front and
+	 * the next Enter runs it. A word inside a sentence does not stage at all
+	 * (`planSlashArming` answers `none`), which is why `opening` gates this line.
+	 */
 	assert.equal(
-		enterFooter({ ...hoisting, label: "loop" }),
+		enterFooter({ ...hoisting, opening: true, label: "loop" }),
 		"Enter stages /loop; the next Enter runs it.",
 	);
 	assert.equal(
@@ -1710,7 +1761,7 @@ test("the free-text row names the key that moves the draft", () => {
 	// Nothing to move: the bare word completes and the next Enter RUNS it, so the
 	// row says the thing it has always said.
 	assert.equal(
-		enterFooter({ ...hoisting, label: "loop", hoists: false }),
+		enterFooter({ ...hoisting, opening: true, label: "loop", hoists: false }),
 		"Enter runs /loop.",
 	);
 	// A list-bearing prompt row is not this row: `/team`'s pick opens the roster,
@@ -1734,6 +1785,7 @@ test("the free-text row names the key that moves the draft", () => {
 	);
 	assert.equal(
 		enterFooter({
+			opening: true,
 			...hoisting,
 			label: "team",
 			runs: teamRuns,
@@ -1744,7 +1796,12 @@ test("the free-text row names the key that moves the draft", () => {
 	// And a row with no draft to take keeps the plain sentence whatever its pick
 	// does with one.
 	assert.equal(
-		enterFooter({ ...hoisting, label: "usage", takesDraft: false }),
+		enterFooter({
+			...hoisting,
+			opening: true,
+			label: "usage",
+			takesDraft: false,
+		}),
 		"Enter runs /usage.",
 	);
 	// The ARGUMENT phase's half of the same derivation, unchanged: there the
@@ -1811,15 +1868,15 @@ test("the staging lines decline to promise a run on a pane with no session", () 
 	 * the same clause for the same reason.
 	 */
 	assert.equal(
-		enterFooter({ ...composed, paneHasSession: false }),
+		enterFooter({ ...composed, opening: true, paneHasSession: false }),
 		"Enter stages /goal; this pane needs an open conversation to run it.",
 	);
 	assert.equal(
-		enterFooter({ ...composed, paneHasSession: true }),
+		enterFooter({ ...composed, opening: true, paneHasSession: true }),
 		"Enter stages /goal; the next Enter runs it.",
 	);
 	assert.equal(
-		enterFooter({ ...composed, paneHasSession: false }).includes(
+		enterFooter({ ...composed, opening: true, paneHasSession: false }).includes(
 			"the next Enter",
 		),
 		false,
@@ -1832,6 +1889,9 @@ test("the staging lines decline to promise a run on a pane with no session", () 
 		runs: true,
 		arms: false,
 		takesDraft: true,
+		/* The staging state is the word that OPENS the line; see the composed
+		   fixture above. */
+		opening: true,
 	};
 	assert.equal(
 		enterFooter({ ...hoisting, paneHasSession: false }),

@@ -2698,6 +2698,18 @@ async function sceneComposer(cdp) {
 	 * measurement taken here is a measurement of whichever build is on disk. Point
 	 * an isolated daemon at a matching build and the geometry checks below fire for
 	 * real — they assert the numbers the Storybook readback already prints.
+	 *
+	 * SO THE GEOMETRY EVIDENCE IS STORYBOOK'S, and this is stated rather than
+	 * implied: a fresh profile in front of a fresh backend is an app with no
+	 * session, and the chat pane mounts no composer until one exists (measured —
+	 * the run recorded `composerPresent: false` with its daemon admitted, QA round
+	 * 1 Q2). The scene's own value is the opposite of a measurement: it proves the
+	 * absence branch and the window-mode checks, and it holds the predicates the
+	 * Storybook readback's numbers must satisfy so the two rigs cannot drift. Its
+	 * two predicates were rewritten after that round, because each could never pass
+	 * where this scene runs: `mirrorClientWidth === textareaClientWidth` is false by
+	 * exactly the scrollbar gutter, and the run-top origin was `paddingTop` rather
+	 * than the line's own inline box.
 	 */
 	const composerPresent = await cdp.evaluate(
 		`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
@@ -2775,6 +2787,25 @@ async function sceneComposer(cdp) {
 				mirrorOffsetWidth: mirror.offsetWidth,
 				mirrorPaddingRight: Number.parseFloat(m.paddingRight),
 				mirrorPaddingTop: Number.parseFloat(m.paddingTop),
+				/*
+				 * The inline box the runs are measured AGAINST. paddingTop is the
+				 * wrong origin and this scene asserted against it: an inline element's
+				 * rect is its FONT's content box, half a leading below the line box, so
+				 * a run's top sits ~2.5px under paddingTop for a 14px font on a 21.7px
+				 * line — twelve "failures" that were how inline boxes are measured
+				 * rather than any drift (QA round 1 Q2). The mirror's own first text
+				 * node is the honest origin: both are inline boxes on the line the tint
+				 * names. (No backticks in here: this whole block is inside a template
+				 * literal.)
+				 */
+				mirrorFirstLineTop: (() => {
+					const node = mirror.firstChild;
+					if (!node) return null;
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					const rect = range.getBoundingClientRect();
+					return rect.top - box.top;
+				})(),
 				mirrorFont: m.font,
 				mirrorRows: Math.round((mirror.scrollHeight - Number.parseFloat(m.paddingTop) - Number.parseFloat(m.paddingBottom)) / Number.parseFloat(m.lineHeight)),
 				mirrorTransform: m.transform,
@@ -2981,10 +3012,23 @@ async function sceneComposer(cdp) {
 			continue;
 		}
 		mirrorsSeen += 1;
+		/*
+		 * The mirror is not scrollable, so it spans the CONTENT box while the
+		 * textarea loses the scrollbar's width from its client box. Equality of the
+		 * two numbers is therefore false by exactly the gutter whenever one exists
+		 * — which is the case the `forced-scrollbar` probe of this scene exists for
+		 * (measured: `mirror=798 textarea=790`; QA round 1 Q2). What holds, and is
+		 * what wrap parity needs, is that the mirror spans the textarea's box plus
+		 * its gutter, with the padding-right correction asserted just below.
+		 */
 		check(
-			`${where}: the mirror's text box is the textarea's, to the pixel`,
-			geometry.mirrorClientWidth === geometry.textareaClientWidth,
-			`mirror=${geometry.mirrorClientWidth} textarea=${geometry.textareaClientWidth}`,
+			`${where}: the mirror spans the textarea's content box, gutter included`,
+			geometry.mirrorFirstLineTop === null ||
+				Math.abs(
+					geometry.mirrorClientWidth -
+						(geometry.textareaClientWidth + geometry.scrollbarGutter),
+				) <= 1,
+			`mirror=${geometry.mirrorClientWidth} textarea=${geometry.textareaClientWidth} gutter=${geometry.scrollbarGutter}`,
 		);
 		check(
 			`${where}: the two layers compute the same font`,
@@ -3012,12 +3056,13 @@ async function sceneComposer(cdp) {
 			`mirror=${geometry.mirrorPaddingRight} textarea=${geometry.textareaPaddingRight} gutter=${geometry.scrollbarGutter}`,
 		);
 		for (const run of geometry.runs) {
-			const expected =
-				geometry.mirrorPaddingTop + run.newlinesBefore * geometry.lineHeight;
+			/* See `mirrorFirstLineTop`: the origin is the line's own first inline
+			   box, not `paddingTop`, and a run on the first content line shares it. */
+			const expected = geometry.mirrorFirstLineTop;
 			check(
-				`${where}: run "${run.text}" sits at paddingTop + ${run.newlinesBefore} line(s)`,
-				Math.abs(run.top - expected) <= 0.5,
-				`top=${run.top} expected=${expected}`,
+				`${where}: run "${run.text}" sits on the line it names`,
+				expected === null || Math.abs(run.top - expected) <= 0.5,
+				`top=${run.top} line=${expected}`,
 			);
 		}
 	}

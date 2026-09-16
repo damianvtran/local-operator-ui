@@ -2043,6 +2043,39 @@ test("the command row the composer types against IS the contract row", () => {
 		/prefixes_text\?: boolean;/,
 		"the commands wire row must carry the optional prefixes_text field",
 	);
+	/*
+	 * And the fields the SHAPE decision reads, for the same reason: a dropped
+	 * `argument_shape` would not fail anywhere else — the composer's alias still
+	 * compiles when the field is gone, because an alias of a narrower row is still
+	 * assignable — and the planner would silently fall back to its own vocabulary.
+	 * The cast at the call sites is gone for that half; this pins the text.
+	 */
+	assert.match(
+		row,
+		/argument_shape\?: "none" \| "word" \| "provider" \| "subcommand" \| "any";/,
+		"the commands wire row must carry the optional argument_shape field",
+	);
+	assert.match(
+		row,
+		/argument_words\?: string\[\];/,
+		"the commands wire row must carry the optional argument_words field",
+	);
+	/*
+	 * And that ABSENCE IS NOT A DEFAULT. `if (!command.argument_shape) continue`
+	 * is the single line between an older backend and every one of its rows
+	 * accepting arbitrary text; defaulting it to `any` is a one-character change
+	 * that no behavioural test in this tree would catch, because every fixture
+	 * that exercises the shapes passes them explicitly.
+	 */
+	const planner = readFileSync(
+		"src/renderer/src/features/chat/components/slash-submit.ts",
+		"utf8",
+	);
+	assert.match(
+		planner,
+		/if \(!command\.argument_shape\) continue;/,
+		"a row with no `argument_shape` must be left out of the wire shapes, never defaulted",
+	);
 	const composer = readFileSync(
 		"src/renderer/src/features/chat/components/slash-commands.tsx",
 		"utf8",
