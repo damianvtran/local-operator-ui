@@ -1,0 +1,38 @@
+{
+  "hello": {
+    "armed": true,
+    "outDir": "/tmp/wakes-live2/drive/frames",
+    "title": "Local Operator",
+    "route": "/chat",
+    "href": "file:///Users/damian/local-operator-ui-worktrees/composer-wakes/out/renderer/index.html#/chat",
+    "theme": "localOperatorDark",
+    "viewport": {
+      "width": 1380,
+      "height": 868,
+      "devicePixelRatio": 2
+    },
+    "visibilityState": "visible",
+    "hasFocus": false,
+    "apiBaseUrl": "http://127.0.0.1:8801",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "44.3.0",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 900
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 868
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "/tmp/wakes-live2/drive/frames"
+  }
+}
