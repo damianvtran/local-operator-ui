@@ -2646,9 +2646,13 @@ async function scenePalette(cdp) {
  * than a smear is that the two layers wrap at the same character. That is a
  * metric property, and this scene is where it is measured: the mirror's
  * `clientWidth` against the textarea's, the computed `font` string of each, the
- * row count of a wrapped draft, the y of each painted run against
- * `paddingTop + newlines × lineHeight`, and the right-padding correction the
- * scrollbar forces.
+ * row count of a wrapped draft, the y of each painted run against the mirror's
+ * own first line box, and the right-padding correction the scrollbar forces.
+ *
+ * It needs a composer to measure, and without `--backend` (see the isolation
+ * notes above) the pane mounts none: the branch below records that rather than
+ * reporting an empty pass, and the same numbers are measured in the Storybook
+ * harness, which has the command vocabulary this surface requires.
  *
  * The drafts are the four shapes the rule has to keep apart, driven through the
  * app's real input pipeline (`Input.insertText` after a React-compatible clear,
@@ -2677,16 +2681,23 @@ async function sceneComposer(cdp) {
 	);
 
 	/*
-	 * IS THERE A COMPOSER AT ALL? A driver run has no backend, and the chat pane
-	 * says so: it renders its unreachable-backend state, in which the composer is
-	 * not mounted (measured — see the frame this branch captures). That is not a
-	 * failure of this scene and must not be reported as one: the highlight's
-	 * vocabulary comes from the backend's `commands.list`, so with no backend
-	 * there is nothing for the composer to recognise and nothing to measure. The
-	 * geometry is measured where a vocabulary exists — the Storybook harness
-	 * (`Chat/Slash highlight`, whose `geometry` story prints this same readback
-	 * into the frame) — and this branch records the fact rather than an empty
-	 * pass.
+	 * IS THERE A COMPOSER AT ALL? A run WITHOUT `--backend` has no backend, and the
+	 * chat pane says so: it renders its unreachable-backend state, in which the
+	 * composer is not mounted (measured — see the frame this branch captures). That
+	 * is not a failure of this scene and must not be reported as one: the
+	 * highlight's vocabulary comes from the backend's `commands.list`, so with no
+	 * backend there is nothing for the composer to recognise and nothing to
+	 * measure. The geometry is measured where a vocabulary exists — the Storybook
+	 * harness (`Chat/Slash highlight`, whose `geometry` story prints this same
+	 * readback into the frame) — and this branch records the fact rather than an
+	 * empty pass.
+	 *
+	 * WITH `--backend` the composer DOES mount, and this branch still stands aside:
+	 * that flag's contract is that the renderer was built against the same
+	 * `VITE_LOCAL_OPERATOR_API_URL` and that the run OWNS the daemon, so a
+	 * measurement taken here is a measurement of whichever build is on disk. Point
+	 * an isolated daemon at a matching build and the geometry checks below fire for
+	 * real — they assert the numbers the Storybook readback already prints.
 	 */
 	const composerPresent = await cdp.evaluate(
 		`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,

@@ -102,10 +102,13 @@ export type FirstContentLine = {
  * The first line of the draft that has content, or `null` for a draft that is
  * all whitespace.
  *
- * Exported because the MIRROR needs it too: the painted layer renders exactly
- * this line's characters (plus the newlines before it, so its y offset matches
- * the textarea's). Deriving it twice is how the two layers would come to
- * disagree about which line is being painted.
+ * Exported because the MIRROR needs it too, as the ORIGIN of what it paints:
+ * the runs are computed within this line, and the painted layer then renders the
+ * draft from this line's start to the end of the draft — the whole tail, not
+ * this line alone, because the tokens it tints live in a `<textarea>` whose own
+ * glyphs are transparent whenever a run exists, so a payload that stopped at
+ * this line would blank every line the user typed after it
+ * (`composer-highlight.tsx` carries that measurement).
  */
 export function firstContentLine(draft: string): FirstContentLine | null {
 	let lineStart = 0;
