@@ -1314,6 +1314,15 @@ export const wakeClause = (count: number): string =>
  *   reason to drop anything: the wire's `WakeState` is `extra="allow"` and these
  *   fields are the backend's, so a stricter reader here would blank a real
  *   schedule the moment the runtime adds a field.
+ *
+ * A NON-POSITIVE `every_ms` reads as no recurrence at all (`once`, and
+ * `everyMs: null`), which is the TUI band's own test for the same field —
+ * `if schedule.every_ms` is Python truthiness, so a `0` there renders `once` too.
+ * The wire cannot produce one (`MIN_WAKE_INTERVAL_MS` is 60 s,
+ * `harness/wake.py:47`) and the case is written rather than left to fall through
+ * because the fall-through is `every 0ms`, a row that states a cadence no
+ * scheduler has. The row and its label are decided in ONE place so the two cannot
+ * disagree about whether there is a recurrence.
  */
 const deriveWake = (
 	record: Record<string, unknown>,
@@ -1323,15 +1332,17 @@ const deriveWake = (
 	const nextDueAt = wireNumber(record.next_due_at);
 	const message = wireText(record.message);
 	if (message === "" && nextDueAt === null) return null;
-	const everyMs = wireNumber(record.every_ms);
+	const interval = wireNumber(record.every_ms);
+	const everyMs = interval !== null && interval > 0 ? interval : null;
+	const remaining = wireNumber(record.remaining);
 	return {
 		id: wireText(record.id) || `wake-${index}`,
 		message,
 		nextDueAt,
 		dueLabel: nextDueAt === null ? "" : formatWakeDue(nextDueAt, nowMs),
 		everyMs,
-		remaining: wireNumber(record.remaining),
-		cadence: formatWakeCadence(everyMs, wireNumber(record.remaining)),
+		remaining,
+		cadence: formatWakeCadence(everyMs, remaining),
 	};
 };
 
