@@ -7,11 +7,22 @@
  * The frames to judge the panel on are the degrade ones, because `/info` is the
  * one panel whose two halves come from different places:
  *
- * - `Unavailable` is a backend that did not answer, and sections 4 and 5 still
+ * - `Unavailable` is a backend that did not answer, and sections 5 and 6 still
  *   render — the panel degrades SECTION BY SECTION, never to a blank, because
  *   the conversation facts are live local state rather than a second read.
  * - `BuildSkew` and `RosterUnread` are the two caveats the host half can carry,
  *   each a quiet line rather than a warning about a number nobody measured.
+ * - The `Fleet*` frames are the new "Agents and subagents" section's honesty
+ *   rules, and they are the ones to judge closely, because every one of them is
+ *   a state in which a number would be a lie: `FleetAllReporting` (the measured
+ *   answer), `FleetOneDoesNotReport` (the `≥` lower bound on the figure itself,
+ *   not only in the sentence below it), `FleetNobodyReports` (the `—` refusal —
+ *   never a fabricated `0`), `FleetQueuedOnly` (`none running · Q queued`, so a
+ *   zero total does not contradict a visible queue), `FleetAllIdle` (the one
+ *   state in which `none running` is a measurement) and `FleetWedged` (the
+ *   runtime split plus the as-of-its-last-heartbeat caveat). `FleetUnavailable`
+ *   is the registry that could not be scanned: the section then carries no
+ *   numbers at all, only the notice section 3 shows.
  * - `RemoteHost` is the label that keeps the panel honest when the backend is
  *   not on this machine: the host facts describe the machine the app is
  *   CONNECTED TO, which is why section 2's meta says exactly that.
@@ -137,11 +148,23 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 		build_skew: false,
 		usage_available: true,
 		available: true,
-		subagents_reporting: 1,
+		/*
+		 * The fleet roll-ups satisfy the terminal's own arithmetic, because this
+		 * section renders them side by side: `fleet_session_trajectories` is the
+		 * BUSY live count above, `fleet_trajectories` is that plus
+		 * `fleet_subagents_running`, and `subagents_reporting + subagents_unreported`
+		 * is the LIVE count. A fixture whose addends do not reach its total is a
+		 * fixture a reviewer has to distrust, and the note column prints all three.
+		 * The magnitudes stay SCALED to this host's three-row registry: the counter
+		 * that fed `≥42 trajectories` at briefing time came from a host running
+		 * twenty-one sessions, and a twenty-one-runtime counter above a three-row
+		 * table would be the same defect in the other direction.
+		 */
+		subagents_reporting: 2,
 		subagents_unreported: 0,
-		fleet_subagents_running: 1,
+		fleet_subagents_running: 3,
 		fleet_subagents_queued: 0,
-		fleet_session_trajectories: 2,
+		fleet_session_trajectories: 1,
 		fleet_trajectories: 4,
 	},
 	agents: {
@@ -224,6 +247,23 @@ const base = {
 	onClose: noop,
 	gated: false,
 };
+
+/** The fleet roll-ups, overridden as one coherent set on top of the registry. */
+const fleet = (
+	over: Partial<DesktopInfoData["sessions"]> = {},
+): DesktopInfoData => info({ sessions: { ...info().sessions, ...over } });
+
+/**
+ * The base registry with nothing in flight.
+ *
+ * The idle and queued states need it because `busy` is a LINE flag, not a
+ * counter one can zero on its own: leaving the busy row in place under a
+ * `none running` header is the contradiction those two stories exist to show.
+ */
+const idleLines = (
+	lines: DesktopInfoData["sessions"]["lines"],
+): DesktopInfoData["sessions"]["lines"] =>
+	lines.map((line) => ({ ...line, busy: false, pending: null }));
 
 const meta: Meta<typeof InfoPanel> = {
 	title: "panels-info",
@@ -327,7 +367,7 @@ export const NoMemory: Story = {
 	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 
-/** The registry scan failed: section 3 says so, sections 4 and 5 still render. */
+/** The registry scan failed: section 3 says so, sections 5 and 6 still render. */
 export const RegistryUnavailable: Story = {
 	args: {
 		...base,
@@ -340,7 +380,157 @@ export const RegistryUnavailable: Story = {
 };
 
 /**
- * A backend that did not answer: sections 1-3 are unavailable, 4 and 5 are not.
+ * The measured answer: every runtime reported, and the fleet is doing work.
+ *
+ * `2 runtimes · 4 trajectories` in the section's own meta, with the addends
+ * beside the figure. This is the state the section is normally read in, and the
+ * one every other `Fleet*` frame is a departure from.
+ */
+export const FleetAllReporting: Story = {
+	args: { ...base, data: fleet(), frontend },
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * One runtime is an older build and cannot report its subagents.
+ *
+ * The `≥` rides the FIGURE rather than only the caveat sentence, because a
+ * qualifier the reader has to scroll to is not a qualifier: without it the meta
+ * would present a sum with a missing term as a total.
+ */
+export const FleetOneDoesNotReport: Story = {
+	args: {
+		...base,
+		data: fleet({ subagents_reporting: 1, subagents_unreported: 1 }),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * Nobody could report, and nothing at all was measured: the `—` refusal.
+ *
+ * `0` here would be pure fabrication — no runtime answered — and the note names
+ * WHY the value is unknown instead of printing the addends as three zeros.
+ */
+export const FleetNobodyReports: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 0,
+			lines: idleLines(info().sessions.lines),
+			subagents_reporting: 0,
+			subagents_unreported: 2,
+			fleet_subagents_running: 0,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 0,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * Nothing is running and children are waiting: `none running · 3 queued`.
+ *
+ * The queued children are named BESIDE the measured `0 total`, never added into
+ * it — a child on a capacity slot spends nothing, so counting it as a trajectory
+ * would inflate the number this section exists to state precisely. But a bare
+ * `0` above a visible queue is the same contradiction reached by arithmetic.
+ */
+export const FleetQueuedOnly: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 0,
+			lines: idleLines(info().sessions.lines),
+			fleet_subagents_running: 0,
+			fleet_subagents_queued: 3,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 0,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * Every runtime reported zero and nothing is waiting: `none running`.
+ *
+ * The one state in which the bare word is earned, because it is a measurement
+ * rather than a hedge over an unmeasured term.
+ */
+export const FleetAllIdle: Story = {
+	args: {
+		...base,
+		data: fleet({
+			busy: 0,
+			lines: idleLines(info().sessions.lines),
+			fleet_subagents_running: 0,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 0,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * A runtime that stopped answering: it still counts, and its counts are stale.
+ *
+ * `runtimes` is `live + wedged` — a wedged pid is still there and its children
+ * may still be working — so the meta counts it, the Runtimes card splits it out,
+ * and the caveat says which number is as of when.
+ */
+export const FleetWedged: Story = {
+	args: {
+		...base,
+		data: fleet({
+			lines: [
+				{ ...info().sessions.lines[0], busy: false },
+				{
+					...info().sessions.lines[1],
+					pid: 84_020,
+					state: "wedged",
+					busy: false,
+					heartbeat_age_s: 4_200,
+				},
+			],
+			total: 2,
+			live: 1,
+			wedged: 1,
+			busy: 0,
+			subagents_reporting: 1,
+			fleet_subagents_running: 2,
+			fleet_session_trajectories: 0,
+			fleet_trajectories: 2,
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * The registry that could not be scanned, one section lower than section 3.
+ *
+ * The same failure, framed where the new section draws it: the section shows
+ * section 3's notice VERBATIM and carries no numbers at all — no meta, no
+ * cards, no caveat — because every number it has comes from the scan that just
+ * failed.
+ */
+export const FleetUnavailable: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: { ...info().sessions, available: false, lines: [] },
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Agents and subagents"),
+};
+
+/**
+ * A backend that did not answer: sections 1-4 are unavailable, 5 and 6 are not.
  *
  * The whole point of sectioning by SOURCE rather than by topic: the host facts
  * need the backend, the conversation facts do not, and a blank panel would throw
@@ -431,7 +621,7 @@ export const RemoteHost: Story = {
 };
 
 /** MCP mid-handshake: `Still connecting`, never "1 of 3 up" during a handshake. */
-/** Settling counts are in section 5, below the fold (D2). */
+/** Settling counts are in section 6, below the fold (D2). */
 export const McpSettling: Story = {
 	args: {
 		...base,

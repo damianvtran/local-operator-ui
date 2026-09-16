@@ -1494,6 +1494,17 @@ export const STORIES = [
 	["panels-info--mcp-settling", 1140, 1040],
 	["panels-info--many-sessions", 1140, 1100],
 	["panels-info--dense", 1140, 1100],
+	/* The fleet answer's honesty states, which is where this section can lie:
+	   the `≥` bound, the `—` refusal, the measured zero with a queue beside it,
+	   the earned `none running`, the wedged split, and the registry that could
+	   not be scanned at all. */
+	["panels-info--fleet-all-reporting", 1140, 1040],
+	["panels-info--fleet-one-does-not-report", 1140, 1040],
+	["panels-info--fleet-nobody-reports", 1140, 1040],
+	["panels-info--fleet-queued-only", 1140, 1040],
+	["panels-info--fleet-all-idle", 1140, 1040],
+	["panels-info--fleet-wedged", 1140, 1040],
+	["panels-info--fleet-unavailable", 1140, 1040],
 	["panels-info--unavailable", 1140, 760],
 	["panels-info--loading", 1140, 460],
 	["panels-info--gated", 1140, 400],

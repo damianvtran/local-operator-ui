@@ -17,6 +17,7 @@ import {
 	type InfoRow,
 	conversationRows,
 	environmentRows,
+	fleetFacts,
 	hostRows,
 	installFacts,
 	installMeta,
@@ -38,8 +39,8 @@ import { StatCard, StatGrid } from "./primitives/stat-card";
  * behaving differently" both start at the version.
  *
  * The panel is split by SOURCE, and that split is the design rather than an
- * implementation detail: sections 1-3 describe the machine the BACKEND runs on
- * (one read, and it can fail on its own), while sections 4 and 5 describe the
+ * implementation detail: sections 1-4 describe the machine the BACKEND runs on
+ * (one read, and it can fail on its own), while sections 5 and 6 describe the
  * window in front of the user, from state the renderer already holds. So a
  * backend that cannot be reached leaves the live half standing — the panel
  * degrades section by section, never to a blank.
@@ -190,6 +191,11 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 }) => {
 	const install = data ? installFacts(data.install) : null;
 	const sessions = data?.sessions;
+	/*
+	 * `null` is the registry that could not be scanned: the fleet section then
+	 * carries no meta and no numbers at all, only the notice section 3 shows.
+	 */
+	const fleet = data ? fleetFacts(data) : null;
 	const mcp = mcpSummary(frontend);
 	const sessionRows = sessions
 		? sessionLineRows(sessions.lines, sessionId)
@@ -399,6 +405,54 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 											</p>
 										) : null}
 									</>
+								))}
+						</PanelSection>
+						<PanelSection title="Agents and subagents" meta={fleet?.meta}>
+							{hostBody() ??
+								(fleet ? (
+									<>
+										{/*
+										 * Four cards rather than a facts table, because each of the first two
+										 * carries a BREAKDOWN beneath its number and that is what a stat card's
+										 * note is for (§ 6.3's convention for this panel's counts, one section
+										 * above). No tone on any of them: the terminal carries no colour here,
+										 * and warning-red on a total that mostly counts healthy runtimes would
+										 * be a judgement rather than the measured condition a tone is for.
+										 */}
+										<StatGrid>
+											{fleet.facts.map((fact) => (
+												<StatCard
+													key={fact.key}
+													label={fact.label}
+													value={fact.value}
+													note={fact.note}
+												/>
+											))}
+										</StatGrid>
+										{/*
+										 * Quiet prose, and only when the state applies: a line that is always
+										 * there is wallpaper and gets read as boilerplate, so the one time it
+										 * matters it is not read either. The same register as the memory line
+										 * under section 3.
+										 */}
+										{fleet.caveats.map((caveat) => (
+											<p
+												key={caveat}
+												className={cn("pt-2 text-body-sm text-ink-muted")}
+											>
+												{caveat}
+											</p>
+										))}
+									</>
+								) : (
+									/*
+									 * The SAME notice as section 3, verbatim: one registry serves both, and
+									 * two spellings of one failure would read as two different problems.
+									 */
+									<PanelNotice
+										kind="unavailable"
+										text="Could not scan the session registry. Close and reopen this panel to try again."
+									/>
 								))}
 						</PanelSection>
 						<PanelSection
