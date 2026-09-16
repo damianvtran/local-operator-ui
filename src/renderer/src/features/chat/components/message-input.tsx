@@ -1,3 +1,7 @@
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
@@ -23,7 +27,11 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
-import { showErrorToast } from "@shared/utils/toast-manager";
+import {
+	showErrorToast,
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
 import {
 	Check,
 	CircleAlert,
@@ -68,6 +76,36 @@ import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { ComposerStatusRow } from "./composer-status-row";
+/*
+ * The composer's inline credential capture (design §1-§9). The pure module owns
+ * every rule the gesture rests on — the arm predicate, the mask, the positional
+ * mirror, the marker grammar, the citation rewrite — and this file only routes
+ * keystrokes, pastes and the submit seam into it. See `credential-capture.ts`
+ * for why that split is the point rather than tidiness.
+ */
+import {
+	CREDENTIAL_ARMED_NOTICE,
+	CREDENTIAL_STORE_TIMEOUT_MS,
+	CREDENTIAL_TYPING_NOTICE,
+	type Capture,
+	type CredentialPayload,
+	IDLE_CAPTURE,
+	type UnstoredReason,
+	applyDomEdit,
+	armSpan,
+	cancelTypedCredential,
+	capturePasted,
+	citedPayloads,
+	isTyping,
+	mintTypedCredential,
+	storedNotice,
+	substituteCredentials,
+	syncCapture,
+	typeIntoCapture,
+	unredactedNotice,
+	unstoredNotice,
+} from "./credential-capture";
+import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 import {
 	DirectoryIndicator,
 	type DirectoryIndicatorHandle,
@@ -464,6 +502,43 @@ type MessageInputProps = {
 const ALERT_READ_DWELL_MS = 1500;
 
 /**
+ * `promise`, or a rejection once `ms` has passed.
+ *
+ * The credential store sits ON THE SUBMIT SEAM (§9), so an answer that never
+ * comes cannot be waited for indefinitely: a never-resolving transport would
+ * park the composer behind a spinner with the user's message inside it. The TUI
+ * bounds the same wait with `CREDENTIAL_STORE_TIMEOUT_S` and degrades LOUDLY
+ * rather than holding the box, and this is that bound. The timer is cleared on
+ * both outcomes so a late answer cannot leave a rejection nobody handles.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	/*
+	 * A FUNCTION DECLARATION, not a generic arrow, and that is not a style
+	 * preference: `canonical-chat.test.mjs` walks this file with a minimal JSX
+	 * scanner to assert that no ancestor of the slash popup clips it, and a
+	 * `<T,>` arrow reads to that walker as an opening tag — it loses the tree
+	 * and the guard fails closed with "the instrument is broken". The walker is
+	 * right to refuse rather than guess; the cost here is one declaration.
+	 */
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error("credential store timed out")),
+			ms,
+		);
+		promise.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
+/**
  * How long the "no longer holding it" confirmation stays after an escape.
  *
  * Long enough for an assertive region to announce it and for a sighted user to
@@ -787,6 +862,152 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [band, setBand] = useState<HTMLDivElement | null>(null);
 		const [splash, setSplash] = useState<HTMLDivElement | null>(null);
 
+		/*
+		 * ---------------------------------------------------------------------
+		 * The inline credential capture (§1-§9 of the design document)
+		 * ---------------------------------------------------------------------
+		 *
+		 * THE VALUE LIVES HERE AND NOWHERE ELSE. `payloadsRef` is the map §6
+		 * specifies — `{ index, key, value, marker }` keyed by the marker's index —
+		 * held in a REF rather than in React state, because state is what gets
+		 * serialised: `conversation-input-store` persists to localStorage and the
+		 * draft mirror rides on it, so a value that reached either would land on
+		 * disk. The buffer carries mask cells and, after Enter, a marker; neither
+		 * carries a byte of the secret.
+		 *
+		 * `capture` is state as well as a ref: the overlay and the notice line have
+		 * to repaint as the mode changes, and the ref is what the event handlers read
+		 * so a handler built for one render cannot act on a stale capture.
+		 *
+		 * `unredacted` is the one disclosure the app makes, and it is the operator's
+		 * own Esc: §5's notice that the characters are now plain text in the
+		 * composer. It is held as a sentence rather than derived from state, because
+		 * it describes an EVENT and the state that follows it is an ordinary
+		 * composer holding prose.
+		 */
+		const [capture, setCaptureState] = useState<Capture>(IDLE_CAPTURE);
+		const captureRef = useRef<Capture>(IDLE_CAPTURE);
+		const setCapture = useCallback((next: Capture) => {
+			captureRef.current = next;
+			setCaptureState(next);
+		}, []);
+		const payloadsRef = useRef(new Map<number, CredentialPayload>());
+		const nextIndexRef = useRef(1);
+		const [unredacted, setUnredacted] = useState<string | null>(null);
+		/*
+		 * The names the session's store already holds, for the key guard (§8).
+		 *
+		 * Fetched when the capture ARMS and cached, because the desktop contract is
+		 * asynchronously reachable while minting at Enter must stay synchronous —
+		 * and a failed or still-running fetch must not block minting, so the mint
+		 * consults whatever is cached and always unions this composer's own
+		 * in-flight keys (design §7.2). Empty is the honest degrade: it narrows the
+		 * collision guard to probability rather than failing a capture whose secret
+		 * has already left the buffer.
+		 */
+		const sessionNamesRef = useRef<string[]>([]);
+		const fetchedNamesFor = useRef<string | undefined>(undefined);
+		/*
+		 * The session a store can reach, or `undefined` for a draft pane.
+		 *
+		 * It is the page's own "is there a live session" signal (`sessionStatus` is
+		 * supplied only once a canonical session exists), and it is the right one to
+		 * ask: on a New chat the session is created INSIDE the send, so at submit
+		 * time there is genuinely nothing to store into yet. The citation then says
+		 * so honestly (§9.3) instead of promising a key nothing holds.
+		 */
+		const credentialSessionId = sessionStatus ? conversationId : undefined;
+
+		/*
+		 * The submit seam (§9): store what the text cites, then rewrite every
+		 * citation.
+		 *
+		 * ORDER IS THE WHOLE OF IT. The citation the model receives is written from
+		 * the store's ANSWER, so the model is never handed a name nothing holds —
+		 * and a marker the user backspaced away is not cited, so its secret is never
+		 * stored (the same rule that drops an uncited image).
+		 *
+		 * The value never touches the outgoing text: the citation names the key and
+		 * states that its value cannot be read. That is the entire point of the
+		 * substitution, and `substituteCredentials` is the one authority for its
+		 * wording, shared with the tests.
+		 */
+		const storeCitedCredentials = useCallback(
+			async (
+				text: string,
+			): Promise<{ text: string; stored: string[]; refused: string[] }> => {
+				const payloads = payloadsRef.current;
+				const cited = citedPayloads(text, payloads.values());
+				if (cited.length === 0) return { text, stored: [], refused: [] };
+				const refused = new Map<number, UnstoredReason>();
+				const stored: string[] = [];
+				for (const payload of cited) {
+					if (!credentialSessionId) {
+						// No session to reach (a draft pane), which is the TUI's `null`
+						// answer: the round-trip could not be made at all.
+						refused.set(payload.index, "unreachable");
+						continue;
+					}
+					try {
+						const answer = await withTimeout(
+							desktopResult<{ data?: { ok?: boolean; reason?: string } }>({
+								op: "sessions.credential",
+								sessionId: credentialSessionId,
+								action: "store",
+								key: payload.key,
+								value: payload.value,
+							}),
+							CREDENTIAL_STORE_TIMEOUT_MS,
+						);
+						if (answer?.data?.ok === false) {
+							refused.set(
+								payload.index,
+								answer.data.reason === "empty-key" ? "rejected-key" : "lost",
+							);
+							continue;
+						}
+						stored.push(payload.key);
+					} catch (error) {
+						/*
+						 * WHICH CAUSE, and how little this transport can say about it.
+						 *
+						 * The route collapses every store refusal into one 409
+						 * (`server/routes/desktop_lifecycle.py:161-172`): the store's own
+						 * `reason` never crosses the wire. What the status DOES separate is
+						 * the two things a user acts on differently: a 4xx the route
+						 * answered means the store was REACHED and said no, and anything
+						 * else — a transport failure (status `null`), a 404 for a session
+						 * this backend does not have — means the round-trip could not be
+						 * made at all. With a key this composer minted, the reachable
+						 * refusal is a blank VALUE, which is exactly the restored draft
+						 * whose bytes do not survive (§6), hence `"lost"`.
+						 */
+						const status =
+							error instanceof DesktopControlError ? error.status : null;
+						refused.set(
+							payload.index,
+							status !== null && status >= 400 && status < 500
+								? "lost"
+								: "unreachable",
+						);
+					}
+				}
+				/*
+				 * EVERY citation is rewritten, whether it stored or not — a marker left
+				 * alone would send a composer-local `[Credential #1, 52 chars]` the
+				 * model cannot use (`substitute_credentials`).
+				 */
+				return {
+					text: substituteCredentials(text, payloads.values(), refused),
+					stored,
+					refused: [...refused.keys()].map(
+						(index) => payloads.get(index)?.key ?? `#${index}`,
+					),
+				};
+			},
+			[credentialSessionId],
+		);
+
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
 				// Assembled by the same function the composer compares against, so the
@@ -794,8 +1015,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// string on the reply path too. Building the prefix inline here put it
 				// downstream of every comparison and deadlocked Restore - see
 				// `buildSendPayload`.
+				const carried = await storeCitedCredentials(message);
+				if (carried.stored.length > 0)
+					showSuccessToast(storedNotice(carried.stored));
+				/*
+				 * THE OPERATOR HEARS IT TOO, on every refusal and not only the
+				 * all-failed one. Warning rather than info: it reports a gesture that
+				 * did not do what it looked like it did, and it names the retry that
+				 * actually works — arming `/credential` and pasting again, because
+				 * `/credential <KEY>` cannot reach any store (the space after the token
+				 * opens a masked capture and the KEY is minted as a short secret).
+				 */
+				if (carried.refused.length > 0)
+					showWarningToast(unstoredNotice(carried.refused));
 				const accepted = await onSendMessage(
-					buildSendPayload(message, replies),
+					buildSendPayload(carried.text, replies),
 					attachments.map((a) => a.path),
 					onEchoPainted,
 					// The typed text, beside the composed payload: the gate answer path
@@ -820,6 +1054,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return accepted;
 				}
 				if (accepted === false) return accepted;
+				/*
+				 * THE MAP IS CLEARED ONCE THE STORE HOLDS THE VALUES (§9.5), and only
+				 * then: a REFUSED send keeps it, because the operator's unsent draft must
+				 * not lose the value behind a pill they can still see. `SEND_HELD` is the
+				 * same case — the message may be on the owner and its own retry lives on
+				 * the store's claim, so the value has to stay until that resolves.
+				 */
+				payloadsRef.current.clear();
+				nextIndexRef.current = 1;
+				setUnredacted(null);
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
@@ -832,6 +1076,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				conversationId,
 				clearReplies,
 				clearAttachments,
+				storeCitedCredentials,
 			],
 		);
 
@@ -845,6 +1090,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			conversationId,
 			onSubmit,
 			scrollToBottom,
+			// §6: no persisted draft write while a masked capture is open.
+			draftHeld: isTyping(capture),
 		});
 
 		// Slash completion reads the caret position, so it lives above the
@@ -889,6 +1136,187 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			pendingCaret.current = null;
 			field.setSelectionRange(at, at);
 		}, [newMessage, textareaRef]);
+
+		/*
+		 * ---------------------------------------------------------------------
+		 * The capture's own routing: keys, the mirrored change path, and paste
+		 * ---------------------------------------------------------------------
+		 *
+		 * THE ORDER IS THE TUI'S (`editor.py:2890`): a live capture is asked FIRST,
+		 * ahead of the slash handler and ahead of the ordinary submit, because while
+		 * the mask is up the only safe default is that no other handler sees the key
+		 * at all. Enter mints rather than sends, Esc cancels rather than dismisses,
+		 * and every printable character is absorbed. The keys it does not claim fall
+		 * through untouched — the arrows, the modifiers, anything that is not a
+		 * printable character — so caret movement keeps its ordinary meaning.
+		 */
+		/** What the mint consults: the session's names UNION this composer's keys. */
+		const takenCredentialNames = useCallback(
+			() => [
+				...sessionNamesRef.current,
+				...[...payloadsRef.current.values()].map((payload) => payload.key),
+			],
+			[],
+		);
+
+		/**
+		 * Write one settled credential state into the composer.
+		 *
+		 * The value map and the buffer are written together and never apart: a
+		 * buffer updated without its map is a pill whose secret is gone, and a map
+		 * updated without its buffer is a secret nothing cites.
+		 */
+		const applyCapture = useCallback(
+			(next: {
+				capture: Capture;
+				buffer: string;
+				caret: number;
+				payload?: CredentialPayload | null;
+			}) => {
+				const payload = next.payload ?? null;
+				if (payload) {
+					payloadsRef.current.set(payload.index, payload);
+					nextIndexRef.current = Math.max(
+						nextIndexRef.current,
+						payload.index + 1,
+					);
+				}
+				setCapture(next.capture);
+				setNewMessage(next.buffer);
+				pendingCaret.current = next.caret;
+				setCaret(next.caret);
+			},
+			[setCapture, setNewMessage],
+		);
+
+		/*
+		 * The session's stored names, fetched when the capture ARMS (§7.2).
+		 *
+		 * Fired once per session rather than per keystroke, and its failure is
+		 * silent on purpose: the guard's job is to avoid silently REPLACING a live
+		 * credential, and a name list that could not be read narrows it to
+		 * probability — which is the state the TUI documents as the honest degrade —
+		 * rather than being a reason to refuse a capture whose secret is already out
+		 * of the buffer.
+		 */
+		useEffect(() => {
+			if (capture.arm === null || !credentialSessionId) return;
+			if (fetchedNamesFor.current === credentialSessionId) return;
+			fetchedNamesFor.current = credentialSessionId;
+			void desktopResult<{ data?: { credentials?: string[] } }>({
+				op: "sessions.credential",
+				sessionId: credentialSessionId,
+				action: "list",
+			})
+				.then((answer) => {
+					sessionNamesRef.current = answer?.data?.credentials ?? [];
+				})
+				.catch(() => {
+					/* Keep whatever is cached; see the comment above. */
+				});
+		}, [capture.arm, credentialSessionId]);
+
+		/*
+		 * `true` when this keypress belonged to the capture.
+		 *
+		 * Returning `false` is a real answer and not a miss: an Enter over an EMPTY
+		 * span falls through to submit, which is what `/credential ` + Enter means —
+		 * the token reaches the dispatcher and the existing picker opens, which is
+		 * how the store, the list and the forget verbs stay reachable (§1).
+		 */
+		const handleCredentialKeyDown = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+				const current = captureRef.current;
+				if (!isTyping(current)) return false;
+				const field = event.currentTarget;
+				const selection = {
+					start: field.selectionStart ?? newMessage.length,
+					end: field.selectionEnd ?? newMessage.length,
+				};
+
+				if (
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					const minted = mintTypedCredential({
+						capture: current,
+						buffer: newMessage,
+						caret: selection.end,
+						index: nextIndexRef.current,
+						taken: takenCredentialNames(),
+					});
+					// An empty span mints NOTHING and leaves the capture open, so this
+					// Enter is the ordinary one (§4).
+					if (!minted.minted) return false;
+					applyCapture(minted);
+					setUnredacted(null);
+					return true;
+				}
+
+				if (event.key === "Escape") {
+					const cancelled = cancelTypedCredential(current, newMessage);
+					if (!cancelled.cancelled) return false;
+					applyCapture(cancelled);
+					/*
+					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
+					 * say it on its own: after the unredact the composer looks entirely
+					 * ordinary while holding characters that are now plain text, and
+					 * the very next Enter exposes them. The length is the count, never
+					 * the value. An empty cancel owes no warning — it put nothing in
+					 * the buffer.
+					 */
+					setUnredacted(
+						cancelled.restored > 0
+							? unredactedNotice(cancelled.restored)
+							: null,
+					);
+					return true;
+				}
+
+				if (event.key === "Enter") {
+					// shift+Enter. An explicit newline ENDS the capture rather than
+					// being masked: the masked span is a contiguous run of cells and a
+					// newline inside it desynchronises the mint's splice. Composing
+					// prose around the pill is what the keystroke is for; a multi-line
+					// secret arrives through the paste route instead.
+					applyCapture(typeIntoCapture(current, newMessage, selection, "\n"));
+					return true;
+				}
+
+				if (event.key === "Tab") {
+					// Swallowed: a secret has no completions, and a literal tab inside
+					// one is far more likely to be a reach for a picker that is not
+					// there than an intent to leave the composer mid-capture.
+					return true;
+				}
+
+				/*
+				 * THE GATE IS PRINTABLE CHARACTERS, NEVER KEY NAMES. Textual spells
+				 * punctuation keys as words (`minus`, `full_stop`), so a `len(key) == 1`
+				 * gate masks letters and digits while every punctuation character falls
+				 * straight into the document — measured in the TUI: the canary
+				 * `zQ7-TYPED-LEAK-CANARY-4417` rendered as
+				 * `•••-TYPED-LEAK-CANARY-4417`. Real credentials are full of `-`, `_`,
+				 * `.` and `/`, so that gate leaked almost every actual secret while
+				 * looking correct against an alphanumeric test value. Here the test is
+				 * one code point of `event.key` with no modifier held, which is the
+				 * printable payload rather than the key's name.
+				 */
+				const printable =
+					Array.from(event.key).length === 1 &&
+					!event.ctrlKey &&
+					!event.metaKey &&
+					!event.altKey &&
+					!event.nativeEvent.isComposing;
+				if (!printable) return false;
+				applyCapture(
+					typeIntoCapture(current, newMessage, selection, event.key),
+				);
+				return true;
+			},
+			[newMessage, applyCapture, takenCredentialNames],
+		);
 
 		/*
 		 * THE BOX TAKES BACK A REFUSED SEND'S TEXT FROM THE STORE.
@@ -1210,6 +1638,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `textareaRef.current` is read at event time, not at render time - the caret position only has meaning for the keypress being handled, so listing the ref's current value as a dependency would rebuild this handler on every caret move while still reading the same live node.
 		const handleComposerKeyDown = useCallback(
 			(event: KeyboardEvent<HTMLTextAreaElement>) => {
+				/*
+				 * A LIVE CAPTURE OWNS THE KEYS FIRST (§3), ahead of the slash handler and
+				 * ahead of the submit: while the mask is up the safe default is that no
+				 * other handler sees the key at all. The TUI routes it the same way.
+				 */
+				if (handleCredentialKeyDown(event)) {
+					event.preventDefault();
+					return;
+				}
 				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
 					event.preventDefault();
 					return;
@@ -1268,6 +1705,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash,
 				handleSlashPick,
 				handleKeyDown,
+				handleCredentialKeyDown,
 				planFor,
 				applyPlan,
 				newMessage,
@@ -1547,6 +1985,39 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		};
 
 		const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+			/*
+			 * THE CREDENTIAL GATE IS THE FIRST BRANCH, ahead of every size and
+			 * whitespace rule (`Editor._on_paste`). It is a MODE question — did the
+			 * operator just type `/credential` here — and not a question about the
+			 * payload: a one-line API key is nowhere near the thresholds an ordinary
+			 * paste branch asks, so asking them first would insert the secret
+			 * verbatim and the redaction would never happen at all.
+			 */
+			const pasted = event.clipboardData?.getData("text/plain") ?? "";
+			if (pasted && captureRef.current.arm !== null) {
+				const field = event.currentTarget;
+				const captured = capturePasted({
+					capture: captureRef.current,
+					buffer: newMessage,
+					caret: field.selectionEnd ?? newMessage.length,
+					selection: {
+						start: field.selectionStart ?? newMessage.length,
+						end: field.selectionEnd ?? newMessage.length,
+					},
+					pasted,
+					index: nextIndexRef.current,
+					taken: takenCredentialNames(),
+				});
+				if (captured) {
+					// ONE EDIT, and the browser's own paste does not also happen: the
+					// capture is instant, never masked character by character, and a
+					// secret must not exist in the document for even one frame.
+					event.preventDefault();
+					applyCapture(captured);
+					setUnredacted(null);
+					return;
+				}
+			}
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
@@ -1584,6 +2055,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 			setNewMessage("");
 		};
+
+		/*
+		 * WHAT THE COMPOSER SAYS ABOUT THE CAPTURE (§10: each state visible AND
+		 * explained).
+		 *
+		 * The TUI's own two sentences, verbatim, plus the unredact warning:
+		 *
+		 * - TYPING is the state where the operator most needs words, because their
+		 *   keystrokes are producing bullets instead of characters — alarming rather
+		 *   than reassuring unless something says it is deliberate AND how it ends,
+		 *   so the sentence names the mask and both keys;
+		 * - ARMED is shown only while the token is still the caret's own tail, which
+		 *   is exactly when a space would open the span. The TUI shows its armed
+		 *   notice in the picker's row, which only exists during the argument phase
+		 *   and so can never paint next to the token; a composer has no such row, and
+		 *   a notice that stayed up after the operator typed four more words would be
+		 *   describing a mode that is no longer one keystroke away;
+		 * - UNREDACTED outranks ARMED and TYPING cannot coexist with it. It reports a
+		 *   state the operator did not ask to be in (they asked to cancel) and the one
+		 *   where the next Enter discloses a secret, so it is the warning tone rather
+		 *   than muted ink — the same reason the TUI posts it as a warning.
+		 */
+		const credentialNotice = isTyping(capture)
+			? CREDENTIAL_TYPING_NOTICE
+			: (unredacted ??
+				(capture.arm !== null &&
+				// Measured at the END OF THE BUFFER rather than at the `caret` state,
+				// and the difference is a race rather than a nicety: `caret` lags one
+				// commit behind the keystroke that moved it, so a derivation that read it
+				// here would flicker the armed notice on and off between renders — and in
+				// the evidence play functions it did, producing a frame with the notice in
+				// one theme and not in the next. The line's tail is the true subject of the
+				// predicate (`CREDENTIAL_ARM` is anchored to the caret's own line end), and
+				// the end of the buffer is that same tail in every state the operator can
+				// be typing in.
+				armSpan(newMessage, newMessage.length) !== null
+					? CREDENTIAL_ARMED_NOTICE
+					: null));
 
 		const shortcutText = useMemo(() => {
 			if (platform === "darwin") {
@@ -2169,6 +2678,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						</div>
 					)}
 
+					{/*
+					 * The capture's own notice, in the `<output>` register the interrupt
+					 * sentence already uses: the result of a user action, said politely.
+					 * It sits INSIDE the box because it is about what the box is doing
+					 * with the next keystroke, and its horizontal padding matches the
+					 * textarea's own so the two lines share a text edge.
+					 */}
+					{credentialNotice && (
+						<output
+							className={cn(
+								"block text-body-sm",
+								isSmallView ? "px-1.5 pb-1" : "px-2 pb-1",
+								// The unredact is the one state where the next Enter discloses a
+								// secret, so it takes the warning role rather than muted ink.
+								unredacted ? "text-warning" : "text-ink-muted",
+							)}
+						>
+							{credentialNotice}
+						</output>
+					)}
 					{isRecording ? (
 						<AudioRecordingIndicator isRecording={isRecording} />
 					) : isTranscribing ? (
@@ -2179,87 +2708,163 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							<WaveformAnimation />
 						</div>
 					) : (
-						<textarea
-							ref={textareaRef}
-							className={cn(
-								"w-full resize-none overflow-y-auto bg-transparent",
-								"text-ink outline-none placeholder:text-ink-dim",
-								// The disabled state STEPS COLOUR rather than fading
-								// (branding: disabled changes colour, never opacity), and
-								// without this the only signal was `cursor: not-allowed`
-								// after the user had already typed into a field that will
-								// not accept anything.
-								"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
-								isSmallView
-									? "max-h-24 px-1.5 py-1 text-body-sm"
-									: "max-h-28 px-2 py-1.5 text-body",
-							)}
-							placeholder={
-								/*
-								 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-								 * that order is the whole point: `isInputDisabled` is true for a missing
-								 * conversation too, so a reader of a conversation this machine does not have
-								 * would be told "Agent is busy" about a turn nobody is running (design
-								 * round 2, D3). The remaining terms are the U8 pair, unchanged.
-								 */
-								unavailable
-									? "This conversation is gone"
-									: isInputDisabled
-										? "Agent is busy"
-										: awaitingAnswer
-											? // Names the thing the box is now for, without restating
-												// the question card or the waiting line (§ 7 keeps one
-												// liveness statement per turn, and the card owns it).
-												"Answer the question above"
-											: awaitingReply
-												? "Waiting for the agent"
-												: "Ask me for help"
-							}
-							value={newMessage}
-							onChange={(e) => {
-								// Only the empty -> non-empty edge: the whole point is one
-								// statement of intent per composed message, and the
-								// consumer's latch should not be asked to absorb a
-								// per-character call it can only discard.
-								if (!newMessage && e.target.value) onComposerInput?.();
-								setNewMessage(e.target.value);
-								setCaret(e.target.selectionStart);
-								// Editing the text answers the alert. Leaving it up over a
-								// draft the user has since changed is the defect this whole
-								// change replaces, and moving the banner to the composer
-								// would only have moved that defect closer to the eye.
-								//
-								// After a dwell, though: the message is two sentences plus up
-								// to three controls, and a user who reaches straight for the
-								// keyboard lost all of it before finishing the first word -
-								// including the remedy buttons. The alert still goes on the
-								// edit, just not before it can be read.
-								if (Date.now() - alertShownAt.current >= ALERT_READ_DWELL_MS)
-									sendError?.onDismiss?.();
-							}}
-							onSelect={(e) =>
-								setCaret((e.target as HTMLTextAreaElement).selectionStart)
-							}
-							onKeyDown={handleComposerKeyDown}
-							onPointerDown={() => {
-								/*
-								 * "I am about to type here." An ask gate can advance while the
-								 * user is on their way into this box, and the restore must not
-								 * move them off it: the characters they type would reach
-								 * nothing and the next `Space` would answer the next question
-								 * (UX round 4, U13).
-								 */
-								composerPointerTouched = true;
-							}}
-							onPaste={handlePaste}
-							rows={1}
-							disabled={isInputDisabled}
-							aria-label="Message"
-							role="combobox"
-							aria-expanded={slash.open}
-							aria-controls={slash.open ? slash.listId : undefined}
-							aria-activedescendant={slash.activeDescendantId ?? undefined}
-						/>
+						/*
+						 * The textarea and its MIRROR, in one isolated wrapper.
+						 *
+						 * `isolate` is load-bearing rather than tidy: the overlay paints at
+						 * `-z-10` so the pill sits UNDER the glyphs the textarea paints, and
+						 * without a stacking context here a negative index paints behind the
+						 * composer box's own `bg-surface` — i.e. no pill at all, with nothing
+						 * on screen to say why (CSS 2.1 appendix E: negative-z children come
+						 * before in-flow block backgrounds).
+						 */
+						<div className="relative isolate w-full">
+							<CredentialOverlay
+								text={newMessage}
+								payloads={payloadsRef.current}
+								capture={capture}
+								fieldRef={textareaRef}
+								isSmallView={isSmallView}
+							/>
+							<textarea
+								ref={textareaRef}
+								className={cn(
+									// The box model comes from ONE place, shared with the mirror:
+									// any drift between these two moves the pill off the characters
+									// it sits under.
+									composerTextBox(isSmallView),
+									isSmallView ? "max-h-24" : "max-h-28",
+									"resize-none overflow-y-auto bg-transparent",
+									"text-ink outline-none placeholder:text-ink-dim",
+									// The disabled state STEPS COLOUR rather than fading
+									// (branding: disabled changes colour, never opacity), and
+									// without this the only signal was `cursor: not-allowed`
+									// after the user had already typed into a field that will
+									// not accept anything.
+									"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+								)}
+								placeholder={
+									/*
+									 * The gone-state sentence is checked FIRST, ahead of the busy one, and
+									 * that order is the whole point: `isInputDisabled` is true for a missing
+									 * conversation too, so a reader of a conversation this machine does not have
+									 * would be told "Agent is busy" about a turn nobody is running (design
+									 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+									 */
+									unavailable
+										? "This conversation is gone"
+										: isInputDisabled
+											? "Agent is busy"
+											: awaitingAnswer
+												? // Names the thing the box is now for, without restating
+													// the question card or the waiting line (§ 7 keeps one
+													// liveness statement per turn, and the card owns it).
+													"Answer the question above"
+												: awaitingReply
+													? "Waiting for the agent"
+													: "Ask me for help"
+								}
+								value={newMessage}
+								onChange={(e) => {
+									/*
+									 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
+									 * intercepted keystroke arrives here — Backspace, Delete, a
+									 * selection, a drop, an IME commit, and any paste that fell through
+									 * — and `applyDomEdit` maps the edit onto the held value at the
+									 * index the operator sees. The first door is the printable-key
+									 * branch of `handleCredentialKeyDown`, which never lets the
+									 * character reach the DOM at all; this one is the belt for the
+									 * routes a keyboard gate cannot see.
+									 *
+									 * `origin` is "typing" because a change IS a keystroke-shaped
+									 * event on this control — an arrival (a restored draft, a seed) is
+									 * written through `setNewMessage` by its own caller, never through
+									 * the DOM's change event for a textarea the user is in.
+									 */
+									const next = e.target.value;
+									const at = e.target.selectionStart ?? next.length;
+									const applied = applyDomEdit(
+										captureRef.current,
+										newMessage,
+										next,
+										at,
+										"typing",
+									);
+									if (applied.buffer !== next) {
+										// A real character reached the span through a route the
+										// keyboard gate could not see, and it is already replaced by
+										// its mask cell here.
+										pendingCaret.current = applied.caret;
+										setCaret(applied.caret);
+									} else {
+										setCaret(at);
+									}
+									if (applied.capture !== captureRef.current)
+										setCapture(applied.capture);
+									// Only the empty -> non-empty edge: the whole point is one
+									// statement of intent per composed message, and the
+									// consumer's latch should not be asked to absorb a
+									// per-character call it can only discard.
+									if (!newMessage && applied.buffer) onComposerInput?.();
+									setNewMessage(applied.buffer);
+									// Editing the text answers the alert. Leaving it up over a
+									// draft the user has since changed is the defect this whole
+									// change replaces, and moving the banner to the composer
+									// would only have moved that defect closer to the eye.
+									//
+									// After a dwell, though: the message is two sentences plus up
+									// to three controls, and a user who reaches straight for the
+									// keyboard lost all of it before finishing the first word -
+									// including the remedy buttons. The alert still goes on the
+									// edit, just not before it can be read.
+									if (Date.now() - alertShownAt.current >= ALERT_READ_DWELL_MS)
+										sendError?.onDismiss?.();
+								}}
+								onSelect={(e) => {
+									const field = e.target as HTMLTextAreaElement;
+									setCaret(field.selectionStart);
+									/*
+									 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
+									 * caret move may do: it may keep a latched arm, re-anchor it, and
+									 * RE-OPEN a span the caret has returned to — but it may never ARM
+									 * by itself. The TUI asks both questions at the same reactive
+									 * (`watch_selection`), because a mouse click, an app-set
+									 * selection and a completion's caret all move the caret with no
+									 * caret key pressed: without the re-open, leaving and coming back
+									 * left an armed token whose next typed character landed in
+									 * PLAINTEXT; without the "may not arm" half, a click at the end of
+									 * a restored draft would swallow the next paste.
+									 */
+									setCapture(
+										syncCapture(
+											captureRef.current,
+											newMessage,
+											field.selectionStart,
+											"caret",
+										),
+									);
+								}}
+								onKeyDown={handleComposerKeyDown}
+								onPointerDown={() => {
+									/*
+									 * "I am about to type here." An ask gate can advance while the
+									 * user is on their way into this box, and the restore must not
+									 * move them off it: the characters they type would reach
+									 * nothing and the next `Space` would answer the next question
+									 * (UX round 4, U13).
+									 */
+									composerPointerTouched = true;
+								}}
+								onPaste={handlePaste}
+								rows={1}
+								disabled={isInputDisabled}
+								aria-label="Message"
+								role="combobox"
+								aria-expanded={slash.open}
+								aria-controls={slash.open ? slash.listId : undefined}
+								aria-activedescendant={slash.activeDescendantId ?? undefined}
+							/>
+						</div>
 					)}
 
 					{/*

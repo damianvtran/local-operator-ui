@@ -738,6 +738,21 @@ export const STORIES = [
 	   are the pair a reviewer reads, and the notice is its own frame. */
 	["chat-message-input--stop-control-while-streaming", 1024, 300],
 	["chat-message-input--stop-control-without-capability", 1024, 300],
+	/* THE INLINE CREDENTIAL CAPTURE, one frame per state the operator can be in
+	   (design §1-§10), on the composer's own 1024 measure so they read beside the
+	   rows above. Every one of them is driven by REAL KEYSTROKES in its play
+	   function - `userEvent.type` dispatches the same keydowns a person does -
+	   so the mask, the mint and the Escape restore are exercised by the frames
+	   rather than photographed from a prop that fakes the state, and each play
+	   fails loudly rather than releasing the shutter if its state did not
+	   arrive. `escaped` is the one frame where the canary is ON SCREEN, and that
+	   is the point of it: it is the only exit that leaves a secret in the
+	   composer, and it is there because the operator asked for it with Esc. */
+	["chat-message-input--credential-armed", 1024, 300],
+	["chat-message-input--credential-masked", 1024, 300],
+	["chat-message-input--credential-pill-mid-prose", 1024, 300],
+	["chat-message-input--credential-pill-at-line-start", 1024, 300],
+	["chat-message-input--credential-escaped", 1024, 300],
 	["chat-message-input--interrupt-left-work-running", 1024, 300],
 	/* The reservation (UX round 1's U1 / QA's Q1) at both rungs, the two shorter
 	   notice branches (design round 1's N2), and the version-skew line. The
