@@ -69,6 +69,13 @@ import {
  * `data-run-panel-row` is the roster's own hook and the Jobs row carries it too,
  * on purpose: all three are lists of rows from one pane, so a capture rig or a QA
  * pass that can address a child's row can address a schedule's.
+ *
+ * The hook carries the row's `id` verbatim, so two schedules sharing an id would
+ * render two elements with one hook value (QA round 1's Q2). That is not reachable
+ * from the shipping paths — the scheduler mints the ids and the wire is the map the
+ * backend keys schedules by — and it is deliberately not defended against here: the
+ * reader's trust boundary is the payload, and a duplicate id is a backend defect
+ * that a de-duplicating hook would HIDE from the rig that exists to notice it.
  */
 const WakeRowView = ({ row }: { row: WakeRow }) => (
 	<li data-run-panel-row={row.id} className={cn("flex gap-2 px-3 py-0.5")}>
