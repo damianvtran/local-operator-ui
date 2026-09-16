@@ -760,7 +760,9 @@ const GeometryProbe = ({
 	useLayoutEffect(() => {
 		const box = boxRef.current;
 		if (!box) return;
-		const measure = (pass: "first" | "400ms" | "settled") => {
+		/** The first pass's readback, so a later pass can be compared to it. */
+		let settled = "";
+		const measure = (pass: "settled" | "confirm-400ms" | "confirm-1500ms") => {
 			const textarea = box.querySelector("textarea");
 			if (!textarea) return;
 			const t = getComputedStyle(textarea);
@@ -858,7 +860,28 @@ const GeometryProbe = ({
 					before += node.textContent ?? "";
 				}
 			}
-			setRows(entry);
+			/*
+			 * The FRAME carries the first pass; a later pass never replaces it.
+			 *
+			 * That is a measured decision, not a preference. The capture takes the
+			 * shutter as soon as the story is drawn, so the frame has to carry a
+			 * reading that is already true then — and the later passes are not more
+			 * settled, they are differently timed: in obsidian the first pass reports
+			 * `textarea caret rgb(241, 238, 230)` and the 400 ms one reports
+			 * `rgba(0, 0, 0, 0)`, because the theme's CSS variables land on their own
+			 * schedule and `caret-color` reads through them. A frame set whose numbers
+			 * describe the theme two ways is the D2 defect, so the readback is fixed on
+			 * the pass the frame can actually carry, and a later disagreement is
+			 * WARNED about with both readings rather than silently overwriting it.
+			 */
+			if (pass === "settled") {
+				settled = JSON.stringify({ ...entry, pass: undefined });
+				setRows(entry);
+			} else if (JSON.stringify({ ...entry, pass: undefined }) !== settled) {
+				console.warn(
+					`[slash-highlight-geometry] ${pass} differs from the settled readback (the frame carries the settled one): ${JSON.stringify({ draft, entry })}`,
+				);
+			}
 			// The same object on the console, so the numbers can be read out of a
 			// headless page as well as off the frame.
 			console.log(
@@ -910,9 +933,18 @@ const GeometryProbe = ({
 						window.dispatchEvent(new Event("resize"));
 					}
 				}
-				measure("first");
-				timers.push(setTimeout(() => measure("400ms"), 400));
-				timers.push(setTimeout(() => measure("settled"), 1500));
+				/*
+				 * The FIRST pass is the settled one, because the registry above is
+				 * seeded; the later passes only CONFIRM it. They do not overwrite the
+				 * frame's readback when they agree, so the frame carries a settled
+				 * reading (the capture fires on its own schedule and used to photograph
+				 * a pass whose numbers described an app with an empty vocabulary), and
+				 * they DO overwrite it and say so when they disagree — a broken seed is
+				 * then loud rather than silently absorbed.
+				 */
+				measure("settled");
+				timers.push(setTimeout(() => measure("confirm-400ms"), 400));
+				timers.push(setTimeout(() => measure("confirm-1500ms"), 1500));
 			}),
 		);
 		return () => {
