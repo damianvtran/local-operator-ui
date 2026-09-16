@@ -753,7 +753,6 @@ const GeometryProbe = ({
 	 * measure effect for why this exists at all; the dependency is the setter rather
 	 * than the client so the effect cannot re-run on every render.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the client is a stable singleton, and the setter is called on it rather than destructured (a detached `setQueryData` throws, measured).
 	useLayoutEffect(() => {
 		queryClient.setQueryData(desktopKeys.commands, COMMANDS);
 	}, [queryClient]);
