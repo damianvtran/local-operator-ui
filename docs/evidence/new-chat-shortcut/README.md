@@ -57,7 +57,7 @@ first-run user whose six-step wizard is a modal over the window.
 | --- | --- |
 | isolation | `the renderer was built against the backend this run started`; `holds a connection to this run's backend (127.0.0.1:5396)`; `holds NO connection to the operator's own backend (http://localhost:1111)` |
 | before the press | `route /agent-hub`, `activeDraftKey null` |
-| `⌘N` | `route /chat` after **4 ms**, `activeDraftKey "draft:9f085520-…"` — a FRESH draft, the same thing the New chat row stages |
+| `⌘N` | `route /chat` after **6 ms**, `activeDraftKey "draft:8078943e-…"` — a FRESH draft, the same thing the New chat row stages |
 | `⌘⇧N` | refused: `route /agent-hub`, draft unchanged |
 | a bare `n` | refused: `route /agent-hub`, draft unchanged |
 
@@ -81,9 +81,11 @@ another app's chord, and the second belongs to whatever text field has focus.
 the chord staged: the chat pane reading `New chat` / `The session starts when you
 send your first message.`, the composer, and — in the sidebar — the New chat row
 carrying its `⌘` and `N` caps, marked current because the draft it started is the
-one on screen. `cmd-n-live-before.png` is where it came from: Agent hub with its
-categories. Nothing in either frame is the operator's data: the backend is this
-run's own, its catalogue is empty, and the scratch profile is its own.
+one on screen, and edged, because on a current row the caps' own fill IS the
+ground and the boundary is what says they are caps. `cmd-n-live-before.png` is
+where it came from: Agent hub with its categories. Nothing in either frame is the
+operator's data: the backend is this run's own, its catalogue is empty, and the
+scratch profile is its own.
 
 **What they do not show.** Not the packaged app's install path, not a session
 with history (the catalogue is empty), and not the keyboard on Windows or Linux:
@@ -153,8 +155,9 @@ re-captured through the same harness at the same viewport and cropped by the sam
   store state.
 - **The canvas collision is not driven here.** `⌘N` inside the open canvas pane is
   the canvas's "new file", and the scope rule that decides whose press it is
-  (`src/renderer/src/features/chat/components/canvas/canvas-shortcut-scope.ts`) is
-  asserted in `scripts/new-chat-shortcut.test.mjs`. Neither of these two runs can
+  (`src/renderer/src/features/chat/keyboard-scopes.ts`, the same module the
+  sidebar's own cap comes from) is asserted in
+  `scripts/new-chat-shortcut.test.mjs`. Neither of these two runs can
   open a canvas — the driver has no backend and no session, and the harness page
   has none either — so that rule has unit evidence and not a frame.
 
@@ -171,14 +174,39 @@ which is why both are given. The same box at the same offset comes back for BOTH
 palettes, which is the cross-check that the caps' geometry is not a
 palette-dependent accident.
 
+**The two frames round 2 re-shot, and how they differ.** `after-row-staged-light.png`
+and `cmd-n-live-after.png` were captured BEFORE `#218` moved this row's ground, so
+both photographed a surface the app no longer paints (the light and the dark wash),
+and the staged-row frame is also the frame round 2's structural edge first appears
+in. The committed copies are now this head's:
+
+| Frame | AE against the frame it replaces | Where the difference is |
+| --- | --- | --- |
+| `after-row-staged-light.png` | **30,724 of 128,000 (0.240%)** | one **111x43 device-pixel box at +425+108** — the caps' own box, which is the same box the sidebar frames differ in one row higher, at `+425+1058` |
+| `cmd-n-live-after.png` | **309,458 of 4,790,720 (0.065%)** | much wider — `2678x1016+42+598` — because the frame is re-derived from this head, so the chat pane's own copy and its suggestion chips moved with it and not only the row |
+| `cmd-n-live-before.png` | 1,293 of 4,790,720 (0.00027%) | a `357x28` text box at `+42+1586` in the Agent hub; re-shot with its sibling so the pair is one run, since `after` had to move |
+
+The box the row frame changed in is the caps' own box and nothing else, which is
+the layout-neutrality claim in pixels: an inset outline cannot move the row, and
+the capture says it did not. **The REST state is untouched, measured three ways**:
+re-capturing the same two palettes through the same harness at the same viewport
+returns `magick compare -metric AE` **0** for `after-sidebar-dark.png`,
+`after-sidebar-light.png` and `after-row-dark.png`, at the same byte sizes as the
+committed files (76,991 / 76,734 / 8,656) — that is the measurement saying this
+round changed the current-row state and nothing else. `cmd-n-no-backend.png` was
+NOT re-shot, and the reason is stated rather than implied: its subject is the gate
+(the press changing nothing with no catalogue), no part of this round touches that
+path, and its byte-identical-to-its-own-`before` claim belongs to the run that
+produced it.
+
 | State | Before | After |
 | --- | --- | --- |
 | Sidebar at rest, `localOperatorDark` | [`before-sidebar-dark`](before-sidebar-dark.png) — the row reads `New chat`, nothing else | [`after-sidebar-dark`](after-sidebar-dark.png) — the row reads `New chat` then the `⌘` and `N` caps |
 | Sidebar at rest, `localOperatorLight` | [`before-sidebar-light`](before-sidebar-light.png) | [`after-sidebar-light`](after-sidebar-light.png) |
 | The row block, 2x (device pixels) | [`before-row-dark`](before-row-dark.png) | [`after-row-dark`](after-row-dark.png) |
-| After the row's own action | *(no before: the marking is unchanged)* | [`after-row-staged-light`](after-row-staged-light.png) — the staged draft marks the row current, wash and all, with the caps holding their own ground on it |
-| The chord in the built app, against a real backend | [`cmd-n-live-before`](cmd-n-live-before.png) — Agent hub | [`cmd-n-live-after`](cmd-n-live-after.png) — the chat route 6 ms later, the staged draft's pane, and the row holding its current marking |
-| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before` |
+| After the row's own action | *(no before: the marking is unchanged)* | [`after-row-staged-light`](after-row-staged-light.png) — the staged draft marks the row current, and the caps carry the structural edge that says they are caps on it (`sunken` on `sunken`, 1.00:1, is what this frame showed before round 2's fix — see below) |
+| The chord in the built app, against a real backend | [`cmd-n-live-before`](cmd-n-live-before.png) — Agent hub | [`cmd-n-live-after`](cmd-n-live-after.png) — the chat route 6 ms later, the staged draft's pane, and the row holding its current marking with the same edge on its caps |
+| The chord with NO backend | [`cmd-n-no-backend`](cmd-n-no-backend.png) — the gate: the press changes nothing, and this frame is byte-identical to its own `before`. NOT re-shot in round 2: its subject is the gate, nothing in that round touches it, and its byte-identical claim belongs to the run that produced it |
 
 ## The measurements behind the pixels
 
@@ -224,11 +252,43 @@ radient           8.80 / 12.59:1      synth           14.94 /  9.46:1
 ```
 
 The ink clears `docs/branding.md` § 3's 4.5:1 text floor everywhere (worst
-6.33:1, iceberg), and the fill is a perceivable step on every ground: the
-contract's own "a human can tell these apart" threshold is ΔE00 3.0, and the
-closest palette in the tree is 3.75. No new `CONTROLS` row is owed for this: a
-cap is not a control with a boundary of its own, and its ink is already governed
-by the contract's `INKS` list, which asserts `inkMuted` against `sunken` on every
+6.33:1, iceberg), and the fill is a perceivable step on the SIDEBAR's own ground:
+the contract's own "a human can tell these apart" threshold is ΔE00 3.0, and the
+closest palette in the tree is 3.75 (`iceberg`, `sunken` against `surface`; the
+`elevated` pair is 5.85). The caps' ink is governed by the contract's `INKS`
+list, which asserts `inkMuted` against `sunken` on every theme.
+
+**The one state where that step does not exist is the row the chord creates**, and
+it is why round 2 added a structural edge (design round 2, D4; review F1; QA Q-1;
+UX U4). `#218` moved this row's current ground to `rowCurrent = "bg-sunken text-ink
+hover:bg-sunken"`, which is the caps' OWN fill — the same role — and
+`after-row-staged-light.png` shows it: the row's ground and the caps' interior are
+the same sampled pixel, `srgb(238,233,221)`, i.e. **1.00:1 and ΔE00 0.00 in all
+twelve palettes**, so the caps read as plain monospace glyphs exactly when the user
+has just used the chord they name. The glyph ink stays legible there
+(6.33-12.59:1) — this was the affordance, not legibility.
+
+The fix is a boundary on the caps while that row is current, drawn as an INSET
+OUTLINE (`outline-solid outline-1 -outline-offset-1 outline-control`) so that it
+does not enter the box model: an outline draws outside layout, so the caps'
+geometry below is unchanged in both states and the row does not shift as it becomes
+current — the same 1px shift this row retires `border-control` on the ROW itself
+for. In the re-shot frame the edge samples `srgb(132,127,114)`, the palette's own
+`borderControl` `#847F72`, 508 pixels of the caps' box, and it measures
+**3.13-5.91:1** against that ground across the twelve palettes (worst: iceberg
+3.13) — § 4's 3:1 structural floor, cleared in every one. QA's alternative, the cap
+stepping to `bg-elevated` inside a current row, was measured too (1.20-1.55:1
+there, ΔE00 5.85-16.70) and rejected: it raises the one element on a row whose
+whole point is being recessed.
+
+**That guarantee is asserted, not described.** A `CONTROLS` row could not carry it
+— the pairing is a class against a role — so it lives in
+`scripts/contrast-contract.mjs`'s `STRUCTURAL_CALL_SITES`, as TWO entries: the
+condition that puts the edge on the element, and the class it puts there. Either
+one alone can be deleted while the file still reads as a row with an edge on it,
+which is why both are pinned. The palette half was already asserted: `sunken` is
+one of the contract's four `GROUNDS`, so every `INKS`, `CONTROLS` and structural
+row already runs over it, and `borderControl` clears 3:1 on all four in every
 theme.
 
 **One finding this set records rather than fixes.** The two caps in one chord are
@@ -252,14 +312,14 @@ a follow-up rather than smuggled into this one; design round 1's disposition is 
 same (ship behind a follow-up), and its measured detail is in that round's comment
 on the PR.
 
-**The ground the row gains when a draft is staged is not one the theme gate
-asserts.** The contract enumerates four grounds and asserts every `INKS`/`CONTROLS`
-row over them; this row adds a fifth by design — `bg-accent-wash` while an
-untargeted draft is staged — and that is where the cap's step is thinnest measured
-across the twelve palettes: fill against wash ΔE00 **3.2** (iceberg) against a fill
-step of 4.40–14.94 on `surface`, with `ink-dim` on the wash at **4.49:1** in the
-same palette. Nothing is broken today (the cap's own glyph is `ink-muted` and
-clears the text floor on every ground it is drawn on, and the `+` between the caps
-is `aria-hidden`, so the 4.5:1 text floor does not bind it), but a palette could
-move it unnoticed. Recorded rather than fixed: the assertion set is the theme
-gate's, not this PR's.
+**The deferral this set used to carry is CLOSED, and round 2 says so rather than
+leaving an open item that no longer exists.** Design round 1 recorded that the
+staged draft's ground was a FIFTH ground the theme gate did not assert
+(`bg-accent-wash`, with the cap's fill against it at ΔE00 3.2 in iceberg), recorded
+rather than fixed because the assertion set is the theme gate's and not this PR's.
+`#218` closed it from the other side: the current ground is now `sunken`, one of the
+contract's four `GROUNDS`, and therefore already covered by every `INKS`,
+`CONTROLS` and structural row, with the grounds-separation pass keeping `sunken`
+apart from `surface` (ΔE00 3.75, the closest pair in the tree) and `elevated`
+(5.85) in all twelve palettes. What remained open on that ground was the caps' own
+step on it, and that is what the edge above answers — pinned at the call site.

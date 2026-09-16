@@ -875,6 +875,43 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * The New chat row's CAPS while that row is current. The pin has to sit in two
+		 * places to mean anything - the condition that puts the edge on the element
+		 * (this one) and the class it puts there (the entry below) - because a reader
+		 * can leave either intact while deleting the other, and the file then reads as
+		 * a row with an edge on it that has none.
+		 *
+		 * WHY A ROW HERE AT ALL. The pair it depends on is asserted above
+		 * (`borderControl` clears 3:1 on every ground, `sunken` among them), but no
+		 * palette assertion can see a CLASS, and that is exactly the shape of this
+		 * defect: every row in this file stayed green while the caps were drawn on the
+		 * ground they are filled with - 1.00:1, ΔE00 0.00, in all twelve palettes -
+		 * and the visible half of the chord read as plain monospace at the one moment
+		 * the chord had just been used. It is the same hole
+		 * `scripts/chat-sidebar-selection.test.mjs` closes for the row's own ground.
+		 */
+		what: "New chat row cap edge while current",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: "Boolean(activeDraftKey) && !draft?.target && capEdge,",
+		why: "the caps are the visible half of the chord, and the state the chord itself creates is the one state where their fill equals the row's ground; without this the edge never appears and the caps are glyphs there and only there",
+	},
+	{
+		/*
+		 * The edge itself. An OUTLINE rather than a border, and the difference is
+		 * measured rather than stylistic: a border enters the box model and would move
+		 * the caps 1px per side in one state only, which is the same shift this row
+		 * retires `border-control` on the row itself for. `outline-control` against
+		 * `sunken` is 3.13-5.91:1 across the twelve palettes (worst: iceberg 3.13),
+		 * clearing `docs/branding.md` § 4's 3:1 structural floor in every one, and it
+		 * is the idiom the picker row already uses for a structural edge.
+		 */
+		what: "New chat row cap edge class",
+		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		must: 'const capEdge = "outline-solid outline-1 -outline-offset-1 outline-control";',
+		why: "the roles are the ones the paragraph above measures, and the layout-neutral spelling is what keeps the caps' box - and the row's alignment with the All chats row - identical in both states",
+	},
+	{
+		/*
 		 * The settings rail's current row, which was the same defect on the same
 		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
