@@ -78,14 +78,15 @@ export const CanonicalImage = ({
 				// handle in Finder.
 				file={src}
 				src={src}
-				// No `onClick`: a canonical image has no on-disk path, so there is
-				// nothing for a click to open. Omitting the handler renders the
-				// picture without a button rather than dressing an inert frame as
-				// something that answers.
+				// A canonical image has no on-disk path, so there is nothing here for a
+				// click to open — which is why the click once did NOTHING at all on this
+				// surface, the operator's own report. It expands now, and that behaviour
+				// lives inside `ImageAttachment` rather than being passed in, so this
+				// caller (and every future one) gets it without asking.
 				//
 				// `label` is also what the picture is CALLED. Left to derive itself
 				// from the URL it would be the blob's UUID, which is what a screen
-				// reader announced.
+				// reader announced. It is also the expanded overlay's own name.
 				label={label}
 				conversationId={scope?.sessionId ?? ""}
 			/>
