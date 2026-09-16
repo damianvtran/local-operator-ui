@@ -266,6 +266,27 @@ const variableValue = z.string().max(16384);
 // The fields create and edit have in common. Both extend it with their own
 // required/nullable variants of prompt, interval and unit, which differ because
 // create supplies defaults and edit sends only what changed.
+/**
+ * One wake's prompt, at the backend's own ceiling.
+ *
+ * `MAX_WAKE_MESSAGE_CHARS = 2_000` (`local_operator/harness/wake.py`) is
+ * enforced in the one validated constructor (`build_wake_schedule`), so this
+ * bound is the same number stated where a caller can be refused by name
+ * instead of by a 422 the user cannot act on.
+ */
+const wakeMessage = z.string().min(1).max(2_000);
+/**
+ * A wake's per-session handle, `w1`..`w16`.
+ *
+ * Deliberately not a regex. The ids are CREATION-ORDERED and minted by the
+ * scheduler, and the sixteen ceiling is enforced by the agent-tool path rather
+ * than by every writer (`lop wake create` writes past it), so a pattern here
+ * would refuse a cancel for a row the listing just sent - a control that is
+ * drawn and cannot be pressed. The shape that matters is "an opaque token the
+ * backend minted", and that is what is checked.
+ */
+const wakeId = z.string().min(1).max(64);
+
 const scheduleWrite = z
 	.object({
 		is_active: z.boolean().nullish(),
@@ -907,6 +928,97 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			asideId: requestId,
 		})
 		.strict(),
+	/*
+	 * The wake surface: the Schedules page's machine-wide read and its writes.
+	 *
+	 * Deliberately NOT an extension of `sessions.*`. The session list is
+	 * paginated by recency (`limit ≤ 500`), so a session armed once and never
+	 * opened falls off it - and the page whose whole job is "every session that
+	 * has wakes" would then list fewer sessions than exist. `wakes.list` reads
+	 * the wake index instead, which is one small JSON file per wake-carrying
+	 * session and is complete at any store size.
+	 *
+	 * The four ops sit behind the same router-level desktop bearer as their
+	 * `sessions.*` siblings, and every one of them does its filesystem work off
+	 * the event loop, so a listing over a cold store cannot stall the desktop
+	 * plane's other readers.
+	 */
+	z
+		.object({
+			op: z.literal("wakes.list"),
+			/* Bounded like `sessions.list`: the field exists so a pathological
+			   store degrades visibly (through `truncated`) rather than silently. */
+			limit: z.number().int().min(1).max(500).optional(),
+			/* Dormant rows are the ones whose session was stopped, which the page
+			   SHOWS ("parked") rather than hides: stopping a conversation parks its
+			   wakes, and a management surface that dropped them would report a
+			   scheduled task as gone when it is only parked. */
+			includeDormant: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("wakes.create"),
+			requestId,
+			/*
+			 * The session half of the request is EXACTLY ONE of two shapes: name an
+			 * existing `sessionId`, or name a `cwd` (plus an optional `target`) and
+			 * have the backend create the conversation and arm the wake in one
+			 * call. The exclusivity cannot be stated with a `.refine()` on this
+			 * object - that turns the member into a `ZodEffects`, which a
+			 * discriminated union cannot take (see `mcp.credentials.store`, which
+			 * records the same trap) - so the API client enforces it on the way out
+			 * with `wakeCreateBody`, and the backend refuses the malformed shape
+			 * with a 422 rather than a 500.
+			 */
+			sessionId: sessionId.optional(),
+			cwd: z.string().min(1).max(4096).optional(),
+			target: target.optional(),
+			message: wakeMessage,
+			/*
+			 * Timing, in the same spellings the wake tool and `lop wake create`
+			 * take, parsed by the backend's own `parse_wake_duration` /
+			 * `parse_wake_at`: a relative duration (`30m`), an ISO instant or the
+			 * next `HH:MM`. The dialog's presets are `in`/`at` pairs so the common
+			 * path never touches a calendar, and `Pick a time…` sends the ISO
+			 * instant the picker yields.
+			 */
+			in: z.string().min(1).max(64).optional(),
+			at: z.string().min(1).max(64).optional(),
+			every: z.string().min(1).max(64).optional(),
+			until: z.string().min(1).max(64).optional(),
+			limit: z.number().int().min(1).optional(),
+			/*
+			 * The conversation's own title, when a caller wants to override the one
+			 * derived from the prompt.
+			 *
+			 * Carried because the interface declares it, and never set by this
+			 * page: the prompt IS the name here (the backend writes it into the
+			 * session's stored-title sidecar, which `resume.session_name` consults
+			 * first), which is what keeps the create flow free of a "name" field
+			 * nobody would fill in.
+			 */
+			title: z.string().min(1).max(200).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("wakes.edit"),
+			sessionId,
+			wakeId,
+			/* Every field optional, and the body is sent with the absent ones
+			   OMITTED rather than nulled: the backend applies the update against
+			   the schedule it holds, so a `null` here would be a request to clear
+			   a bound the user did not touch. */
+			message: wakeMessage.optional(),
+			in: z.string().min(1).max(64).optional(),
+			at: z.string().min(1).max(64).optional(),
+			every: z.string().min(1).max(64).optional(),
+			until: z.string().min(1).max(64).optional(),
+			limit: z.number().int().min(1).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("wakes.remove"), sessionId, wakeId }).strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
 	z
 		.object({
@@ -1079,6 +1191,128 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
 export type DesktopResponse = { status: number; body: unknown };
+
+/**
+ * Whether the supervisor that actually fires wakes is working here.
+ *
+ * Rides every wake response because "will my scheduled task fire" cannot be
+ * answered from the wake index: on macOS the supervisor is a LaunchAgent, and
+ * its three failure states (platform unsupported, plist written but launchd not
+ * addressable, installed but not running) are invisible in the index itself. A
+ * listing that omitted this would invite a user to trust a schedule that
+ * nothing is going to run.
+ */
+export type DesktopWakeSupervisor = {
+	supported: boolean;
+	running: boolean;
+	/** The backend's own word for the state, shown verbatim rather than re-worded. */
+	detail: string;
+};
+
+/**
+ * One armed wake, as the machine-wide listing sends it.
+ *
+ * The fields are `WakeSchedule`'s plus the two the supervisor knows: `stale` is
+ * its own seven-day predicate and `overdue_s` its own lateness measure, imported
+ * from the supervisor rather than re-derived here, so the page and `lop wake
+ * status` cannot disagree about whether a wake is still being pursued.
+ *
+ * `next_due_at` is epoch MILLISECONDS, like the pane's `WakeState` and unlike
+ * every other clock on the desktop wire (epoch seconds). The renderer formats
+ * both through `formatWakeDue`, which states the unit at its own boundary, so
+ * the page does no time arithmetic of its own.
+ */
+export type DesktopWakeScheduleRow = {
+	id: string;
+	message: string;
+	next_due_at: number | null;
+	/** The recurrence in milliseconds, `null` for a single shot. */
+	every_ms: number | null;
+	until_at: number | null;
+	limit: number | null;
+	/** Deliveries already made, the honest "this is working" number. */
+	fired_count: number;
+	/** Seconds past `next_due_at`, the supervisor's own measure. */
+	overdue_s: number;
+	/** The supervisor's seven-day predicate: past it, it stops engaging the session. */
+	stale: boolean;
+	last_fired_at: number | null;
+	last_attempt_at: number | null;
+};
+
+/**
+ * One conversation that has wakes, with its wakes beneath it.
+ *
+ * The page's ROW is this conversation rather than each wake: the row's name is
+ * the object the user can open, the wake lines are what it is armed to do, and
+ * a conversation with three wakes is one thing rather than three (the run
+ * pane's own rule one level down: one row per schedule, not per occurrence).
+ *
+ * `dormant` is stamped by a session STOP (`stopped_at` in the index) and
+ * `ghost` by the supervisor's own test for a session with no transcript, so a
+ * wake that cannot fire says so instead of printing an instant it will not keep.
+ * `name` is best-effort (`resume.session_name`, a bounded read): an unnamed
+ * session still lists, named by its id and its `cwd`.
+ */
+export type DesktopWakeEntry = {
+	session_id: string;
+	name: string;
+	cwd: string;
+	/** How the session came to exist, for grouping only. */
+	origin: string;
+	/** The index entry's own write stamp, epoch milliseconds. */
+	updated_at: number;
+	dormant: boolean;
+	ghost: boolean;
+	/** The soonest due instant across this conversation's wakes, or `null`. */
+	next_due_at: number | null;
+	schedules: DesktopWakeScheduleRow[];
+};
+
+/**
+ * `wakes.list`'s answer: every wake-carrying session on this machine.
+ *
+ * `read_error` is carried rather than folded into an empty list, because "the
+ * index could not be read" and "nothing is scheduled" are different sentences
+ * and only one of them is true when the store is unreadable.
+ */
+export type DesktopWakesListResponse = {
+	entries: DesktopWakeEntry[];
+	generated_at: number;
+	total: number;
+	truncated: boolean;
+	supervisor: DesktopWakeSupervisor;
+	read_error: boolean;
+};
+
+/**
+ * `wakes.create`'s answer.
+ *
+ * `created_session` says whether this call made the conversation (the dialog's
+ * `A new conversation` branch) or armed into an existing one, which is what
+ * decides whether the page can open it. `index_written: false` is a 200 with a
+ * caveat: the transcript is the truth and the index is derived, so the next open
+ * heals it - the arm still happened.
+ */
+export type DesktopWakeCreateResponse = {
+	session_id: string;
+	wake_id: string;
+	next_due_at: number | null;
+	created_session: boolean;
+	supervisor: DesktopWakeSupervisor;
+	/**
+	 * The create's at-most-once receipt, as the route's own mechanism returns it.
+	 *
+	 * `unknown` rather than a guessed field: the backend stamps its replay marker
+	 * onto the operation's own result (`desktop_receipts.run`), so the shape is
+	 * the backend's to define, and this page never branches on it - the response
+	 * fields it reads are typed above. A rename inside the receipt would change
+	 * nothing a user can see, and typing a guess here would be a claim the wire has
+	 * not made.
+	 */
+	receipt: unknown;
+	index_written: boolean;
+};
 
 /**
  * How many bytes of serialized JSON body one desktop operation may carry.
@@ -1790,6 +2024,53 @@ export type BackendSettings = {
 	settings: BackendSetting[];
 };
 
+/**
+ * The session half of a `wakes.create` body.
+ *
+ * Two mutually exclusive shapes on the wire, decided by which one the caller
+ * set: `{session_id}` arms into a conversation that exists, `{cwd, target?}`
+ * has the backend create the conversation first. `target` rides with `cwd`
+ * because it is a property of the conversation being created, and sending it
+ * beside a `session_id` would be a second answer to a question the session
+ * already answers.
+ */
+function wakeSessionHalf(request: {
+	sessionId?: string;
+	cwd?: string;
+	target?: { kind: "agent" | "team"; name: string };
+}): Record<string, unknown> {
+	if (request.sessionId) return { session_id: request.sessionId };
+	return {
+		...(request.cwd ? { cwd: request.cwd } : {}),
+		...(request.target ? { target: request.target } : {}),
+	};
+}
+
+/**
+ * The timing fields of a wake write, present only when they were set.
+ *
+ * Absence is meaningful on both writes: `create` derives what it can (a wake
+ * with no `every` is a one-shot, and one with neither `in` nor `at` is
+ * refused by the backend's own constructor), and `edit` applies the fields it
+ * was given against the schedule it holds, so an omitted bound is "leave this
+ * alone" rather than "clear this".
+ */
+function wakeTiming(request: {
+	in?: string;
+	at?: string;
+	every?: string;
+	until?: string;
+	limit?: number;
+}): Record<string, unknown> {
+	return {
+		...(request.in !== undefined ? { in: request.in } : {}),
+		...(request.at !== undefined ? { at: request.at } : {}),
+		...(request.every !== undefined ? { every: request.every } : {}),
+		...(request.until !== undefined ? { until: request.until } : {}),
+		...(request.limit !== undefined ? { limit: request.limit } : {}),
+	};
+}
+
 export function desktopEndpoint(request: DesktopRequest): {
 	path: string;
 	method: string;
@@ -2088,6 +2369,50 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * The wake routes, mapped beside their `sessions.*` siblings: one op per
+		 * method, snake_case on the wire (`include_dormant`, `request_id`), which is
+		 * what the backend's models declare.
+		 */
+		case "wakes.list": {
+			const query = new URLSearchParams();
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.includeDormant !== undefined)
+				query.set("include_dormant", String(request.includeDormant));
+			return {
+				path:
+					query.size > 0 ? `/v1/desktop/wakes?${query}` : "/v1/desktop/wakes",
+				method: "GET",
+			};
+		}
+		case "wakes.create":
+			return {
+				path: "/v1/desktop/wakes",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...wakeSessionHalf(request),
+					message: request.message,
+					...wakeTiming(request),
+				},
+			};
+		case "wakes.edit":
+			return {
+				path: `/v1/desktop/wakes/${request.sessionId}/${request.wakeId}`,
+				method: "PATCH",
+				body: {
+					...(request.message !== undefined
+						? { message: request.message }
+						: {}),
+					...wakeTiming(request),
+				},
+			};
+		case "wakes.remove":
+			return {
+				path: `/v1/desktop/wakes/${request.sessionId}/${request.wakeId}`,
+				method: "DELETE",
+			};
 		case "legacy.jobs.list": {
 			const query = new URLSearchParams();
 			if (request.agentId) query.set("agent_id", request.agentId);

@@ -1,120 +1,208 @@
-import type {
-	ScheduleCreateRequest,
-	ScheduleResponse,
-	ScheduleUpdateRequest,
-} from "@shared/api/local-operator";
+/**
+ * The Schedules page: every conversation on this machine that has wakes, with
+ * its wakes beneath it, plus the fenced group of rows still on the older
+ * agent-schedule engine.
+ *
+ * ## Two engines, one page, and why both are here
+ *
+ * The wake is the primitive now: `New scheduled task` creates a conversation
+ * and arms a wake in it, and nothing on this page writes a legacy agent
+ * schedule any more. The legacy ENGINE, however, is frozen rather than deleted -
+ * rows that exist keep running - so a page that listed only wakes would be
+ * hiding live automation. Those rows therefore appear in their own fenced,
+ * labelled group, with their existing toggle, edit and delete, and the group is
+ * absent entirely when no legacy row exists (which is the state of a machine
+ * that has only ever used wakes).
+ *
+ * ## Why this page is where the confirm lives
+ *
+ * The run pane's Wakes section is a readout: a schedule is read there and
+ * cancelled by the agent, which is right for a pane watching a live turn. This
+ * page's job is managing scheduled work - it is where one is created - so the
+ * bar moves here: each wake line offers `Cancel wake`, behind a confirm that
+ * names the prompt and says the conversation stays. Pause is deliberately NOT
+ * offered: the wake model has no `paused_at`, so a toggle could only be
+ * implemented as cancel-and-re-arm, which would silently reset `fired_count`
+ * and re-anchor a recurrence to the moment of the toggle.
+ *
+ * ## Freshness
+ *
+ * Nothing pushes the wake index (the supervisor is a separate process writing
+ * files, and the only event stream the app has is per session), so the listing
+ * polls and re-reads on window focus; every write invalidates it AND asks the
+ * affected conversation's canonical snapshot to re-read, so a change made here
+ * cannot leave the chat pane asserting a wake that was just cancelled.
+ */
+import type { ScheduleResponse } from "@shared/api/local-operator";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { CalendarDays, Plus } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-	useCreateScheduleForAgent,
 	useEditSchedule,
 	useListAllSchedules,
 	useRemoveSchedule,
 } from "../hooks/use-schedules-queries";
+import { useCancelWake, useWakesListing } from "../hooks/use-wakes-queries";
+import {
+	type ScheduledTaskRow,
+	type WakeLine,
+	scheduledTaskRows,
+	wakePromptHead,
+} from "../scheduled-task-model";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
 import { ScheduleListItem } from "./schedule-list-item";
+import {
+	ScheduledTaskDialog,
+	type WakeEditTarget,
+} from "./scheduled-task-dialog";
+import { WakeConversationRow } from "./wake-conversation-row";
 
-/**
- * SchedulesPage component
- * This page displays a list of all agent schedules and allows for managing them.
- */
-export const SchedulesPage: FC = () => {
-	const [isFormOpen, setIsFormOpen] = useState(false);
-	const [editingSchedule, setEditingSchedule] =
-		useState<ScheduleResponse | null>(null);
+/** The one-row confirm for cancelling an armed wake. */
+type PendingCancel = { row: ScheduledTaskRow; wake: WakeLine };
 
-	const {
-		data: schedulesResponse,
-		isLoading,
-		error,
-		refetch: refetchSchedules,
-	} = useListAllSchedules();
-	const createScheduleMutation = useCreateScheduleForAgent();
-	const editScheduleMutation = useEditSchedule();
-	const removeScheduleMutation = useRemoveSchedule();
+/** Which dialog is open, if any: the page has one slot for both branches. */
+type DialogState = { mode: "create" } | ({ mode: "edit" } & WakeEditTarget);
 
-	const handleOpenForm = (schedule?: ScheduleResponse) => {
-		setEditingSchedule(schedule || null);
-		setIsFormOpen(true);
+export type SchedulesPageProps = {
+	/**
+	 * The instant every label on the page is derived against.
+	 *
+	 * Injectable for the same reason the run pane's model takes `nowMs`: a story
+	 * that pins it renders the SAME labels on every capture, so a diff in the
+	 * committed frames means the code moved rather than that the capture ran on
+	 * another day. In the app it is the clock, read once per render.
+	 */
+	nowMs?: number;
+};
+
+export const SchedulesPage: FC<SchedulesPageProps> = ({
+	nowMs = Date.now(),
+}) => {
+	const navigate = useNavigate();
+	const [dialog, setDialog] = useState<DialogState | null>(null);
+	const [pendingCancel, setPendingCancel] = useState<PendingCancel | null>(
+		null,
+	);
+	const [editingLegacy, setEditingLegacy] = useState<ScheduleResponse | null>(
+		null,
+	);
+
+	const listing = useWakesListing();
+	const legacy = useListAllSchedules();
+	const cancelWake = useCancelWake();
+	const editLegacy = useEditSchedule();
+	const removeLegacy = useRemoveSchedule();
+
+	/*
+	 * `nowMs` is read once per render: a due label is true of the moment it is
+	 * drawn, and the listing's own poll is what moves it on.
+	 */
+	const rows = scheduledTaskRows(listing.data?.entries, nowMs);
+	const legacyRows = legacy.data?.result?.schedules ?? [];
+	const supervisor = listing.data?.supervisor;
+
+	const openConversation = (sessionId: string) => {
+		void useCanonicalSessionsStore
+			.getState()
+			.openSession(sessionId)
+			.then((opened) => {
+				if (opened) navigate(`/chat/${sessionId}`);
+			});
 	};
 
-	const handleCloseForm = () => {
-		setIsFormOpen(false);
-		setEditingSchedule(null);
-	};
-
-	const handleSubmitForm = async (
-		data: ScheduleCreateRequest | ScheduleUpdateRequest,
-		agentId: string, // agentId is now directly passed from ScheduleFormDialog
-	) => {
+	const handleCancelWake = async () => {
+		if (!pendingCancel) return;
+		const { row, wake } = pendingCancel;
 		try {
-			if (editingSchedule) {
-				// Editing an existing schedule
-				await editScheduleMutation.mutateAsync({
-					scheduleId: editingSchedule.id,
-					scheduleData: data as ScheduleUpdateRequest,
-				});
-				showSuccessToast("Schedule updated");
-			} else {
-				// Creating a new schedule
-				await createScheduleMutation.mutateAsync({
-					agentId: agentId, // Use the agentId selected in the form
-					scheduleData: data as ScheduleCreateRequest,
-				});
-				showSuccessToast("Schedule created");
-			}
-			refetchSchedules();
-		} catch (err) {
-			console.error("Failed to save schedule:", err);
+			await cancelWake.mutateAsync({
+				sessionId: row.sessionId,
+				wakeId: wake.id,
+			});
+			showSuccessToast("Wake cancelled");
+			setPendingCancel(null);
+		} catch (error) {
 			showErrorToast(
-				`Failed to save schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+				error instanceof Error
+					? `Could not cancel the wake: ${error.message}`
+					: "Could not cancel the wake.",
 			);
 		}
 	};
 
-	const handleDeleteSchedule = async (scheduleId: string) => {
-		const scheduleToDelete = schedulesResponse?.result?.schedules.find(
-			(s) => s.id === scheduleId,
-		);
+	/** The legacy group's own edit path: same engine, same ops as before. */
+	const handleSubmitLegacy = async (
+		data: Parameters<typeof editLegacy.mutateAsync>[0]["scheduleData"],
+	) => {
+		if (!editingLegacy) return;
 		try {
-			await removeScheduleMutation.mutateAsync({
+			await editLegacy.mutateAsync({
+				scheduleId: editingLegacy.id,
+				scheduleData: data,
+			});
+			showSuccessToast("Schedule updated");
+			setEditingLegacy(null);
+		} catch (error) {
+			showErrorToast(
+				error instanceof Error
+					? `Could not save the schedule: ${error.message}`
+					: "Could not save the schedule.",
+			);
+		}
+	};
+
+	const handleRemoveLegacy = async (scheduleId: string) => {
+		const schedule = legacyRows.find((row) => row.id === scheduleId);
+		try {
+			await removeLegacy.mutateAsync({
 				scheduleId,
-				agentId: scheduleToDelete?.agent_id,
+				agentId: schedule?.agent_id,
 			});
 			showSuccessToast("Schedule removed");
-			refetchSchedules();
-		} catch (err) {
-			console.error("Failed to delete schedule:", err);
+		} catch (error) {
 			showErrorToast(
-				`Failed to remove schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+				error instanceof Error
+					? `Could not remove the schedule: ${error.message}`
+					: "Could not remove the schedule.",
 			);
 		}
 	};
 
-	const handleToggleActive = async (schedule: ScheduleResponse) => {
+	const handleToggleLegacy = async (schedule: ScheduleResponse) => {
 		try {
-			await editScheduleMutation.mutateAsync({
+			await editLegacy.mutateAsync({
 				scheduleId: schedule.id,
 				scheduleData: { is_active: !schedule.is_active },
 			});
 			showSuccessToast(
 				`Schedule ${schedule.is_active ? "deactivated" : "activated"}.`,
 			);
-			refetchSchedules();
-		} catch (err) {
-			console.error("Failed to toggle schedule active state:", err);
+		} catch (error) {
 			showErrorToast(
-				`Failed to toggle schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+				error instanceof Error
+					? `Could not toggle the schedule: ${error.message}`
+					: "Could not toggle the schedule.",
 			);
 		}
 	};
 
-	const schedules = schedulesResponse?.result?.schedules || [];
+	/*
+	 * Empty means BOTH lists settled and both are empty. The legacy half is
+	 * awaited too, or a page whose wake listing answered first would flash "No
+	 * scheduled tasks yet" over a machine that still has legacy rows to load.
+	 */
+	const isEmpty =
+		!listing.isLoading &&
+		!listing.error &&
+		!legacy.isLoading &&
+		rows.length === 0 &&
+		legacyRows.length === 0;
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
@@ -122,74 +210,203 @@ export const SchedulesPage: FC = () => {
 			<PageHeader
 				title="Schedules"
 				icon={CalendarDays}
-				subtitle="Work your agents run on a schedule, repeating or once."
+				subtitle="Work your conversations do on a schedule, repeating or once."
 			>
-				{/* Opens ScheduleFormDialog for a new schedule */}
 				<Button
 					variant="secondary"
 					size="md"
-					onClick={() => handleOpenForm()}
+					onClick={() => setDialog({ mode: "create" })}
 					data-tour-tag="create-schedule-button"
 				>
 					<Plus />
-					New schedule
+					New scheduled task
 				</Button>
 			</PageHeader>
 
 			<div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-hairline bg-surface">
-				{isLoading && (
+				{/* The page keeps its chrome while loading, so nothing jumps when
+				    the rows arrive. No skeleton rows: the app reserves those for a
+				    list whose length is known before it loads. */}
+				{listing.isLoading && (
 					<div className="flex justify-center py-16">
-						<Spinner label="Loading schedules" />
+						<Spinner label="Loading scheduled tasks" />
 					</div>
 				)}
-				{error && (
-					<div role="alert" className="p-4">
-						<Alert variant="danger">
-							Error fetching schedules: {error.message}
+
+				{listing.error && (
+					/* Three parts, in the app's own voice: what happened, what it
+					   means, and what to do about it. The bare `Error fetching
+					   schedules: <exception>` this replaces had one of the three and
+					   no way back. */
+					<div className="flex flex-col items-start gap-2 p-4">
+						<p className="text-body text-ink">
+							Could not load scheduled tasks.
+						</p>
+						<p className="text-body-sm text-ink-muted">
+							{listing.error.message}
+						</p>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void listing.refetch()}
+						>
+							Try again
+						</Button>
+					</div>
+				)}
+
+				{/* A listing that answered but could not READ the store is not an
+				    empty store, and saying "no scheduled tasks" there would be a
+				    claim the backend did not make. */}
+				{!listing.isLoading && listing.data?.read_error && (
+					<div className="border-hairline border-b p-4">
+						<Alert variant="warning">
+							Could not read this machine's scheduled tasks, so the list below
+							may be incomplete.
 						</Alert>
 					</div>
 				)}
-				{!isLoading && !error && schedules.length === 0 && (
+
+				{/* "Will my scheduled task actually fire" is not answerable from the
+				    index: on macOS the supervisor is a LaunchAgent, and a listing
+				    that omitted this would invite trusting a dead schedule. */}
+				{!listing.isLoading &&
+					supervisor &&
+					(!supervisor.supported || !supervisor.running) && (
+						<div className="border-hairline border-b p-4">
+							<Alert variant="warning">
+								{supervisor.supported
+									? `The wake supervisor is installed but not running, so scheduled tasks will not fire. ${supervisor.detail}`
+									: `Wakes are not supervised on this platform yet, so they only fire while a conversation is running. ${supervisor.detail}`}
+							</Alert>
+						</div>
+					)}
+
+				{isEmpty && (
 					/* An empty state that names the easier route rather than just
-					   reporting the absence. */
+					   reporting the absence - and after this change that promise is
+					   true: a wake an agent armed in chat appears on this page. */
 					<div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
-						<p className="text-heading text-ink">No schedules yet</p>
+						<p className="text-heading text-ink">No scheduled tasks yet</p>
 						<p className="max-w-100 text-body-sm text-ink-muted">
-							Ask an agent in chat to do something on a regular basis — "send me
-							the news at 8am every day" — and it will appear here. You can also
+							Ask an agent in chat to do something on a regular basis — “send me
+							the news at 8am every day” — and it will appear here. You can also
 							set one up by hand.
 						</p>
 						<Button
 							variant="secondary"
 							size="sm"
-							onClick={() => handleOpenForm()}
+							onClick={() => setDialog({ mode: "create" })}
 							className="mt-2"
 						>
 							<Plus />
-							New schedule
+							New scheduled task
 						</Button>
 					</div>
 				)}
-				{!isLoading && !error && schedules.length > 0 && (
-					<div>
-						{schedules.map((schedule) => (
+
+				{rows.length > 0 && (
+					<ul className="flex flex-col">
+						{rows.map((row) => (
+							<WakeConversationRow
+								key={row.sessionId}
+								row={row}
+								onOpen={openConversation}
+								onCancel={(target, wake) =>
+									setPendingCancel({ row: target, wake })
+								}
+								onEdit={(target, wake) =>
+									setDialog({
+										mode: "edit",
+										sessionId: target.sessionId,
+										wakeId: wake.id,
+										message: wake.message,
+									})
+								}
+							/>
+						))}
+					</ul>
+				)}
+
+				{/*
+				 * The fenced legacy group. It appears only when a legacy row exists,
+				 * and it says what it is: the rows here run on the older engine, each
+				 * run starting a fresh agent with approvals granted automatically -
+				 * which is the posture a wake does NOT have, stated in the dialog that
+				 * creates one.
+				 */}
+				{(legacyRows.length > 0 || legacy.error) && (
+					<section className="border-hairline border-t">
+						<div className="flex flex-col gap-1 px-4 py-3">
+							<h2 className="text-heading text-ink">Legacy schedules</h2>
+							<p className="max-w-150 text-body-sm text-ink-muted">
+								These run on the older agent-schedule engine, which starts a
+								fresh agent for each run with approvals granted automatically.
+								New scheduled tasks are created as wakes, which run as a turn in
+								a conversation.
+							</p>
+							{legacy.error && (
+								<p className="text-body-sm text-danger">
+									Could not load legacy schedules. {legacy.error.message}
+								</p>
+							)}
+						</div>
+						{legacyRows.map((schedule) => (
 							<ScheduleListItem
 								key={schedule.id}
 								schedule={schedule}
-								onEdit={() => handleOpenForm(schedule)}
-								onDelete={handleDeleteSchedule}
-								onToggleActive={handleToggleActive}
+								nowMs={nowMs}
+								onEdit={() => setEditingLegacy(schedule)}
+								onDelete={handleRemoveLegacy}
+								onToggleActive={handleToggleLegacy}
 							/>
 						))}
-					</div>
+					</section>
+				)}
+
+				{/* The one sentence this page owes the reader, and the question the
+				    whole feature raises: what happens when nobody is looking. */}
+				{(rows.length > 0 || legacyRows.length > 0) && (
+					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
+						Wakes fire whether or not this window is open. Stopping a
+						conversation parks its wakes until you open it again.
+					</p>
 				)}
 			</div>
 
+			{/* ONE dialog, two branches: the page has one slot, so the create form
+			    and the editor cannot both be open, and switching between them is a
+			    change of state rather than a race between two dialogs. */}
+			<ScheduledTaskDialog
+				open={dialog !== null}
+				onClose={() => setDialog(null)}
+				nowMs={nowMs}
+				edit={dialog?.mode === "edit" ? dialog : null}
+			/>
+
+			{/* The legacy group's editor, kept for the rows that still run on that
+			    engine. It is never opened with no `initialData` any more: creating a
+			    schedule there is what this page stopped doing. */}
 			<ScheduleFormDialog
-				open={isFormOpen}
-				onClose={handleCloseForm}
-				onSubmit={handleSubmitForm}
-				initialData={editingSchedule}
+				open={editingLegacy !== null}
+				onClose={() => setEditingLegacy(null)}
+				onSubmit={(data) => handleSubmitLegacy(data)}
+				initialData={editingLegacy}
+			/>
+
+			<ConfirmationModal
+				open={pendingCancel !== null}
+				title="Cancel this wake?"
+				message={
+					pendingCancel
+						? `“${wakePromptHead(pendingCancel.wake.message)}” will not fire again. The conversation stays.`
+						: ""
+				}
+				confirmText="Cancel wake"
+				cancelText="Keep"
+				isDangerous
+				onConfirm={() => void handleCancelWake()}
+				onCancel={() => setPendingCancel(null)}
 			/>
 		</div>
 	);
