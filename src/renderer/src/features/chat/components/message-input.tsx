@@ -2117,8 +2117,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * is ever spliced on a path that could not run it.
 		 */
 		const planFor = useCallback(
-			(draft: string, at: number) =>
+			(draft: string, at: number, gesture: "typed" | "pick" = "typed") =>
 				planSlashSubmission({
+					gesture,
 					draft,
 					caret: at,
 					commandNames: slash.commandNames,
@@ -2445,7 +2446,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// Run through the SAME plan a submit takes, so a command picked
 				// mid-draft splices out and leaves the prose, and a whole-draft
 				// command reports its outcome exactly as typing it would.
-				const plan = planFor(completion.text, completion.caret);
+				/*
+				 * The PICK's gesture, stated: the row was chosen out of the popup, so the
+				 * word is a command wherever it sits. Without this a click on `/loop` in
+				 * the middle of a sentence completed the word and then did nothing —
+				 * the planner read the draft as prose — while the footer promised the
+				 * line would be staged (`Click stages /loop.`).
+				 */
+				const plan = planFor(completion.text, completion.caret, "pick");
 				if (plan.kind === "send") return;
 				await applyPlan(plan, newMessage, caret);
 			},

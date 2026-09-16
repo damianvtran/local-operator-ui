@@ -400,7 +400,9 @@ test("the word/argument separator is the whitespace class, not a literal space",
 		// A free-text command reassembles with its argument split the same way the
 		// dispatcher will split it, rather than taking `list-open` on a name the
 		// user had already typed.
-		const team = plan(`ship it${separator}/team${separator}ops`, 11);
+		const team = plan(`ship it${separator}/team${separator}ops`, 11, {
+			gesture: "pick",
+		});
 		assert.equal(team.kind, "reassemble", `prompt row, separator ${at}`);
 		/*
 		 * A DELIBERATE, STATED CONSEQUENCE of the collapse both writers now share
@@ -458,15 +460,35 @@ test("the non-goal prompt commands keep the reassembly Enter has always had", ()
 	 * hoisting, because an assembled `/team ops <message>` line is one the user
 	 * asked to read before it runs, and nothing about the goal report changes it.
 	 */
-	const team = plan("please ship it /team ops", 23);
+	/*
+	 * The gesture is the PICK's, and that is the whole of this round's merge: a
+	 * mid-draft prompt command hoists when the user CHOSE the row, and is prose
+	 * when they merely typed the word into a sentence (this branch's rule). The
+	 * hoisting itself is unchanged where the user asked for it — which is what
+	 * this case was written to hold.
+	 */
+	const team = plan("please ship it /team ops", 23, { gesture: "pick" });
 	assert.equal(team.kind, "reassemble");
 	assert.equal(team.text, "/team ops please ship it");
-	// The name-list exception is untouched: `/team` with no name typed keeps its
-	// roster list open rather than reassembling on the word alone.
-	assert.deepEqual(plan("fix this /team", 13), {
+	// And the same draft typed rather than picked is prose: nothing is
+	// rearranged and nothing is eaten.
+	assert.deepEqual(plan("please ship it /team ops", 23), { kind: "send" });
+	/*
+	 * The name-list exception survives where the word is ACTED on: a `/team` that
+	 * opens the draft, or one picked from the popup, keeps its roster list open
+	 * rather than reassembling on the word alone.
+	 */
+	assert.deepEqual(plan("/team\nreview this", 5), {
 		kind: "list-open",
 		command: { name: "team", args: "" },
 	});
+	assert.deepEqual(plan("fix this /team", 13, { gesture: "pick" }), {
+		kind: "list-open",
+		command: { name: "team", args: "" },
+	});
+	// And the same word typed mid-sentence is prose, which is this branch's rule:
+	// no list opens, nothing is rearranged, the sentence is sent as written.
+	assert.deepEqual(plan("fix this /team", 13), { kind: "send" });
 });
 
 test("the pick arms the command: hoisted, staged, and nothing else", () => {
@@ -631,10 +653,13 @@ const picked = (draft, caret) => {
  * one-line collapse lived on the arming writer instead of on the writer both
  * gestures pass through. These cases are that shape, on the shipped modules.
  */
-const loopPlan = (draft, caret) =>
+const loopPlan = (draft, caret, gesture = "typed") =>
 	planSlashSubmission({
 		draft,
 		caret,
+		// The pick writes the line these cases are about, so the pick's own
+		// gesture is what they ask with (see `submissionFor`).
+		gesture,
 		commandNames: LOOP_NAMES,
 		promptCommands: LOOP_PROMPTS,
 		armedOnlyCommands: ARMED_ONLY_COMMANDS,
@@ -652,8 +677,10 @@ const stagedByEnter = (draft, caret) => {
 		false,
 	);
 	assert.ok(completion, `the pick writes for ${JSON.stringify(draft)}`);
-	const staged = loopPlan(completion.text, completion.caret);
+	const staged = loopPlan(completion.text, completion.caret, "pick");
 	assert.equal(staged.kind, "reassemble", JSON.stringify(staged));
+	// The next Enter is a TYPED one — the user reads the staged line, then presses
+	// Enter — and the staged line is a draft-opening command, so it runs.
 	return { staged, next: loopPlan(staged.text, staged.caret) };
 };
 
@@ -884,8 +911,18 @@ test("the arming vocabulary is the registry's, and its absence takes the pick pa
 			enabled: true,
 			...arms,
 		}).kind,
-		"reassemble",
+		/*
+		 * PROSE, where the implicit hoist used to be the fallback. This branch's
+		 * rule makes a mid-draft word prose whatever the arming vocabulary says, so
+		 * the hazard above is now bounded in the direction that matters: a catalogue
+		 * without the destination row loses the arming AND gets no surprise
+		 * rearrangement — the sentence is sent as written.
+		 */
+		"send",
 	);
+});
+
+/*
  * Review round 1, R1 — the registry's own `arguments` field is the third
  * vocabulary, and without it every whole-draft command whose argument list is
  * not inline stopped running. Measured on the head the round reviewed: these
