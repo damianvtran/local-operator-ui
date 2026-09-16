@@ -90,8 +90,8 @@ import { completionFor } from "./slash-completion";
 import {
 	pickArmsCommand,
 	pointerPickRuns,
+	reassembledNote,
 	stagedNote,
-	stagedSentence,
 } from "./slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
@@ -1194,10 +1194,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					stage(
 						plan.text,
 						plan.caret,
-						// The same sentence shape the arming's note uses, from the same helper:
-						// the quote is the user's own text, so its trailing stop is not doubled
-						// by the template (QA round 2, Q2-2).
-						`Staged ${stagedSentence(plan.text.trim())} Enter again runs it.`,
+						/*
+						 * The REASSEMBLY's own sentence, from the helper that owns it: the quote's
+						 * punctuation is `stagedSentence`'s (QA round 2, Q2-2) and the pane
+						 * clause is the dispatcher's own, shared with the arming note — the
+						 * clause this line was missing while its sibling already carried it
+						 * (review F3). It keeps its own verb because the two answers are to
+						 * different gestures: "again" is what tells a user who just pressed
+						 * Enter that their sentence moved rather than sent (round 1 UX U7).
+						 */
+						reassembledNote(plan.text.trim(), paneHasSession),
 					);
 					return;
 				}
@@ -1221,6 +1227,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.open,
 				slash.matches.length,
 				stage,
+				// The reassembly's note carries the pane's own clause too (review F3):
+				// the promise is conditioned on this pane being able to address a
+				// session, which the dispatcher answers with the same value.
+				paneHasSession,
 			],
 		);
 

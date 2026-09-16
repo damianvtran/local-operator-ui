@@ -245,12 +245,31 @@ function invocationOf(commandText: string): SlashCommandInvocation {
  * must not be able to disagree about the shape, and the trailing space of the
  * empty case is part of it — it terminates the word, which is one of the two
  * jobs that space does (`editor.py:_complete_name_argument`).
+ *
+ * THE INVARIANT THE NEXT ENTER DEPENDS ON, owned here because this is the ONE
+ * place that writes a line the planner will read back: THE STAGED LINE IS THE
+ * WHOLE DRAFT, AND IT IS ONE LINE. `slashTokenSpan` claims the caret's own LINE
+ * (`slash-token.ts`), and the staged caret is the end of the buffer, so a staged
+ * line that still carried a surviving newline would put the command's span on
+ * its first line with the rest of the draft outside it: the next Enter's planner
+ * would answer `send`, nothing would run, and the literal `/loop …` would reach
+ * the model as prompt text while the note the user just read promised the
+ * command would run (review F1 / QA Q4 on the armed path, and review F1 / QA
+ * Q3-1 on the reassembly path — the same omission, found twice because the
+ * flattening lived in one of the two callers). So BOTH halves are COLLAPSED
+ * here, at the one choke point: the line reads as a person would type it
+ * (reviewer Q2: the completion's own doubled space), and it is the same shape
+ * `/goal ship it` already has when typed whole, which is what makes one Enter
+ * run it. Stating it on the caller instead is how the second writer came to
+ * skip it.
  */
 function stagedLine(
 	commandText: string,
 	rest: string,
 ): { text: string; caret: number } {
-	const text = rest ? `${commandText} ${rest}` : `${commandText} `;
+	const text = rest
+		? `${oneLine(commandText)} ${oneLine(rest)}`
+		: `${oneLine(commandText)} `;
 	return { text, caret: text.length };
 }
 
@@ -258,9 +277,8 @@ function stagedLine(
  * One line, as a person would type it: every whitespace run collapsed to a
  * single space, trimmed at both ends.
  *
- * WHY the ARMED stage flattens and the reassembly does not: see the invariant on
- * `planSlashArming` below. The reassembly's own shape is inherited by the
- * `/team` path, which this change deliberately does not move.
+ * The staged line's own shape — and the reason both writers flatten — is the
+ * invariant on `stagedLine` above.
  */
 function oneLine(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
@@ -334,6 +352,11 @@ export function planSlashSubmission({
 		if (nameListCommands.has(word) && !typedArgument.trim())
 			return { kind: "list-open", command };
 		const rest = spliced.text.trim();
+		// The staged line is one line, both halves collapsed — see the invariant on
+		// `stagedLine`. A two-line draft staged here put the command's span on its
+		// first line, so the next Enter answered `send` and the literal `/loop …`
+		// went to the model as prose while the note said it would run (review F1 /
+		// QA Q3-1).
 		return { kind: "reassemble", ...stagedLine(commandText, rest) };
 	}
 
@@ -373,19 +396,12 @@ export function planSlashSubmission({
  * of itself depending on how it was called is the class of defect this module's
  * header exists to prevent.
  *
- * THE INVARIANT THE NEXT ENTER DEPENDS ON, stated here because this is the only
- * place that writes a line the planner will read back: THE STAGED LINE IS THE
- * WHOLE DRAFT, AND IT IS ONE LINE. `slashTokenSpan` claims the caret's own LINE
- * (`slash-token.ts`), and the staged caret is the end of the buffer, so a staged
- * line that still carried a surviving newline would put the command's span on
- * its first line with the rest of the draft outside it: the next Enter's planner
- * would answer `send`, the goal would never be set, and the literal `/goal …`
- * would reach the model as prompt text while the note the user just read said
- * otherwise (review F1 / QA Q4, both reproduced on the multi-line shape this
- * file's own header recommends). So the stage COLLAPSES the whitespace runs
- * instead — the line reads as a person would type it (reviewer Q2: the
- * completion's own doubled space), and it is the same shape `/goal ship it`
- * already has when typed whole, which is what makes one Enter run it.
+ * THE ONE-LINE SHAPE the staged line owes the next Enter is stated once, on
+ * `stagedLine` above, because that is what writes it for both this gesture and
+ * the reassembly. Nothing about the invariant belongs on a caller: the version
+ * of this paragraph that lived here, as the only place that "writes a line the
+ * planner will read back", is why the reassembly writer shipped without the
+ * collapse (review F1 / QA Q3-1).
  */
 export type SlashArmingPlan =
 	/** The pick armed the command: this line is staged, the next Enter runs it. */
@@ -424,9 +440,8 @@ export function planSlashArming({
 	if (!armedOnlyCommands.has(wordOf(commandText))) return { kind: "none" };
 	const rest = replaceSpan(draft, span.start, span.end, "").text.trim();
 	if (!rest) return { kind: "none" };
-	// One line in, one line out: see the invariant on this function. Both halves
-	// are flattened because the completion writes the word IN PLACE, so the
-	// arguments it leaves behind can carry the doubled space as well as a
-	// newline from a draft of any shape.
-	return { kind: "armed", ...stagedLine(oneLine(commandText), oneLine(rest)) };
+	// `stagedLine` collapses both halves, which is what keeps the staged line one
+	// line whatever shape the draft had — see the invariant on it. The flattening
+	// is not restated here: it lives at the one place both writers pass through.
+	return { kind: "armed", ...stagedLine(commandText, rest) };
 }

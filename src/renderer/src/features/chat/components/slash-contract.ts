@@ -287,6 +287,42 @@ export function pickStagesDraft(input: {
 }
 
 /**
+ * The `runs` input BOTH footer lines read for the active row, in either phase,
+ * answered from the row's own route.
+ *
+ * WHY it is not simply `state.inline?.runs`: that value belongs to the ARGUMENT
+ * phase's list and is structurally absent in the command phase — `inline` is
+ * derived from `argumentWord`, which is derived from `slashArgumentContext`, and
+ * `caretPhase` answers `"command"` exactly when that context is `null`. The two
+ * phases are disjoint by construction, so feeding `enterFooter` that expression
+ * pinned its command-phase branches to a constant `false` no state could move:
+ * the free-text row's Enter line was unreachable, and the unit test that pinned
+ * the copy passed a `runs: true` the component never produced (review F2 / QA
+ * Q3-1). The click line below had the right input all along, which is what made
+ * the pair disagree on screen.
+ *
+ * So the question is asked the way the pick itself asks it: a COMMAND row
+ * answers from its DESTINATION (`pointerPickRuns` — whether a pick of this row
+ * runs rather than opening a list), and anything else answers from the argument
+ * list's own `runs`. `destination` is `undefined` exactly when the active row is
+ * not a command row, because every registry command carries one.
+ *
+ * One function rather than an expression at each call site because the two
+ * footers must not be able to describe the same row's route differently; the
+ * suite in `scripts/slash-contract.test.mjs` drives it the way the component
+ * does rather than hand-building its answer.
+ */
+export function activeRowRuns(input: {
+	destination: string | undefined;
+	entry: PickDestination | undefined;
+	inlineRuns: boolean;
+}): boolean {
+	return input.destination === undefined
+		? input.inlineRuns
+		: pointerPickRuns(input.destination, input.entry);
+}
+
+/**
  * The sentence a STAGED line's next Enter owes the user, in the command's own
  * terms (`Enter sets the goal and sends the text`).
  *
@@ -316,8 +352,17 @@ export function stagedPromiseVerb(destination: string | undefined): string {
 	return (destination ? STAGED_PROMISE[destination] : undefined) ?? "runs it";
 }
 
-/** The stop a sentence already ends in, so the note does not double it. */
-const SENTENCE_STOP = /[.!?]$/;
+/**
+ * The stop a sentence already ends in, so the note does not double it.
+ *
+ * ASCII alone was not the rule this helper states: the line is the USER's own
+ * text in whatever script they typed it in, and a quote that ends in a full stop
+ * of another script got the template's `.` appended after it —
+ * `stagedSentence("完了。")` read `完了。.` (review F4). The set is the sentence
+ * enders the composed-Japanese/CJK block uses (U+3002, U+FF01, U+FF1F) plus the
+ * ellipsis character, which ends a sentence in running text in both scripts.
+ */
+const SENTENCE_STOP = /[.!?。！？…]$/;
 
 /**
  * A staged line as the sentence the note puts after "Staged".
@@ -334,6 +379,17 @@ const SENTENCE_STOP = /[.!?]$/;
 export function stagedSentence(text: string): string {
 	return SENTENCE_STOP.test(text) ? text : `${text}.`;
 }
+
+/**
+ * The clause the DISPATCHER's own refusal carries for a pane that can address no
+ * conversation, quoted from one place because two notes now promise against it.
+ *
+ * It is the dispatcher's sentence verbatim (`slash-dispatch.ts`, the `!sessionId`
+ * guards), so a note that shows it and the refusal the user then reads are the
+ * same words (UX U5 / design D5).
+ */
+export const NO_CONVERSATION_CLAUSE =
+	"Needs an open conversation; start one first.";
 
 /**
  * The staged ARMED line's own receipt (`message-input.tsx`'s `onSlashNote`).
@@ -357,7 +413,31 @@ export function stagedNote(
 ): string {
 	return paneHasSession
 		? `Staged ${stagedSentence(text)} Enter ${stagedPromiseVerb(destination)}.`
-		: `Staged ${stagedSentence(text)} Needs an open conversation; start one first.`;
+		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
+}
+
+/**
+ * The REASSEMBLY's own staged line: the note the composer writes when Enter
+ * pushes a free-text command to the front of a sentence it was typed into.
+ *
+ * Its own sentence rather than a call to `stagedNote`, and the difference is not
+ * cosmetic: the armed note's verb is its ROW's destination promise, delivered by
+ * a pick, while this one answers a key the user has already pressed — "Enter
+ * again runs it" is the signal round 1 UX U7 asked for, because a user who
+ * pressed Enter twice has no other way to see that their sentence MOVED rather
+ * than sent. What the two sentences must agree on is the punctuation of the quote
+ * (`stagedSentence`) and the refusal clause above, and both come from here.
+ *
+ * `paneHasSession` is the same input the armed note takes, for the same reason
+ * and on the same pane: the dispatcher refuses a command a pane cannot address,
+ * so "again runs it" there was a promise the app broke one keystroke later
+ * (review F3 — this sentence was pane-blind for a round after its sibling
+ * learned the clause).
+ */
+export function reassembledNote(text: string, paneHasSession: boolean): string {
+	return paneHasSession
+		? `Staged ${stagedSentence(text)} Enter again runs it.`
+		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
 }
 
 /**
@@ -538,6 +618,18 @@ export type EnterFooterInput = {
 	/** The active COMMAND row's matched label (the alias that matched). */
 	label: string;
 	nameThenMessage: boolean;
+	/**
+	 * The active row's own route: whether a pick of it RUNS rather than opening a
+	 * list — `activeRowRuns`' answer, which is the DESTINATION's for a command row
+	 * and the argument list's own `runs` otherwise.
+	 *
+	 * It is this line's input because the free-text row's sentence is read from
+	 * `pickStagesDraft`, and that predicate needs to know whether this row reaches
+	 * the run path at all: a row whose pick opens a list (`/team`) hands the next
+	 * key to that list rather than to a reassembly. Passing the argument phase's
+	 * `state.inline?.runs` here instead pinned it to `false` in every state the
+	 * popup can be in (review F2 / QA Q3-1).
+	 */
 	runs: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
@@ -642,7 +734,11 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		 * said so. In the state where it surprises them (the popup closed, the caret
 		 * at the end) nothing visible says Enter will move the words (UX U3). The
 		 * predicate is the pick's, so these two lines cannot disagree about which
-		 * rows take the draft.
+		 * rows take the draft — and its `runs` is the ROW's own (`activeRowRuns`),
+		 * because the phase this line is drawn in has no argument list to read one
+		 * from: asking `state.inline` here is what left the sentence unreachable and
+		 * the app printing the fallback while this table said otherwise (review F2 /
+		 * QA Q3-1).
 		 */
 		if (
 			pickStagesDraft({
