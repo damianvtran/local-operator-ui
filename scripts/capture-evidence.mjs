@@ -573,6 +573,21 @@ export const STORIES = [
 	["chat-run-panel--back-to-roster", 1280, 900],
 	["chat-run-panel--back-pop", 1280, 900],
 	["chat-run-panel--close-from-reader", 1280, 900],
+
+	/* A conversation image, expanded. The operator's report was that a `read` row's
+	   screenshot could not be read at the ceiling the transcript gives a picture,
+	   and that on a canonical row clicking one did nothing at all. Three states:
+	   `in-thread` is what the press acts on, `expanded` is the overlay with the app
+	   still visible behind its scrim, and `expanded-small-image` is the SIZE RULE —
+	   a 240x180 picture offered nearly the whole viewport stays 240x180, where a
+	   fit-to-viewport rule would smear it. That last frame is sized to itself for
+	   the reason the notification states are: the scrim covers the whole viewport,
+	   so at 1280x900 the frame would be one colour over `check-evidence`'s
+	   uniformity ceiling and a picture of nothing. All three reach the overlay by
+	   pressing the picture; see the story's own note. */
+	["chat-image-expand--in-thread", 1280, 900],
+	["chat-image-expand--expanded", 1280, 900],
+	["chat-image-expand--expanded-small-image", 640, 420],
 	/* The MCP section, whose states a live session cannot produce on demand: an
 	   expired grant, a dead process, a word from a runtime this build has not been
 	   taught, and the cold payload of a session with no runtime. */
