@@ -123,9 +123,7 @@ const FRAME_STATES = [
 const PULSE_TROUGH = 0.7;
 const FRAME_THEMES = (
 	flag("themes", "localOperatorDark,localOperatorLight") ?? ""
-)
-	.split(",")
-	.filter(Boolean);
+).split(",").filter(Boolean);
 /**
  * The page a CAPTURE loads: a stream delay long enough for the hydrating window
  * to outlive a screenshot round trip. It changes how long the state lasts,
@@ -450,7 +448,7 @@ const prepareState = async (cdp, state) => {
 		await sendInComposer(cdp, REFUSAL_TEXT);
 		await waitForComposerAlert(cdp, REFUSAL_SENTENCE);
 		await settleFrames(cdp);
-	}
+		}
 
 	if (state === "settled") {
 		await cdp.send("Runtime.evaluate", {
@@ -699,10 +697,7 @@ const shoot = async (cdp, path, state, theme) => {
 		if (state === "mark") {
 			if (!seen.rowInView) refuse("the switched-to sidebar row is not in view");
 		}
-		if (
-			state === "slow" &&
-			!((seen.placeholderOpacity ?? 1) <= PULSE_TROUGH + 0.1)
-		)
+		if (state === "slow" && !((seen.placeholderOpacity ?? 1) <= PULSE_TROUGH + 0.1))
 			refuse(
 				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
 			);
@@ -731,11 +726,7 @@ const shoot = async (cdp, path, state, theme) => {
 		 * so a frame caught mid-fade is refused rather than published under a
 		 * measurement it does not show.
 		 */
-		if (
-			state !== "slow" &&
-			state !== "settled" &&
-			(seen.placeholderOpacity ?? 1) < 0.99
-		)
+		if (state !== "slow" && state !== "settled" && (seen.placeholderOpacity ?? 1) < 0.99)
 			refuse(
 				`the placeholder is not at the pulse's rest phase (opacity ${seen.placeholderOpacity})`,
 			);
@@ -898,10 +889,7 @@ const main = async () => {
 		ready = result.value === true;
 		if (!ready) await sleep(250);
 	}
-	if (!ready)
-		throw new Error(
-			`the harness at ${FRAMES ? FRAMES_URL : url} never became ready`,
-		);
+	if (!ready) throw new Error(`the harness at ${FRAMES ? FRAMES_URL : url} never became ready`);
 
 	if (FRAMES) {
 		const written = await captureFrames(cdp);
@@ -909,8 +897,7 @@ const main = async () => {
 		return;
 	}
 
-	const runWithDeadline = (expression, ms) =>
-		Promise.race([
+	const runWithDeadline = (expression, ms) =>		Promise.race([
 			cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
 				returnByValue: true,
@@ -942,86 +929,84 @@ const main = async () => {
 		const {
 			before,
 			run,
-			atRollback,
-			after,
+				atRollback,
+				after,
 			stats,
-			pollsAfterRollback,
-			requests,
-		} = result.value;
-		/*
-		 * EVERY CLAIM IS ABOUT A FRAME, not about the store's history.
-		 *
-		 * "The failure sentence reached the screen" used to be computed as
-		 * `transitions.some((entry) => entry.shown)` over entries pushed from a
-		 * `store.subscribe` callback - a `document.body.innerText` read taken at a
-		 * store notification, i.e. at an instant no browser ever painted. It was
-		 * true there and false on every delivered frame: the rollback's own
-		 * catalogue refetch cleared the sentence 4.5-8.1 ms after writing it, and
-		 * 0 of ~1,100 sampled frames contained it (UX round 1, U1). The recorder
-		 * samples per `rAF` now, so `shownFrames > 0` is a claim about paints, and
-		 * `shownAtEnd` is the one the fix has to satisfy: the sentence has to
-		 * outlive the five-second poll that used to wipe it, and the run waits for
-		 * at least one of those polls (`pollsAfterRollback`) before asking.
-		 */
-		const verdict = {
+				pollsAfterRollback,
+				requests,
+			} = result.value;
+			/*
+					* EVERY CLAIM IS ABOUT A FRAME, not about the store's history.
+			*
+				* "The failure sentence reached the screen" used to be computed as
+			* `transitions.some((entry) => entry.shown)` over entries pushed from a
+				* `store.subscribe` callback - a `document.body.innerText` read taken at a
+				* store notification, i.e. at an instant no browser ever painted. It was
+						* true there and false on every delivered frame: the rollback's own
+					* catalogue refetch cleared the sentence 4.5-8.1 ms after writing it, and
+					* 0 of ~1,100 sampled frames contained it (UX round 1, U1). The recorder
+				* samples per `rAF` now, so `shownFrames > 0` is a claim about paints, and
+				* `shownAtEnd` is the one the fix has to satisfy: the sentence has to
+			* outlive the five-second poll that used to wipe it, and the run waits for
+			* at least one of those polls (`pollsAfterRollback`) before asking.
+			*/
+				const verdict = {
 			"the switch committed the target first": run.committedAt !== null,
 			"the view came back to the outgoing session":
 				atRollback.activeSessionId === before.activeSessionId,
 			"the failure sentence was recorded in the store": stats.recorded,
 			"the failure sentence reached a painted frame": stats.shownFrames > 0,
-			"the sentence is stated on exactly one surface": stats.maxSurfaces === 1,
-			"the sentence outlived a catalogue poll":
-				stats.shownAtEnd && pollsAfterRollback > 0,
-			"the sidebar marks the outgoing session again":
-				atRollback.selectedRow === before.selectedRow,
-		};
-		const passed = Object.values(verdict).every(Boolean);
-		if (AS_JSON) {
-			console.log(
-				JSON.stringify(
-					{
-						verdict,
-						before,
-						run,
-						atRollback,
-						after,
-						stats,
-						pollsAfterRollback,
-						requests,
-					},
-					null,
-					2,
-				),
-			);
-		} else {
-			console.log(
-				"guard-read failure — the rollback, driven in the real renderer",
-			);
-			console.log(`  before:      ${JSON.stringify(before)}`);
-			console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
-			console.log(`  6.2 s later: ${JSON.stringify(after)}`);
-			console.log(
-				`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
-			);
-			console.log(
-				`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
-					` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
-					` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
-			);
-			console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
-			console.log(`  requests: ${requests.join(", ")}`);
-			for (const [claim, held] of Object.entries(verdict))
-				console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
-		}
-		if (!passed) process.exitCode = 1;
-		return;
+			"the sentence is stated on exactly one surface":
+			stats.maxSurfaces === 1,
+				"the sentence outlived a catalogue poll":
+		stats.shownAtEnd && pollsAfterRollback > 0,
+		"the sidebar marks the outgoing session again":
+		atRollback.selectedRow === before.selectedRow,
+	};
+	const passed = Object.values(verdict).every(Boolean);
+	if (AS_JSON) {
+	console.log(
+		JSON.stringify(
+			{
+				verdict,
+				before,
+				run,
+				atRollback,
+				after,
+				stats,
+				pollsAfterRollback,
+				requests,
+			},
+			null,
+			2,
+		),
+	);
+	} else {
+	console.log("guard-read failure — the rollback, driven in the real renderer");
+	console.log(`  before:      ${JSON.stringify(before)}`);
+	console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
+	console.log(`  6.2 s later: ${JSON.stringify(after)}`);
+	console.log(
+		`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
+	);
+	console.log(
+		`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
+			` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
+			` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
+	);
+	console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
+	console.log(`  requests: ${requests.join(", ")}`);
+	for (const [claim, held] of Object.entries(verdict))
+		console.log(`  ${held ? "PASS" : "FAIL"}  ${claim}`);
+	}
+	if (!passed) process.exitCode = 1;
+	return;
 	}
 	const { meta, runs, latency } = result.value;
 	const steady = runs.filter((run) => run.label === "steady");
 	const cold = runs.filter((run) => run.label === "cold");
 	const loads = loadavg().map((value) => Math.round(value * 100) / 100);
-	const numbers = (runs_, of) =>
-		runs_.map(of).filter((value) => value !== null);
+	const numbers = (runs_, of) => runs_.map(of).filter((value) => value !== null);
 
 	const summary = {
 		url,
@@ -1079,11 +1064,8 @@ const main = async () => {
 		console.log(
 			`sessions.get for the target, per switch: ${summary.sessionsGetPerSwitch.join(", ")}`,
 		);
-		console.log(
-			`requests issued by the last switch: ${summary.requestSequence.join(", ")}`,
-		);
-		if (summary.timedOut)
-			console.log("NOTE: at least one switch hit the 20s deadline");
+		console.log(`requests issued by the last switch: ${summary.requestSequence.join(", ")}`);
+		if (summary.timedOut) console.log("NOTE: at least one switch hit the 20s deadline");
 	}
 };
 

@@ -56,8 +56,7 @@ const HEIGHT = Number(process.env.CLICK_PROOF_HEIGHT ?? 900);
  * a pass cannot be an index-0 accident and cannot be the recommended option
  * either.
  */
-const TARGET =
-	process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the pairing code";
+const TARGET = process.env.CLICK_PROOF_TARGET ?? "Popup is open - generate the pairing code";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -100,30 +99,18 @@ browser.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error
-			? reject(new Error(JSON.stringify(msg.error)))
-			: resolve(msg.result);
+		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
 	}
 };
 const raw = (method, params = {}, sessionId) =>
 	new Promise((resolve, reject) => {
 		const id = nextId++;
 		pending.set(id, { resolve, reject });
-		browser.send(
-			JSON.stringify({
-				id,
-				method,
-				params,
-				...(sessionId ? { sessionId } : {}),
-			}),
-		);
+		browser.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
 	});
 
 const target = await raw("Target.createTarget", { url: "about:blank" });
-const attached = await raw("Target.attachToTarget", {
-	targetId: target.targetId,
-	flatten: true,
-});
+const attached = await raw("Target.attachToTarget", { targetId: target.targetId, flatten: true });
 const sessionId = attached.sessionId;
 const send = (method, params = {}) => raw(method, params, sessionId);
 
@@ -134,9 +121,7 @@ async function evaluate(expression) {
 		returnByValue: true,
 	});
 	if (res.exceptionDetails) {
-		throw new Error(
-			res.exceptionDetails.exception?.description ?? "page error",
-		);
+		throw new Error(res.exceptionDetails.exception?.description ?? "page error");
 	}
 	return res.result.value;
 }
@@ -206,10 +191,7 @@ browser.addEventListener("message", (event) => {
 			`exception: ${msg.params.exceptionDetails?.exception?.description ?? msg.params.exceptionDetails?.text}`,
 		);
 	}
-	if (
-		msg.method === "Runtime.consoleAPICalled" &&
-		msg.params.type === "error"
-	) {
+	if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") {
 		pageProblems.push(
 			`console.error: ${msg.params.args.map((a) => a.value ?? a.description ?? a.type).join(" ")}`,
 		);
@@ -268,28 +250,18 @@ try {
 	// produces: the surface is ready, then the question arrives.
 	const shellDeadline = Date.now() + 90_000;
 	for (;;) {
-		if (
-			await evaluate(
-				`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
-			)
-		)
+		if (await evaluate(`Boolean(document.querySelector('textarea[aria-label="Message"]'))`))
 			break;
 		if (Date.now() > shellDeadline)
 			throw new Error("the app shell never painted");
 		await wait(1000);
 	}
-	const armed = await evaluate(
-		`fetch("${ORIGIN}/rig-arm").then((r) => r.json())`,
-	);
+	const armed = await evaluate(`fetch("${ORIGIN}/rig-arm").then((r) => r.json())`);
 	record.arm = armed;
 
 	const deadline = Date.now() + 60_000;
 	for (;;) {
-		if (
-			await evaluate(
-				`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`,
-			)
-		)
+		if (await evaluate(`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`))
 			break;
 		if (Date.now() > deadline) {
 			throw new Error("the gate never rendered");
@@ -354,8 +326,7 @@ try {
 		};
 	})()`);
 	record.aim = aim;
-	if (!aim.ok)
-		throw new Error(`cannot aim at the option: ${JSON.stringify(aim)}`);
+	if (!aim.ok) throw new Error(`cannot aim at the option: ${JSON.stringify(aim)}`);
 
 	// A real press and release at those pixels.
 	for (const type of ["mousePressed", "mouseReleased"]) {
@@ -373,11 +344,7 @@ try {
 	const cleared = Date.now() + 30_000;
 	let resolved = false;
 	while (Date.now() < cleared) {
-		if (
-			!(await evaluate(
-				`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`,
-			))
-		) {
+		if (!(await evaluate(`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`))) {
 			resolved = true;
 			break;
 		}
@@ -463,11 +430,6 @@ try {
 		 * failure to remove a temp directory must never replace the run's own
 		 * error, which is what hid this run's first failure. */
 		await wait(1000);
-		rmSync(dataDir, {
-			recursive: true,
-			force: true,
-			maxRetries: 5,
-			retryDelay: 200,
-		});
+		rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 	} catch {}
 }
