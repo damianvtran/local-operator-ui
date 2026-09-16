@@ -90,6 +90,15 @@ export type SessionTableState = {
 	filters: { topLevelOnly: boolean };
 	/** 0-based. The RENDERED page is clamped; this value is deliberately not. */
 	page: number;
+	/**
+	 * The window this table's page was last reset against —
+	 * `sessionTableScopeKey` of the props that were in force.
+	 *
+	 * `null` until the first render reports one, which is why the reducer
+	 * ADOPTS the first key rather than resetting on it: on mount there is no
+	 * earlier window for the page to be stale against.
+	 */
+	scope: string | null;
 };
 
 export type SessionTableAction =
@@ -102,14 +111,50 @@ export type SessionTableAction =
 	 * Only the page resets: the sort, the filter and the query are the reader's
 	 * own choices and are about to be re-applied to a new answer.
 	 */
-	| { type: "reset" };
+	| { type: "reset" }
+	/** The props the table is rendering under, as `sessionTableScopeKey`. */
+	| { type: "scope"; key: string };
 
 export const INITIAL_SESSION_TABLE_STATE: SessionTableState = {
 	query: "",
 	sort: null,
 	filters: { topLevelOnly: false },
 	page: 0,
+	scope: null,
 };
+
+/**
+ * The three props the page is a function of, named as one thing.
+ *
+ * A named type rather than three positional arguments because the key below is
+ * the ONLY place they are combined, and a caller that reorders two of them
+ * would otherwise silently re-key the table.
+ */
+export type SessionTableScope = {
+	metric: AnalyticsMetric;
+	windowDays: number;
+	thisSessionOnly: boolean;
+};
+
+/**
+ * The window, as one comparable string (§4.3).
+ *
+ * This is the whole of the reset rule's INPUT, and it is a pure function in
+ * this module for the reason §12.3 gives about the memo keys: dropping a term
+ * from the key is a failure that is silent rather than wrong — the table stays
+ * correct and merely sits on a stale page — so it has to be asserted somewhere
+ * that is not a comment. `scripts/analytics-session-table.test.mjs` pins each
+ * of the three triggers against it.
+ *
+ * What is NOT in the key is as load-bearing as what is: a refetch, a new
+ * payload object and the `refreshing` flag are all new DATA over the same
+ * window, and a reader who has paged to page 4 of 228 must stay there when one
+ * arrives. There is no action for those at all — the only caller of the
+ * `scope` action is the section, and it dispatches one only when this key
+ * changes.
+ */
+export const sessionTableScopeKey = (scope: SessionTableScope): string =>
+	`${scope.metric}|${scope.windowDays}|${scope.thisSessionOnly}`;
 
 /**
  * The reducer.
@@ -122,10 +167,11 @@ export const INITIAL_SESSION_TABLE_STATE: SessionTableState = {
  * frame nobody sees.
  *
  * Two actions return the state OBJECT unchanged when nothing moved (a reset
- * from page 0, a search that sets the query it already holds). React bails out
- * of a re-render on an identical reference, and both of those arrive on paths
- * that are otherwise cheap to re-run — a metric toggle with the sort following
- * it, and a keystroke that only changed case.
+ * from page 0, a search that sets the query it already holds, a `scope` action
+ * for the window already in force). React bails out of a re-render on an
+ * identical reference, and all of those arrive on paths that are otherwise
+ * cheap to re-run — a metric toggle with the sort following it, and a
+ * keystroke that only changed case.
  */
 export function sessionTableReducer(
 	state: SessionTableState,
@@ -150,6 +196,17 @@ export function sessionTableReducer(
 			return action.page === state.page
 				? state
 				: { ...state, page: action.page };
+		case "scope":
+			/*
+			 * The first key is ADOPTED, not reset against: `null` is "no earlier
+			 * window", so a mount cannot look like a window change. React bails
+			 * out of the second render this causes exactly as it bails out of any
+			 * other no-op update.
+			 */
+			if (state.scope === null) return { ...state, scope: action.key };
+			return action.key === state.scope
+				? state
+				: { ...state, scope: action.key, page: 0 };
 		case "reset":
 			return state.page === 0 ? state : { ...state, page: 0 };
 	}
@@ -510,9 +567,12 @@ const noun = (count: number): string => (count === 1 ? "session" : "sessions");
  * or the filter is active, because "4,550 of 4,550 sessions" is a sentence that
  * says nothing.
  *
- * The verb agrees with the TOTAL rather than with the match count ("1 of 1
- * session matches"), because the noun is introduced by the total the match is
- * stated against.
+ * TWO counts, two numbers, and they take their agreement from different
+ * places. The NOUN follows the total, because that is the quantity the noun is
+ * attached to (`of 4,550 sessions`). The VERB follows the MATCHED count, because
+ * that is the sentence's subject: `1 of 4,550 sessions match` reads wrong at
+ * exactly the moment a reader has narrowed to one row, which is the moment this
+ * line is most worth reading.
  */
 export function sessionMatchLine(input: {
 	matched: number;
@@ -526,7 +586,7 @@ export function sessionMatchLine(input: {
 	const searched =
 		query === ""
 			? counted
-			: `${counted} ${input.total === 1 ? "matches" : "match"} "${query}"`;
+			: `${counted} ${input.matched === 1 ? "matches" : "match"} "${query}"`;
 	return input.topLevelOnly ? `${searched} · top-level only` : searched;
 }
 
@@ -575,7 +635,13 @@ export function sessionAnnouncement(
 			const query = context.query.trim();
 			/* Clearing the field is its own sentence: `No sessions match ""` is
 			   what the general branch would say about an empty query. */
-			if (query === "") return "Search cleared.";
+			if (context.query === "") return "Search cleared.";
+			/* A field holding ONLY spaces has not been cleared, and saying so
+			   contradicts the state the reader can see: the spaces are still in
+			   the field and the clear control is still beside them. This branch
+			   is reached by trimming, so it cannot be folded into the one above
+			   — the two states differ in the raw value, not in the trimmed one. */
+			if (query === "") return "";
 			if (context.matched === 0) return `No sessions match "${query}".`;
 			return `${formatCount(context.matched)} ${noun(context.matched)} ${context.matched === 1 ? "matches" : "match"} "${query}".`;
 		}

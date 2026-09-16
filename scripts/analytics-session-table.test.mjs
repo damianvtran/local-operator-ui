@@ -25,10 +25,14 @@
  * memo is keyed on, so a paging pass that copied rows would make every page
  * turn re-enrich twenty rows for nothing.
  *
- * The TEN cases are the design's own list (§11.1), in its order. The wording
- * functions are pinned with them because three surfaces consume them (the
- * visible match line, the pager's range line and the live region) and a count
- * stated in two places is a count that can be stated two ways.
+ * The TEN cases are the design's own list (§11.1), in its order. The last case
+ * is the addition review round 1 asked for (M5): the window-change reset used
+ * to rest on a template literal inside the section, which is the silent class
+ * of failure §12.3 describes — dropping a term from that key left the table
+ * correct and merely on a stale page. The wording functions are pinned in that
+ * list because three surfaces consume them (the visible match line, the pager's
+ * range line and the live region) and a count stated in two places is a count
+ * that can be stated two ways.
  *
  * What this file does NOT prove: that any of it is VISIBLE, that the header
  * button and `aria-sort` are rendered, or that focus survives a page turn.
@@ -77,6 +81,7 @@ const {
 	asSessionSortKey,
 	isNarrowed,
 	sessionMatchLine,
+	sessionTableScopeKey,
 	sessionAnnouncement,
 	sessionEmptyText,
 	formatMicroUsd,
@@ -301,6 +306,7 @@ test("the reducer's reset table, including the row that must NOT reset", () => {
 		sort: { key: "cost", direction: "desc" },
 		filters: { topLevelOnly: false },
 		page: 0,
+		scope: null,
 	});
 	// Activating the active column flips the direction, and the Session column
 	// opens ascending rather than descending.
@@ -452,8 +458,10 @@ test("the wording: the match line, the announcement and the empty text", () => {
 		}),
 		"4,550 of 4,550 sessions · top-level only",
 	);
-	// The singulars, pinned: the noun follows the TOTAL the match is stated
-	// against, so the verb does too.
+	// The singulars, pinned. The NOUN follows the total the match is stated
+	// against (`of 1 session`), and the VERB follows the matched count, because
+	// that is the sentence's subject — `1 of 4,550 sessions match` reads wrong
+	// at exactly the moment a reader has narrowed to one row.
 	assert.equal(
 		sessionMatchLine({
 			matched: 1,
@@ -462,6 +470,24 @@ test("the wording: the match line, the announcement and the empty text", () => {
 			topLevelOnly: false,
 		}),
 		'1 of 1 session matches "panel"',
+	);
+	assert.equal(
+		sessionMatchLine({
+			matched: 1,
+			total: 4_550,
+			query: "6e127",
+			topLevelOnly: false,
+		}),
+		'1 of 4,550 sessions matches "6e127"',
+	);
+	assert.equal(
+		sessionMatchLine({
+			matched: 2,
+			total: 4_550,
+			query: "6e12",
+			topLevelOnly: false,
+		}),
+		'2 of 4,550 sessions match "6e12"',
 	);
 
 	const context = {
@@ -503,6 +529,16 @@ test("the wording: the match line, the announcement and the empty text", () => {
 		}),
 		"Top-level only: 404 sessions.",
 	);
+	// And the branch that turns it back off, which is the module's other half of
+	// the same sentence and was asserted nowhere (review round 1, M5).
+	assert.equal(
+		sessionAnnouncement("filter", {
+			...context,
+			matched: 819,
+			topLevelOnly: false,
+		}),
+		"Top-level only off: 819 sessions.",
+	);
 	// The announcement reads its numbers from the RENDERED state, which is what
 	// makes the clamp announceable: the same "page" change, after the answer
 	// shrank to two pages, says the page the reader is actually on.
@@ -510,8 +546,24 @@ test("the wording: the match line, the announcement and the empty text", () => {
 		sessionAnnouncement("page", { ...context, page: 1, pageCount: 2 }),
 		"Page 2 of 2.",
 	);
+	/*
+	 * A field holding ONLY spaces is not a cleared field, and the live region
+	 * must not say it was: the spaces are still in the field and the clear
+	 * control is still beside them, so "Search cleared." describes a state the
+	 * reader (and a screen-reader reader, who has no way to check) does not
+	 * have. Q-2's own repro — focus the field, type three spaces — used to
+	 * produce that sentence. The match line still says nothing, which is §6.3;
+	 * this pins the announcement, which is the other surface.
+	 */
 	assert.equal(
 		sessionAnnouncement("search", { ...context, query: "  " }),
+		"",
+		"a whitespace-only query narrows nothing AND says nothing",
+	);
+	// The genuinely cleared field keeps its sentence: the two states differ in
+	// the RAW value, not in the trimmed one.
+	assert.equal(
+		sessionAnnouncement("search", { ...context, query: "", matched: 4_550 }),
 		"Search cleared.",
 	);
 
@@ -686,5 +738,112 @@ test("the sort key a header reports is a key this model knows", () => {
 			filters: { topLevelOnly: true },
 		}),
 		true,
+	);
+});
+
+/* --------------------------------------------------------------- extras */
+test("the window-change reset is a derivation, and it is pinned", () => {
+	/*
+	 * §4.3's three triggers, which are the one documented rule that used to
+	 * rest on a template literal inside the section — a key that had quietly
+	 * lost a term while the table stayed CORRECT, just at a stale page. §12.3
+	 * names that as the silent class, so it is asserted here rather than
+	 * described: each field on its own moves the key, and a key that omits one
+	 * of them fails on that field's own case.
+	 */
+	const base = sessionTableScopeKey({
+		metric: "tokens",
+		windowDays: 7,
+		thisSessionOnly: false,
+	});
+	assert.equal(
+		sessionTableScopeKey({
+			metric: "tokens",
+			windowDays: 7,
+			thisSessionOnly: false,
+		}),
+		base,
+		"the same window is the same key",
+	);
+	assert.notEqual(
+		sessionTableScopeKey({
+			metric: "spend",
+			windowDays: 7,
+			thisSessionOnly: false,
+		}),
+		base,
+		"the metric is in the key",
+	);
+	assert.notEqual(
+		sessionTableScopeKey({
+			metric: "tokens",
+			windowDays: 30,
+			thisSessionOnly: false,
+		}),
+		base,
+		"the window is in the key",
+	);
+	assert.notEqual(
+		sessionTableScopeKey({
+			metric: "tokens",
+			windowDays: 7,
+			thisSessionOnly: true,
+		}),
+		base,
+		"the scope is in the key",
+	);
+	/*
+	 * And what is NOT in it, which is the other half of the rule: the key reads
+	 * three props, so a refetch — a new payload object, a `refreshing` flip —
+	 * cannot move it however much else about the props changed. The extras are
+	 * spread in through a cast because passing them is exactly the mistake a
+	 * future caller would make.
+	 */
+	assert.equal(
+		sessionTableScopeKey({
+			metric: "tokens",
+			windowDays: 7,
+			thisSessionOnly: false,
+			// Spread in as the extra PROPS a section render carries, which is
+			// exactly the mistake a future caller would make.
+			data: { aggregate: {}, daily: [] },
+			refreshing: true,
+			loading: false,
+		}),
+		base,
+		"a refetch is new data over the same window, and the key cannot see it",
+	);
+
+	/*
+	 * The reducer's side of it. The first key is ADOPTED rather than reset
+	 * against — on mount there is no earlier window for a page to be stale
+	 * against — a later key change resets the page and nothing else, and the
+	 * window already in force returns the SAME object so React bails out.
+	 */
+	const mounted = sessionTableReducer(INITIAL_SESSION_TABLE_STATE, {
+		type: "scope",
+		key: base,
+	});
+	assert.deepEqual(mounted, { ...INITIAL_SESSION_TABLE_STATE, scope: base });
+	assert.equal(mounted.page, 0, "adopting the first key does not reset");
+	assert.equal(
+		sessionTableReducer(mounted, { type: "scope", key: base }),
+		mounted,
+		"the same window returns the same state object",
+	);
+	const late = { ...mounted, page: 6, query: "status", sort: null };
+	const moved = sessionTableReducer(late, {
+		type: "scope",
+		key: sessionTableScopeKey({
+			metric: "spend",
+			windowDays: 7,
+			thisSessionOnly: false,
+		}),
+	});
+	assert.equal(moved.page, 0);
+	assert.equal(
+		moved.query,
+		"status",
+		"the reader's narrowing survives the move",
 	);
 });

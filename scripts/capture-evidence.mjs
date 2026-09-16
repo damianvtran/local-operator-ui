@@ -139,6 +139,23 @@ export const THEMES = [
  * 28.5% of the window before any content, and a single wide capture hides
  * exactly that class of defect.
  */
+/**
+ * The by-session section, for `scrollTo` (see the note in the list below).
+ *
+ * Spelled once: six entries park the body on it, and a selector copied six
+ * times is a selector that will be updated five times.
+ *
+ * SINGLE-quoted attribute value on purpose. This string is interpolated into
+ * `Runtime.evaluate` through `JSON.stringify`, and the result is then placed in
+ * a template literal in this file: `\"` inside a JSON string is a plain `"` by
+ * the time the page parses it, so a double-quoted attribute value closes the
+ * selector's own string and the whole expression becomes a syntax error that
+ * surfaces as `scrollTo` matching nothing. Single quotes need no escaping and
+ * survive both hops.
+ */
+export const SESSION_SECTION =
+	"[data-panel-body] section:has(input[aria-label='Search sessions'])";
+
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -1672,20 +1689,34 @@ export const STORIES = [
 	 *
 	 * Two viewports are used for one reason, and it is a property of the host
 	 * rather than of any of these stories: the panel body is capped at
-	 * `min(76vh, 760px)` (`picker-host.tsx`), and the by-session section sits
-	 * below the stat grid and the chart, so NO single frame can hold both the
-	 * strip and the pager. Each state therefore has an at-rest entry — the
-	 * section's top, where the strip, the match line and the header chevrons
-	 * are — and, where the claim is the pager, an `-end` entry parked at the
-	 * body's own end through `scrollToEnd` (the same mechanism
-	 * `panels-analytics--unnamed-sessions` already uses, and for the same
-	 * reason: a scroll offset is browser state no story can set, and a story
-	 * that faked one would be evidence about the fake).
+	 * `min(76vh, 760px)` (`picker-host.tsx`), the section sits below the stat grid
+	 * and the chart, and the section is taller than that cap — so NO single frame
+	 * holds the strip, the twenty rows, the legend and the pager at once.
+	 *
+	 * Both halves of the section are therefore photographed, and the parking is
+	 * the rig's rather than a story's:
+	 *
+	 * - the AT-REST entry parks the body on the section's TOP through
+	 *   `scrollTo`, which is where the strip, the match line and the header row's
+	 *   chevrons are;
+	 * - the `-end` entry parks it at the body's own end through `scrollToEnd`,
+	 *   which is where the legend and the pager are.
+	 *
+	 * Leaving the at-rest half to a `play` that clicks a control and lets the
+	 * browser scroll the focused element into view is what review round 1 caught
+	 * (M2/D2/D3): two committed directories were captioned with a subject no pixel
+	 * contained, because a side effect is not a guarantee — the same story with a
+	 * different `play` would have silently shown the panel's top instead.
+	 *
+	 * `session-narrow-720` is parked the same way: at 720 the claim is the strip
+	 * itself, and the strip is below the fold at rest.
 	 *
 	 * The claims these frames CANNOT carry are asserted in each story's own
 	 * `play` — `aria-sort` on the header cell, the `tbody tr` count, the live
-	 * region's text and where focus is after a page turn — and the model's
-	 * rules are the node suite's (`scripts/analytics-session-table.test.mjs`).
+	 * region's text and where focus is after a page turn — and the plays are
+	 * scoped to the by-session table's own accessible name, because the panel body
+	 * holds two tables. The model's rules are the node suite's
+	 * (`scripts/analytics-session-table.test.mjs`).
 	 */
 	[
 		"panels-analytics--populated",
@@ -1699,7 +1730,12 @@ export const STORIES = [
 		1100,
 		{ dir: "dense-end", scrollToEnd: "[data-panel-body]" },
 	],
-	["panels-analytics--session-paginated", 1140, 980],
+	[
+		"panels-analytics--session-paginated",
+		1140,
+		980,
+		{ scrollTo: SESSION_SECTION },
+	],
 	[
 		"panels-analytics--session-paginated",
 		1140,
@@ -1712,21 +1748,49 @@ export const STORIES = [
 		980,
 		{ scrollToEnd: "[data-panel-body]" },
 	],
-	["panels-analytics--session-sorted-by-cost", 1140, 980],
+	[
+		"panels-analytics--session-last-page",
+		1140,
+		980,
+		{ scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--session-sorted-by-cost",
+		1140,
+		980,
+		{ scrollTo: SESSION_SECTION },
+	],
 	[
 		"panels-analytics--session-sorted-by-cost",
 		1140,
 		980,
 		{ dir: "session-sorted-by-cost-end", scrollToEnd: "[data-panel-body]" },
 	],
-	/* The label column ascending, at rest: the order AND the chevron are at the
-	   section's top, so this one frame carries both halves of the claim. */
-	["panels-analytics--session-sorted-by-session", 1140, 980],
-	/* The query stories are at rest because the match line lives in the strip;
-	   the empty state fits whole, so it needs no second frame. */
-	["panels-analytics--session-search-match", 1140, 980],
+	/* The label column ascending: the order AND the chevron are at the section's
+	   top, so this one frame carries both halves of the claim. */
+	[
+		"panels-analytics--session-sorted-by-session",
+		1140,
+		980,
+		{ scrollTo: SESSION_SECTION },
+	],
+	/* The query stories are parked on the section because the match line lives in
+	   the strip. The empty state is the exception: the strip stays and the table
+	   does not, so the whole thing is shorter than the panel's other content and
+	   needs no parking. */
+	[
+		"panels-analytics--session-search-match",
+		1140,
+		980,
+		{ scrollTo: SESSION_SECTION },
+	],
 	["panels-analytics--session-search-empty", 1140, 980],
-	["panels-analytics--session-top-level-only", 1140, 980],
+	[
+		"panels-analytics--session-top-level-only",
+		1140,
+		980,
+		{ scrollTo: SESSION_SECTION },
+	],
 	[
 		"panels-analytics--session-top-level-only",
 		1140,
@@ -1739,7 +1803,12 @@ export const STORIES = [
 		1020,
 		{ scrollToEnd: "[data-panel-body]" },
 	],
-	["panels-analytics--session-narrow-720", 720, 980],
+	[
+		"panels-analytics--session-narrow-720",
+		720,
+		980,
+		{ scrollTo: SESSION_SECTION },
+	],
 
 	["panels-session--populated", 1140, 1000],
 	["panels-session--tree-cost", 1140, 1000],
@@ -2034,12 +2103,23 @@ class Cdp {
 		this.ws = ws;
 		this.next = 0;
 		this.pending = new Map();
+		/*
+		 * Unsolicited events are KEPT rather than dropped, and this is load
+		 * bearing: the play guard reads `Runtime.consoleAPICalled` (see the
+		 * pre-shutter check), and an event dropped here is a story whose play
+		 * threw, photographed anyway - which is the defect the guard exists to
+		 * remove. Bounded, because a sweep runs for forty minutes.
+		 */
+		this.events = [];
 		ws.addEventListener("message", (ev) => {
 			const msg = JSON.parse(ev.data);
 			if (msg.id !== undefined && this.pending.has(msg.id)) {
 				const { resolve, reject } = this.pending.get(msg.id);
 				this.pending.delete(msg.id);
 				msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
+			} else if (msg.method) {
+				this.events.push(msg);
+				if (this.events.length > 400) this.events.splice(0, 200);
 			}
 		});
 	}
@@ -2274,6 +2354,12 @@ const main = async () => {
 
 	await cdp.send("Page.enable");
 	await cdp.send("Network.enable");
+	/*
+	 * `Runtime.enable` is here for the EVENTS rather than for `Runtime.evaluate`,
+	 * which works without it: the play guard below reads the console, and the
+	 * console is only delivered once this domain is on.
+	 */
+	await cdp.send("Runtime.enable");
 
 	/*
 	 * Every id in STORIES must exist before a single frame is taken.
@@ -2464,6 +2550,13 @@ const main = async () => {
 				modifiers: 0,
 				pointerType: "mouse",
 			});
+
+			/*
+			 * The console buffer is per STORY, cleared here rather than read with a
+			 * timestamp filter, because everything before this line belongs to the
+			 * previous document. See the pre-shutter play guard for what it is for.
+			 */
+			cdp.events.length = 0;
 
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
@@ -2739,9 +2832,26 @@ const main = async () => {
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;
 						}
+						/* A story whose play function threw, or a story that failed to
+						   render. sb-show-errordisplay is the class Storybook puts on the
+						   BODY to show its error display (the element is always present and
+						   display none otherwise), so the body's class list is the signal;
+						   the element's own height is checked as well because it costs
+						   nothing. A phase that threw does NOT set this - see the
+						   pre-shutter play guard, which reads the console instead. */
+						const errorDisplay = document.querySelector(".sb-errordisplay");
+						const errored =
+							document.body.classList.contains("sb-show-errordisplay") ||
+							Boolean(
+								errorDisplay && errorDisplay.getBoundingClientRect().height > 0,
+							);
 						return {
-							drawn: !loading && !pending && fonts === "loaded" && (${storyDrew})(n),
+							drawn: !errored && !loading && !pending && fonts === "loaded" && (${storyDrew})(n),
 							counted: n,
+							errored,
+							errorText: errored
+								? (errorDisplay.innerText || "").trim().replace(/\s+/g, " ").slice(0, 300)
+								: null,
 							loading,
 							pending,
 							fonts,
@@ -2749,6 +2859,11 @@ const main = async () => {
 					})()`,
 				});
 				probe = result.value ?? probe;
+				if (probe?.errored) {
+					throw new Error(
+						`${story} @ ${theme}: the story did not RENDER — Storybook is showing its error display: ${probe.errorText}. A frame over a story that failed to render is evidence of a state nobody chose. (A play function that threw is caught separately, at the shutter: it does not show this display.)`,
+					);
+				}
 				prepared = probe?.drawn === true;
 				if (!prepared) await sleep(200);
 			}
@@ -2934,6 +3049,62 @@ const main = async () => {
 				}
 			}
 			/*
+			 * `scrollTo` is `scrollToEnd`'s counterpart, and it exists because the
+			 * at-rest frame of a section that sits BELOW the panel's own content is
+			 * not the section: the panel body's scroll position is browser state no
+			 * story can set, so a frame that is not parked shows the stat grid and
+			 * the chart whatever the story's name says (review round 1, M2/D2/D3,
+			 * where two committed directories were captioned with a subject no pixel
+			 * contained).
+			 *
+			 * It parks the named element at the TOP of the nearest scrollable
+			 * ancestor, and it FAILS rather than falling back: a scroll that did not
+			 * land is the same defect as the side effect this replaces — the frame is
+			 * captioned with a state it does not hold — and the only way to notice is
+			 * to measure the offset rather than trust the assignment. The tolerance
+			 * is a pixel, for sub-pixel layout.
+			 *
+			 * It is deliberately NOT a `play` doing `scrollIntoView`: the browser's
+			 * scroll of a focused element is a side effect of whatever the play
+			 * happens to click, so it is neither guaranteed nor stable, and a play
+			 * that stopped focusing a control would silently degrade the frame.
+			 */
+			if (options?.scrollTo) {
+				/*
+				 * `result` then `result.value`: `Runtime.evaluate` answers with a
+				 * RemoteObject, and a reader that destructured the whole envelope
+				 * as the value saw `ok` undefined on every entry - which is a
+				 * failure that LOOKS like a selector that matched nothing.
+				 */
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const el = document.querySelector(${JSON.stringify(options.scrollTo)});
+						if (!el) return { ok: false, why: "matched nothing" };
+						let scroller = el.parentElement;
+						while (scroller && scroller.scrollHeight <= scroller.clientHeight + 1) {
+							scroller = scroller.parentElement;
+						}
+						if (!scroller) return { ok: false, why: "no scrollable ancestor" };
+						const delta = () => el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+						const before = scroller.scrollTop;
+						scroller.scrollTop = before + delta();
+						return { ok: true, before, after: scroller.scrollTop, offset: Math.round(delta()) };
+					})()`,
+				});
+				const parked = result?.value;
+				if (!parked?.ok) {
+					throw new Error(
+						`${story} @ ${theme}: the scrollTo selector \`${options.scrollTo}\` ${parked?.why ?? "failed"} — a frame that is not parked shows whatever the body happens to be showing, under a name that claims otherwise`,
+					);
+				}
+				if (Math.abs(parked.offset) > 1) {
+					throw new Error(
+						`${story} @ ${theme}: after parking \`${options.scrollTo}\` its top is still ${parked.offset}px from the scroller's top (scrollTop ${parked.before} -> ${parked.after}) — it cannot be scrolled that far, so the frame would not be the state its name claims`,
+					);
+				}
+			}
+			/*
 			 * THE PHASE HOLD RUNS HERE, at the last moment before the shutter, and
 			 * round 3 is why it moved: it used to run where the story's styles are
 			 * overridden, BEFORE Storybook had mounted anything, and a cold Storybook
@@ -3055,6 +3226,50 @@ const main = async () => {
 			 * photographed is exactly the state three documents claimed was impossible.
 			 */
 			await assertPhaseHeld("at the shutter");
+			/*
+			 * A STORY WHOSE PLAY THREW IS NOT EVIDENCE, so the frame is not taken.
+			 *
+			 * Why this is the console rather than the DOM, which was the obvious
+			 * first move and does not work: Storybook shows its error display only
+			 * for a story that failed to RENDER (it does that by putting
+			 * `sb-show-errordisplay` on the body, and the element is present and
+			 * `display: none` otherwise). A phase that threw - an `expect` inside a
+			 * `play` - is reported to the manager and to the CONSOLE, and
+			 * `window.__STORYBOOK_PREVIEW__.currentRender.phase` reads `finished`
+			 * either way, so the console error is the one signal a frame's producer
+			 * can see. It is also the signal QA read to find seven of the nine
+			 * by-session plays red at the shipping head while this rig photographed
+			 * them cleanly (QA round 1, Q-1: `sb-errordisplay` was on this file's
+			 * CHROME list, i.e. Storybook furniture to EXCLUDE from the count).
+			 *
+			 * The three signatures are the three ways a play throws: an assertion
+			 * (`@storybook/test`'s `expect` throws `AssertionError`), a pointer
+			 * interaction user-event refused, and a query that found nothing. A play
+			 * that threw something else - a `TypeError` in its own body - is NOT
+			 * caught here, which is the limit of reading the console rather than
+			 * hooking Storybook's channel; it is stated rather than implied.
+			 */
+			const playFailure = cdp.events
+				.filter(
+					(event) =>
+						event.method === "Runtime.consoleAPICalled" &&
+						event.params.type === "error",
+				)
+				.map((event) =>
+					event.params.args
+						.map((arg) => arg.value ?? arg.description ?? "")
+						.join(" "),
+				)
+				.find((text) =>
+					/^(AssertionError|TestingLibraryElementError)|Unable to perform pointer interaction/.test(
+						text,
+					),
+				);
+			if (playFailure) {
+				throw new Error(
+					`${story} @ ${theme}: the story's play function THREW — ${playFailure.split("\n")[0].slice(0, 200)}. The story's own assertions rejected the state this frame would have photographed, so the frame is not taken and the sweep stops here. Run the story in Storybook to see it fail.`,
+				);
+			}
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
 				quality: 88,
