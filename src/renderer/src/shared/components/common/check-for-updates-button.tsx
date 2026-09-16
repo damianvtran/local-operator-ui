@@ -33,6 +33,19 @@ export const CheckForUpdatesButton = () => {
 	 * unrelated confirmations below keep the plain snackbar.
 	 */
 	const [checkError, setCheckError] = useState<string | null>(null);
+	/**
+	 * Whether the held failure is on screen, ON ITS OWN.
+	 *
+	 * WHY IT IS NOT `snackbarOpen`. The failure is held until the reader dismisses
+	 * it, while the boxes beside it (the by-hand panel, the confirmation) dismiss
+	 * themselves on a timer - so one shared flag let another box's autoHide take
+	 * the held failure down, and let two boxes paint the same corner at once
+	 * (review round 2, R2-2; QA round 2 measured two identical 400x192 rects, both
+	 * `role="alert"`, one at the app root and one here). The failure keeps its own
+	 * open state and its own dismissal; `showMessage`/`showAffirmation` clear it
+	 * when a new message claims the box, which is the other half of the same rule.
+	 */
+	const [errorOpen, setErrorOpen] = useState(false);
 	const [snackbarSeverity, setSnackbarSeverity] = useState<
 		"success" | "info" | "warning" | "danger"
 	>("info");
@@ -134,6 +147,14 @@ export const CheckForUpdatesButton = () => {
 			setSnackbarMessage(message);
 			setSnackbarSeverity(severity);
 			setSnackbarOpen(true);
+			/*
+			 * A message claiming the corner takes the held failure off it: two boxes
+			 * cannot both be the answer to the same check, and a retry that succeeds
+			 * while the old failure is still up would otherwise say both things at
+			 * once (review round 2, R2-2).
+			 */
+			setCheckError(null);
+			setErrorOpen(false);
 		},
 		[],
 	);
@@ -145,7 +166,7 @@ export const CheckForUpdatesButton = () => {
 	const showCheckError = useCallback((message: string) => {
 		showingAffirmationRef.current = false;
 		setCheckError(message);
-		setSnackbarOpen(true);
+		setErrorOpen(true);
 	}, []);
 
 	const showAffirmation = useCallback((message: string) => {
@@ -308,8 +329,16 @@ export const CheckForUpdatesButton = () => {
 		};
 	}, []);
 
-	// Check for updates
-	const checkForUpdates = async () => {
+	/**
+	 * Check for updates.
+	 *
+	 * `keepFailure` is set by the one caller that IS the failure card - its own
+	 * retry - and it means "do not take the card down while this runs": the card
+	 * stays up with its button in its in-progress state, and a check that
+	 * SUCCEEDS is what ends it (UX round 2, U7). Every other caller starts from a
+	 * clean box, which is what the dismissal below is for.
+	 */
+	const checkForUpdates = async ({ keepFailure = false } = {}) => {
 		if (isDevelopmentMode()) {
 			showMessage(
 				"Updates are not checked in development mode. This feature is only available in production builds.",
@@ -326,7 +355,17 @@ export const CheckForUpdatesButton = () => {
 		 * reported contradiction, reproduced one check later.
 		 */
 		const seq = ++checkSeqRef.current;
-		dismissAffirmation();
+		/*
+		 * A NEW CHECK RETIRES BOTH HALVES OF THE LAST ONE, and the held failure is one
+		 * of them: this is the reader asking again, so what the previous check
+		 * concluded - its sentence and its failure - is no longer what the app knows.
+		 * The exception is the failure card's own retry (`keepFailure`), which stays up
+		 * with its own button showing the check is running (UX round 2, U7).
+		 */
+		if (!keepFailure) {
+			dismissAffirmation();
+			closeCheckError();
+		}
 		// This check's own window for offers opens here: anything raised from now
 		// until its verdict lands is something this verdict may not paint over.
 		offerSinceCheckStartRef.current = false;
@@ -357,6 +396,14 @@ export const CheckForUpdatesButton = () => {
 			// A superseded check paints nothing, in either direction: the newer
 			// check owns the screen, and its own outcome has already been applied.
 			if (seq !== checkSeqRef.current) return;
+
+			/*
+			 * A check the FAILURE CARD started that finished without failing ends the
+			 * card: the retry it offered worked, and leaving the old failure up would
+			 * say the opposite. Only that caller - `keepFailure` - is affected; every
+			 * other check clears the box on its way in.
+			 */
+			if (keepFailure) closeCheckError();
 
 			/*
 			 * An affirmation is painted only when this check's own window saw no
@@ -418,8 +465,15 @@ export const CheckForUpdatesButton = () => {
 		showingAffirmationRef.current = false;
 		setSnackbarOpen(false);
 		setSnackbarMessage(null);
-		setCheckError(null);
 	};
+
+	/**
+	 * Dismissal of the HELD failure, and only of it: the reader's own X.
+	 */
+	const closeCheckError = useCallback(() => {
+		setCheckError(null);
+		setErrorOpen(false);
+	}, []);
 
 	return (
 		<>
@@ -501,10 +555,16 @@ export const CheckForUpdatesButton = () => {
 			 */}
 			{checkError && (
 				<UpdateErrorAlert
-					open={snackbarOpen}
+					open={errorOpen}
 					message={checkError}
-					onClose={handleSnackbarClose}
-					onRetry={() => void checkForUpdates()}
+					onClose={closeCheckError}
+					/*
+					 * A retry the ALERT started keeps the card mounted while it runs, so
+					 * its own button shows the in-progress state instead of the card
+					 * vanishing for the app's 1 s + 3 s ladder with nothing on screen
+					 * saying a check is running (UX round 2, U7).
+					 */
+					onRetry={() => void checkForUpdates({ keepFailure: true })}
 					retrying={checking}
 				/>
 			)}

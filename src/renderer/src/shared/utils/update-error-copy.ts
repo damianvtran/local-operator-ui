@@ -31,13 +31,16 @@
  *
  * WHAT THE TWO LINES ARE. The sentence is a person's: what happened and what
  * to do about it. The detail is the machine's own words on their own line and
- * in monospace, subordinate. Where a message carries an AUTHORED prefix around
- * a machine fragment ("Error downloading update: net::ERR_TIMED_OUT") the
- * prefix is kept and only the fragment is replaced, so the context survives
- * and the reader never sees the code. Where the message is not a transport
- * failure the sentence IS the message: only the transport family has a copy
- * table behind it, and inventing a cause for an unrecognised failure is the
- * defect class this whole change exists to remove.
+ * in monospace, subordinate - and it is the CODE that reaches it, not the
+ * wrapper's prose: where electron-updater builds 200 characters of parse
+ * narration around a failure, only the code is kept, because the narration is
+ * addressed to a release owner and not to the person reading the alert (design
+ * round 2, U11). Where a message carries an AUTHORED prefix around a machine
+ * fragment ("Error downloading update: net::ERR_TIMED_OUT") the prefix is kept
+ * and only the fragment is replaced, so the context survives and the reader
+ * never sees the code. Where the message is not a transport failure the
+ * sentence IS the message when the app wrote it: inventing a cause for an
+ * unrecognised failure is the defect class this whole change exists to remove.
  */
 
 import {
@@ -78,21 +81,30 @@ const UPDATE_SERVER_UNREACHABLE =
 	"The app could not reach the update server. Check this machine's connection, then try again.";
 
 /**
- * The sentences for a failure the transport classifier does not know.
+ * The download stage's own sentence, and WHY IT NAMES THE ACTION IT CAN KEEP.
  *
- * WHY AN UNRECOGNISED FAILURE GETS ONE TOO. Leaving the raw string as the
- * sentence meant a feed that answered `HttpError: 404 Not Found` painted a
- * developer's line at reading weight with no next step in it, which is the same
- * defect as the raw `net::ERR_*` alert one register over - the operator's
- * report, and design round 1's D3: a failure has to say what happened and what
- * to do, and only a message the app AUTHORED can be trusted to do that by
- * itself. Two stages, one sentence each, because the action differs: a check
- * that failed is retried, a download that failed has to be started again.
+ * The surface for this stage offers no check control - a check would not
+ * re-download anything (`action` is null below) - so a tail that says "then try
+ * again" instructed the reader to do something no control in the box answers
+ * (design round 2, D-9; UX U9). It names the surface that does own it instead:
+ * the update panel's own download control, which is behind this alert.
  */
-const UPDATE_CHECK_FAILED =
-	"The app could not check for updates. Try again in a moment.";
 const UPDATE_DOWNLOAD_FAILED =
-	"The update could not be downloaded. Check the connection, then try again.";
+	"The update could not be downloaded. Check this machine's connection, then start the download again.";
+
+/**
+ * The sentence for a failure a RETRY CANNOT FIX, and why it promises nothing.
+ *
+ * The classifier refuses to retry this family - a certificate the machine will
+ * refuse again, a 404, a 502 - so offering a retry control here would
+ * contradict the app's own rule, and "try again in a moment" is a promise the
+ * module cannot keep (design round 2, D-12). What is true is that the check did
+ * not finish and that the app will ask again on its own schedule, which is the
+ * sentence: the machine's own words go to the line below for whoever has to
+ * read them.
+ */
+const UPDATE_CHECK_INCOMPLETE =
+	"The update check could not finish. The app will try again at its next check.";
 
 /**
  * How long an app-authored label may be before it is machine wrapping.
@@ -120,7 +132,7 @@ const AUTHORED_SENTENCE_MAX_LENGTH = 400;
  * app label, and whether an unrecognised message is already a sentence.
  */
 const MACHINE_MARK =
-	/https?:\/\/|\b(?:net::)?(?:ERR_[A-Z0-9_]+|[A-Z]{2,}_[A-Z_]+)\b|\bE[A-Z]{3,}\b|HttpError|\b[45]\d\d\b/;
+	/https?:\/\/|\b(?:net::)?(?:ERR_[A-Z0-9_]+|[A-Z]{2,}_[A-Z_]+)\b|\bE[A-Z]{3,}\b|HttpError|(?:\b[45]\d\d\s+[A-Z][a-z]|:\s*[45]\d\d\b)/;
 
 /**
  * The stage labels this app prefixes its own download and install failures with.
@@ -131,6 +143,32 @@ const MACHINE_MARK =
  */
 const UPDATE_STAGE_LABEL =
 	/^(?:Error downloading update|Error starting the update|Error quitting for the update)\b/i;
+
+/**
+ * The whole set of labels THIS APP writes in front of an update failure, and why it
+ * is a closed set rather than a length.
+ *
+ * A surviving prefix is only worth keeping when the app wrote it: it says which
+ * stage of the app was talking, which is context the sentence cannot invent. A
+ * prefix a LIBRARY wrote - `Cannot parse releases feed:`, `Request timed out after
+ * 30000ms:`, electron-updater's own narration - is addressed to a release owner, and
+ * welding it back on was the defect design round 1 (D1) opened this module for. The
+ * length-and-marks heuristic this replaces let short library narration through,
+ * which the design round measured and recorded as its own trap (round 2, D-14);
+ * naming the set instead means an unrecognised prefix cannot be copy by accident.
+ *
+ * The cost is that a NEW app label has to be added here to survive. That is the
+ * right way round: a missing label drops context into the machine line, while a
+ * wrong one puts a stranger's prose at reading weight.
+ */
+const APP_AUTHORED_LABELS = [
+	"error downloading update",
+	"error starting the update",
+	"error quitting for the update",
+	"error installing update",
+	"error checking for updates",
+	"error checking for update",
+];
 
 /*
  * The two shapes `isAuthoredLabel`/`isAuthoredSentence` work with, hoisted: a
@@ -148,33 +186,38 @@ const WHITESPACE_RUN = /\s+/;
  */
 export function updateErrorCopy(message: string): UpdateErrorCopy {
 	const cleaned = stripErrorPrefixes(message).trim();
-	/*
-	 * What the reader may be offered is decided from the STAGE, before anything
-	 * else: a failure in the download or install stage is not answered by another
-	 * check, and those surfaces keep their own control.
-	 */
-	const action: "check" | null = UPDATE_STAGE_LABEL.test(cleaned)
-		? null
-		: "check";
+	const downloadStage = UPDATE_STAGE_LABEL.test(cleaned);
 	const fragment = transientTransportFragment(cleaned);
 	if (fragment === null) {
 		/*
 		 * Not a transport failure. A message the app wrote for a person is already
-		 * the sentence; anything else is a machine string and goes to the machine's
-		 * own line, under a sentence that says what happened and what to do.
+		 * the sentence, and it names its own next step - so no control is offered
+		 * over it. Anything else is a machine string and goes to the machine's own
+		 * line, under the sentence for its stage: the download stage says what the
+		 * reader can do about it, and the check stage promises only what the app
+		 * will do, because a retry is exactly what this family refuses.
 		 */
 		if (isAuthoredSentence(cleaned)) {
-			return { sentence: cleaned, detail: null, action };
+			return { sentence: cleaned, detail: null, action: null };
 		}
 		return {
-			sentence: UPDATE_STAGE_LABEL.test(cleaned)
+			sentence: downloadStage
 				? UPDATE_DOWNLOAD_FAILED
-				: UPDATE_CHECK_FAILED,
+				: UPDATE_CHECK_INCOMPLETE,
 			detail: cleaned === "" ? null : cleaned,
-			action,
+			action: null,
 		};
 	}
 	const detail = transportDetail(fragment);
+	/*
+	 * A TRANSPORT FAILURE IN THE DOWNLOAD STAGE still gets the download's own
+	 * sentence: what failed is the download, and the retry the connection
+	 * sentence names would be a check that cannot re-download anything (UX U9).
+	 */
+	if (downloadStage) {
+		return { sentence: UPDATE_DOWNLOAD_FAILED, detail, action: null };
+	}
+	const action: "check" | null = "check";
 	/*
 	 * A fragment that is its own clause was written around AUTHORED text, so the
 	 * sentence takes its place and the text survives. One that is embedded is
@@ -233,9 +276,16 @@ function transportDetail(fragment: TransportFragment): string | null {
  */
 function isAuthoredLabel(text: string): boolean {
 	const label = text.trim().replace(TRAILING_SEPARATOR, "").trim();
-	if (label === "" || label.length > AUTHORED_LABEL_MAX_LENGTH) return false;
-	if (label.includes("\n")) return false;
-	return !MACHINE_MARK.test(label);
+	if (label === "") return true;
+	if (label.includes("\n") || label.length > AUTHORED_LABEL_MAX_LENGTH) {
+		return false;
+	}
+	if (MACHINE_MARK.test(label)) return false;
+	/*
+	 * The app's own labels, and nothing else: see `APP_AUTHORED_LABELS` for why this
+	 * is a set rather than a shape.
+	 */
+	return APP_AUTHORED_LABELS.includes(label.toLowerCase());
 }
 
 /**

@@ -1679,6 +1679,19 @@ export const STORIES = [
 	 * welded to the front of it.
 	 */
 	["common-updatenotification--error-state-wrapped", 1280, 900],
+	/*
+	 * The retry IN FLIGHT, which no frame showed: the card used to unmount the moment
+	 * it was pressed, so "a check is running" and "the problem is fixed" looked the
+	 * same for the app's 1 s + 3 s ladder (design round 2, D13; UX U7). The pressed
+	 * control is what says which one it is.
+	 */
+	["common-updatenotification--error-state-retrying", 1280, 900],
+	/*
+	 * A DOWNLOAD-stage failure: the copy names the surface that owns the retry rather
+	 * than the box it is not in, and no control is offered for a stage a check cannot
+	 * answer (design round 2, D9; UX U9).
+	 */
+	["common-updatenotification--error-state-download", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own

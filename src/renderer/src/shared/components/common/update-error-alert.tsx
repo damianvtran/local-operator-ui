@@ -69,8 +69,18 @@ export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
 			variant="danger"
 			action={
 				action === "check" && onRetry ? (
+					/*
+					 * `primary`, not `outline`: an outlined control's only boundary here is
+					 * `border-control` against the danger wash, which measures 2.98:1 in
+					 * iceberg - under the 3:1 floor the contract sets for a control's sole
+					 * edge - with sage 3.09 and localOperatorLight 3.32 behind it (design
+					 * round 2, D10). The accent fill clears the wash everywhere (4.44-16.29
+					 * edge across the twelve palettes) with `on-accent` ink at 5.26-19.06,
+					 * and branding section 2 is where the accent belongs: the primary action
+					 * of the surface. The pair is asserted as its own `CONTROLS` row.
+					 */
 					<Button
-						variant="outline"
+						variant="primary"
 						size="sm"
 						onClick={onRetry}
 						disabled={retrying}

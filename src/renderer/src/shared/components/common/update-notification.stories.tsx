@@ -1217,3 +1217,54 @@ export const BackendUpdateFailed: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="failed" />,
 };
+
+/**
+ * The retry IN FLIGHT, which is the state the reader sees for the four seconds the
+ * app's own ladder runs - and which no frame showed (design round 2, D13; UX U7).
+ *
+ * WHY IT NEEDED ONE. The card used to unmount the moment `Try again` was pressed,
+ * because the component cleared the failure before it awaited, so this state was
+ * unreachable and "a check is running" was indistinguishable from "the problem is
+ * fixed" - the same press reads as success for its first seconds. With the card
+ * held, the pressed control is what says so: `retrying` renders "Checking..." on it
+ * and disables it. This story draws exactly that pair, over the plain canvas rather
+ * than the conversation list: the state under test is the card and its control, and
+ * `ErrorState` above is the composed frame.
+ */
+export const ErrorStateRetrying: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<div className="h-screen bg-canvas">
+			<UpdateErrorAlert
+				open
+				message="net::ERR_CONNECTION_REFUSED"
+				onClose={() => {}}
+				onRetry={() => {}}
+				retrying
+			/>
+		</div>
+	),
+};
+
+/**
+ * A DOWNLOAD-stage failure, which is where "then try again" told the reader to use
+ * a control the box does not carry (design round 2, D9; UX U9).
+ *
+ * The stage is what the copy keys on: a check stands a chance of answering this
+ * again, a download does not, so the sentence names the surface that owns the
+ * retry - the update panel behind this alert - and the box offers no control. The
+ * frame is the check on that rule, next to `ErrorState`'s, which does carry one.
+ */
+export const ErrorStateDownload: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<div className="h-screen bg-canvas">
+			<UpdateErrorAlert
+				open
+				message="Error downloading update: net::ERR_TIMED_OUT"
+				onClose={() => {}}
+				onRetry={() => {}}
+			/>
+		</div>
+	),
+};

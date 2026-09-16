@@ -5284,19 +5284,38 @@ const loAggregateCheck = async ({
 		 */
 		let verdict;
 		let probeResult;
+		/** The error a handler rejected with, when the case drove one. */
+		let rejected = null;
 		if (silentAppCheck) {
 			verdict = await updateService.checkForUpdates(true);
 		} else if (ipc) {
 			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 			delete globalThis.__loIpcHandlers;
 			updateService.setupIpcHandlers();
-			const handler = globalThis.__loIpcHandlers?.["check-for-all-updates"];
+			/*
+			 * Which handler the case drives. `check-for-all-updates` is the aggregate
+			 * the button and the tiles use; `check-for-updates` is the app channel
+			 * alone, which is what the failure alert's own retry calls - and the one
+			 * whose rejection the renderer paints from.
+			 */
+			const channel = ipc.handler ?? "check-for-all-updates";
+			const handler = globalThis.__loIpcHandlers?.[channel];
 			assert.equal(
 				typeof handler,
 				"function",
-				"the aggregate check must have a handler for the renderer to invoke",
+				`${channel} must have a handler for the renderer to invoke`,
 			);
-			verdict = await handler({}, ipc.options);
+			try {
+				verdict = await handler({}, ipc.options);
+			} catch (error) {
+				/*
+				 * A handler that REJECTS is an outcome a case has to be able to assert:
+				 * `check-for-updates` answers a check the user asked for with a rejection,
+				 * and that rejection is what the renderer's copy path runs on. Recorded
+				 * rather than propagated, so a case can say which of the two it got.
+				 */
+				rejected = error;
+			}
 		} else {
 			verdict = await updateService.checkForAllUpdates(false);
 		}
@@ -5313,7 +5332,7 @@ const loAggregateCheck = async ({
 			clearTimeout(updateService.postWakeCheckTimer);
 			updateService.postWakeCheckTimer = null;
 		}
-		return { verdict, sent, probeResult, service: updateService };
+		return { verdict, sent, probeResult, rejected, service: updateService };
 	} finally {
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
@@ -6198,13 +6217,38 @@ test("an update failure says what happened, and keeps the machine's words subord
 		assert.equal(bare.sentence.includes("net::"), false, bare.sentence);
 		assert.equal(bare.detail, "net::ERR_INTERNET_DISCONNECTED");
 
-		// The authored prefix survives; only the fragment is replaced.
+		/*
+		 * An app-authored label the app's own log really carries survives, and only the
+		 * fragment is replaced: this is the shape `Error checking for updates: Error:
+		 * Error: net::ERR_INTERNET_DISCONNECTED` reaches the copy as, and dropping the
+		 * label would lose which stage of the app was talking.
+		 */
 		const prefixed = copy.updateErrorCopy(
-			"Error downloading update: net::ERR_TIMED_OUT",
+			"Error checking for updates: net::ERR_TIMED_OUT",
 		);
-		assert.match(prefixed.sentence, /^Error downloading update: /);
+		assert.match(prefixed.sentence, /^Error checking for updates: /);
 		assert.equal(prefixed.sentence.includes("net::"), false, prefixed.sentence);
 		assert.equal(prefixed.detail, "net::ERR_TIMED_OUT");
+		/*
+		 * AND A PREFIX THAT IS NOT THE APP'S IS NOT COPY (design round 2, D-14). The
+		 * rule is the app's own label set rather than a length, because short library
+		 * narration passed the length: these two shapes are electron-updater's, not
+		 * this app's, and the sentence has to stand alone over their code.
+		 */
+		for (const narration of [
+			"Cannot parse releases feed: net::ERR_NETWORK_CHANGED",
+			"Request timed out after 30000ms: net::ERR_CONNECTION_RESET",
+		]) {
+			const shown = copy.updateErrorCopy(narration);
+			assert.match(
+				shown.sentence,
+				/^The app could not reach the update server/,
+				`${narration} must not weld its narration onto the sentence`,
+			);
+			assert.equal(shown.sentence.includes("Cannot parse"), false);
+			assert.equal(shown.sentence.includes("Request timed out"), false);
+			assert.match(shown.detail, /net::ERR_/);
+		}
 
 		/*
 		 * The wrapped shape, which is where the surviving prefix turned out to be
@@ -6257,14 +6301,40 @@ test("an update failure says what happened, and keeps the machine's words subord
 			false,
 			answered.sentence,
 		);
-		assert.match(answered.sentence, /could not check for updates/i);
+		/*
+		 * AND IT PROMISES NOTHING A RETRY CANNOT DELIVER (design round 2, D12). The
+		 * classifier excludes this family precisely because another attempt does not
+		 * fix it, so the copy says what is true - the check did not finish and the app
+		 * will ask again on its own schedule - and offers no retry control.
+		 */
+		assert.match(answered.sentence, /could not finish/i);
+		assert.match(answered.sentence, /next check/i);
+		assert.equal(answered.action, null, "no retry it cannot deliver");
 		assert.equal(answered.detail, "HttpError: 404 Not Found (latest-mac.yml)");
-		// A certificate the machine refuses is not transient, and it is not the
-		// connection either - but it is still a check that failed, and it is still
-		// shown as one.
+		// A certificate the machine refuses is the same shape, not the connection.
 		const certificate = copy.updateErrorCopy("net::ERR_CERT_DATE_INVALID");
-		assert.match(certificate.sentence, /could not check for updates/i);
+		assert.match(certificate.sentence, /could not finish/i);
+		assert.equal(certificate.action, null);
 		assert.equal(certificate.detail, "net::ERR_CERT_DATE_INVALID");
+		// A status line the server really answered with, and the reason phrase is what
+		// makes it a status rather than a number.
+		const gateway = copy.updateErrorCopy("Error: 502 Bad Gateway");
+		assert.match(gateway.sentence, /could not finish/i);
+		assert.equal(gateway.action, null);
+		/*
+		 * R2-3: the mark that makes text "machine" used to be any three-digit 4xx/5xx
+		 * number, which demoted a real remedy to the generic line - this exact sentence
+		 * is the one the reviewer measured, and `400 MB` is not a status code.
+		 */
+		const diskSpace = copy.updateErrorCopy(
+			"Not enough free disk space to install the update. Free at least 400 MB and try again.",
+		);
+		assert.match(
+			diskSpace.sentence,
+			/^Not enough free disk space/,
+			"an authored sentence mentioning a size stays the sentence",
+		);
+		assert.equal(diskSpace.detail, null);
 
 		/*
 		 * A message the app WROTE for a person is already the sentence - no
@@ -6276,12 +6346,28 @@ test("an update failure says what happened, and keeps the machine's words subord
 		);
 		assert.match(other.sentence, /^The installed server version/);
 		assert.equal(other.detail, null);
-		// A download failure is not answered by another check, so the copy offers
-		// no action for it: the panel behind still carries its own control.
+		/*
+		 * A download failure is not answered by another check, so the copy offers no
+		 * control for it - and it must not instruct the reader to use one either
+		 * (design round 2, D9; UX U9): the stage's sentence names the surface that
+		 * DOES own the retry, which is the panel behind this alert.
+		 */
+		const download = copy.updateErrorCopy(
+			"Error downloading update: net::ERR_TIMED_OUT",
+		);
+		assert.equal(download.action, null);
+		assert.match(download.sentence, /could not be downloaded/i);
+		assert.match(download.sentence, /start the download again/i);
 		assert.equal(
-			copy.updateErrorCopy("Error downloading update: net::ERR_TIMED_OUT")
-				.action,
-			null,
+			download.sentence.includes("then try again"),
+			false,
+			"no action the box cannot offer",
+		);
+		// The same sentence for the download stage's non-transport shapes.
+		assert.match(
+			copy.updateErrorCopy("Error downloading update: ENOENT: no such file")
+				.sentence,
+			/could not be downloaded/i,
 		);
 
 		/*
@@ -6688,6 +6774,7 @@ test("a check the machine has no network for spends no request", async () => {
 		serverVersion: "0.54.44",
 		publishedVersion: "0.54.44",
 		netIsOnline: false,
+		silentAppCheck: true,
 	});
 
 	assert.equal(
@@ -6698,19 +6785,65 @@ test("a check the machine has no network for spends no request", async () => {
 	assert.deepEqual(
 		sent.map(({ channel }) => channel),
 		[],
-		"nothing a person could read, on either channel",
+		"an app-initiated check that could not run says nothing, on either channel",
 	);
 	assert.equal(
-		verdict.app,
+		verdict,
 		"unavailable",
 		"a check that did not run never reports nothing-newer (or current)",
 	);
-	assert.equal(
-		verdict.server,
-		"unavailable",
-		"and neither does the server channel",
+});
+
+/**
+ * R2-1: the click is the ONE path the operator's rule exists for, and the gate was
+ * silently resolving it - `net.isOnline()` false returned before the ladder, the
+ * invoke resolved, and a resolved invoke is not a failure, so the renderer's catch
+ * never ran and the button painted nothing at all. The gate is now an ATTEMPT in
+ * the ladder, so a manual check fails with the code the machine's own stack gives
+ * for this state and is answered by the copy that already exists.
+ */
+test("a check the user asked for still reports when the machine has no network", async () => {
+	const { module: copy, dir } = await loadPureModule(
+		"src/renderer/src/shared/utils/update-error-copy",
+		"offline-copy-reader",
 	);
-	assert.equal(verdict.affirmation, null, "and it affirms nothing");
+	try {
+		const attempts = [];
+		const { sent, rejected } = await loAggregateCheck({
+			appCheck: loFailingFeed("net::ERR_INTERNET_DISCONNECTED", attempts),
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			netIsOnline: false,
+			// The app channel alone: what the failure alert's own retry invokes.
+			ipc: { handler: "check-for-updates", options: { manual: true } },
+		});
+
+		assert.equal(attempts.length, 0, "still no request spent while offline");
+		assert.ok(
+			rejected instanceof Error,
+			"the click is answered with a failure, not a resolved invoke - a resolved one is how it said nothing at all",
+		);
+		assert.equal(
+			rejected.message,
+			"net::ERR_INTERNET_DISCONNECTED",
+			"the code the machine's own stack gives for this state",
+		);
+		/*
+		 * And the renderer has copy for it: the same sentence the alert paints for a
+		 * real fetch that failed this way, with the code subordinate.
+		 */
+		const shown = copy.updateErrorCopy(rejected.message);
+		assert.match(shown.sentence, /could not reach the update server/i);
+		assert.equal(shown.detail, "net::ERR_INTERNET_DISCONNECTED");
+		assert.equal(shown.action, "check", "and the retry it names has an owner");
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"one owner: the rejection IS the report, so no event doubles it",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 /**

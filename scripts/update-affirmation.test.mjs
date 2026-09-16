@@ -1142,6 +1142,22 @@ function startServerUpdate(handle) {
 }
 
 /** Settle the in-flight attempt the way the main process would. */
+/**
+ * Answer the check a component started, and let its continuation paint.
+ *
+ * The same two-turn settle `settleServerUpdate` uses, for the app-channel invoke
+ * the failure card's own retry goes through: an `Error` outcome rejects it, a value
+ * resolves it.
+ */
+async function settleCheck(handle, outcome) {
+	const pending = updater.checks.shift();
+	assert.ok(pending, "a check must be in flight to settle");
+	pending.resolve(outcome instanceof Error ? Promise.reject(outcome) : outcome);
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	await new Promise((resolve) => realSetTimeout(resolve, 0));
+	handle.render();
+}
+
 async function settleServerUpdate(handle, outcome) {
 	const pending = updater.backendUpdates.shift();
 	assert.ok(pending, "the panel must have started a server update to settle");
@@ -1762,5 +1778,78 @@ test("the app's own start-up check reports nothing when it fails", async () => {
 		visible(handle),
 		[],
 		"a start-up check's failure is logged, never painted",
+	);
+});
+
+/**
+ * UX round 2, U7: the card the reader pressed `Try again` on must stay put while
+ * that retry runs. It used to unmount for the app's own 1 s + 3 s ladder - the
+ * component clears `error` before it awaits - so for four seconds nothing on
+ * screen said a check was running, and with a working feed the card vanished and
+ * never returned: "it is working" and "it is fixed" started identically.
+ */
+test("the failure card stays up while its own retry runs, and a success ends it", async () => {
+	const handle = mountNotification();
+	updater.emit("update-error", "net::ERR_CONNECTION_REFUSED");
+	handle.render();
+
+	const before = pinnedToast(handle);
+	assert.ok(before, JSON.stringify(visible(handle)));
+	const retry = before.props.action;
+	assert.equal(retry.props.children, "Try again");
+
+	retry.props.onClick();
+	handle.render();
+
+	/*
+	 * STILL THERE, and saying what it is doing: the button the reader pressed is the
+	 * one that carries the in-progress state (`retrying={checking}`), which could not
+	 * be reached before because the card was gone by the time the check started.
+	 */
+	const during = pinnedToast(handle);
+	assert.ok(during, "the card may not vanish under the reader's finger");
+	assert.equal(
+		during.props.action.props.children,
+		"Checking...",
+		"and the pressed control says so",
+	);
+	assert.equal(during.props.action.props.disabled, true);
+
+	// The check the retry started, answered: a success is what ends the card.
+	await settleCheck(handle, { isUpdateAvailable: false });
+
+	assert.equal(
+		pinnedToast(handle),
+		undefined,
+		"a retry that worked ends the failure it was answering",
+	);
+});
+
+/**
+ * R2-2/Q-1, the button's half: the held failure has its OWN open state and its own
+ * dismissal, and a new message claims the corner. One shared flag let the by-hand
+ * panel's 10 s autoHide take the held failure down, and let two boxes paint the
+ * same corner at once.
+ */
+test("a new message claims the corner, so the held failure cannot double-paint", async () => {
+	const handle = mount();
+	press(handle);
+	handle.render();
+	await settleCheck(handle, new Error("net::ERR_CONNECTION_REFUSED"));
+
+	const failed = pinnedToast(handle);
+	assert.ok(failed, JSON.stringify(visible(handle)));
+	assert.equal(failed.props.autoHideDuration, undefined, "held, not timed");
+
+	/*
+	 * The next check this button runs takes the corner: a check in flight is not the
+	 * old failure, and leaving both up would answer one question twice.
+	 */
+	press(handle);
+	handle.render();
+	assert.equal(
+		pinnedToast(handle),
+		undefined,
+		"one box answers the corner, not two",
 	);
 });

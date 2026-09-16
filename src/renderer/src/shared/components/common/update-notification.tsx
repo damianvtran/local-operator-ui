@@ -573,11 +573,30 @@ export const UpdateNotification = ({
 	 * remedy was inert for the rest of the session (reviews R3, U3).
 	 */
 	const checkForUpdates = useCallback(
-		async (options?: { manual?: boolean }) => {
+		async (options?: { manual?: boolean; keepFailure?: boolean }) => {
 			try {
 				setChecking(true);
-				setError(null);
-				await window.api.updater.checkForUpdates(options);
+				/*
+				 * A CHECK THE FAILURE CARD ITSELF STARTED DOES NOT BLANK THE CARD: it stays
+				 * up with its own button in the in-progress state while the app's 1 s + 3 s
+				 * retry ladder runs, because clearing `error` first unmounted it for those
+				 * four seconds with nothing else on screen saying a check was running - so a
+				 * person could not tell "it is working" from "it is fixed" (UX round 2, U7).
+				 * A check that SUCCEEDS clears it below; every other caller still starts from
+				 * a clean box.
+				 */
+				if (options?.keepFailure !== true) setError(null);
+				await window.api.updater.checkForUpdates(
+					/*
+					 * The reporting fact is forwarded as it always was, and NOTHING ELSE:
+					 * `keepFailure` is this component's own bookkeeping, and a payload that
+					 * carries it would be a second thing for main to read and ignore.
+					 */
+					options?.manual === undefined
+						? undefined
+						: { manual: options.manual },
+				);
+				if (options?.keepFailure === true) setError(null);
 			} catch (err) {
 				/*
 				 * ONLY A CHECK THE USER ASKED FOR REPORTS (the operator's rule of
@@ -1197,7 +1216,9 @@ export const UpdateNotification = ({
 					open={snackbarOpen}
 					message={error}
 					onClose={closeSnackbar}
-					onRetry={() => void checkForUpdates({ manual: true })}
+					onRetry={() =>
+						void checkForUpdates({ manual: true, keepFailure: true })
+					}
 					retrying={checking}
 				/>
 			) : (
