@@ -71,6 +71,31 @@ against the branch's expectations, and the other three pass, which is the
 `result.json` carries, per case, the typed word, the gesture, the before and
 after DOM state, the expectation and the verdict.
 
+## The two halves were not captured in the same sitting, and that is stated rather than implied
+
+The BRANCH half is the review-round-1 fixture and the six cases above: the `l`
+family the real registry has (`login`, `logout`, `loop`), so `/l` grows to `lo`,
+plus the `ambiguous-enter-keeps-the-written-message` case that the round's F1 was
+measured on.
+
+The `origin-main/` half was taken in the same way (same driver, same story file,
+a read-only worktree at `origin/main` with only the harness copied in) but EARLIER,
+before the fixture gained `loop`. Two consequences, visible in those frames and
+stated here rather than left for a reader to reconcile: their `l` family is
+`login`/`logout`, so their ambiguous cell reads `log`, and they carry five cases
+rather than six — the fifth case is about a code path (`extensionFor`) that does
+not exist on `origin/main` at all, and the row five cell above already says so.
+
+Nothing in that half is invalidated by the difference: what it evidences is what
+the two gestures DID on `origin/main`, and both of the reported symptoms (Enter on
+a panel command completing instead of running; an ambiguous word completing to the
+highlighted row) are in those frames. What it cannot do is carry the `/lo` number,
+which is a property of the fixture rather than of the old code. Re-shooting that
+half needs a second Storybook dev server and a browser, and the machine was under
+a load average of ~100 with 4k free pages when this pass finished, so it is
+declared here as the one asymmetry in the pair rather than silently re-rendered
+from a tree that could not be stood up.
+
 ## What this proves, and what it does not
 
 **Proved.** The composer's own decision — over the production `MessageInput`,
