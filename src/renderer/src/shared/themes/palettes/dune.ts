@@ -40,6 +40,10 @@ export const dune: ThemeDefinition = {
 		accent: "#FF8C38",
 		accentHover: "#FFA75C",
 		accentActive: "#E67016",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.0 from `accent` and 10.12:1 on surface, where the accent
+		// itself is 7.70:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#FFB27A",
 		accentWash: "#2C1C10",
 		// The old theme paired white with this orange, which measures 2.32:1 — a
 		// primary button nobody could read. Ink on the accent fill is the page
