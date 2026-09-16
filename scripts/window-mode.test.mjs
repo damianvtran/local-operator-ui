@@ -332,11 +332,13 @@ test("every way a parked conversation can end is a line", () => {
 	};
 	reportParkedDelivered("b1c2d3e4f5a6", context);
 	reportParkedEvicted("b1c2d3e4f5a6", context);
+	reportParkedLeftWaiting(["c2d3e4f5a6b1"], context);
 	reportParkedLeftWaiting(["b1c2d3e4f5a6", "c2d3e4f5a6b1"], context);
 	reportParksAtQuit(["b1c2d3e4f5a6"], (line) => lines.push(line));
 	assert.deepEqual(lines, [
 		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6 pid=7 cwd=/tmp/y applied=delivered",
 		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6 pid=7 cwd=/tmp/y applied=evicted",
+		"trigger=second-instance mode=headless requested=never parked=c2d3e4f5a6b1 pid=7 cwd=/tmp/y applied=left+waiting",
 		"trigger=second-instance mode=headless requested=never parked=b1c2d3e4f5a6,c2d3e4f5a6b1 pid=7 cwd=/tmp/y applied=left+waiting",
 		"trigger=app-quit mode=headless requested=never parked=b1c2d3e4f5a6 applied=dropped+quit",
 	]);
@@ -486,14 +488,44 @@ test("a window created for a request is presented under THAT request's plan", ()
 		/parkedLaunches\.splice\(0, parkedLaunches\.length\)/,
 		"the drain must not empty the queue before the deliveries happen",
 	);
+	/*
+	 * AND THE INITIAL-SESSION ENTRY IS ON THE SAME RULE (review round 4, MAJOR-1).
+	 * `parkedLaunches.shift()` at window creation took the oldest park out of the
+	 * queue BEFORE the window existed, so a window that died before its first paint
+	 * destroyed that conversation: not delivered, not re-queued, no state line, and
+	 * nothing left for the quit line to report, the queue being empty already. The
+	 * entry is CLAIMED (`parkedLaunches[0]`) and leaves the queue on the rule every
+	 * other entry follows — when the window that paints it has actually loaded. The
+	 * old spelling is asserted ABSENT, which is what stops this path regressing while
+	 * the splice assertion above stays green.
+	 */
+	assert.equal(
+		(flat.match(/parkedLaunches\.shift\(\)/g) ?? []).length,
+		1,
+		"the only `shift` left is the bound's eviction; the initial-session entry must be claimed, not taken",
+	);
+	assert.match(flat, /const evicted = parkedLaunches\.shift\(\);/);
+	assert.match(flat, /\? parkedLaunches\[0\]/);
+	assert.match(flat, /painted\?: ParkedLaunch,/);
+	assert.match(flat, /if \(queued === painted\) continue;/);
+	assert.match(
+		flat,
+		/claimParkedFor\(\s*mainWindow,\s*\(session, request\) => openSessionInWindow\(session, request\),\s*parked,\s*\)/,
+	);
 	assert.match(flat, /claimParkedFor\(\s*mainWindow,/);
 	assert.match(flat, /window\.once\( ?"closed", \(\) => \{/);
 	assert.match(flat, /for \(const queued of claimed\) \{/);
 	assert.match(flat, /parkedLaunches\.splice\( ?at, 1\)/);
 	assert.match(flat, /reportParkedDelivered\( ?queued\.session, ?\{/);
+	/*
+	 * PER ENTRY, EACH WITH ITS OWN REQUESTER (review round 4, NIT): the line used to
+	 * borrow `left[0]`'s trigger for every conversation on it, and "who asked for this
+	 * one" is the question the line exists to answer.
+	 */
+	assert.doesNotMatch(flat, /left\[0\]\.request\.trigger/);
 	assert.match(
 		flat,
-		/reportParkedLeftWaiting\(\s*left\.map\(\(queued\) => queued\.session\),/,
+		/reportParkedLeftWaiting\(\[queued\.session\], \{\s*trigger: queued\.request\.trigger,/,
 	);
 	/*
 	 * AND THE QUEUE IS BOUNDED, AND ITS BOUND IS AUDIBLE (review round 3, NIT-3).
@@ -520,11 +552,30 @@ test("a window created for a request is presented under THAT request's plan", ()
 		flat,
 		/readSecondLaunchRequest\(\{ commandLine: process\.argv \}\)\.session/,
 	);
+	// The id is built once and reused, so the guard follows the two halves it is
+	// written as rather than one joined string that no longer exists.
 	assert.match(
 		flat,
-		/the conversation it named \(\$\{session\}\) rides with it/,
+		/session === null \? null : `the conversation it named \(\$\{session\}\)`/,
 	);
+	assert.match(flat, /rides with it/);
 	assert.match(flat, /it named no conversation/);
+	/*
+	 * AND THE SESSION-LESS ARM PROMISES NOTHING IT CANNOT DO (review round 4, MINOR):
+	 * no conversation is waiting, so the sentence says that instead of "the app will
+	 * open it", and the queue's bound belongs to the arm where a conversation can
+	 * actually be dropped.
+	 */
+	assert.match(
+		flat,
+		/nothing is waiting to be opened, and it will not raise a window in the meantime/,
+	);
+	assert.equal(
+		(flat.match(/up to \$\{PARKED_LAUNCH_LIMIT\} conversations wait/g) ?? [])
+			.length,
+		1,
+		"the queue bound belongs only to the arm that parks a conversation",
+	);
 	/*
 	 * One present per window (both review streams measured two identical
 	 * `[window-raise]` lines for one window, the `ready-to-show` handler having
