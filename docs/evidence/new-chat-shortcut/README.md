@@ -182,17 +182,24 @@ in. The committed copies are now this head's:
 
 | Frame | AE against the frame it replaces, at **fuzz 0** (any pixel that differs at all) | Where the difference is |
 | --- | --- | --- |
-| `after-row-staged-light.png` | **30,724 of 128,000 = 24.0031%** | the whole **528x64 current-row band at +16+98**, because `#218` repainted that row's ground: **28,064** of the 30,724 lie OUTSIDE the caps' union box (`111x43+425+108`) and **2,660** inside it |
+| `after-row-staged-light.png` | **30,724 of 128,000 = 24.0031%** | the whole **528x64 current-row band at +16+98**, because `#218` repainted that row's ground. Counted by cropping the caps' union box `111x43+425+108` and comparing the crops, then blanking that same box on both frames and comparing the rest: **2,505** of the 30,724 lie inside it and **28,219** outside — the ground is most of the change |
 | `cmd-n-live-after.png` | **309,458 of 4,791,360 = 6.4587%** | much wider — `2678x1016+42+598` — because the frame is re-derived from this head, so the chat pane's own copy and its suggestion chips moved with it and not only the row |
 | `cmd-n-live-before.png` | **1,293 of 4,791,360 = 0.0270%** | a `357x28` text box at `+42+1586` in the Agent hub; re-shot with its sibling so the pair is one run, since `after` had to move |
 
 **Those numbers are counts and boxes at different tolerances if they are read the
 old way, so here they are at one.** `magick compare -metric AE` at **fuzz 0** puts the
 change across the whole current-row band rather than in one box: the ground `#218`
-repainted is most of it (28,064 of the 30,724 pixels lie outside the caps' union box,
-and 2,660 inside it). An earlier account in this README paired the fuzz-0 count with
-a box measured at a 10% threshold, which read the change down to the caps; the honest
-pairing is the one above.
+repainted is most of it.
+
+**That split is measured by cropping, not by subtracting.** Cropping the caps' union
+box `111x43+425+108` out of both frames and comparing the crops gives **2,505**
+differing pixels inside it; blanking that same box on both frames and comparing what
+is left gives **28,219** outside it — and 2,505 + 28,219 = 30,724, the fuzz-0 total.
+Two earlier accounts of this paragraph were wrong in two different ways, and both are
+worth naming because each hid the other: the first paired the fuzz-0 count with a box
+measured at a 10% threshold, and the second took its inside count from a `112x44`
+envelope while naming the `111x43` box, so its halves came from two rectangles and
+did not sum to the total. The numbers above are one box, counted twice.
 
 **The caps did not move, and that is the layout-neutrality claim in pixels.** Their
 boxes are the SAME rectangles in both frames — the glyph cap `40x28` device px at
@@ -266,10 +273,16 @@ radient           8.80 / 12.59:1      synth           14.94 /  9.46:1
 ```
 
 The ink clears `docs/branding.md` § 3's 4.5:1 text floor everywhere (worst
-6.33:1, iceberg), and the fill is a perceivable step on the SIDEBAR's own ground:
-the contract's own "a human can tell these apart" threshold is ΔE00 3.0, and the
-closest palette in the tree is 3.75 (`iceberg`, `sunken` against `surface`; the
-`elevated` pair is 5.85). The caps' ink is governed by the contract's `INKS`
+6.33:1, iceberg), and the fill is a perceivable step on the SIDEBAR's own ground.
+The closest pair the contract's adjacent-grounds list holds to its field floor is
+3.75 (`iceberg`, `sunken` against `surface`; the `elevated`/`sunken` pair is 5.85) —
+that list is held to `FIELD_SEPARATION_FLOOR`, ΔE00 2.0, in
+`scripts/contrast-contract.mjs`, and it is deliberately not every ground pair in
+the tree: `canvas` against `sunken` is closer than either (ΔE00 1.23 in obsidian)
+and is not in it, for the reason that file states where it lists the pairs — the
+near-black palettes cannot separate those two by luminance at all, so the blocks
+that render `sunken` on `canvas` carry a `hairline` edge instead of relying on the
+step. "Closest asserted" is the claim here, and it is the stronger one. The caps' ink is governed by the contract's `INKS`
 list, which asserts `inkMuted` against `sunken` on every theme.
 
 **The one state where that step does not exist is the row the chord creates**, and
@@ -336,6 +349,6 @@ rather than fixed because the assertion set is the theme gate's and not this PR'
 `#218` closed it from the other side: the current ground is now `sunken`, one of the
 contract's four `GROUNDS`, and therefore already covered by every `INKS`,
 `CONTROLS` and structural row, with the grounds-separation pass keeping `sunken`
-apart from `surface` (ΔE00 3.75, the closest pair in the tree) and `elevated`
+apart from `surface` (ΔE00 3.75, the closest pair that list holds) and `elevated`
 (5.85) in all twelve palettes. What remained open on that ground was the caps' own
 step on it, and that is what the edge above answers — pinned at the call site.
