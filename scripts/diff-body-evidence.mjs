@@ -46,6 +46,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assertFramePaints } from "./check-evidence.mjs";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 /**
@@ -144,16 +145,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function launchChrome(profile) {
 	if (!existsSync(CHROME))
 		throw new Error(`no Chrome at ${CHROME} — set CHROME_PATH to one`);
-	const chrome = spawn(CHROME, [
-		"--headless=new",
-		"--no-first-run",
-		"--no-default-browser-check",
-		"--remote-debugging-port=0",
-		`--user-data-dir=${profile}`,
-		"--disable-gpu",
-		"--hide-scrollbars=false",
-		"about:blank",
-	]);
+	const chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-first-run",
+			"--no-default-browser-check",
+			"--remote-debugging-port=0",
+			`--user-data-dir=${profile}`,
+			"--disable-gpu",
+			"--hide-scrollbars=false",
+			"about:blank",
+		]),
+	);
 	const port = await new Promise((resolvePort, reject) => {
 		chrome.stderr.on("data", (chunk) => {
 			const match = DEBUG_PORT.exec(String(chunk));
