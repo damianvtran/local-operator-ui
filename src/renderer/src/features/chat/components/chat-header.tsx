@@ -117,6 +117,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onOpenBrowser,
 	browserAttentionCount = 0,
 }) => {
+	/*
+	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
+	 * a badge fixed to a 16px icon cannot grow past its own corner, so from the
+	 * tenth request on it reads `9+` while the tooltip and the `aria-label` keep the
+	 * exact number. Only the glyph is capped - a user who needs the count reads it,
+	 * and a user who needs to know it is a lot sees that too.
+	 */
+	const badgeText =
+		browserAttentionCount > 9 ? "9+" : String(browserAttentionCount);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	// Read here rather than passed in: the pane is a property of the window's right
@@ -269,7 +278,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									: "Open browser"
 							}
 							data-tour-tag="browser-pane-trigger"
-							className={cn("relative")}
+							/*
+							 * `mr-1` IS THE BADGE'S ROOM, not spacing taste (design round 1, D5): the
+							 * badge is anchored 10px outside this button's corner and its ring paints 2px
+							 * further out again, so it needs 12px before the canvas button's box begins.
+							 * The cluster's own `gap-2` gives 8, and the badge was measured sitting 9px
+							 * INSIDE that neighbour - a 32px `icon` button whose whole box is a hover
+							 * target. Four px here rather than `gap-3` on the cluster: the run trigger and
+							 * the canvas button stay where they have always been, and only the control that
+							 * carries a badge pays for it.
+							 */
+							className={cn("relative mr-1")}
 						>
 							<Globe aria-hidden={true} />
 							{/*
@@ -282,10 +301,28 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * far enough for the badge's box to clear the 16px glyph's box, and
 							 * `ring-canvas` still names the ground behind it so it reads as an object
 							 * sitting on the corner rather than a notch cut out of the control.
+
+								 *
+								 * `-2.5` RATHER THAN `-2`, because the BOX clearing the glyph was not the whole
+								 * claim (design round 1, D5): the ring paints 2px further out on every side, and
+								 * measured at `-2` the ring's inner edge landed at x=210 while the glyph's
+								 * top-right arc still had ink at 209-210, so the badge cut the stroke it was
+								 * supposed to sit beside. One spacing step buys those two pixels back, and the
+								 * `mr-1` on the button pays for the badge's outward move on the other side.
+								 *
+								 * THE VISUAL IS CAPPED, THE LABEL IS NOT. `min-w-4 px-1` grows with every digit
+								 * and the badge is right-anchored, so three digits reach ~23px against the 12px
+								 * of room the offset above leaves - it would have walked back over the glyph the
+								 * moment a tenth request arrived, which is a state the operator asked for a
+								 * QUEUE and will therefore reach. `9+` is the badge's own grammar; the exact
+								 * ordinal stays in the tooltip and the `aria-label`, which are read rather than
+								 * glanced at (spec 5.1).
 							 */}
 							{browserAttentionCount > 0 && (
 								<span
-									className={cn("pointer-events-none absolute -top-2 -right-2")}
+									className={cn(
+										"pointer-events-none absolute -top-2.5 -right-2.5",
+									)}
 								>
 									<Badge
 										variant="attention"
@@ -295,7 +332,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										)}
 										data-tour-tag="browser-pane-badge"
 									>
-										{browserAttentionCount}
+										{badgeText}
 									</Badge>
 								</span>
 							)}
