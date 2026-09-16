@@ -596,8 +596,14 @@ leading verbs (`Set up …`, `Set up …`, `Create …`, `Create …`) and spent
 its four slots on the same job (a team, an agent). D1's direction, now a rule in
 `composer-suggestions.ts`: **no two entries share a leading verb, and the pool
 keeps at most one create-an-agent entry.** The head therefore became MCP, teams,
-phone access and session insight — four capabilities — and the mobile-relay
-wording moved to the tail as `Turn on phone access`, whose register also matches
+phone access and session insight — four capabilities — with the phone entry
+RETIRED and replaced rather than moved: `Set up the mobile relay and tunnel` left
+the pool, and the capability is now asked for as `Turn on phone access`, which is
+the head's **third** entry, not the tail's. (Round 2, M2: this sentence said the
+wording "moved to the tail", and the pool's tail — `Build a code-review agent`,
+`Wake me tomorrow morning with a summary`, `Schedule a task that runs every
+morning`, `Review this repo and open a pull request` — holds no phone entry at
+all.) Its register also matches
 the tip row's sentence for the same thing. `Create a new agent` left the pool in
 favour of `Build a code-review agent`, which is a job rather than a repetition of
 `Create a team of agents`.
@@ -695,7 +701,7 @@ so the band cannot gain and lose a row as the reel turns. That rule is only
 honest while no entry can truncate, so the pool carries a character budget
 asserted in `scripts/composer-suggestions.test.mjs` (round 1, D5).
 
-The longest shipped entry is 56 characters (`ask for phone access to drive this
+The longest shipped entry is 58 characters (`ask for phone access to drive this
 session from your phone`), which **measures 356px** in the row's own element at
 the narrowest column that renders it (the rig clones the real span rather than
 estimating per character), against **484px** available there — the 502px column
