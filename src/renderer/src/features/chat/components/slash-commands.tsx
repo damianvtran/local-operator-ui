@@ -64,6 +64,7 @@ import {
 	argumentRows,
 } from "./slash-argument-rows";
 import {
+	activeRowRuns,
 	argumentEmptyCopy,
 	candidateKey,
 	chosenByHandSurvives,
@@ -71,7 +72,6 @@ import {
 	enterFooter,
 	phaseLabel,
 	pickArmsCommand,
-	pointerPickRuns,
 	rowId,
 	slashDestructive,
 	slashKeyIntent,
@@ -704,12 +704,35 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	 * (round 1 UX U2). Staging is announced by its own note instead — it happens
 	 * on a composer Enter with the list already closed.
 	 */
+	/*
+	 * The active row's ROUTE, read ONCE because BOTH lines of copy below are read
+	 * from it: whether a pick of this row RUNS it rather than opening a list. A
+	 * command row's answer is its DESTINATION's (`pointerPickRuns`, the same rule
+	 * `message-input.tsx` acts on), an argument row's is its own list's `runs` —
+	 * the two kinds answer from different places on purpose, and reading either
+	 * off the row's rendered hint column is exactly the defect U10 measured.
+	 *
+	 * `activeRowRuns` owns the derivation rather than this component, because the
+	 * Enter line took `state.inline?.runs` here instead and the command phase
+	 * structurally cannot produce it — so the free-text row's line was
+	 * unreachable in every state the popup can be in, and the app printed the
+	 * fallback while the copy table said otherwise (review F2 / QA Q3-1).
+	 */
+	const pickRuns = activeRowRuns({
+		destination:
+			activeRow?.kind === "command" ? activeRow.command.destination : undefined,
+		entry:
+			activeRow?.kind === "command"
+				? DESTINATIONS[activeRow.command.destination]
+				: undefined,
+		inlineRuns: state.inline?.runs ?? false,
+	});
 	const footer = enterFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,
 		label: activeRow?.kind === "command" ? activeRow.label : "",
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
-		runs: state.inline?.runs ?? false,
+		runs: pickRuns,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 		/*
@@ -747,21 +770,6 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				})
 			: false,
 	});
-	/*
-	 * Whether a click on the active row RUNS it, from the one function that
-	 * decides it. A command row's answer is its DESTINATION's (`pointerPickRuns`,
-	 * the same rule `message-input.tsx` acts on), an argument row's is its own
-	 * list's `runs` — the two kinds answer from different places on purpose, and
-	 * reading either off the row's rendered hint column is exactly the defect
-	 * U10 measured.
-	 */
-	const pickRuns =
-		activeRow?.kind === "command"
-			? pointerPickRuns(
-					activeRow.command.destination,
-					DESTINATIONS[activeRow.command.destination],
-				)
-			: (state.inline?.runs ?? false);
 	const click = clickFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,

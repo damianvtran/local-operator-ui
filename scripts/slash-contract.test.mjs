@@ -34,6 +34,10 @@ const bundle = await build({
 			/* The pick's own write, so the footer/route pair below is read off the
 			   line a real pick produces rather than a hand-built string (review F7). */
 			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
+			/* The tokenizer's own phase, so the free-text row's case below can pin WHY
+			   the popup's old `runs` input was a constant in that state rather than
+			   asserting the constant (review F2 / QA Q3-1). */
+			'export { caretPhase, slashArgumentContext } from "./src/renderer/src/features/chat/components/slash-token";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -43,23 +47,28 @@ const bundle = await build({
 	write: false,
 });
 const {
+	activeRowRuns,
 	argumentEmptyCopy,
 	argumentRows,
 	armedOnlyVocabulary,
+	caretPhase,
 	candidateKey,
 	chosenByHandSurvives,
 	completionFor,
 	clickFooter,
 	enterFooter,
 	matchChoices,
+	NO_CONVERSATION_CLAUSE,
 	phaseLabel,
 	pickArmsCommand,
 	pickStagesDraft,
 	planSlashArming,
 	planSlashSubmission,
 	pointerPickRuns,
+	reassembledNote,
 	rowId,
 	rowTakesDraft,
+	slashArgumentContext,
 	slashKeyIntent,
 	stagedNote,
 	stagedPromiseVerb,
@@ -1246,13 +1255,52 @@ test("the click line is the row's real route, for the prompt row too", () => {
  * closed and nothing on screen says it will happen. Both lines are read from the
  * one staging predicate, so the rule that separates `/goal` from `/loop` cannot
  * be stated on one row and contradicted on the other.
+ *
+ * THE INPUTS ARE THE COMPONENT'S OWN, which is the half round 3 found missing:
+ * this test used to hand `enterFooter` a `runs: true` the popup never produces
+ * for the row, so it stayed green while the app printed the fallback in every
+ * state the popup can be in (review F2 / QA Q3-1). `activeRowRuns` is what
+ * `slash-commands.tsx` passes BOTH footer lines, driven here off the real
+ * destination table the way the component drives it.
  */
 test("the free-text row names the key that moves the draft", () => {
+	/*
+	 * The command phase's inputs: the popup is up on a COMMAND row, so there is no
+	 * argument list to read a `runs` off — `inline` is built from `argumentWord`,
+	 * which is built from `slashArgumentContext`, and this state's phase is
+	 * `"command"` precisely because that context is null. The two phases are
+	 * disjoint by construction, so the expression the popup used to pass here
+	 * (`state.inline?.runs ?? false`) was a constant `false` in every state this
+	 * test is about. Asserted rather than described, so a tokenizer that let the
+	 * two phases overlap would fail here instead of quietly restoring the bug.
+	 */
+	const ARGUMENT_WORDS = ["model", "team"];
+	assert.ok(registryEntry("session.model")?.inline, "model's list is real");
+	assert.ok(registryEntry("session.team")?.inline, "team's list is real");
+	assert.equal(
+		caretPhase("please run /loop", 16, WORDS, ARGUMENT_WORDS),
+		"command",
+	);
+	assert.equal(
+		slashArgumentContext("please run /loop", ARGUMENT_WORDS, 16, WORDS),
+		null,
+	);
+
+	// The row's own route for that state, read the way the component reads it:
+	// from the DESTINATION the registry routes `/loop` to, not from an argument
+	// list this phase has not got.
+	const loopRuns = activeRowRuns({
+		destination: "session.loop",
+		entry: registryEntry("session.loop"),
+		inlineRuns: false,
+	});
+	assert.equal(loopRuns, true, "`/loop`'s pick reaches its own run path");
+
 	const hoisting = {
 		phase: "command",
 		command: null,
 		nameThenMessage: false,
-		runs: true,
+		runs: loopRuns,
 		arms: false,
 		takesDraft: true,
 		hoists: true,
@@ -1279,9 +1327,16 @@ test("the free-text row names the key that moves the draft", () => {
 	);
 	// A list-bearing prompt row is not this row: `/team`'s pick opens the roster,
 	// and the key after the completion belongs to that list rather than to a
-	// reassembly.
+	// reassembly. Its `runs` comes off the same derivation, so the two rows are
+	// separated by the destination table rather than by a second literal.
+	const teamRuns = activeRowRuns({
+		destination: "session.team",
+		entry: registryEntry("session.team"),
+		inlineRuns: false,
+	});
+	assert.equal(teamRuns, false, "`/team` opens its roster instead");
 	assert.equal(
-		enterFooter({ ...hoisting, label: "team", runs: false }),
+		enterFooter({ ...hoisting, label: "team", runs: teamRuns }),
 		"Enter completes the command.",
 	);
 	// And a row with no draft to take keeps the plain sentence whatever its pick
@@ -1289,6 +1344,24 @@ test("the free-text row names the key that moves the draft", () => {
 	assert.equal(
 		enterFooter({ ...hoisting, label: "usage", takesDraft: false }),
 		"Enter completes the command.",
+	);
+	// The ARGUMENT phase's half of the same derivation, unchanged: there the
+	// active row is not a command row and its list answers for itself.
+	assert.equal(
+		activeRowRuns({
+			destination: undefined,
+			entry: undefined,
+			inlineRuns: true,
+		}),
+		true,
+	);
+	assert.equal(
+		activeRowRuns({
+			destination: undefined,
+			entry: undefined,
+			inlineRuns: false,
+		}),
+		false,
 	);
 	// The one rule both lines are read from, so the pairing is pinned rather than
 	// implied by two strings agreeing.
@@ -1404,4 +1477,46 @@ test("the staged note's promise is the destination's, and the pane's", () => {
 	assert.equal(stagedSentence("ship it"), "ship it.");
 	assert.equal(stagedSentence("ship it."), "ship it.");
 	assert.equal(stagedSentence("what?"), "what?");
+	/*
+	 * The stop is not ASCII's alone. The quote is the user's own text in whatever
+	 * script they typed it in, and the ASCII-only class let the template append its
+	 * own full stop after a sentence that had already ended: `完了。.` (review F4).
+	 * The set is the composed CJK enders plus the ellipsis character.
+	 */
+	assert.equal(stagedSentence("完了。"), "完了。");
+	assert.equal(stagedSentence("本当！"), "本当！");
+	assert.equal(stagedSentence("なぜ？"), "なぜ？");
+	assert.equal(stagedSentence("待って…"), "待って…");
+	assert.equal(
+		reassembledNote("完了。", true),
+		"Staged 完了。 Enter again runs it.",
+		"and the note that quotes it punctuates it once",
+	);
+	/*
+	 * THE REASSEMBLY'S NOTE carries the same clause, from the same helper family
+	 * (review F3): the composer stages the reassembled line through
+	 * `reassembledNote`, which shares this clause and the quote's punctuation with
+	 * `stagedNote` but keeps its own verb — "again" is the signal round 1 UX U7
+	 * asked for, that the key the user just pressed moved their sentence rather
+	 * than sending it. What the pane clause buys is the last line below: on a pane
+	 * that can address no session, `Enter again runs it` was a promise the
+	 * dispatcher breaks one keystroke later.
+	 */
+	assert.equal(
+		reassembledNote("/loop please run", true),
+		"Staged /loop please run. Enter again runs it.",
+	);
+	assert.equal(
+		reassembledNote("/loop please run", false),
+		`Staged /loop please run. ${NO_CONVERSATION_CLAUSE}`,
+	);
+	// The clause is ONE string, so the two notes cannot drift into two refusals.
+	assert.ok(
+		stagedNote("/goal I approve spend", "session.goal", false).endsWith(
+			NO_CONVERSATION_CLAUSE,
+		),
+	);
+	assert.ok(
+		reassembledNote("/loop please run", false).endsWith(NO_CONVERSATION_CLAUSE),
+	);
 });

@@ -190,6 +190,34 @@ function Harness() {
 		);
 	}, []);
 
+	/*
+	 * READ AFTER THE GESTURE HAS SETTLED, not on the next macrotask.
+	 *
+	 * A send is asynchronous and the composer clears the box when `onSendMessage`
+	 * resolves, so a 0 ms read records the PRE-clear draft: the frame taken beside
+	 * it then paints an empty box while its own `box` row still claims the draft is
+	 * in there (`plain-enter-prose` and its light twin, the two frames that carry
+	 * the operator's case — QA round 3, Q3-2). The witness row is the record of the
+	 * state the pixels show, so it is polled until two consecutive reads agree,
+	 * which is that state, and bounded so a box that never settles cannot stall the
+	 * rig. Anything driving this harness must let the rows land before the
+	 * screenshot: `SETTLE_TICK` is the floor, and the capture recipe says so.
+	 */
+	const SETTLE_TICK_MS = 60;
+	const SETTLE_CAP_MS = 2000;
+	const settleRead = useCallback(() => {
+		let previous: string | null = null;
+		const started = Date.now();
+		const step = () => {
+			read();
+			const value = area().value;
+			if (value === previous || Date.now() - started > SETTLE_CAP_MS) return;
+			previous = value;
+			setTimeout(step, SETTLE_TICK_MS);
+		};
+		step();
+	}, [read]);
+
 	const button = (
 		id: string,
 		label: string,
@@ -202,7 +230,7 @@ function Harness() {
 			className="rounded-control border border-control px-2 py-1"
 			onClick={() => {
 				body();
-				setTimeout(read, 0);
+				settleRead();
 			}}
 		>
 			{label}

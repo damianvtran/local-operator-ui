@@ -68,6 +68,13 @@ const PROMPT_COMMANDS = new Set(["team", "teams", "agent", "agents", "goal"]);
 const NAME_LIST_COMMANDS = new Set(["team", "teams", "agent", "agents"]);
 /** The `session.goal` destination's words: armed by a PICK, never by an Enter. */
 const ARMED_ONLY_COMMANDS = new Set(["goal"]);
+/*
+ * The free-text row F1 was driven on, in the sets the composer derives: `loop`
+ * is a prompt command with no name list and no arming, so what a pick of it
+ * stages is a REASSEMBLY — the writer this round's cases cover.
+ */
+const LOOP_NAMES = new Set([...COMMAND_NAMES, "loop"]);
+const LOOP_PROMPTS = new Set([...PROMPT_COMMANDS, "loop"]);
 
 const plan = (draft, caret, over = {}) =>
 	planSlashSubmission({
@@ -281,7 +288,23 @@ test("the word/argument separator is the whitespace class, not a literal space",
 		// user had already typed.
 		const team = plan(`ship it${separator}/team${separator}ops`, 11);
 		assert.equal(team.kind, "reassemble", `prompt row, separator ${at}`);
-		assert.equal(team.text, `/team${separator}ops ship it`);
+		/*
+		 * A DELIBERATE, STATED CONSEQUENCE of the collapse both writers now share
+		 * (review F1 / QA Q3-1): the staged line is that writer's, so a paste shape is
+		 * normalised to the single space a person would type. What this case exists
+		 * for is the SPLIT — the word is recognised at `\s` rather than at a literal
+		 * space, so the row reassembles instead of taking `list-open` on a name the
+		 * user had already typed — and the split is unchanged. What moved is the
+		 * separator's survival into the user's own line, which the armed writer has
+		 * never preserved either: `/goal` staged with the same paste shape reads
+		 * `/goal and more prose`.
+		 */
+		assert.equal(
+			team.text,
+			"/team ops ship it",
+			`staged line, separator ${at}`,
+		);
+		assert.equal(team.text.includes("\n"), false, "staged, and one line");
 	}
 	// The plain space is unchanged, which is exactly why nothing noticed the rest.
 	assert.deepEqual(plan("prose /goal and more", 11), { kind: "send" });
@@ -473,6 +496,40 @@ const picked = (draft, caret) => {
 	return { armed, next: plan(armed.text, armed.caret) };
 };
 
+/*
+ * The OTHER writer of a staged line, through the same end-to-end seam: the
+ * reassembly Enter performs. Review F1 / QA Q3-1 found it staged a two-line line
+ * whose next Enter was `send` — the literal `/loop …` reaching the model as
+ * prose while its own note had just promised the command would run — because the
+ * one-line collapse lived on the arming writer instead of on the writer both
+ * gestures pass through. These cases are that shape, on the shipped modules.
+ */
+const loopPlan = (draft, caret) =>
+	planSlashSubmission({
+		draft,
+		caret,
+		commandNames: LOOP_NAMES,
+		promptCommands: LOOP_PROMPTS,
+		armedOnlyCommands: ARMED_ONLY_COMMANDS,
+		nameListCommands: NAME_LIST_COMMANDS,
+		enabled: true,
+	});
+
+const stagedByEnter = (draft, caret) => {
+	const completion = completionFor(
+		draft,
+		caret,
+		{ kind: "command", label: "loop" },
+		LOOP_NAMES,
+		[],
+		false,
+	);
+	assert.ok(completion, `the pick writes for ${JSON.stringify(draft)}`);
+	const staged = loopPlan(completion.text, completion.caret);
+	assert.equal(staged.kind, "reassemble", JSON.stringify(staged));
+	return { staged, next: loopPlan(staged.text, staged.caret) };
+};
+
 test("an armed line runs on the next Enter, whatever shape the draft had", () => {
 	/*
 	 * THE INVARIANT: the staged line is the WHOLE DRAFT and it is ONE LINE. A
@@ -561,6 +618,70 @@ test("the staged line reads as a person would type it (no doubled space)", () =>
 		kind: "whole",
 		command: { name: "goal", args: "and then report I approve spend" },
 	});
+});
+
+test("a reassembled line runs on the next Enter, whatever shape the draft had", () => {
+	/*
+	 * The same invariant, on the other writer (review F1 / QA Q3-1): the staged
+	 * line is the WHOLE DRAFT and it is ONE LINE. A draft whose prose sits on a
+	 * line of its own used to stage the prose INLINE with the command, so
+	 * `slashTokenSpan` — which claims the caret's own LINE — put the surviving text
+	 * outside the command's span and the next Enter answered `send`: the user
+	 * spent the keystroke, read a note saying the command would run, and the
+	 * literal `/loop …` went to the model as prompt text.
+	 */
+	// One line, prose before the word.
+	const single = stagedByEnter("please run /loop", 16);
+	assert.deepEqual(single.staged.text, "/loop please run");
+	assert.deepEqual(single.next, {
+		kind: "whole",
+		command: { name: "loop", args: "please run" },
+	});
+
+	// The two-line shape the review drove: prose above, the command last.
+	const two = stagedByEnter(
+		"Please fix the flaky test\nand run /loop",
+		"Please fix the flaky test\nand run /loop".length,
+	);
+	assert.deepEqual(two.staged.text, "/loop Please fix the flaky test and run");
+	assert.deepEqual(two.next, {
+		kind: "whole",
+		command: { name: "loop", args: "Please fix the flaky test and run" },
+	});
+
+	// Three lines, caret at the end: the same draft shape the arming cases use.
+	const threeDraft =
+		"Please fix the flaky test and\nthen run the release.\n/loop";
+	const three = stagedByEnter(threeDraft, threeDraft.length);
+	assert.deepEqual(
+		three.staged.text,
+		"/loop Please fix the flaky test and then run the release.",
+	);
+	assert.deepEqual(three.next, {
+		kind: "whole",
+		command: {
+			name: "loop",
+			args: "Please fix the flaky test and then run the release.",
+		},
+	});
+
+	// The completion's own doubled separator, on this writer too: the draft keeps
+	// its separating space after the word the completion rewrote.
+	const doubled = stagedByEnter("please run /loop on 3 tasks", 16);
+	assert.deepEqual(doubled.staged.text, "/loop on 3 tasks please run");
+	assert.equal(doubled.staged.text.includes("  "), false);
+
+	// Every staged line is a single line with the caret at its end: the two facts
+	// the next Enter's plan depends on, on this writer as on the arming's.
+	for (const { staged, next } of [single, two, three, doubled]) {
+		assert.equal(
+			staged.text.includes("\n"),
+			false,
+			JSON.stringify(staged.text),
+		);
+		assert.equal(staged.caret, staged.text.length);
+		assert.equal(next.kind, "whole", JSON.stringify(next));
+	}
 });
 
 test("a line-initial `/goal <text>` command line above prose is prose (stated change)", () => {
