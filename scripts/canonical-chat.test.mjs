@@ -1113,15 +1113,12 @@ test("a leading-slash refusal on the created-session arm still hands the text ba
 	// that has to create its session in the same call that sends the text.
 	const key = store.getState().stageDraft();
 	const text = "/usage\ncreated-session arm line two";
-	await assert.rejects(
-		admitChatDraft(key, { ...input, text }),
-		(error) => {
-			assert.ok(error instanceof DesktopControlError);
-			assert.equal(error.code, LEADING_SLASH_CODE);
-			assert.equal(error.message, LEADING_SLASH_MESSAGE);
-			return true;
-		},
-	);
+	await assert.rejects(admitChatDraft(key, { ...input, text }), (error) => {
+		assert.ok(error instanceof DesktopControlError);
+		assert.equal(error.code, LEADING_SLASH_CODE);
+		assert.equal(error.message, LEADING_SLASH_MESSAGE);
+		return true;
+	});
 	const state = store.getState();
 	const draft = state.drafts[key];
 	// The session was created inside the send, and the request that carried the
@@ -1150,7 +1147,10 @@ test("a leading-slash refusal on the created-session arm still hands the text ba
 	// asserted rather than assumed: the user's two lines go back into an empty
 	// composer, which is what `restoreSubmittedText` does with an empty box.
 	assert.equal(refusedBeforeAdmissionText(draft), text);
-	assert.equal(restoreSubmittedText("", refusedBeforeAdmissionText(draft)), text);
+	assert.equal(
+		restoreSubmittedText("", refusedBeforeAdmissionText(draft)),
+		text,
+	);
 });
 
 /*
@@ -1194,8 +1194,14 @@ test("a refusal hands the composer the same text on both arms", async () => {
 		/./,
 	);
 	const created = store.getState().drafts[createdKey];
-	assert.equal(refusedBeforeAdmissionText(named), "/usage\nnamed-session arm line two");
-	assert.equal(refusedBeforeAdmissionText(created), "/usage\ncreated arm line two");
+	assert.equal(
+		refusedBeforeAdmissionText(named),
+		"/usage\nnamed-session arm line two",
+	);
+	assert.equal(
+		refusedBeforeAdmissionText(created),
+		"/usage\ncreated arm line two",
+	);
 	// Same refusal shape on both: the arms differ in identity, not in what the
 	// user is owed.
 	for (const draft of [named, created])
@@ -1334,7 +1340,10 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	const key = store.getState().stageDraft();
 	const text = "/usage\npair arm line two";
 	const attachments = ["/tmp/notes.txt", "/tmp/screenshot.png"];
-	await assert.rejects(admitChatDraft(key, { ...input, text, attachments }), /./);
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments }),
+		/./,
+	);
 	const draft = store.getState().drafts[key];
 	const refusal = {
 		text: refusedBeforeAdmissionText(draft),
@@ -1419,7 +1428,11 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	assert.deepEqual(heldInRow.missingFiles, []);
 	assert.equal(heldInRow.withheld, null);
 	assert.equal(
-		refusedSplitNotice(heldInRow.withheld, ["/tmp/notes.txt"], heldInRow.missingFiles),
+		refusedSplitNotice(
+			heldInRow.withheld,
+			["/tmp/notes.txt"],
+			heldInRow.missingFiles,
+		),
 		null,
 	);
 
@@ -1454,7 +1467,11 @@ test("the pair is adopted through one decision, and a split is never silent", as
 	assert.deepEqual(rebuilt.paths, []);
 	assert.equal(rebuilt.withheld, null);
 	assert.equal(
-		refusedSplitNotice(rebuilt.withheld, refusal.attachments, rebuilt.missingFiles),
+		refusedSplitNotice(
+			rebuilt.withheld,
+			refusal.attachments,
+			rebuilt.missingFiles,
+		),
 		null,
 	);
 
@@ -1687,7 +1704,7 @@ test("the alert region renders the failure before the muted context it lands und
 		"utf8",
 	);
 	const start = source.indexOf('role="alert"');
-	assert.ok(start > 0, "the alert region has no `role=\"alert\"` root");
+	assert.ok(start > 0, 'the alert region has no `role="alert"` root');
 	// Bounded by the composer box, which is the region's next sibling, so the
 	// slice is this region and nothing else.
 	// `COMPOSER_BOX,` with the comma is code and only code: the region's own
@@ -2548,7 +2565,14 @@ test("no ancestor of the slash popup establishes a vertical clipping context", a
 	// this is where it is caught.
 	const parent = byId.get(popup.parentId);
 	assert.ok(
-		parent && parent.tagText.includes('"relative"'),
+		/*
+		 * An optional chain rather than `parent && …`: the same assertion, in the
+		 * form the file's own linter asks for. It is here because this file is one
+		 * of the `scripts/` files this change touches, and `pnpm lint:scripts`
+		 * holds every touched file to the contract — a pre-existing violation in a
+		 * file a branch already has open is that branch's to clear.
+		 */
+		parent?.tagText.includes('"relative"'),
 		"the composer box (the slash popup's direct parent) no longer declares `relative`, so the popup no longer anchors to the box it is meant to escape",
 	);
 
@@ -3126,9 +3150,7 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	 * nobody could keep.
 	 */
 	const code = (source) =>
-		source
-			.replace(/\/\*[\s\S]*?\*\//g, "")
-			.replace(/^[ \t]*\/\/.*$/gm, "");
+		source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 	const composer = code(
 		await readFile(
 			"src/renderer/src/features/chat/components/message-input.tsx",

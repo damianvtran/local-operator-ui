@@ -37,7 +37,6 @@ import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
-import { credentialNamesFrom } from "../components/credential-capture";
 import type {
 	DesktopLoopState,
 	DesktopModelCatalogue,
@@ -49,6 +48,7 @@ import type {
 	DesktopHistoryPage,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
+import { credentialNamesFrom } from "../components/credential-capture";
 import { formatPricePair } from "../components/slash-argument-rows";
 import type { SlashCommandMeta } from "../components/slash-commands";
 import type { SlashCommandInvocation } from "../components/slash-submit";

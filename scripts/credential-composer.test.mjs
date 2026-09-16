@@ -823,7 +823,11 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 	assert.match(frame.notice(), /PLAIN TEXT/);
 
 	await clickSend(frame);
-	assert.equal(ran.length, 0, "the cancelled token did not dispatch as a command");
+	assert.equal(
+		ran.length,
+		0,
+		"the cancelled token did not dispatch as a command",
+	);
 	assert.equal(frame.sent.length, 1, "the restored text was sent");
 	assert.equal(
 		frame.sent[0][0],
@@ -860,7 +864,11 @@ test("after an Escape the token stops suppressing once an edit moves it", async 
 	 * arguments are stripped so a secret can never land in command text, and no
 	 * message carries the token.
 	 */
-	assert.equal(ran.length, 1, "the moved token dispatched as the command again");
+	assert.equal(
+		ran.length,
+		1,
+		"the moved token dispatched as the command again",
+	);
 	assert.equal(frame.sent.length, 0, "the command consumed the draft");
 	assert.ok(
 		!frame.value().includes("SECRET"),

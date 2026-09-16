@@ -386,8 +386,9 @@ export const CREDENTIAL_KEY_MAX_LENGTH = 128;
  * of an empty list).
  */
 export function credentialNamesFrom(answer: unknown): string[] {
-	const rows = (answer as { data?: { credentials?: unknown } } | null | undefined)
-		?.data?.credentials;
+	const rows = (
+		answer as { data?: { credentials?: unknown } } | null | undefined
+	)?.data?.credentials;
 	if (!Array.isArray(rows)) return [];
 	const names: string[] = [];
 	for (const row of rows) {
@@ -1126,7 +1127,10 @@ export function holdsCancelledToken(
 	token: CancelledToken | null,
 ): boolean {
 	if (token === null || token.text.length === 0) return false;
-	return buffer.slice(token.span.start, token.span.start + token.text.length) === token.text;
+	return (
+		buffer.slice(token.span.start, token.span.start + token.text.length) ===
+		token.text
+	);
 }
 
 /** What a captured paste produced. */

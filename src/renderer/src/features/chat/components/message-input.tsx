@@ -1105,13 +1105,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				let settled:
 					| { text: string; stored: string[]; refused: string[] }
 					| undefined;
-				const seam =
-					credentialSessionId
-						? undefined
-						: async (sessionId: string) => {
-								settled = await storeCitedCredentials(message, sessionId);
-								return settled.text;
-							};
+				const seam = credentialSessionId
+					? undefined
+					: async (sessionId: string) => {
+							settled = await storeCitedCredentials(message, sessionId);
+							return settled.text;
+						};
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
@@ -1205,6 +1204,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				clearReplies,
 				clearAttachments,
 				storeCitedCredentials,
+				// The seam's own decision reads it: with a session there is nothing to
+				// defer, so only a new-chat pane hands the host a callback.
+				credentialSessionId,
 			],
 		);
 
@@ -1529,6 +1531,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * arguments and let the dispatcher refuse it, leaving the box, the store and
 		 * the screen exactly as they were.
 		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the caret comes from the LIVE field at event time, not from a render value; depending on it would rebuild the key handler on every caret move
 		const submitCapture = useCallback((): boolean => {
 			const current = captureRef.current;
 			if (!isTyping(current)) return false;
@@ -1647,7 +1650,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				return true;
 			},
-			[newMessage, applyCapture, takenCredentialNames],
+			[
+				newMessage,
+				applyCapture,
+				// The submit rule the Enter branch shares with the Send button: one
+				// function, so the two gestures cannot drift apart again. It carries
+				// `takenCredentialNames` itself, which is why that is no longer a
+				// dependency here.
+				submitCapture,
+			],
 		);
 
 		/*
@@ -2027,7 +2038,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				caret,
 				slash,
 				applyCapture,
-				setNewMessage,
 				onSlashCommand,
 				planFor,
 				applyPlan,
@@ -3323,14 +3333,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									// consumer's latch should not be asked to absorb a
 									// per-character call it can only discard.
 									if (!newMessage && applied.buffer) onComposerInput?.();
-										/*
-										 * The capture's own write, stamped so the whole-buffer teardown can
-										 * tell it from a replacement some other writer made. A DOM change
-										 * reaches here without passing `applyCapture`, which is exactly why
-										 * the stamp is not optional: without it, the operator's own
-										 * keystroke would read as an external write and end the gesture it
-										 * is in the middle of.
-										 */
+									/*
+									 * The capture's own write, stamped so the whole-buffer teardown can
+									 * tell it from a replacement some other writer made. A DOM change
+									 * reaches here without passing `applyCapture`, which is exactly why
+									 * the stamp is not optional: without it, the operator's own
+									 * keystroke would read as an external write and end the gesture it
+									 * is in the middle of.
+									 */
 									captureOwnedBuffer.current = applied.buffer;
 									// An abandoned capture (the drop and IME routes) settles the box
 									// here rather than through `applyCapture`, so the §6 write has to
