@@ -75,6 +75,7 @@ const PROBE = `
 	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
 	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 	export function renderBrowserChrome() {
@@ -121,6 +122,11 @@ const PROBE = `
 		sessionDisplayName,
 		summariseConversations,
 		tabsBySession,
+		browserBridgeAvailable,
+		clearBrowserProjectionReadError,
+		readBrowserProjection,
+		refreshBrowserProjection,
+		subscribeBrowserProjection,
 		BrowserLoadFailure,
 		loadFailureSentence,
 		useCanonicalSessionsStore,
@@ -221,6 +227,11 @@ const {
 	sessionDisplayName,
 	summariseConversations,
 	tabsBySession,
+	browserBridgeAvailable,
+	clearBrowserProjectionReadError,
+	readBrowserProjection,
+	refreshBrowserProjection,
+	subscribeBrowserProjection,
 	BrowserLoadFailure,
 	loadFailureSentence,
 	useCanonicalSessionsStore,
@@ -1494,31 +1505,207 @@ test("an action's refusal is not erased by the state read that follows it (R6)",
 		),
 		"`run` records the action's refusal BEFORE it re-reads the projection",
 	);
-	const refresh = source.slice(
+	// THE READ'S HALF MOVED WITH THE READ ITSELF (design R6-B). The projection — and
+	// with it the read error's slot — is now one module-level store shared by every
+	// consumer, so this pin reads the shipped STORE for the rule and the shipped HOOK
+	// for the separation between the two slots. The rule is unchanged; only its
+	// address is, and a revert that loses the separation still has to come here.
+	const store = shippedSource(
+		"src/renderer/src/features/browser/model/browser-projection-store.ts",
+	);
+	assert.ok(
+		/publish\(\{ state: next, readError: null \}\)/.test(store),
+		"a successful state read clears the READ error only",
+	);
+	assert.ok(
+		!store.includes("actionError"),
+		"and the store cannot touch the action's own refusal, which is the hook's",
+	);
+	assert.ok(
+		/const error = actionError \?\? readError;/.test(source),
+		"the band renders the two slots as one value while they stay two writers",
+	);
+	// `useBrowserProjection` is a selector over the store now, so what it must NOT
+	// contain is a second reader: its own state pair, or its own bridge subscription.
+	const projection = source.slice(
 		source.indexOf("export function useBrowserProjection"),
 		source.indexOf("export function useBrowserChrome"),
 	);
 	assert.ok(
-		refresh.includes("setReadError(null)"),
-		"a successful state read clears the READ error only",
+		!projection.includes("useState") && !projection.includes("ipcRenderer"),
+		"the read is the store's, not a second subscription beside it",
 	);
-	assert.ok(
-		!refresh.includes("setActionError"),
-		"and it cannot touch the action's own refusal",
-	);
-	// The slice's boundary moved with the read itself: `useBrowserProjection` owns
-	// the projection and its error slot, and `useBrowserChrome` composes it. The
-	// rule is unchanged, and it is still the SHIPPED source this reads.
 	assert.ok(
 		/setActionError\(null\);\s*clearReadError\(\);/.test(source),
 		"the explicit dismissal clears both, which is the only other way an action error goes away",
 	);
-	assert.ok(
-		/const clearReadError = useCallback\(\(\): void => \{\s*setReadError\(null\);\s*\}, \[\]\)/.test(
-			source,
-		),
-		"and the slot it clears is the read's own, so the dismissal is not a second writer of the action's",
-	);
+});
+
+// ---- the projection is read once, however many consumers there are (R6-B) ---
+
+test("one event is one state read, however many consumers are mounted", async () => {
+	// The design's reason for the shared store (1.5): a mark on every conversation
+	// row makes this read per-consumer, and the sidebar renders every row in one
+	// scroll container with no virtualisation. The property is a READ COUNT, not a
+	// frame — which is why this drives the store directly rather than through a
+	// render, and why it is a test at all: nothing about the app's pixels would
+	// show the regression, only the main process's load would.
+	const reads = { count: 0, subscriptionCount: 0 };
+	let emitState = null;
+	let emitConsent = null;
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: {
+				state: async () => {
+					reads.count += 1;
+					return { tabs: [{ tabId: 1, sessionId: "alice" }] };
+				},
+				onStateChanged: (handler) => {
+					emitState = handler;
+					reads.subscriptionCount += 1;
+					return () => {
+						emitState = null;
+						reads.subscriptionCount -= 1;
+					};
+				},
+				onConsentChanged: (handler) => {
+					emitConsent = handler;
+					return () => {
+						emitConsent = null;
+					};
+				},
+			},
+		},
+	};
+	/** Let the read the store kicked off settle. */
+	const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+	const releases = [];
+	try {
+		assert.equal(
+			browserBridgeAvailable(),
+			true,
+			"the store asks the bridge, so a window carrying one is available",
+		);
+		// Three consumers: the pane, the chat header's badge, and one of the
+		// sidebar's rows. Forty rows would be thirty-eight more of the same.
+		for (let consumer = 0; consumer < 3; consumer += 1) {
+			releases.push(subscribeBrowserProjection(() => {}));
+		}
+		await settle();
+		assert.equal(
+			reads.count,
+			1,
+			"one initial read for the window, not one per consumer",
+		);
+		assert.equal(
+			reads.subscriptionCount,
+			1,
+			"and one subscription to main, not one per consumer",
+		);
+		assert.equal(
+			readBrowserProjection().state?.tabs[0].sessionId,
+			"alice",
+			"every consumer reads the one snapshot",
+		);
+
+		emitState();
+		await settle();
+		assert.equal(reads.count, 2, "one read per state event");
+		emitConsent();
+		await settle();
+		assert.equal(
+			reads.count,
+			3,
+			"the consent event lands on the same read: one projection, two triggers",
+		);
+
+		// A read that lands after a newer one must not publish: the shared snapshot
+		// is what makes the ordering observable, and an older projection winning
+		// would show a state main has already moved past.
+		let resolveSlow = null;
+		const slow = new Promise((resolve) => {
+			resolveSlow = resolve;
+		});
+		const originalState = globalThis.window.api.browser.state;
+		let firstRead = true;
+		globalThis.window.api.browser.state = async () => {
+			if (firstRead) {
+				firstRead = false;
+				await slow;
+				return { tabs: [{ tabId: 99, sessionId: "stale" }] };
+			}
+			return { tabs: [{ tabId: 1, sessionId: "alice" }] };
+		};
+		const stale = refreshBrowserProjection();
+		const fresh = refreshBrowserProjection();
+		await fresh;
+		resolveSlow();
+		await stale;
+		assert.equal(
+			readBrowserProjection().state?.tabs[0].sessionId,
+			"alice",
+			"the older read does not overwrite the newer one",
+		);
+		globalThis.window.api.browser.state = originalState;
+
+		for (const release of releases) release();
+		releases.length = 0;
+		assert.equal(
+			reads.subscriptionCount,
+			0,
+			"the last consumer to leave stops the window's subscription",
+		);
+		assert.equal(
+			readBrowserProjection().state,
+			null,
+			"and the snapshot goes with it, so a later mount cannot render a reading nobody is being told about",
+		);
+		const before = reads.count;
+		emitState?.();
+		await settle();
+		assert.equal(reads.count, before, "nothing reads on a stopped store");
+
+		// A fresh consumer reads again: a remount has no way to know what changed
+		// while nothing was listening.
+		subscribeBrowserProjection(() => {})();
+		await settle();
+		assert.equal(reads.count, before + 1, "a remount re-reads");
+	} finally {
+		for (const release of releases) release();
+		globalThis.window = previousWindow;
+	}
+});
+
+test("a failed state read is the READ slot's, and dismissing it clears only that", async () => {
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: {
+				state: async () => {
+					throw new Error(
+						"Error invoking remote method 'browser-state': the host is not running",
+					);
+				},
+				onStateChanged: () => () => {},
+				onConsentChanged: () => () => {},
+			},
+		},
+	};
+	const release = subscribeBrowserProjection(() => {});
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	try {
+		assert.equal(
+			readBrowserProjection().readError,
+			"the host is not running",
+			"the Electron prefix is unwrapped rather than shown to the user",
+		);
+		clearBrowserProjectionReadError();
+		assert.equal(readBrowserProjection().readError, null);
+	} finally {
+		release();
+		globalThis.window = previousWindow;
+	}
 });
 
 // ---- a banner click reaches the request it named (review round 1, R8) ------

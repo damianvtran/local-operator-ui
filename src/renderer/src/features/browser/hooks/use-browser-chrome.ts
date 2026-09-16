@@ -1,5 +1,12 @@
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	browserBridge as bridge,
+	browserBridgeAvailable,
+	clearBrowserProjectionReadError,
+	refreshBrowserProjection,
+	useBrowserProjectionStore,
+} from "../model/browser-projection-store";
 
 /**
  * The renderer's half of the browser feature: the projection main publishes and
@@ -120,18 +127,11 @@ export interface ContentRect {
 	height: number;
 }
 
-/** What the preload exposes. Absent outside Electron (Storybook, the unit tests). */
-type BrowserBridge = NonNullable<typeof window.api>["browser"];
-
-function bridge(): BrowserBridge | null {
-	return window.api?.browser ?? null;
-}
-
-/** Whether the browser controls can work at all. A route rendered outside
- * Electron says so rather than throwing on the first click. */
-export function browserBridgeAvailable(): boolean {
-	return bridge() !== null;
-}
+/** What the preload exposes. Absent outside Electron (Storybook, the unit tests).
+ * The accessor itself lives in `browser-projection-store.ts`, next to the one
+ * subscription that uses it, so there is exactly one answer to "is the browser
+ * available" — this module keeps the name its callers already read. */
+export { browserBridgeAvailable };
 
 /**
  * Send one rectangle to main, unconditionally and without waiting.
@@ -233,52 +233,26 @@ export interface BrowserProjection {
  * header would put every tab control in a header that has one badge and no tab
  * strip. A hand-written second subscription — its own `api.state()`, its own two
  * event handlers — is the drift this repository refuses everywhere else, so the
- * read lives here once and `useBrowserChrome` adds the writes on top of it.
+ * read lives in `browser-projection-store.ts` once and every reader, including
+ * `useBrowserChrome`, selects from it.
+ *
+ * WHAT CHANGED, and why it had to (design 1.5): this used to own a `useState`
+ * pair, an initial read and two `ipcRenderer.on` subscriptions PER CALL. Two
+ * consumers made that correct; a mark on every conversation row turns it into
+ * forty subscriptions and forty full `/browser-state` reads per event. The store
+ * is now the only subscriber — `useSyncExternalStore` subscribes once per mounted
+ * consumer and the store refcounts them onto one bridge subscription — and THIS
+ * function is the three-line selector that keeps its callers' contract unchanged.
  */
 export function useBrowserProjection(): BrowserProjection {
-	const [state, setState] = useState<BrowserChromeState | null>(null);
-	const [readError, setReadError] = useState<string | null>(null);
-	const available = browserBridgeAvailable();
+	const { state, readError } = useBrowserProjectionStore();
+	return {
+		state,
+		readError,
+		refresh: refreshBrowserProjection,
+		clearReadError: clearBrowserProjectionReadError,
+	};
 
-	const refresh = useCallback(async (): Promise<BrowserChromeState | null> => {
-		const api = bridge();
-		if (!api) return null;
-		try {
-			const next = (await api.state()) as BrowserChromeState | null;
-			if (next && Array.isArray(next.tabs)) {
-				setState(next);
-				setReadError(null);
-				return next;
-			}
-			return null;
-		} catch (caught) {
-			setReadError(unwrapIpcErrorMessage(caught));
-			return null;
-		}
-	}, []);
-
-	useEffect(() => {
-		if (!available) return;
-		void refresh();
-		const api = window.api?.browser;
-		if (!api) return;
-		// Two subscriptions rather than one: main emits the consent event for the
-		// approval store's changes (which include the pending set) and the state
-		// event for the registry's. Both land on the same projection, and reading it
-		// twice is cheaper than two projections that can disagree.
-		const offState = api.onStateChanged(() => void refresh());
-		const offConsent = api.onConsentChanged(() => void refresh());
-		return () => {
-			offState();
-			offConsent();
-		};
-	}, [available, refresh]);
-
-	const clearReadError = useCallback((): void => {
-		setReadError(null);
-	}, []);
-
-	return { state, readError, refresh, clearReadError };
 }
 
 export function useBrowserChrome(): BrowserChrome {
@@ -471,7 +445,9 @@ export function useBrowserChrome(): BrowserChrome {
 	);
 }
 
+
 /** The prefix Electron adds to an `ipcRenderer.invoke` rejection, and the unwrap
  * itself, live in `@shared/utils/ipc-error-message` now: the update surfaces
  * unwrap the same envelope for the same reason, and two spellings of one rule
  * is how the two answers drift apart. */
+
