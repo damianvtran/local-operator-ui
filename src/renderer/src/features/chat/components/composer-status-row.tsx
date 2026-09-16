@@ -714,7 +714,9 @@ export const ComposerStatusRow = ({
 								 * surface over. Nothing new is authored for it — no keyframe, no token,
 								 * no `animate-pulse-visible` (that role is the skeleton's and its own
 								 * docblock says so). The mark is `aria-hidden` inside the component, so
-								 * the state reaches a screen reader through the clause's `running`.
+								 * the state reaches a screen reader through WORDS: the clause's own state
+								 * word when every open row shares it, and `busiestClause` on the
+								 * accessible name when the set is mixed and the clause says `open`.
 								 */}
 								<SubagentStateIcon status={children.mark} />
 								{childClause(children)}
