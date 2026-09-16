@@ -7,20 +7,30 @@ import { JSDOM } from "jsdom";
 import React, { act, useState } from "react";
 // React DOM feature-detects input events at import time. Give it a document
 // before loading it, rather than activating its legacy IE event polyfill.
-const bootstrapDOM = new JSDOM("<!doctype html>");
+/*
+ * A REAL ORIGIN, not jsdom's default opaque one: the write-path bundle below
+ * imports the draft store, whose `persist` middleware resolves `localStorage`
+ * once at module init and stays storage-less for the whole file if that read
+ * throws (`createJSONStorage` catches it and returns no storage at all).
+ */
+const bootstrapDOM = new JSDOM("<!doctype html>", { url: "http://localhost/" });
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
+globalThis.localStorage = bootstrapDOM.window.localStorage;
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
-	delete globalThis.window;
-	delete globalThis.document;
+	globalThis.window = undefined;
+	globalThis.document = undefined;
+	globalThis.localStorage = undefined;
 });
 
 // Run the shipped component, Button, React effects and DOM events, not an
 // imitation hook runner. jsdom has no layout engine: rectangles below are the
 // explicit input fixture, NOT browser geometry/Tab/Enter/Space evidence.
 const source = "src/renderer/src/features/chat/components/";
+// The composer's own setter lives one directory over, in the shared hooks.
+const hooks = "src/renderer/src/shared/hooks/";
 const bundle = await build({
 	entryPoints: [`${source}measured-suggestion-stack.tsx`],
 	bundle: true,
@@ -38,6 +48,43 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { MeasuredSuggestionStack } = await import(bundlePath.href);
 await unlink(bundlePath);
+
+/*
+ * A second bundle for the WRITE PATH, because it is a different module graph
+ * from the stack's: the hook the composer takes its setter from and the store
+ * that setter persists into, with no component in between. Bundled the same way
+ * (the shipped modules, not an imitation hook runner), which is what lets the
+ * fill's persistence be RUN below rather than argued from the call site.
+ */
+const writeBundle = await build({
+	stdin: {
+		contents: `
+			export { useMessageInput } from "./${source}../../../shared/hooks/use-message-input";
+			export { useConversationInputStore } from "./${source}../../../shared/store/conversation-input-store";
+			export { DEFAULT_MESSAGE_SUGGESTIONS } from "./${source}composer-suggestions";
+		`,
+		loader: "tsx",
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	jsx: "automatic",
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	write: false,
+});
+const writeBundlePath = new URL(
+	`./_suggestion-write-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(writeBundlePath, writeBundle.outputFiles[0].text);
+const {
+	DEFAULT_MESSAGE_SUGGESTIONS,
+	useConversationInputStore,
+	useMessageInput,
+} = await import(writeBundlePath.href);
+await unlink(writeBundlePath);
 
 const suggestions = [
 	"First",
@@ -339,4 +386,195 @@ test("MessageInput wires node-valued refs and delegates its existing splash pred
 		/focusComposer=\{\(\) => textareaRef\.current\?\.focus\(\)\}/,
 	);
 	assert.doesNotMatch(input, /suggestionStackRef|setSuggestionStackCap/);
+	/*
+	 * The sample is HELD for the composer's mount, not re-derived from the
+	 * prompt's visibility (round 1, R3).
+	 *
+	 * A wiring pin rather than a behavioural one, and the reason is the one
+	 * `draft-splash.test.mjs` records at length: `MessageInput` cannot be mounted
+	 * in isolation, because it needs a message list, a dispatcher and the
+	 * canonical store, so what a rendered composer would prove here is only that
+	 * one `useMemo` runs - the claim is about WHICH values it is allowed to
+	 * recompute for. Neither the pin nor a mount can say the row does not change
+	 * under the user's eye; that is a measurement on the running surface (QA's
+	 * resize across `isSmallView`, or the canvas opening and closing).
+	 */
+	assert.match(
+		input,
+		/if \(heldSample\.current === null\) \{\s*heldSample\.current = sampleSuggestions\(/,
+		"the empty chat's sample is drawn once and held in a ref",
+	);
+	assert.match(
+		input,
+		/return heldSample\.current;/,
+		"every render after the first returns the held sample, so a gate flip repaints the same four labels",
+	);
+	assert.equal(
+		input.match(/sampleSuggestions\(/g)?.length,
+		1,
+		"one draw site: a second call anywhere in the composer would sample under the reader again",
+	);
+	/*
+	 * A suggestion press FILLS the composer and does not send (round 1, U1/Q1).
+	 *
+	 * The handler is bounded by the next declaration rather than by a closing
+	 * brace, so a reformat inside it does not move the slice's end off the
+	 * function; what the assertions mean is "this handler's whole body", which is
+	 * the unit the interaction is.
+	 */
+	const handlerStart = input.indexOf("const handleSuggestionClick");
+	const handlerEnd = input.indexOf("const shortcutText", handlerStart);
+	assert.ok(handlerStart > 0 && handlerEnd > handlerStart);
+	const handler = input.slice(handlerStart, handlerEnd);
+	assert.match(
+		handler,
+		/setNewMessage\(suggestion\)/,
+		"the label lands in the box, so the user reads it before anything leaves",
+	);
+	assert.doesNotMatch(
+		handler,
+		/onSendMessage/,
+		"the band must not be able to send: a one-press request that opens a PR or rewires the tunnel is not a demo errand",
+	);
+	/*
+	 * The press writes through the HOOK'S OWN SETTER, and that setter is the
+	 * persisted one (round 2, M3).
+	 *
+	 * The alias is the whole of the question: `message-input.tsx` destructures
+	 * `setInputValue` from `useMessageInput` as `setNewMessage`, and the hook binds
+	 * that key to `handleChange` - the one steady-state writer of the
+	 * per-conversation draft - rather than to the `useState` setter of the same
+	 * name inside the hook. A reader who sees only the local name cannot tell those
+	 * apart; the two assertions below are the pair that does, and the behavioural
+	 * half runs in the last test in this file.
+	 */
+	assert.match(
+		input,
+		/setInputValue: setNewMessage,/,
+		"the handler's `setNewMessage` is the hook's `setInputValue` key, not a setter of its own",
+	);
+	assert.match(
+		readFileSync(`${hooks}use-message-input.ts`, "utf8"),
+		/\n\t\tsetInputValue: handleChange,/,
+		"and the hook binds that key to `handleChange`, which writes the draft store",
+	);
+	/*
+	 * The two half-steps the typed path takes on the same edge (round 2): the
+	 * empty -> non-empty warm, and the caret this file's own convention writes for
+	 * a programmatic edit (`applyPlan` above).
+	 */
+	assert.match(
+		handler,
+		/if \(!newMessage\) onComposerInput\?\.\(\);/,
+		"a press into an empty box is the same first-keystroke edge the textarea fires, so it warms the session too",
+	);
+	assert.match(
+		handler,
+		/pendingCaret\.current = suggestion\.length;/,
+		"the caret is written with the value rather than left to the browser",
+	);
+});
+
+/*
+ * THE FILL'S WRITE PATH, RUN rather than read (round 2, M3).
+ *
+ * M3 read `setNewMessage(suggestion)` as a local-state write and concluded that a
+ * filled label reaches the box but not the draft store, so it would not survive a
+ * composer remount the way a typed sentence does. The alias above is the half of
+ * the answer a reader can see; this is the half no reading settles, because the
+ * claim is about what the store holds after the call and what a remount seeds from
+ * it. So the shipped hook is mounted here against the shipped store and the chip's
+ * own call is made: the setter the handler holds, with a real label from the
+ * shipped pool, then a fresh mount to read what came back.
+ *
+ * What this file cannot carry, and does not claim: that `MessageInput` itself is
+ * wired this way end to end. It cannot be mounted in isolation (no dispatcher or
+ * canonical store in a jsdom fixture - see `draft-splash.test.mjs`), so the last
+ * link is the alias assertion above rather than a rendered composer.
+ */
+test("a filled label reaches the persisted draft and survives a remount", async () => {
+	// A real origin: the store persists through `localStorage`, which a document
+	// with an opaque one (jsdom's default) throws on rather than stubs.
+	const dom = new JSDOM("<div id='root'></div>", {
+		url: "http://localhost/",
+		pretendToBeVisual: true,
+	});
+	const { window } = dom;
+	const originals = new Map();
+	for (const [key, value] of Object.entries({
+		window,
+		document: window.document,
+		localStorage: window.localStorage,
+		HTMLElement: window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	})) {
+		originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+		Object.defineProperty(globalThis, key, {
+			configurable: true,
+			writable: true,
+			value,
+		});
+	}
+	const draftKey = "draft-composer-fill";
+	const label = DEFAULT_MESSAGE_SUGGESTIONS[2];
+	let api = null;
+	function Host() {
+		api = useMessageInput({
+			conversationId: draftKey,
+			onSubmit: async () => {},
+		});
+		return h("textarea", {
+			ref: api.textareaRef,
+			readOnly: true,
+			value: api.inputValue,
+		});
+	}
+	/** A fresh root each time: React cannot re-render an unmounted one. */
+	const mount = async () => {
+		const root = createRoot(window.document.getElementById("root"));
+		await act(async () => root.render(h(Host)));
+		await act(async () => {});
+		return root;
+	};
+	let root = null;
+	try {
+		root = await mount();
+		assert.equal(
+			api.inputValue,
+			"",
+			"an empty box to start, which is the only state the chips fill from",
+		);
+		/*
+		 * The handler's own two calls, in its own order - the setter it holds, then
+		 * the caret at the end of the label (which the handler writes through
+		 * `pendingCaret`, a DOM concern this jsdom fixture does not carry).
+		 */
+		await act(async () => api.setInputValue(label));
+		assert.equal(api.inputValue, label);
+		assert.equal(
+			useConversationInputStore.getState().getCurrentInput(draftKey),
+			label,
+			"a filled label must reach the persisted draft, not only the box: this is the write M3 said was missing",
+		);
+		/*
+		 * And the consequence M3's repro is about: leave the conversation and come
+		 * back. The box is seeded from the store on mount, so the label is still there
+		 * - the same way a typed sentence is.
+		 */
+		await act(async () => root.unmount());
+		root = null;
+		root = await mount();
+		assert.equal(
+			api.inputValue,
+			label,
+			"a remounted composer seeds from the draft store, so the filled label survives exactly as a typed sentence does",
+		);
+	} finally {
+		if (root) await act(async () => root.unmount());
+		window.close();
+		for (const [key, descriptor] of originals) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else delete globalThis[key];
+		}
+	}
 });
