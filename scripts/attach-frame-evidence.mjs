@@ -42,10 +42,17 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
@@ -74,13 +81,66 @@ const HEIGHT = Number(process.env.ATTACH_FRAME_HEIGHT ?? 900);
  * gate is open, which is what makes this a detector for "the withdrawal reached
  * the window" rather than for a particular sentence.
  */
-const GATE_CLOSED_COPY = /Update the backend|cannot use the backend/;
 mkdirSync(OUT, { recursive: true });
 
 const ROOT = mkdtempSync(join(tmpdir(), "lop-ui-frame-evidence-"));
 const SESSION_ID = "f".repeat(12);
 const SESSION_TITLE = "Frame evidence conversation";
+/*
+ * The rest of a healthy backend's answer, so a scene's frames show the app
+ * talking to a server it can use rather than a wall of 404s the stub never
+ * served. Every shape below is the client's own (`profile-hooks.ts`,
+ * `shell.stories.tsx`'s CONFIG): a stub that answered with a body the app could
+ * not parse would make a scene photograph the stub's shortcomings.
+ */
+const STUB_CONFIG = {
+	version: "0.12.8",
+	metadata: {
+		created_at: "2025-06-18T11:02:00Z",
+		last_modified: "2026-09-15T00:00:00Z",
+		description: "Frame-evidence configuration",
+	},
+	values: {
+		conversation_length: 100,
+		detail_length: 15,
+		max_learnings_history: 50,
+		hosting: "openrouter",
+		model_name: "anthropic/claude-sonnet-4",
+		auto_save_conversation: true,
+	},
+};
+const STUB_PROFILE = {
+	name: "frame-agent",
+	kind: "role",
+	source: "builtin",
+	agent_id: null,
+	description: "The frame rig's own agent",
+	tools: null,
+	effort: null,
+	delegate: false,
+};
+const STUB_TEAM = {
+	id: "frame-team",
+	name: "frame-team",
+	description: "The frame rig's own team",
+	manager: "frame-agent",
+	members: [],
+};
 const CLAIM_KEY = "a".repeat(64);
+/**
+ * The credential a managed launch would have persisted, for the scenes that
+ * attach to a STUB backend.
+ *
+ * WHY the scenes need one at all. `requestDesktop` forces
+ * `desktop_available: false` on a capabilities answer when this app holds no
+ * token, and `desktopFeatureEnabled` then fails closed - so without a credential
+ * the catalogue gate never opens, the sidebar renders no list, and a scene
+ * documents a cell it does not photograph. That is exactly QA round 1's Q-3 on
+ * the flap scene, and it was invisible until the stub's own answers were read
+ * back. Seeding it is also the honest model: the state these scenes are about is
+ * an app that CAN drive the daemon it is talking to.
+ */
+const DESKTOP_TOKEN = "b".repeat(64);
 
 const inherited = new Set([
 	"PATH",
@@ -119,6 +179,8 @@ const childEnv = (configDir, apiUrl, { manager = false } = {}) => ({
 });
 
 const children = [];
+/** Every profile this run booted, so the teardown can read each one's own log. */
+const bootedProfiles = [];
 function launch(command, args, env) {
 	const child = spawn(command, args, {
 		cwd: REPO,
@@ -200,7 +262,15 @@ async function stop(entry) {
 function reapScratchProfiles() {
 	if (process.platform === "win32") return;
 	try {
-		spawnSync("pkill", ["-f", `user-data-dir=${ROOT}`], {
+		/*
+		 * Escaped, because `pkill -f` reads the pattern as an extended regex: a
+		 * `TMPDIR` containing a metacharacter would widen a match that is supposed to
+		 * name exactly one run's scratch path. The unique `mkdtemp` suffix is what
+		 * keeps this off other processes; escaping is what keeps that property from
+		 * depending on where the host puts its temp files.
+		 */
+		const literal = ROOT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		spawnSync("pkill", ["-f", `user-data-dir=${literal}`], {
 			stdio: "ignore",
 		});
 	} catch {
@@ -253,7 +323,10 @@ async function withPage(debugPort, call) {
 async function evaluate(debugPort, expression) {
 	return withPage(debugPort, (socket) => {
 		const result = new Promise((resolve, reject) => {
-			const timer = setTimeout(() => reject(new Error("evaluate timed out")), 20_000);
+			const timer = setTimeout(
+				() => reject(new Error("evaluate timed out")),
+				20_000,
+			);
 			socket.addEventListener("message", (event) => {
 				const message = JSON.parse(event.data);
 				if (message.id !== 1) return;
@@ -306,7 +379,10 @@ async function capture(debugPort, path, attempts = 3) {
 async function captureOnce(debugPort, path) {
 	const data = await withPage(debugPort, (socket) => {
 		const result = new Promise((resolve, reject) => {
-			const timer = setTimeout(() => reject(new Error("capture timed out")), 15_000);
+			const timer = setTimeout(
+				() => reject(new Error("capture timed out")),
+				15_000,
+			);
 			const send = (id, method, params) =>
 				socket.send(JSON.stringify({ id, method, params }));
 			socket.addEventListener("message", (event) => {
@@ -343,15 +419,19 @@ async function captureOnce(debugPort, path) {
 const READ_PAGE = `(async () => {
 	const banner = document.querySelector('[role="alert"]');
 	/*
-	 * The seeded conversation as the sidebar actually renders it: its row title
-	 * is derived from the transcript's own first row, so this reads the app's own
-	 * text rather than a selector this rig invented. A data-session-id attribute
-	 * was the first attempt and reads zero on a sidebar that is fully populated -
-	 * no row carries one - which is how this rig first reported "no sessions"
-	 * over a daemon that was serving one.
+	 * The seeded conversation as the sidebar actually renders it. TWO markers,
+	 * because two kinds of scene seed a catalogue: the live attached scene starts
+	 * a real conversation whose first transcript row is a numbered row marker, and the stub
+	 * scenes fabricate a row titled "Frame evidence conversation". Reading only the
+	 * first made every stub scene report "no sessions" over a sidebar that was
+	 * showing one - which is how a frame that was correct got reported as a list
+	 * that had vanished. This reads the app's own text rather than a selector this
+	 * rig invented: a data-session-id attribute was the first attempt and reads
+	 * zero on a sidebar that is fully populated - no row carries one.
 	 */
-	const seededRow = /\\[row 0000\\]/.test(document.body.innerText);
 	const text = document.body.innerText;
+	const seededRow =
+		/\[row 0000\]/.test(text) || text.includes("Frame evidence conversation");
 	const composer = document.querySelector('textarea, [contenteditable="true"]');
 	/*
 	 * Main's own answer, read through the app's preload bridge. It is here because
@@ -375,12 +455,15 @@ const READ_PAGE = `(async () => {
 			? { state: snapshot.state, reachable: undefined, url: snapshot.url, pid: snapshot.pid, owned: snapshot.owned, unanswered: snapshot.unanswered, detail: snapshot.detail }
 			: snapshot,
 		/*
-		 * The sidebar's own register, read from the nav the way the banner is read
-		 * by role: this rig must report what the panel SAYS, not a selector it
-		 * invented. It is what the withdrawal scene is about - the list is either
-		 * still on screen with a sentence beside it, or gone with nothing said.
+		 * The chat sidebar's own register, read by the app's OWN landmark: it is
+		 * a nav with the aria-label "Chats", while the app rail is a second nav beside
+		 * it, so a bare querySelector("nav") read the rail and reported an empty
+		 * sidebar over a panel full of rows.
+		 *
+		 * It is what the withdrawal scene is about - the list is either still on
+		 * screen with a sentence beside it, or gone with nothing said.
 		 */
-		sidebar: (document.querySelector("nav")?.innerText ?? "").replace(/\\s+/g, " ").trim().slice(0, 600),
+		sidebar: (document.querySelector('nav[aria-label="Chats"]')?.innerText ?? "").replace(/\\s+/g, " ").trim().slice(0, 600),
 		first_lines: text.split("\\n").filter(Boolean).slice(0, 14),
 	});
 })()`;
@@ -435,6 +518,7 @@ async function waitForPage(debugPort, timeoutMs = 90_000) {
 
 /** Boot the app against a URL and return its debug port once it has painted. */
 async function bootApp(name, apiUrl, configDir, debugPort, options) {
+	bootedProfiles.push(name);
 	const app = launch(
 		"node_modules/.bin/electron",
 		[
@@ -445,13 +529,32 @@ async function bootApp(name, apiUrl, configDir, debugPort, options) {
 		],
 		childEnv(configDir, apiUrl, options),
 	);
-	const first = await waitForPage(debugPort);	// The seed lands after the first paint and reloads, so the second read is the
+	const first = await waitForPage(debugPort); // The seed lands after the first paint and reloads, so the second read is the
 	// app as a returning user rather than the onboarding one.
-	if (!first.composer_present || first.first_lines.includes("Connect a provider"))
+	if (
+		!first.composer_present ||
+		first.first_lines.includes("Connect a provider")
+	)
 		await seedOnboarding(debugPort);
 	// The reload has to finish painting before anything reads the page again.
 	await wait(3_000);
 	return app;
+}
+
+/**
+ * Write the token a managed launch persists, into the userData directory the
+ * app will actually read.
+ *
+ * Which directory that is was MEASURED rather than assumed: `--user-data-dir`
+ * sets `app.getPath("userData")` (probe: `USERDATA=/private/tmp/probe-ud/profile`
+ * for a launch passed `--user-data-dir=/tmp/probe-ud/profile`), so the file
+ * belongs beside the profile this scene boots with - not under the scratch HOME,
+ * which is where the rig used to look for the app's own log and never found it.
+ */
+function seedDesktopToken(profileName) {
+	const file = join(ROOT, `profile-${profileName}`, "desktop-token");
+	mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+	writeFileSync(file, DESKTOP_TOKEN, { mode: 0o600 });
 }
 
 /** A Local Operator daemon answering at `port`, without a serve record. */
@@ -505,6 +608,18 @@ function stubDaemon(port, state) {
 			json(200, { status: 200 });
 			return;
 		}
+		if (path === "/v1/config") {
+			json(200, { status: 200, result: STUB_CONFIG });
+			return;
+		}
+		if (path === "/v1/desktop/profiles") {
+			json(200, { status: 200, result: { profiles: [STUB_PROFILE] } });
+			return;
+		}
+		if (path === "/v1/desktop/teams") {
+			json(200, { status: 200, result: { teams: [STUB_TEAM] } });
+			return;
+		}
 		if (path === "/v1/desktop/sessions") {
 			state.reads.push(Date.now());
 			json(200, {
@@ -540,7 +655,20 @@ function stubDaemon(port, state) {
 	return server;
 }
 
-/** Keep a hand-written record fresh: a stale heartbeat reads as `wedged`. */
+/**
+ * Keep a hand-written record fresh: a stale heartbeat reads as `wedged`.
+ *
+ * This WRITES and returns nothing. Arming the refresh is the caller's job
+ * (`armHeartbeat` below) and that split is the fix for the rig's worst defect:
+ * this function used to end `return setInterval(() => writeRecord(...), 5000)`,
+ * whose callback called this function again and armed another interval every
+ * firing. Measured by QA on this rig: 290,382 pending `Timeout` resources growing
+ * at +488/s, the main thread pinned in `node::fs::Open`, and the rig's OWN stub
+ * daemon starved until it stopped answering `/health` - so the app under test read
+ * its backend as stopped and every scene produced one frame and then nothing for
+ * five minutes. A writer that arms a timer around itself is a rig that saturates
+ * itself, and it looked exactly like a machine-lease failure.
+ */
 function writeRecord(runDir, port, pid) {
 	const file = join(runDir, `${pid}.json`);
 	const now = Date.now() / 1000;
@@ -568,6 +696,18 @@ function writeRecord(runDir, port, pid) {
 		}),
 		{ mode: 0o600 },
 	);
+	/*
+	 * The periodic half is `armHeartbeat`, at the call site: this function is called
+	 * by a timer and must never arm one.
+	 */
+}
+
+/**
+ * Write the record now, then keep it fresh on a cadence, and hand back the one
+ * handle the scene clears at the end of its own scene.
+ */
+function armHeartbeat(runDir, port, pid) {
+	writeRecord(runDir, port, pid);
 	return setInterval(() => writeRecord(runDir, port, pid), 5_000);
 }
 
@@ -590,16 +730,17 @@ async function sceneAttached() {
 		["serve", "--port", String(port)],
 		childEnv(configDir, `http://127.0.0.1:${port}`),
 	);
-	const recordFile = join(configDir, "run", "serve", `${daemon.child.pid}.json`);
+	const recordFile = join(
+		configDir,
+		"run",
+		"serve",
+		`${daemon.child.pid}.json`,
+	);
 	const deadline = Date.now() + 60_000;
 	while (!existsSync(recordFile) && Date.now() < deadline) await wait(250);
-	if (!existsSync(recordFile)) throw new Error(`no serve record: ${daemon.text()}`);
-	await bootApp(
-		"attached",
-		`http://127.0.0.1:${port}`,
-		configDir,
-		46111,
-	);
+	if (!existsSync(recordFile))
+		throw new Error(`no serve record: ${daemon.text()}`);
+	await bootApp("attached", `http://127.0.0.1:${port}`, configDir, 46111);
 	// The list is fed by the app's own poll; wait for the row it must render.
 	let page = null;
 	const attachedDeadline = Date.now() + 60_000;
@@ -616,7 +757,12 @@ async function sceneAttached() {
 
 async function sceneUnattachable() {
 	const port = 46120;
-	const state = { slowHealth: false, healthDelayMs: 3_500, reads: [], requests: [] };
+	const state = {
+		slowHealth: false,
+		healthDelayMs: 3_500,
+		reads: [],
+		requests: [],
+	};
 	const server = stubDaemon(port, state);
 	// Its own config root with NO record: the address answers, and nothing
 	// describes it - the 09:17 shape.
@@ -638,13 +784,9 @@ async function sceneUnattachable() {
 	 * is empty. The unattachable copy itself is covered by the Storybook pair and
 	 * by the manager-level rig's cell 3.
 	 */
-	await bootApp(
-		"absent",
-		`http://127.0.0.1:${port}`,
-		configDir,
-		46121,
-		{ manager: false },
-	);
+	await bootApp("absent", `http://127.0.0.1:${port}`, configDir, 46121, {
+		manager: false,
+	});
 	// Let main run its discovery pass and settle the state it publishes.
 	let page = null;
 	const deadline = Date.now() + 30_000;
@@ -664,11 +806,27 @@ async function sceneFlap() {
 	const configDir = join(ROOT, "config-flap");
 	const runDir = join(configDir, "run", "serve");
 	mkdirSync(runDir, { recursive: true });
-	const state = { slowHealth: false, healthDelayMs: 3_500, reads: [], requests: [] };
+	const state = {
+		slowHealth: false,
+		healthDelayMs: 3_500,
+		reads: [],
+		requests: [],
+		/*
+		 * The features the catalogue gate needs to OPEN, which this scene did without
+		 * and could not: its documented cell is "the conversation list holds through
+		 * the flap", and with no advertised capability the gate never opens, so the
+		 * frame showed no list at all and only "Update the backend to use canonical
+		 * chats" - the opposite of the cell (QA round 1, Q-3). The flap is a change in
+		 * what a PROBE can read on a connection whose reads still answer; a shut gate
+		 * is not part of the scene.
+		 */
+		features: { session_catalogue: 2, profile_catalogue: 1, team_catalogue: 1 },
+	};
 	const server = stubDaemon(port, state);
 	// A record this time, so the app ATTACHES to the stub: the flap is a change in
 	// what the probes can read on a connection that is otherwise fine.
-	const heartbeat = writeRecord(runDir, port, process.pid);
+	seedDesktopToken("flap");
+	const heartbeat = armHeartbeat(runDir, port, process.pid);
 	await bootApp("flap", `http://127.0.0.1:${port}`, configDir, 46131);
 
 	let page = null;
@@ -719,8 +877,10 @@ async function sceneWithdrawn() {
 	};
 	const server = stubDaemon(port, state);
 	// A record, so the app ATTACHES to the stub rather than declining it: the
-	// withdrawal is a change in what a connected backend advertises.
-	const heartbeat = writeRecord(runDir, port, process.pid);
+	// withdrawal is a change in what a connected backend advertises. The credential
+	// is what makes the gate OPENABLE in the first place - see `DESKTOP_TOKEN`.
+	seedDesktopToken("withdrawn");
+	const heartbeat = armHeartbeat(runDir, port, process.pid);
 	await bootApp("withdrawn", `http://127.0.0.1:${port}`, configDir, 46141);
 
 	let page = null;
@@ -737,35 +897,52 @@ async function sceneWithdrawn() {
 	state.withdrawn = true;
 	const withdrawnAt = Date.now();
 	/*
-	 * THE CELL: nobody touches anything. On a tree whose capabilities query has no
-	 * re-negotiation this can only time out, which is the report's "it needs a
-	 * refresh"; on this head the poll notices by itself, and how long it took is
-	 * in the summary.
+	 * THE CELL: nobody touches anything. The measurement is the app's OWN
+	 * re-negotiation - the capabilities ask count going up with no input at all -
+	 * because that is the mechanism the report is about ("it needs a refresh").
+	 *
+	 * WHY not the sentence: on this head the withdrawal is stated ONCE, by the
+	 * full-bleed compatibility banner, and the sidebar deliberately does not repeat
+	 * it (design round 1, D3). Waiting for the sidebar's own sentence here would
+	 * time out on a tree that is behaving correctly, which is exactly the kind of
+	 * assertion this rig exists to avoid.
 	 */
-	let noticedOnItsOwn = true;
 	let after = before;
-	const selfDeadline = Date.now() + 75_000;
+	const selfDeadline = withdrawnAt + 70_000;
 	while (Date.now() < selfDeadline) {
 		after = await readPage(46141);
-		if (GATE_CLOSED_COPY.test(after.sidebar)) break;
+		if (capabilitiesAsked(state) > askedBefore) break;
 		await wait(1_000);
 	}
-	if (!GATE_CLOSED_COPY.test(after.sidebar)) noticedOnItsOwn = false;
+	const noticedOnItsOwn = capabilitiesAsked(state) > askedBefore;
 	await wait(2_000);
 	after = await readPage(46141);
 	await capture(46141, join(OUT, `${LABEL}-gate-withdrawn.png`));
+	const askedAtWithdrawal = capabilitiesAsked(state);
 
 	/*
-	 * Then the gesture the report describes - the operator coming back to the
-	 * window, which is React Query's own refetch-on-focus. It is here because the
-	 * BEFORE half of this pair can only reach the withdrawn state that way (its
-	 * `staleTime` is a minute and nothing re-asks before that), and because it is
-	 * the falsification of this fix: a head that only heals when poked would show
-	 * the same frame after this as before it. The wait above has already run past
-	 * the base's `staleTime`, so the poke really does refetch there.
+	 * Then the gesture the report describes: the operator coming back to the
+	 * window. It is the ONLY path the before half has, and it is the falsification
+	 * of the fix - a head that healed only when poked would show the same picture
+	 * here as in the frame above.
+	 *
+	 * The event is `visibilitychange`, and that is measured rather than assumed:
+	 * React Query 5.73.3's `focusManager` subscribes to `window`'s
+	 * `visibilitychange` alone (`query-core/build/modern/focusManager.js`), so the
+	 * `focus` event this scene used to dispatch was heard by nobody - which is why
+	 * the three frames came back byte-identical (QA round 1, Q-2). The wait below
+	 * is what makes it work on the BEFORE tree: `refetchOnWindowFocus` refetches a
+	 * STALE query, and that tree's capabilities `staleTime` is 60 s with nothing
+	 * else re-asking, so the poke has to land after it.
 	 */
-	await evaluate(46141, 'window.dispatchEvent(new Event("focus")), "poked"');
-	await wait(5_000);
+	const pokeAfter = withdrawnAt + 65_000;
+	while (Date.now() < pokeAfter) await wait(1_000);
+	const askedBeforePoke = capabilitiesAsked(state);
+	await evaluate(
+		46141,
+		'window.dispatchEvent(new Event("visibilitychange")), "poked"',
+	);
+	await wait(6_000);
 	const poked = await readPage(46141);
 	await capture(46141, join(OUT, `${LABEL}-gate-poked.png`));
 
@@ -775,10 +952,23 @@ async function sceneWithdrawn() {
 		poked,
 		noticed_on_its_own: noticedOnItsOwn,
 		withdrawal_observed_after_ms: Date.now() - withdrawnAt,
-		// The number the poll exists for: > 1 means the app asked again with no
-		// interaction of any kind between the two frames.
+		/*
+		 * Every path the app asked this stub for, with a count, so a scene that
+		 * photographs the wrong thing says so in its own summary rather than only in
+		 * the picture. This is how the missing token above was found: the app's reads
+		 * never reached /v1/desktop/sessions at all.
+		 */
+		asked: requestCounts(state),
+		/*
+		 * Capability asks, at four points. The pair that matters is
+		 * `..._before` -> `..._before_poke`: they are read either side of the
+		 * withdrawal with NO interaction in between, so on this head that number grows
+		 * entirely on the app's own cadence. `..._at_end` is the poke's own account of
+		 * itself on each tree.
+		 */
 		capabilities_asked_before: askedBefore,
-		capabilities_asked_at_withdrawal: capabilitiesAsked(state),
+		capabilities_asked_at_withdrawal: askedAtWithdrawal,
+		capabilities_asked_before_poke: askedBeforePoke,
 		capabilities_asked_at_end: capabilitiesAsked(state),
 	};
 	clearInterval(heartbeat);
@@ -789,6 +979,15 @@ async function sceneWithdrawn() {
 function capabilitiesAsked(state) {
 	return state.requests.filter((entry) => entry.path === "/v1/capabilities")
 		.length;
+}
+
+/** Every path this stub served, and how often. */
+function requestCounts(state) {
+	const counts = {};
+	for (const entry of state.requests) {
+		counts[entry.path] = (counts[entry.path] ?? 0) + 1;
+	}
+	return counts;
 }
 
 const scenes = {
@@ -821,16 +1020,25 @@ try {
 		join(OUT, `${LABEL}-frames.json`),
 		JSON.stringify(summary, null, 2),
 	);
-	const logFile = join(
-		ROOT,
-		"Library",
-		"Application Support",
-		"Local Operator",
-		"logs",
-		"backend-service.log",
-	);
-	if (existsSync(logFile)) {
-		writeFileSync(join(OUT, `${LABEL}-backend-service.log`), readFileSync(logFile));
+	/*
+	 * The app's own backend log, per booted profile. `--user-data-dir` IS the
+	 * userData path (measured), so the log lives beside the profile rather than under
+	 * the scratch HOME - where this rig used to look, which is why a broken scene
+	 * produced frames and no diagnostics at all.
+	 */
+	for (const name of bootedProfiles) {
+		const logFile = join(
+			ROOT,
+			`profile-${name}`,
+			"logs",
+			"backend-service.log",
+		);
+		if (existsSync(logFile)) {
+			writeFileSync(
+				join(OUT, `${LABEL}-${name}-backend-service.log`),
+				readFileSync(logFile),
+			);
+		}
 	}
 	rmSync(ROOT, { recursive: true, force: true });
 }
