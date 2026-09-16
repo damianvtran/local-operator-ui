@@ -64,6 +64,8 @@
     "postinstall": "node ./bin/postinstall.js",
     "lint": "pnpm biome check src bin scripts/linux-sandbox.test.mjs",
     "lint:fix": "pnpm biome check --write src bin scripts/linux-sandbox.test.mjs",
+    "//lint:scripts": "`pnpm lint` names the paths it checks by hand, so the whole of `scripts/` - the proof harnesses, evidence rigs and release gates - sat outside the lint and formatter contracts, and a formatter error rode into a merged pull request green. This gate runs the same `biome check` over the `scripts/` files a change touches against a base ref (`origin/main` locally, the merge commit's first parent in CI), so a violation cannot ride in with the diff that introduces it, while the tree's 106 pre-existing offenders are burnt down file by file rather than turned red at once. Widening `pnpm lint` to name `scripts/` outright is the follow-up once that backlog is gone; scripts/check-scripts-lint.mjs holds the measurements and the full rationale.",
+    "lint:scripts": "node scripts/check-scripts-lint.mjs",
     "format": "pnpm biome format src",
     "format:fix": "pnpm biome format --write src",
     "prepack": "pnpm run build:npm",
