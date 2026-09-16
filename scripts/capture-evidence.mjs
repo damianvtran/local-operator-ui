@@ -799,6 +799,27 @@ export const STORIES = [
 	["chat-sidebar-status-feed--gate-answered", 780, 560],
 	["chat-sidebar-status-feed--gate-parked", 780, 560],
 	["chat-sidebar-status-feed--completion-unseen", 780, 560],
+	/*
+	 * The sidebar's CURRENT ROW, and the caps beside it on that row.
+	 *
+	 * Two surfaces, and both are the row the reader is on: a conversation row
+	 * wearing the selection ground, and the New chat row wearing it with its `⌘`
+	 * and `N` caps on top — the one state where the caps used to need a
+	 * caller-supplied outline to be visible at all, because the cap's fill and
+	 * the row's ground were the same `sunken` role. The box is the panel's own
+	 * column plus the caption that names the state, the same shape its sibling
+	 * above uses.
+	 *
+	 * `scripts/chat-sidebar-selection.test.mjs` resolves the class expressions
+	 * this pair is about, and a green assertion there says the merge is right —
+	 * not that the panel READS as marked, which is what a frame is for. The
+	 * before halves are `chat-sidebar-current-row-baseline/` (unmodified
+	 * `origin/main`, same story, same viewports) for the ground and
+	 * `command-palette-commandpalette-baseline/` for the caps on the palette's
+	 * own footer, which was the other spelling of a key.
+	 */
+	["chat-sidebar-current-row--selected-row", 780, 560],
+	["chat-sidebar-current-row--new-chat-row-current", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
@@ -1224,11 +1245,11 @@ export const STORIES = [
 	["chat-session-status-strip--model-switch-pending", 860, 480],
 
 	/* App shell, swept for the rail-width finding. */
+	["shell-app-shell--settings-appearance", 1280, 800],
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
 	["shell-app-shell--agents", 800, 800],
-	["shell-app-shell--settings-appearance", 1280, 800],
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
