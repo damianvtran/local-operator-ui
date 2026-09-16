@@ -115,8 +115,17 @@ type BridgeBehaviour = {
 	records?: number;
 	/** Records for a list request that carries a `categories` filter. */
 	filteredRecords?: number;
-	/** How the list answers: 200 by default, or the status to refuse with. */
-	listStatus?: number;
+	/**
+	 * Fail the list read at the TRANSPORT rather than with a status.
+	 *
+	 * A refused read carrying an HTTP status is retried once (`retryDesktopQuery`),
+	 * so the error state arrives a second after the skeleton — and a frame taken
+	 * on the story's first paint photographs the skeleton instead. A transport
+	 * that never answers is not retried (there is nothing to retry towards), which
+	 * is both the more common "the hub could not be loaded" case and the one whose
+	 * state is on screen from the first paint.
+	 */
+	failList?: boolean;
 	/** Never settle the list read, so the page stays in its loading state. */
 	holdList?: boolean;
 	/** Hold every list read after the first, for the paging state. */
@@ -132,7 +141,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 	const {
 		records = 12,
 		filteredRecords = 0,
-		listStatus = 200,
+		failList = false,
 		holdList = false,
 		holdAfterFirst = false,
 		signedIn = false,
@@ -194,8 +203,8 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 						// keep-previous-page state are the subject.
 						return await new Promise(() => {});
 					}
-					if (listStatus !== 200) {
-						return { status: listStatus, body: { detail: "Radient is unavailable" } };
+					if (failList) {
+						throw new Error("The desktop backend did not answer.");
 					}
 					const filtered = Boolean(request.control?.query?.categories);
 					const shown = filtered ? filteredRecords : records;
@@ -313,10 +322,21 @@ export const Empty: Story = {
  */
 export const LoadFailed: Story = {
 	render: () => {
-		installBridge({ records: 12, listStatus: 503 });
+		installBridge({ records: 12, failList: true });
 		return <AgentHubPage />;
 	},
 	play: async () => {
+		/*
+		 * The FIRST error is not the state, and a frame taken on it is a frame of
+		 * the skeleton the read falls back to: the read retries once, so the alert
+		 * appears, the query goes pending again, and the alert comes back a second
+		 * later. Waiting for the SETTLED error — the one still there after the
+		 * retry window — is what makes this frame the state a user sees. (The first
+		 * capture of this story photographed the skeleton, which is how the
+		 * distinction was found.)
+		 */
+		await screen.findByTestId("agent-hub-error");
+		await new Promise((resolve) => setTimeout(resolve, 3_000));
 		await screen.findByTestId("agent-hub-error");
 	},
 };
