@@ -159,7 +159,7 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  * for as long as the window lasts, and this sentence cannot outlive it, so
  * instructing a retry would name the one action that cannot succeed yet. What is
  * true is that the send works once the wait ends - the read's own answer, the
- * session's live frame, or the read's 30 s deadline.
+ * session's live frame, or the read's own deadline.
  */
 export const SESSION_UNVALIDATED_MESSAGE =
 	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
@@ -922,13 +922,14 @@ type CanonicalSessionsState = {
 	 *
 	 * TWO CLOSING BOUNDS, and both are the store's to keep. The read's own answer
 	 * is the first (see `openSession`), and a read that never answers still closes
-	 * the window: every desktop control runs under `withDeadline` at
-	 * `DESKTOP_REQUEST_TIMEOUT_MS` (30 s; see `desktop-api`), and that rejection
+	 * the window: every desktop control runs under `withDeadline` at its op's own
+	 * derived budget (`desktopRequestTimeoutMs`; see `desktop-api`), and that
+	 * rejection
 	 * takes the same rollback path as any other failed read. The second bound is a
 	 * live frame from the session's own stream - proof it exists - and
 	 * `confirmSessionLive` is how the panel reports it. It is kept because it is
 	 * the EARLIER bound: on a read that is merely slow it opens the gate on the
-	 * session's own proof instead of at the 30 s deadline, which is the wait the
+	 * session's own proof instead of at the deadline, which is the wait the
 	 * deleted pending banner used to give an escape from (UX round 2, U8).
 	 *
 	 * A window is opened only for a switch that MOVES the view: `openSession`
@@ -940,7 +941,7 @@ type CanonicalSessionsState = {
 	 * (`panelIdentityFor`), so the stream effect's `[sessionId, canonical.status]`
 	 * deps are unchanged across that click and a frame that already arrived is
 	 * never re-reported. That window is bounded by the read alone - its answer, or
-	 * the 30 s `withDeadline` when it never answers.
+	 * its own `withDeadline` budget when it never answers.
 	 *
 	 * No banner, spinner or Escape handler sits on this path any more: re-basing
 	 * the old "Opening chat…/Cancel" chrome on this field would paint that banner
@@ -997,7 +998,7 @@ type CanonicalSessionsState = {
 	 *
 	 * See `validatingSessionId` for why this is the window's second bound: the
 	 * read's answer closes it too, and a read that never answers is closed by its
-	 * own 30 s deadline, but on a slow read the frame is what keeps the refusal to
+	 * own deadline, but on a slow read the frame is what keeps the refusal to
 	 * the stream's latency instead of the deadline. Guarded on the id, so a
 	 * snapshot belonging to an abandoned target cannot vouch for the session the
 	 * user is actually on.
@@ -1515,7 +1516,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * reported by an effect keyed on the session and its stream status
 				 * (`chat-page`), and neither changes when the same row is clicked again -
 				 * so the frame that already arrived is never reported for the new window,
-				 * and the read's latency (up to its 30 s deadline) is the only thing that
+				 * and the read's latency (up to its own deadline) is the only thing that
 				 * closes it. That window refuses sends and reports why, which is a refusal
 				 * the user cannot act on, for a switch that moves nothing: the view, the
 				 * draft and the URL are already at the target, so `true` - the answer that

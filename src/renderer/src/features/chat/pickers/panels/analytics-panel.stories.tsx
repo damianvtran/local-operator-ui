@@ -44,6 +44,7 @@ import type { DesktopUsageAggregate } from "../../../../../../shared/desktop-con
 import "../../../../styles/index.css";
 import type { AnalyticsData, AnalyticsMetric } from "./analytics-model";
 import { AnalyticsPanel } from "./analytics-panel";
+import { desktopRequestDeadlineDetail, desktopRequestDeadlineMs } from "../../../../../../shared/desktop-contract";
 
 /* A fixed LOCAL noon, so the window's own arithmetic is stable everywhere: the
    panel derives its span from this clock, and a frame that moved with the
@@ -192,6 +193,12 @@ const base = {
 	 */
 	canScopeToSession: true,
 	now: NOW,
+	/*
+	 * The read's own clock, fixed like `now` so a frame is reproducible: the
+	 * Totals line states when the read finished, and a story that let it move
+	 * would photograph a different sentence on every capture.
+	 */
+	readAt: NOW.getTime(),
 	onWindowChange: noop,
 	onMetricChange: noop,
 	onThisSessionChange: noop,
@@ -357,8 +364,17 @@ export const Unavailable: Story = {
 		data: null,
 		loading: false,
 		refreshing: false,
-		error:
-			"The backend did not answer /v1/desktop/analytics within 30s. Close and reopen this panel to try again.",
+		/*
+		 * The sentence the app actually builds for this op, taken from the shipped
+		 * functions rather than transcribed: the fixture used to carry a 30 s
+		 * deadline no layer has had since the transport budget became per op
+		 * (review round 1, R5 / design round 1, D8). Fixture drift here is
+		 * invisible in pixels, which is exactly why it went unnoticed.
+		 */
+		error: desktopRequestDeadlineDetail(
+			"analytics.get",
+			desktopRequestDeadlineMs("analytics.get"),
+		).message,
 	},
 };
 
