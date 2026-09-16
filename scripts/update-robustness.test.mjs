@@ -76,6 +76,7 @@ const {
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
+	generationInstallRoot,
 	healPythonBytecode,
 	installFailurePayload,
 	installInFlightPayload,
@@ -83,6 +84,7 @@ const {
 	installedBundleSealBlock,
 	isInstallInFlight,
 	isPythonBytecodePath,
+	isSourceBuildRef,
 	lastInstallAttemptPath,
 	launchdJobLoaded,
 	matchArtifactMetadata,
@@ -2843,28 +2845,36 @@ test("a global install is never pip'd into, and names its own updater", () => {
 		"global-unknown",
 	);
 
-	// A source-built uv tool install must not be upgraded from the registry: that
-	// would replace the operator's own build with the stock package.
+	// A source-built uv tool install is described as one, from the install's own
+	// marker: the provenance is a fact about the INSTALL, where the signal it
+	// replaced - a `lop-update` script existing on this machine - was a fact about
+	// the machine, and told an install already replaced by a wheel that it was
+	// still following a checkout.
 	const sourceBuilt = resolveGlobalInstallPlan({
-		identity: uvIdentity,
-		lopUpdatePath: "/Users/operator/.local/bin/lop-update",
+		identity: {
+			...uvIdentity,
+			sourceRef: "67586aa1f47eea6be7dad0cdde3e2462f96f465d",
+		},
 	});
 	assert.equal(sourceBuilt.canManageUpdate, false);
-	assert.equal(sourceBuilt.updateCommand, "lop-update");
+	assert.equal(sourceBuilt.updateCommand, "lop update");
+	assert.equal(sourceBuilt.sourceBuild, true);
+	assert.match(sourceBuilt.detail, /installs the published release over it/);
 
-	const registryUv = resolveGlobalInstallPlan({
-		identity: uvIdentity,
-		lopUpdatePath: null,
-	});
+	// The remedy is the install's own front end in BOTH layouts. `lop-update` is
+	// the release owner's out-of-tree script and `uv tool upgrade local-operator`
+	// is documented in the harness as failing for a git-snapshot install or a
+	// pinned receipt, so neither may be named again.
+	const registryUv = resolveGlobalInstallPlan({ identity: uvIdentity });
 	assert.equal(registryUv.canManageUpdate, false);
-	assert.equal(registryUv.updateCommand, "uv tool upgrade local-operator");
-	assert.match(registryUv.remedy, /uv tool install/);
+	assert.equal(registryUv.updateCommand, "lop update");
+	assert.equal(registryUv.sourceBuild, false);
+	assert.match(registryUv.remedy, /predates the non-disruptive installer/);
 
 	const pipx = resolveGlobalInstallPlan({
 		identity: {
 			path: "/Users/operator/.local/pipx/venvs/local-operator/bin/local-operator",
 		},
-		lopUpdatePath: null,
 	});
 	assert.equal(pipx.updateCommand, "pipx upgrade local-operator");
 	assert.equal(pipx.canManageUpdate, false);
@@ -2874,7 +2884,6 @@ test("a global install is never pip'd into, and names its own updater", () => {
 			path: "/Users/operator/venv/bin/local-operator",
 			venvPrefix: "/Users/operator/venv",
 		},
-		lopUpdatePath: null,
 	});
 	assert.equal(pip.updateCommand, "pip install --upgrade local-operator");
 
@@ -2891,7 +2900,6 @@ test("a global install is never pip'd into, and names its own updater", () => {
 	// (reviews R2, U4, D4); "we could not tell" is a claim we can support.
 	const unknown = resolveGlobalInstallPlan({
 		identity: { path: null },
-		lopUpdatePath: null,
 	});
 	assert.equal(unknown.canManageUpdate, false);
 	assert.equal(unknown.updateCommand, "");
@@ -2901,7 +2909,6 @@ test("a global install is never pip'd into, and names its own updater", () => {
 
 	const unidentified = resolveGlobalInstallPlan({
 		identity: { path: "/opt/bin/local-operator" },
-		lopUpdatePath: null,
 	});
 	assert.equal(unidentified.updateCommand, "");
 	assert.match(unidentified.detail, /classified as global-unknown/);
@@ -2943,9 +2950,9 @@ test("the operator's own install is classified rather than told to use pip", (t)
 	assert.equal(kind, "uv-tool");
 	const plan = resolveGlobalInstallPlan({
 		identity: { path: shimPath, realPath, shebang: firstLine },
-		lopUpdatePath: null,
 	});
 	assert.doesNotMatch(plan.updateCommand, /^pip install/);
+	assert.equal(plan.updateCommand, "lop update");
 });
 
 /**
@@ -3034,8 +3041,8 @@ test("the install resolves without the shell's PATH, and names the same remedy",
 	);
 
 	// The real machine: both environments have to point at the same install, and
-	// that install has to classify as the uv tool install whose remedy is the
-	// source-build instruction rather than a pip or pipx command.
+	// that install has to classify as the uv tool install the plan names the
+	// harness's own command for - never a pip or pipx command.
 	const underLaunchd = resolveCommandPath("local-operator", {
 		env: appEnv,
 		home,
@@ -3054,23 +3061,25 @@ test("the install resolves without the shell's PATH, and names the same remedy",
 		"uv-tool",
 	);
 
-	const lopLaunchd = resolveCommandPath("lop-update", { env: appEnv, home });
-	assert.equal(
-		resolveCommandPath("lop-update", { env: loginEnv, home }),
-		lopLaunchd,
-	);
-	if (!lopLaunchd) {
-		t.diagnostic("no lop-update here: the source-build remedy is not nameable");
-		return;
-	}
-	const plan = resolveGlobalInstallPlan({
-		identity: readInstallIdentity(underLaunchd),
-		lopUpdatePath: lopLaunchd,
-	});
-	assert.equal(plan.sourceBuild, true);
-	assert.equal(plan.updateCommand, "lop-update");
-	assert.equal(plan.canManageUpdate, false);
+	// And the install the app found is the install the plan describes: the command
+	// is the harness's own front end in every layout, and the version and the
+	// provenance come from that install's metadata rather than from the daemon's
+	// `/health` or from a script on this machine.
+	const identity = readInstallIdentity(underLaunchd);
+	const plan = resolveGlobalInstallPlan({ identity });
+	assert.equal(plan.updateCommand, "lop update");
 	assert.doesNotMatch(plan.updateCommand, /^pip /);
+	assert.equal(plan.sourceBuild, isSourceBuildRef(identity.sourceRef));
+	// Whether the app may RUN it is the layout predicate and nothing else, and
+	// the reason has to be stated either way - this is the machine where the
+	// in-place rewrite killed 36 sessions, so the sentence that explains a refusal
+	// here is the one that matters most.
+	const generationRoot = generationInstallRoot(identity);
+	assert.equal(plan.canManageUpdate, generationRoot !== null);
+	if (generationRoot === null) {
+		assert.match(plan.detail, /rewrites the shared environment in place/);
+		assert.match(plan.remedy, /predates the non-disruptive installer/);
+	}
 });
 
 test("the bundled pip invocation is non-interactive and version-verified", () => {
@@ -4122,6 +4131,10 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 	assert.deepEqual(resolveDistributionMarkers(basePrefixPip), {
 		installer: "pip",
 		editable: false,
+		// Both read from the same directory walk: the version out of the dist-info
+		// name, the provenance out of the marker beside it (absent here).
+		version: "0.54.20",
+		sourceRef: null,
 	});
 	assert.equal(
 		classifyGlobalInstall({
@@ -4133,7 +4146,6 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 	assert.equal(
 		resolveGlobalInstallPlan({
 			identity: { path: "/usr/local/bin/local-operator", installer: "pip" },
-			lopUpdatePath: null,
 		}).updateCommand,
 		"pip install --upgrade local-operator",
 	);
@@ -4179,7 +4191,6 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 			venvPrefix: "/Users/operator/local-operator/.venv",
 			editable: true,
 		},
-		lopUpdatePath: null,
 	});
 	assert.equal(editablePlan.updateCommand, "");
 	assert.equal(editablePlan.sourceBuild, true);
@@ -4202,6 +4213,8 @@ test("a prefix's dist-info says which installer owns it, and whether it is a che
 	assert.deepEqual(resolveDistributionMarkers(tempDir("lo-empty-")), {
 		installer: null,
 		editable: false,
+		version: null,
+		sourceRef: null,
 	});
 });
 
@@ -5187,6 +5200,24 @@ const loAggregateCheck = async ({
 	 * too). Omitted means the app is not an npx install, which is every other
 	 * case in this file.
 	 */
+	/*
+	 * The version the INSTALL on disk reports, when a case needs it to differ from
+	 * the running backend's `/health`.
+	 *
+	 * Why the fixture has to name the install at all: the check compares the install
+	 * the app would UPDATE - that is what "check updates against that lop" means -
+	 * and reads `/health` beside it. This fixture's world used to be complete
+	 * without an install, because the daemon and the registry were the only two
+	 * readings anything took; now that the check resolves the install, a case would
+	 * silently pull the OPERATOR'S real `~/.local/bin/local-operator` (0.55.x on this
+	 * machine) into a fixture whose every other number is 0.54.x.
+	 *
+	 * The default mirrors the daemon's own reading, which is the ordinary case: the
+	 * app spawned the daemon it is attached to (#254), so one install answers both.
+	 * A daemon that answers NO version leaves no reading anywhere - that is what the
+	 * absence cases mean - and a case that wants the skew passes its own version.
+	 */
+	installVersion = serverAnswersVersion ? (serverVersion ?? null) : null,
 	npxVersion = null,
 	/*
 	 * The backoff between attempts at one app-channel feed fetch. The SHIPPED
@@ -5276,6 +5307,18 @@ const loAggregateCheck = async ({
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
 		updateService.appFeedRetryDelaysMs = retryDelaysMs;
 		updateService.updateStage = stage;
+		/*
+		 * The install, stubbed on the same terms as the registry above, and for the
+		 * same reason: this fixture drives GLOBAL_INSTALL, so both the plan and the
+		 * check resolve `local-operator` from the real PATH - which on the operator's
+		 * machine is a real global install and in a clean checkout may be nothing at
+		 * all. Pinned here so every case's world is the one it declared.
+		 */
+		updateService.resolveInstallIdentity = () => ({
+			path: "/synthetic/bin/local-operator",
+			realPath: "/synthetic/bin/local-operator",
+			version: installVersion,
+		});
 		globalThis.__loTestAppCheck = appCheck;
 		/*
 		 * The fixture's `ipcMain.handle` RECORDS the handlers (see its own comment),
@@ -5757,6 +5800,51 @@ test("an absent server reading keeps its own message, and an unparseable one tak
 	assert.ok(
 		older.sent.some(({ channel }) => channel === "backend-update-available"),
 		JSON.stringify(older.sent.map(({ channel }) => channel)),
+	);
+});
+
+/**
+ * The requirement's own half, as a case: the version COMPARED is the install's.
+ *
+ * The app can be attached to a daemon that is not the install it would update -
+ * discovery adopted a daemon this app did not start, or an update landed and the
+ * daemon serving the old build has not been restarted - and the panel must not
+ * describe one install as the other. The comparison follows the install, and the
+ * backend still serving is named beside it.
+ */
+test("the check follows the install, and names the running backend beside it", async () => {
+	const trail = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.42",
+		installVersion: "0.54.43",
+		publishedVersion: "0.54.44",
+	});
+	const offer = trail.sent.find(
+		({ channel }) => channel === "backend-update-available",
+	);
+	assert.ok(offer, JSON.stringify(trail.sent.map(({ channel }) => channel)));
+	// The version the update action would move, not the one the daemon serves.
+	assert.equal(offer.payload.currentVersion, "0.54.43");
+	assert.match(
+		offer.payload.detail,
+		/running backend reports 0\.54\.42, one build behind the install on disk/,
+	);
+	assert.equal(trail.verdict.server, "available");
+
+	// And the mirror: the install is current although the daemon trails it, so
+	// there is nothing to offer - the check answers for what an update would move.
+	const installCurrent = await loAggregateCheck({
+		appCheck: loAppCurrent,
+		serverVersion: "0.54.43",
+		installVersion: "0.54.44",
+		publishedVersion: "0.54.44",
+	});
+	assert.equal(installCurrent.verdict.server, "current");
+	assert.ok(
+		!installCurrent.sent.some(
+			({ channel }) => channel === "backend-update-available",
+		),
+		JSON.stringify(installCurrent.sent.map(({ channel }) => channel)),
 	);
 });
 
