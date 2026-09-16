@@ -137,6 +137,25 @@ const RESTORED_TAB = tab({
 	sessionId: null,
 });
 
+/** Two more tabs, for the states that need the strip to run out of room (QA round
+ * 1's Q2): six chip-carrying rows are past every tier's arithmetic in a pane, so
+ * the pinned control is drawn and its count is what says how many did not fit.
+ * The other half of that finding - the control absent where nothing is missing -
+ * is the set's `route-for-comparison` frame, which carries four tabs at the
+ * route's own width and now draws no control at all. */
+const LEDGER_TAB = tab({
+	tabId: 5,
+	title: "Ledger",
+	url: "https://ledger.example.com/",
+	handedOver: true,
+});
+
+const CHARTS_TAB = tab({
+	tabId: 6,
+	title: "Charts",
+	url: "https://charts.example.com/",
+});
+
 const projection = (
 	tabs: TabFixture[],
 	requests: ApprovalRequestInput[] = [],
@@ -396,11 +415,20 @@ export const ThisConversation: Story = {
 };
 
 /** The same projection under `All tabs`: the other conversation's tab and the
- * restored one — which belongs to nobody — appear, and the tray's sentence is
- * unchanged, because the switch chooses tabs and not demands (spec 7.2). */
+ * restored one — which belongs to nobody — appear, and the tray's sentence and its
+ * ROWS are unchanged, because the switch chooses tabs and not demands (spec 7.2).
+ *
+ * THE REQUESTS ARE THE POINT OF THE FIXTURE, not decoration: two this
+ * conversation's and one another's, so the frame shows the tray counting two under
+ * `2 approvals for this conversation` while the strip shows four tabs belonging to
+ * three different scopes — which is the state QA round 1 (Q1) and UX round 1 (U1)
+ * both caught the pane getting wrong, and the state the fix's own test pins. */
 export const AllTabs: Story = {
 	render: withPane(
-		projection([AGENT_TAB, HANDED_TAB, OTHER_TAB, RESTORED_TAB]),
+		projection(
+			[AGENT_TAB, HANDED_TAB, OTHER_TAB, RESTORED_TAB],
+			[REQUESTS[0], REQUESTS[1], REQUESTS[2]],
+		),
 	),
 	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 	play: async ({ canvasElement }) => {
@@ -412,6 +440,44 @@ export const AllTabs: Story = {
 		const all = canvas.getByRole("tab", { name: "All tabs" });
 		await userEvent.click(all);
 	},
+};
+
+/** Six tabs at the pane's default width, which is past every tier's arithmetic: the
+ * pinned control is drawn and its own text is the count of tabs that are not shown
+ * (QA round 1, Q2). The control is the only way a mouse reaches them — a pane has
+ * no horizontal wheel — so this frame is a claim about reachability as much as
+ * about the count. */
+export const PaneOverflowCount: Story = {
+	render: withPane(
+		projection([
+			AGENT_TAB,
+			HANDED_TAB,
+			OTHER_TAB,
+			RESTORED_TAB,
+			LEDGER_TAB,
+			CHARTS_TAB,
+		]),
+	),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
+/** The same six tabs at the divider's 480px floor: more of them are off screen, and
+ * the count is larger. It is the second half of the pair above — the count has to
+ * read as a count at both widths rather than as a decoration that happens to be
+ * there. */
+export const NarrowOverflowCount: Story = {
+	render: withPane(
+		projection([
+			AGENT_TAB,
+			HANDED_TAB,
+			OTHER_TAB,
+			RESTORED_TAB,
+			LEDGER_TAB,
+			CHARTS_TAB,
+		]),
+		480,
+	),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 
 /** The scope-empty state (spec 7.2): nothing of this conversation is open while
