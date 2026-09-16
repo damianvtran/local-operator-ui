@@ -65,7 +65,7 @@ import { build } from "esbuild";
  * means to give it (measured: three cases in this tree failed exactly so).
  */
 const RE_ANSWERED_A_REQUEST = /answered a request/;
-const RE_NO_ANSWER_TO_PROBE = /no answer to probe/;
+const RE_PROBE_EVIDENCE = /(no answer to probe|probe \d+ of \d+)/;
 const RE_ANSWERED_WITHOUT_PROVING_I =
 	/answered without proving it is a Local Operator daemon/;
 const RE_CONFIG = /^\.\/config$/;
@@ -758,10 +758,17 @@ test("an unanswered desktop call is not evidence the daemon answered (F-1)", asy
 			"a request that was never sent is not an answer, so no transport evidence may be stamped from it",
 		);
 		if (settled.state === "degraded") {
+			/*
+			 * Either arm is legitimate on a loaded runner, and both name their own
+			 * evidence: a probe that was refused below the detach threshold reads
+			 * "(probe 2 of 3)", and one that expired its budget reads "no answer to
+			 * probe N". Neither may read as an answer, which is what the assertion
+			 * below this one holds.
+			 */
 			assert.match(
 				settled.detail,
-				RE_NO_ANSWER_TO_PROBE,
-				"if the probes expired their budget instead of being refused, the copy has to say so rather than name an answer",
+				RE_PROBE_EVIDENCE,
+				"a degraded state has to name the evidence that produced it rather than an answer",
 			);
 		} else {
 			assert.equal(
