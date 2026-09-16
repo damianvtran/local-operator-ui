@@ -1806,10 +1806,68 @@ function mainProcessSources() {
 }
 
 /**
+ * The local names a file can call this module's functions through, in every
+ * shape a file in this tree actually uses:
+ *
+ * - an ESM named import, `import { spawnSync } from "node:child_process"`;
+ * - an ESM namespace import, `import * as cp from "node:child_process"`;
+ * - a destructured CommonJS require,
+ *   `const { spawnSync } = require("node:child_process")`;
+ * - a namespace CommonJS require, `const cp = require("node:child_process")`.
+ *
+ * Why all four rather than the ESM spelling alone (QA round 2, Q1): the harness
+ * scan reads `.cjs`/`.js` files, and compiling to CommonJS *is* how those files
+ * bind this module - so a scan that knew only `import` reported "no sites" for
+ * exactly the files the widening was for. QA's repro: a `.cjs` doing
+ * `const { spawnSync } = require("node:child_process")` and then spawning an
+ * interpreter passed unflagged, while the identical call written chained
+ * (`require(...).spawnSync(...)`) or imported failed by name. Both `require`
+ * shapes are parsed from the raw text rather than the comment-blanked source,
+ * matching the ESM parse below, because a harness that WRITES such a line into a
+ * fixture string is still a file this scanner must read with its eyes open: the
+ * cost of being wrong that way is an extra site to classify, and the cost of the
+ * other way is a blind spot.
+ */
+function childProcessBindings(raw) {
+	const named = new Set();
+	const namespaces = new Set();
+	const addDestructured = (bindings) => {
+		for (const part of bindings.split(",")) {
+			// `spawnSync: run` binds the LOCAL name, which is what a call site uses.
+			const local = (part.includes(":") ? part.split(":")[1] : part).trim();
+			if (local && /^[A-Za-z_$][\w$]*$/.test(local)) named.add(local);
+		}
+	};
+	for (const match of raw.matchAll(
+		/import\s*\{([^}]*)\}\s*from\s*"node:child_process"/g,
+	)) {
+		addDestructured(match[1]);
+	}
+	for (const match of raw.matchAll(
+		/import\s*\*\s*as\s+([A-Za-z_$][\w$]*)\s*from\s*"node:child_process"/g,
+	)) {
+		namespaces.add(match[1]);
+	}
+	for (const match of raw.matchAll(
+		/(?:const|let|var)\s*\{([^}]*)\}\s*=\s*require\("node:child_process"\)/g,
+	)) {
+		addDestructured(match[1]);
+	}
+	for (const match of raw.matchAll(
+		/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\("node:child_process"\)/g,
+	)) {
+		namespaces.add(match[1]);
+	}
+	return { named, namespaces };
+}
+
+/**
  * Every child-process call site in the shipping main-process sources, in file
  * order, with the balanced text of its argument list.
  *
- * What it counts: names imported from `node:child_process` in that file, and the
+ * What it counts: names bound from `node:child_process` in that file
+ * (`childProcessBindings` above - named imports, a namespace import, a
+ * destructured require, a namespace require), and the
  * `require("node:child_process").name(` spelling `index.ts` uses. `RegExp.exec`
  * is deliberately not a child process, so a `.exec(` whose receiver is anything
  * else is skipped — which is also why the receiver is checked rather than the
@@ -1820,21 +1878,17 @@ function findChildProcessSites(files = mainProcessSources()) {
 	for (const file of files) {
 		const raw = readFileSync(file, "utf8");
 		const source = blankComments(raw);
-		const imported = new Set();
-		for (const match of raw.matchAll(
-			/import\s*\{([^}]*)\}\s*from\s*"node:child_process"/g,
-		)) {
-			for (const part of match[1].split(",")) {
-				const name = part.trim();
-				if (name) imported.add(name);
-			}
-		}
-		if (imported.size === 0 && !/require\("node:child_process"\)/.test(raw)) {
+		const { named, namespaces } = childProcessBindings(raw);
+		if (
+			named.size === 0 &&
+			namespaces.size === 0 &&
+			!/require\("node:child_process"\)/.test(raw)
+		) {
 			continue;
 		}
 		const found = [];
 		for (const name of CHILD_PROCESS_NAMES) {
-			if (!imported.has(name)) {
+			if (!named.has(name)) {
 				const pattern = new RegExp(
 					`require\\("node:child_process"\\)\\.${name}\\s*\\(`,
 					"g",
@@ -1842,12 +1896,21 @@ function findChildProcessSites(files = mainProcessSources()) {
 				for (const match of source.matchAll(pattern)) {
 					found.push({ name, at: match.index + match[0].indexOf(name) });
 				}
-				continue;
+			} else {
+				for (const match of source.matchAll(
+					new RegExp(`(?<!\\.)\\b${name}\\s*\\(`, "g"),
+				)) {
+					found.push({ name, at: match.index });
+				}
 			}
-			for (const match of source.matchAll(
-				new RegExp(`(?<!\\.)\\b${name}\\s*\\(`, "g"),
-			)) {
-				found.push({ name, at: match.index });
+			// A namespace binding is a third way to reach the same functions, and it is
+			// how a `.cjs` file calls through one object it required once.
+			for (const namespace of namespaces) {
+				for (const match of source.matchAll(
+					new RegExp(`\\b${namespace}\\.${name}\\s*\\(`, "g"),
+				)) {
+					found.push({ name, at: match.index });
+				}
 			}
 		}
 		found.sort((a, b) => a.at - b.at);
@@ -2450,20 +2513,26 @@ const HARNESS_PYTHON_SPAWN_SITES = [
  * harness roots, and a new python spawn in either fails here until it states its
  * environment.
  *
- * WHAT THE SCAN PROVES, EXACTLY (review round 2, R4), because the first version of
- * this paragraph claimed more than the code below it: it reads every
- * `.mjs`/`.cjs`/`.js` file under `scripts/` and `bin/` and flags each child-process
- * call site whose ARGUMENT TEXT names a python - `python3`, the resolved `python`,
- * a venv's `bin/python`, a fixture's python stub. That is a text scan, so a
- * command built at runtime (`spawn(resolveInterpreter())`) is invisible to it, and
- * no text scan can close that. What bounds the gap is stated rather than assumed:
- * `pythonChildEnv` is the only environment builder in these trees that places a
- * bytecode cache anywhere, so an invisible site could only break the invariant by
- * INHERITING an ambient prefix - and that is measured at the suite level rather
- * than argued, by running the whole suite under an in-bundle ambient
- * `PYTHONPYCACHEPREFIX` and counting what a sentinel bundle gains (0 on this head;
- * the commands and output are in PR #244's body). A row that appears here is also
- * read by a human when a new site shows up, and every row names its reason.
+ * WHAT THE SCAN PROVES, EXACTLY (review round 2, R4; extended for QA round 2's
+ * Q1), because the first version of this paragraph claimed more than the code
+ * below it: it reads every `.mjs`/`.cjs`/`.js` file under `scripts/` and `bin/`,
+ * resolves the four binding shapes a file can reach this module through (named
+ * import, namespace import, destructured `require`, namespace `require` - see
+ * `childProcessBindings`), and flags each child-process call site whose ARGUMENT
+ * TEXT names a python - `python3`, the resolved `python`, a venv's `bin/python`, a
+ * fixture's python stub.
+ *
+ * So the BINDING is no longer a blind spot and the COMMAND still is: a path built
+ * at runtime (`spawn(resolveInterpreter())`, or a helper that hands back the
+ * interpreter) names no python anywhere in the text, and no text scan can close
+ * that. What bounds it is stated rather than assumed: `pythonChildEnv` is the only
+ * environment builder in these trees that places a bytecode cache anywhere, so an
+ * invisible site could only break the invariant by INHERITING an ambient prefix -
+ * and that is measured at the suite level rather than argued, by running the whole
+ * suite under an in-bundle ambient `PYTHONPYCACHEPREFIX` and counting what a
+ * sentinel bundle gains (0 on this head; the commands and output are in PR #244's
+ * body). A row that appears here is also read by a human when a new site shows up,
+ * and every row names its reason.
  */
 test("every python a harness names in its spawn states its own environment", () => {
 	const all = findChildProcessSites(harnessSources());
@@ -2530,6 +2599,75 @@ test("every python a harness names in its spawn states its own environment", () 
 			);
 		}
 	}
+});
+
+/**
+ * QA round 2, Q1: the widened file set is full of CommonJS, and the scan could
+ * not see the binding those files use. Three arms rather than one, because the
+ * finding was that one form failed while two passed - a test that exercised only
+ * the failing one would not notice a regression back to "chained form only":
+ *
+ * 1. a clean `.cjs` that destructures the binding and starts a NON-interpreter
+ *    must still be READ - the site is found, so the file is not skipped - and
+ *    must not classify as a python;
+ * 2. a python spawn written in the chained form fails by name;
+ * 3. the identical call through the destructured binding fails by name.
+ *
+ * The fixtures are written under `tmpdir()` and read by the same
+ * `findChildProcessSites` the harness scan uses, so this pins the scanner's teeth
+ * rather than a second implementation of them. The last arm is the one that
+ * matters most: before this, it found NOTHING, which is why the failure would
+ * have been a silent pass rather than a red test.
+ */
+test("the scan reads the CommonJS require binding a `.cjs` harness uses", () => {
+	const root = mkdtempSync(join(tmpdir(), "lo-scan-arms-"));
+	const sitesIn = (name, body) => {
+		const file = join(root, name);
+		writeFileSync(file, body);
+		return findChildProcessSites([file]);
+	};
+
+	// Arm 1 - the clean shape: destructured binding, non-interpreter command.
+	const clean = sitesIn(
+		"clean.cjs",
+		'const { spawnSync } = require("node:child_process");\nspawnSync("/usr/bin/electron", ["."], { env: { ...process.env } });\n',
+	);
+	assert.equal(
+		clean.length,
+		1,
+		`the destructured binding must be resolved before its command is classified: ${JSON.stringify(clean)}`,
+	);
+	assert.equal(/python/i.test(clean[0].text), false);
+
+	// Arm 2 - the form that already failed by name.
+	const chained = sitesIn(
+		"chained.cjs",
+		'require("node:child_process").spawnSync("python3", ["-c", "x"], { env: { ...process.env } });\n',
+	);
+	assert.equal(chained.length, 1);
+	assert.match(chained[0].text, /python3/);
+
+	// Arm 3 - QA's repro, which passed unflagged before this: the same call, one
+	// binding shape away.
+	const destructured = sitesIn(
+		"destructured.cjs",
+		'const { spawnSync } = require("node:child_process");\nspawnSync("python3", ["-c", "x"], { env: { ...process.env } });\n',
+	);
+	assert.equal(
+		destructured.length,
+		1,
+		`the destructured arm must be read as one site: ${JSON.stringify(destructured)}`,
+	);
+	assert.match(destructured[0].text, /python3/);
+
+	// Both halves of the fix have to hold together for a shipped shim to appear in
+	// the real scan at all: the walk must read `.js` under `bin/`, and the parse
+	// must resolve the destructured require that binds its `spawn`/`spawnSync`.
+	const harness = findChildProcessSites(harnessSources());
+	assert.ok(
+		harness.some((site) => site.file.startsWith("bin/")),
+		"the scan must find child-process sites in the `bin/` shims, which bind node:child_process by destructuring `require`",
+	);
 });
 
 // ---------------------------------------------------------------------------
