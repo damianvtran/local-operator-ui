@@ -126,7 +126,19 @@ function endpoint(request: DesktopMediaRequest): {
 	}
 }
 
-export async function requestDesktopMedia(
+/**
+ * A media request in the same two parts as `./desktop-transport`'s JSON twin,
+ * for the same reason: every failure here resolves rather than throws, so the
+ * promise's own resolution is no evidence that anything answered (review
+ * round 1, F-1). `answered` is true exactly when `fetch` resolved.
+ */
+export type DesktopMediaOutcome = {
+	response: DesktopMediaResponse;
+	/** Whether the daemon itself answered this request. */
+	answered: boolean;
+};
+
+export async function requestDesktopMediaOutcome(
 	input: unknown,
 	// ArrayBuffer-backed by contract: `Blob`, which this relay builds the
 	// multipart body from, accepts no other view. `desktop-ipc.ts` is where the
@@ -135,21 +147,41 @@ export async function requestDesktopMedia(
 	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
-): Promise<DesktopMediaResponse> {
+): Promise<DesktopMediaOutcome> {
 	const parsed = mediaRequestSchema.safeParse(input);
 	if (!parsed.success) {
-		return { status: 422, kind: "error", detail: "Invalid media operation." };
+		// Never sent.
+		return {
+			response: {
+				status: 422,
+				kind: "error",
+				detail: "Invalid media operation.",
+			},
+			answered: false,
+		};
 	}
 	if (!token) {
+		// Never sent: this app has no credential to send.
 		return {
-			status: 503,
-			kind: "error",
-			detail: "Restart with a desktop-managed backend to use these controls.",
+			response: {
+				status: 503,
+				kind: "error",
+				detail: "Restart with a desktop-managed backend to use these controls.",
+			},
+			answered: false,
 		};
 	}
 	const request = parsed.data;
 	if (bytes && bytes.byteLength > MAX_UPLOAD_BYTES) {
-		return { status: 413, kind: "error", detail: "This file is too large." };
+		// Never sent: refused on this side of the socket.
+		return {
+			response: {
+				status: 413,
+				kind: "error",
+				detail: "This file is too large.",
+			},
+			answered: false,
+		};
 	}
 	const target = endpoint(request);
 
@@ -167,7 +199,10 @@ export async function requestDesktopMedia(
 		contentType = "application/json";
 	} else {
 		if (!bytes) {
-			return { status: 422, kind: "error", detail: "A file is required." };
+			return {
+				response: { status: 422, kind: "error", detail: "A file is required." },
+				answered: false,
+			};
 		}
 		const form = new FormData();
 		const blob = new Blob([bytes], {
@@ -186,6 +221,7 @@ export async function requestDesktopMedia(
 		// fetch sets the multipart boundary itself; forcing the header breaks it.
 	}
 
+	let answered = false;
 	try {
 		const response = await fetch(new URL(target.path, backendUrl), {
 			method: target.method,
@@ -198,6 +234,7 @@ export async function requestDesktopMedia(
 			redirect: "error",
 			signal: AbortSignal.timeout(120000),
 		});
+		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
 		if (!response.ok) {
 			// Error bodies from the backend already suppress reflected secrets;
@@ -215,35 +252,68 @@ export async function requestDesktopMedia(
 					// Keep the generic detail.
 				}
 			}
-			return { status: response.status, kind: "error", detail };
+			return {
+				response: { status: response.status, kind: "error", detail },
+				answered: true,
+			};
 		}
 		if (responseType.includes("application/json")) {
 			return {
-				status: response.status,
-				kind: "json",
-				body: await response.json(),
+				response: {
+					status: response.status,
+					kind: "json",
+					body: await response.json(),
+				},
+				answered: true,
 			};
 		}
 		const buffer = new Uint8Array(await response.arrayBuffer());
 		if (buffer.byteLength > MAX_DOWNLOAD_BYTES) {
 			return {
-				status: 502,
-				kind: "error",
-				detail: "The backend returned too much data.",
+				response: {
+					status: 502,
+					kind: "error",
+					detail: "The backend returned too much data.",
+				},
+				// The daemon answered; what it sent was over this relay's ceiling.
+				answered: true,
 			};
 		}
 		return {
-			status: response.status,
-			kind: "bytes",
-			mimeType: responseType || "application/octet-stream",
-			data: buffer,
+			response: {
+				status: response.status,
+				kind: "bytes",
+				mimeType: responseType || "application/octet-stream",
+				data: buffer,
+			},
+			answered: true,
 		};
 	} catch {
 		return {
-			status: 503,
-			kind: "error",
-			detail:
-				"The backend could not complete this request. Check its connection and try again.",
+			response: {
+				status: 503,
+				kind: "error",
+				detail:
+					"The backend could not complete this request. Check its connection and try again.",
+			},
+			/*
+			 * Survives the catch for the same reason as its JSON twin, and with the same
+			 * two cases: a body that failed to parse was already `answered: true`, and so
+			 * is a failure during the body read. A timeout abort that never got a
+			 * response throws out of `fetch` first and returns `false` (review round 2
+			 * MINOR-1; review round 3 MINOR-1 found the second case).
+			 */
+			answered,
 		};
 	}
+}
+
+export async function requestDesktopMedia(
+	input: unknown,
+	bytes: Uint8Array<ArrayBuffer> | null,
+	backendUrl: string,
+	token: string | null,
+): Promise<DesktopMediaResponse> {
+	return (await requestDesktopMediaOutcome(input, bytes, backendUrl, token))
+		.response;
 }
