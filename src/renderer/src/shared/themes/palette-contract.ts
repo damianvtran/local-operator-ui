@@ -128,10 +128,12 @@ export type ThemePalette = {
 	 *
 	 * Both properties below are asserted per palette by `check-themes`
 	 * (`scripts/contrast-contract.mjs`, the "chart bar (hover)" block): at least
-	 * ΔE00 8 from `accent` — the point at which two marks side by side reliably
-	 * take different names, the floor the syntax tokens already use — and never
-	 * closer to the plot ground than `accent` is. Read that block before changing
-	 * a value here; obsidian's window in particular is narrow by construction.
+	 * ΔE00 10 from `accent`, and never closer to the plot ground than `accent` is.
+	 * The 10 is the contract's own separation floor for this role, sitting between
+	 * the syntax tokens' 8 and the semantics' 15 — read that block for the argument
+	 * and for the names of the two constants, and re-measure before changing a value
+	 * here; obsidian's window is narrow by construction, and tokyoNight's sits two
+	 * thousandths above the floor.
 	 */
 	chartBarHover: string;
 

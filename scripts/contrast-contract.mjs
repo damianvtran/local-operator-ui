@@ -1108,26 +1108,40 @@ const LINE_SEPARATION_FLOOR = 4.0;
 /*
  * The chart's hover mark, and why it is TWO assertions rather than one.
  *
- * Separation from `accent` is what makes the mark findable at all. The field
- * floor above (2.0) is argued for a control compared with ITSELF across two
- * states in the same place; here the reader is finding ONE bar among six to
- * thirty-one by comparing it with its neighbours in SPACE, with the tooltip's
- * own box often covering the bar beside it. The floor is therefore 8, the same
- * one the syntax tokens take, and for the same reason: it is the point where two
- * things side by side reliably take different names rather than scraping the
- * threshold. The role this replaced measured 2.8 in monokai, 3.7 in neon and 4.3
- * in localOperatorDark against the mark it was supposed to pick out.
+ * Separation from `accent` is what makes the mark findable at all, and the floor
+ * is **10 ΔE00**. The field floor above (2.0) is argued for a control compared
+ * with ITSELF across two states in the same place; here the reader is finding ONE
+ * bar among six to thirty-one by comparing it with its neighbours in SPACE, with
+ * the tooltip's own box often covering the bar beside it — so the distance has to
+ * carry on its own, with no state change to compare against. The role this
+ * replaced measured 2.8 in monokai, 3.7 in neon and 4.3 in localOperatorDark
+ * against the mark it was supposed to pick out, i.e. it sat at or under the
+ * adjacent-FIELD floor that this file uses for two large planes.
+ *
+ * WHERE 10 COMES FROM, stated because it is not inherited from another constant:
+ * the neighbouring floors measure different things. The four SEMANTIC roles take
+ * `SEPARATION_FLOOR` (15) from each other, and the syntax tokens take
+ * `SYNTAX_COMMENT_FLOOR` (8, used as a ΔE00 separation inside the syntax block).
+ * 10 sits deliberately between them: a hovering bar is larger than a token and
+ * has to be found faster, and unlike a semantic it does not have to be
+ * unmistakable from every other semantic in the palette.
+ *
+ * The twelve authored values clear it, measured with this file's own `deltaE`:
+ * 10.0 to 18.7, and the tightest is tokyoNight at 10.002 — a margin of two
+ * thousandths, recorded here rather than left for the next editor to discover.
+ * That pair is therefore the one a palette change must re-measure; the gate will
+ * fail rather than let it slide, which is what a floor is for.
  *
  * Distance from the plot ground is what makes it a highlight rather than a
- * demotion, and it is the half no floor saw. `accentHover` - the role this used
- * to borrow - moves TOWARD the ground in obsidian (16.97:1 at rest, 13.96:1
+ * demotion, and it is the half no floor saw. `accentHover` — the role this used
+ * to borrow — moves TOWARD the ground in obsidian (16.97:1 at rest, 13.96:1
  * hovered, the only palette of the twelve that does), so the pointed-at bar reads
  * as receding. Every palette's `chartBarHover` is authored to be at least as far
  * from the ground the chart is drawn on as `accent` is: a brighter step on a dark
- * ground, a darker one on a light ground, and - in obsidian, whose accent is
- * already its brightest value - a chroma step at the same lightness instead.
+ * ground, a darker one on a light ground, and — in obsidian, whose accent is
+ * already its brightest value — a chroma step at the same lightness instead.
  */
-const CHART_HOVER_SEPARATION_FLOOR = 8;
+const CHART_HOVER_SEPARATION_FLOOR = 10;
 const CHART_HOVER_GROUND = "surface";
 
 /*
