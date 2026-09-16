@@ -157,6 +157,8 @@ export const MASK_CELL = "\u2022";
  */
 export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
 
+export const CREDENTIAL_WORDS: readonly string[] = ["credential", "cred"];
+
 /**
  * The same token WITHOUT the end-of-line anchor, used only to RE-LOCATE a
  * token that has already armed (`editor.py:81`).
@@ -167,7 +169,24 @@ export const CREDENTIAL_ARM = /(?:^|(?<=\s))\/(?:credential|cred)[ \t]*$/i;
  * negative lookahead is the same partition the arming regex draws, so
  * `/credentials` is not a token here either.
  */
-export const CREDENTIAL_TOKEN = /(?:^|(?<=\s))\/(?:credential|cred)(?!\S)/gi;
+export const CREDENTIAL_TOKEN = new RegExp(
+	`(?:^|(?<=\\s))\\/(?:${CREDENTIAL_WORDS.join("|")})(?!\\S)`,
+	"gi",
+);
+
+/**
+ * The WORDS the token can be written with — the command and its alias — which is
+ * also the pair {@link CREDENTIAL_TOKEN} matches.
+ *
+ * Exported because ONE caller outside this module must treat the word
+ * differently: the composer's planner. `/credential`'s argument is a SECRET, and
+ * the dispatcher strips it before the command text is built for exactly that
+ * reason (`slash-dispatch.ts:523-525`, "refused so a secret can never land in
+ * command text"). Under the prose rule a mid-draft token is a MESSAGE, so an
+ * Escaped capture that later moves would post the secret to the model — which is
+ * what `scripts/credential-composer.test.mjs`'s moved-token case measures, and
+ * what the planner now refuses: these words dispatch wherever their token sits.
+ */
 
 /**
  * The word at the anchor, for the arm's TYPED-THROUGH rule
