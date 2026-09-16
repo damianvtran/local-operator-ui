@@ -2056,3 +2056,85 @@ test("a retired count cannot ride a minted marker, across the mint and a reload"
 	);
 	assert.equal(reloaded.disclosure(), 0, "and re-persists no count");
 });
+
+test("a real keystroke that moves a cancelled token hands it to the dispatcher (Q16)", async () => {
+	/*
+	 * QA round 8's Q16, driven the way the operator drives it: `/credential <secret>`
+	 * typed, Escape, then a REAL keystroke edit that moves the token (Home, then
+	 * characters through the composer's own key pipeline, with the value written the
+	 * way a browser writes it). The dispatch is the assertion — and it is the point,
+	 * because `/credential`'s arguments are REFUSED, so a secret can never land in
+	 * command text; `frame.sent.length === 0` is the property that says the secret
+	 * did not travel as prose.
+	 *
+	 * What this case cannot reach: the app-level re-sync that fires the capture's
+	 * arm on a real keystroke (the mechanism Q16 fixed — an arm used to null the
+	 * record). The harness's edit path does not produce it, which is exactly why the
+	 * suite was green while the app sent; QA's re-run on this head is the app-level
+	 * half.
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-q16-moved",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(frame, "/credential ");
+	await type(frame, "SECRET");
+	await esc(frame);
+	await key(frame, { key: "Home" });
+	for (const ch of "please ") {
+		await key(frame, { key: ch });
+	}
+	const field = frame.textarea();
+	await act(async () => {
+		const next = `please ${field.value}`;
+		writeValue(field, next, next.length);
+	});
+	await settle();
+	assert.equal(frame.value(), "please /credential SECRET");
+	await enter(frame);
+	await settle();
+	assert.equal(ran.length, 1, "the moved token reaches the dispatcher");
+	assert.equal(
+		frame.sent.length,
+		0,
+		"so the secret never travels as message text",
+	);
+
+	/*
+	 * AND WITH THE CARET INSIDE THE TOKEN, which is the state that fires the
+	 * capture's ARM. The record has to survive that re-sync too, because the arm is
+	 * the token's own consequence rather than a new gesture — this is the half the
+	 * app was failing on, and the harness reaches it only with the caret placed by
+	 * hand, which is why the suite stayed green while the app sent. Re-adding the
+	 * arm-time clear (M-Q16) is what this half fails on.
+	 */
+	const armed = await mount({
+		conversationId: "conv-q16-armed",
+		onSlashCommand: async (command) => {
+			ran.push(command);
+			return "consumed";
+		},
+	});
+	await type(armed, "/credential ");
+	await type(armed, "SECRET");
+	await esc(armed);
+	const armField = armed.textarea();
+	await act(async () => {
+		// `please /credential |SECRET` — the caret right after the token, which is
+		// the arm's own precondition.
+		writeValue(
+			armField,
+			"please /credential SECRET",
+			"please /credential ".length,
+		);
+	});
+	await settle();
+	await enter(armed);
+	await settle();
+	assert.equal(ran.length, 2, "the armed caret still reaches the dispatcher");
+	assert.equal(armed.sent.length, 0, "and the secret is not sent as text");
+});
