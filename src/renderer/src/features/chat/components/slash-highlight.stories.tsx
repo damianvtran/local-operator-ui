@@ -900,10 +900,13 @@ const GeometryProbe = ({
 			 * warning names both readings, because a disagreement here is not a matter
 			 * of taste — it means the composed app was not the state the numbers
 			 * describe, which is what round 2 and round 3 both caught: the `name` run
-			 * was absent from pass 1 in obsidian, dune and localOperatorLight (the
-			 * roster resolves over the API fixture), so those frames printed
-			 * `run fontWeights command=600` while their own pixels painted a green name
-			 * (design round 3 D9). Nothing here can make that visible; the warning can.
+			 * was absent from pass 1 in monokai, neon and synth — the three frames that
+			 * carried no `run name` row at all while obsidian, dune and
+			 * localOperatorLight each carried two (design round 3 D9's own table) —
+			 * because the roster resolves over the API fixture after first paint. Those
+			 * frames printed `run fontWeights command=600` while their own pixels
+			 * painted a green name. Nothing here can make that visible; the warning
+			 * can.
 			 */
 			if (pass === "settled") {
 				settled = JSON.stringify({ ...entry, pass: undefined });
