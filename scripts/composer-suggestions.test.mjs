@@ -215,11 +215,16 @@ test("the tip pool is distinct, non-empty and inside its character budget", () =
 	 * to the other row. The row's presence is a function of WIDTH ALONE
 	 * (`composer-tips.ts` property 2), which is only honest while no entry can
 	 * truncate: the row's `truncate` would turn an over-long entry into a fragment
-	 * of a sentence, and a fragment is not a tip. The measured ceiling is 58
-	 * characters / 369px at the narrowest column that renders the row (484px
-	 * available, `docs/evidence/chat-composer-band/README.md`), so 62 leaves
-	 * headroom for a future reword while still failing anything long enough to
-	 * clip.
+	 * of a sentence, and a fragment is not a tip. The measured ceiling is **58
+	 * characters / 356px** — the longest SHIPPED entry, `ask for phone access to
+	 * drive this session from your phone`, in the row's own element at the narrowest
+	 * column that renders the row (484px available,
+	 * `docs/evidence/chat-composer-band/README.md`) — so 62 leaves headroom for a
+	 * future reword while still failing anything long enough to clip. (Round 2 nit:
+	 * this sentence used to read "58 characters / 369px", pairing the shipped pool's
+	 * length with a width nothing here measures; the retired pool's longest entry
+	 * was `ask for the mobile relay to drive this session from your phone`, 62
+	 * characters, which is the number the headroom has to clear.)
 	 */
 	for (const tip of COMPOSER_TIPS) {
 		assert.ok(tip.length > 0, "no empty tip");
