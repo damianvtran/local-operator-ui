@@ -7,8 +7,7 @@ three pulsing dots.
 Two capture surfaces, and the difference matters when reading them:
 
 - **Storybook frames** (`states`, `names-and-fallbacks`, `narrow`, `working`,
-  `working-labels`, `compacting-rung`, `compacting-settled`,
-  `compacting-settled-unchanged`, `compacting-refused`,
+  `working-labels`, `compacting-rung`, `compacting-settled`, `compacting-refused`,
   `operator-spacing-cases`, `turn-boundary-and-working-line`,
   `joined-mid-turn`, `admitted-send-before-first-frame` and its three siblings
   below) render the **production `CanonicalTranscript`**

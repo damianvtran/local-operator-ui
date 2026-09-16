@@ -23,3 +23,15 @@ second case of a board rather than a frame of its own.
 
 `RECOVERY.md`, `MERGE-175.md` and `ROUND3-U14.md` are the notes this set carried
 before this change, kept as they were written.
+
+## What round 3 re-shot, and how it was checked
+
+All nine directories of this set that the branch had touched were re-captured and
+**byte-compared against the committed frames** (the method the design round used,
+per theme). Four had gone stale and are the reason the check exists:
+
+| directory | frames changed | why |
+| --- | --- | --- |
+| `command-phase`, `command-phase-scrolled` | 12 of 12 each | the command list lost this branch's own `/compact` row — the row this PR exists to make reachable, missing from the frame that shows the command list. Main's re-take had rewritten these frames before the fixture gained that row. |
+| `argument-phase-empty`, `argument-phase-no-match` | 12 of 12 each | the empty-list sentence still read `Enter opens the full picker.` where this head says `Enter runs the command.` |
+| `compact-row`, `inline-mid-draft-pair` | 0 of 24 | already current; re-captured and byte-identical, which is what "verified" means here. |
