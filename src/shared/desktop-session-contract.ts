@@ -17,6 +17,19 @@ export type SessionCatalogueRow = {
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	attention?: CompletionAttention;
+	/**
+	 * The feed's stamp for `status`, when the backend served this row knows it.
+	 *
+	 * `status_revision` counts what the feed process published for THIS session
+	 * and `status_epoch` names that process, so a `session_status` frame and this
+	 * list row can be ordered against each other instead of the newer of the two
+	 * being whichever arrived last. Both are omitted together on a backend that
+	 * has no status channel (or has published nothing for this session yet), and
+	 * absent means exactly that: no stamp, so the row cannot win an ordering
+	 * argument it has no evidence for.
+	 */
+	status_revision?: number;
+	status_epoch?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -708,6 +721,35 @@ export type DesktopFeedFrame =
 			type: "notification";
 			session_id: CanonicalSessionId;
 			payload: DesktopNotification;
+	  }
+	/**
+	 * The backend's DERIVED status for one session, as it changes.
+	 *
+	 * The sidebar's row status is a backend-derived value with a precedence that
+	 * lives in exactly one place over there, and the list was the only thing that
+	 * could deliver it — so an answered gate or a completed turn could sit unseen
+	 * for up to the safety poll. This frame is that same value pushed on the
+	 * event, and `payload` deliberately carries the derived pair rather than its
+	 * inputs (`live_state`, `unseen`, ...): the contract's own rule is that the
+	 * backend owns status precedence and clients must not infer it, so shipping
+	 * inputs would invite a second derivation in TypeScript while shipping the
+	 * pair makes this a second CALLER of the one implementation.
+	 *
+	 * `revision` is monotone per session WITHIN the emitting `epoch`, which is
+	 * what `status_revision`/`status_epoch` on a catalogue row are compared
+	 * against; an epoch the client has not seen before resets those guards,
+	 * because the counters they hold belonged to a process that is gone.
+	 *
+	 * A frame is a LEVEL, not a notification: it is idempotent, it never enters
+	 * `DesktopNotifier` (main routes only `notification` frames there), and an
+	 * older renderer ignores the type outright.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "session_status";
+			session_id: CanonicalSessionId;
+			payload: { code: string; label: string; revision: number };
 	  }
 	| {
 			epoch: string;
