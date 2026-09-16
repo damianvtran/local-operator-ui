@@ -1,8 +1,9 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { type FC, memo, useCallback, useState } from "react";
+import { type FC, memo, useCallback, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
@@ -13,12 +14,6 @@ import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 type BaseImageAttachmentProps = {
 	file: string;
 	src: string;
-	/**
-	 * What a click does. OMIT it for a picture with nothing to open: the frame
-	 * then renders without the button, the pointer cursor and the "Click to
-	 * open" title, rather than advertising an action that does not answer.
-	 */
-	onClick?: (file: string) => void;
 	/**
 	 * What to call this picture in `alt` and in the title.
 	 *
@@ -53,11 +48,26 @@ const getFileName = (path: string): string => {
  * `attachment-frame`, so the box never collapses, never reflows the message
  * when the picture lands, and never falls through to the browser's own broken
  * image glyph.
+ *
+ * THE PICTURE IS ALWAYS A BUTTON, and its click expands it (`ImageLightbox`).
+ * It used to be a button only where the caller passed an `onClick`, which opened
+ * the file in the OS default application; a canonical row passed none, so
+ * clicking a tool row's screenshot did nothing at all — the operator's report.
+ * Expansion is now the click's one meaning here, and the old action did not go
+ * away with it: the frame's hover actions (`FileActionsMenu`, rendered for any
+ * on-disk path) carry it, in the same place as every other action on the file.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, onClick, conversationId, label }) => {
+	({ file, src, conversationId, label }) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
+		/**
+		 * Whether the expanded overlay is on screen, and the control it returns
+		 * focus to. Both live here because the picture is this component's: a
+		 * caller that had to wire either one could forget to.
+		 */
+		const [expanded, setExpanded] = useState(false);
+		const pictureRef = useRef<HTMLButtonElement>(null);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		const { setViewMode } = useCanvasStore();
 
@@ -65,10 +75,21 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			const title = getFileName(file);
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
-				// Optional: a picture with no handler has nothing to fall back TO.
-				// It also has no file-actions menu, so this path is unreachable for
-				// one — but the call has to be guarded for the type to hold.
-				onClick?.(file);
+				/*
+				 * The read failed, so open the file itself rather than the canvas
+				 * view of it. This used to be the picture's own click handler, reached
+				 * through the `onClick` prop; that click expands the picture now, and
+				 * the call is stated here instead of routed through a prop that no
+				 * longer means anything. It is the same call `FileActionsMenu`'s
+				 * "Open file" item makes, so this is one action with two entry points
+				 * rather than a second action.
+				 */
+				const normalizedPath = file.startsWith("file://")
+					? file.substring(7)
+					: file;
+				window.api.openFile(normalizedPath).catch((error: unknown) => {
+					console.error("Error opening file:", error);
+				});
 			};
 
 			const { setFiles, setOpenTabs, setSelectedTab } =
@@ -172,11 +193,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					return fallbackAction(message);
 				}
 			}
-		}, [file, onClick, setCanvasOpen, setViewMode, conversationId]);
-
-		const handleClick = () => {
-			onClick?.(file);
-		};
+		}, [file, setCanvasOpen, setViewMode, conversationId]);
 
 		const handleError = () => {
 			setHasError(true);
@@ -236,21 +253,15 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 
 		return (
 			<div className="group relative inline-block">
-				{onClick ? (
-					<button
-						type="button"
-						className="block max-w-full cursor-pointer"
-						onClick={handleClick}
-						title={`Click to open ${name}`}
-					>
-						{picture}
-					</button>
-				) : (
-					// No handler, so no button: a `cursor-pointer` and a "Click to
-					// open" title on something inert is an affordance that lies, and
-					// a focus stop that answers nothing costs a keyboard user a tab.
-					<div className="block max-w-full">{picture}</div>
-				)}
+				<button
+					ref={pictureRef}
+					type="button"
+					className={cn("block max-w-full cursor-pointer")}
+					onClick={() => setExpanded(true)}
+					title={`Click to expand ${name}`}
+				>
+					{picture}
+				</button>
 				{isLocalFile && (
 					<div
 						className="file-actions-menu invisible absolute top-1 right-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
@@ -267,6 +278,13 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						/>
 					</div>
 				)}
+				<ImageLightbox
+					src={src}
+					label={name}
+					open={expanded}
+					onOpenChange={setExpanded}
+					restoreFocusTo={pictureRef}
+				/>
 			</div>
 		);
 	},

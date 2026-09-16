@@ -1,10 +1,11 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { File } from "lucide-react";
 import type { FC } from "react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
@@ -68,6 +69,14 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 	({ file, onClick, conversationId }) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
+		/**
+		 * The expanded state and the control focus returns to, for the pasted-image
+		 * branch only. A pasted image is a picture in the conversation like any
+		 * other, so its click expands it just as `ImageAttachment`'s does; the file
+		 * card below still opens the file it names.
+		 */
+		const [expanded, setExpanded] = useState(false);
+		const pictureRef = useRef<HTMLButtonElement>(null);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		// Access canvas store methods directly via getState() if needed for click, or pass them down if they vary
 		// For this refactor, setFiles, setOpenTabs, setSelectedTab are part of the click handler,
@@ -340,30 +349,49 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		// `<img>` inside a 200px card with no minimum, which is how an 8x6 pasted
 		// PNG turned into an 8px speck at the top of a message.
 		if (isPastedImage) {
+			const name = getFileName(file);
 			return (
 				<div className="group relative inline-block max-w-full">
 					{hasError ? (
-						<BrokenAttachment name={getFileName(file)} />
+						<BrokenAttachment name={name} />
 					) : (
-						<button
-							type="button"
-							className="block max-w-full cursor-pointer"
-							onClick={handleClick}
-							title={`Click to open ${getFileName(file)}`}
-						>
-							<AttachmentFrame>
-								<img
-									src={file}
-									alt={getFileName(file)}
-									className={cn(
-										"max-h-[240px] max-w-full object-contain",
-										isLoaded ? "opacity-100" : "opacity-0",
-									)}
-									onLoad={() => setIsLoaded(true)}
-									onError={() => setHasError(true)}
-								/>
-							</AttachmentFrame>
-						</button>
+						<>
+							{/*
+							 * Expanding, not `handleClick`. That handler's `data:` branch
+							 * resolves a canvas document from a title, and a pasted image's own
+							 * title is "Pasted image" — never a canvas-supported extension — so
+							 * the click fell through to `onClick(file)`, which asked the OS to
+							 * open a `data:` URI as a path and raised "Could not open Pasted
+							 * image" over a picture that was on screen the whole time.
+							 */}
+							<button
+								ref={pictureRef}
+								type="button"
+								className={cn("block max-w-full cursor-pointer")}
+								onClick={() => setExpanded(true)}
+								title={`Click to expand ${name}`}
+							>
+								<AttachmentFrame>
+									<img
+										src={file}
+										alt={name}
+										className={cn(
+											"max-h-[240px] max-w-full object-contain",
+											isLoaded ? "opacity-100" : "opacity-0",
+										)}
+										onLoad={() => setIsLoaded(true)}
+										onError={() => setHasError(true)}
+									/>
+								</AttachmentFrame>
+							</button>
+							<ImageLightbox
+								src={file}
+								label={name}
+								open={expanded}
+								onOpenChange={setExpanded}
+								restoreFocusTo={pictureRef}
+							/>
+						</>
 					)}
 				</div>
 			);
