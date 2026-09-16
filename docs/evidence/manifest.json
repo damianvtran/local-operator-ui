@@ -1,12 +1,12 @@
 {
-  "head": "46302682b3b335c5564cd536e57f762d3d771f94",
-  "headNote": "RE-DERIVED FOR THIS CHANGE ON THE REBASED TREE. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the rebased head this commit names, and they MOVED (b047f7212/11f234964 -> 3626e2834/cf81b1586) because the fold onto main brought its Backend settings feature into `src/` and `scripts/`. `surfaces` is 487 = main's 483 plus this change's four story rows, and `frames` is re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried forward - it is main's 3,919 plus this change's 8 swept frames, with the pair's 8 before frames excluded by their declaration. Nothing main landed invalidates any committed frame for THIS change: both halves of the new pair were re-captured on the rebased tree and came back byte-identical.",
-  "srcTree": "0e6364f02151ff409919e0e89bd91b492ea0b4de",
-  "scriptsTree": "e8f08c852f321f80cd627dd3fba5e6d2cd58e804",
+  "head": "db7f95a9dd723540179742c2c2f30658d5fc70e5",
+  "headNote": "RE-DERIVED FOR THIS CHANGE ON THE TREE IT NOW SITS ON (`cfc28c817`, the 0.25.17 release). `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the commit this file ships in, re-derived after the fold rather than carried: the fold brought 62 commits of `main` into both trees - a canonical-quote evidence set, the slash and compacting stories, the update-notification error states - and `surfaces` and `frames` are re-derived with `check-evidence.mjs`'s own rule against THIS tree rather than either side's value. Nothing the fold landed invalidates any committed frame for THIS change: the four pre-existing cluster stories and the four browser-pane frames it re-captured were all re-captured on the rebased tree (see `partialCapture.findingsRemediationRound1` and its bracket). ONE CORRECTION CARRIED OVER FROM ROUND 1: an earlier spelling of this note named `scriptsTree` as `8ab24f0df`, which is not `scripts` at any commit of this lineage; the field it was describing is `cf81b1586`, and the value is now the rebased tree's own rather than either of those.",
+  "srcTree": "f692591cb1d5cdbf7dd7d9deeb29d5a25a5eabab",
+  "scriptsTree": "45752e1f8c001348c34e8525546565672a97b82f",
   "dirtyWorkingTree": false,
-  "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3929,
-  "surfaces": 488,
+  "capturedAt": "2026-09-16T20:05:00.000Z",
+  "frames": 4151,
+  "surfaces": 509,
   "themes": 12,
   "countsMean": {
     "frames": "RE-DERIVED ON THE REBASED TREE (`3f24f2dbd`) with `check-evidence.mjs`'s own `frames()` walker against this tree: main's 3,919 plus this change's 8 swept frames = 3,927, with the pair's 8 before frames excluded by their `chat-header-cluster/before` declaration. Earlier derivations, kept in their own words: RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
@@ -14,10 +14,10 @@
     "themes": "12 theme names in the merged `capture-evidence.mjs` THEMES literal. Unchanged by this pass, and the baseline set was captured at the same 12 - which is what makes each of its directories a per-theme twin of the swept one beside it. 12 theme names in the `capture-evidence.mjs` THEMES literal, counted the same way. Neither side changes the theme list, so the count is the base's."
   },
   "partialCapture": {
-    "refreshedAt": "2026-09-16T20:16:42.949Z",
-    "refreshedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
+    "refreshedAt": "2026-09-16T20:05:00.000Z",
+    "refreshedAtHead": "db7f95a9dd723540179742c2c2f30658d5fc70e5",
     "refreshedFromHead": "166b3f1244a71ef84e89da341b9ec2bcb72649e5",
-    "refreshedFrames": 292,
+    "refreshedFrames": 586,
     "refreshedStories": [
       "chat-sidebar-current-row--selected-row",
       "chat-sidebar-current-row--new-chat-row-current",
@@ -48,7 +48,44 @@
       "browser-pane--composed-trigger-only",
       "browser-pane--draft-conversation",
       "browser-pane--trigger-no-approval",
-      "browser-pane--with-approval"
+      "browser-pane--with-approval",
+      "chat-canonical-quote-before--highlight-across-turns",
+      "chat-canonical-quote-before--highlight-dismissed",
+      "chat-canonical-quote-before--highlight-mid-turn",
+      "chat-canonical-quote-before--hover-no-highlight",
+      "chat-canonical-quote-before--keyboard-highlight-focused",
+      "chat-canonical-quote-before--scrolled-to-oldest-turn",
+      "chat-canonical-quote-before--selection-at-pane-top",
+      "chat-canonical-quote-before--sent-turn-quote",
+      "chat-canonical-quote--highlight-across-turns",
+      "chat-canonical-quote--highlight-dismissed",
+      "chat-canonical-quote--highlight-hover",
+      "chat-canonical-quote--highlight-mid-turn",
+      "chat-canonical-quote--highlight-then-press",
+      "chat-canonical-quote--hover-no-highlight",
+      "chat-canonical-quote--keyboard-highlight-focused",
+      "chat-canonical-quote--scrolled-to-oldest-turn",
+      "chat-canonical-quote--selection-at-pane-top-across-turns",
+      "chat-canonical-quote--selection-at-pane-top",
+      "chat-canonical-quote--sent-turn-quote",
+      "chat-compact-dialog-before--pending",
+      "chat-compact-dialog-before--settled",
+      "chat-slash-completion--argument-phase-empty",
+      "chat-slash-completion--argument-phase-no-match",
+      "chat-slash-completion--command-phase-scrolled",
+      "chat-slash-completion--command-phase",
+      "chat-slash-completion--compact-row",
+      "chat-slash-completion--inline-mid-draft-pair",
+      "chat-slash-completion--inline-mid-draft",
+      "chat-tool-rows--compacting-refused",
+      "chat-tool-rows--compacting-rung",
+      "chat-tool-rows--compacting-settled-unchanged",
+      "chat-tool-rows--compacting-settled",
+      "common-connectivity-banner--internet-offline-confirmed",
+      "common-updatenotification--error-state-download",
+      "common-updatenotification--error-state-retrying",
+      "common-updatenotification--error-state-wrapped",
+      "common-updatenotification--error-state"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -75,9 +112,9 @@
       "chat-header-cluster/trigger-dot"
     ],
     "addedAt": "2026-09-16T20:16:42.949Z",
-    "addedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
+    "addedAtHead": "35737bf3112f29ebeb9cfa29071b523bbf470613",
     "note": "THE CAPS AND THE HIGHLIGHT (this change), on top of the record below: the current row's ground became the new `highlight` role, the row gained the settings rail's `font-medium` second signal, and every key cap lost its fill - which is visible on two surfaces and one rail. 60 frames were REWRITTEN in `command-palette-commandpalette/` (all five of its stories draw the legend bar whose keys changed) and 36 in `chat-sidebar-current-row/`: the set's two states plus the 12 ADDED `selected-row-neighbour-hovered/` frames that photograph the pointer's mark beside the selection's, so design D1 / QA Q-2's measurement is a committed frame rather than a one-off. `refreshedFromHead` names this pass's own first commit rather than the branch's base, which is what makes `refreshedFrames` the pass's increment and not the branch's whole diff against main: the guard measures 96 rewritten frames over these seven directories and nothing else. The two baseline sets this change declares hold the same stories rendered by an unmodified tree; a declared set is exactly a frame the sweep does not answer for, so their 84 frames are excluded from both terms here and from `frames` above.",
-    "refreshedAtHeadNote": "RE-POINTED AT THE REBASED HEAD, `3f24f2dbd`, and the frames were RE-TAKEN at it rather than re-stamped: the fold onto main moved `scripts/` (main's Backend settings evidence pass adds rows to the sweep and a geometry rig) and `src/`, and every frame in this file's two sets was re-captured on the rebased tree. Both halves of `chat-header-cluster/` came back byte-identical to the pre-fold capture, which is the measurement this field rests on.",
+    "refreshedAtHeadNote": "RE-POINTED AT THE COMMIT THAT CARRIES THESE FRAMES, which is what `head` and `refreshedAtHead` are for. The round-1 remediation was rebased onto `cfc28c817` (the 0.25.17 release, 62 commits on from this branch's previous fold) because the forge reported the pull request `CONFLICTING`/`DIRTY` and a conflict is what stops `pull_request` workflows from starting at all - no CI ran on the pre-rebase spelling of this work. `head`, `refreshedAtHead` and the before-set's `capturedAtHead` are re-pointed at the commits this lineage carries, because a pre-rebase spelling is not an ancestor of `HEAD` and a citation a reviewer cannot resolve is not a citation. `addedAtHead` is re-pointed the same way, at the commit that added the cluster pair.",
     "keycapsPass": "This change's own increment, recorded beside the accumulated fields above rather than in place of them: 60 frames REWRITTEN in `command-palette-commandpalette/` (all five stories draw the legend bar whose keys changed) and 36 frames in `chat-sidebar-current-row/` (the set's two states and the 12 the round-1 hover entry added). The two baseline sets this change declares hold 84 frames of the same stories rendered by unmodified `origin/main`; they are declared, and a declared set is exactly a frame the sweep does not answer for. On the rebased tree the swept total is main's 3,703 plus these 36 = `frames` 3,739, and `surfaces` is main's 465 plus this change's three directories = 468.",
     "passScopeNote": "This record describes THIS CHANGE's pass alone. The branch's earlier passes, and main's own, are not folded into the totals: `check-evidence.mjs` asks the fields about the run they name, and the run is seven directories wide. Main's record as it stood when this branch was rebased is preserved verbatim under `preRebaseRecord` beside this key rather than overwritten, which is the same treatment this file gives every earlier pass.",
     "rebaseNote": "REBASED onto `origin/main` = `0c04cbb09`, 56 commits on from this branch's previous base (`647396910`) - the 0.25.12 and 0.25.13 windows, their `chore(release)` bumps, the composer-credential work and a dozen evidence passes of main's own. The two files outside the evidence set that both sides touch were resolved by hand: `scripts/capture-evidence.mjs` keeps main's new STORIES rows AND this branch's story order and hover entry (the `settings-appearance` row is back after the four `agents` rows, where both bases had it, because a sweep aborts on that story, so putting it earlier shrinks every future sweep's reachable set), and `scripts/contrast-contract.mjs` keeps main's 21 pins, drops this change's two retired `capEdge` rows, and gains the `key cap ink step` pin. The manifest conflicts by construction and takes the by-meaning resolution this file has used at every fold: main's whole record is the base, this branch's records are re-applied onto it, and main's pass is preserved verbatim under `preRebaseRecord`.",
@@ -898,7 +935,31 @@
       ],
       "addedFrames": 16,
       "note": "THE ACTION CLUSTER'S SPACING (this change), recorded beside the accumulated fields rather than in place of them. Four new stories in `chat-header-cluster--*`, captured at the two brand palettes: `no-approval` is the badge-free state the operator reported, `one-approval` and `at-cap` are the badge drawn (the constraint the whole reservation exists for), and `trigger-dot` is the run trigger's own attention dot. 8 frames are the fixed tree's (swept, in `frames`); the 8 BEFORE halves are the same four stories rendered by `origin/main`'s `chat-header.tsx` with this branch's story file, in the DECLARED set `chat-header-cluster/before/` whose README carries the four-command reproduction. TWO THEMES, NOT TWELVE, and the reason is measured rather than assumed: a gap is palette-independent, and `scripts/header-cluster-geometry.mjs` reads the same 8/8 or 12/12 in both brand palettes - the claim this pair carries is two numbers the eye cannot compare across two stills, not a colour. RE-CAPTURED AFTER THE REBASE, and the re-capture is what makes the re-stamp honest: after the fold onto main (`6da8665ee`, which moved `scripts/` and `src/` and would otherwise invalidate every stamp here), both halves were taken again on the rebased tree and ALL SIXTEEN frames came back byte-identical (`cmp`, per file, dark and light, before and after) - so nothing main landed enters these frames, and the tree stamps below are re-derived from the rebased head rather than carried."
-    }
+    },
+    "findingsRemediationRound1": {
+      "note": "THE ROUND-1 REMEDIATION'S OWN PASS, recorded beside the accumulated fields rather than in place of them. ONE CODE CHANGE (the widened gap keyed to the canvas button being rendered as well as the badge being drawn) plus the evidence work three concurrent rounds asked for. The frames: six `browser-pane` frames RE-CAPTURED because they no longer rendered from this head, two NEW after-frames and two NEW before-frames for the fifth cluster story. The before half stays a declared set (see `supplementary`) because a sweep still cannot re-derive it.",
+      "refreshedAt": "2026-09-16T20:05:00.000Z",
+      "refreshedAtHead": "a161249fa6d91744d6bb1c42a1552003f244f421",
+      "refreshedStories": [
+        "chat-header-cluster--no-approval",
+        "chat-header-cluster--one-approval",
+        "chat-header-cluster--at-cap",
+        "chat-header-cluster--trigger-dot",
+        "chat-header-cluster--canvas-open-badge",
+        "browser-pane--trigger-no-approval",
+        "browser-pane--composed-trigger-only",
+        "browser-pane--draft-conversation",
+        "browser-pane--with-approval"
+      ],
+      "refreshedFrames": 20,
+      "addedSurfaces": [
+        "chat-header-cluster/canvas-open-badge"
+      ],
+      "addedFrames": 2,
+      "reCapturedFrames": 6,
+      "stalenessSweep": "Q-1 asked for the general fact, not six files, so the reachable set was re-captured into a scratch worktree and diffed against the committed blobs: all 42 committed `browser-pane` frames (the rows whose stories render `ChatHeader`) and all 16 committed `chat-header-cluster` frames, the latter across both halves. Every committed frame falls in exactly one class, and the counts are 42 = 25 + 6 + 6 + 5. REPRODUCED BY THIS HEAD (25 `browser-pane` + 16 cluster): byte-identical on re-capture, so not stale. STALE BY THIS CHANGE (6): `composed-trigger-only/{dark,light}`, `draft-conversation/dark`, `trigger-no-approval/{dark,light}`, `with-approval/light` - each stable across two independent head runs AND byte-identical when the UNFIXED tree renders it, which is the bracket that attributes them to this change rather than to the machine; re-committed with AE 15732/1393/2370/1007/320/17967 against the replaced blobs. NOT DERIVED FROM THIS TREE (11): six DRIFT frames (`one-tab/dark`, `pane-loading/light`, `route-for-comparison/dark`, `show-all-tabs/dark`, `this-conversation/dark`, `with-approval/dark`) differ from the committed blob IDENTICALLY on both trees, so this change does not move them and re-committing would be churn; five NOISE frames (`draft-conversation/light`, `pane-dock-narrow/{dark,light}`, `scope-empty/light`, `show-all-tabs/light`) differ between two runs of the SAME head, so they are not a function of the tree at all. The manifest's `chat-run-panel` pass note already records that hazard from the other direction. THE GATE CANNOT SEE ANY OF THIS: `pnpm check-evidence` sweeps the whole committed set and its image loop passes stale pixels, because the stamps it checks are tree-level - four of these sat green through a whole review round. A bracket is what makes a stale frame visible, and it is what the next author has to run."
+    },
+    "refreshedFramesNote": "(RESTATED HERE FOR THE FOLD ONTO 0.25.17.) This field has to account for at least the frames standing in - and differing under - the directories `refreshedStories` names at HEAD, and the list is a UNION of passes: `main`'s own and this branch's. The fold onto the 0.25.17 release brought `main`'s canonical-quote, slash-completion, compacting and update-notification frames into the measured range `refreshedFromHead^..HEAD`, so the list gains their directories and the total is re-derived rather than carried: 586 frames differ in that range outside every declared set. Understating the pass is the failure mode the gate names; exceeded-by-design is allowed; and a value carried across a fold describes a list that no longer exists, which is what the round-1 value did after this rebase."
   },
   "supplementary": [
     {
@@ -1594,8 +1655,8 @@
         "The fifth story is the arrangement the container's rule turns on: the badge is still seeking its 12px, but the box it has to clear is not rendered, so the cluster must fall back to the 8px step. Before the fix that room was paid anyway - the browser button's `mr-1` pushed the cluster 4px off its own right edge with nothing to its right (measured: after, browser `512..544` flush with the cluster's right edge; before, `508..540`)."
       ],
       "capturedAt": "2026-09-16T20:16:42.949Z",
-      "capturedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
-      "capturedAtHeadNote": "The commit this branch LANDS the frames in, not the tree they were painted from: they are `origin/main`'s `chat-header.tsx` rendered with this branch's story file, a combination no commit contains on its own. Re-captured after the fold onto main and byte-identical to the pre-fold capture."
+      "capturedAtHead": "db7f95a9dd723540179742c2c2f30658d5fc70e5",
+      "capturedAtHeadNote": "The commit this branch LANDS the frames in, not the tree they were painted from: they are `origin/main`'s `chat-header.tsx` rendered with this branch's story file, a combination no commit contains on its own. Re-captured for the round-1 remediation with the fifth story added and with the widened story signature: the four stories that were already here are byte-identical to the pre-round capture, so the extension moved nothing."
     }
   ],
   "remediationRecord": {
@@ -2199,7 +2260,15 @@
     "srcTree": "6253e4196ba11cdf2855f5a8fec4fc07deacdc6e",
     "scriptsTree": "2fe452ad280ba12139b28e41b6e33d0624136414",
     "dirtyWorkingTree": true,
-    "recaptured": false
+    "recaptured": false,
+    "findingsRemediationRound1": {
+      "note": "Which tree these pixels came from, which is a different question from what the stamps above answer. The scratch worktree was this branch's pre-fold head with the round-1 edits applied, served by its own Storybook on a private port with `react-docgen` (the shipped setting), captured by the repository's own rig, one `--only=` run per surface. The before half and the unfixed-tree bracket came from the same worktree with `chat-header.tsx` restored from `6da8665ee`/`origin/main` - the unfixed tree was verified to be the one being served before anything was measured (`browserMarginRight` 4px, which the probe now FAILS on), not assumed. Chrome ran headless with a scratch profile and a mock keychain; no window was raised and the operator's sessions were untouched. The FOLD onto `cfc28c817` re-ran no capture: every frame this pass wrote was re-compared against the rebased tree's own rendered output and no pixel moved, because the fold touched neither `chat-header.tsx` nor the story file. `dirtyWorkingTree` in the aggregate block is the capture's own, deliberately not a current value.",
+      "head": "db7f95a9dd723540179742c2c2f30658d5fc70e5",
+      "capturedAt": "2026-09-16T20:05:00.000Z",
+      "srcTree": "0e6364f02151ff409919e0e89bd91b492ea0b4de",
+      "scriptsTree": "e8f08c852f321f80cd627dd3fba5e6d2cd58e804",
+      "dirtyWorkingTree": true
+    }
   },
   "upstreamComposerCapture": {
     "sourceManifest": "a8f6bc4b9:docs/evidence/manifest.json",
