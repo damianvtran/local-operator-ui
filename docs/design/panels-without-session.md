@@ -218,8 +218,8 @@ a separate reproduction. § 12 records them.
 | `slash-dispatch.ts:487-493` | refuses any picker destination without a session | refuses unless `DESTINATIONS[spec.destination]?.kind === "machine-panel"` |
 | `slash-dispatch.ts:500` (`PRESENT_DIRECTLY`) | three session-scoped reads presented without an owner round trip | plus every `machine-panel`, which must not post: the POST needs a session in its path (§ 1.10) |
 | `picker-registry.tsx:264-279` (`PickerOutlet`) | `entry.kind !== "picker"` → nothing | plus a `machine-panel` branch that maps the pane's context down |
-| `use-palette-sources.ts:458-473` | one gate for all four panel rows | machine rows gated on liveness only; `session.diagnostics` unchanged |
-| `command-palette.tsx:312-327` | always routes to `/chat` | routes only when the destination is pane-only |
+| `use-palette-sources.ts:458-473` | one gate for all four panel rows | machine rows gated on liveness **and on main's own answer about the credential**; `session.diagnostics` unchanged (§ 3.2) |
+| `command-palette.tsx:312-327` | always routes to `/chat` | routes only when the destination is pane-only, and carries its own invoker with the request (§ 8) |
 
 **What the kind deliberately does not drive.** The two `/move` gates
 (`slash-dispatch.ts:356`, `:419`) keep their `!sessionId` refusal — a move writes
@@ -239,10 +239,10 @@ cannot disagree:
 /**
  * Whether this destination addresses a conversation at all.
  *
- * ONE derivation, because two surfaces quote the same refusal:
- * `useSlashDispatch`'s `!sessionId` gate and the composer's staged line
- * (`slash-contract.ts:687`). `undefined` is a destination the catalogue has no
- * row for, which is a refusal for the same reason the dispatcher's is.
+ * ONE derivation, because the surfaces below quote the same refusal:
+ * `useSlashDispatch`'s `!sessionId` gate and the composer's two copy sites.
+ * `undefined` is a destination the catalogue has no row for, which is a refusal
+ * for the same reason the dispatcher's is.
  */
 export function destinationNeedsSession(destination: string | undefined): boolean;
 ```
@@ -253,9 +253,54 @@ export function destinationNeedsSession(destination: string | undefined): boolea
 - `message-input.tsx:1344-1353` (`stagedNote`) passes
   `destinationNeedsSession(destination) ? paneHasSession : true` — i.e. for a
   machine panel the clause is never printed, whatever the pane's state.
+- `slash-commands.tsx` (`enterFooter`) folds the same predicate for the Enter
+  footer's pane clause, for the reason § 3.3 records.
 - `slash-dispatch.ts:487` calls the same function. It must not import a *value*
   from `picker-registry` where it already imports `DESTINATIONS` — it does
   (`:65`), so this is a second name in an existing import.
+
+### 3.2 The machine rows' second gate: main's answer about the credential
+
+**Corrected in round 1's remediation (QA Q-1).** § 3's table said the machine
+rows are gated on liveness alone. They are not, and the difference was measured
+by QA on the running app:
+
+- `/v1/capabilities` is an **unauthenticated** route, so a daemon this app
+  cannot authenticate to still answers it — and answers with its own
+  `desktop_available: true` and `features.session_catalogue: 2`, which is exactly
+  what `desktopFeatureEnabled(capabilities.data, "session_catalogue", 2)` reads.
+  The palette therefore offered `Info` on an origin where every desktop op this
+  app makes is refused, and the panel it opened read "Desktop authorization is
+  required." in every section.
+- The app already models the two facts separately. Main sets
+  `DaemonStatusSnapshot.desktopAvailable` (`shared/backend-status.ts`) when the
+  daemon PROVES it accepts this app's bearer, and never for one that did not, so
+  the machine rows ask main as well.
+
+**Only an explicit `false` closes the gate.** `null` is a host with no main to ask
+(Storybook, the browser dev server) or an answer still in flight; reading that as
+"the backend refused you" would be the second opinion this palette refuses to
+hold, and a host with no bridge has no desktop transport to mislead anybody with.
+This is also why the rows are not gated on `diagnostics` — § 9 item 11's argued
+alternative stands unchanged, because a backend that merely lacks the routes
+renders the panel's own update notice, which is a sentence on screen rather than
+a row that is missing.
+
+### 3.3 The composer's Enter footer reads the same predicate
+
+**Corrected in round 1's remediation (code review m3).** `enterFooter` printed
+"this pane needs an open conversation to run it" from the raw `paneHasSession`,
+which is the one question § 3.1 centralises. The reviewer could not construct a
+reachable path for a machine panel (`pickStagesDraft` needs `arms && hoists` or
+`hoists && runs && takesDraft`, and no machine panel declares an inline source or
+`argsBehavior`), so it was latent rather than live — but it becomes a false
+promise the moment the catalogue marks `/info`, `/usage` or `/analytics` as
+armed-only or prompt-consuming, both of which the renderer reads from the backend
+rather than pinning.
+
+The fold therefore moved to the footer's caller (`slash-commands.tsx`), the same
+place `message-input.tsx` already folds it for the staged note, and the predicate
+now has **four** call sites rather than three (§ 14.1).
 
 ---
 
@@ -344,15 +389,48 @@ means at the point of paint (`""` at the shell host, the live id at the pane).
 - **Its `meta` ("live · this conversation") goes with it.** No section, no meta.
 - **The panel's `description` (`:266`) is conditioned.** It reads "The install,
   the host this app is connected to, and the conversation in front of you."
-  Session-free, the third clause is false; the honest form names what replaced it,
-  e.g. "The install, the host this app is connected to, and the sessions running
-  on it." The exact words are the designer's call (§ 11) — the *requirement* is
-  that the clause not promise a conversation.
+  Session-free, the third clause is false; the honest form names what replaced it.
+  **As shipped (design round 1, D2):** "…and the sessions on this machine." The
+  first draft of that clause said "the sessions running on it", which is narrower
+  than the section the reader then sees: the rows under "Sessions on this machine"
+  include `stored` and `detached` ones, so the subtitle and the heading disagreed
+  about what the panel was showing. The section's own words are the honest
+  spelling, and they cover every row state.
 - **The "Sessions on this machine" table is unchanged** and does not need a
   session: `sessionLineRows` marks the current row only when
   `line.session_id === thisSessionId` (`info-model.ts:309-313`), so with `""` the
-  marker is simply absent. Its columns, the fleet section, Environment and
-  "Could not be read" are untouched.
+  marker is simply absent. Its columns, the fleet section and "Could not be read"
+  are untouched.
+- **Environment is NOT untouched, and this section used to claim it was
+  (corrected in round 1's remediation — design D1).** Measured on the story pair:
+  the section is 292px session-free against 366px populated, a **74px** drop that
+  is not the removed conversation block (222px + 32px of section gap = 254px, and
+  254 + 74 = the 328px the body lost). Two things move, both because they come
+  from `canonical.frontend`, which the shell host does not have (§ 8):
+  - **The MCP row reads `—` with the note `not read in this view`**
+    (`MCP_NOT_READ_NOTE`, `info-model.ts`). The value was already the panel's
+    "nothing was read" spelling; the note is what stops it passing for a
+    measurement, and it is load-bearing rather than decorative.
+  - **The `Server / Reported` failure table is omitted**, because it is drawn from
+    the same `frontend.mcp_servers` the note is about. It is the only surface in
+    the app that names a broken MCP server, so the note has to tell a reader
+    looking for one that this door will not show it — which is why the row says so
+    rather than falling silent like the twelve empty rows the fixture's other
+    states use.
+
+  **The rejected alternative, and why (recorded because it is the better answer
+  if the frontend ever becomes reachable).** The honest fix would be to CARRY the
+  live copy: a machine panel opened over `/settings` while a conversation is live
+  could show the machine's real MCP state, which is what the pane's own
+  presentation of the same panel does (`PickerOutlet` maps
+  `context.canonical.frontend` down). It is not a small change, and it is not this
+  round's: the frontend is published by the stream hook the PANE mounts, and
+  `paint-cache.ts` records at length why no store carries it (a cached `attention`
+  would restore a fabricated epoch beside a real sequence). Reaching it from the
+  shell host therefore means either a second subscription to the same session's
+  stream or a new store slice, and § 4.1 rejected the store option for the pane's
+  handles already. Until one of those is designed, "not read in this view" is the
+  true statement, and it is the one the row makes.
 - **No empty state or skeleton changes.** The install/fleet skeletons
   (`hostBody`, `:262-274`) are driven by `loading`/`error`, which are unchanged.
 
@@ -468,16 +546,41 @@ that follows from this.
   dies with the pane (§ 1.7) — which is the honest pairing, since that panel was
   drawing the conversation the user just navigated away from.
 - **Focus on close.** The pane's `closePicker` already records its invoker and
-  falls back to the composer (`slash-dispatch.ts:305-321`). The shell host adopts
-  the same rule with the fallback it actually has: record
-  `document.activeElement` when the request arrives, restore it on close if it is
-  still connected (`Node.isConnected`), and otherwise let Radix do what it does.
-  A shell panel has no composer to fall back to, and focusing nothing is better
-  than focusing a node that was removed with the palette — the exact bug that
-  rule was written for (`slash-dispatch.ts:289-303`).
-- **One panel at a time, across both hosts.** The store holds one request and the
-  pane holds one `picker`; a second request replaces the first, as it does today.
-  The claim is what keeps that true once two consumers exist.
+  falls back to the composer (`slash-dispatch.ts:305-321`). **As shipped (round 1,
+  U1): the shell host restores the invoker the PALETTE carried with the request,
+  not one it recorded itself.** The first version recorded
+  `document.activeElement` when the request ARRIVED — and at that instant it is
+  the palette's own search field, which is unmounted in the same commit, so the
+  `isConnected` guard skipped and closing the panel dropped the keyboard on
+  `document.body` (next Tab: "Collapse sidebar"). Measured against the palette's
+  own Escape, which restores the rail row the user came from: two exits from the
+  same gesture, one door. The palette already captures that node for its own
+  Escape, so it now passes it through `PanelRequest.invoker`; the host restores it
+  if it is still connected and otherwise lets Radix do what it does, because a
+  shell panel has no composer to fall back to.
+- **One panel at a time, across both hosts, in BOTH directions.** The store holds
+  one request and the pane holds one `picker`; a second request replaces the
+  first, which the claim does NOT by itself make true once two consumers exist
+  (corrected in round 1's remediation — code review M1).
+
+  The claim arbitrates WHO ANSWERS a request; it says nothing about a panel the
+  shell is ALREADY showing when a request arrives that this host cannot present.
+  The reproduced gesture: on `/settings` with a session in the store, Cmd+K →
+  **Analytics** (the shell host presents it) → Cmd+K again over the modal → pick
+  **Session**, a pane-only row. The palette writes the request and routes to
+  `/chat`, so a pane is mounting in the SAME commit and will open its picker;
+  the shell host returned early for a destination it cannot present and left its
+  own panel standing. Two stacked modals, the lower one with no cue about where
+  it came from.
+
+  So the shell host now YIELDS: a request it cannot present clears its own panel
+  and leaves the request for the pane. The destination decides, not the claim —
+  which is also what keeps this out of § 8's other rule, that a route move with no
+  new request must not close a panel the user opened over another page. The order
+  is deliberate and pinned: `shellHostAction` asks "can I present this" before it
+  asks "has a pane claimed the slot", because the pane claims in the same commit
+  and an outcome that depended on which host's effect React ran first would be a
+  race rather than a rule.
 
 ---
 
@@ -533,15 +636,17 @@ destinations, 9-13 the call sites, 14-16 the record.
     `/browser`, where a native `WebContentsView` paints above all DOM. One line in
     the one funnel covers both hosts.
 11. **`use-palette-sources.ts:458-473`** — machine rows (`info`, `usage`,
-    `analytics`) gated on the liveness bit only (`canStageDraft`, the same bit the
-    chat route and sidebar read); `session.diagnostics` keeps
+    `analytics`) gated on the liveness bit (`canStageDraft`, the same bit the chat
+    route and sidebar read) **plus main's answer about the credential** (§ 3.2,
+    added in round 1's remediation for QA Q-1); `session.diagnostics` keeps
     `paneCanPresent && sessionPanelsAvailable`. Update the two doc comments
     (`:414-437`, `:444-457`). **Why:** R1's panel must be reachable where no pane
-    exists. *Argued alternative:* gate them on `diagnostics` (the capability the
-    two panels read, `info-panel.tsx:577`) and accept that the rows then vanish on
-    a backend that lacks the routes; the panel already renders its own update
-    notice for that case, and the liveness bit is the gate the palette already
-    holds every other row to.
+    exists, and a row whose backend cannot authenticate this app is the dead
+    control the palette refuses to offer. *Argued alternative:* gate them on
+    `diagnostics` (the capability the two panels read, `info-panel.tsx:577`) and
+    accept that the rows then vanish on a backend that lacks the routes; the panel
+    already renders its own update notice for that case, and the liveness bit is
+    the gate the palette already holds every other row to.
 12. **`command-palette.tsx:312-327`** — route to `/chat` only when
     `destinationNeedsSession(destination)`; otherwise request and close, exactly
     as today. **Why:** R2, in one condition. (The `location.pathname` check stays
@@ -616,6 +721,29 @@ desktop suite (`pnpm test:desktop`).
 | `panels-info` / `panels-analytics` populated (unchanged) | the live-conversation rendering is untouched — the regression pair for R1 |
 | both panels narrow (720px) | the removed blocks do not shift the surviving ones |
 
+**Added in round 1's remediation (design D3, D4), because the frames above could
+not carry the round's central claim.** Every entry in that table is taken at the
+TOP of a body that folds at `min(76vh, 760px)`, and the removed block sits at
+in-body y 1427..1650 — 750px below the fold in both states. Measured, the
+session-free and populated pair differ inside exactly ONE band (y 127..139, the
+description line) with a stray pixel in four themes, so "there is no `This
+conversation` heading and no empty notice where it stood" had no frame behind it
+at all. Four frame-list entries close that, all of them state the rig already
+supports (`scrollToEnd`, the shape `panels-analytics--unnamed-sessions` states
+the reason for):
+
+| frame | what it proves |
+|---|---|
+| `panels-info--session-free` (`session-free-end`) | the fold, scrolled to its END: the block is absent and the section rhythm is unbroken where it stood |
+| `panels-info--populated` (`populated-end`) | its twin, scrolled the same way: the block present, the same rhythm |
+| `panels-info--session-free` (`session-free-narrow`, 720px) | the removed block does not shift the surviving ones at the narrow width, in the state this change adds |
+| `panels-analytics--session-free` (`session-free-narrow`, 720px) | the same for the toolbar: the scope cluster is gone and the groups keep their boxes |
+
+`panels-info` was re-captured whole in the same pass (the two `frontend: null`
+states render the Environment note, and `session-free`'s fixture carries no
+session rows — design D5), which is why the round's own numbers live in
+`docs/evidence/manifest.json`'s `partialCapture` block.
+
 **Live frames** (`pnpm app:headless --remote-debugging-port=… --user-data-dir=$SCRATCH/profile
 --window-size=1380x900` — every agent-driven launch names a window mode,
 `AGENTS.md` "Running the app without taking the operator's focus"), before and
@@ -668,7 +796,20 @@ it walks the real flow over the running app, not stills.
    `:483`). Same shape of one-line fix, same reason to leave it.
 7. **The abandoned click in § 8** — a click on a rail destination while a panel is
    open closes the panel and does not navigate. Pre-existing, unchanged, recorded
-   because it was asked.
+   because it was asked. **Round 1 (UX U2) re-confirmed it on the new flow and it
+   stays deferred**, with the reason stated rather than implied: the click is
+   consumed by the modal scrim, which is every modal's behaviour in this app, so
+   letting it through means a non-modal dialog and the loss of the focus trap —
+   a change to every dialog rather than a contained fix to this one. The new flow
+   does make the cost higher (the closed panel is the whole feedback for a user
+   who was stationary to begin with), which is why it is recorded here rather
+   than left in the review thread.
+8. **`/analytics`'s machine-wide scope is unstated in its EMPTY state** (UX round
+   1, U3). The scope exists in the `Totals` meta (`· all sessions`), and the empty
+   notice replaces that section — so the quieter the ledger, the less the panel
+   says about what it measures. Not in this change: it is copy in a second state
+   of a panel that is not what either requirement asks about, and it would re-open
+   the `panels-analytics` empty frames for a sentence rather than a behaviour.
 
 ---
 
@@ -712,9 +853,13 @@ notice is what the user reads.
 
 ## 14. Items the manager must hold the reviewers to
 
-1. `destinationNeedsSession` is one exported function, and **three** call sites
-   use it (the dispatcher gate, the staged line, the palette's routing). A fourth
-   copy of the predicate is the defect this item exists to prevent.
+1. `destinationNeedsSession` is one exported function, and **four** call sites use
+   it (the dispatcher gate, the staged line, the Enter footer, the palette's
+   routing). A fifth copy of the predicate is the defect this item exists to
+   prevent. Round 1's remediation moved this from three to four: the footer was
+   printing the pane refusal from the raw bit (code review m3, § 3.3), and a
+   surface that quotes a refusal the dispatcher no longer gives is the same
+   disagreement in the other direction.
 2. The `/move` gates (`slash-dispatch.ts:356`, `:419`) still refuse without a
    session, shown in the QA matrix.
 3. `PickerOutlet`'s machine-panel branch passes exactly
@@ -728,3 +873,15 @@ notice is what the user reads.
    rather than left adjacent (item 14).
 7. No version bump in the PR, and no `CONTROLS` row added unless a new visual
    surface actually appears (§ 11).
+8. **The shell host yields** a request it cannot present, and the sequence is
+   executed rather than read: `shellHostAction` in the store, driven by
+   `scripts/palette-panel-request.test.mjs` for the M1 gesture (present → a
+   pane-only request arrives → yield, with the claim both ways).
+9. **The machine rows' second gate** is main's own answer about the credential
+   (`desktopAvailable === false`, § 3.2), pinned in
+   `scripts/panel-presentation.test.mjs` alongside the liveness bit.
+10. **Environment's honest state** (§ 5.1): the MCP row carries
+    `not read in this view` and the failure table is omitted whenever the
+    presenter holds no live frontend, and the frames for both `frontend: null`
+    states show it. This is the item that replaced "Environment is untouched",
+    which was false.

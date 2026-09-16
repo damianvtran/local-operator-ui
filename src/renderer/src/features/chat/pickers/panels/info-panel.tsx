@@ -269,10 +269,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 				 * sessionless pane must not make it: with no conversation in front of
 				 * the user there is none to name, and the panel's conversation section
 				 * is absent for the same reason (§ 5.1). What replaced it is the
-				 * section that does not need one.
+				 * section that does not need one — and it names that section in the
+				 * section's own words ("Sessions on this machine"), because the rows
+				 * under it are not only running sessions: a stored or detached row is
+				 * listed there too, and "the sessions running on it" was a narrower
+				 * claim than the heading the reader then sees (design round 1, D2).
 				 */
 				sessionId === ""
-					? "The install, the host this app is connected to, and the sessions running on it."
+					? "The install, the host this app is connected to, and the sessions on this machine."
 					: "The install, the host this app is connected to, and the conversation in front of you."
 			}
 			body={
