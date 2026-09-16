@@ -69,9 +69,11 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * The stories, at the viewports their evidence frames are captured at.
  *
  * `column-floor` and `small-view` are the two the design record's prediction 2
- * is about (the app's minimum window, the whole prompt present and then
- * absent); `empty-chat` is the app's default layout, where prediction 1 -
- * whether the opening four take one row - is decided.
+ * is about (the column floor, the whole prompt present and then absent) - the
+ * floor is the narrowest window whose chat column is still 550px, which is NOT
+ * the app's own minimum window (`WINDOW_MIN_WIDTH` is 800, where the column is
+ * 300px and the prompt is absent); `empty-chat` is the app's default layout,
+ * where prediction 1 - whether the opening four take one row - is decided.
  */
 const STORIES = [
 	["chat-composer-band--empty-chat", 1380, 872],

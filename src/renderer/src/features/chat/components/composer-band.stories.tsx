@@ -23,8 +23,10 @@ import { MessageInput } from "./message-input";
  * the chat column IS the window less its chrome, so a 1380px viewport gives
  * the band's shared measure (`CHAT_MEASURE`, capped at 900px) the width it has
  * in the app. With the canvas OPEN the column collapses to 550px inside an
- * 830px window, which is the app's minimum and the case the band's height cap
- * exists for (`suggestion-stack.ts`); there the band is rendered at 550px
+ * 830px window — the narrowest window whose chat column is still 550px, not the
+ * app's own minimum (800x600, where the column is 300px and the whole prompt is
+ * gone; `small-view` below is that case) — and it is the case the band's height
+ * cap exists for (`suggestion-stack.ts`); there the band is rendered at 550px
  * inside an 830x572 viewport, so the frame carries the app's real geometry
  * without pretending the window is 550px wide.
  *
@@ -45,7 +47,11 @@ import { MessageInput } from "./message-input";
  * - `DraftHeld` is the same band with a draft in the box. The clock is
  *   suspended there and the ROW STAYS PAINTED - a still cannot show a clock, so
  *   what this frame proves is its own precondition: the row is still on screen,
- *   at its usual place, with text in the composer beside it.
+ *   at its usual place, with text in the composer beside it. It is also the
+ *   frame for the CHIPS' DISABLED state: a press while the box holds a draft
+ *   would replace what the user is writing, so the chips go inert, in the
+ *   disabled ink role and at the same size and position, so the band does not
+ *   move under a keystroke.
  * - `ReducedMotion` is `EmptyChat` with the media feature EMULATED by the
  *   capture rig (`{ reducedMotion: true }` in `scripts/capture-evidence.mjs`),
  *   which is the only honest way to photograph this state: the app's own cap is

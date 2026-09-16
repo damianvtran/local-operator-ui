@@ -339,4 +339,54 @@ test("MessageInput wires node-valued refs and delegates its existing splash pred
 		/focusComposer=\{\(\) => textareaRef\.current\?\.focus\(\)\}/,
 	);
 	assert.doesNotMatch(input, /suggestionStackRef|setSuggestionStackCap/);
+	/*
+	 * The sample is HELD for the composer's mount, not re-derived from the
+	 * prompt's visibility (round 1, R3).
+	 *
+	 * A wiring pin rather than a behavioural one, and the reason is the one
+	 * `draft-splash.test.mjs` records at length: `MessageInput` cannot be mounted
+	 * in isolation, because it needs a message list, a dispatcher and the
+	 * canonical store, so what a rendered composer would prove here is only that
+	 * one `useMemo` runs - the claim is about WHICH values it is allowed to
+	 * recompute for. Neither the pin nor a mount can say the row does not change
+	 * under the user's eye; that is a measurement on the running surface (QA's
+	 * resize across `isSmallView`, or the canvas opening and closing).
+	 */
+	assert.match(
+		input,
+		/if \(heldSample\.current === null\) \{\s*heldSample\.current = sampleSuggestions\(/,
+		"the empty chat's sample is drawn once and held in a ref",
+	);
+	assert.match(
+		input,
+		/return heldSample\.current;/,
+		"every render after the first returns the held sample, so a gate flip repaints the same four labels",
+	);
+	assert.equal(
+		input.match(/sampleSuggestions\(/g)?.length,
+		1,
+		"one draw site: a second call anywhere in the composer would sample under the reader again",
+	);
+	/*
+	 * A suggestion press FILLS the composer and does not send (round 1, U1/Q1).
+	 *
+	 * The handler is bounded by the next declaration rather than by a closing
+	 * brace, so a reformat inside it does not move the slice's end off the
+	 * function; what the assertions mean is "this handler's whole body", which is
+	 * the unit the interaction is.
+	 */
+	const handlerStart = input.indexOf("const handleSuggestionClick");
+	const handlerEnd = input.indexOf("const shortcutText", handlerStart);
+	assert.ok(handlerStart > 0 && handlerEnd > handlerStart);
+	const handler = input.slice(handlerStart, handlerEnd);
+	assert.match(
+		handler,
+		/setNewMessage\(suggestion\)/,
+		"the label lands in the box, so the user reads it before anything leaves",
+	);
+	assert.doesNotMatch(
+		handler,
+		/onSendMessage/,
+		"the band must not be able to send: a one-press request that opens a PR or rewires the tunnel is not a demo errand",
+	);
 });

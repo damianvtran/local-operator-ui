@@ -46,9 +46,38 @@
  * The TUI's mark is the app's own `info` glyph, not the word `tip:`
  * (`welcome.py:453-457`: a word "would cost five cells of the sentence to
  * label a line whose tone already says what it is"). The desktop borrows the
- * same idea from its own icon set — a lucide `Info` at 12px, the size the
- * icon ramp permits at `ink-dim` — rather than inventing a mark. The sentence
- * is prose, so it takes no monospace and no markup.
+ * same idea from its own icon set — a lucide `Info` at 12px, the size the icon
+ * ramp permits below the row's own text — rather than inventing a mark. The
+ * sentence is prose, so it takes no monospace and no markup. The mark's
+ * contrast account lives in the component that paints it (`composer-tip.tsx`):
+ * it is decoration and owes the 3:1 non-text floor, not the text floor its
+ * `ink-dim` token happens to clear.
+ *
+ * ## 5. Every entry is an ACTION, and the pool is a width claim
+ *
+ * The TUI's pool is slash-command shaped and its entries teach a command by
+ * showing the syntax you type (`/resume picks up a recent session where you
+ * left off`). A desktop entry that names a pane teaches nothing the reader can
+ * do next, and the reader is sitting in a composer about to write one sentence
+ * — so every entry here names a MOVE the user can make ("ask for …", "type
+ * …", "open …", "attach …", "set …") rather than a feature's address. The
+ * first screen's suggestions and this row are read together, and both are the
+ * product describing what you can ask it for.
+ *
+ * The row's presence is decided by WIDTH alone (property 2 above), which is
+ * only honest while no entry can truncate, so the pool carries a character
+ * budget asserted in `scripts/composer-suggestions.test.mjs`. A `truncate` in
+ * the component is a backstop for the width arithmetic, not the mechanism: a
+ * fragment is not a tip, and a pool entry long enough to become one would make
+ * the row's presence a function of the current entry's length after all.
+ *
+ * Entries are also held to being TRUE of the desktop. The rules that keep
+ * rejected wordings out, so a later editor does not re-add one: no `!` shell
+ * prefix and no `esc`/interrupt line (the TUI's key handling, withheld here);
+ * no `Cmd+N`/`Cmd+K` or any other hotkey the desktop does not bind, and no
+ * hotkey remapping; no fork-placement settings; and no `/mobile` — phone
+ * provisioning is TUI-only in this product, which is why the pool asks the
+ * AGENT for phone access rather than offering the command.
  *
  * ## The ring, and its opening frame
  *
@@ -64,16 +93,16 @@
  */
 
 export const COMPOSER_TIPS: readonly string[] = [
-	"the chat list search finds sessions from months ago",
-	"a team runs one request through several agents",
+	"search chats and agents to reopen an earlier session",
+	"ask for a team and several agents run one request",
 	"type /approvals to set whether tools ask first",
 	"ask for parallel work and the agent fans out subagents",
-	"the run panel shows the plan and its subagents",
-	"the paperclip attaches a file, or paste one in",
-	"settings connects MCP servers",
-	"the canvas keeps a long document beside the chat",
-	"schedules run a prompt on a timer",
-	"ask for the mobile relay to drive this session from your phone",
+	"open the run panel to see a turn's plan and subagents",
+	"attach a file with the paperclip, or paste one in",
+	"connect MCP servers in settings to give the agent tools",
+	"open a document in the canvas to keep it beside the chat",
+	"set a schedule to run a prompt on a timer",
+	"ask for phone access to drive this session from your phone",
 ];
 
 /** Seconds one tip is held before the next takes its place. See the module comment. */
