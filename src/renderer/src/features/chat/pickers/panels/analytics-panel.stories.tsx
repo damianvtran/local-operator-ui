@@ -38,7 +38,7 @@
 
 import { Button } from "@shared/components/ui";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent } from "@storybook/test";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { useState } from "react";
 import type { DesktopUsageAggregate } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
@@ -838,14 +838,31 @@ const statusMatches = Object.values(SEVEN_DAY.session_names).filter((name) =>
  * because Storybook's own chrome renders a footer and a toolbar outside the
  * story: a `querySelector("output")` over the whole page is a query that will
  * one day find somebody else's.
+ *
+ * THE BODY HOLDS TWO TABLES, which is why every helper below reaches through
+ * the by-session table's own accessible name rather than stopping at the
+ * region. `[data-panel-body]` scopes to the section, not to the table under
+ * discussion: the By-provider table renders ABOVE the By-session one, so an
+ * unscoped `tbody tr` count was 24 (20 + 4), a `th` text search found the
+ * provider table's headers first, and seven of these nine plays asserted
+ * against the wrong table while the frames photographed cleanly over them
+ * (QA round 1, Q-1). The region is still the right outer scope — it is what
+ * keeps Storybook's own furniture out — and the table is the right inner one.
+ *
+ * The prefix match is on the table's `aria-label`, which the section builds
+ * from `CACHE_HIT_MEANING`; a copy of the whole string here would be a second
+ * place it is spelled, and it would fail as "found nothing" rather than as
+ * "found the wrong thing" the day the sentence moved.
  */
 const panel = () => document.querySelector("[data-panel-body]");
+const sessionTable = () =>
+	panel()?.querySelector('table[aria-label^="Usage by session"]');
 const rowsInTable = () =>
-	Array.from(panel()?.querySelectorAll("tbody tr") ?? []);
+	Array.from(sessionTable()?.querySelectorAll("tbody tr") ?? []);
 const rowCount = () => rowsInTable().length;
 const liveText = () => panel()?.querySelector("output")?.textContent ?? "";
 const headerCell = (name: string) =>
-	Array.from(panel()?.querySelectorAll("th") ?? []).find((cell) =>
+	Array.from(sessionTable()?.querySelectorAll("th") ?? []).find((cell) =>
 		cell.textContent?.startsWith(name),
 	);
 
@@ -856,6 +873,35 @@ const scaled = (data: AnalyticsData) => ({
 	refreshing: false,
 	error: null,
 });
+
+/**
+ * Wait until `element` will actually take the pointer, then hand it back.
+ *
+ * The panel is a Radix DIALOG, and a modal dialog disables pointer events on
+ * `document.body` while it re-enables them on its own content — a frame or two
+ * after mount, and a `play` starts inside that window. A pointer interaction
+ * launched in it throws `Unable to perform pointer interaction as the element
+ * has pointer-events: none`, which is a statement about WHEN the interaction
+ * happened rather than about what it was: the same click is fine 200ms later,
+ * and a reader cannot reach a control before it accepts the pointer either.
+ *
+ * Measured, rather than assumed: on this head the panel's subtree computes
+ * `pointer-events: none` at ~380ms after navigation and `auto` from ~590ms, so
+ * the wait is short and its absence is a coin toss that had already been
+ * landing wrong — it is what made the sort plays throw on some machines and
+ * pass on others (review round 1, U2).
+ *
+ * It waits on the ELEMENT the play is about to use rather than on the dialog,
+ * so a control in a nested layer (a popover, a tooltip) gets the same
+ * treatment; and it asserts rather than sleeps, so it returns the instant the
+ * surface is interactive instead of costing every story a fixed delay.
+ */
+const whenInteractive = async <T extends Element>(element: T): Promise<T> => {
+	await waitFor(() => {
+		expect(getComputedStyle(element).pointerEvents).not.toBe("none");
+	});
+	return element;
+};
 
 /**
  * Page one of the seven-day window: the strip, twenty rows, the legend, the
@@ -879,6 +925,7 @@ export const SessionPageTwo: Story = {
 	args: scaled(SEVEN_DAY),
 	play: async () => {
 		const next = screen.getByRole("button", { name: "Next" });
+		await whenInteractive(next);
 		await userEvent.click(next);
 		await expect(screen.getByText("21–40 of 4,550 sessions")).toBeTruthy();
 		await expect(screen.getByText("2 / 228")).toBeTruthy();
@@ -886,11 +933,110 @@ export const SessionPageTwo: Story = {
 		await expect(liveText()).toBe("Page 2 of 228.");
 		/*
 		 * Focus does NOT move on a page turn. This is the assertion the
-		 * always-rendered four buttons exist for: a `Next` that unmounted at
+		 * always-rendered four controls exist for: a `Next` that unmounted at
 		 * the end would drop focus to `<body>`, and the reader would lose their
 		 * place in the panel with nothing on screen to say why.
+		 *
+		 * The END of the set — where the pressed control is also the one the
+		 * turn has to make unavailable — is `SessionLastPage` below, because
+		 * that is the case this rule was written for and page one to two cannot
+		 * fail: `Next` stays enabled there. The `blur` is the FRAME's, not the
+		 * assertion's: the ring this play leaves on the control is the capture
+		 * inheriting a focused control, and design round 1 (D2) showed the
+		 * committed frame reading as an accent pill because of it.
 		 */
 		await expect(document.activeElement?.textContent).toBe("Next");
+		(document.activeElement as HTMLElement | null)?.blur();
+	},
+};
+
+/**
+ * The END of the set: the case the four-button rule exists for.
+ *
+ * The reader presses `Last` and lands on a page whose `Next` and `Last` are
+ * unavailable, which is exactly the state that used to take the caret with it:
+ * a native `disabled` blurs the control it is set on, and the browser drops
+ * focus to `<body>` rather than handing it to a sibling. `First` is pressed
+ * back off the end for the same reason from the other side.
+ *
+ * The assertion is on `document.activeElement` because that is the only
+ * surface the failure is visible on — the ring vanishes and the next Tab lands
+ * somewhere else — and the state is reached by pressing the shipped controls
+ * rather than by setting a page prop, so what is under test is the control the
+ * reader has.
+ */
+export const SessionLastPage: Story = {
+	args: scaled(SEVEN_DAY),
+	play: async () => {
+		/*
+		 * The START end first, where `First` is already unavailable: an inert
+		 * control must still take focus and must still do nothing, which is the
+		 * property `aria-disabled` exists for. The page must not move.
+		 */
+		const first = await whenInteractive(
+			screen.getByRole("button", { name: "First" }),
+		);
+		await userEvent.click(first);
+		await expect(screen.getByText("1 / 228")).toBeTruthy();
+		await expect(document.activeElement?.textContent).toBe("First");
+
+		/*
+		 * Then the END, and the story is left there: this is the state the
+		 * pager's treatment exists for, so it is the state the frame has to
+		 * hold.
+		 */
+		const last = await whenInteractive(
+			screen.getByRole("button", { name: "Last" }),
+		);
+		await userEvent.click(last);
+		await expect(screen.getByText("228 / 228")).toBeTruthy();
+		// 4,550 = 227 full pages + a ten-row last page.
+		await expect(
+			screen.getByText("4,541–4,550 of 4,550 sessions"),
+		).toBeTruthy();
+		await expect(rowCount()).toBe(10);
+		await expect(liveText()).toBe("Page 228 of 228.");
+		/*
+		 * The two leading controls are live and the two trailing ones are not,
+		 * stated to assistive tech rather than only in colour — and the pressed
+		 * `Last` is one of the two that just went unavailable, which is exactly
+		 * the press a native `disabled` would have blurred.
+		 */
+		await expect(
+			screen
+				.getByRole("button", { name: "First" })
+				.getAttribute("aria-disabled"),
+		).toBe(null);
+		await expect(
+			screen
+				.getByRole("button", { name: "Next" })
+				.getAttribute("aria-disabled"),
+		).toBe("true");
+		await expect(
+			screen
+				.getByRole("button", { name: "Last" })
+				.getAttribute("aria-disabled"),
+		).toBe("true");
+		await expect(document.activeElement?.textContent).toBe("Last");
+		/*
+		 * And pressing an unavailable `Next` is inert rather than silent: the
+		 * page does not move, and the caret lands on the control that was
+		 * pressed — an inert control is still a control, so it takes focus, and
+		 * what must NOT happen is the caret falling to `<body>`.
+		 */
+		const next = screen.getByRole("button", { name: "Next" });
+		await userEvent.click(next);
+		await expect(screen.getByText("228 / 228")).toBeTruthy();
+		await expect(document.activeElement?.tagName).toBe("BUTTON");
+		await expect(document.activeElement?.textContent).toBe("Next");
+		/*
+		 * And the press is dropped for the frame's sake, after the assertion:
+		 * this story's frame is the END of the set, and its claim is the inert
+		 * treatment of `Next`/`Last` against the live `First`/`Prev`. A focus
+		 * ring on `Next` would put the accent on the control that is supposed to
+		 * be receding (design round 1, D1 and D2).
+		 */
+		next.blur();
 	},
 };
 
@@ -898,7 +1044,9 @@ export const SessionPageTwo: Story = {
 export const SessionSortedByCost: Story = {
 	args: scaled(SEVEN_DAY),
 	play: async () => {
-		const cost = screen.getByRole("button", { name: "Cost" });
+		const cost = await whenInteractive(
+			screen.getByRole("button", { name: "Cost" }),
+		);
 		await userEvent.click(cost);
 		await expect(headerCell("Cost")?.getAttribute("aria-sort")).toBe(
 			"descending",
@@ -908,6 +1056,15 @@ export const SessionSortedByCost: Story = {
 		/* Focus stays on the control that was pressed, so a second activation
 		   is one key away rather than a re-navigation. */
 		await expect(document.activeElement).toBe(cost);
+		/*
+		 * And then it is DROPPED, which is the frame's requirement rather than
+		 * the assertion's: the capture ran on from the focused state, so the
+		 * committed still showed a 2px accent ring around the pressed header and
+		 * the resting sorted state — the ink step and the single chevron the
+		 * design's non-colour argument rests on — was in no picture at all
+		 * (design round 1, D2). The assertion above has already run.
+		 */
+		cost.blur();
 	},
 };
 
@@ -915,7 +1072,9 @@ export const SessionSortedByCost: Story = {
 export const SessionSortedBySession: Story = {
 	args: scaled(SEVEN_DAY),
 	play: async () => {
-		await userEvent.click(screen.getByRole("button", { name: "Session" }));
+		await userEvent.click(
+			await whenInteractive(screen.getByRole("button", { name: "Session" })),
+		);
 		await expect(headerCell("Session")?.getAttribute("aria-sort")).toBe(
 			"ascending",
 		);
@@ -932,6 +1091,15 @@ export const SessionSortedBySession: Story = {
 		await expect((labels[0] ?? "").localeCompare(labels[1] ?? "") <= 0).toBe(
 			true,
 		);
+		/*
+		 * Focus is dropped for the FRAME's sake, after every assertion has run:
+		 * a captured `:focus-visible` ring on the active header read as an accent
+		 * PILL around the column name rather than as the header row, so the
+		 * resting sorted state — the ink step and the single chevron the design's
+		 * non-colour argument rests on — was in no picture at all (design round 1,
+		 * D2). The `Cost` story above does the same for the same reason.
+		 */
+		(document.activeElement as HTMLElement | null)?.blur();
 	},
 };
 
@@ -940,7 +1108,9 @@ export const SessionSearchMatch: Story = {
 	args: scaled(SEVEN_DAY),
 	play: async () => {
 		await userEvent.type(
-			screen.getByRole("textbox", { name: "Search sessions" }),
+			await whenInteractive(
+				screen.getByRole("textbox", { name: "Search sessions" }),
+			),
 			"status",
 		);
 		await expect(
@@ -956,10 +1126,14 @@ export const SessionSearchEmpty: Story = {
 	args: scaled(SEVEN_DAY),
 	play: async () => {
 		await userEvent.type(
-			screen.getByRole("textbox", { name: "Search sessions" }),
+			await whenInteractive(
+				screen.getByRole("textbox", { name: "Search sessions" }),
+			),
 			"zzz",
 		);
-		await expect(screen.getByText('No sessions match "zzz".')).toBeTruthy();
+		await expect(
+			screen.getByText('No sessions match "zzz".', { selector: "p" }),
+		).toBeTruthy();
 		await expect(
 			screen.getByText(
 				"4,550 sessions in this window. Clear the search to see them.",
@@ -978,7 +1152,9 @@ export const SessionTopLevelOnly: Story = {
 	args: scaled(SEVEN_DAY),
 	play: async () => {
 		await userEvent.click(
-			screen.getByRole("checkbox", { name: "Top-level only" }),
+			await whenInteractive(
+				screen.getByRole("checkbox", { name: "Top-level only" }),
+			),
 		);
 		await expect(
 			screen.getByText("404 of 4,550 sessions · top-level only"),

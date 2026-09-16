@@ -66,10 +66,17 @@ export type Column<T> = {
 /**
  * The sort this table is displaying, and the way back.
  *
- * `key: null` means "sortable, but no column is sorted" — the state a table
- * reaches when the order follows something itself (this panel's metric), which
- * is what makes `aria-sort="none"` on every header an honest statement rather
- * than a missing one.
+ * `key` is the sort the table is IN — the column whose order the rows are
+ * actually in — not the column the reader happened to activate. A table whose
+ * order follows something outside it (this panel's metric control) reports THAT
+ * column, so every header's `aria-sort` describes the table on screen rather
+ * than a second, cleaner story about how the order was arrived at; a reader
+ * meeting a ranked list is told it is ranked. A row of `aria-sort="none"` on a
+ * list that descends by tokens is the shape of the defect.
+ *
+ * `null` survives for a table that is sortable and genuinely unordered — no
+ * column is in force, so no column is claiming one. Nothing in the panels is
+ * that state; it is what a caller with no ranking of its own would pass.
  */
 export type DataTableSort = {
 	key: string | null;

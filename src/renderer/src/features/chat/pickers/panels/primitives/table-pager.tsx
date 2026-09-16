@@ -21,14 +21,31 @@ import { formatCount } from "../formatters";
  *   the three surfaces that state this table's counts (its range line, the
  *   section's match line and the live announcement) would start disagreeing
  *   the first time one of them was edited.
- * - **All four buttons are ALWAYS rendered and disabled at the ends.** They are
- *   not conditionally mounted, and that is a focus rule rather than tidiness:
- *   pressing `Next` on the last page would unmount the control under the
- *   caret, and the browser drops focus to `<body>` when the focused element
- *   leaves the DOM — it does not hand it to a sibling. A keyboard reader would
- *   lose their place in the panel every time they reached an end. Disabled at
- *   the ends is a COLOUR change (`Button`'s own variants, `ink-disabled`), never
- *   an opacity fade, which would take the control's ground with it.
+ * - **All four controls are ALWAYS rendered, and an end is `aria-disabled`
+ *   rather than `disabled`.** Always rendering stops the control UNMOUNTING
+ *   under the caret, which is only half of the focus problem: the native
+ *   attribute also BLURS the control it is set on, and a browser with nowhere
+ *   to put the caret does not hand it to a sibling — it drops it to `<body>`.
+ *   So an end is never conditionally mounted AND never carries the real
+ *   attribute. It is a control that exists, takes the pointer and takes focus,
+ *   and reports itself as unavailable; the click and the key that activates it
+ *   reach the handler and are ignored there. Pressing `Next` on the last page,
+ *   and `First` or `Last` from either end, are the cases both halves exist for,
+ *   which is why the section's focus assertion walks to an END rather than only
+ *   to page two.
+ *
+ *   The inert treatment steps the same way a native disabled control's would, by
+ *   COLOUR (`ink-disabled` over a hairline edge) and never by opacity, which
+ *   would take the control's ground with it. The variant is chosen so that the
+ *   step also goes the right DIRECTION: an enabled `outline` control is a
+ *   `border-control` box in `ink` — the authoring 3:1 structural edge, over an
+ *   ink floored at 4.5:1 — and its end state is a hairline box in
+ *   `ink-disabled`, so the two live controls are the prominent ones and the two
+ *   withheld ones recede. `secondary` was the wrong way round for this row
+ *   (design round 1, D1): its disabled fill is `bg-sunken`, the same fill as its
+ *   own `:active`, and `sunken` is a larger step from the row's ground than
+ *   `surface` is on every palette, so the dead chips were the loudest objects on
+ *   the row.
  * - **It adds no motion.** A page turn is a re-render, not a transition.
  */
 
@@ -63,6 +80,51 @@ export const TablePager = ({
 }: TablePagerProps) => {
 	const atStart = page <= 0;
 	const atEnd = page >= pageCount - 1;
+	/**
+	 * One control. A plain function rather than a component, and a function
+	 * rather than four copies of the same five props: the four differ only by
+	 * label, by which end they guard and by the page they ask for, and a second
+	 * spelling of the inert treatment on one row is the defect.
+	 */
+	const control = (name: string, blocked: boolean, target: number) => (
+		<Button
+			variant="outline"
+			size="sm"
+			/*
+			 * `aria-disabled`, NEVER `disabled` — see the head comment. The
+			 * LOOK is carried by the class below rather than by the variant's
+			 * own `disabled:` rules, because those are keyed off the attribute
+			 * that blurs the control, which is the thing being avoided.
+			 */
+			aria-disabled={blocked || undefined}
+			className={cn(
+				/*
+				 * The inert treatment, and every clause is load bearing. The two
+				 * colour roles are the native disabled step (`border-hairline`
+				 * over the variant's `border-control`, `text-ink-disabled` over
+				 * `text-ink`), so the withheld control still reads as withheld.
+				 *
+				 * The `hover:`/`active:` resets are the part a native disabled
+				 * control gets for free and `aria-disabled` does not: the variant's
+				 * own `hover:bg-accent-wash` and `active:` fill still MATCH on this
+				 * element, because nothing in CSS knows it is inert — a dead
+				 * control that lights up under the pointer advertises an
+				 * interaction it does not have (`directory-indicator.tsx` writes
+				 * the same rule down for its read-only chip), and a pressed fill
+				 * would paint while the ignored click is being made. Handled here
+				 * rather than in the variant, which cannot know.
+				 */
+				blocked &&
+					"border-hairline text-ink-disabled cursor-not-allowed hover:bg-transparent active:border-hairline active:bg-transparent",
+			)}
+			onClick={() => {
+				if (blocked) return;
+				onPage(target);
+			}}
+		>
+			{name}
+		</Button>
+	);
 	/*
 	 * `text-meta` for the range and the indicator, `tabular-nums` for the
 	 * indicator's `n / m` so the pair does not shift width as the page count
@@ -84,41 +146,13 @@ export const TablePager = ({
 				{total === 1 ? label : `${label}s`}
 			</p>
 			<div className={cn("flex items-center gap-2")}>
-				<Button
-					variant="secondary"
-					size="sm"
-					disabled={atStart}
-					onClick={() => onPage(0)}
-				>
-					First
-				</Button>
-				<Button
-					variant="secondary"
-					size="sm"
-					disabled={atStart}
-					onClick={() => onPage(page - 1)}
-				>
-					Prev
-				</Button>
+				{control("First", atStart, 0)}
+				{control("Prev", atStart, page - 1)}
 				<p className={cn("text-ink-dim text-meta tabular-nums")}>
 					{page + 1} / {pageCount}
 				</p>
-				<Button
-					variant="secondary"
-					size="sm"
-					disabled={atEnd}
-					onClick={() => onPage(page + 1)}
-				>
-					Next
-				</Button>
-				<Button
-					variant="secondary"
-					size="sm"
-					disabled={atEnd}
-					onClick={() => onPage(pageCount - 1)}
-				>
-					Last
-				</Button>
+				{control("Next", atEnd, page + 1)}
+				{control("Last", atEnd, pageCount - 1)}
 			</div>
 		</div>
 	);

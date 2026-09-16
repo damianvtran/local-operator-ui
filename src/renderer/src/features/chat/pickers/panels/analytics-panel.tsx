@@ -39,6 +39,7 @@ import {
 	INITIAL_SESSION_TABLE_STATE,
 	type SessionTableAction,
 	type SessionTableChange,
+	type SessionTableScope,
 	type SessionTableState,
 	asSessionSortKey,
 	effectiveSortDirection,
@@ -52,6 +53,7 @@ import {
 	sessionMatchLine,
 	sessionPage,
 	sessionTableReducer,
+	sessionTableScopeKey,
 	sortSessionIndex,
 } from "./analytics-session-state";
 import { formatCount, formatMicroUsd, formatTokens } from "./formatters";
@@ -193,12 +195,16 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
  * components; putting it in the adapter would put presentational state where
  * the query is decided.
  *
- * The work is four memos, each keyed on what it actually depends on, so that a
- * page turn does not re-sort and a refetch does not re-narrow. The failure mode
- * of a wrong key is SILENT — the table stays correct and merely slower, and no
- * gate notices — which is why the keys are each named against their inputs in
- * `analytics-session-state.ts` and why the in-app budget (§9) is measured
- * rather than inferred from a green suite.
+ * The work is five memos, each keyed on what it actually depends on, so that a
+ * page turn does not re-sort and a refetch does not re-narrow: the index (labels,
+ * the metric's value per row and the window total) on the payload plus `metric`,
+ * the narrowing on `[index, query, filters]`, the order on the effective key and
+ * direction, the slice on `[ordered, page]`, and the enriched page on the slice.
+ * The failure mode of a wrong key is SILENT — the table stays correct and merely
+ * slower, and no gate notices — which is why the keys are each named against
+ * their inputs in `analytics-session-state.ts`, why §9.1 of the design carries
+ * the same table, and why the in-app budget (§9) is measured rather than inferred
+ * from a green suite.
  */
 const SessionTable: FC<{
 	data: AnalyticsData;
@@ -210,10 +216,9 @@ const SessionTable: FC<{
 	const parents = data.session_parents;
 	const bySession = data.aggregate.by_session;
 	/*
-	 * `metric` is a dependency of the index even though the design's memo table
-	 * lists only the payload: the index holds each row's `value` for the selected
-	 * metric, so a metric change that did not re-index would rank the new metric
-	 * by the old metric's numbers.
+	 * `metric` is a dependency of the index, and §9.1 of the design says so: the
+	 * index holds each row's `value` for the SELECTED metric, so a metric change
+	 * that did not re-index would rank the new metric by the old metric's numbers.
 	 */
 	const index = useMemo(
 		() => sessionIndex(bySession, names, parents, metric),
@@ -260,18 +265,22 @@ const SessionTable: FC<{
 		topLevelOnly: state.filters.topLevelOnly,
 	});
 	/*
-	 * The last interaction, held so the live region can say WHICH sentence this
-	 * change deserves. Every number in that sentence is read from the state
-	 * below it, not stored here, so the announcement cannot state a page or a
-	 * count that the table is no longer showing.
-	 */
-	/*
-	 * The sort the header renders, and the way back.
+	 * The sort the header RENDERS, and the way back.
 	 *
-	 * `key: null` while the order follows the panel's metric: no column was
-	 * activated, and `aria-sort="none"` on every header is the true statement of
-	 * that. An explicit column takes over until the reader changes it, and a
-	 * metric change then leaves their order alone.
+	 * `key` is the EFFECTIVE key — the column the rows are in fact ordered by,
+	 * which is `state.sort` when the reader has activated one and the panel's
+	 * own metric column when they have not. `aria-sort` states the sort the
+	 * table is IN, not how it got there, so a ranked table that announced
+	 * "nothing is sorted" on every header would be describing a different table
+	 * than the one on screen. The glyph and the ink step follow the same key for
+	 * the same reason: the first state every reader meets is a ranked list, and
+	 * the ranking column is the one that has to say so.
+	 *
+	 * `state.sort` staying `null` while the order follows the metric is what
+	 * keeps a metric change re-ranking the table, so this is a change of what
+	 * the header SAYS rather than of what the table does. Clicking the column
+	 * that is already ranking it still sets an explicit sort, which is the
+	 * reader taking ownership of an order they were being given.
 	 *
 	 * Hoisted out of the JSX rather than written inline: a block comment as the
 	 * FIRST token of a JSX attribute's object literal is mis-lexed by both the
@@ -280,7 +289,7 @@ const SessionTable: FC<{
 	 * finished — and the explanation belongs beside the object either way.
 	 */
 	const sortIntent = {
-		key: state.sort?.key ?? null,
+		key: sortKey,
 		direction: sortDirection,
 		onSort: (key: string) => {
 			const nextKey = asSessionSortKey(key);
@@ -366,80 +375,79 @@ const SessionTable: FC<{
 			 * slot has the right scope but the wrong geometry (a text field on a
 			 * heading's baseline), and the host toolbar owns panel-wide controls —
 			 * the By-provider table must not move when this search changes.
+			 *
+			 * TWO ROWS, and the split is the point (design round 1, D4). The controls
+			 * sit on the first; the match line gets the second to itself at EVERY
+			 * width. Inline it was one `gap-3` from the filter's own label with
+			 * nothing between them — the same 12px the row uses BETWEEN controls — so
+			 * at a glance the count read as the rest of that label, at 1140 as well as
+			 * at 720. And at a narrow panel the same line wrapped onto a row of its
+			 * own only once the query passed a length threshold, which moved the
+			 * table, the legend and the pager down 30px WHILE the reader was typing.
+			 * On its own row it cannot be read as that label at any width, and the
+			 * strip's height is a function of the state rather than of how much has
+			 * been typed.
 			 */}
 			{index.rows.length > 0 || isNarrowed(state) ? (
-				<div className={cn("flex flex-wrap items-center gap-3 pb-2")}>
-					<div className={cn("relative w-64")}>
-						<Search
-							className={cn(
-								"-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim",
-							)}
-							aria-hidden="true"
-						/>
-						<Input
-							ref={searchRef}
-							aria-label="Search sessions"
-							placeholder="Search sessions"
-							value={state.query}
-							onChange={(event) => onSearch(event.target.value)}
-							className={cn("pl-8", state.query ? "pr-9" : undefined)}
-							autoComplete="off"
-							spellCheck={false}
-						/>
-						{state.query ? (
-							/*
-							 * `clearSearch` rather than two statements, because the pairing is
-							 * the whole contract: this control unmounts in the same commit that
-							 * empties the query, and the browser drops focus to `<body>` when the
-							 * focused element leaves the DOM rather than handing it to a
-							 * sibling. The inset ring is the same one the sidebar's field needed
-							 * for the same reason: `icon-sm`'s own 2px offset needs 3px of
-							 * clearance inside a 1px-bordered field and there is only 2px.
-							 */
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								aria-label="Clear search"
+				<div className={cn("flex flex-col gap-2 pb-2")}>
+					<div className={cn("flex flex-wrap items-center gap-3")}>
+						<div className={cn("relative w-64")}>
+							<Search
 								className={cn(
-									"-translate-y-1/2 absolute top-1/2 right-1 focus-visible:outline-offset-[-2px]!",
+									"-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim",
 								)}
-								onClick={() => {
-									setChange("search");
-									clearSearch(searchRef.current, (value) => {
-										dispatch({ type: "search", query: value });
-									});
-								}}
-							>
-								<X aria-hidden="true" />
-							</Button>
-						) : null}
+								aria-hidden="true"
+							/>
+							<Input
+								ref={searchRef}
+								aria-label="Search sessions"
+								placeholder="Search sessions"
+								value={state.query}
+								onChange={(event) => onSearch(event.target.value)}
+								className={cn("pl-8", state.query ? "pr-9" : undefined)}
+								autoComplete="off"
+								spellCheck={false}
+							/>
+							{state.query ? (
+								/*
+								 * `clearSearch` rather than two statements, because the pairing is
+								 * the whole contract: this control unmounts in the same commit that
+								 * empties the query, and the browser drops focus to `<body>` when the
+								 * focused element leaves the DOM rather than handing it to a
+								 * sibling. The inset ring is the same one the sidebar's field needed
+								 * for the same reason: `icon-sm`'s own 2px offset needs 3px of
+								 * clearance inside a 1px-bordered field and there is only 2px.
+								 */
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label="Clear search"
+									className={cn(
+										"-translate-y-1/2 absolute top-1/2 right-1 focus-visible:outline-offset-[-2px]!",
+									)}
+									onClick={() => {
+										setChange("search");
+										clearSearch(searchRef.current, (value) => {
+											dispatch({ type: "search", query: value });
+										});
+									}}
+								>
+									<X aria-hidden="true" />
+								</Button>
+							) : null}
+						</div>
+						<PickerCheck
+							checked={state.filters.topLevelOnly}
+							onCheckedChange={(next) => {
+								setChange("filter");
+								dispatch({ type: "filter", topLevelOnly: next });
+							}}
+							tone="muted"
+						>
+							Top-level only
+						</PickerCheck>
 					</div>
-					{/*
-					 * The one filter, and the reason there is one: the section's own meta
-					 * already says the totals include subagents, and in a seven-day window
-					 * 4,146 of 4,550 rows ARE subagent sessions — 82.8% of the tokens.
-					 * Pressing this turns "where did my spend go" into "how much of this
-					 * was me". It arrives with its ground, disabled treatment and hit
-					 * target already settled, being the control the toolbar already uses.
-					 */}
-					<PickerCheck
-						checked={state.filters.topLevelOnly}
-						onCheckedChange={(next) => {
-							setChange("filter");
-							dispatch({ type: "filter", topLevelOnly: next });
-						}}
-						tone="muted"
-					>
-						Top-level only
-					</PickerCheck>
-					{/*
-					 * A VISIBLE line, not only a live region: the fact has to survive a
-					 * frame, a screenshot, a screen reader and a keyboard, and a tooltip
-					 * survives none of the four. It is `text-meta text-ink-dim` — a
-					 * qualifier under the controls it qualifies, not a claim competing
-					 * with the numbers.
-					 */}
-					{matchLine ? (
+					{matchLine && !emptyText ? (
 						<p className={cn("text-ink-dim text-meta")}>{matchLine}</p>
 					) : null}
 				</div>
@@ -530,23 +538,25 @@ const SessionTable: FC<{
  * The reset is a REDUCER action rather than a `setState` beside it so the
  * transition table (§4.3) has one definition the node suite can exercise, and
  * so the three triggers cannot drift apart: a fourth trigger added later is one
- * more field in this key rather than one more call site to remember.
+ * more term in the scope key rather than one more call site to remember. The
+ * key itself is derived in the model (`sessionTableScopeKey`) for the same
+ * reason — a term dropped from it in this file would be a term no test could
+ * see.
+ *
+ * What is deliberately NOT here is any watch on the DATA. A refetch, a new
+ * payload object and the `refreshing` flag all arrive as new props to this
+ * section and none of them reaches this function as a new key, which is the
+ * whole of the rule that a refetch does not throw the reader off their page.
  */
-function useSessionTableState(trigger: {
-	metric: AnalyticsMetric;
-	windowDays: number;
-	thisSessionOnly: boolean;
-}): [SessionTableState, Dispatch<SessionTableAction>] {
+function useSessionTableState(
+	trigger: SessionTableScope,
+): [SessionTableState, Dispatch<SessionTableAction>] {
 	const [state, dispatch] = useReducer(
 		sessionTableReducer,
 		INITIAL_SESSION_TABLE_STATE,
 	);
-	const key = `${trigger.metric}|${trigger.windowDays}|${trigger.thisSessionOnly}`;
-	const [seen, setSeen] = useState(key);
-	if (seen !== key) {
-		setSeen(key);
-		dispatch({ type: "reset" });
-	}
+	const key = sessionTableScopeKey(trigger);
+	if (state.scope !== key) dispatch({ type: "scope", key });
 	return [state, dispatch];
 }
 

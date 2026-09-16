@@ -305,10 +305,13 @@ The docstring's rule is about *deciding* order, not about *displaying* an order
 that was decided. So:
 
 - `Column<T>` gains `sortable?: boolean` and `DataTable` gains an optional
-  `sort?: { key: string | null; direction: "asc" | "desc"; onSort: (key: string) => void }`.
-  The primitive renders a header **button** and `aria-sort` from a value it is
-  told, and reports the intent back. It learns no comparator, no tie-break, no
-  default direction — the model keeps all three.
+  `sort?: DataTableSort` — `{ key: string | null; direction: "asc" | "desc";
+  onSort: (key: string) => void }`. The primitive renders a header **button** and
+  `aria-sort` from a value it is told, and reports the intent back. It learns no
+  comparator, no tie-break, no default direction — the model keeps all three.
+  `key` is the sort the table is IN, not the one the reader activated (§7.5), so
+  the caller passes its effective key and `null` is reserved for a table that is
+  genuinely unordered.
 - The pager is a **sibling** primitive, `primitives/table-pager.tsx`, not part of
   `DataTable`: the pager is not a table, it is a control row under one, and
   bundling it would make `DataTable`'s contract "a table and its footer".
@@ -342,13 +345,19 @@ type SessionTableState = {
   filters: { topLevelOnly: boolean };
   /** 0-based, always within `[0, pageCount - 1]` after the clamp (§4.3). */
   page: number;
+  /**
+   * The window the page was last reset against, as `sessionTableScopeKey` of
+   * the props in force. `null` until the first render reports one, which is
+   * how the reducer tells "no earlier window" from "the window moved".
+   */
+  scope: string | null;
 };
 
 const SESSION_PAGE_SIZE = 20;
 ```
 
 Defaults: `query: ""`, `sort: null`, `filters: { topLevelOnly: false }`,
-`page: 0`.
+`page: 0`, `scope: null`.
 
 `sort: null` is not cleverness for its own sake — it is the state that makes
 "the table is ranked by the metric the panel selected" expressible, which is the
@@ -405,6 +414,32 @@ Two implementation constraints follow, and both are falsifiable:
    announcement says so (§7). `refreshing` and the data's identity are
    deliberately not triggers: a refetch over the same window must not throw the
    reader off the page they are on.
+
+**The three resetting rows above are ONE derivation, and it is a function in the
+model.** `sessionTableScopeKey({ metric, windowDays, thisSessionOnly })` returns
+the window as a comparable string; the section dispatches `{ type: "scope", key }`
+on every render and the reducer moves the page only when the key differs from the
+one already in `state.scope`. Three consequences, each of them the reason for the
+shape rather than a side effect of it:
+
+- **A term dropped from the key is a silent failure** (§12.3's class): the table
+  stays correct and merely sits on a stale page, and no frame or gate notices. So
+  the key is a pure function of three named props in `analytics-session-state.ts`,
+  and each of the three is asserted to move it on its own (§11.1, case 11).
+- **What is NOT in the key is load-bearing too.** A refetch, a new payload object
+  and a `refreshing` flip are new DATA over the same window: they are not among
+  the key's three fields, so no amount of them can move it. The node suite pins
+  that by spreading those extra props into the argument — the mistake a future
+  caller would make.
+- **The first key is adopted, not reset against.** On mount there is no earlier
+  window for a page to be stale against, so `scope: null` takes the key without
+  touching the page.
+
+This replaces a template literal built inline in the section, which is where the
+rule was unreachable: the reducer's `{ type: "reset" }` was exercised, but the
+derivation that decides whether it fires was in a component. The `reset` action
+survives as the "the reader's own narrowing changed the answer" path; the
+`scope` action is the window's.
 
 ---
 
@@ -519,9 +554,9 @@ It sits in the strip (§6.3) with the label `Top-level only`, `tone="muted"`.
 
 ### 6.3 Search, and where the controls live
 
-**The strip: search field, filter, and (only while narrowed) the match line, in
-one `flex flex-wrap items-center gap-3` row inside the section body, above the
-table.** Placement was a real choice, and the other two candidates lose:
+**The strip: search field and filter on the first row, the match line on its own
+row beneath them, inside the section body and above the table.** Placement was a
+real choice, and the other two candidates lose:
 
 - **The host toolbar** is documented as the owner of panel-wide controls
   (`panel-frame.tsx:31`), and this control narrows one section — the By provider
@@ -561,13 +596,26 @@ live region, for the reason `CacheHitLegend` gives for itself
 (`analytics-panel.tsx:72-81`): the fact has to survive a frame, a screenshot, a
 screen reader and a keyboard.
 
+**It gets a row of its own at every width, and that is a correction** (design
+round 1, D4). Inline it sat one `gap-3` from the filter's own label with nothing
+between them — the same 12px the row uses *between* controls — so at a glance the
+count read as the rest of that label's copy, at 1140 as well as at 720. And at a
+narrow panel the same line wrapped onto a row of its own once the query passed a
+length threshold (measured at 720: 170px tall with the wrap against 166 without),
+moving the table, the legend and the pager down by 30px *while the reader was
+typing*. On its own row it cannot be read as that label at any width, and the
+strip's height is a function of the state rather than of how much has been typed.
+It is not moved into the section's `meta` slot, the finding's other suggestion:
+that slot already carries the full clause `Own figures per session · totals
+include subagents`.
+
 ### 6.4 The pager, and what replaces `MoreRowsLine`
 
 Under the table and its legend (where the mock's `+N more not shown` line sat),
 one row: left, `1–20 of 4,550 sessions` in `text-ink-dim text-meta`; right,
-`First`, `Prev`, `1 / 228`, `Next`, `Last`. All four buttons are **always
-rendered** and disabled at the ends rather than conditionally mounted — see §7,
-where the reason is a focus rule rather than tidiness.
+`First`, `Prev`, `1 / 228`, `Next`, `Last`. All four controls are **always
+rendered** and an end is **`aria-disabled`, not `disabled`** — see §7, where the
+reason for both halves is a focus rule rather than tidiness.
 
 `MoreRowsLine` is **removed**, in the same commit, with the primitive's docstring
 rewritten (§3.7). It has exactly one definition and one caller in the whole tree
@@ -631,10 +679,18 @@ steps.
 - After a sort: focus stays on the header button that was pressed. Moving focus
   into the table would make a second activation require re-navigating.
 - After a page turn: focus stays on the pressed pager button. **This is why all
-  four are always rendered**: `Next` on the last page would otherwise unmount
-  under the caret and drop focus to `<body>` (the same DOM rule as §7.2). Disabled
-  at the ends is *colour*, never opacity (`branding.md` § 6), and `Button`'s own
-  variants already implement that.
+  four are always rendered AND why an end is `aria-disabled` rather than
+  `disabled`**, and both halves are needed. Conditional mounting unmounts the
+  control under the caret; the real attribute does not help either, because a
+  browser BLURS a control that becomes disabled — it has nowhere to put the
+  caret and drops it to `<body>` rather than handing it to a sibling. So an end
+  is a control that exists, takes the pointer and takes focus, says it is
+  unavailable through `aria-disabled` and through colour (`ink-disabled` over a
+  hairline edge, never opacity — `branding.md` § 6), and whose activation the
+  handler ignores. `Next` pressed on the last page, and `First`/`Last` at either
+  end, are the cases this exists for; the focus assertion walks to an end rather
+  than only to page two, where nothing can fail (`analytics-panel.stories.tsx`,
+  `SessionLastPage`).
 - While typing: focus stays in the field, always. The count is announced, never
   focused.
 - On opening the panel: unchanged — the host focuses the body region.
@@ -656,6 +712,18 @@ step; never by colour alone. Nothing lifts, scales or translates on hover —
 hover is an ink step (`branding.md` § 5). No focus is stolen, no motion is added;
 reduced motion changes nothing here because nothing animates; a page turn is a
 re-render, not a transition.
+
+**What "the active column" means is the EFFECTIVE one.** `aria-sort` states the
+sort the table is *in*, not how it got there, so `DataTable` is handed
+`effectiveSortKey(state, metric)` rather than the column the reader activated.
+The first state every reader meets is a ranked list — `sort: null`, ordered by the
+panel's metric — and a header row that announced `aria-sort="none"` on every
+column while the rows descended by tokens would be describing a different table.
+So the metric's own column reports `descending`, carries the single chevron and
+sits in `text-ink` from first paint; the other four report `none`. Activating any
+column (including that one) replaces the followed key with an explicit one, which
+is what makes a metric change stop re-ranking this table (§4.1). The distinction
+lives in `state.sort` staying `null`, not in what the header says about it.
 
 **7.6 Row semantics.** `<th scope="col">`, a real `<table>`, `aria-label`
 carrying the table's name and the cache measure as today. Indentation stays a
@@ -687,10 +755,24 @@ adds **no** new claim about depth to a screen reader.
   already asserted on `sunken`, so no new contract row is needed. If
   implementation prefers a fill, it MUST add the `CONTROLS` row in the same
   commit — that is the rule, and it is one line either way.
-- The pager's buttons use the existing `Button` `secondary`/`sm`; the search
+- The pager's controls use `Button variant="outline" size="sm"`; the search
   field is the existing `Input` with the tree's reserved-column idiom (leading
-  glyph, `pl-8`; trailing `×`, `pr-8`) from `chat-sidebar.tsx:842-870` and
-  `picker-host.tsx:875-903`.
+  glyph, `pl-8`; trailing `×`, `pr-9`, because `icon-sm`'s 2px focus offset needs
+  3px of clearance inside the field's 1px border and there are only 2px) from
+  `chat-sidebar.tsx:842-870` and `picker-host.tsx:875-903`.
+
+  `outline` rather than `secondary`, and the choice is what the row's hierarchy
+  is: an enabled `outline` control is a `border-control` box in `ink`, and its end
+  state is a hairline box in `ink-disabled`, so the step goes DOWN from live to
+  withheld. `secondary`'s disabled fill is `bg-sunken`, which is also its own
+  `:active` fill, and `sunken` is a larger step from the row's ground than
+  `surface` is on every palette — so with `secondary` the two dead chips measured
+  *louder* than the two live ones (1.24:1 disabled-fill-vs-ground against 1.09:1
+  enabled in `localOperatorDark`, and the same inversion in every theme tested).
+  No `CONTROLS` row is added: the enabled control is the `outline control` row
+  the contract already asserts (`fill: null`, `border: borderControl`,
+  `ink: ink`), and the end state is a decorative hairline plus `inkDisabled`,
+  which is exempt from the ink floor by name.
 - No inner scroll container anywhere in the section, per `data-table.tsx:27-28`
   and `ui/table.tsx:9-22`. The header is **not** sticky: the panel body is the
   only scroller, and a sticky header inside it would need the section to know the
@@ -715,19 +797,30 @@ rows), measured on this machine:**
 Against the measured alternative — 335 ms and 27,300 cells for the full set
 (§2.3) — every budget above is one frame or less.
 
-**9.1 Where memoisation lives.** Four `useMemo`s in the section, each keyed on
+**9.1 Where memoisation lives.** Five `useMemo`s in the section, each keyed on
 what it actually depends on, so that a page turn does not re-sort and a refetch
 does not re-narrow:
 
 | memo | key |
 |---|---|
-| `index` (labels, values, the window total) | `[by_session, session_names, session_parents]` |
-| `narrowed` | `[index, query, filters]` |
-| `ordered` | `[narrowed, effectiveSortKey, direction]` |
-| `pageRows` (slice + enrich) | `[ordered, page]` |
+| `index` (labels, values, and the window total for the selected metric) | `[bySession, names, parents, metric]` |
+| `narrowed` | `[index, state.query, state.filters]` |
+| `ordered` | `[narrowed, sortKey, sortDirection]` |
+| `slice` (the page) | `[ordered, state.page]` |
+| `pageRows` (enrich the page: depth labels, share bars) | `[slice, index.total, names, parents]` |
 
-`metric` enters through `effectiveSortKey` and the index's `value`, so a metric
-change re-ranks once. `refreshing` and the query object's identity enter nothing.
+`metric` is an explicit dependency of the index, and it has to be: each row's
+`value` is the SELECTED metric's number, so an index that survived a metric change
+would rank the new metric by the old metric's figures. It also enters through
+`sortKey`, so a metric change re-ranks once (§12.3 is the failure mode of getting
+either wrong). Splitting the slice from the enrich is what keeps the depth walk's
+cost a function of the page rather than of the ledger: `pageRows` is keyed on the
+slice, not on `ordered`. `refreshing` and the payload object's identity enter
+nothing.
+
+The `fraction` denominator stays `index.total` — the window's total for the
+metric — through `pageRows`'s `[slice, index.total, …]` key, which is §5.1's fixed
+fact about the window rather than about what is on screen.
 
 **9.2 How it is measured, for QA and for review.**
 
@@ -757,7 +850,7 @@ change re-ranks once. `refreshing` and the query object's identity enter nothing
 
 | file | contents |
 |---|---|
-| `src/renderer/src/features/chat/pickers/panels/analytics-session-state.ts` | the pure layer: `SESSION_PAGE_SIZE`, `SessionTableState`, `sessionTableReducer`, `sessionIndex()`, `narrowSessionIndex()`, `sortSessionIndex()`, `sessionPage()`, `enrichSessionRows()`, `effectiveSortKey()`, `firstDirection()`, `sessionMatchLine()`, `sessionAnnouncement()`, `sessionEmptyText()` |
+| `src/renderer/src/features/chat/pickers/panels/analytics-session-state.ts` | the pure layer: `SESSION_PAGE_SIZE`, `SessionTableState`, `sessionTableReducer`, `sessionTableScopeKey()`, `sessionIndex()`, `narrowSessionIndex()`, `sortSessionIndex()`, `sessionPage()`, `enrichSessionRows()`, `effectiveSortKey()`, `firstDirection()`, `sessionMatchLine()`, `sessionAnnouncement()`, `sessionEmptyText()` |
 | `src/renderer/src/features/chat/pickers/panels/primitives/table-pager.tsx` | `TablePager` (`page`, `pageCount`, `from`, `to`, `total`, `label`, `onPage`), four always-rendered buttons and the `n / m` indicator |
 | `scripts/analytics-session-table.test.mjs` | the model suite (§11.1) |
 
@@ -775,7 +868,7 @@ change re-ranks once. `refreshing` and the query object's identity enter nothing
 | `primitives/data-table.tsx:31-41`, `:43-50`, `:51-92` | `Column.sortable?`; `DataTableProps.sort?`; the header cell renders a button + `aria-sort`; rows unchanged |
 | `primitives/data-table.tsx:103-113` | `MoreRowsLine` deleted, with the grep evidence in the commit message |
 | `analytics-panel.stories.tsx` | a `scaleFixture(n)` generator; new stories (§11.2); `UnnamedSessions` (`:469-482`) must stay green |
-| `scripts/capture-evidence.mjs:1467-1532` | `STORIES` entries for the new story ids |
+| `scripts/capture-evidence.mjs` | `STORIES` entries for the new story ids; the `scrollTo` option (park the body on a section's top, the counterpart of `scrollToEnd`); and the `sb-errordisplay` rejection (§11.2) |
 | `package.json` | `scripts/analytics-session-table.test.mjs` added to the hand-written `test:desktop` list (§1.13) |
 | `docs/evidence/manifest.json` | re-stamped `srcTree`/`scriptsTree` (§1.14) |
 
@@ -814,6 +907,14 @@ Each of these is falsifiable and each pins a decision this document makes:
    `1 session` / `1 of 1 session` singulars.
 10. **The page invariant** — never more than `SESSION_PAGE_SIZE` rows, never a
     duplicate id, and unaffected by rows the filter removed.
+11. **The window-change reset is a derivation** (§4.3) — `sessionTableScopeKey`
+    moves for each of `metric`, `windowDays` and `thisSessionOnly` on its own, is
+    unchanged by the extra props a render carries (a payload object, `refreshing`,
+    `loading`), and the reducer adopts the first key, resets the page on a later
+    one, and returns the same state object for the window already in force. Added
+    in review round 1 (M5), where the rule was reachable only through the
+    reducer's `reset` action while the derivation that fires it sat in a
+    component.
 
 ### 11.2 Stories and frames
 
@@ -823,33 +924,61 @@ convention, `analytics-panel.stories.tsx:274-281`):
 
 | story | what it shows | `play` |
 |---|---|---|
-| `SessionPaginated` | strip + 20 rows + legend + pager on the 4,550-row fixture | — |
-| `SessionPageTwo` | `1–20` → `21–40`, `2 / 228` | press `Next` |
-| `SessionSortedByCost` | `aria-sort="descending"` on Cost, the chevron, the announcement | press the Cost header |
-| `SessionSortedBySession` | the label column ascending, `localeCompare` order | press the Session header |
-| `SessionSearchMatch` | the match line with a narrowed count | type `status` |
-| `SessionSearchEmpty` | the honest empty state and its detail | type `zzz` |
-| `SessionTopLevelOnly` | 404 of 4,550 | toggle the filter |
-| `SessionScale30d` | the real scale: 7,065 rows, page 1 | — |
-| `SessionNarrow720` | the strip wrapping at the narrow width | — |
+| `SessionPaginated` | the section at rest: the strip, the header row with its chevrons, the first rows. The pager's `1–20 of 4,550 sessions` is in `session-paginated-end/`, because no single frame holds both (§11.2, below) | asserts the range line, `1 / 228` and the 20-row bound |
+| `SessionPageTwo` | `1–20` → `21–40`, `2 / 228` | presses `Next`; asserts the range, the indicator, the bound, the live sentence, and that focus stayed on the pressed control — then drops focus, so the frame is the resting state rather than a ring |
+| `SessionLastPage` | the END of the set: `4,541–4,550 of 4,550 sessions`, `228 / 228`, ten rows, and `Next`/`Last` reported unavailable while `First` is not | presses `Last`; asserts the end-of-set range, the indicator, the ten rows, the live sentence, `aria-disabled` on the two trailing controls, that focus SURVIVED the press that disabled it, that an inert `Next` changes nothing, and that `First` keeps focus back at the other end |
+| `SessionSortedByCost` | the `Cost` column descending, at rest: the single chevron and the ink step, no ring | presses the header; asserts `aria-sort="descending"` on Cost and `none` on Tokens, the announcement and that focus stayed — then drops focus |
+| `SessionSortedBySession` | the label column ascending at rest, the one `localeCompare` order in the table | presses the header; asserts `aria-sort`, the announcement, and that the first two labels really are in collation order (read off the DOM, so a constant comparator fails) |
+| `SessionSearchMatch` | `status` typed: the match line with the narrowed count | types `status`; asserts the match line, the 20-row bound and the live sentence |
+| `SessionSearchEmpty` | `zzz`: the honest empty state, its detail, and the absence of a table, a legend and a pager | types `zzz`; asserts the notice, the detail, no rows, no `Next` and the announcement |
+| `SessionTopLevelOnly` | `404 of 4,550 sessions · top-level only` and its 21-page pager | toggles the filter; asserts the match line, the range, `1 / 21` and the announcement |
+| `SessionScale30d` | the real scale: 7,065 rows, `1 / 354` | asserts the range line, the indicator and the 20-row bound |
+| `SessionNarrow720` | the same page at 720px | asserts the field, the filter, `Last` and the 20-row bound |
 
 Plus the existing `UnnamedSessions`, which must be unchanged (ids, no
 indentation, searchable by id).
 
+**Every helper these plays call is scoped to the by-session table**, through
+`panel()?.querySelector('table[aria-label^="Usage by session"]')`. That is a
+correction with its own round behind it (QA round 1, Q-1; UX round 1, U2): the
+helpers scoped to `[data-panel-body]`, which holds TWO tables, so the row count
+was 24 (20 + the provider table's 4), `headerCell("Cost")` found the provider
+table's header first, and seven of the nine plays threw — while the frames
+photographed cleanly over them, because nothing failed a run on a failed play.
+
 Evidence, and what it can and cannot carry:
 
-- **Before/after frames** for `panels-analytics--populated` at 1140×980: before
-  is 12 rows ending in `+N more not shown`, after is the strip, 20 rows and the
-  pager. Captured by `pnpm capture:evidence`, admitted by `pnpm check-evidence`
-  (one sweep per machine — a busy lease defers with exit 75, so the review and QA
-  rounds must serialise their sweeps rather than retry in a loop).
+- **Before/after frames** at 1140×980, and the attribution matters: the 12-row
+  dead end ending in `+N more not shown` is `panels-analytics--dense` (seventeen
+  sessions), not `panels-analytics--populated` (five). The after frames are
+  `dense-end/` against the pre-change tree's own rendering of the same story,
+  fixture, viewport and scroll position in
+  `docs/evidence/panels-analytics-session-table-baseline/dense-end/`.
 - **The `sr-only` claims do not photograph.** `aria-sort`, the live region's text
   and the focus rules are asserted in each story's `play` (attribute and count
   assertions) and in the node suite, and the story's `README.md` says so in words
   — a frame is captioned with what it shows, never with what it merely implies.
-- **The 20-row bound** is asserted in the same `play`
-  (`querySelectorAll("tbody tr").length <= 20`), so the frame and the assertion
-  cannot disagree.
+- **The 20-row bound** is asserted in the same `play`, against the by-session
+  table's own `tbody tr` count, and the assertion is `toBe(20)` rather than a
+  one-sided bound: a page that rendered 19 rows and claimed twenty would pass
+  `<= 20`.
+- **A frame's scroll position is set by the rig, not by a side effect.** Two
+  entries exist per state where the claim needs them: the at-rest entry parks the
+  BODY on the section's top (`scrollTo`), the `-end` entry parks it at the body's
+  own end (`scrollToEnd`). The section is taller than the host's cap of
+  `min(76vh, 760px)` (`picker-host.tsx`), so **no single frame holds the strip,
+  twenty rows, the legend and the pager at once** — which is why the state's
+  caption names what that frame holds rather than what the section contains.
+  Before round 1 the at-rest frames for these stories were the panel's TOP (the
+  stat grid and the chart), because parking was left to a `play` clicking a
+  control and the browser scrolling the focused element into view — a side
+  effect, not a rig guarantee (review round 1, M2/D2/D3).
+- **A story whose `play` throws now fails the capture.** The rig rejects a frame
+  on `sb-errordisplay`, the element Storybook renders in place of the story when
+  a phase threw. It used to treat that class as its own chrome to EXCLUDE from the
+  element count, so the frame was taken over a red assertion and nothing
+  anywhere failed (QA round 1, Q-1). No CI job runs the plays; this closes the
+  path the evidence set is actually produced through.
 - **Performance** is evidenced by the §9.2 procedure and its printed numbers, not
   by a frame.
 
@@ -869,9 +998,13 @@ Evidence, and what it can and cannot carry:
    table is *correct* and just slower, and nothing in CI notices. The guard is the
    one-rank-per-interaction assertion (§9.2.3-4) and the in-app measurement, not a
    green unit suite.
-4. **Focus loss under the caret.** Conditional pager controls or a conditionally
-   rendered clear button drop focus to `<body>` (§7.2-7.3). Both are pinned by
-   reuse of `clearSearch` and by always rendering the four buttons.
+4. **Focus loss under the caret.** A conditionally rendered pager control, a
+   conditionally rendered clear button, and — the half that is easy to miss — a
+   control that becomes natively `disabled`, which blurs itself. All three drop
+   focus to `<body>` (§7.2-7.3). Pinned by reuse of `clearSearch`, by always
+   rendering the four pager controls, by their ends being `aria-disabled` rather
+   than `disabled`, and by a `play` that reaches an END of the set rather than
+   only page two, where the pressed control stays enabled and nothing can fail.
 5. **`Esc` regressions.** A `keydown` handler on the section to "make Esc clear
    the search" is the tempting change and it breaks the host's contract. QA's
    matrix must press `Esc` with the field focused and assert the panel closed.
