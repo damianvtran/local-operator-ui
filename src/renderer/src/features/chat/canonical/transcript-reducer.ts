@@ -2167,6 +2167,14 @@ export function applyEvent(
 			});
 		}
 		case "compaction_end": {
+			/*
+			 * A FIGURE IS PRESENT WHEN THE EVENT CARRIES ONE, including a zero: the
+			 * runtime reports both figures as 0 for a pass that failed, and the durable
+			 * row it wrote for that pass carries the same 0 — so the live line must
+			 * carry it too, or the two projections of one pass disagree about whether
+			 * they HAVE a fingerprint and one pass paints two rows (`typeof` rather
+			 * than truthiness, matching `durableRecord`; review round 6, R6-1).
+			 */
 			const before = Number(event.tokens_before ?? 0);
 			const after = Number(event.tokens_after ?? 0);
 			const ok = Boolean(event.success);
@@ -2220,7 +2228,7 @@ export function applyEvent(
 					id,
 					ts: now,
 					text,
-					...(before ? { before } : {}),
+					before,
 				}),
 			);
 		}
