@@ -533,6 +533,20 @@ export const STORIES = [
 	   makes — one section and its rows, or a quiet line. */
 	["chat-run-panel--jobs-in-flight", 1280, 700],
 	["chat-run-panel--jobs-only", 1280, 700],
+	/* The Wakes section (`docs/composer-wakes.md`) — the pane's fifth, and the one
+	   surface that answers "is this session armed, and what will it fire". One band
+	   is a schedule alone (the state nothing in the app could show before), one the
+	   three cadences published OUT of due order (the ordering claim, which a fixture
+	   in due order would hide), one the cap and its marker at a full scheduler's
+	   nine schedules, one a prompt longer than its row, one the pane's 320px floor
+	   where the due label is the longest first line any section draws, and one the
+	   pair with the plan that most real sessions are in. */
+	["chat-run-panel--wakes-only", 1280, 700],
+	["chat-run-panel--wakes-recurring", 1280, 820],
+	["chat-run-panel--wakes-many", 1280, 820],
+	["chat-run-panel--wake-long-message", 1280, 700],
+	["chat-run-panel--wakes-and-plan", 1280, 820],
+	["chat-run-panel--wakes-floor-320", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -726,6 +740,16 @@ export const STORIES = [
 	   240 is `CHAT_CHIP_ICON_ONLY_PX`, and 172 is the floor QA measured on the built
 	   app — the three widths at which the row behaves differently. */
 	["chat-composer-status-row--activity-widths", 1000, 1000],
+	/* The wake chip (`docs/composer-wakes.md`): one band per claim, with the count
+	   GATE's own control as the fourth — the same plan and activity with no wakes,
+	   where the chip's absence has to be legible as an absence. The fifth band is
+	   the row at its widest, all five chips on one line. */
+	["chat-composer-status-row--wake-chip", 1000, 1000],
+	/* The width story with the FOURTH count chip, whose numbers are printed into the
+	   frames because a reader of a still cannot measure the boxes in it. It carries
+	   the same three widths as `activity-widths` plus 220, the column floor the wake
+	   change was specified against. */
+	["chat-composer-status-row--wake-widths", 1000, 1200],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
