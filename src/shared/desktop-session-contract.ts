@@ -17,6 +17,19 @@ export type SessionCatalogueRow = {
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	attention?: CompletionAttention;
+	/**
+	 * The feed's stamp for `status`, when the backend served this row knows it.
+	 *
+	 * `status_revision` counts what the feed process published for THIS session
+	 * and `status_epoch` names that process, so a `session_status` frame and this
+	 * list row can be ordered against each other instead of the newer of the two
+	 * being whichever arrived last. Both are omitted together on a backend that
+	 * has no status channel (or has published nothing for this session yet), and
+	 * absent means exactly that: no stamp, so the row cannot win an ordering
+	 * argument it has no evidence for.
+	 */
+	status_revision?: number;
+	status_epoch?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -371,6 +384,53 @@ export type DesktopNotification = {
 	/** `when_unfocused` for completions; `always` for a gate. */
 	focus_policy: "when_unfocused" | "always";
 };
+/**
+ * One ARMED wake schedule, as the canonical frontend publishes it.
+ *
+ * Declared rather than reached through the index signature for the reason
+ * `last_usage` below states for itself: it is the field that decides whether a
+ * reading renders at all. A wake chip is gated on there being at least one of
+ * these, and the pane's Wakes section draws one row per entry — so an `as never`
+ * cast at the call site would let a rename on the wire (`WakeState`,
+ * `local_operator/session/frontend_state.py`) silently empty both surfaces with
+ * nothing to catch it.
+ *
+ * `next_due_at` is epoch MILLISECONDS, and the unit is spelled out because it is
+ * the trap: every other clock on this wire (`start_time`, `settled_at`) is epoch
+ * SECONDS and the run model divides those by 1000 before comparing. A wake's due
+ * instant is published in milliseconds and is used as milliseconds.
+ *
+ * `every_ms` is null for a one-shot schedule and `remaining` is null when the
+ * recurrence is unbounded; both are optional because a schedule created before
+ * either field existed simply does not carry it.
+ *
+ * `limit` and `fired_count` are the SCHEDULER's own fields riding through
+ * `WakeState`'s `extra="allow"` (`WakeState.model_validate(schedule.model_dump())`,
+ * `frontend_state.py::_wake_state` and `attached.py::_cold_wakes` — both paths
+ * publish the schedule dump, so both carry them). They are declared here because
+ * the renderer READS them: `remaining` is declared on `WakeState` and is never
+ * populated by either path (measured against a live backend, a schedule created
+ * with `--limit 3` publishes `limit: 3, fired_count: 0, remaining: null`), so the
+ * cadence's bounded clause takes the backend's own `limit - fired_count` when
+ * `remaining` is absent. Declaring them is what keeps that read checkable rather
+ * than a field reached for through an index signature.
+ */
+export type CanonicalWakeState = {
+	id: string;
+	message: string;
+	/** The next fire instant, epoch MILLISECONDS. */
+	next_due_at: number;
+	created_at?: number;
+	/** The recurrence interval in milliseconds, or null for a single shot. */
+	every_ms?: number | null;
+	/** Deliveries left, or null when the schedule is not limit-bounded. */
+	remaining?: number | null;
+	/** Deliveries the schedule was created to make, or null when unbounded. */
+	limit?: number | null;
+	/** Deliveries already made. */
+	fired_count?: number;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -395,7 +455,13 @@ export type CanonicalFrontendState = {
 	queued_steering: Array<Record<string, unknown>>;
 	jobs: Array<Record<string, unknown>>;
 	todos: Array<Record<string, unknown>>;
-	wakes: Array<Record<string, unknown>>;
+	/**
+	 * The session's ARMED wake schedules. Absent or empty means no wakes, which
+	 * is the ordinary state: the composer's wake chip and the run pane's Wakes
+	 * section both render as ABSENCE at zero, so this list being empty is not a
+	 * state either surface draws.
+	 */
+	wakes: CanonicalWakeState[];
 	mcp_servers: Array<{
 		name: string;
 		status: string;
@@ -655,6 +721,35 @@ export type DesktopFeedFrame =
 			type: "notification";
 			session_id: CanonicalSessionId;
 			payload: DesktopNotification;
+	  }
+	/**
+	 * The backend's DERIVED status for one session, as it changes.
+	 *
+	 * The sidebar's row status is a backend-derived value with a precedence that
+	 * lives in exactly one place over there, and the list was the only thing that
+	 * could deliver it — so an answered gate or a completed turn could sit unseen
+	 * for up to the safety poll. This frame is that same value pushed on the
+	 * event, and `payload` deliberately carries the derived pair rather than its
+	 * inputs (`live_state`, `unseen`, ...): the contract's own rule is that the
+	 * backend owns status precedence and clients must not infer it, so shipping
+	 * inputs would invite a second derivation in TypeScript while shipping the
+	 * pair makes this a second CALLER of the one implementation.
+	 *
+	 * `revision` is monotone per session WITHIN the emitting `epoch`, which is
+	 * what `status_revision`/`status_epoch` on a catalogue row are compared
+	 * against; an epoch the client has not seen before resets those guards,
+	 * because the counters they hold belonged to a process that is gone.
+	 *
+	 * A frame is a LEVEL, not a notification: it is idempotent, it never enters
+	 * `DesktopNotifier` (main routes only `notification` frames there), and an
+	 * older renderer ignores the type outright.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "session_status";
+			session_id: CanonicalSessionId;
+			payload: { code: string; label: string; revision: number };
 	  }
 	| {
 			epoch: string;

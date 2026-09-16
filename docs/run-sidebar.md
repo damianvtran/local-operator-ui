@@ -977,20 +977,20 @@ the read returned at least one server. Same rule as its two neighbours in
 and an empty heading is not a state anything renders. No servers configured is
 therefore absence, not a line saying there are none.
 
-**Order: last, after the roster, the plan and the jobs.** The panel's subject is
-the run in flight; a server's configuration is the least transient fact on the
-surface. (The jobs section is `docs/composer-activity-chips.md` § 4: it was added
-BEHIND the plan, so the two sections that existed before it keep their positions
-and this one stays last — the rule below is the reason, and it is also why the
-new section did not try to sit beside the roster it is derived from.) The
-alternative — moving the section up, or reordering sections when one has a
-problem — is refused for the reason § 6.2 refuses reflow under a reader: a
-section that moves because its state changed makes the reader re-find the thing
-they were reading. The dot is what draws the eye (§ 3.4); the order stays fixed.
-The consequence is stated rather than hidden: with many children, a problem MCP
-row can sit below the fold of the panel's single scroll region, and § 3.4 counts
-that as on screen because the panel's own standard for "rendered" is the slice,
-not the viewport.
+**Order: last, after the roster, the plan, the jobs and the wakes.** The panel's
+subject is the run in flight; a server's configuration is the least transient fact
+on the surface. (The jobs section is `docs/composer-activity-chips.md` § 4 and the
+wakes section is `docs/composer-wakes.md` § 5: both were added BEHIND the plan, so
+the two sections that existed before them keep their positions and this one stays
+last — the rule below is the reason, and it is also why neither new section tried
+to sit beside the roster it is derived from.) The alternative — moving the section
+up, or reordering sections when one has a problem — is refused for the reason
+§ 6.2 refuses reflow under a reader: a section that moves because its state
+changed makes the reader re-find the thing they were reading. The dot is what
+draws the eye (§ 3.4); the order stays fixed. The consequence is stated rather
+than hidden: with many children, a problem MCP row can sit below the fold of the
+panel's single scroll region, and § 3.4 counts that as on screen because the
+panel's own standard for "rendered" is the slice, not the viewport.
 
 **The row, one line** — four segments, in the roster row's own grammar (mark,
 label, then the quiet numbers):
