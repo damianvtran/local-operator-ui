@@ -262,6 +262,13 @@ export const STORIES = [
 	["browser-tab-strip--agent-and-waiting", 1280, 140],
 	["browser-tab-strip--failed", 1280, 140],
 	["browser-tab-strip--restored", 1280, 140],
+	// THE WORST-CASE ROWS (review round 6). Four and five chips, one story each
+	// because only one tab can be active and the active row pays 68px for the cluster
+	// that sits in flow on it. They are here rather than only in the stories file
+	// because a state no capture renders is a state the design stream cannot judge -
+	// which is how both of round 6's majors stayed invisible.
+	["browser-tab-strip--worst-case", 1280, 140],
+	["browser-tab-strip--worst-case-widest", 1280, 140],
 	["browser-tab-strip--actions-expanded", 1280, 180],
 	/* The dock, which replaced the Sites sheet. It is a full-height in-flow panel,
 	   so the declared height is the panel's; `narrow` is captured in a 560px
