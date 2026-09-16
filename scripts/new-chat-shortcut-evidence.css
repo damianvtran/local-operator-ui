@@ -1,0 +1,32 @@
+/*
+ * Stylesheet for the New chat shortcut evidence harness.
+ *
+ * It exists only to tell Tailwind where the classes are. Tailwind v4 detects
+ * source files relative to the VITE ROOT, and this harness's root is
+ * `scripts/` — so the app's own utilities are never generated and the frame
+ * comes out as correct markup with no design system, which is evidence of
+ * nothing. `draft-pick-evidence.css` carries the same note for the same reason.
+ *
+ * `@source` points the scanner back at the renderer tree. The app stylesheet is
+ * imported rather than restated so the harness and the product resolve the same
+ * roles, radii and type ramp — which is the whole claim under the camera here:
+ * the key caps beside New chat are `KeyboardShortcut`, whose caps are
+ * `bg-sunken text-ink-muted text-mono-sm`. A frame that resolved `sunken` to
+ * nothing would show caps that are invisible, which is a defect no class
+ * assertion can see.
+ */
+
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
+
+/*
+ * The app gives the chat surface the full window; `ChatLayout` fills its
+ * parent, so without an explicit viewport box the page collapses to content
+ * height and the sidebar column has no width to be measured in.
+ */
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}

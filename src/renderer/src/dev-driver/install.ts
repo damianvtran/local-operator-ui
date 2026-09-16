@@ -290,6 +290,14 @@ export function installDevDriver(): string[] {
 				runPanelOpen: preferences.isRunPanelOpen,
 				activeSessionId: sessions.activeSessionId,
 				sessionCount: sessions.sessions.length,
+				/*
+				 * The wizard's own dialog carries this attribute
+				 * (`features/onboarding/components/onboarding-dialog.tsx`). Not
+				 * `role="dialog"`: every modal in the app renders that, so the probe would
+				 * report whichever dialog is open as the first-run wizard - which is how a
+				 * scene that means to assert the wizard owns the window could pass with the
+				 * palette open instead.
+				 */
 				onboardingVisible: Boolean(
 					document.querySelector("[data-onboarding-modal]"),
 				),
