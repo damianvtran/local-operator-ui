@@ -125,7 +125,11 @@
  * of the user to read before Enter.
  */
 
-import { commandWordOpensDraft, replaceSpan, slashTokenSpan } from "./slash-token";
+import {
+	commandWordOpensDraft,
+	replaceSpan,
+	slashTokenSpan,
+} from "./slash-token";
 
 /**
  * The destinations whose command is armed EXPLICITLY and never inferred.

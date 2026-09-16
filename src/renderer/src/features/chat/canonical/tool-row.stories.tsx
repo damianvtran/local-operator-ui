@@ -474,17 +474,20 @@ export const Working: Story = {
  * A compaction pass in flight: the aggregate working line is the only thing on
  * screen that says so, and its label is the terminal host's own.
  *
- * This is the BEFORE/AFTER pair for the change that deleted `/compact`'s dialog.
+ * The two states of the change that deleted `/compact`'s dialog, named for the
+ * STATE rather than for a before/after pair — every other `-before`/`-after`
+ * directory in this repo means before/after THE CHANGE, and this pair is one
+ * tree photographed either side of the pass settling (review round 1, R5).
  * The dialog used to be the whole of the surface's answer to the command, and it
  * stayed up over a pass that had already finished; the transcript now carries
- * the fact itself - this rung while the pass runs, the info line below once it
- * settles (`CompactingPassAfter`, which is the same transcript with the
- * `compaction` record the reducer paints and no pass in flight).
+ * the fact itself — this rung while the pass runs, the info line below once it
+ * settles (`CompactingSettled`, the same transcript with the `compaction` record
+ * the reducer paints and no pass in flight).
  *
  * The clock is left at 0s deliberately: this story is about the copy and the
  * fact, and `Working` above is the story that pins the ticking clock.
  */
-export const CompactingPassBefore: Story = {
+export const CompactingRung: Story = {
 	render: () => (
 		<Frame
 			compacting
@@ -517,7 +520,7 @@ export const CompactingPassBefore: Story = {
  * Both frames are one change, which is why they are a pair rather than two
  * stories: the dialog this replaces was what used to stand between them.
  */
-export const CompactingPassAfter: Story = {
+export const CompactingSettled: Story = {
 	render: () => (
 		<Frame
 			height={300}
@@ -541,6 +544,52 @@ export const CompactingPassAfter: Story = {
 					id: "compaction:1:41000:9000",
 					ts: TS,
 					text: "Context compacted, 41.0k to 9.0k tokens",
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The third ending: a pass that did NOT run.
+ *
+ * A refusal emits no `compaction_start` — the runtime answers the routed command
+ * with an optimistic receipt and the pass declines before the start event — so
+ * this row is the pass's ONLY record, and until this round the reducer listed it
+ * as bookkeeping and painted nothing at all (UX round 1, U1 = QA Q2). With the
+ * dialog gone that silence was the surface the dialog used to occupy, and the
+ * operator's own gesture is what reaches it: the shipped default keeps 20,000
+ * tokens verbatim, so `/compact` on a young conversation declines.
+ *
+ * The ink is the backend's, not this story's: `harness/rows.py`'s
+ * `compaction_refused_notice` derives `warning` for a decline and `error` for a
+ * failure, and the phone and the terminal host both render through it.
+ */
+export const CompactingRefused: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "notice",
+					id: "refusal:1",
+					ts: TS,
+					level: "warning",
+					text: "Compaction did not run: nothing to compact: the whole conversation is ~8 tokens and the most recent 20,000 are kept verbatim",
 				},
 			]}
 		/>

@@ -2456,7 +2456,11 @@ test("a refused pass paints the runtime's own row, in the tier it derives", () =
 		"warning",
 		"a DECLINE is the backend's warning tier, not this file's choice",
 	);
-	assert.equal(decline.compacting, false, "the row is the pass saying it is over");
+	assert.equal(
+		decline.compacting,
+		false,
+		"the row is the pass saying it is over",
+	);
 
 	/*
 	 * And the other half of the same rule: a FAILED pass is the system saying it
