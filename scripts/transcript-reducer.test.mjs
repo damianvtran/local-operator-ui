@@ -2657,7 +2657,10 @@ test("a history re-read does not double a settled pass", () => {
 		pageOf([
 			{
 				id: "msg_durable_compaction",
-				ts: NOW / 1000 + 1,
+				// The wire's ordering (QA round 4's Q11, R5-4): the row is appended,
+				// then the settle frame is processed ~300 ms later. This one carries no
+				// fingerprint, which is why it is the fallback's case at all.
+				ts: (NOW + 100) / 1000,
 				type: "compaction",
 				payload: {},
 			},
@@ -2749,7 +2752,15 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		"an ordinary read still believes the page",
 	);
 
-	// U17: the cleared view keeps only the pass's own outcome row.
+	/*
+	 * U17, and its residual (round 5's R5-2/U20): the cleared view keeps only the
+	 * pass's own outcome row — and it must keep doing so once something HAS been
+	 * painted into it. The guard first required the view to be empty, so the first
+	 * read painting the outcome row turned it off and the SECOND scheduled read
+	 * (the schedule's 5 s delay) landed the whole page: `/clear`, keep working,
+	 * `/compact`, and the pre-clear conversation came back. The epoch is the fact,
+	 * not the emptiness.
+	 */
 	const cleared = clearTranscript(loaded);
 	assert.deepEqual(rows(cleared), []);
 	const afterTail = applyHistoryPage(cleared, page, { keepPaging: true });
@@ -2757,6 +2768,27 @@ test("a tail read never answers the paging question, and never repaints a cleare
 		rows(afterTail),
 		["compaction"],
 		"the pass's row is the only thing a tail read paints into a cleared view",
+	);
+
+	// The SECOND read, after that row is on screen: still only the outcome rows.
+	const secondRead = applyHistoryPage(afterTail, page, { keepPaging: true });
+	assert.deepEqual(
+		rows(secondRead),
+		["compaction"],
+		"a non-empty cleared view is still a cleared view",
+	);
+
+	// And the reviewer's own path: `/clear`, then a new message (the operator's
+	// next turn), then the pass — the same page must not put the pre-clear rows back.
+	const afterNewMessage = appendPendingUser(afterTail, "and now compact again");
+	assert.deepEqual(rows(afterNewMessage), ["compaction", "user"]);
+	const afterSecondPass = applyHistoryPage(afterNewMessage, page, {
+		keepPaging: true,
+	});
+	assert.deepEqual(
+		rows(afterSecondPass),
+		["compaction", "user"],
+		"the rows cleared before the new message stay cleared",
 	);
 });
 
@@ -2990,8 +3022,8 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 			applyHistoryPage(
 				twoPages,
 				pageOf([
-					durableRow("d1", T0 / 1000 + 1),
-					durableRow("d2", T0 / 1000 + 31),
+					durableRow("d1", (T0 + 100) / 1000, 41_000),
+					durableRow("d2", (T0 + 30_100) / 1000, 9_000),
 				]),
 			),
 		),
@@ -3015,24 +3047,102 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 	// one durable row may cover only one pass, or a pass disappears entirely.
 	const latestOnly = applyHistoryPage(
 		both,
-		pageOf([durableRow("d2", T0 / 1000 + 31)]),
+		pageOf([durableRow("d2", (T0 + 30_100) / 1000, 9_000)]),
 	);
 	assert.equal(
 		rows(latestOnly).length,
 		2,
 		"one row per pass, and neither is lost",
 	);
-	// The page's single durable row is the pair of the OLDER pass — it is the
-	// nearest at-or-after claim on it — and the newer pass keeps the live row no
-	// durable row has claimed. Either way each pass has exactly one row.
+	/*
+	 * R5-3 / U19's shape, and the case that made the fallback dangerous: the page
+	 * carries only the NEWER pass's durable row, so the older live line has no pair
+	 * on this page. It must NOT take the newer row — a row that carries a
+	 * fingerprint belongs to the pass whose figure it holds, and a live line with a
+	 * different figure is a different pass rather than a worse candidate. Measured
+	 * live before the fix: durable 25 / 3781 / 5301 and the pane reading `to 3.8k`,
+	 * `to 5.3k`, bare — each slot showing the NEXT pass's figures.
+	 */
 	assert.deepEqual(rows(latestOnly), [
-		"compaction:0:9000:3000|Context compacted, 9.0k to 3.0k tokens",
-		"d2|Context compacted, 41.0k to 9.0k tokens",
+		"compaction:0:41000:9000|Context compacted, 41.0k to 9.0k tokens",
+		"d2|Context compacted, 9.0k to 3.0k tokens",
 	]);
+
+	/*
+	 * The LIVE path, which is where U19 was measured: pass 1's row is already paired
+	 * and carries its own figure, and pass 2's settle frame arrives BEFORE pass 2's
+	 * durable row does. The window must not hand pass 1's row to pass 2 — with the
+	 * fingerprint exclusion removed this case rewrites `41.0k to 9.0k` to
+	 * `9.0k to 3.0k` and drops pass 2's own live line, which is exactly the shift UX
+	 * read off the screen (`to 3.8k` on pass 1's slot).
+	 */
+	const onePass = applyHistoryPage(
+		settle(
+			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T0),
+			41_000,
+			9_000,
+			T0 + 250,
+		),
+		pageOf([durableRow("d1", (T0 + 100) / 1000, 41_000)]),
+	);
+	assert.deepEqual(rows(onePass), [
+		"d1|Context compacted, 41.0k to 9.0k tokens",
+	]);
+	assert.deepEqual(
+		rows(settle(onePass, 9_000, 3_000, T0 + 30_250)),
+		[
+			"d1|Context compacted, 41.0k to 9.0k tokens",
+			"compaction:0:9000:3000|Context compacted, 9.0k to 3.0k tokens",
+		],
+		"a later pass's frame never rewrites an earlier pass's row",
+	);
+
+	// Three passes, pages arriving one durable row at a time: every slot keeps its
+	// OWN figure, and a live line whose durable row is not on the page yet keeps the
+	// row it has rather than adopting a neighbour's.
+	const three = settle(
+		settle(
+			settle(
+				applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T0),
+				25,
+				25,
+				T0 + 250,
+			),
+			3_781,
+			3_100,
+			T0 + 20_250,
+		),
+		5_301,
+		4_900,
+		T0 + 40_250,
+	);
+	for (const state of [
+		applyHistoryPage(three, pageOf([durableRow("a1", (T0 + 100) / 1000, 25)])),
+		applyHistoryPage(
+			three,
+			pageOf([durableRow("a2", (T0 + 20_100) / 1000, 3_781)]),
+		),
+		applyHistoryPage(
+			three,
+			pageOf([durableRow("a3", (T0 + 40_100) / 1000, 5_301)]),
+		),
+	]) {
+		assert.deepEqual(
+			state.records
+				.filter((record) => record.kind === "compaction")
+				.map((record) => record.text),
+			[
+				"Context compacted to 25 tokens",
+				"Context compacted, 3.8k to 3.1k tokens",
+				"Context compacted, 5.3k to 4.9k tokens",
+			],
+			"each pass keeps its own figures whatever page order arrives",
+		);
+	}
 
 	// A live line whose durable row has not arrived yet still paints: the collapse
 	// removes a duplicate, never the only projection of a pass.
-	const alone = settle(EMPTY_TRANSCRIPT, 41_000, 9_000, T0 + 500);
+	const alone = settle(EMPTY_TRANSCRIPT, 41_000, 9_000, T0 + 250);
 	assert.equal(rows(alone).length, 1);
 	assert.match(rows(alone)[0], /^compaction:/);
 });
