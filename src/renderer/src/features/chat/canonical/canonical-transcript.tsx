@@ -73,7 +73,6 @@ import {
 	AGENT_GUTTER,
 	MessageContainer,
 } from "../components/message-item/message-container";
-import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import {
@@ -407,7 +406,7 @@ const UserRow = memo(function UserRow({
 				 * § 7's "rows are placed by the time they carry, never by the moment
 				 * the reader happened to see them".
 				 */}
-				<TurnTimestamp timestamp={record.ts} />
+				<TurnTimestamp timestamp={record.ts} scope="turn" />
 			</div>
 		</MessageContainer>
 	);
@@ -601,7 +600,7 @@ const ToolRow = memo(function ToolRow({
 		<>
 			{body}
 			<div className={cn("flex justify-end")}>
-				<TurnTimestamp timestamp={record.ts} />
+				<TurnTimestamp timestamp={record.ts} scope="turn" />
 			</div>
 		</>
 	) : undefined;
@@ -1875,10 +1874,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					    the `turn-timestamps` frame this change is judged on, which is where
 					    the defect was found). The footer keeps its job on every other last
 					    row: an answer or a ledger line carries no stamp of its own, and for
-					    those this is the only time on screen. */}
+					    those this is the only time on screen.
+
+					    IT RENDERS `TurnTimestamp` FOR THE SAME REASON IT IS GATED HERE AT
+					    ALL: it states the same fact a turn's stamp states, so it has to state
+					    it in the same words. It used to be a `MessageTimestamp` - the hover
+					    row's component - which formats for a reader already looking at the
+					    message (`10:40 AM` today, `Monday` inside the week, `yyyy-MM-dd`
+					    after that). With a turn stamp on screen that put two spellings of one
+					    clock in one column, which is the defect `date-utils.ts` documents in
+					    `formatCalendarDate`'s and `formatCalendarDateTime`'s own comments
+					    (`August 5, 2026` beside `8/5/2026, 10:40:00 AM`), and the frames
+					    showed it as `2025-10-09` directly under `Oct 9, 2025, 4:53 AM`. */}
 					{lastRecord && !missing && lastRecord.kind !== "user" && (
 						<div className="mt-1 flex justify-end">
-							<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
+							<TurnTimestamp timestamp={lastRecord.ts} scope="footer" />
 						</div>
 					)}
 				</div>

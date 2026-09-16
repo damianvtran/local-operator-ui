@@ -17,6 +17,14 @@
  * and the on-screen model are now two components with two formats; the quiet
  * that this comment was written to protect survives on the collapsed ledger
  * rows, which still carry no stamp until one is opened.
+ *
+ * WHAT IS LEFT HERE is the hover meta row alone (`message-item/index.tsx` and
+ * `message-controls.tsx`), which is the reader's own controls. The transcript's
+ * footer line USED to be a third call site and is not any more: it states when
+ * the last thing in the transcript happened, which is the same fact a turn's
+ * stamp states, so it renders `TurnTimestamp` - two spellings of one clock in
+ * one column is the defect class `date-utils.ts` documents, and the frames
+ * showed it as `2025-10-09` under `Oct 9, 2025, 4:53 AM`.
  */
 
 import { Tooltip } from "@shared/components/ui";

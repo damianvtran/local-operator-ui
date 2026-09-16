@@ -99,7 +99,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { formatTurnTimestamp } from "./src/renderer/src/shared/utils/date-utils";',
+			'export { formatTurnTimestamp, formatMessageDateTime } from "./src/renderer/src/shared/utils/date-utils";',
 			'export { TurnTimestamp } from "./src/renderer/src/features/chat/components/message-item/turn-timestamp";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 		].join("\n"),
@@ -139,8 +139,12 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { formatTurnTimestamp, TurnTimestamp, CanonicalTranscript } =
-	await import(bundlePath.href);
+const {
+	formatTurnTimestamp,
+	formatMessageDateTime,
+	TurnTimestamp,
+	CanonicalTranscript,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /*
@@ -277,7 +281,7 @@ test("an instant that cannot be read states nothing", () => {
 	const container = document.createElement("div");
 	const root = createRoot(container);
 	act(() => {
-		root.render(h(TurnTimestamp, { timestamp: Number.NaN }));
+		root.render(h(TurnTimestamp, { timestamp: Number.NaN, scope: "turn" }));
 	});
 	assert.equal(container.innerHTML, "");
 	act(() => root.unmount());
@@ -288,11 +292,15 @@ test("the stamp is a machine-readable time element whose text is the friendly on
 	const container = document.createElement("div");
 	const root = createRoot(container);
 	act(() => {
-		root.render(h(TurnTimestamp, { timestamp: instant }));
+		root.render(h(TurnTimestamp, { timestamp: instant, scope: "turn" }));
 	});
 	const time = container.querySelector("time");
 	assert.ok(time, "a stamp is a <time>, not a span");
 	assert.equal(time.getAttribute("datetime"), instant.toISOString());
+	// And it says which of the transcript's two stamps it is, because they render
+	// identically on purpose and a caller that mixed them up would be invisible
+	// in the text.
+	assert.equal(time.getAttribute("data-stamp"), "turn");
 	// The full date and time ride in the title, where the stamp's own four-word
 	// shape has had to abbreviate.
 	assert.match(time.getAttribute("title"), /September 15, 2026/);
@@ -344,6 +352,18 @@ const toolRecord = (id, over = {}) => ({
 	...over,
 });
 
+/*
+ * The transcript paints TWO stamps and the assertions below are about which of
+ * them is present: a turn's own (`data-stamp="turn"`, under its bubble or at
+ * the foot of an open tool call) and the transcript's footer (`data-stamp=
+ * "footer"`, stating when the last thing here happened). They render the same
+ * text on purpose - one fact, one spelling - so counting `<time>` elements
+ * cannot tell them apart, which is what the attribute is for.
+ */
+const stamps = (container, kind) => [
+	...container.querySelectorAll(`time[data-stamp="${kind}"]`),
+];
+
 const mount = (records) => {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
@@ -376,9 +396,14 @@ const mount = (records) => {
 
 test("a user turn carries one stamp, under the bubble and outside it", async () => {
 	const { container, unmount } = mount([userRecord("user:1")]);
-	const stamps = [...container.querySelectorAll("time")];
-	assert.equal(stamps.length, 1, "exactly one stamp per user turn");
-	const [stamp] = stamps;
+	const turns = stamps(container, "turn");
+	assert.equal(turns.length, 1, "exactly one stamp per user turn");
+	assert.equal(
+		stamps(container, "footer").length,
+		0,
+		"and the footer states nothing: this turn's own stamp is the time",
+	);
+	const [stamp] = turns;
 	assert.equal(stamp.getAttribute("datetime"), new Date(TS).toISOString());
 
 	/*
@@ -436,10 +461,14 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 	});
 	const { container, unmount } = mount([record]);
 	assert.equal(
-		container.querySelectorAll("time").length,
+		stamps(container, "turn").length,
 		0,
-		"a closed tool row paints no stamp",
+		"a closed tool row paints no stamp of its own",
 	);
+	// The footer is a different fact - when the last thing here happened - and it
+	// is present with every row present: the pair is what says the assertion
+	// above is about the ROW and not about a page carrying no stamps at all.
+	assert.equal(stamps(container, "footer").length, 1);
 
 	const trigger = container.querySelector('button[aria-expanded="false"]');
 	assert.ok(trigger, "the row offers its disclosure");
@@ -449,9 +478,9 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 
 	const pane = container.querySelector("[data-detail-section]");
 	assert.ok(pane, "the expansion is open");
-	const stamps = [...container.querySelectorAll("time")];
-	assert.equal(stamps.length, 1, "the expanded row carries one stamp");
-	const [stamp] = stamps;
+	const turns = stamps(container, "turn");
+	assert.equal(turns.length, 1, "the expanded row carries one stamp");
+	const [stamp] = turns;
 	assert.equal(stamp.getAttribute("datetime"), new Date(TS).toISOString());
 	/*
 	 * OUTSIDE the scrolling pane, which is the placement claim the pane's own
@@ -479,73 +508,81 @@ test("a tool row with nothing to disclose stays a line, stamp and all", async ()
 	const { container, unmount } = mount([
 		toolRecord("tool:1", { args: {}, output: null, toolName: "team" }),
 	]);
-	assert.equal(container.querySelectorAll("time").length, 0);
+	assert.equal(stamps(container, "turn").length, 0, "the row paints nothing");
 	assert.equal(container.querySelector("button[aria-expanded]"), null);
 	unmount();
 });
 
-test("the transcript footer does not repeat a clock the turn above it already states", async () => {
+test("the footer states a turn's own fact in a turn's own words", async () => {
 	/*
-	 * The footer line is the transcript's own "when was the last thing here". On
-	 * a conversation asked and not yet answered the last thing is the user's turn,
-	 * which now carries its own stamp one line above - and an ungated footer
-	 * printed the same time twice with nothing between them. The pair below is the
-	 * rule in both directions, so gating it cannot silently delete the footer from
-	 * the rows that have no stamp of their own.
-	 *
-	 * The footer's own stamp is `MessageTimestamp`, which is a hover span and not
-	 * a `<time>`; `cursor-help` is the class that says it has a tooltip, and it is
-	 * the honest hook because there is nothing semantic in the hover row's markup
-	 * to grab: it lives inside a `span`, exactly like the text around it.
+	 * The footer line is the transcript's own "when was the last thing here", and
+	 * that is the same fact a turn's stamp states - so it has to be stated in the
+	 * same words. It used to render the HOVER row's component, which put
+	 * `2025-10-09` directly under `Oct 9, 2025, 4:53 AM`: two spellings of one
+	 * clock in one column, the defect class `date-utils.ts` documents in
+	 * `formatCalendarDate`'s own comment. Both halves are asserted below - the
+	 * shape it now renders, and the duplicate it must still not paint.
 	 */
+	const answer = {
+		kind: "assistant",
+		id: "a",
+		ts: TS + 60_000,
+		text: "Reconciled.",
+		streaming: false,
+		stopReason: null,
+		error: false,
+	};
+
+	// Ends on a USER turn: that turn's stamp is one line above, so the footer must
+	// paint nothing - the defect this gate was added for, which the frames found
+	// as the same clock twice with nothing between them.
 	const endsOnUser = mount([
-		{
-			kind: "assistant",
-			id: "a",
-			ts: TS,
-			text: "Reconciled.",
-			streaming: false,
-			stopReason: null,
-			error: false,
-		},
+		{ ...answer, ts: TS },
 		userRecord("user:1", { ts: TS + 60_000 }),
 	]);
+	assert.equal(stamps(endsOnUser.container, "turn").length, 1);
 	assert.equal(
-		endsOnUser.container.querySelectorAll("time").length,
-		1,
-		"the user turn is stamped",
-	);
-	assert.equal(
-		endsOnUser.container.querySelectorAll(".cursor-help").length,
+		stamps(endsOnUser.container, "footer").length,
 		0,
-		"and the footer does not state the same clock a second time",
+		"the turn's own stamp is the time, not two clocks",
 	);
 	endsOnUser.unmount();
 
-	const endsOnAnswer = mount([
-		userRecord("user:1"),
-		{
-			kind: "assistant",
-			id: "a",
-			ts: TS + 60_000,
-			text: "Reconciled.",
-			streaming: false,
-			stopReason: null,
-			error: false,
-		},
-	]);
+	// Ends on an ANSWER: nothing else on screen states the time, so the footer
+	// does - and in the turn stamp's shape rather than the hover row's.
+	const endsOnAnswer = mount([userRecord("user:1"), answer]);
+	const footer = stamps(endsOnAnswer.container, "footer");
 	assert.equal(
-		endsOnAnswer.container.querySelectorAll(".cursor-help").length,
+		footer.length,
 		1,
-		"an answer carries no stamp, so the footer keeps its own",
+		"the footer keeps its job on a last row with no stamp",
+	);
+	const [stamp] = footer;
+	assert.equal(
+		stamp.getAttribute("datetime"),
+		new Date(TS + 60_000).toISOString(),
+	);
+	assert.equal(
+		plain(stamp.textContent),
+		formatTurnTimestamp(new Date(TS + 60_000)),
+		"the footer renders the turn stamp's shape",
+	);
+	// The measurement that says the shape converged rather than merely being
+	// present: the hover model's own formatter answers a different question and
+	// prints something else for this instant (`yyyy-MM-dd` at this age), which is
+	// what used to sit under the turn stamps.
+	assert.notEqual(
+		plain(stamp.textContent),
+		plain(formatMessageDateTime(new Date(TS + 60_000))),
+		"and not the hover row's shape",
 	);
 	endsOnAnswer.unmount();
 });
 
-test("assistant prose carries no stamp", async () => {
+test("assistant prose carries no stamp of its own", async () => {
 	// The stamp is a fact about the two things the operator named: a user turn
-	// and an open tool call. An answer is neither, and the transcript's own
-	// footer line (which is a hover-model span, not a `time`) is unchanged.
+	// and an open tool call. An answer is neither, so the only turn stamp on the
+	// page is the user's - proven by where it sits, not only by its count.
 	const { container, unmount } = mount([
 		userRecord("user:1"),
 		{
@@ -558,10 +595,16 @@ test("assistant prose carries no stamp", async () => {
 			error: false,
 		},
 	]);
+	const turns = stamps(container, "turn");
+	assert.equal(turns.length, 1, "only the user turn is stamped");
+	assert.ok(
+		turns[0].parentElement.querySelector(".lo-measured"),
+		"and it is the user turn's: the answer has no measure box to hang one on",
+	);
 	assert.equal(
-		container.querySelectorAll("time").length,
+		stamps(container, "footer").length,
 		1,
-		"only the user turn is stamped",
+		"the footer is not a turn stamp",
 	);
 	unmount();
 });
