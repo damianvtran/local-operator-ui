@@ -3309,6 +3309,16 @@ export function parsePipShowVersion(stdout: string): string | null {
  * serving daemon (design note §5), which is the state left behind by the last
  * successful update. The change test remains the fallback for the one caller
  * that names no target.
+ *
+ * AT OR PAST THE TARGET, not exactly on it (review R2-1). The target is the
+ * version the CHECK read off PyPI, and `lop update` installs whatever PyPI has
+ * when it RUNS - so a release published between the offer and the click lands
+ * the install one version past the string the app asked for, and equality
+ * reported that (correct, newer) machine as "the update did not take effect".
+ * That is R1-1's false failure again with a narrower trigger. Ordering is the
+ * honest test, and an unorderable reading is not a landing: `compareVersions`
+ * answers null for anything that is not `x.y.z`, and this file already refuses to
+ * invent an ordering it cannot compute.
  */
 export function didUpgradeLand(input: {
 	before: string | null;
@@ -3318,7 +3328,10 @@ export function didUpgradeLand(input: {
 }): boolean {
 	const { before, after, target } = input;
 	if (after == null) return false;
-	if (target != null) return after.trim() === target.trim();
+	if (target != null) {
+		const order = compareVersions(after, target);
+		return order !== null && order >= 0;
+	}
 	if (before == null) return false;
 	return before.trim() !== after.trim();
 }

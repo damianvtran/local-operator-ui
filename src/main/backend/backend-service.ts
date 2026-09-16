@@ -40,7 +40,10 @@ import {
 import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop, requestDesktopOutcome } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
-import { readInstallIdentity, resolveCommandPath } from "../update-install";
+import {
+	readInstallIdentity,
+	resolveGlobalConsoleScript,
+} from "../update-install";
 import { backendConfig } from "./config";
 import {
 	DETACHED_AFTER_MS,
@@ -1088,7 +1091,16 @@ export class BackendServiceManager {
 	 * whose older console script is gone.
 	 */
 	private globalConsoleScript(): string | null {
-		return resolveCommandPath("local-operator") ?? resolveCommandPath("lop");
+		/*
+		 * THE SHARED HELPER, not a second copy of its rule (review R2-2). The update
+		 * path resolves the plan and the install's identity through this same
+		 * function, so the decision this feeds, the ranking and the plan cannot drift
+		 * apart - including on Windows, where the helper's own arm asks `where` for
+		 * both names and the inline pair here could only ever have tried one of them
+		 * through `resolveCommandPath`. Its docstring says it is one helper for both
+		 * callers; this is the call site that made that true.
+		 */
+		return resolveGlobalConsoleScript();
 	}
 
 	/**

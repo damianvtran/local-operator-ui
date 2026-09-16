@@ -203,6 +203,16 @@ declare global {
 						 * is only dismissed by the user's own check (review U12).
 						 */
 						manual?: boolean;
+						/**
+						 * Whether the app may restart the daemon serving this app.
+						 *
+						 * The reading that decides the managed arm's consequence sentence: the plan
+						 * states it from the INSTALL's layout and cannot know who started the
+						 * server, so an adopted daemon's offer used to promise a restart that
+						 * cannot happen (UX U9). False means the server keeps running the old
+						 * build until it restarts on its own, and nothing in flight is dropped.
+						 */
+						restartable?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (

@@ -59,6 +59,7 @@ import {
 	classifyGlobalInstall,
 	clearPendingInstallMarker,
 	clearPendingServerUpdateMarker,
+	compareVersions,
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluatePendingInstall,
@@ -417,6 +418,18 @@ export type BackendUpdateInfo = {
 	updateCommand: string;
 	/** Whether the update can be managed by the update service */
 	canManageUpdate: boolean;
+	/**
+	 * Whether the app may restart the daemon serving this app.
+	 *
+	 * The plan states the managed arm's consequence from the INSTALL's layout and
+	 * cannot know who started the server, so a machine where discovery adopted a
+	 * daemon got an offer promising a restart that cannot happen - and the app's own
+	 * completion notice then denied it (UX U9). This reading, which the other two
+	 * events already carry, is what lets the panel choose the sentence that is true
+	 * for the server the reader is talking to: false means it keeps serving the old
+	 * build until it restarts on its own, and no turn in flight is dropped.
+	 */
+	restartable?: boolean;
 	/** The startup mode of the backend service */
 	startupMode?: LocalOperatorStartupMode;
 	/**
@@ -3381,12 +3394,13 @@ export class UpdateService {
 	 * searches the machine's and the user's own install locations.
 	 */
 	private resolveLocalOperatorPath(): string | null {
-		if (process.platform === "win32") {
-			const first = readCommandOutput("where", ["local-operator"])
-				?.split("\n")[0]
-				?.trim();
-			return first && first.length > 0 ? first : null;
-		}
+		/*
+		 * THE SAME RESOLUTION the decision, the ranking and the spawn use (reviews
+		 * R1-6, R2-2): one helper, so an install whose `local-operator` console script
+		 * is gone but whose `lop` remains is one install to all of them - on Windows
+		 * too, where this used to probe a single name of its own while the spawn tried
+		 * both.
+		 */
 		return resolveGlobalConsoleScript();
 	}
 
@@ -3682,6 +3696,19 @@ export class UpdateService {
 					remedy: plan.remedy,
 					detail: plan.detail,
 					sourceBuild: plan.sourceBuild,
+					/*
+					 * WHO THE APP WOULD RESTART, on the panel where the user decides (UX U9).
+					 *
+					 * The managed arm's consequence sentence comes from the plan, and the plan is
+					 * an INSTALL classification - it cannot know whether the daemon serving this
+					 * app is one the app started. On a machine where discovery ADOPTED a server,
+					 * the offer therefore promised a restart that cannot happen, and the app's
+					 * own completion notice then said the opposite ("Local Operator does not
+					 * restart a server it did not start"). The sentence is right for the arm it
+					 * was written for; what was missing is the reading that decides it, which the
+					 * other two events already carry. It travels here too.
+					 */
+					restartable: this.backendIsAppOwned(),
 					/* `silent` is the whole difference between the two callers: the periodic
 					   and start-up checks pass `true`, the IPC handlers behind the buttons
 					   pass `false`. The renderer needs to know which one it is answering,
@@ -3705,8 +3732,30 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
+			/*
+			 * WHO HEARS THIS, and why a SILENT check can still speak (UX U10).
+			 *
+			 * A launch and a periodic check are silent, and silence used to swallow this
+			 * event along with everything else it suppresses - so the one state with no
+			 * other surface to say it (install current, the daemon serving the app a build
+			 * behind) was invisible until the user happened to press Check for updates.
+			 * That is Q-1's discoverability half surviving Q-1's fix: the launch that
+			 * follows such an update ran the check and reached the renderer with nothing.
+			 *
+			 * So the READINGS decide, not the caller: when the two disagree, this event is
+			 * sent even on a silent pass, because the disagreement is the fact no other
+			 * surface carries. Everything else a silent check could say stays suppressed,
+			 * and the renderer's own guard keeps a pair that agrees silent - so an
+			 * equal-reading machine still hears nothing from a launch.
+			 */
+			const readingsDiffer =
+				installedVersion !== null &&
+				runningVersion !== null &&
+				isReadableVersion(installedVersion) &&
+				isReadableVersion(runningVersion) &&
+				installedVersion.trim() !== runningVersion.trim();
 			if (
-				!silent &&
+				(!silent || readingsDiffer) &&
 				this.mainWindow &&
 				!this.mainWindow.isDestroyed() &&
 				this.mainWindow.webContents &&
@@ -3839,7 +3888,22 @@ export class UpdateService {
 			const version = await this.getInstalledBackendVersion();
 			if (version && version !== "Unknown") {
 				last = version;
-				if (target == null || version === target) return version;
+				if (target == null) return version;
+				/*
+				 * AT OR PAST the target, the same rule the landing check states (review
+				 * R2-1, and the same scenario): the app names the version the CHECK read
+				 * off PyPI, and `lop update` installs whatever PyPI has when it RUNS - so
+				 * a release published between the offer and the click comes back one past
+				 * the string that was asked for, and equality here failed a restart that
+				 * had landed ("The server restarted but did not report version 0.56.0"),
+				 * one step after the landing rule stopped doing the same thing. An
+				 * unorderable reading falls back to equality rather than being accepted:
+				 * this cannot order it, so it cannot call it at the target.
+				 */
+				const order = compareVersions(version, target);
+				if (order === null ? version.trim() === target.trim() : order >= 0) {
+					return version;
+				}
 			}
 			await new Promise((resolve) => setTimeout(resolve, intervalMs));
 		}

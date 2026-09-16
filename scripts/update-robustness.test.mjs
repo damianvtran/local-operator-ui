@@ -5966,6 +5966,13 @@ const driveGlobalUpdate = async ({
 	daemonReports = null,
 	restartOk = true,
 	runGate = null,
+	/*
+	 * The post-restart version poll is stubbed by default: the shipped one waits up
+	 * to 60 s, which no case should pay. `stubWait: false` runs the shipped poll
+	 * against the scripted `/health` reading, which is what the R2-1 case needs - the
+	 * comparison inside it is the thing under test.
+	 */
+	stubWait = true,
 } = {}) => {
 	const home = mkdtempSync(join(tmpdir(), "lo-global-update-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-global-update-userdata-"));
@@ -6048,7 +6055,9 @@ const driveGlobalUpdate = async ({
 			};
 		};
 		updateService.getInstalledBackendVersion = async () => daemonReports;
-		updateService.waitForBackendVersion = async () => daemonReports;
+		if (stubWait) {
+			updateService.waitForBackendVersion = async () => daemonReports;
+		}
 		updateService.checkBackendHealth = async () => true;
 		return { updateService, sent, calls, dispose, userData, markerPath };
 	} catch (error) {
@@ -6065,6 +6074,91 @@ const backendPhases = (sent) =>
 	sent
 		.filter(({ channel }) => channel === "backend-update-progress")
 		.map(({ payload }) => payload.phase);
+
+test("the offer carries the reading that decides the sentence it renders", async () => {
+	/*
+	 * UX U9's own cause, at the producer: the managed arm's consequence sentence
+	 * comes from the PLAN, which classifies the INSTALL and cannot know who started
+	 * the daemon. Without the ownership reading here the panel promised a restart
+	 * that cannot happen on a machine where discovery adopted a server - so the
+	 * reading travels on this event, as it already did on the other two.
+	 */
+	const owned = await driveGlobalUpdate({ daemonReports: "0.55.10" });
+	try {
+		owned.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await owned.updateService.checkForBackendUpdates(true);
+		const offer = owned.sent.find(
+			({ channel }) => channel === "backend-update-available",
+		);
+		assert.ok(offer, JSON.stringify(owned.sent.map((c) => c.channel)));
+		assert.equal(offer.payload.restartable, true);
+	} finally {
+		owned.dispose();
+	}
+
+	const adopted = await driveGlobalUpdate({
+		daemonReports: "0.55.10",
+		external: true,
+	});
+	try {
+		adopted.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await adopted.updateService.checkForBackendUpdates(true);
+		const offer = adopted.sent.find(
+			({ channel }) => channel === "backend-update-available",
+		);
+		assert.ok(offer, JSON.stringify(adopted.sent.map((c) => c.channel)));
+		assert.equal(offer.payload.restartable, false);
+	} finally {
+		adopted.dispose();
+	}
+});
+
+test("a silent check speaks when the two readings disagree, and not when they agree", async () => {
+	/*
+	 * UX U10: the launch check is silent, and silence swallowed the one event that
+	 * carries the skew - so the state right after a landed install (install current,
+	 * the daemon serving the app a build behind) was invisible until the user
+	 * happened to press Check for updates, and no later check re-offers it because
+	 * the install itself is up to date.
+	 */
+	const lurking = await driveGlobalUpdate({
+		before: "0.56.2",
+		daemonReports: "0.56.0",
+	});
+	try {
+		lurking.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await lurking.updateService.checkForBackendUpdates(true);
+		const event = lurking.sent.find(
+			({ channel }) => channel === "backend-update-not-available",
+		);
+		assert.ok(event, JSON.stringify(lurking.sent.map((c) => c.channel)));
+		assert.equal(event.payload.version, "0.56.2");
+		assert.equal(event.payload.runningVersion, "0.56.0");
+		assert.equal(event.payload.restartable, true);
+	} finally {
+		lurking.dispose();
+	}
+
+	// And a launch on a machine where the readings agree still says nothing: the
+	// exception is the disagreement, not the silent caller.
+	const agreeing = await driveGlobalUpdate({
+		before: "0.56.2",
+		daemonReports: "0.56.2",
+	});
+	try {
+		agreeing.updateService.getLatestPypiVersion = async () => "0.56.2";
+		await agreeing.updateService.checkForBackendUpdates(true);
+		assert.equal(
+			agreeing.sent.some(
+				({ channel }) => channel === "backend-update-not-available",
+			),
+			false,
+			JSON.stringify(agreeing.sent.map((c) => c.channel)),
+		);
+	} finally {
+		agreeing.dispose();
+	}
+});
 
 test("an update that lands installs first and restarts the app's own daemon after", async () => {
 	const run = await driveGlobalUpdate({ daemonReports: "0.56.0" });
@@ -6128,6 +6222,36 @@ test("an installer that exits 0 having moved nothing is not a landed update, and
 		assert.equal(run.calls.restarts, 0);
 		assert.equal(backendCompletion(run.sent), undefined);
 		assert.deepEqual(backendPhases(run.sent), ["installing"]);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a daemon that comes back past the target is a landing, not a timeout", async () => {
+	/*
+	 * The second half of R2-1, found by the app run that exercised the first: the
+	 * landing rule learned to accept an install at-or-past the target, and the
+	 * post-restart poll still demanded the EXACT string - so the same scenario (the
+	 * offer names 0.56.0, `lop update` installs the 0.56.2 PyPI has now) went from
+	 * "the update did not take effect" to "the server restarted but did not report
+	 * version 0.56.0", sixty seconds later, over a machine that was correct.
+	 */
+	const run = await driveGlobalUpdate({
+		daemonReports: "0.56.2",
+		stubWait: false,
+	});
+	try {
+		assert.equal(
+			await run.updateService.waitForBackendVersion("0.56.0", 4000, 200),
+			"0.56.2",
+		);
+		// A daemon that comes back BEHIND the target is still not the new build: the
+		// same poll with a reading that never reaches it gives up.
+		run.updateService.getInstalledBackendVersion = async () => "0.55.10";
+		assert.equal(
+			await run.updateService.waitForBackendVersion("0.56.0", 1200, 200),
+			null,
+		);
 	} finally {
 		run.dispose();
 	}
