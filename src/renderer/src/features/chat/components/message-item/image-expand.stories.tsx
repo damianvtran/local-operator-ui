@@ -107,14 +107,13 @@ const screenshot = `data:image/png;base64,${SCREENSHOT_PNG_BASE64}`;
 const smallImage = `data:image/png;base64,${SMALL_IMAGE_PNG_BASE64}`;
 
 /**
- * The picture's own button, which is the only control that opens the overlay.
+ * The overlay's own picture, which the latch waits for.
  *
- * Anchored on the title rather than a `data-` hook: the title is production
- * markup this change introduces and a reader can check it, and a rig that cannot
- * find it leaves `data-capture-pending` set and makes the capture throw instead
- * of photographing whatever happened to be on screen.
+ * The rig's press selector for these stories is the picture's production button
+ * (`button[title^="Click to expand"]`, declared beside the tuples), anchored on
+ * the title rather than a `data-` hook because the title is production markup a
+ * reader can check.
  */
-const PICTURE = 'button[title^="Click to expand"]';
 const EXPANDED_PICTURE = '[role="dialog"] img';
 
 /**
@@ -127,19 +126,13 @@ const EXPANDED_PICTURE = '[role="dialog"] img';
  * before the overlay had painted at all. 600 frames is ten seconds and exhaustion
  * leaves the attribute set, which fails the run loudly.
  */
-const usePressToExpand = () => {
+const useExpandedPictureLatch = () => {
 	useEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		let frame = 0;
-		let pressed = false;
 		let cancelled = false;
 		const tick = () => {
 			if (cancelled) return;
-			const button = document.querySelector<HTMLButtonElement>(PICTURE);
-			if (button && !pressed) {
-				pressed = true;
-				button.click();
-			}
 			const image = document.querySelector<HTMLImageElement>(EXPANDED_PICTURE);
 			if (image?.complete && image.naturalWidth > 0) {
 				document.documentElement.removeAttribute("data-capture-pending");
@@ -182,9 +175,23 @@ const Thread = ({ src }: { src: string }) => (
 	</Column>
 );
 
-/** The same column, with the picture pressed once on mount. */
-const PressedThread = ({ src }: { src: string }) => {
-	usePressToExpand();
+/**
+ * The column at rest, plus the latch — and NO press.
+ *
+ * The press comes from the RIG (design round 2, D2-4): the tuples dispatch a real
+ * pointer press at the picture's own centre, so the overlay opens through the path
+ * a mouse user's click takes and the frame shows the state a mouse user actually
+ * gets. This file used to press with `button.click()`, which Blink treats as
+ * keyboard-ish for `:focus-visible`, so every overlay frame carried a focus ring
+ * on the close button that no mouse user sees.
+ *
+ * What stays here is what the latch bought in round 1: the shutter is held until
+ * the overlay's picture has DECODED, so a frame of an overlay whose picture merely
+ * had not arrived yet cannot ship. A story cannot press like a user, but it is
+ * still the right place to say when the state is ready to photograph.
+ */
+const PressableThread = ({ src }: { src: string }) => {
+	useExpandedPictureLatch();
 	return <Thread src={src} />;
 };
 
@@ -315,28 +322,34 @@ export default meta;
 type Story = StoryObj;
 
 /** The state the click acts on. */
+/*
+ * The overlay stories below mount the row AT REST; the rig presses the picture.
+ * Reading this file in Storybook therefore shows the picture, and the expanded
+ * state is one click away — which is also the only way to see it as a mouse user
+ * sees it (design round 2, D2-4).
+ */
 export const InThread: Story = {
 	render: () => <Thread src={screenshot} />,
 };
 
 /** The overlay, reached by pressing the picture. */
 export const Expanded: Story = {
-	render: () => <PressedThread src={screenshot} />,
+	render: () => <PressableThread src={screenshot} />,
 };
 
 /** The size rule, on the smallest picture that can carry it. */
 export const ExpandedSmallImage: Story = {
-	render: () => <PressedThread src={smallImage} />,
+	render: () => <PressableThread src={smallImage} />,
 };
 
 /** The aspect band the close button's clearance depends on (design D1-3). */
 export const ExpandedNearViewport: Story = {
-	render: () => <PressedThread src={nearViewport} />,
+	render: () => <PressableThread src={nearViewport} />,
 };
 
 /** The other end of the fit: a phone-aspect capture (QA Q-5). */
 export const ExpandedPortrait: Story = {
-	render: () => <PressedThread src={portrait} />,
+	render: () => <PressableThread src={portrait} />,
 };
 
 /** The picture that never arrives, and what the overlay says instead. */

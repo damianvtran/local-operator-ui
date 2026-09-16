@@ -74,6 +74,19 @@ const getFileName = (path: string): string => {
  * accessible name that states the ACTION ("Expand Screenshot"), and Enter/Space
  * on a real button — four cues that cost the composition nothing, rather than a
  * fifth that would sit on every picture in every transcript.
+ *
+ * ## The row's SHAPE, accepted rather than inherited
+ *
+ * The frame HUGS the picture and sits flush with the column's left edge, rather
+ * than spanning the column with the picture floating centred in a panel wider
+ * than itself. That is decided, not incidental (design round 2 accepted it on
+ * measured facts, D2-1/D2-5): a wide picture now shares the message column's
+ * left edge instead of being centred in dead ground, and a narrow one — which
+ * used to get that whole panel of ground around it — is unchanged. What decides
+ * it is the wrapper's own display: `<button>` shrink-wraps where a block `<div>`
+ * filled its container. So an author reaching for `w-full` on the wrapper to
+ * "fix" a narrow frame should know they are re-deciding this, and that the
+ * canonical surface takes the same shape through its `inline-block` wrapper.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 	({ file, src, conversationId, label }) => {
@@ -300,18 +313,33 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					 * that click became the expansion (review round 1, R1-1).
 					 *
 					 * This is the reveal the repo already uses for a hovering toolbar —
-					 * `quote-toolkit.tsx`, `message-controls.tsx`,
+					 * `quote-toolkit.tsx`, `directory-indicator.tsx`,
 					 * `browser-tab-strip.tsx`, `agents-sidebar.tsx`,
-					 * `schedule-list-item.tsx` and three canvas views — where the
-					 * control is hidden with `pointer-events-none opacity-0` (paint and
-					 * pointer only) and both `group-hover` and `group-focus-within`
-					 * bring it back, so being hidden and being unreachable stopped being
-					 * the same thing. `group` is this component's own wrapper, so
+					 * `schedule-list-item.tsx` and the three canvas views
+					 * (`canvas-file-viewer`, `canvas-tabs`, `canvas-variables-viewer`) —
+					 * where the control is hidden with `pointer-events-none opacity-0`
+					 * (paint and pointer only) and both `group-hover` and
+					 * `group-focus-within` bring it back, so being hidden and being
+					 * unreachable stopped being the same thing. (Twelve files under
+					 * `src/renderer/src` carry `group-focus-within`; those eight are the
+					 * nearest analogues, and the count is greppable rather than recalled —
+					 * review round 2, R2-3, corrected this list.) `group` is this component's own wrapper, so
 					 * focusing the picture reveals the menu the same way hovering it
 					 * does, and Tab walks picture -> menu.
 					 */
 					<div
-						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+						/*
+						 * `has-[[data-state=open]]` for the OPEN state, and it is not
+						 * decoration: opening this menu by KEYBOARD moves focus into the
+						 * Radix portal, so `group-focus-within` stops matching while the
+						 * menu is on screen and the trigger vanishes from under it — the
+						 * menu reads as hanging off an empty focus ring (UX round 2,
+						 * U2-1). A pointer user never saw it, because the pointer is still
+						 * hovering the wrapper. The trigger carries `data-state` from
+						 * Radix, so the wrapper can hold its own reveal for exactly as
+						 * long as its menu is open, on either input.
+						 */
+						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}

@@ -712,6 +712,17 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 			"group-hover:opacity-100",
 			"group-focus-within:pointer-events-auto",
 			"group-focus-within:opacity-100",
+			/*
+			 * And the OPEN state, which is a different route to the same loss:
+			 * opening this menu by keyboard moves focus into the Radix portal, so
+			 * `group-focus-within` stops matching while the menu is on screen and the
+			 * trigger vanishes from under it (UX round 2, U2-1). The class is the half
+			 * an engine without layout can check, exactly as above; the frame that
+			 * shows it is `chat-image-expand--legacy-tabbed-open`, where the trigger
+			 * must still be drawn behind the open menu.
+			 */
+			"has-[[data-state=open]]:pointer-events-auto",
+			"has-[[data-state=open]]:opacity-100",
 		]) {
 			assert.ok(
 				wrapper.className.includes(token),
