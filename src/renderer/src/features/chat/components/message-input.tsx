@@ -1610,11 +1610,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * from a whole-buffer replacement somebody else made.
 				 */
 				captureOwnedBuffer.current = next.buffer;
-				// An armed capture is a NEW gesture: whatever the operator cancelled
-				// before, this is not it any more.
-				if (next.capture.arm) {
-					cancelledToken.current = null;
-				}
+				/*
+				 * AN ARM DOES NOT RETIRE THE GESTURE RECORD, and this is the difference
+				 * between the app and the harness (QA round 8, Q16). The arm is the
+				 * token's OWN consequence — the pick writes the token and arms it, and a
+				 * keystroke after a cancelled token re-syncs the same arm — so clearing
+				 * the record here meant a real edit that MOVED the token arrived at the
+				 * planner as a word nobody had touched: prose, sent, with the secret in
+				 * it. `#238`'s property is the reason the record must survive instead: a
+				 * token that reaches the dispatcher has its arguments REFUSED, so a
+				 * secret can never land in command text.
+				 *
+				 * What still retires the record: a new Escape (a new cancel writes its
+				 * own), a conversation switch, and a draft that no longer contains the
+				 * run the gesture left — the last two below, because the record describes
+				 * a token that is still in the box.
+				 */
 				/*
 				 * The pick's record lives exactly as long as the token it describes: a
 				 * buffer that no longer contains the run the picker wrote is a different
@@ -1627,6 +1638,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					!next.buffer.includes(pickedToken.current)
 				) {
 					pickedToken.current = null;
+				}
+				if (
+					cancelledToken.current !== null &&
+					!next.buffer.includes(cancelledToken.current.text)
+				) {
+					cancelledToken.current = null;
 				}
 				setCapture(next.capture);
 				setNewMessage(next.buffer);
