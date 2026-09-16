@@ -122,3 +122,14 @@ can see the edge of the evidence.
   also needs a state that is deliberately hard to stage: the feed disconnected
   while the catalogue still answers (a backend that is fully down suppresses the
   line by design, because the `role="alert"` above it already says so).
+
+## Re-taken for the turn stamp
+
+These frames were re-shot by `feat/transcript-timestamps`, which puts the date and time under
+a user turn (`3:42 PM`, `Yesterday 3:42 PM`, `Sep 12, 3:42 PM`, `Sep 12, 2025, 3:42 PM`) and at
+the foot of an expanded tool call. Nothing about this surface's own subject changed: the user
+turn at the head of this transcript now carries a stamp, and because the transcript is
+bottom-pinned that addition shifts the rows above it, so the frames move by more than the
+stamp's own pixels. The frames for the change itself, its before/after pair and the four
+shapes of the formatter are in [`../chat-tool-rows/`](../chat-tool-rows/) (see *The turn
+stamps*), with the before half declared in [`../turn-stamps-before/`](../turn-stamps-before/).
