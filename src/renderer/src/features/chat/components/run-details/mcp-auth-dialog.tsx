@@ -237,6 +237,16 @@ export function McpAuthDialog({
 	)[0];
 	const running =
 		state.kind === "running" && (!operation || operation.status === "running");
+	/*
+	 * Whether the latest statement about this row is a sign-in that FINISHED, as
+	 * opposed to one that is still going or ended badly.
+	 *
+	 * Read off the wire's own word rather than off the absence of `running`: an
+	 * operation whose status this build cannot read (a word from a newer backend)
+	 * is not a success, and folding the two together would drop the retry for a
+	 * state nothing here can vouch for — see the footer's remark.
+	 */
+	const completed = operation?.status === "complete";
 	const failure = remedy.failureFor(row.name);
 	const statusFailure = status.error
 		? mcpFailure("status", status.error, false)
@@ -317,7 +327,7 @@ export function McpAuthDialog({
 					) : null}
 					{state.kind === "notice" ||
 					failure ||
-					(state.kind === "running" && !running) ? (
+					(state.kind === "running" && !running && !completed) ? (
 						/*
 						 * The retry is a SECONDARY here, and that is D1's second half: the
 						 * remedy carries the accent, so when one is on screen it takes it. It
@@ -328,6 +338,20 @@ export function McpAuthDialog({
 						 * rather than as a second control under this callout. Dropping it would
 						 * leave the states with no remedy of their own a dialog with no action
 						 * but Close.
+						 *
+						 * A COMPLETED sign-in (`completed` above) is the one settled state it
+						 * stands down for, because here the retry is not one press away from
+						 * another attempt at the same thing — it is one press away from
+						 * re-offering the grant that just succeeded. The press re-runs the probe,
+						 * the probe answers "this server takes OAuth", and the dialog returns to
+						 * its own primary `Continue in browser`, a control whose whole meaning is
+						 * "grant this now" sitting beside the sentence `Sign-in complete.` The
+						 * presence of a retry under a success reads as though the sign-in had
+						 * failed (operator report, 2026-09-16), and a success has nothing to
+						 * retry, so the footer offers `Close` alone. The states above and below
+						 * it are unchanged: `failed`, `cancelled`, and an operation whose status
+						 * this build cannot read all keep the retry, as does the probe's own
+						 * `notice` and a recorded press failure.
 						 */
 						<SecondaryButton onClick={() => setAttempt((value) => value + 1)}>
 							Try again

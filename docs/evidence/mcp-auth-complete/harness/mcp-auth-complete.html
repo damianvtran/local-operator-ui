@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  Evidence harness for the sign-in dialog's footer at a settled MCP grant.
+
+  Mounts the SHIPPED `McpAuthDialog` behind a REAL desktop bridge — an injected
+  `window.api.desktop` — so the dialog takes the Electron IPC branch that
+  actually ships (`desktopRequest` → `window.api.desktop.request`) rather than
+  the browser-dev `/__desktop` HTTP branch. The bridge is also the only way this
+  surface can reach a settled operation at all: the footer under test is built
+  from the `mcp.list` document the dialog's own poll reads.
+
+  Not part of the app and not part of `pnpm test:desktop`: a capture surface,
+  booted by `harness/capture.mjs` (see the README for the command and the port).
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>MCP sign-in dialog — the footer at a settled grant</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./mcp-auth-complete.tsx"></script>
+	</body>
+</html>
