@@ -14,8 +14,8 @@
  *
  * Someone therefore did not. `signed-update-candidate.yml`'s build step set the
  * signing variables and never the four, so the workflow failed in `build` on
- * every dispatch it ever had - runs 35009147986, 35011068051, 35016174653,
- * 35021403386 and 35027593846, five of five - and the `exact-update` job it
+ * EVERY dispatch it has ever had - seven at the time of writing, all of them on
+ * `main`, from 35009147986 to 35040000402 - and the `exact-update` job it
  * exists to feed (the unmodified incumbent updater driving itself onto the
  * candidate's exact signed bytes) has consequently NEVER RUN. The repository had
  * already hit this once locally and written the workaround down
@@ -23,6 +23,15 @@
  * exited 1 until all four were exported), which is the shape of a rule that
  * lives in prose: it is followed by whoever read it, and the next step that
  * builds is authored by whoever did not.
+ *
+ * The count and the range above are a SNAPSHOT of a list that keeps growing, and
+ * that is deliberate: the claim this header exists to support is "every dispatch
+ * it has ever had", which stays true as the workflow is dispatched again, and the
+ * IDs beside it are the ones that carry information - the first, the most recent,
+ * and the fact that all of them are on `main` and all failed in the same step. A
+ * later dispatch that reaches the build is what this change is for; a later one
+ * that still dies in `build` means the four bindings are wrong again, and the
+ * check below is what would say so.
  *
  * WHY THE LIST IS DERIVED RATHER THAN COPIED. A second hand-written list of the
  * four names is a copy that can drift from the plugin it describes - and the
