@@ -1899,6 +1899,10 @@ export const STORIES = [
 	 * can produce the narrow layout. Every other entry is the dialog's own size.
 	 */
 	["panels-analytics--populated", 1140, 980],
+	/* The session-free panel: `/analytics` with no conversation in front of the
+	   user, so the `This session only` check is absent and the scope still reads
+	   `all sessions`. Paired with `populated`, which carries the check. */
+	["panels-analytics--session-free", 1140, 980],
 	/*
 	 * The same payload with the pointer ON THE BAR, which is what this change is
 	 * about: recharts' own cursor for a `BarChart` is a full-height rectangle over
@@ -1982,6 +1986,11 @@ export const STORIES = [
 	   surface needs a signed-in Radient tenant, so this is the honest half. */
 	["panels-settings--usage-chart-tokens", 1140, 560],
 	["panels-settings--usage-chart-credits", 1140, 560],
+	/* The session-free panel: `/info` with no conversation in front of the user,
+	   which is the state the panel is now readable in. No "This conversation"
+	   section, and its description naming the sessions section instead. Paired
+	   with `populated` and `live-half-unmeasured`, which must be untouched. */
+	["panels-info--session-free", 1140, 1040],
 	["panels-info--populated", 1140, 1040],
 	/* The live half null and nothing bound: the payload the desktop's own route
 	   always sends, with the three unknown spellings it must render. */
