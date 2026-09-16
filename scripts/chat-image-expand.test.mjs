@@ -30,7 +30,17 @@
  *      a `DialogTitle` is present, so a dialog without one is announced as an
  *      unnamed dialog — and this Radix (1.1.23, the version `radix-ui` 1.6.7
  *      resolves) no longer logs the old missing-Title warning, which is why the
- *      assertion is on the name rather than on the absence of a warning.
+ *      assertion is on the name rather than on the absence of a warning;
+ *   7. the picture's own accessible name states the ACTION, not only the thing
+ *      (round 1, UX U1-1) — `aria-label`, because the action used to reach a
+ *      reader only as the description off `title`;
+ *   8. the file-actions menu beside a conversation picture stays reachable without
+ *      a pointer (round 1, review R1-1). Its wrapper used to be `invisible`, i.e.
+ *      `visibility: hidden`, which takes the trigger out of the tab order — and the
+ *      four actions in it are the ones the picture's own click used to perform
+ *      before that click became the expansion;
+ *   9. a canonical picture with no bytes is a failure row and NOT a button, which
+ *      is the precondition the overlay's own failure state rests on.
  *
  * HOW IT STANDS IN FOR A BROWSER. jsdom, with React's own scheduler, the rig
  * `run-panel-navigation.test.mjs` uses. The assertions are structural — which
@@ -39,6 +49,34 @@
  * `object-contain` fit and the small-picture rule are the STORYBOOK frames'
  * business (`docs/evidence/chat-image-expand/`), not this file's. A green test
  * here is not visual evidence and does not claim to be.
+ *
+ * The same limit reaches the two places where a find needs the engine to do
+ * something it cannot, and neither is covered by a weaker substitute here — both
+ * were measured before being written off:
+ *
+ *   1. **Radix's dropdown cannot be opened.** With `console.time` around the call,
+ *      twice, on this tree, opening it costs ~26s of layout churn (the popper's
+ *      positioning loop and React's `act` flush against each other) and leaves
+ *      work running past the test that opened it. That is a 26s tax and a flake
+ *      in `test:desktop` for a claim a real browser makes better:
+ *      `chat-image-expand--legacy-tabbed` holds focus on the trigger through the
+ *      rig's own Tab presses, and `chat-image-expand--legacy-tabbed-open` then
+ *      presses Enter through the input pipeline and requires the menu's items to
+ *      appear.
+ *   2. **An `<img>` cannot be made to report `error`.** jsdom implements no image
+ *      decoder, so the event has to be handed to the element — and doing that
+ *      leaves jsdom's own image work pending, which fails after the window closes
+ *      with `TypeError: Failed to execute 'dispatchEvent' on EventTarget:
+ *      parameter 1 is not of type 'Event'` and marks the file failed. Measured
+ *      five ways, all leaky: a synthetic `error` on the overlay's `<img>`; the
+ *      same with a bubbling event; the same plus `settle`; the same plus a 300ms
+ *      macrotask drain; and the same after clearing the `src` first. A plain
+ *      `<img>` mounted and then removed does NOT leak, and neither does an
+ *      undecodable `src` nobody dispatches on — so the leak is the dispatched
+ *      error itself, not this component removing the picture. The overlay's own
+ *      failure state is proven where it is real: the story's capture latch waits
+ *      for the fallback's copy to appear, so `chat-image-expand--expanded-failed`
+ *      FAILS to capture rather than photographing the wrong state.
  *
  * ISOLATION. Nothing here boots the app, a fork or Electron: it is jsdom in this
  * process, so there is no window mode to name and no session of the operator's to
@@ -214,6 +252,22 @@ const isOpen = (document) => document.querySelector(DIALOG) !== null;
  */
 const pictureButton = (document) =>
 	document.querySelector(PICTURE_IMAGE)?.closest("button") ?? null;
+
+/**
+ * The file-actions trigger beside a conversation picture, and the wrapper that
+ * reveals it. Named by shipped attributes rather than a test hook, as above.
+ */
+const FILE_ACTIONS = 'button[aria-label="File actions"]';
+const FILE_ACTIONS_WRAPPER = ".file-actions-menu";
+/**
+ * The two class TOKENS that made the reveal untabbable, hoisted here because
+ * biome's `useTopLevelRegex` is right about them: they are the assertion's
+ * subject, not a per-run computation.
+ */
+const UNTABBABLE_REVEAL = /\binvisible\b|group-hover:visible/;
+/** The store's own failure sentence, which the digest-backed row must say. */
+const STORE_COPY_RE =
+	/Screenshot could not be displayed\. Its stored copy is not available to this reader\./;
 
 /* ------------------------------------------------------------------ harness */
 
@@ -586,5 +640,147 @@ test("the close button closes it and focus returns to the picture", async () => 
 
 		assert.equal(isOpen(api.document), false, "the close button closes it");
 		assert.equal(api.focused(), "picture", "and focus returns to the picture");
+	});
+});
+
+test("the picture's accessible name states the action, not only the thing", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		const picture = pictureButton(api.document);
+		/*
+		 * The action was reachable only as the accessible DESCRIPTION before this
+		 * (off `title`, which some readers skip), so the name a reader heard was
+		 * the picture's own label and nothing more — UX round 1, U1-1.
+		 */
+		assert.equal(
+			picture.getAttribute("aria-label"),
+			"Expand invoices-march.png",
+			"a reader must hear what pressing the picture does, not just what the picture is",
+		);
+		/*
+		 * And the thing is still named where the name stands alone: the `alt` is
+		 * what labels the picture itself in any context without the button around
+		 * it (an exported transcript, a bare `<img>` in a future caller).
+		 */
+		assert.equal(
+			picture.querySelector("img").getAttribute("alt"),
+			"invoices-march.png",
+			"the picture keeps its own alt text",
+		);
+	});
+});
+
+test("the file-actions menu stays reachable without a pointer", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		const wrapper = api.document.querySelector(FILE_ACTIONS_WRAPPER);
+		assert.ok(
+			wrapper,
+			`a picture on disk carries its file actions (${FILE_ACTIONS_WRAPPER})`,
+		);
+		/*
+		 * The contract, because this bundle loads no stylesheet and jsdom has no
+		 * layout: `visibility: hidden` is what removed the trigger from the tab
+		 * order, and the reveal that replaces it hides the control from the POINTER
+		 * and the PAINTER (`pointer-events-none`, `opacity-0`) while leaving it in
+		 * the DOM's focus order — and `group-focus-within` is the half that brings
+		 * it back when focus is anywhere in the group. The real-browser half is in
+		 * the header: `chat-image-expand--legacy-tabbed` fails to capture if Tab
+		 * never reaches the trigger, and `--legacy-tabbed-open` requires the menu's
+		 * items to appear when Enter is pressed on it.
+		 */
+		assert.ok(
+			!UNTABBABLE_REVEAL.test(wrapper.className),
+			`the reveal must not use a visibility toggle, which is untabbable (got: ${wrapper.className})`,
+		);
+		for (const token of [
+			"pointer-events-none",
+			"opacity-0",
+			"group-hover:pointer-events-auto",
+			"group-hover:opacity-100",
+			"group-focus-within:pointer-events-auto",
+			"group-focus-within:opacity-100",
+		]) {
+			assert.ok(
+				wrapper.className.includes(token),
+				`the reveal must keep \`${token}\` — the four actions in it became pointer-only when the picture's click stopped opening the file (review round 1, R1-1)`,
+			);
+		}
+		/*
+		 * And the control itself is real: enabled, focusable, and not hidden from a
+		 * reader while it is hidden from the pointer.
+		 */
+		const trigger = api.document.querySelector(FILE_ACTIONS);
+		assert.ok(trigger, `the actions have a trigger (${FILE_ACTIONS})`);
+		assert.equal(
+			trigger.disabled,
+			false,
+			"it is an enabled control, not a disabled one faking a reveal",
+		);
+		assert.notEqual(
+			trigger.getAttribute("tabindex"),
+			"-1",
+			"nothing takes it out of the tab order",
+		);
+		assert.equal(
+			trigger.getAttribute("aria-hidden"),
+			null,
+			"it is not hidden from a reader while it is hidden from the pointer",
+		);
+		assert.equal(
+			trigger.hasAttribute("inert"),
+			false,
+			"and it is not inert, which would take it out of the tab order across browsers",
+		);
+	});
+});
+
+test("a canonical picture with no bytes is a failure row, not an untappable picture", async () => {
+	await mount(async (api) => {
+		/*
+		 * A digest whose bytes the store does not hold. `useAttachmentUrl` answers
+		 * `null` for it (the relay's `{kind:"error"}` half is
+		 * `attachment-url.test.mjs`'s), and this is what the view does with that
+		 * answer — the precondition the overlay's own failure state rests on: with
+		 * no bytes there is no button, so there is nothing to expand.
+		 */
+		await api.render(
+			React.createElement(CanonicalImage, {
+				image: {
+					id: "image-expand:1",
+					data: null,
+					attachment: "0".repeat(32),
+					mimeType: "image/png",
+				},
+				scope: transcriptScope,
+				label: "Screenshot",
+			}),
+		);
+		await api.settle(
+			() => api.document.body.textContent.includes("could not be displayed"),
+			10,
+		);
+		assert.match(
+			api.document.body.textContent,
+			STORE_COPY_RE,
+			"an unresolvable digest says so, in the store's own words rather than the on-disk ones",
+		);
+		assert.equal(
+			pictureButton(api.document),
+			null,
+			"and it is not a button at all",
+		);
 	});
 });

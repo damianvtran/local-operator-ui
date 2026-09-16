@@ -71,6 +71,13 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  * narrowed set from a swept one.
  */
 const ONLY = flag("only");
+
+/*
+ * Selectors the round-1 image-expand tuples drive, named once because two of them
+ * are the same button seen from a pointer and from the keyboard.
+ */
+const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
+const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER);
 
@@ -357,6 +364,14 @@ export const STORIES = [
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
 	   well as wide, because the shed order under pressure is half the design. */
+	/* The canonical rows that CARRY the pictures, which no frame held before this
+	   round: `CanonicalImage` was exercised only through the shared component's own
+	   story, never through the tool row that mounts it, and a row with two images
+	   (the `Screenshot 1`/`2` labels) was rendered nowhere at all (QA round 1, Q-3).
+	   `user-attachments` is the other call site and the other label family. */
+	["chat-tool-rows--screenshots", 1280, 900],
+	["chat-tool-rows--screenshots-two", 1280, 900],
+	["chat-tool-rows--user-attachments", 1280, 900],
 	["chat-tool-rows--states", 1280, 900],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
@@ -588,6 +603,57 @@ export const STORIES = [
 	["chat-image-expand--in-thread", 1280, 900],
 	["chat-image-expand--expanded", 1280, 900],
 	["chat-image-expand--expanded-small-image", 640, 420],
+	/* THE ROUND-1 REVIEW'S SETS (design D1-3/D1-4/D1-5, review R1-1, UX U1-1, QA
+	   Q-3/Q-5), and why each is a tuple rather than a story. `expanded-small-window`
+	   is the STORY `expanded` at the smallest shape the app enforces (800x760, the
+	   floor UX round 1 measured on the built app) — the same surface, one window
+	   smaller. The two new aspect stories photograph what design D1-3 could only
+	   reach by arithmetic: a picture at the viewport's own aspect, whose corner lands
+	   as close to the close button as the geometry allows, and the phone-aspect
+	   capture the same file's sizing note names as a real input. `expanded-failed`
+	   carries its own latch — the story withholds the shutter until the failure copy
+	   is painted, so a frame of an overlay whose picture merely had not decoded yet
+	   cannot ship. `legacy` is ONE story the rig drives FOUR ways, because the four
+	   frames are one surface in four states: at rest, under a real pointer, focused
+	   by real Tab presses, and then ACTIVATED by Enter, whose capture fails if the
+	   menu's items never appear — the keyboard half of review R1-1, in the engine
+	   the finding is about. */
+	["chat-image-expand--expanded-near-viewport", 1280, 900],
+	["chat-image-expand--expanded-portrait", 1280, 900],
+	["chat-image-expand--expanded-failed", 1280, 900],
+	["chat-image-expand--expanded", 800, 760, { dir: "expanded-small-window" }],
+	["chat-image-expand--legacy", 1280, 900],
+	[
+		"chat-image-expand--legacy",
+		1280,
+		900,
+		/*
+		 * `hoverSettleMs` because the reveal is a real transition, not a class
+		 * swap: the control fades in over `duration-fast`, so the shutter waits for
+		 * the fade instead of trusting that it landed after it. On this machine the
+		 * frame came out complete either way — the trigger's brightest pixel reads
+		 * `inkMuted` (measured 179,175,170 against the palette's `#b5afa2`), which is
+		 * the ghost glyph at full opacity — and the wait is kept so a slower machine
+		 * cannot photograph a half-faded control.
+		 */
+		{ dir: "legacy-hovered", hover: IMAGE_EXPAND_PICTURE, hoverSettleMs: 400 },
+	],
+	[
+		"chat-image-expand--legacy",
+		1280,
+		900,
+		{ dir: "legacy-tabbed", tabTo: IMAGE_EXPAND_FILE_ACTIONS },
+	],
+	[
+		"chat-image-expand--legacy",
+		1280,
+		900,
+		{
+			dir: "legacy-tabbed-open",
+			tabTo: IMAGE_EXPAND_FILE_ACTIONS,
+			pressKey: { key: "Enter", reveals: '[role="menu"]' },
+		},
+	],
 	/* The MCP section, whose states a live session cannot produce on demand: an
 	   expired grant, a dead process, a word from a runtime this build has not been
 	   taught, and the cold payload of a session with no runtime. */
@@ -2851,6 +2917,60 @@ const main = async () => {
 					throw new Error(
 						`${story} @ ${theme}: the tabTo selector \`${options.tabTo}\` never took focus in 24 Tab presses`,
 					);
+				}
+			}
+			/*
+			 * A KEY PRESS on whatever holds focus, for the frames whose claim is not
+			 * only that a control is REACHABLE by keyboard but that reaching it DOES
+			 * something. `tabTo` above lands the focus; a focus ring in a still proves
+			 * that and nothing about activation, so this presses a key on the focused
+			 * element through the input pipeline and requires `reveals` to match
+			 * afterwards — a press that opened nothing fails the capture instead of
+			 * shipping an unchanged surface under a name that claims an activation.
+			 *
+			 * Both edges are sent, because a Radix menu trigger opens on the DOWN
+			 * edge of Enter and a caller sending only the up edge would be testing a
+			 * key the product ignores — the same reason the desktop suite's
+			 * `pressEscape` twin sends `keydown`.
+			 *
+			 * Deliberately not a general key-press API: it exists so one frame in this
+			 * repository can carry "reached by keyboard AND opened by keyboard".
+			 */
+			if (options?.pressKey) {
+				const { key, reveals } = options.pressKey;
+				const code = key === "Enter" ? 13 : key === " " ? 32 : null;
+				if (code === null) {
+					throw new Error(
+						`${story} @ ${theme}: pressKey only knows Enter and Space, got \`${key}\``,
+					);
+				}
+				for (const type of ["rawKeyDown", "keyUp"]) {
+					await cdp.send("Input.dispatchKeyEvent", {
+						type,
+						key,
+						code: key === " " ? "Space" : key,
+						windowsVirtualKeyCode: code,
+						nativeVirtualKeyCode: code,
+					});
+				}
+				if (reveals) {
+					const shown = async () =>
+						(
+							await cdp.send("Runtime.evaluate", {
+								returnByValue: true,
+								expression: `document.querySelectorAll(${JSON.stringify(reveals)}).length`,
+							})
+						).result.value > 0;
+					let visible = false;
+					for (let i = 0; i < 20 && !visible; i++) {
+						await sleep(50);
+						visible = await shown();
+					}
+					if (!visible) {
+						throw new Error(
+							`${story} @ ${theme}: pressing ${key} did not reveal \`${reveals}\` — the frame would be the resting state under a name that claims an activation`,
+						);
+					}
 				}
 			}
 			if (options?.scrollToEnd) {

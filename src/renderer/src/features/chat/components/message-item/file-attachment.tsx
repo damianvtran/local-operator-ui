@@ -9,7 +9,11 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
-import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
+import {
+	ATTACHMENT_UNAVAILABLE_COPY,
+	AttachmentFrame,
+	BrokenAttachment,
+} from "./attachment-frame";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -361,14 +365,22 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							 * resolves a canvas document from a title, and a pasted image's own
 							 * title is "Pasted image" — never a canvas-supported extension — so
 							 * the click fell through to `onClick(file)`, which asked the OS to
-							 * open a `data:` URI as a path and raised "Could not open Pasted
-							 * image" over a picture that was on screen the whole time.
+							 * open a `data:` URI as a path. That was a SILENT no-op rather
+							 * than an error, and the distinction is worth the sentence:
+							 * `ipcMain.handle("open-file")` awaits `shell.openPath`, which
+							 * RETURNS its error string instead of rejecting, and the handler
+							 * discards it (`src/main/index.ts`), so `openFile` is typed
+							 * `Promise<void>` and the catch that would have shown a toast
+							 * never ran. The old click did nothing visible at all, on a
+							 * picture that was on screen the whole time (review round 1,
+							 * R1-5 corrected this comment's earlier claim of a toast).
 							 */}
 							<button
 								ref={pictureRef}
 								type="button"
 								className={cn("block max-w-full cursor-pointer")}
 								onClick={() => setExpanded(true)}
+								aria-label={`Expand ${name}`}
 								title={`Click to expand ${name}`}
 							>
 								<AttachmentFrame>
@@ -390,6 +402,17 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								open={expanded}
 								onOpenChange={setExpanded}
 								restoreFocusTo={pictureRef}
+								/*
+								 * A pasted image is a `data:` handle, never a path, so the store
+								 * copy is the honest sentence here — the split
+								 * `canonical-image.tsx` makes for the same reason.
+								 */
+								fallback={
+									<BrokenAttachment
+										name={name}
+										detail={ATTACHMENT_UNAVAILABLE_COPY}
+									/>
+								}
 							/>
 						</>
 					)}
