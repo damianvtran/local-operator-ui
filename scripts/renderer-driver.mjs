@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|palette|none>  which built-in scene to run (default: states)
+ *   --scene <states|new-chat|palette|browser-pane|none>  which built-in scene to run (default: states)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -1433,6 +1433,242 @@ async function seedOnboardingComplete(cdp) {
 	await wait(1500);
 }
 
+/**
+ * The conversation-scoped browser pane, driven the way a user opens it.
+ *
+ * WHAT THIS SCENE IS FOR, and why nothing else can carry it: the pane's own
+ * stories render `BrowserPane` as the whole viewport against a stubbed bridge
+ * (`browser-pane.stories.tsx` states that limit), so the two things they cannot
+ * photograph are the ones this scene asserts — that a REAL press on the chat
+ * header's Globe trigger opens the pane in the real app, and that the pane then
+ * takes the right slot, narrowing the conversation rather than covering it, with
+ * the native page following the reported rectangle.
+ *
+ * TWO RUNS, TWO CLAIMS, the same shape `new-chat` uses. The chat route (and so
+ * the header the trigger lives in) renders only with the backend's
+ * `session_catalogue` capability, so:
+ *
+ * - WITHOUT `--backend` this scene proves the GATE: the trigger is absent because
+ *   the route is the app's offline surface, and the frame says which screen that
+ *   is.
+ * - WITH `--backend` it proves the FEATURE: the press opens the pane, the slot
+ *   narrows the column, the scope switch changes the strip, the pane's own dock
+ *   opens at the pane's width, and the host handover leaves the page visible
+ *   exactly once.
+ *
+ * The `--backend` half needs a build made with `VITE_LOCAL_OPERATOR_API_URL` and
+ * a bearer, per the isolation notes at the top of this file; the run asserts both
+ * before the scene starts, so a mis-built app cannot report a false pass.
+ */
+async function sceneBrowserPane(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * OPEN A CONVERSATION FIRST, and this is not incidental: with no conversation
+	 * selected the chat route renders its "Start a chat" draft screen, which has no
+	 * header at all - measured against this run's own backend, where the frame was
+	 * that screen with one session already in the catalogue. The chat header (and
+	 * with it the right slot's three triggers) exists only once a session is open,
+	 * so the scene widens the sidebar list and presses the first conversation, the
+	 * way a user does.
+	 */
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-all-chats"]',
+	});
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-session-row"]',
+	});
+	const before = await verb(cdp, "state");
+	note("state (chat, before)", JSON.stringify(before));
+
+	/*
+	 * Asked of the DOM rather than with `press`, because the absence of the
+	 * trigger is a RESULT in the gated run and a thrown "nothing matches" would
+	 * end the scene instead of reporting it.
+	 */
+	const triggerPresent = await cdp.evaluate(
+		"Boolean(document.querySelector('[data-tour-tag=\"browser-pane-trigger\"]'))",
+	);
+	note("the header's trigger is present", String(triggerPresent));
+
+	if (!BACKEND) {
+		check(
+			"without a backend the chat route is the offline surface, so the trigger has no header to sit in",
+			triggerPresent === false,
+			`trigger present: ${triggerPresent} — the gate this scene documents is not where it was`,
+		);
+		const frame = await captureSettled(cdp, "browser-pane-gated");
+		note("frame", JSON.stringify(frame));
+		note(
+			"not shown",
+			"the pane in the app: a press needs the header, the header needs `session_catalogue`, and that needs --backend (see this scene's doc block)",
+		);
+		return;
+	}
+
+	check(
+		"with a backend the chat route renders its header, and the trigger with it",
+		triggerPresent === true,
+		"the trigger is absent even though a backend answered — the press below would prove nothing",
+	);
+
+	// 1. THE PRESS, which is the whole claim: a real click on the real control.
+	const pressed = await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-pane-trigger"]',
+	});
+	note("pressed", JSON.stringify(pressed));
+	const opened = await verb(cdp, "state");
+	check(
+		"the press opens the pane, in the store the slot reads",
+		opened.browserPaneOpen === true,
+		`browserPaneOpen=${opened.browserPaneOpen} after a press on the trigger`,
+	);
+	const openFrame = await captureSettled(cdp, "browser-pane-open");
+	note("frame", JSON.stringify(openFrame));
+
+	/*
+	 * THE SLOT'S GEOMETRY, read off the elements the product marks for exactly
+	 * this (`data-tour-tag="browser-pane-slot"` in `chat-content.tsx`, and the
+	 * surface's own `browser-content`). "The conversation narrows rather than
+	 * being covered" is a claim about two numbers, so the scene takes both.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const rect = (selector) => {
+			const element = document.querySelector(selector);
+			if (!element) return null;
+			const box = element.getBoundingClientRect();
+			return { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) };
+		};
+		return {
+			slot: rect('[data-tour-tag="browser-pane-slot"]'),
+			content: rect('[data-tour-tag="browser-content"]'),
+			window: { width: window.innerWidth, height: window.innerHeight },
+		};
+	})()`);
+	note("geometry", JSON.stringify(geometry));
+	check(
+		"the pane occupies the right slot",
+		geometry.slot !== null && geometry.slot.width > 0,
+		JSON.stringify(geometry.slot),
+	);
+	check(
+		"the pane takes its width OUT of the column rather than covering it: the slot ends at the window's right edge and the column keeps the rest",
+		geometry.slot !== null &&
+			geometry.slot.x + geometry.slot.width === geometry.window.width &&
+			geometry.slot.x > 0,
+		`slot ${JSON.stringify(geometry.slot)} in a ${geometry.window.width}px window`,
+	);
+	check(
+		"the page area inside the pane is a real rectangle, not a zero-width one",
+		geometry.content !== null && geometry.content.width >= 240,
+		JSON.stringify(geometry.content),
+	);
+
+	// 2. The scope switch, pressed for real: the strip's list is the switch's.
+	const scopeBefore = await cdp.evaluate(
+		"Array.from(document.querySelectorAll('[data-tab-id]')).map((node) => node.getAttribute('data-tab-id'))",
+	);
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-pane-scope-all"]',
+	});
+	const scopeFrame = await captureSettled(cdp, "browser-pane-scope-all");
+	const scopeAfter = await cdp.evaluate(
+		"Array.from(document.querySelectorAll('[data-tab-id]')).map((node) => node.getAttribute('data-tab-id'))",
+	);
+	note("strip before/after the scope switch", JSON.stringify({ scopeBefore, scopeAfter }));
+	note("frame", JSON.stringify(scopeFrame));
+
+	// 3. The pane's own dock, opened from the URL bar's Approvals control.
+	const approvals = await cdp.evaluate(
+		"Boolean(document.querySelector('[data-tour-tag=\"browser-approvals\"]'))",
+	);
+	if (approvals) {
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-approvals"]',
+		});
+		const dockFrame = await captureSettled(cdp, "browser-pane-dock");
+		note("frame", JSON.stringify(dockFrame));
+	} else {
+		note(
+			"dock not opened",
+				"no Approvals control on this projection: the dock is only reachable when the host has a request to show",
+		);
+	}
+
+	/*
+	 * 4. THE HOST HANDOVER, which is the one state where the page can go
+	 * invisible while the layout still looks right: exactly one host may be
+	 * mounted at a time (`use-browser-chrome.ts`'s unmount contract), because two
+	 * rect reporters would fight over the same native view, and a null rectangle
+	 * delivered by the outgoing host AFTER the incoming host's first report
+	 * leaves the view with no bounds. So: to the route with the pane open, and
+	 * back, asserting at each step that the page's rectangle is still a rectangle.
+	 */
+	await verb(cdp, "navigate", "/browser");
+	const onRoute = await cdp.evaluate(`(() => {
+		const rect = (selector) => {
+			const element = document.querySelector(selector);
+			if (!element) return null;
+			const box = element.getBoundingClientRect();
+			return { x: Math.round(box.x), width: Math.round(box.width), height: Math.round(box.height) };
+		};
+		return {
+			route: rect('[data-tour-tag="browser-route"]'),
+			content: rect('[data-tour-tag="browser-content"]'),
+			paneSlot: rect('[data-tour-tag="browser-pane-slot"]'),
+		};
+	})()`);
+	note("the route's own geometry with the pane open", JSON.stringify(onRoute));
+	check(
+		"the handover mounts one host: the route's surface is there and the pane's slot is gone",
+		onRoute.route !== null && onRoute.paneSlot === null,
+		JSON.stringify(onRoute),
+	);
+	check(
+		"and the page still has a rectangle after the handover",
+		onRoute.content !== null && onRoute.content.width > 0,
+		JSON.stringify(onRoute.content),
+	);
+	const routeFrame = await captureSettled(cdp, "browser-pane-handover-route");
+
+	await verb(cdp, "navigate", "/chat");
+	const backOnChat = await verb(cdp, "state");
+	const backGeometry = await cdp.evaluate(`(() => {
+		const element = document.querySelector('[data-tour-tag="browser-content"]');
+		if (!element) return null;
+		const box = element.getBoundingClientRect();
+		return { x: Math.round(box.x), width: Math.round(box.width) };
+	})()`);
+	check(
+		"the pane is still open after the round trip, and its page has bounds again",
+		backOnChat.browserPaneOpen === true &&
+			backGeometry !== null &&
+			backGeometry.width > 0,
+		`paneOpen=${backOnChat.browserPaneOpen} content=${JSON.stringify(backGeometry)}`,
+	);
+	const backFrame = await captureSettled(cdp, "browser-pane-handover-back");
+	note("frames", JSON.stringify({ routeFrame, backFrame }));
+
+	// 5. The badge, in the header, at whatever this conversation is waiting on.
+	const badge = await cdp.evaluate(`(() => {
+		const node = document.querySelector('[data-tour-tag="browser-pane-badge"]');
+		return node ? node.textContent : null;
+	})()`);
+	note(
+		"the header's badge",
+		badge === null
+			? "no badge: this conversation has no live request (the trigger is still there, unpressed)"
+			: badge,
+	);
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -2334,6 +2570,7 @@ async function main() {
 			if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
