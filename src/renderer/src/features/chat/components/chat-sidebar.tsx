@@ -1,3 +1,4 @@
+import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -141,13 +142,14 @@ export function ChatSidebar({
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
 	/*
-	 * The catalogue rows are subscribed BEFORE the gate that reads their count,
-	 * which is the only reason this subscription sits above the hooks it is
-	 * unrelated to: `lastKnownRows` is a statement about what is on screen, so the
-	 * gate cannot decide it without the store. Nothing here is conditional, so the
-	 * order is a readability choice rather than a hooks rule.
+	 * The two store fields the gate reads are subscribed BEFORE it, which is the only
+	 * reason this sits above hooks it is unrelated to: `lastKnownRows` is a statement
+	 * about what is on screen and `storeFailed` is a statement about the store's own
+	 * read, so the gate cannot decide either without the store. Nothing here is
+	 * conditional, so the order is a readability choice rather than a hooks rule.
 	 */
 	const sessions = useCanonicalSessionsStore((s) => s.sessions);
+	const error = useCanonicalSessionsStore((s) => s.error);
 	const ready = desktopFeatureEnabled(
 		capabilities.data,
 		"session_catalogue",
@@ -166,7 +168,7 @@ export function ChatSidebar({
 	const searchRef = useRef<HTMLInputElement>(null);
 	const wasReady = useRef(false);
 	if (ready) wasReady.current = true;
-	const { stale, showList, lastKnownRows } = catalogueGate({
+	const { stale, showList, notice } = catalogueGate({
 		ready,
 		failed: Boolean(capabilities.error),
 		answered: Boolean(capabilities.data),
@@ -174,6 +176,11 @@ export function ChatSidebar({
 		// Read here rather than inside the module: the gate is a decision, and the
 		// store is a subscription.
 		rows: sessions.length,
+		storeFailed: Boolean(error),
+		planeAvailable: capabilities.data?.desktop_available === true,
+		// The banner's own condition, read through the same predicate it uses, so
+		// the two cannot drift into stating one condition twice (design round 1, D3).
+		coveredByCompatibilityBanner: compatibilityBannerShown(capabilities.data),
 	});
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
@@ -183,7 +190,6 @@ export function ChatSidebar({
 	);
 	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
 	const loading = useCanonicalSessionsStore((s) => s.loading);
-	const error = useCanonicalSessionsStore((s) => s.error);
 	const truncated = useCanonicalSessionsStore((s) => s.truncated);
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
@@ -916,7 +922,7 @@ export function ChatSidebar({
 			</p>
 			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
 				{capabilities.isLoading && (
-					<p aria-live="polite" className="text-meta text-ink-muted">
+					<p aria-live="polite" className="text-meta text-ink-dim">
 						Connecting to chats…
 					</p>
 				)}
@@ -936,34 +942,17 @@ export function ChatSidebar({
 					</div>
 				)}
 				{/*
-				    The gate closed with no error to report, and WHICH half closed decides
-				    the sentence (review-round shape: the copy may not promise a remedy the
-				    fact does not support). `desktop_available` true with a short catalogue
-				    version is a backend that predates the route, and updating it is the
-				    remedy that exists. Anything else is this app not being able to use the
-				    backend's desktop controls at all - a daemon it holds no token for, or a
-				    backend old enough to publish no `desktop_available` - where "update the
-				    backend" named a remedy for a condition nobody had established.
-
-				    `lastKnownRows` gates the second half: over a store that is genuinely
-				    empty this says nothing extra and the list below still reads "No chats
-				    yet", which is the answer the store actually gives.
-
-				    Retry is re-negotiation, not recovery: the poll in
-				    `useDesktopCapabilities` already re-asks on its own cadence, and this
-				    button is for the operator who would rather not wait. It is the same
-				    control the error branch above offers, for the same reason.
+				    The sentence is the gate's, not this file's (see the module): which half of
+				    the gate closed, whether the store's own read has already failed (the D9 rule
+				    this file applies to the feed line below - two statements about one backend is
+				    one too many), and whether there are last-known rows to speak for are three
+				    inputs a test can drive, and a JSX condition is not. Retry is re-negotiation
+				    rather than recovery: the poll in `useDesktopCapabilities` re-asks on its own
+				    cadence, and this is the same control the error branch above offers.
 				 */}
-				{capabilities.data && !ready && !capabilities.error && (
+				{notice && (
 					<div role="alert" className="space-y-1 text-body-sm text-warning">
-						<p>
-							{capabilities.data.desktop_available
-								? "Update the backend to use canonical chats. Existing histories are unchanged."
-								: "Chats and teams are not updating: this app cannot use the backend's desktop controls."}
-							{lastKnownRows
-								? " Showing the last chats and teams that loaded."
-								: ""}
-						</p>
+						<p>{notice}</p>
 						<button
 							type="button"
 							className="underline"
@@ -973,14 +962,22 @@ export function ChatSidebar({
 						</button>
 					</div>
 				)}
+				{/*
+				    The state is carried by the sentence, never by a treatment on the rows
+				    (branding § 6 and § 9: disabled changes colour, and opacity is not a state
+				    signal at all - it composites `ink` down to ~6:1 on this palette and below
+				    the 4.5:1 floor on four of the twelve, which `check-themes` cannot see
+				    because it does not evaluate alpha). These rows are also the only way to
+				    reach a conversation, so dimming them says "unavailable" about the one
+				    thing that still works. Design round 1, D1. */}
 				{showList && (
-					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
+					<div className="space-y-4 pb-2">
 						<section>
 							{heading("agents", "Agents", true)}
 							{(query || isOpen("agents", true)) && (
 								<>
 									{profiles.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-muted">
+										<p aria-live="polite" className="text-meta text-ink-dim">
 											Loading agents…
 										</p>
 									)}
@@ -1003,7 +1000,7 @@ export function ChatSidebar({
 							{(query || isOpen("teams", true)) && (
 								<>
 									{teams.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-muted">
+										<p aria-live="polite" className="text-meta text-ink-dim">
 											Loading teams…
 										</p>
 									)}
@@ -1027,12 +1024,7 @@ export function ChatSidebar({
 			    and its disclosure became easy to miss, so it is pinned below the
 			    scrolling entity region and owns its own scroll area. */}
 			{showList && (
-				<div
-					className={cn(
-						"mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2",
-						stale && "opacity-60",
-					)}
-				>
+				<div className="mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2">
 					<section>
 						<button
 							type="button"

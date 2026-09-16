@@ -24,6 +24,28 @@ export const desktopKeys = {
 };
 
 /**
+ * How often this app re-asks what the backend can do, WHILE THE PLANE IS OPEN.
+ *
+ * WHY the open state polls at all, when the shut state's interval was the
+ * obvious fix. A withdrawal of the plane is not observable from anything else
+ * the renderer holds: main's own status stays attached while the backend starts
+ * refusing this app's desktop calls (that is the operator's own log - 401 on
+ * `/v1/desktop/sessions` under a backend that answered `/health` the whole
+ * time), and nothing in the renderer turns a refused read into a capability
+ * re-ask. So a query that only polls once the plane is SHUT can never learn that
+ * the plane shut: measured in this PR's own frame rig, the withdrawal produced
+ * no re-ask at all and the two frames came out byte-identical, which is exactly
+ * the "it needs a refresh" half of the report.
+ *
+ * What is bounded: one local IPC call per interval, always, and the interval is
+ * asymmetric on purpose - the OPEN cadence is the slow one, because it is a
+ * watch for a change nothing announces, while the SHUT cadence
+ * (`CAPABILITY_RENEGOTIATE_MS`) is the operator's own wait and ends the moment
+ * the gate re-opens.
+ */
+export const CAPABILITY_WATCH_MS = 30_000;
+
+/**
  * How long this app waits before asking again what the backend can do, while the
  * answer does not open the desktop plane at all.
  *
@@ -92,23 +114,27 @@ export function useDesktopCapabilities() {
 		staleTime: 60_000,
 		retry: false,
 		/*
-		 * The re-negotiation, and the point at which it stops: the moment an answer
-		 * opens the plane there is nothing left to re-ask for, and a `true` here is
-		 * what ends it. `refetchInterval` fires whether or not the last answer was an
-		 * error, which is deliberate - the failing arm is the other half of the same
-		 * freeze, and `retry: false` above says only that React Query will not back
-		 * off on its own.
+		 * The re-negotiation, and both of its cadences. While the plane is SHUT the
+		 * interval is `CAPABILITY_RENEGOTIATE_MS`, the operator's own wait, and it ends
+		 * the moment an answer opens the plane. While it is OPEN the interval is the
+		 * slower `CAPABILITY_WATCH_MS`, because a withdrawal is announced by nothing
+		 * else this renderer can see - see that constant for the measurement that made
+		 * the single-cadence version wrong. `refetchInterval` fires whether or not the
+		 * last answer was an error, which is deliberate: the failing arm is the other
+		 * half of the same freeze, and `retry: false` above says only that React Query
+		 * will not back off on its own.
 		 */
 		refetchInterval: (query) =>
-			desktopPlaneOpen(query.state.data) ? false : CAPABILITY_RENEGOTIATE_MS,
+			desktopPlaneOpen(query.state.data)
+				? CAPABILITY_WATCH_MS
+				: CAPABILITY_RENEGOTIATE_MS,
 		/*
 		 * The one poll in this app that runs while the window is in the background,
 		 * and the exception is the whole requirement. "After sitting a while they
 		 * come back on their own" is a recovery that needs the operator to come back
 		 * and wave the mouse at the window; a gate that heals on attention is the bug
 		 * rather than the cure, so this cadence deliberately does NOT pause when
-		 * nothing is focused. One local IPC call per interval, and it ends with the
-		 * gate.
+		 * nothing is focused. One local IPC call per interval.
 		 */
 		refetchIntervalInBackground: true,
 	});

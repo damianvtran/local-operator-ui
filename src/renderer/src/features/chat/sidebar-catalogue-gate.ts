@@ -6,10 +6,10 @@
  * The list is one gate for three surfaces - agents, teams and chats - and the
  * gate is the conjunction of two facts main publishes (the desktop plane is
  * available AND the backend advertises `session_catalogue`), so "the list
- * disappeared" is a bug about four boolean inputs. Extracting the decision is
- * what lets a test drive those inputs directly instead of asserting against the
- * component's source text; `clear-search.ts` next door is extracted for the same
- * reason.
+ * disappeared" is a bug about four boolean inputs, plus the three the sentence
+ * depends on. Extracting the decision - and the sentence with it - is what lets a
+ * test drive those inputs directly instead of asserting against the component's
+ * source text; `clear-search.ts` next door is extracted for the same reason.
  *
  * THE OPERATOR'S REPORT this answers: "sometimes all the active chats and teams
  * in the UI disappear and it needs a refresh; it happens after a while of use,
@@ -49,6 +49,32 @@ export type CatalogueGateInput = {
 	wasReady: boolean;
 	/** Rows the canonical store holds RIGHT NOW. */
 	rows: number;
+	/** `sessions.error` is set: the store's own read failed. */
+	storeFailed: boolean;
+	/**
+	 * Whether the answer advertises the desktop plane at all (`desktop_available`).
+	 *
+	 * The one input that changes the SENTENCE rather than the decision: a plane that
+	 * is available and merely missing the catalogue is a backend to update, while a
+	 * plane that is not available is this app not being able to use the backend's
+	 * desktop controls at all.
+	 */
+	planeAvailable: boolean;
+	/**
+	 * Whether a statement about this same condition is ALREADY on screen, in a
+	 * stronger register than this one.
+	 *
+	 * `BackendCompatibilityBanner` renders full-bleed at the top of the window on
+	 * the same capabilities answer this gate reads, so a withdrawn gate that is
+	 * covered by it must not add a second warning - and, in the frames that carry
+	 * both, the two offered identically-labelled `Retry` controls whose remedies
+	 * disagreed ("restart the app" against a self-recovery the app performs
+	 * itself). One statement per condition is this file's own rule for the feed
+	 * line below (D9); this is the same rule applied to the banner rather than to
+	 * the store's alert. Design round 1, D3; review round 2, MINOR-2; QA round 1,
+	 * Q-5.
+	 */
+	coveredByCompatibilityBanner: boolean;
 };
 
 export type CatalogueGate = {
@@ -67,6 +93,18 @@ export type CatalogueGate = {
 	 * list would be the same class of mistake as calling a serving daemon offline.
 	 */
 	lastKnownRows: boolean;
+	/**
+	 * The sentence the sidebar owes the operator for a withdrawn gate, or null.
+	 *
+	 * It lives here rather than in the component's JSX because it is a DECISION
+	 * about three inputs - which half of the gate closed, whether the store's own
+	 * read has already failed, and whether there are last-known rows to speak for -
+	 * and a decision in a JSX condition is one no test can reach. Two review rounds
+	 * found the same class here: the sentence promising a remedy the fact did not
+	 * support (round 1, F-3), and the warning stacking on the store's danger alert
+	 * about the same backend (round 2, MINOR-2 / QA round 1, Q-5).
+	 */
+	notice: string | null;
 };
 
 export function catalogueGate({
@@ -75,13 +113,35 @@ export function catalogueGate({
 	answered,
 	wasReady,
 	rows,
+	storeFailed,
+	planeAvailable,
+	coveredByCompatibilityBanner,
 }: CatalogueGateInput): CatalogueGate {
 	const withdrawn = answered && !failed && !ready;
-	const stale = wasReady && (failed || withdrawn);
+	/*
+	 * The memory of a gate that was open, and why it is not the component's ref.
+	 *
+	 * `wasReady` is a `useRef`, so it dies with the mount; the rows it is talking
+	 * about live in a module store and survive. A remount during a withdrawal -
+	 * navigate away and back while the plane is unavailable - would therefore hide
+	 * rows the app still holds until the re-negotiation reopens the gate (review
+	 * round 2, MINOR-3). `rows > 0` is the same fact held where a remount cannot lose
+	 * it, and it is sound rather than merely convenient: `sessions` is NOT persisted
+	 * (`canonical-sessions-store.ts`'s `partialize` carries drafts, `cwd` and the
+	 * active id), so a row exists only because a `sessions.list` through an OPEN gate
+	 * put it there.
+	 */
+	const memo = wasReady || rows > 0;
+	const stale = memo && (failed || withdrawn);
+	const lastKnownRows = stale && rows > 0;
 	return {
 		withdrawn,
 		stale,
 		showList: ready || stale,
-		lastKnownRows: stale && rows > 0,
+		lastKnownRows,
+		notice:
+			withdrawn && !storeFailed && !coveredByCompatibilityBanner
+				? `${planeAvailable ? "Update the backend to use canonical chats. Existing histories are unchanged." : "Chats and teams are not updating: this app cannot use the backend's desktop controls."}${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`
+				: null,
 	};
 }
