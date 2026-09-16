@@ -1063,6 +1063,32 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/* The transcript's ENDING when a finished conversation is read with the
+	   runtime's own stale `live_events` seed folded in — the operator's report:
+	   `wait`/`hub`/`task`/`bash` rows from the previous morning painted UNDER the
+	   final assistant message. Both orders are built by the SHIPPED reducer from
+	   the real journal of session `f91fbda61750`
+	   (`scripts/fixtures/stale-seed-order.json`): `Before` runs the pre-fix fold
+	   (`applyEvent` per seed event at the reader's arrival) and `After` runs
+	   `applyLiveSeed` with the snapshot's own `streaming: false`. They are one
+	   tree's frames rather than a base/head pair, because a pair from two trees
+	   cannot be re-captured once the base moves; `README.md` in the set says so
+	   where the images live.
+
+	   All four declare 800 as a VIEWPORT FLOOR, not as the delivered size: the
+	   story pins the transcript pane to the reader's own 685px and the harness
+	   floors its viewport at the document height, so the committed frames are the
+	   pane plus the caption (the harness delivers them at whatever that measures).
+	   The pin is the point — a transcript story with no fixed height grows its
+	   viewport to its content, and the `Arrival` state then paints the answer 48%
+	   down a 3058px frame instead of out of the pane, which the frame's own caption
+	   would be contradicting. `Arrival` is the unreduced seed; `Seam` narrows it to
+	   the newest twelve unlabelled calls so the answer and what sits under it fit
+	   one frame together. */
+	["chat-stale-seed-order--before-arrival", 1280, 800],
+	["chat-stale-seed-order--after-arrival", 1280, 800],
+	["chat-stale-seed-order--before-seam", 1280, 800],
+	["chat-stale-seed-order--after-seam", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's

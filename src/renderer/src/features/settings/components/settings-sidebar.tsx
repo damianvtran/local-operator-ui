@@ -183,8 +183,22 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					"flex h-8 w-full items-center rounded-sm text-left text-body-sm",
 					"transition-colors duration-fast ease-out-quart",
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
+					/*
+					 * The current destination's ground, and it is `sunken` rather than the
+					 * accent wash for the measurement the chat sidebar records: this rail's
+					 * root is `bg-surface`, and `accentWash` on `surface` is ΔE00 **1.05**
+					 * in tokyoNight (`#262B3F` on `#24283B`, the pair the app computes and
+					 * the pair every citation of it here uses) — a row with no ground at
+					 * all, marked only by its accent glyph and weight. The app rail paints
+					 * the SAME wash on `sunken`, where it measures 9.6 and does read, so the
+					 * role is fine and the panel under it was the problem. `hover:` states
+					 * the ground again because a hover variant outranks a bare background,
+					 * so without it the pointer would replace the mark on the row the user
+					 * is already on. Same decision as `rowCurrent` in
+					 * `features/chat/components/chat-sidebar.tsx`.
+					 */
 					isActive
-						? "bg-accent-wash font-medium text-ink"
+						? "bg-sunken font-medium text-ink hover:bg-sunken"
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>

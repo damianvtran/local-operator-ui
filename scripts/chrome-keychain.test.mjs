@@ -119,6 +119,36 @@ function scanFiles() {
 }
 
 /**
+ * The text of a scanned file, or `null` when it is gone by the time it is read.
+ *
+ * WHY a vanished file is not a finding here. `scanFiles()` ENUMERATES the trees
+ * and every scanner reads that list afterwards, while `node --test` runs test
+ * FILES in parallel - so a file that exists at enumeration can be gone at the
+ * read. That is not hypothetical: `scripts/composer-tabs.test.mjs` writes an
+ * esbuild bundle beside itself and unlinks it, which is this repository's own
+ * documented throwaway pattern (`scripts/_*.bundle.mjs` in `.gitignore`, with
+ * `_interrupt-composer.bundle.*` as the recorded precedent), and a concurrent
+ * run of that file deleted the bundle inside this file's window - CI failed
+ * "the switch is spelled in exactly one module" with
+ * `ENOENT: no such file or directory, open 'scripts/_composer-tabs.bundle.mjs'`
+ * for a file nobody was asserting about.
+ *
+ * Skipping such a file keeps every assertion's meaning: what this scan asserts
+ * about is the files that ARE there, and a rig that is really gone is still
+ * caught by the reach assertions (`chrome.length >= 12` and the
+ * `CHROME_LAUNCH_SITES` equality), never by a read that throws. ONLY `ENOENT` is
+ * tolerated - a directory or a permission failure is a finding, and is thrown.
+ */
+function readScannedFile(file) {
+	try {
+		return readFileSync(file, "utf8");
+	} catch (error) {
+		if (error?.code !== "ENOENT") throw error;
+		return null;
+	}
+}
+
+/**
  * Every spawn-ish call site in the scanned trees, with the balanced text of its
  * argument list, classified by what it starts.
  *
@@ -131,7 +161,10 @@ function scanFiles() {
 function findSpawnSites() {
 	const sites = [];
 	for (const file of scanFiles()) {
-		const raw = readFileSync(file, "utf8");
+		const raw = readScannedFile(file);
+		// Gone between the enumeration above and this read: a concurrent test file's
+		// throwaway, which is not a launch site. See `readScannedFile`.
+		if (raw === null) continue;
 		const source = blankComments(raw);
 		const found = [];
 		for (const name of SPAWN_NAMES) {
@@ -156,6 +189,10 @@ function findSpawnSites() {
 			for (; end < source.length; end += 1) {
 				if (source[end] === "(") depth += 1;
 				else if (source[end] === ")") {
+					// Spelled out rather than `(depth -= 1) === 0`: the assignment-in-
+					// expression is a pre-existing lint error in this file, and the
+					// scripts-scope gate requires the whole of `biome check` on any file a
+					// change touches. Behaviour is identical.
 					depth -= 1;
 					if (depth === 0) break;
 				}
@@ -348,9 +385,11 @@ test("the switch is spelled in exactly one module", () => {
 	 * one meaning. The module that defines it is the only file allowed to carry
 	 * it; this file names the exported constant instead.
 	 */
-	const carriers = scanFiles().filter((file) =>
-		readFileSync(file, "utf8").includes(MOCK_KEYCHAIN_SWITCH),
-	);
+	const carriers = scanFiles().filter((file) => {
+		// A file that vanished mid-run carries no switch: see `readScannedFile`.
+		const source = readScannedFile(file);
+		return source?.includes(MOCK_KEYCHAIN_SWITCH) ?? false;
+	});
 	assert.deepEqual(
 		carriers,
 		["scripts/chrome-keychain.mjs"],

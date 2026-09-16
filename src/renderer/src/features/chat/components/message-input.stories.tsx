@@ -8,6 +8,7 @@ import { MessageInput } from "./message-input";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
+import "./story-electron-shim";
 
 /*
  * THE COMPOSER'S OWN STATES, which had no committed surface at all.
@@ -45,33 +46,11 @@ import type { SlashCommandInvocation } from "./slash-submit";
  * canonical pane cannot be in.
  */
 /*
- * The desktop bridge, installed at MODULE SCOPE rather than from a wrapper or a
- * decorator.
- *
- * The composer reaches the bridge from a passive effect on mount (the platform
- * it renders the send chord for, and the native dialog behind attach), and
- * Storybook's preview mocks `window.api` rather than `window.electron` - so
- * without this the story throws and never prepares. A wrapper component cannot
- * do it: React runs a CHILD's effects before its parent's, so a mock installed by
- * the frame around `MessageInput` arrives one commit too late (measured:
- * "Cannot read properties of undefined (reading 'ipcRenderer')" out of
- * `commitHookEffectListMount`). The stand-in answers exactly those two channels
- * and nothing else; `window.electron` is a renderer global that only the app's
- * preload writes, so there is no other owner to restore it for.
+ * The desktop bridge is installed by `./story-electron-shim`, imported above:
+ * the composer reaches it from a passive effect on mount, Storybook's preview
+ * mocks `window.api` rather than `window.electron`, and the install therefore
+ * has to happen at module scope. That module carries the measurement behind it.
  */
-window.electron = {
-	...(window.electron ?? {}),
-	ipcRenderer: {
-		...(window.electron?.ipcRenderer ?? {}),
-		on: () => () => {},
-		removeListener: () => window.electron.ipcRenderer,
-		send: () => {},
-		invoke: async (channel: string) =>
-			channel === "get-platform-info"
-				? { platform: "darwin" }
-				: { canceled: true, filePaths: [] },
-	},
-} as typeof window.electron;
 
 /*
  * The DESKTOP BRIDGE, installed at module scope beside the preload shim and for
