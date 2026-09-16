@@ -1,5 +1,6 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ShieldAlert } from "lucide-react";
 import type { FC } from "react";
@@ -200,7 +201,17 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					)}
 				</div>
 			</div>
-			<div className="flex flex-wrap items-center gap-2 pl-6">
+			{/*
+			 * `@container/consent-actions` is here for ONE control's placement (design
+			 * round 1, N2). Five choices in one row need ~620px; at the pane's 640 the four
+			 * allow buttons fill the row and `Don't allow` wraps to a second line, where it
+			 * used to sit at the far left beside 400px of empty track - the denial read as a
+			 * different class of choice rather than as the end of the same row. The row is the
+			 * container, and the denial anchors to its end only when the row is too narrow to
+			 * hold one line: on the route (1240) nothing changes, because the five do not wrap
+			 * there.
+			 */}
+			<div className="@container/consent-actions flex flex-wrap items-center gap-2 pl-6">
 				<Button
 					variant="primary"
 					size="sm"
@@ -251,6 +262,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					disabled={busy}
 					onClick={() => decide("deny")}
 					data-tour-tag="browser-consent-deny"
+					className={cn("@max-4xl:ml-auto")}
 				>
 					Don't allow
 				</Button>

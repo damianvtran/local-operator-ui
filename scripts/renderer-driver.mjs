@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|palette|none>  which built-in scene to run (default: states)
+ *   --scene <states|new-chat|palette|browser-pane|none>  which built-in scene to run (default: states)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -111,7 +111,7 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
 	copyFileSync,
 	existsSync,
@@ -914,6 +914,158 @@ function verb(cdp, name, payload) {
 	);
 }
 
+/** How many RPC envelopes this run has sent, for their ids. */
+let rpcSequence = 0;
+
+/**
+ * A CALL ON THE APP'S OWN LOOPBACK BROWSER RPC.
+ *
+ * WHY A SCENE SPEAKS THIS PROTOCOL AT ALL: this endpoint is the ONLY door an
+ * agent's tools have into the app, so a request raised through it is the same
+ * request the agent's own `request_access` raises - the approval store, the
+ * projection's `requesterSessionId`, the tab registry's ownership and the tray's
+ * rows are all the product's code paths, and the only thing that needs a model is
+ * the agent's decision to browse at all. The endpoint and its key come from the
+ * app's own discovery record (`src/main/browser/state-file.ts`: `host.json`, 0600,
+ * under this run's scratch config root), which is how the Python session client
+ * finds the host too - there is no test-only door here.
+ */
+async function browserRpc(method, params) {
+	let record;
+	try {
+		record = JSON.parse(
+			readFileSync(join(CONFIG_DIR, "run", "ui-browser", "host.json"), "utf8"),
+		);
+	} catch (error) {
+		return {
+			error: `no host record: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
+	rpcSequence += 1;
+	const response = await fetch(`http://127.0.0.1:${record.port}/rpc`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			"x-bridge-key": record.session_key,
+		},
+		body: JSON.stringify({
+			id: `driver-${rpcSequence}`,
+			method,
+			params,
+		}),
+	});
+	return response.json();
+}
+
+/**
+ * A SECOND CONVERSATION, created on this run's own backend.
+ *
+ * The switch's own checks need two conversations to move between, and a
+ * conversation is the backend's to create (`POST /v1/desktop/sessions` is the same
+ * call the desktop UI makes). The shape is read tolerantly because a field name is
+ * not what this asserts: the caller reports what it got and skips the step when
+ * there is no id in it.
+ */
+async function createBackendSession() {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+		// The backend validates `request_id` as a UUID, which is the same shape the
+		// desktop UI sends; a hand-made string is a 422 with no session in it.
+		body: JSON.stringify({
+			request_id: randomUUID(),
+			cwd: SCRATCH,
+		}),
+	});
+	const body = await response.json();
+	return {
+		status: response.status,
+		body,
+		id:
+			body?.session_id ??
+			body?.session?.session_id ??
+			body?.result?.session_id ??
+			body?.id ??
+			null,
+	};
+}
+
+/** The pane's tray as a person reads it: the sentence, the chips, whatever it has
+ * moved to its resolved list (where a false `Withdrawn by the agent` appears), and
+ * which side of the switch is showing. */
+function readTray(cdp) {
+	return cdp.evaluate(`(() => {
+		const text = (selector) => {
+			const node = document.querySelector(selector);
+			return node ? node.textContent.replace(/\\s+/g, " ").trim() : null;
+		};
+		const all = (selector) =>
+			Array.from(document.querySelectorAll(selector)).map((node) =>
+				node.textContent.replace(/\\s+/g, " ").trim(),
+			);
+		const active = document.querySelector(
+			'[data-tour-tag^="browser-pane-scope-"][data-state="active"]',
+		);
+		return {
+			count: text('[data-tour-tag="browser-approvals-tray-count"]'),
+			chips: all('[data-tour-tag="browser-approvals-tray-chip"]'),
+			resolved: all('[data-tour-tag="browser-approvals-resolved"] li'),
+			side: active ? active.textContent.replace(/\\s+/g, " ").trim() : null,
+			badge: text('[data-tour-tag="browser-pane-badge"]'),
+		};
+	})()`);
+}
+
+/** The strip's rows against the scroller they live in: how many there are, how many
+ * are WHOLE, and what the pinned control says about the rest. The scroller is the
+ * rows' own parent, so this reads the box the product scrolls rather than one the
+ * script guessed at. */
+function readStrip(cdp) {
+	return cdp.evaluate(`(() => {
+		const rows = Array.from(document.querySelectorAll("[data-tab-id]"));
+		if (rows.length === 0) return { rows: 0, whole: 0, control: null };
+		const scroller = rows[0].parentElement;
+		const view = scroller.getBoundingClientRect();
+		const whole = rows.filter((row) => {
+			const box = row.getBoundingClientRect();
+			return box.left >= view.left - 1 && box.right <= view.right + 1;
+		}).length;
+		const control = document.querySelector(
+			'[data-tour-tag="browser-tab-overflow"]',
+		);
+		return {
+			rows: rows.length,
+			whole,
+			scroller: {
+				clientWidth: Math.round(scroller.clientWidth),
+				scrollWidth: Math.round(scroller.scrollWidth),
+			},
+			control: control
+				? {
+						text: control.textContent.replace(/\\s+/g, " ").trim(),
+						label: control.getAttribute("aria-label"),
+					}
+				: null,
+		};
+	})()`);
+}
+
+/** Poll a reader until its predicate holds, so a scene waits on the product rather
+ * than on a timeout. Returns whatever the reader last saw. */
+async function readUntil(reader, done, timeoutMs = 15_000) {
+	const started = Date.now();
+	let last = await reader();
+	while (!done(last)) {
+		if (Date.now() - started > timeoutMs) return last;
+		await wait(250);
+		last = await reader();
+	}
+	return last;
+}
+
 /** Capture a frame through the app's own `capturePage()`. */
 function capture(cdp, label) {
 	return cdp.evaluate(`window.__loDevDriver.capture(${JSON.stringify(label)})`);
@@ -1431,6 +1583,703 @@ async function seedOnboardingComplete(cdp) {
 	});
 	await cdp.send("Page.reload", { ignoreCache: false });
 	await wait(1500);
+}
+
+/**
+ * The conversation-scoped browser pane, driven the way a user opens it.
+ *
+ * WHAT THIS SCENE IS FOR, and why nothing else can carry it: the pane's own
+ * stories render `BrowserPane` as the whole viewport against a stubbed bridge
+ * (`browser-pane.stories.tsx` states that limit), so the two things they cannot
+ * photograph are the ones this scene asserts — that a REAL press on the chat
+ * header's Globe trigger opens the pane in the real app, and that the pane then
+ * takes the right slot, narrowing the conversation rather than covering it, with
+ * the native page following the reported rectangle.
+ *
+ * TWO RUNS, TWO CLAIMS, the same shape `new-chat` uses. The chat route (and so
+ * the header the trigger lives in) renders only with the backend's
+ * `session_catalogue` capability, so:
+ *
+ * - WITHOUT `--backend` this scene proves the GATE: the trigger is absent because
+ *   the route is the app's offline surface, and the frame says which screen that
+ *   is.
+ * - WITH `--backend` it proves the FEATURE: the press opens the pane, the slot
+ *   narrows the column, the scope switch changes the strip, the pane's own dock
+ *   opens at the pane's width, and the host handover leaves the page visible
+ *   exactly once.
+ *
+ * The `--backend` half needs a build made with `VITE_LOCAL_OPERATOR_API_URL` and
+ * a bearer, per the isolation notes at the top of this file; the run asserts both
+ * before the scene starts, so a mis-built app cannot report a false pass.
+ */
+async function sceneBrowserPane(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * OPEN A CONVERSATION FIRST, and this is not incidental: with no conversation
+	 * selected the chat route renders its "Start a chat" draft screen, which has no
+	 * header at all - measured against this run's own backend, where the frame was
+	 * that screen with one session already in the catalogue. The chat header (and
+	 * with it the right slot's three triggers) exists only once a session is open,
+	 * so the scene widens the sidebar list and presses the first conversation, the
+	 * way a user does.
+	 */
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-all-chats"]',
+	});
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-session-row"]',
+	});
+	const before = await verb(cdp, "state");
+	note("state (chat, before)", JSON.stringify(before));
+
+	/*
+	 * Asked of the DOM rather than with `press`, because the absence of the
+	 * trigger is a RESULT in the gated run and a thrown "nothing matches" would
+	 * end the scene instead of reporting it.
+	 */
+	const triggerPresent = await cdp.evaluate(
+		"Boolean(document.querySelector('[data-tour-tag=\"browser-pane-trigger\"]'))",
+	);
+	note("the header's trigger is present", String(triggerPresent));
+
+	if (!BACKEND) {
+		check(
+			"without a backend the chat route is the offline surface, so the trigger has no header to sit in",
+			triggerPresent === false,
+			`trigger present: ${triggerPresent} — the gate this scene documents is not where it was`,
+		);
+		const frame = await captureSettled(cdp, "browser-pane-gated");
+		note("frame", JSON.stringify(frame));
+		note(
+			"not shown",
+			"the pane in the app: a press needs the header, the header needs `session_catalogue`, and that needs --backend (see this scene's doc block)",
+		);
+		return;
+	}
+
+	check(
+		"with a backend the chat route renders its header, and the trigger with it",
+		triggerPresent === true,
+		"the trigger is absent even though a backend answered — the press below would prove nothing",
+	);
+
+	// 1. THE PRESS, which is the whole claim: a real click on the real control.
+	const pressed = await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-pane-trigger"]',
+	});
+	note("pressed", JSON.stringify(pressed));
+	const opened = await verb(cdp, "state");
+	check(
+		"the press opens the pane, in the store the slot reads",
+		opened.browserPaneOpen === true,
+		`browserPaneOpen=${opened.browserPaneOpen} after a press on the trigger`,
+	);
+	const openFrame = await captureSettled(cdp, "browser-pane-open");
+	note("frame", JSON.stringify(openFrame));
+
+	/*
+	 * THE SLOT'S GEOMETRY, read off the elements the product marks for exactly
+	 * this (`data-tour-tag="browser-pane-slot"` in `chat-content.tsx`, and the
+	 * surface's own `browser-content`). "The conversation narrows rather than
+	 * being covered" is a claim about two numbers, so the scene takes both.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const rect = (selector) => {
+			const element = document.querySelector(selector);
+			if (!element) return null;
+			const box = element.getBoundingClientRect();
+			return { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) };
+		};
+		return {
+			slot: rect('[data-tour-tag="browser-pane-slot"]'),
+			content: rect('[data-tour-tag="browser-content"]'),
+			window: { width: window.innerWidth, height: window.innerHeight },
+		};
+	})()`);
+	note("geometry", JSON.stringify(geometry));
+	check(
+		"the pane occupies the right slot",
+		geometry.slot !== null && geometry.slot.width > 0,
+		JSON.stringify(geometry.slot),
+	);
+	check(
+		"the pane takes its width OUT of the column rather than covering it: the slot ends at the window's right edge and the column keeps the rest",
+		geometry.slot !== null &&
+			geometry.slot.x + geometry.slot.width === geometry.window.width &&
+			geometry.slot.x > 0,
+		`slot ${JSON.stringify(geometry.slot)} in a ${geometry.window.width}px window`,
+	);
+	check(
+		"the page area inside the pane is a real rectangle, not a zero-width one",
+		geometry.content !== null && geometry.content.width >= 240,
+		JSON.stringify(geometry.content),
+	);
+
+	// 2. The scope switch, pressed for real: the strip's list is the switch's.
+	const scopeBefore = await cdp.evaluate(
+		"Array.from(document.querySelectorAll('[data-tab-id]')).map((node) => node.getAttribute('data-tab-id'))",
+	);
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="browser-pane-scope-all"]',
+	});
+	const scopeFrame = await captureSettled(cdp, "browser-pane-scope-all");
+	const scopeAfter = await cdp.evaluate(
+		"Array.from(document.querySelectorAll('[data-tab-id]')).map((node) => node.getAttribute('data-tab-id'))",
+	);
+	note(
+		"strip before/after the scope switch",
+		JSON.stringify({ scopeBefore, scopeAfter }),
+	);
+	note("frame", JSON.stringify(scopeFrame));
+
+	// 3. The pane's own dock, opened from the URL bar's Approvals control.
+	const approvals = await cdp.evaluate(
+		"Boolean(document.querySelector('[data-tour-tag=\"browser-approvals\"]'))",
+	);
+	if (approvals) {
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-approvals"]',
+		});
+		const dockFrame = await captureSettled(cdp, "browser-pane-dock");
+		note("frame", JSON.stringify(dockFrame));
+	} else {
+		note(
+			"dock not opened",
+			"no Approvals control on this projection: the dock is only reachable when the host has a request to show",
+		);
+	}
+
+	/*
+	 * 4. THE HOST HANDOVER, which is the one state where the page can go
+	 * invisible while the layout still looks right: exactly one host may be
+	 * mounted at a time (`use-browser-chrome.ts`'s unmount contract), because two
+	 * rect reporters would fight over the same native view, and a null rectangle
+	 * delivered by the outgoing host AFTER the incoming host's first report
+	 * leaves the view with no bounds. So: to the route with the pane open, and
+	 * back, asserting at each step that the page's rectangle is still a rectangle.
+	 */
+	await verb(cdp, "navigate", "/browser");
+	const onRoute = await cdp.evaluate(`(() => {
+		const rect = (selector) => {
+			const element = document.querySelector(selector);
+			if (!element) return null;
+			const box = element.getBoundingClientRect();
+			return { x: Math.round(box.x), width: Math.round(box.width), height: Math.round(box.height) };
+		};
+		return {
+			route: rect('[data-tour-tag="browser-route"]'),
+			content: rect('[data-tour-tag="browser-content"]'),
+			paneSlot: rect('[data-tour-tag="browser-pane-slot"]'),
+		};
+	})()`);
+	note("the route's own geometry with the pane open", JSON.stringify(onRoute));
+	check(
+		"the handover mounts one host: the route's surface is there and the pane's slot is gone",
+		onRoute.route !== null && onRoute.paneSlot === null,
+		JSON.stringify(onRoute),
+	);
+	check(
+		"and the page still has a rectangle after the handover",
+		onRoute.content !== null && onRoute.content.width > 0,
+		JSON.stringify(onRoute.content),
+	);
+	const routeFrame = await captureSettled(cdp, "browser-pane-handover-route");
+
+	await verb(cdp, "navigate", "/chat");
+	const backOnChat = await verb(cdp, "state");
+	const backGeometry = await cdp.evaluate(`(() => {
+		const element = document.querySelector('[data-tour-tag="browser-content"]');
+		if (!element) return null;
+		const box = element.getBoundingClientRect();
+		return { x: Math.round(box.x), width: Math.round(box.width) };
+	})()`);
+	check(
+		"the pane is still open after the round trip, and its page has bounds again",
+		backOnChat.browserPaneOpen === true &&
+			backGeometry !== null &&
+			backGeometry.width > 0,
+		`paneOpen=${backOnChat.browserPaneOpen} content=${JSON.stringify(backGeometry)}`,
+	);
+	const backFrame = await captureSettled(cdp, "browser-pane-handover-back");
+	note("frames", JSON.stringify({ routeFrame, backFrame }));
+
+	// 5. The badge, in the header, at whatever this conversation is waiting on.
+	const badge = await cdp.evaluate(`(() => {
+		const node = document.querySelector('[data-tour-tag="browser-pane-badge"]');
+		return node ? node.textContent : null;
+	})()`);
+	note(
+		"the header's badge",
+		badge === null
+			? "no badge: this conversation has no live request (the trigger is still there, unpressed)"
+			: badge,
+	);
+
+	/*
+	 * 6. THE SWITCH WITH REQUESTS OUTSTANDING (QA round 1, Q1; UX round 1, U1).
+	 *
+	 * The defect lived in exactly this state: the surface fed the switch's scope to
+	 * the request filter as well as the tab filter, so on All tabs the pane counted
+	 * another conversation's approval as this conversation's, under a sentence that
+	 * denied it - and, worse, pressing back took that request out of the queue
+	 * model's input while it was still pending, which the model reports as
+	 * `Withdrawn by the agent`.
+	 *
+	 * Both requests are raised through the app's own RPC (see `browserRpc`): this
+	 * conversation's, and one whose requester is another conversation. The second
+	 * requester is a NAME rather than a second live session - the approval store
+	 * keys on the requester string, which is the field the tray reads - and the
+	 * frame says so.
+	 */
+	const liveState = await verb(cdp, "state");
+	const conversation = liveState.activeSessionId ?? null;
+	const OTHER_CONVERSATION = "session:other-conversation-live";
+	if (conversation === null) {
+		note(
+			"requests not raised",
+			"no conversation is open, so a request has nothing to be attributed to",
+		);
+	} else {
+		/*
+		 * TWO from this conversation and one from another, which is the shape the
+		 * defect needs: the tray's own header row - the count and the chips - renders
+		 * only when the queue it disambiguates holds more than one request, so a
+		 * single request would leave the state this check is about invisible
+		 * (`browser-approvals-tray.tsx`: `rows.length > 1 || dockOpen`).
+		 */
+		const mine = await browserRpc("request_access", {
+			url: "https://mine.example.com/",
+			requester: `session:${conversation}`,
+		});
+		const mineTwo = await browserRpc("request_access", {
+			url: "https://mine-two.example.com/",
+			requester: `session:${conversation}`,
+		});
+		const theirs = await browserRpc("request_access", {
+			url: "https://theirs.example.net/",
+			requester: OTHER_CONVERSATION,
+		});
+		note(
+			"request_access (two for this conversation, one for another)",
+			JSON.stringify({
+				mine: mine.result ?? mine.error,
+				mineTwo: mineTwo.result ?? mineTwo.error,
+				theirs: theirs.result ?? theirs.error,
+			}),
+		);
+		check(
+			"three requests are live, two from this conversation and one from another",
+			mine.result?.state === "pending" &&
+				mineTwo.result?.state === "pending" &&
+				theirs.result?.state === "pending",
+			JSON.stringify({ mine, mineTwo, theirs }),
+		);
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-scope-conversation"]',
+		});
+		/*
+		 * THE WAIT'S PREDICATE IS THE CHECK'S OWN CONDITION, and it has to be: this
+		 * conversation holds TWO live requests, so the settled state after the press is
+		 * two chips. Waiting for one - the state that is briefly true between the two
+		 * projections - returned a one-chip tray from the first read and then failed the
+		 * check below on a race, and on a slower run it could not be satisfied at all
+		 * and burned the whole timeout before asserting anyway (review round 2, MINOR 1).
+		 */
+		const scoped = await readUntil(
+			() => readTray(cdp),
+			(tray) => tray.chips.length === 2,
+		);
+		note("tray (This conversation)", JSON.stringify(scoped));
+		check(
+			"on This conversation the tray shows this conversation's two requests",
+			scoped.chips.length === 2 &&
+				(scoped.count ?? "").startsWith("2 approvals") &&
+				scoped.resolved.length === 0,
+			JSON.stringify(scoped),
+		);
+		// ONE PRESS. The tabs widen to every tab; the requests must not move.
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-scope-all"]',
+		});
+		const widened = await readUntil(
+			() => readTray(cdp),
+			(tray) => tray.side === "All tabs",
+		);
+		// The wait is on the tray having read the projection at all, not on the
+		// switch: the claim below is that the OTHER conversation's request never
+		// appears in this list, and a stale read would pass it for the wrong reason.
+		await wait(750);
+		const widenedFrame = await captureSettled(
+			cdp,
+			"browser-pane-requests-scope-all",
+		);
+		note("tray (All tabs)", JSON.stringify(widened));
+		check(
+			"on All tabs the tray still shows this conversation's two requests, not the three the app holds",
+			widened.chips.length === 2 &&
+				widened.count === scoped.count &&
+				widened.resolved.length === 0,
+			JSON.stringify({ scoped, widened }),
+		);
+		note("frame", JSON.stringify(widenedFrame));
+		// AND BACK. The other conversation's request is still pending in the app, so
+		// the pane must not have attributed a withdrawal to anyone.
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-scope-conversation"]',
+		});
+		const narrowed = await readUntil(
+			() => readTray(cdp),
+			(tray) => tray.side === "This conversation",
+		);
+		const pending = await cdp.evaluate(
+			"window.api.browser.state().then((state) => (state?.pendingConsent ?? []).map((entry) => entry.origin))",
+		);
+		const narrowedFrame = await captureSettled(
+			cdp,
+			"browser-pane-requests-scope-conversation",
+		);
+		note(
+			"tray (back on This conversation)",
+			JSON.stringify({ tray: narrowed, pending }),
+		);
+		check(
+			"narrowing the switch does not report the other conversation's live request as withdrawn",
+			narrowed.resolved.length === 0 &&
+				Array.isArray(pending) &&
+				pending.length === 3,
+			JSON.stringify({ tray: narrowed, pending }),
+		);
+		note("frame", JSON.stringify(narrowedFrame));
+	}
+
+	/*
+	 * 7. THE STRIP AT THE PANE'S OWN WIDTH: what fits, and what the pinned control
+	 * says about the rest (design round 1, D1's remainder; QA round 1, Q2).
+	 *
+	 * Tabs are opened through the same RPC an agent uses, in THIS conversation, so
+	 * the pane's conversation scope holds all of them and the arithmetic is the
+	 * pane's arithmetic rather than a filter's.
+	 */
+	if (conversation !== null) {
+		/*
+		 * THE TRACK'S RING, MEASURED RATHER THAN ASSUMED (design round 1's D3,
+		 * re-checked in round 2 because it never painted). The list is Radix's
+		 * `Tabs.List`, whose `RovingFocusGroup` root writes
+		 * `style: { outline: "none", ... }` on the element it renders - and with
+		 * `asChild` that element IS the list. An inline declaration beats every class,
+		 * so the ring's classes were in the DOM and in the stylesheet while
+		 * `outline-style` computed to `none`, and not one pixel of the ring was drawn
+		 * in any frame. The ring is drawn by a wrapper Radix does not own now; this
+		 * reads both elements so the claim is about what paints rather than about what
+		 * is declared.
+		 */
+		const ring = await cdp.evaluate(`(() => {
+			const track = document.querySelector('[data-tour-tag="browser-pane-scope-track"]');
+			if (!track) return null;
+			const list = track.querySelector('[role="tablist"]');
+			const computed = getComputedStyle(track);
+			return {
+				style: computed.outlineStyle,
+				width: computed.outlineWidth,
+				color: computed.outlineColor,
+				listInline: list ? list.getAttribute("style") : null,
+				listStyle: list ? getComputedStyle(list).outlineStyle : null,
+			};
+		})()`);
+		note("the scope switch's track", JSON.stringify(ring));
+		check(
+			"the track's ring PAINTS: a solid outline of the control role, on an element the primitive does not own",
+			ring !== null &&
+				ring.style === "solid" &&
+				Number.parseFloat(ring.width) >= 1,
+			JSON.stringify(ring),
+		);
+		check(
+			"and the primitive's own suppression stays on the LIST, where it is meant, rather than on the track",
+			ring !== null &&
+				ring.listStyle === "none" &&
+				(ring.listInline ?? "").includes("outline"),
+			JSON.stringify(ring),
+		);
+
+		/*
+		 * THE STRIP'S HEIGHT ACROSS THE EMPTY AND POPULATED CASES (design round 2,
+		 * D9): the design round measured the page stepping 32px between them, because
+		 * the row's height came from the tabs in it and with none it collapsed to its
+		 * own padding. Measured here with nothing of this conversation open, and again
+		 * the moment one tab exists.
+		 */
+		const stripRow = () =>
+			cdp.evaluate(`(() => {
+				const row = document.querySelector('[data-tour-tag="browser-tab-strip-row"]');
+				if (!row) return null;
+				const box = row.getBoundingClientRect();
+				return {
+					height: Math.round(box.height),
+					rows: row.querySelectorAll("[data-tab-id]").length,
+				};
+			})()`);
+		const emptyStrip = await readUntil(
+			() => stripRow(),
+			(state) => state !== null && state.rows === 0,
+		);
+		/*
+		 * WITH NO URL, DELIBERATELY, and it is the only shape that works here: a
+		 * navigation to an origin the user has not approved is refused by the gate
+		 * (`origin_not_allowed` - measured), and `about:blank` is refused by the
+		 * URL's own scheme check ("only http:// and https:// can be opened" -
+		 * measured). An `open` with no URL creates the tab and leaves it blank, which
+		 * is what the agent's first `open` does before it navigates; the tab carries
+		 * the same `Agent` chip as any other, and that is what the strip's arithmetic
+		 * reads.
+		 */
+		const firstTab = await browserRpc("open", {
+			requester: `session:${conversation}`,
+		});
+		note("open", JSON.stringify(firstTab.result ?? firstTab.error));
+		const oneTabStrip = await readUntil(
+			() => stripRow(),
+			(state) => state !== null && state.rows === 1,
+		);
+		const oneTabFrame = await captureSettled(cdp, "browser-pane-strip-one");
+		note(
+			"the strip's height, empty and with one tab",
+			JSON.stringify({ empty: emptyStrip, oneTab: oneTabStrip }),
+		);
+		note("frame", JSON.stringify(oneTabFrame));
+		check(
+			"the strip's height does not step when the first tab arrives (D9): at most 2px between the empty row and one tab",
+			emptyStrip !== null &&
+				oneTabStrip !== null &&
+				emptyStrip.rows === 0 &&
+				oneTabStrip.rows === 1 &&
+				Math.abs(emptyStrip.height - oneTabStrip.height) <= 2,
+			JSON.stringify({ empty: emptyStrip, oneTab: oneTabStrip }),
+		);
+		check(
+			"and the empty strip is a real row rather than a collapsed one",
+			emptyStrip !== null && emptyStrip.height >= 32,
+			JSON.stringify(emptyStrip),
+		);
+		for (let index = 0; index < 3; index += 1) {
+			const openedTab = await browserRpc("open", {
+				requester: `session:${conversation}`,
+			});
+			note("open", JSON.stringify(openedTab.result ?? openedTab.error));
+		}
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-scope-conversation"]',
+		});
+		const four = await readUntil(
+			() => readStrip(cdp),
+			(strip) => strip.rows >= 4,
+		);
+		const fourFrame = await captureSettled(cdp, "browser-pane-strip-four");
+		note("strip at the pane's default width, four tabs", JSON.stringify(four));
+		note("frame", JSON.stringify(fourFrame));
+		check(
+			"four tabs fit the pane's own width WHOLE, so the state D1 filed is not reachable there",
+			four.rows >= 4 && four.whole === four.rows && four.control === null,
+			JSON.stringify(four),
+		);
+		for (let index = 0; index < 2; index += 1) {
+			await browserRpc("open", { requester: `session:${conversation}` });
+		}
+		const six = await readUntil(
+			() => readStrip(cdp),
+			(strip) => strip.rows >= 6 && strip.control !== null,
+		);
+		const sixFrame = await captureSettled(cdp, "browser-pane-strip-overflow");
+		note("strip at the pane's default width, six tabs", JSON.stringify(six));
+		note("frame", JSON.stringify(sixFrame));
+		check(
+			"past that, the pinned control appears and its own text is the count of tabs that are not shown",
+			six.control !== null &&
+				/\(\+\d+\)|\+\d+/.test(six.control.text) &&
+				(six.control.label ?? "").includes("not shown"),
+			JSON.stringify({ six, control: six.control }),
+		);
+		check(
+			"and the count is the number the boxes say, not the tab count",
+			six.control !== null &&
+				six.control.text.replace(/[^0-9]/g, "") ===
+					String(six.rows - six.whole),
+			JSON.stringify({ six, offScreen: six.rows - six.whole }),
+		);
+	}
+
+	/*
+	 * 8. THE SAME TABS ON THE ROUTE, which is the other half of the measurement (QA
+	 * round 1, Q2: the control was drawn at this width with nothing off screen, so
+	 * its presence said nothing at all). What is asserted here is the INVARIANT
+	 * rather than this run's accident: the control is on screen exactly when a tab
+	 * is not, on both hosts, at whatever width each of them has.
+	 */
+	await verb(cdp, "navigate", "/browser");
+	const routeStrip = await readUntil(
+		() => readStrip(cdp),
+		(strip) => strip.rows > 0,
+	);
+	const routeStripFrame = await captureSettled(cdp, "browser-route-strip");
+	note("strip on the route", JSON.stringify(routeStrip));
+	note("frame", JSON.stringify(routeStripFrame));
+	check(
+		"on the route the control is present exactly when a tab is off screen",
+		routeStrip.rows - routeStrip.whole > 0 === (routeStrip.control !== null),
+		JSON.stringify(routeStrip),
+	);
+
+	/*
+	 * 9. THE LENS SURVIVES A CONVERSATION SWITCH (UX round 1, U3). The pane stays
+	 * open on the new session's content; the CHOICE has to stay with it, which it
+	 * cannot do from a `useState` inside a component the switch remounts.
+	 *
+	 * The second conversation is created on this run's backend, and the switch is a
+	 * route change to it and back - the same remount a sidebar press produces.
+	 */
+	if (conversation !== null && BACKEND) {
+		const other = await createBackendSession();
+		note("a second conversation", JSON.stringify(other));
+		if (other.id === null) {
+			note(
+				"the switch's own check not run",
+				`the backend's session create returned no id: ${JSON.stringify(other.body)}`,
+			);
+		} else {
+			await verb(cdp, "navigate", "/chat");
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="browser-pane-scope-all"]',
+			});
+			const beforeSwitch = await readTray(cdp);
+			await verb(cdp, "navigate", `/chat/${other.id}`);
+			await verb(cdp, "navigate", `/chat/${conversation}`);
+			const afterSwitch = await readUntil(
+				() => readTray(cdp),
+				(tray) => tray.side !== null,
+			);
+			const switchFrame = await captureSettled(
+				cdp,
+				"browser-pane-lens-after-switch",
+			);
+			note(
+				"the switch's side before and after a conversation switch",
+				JSON.stringify({
+					beforeSwitch: beforeSwitch.side,
+					afterSwitch: afterSwitch.side,
+				}),
+			);
+			check(
+				"All tabs survives a conversation switch, so the pane does not make the user choose again",
+				beforeSwitch.side === "All tabs" && afterSwitch.side === "All tabs",
+				JSON.stringify({ before: beforeSwitch.side, after: afterSwitch.side }),
+			);
+			note("frame", JSON.stringify(switchFrame));
+		}
+	} else {
+		note(
+			"the switch's own check not run",
+			"it needs a backend to create the second conversation in",
+		);
+	}
+
+	/* 10. THE CARET COMES BACK (UX round 1, U2): the pane's two neighbours put focus
+	 * back on their own trigger when they close, and the third occupant of the slot
+	 * has to as well. The pane is closed by its own control, which is how a user
+	 * closes it after arriving from the keyboard. */
+	// Step 8 left the app on the route, where the pane is not mounted at all.
+	await verb(cdp, "navigate", "/chat");
+	const closePresent = await cdp.evaluate(
+		"Boolean(document.querySelector('[data-tour-tag=\"browser-pane-close\"]'))",
+	);
+	if (closePresent) {
+		/*
+		 * THE CARET IS LOST THE WAY A KEYBOARD USER LOSES IT: the trigger is given
+		 * real DOM focus, the pane is opened from that state, and the control that
+		 * held focus unmounts under it - which is what UX round 1 (U2) walked with
+		 * Enter and what leaves `document.activeElement` on `<body>`.
+		 *
+		 * The activation is a programmatic click on the FOCUSED trigger rather than a
+		 * synthesised Enter, and the reason is measured: `Input.dispatchKeyEvent` for
+		 * Enter does not produce Chromium's default activation for the button over
+		 * this CDP path, so the pane never opened and the step reported the state it
+		 * was in rather than the state it meant. Focus is the half that matters here,
+		 * and a programmatic click does not move it - the assertion below checks the
+		 * caret really was lost, so this is not an assumption.
+		 */
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-close"]',
+		});
+		await cdp.evaluate(
+			"document.querySelector('[data-tour-tag=\"browser-pane-trigger\"]').focus()",
+		);
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-trigger"]',
+		});
+		const openedByFocus = await cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			return {
+				paneOpen: Boolean(document.querySelector('[data-tour-tag="browser-pane-slot"]')),
+				tag: active ? active.tagName : null,
+			};
+		})()`);
+		note("opened from a focused trigger", JSON.stringify(openedByFocus));
+		check(
+			"opening the pane from its own focused control leaves the caret on the document, which is the state the check below is about",
+			openedByFocus.paneOpen === true && openedByFocus.tag === "BODY",
+			JSON.stringify(openedByFocus),
+		);
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-close"]',
+		});
+		const afterClose = await cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			return {
+				tag: active ? active.tagName : null,
+				tour: active ? active.getAttribute("data-tour-tag") : null,
+				paneOpen: Boolean(document.querySelector('[data-tour-tag="browser-pane-slot"]')),
+			};
+		})()`);
+		const closedFrame = await captureSettled(cdp, "browser-pane-closed-focus");
+		note("after closing the pane", JSON.stringify(afterClose));
+		check(
+			"closing the pane puts the caret back on the control that opened it",
+			afterClose.paneOpen === false &&
+				afterClose.tour === "browser-pane-trigger",
+			JSON.stringify(afterClose),
+		);
+		// The badge, read where it lives: on the trigger, with the pane closed.
+		const badge = await readTray(cdp);
+		note(
+			"the header's badge with the pane closed",
+			JSON.stringify(badge.badge),
+		);
+		const stillPending = await cdp.evaluate(
+			"window.api.browser.state().then((state) => (state?.pendingConsent ?? []).length)",
+		);
+		note(
+			"pending in the app, from the header",
+			JSON.stringify({ badge: badge.badge, stillPending }),
+		);
+		check(
+			"the badge counts this conversation's two requests while the app holds three",
+			badge.badge === "2" && stillPending === 3,
+			`badge ${badge.badge} with ${stillPending} pending — this conversation raised two of the three`,
+		);
+		note("frame", JSON.stringify(closedFrame));
+	} else {
+		note(
+			"the caret check not run",
+			"no close control on this projection, so the pane was not closed by a press",
+		);
+	}
 }
 
 async function sceneNewChat(cdp) {
@@ -2334,6 +3183,7 @@ async function main() {
 			if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

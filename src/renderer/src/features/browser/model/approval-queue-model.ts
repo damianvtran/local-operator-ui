@@ -49,14 +49,18 @@ export interface ApprovalTabInput {
 	 * The conversation a tab belongs to.
 	 *
 	 * `registry.ts` carries this per tab (`TabRecord.sessionId`, `:38-51`) and
-	 * `snapshot()` returns it (`:556-585`), but `chromeState()` drops it
-	 * (`host.ts:531-543`), so in PR 1 the field is absent from the projection and
-	 * every tab reads as unattributed. PR 2 projects it (that is the whole of
-	 * PR 2's main-process change), and this optional field is the interface that
-	 * makes that one projection field enough: the filter below already answers
-	 * "this conversation's tabs, or all of them", and a tab with no attribution
-	 * appears only under `"all"` (design 7.3 — a restored tab, a tab never handed
-	 * over and a tab handed back are all the user's, not a conversation's).
+	 * `snapshot()` returns it (`:556-585`); `chromeState()` now projects it too
+	 * (`host.ts`'s `chromeState`, with the note on why the name travels and the
+	 * nonce does not), which is the whole of this feature's main-process change.
+	 * This optional field is the interface that makes one projection field enough:
+	 * the filters below answer "this conversation's tabs, or all of them", and a tab
+	 * with no attribution appears only under `"all"` (design 7.3 — a restored tab, a
+	 * tab never handed over and a tab handed back are all the user's, not a
+	 * conversation's). It stays OPTIONAL so a caller can model a projection that has
+	 * no attribution at all, which is what the tests do for the `null` cases; a
+	 * missing field and an explicit `null` behave identically here on purpose, since
+	 * both mean "not this conversation's" and neither is a value the filter may
+	 * treat as a match.
 	 */
 	sessionId?: string | null;
 	/**
@@ -72,8 +76,72 @@ export interface ApprovalTabInput {
 	owner?: "user" | "agent";
 }
 
-/** Which tabs a browser surface is showing. PR 1 only ever passes `"all"`. */
+/**
+ * Which tabs — and which requests — a browser surface is showing.
+ *
+ * `"all"` is the route's own, and a conversation scope is the pane's. TWO
+ * FILTERS READ IT, and they are deliberately different keys for the same
+ * question: `tabsInScope` matches a tab's `sessionId` and `requestsInScope`
+ * matches a request's `requesterSessionId`. See each one for why.
+ *
+ * BOTH SIDES OF THE COMPARISON ARE THE APP'S OWN SESSION ID SPELLING — the bare
+ * one the chat routes carry and the session list publishes — because that is what
+ * the host stores and projects (`registry.ts` stores `sessionIdOf(identity)`, and
+ * `chromeState` projects the record's own field). So the pane hands
+ * `chromeState`'s own vocabulary back to it, and nothing here has to normalise a
+ * `session:` prefix in one place and not the other.
+ */
 export type SurfaceScope = "all" | { sessionId: string };
+
+/**
+ * The scope's identity as a PRIMITIVE.
+ *
+ * WHY A SCOPE NEEDS A KEY AT ALL, and it is a defect this fixed rather than a
+ * convenience: everything that consumes a scope keys on its IDENTITY — the
+ * surface's tab and request memos, and the queue model's effects, one of which
+ * publishes the shared clock and so re-renders the surface. A host that builds its
+ * scope object inside its render body (the pane does: `{ sessionId }`) hands down a
+ * new object every render, so a memo keyed on the object recomputes every render,
+ * the model's effect re-runs, the clock publishes, and the surface re-renders — a
+ * loop whose period is the microsecond it takes to run, on a surface that still
+ * paints and therefore looks perfectly fine in a frame.
+ *
+ * So the value — `"all"`, or the session id, both strings — is what the surface
+ * keys on, and the object is rebuilt from it inside the surface rather than trusted
+ * from the caller. A host cannot trip it, which is the right place for that
+ * guarantee: this model owns the rule.
+ *
+ * INJECTIVE, and that is a correctness property rather than a nicety (review round
+ * 1, NIT A): keying a session scope as its bare session id made a session literally
+ * named `all` indistinguishable from the all-tabs scope, so the strip would show
+ * every conversation's tabs while the switch read "This conversation". Session ids
+ * come from the daemon, so the collision was theoretical — but a key that is only
+ * USUALLY injective is the kind of thing that holds until the day it does not.
+ *
+ * THE ENCODING IS THIS PAIR'S OWN BUSINESS: `scopeFromKey` below is the only thing
+ * that reads it, so no caller takes the string apart, and a session id containing a
+ * prefix of its own cannot confuse it.
+ */
+const ALL_SCOPE_KEY = "all";
+const SESSION_SCOPE_PREFIX = "session:";
+
+export function scopeKey(scope: SurfaceScope): string {
+	return scope === "all"
+		? ALL_SCOPE_KEY
+		: `${SESSION_SCOPE_PREFIX}${scope.sessionId}`;
+}
+
+/** The scope a key names. The inverse of `scopeKey`, and the only reader of its
+ * encoding. A key that is neither the all-scope nor prefixed is still a session
+ * key: the tolerant reading is the one that cannot silently truncate an id. */
+export function scopeFromKey(key: string): SurfaceScope {
+	if (key === ALL_SCOPE_KEY) return "all";
+	return {
+		sessionId: key.startsWith(SESSION_SCOPE_PREFIX)
+			? key.slice(SESSION_SCOPE_PREFIX.length)
+			: key,
+	};
+}
 
 /** One live request, numbered and timed, as every surface renders it. */
 export interface ApprovalRow {
@@ -319,6 +387,43 @@ export function tabsInScope<T extends ApprovalTabInput>(
 	return tabs.filter((tab) => tab.sessionId === scope.sessionId);
 }
 
+/**
+ * The requests a surface shows, for its scope — scoped BY REQUESTER, never by
+ * matching a request's origin against a tab that happens to be in the list.
+ *
+ * WHY THE REQUESTER IS THE KEY (design 7.2, and the alternative is rejected there
+ * — scoping a request by origin-matching a tab in the list — for exactly this
+ * reason): a request belongs to a conversation because that
+ * conversation's agent raised it (`requesterSessionId`, published by the host at
+ * `host.ts:565-581`). Matching it against an origin that one of the scope's tabs
+ * happens to be on would credit a request to a conversation that merely has a tab
+ * open on the same site — a user's own tab, or another conversation's — and would
+ * hide a request whose own tab is not in this scope's list yet. The requester
+ * cannot be wrong about who asked.
+ *
+ * A requester that is NOT a session identity (`null` — a bare request id, or a
+ * non-session actor) is therefore in no conversation's scope and appears only
+ * under `"all"`, which is the same treatment an unattributed tab gets and for the
+ * same reason: nothing in the projection says which conversation to show it in,
+ * and inventing one is how a prompt ends up unanswered in a pane nobody is looking
+ * at.
+ *
+ * THE SCOPE SWITCH DOES NOT APPLY TO THIS (design 7.2, and it is not an
+ * oversight): the pane's tray shows this conversation's requests even while its
+ * strip is showing All tabs, and says so in the tray's header. The switch chooses
+ * which TABS are listed; a request is a demand on the user, and hiding one because
+ * they were browsing every tab is the failure this whole feature exists to
+ * prevent.
+ */
+export function requestsInScope<
+	T extends { requesterSessionId: string | null },
+>(requests: ReadonlyArray<T>, scope: SurfaceScope): T[] {
+	if (scope === "all") return [...requests];
+	return requests.filter(
+		(request) => request.requesterSessionId === scope.sessionId,
+	);
+}
+
 export interface ApprovalQueueModel {
 	/** The one clock every surface reads (§3.3). */
 	now: number;
@@ -334,19 +439,78 @@ export interface ApprovalQueueModel {
 }
 
 /**
+ * ONE CLOCK FOR THE WINDOW, not one per mounted surface.
+ *
+ * Spec 3.3 states the rule — "two surfaces computing liveness from two clocks is
+ * how the badge and the tray disagree by one for a second" — and the first
+ * implementation of it put a `setInterval` inside this hook, which made the rule
+ * true only for as long as exactly one consumer was mounted. PR 2 gives the same
+ * window a SECOND one: the chat header's trigger carries an attention badge
+ * counting this conversation's live requests (spec 7.3) and it is mounted whether
+ * or not the pane is, so a per-hook interval would put two clocks one second
+ * apart on the same screen — the exact defect the rule names, with a count on one
+ * side of it and a list on the other.
+ *
+ * So the value lives here, the timer is started by whoever has live work and
+ * stopped when the last of them is done, and every consumer reads the same
+ * number. The cost is one interval per window instead of one per surface, which is
+ * also why `tick` publishes to every subscriber rather than the ticker owning a
+ * `setState`.
+ */
+let clockNow = Date.now();
+const clockSubscribers = new Set<(now: number) => void>();
+let clockTimer: ReturnType<typeof setInterval> | null = null;
+let clockHolders = 0;
+
+function publishClock(now: number): void {
+	clockNow = now;
+	for (const notify of clockSubscribers) notify(now);
+}
+
+/**
+ * Read the wall clock, move the shared value, and tell everyone.
+ *
+ * A NEW PROJECTION IS ALSO A MOMENT TO RE-READ THE CLOCK, which is why this is
+ * exported rather than left to the ticker: without it the first render after an
+ * arrival could use a `now` up to a second stale. It returns the value it just
+ * published so a caller can stamp a reconcile with exactly the instant the rest of
+ * the window is about to adopt.
+ */
+export function readApprovalClock(): number {
+	publishClock(Date.now());
+	return clockNow;
+}
+
+/** Run the shared interval while this caller has something live to count, and stop
+ * it when the last caller is done — an idle app must not wake the CPU once a second
+ * for a list that cannot change. Idempotent per holder: the caller's cleanup is the
+ * only thing that releases it. */
+function holdApprovalClock(): () => void {
+	clockHolders += 1;
+	if (clockTimer === null)
+		clockTimer = setInterval(() => publishClock(Date.now()), 1000);
+	return () => {
+		clockHolders -= 1;
+		if (clockHolders > 0 || clockTimer === null) return;
+		clearInterval(clockTimer);
+		clockTimer = null;
+	};
+}
+
+/**
  * The queue model as a hook over the projection.
  *
- * The interval runs ONLY while something is pending: an idle browser route must
- * not wake the CPU once a second for a list that cannot change. Its identity is
- * keyed on the pending count rather than on the requests array, because the
- * array is a fresh object on every projection refresh and re-creating a 1s
+ * The shared interval runs ONLY while something is pending — see the clock above,
+ * which owns both the value and the decision to be running at all. The effect's
+ * identity is keyed on the pending count rather than on the requests array, because
+ * the array is a fresh object on every projection refresh and re-creating a 1s
  * interval on every refresh is a timer that never fires.
  */
 export function useApprovalQueue(
 	requests: ReadonlyArray<ApprovalRequestInput>,
 	tabs: ReadonlyArray<ApprovalTabInput>,
 ): ApprovalQueueModel {
-	const [now, setNow] = useState(() => Date.now());
+	const [now, setNow] = useState(() => clockNow);
 	const previous = useRef<ReadonlyArray<ApprovalRequestInput>>([]);
 	const [resolved, setResolved] = useState<ResolvedRow[]>([]);
 	/** The entries this host answered. A ref, not state: the projection's next
@@ -419,17 +583,23 @@ export function useApprovalQueue(
 	const live = liveRequests(requests, now).length;
 	useEffect(() => {
 		if (live === 0) return;
-		const id = window.setInterval(() => setNow(Date.now()), 1000);
-		return () => window.clearInterval(id);
+		return holdApprovalClock();
 	}, [live]);
+
+	/** Follow the shared clock. `setNow` is stable, so this subscribes once. */
+	useEffect(() => {
+		clockSubscribers.add(setNow);
+		return () => {
+			clockSubscribers.delete(setNow);
+		};
+	}, []);
 
 	// A new projection is also a moment to re-read the clock: without this the
 	// first render after an arrival could use a `now` up to a second stale, which
 	// is exactly the one-second disagreement between badge and tray the single
 	// clock exists to prevent.
 	useEffect(() => {
-		const at = Date.now();
-		setNow(at);
+		const at = readApprovalClock();
 		/*
 		 * THE PREVIOUS ARRAY IS CAPTURED BEFORE THE REF MOVES, and that is the whole
 		 * fix for the finding QA reproduced twice (round 1, Q2). The updater passed

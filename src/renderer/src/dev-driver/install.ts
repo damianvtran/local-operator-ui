@@ -288,6 +288,15 @@ export function installDevDriver(): string[] {
 				commandPaletteOpen: preferences.isCommandPaletteOpen,
 				canvasOpen: preferences.isCanvasOpen,
 				runPanelOpen: preferences.isRunPanelOpen,
+				/*
+				 * The third occupant of the right slot, and the one a scene drives by
+				 * PRESSING the header's trigger rather than by writing the store: a pane
+				 * that is open in the store but has no trigger, or a trigger that does not
+				 * open the pane, are different defects and only a press can tell them
+				 * apart (`renderer-driver.mjs`'s `browser-pane` scene).
+				 */
+				browserPaneOpen: preferences.isBrowserPaneOpen,
+				browserPanelWidth: preferences.browserPanelWidth,
 				activeSessionId: sessions.activeSessionId,
 				sessionCount: sessions.sessions.length,
 				/*

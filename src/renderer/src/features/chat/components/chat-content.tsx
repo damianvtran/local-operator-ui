@@ -1,3 +1,5 @@
+import { BrowserPane } from "@features/browser/components/browser-pane";
+import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
 import type {
 	AgentDetails,
 	AgentExecutionRecord,
@@ -560,6 +562,48 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// preference should land the run panel on the design's 420.
 		const effectiveRunPanelWidth = runPanelWidth === 0 ? 420 : runPanelWidth;
 
+		/*
+		 * The browser pane: the third occupant of the same slot
+		 * (`docs/design/browser-approval-ux.md` 7.3).
+		 *
+		 * Read here, beside `isRunPanelOpen`, because this component is what renders the
+		 * slot and the header's Globe trigger has to answer "is the pane up" from the
+		 * same field the slot renders from — a second source would let the trigger and
+		 * the pane disagree about what is on screen.
+		 */
+		const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
+		const setBrowserPaneOpen = useUiPreferencesStore(
+			(s) => s.setBrowserPaneOpen,
+		);
+		const browserPanelWidth = useUiPreferencesStore((s) => s.browserPanelWidth);
+		const setBrowserPanelWidth = useUiPreferencesStore(
+			(s) => s.setBrowserPanelWidth,
+		);
+		const restoreDefaultBrowserPanelWidth = useUiPreferencesStore(
+			(s) => s.restoreDefaultBrowserPanelWidth,
+		);
+		// Same zero-fallback shape as its neighbours above, and the same reason: an
+		// unset preference should land the browser on the design's 640 (a page's room)
+		// rather than on whichever pane's number happens to be first.
+		const effectiveBrowserPanelWidth =
+			browserPanelWidth === 0 ? 640 : browserPanelWidth;
+
+		/*
+		 * How many approvals THIS conversation's agent is waiting on, for the header
+		 * trigger's badge (spec 7.3).
+		 *
+		 * Read here rather than inside `ChatHeader` for the reason the header's own
+		 * `listOnScreen` is passed in: the badge is a fact about the WINDOW's browser
+		 * state scoped to this conversation, and this component is where the
+		 * conversation's identity lives. It runs whether or not the pane is open, which is
+		 * the point — a user who has never opened the pane is the one the badge is for.
+		 *
+		 * No session id means a draft, and a draft owns no requests: the hook answers 0
+		 * rather than counting the whole app's queue for a conversation that does not
+		 * exist yet.
+		 */
+		const browserAttentionCount = useConversationApprovals(sessionId ?? null);
+
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
 			[conversationId, setSelectedTab],
@@ -681,6 +725,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							mcpServers={mcpServers}
 							listOnScreen={listOnScreen}
 							readerChildId={readerChildId}
+							onOpenBrowser={() => setBrowserPaneOpen(true)}
+							browserAttentionCount={browserAttentionCount}
 						/>
 						{/* Chat Options Sidebar */}
 						{!canonical && (
@@ -1064,6 +1110,62 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								readerChildId={readerChildId}
 								onReaderChildChange={setReaderChildId}
 								onClose={() => setRunPanelOpen(false)}
+							/>
+						</div>
+					</>
+				)}
+
+				{/*
+				 * The conversation's browser: the THIRD occupant of this slot, mutually
+				 * exclusive with the other two by construction (`claimRightSlot` clears the
+				 * losing sides), so only one of the three blocks can ever be mounted and
+				 * none needs a guard against another. It reuses the canvas's three pieces —
+				 * the divider, the pinned-width wrapper with the `border-l` seam, and a root
+				 * element — because the pane mechanics are the slot's rather than either
+				 * occupant's.
+				 *
+				 * THE DIVIDER'S FLOOR IS 480 AND NOTHING ELSE ENFORCES IT: `maxWidth` matches
+				 * the canvas's 1200 because a page is a document and wants a document's room,
+				 * and the floor is the DRAG limit rather than a `minWidth` on this wrapper —
+				 * the canvas's own note records what a pinned floor costs (it made a column
+				 * unreachable at the app's default window, because a floor larger than the
+				 * space available is clipped by the row and no scroll container in between can
+				 * reach it). A page narrower than 480px is a mobile column with its layout
+				 * broken, which is why the drag stops there rather than why the flex row must.
+				 *
+				 * NO AUTO-HIDE AT NARROW WIDTHS, for the reason the run panel states: the
+				 * operator asked for persistence, and a pane that disappears below a
+				 * breakpoint is the defect this replaces in a new costume.
+				 */}
+				{isBrowserPaneOpen && (
+					<>
+						<ResizableDivider
+							sidebarWidth={effectiveBrowserPanelWidth}
+							onSidebarWidthChange={setBrowserPanelWidth}
+							minWidth={480}
+							maxWidth={1200}
+							side="left"
+							onDoubleClick={restoreDefaultBrowserPanelWidth}
+							label="Resize browser"
+						/>
+						<div
+							/* Named for the geometry probe: the pane's measured width as it opens
+							   is what shows the slot narrowed the conversation rather than
+							   overlaying it. */
+							data-tour-tag="browser-pane-slot"
+							style={{ width: effectiveBrowserPanelWidth }}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+						>
+							{/*
+							 * The session id as a SCOPE rather than as a page: the pane renders the
+							 * same surface the route does, scoped to this conversation (spec 7.1).
+							 * `null` on a draft, where there is no set to scope to — the pane then
+							 * shows All tabs with the conversation side disabled
+							 * (`browser-pane.tsx` states why that is the honest reading).
+							 */}
+							<BrowserPane
+								sessionId={sessionId ?? null}
+								onClose={() => setBrowserPaneOpen(false)}
 							/>
 						</div>
 					</>
