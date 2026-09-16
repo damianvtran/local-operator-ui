@@ -72,8 +72,9 @@ export type ThemePalette = {
 	/** One step recessed: wells, tracks, code grounds, footers. */
 	sunken: string;
 	/**
-	 * The current row's own ground: a SHALLOW step off `surface`, in the
-	 * direction the mode runs (darker on light themes, lighter on dark ones).
+	 * The current row's own ground: a step off `surface`, in the direction the
+	 * mode runs (darker on light themes, lighter on dark ones), carrying the
+	 * surface's own hue at more chroma.
 	 *
 	 * A selection is not a well. Before this role existed the current row was
 	 * painted `sunken`, which is always RECESSED — a hole in the panel — and
@@ -86,21 +87,39 @@ export type ThemePalette = {
 	 * row could not be quietened by moving that value: the row needed a ground of
 	 * its own.
 	 *
-	 * ## The band, and the two floors it sits between
+	 * ## How far the step runs, and why it is chroma rather than lightness
 	 *
-	 * Authored to land at **ΔE00 2.0-2.5 from `surface`** — above the
-	 * perceptual threshold (below it a row is drawn and not seen, the defect
-	 * `docs/evidence/chat-sidebar-selection/README.md` records) and well under
-	 * `sunken`'s 3.75-14.94 (above that it stops being a highlight and becomes
-	 * the box the operator reported). Measured per palette by
-	 * `scripts/contrast-contract.mjs`'s `highlight` block; the authored values
-	 * land 2.18-2.28.
+	 * The role was first authored to land at **ΔE00 2.0-2.5 from `surface`**, for
+	 * a selection the operator had asked to be SUBTLE. He has since seen it
+	 * rendered and reported the current row as lost beside a hovered neighbour,
+	 * so the intent is reversed and the step now lands at **ΔE00 4.0-4.4 on
+	 * eleven palettes**; `iceberg` caps at 3.51, because its recessed ground sits
+	 * only 3.75 from `surface` and the two bounds meet there.
 	 *
-	 * The top of the band is bounded by something the row does not control: a
-	 * row's `hover:` step is `elevated`, so a hovered row must STILL be a
-	 * different ground from the current one. That pair's worst case is ΔE00
-	 * 2.52 (obsidian) and the contract asserts it at the field floor, which is
-	 * what stops the band running up into the hover step.
+	 * The step is bought on the CHROMA axis at the surface's own hue, not with
+	 * more lightness, and that follows `docs/branding.md` § 3: a contrast ratio
+	 * has no chroma term, so separating two grounds by warmth at a fixed `L*`
+	 * spends no ink assertion, while separating them by lightness spends every
+	 * ink measured against them. Measured per palette by
+	 * `scripts/contrast-contract.mjs`'s `highlight` block, which is also where the
+	 * inks on it and the row's structural edge are asserted.
+	 *
+	 * ## What bounds it from below, and what bounds it from above
+	 *
+	 * Below: every ink on the ground keeps § 3's floor with headroom — `ink` at
+	 * 7:1, `ink-muted` and `ink-dim` at 4.5:1 — and `ink-dim` is the binder,
+	 * because the caps and the `· lopdev` binding INSIDE a current row are drawn
+	 * in it. That floor, not taste, is what caps the step on the palettes where it
+	 * stops short of 4.4.
+	 *
+	 * Above: a row's `hover:` step is `elevated`, so a hovered row must STILL be a
+	 * different ground from the current one — worst pair ΔE00 2.36 (obsidian),
+	 * asserted at the field floor. `elevated` is ALSO every menu, popover and
+	 * tooltip ground in the app, so it is not a value that can come down to meet
+	 * the selection: on eight of the twelve palettes the hover step remains the
+	 * larger step off `surface`. The current row therefore carries a second,
+	 * structural half — the 1px `outline-control` ring in `rowCurrentEdge` — which
+	 * is asserted against `highlight` here at the 3:1 floor its role carries.
 	 *
 	 * `highlight` is the ground the row is painted with; every ink on it is
 	 * asserted at its own floor, so it is a ground for text rather than a tint
