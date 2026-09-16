@@ -26,6 +26,9 @@ import {
 import {
 	type SurfaceScope,
 	originOfUrl,
+	requestsInScope,
+	scopeFromKey,
+	scopeKey,
 	tabsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
@@ -51,15 +54,26 @@ import { BrowserUrlBar } from "./browser-url-bar";
  * conversation (PR 2). Everything that is once per host lives here — the rect
  * reporter, the view-visibility policy, the popup/error notices, the tray, the
  * dock, the tab strip and URL bar wiring — and the only thing a host chooses is
- * its `scope`, its evidence tags, and its header wording. Re-implementing the
+ * its two scopes, its evidence tags, and its header wording. Re-implementing the
  * strip and the tray per host is rejected for the same reason `branding.md`
  * refuses a second button implementation: they would drift.
  *
- * THE `scope` PROP IS PR 1's INTERFACE (spec §9, item 1). It is `"all"` today
- * because the only host is the route. It exists now, threaded through
- * `tabsInScope`, so PR 2 is a projection field plus a prop rather than a refactor
- * of this surface under a review round. A tab with no session attribution is not
- * any conversation's and appears only under `"all"` (design 7.3).
+ * TWO SCOPES, NOT ONE (spec §7.2, and QA round 1's Q1 is why this is a pair).
+ * `tabScope` answers "which tabs does this host show", and the pane's header
+ * switch is what changes it. `requestScope` answers "whose approvals does this
+ * host show", and NOTHING in this component may let the first answer the second:
+ * a request belongs to a conversation by WHO ASKED (spec 7.2), so on the pane's
+ * All-tabs side the tray still shows only this conversation's requests - and,
+ * the half that matters, an entry never leaves the queue model's input because
+ * the user pressed the switch, which is what made the surface print
+ * `Withdrawn by the agent` over a request that was still pending.
+ *
+ * PR 1 shipped these as one `scope` prop (spec §9, item 1) because the only host
+ * was the route, where the two questions have the same answer. They do not in a
+ * pane, and one prop could not express the difference: the tabs are scoped by
+ * SESSION, the requests by REQUESTER, and the switch moves only the first. A tab
+ * with no session attribution is not any conversation's and appears only under
+ * `"all"` (design 7.3), in the tab scope alone.
  *
  * THE LAYOUT CONTRACT, which is the part with a rule behind every line: the
  * renderer owns layout, so this component measures the element where the page
@@ -113,27 +127,59 @@ function measure(element: HTMLElement): {
 }
 
 export interface BrowserSurfaceProps {
-	/** Which tabs this host shows. See the header comment. */
-	scope: SurfaceScope;
+	/** Which tabs this host shows. See the header comment. A host may pass a fresh
+	 * object on every render: the surface keys its filters on the scope's VALUE (see
+	 * `scopeKey` for the loop that naivety caused), so identity is free here. */
+	tabScope: SurfaceScope;
+	/**
+	 * Whose approvals this host shows. Per host and NOT per switch: the route counts
+	 * every request, and a conversation host counts the ones its own agent raised,
+	 * whichever list its strip is showing (spec 7.2).
+	 *
+	 * It also has to be the scope the deck's words agree with: a host that hands
+	 * down a conversation here must hand down the sentence for it too, which is the
+	 * other half of `approvalHeaderLabel` (`browser-pane.tsx` states the pair).
+	 */
+	requestScope: SurfaceScope;
 	/** This host's own evidence tag, so a run can say which host it drove (§9's
 	 * item 4: the hosts never co-mount, but a test has to know which one it is
 	 * driving, and PR 2's pane passes its own). */
 	surfaceTag: string;
 	/** The dock's evidence tag, per host, for the same reason. */
 	dockSurfaceTag: string;
-	/** The tray header's wording, because the sentence is a fact about the scope:
-	 * the route counts every request, and PR 2's pane counts only the requests this
-	 * conversation's agent raised and has to say so (spec 7.2, interface 3). */
+	/** The tray header's wording, because the sentence is a fact about the REQUEST
+	 * scope: the route counts every request, and the pane counts only the requests
+	 * this conversation's agent raised and has to say so (spec 7.2, interface 3).
+	 *
+	 * A HOST MUST KEEP THIS IN STEP WITH `requestScope`, not with `tabScope`: a
+	 * conversation host whose request scope is `"all"` - the pane on a draft, where
+	 * there is no conversation to be "this" one - that hands down the conversation's
+	 * sentence prints a claim about a conversation that does not exist (UX round 1,
+	 * U4). The pane passes the pair together for exactly that reason. */
 	approvalHeaderLabel?: (count: number) => string;
+	/**
+	 * The way out of a scope that has nothing in it, when the host HAS other tabs to
+	 * show (spec 7.2).
+	 *
+	 * Absent on the route, where there is no narrower list to widen: a host whose
+	 * tab scope is `"all"` already shows everything, so its empty state has nothing
+	 * to offer and says the plain truth ("No tabs are open."). The pane passes it,
+	 * and the surface renders
+	 * the action only for a conversation scope — a host that has no other scope is a
+	 * host that must not offer one.
+	 */
+	onShowAllTabs?: () => void;
 }
 
 const DEFAULT_APPROVAL_HEADER = defaultApprovalHeaderLabel;
 
 export const BrowserSurface: FC<BrowserSurfaceProps> = ({
-	scope,
+	tabScope,
+	requestScope,
 	surfaceTag,
 	dockSurfaceTag,
 	approvalHeaderLabel = DEFAULT_APPROVAL_HEADER,
+	onShowAllTabs,
 }) => {
 	const chrome = useBrowserChrome();
 	const suppressed = useBrowserViewSuppressed();
@@ -152,24 +198,62 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		url: string;
 	} | null>(null);
 
+	/**
+	 * The scope, held by IDENTITY as well as by value.
+	 *
+	 * WHY THIS ONE LINE MATTERS, and it is a real defect rather than tidiness: every
+	 * memo and every effect below keys on `scope`'s identity — the tab memo, the
+	 * request memo, and the queue model's own effects — and the queue model's clock
+	 * tick re-renders this component. A host that rebuilds its scope object per render
+	 * (the pane does: `{ sessionId }` in its own render body) therefore produced a new
+	 * filtered ARRAY per render, which re-ran the model's effect, which published the
+	 * clock, which re-rendered — a render loop whose period is the microsecond it
+	 * takes to run it, on a surface that still paints and so looks fine in a frame.
+	 *
+	 * The fix belongs HERE rather than only in the caller, because this component owns
+	 * the model and the model's contracts are its to keep: it derives its own stable
+	 * scope from the scope's VALUE (the route's `"all"`, or the session id, both
+	 * primitives) and hands that to everything downstream, so no host can trip it.
+	 */
+	const scopeField = scopeKey(tabScope);
+	const stableScope = useMemo<SurfaceScope>(
+		() => scopeFromKey(scopeField),
+		[scopeField],
+	);
+	/** The requests' scope, stabilised by the same rule and for the same reason - the
+	 * queue model keys on its identity, and the pane hands this one down per session
+	 * rather than per render. */
+	const requestScopeField = scopeKey(requestScope);
+	const stableRequestScope = useMemo<SurfaceScope>(
+		() => scopeFromKey(requestScopeField),
+		[requestScopeField],
+	);
+
 	const state = chrome.state;
 	// The scope filter, applied to the projection the strip, the URL bar and the
 	// waiting chips all read. `state?.tabs` is a fresh array per projection, so the
 	// filter is memoised on it rather than on `state`.
 	const allTabs = state?.tabs;
 	const tabs = useMemo(
-		() => tabsInScope(allTabs ?? [], scope),
-		[allTabs, scope],
+		() => tabsInScope(allTabs ?? [], stableScope),
+		[allTabs, stableScope],
 	);
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
+	//
+	// THE REQUESTS' OWN SCOPE, which is NOT the one above. `requestsInScope` filters
+	// a different field (the requester) from `tabsInScope` (the tab's session), and a
+	// host hands down the two separately: that is what makes the pane's tray count
+	// this conversation's live requests while its strip shows every tab, and the
+	// route count every request, from the same component and the same model.
 	const requests = state?.pendingConsent;
-	// Memoised on the projection's own array: an empty-array literal here would be a
-	// new identity on every render, and the queue hook's effect keys on it.
-	const pendingRequests = useMemo(() => requests ?? [], [requests]);
+	const pendingRequests = useMemo(
+		() => requestsInScope(requests ?? [], stableRequestScope),
+		[requests, stableRequestScope],
+	);
 	const queue = useApprovalQueue(pendingRequests, tabs);
 
 	// ---- layout: report the rectangle ---------------------------------------
@@ -508,13 +592,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						// is to pick a tab above - and that is deliberate rather than an
 						// inconsistency to iron out.
 						//
-						// THE SCOPED EMPTY STATE IS PR 2's, and this is its wording in advance
-						// (spec §7.2): a conversation's list must not say "no tabs" while three are
-						// open behind a filter. The route passes `scope="all"`, where "No tabs are
-						// open." is the whole truth.
+						// TWO ACTIONS IN THE SCOPED BRANCH, and they are two DIFFERENT actions rather
+						// than the same one twice (spec 7.2): `Show all tabs` widens the LIST and
+						// `New tab` opens a page. The first is the primary one here, because the
+						// state this copy exists for is the half-truth case - three tabs are open
+						// and none of them is this conversation's - and the honest next move there
+						// is to look at what IS open, not to open a fourth. It is rendered only when
+						// the host actually HAS a wider scope to offer, so the route's own empty
+						// state keeps its single action.
 						<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
 							<Globe aria-hidden className="size-6 text-ink-dim" />
-							{scope === "all" ? (
+							{tabScope === "all" ? (
 								<p className="text-body text-ink-muted">No tabs are open.</p>
 							) : (
 								<p className="text-body text-ink-muted">
@@ -522,13 +610,25 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									appears here while it works.
 								</p>
 							)}
-							<Button
-								variant={scope === "all" ? "primary" : "outline"}
-								size="sm"
-								onClick={() => void chrome.newTab()}
-							>
-								New tab
-							</Button>
+							<div className="flex items-center gap-2">
+								{tabScope !== "all" && onShowAllTabs && (
+									<Button
+										variant="primary"
+										size="sm"
+										onClick={onShowAllTabs}
+										data-tour-tag="browser-scope-show-all"
+									>
+										Show all tabs
+									</Button>
+								)}
+								<Button
+									variant={tabScope === "all" ? "primary" : "outline"}
+									size="sm"
+									onClick={() => void chrome.newTab()}
+								>
+									New tab
+								</Button>
+							</div>
 						</div>
 					)}
 					{state && tabs.length > 0 && !activeTab && (

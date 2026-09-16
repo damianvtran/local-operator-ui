@@ -284,6 +284,75 @@ export const STORIES = [
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
 
+	/*
+	 * The conversation-scoped pane (`docs/design/browser-approval-ux.md` §7),
+	 * captured at the PANE's own width rather than at 1280: an evidence frame of a
+	 * pane should be the pane, so the viewport is the box the user sees — 640, the
+	 * design's default, and 480, the divider's floor. The heights are the frames'
+	 * own, two of them tight to their content: `scope-empty` and the three header
+	 * rows are mostly ground by nature, and a taller box would cross
+	 * `check-evidence`'s uniformity ceiling photographing the emptiest state this
+	 * feature has. The header rows are 84 = the 56px bar plus the 28px caption that
+	 * carries the reported rectangle.
+	 */
+	["browser-pane--this-conversation", 640, 460],
+	["browser-pane--all-tabs", 640, 460],
+	/*
+	 * `scope-empty` is at the SAME size as the populated frames rather than tight to
+	 * its own content (design round 2, D9): the finding is a comparison - the strip,
+	 * and therefore the page area below it, stepping as a tab appears - so the pair
+	 * has to be photographed in the same box or the two captions are not comparable.
+	 * It is less empty than it was, so the uniformity ceiling the old height existed
+	 * for is no longer the constraint.
+	 */
+	["browser-pane--scope-empty", 640, 460],
+	["browser-pane--show-all-tabs", 640, 460],
+	["browser-pane--one-tab", 640, 460],
+	["browser-pane--with-approval", 640, 720],
+	["browser-pane--narrow-minimum", 480, 460],
+	["browser-pane--route-for-comparison", 1240, 780],
+	["browser-pane--trigger-no-approval", 560, 84],
+	["browser-pane--trigger-one-approval", 560, 84],
+	["browser-pane--trigger-three-approvals", 560, 84],
+	/*
+	 * The COMPOSED pair (design round 1, D6; review round 1, F1), which is the only
+	 * place the pane's own frame meets a chat column: the seam, the divider, the width
+	 * the conversation keeps and the header's trigger cluster in its real place. Both
+	 * halves of the before/after are here rather than only the after, because "the
+	 * conversation narrows rather than being covered" is a claim about a DIFFERENCE.
+	 *
+	 * 1380 is the design's own composition width (`branding.md`'s reference capture
+	 * size) and the pane's 640 leaves ~740 for the column, which is where the three
+	 * header controls and a two-tab strip are all legible at 1:1.
+	 */
+	["browser-pane--composed-with-pane", 1380, 900],
+	["browser-pane--composed-trigger-only", 1380, 900],
+	/* The dock - the only state that paints the tray's header row - and so the frames in
+	 * which the pane's own `1 approval for this conversation` exists (review round 1,
+	 * F2). ONE approval, and the count matters: the dock fixtures put a single request
+	 * in the pane's scope, so the header row's sentence counts that one. Photographed at
+	 * the pane's default width and at its 480 floor. */
+	["browser-pane--pane-dock-open", 640, 720],
+	["browser-pane--pane-dock-narrow", 480, 720],
+	/* The floor WITH tabs, which `narrow-minimum` cannot answer because it has none. */
+	["browser-pane--narrow-with-tabs", 480, 460],
+	/* A draft: no session, so the switch's conversation side is disabled rather than
+	 * silently meaning All tabs (design round 1, D3). */
+	["browser-pane--draft-conversation", 640, 460],
+	/* Before the first read lands (spec 7.4). */
+	["browser-pane--pane-loading", 640, 460],
+	/* The badge at its cap (design round 1, D5). */
+	["browser-pane--trigger-at-cap", 560, 84],
+	/*
+	 * The strip's own arithmetic at the pane's width, and the route's strip at the
+	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
+	 * the claim: four tabs fit a 640 pane whole and six do not, and where they do not
+	 * the pinned control carries the count of what is missing - including on the
+	 * route, where the same six tabs fit and the control is therefore absent.
+	 */
+	["browser-pane--pane-overflow-count", 640, 460],
+	["browser-pane--narrow-overflow-count", 480, 460],
+
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
 	   moment, an MCP name needs a server connected — and captured NARROW as
