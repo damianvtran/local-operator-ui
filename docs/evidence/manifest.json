@@ -1,12 +1,12 @@
 {
   "head": "46302682b3b335c5564cd536e57f762d3d771f94",
-  "headNote": "RE-DERIVED FOR THIS CHANGE ON THE REBASED TREE. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the rebased head this commit names, and they MOVED (b047f7212/11f234964 -> 3626e2834/8ab24f0df) because the fold onto main brought its Backend settings feature into `src/` and `scripts/`. `surfaces` is 487 = main's 483 plus this change's four story rows, and `frames` is re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried forward - it is main's 3,919 plus this change's 8 swept frames, with the pair's 8 before frames excluded by their declaration. Nothing main landed invalidates any committed frame for THIS change: both halves of the new pair were re-captured on the rebased tree and came back byte-identical.",
-  "srcTree": "3626e283489cae33a1172436a033d05cf78c718c",
-  "scriptsTree": "cf81b1586a9391feeb4eb90c8276ab46d12febc9",
+  "headNote": "RE-DERIVED FOR THIS CHANGE ON THE REBASED TREE. `srcTree`/`scriptsTree` are `git rev-parse HEAD:src`/`HEAD:scripts` for the rebased head this commit names, and they MOVED (b047f7212/11f234964 -> 3626e2834/cf81b1586) because the fold onto main brought its Backend settings feature into `src/` and `scripts/`. `surfaces` is 487 = main's 483 plus this change's four story rows, and `frames` is re-derived with `check-evidence.mjs`'s own walker against this tree rather than carried forward - it is main's 3,919 plus this change's 8 swept frames, with the pair's 8 before frames excluded by their declaration. Nothing main landed invalidates any committed frame for THIS change: both halves of the new pair were re-captured on the rebased tree and came back byte-identical.",
+  "srcTree": "0e6364f02151ff409919e0e89bd91b492ea0b4de",
+  "scriptsTree": "e8f08c852f321f80cd627dd3fba5e6d2cd58e804",
   "dirtyWorkingTree": false,
   "capturedAt": "2026-09-15T22:41:55.255Z",
-  "frames": 3927,
-  "surfaces": 487,
+  "frames": 3929,
+  "surfaces": 488,
   "themes": 12,
   "countsMean": {
     "frames": "RE-DERIVED ON THE REBASED TREE (`3f24f2dbd`) with `check-evidence.mjs`'s own `frames()` walker against this tree: main's 3,919 plus this change's 8 swept frames = 3,927, with the pair's 8 before frames excluded by their `chat-header-cluster/before` declaration. Earlier derivations, kept in their own words: RE-DERIVED AGAIN ON THE REBASED TREE (`0c04cbb09`): 4,440 `.webp` on disk, **3,739 outside the 61 declared supplementary sets** - main's 3,703 swept plus this branch's 36 swept (`chat-sidebar-current-row/`, its 24 states and the 12 hover frames), with this change's own two declared sets (24 + 60 = 84 frames) excluded by that same rule. Counted with `check-evidence.mjs`'s own `frames()` walker on the tree this commit ships, not carried from either side. The sentences that follow are earlier derivations at their own heads. 3157 committed WebP files, outside the 55 declared supplementary sets below. Derived the way `check-evidence.mjs` derives them - the WebP files on disk outside every declared set - on the MERGED tree: main's swept count with this branch's 36 swept frames (`chat-sidebar-status-feed/`) added and its 36 declared ones (`chat-sidebar-status-feed-baseline/`) excluded by that same rule. 3675 committed WebP files on this MERGED tree: 3121 swept and 554 inside the 54 declared supplementary sets below. RE-DERIVED off this tree in the fold's own commit rather than hand-merged from either side: the two captures are disjoint contributors to the merged count, and main's own sweep excluded a different set. File counts on the disk this commit ships - not a newly completed full sweep.",
@@ -43,7 +43,12 @@
       "chat-header-cluster--no-approval",
       "chat-header-cluster--one-approval",
       "chat-header-cluster--at-cap",
-      "chat-header-cluster--trigger-dot"
+      "chat-header-cluster--trigger-dot",
+      "chat-header-cluster--canvas-open-badge",
+      "browser-pane--composed-trigger-only",
+      "browser-pane--draft-conversation",
+      "browser-pane--trigger-no-approval",
+      "browser-pane--with-approval"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -1579,13 +1584,14 @@
     },
     {
       "path": "chat-header-cluster/before",
-      "frames": 8,
-      "surfaces": 4,
+      "frames": 10,
+      "surfaces": 5,
       "themes": 2,
-      "source": "scripts/capture-evidence.mjs against origin/main's `chat-header.tsx` (3f1f4e5a3 = this branch's fork point) with this branch's story file and STORIES rows unchanged: `git checkout origin/main -- src/renderer/src/features/chat/components/chat-header.tsx`, then `node scripts/capture-evidence.mjs http://localhost:6017 --only=chat-header-cluster --themes=localOperatorDark,localOperatorLight --allow-backend`, then the four leaf directories moved under `before/` and the fixed file restored with `git checkout HEAD --`. The same four-step recipe is in the directory's README.md.",
+      "source": "scripts/capture-evidence.mjs against origin/main's `chat-header.tsx` (3f1f4e5a3 = this branch's fork point) with this branch's story file and STORIES rows unchanged: `git checkout origin/main -- src/renderer/src/features/chat/components/chat-header.tsx`, then `node scripts/capture-evidence.mjs <origin> --only=chat-header-cluster --themes=localOperatorDark,localOperatorLight --allow-backend`, then the five leaf directories moved under `before/` and the fixed file restored with `git checkout HEAD --`. The same five-story recipe is in the directory's README.md. The fifth story arrived with the round-1 remediation (`canvas-open-badge`, the badge drawn with the canvas open), and the four that were already here came back byte-identical when re-captured with the extended story file - which is what shows the added story and the widened provider signature moved nothing they photograph.",
       "why": [
         "The fixed frames cannot show what was wrong, and this pair cannot be regenerated by a sweep: a sweep captures the CURRENT tree, while these need `main`'s `chat-header.tsx` under the same stories. It is declared as its own set so `clearSweptFrames` preserves it and the sweep's own count stays honest about what it can still take.",
-        "They carry the operator's report as pixels: badge-free, the shipped tree spaced `trigger -> browser` 8px and `browser -> canvas` 12px, because the browser button's unconditional `mr-1` paid the attention badge's 12px room in every render. Compare against `chat-header-cluster/no-approval/`, the same story and viewport, which is 8px across."
+        "They carry the operator's report as pixels: badge-free, the shipped tree spaced `trigger -> browser` 8px and `browser -> canvas` 12px, because the browser button's unconditional `mr-1` paid the attention badge's 12px room in every render. Compare against `chat-header-cluster/no-approval/`, the same story and viewport, which is 8px across.",
+        "The fifth story is the arrangement the container's rule turns on: the badge is still seeking its 12px, but the box it has to clear is not rendered, so the cluster must fall back to the 8px step. Before the fix that room was paid anyway - the browser button's `mr-1` pushed the cluster 4px off its own right edge with nothing to its right (measured: after, browser `512..544` flush with the cluster's right edge; before, `508..540`)."
       ],
       "capturedAt": "2026-09-16T20:16:42.949Z",
       "capturedAtHead": "46302682b3b335c5564cd536e57f762d3d771f94",
