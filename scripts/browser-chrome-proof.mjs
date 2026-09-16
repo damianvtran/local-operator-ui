@@ -2204,12 +2204,12 @@ async function main() {
 		const unmarked = crowded.rows.filter((row) => !row.marked);
 		const narrowest = Math.min(...crowded.rows.map((row) => row.titleBox ?? 0));
 		/*
-		 * THE TITLE THRESHOLD IS CLAIMED FOR THE ROWS IT IS SIZED FOR (review round 5,
-		 * MAJOR): the floors keep >= 85px up to four chips, and at five the row is at
-		 * its ceiling deliberately - containing the pathological state rather than
-		 * letting one rare row outgrow every ordinary tab in the strip's scroll order -
-		 * so a five-chip row is held to containment, not to a number the floor does not
-		 * promise. The run's own specimen is named in the detail either way.
+		 * THE TITLE THRESHOLD IS CLAIMED FOR THE ROWS IT IS SIZED FOR (review rounds 5
+		 * and 6): every ACTIVE row keeps >= 85px at every chip count, and the one row
+		 * that yields the title is the INACTIVE five-chip row - the pathological state
+		 * that is not the tab the user is looking at, held to containment instead of to
+		 * a number its floor does not promise. The run's own specimen is named in the
+		 * detail either way.
 		 */
 		check(
 			"at the width floor a MARKED tab still names its site: the chrome cluster is overlaid, not reserved",
@@ -2217,7 +2217,7 @@ async function main() {
 				marked.length >= 1 &&
 				unmarked.every((row) => (row.titleBox ?? 0) >= 60) &&
 				marked.every((row) =>
-					row.chips >= 5 ? true : (row.titleBox ?? 0) >= 85,
+					row.chips >= 5 && !row.active ? true : (row.titleBox ?? 0) >= 85,
 				) &&
 				narrowest >= 60,
 			JSON.stringify({ two: beforeWide.rows, crowded, narrowest }, null, 2),

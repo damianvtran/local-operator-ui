@@ -242,31 +242,36 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` and the active row pays a
 						 * further 68px for the cluster in flow plus the gap before it:
 						 *
-						 *   inactive   0:176->144  1:224->118  2:288->133  3:320->106  4:384->126
-						 *   active     0:224->124  1:320->146  2:384->161  3:384->102  4:416->90
+						 *   inactive   0:176->144  1:224->118  2:288->133  3:320->106
+						 *              4:384->126  5:384->72   (the five-chip title yields)
+						 *   active     0:224->124  1:320->146  2:384->161  3:384->102
+						 *              4:416->90   5:480->100
 						 *
-						 * Every one of those clears the 85px this file promises, and it is the
-						 * ACTIVE four-chip row that sets the ceiling: `{Agent, Shared, Failed,
-						 * Request n}` is the tab a user clicks precisely BECAUSE it needs approval,
-						 * and at the standard `min-w-96` its title was 58px - under the 60px floor
-						 * the harness itself asserts - so that row takes the one step past the
-						 * spacing scale, `min-w-[26rem]`, and says so here rather than pretending a
-						 * standard step fits. Round 6, MAJOR 2.
+						 * EVERY ACTIVE ROW CLEARS THE 85px THIS FILE PROMISES, at every count, and
+						 * the active rows are the ones that take steps past the spacing scale:
+						 * `{Agent, Shared, Failed, Request n}` is the tab a user clicks precisely
+						 * BECAUSE it needs approval, and at the standard `min-w-96` its title was
+						 * 58px - under the 60px floor the harness itself asserts - so it is
+						 * `min-w-[26rem]`, and the widest row the projection can produce, active, is
+						 * `min-w-[30rem]` for 100px of title. Named as steps past the scale rather
+						 * than pretending a standard step fits. Round 6, MAJOR 2.
 						 *
-						 * FIVE CHIPS ARE CONTAINED RATHER THAN SIZED, on both rows, and that is the
-						 * deliberate half. Fitting 244px of chips plus the mark, the gaps and (when
-						 * active) the cluster at 85px of title needs a 465px floor, and handing one
-						 * pathological state - restored, handed over, failed AND waiting at once -
-						 * that much of the strip's scroll order, ahead of every ordinary tab, is a
-						 * worse trade than the title yielding; dropping a chip would hide a state
-						 * the design round approved. So those rows sit at the ceiling and the
-						 * BUTTON clips at its own edge (above), which is what keeps a chip from
-						 * painting over the neighbouring tab - the `bg-canvas`-over-`bg-canvas`
-						 * defect design round 3 filed as MAJOR. At the widths measured here the
-						 * clip cannot fire: the widest reachable content is the active five-chip
-						 * row at 380px against its 416px floor, so it is a BACKSTOP for a sixth
-						 * marker or a wider chip, not the evidence for the sizes above - the
-						 * sizes are the evidence (review round 6, MINOR 2).
+						 * THE INACTIVE FIVE-CHIP ROW IS WHERE THE TITLE YIELDS, and that is the
+						 * deliberate half. Fitting 244px of chips plus the mark and the gaps at 85px
+						 * of title needs a 465px floor, and handing one pathological state -
+						 * restored, handed over, failed AND waiting at once, and NOT the tab the user
+						 * is looking at - that much of the strip's scroll order, ahead of every
+						 * ordinary tab, is a worse trade than the title yielding: the
+						 * `browser-tab-strip--worst-case` frame is that row at 72px, reading
+						 * `Check...`. Dropping a chip was the other option and it hides a state the
+						 * design round approved. Its chips stay whole - 312px of content inside
+						 * 384px - and the BUTTON clips at its own edge (above) as the backstop that
+						 * keeps a chip from ever painting over the neighbouring tab, the
+						 * `bg-canvas`-over-`bg-canvas` defect design round 3 filed as MAJOR. At the
+						 * widths measured here that clip cannot fire: the widest reachable content
+						 * is 380px against a 416px floor, so it is a backstop for a sixth marker or
+						 * a wider chip, NOT the evidence for the sizes above - the sizes are the
+						 * evidence (review round 6, MINOR 2).
 						 *
 						 * Roles rather than computed pixels: the contract's spacing steps are the
 						 * vocabulary here, and the one arbitrary length is called out above.
@@ -279,15 +284,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							waitingOrdinal !== undefined,
 						].filter(Boolean).length;
 						const floor = active
-							? chips >= 4
-								? "min-w-[26rem]"
-								: chips === 3
-									? "min-w-96"
-									: chips === 2
+							? chips >= 5
+								? "min-w-[30rem]"
+								: chips === 4
+									? "min-w-[26rem]"
+									: chips === 3
 										? "min-w-96"
-										: chips === 1
-											? "min-w-80"
-											: "min-w-56"
+										: chips === 2
+											? "min-w-96"
+											: chips === 1
+												? "min-w-80"
+												: "min-w-56"
 							: chips >= 4
 								? "min-w-96"
 								: chips === 3
