@@ -1,0 +1,16 @@
+/*
+ * Stylesheet entry for the backend-settings geometry rig.
+ *
+ * `@import "@renderer/styles/index.css"` is the app's own stylesheet, so the
+ * palette, type scale and role utilities cannot differ between this surface and
+ * the shipped one.
+ *
+ * `@source` is the part that is easy to omit and fails SILENTLY: this rig's vite
+ * root sits outside the renderer tree, and without it Tailwind scans only the
+ * rig directory — every class written in `src/renderer/src` would compile to
+ * nothing, the page would render unstyled, and the rig would "measure" a layout
+ * defect that is really a missing scan.
+ */
+@import "@renderer/styles/index.css";
+
+@source "../src/renderer/src";

@@ -1517,6 +1517,11 @@ export type BackendSetting = {
 		| "text"
 		| "list"
 		| "cascade"
+		// A remappable hotkey (`keymap.*`). Its own kind on the wire because the
+		// editor for it LISTENS for a keystroke rather than accepting text - which
+		// is why a plain text input was wrong for these two rows even though the
+		// registry's help says "press the key you want".
+		| "hotkey"
 		| "readonly";
 	help: string;
 	value: unknown;
@@ -1528,6 +1533,38 @@ export type BackendSetting = {
 	choices: { value: unknown; label: string; description: string }[];
 	empty_unsets: boolean;
 	redacted: boolean;
+	/*
+	 * The four fields below are ADDITIVE and OPTIONAL, and an older server sends
+	 * none of them: `local-operator` and this app release independently, and the
+	 * desktop app talks to whatever server is installed. Every one of them is
+	 * therefore read with a fallback (see `backend-settings-tiers.ts` for `tier`,
+	 * the gate check in `backend-setting-row.tsx` for `gated_by`), and a missing
+	 * value degrades to the behaviour this surface had before the field existed
+	 * rather than to a broken row.
+	 */
+	/**
+	 * The server's own tier, once a backend projects one. The UI answers without
+	 * it (a curated map + drift test); this is the seam that lets the map be
+	 * deleted rather than a dependency the section waits on.
+	 */
+	tier?: "core" | "advanced" | null;
+	/**
+	 * A consequence worth stating beside the row wherever it renders. The
+	 * registry owns this sentence, so the renderer never spells it out a second
+	 * time: it is shown in danger ink, outside the help text and never behind a
+	 * disclosure, because it is a consequence rather than detail.
+	 */
+	warning?: string;
+	/**
+	 * The registry's own example value, for a field whose shape is not obvious
+	 * from its label (`host order` takes host slugs; a price takes a JSON pair).
+	 */
+	placeholder?: string;
+	/**
+	 * The key whose value decides whether this row may be edited at all. A child
+	 * of a feature that is switched off renders disabled and says which switch.
+	 */
+	gated_by?: string | null;
 };
 export type BackendSettings = {
 	sections: {
