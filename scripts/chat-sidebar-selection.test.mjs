@@ -134,7 +134,8 @@ const stripComments = (text) => {
 		}
 		if (char === "/" && next === "*") {
 			i += 2;
-			while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i += 1;
+			while (i < text.length && !(text[i] === "*" && text[i + 1] === "/"))
+				i += 1;
 			i += 2;
 			continue;
 		}
@@ -166,7 +167,11 @@ const argumentsFrom = (source, open) => {
 const expressionAfter = (file, anchor) => {
 	const source = code.get(file);
 	const at = source.indexOf(anchor);
-	assert.notEqual(at, -1, `no element in ${file} matches ${JSON.stringify(anchor)}`);
+	assert.notEqual(
+		at,
+		-1,
+		`no element in ${file} matches ${JSON.stringify(anchor)}`,
+	);
 	return argumentsFrom(source, at);
 };
 
@@ -174,7 +179,11 @@ const expressionAfter = (file, anchor) => {
 const expressionBefore = (file, anchor) => {
 	const source = code.get(file);
 	const at = source.indexOf(anchor);
-	assert.notEqual(at, -1, `no element in ${file} matches ${JSON.stringify(anchor)}`);
+	assert.notEqual(
+		at,
+		-1,
+		`no element in ${file} matches ${JSON.stringify(anchor)}`,
+	);
 	const open = source.lastIndexOf("className={cn(", at);
 	assert.notEqual(
 		open,
@@ -246,7 +255,12 @@ const CURRENT = [
 		what: "the New chat row",
 		file: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, ">New chat</span>"),
-		stubs: { rowStyle, rowCurrent, activeDraftKey: "draft-key", draft: undefined },
+		stubs: {
+			rowStyle,
+			rowCurrent,
+			activeDraftKey: "draft-key",
+			draft: undefined,
+		},
 		ground: true,
 	},
 	{
@@ -276,7 +290,8 @@ const CURRENT = [
 	{
 		what: "the entity row's manage control",
 		file: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, "aria-label={`Manage ${name}`}"),
+		expression: () =>
+			expressionBefore(SIDEBAR, "aria-label={`Manage ${name}`}"),
 		stubs: { staged: true },
 		ground: false,
 		notCurrent: { staged: false },
@@ -464,7 +479,10 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 	const source = read(SIDEBAR);
 	const at = source.indexOf("aria-current={");
 	assert.notEqual(at, -1, "the session row has no aria-current");
-	const ariaCurrent = source.slice(at, source.indexOf("}", source.indexOf("?", at)));
+	const ariaCurrent = source.slice(
+		at,
+		source.indexOf("}", source.indexOf("?", at)),
+	);
 	/*
 	 * Both halves of the predicate, on both sides of the fact: a row that paints
 	 * a ground the accessibility tree does not claim misreports where the user is
@@ -475,10 +493,18 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 	const sessionRow = stripComments(
 		argumentsFrom(
 			code.get(SIDEBAR),
-			code.get(SIDEBAR).lastIndexOf("className={cn(", code.get(SIDEBAR).indexOf("selectedConversation === row.session_id")),
+			code
+				.get(SIDEBAR)
+				.lastIndexOf(
+					"className={cn(",
+					code.get(SIDEBAR).indexOf("selectedConversation === row.session_id"),
+				),
 		),
 	);
-	for (const term of ["selectedConversation === row.session_id", "!activeDraftKey"]) {
+	for (const term of [
+		"selectedConversation === row.session_id",
+		"!activeDraftKey",
+	]) {
 		assert.ok(
 			ariaCurrent.includes(term),
 			`aria-current no longer reads \`${term}\`, so it and the row's ground can disagree:\n${ariaCurrent}`,

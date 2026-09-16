@@ -64,7 +64,8 @@ const ROW_GAP = /\bgap-1\b/;
  * those three from `rowStyle` — that is what "the same alignment" means in the
  * source — so any one of them in the row's own literals is the defect.
  */
-const ROW_BOX_OVERRIDE = /\b(?:p|px|py|pl|pr|pt|pb|h|gap|min-h|space-x)-[^\s"']+/;
+const ROW_BOX_OVERRIDE =
+	/\b(?:p|px|py|pl|pr|pt|pb|h|gap|min-h|space-x)-[^\s"']+/;
 
 /**
  * How a row may legitimately differ from the All chats row: a vertical step and
@@ -114,7 +115,8 @@ const stripComments = (text) => {
 		}
 		if (char === "/" && next === "*") {
 			i += 2;
-			while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i += 1;
+			while (i < text.length && !(text[i] === "*" && text[i + 1] === "/"))
+				i += 1;
 			i += 2;
 			continue;
 		}
@@ -215,7 +217,9 @@ test("the All chats row above it declares none either, so the pair is consistent
 
 test("rowStyle still carries the box the two rows are aligned on", () => {
 	assert.ok(
-		ROW_HEIGHT.test(rowStyle) && ROW_INSET.test(rowStyle) && ROW_GAP.test(rowStyle),
+		ROW_HEIGHT.test(rowStyle) &&
+			ROW_INSET.test(rowStyle) &&
+			ROW_GAP.test(rowStyle),
 		`rowStyle no longer declares the h-8 box, the px-1 inset and the gap-1 the alignment is measured against:\n${rowStyle}`,
 	);
 });
