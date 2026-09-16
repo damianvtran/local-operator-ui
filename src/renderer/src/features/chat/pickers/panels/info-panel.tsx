@@ -15,6 +15,7 @@ import { formatCount } from "./formatters";
 import {
 	type InfoFrontend,
 	type InfoRow,
+	REGISTRY_UNAVAILABLE_NOTICE,
 	conversationRows,
 	environmentRows,
 	fleetFacts,
@@ -240,12 +241,20 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 			),
 		},
 	];
-	/** The host half's own state, which can fail independently of the live half. */
-	const hostBody = () =>
+	/**
+	 * The host half's own state, which can fail independently of the live half.
+	 *
+	 * `shape` is the caller's, because the skeleton exists to stop first paint
+	 * jumping and what is coming differs by section: a table for the facts
+	 * sections, a 4-up grid for the sections that settle into one (design round 1,
+	 * Q1 — the fleet section drew three wide table rows and then became four
+	 * cards, which is the jump the shape is meant to prevent).
+	 */
+	const hostBody = (shape: "table" | "stats" = "table") =>
 		error ? (
 			<PanelNotice kind="unavailable" text={error} />
 		) : loading || !data ? (
-			<PanelSkeleton shape="table" />
+			<PanelSkeleton shape={shape} />
 		) : null;
 	return (
 		<PickerHost
@@ -337,7 +346,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 						<PanelSection
 							title="Sessions on this machine"
 							meta={
-								sessions
+								/*
+								 * No meta when the scan failed: `N live · M total` over a notice saying the
+								 * registry could not be read is a number the same viewport disclaims, and
+								 * the section below it already renders a bare heading in that state
+								 * (design round 1, D4). The meta is a reading of the scan, so it goes with
+								 * the scan.
+								 */
+								sessions?.available
 									? `${formatCount(sessions.live)} live · ${formatCount(sessions.total)} total`
 									: undefined
 							}
@@ -346,7 +362,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 								(sessions && !sessions.available ? (
 									<PanelNotice
 										kind="unavailable"
-										text="Could not scan the session registry. Close and reopen this panel to try again."
+										text={REGISTRY_UNAVAILABLE_NOTICE}
 									/>
 								) : (
 									<>
@@ -408,7 +424,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 								))}
 						</PanelSection>
 						<PanelSection title="Agents and subagents" meta={fleet?.meta}>
-							{hostBody() ??
+							{hostBody("stats") ??
 								(fleet ? (
 									<>
 										{/*
@@ -446,12 +462,13 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 									</>
 								) : (
 									/*
-									 * The SAME notice as section 3, verbatim: one registry serves both, and
-									 * two spellings of one failure would read as two different problems.
+									 * The SAME notice section 3 draws, from ONE exported constant: one
+									 * registry serves both sections, and two spellings of one failure read as
+									 * two different problems (review round 1, M2).
 									 */
 									<PanelNotice
 										kind="unavailable"
-										text="Could not scan the session registry. Close and reopen this panel to try again."
+										text={REGISTRY_UNAVAILABLE_NOTICE}
 									/>
 								))}
 						</PanelSection>

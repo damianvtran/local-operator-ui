@@ -279,6 +279,23 @@ export type SessionLineRow = {
 };
 
 /**
+ * The ONE spelling of "the registry could not be scanned".
+ *
+ * Two sections depend on that scan — section 3's table and section 4's fleet
+ * answer — and § 6.3's degrade table requires both to say the same thing about
+ * the same failure. It used to be the same string written twice, with a comment
+ * claiming they were verbatim identical; the comment was the only thing keeping
+ * the two spellings in step, and the next edit to either copy would have put two
+ * descriptions of one failure on one panel (review round 1, M2). Exported so
+ * both call sites and a test share it.
+ *
+ * Not the terminal's copy: the desktop has no `r` key to retry with, so the
+ * sentence names closing and reopening the panel instead.
+ */
+export const REGISTRY_UNAVAILABLE_NOTICE =
+	"Could not scan the session registry. Close and reopen this panel to try again.";
+
+/**
  * Section 3's table rows.
  *
  * `this session` is matched on the id the panel was opened for, so a host
@@ -347,13 +364,37 @@ export type FleetFacts = {
  * read `Agent profiles 0` — a plausible figure the snapshot cannot support —
  * with the failure disclosed only in a block the reader has to look up. The
  * same rule holds here, and `degraded` is what carries the probe names.
+ *
+ * The match is the FIELD or its BLOCK, and the block half is where this departs
+ * from the terminal's copy — deliberately, and in the honest direction. The wire
+ * carries both spellings: `_safe("agents", …)` wraps the whole agent collection
+ * (`collect.py:1152`) and its fallback value is `AgentsInfo()` — `profiles: 0`,
+ * `teams: 0` — so a failed collection reports `("agents", reason)` and a
+ * field-name-only test prints a plausible `0` on both cards, which is the very
+ * Q8 failure this function exists for. `_counted` has the same hole (it compares
+ * `name == probe`); the desktop is now a surface that prints these two numbers,
+ * and a `0` the snapshot cannot support is wrong here whichever surface first
+ * copied the rule.
  */
 const countOrUnknown = (
 	value: number,
 	probe: string,
 	degraded: DesktopInfoData["degraded"],
 ): string =>
-	degraded.some(([field]) => field === probe) ? UNKNOWN : formatCount(value);
+	degraded.some(([field]) => field === probe || field === probe.split(".")[0])
+		? UNKNOWN
+		: formatCount(value);
+
+/**
+ * The separator the fleet section joins clauses with.
+ *
+ * Non-breaking on BOTH sides, because these clauses wrap: a plain `·` that
+ * happens to land at the end of a wrapped line reads as a bullet the next line
+ * is an item of, which is how the first frames rendered this note (`… 3
+ * subagents` / `· 1 did not report`). The space BEFORE it is as load-bearing as
+ * the one after — without it the middot is what the line ends on.
+ */
+const SEPARATOR = "\u00a0·\u00a0";
 
 /**
  * Section 4: how many agent runtimes and trajectories this machine is running.
@@ -435,18 +476,15 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 			key: "runtimes",
 			label: "Runtimes",
 			/*
-			 * The total, with the split beside it: both parts name a process that is
-			 * still there, and how much of the tally comes from quiet processes is the
-			 * one thing the number alone cannot say. The `wedged` clause appears only
-			 * when there is one, like every other conditional clause here.
+			 * The split appears only when there is one to make. With nothing wedged,
+			 * `21 live` under a card whose value is already `21` restates the Live and
+			 * Wedged tiles directly above it (design round 1, D3); the value is what this
+			 * card is for — the denominator of the trajectory tally beside it.
 			 */
 			value: formatCount(runtimes),
-			note: [
-				`${formatCount(sessions.live)} live`,
-				sessions.wedged ? `${formatCount(sessions.wedged)} wedged` : "",
-			]
-				.filter(Boolean)
-				.join(" · "),
+			note: sessions.wedged
+				? `${formatCount(sessions.live)} live${SEPARATOR}${formatCount(sessions.wedged)} wedged`
+				: undefined,
 		},
 		{
 			key: "trajectories",
@@ -463,11 +501,21 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 							sessions.fleet_subagents_running,
 							"subagent",
 						)}`,
-						queued ? `${formatCount(queued)} queued` : "",
-						unreported ? `${formatCount(unreported)} did not report` : "",
+						/*
+						 * Named BESIDE the total, never added into it (a queued child spends
+						 * nothing), and named HERE only when the meta does not already say it: the
+						 * meta carries `Q queued` in the one state where the total is zero and
+						 * everyone reported, and this note sits in that meta's own viewport —
+						 * unlike the terminal's, whose header is a page-turn away (design round 1,
+						 * D6). One statement per fact per viewport.
+						 *
+						 * `U did not report` is NOT here for the same reason: the caveat line
+						 * directly beneath the grid says it, in this viewport, with the cause.
+						 */
+						total && queued ? `${formatCount(queued)} queued` : "",
 					]
 						.filter(Boolean)
-						.join(" · ")
+						.join(SEPARATOR)
 				: `${formatCount(unreported)} of ${plural(runtimes, "runtime")} did not report`,
 		},
 		{
@@ -487,7 +535,19 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 	];
 
 	const caveats: string[] = [];
-	if (unreported > 0) {
+	/*
+	 * `measured && unreported > 0` — a total WAS stated, and it is a floor. When
+	 * the section refuses the total (`trajectories —` in the meta, `—` on the card)
+	 * this sentence is suppressed, because there is no total for it to qualify:
+	 * `the fleet total is a lower bound` beside a viewport that refuses to state a
+	 * total is the section contradicting itself, in the one state whose entire
+	 * purpose is the refusal (design round 1, D1). This DEPARTS from the terminal,
+	 * which emits the sentence in that state too
+	 * (`render.py::_fleet_caveats` guards on `subagents_unreported` alone); the
+	 * card's own note — `2 of 2 runtimes did not report` — already carries the fact
+	 * the reader needs, and the deviation is recorded in § 6.3 of the contract.
+	 */
+	if (measured && unreported > 0) {
 		/*
 		 * BOTH verbs inflect together. Inflecting only the first produced `1 session
 		 * runs an older build and do not report` — reachable as soon as the fleet is
