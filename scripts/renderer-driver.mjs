@@ -1582,7 +1582,10 @@ async function sceneBrowserPane(cdp) {
 	const scopeAfter = await cdp.evaluate(
 		"Array.from(document.querySelectorAll('[data-tab-id]')).map((node) => node.getAttribute('data-tab-id'))",
 	);
-	note("strip before/after the scope switch", JSON.stringify({ scopeBefore, scopeAfter }));
+	note(
+		"strip before/after the scope switch",
+		JSON.stringify({ scopeBefore, scopeAfter }),
+	);
 	note("frame", JSON.stringify(scopeFrame));
 
 	// 3. The pane's own dock, opened from the URL bar's Approvals control.
@@ -1598,7 +1601,7 @@ async function sceneBrowserPane(cdp) {
 	} else {
 		note(
 			"dock not opened",
-				"no Approvals control on this projection: the dock is only reachable when the host has a request to show",
+			"no Approvals control on this projection: the dock is only reachable when the host has a request to show",
 		);
 	}
 

@@ -1990,7 +1990,11 @@ test("a scope's KEY is its value, so a host cannot trip the surface's identity m
 		scopeKey("all"),
 		"a session named `all` must not collapse to the all-tabs scope",
 	);
-	for (const scope of ["all", { sessionId: "all" }, { sessionId: "session-1f4c" }]) {
+	for (const scope of [
+		"all",
+		{ sessionId: "all" },
+		{ sessionId: "session-1f4c" },
+	]) {
 		assert.deepEqual(
 			scopeFromKey(scopeKey(scope)),
 			scope,
@@ -2153,7 +2157,6 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 	);
 });
 
-
 /* ---------------------------------------------------------------- */
 /* The third term of the right slot, and the tags a run drives on    */
 /* (review round 1, F3 and F4)                                       */
@@ -2179,7 +2182,11 @@ test("the browser pane is a third term of the right slot, exclusive with both si
 
 	store.getState().setBrowserPaneOpen(true);
 	const afterPane = store.getState();
-	assert.equal(afterPane.isRunPanelOpen, false, "the pane closes the run panel");
+	assert.equal(
+		afterPane.isRunPanelOpen,
+		false,
+		"the pane closes the run panel",
+	);
 	assert.equal(afterPane.isCanvasOpen, false, "and the canvas");
 	assert.equal(afterPane.isBrowserPaneOpen, true);
 
@@ -2190,7 +2197,11 @@ test("the browser pane is a third term of the right slot, exclusive with both si
 		"the canvas closes the pane",
 	);
 	store.getState().setBrowserPaneOpen(true);
-	assert.equal(store.getState().isCanvasOpen, false, "and the pane closes it back");
+	assert.equal(
+		store.getState().isCanvasOpen,
+		false,
+		"and the pane closes it back",
+	);
 	store.getState().setRunPanelOpen(true);
 	assert.equal(
 		store.getState().isBrowserPaneOpen,
