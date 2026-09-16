@@ -348,8 +348,8 @@ export function McpAuthDialog({
 						 * "grant this now" sitting beside the sentence `Sign-in complete.` The
 						 * presence of a retry under a success reads as though the sign-in had
 						 * failed (operator report, 2026-09-16), and a success has nothing to
-						 * retry, so the footer offers `Close` alone. The states above and below
-						 * it are unchanged: `failed`, `cancelled`, and an operation whose status
+						 * retry, so the footer offers `Close` alone. The states it leaves alone
+						 * are unchanged: `failed`, `cancelled`, and an operation whose status
 						 * this build cannot read all keep the retry, as does the probe's own
 						 * `notice` and a recorded press failure.
 						 */

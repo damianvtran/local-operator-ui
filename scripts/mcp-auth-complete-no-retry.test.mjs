@@ -19,8 +19,9 @@ import React, { act } from "react";
  *
  * WHY THIS FILE MOUNTS THE COMPONENT RATHER THAN GREPPING ITS SOURCE. The claim
  * is about what a reader sees, and the footer is assembled from three branches
- * (`state.kind === "notice"`, a recorded press failure, and `running && !running`)
- * whose inputs are the operation the poll answered with. A regex over the
+ * (`state.kind === "notice"`, a recorded press failure, and
+ * `state.kind === "running" && !running`) whose inputs are the operation the
+ * poll answered with. A regex over the
  * predicate would pin the spelling of the fix and nothing about the state it
  * produces — and the arithmetic that makes `running` false at a COMPLETE
  * operation (line `const running = …`) is exactly where this defect lived, so
@@ -34,10 +35,10 @@ import React, { act } from "react";
  * the path the product itself uses, answering the same envelopes the backend
  * sends.
  *
- * Three cases, and the two negative ones are the point of the third: a
- * `complete` operation must lose the retry, and a `failed` or `cancelled` one
- * must KEEP it. Without those two, "the retry was dropped here" and "the retry
- * was dropped everywhere" are the same green run.
+ * Three cases, and the two controls are what make the first one mean anything: a
+ * `complete` operation must lose the retry, and a `failed` or `cancelled` one must
+ * KEEP it. Without those two, "the retry was dropped here" and "the retry was
+ * dropped everywhere" are the same green run.
  */
 
 /*
