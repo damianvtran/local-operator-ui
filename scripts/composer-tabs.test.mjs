@@ -1340,7 +1340,6 @@ test("the refocus answers for the focused NODE, not for a chip count", () => {
 	// magnet that pulls focus out of a transcript mid-sentence.
 	assert.match(row, /previouslyFocused\.current = focusedInRow;/);
 	assert.match(row, /rowRef\.current\?\.contains\(active\) === true/);
-	assert.doesNotMatch(row, /chipCount/);
 	// The prop is optional, so a story that renders the row alone need not
 	// invent a focus target.
 	assert.match(row, /onFocusComposer\?: \(\) => void;/);
@@ -1459,10 +1458,22 @@ test("the shipped row hands focus back on a same-count swap, driven", async () =
 		await act(async () => void root.render(element(running())));
 		assert.equal(refocuses, 0, "nothing is owed while the focused chip lives");
 
-		// THE SWAP, at an unchanged count: one running tool job becomes one running
-		// child. A count-based predicate saw `1 -> 1` and did nothing.
+		/*
+		 * THE SWAP, AT AN UNCHANGED COUNT — asserted here rather than grepped out of
+		 * the component's source (round 3's m1'): the retired predicate compared a
+		 * chip COUNT across commits, so the fact this case turns on is that the count
+		 * does NOT move while the chip under the cursor does. A DOM count before and
+		 * after is that fact; a regex over the component's text was only ever a proxy
+		 * for it, and a proxy a comment naming the retired count would fail.
+		 */
+		const chips = () =>
+			dom.document.querySelectorAll(
+				"[data-status-subagents], [data-status-jobs]",
+			).length;
+		assert.equal(chips(), 1, "one activity chip before the swap");
 		active = dom.document.body;
 		await act(async () => void root.render(element(delegate())));
+		assert.equal(chips(), 1, "and one after it: the count did not move");
 		assert.ok(
 			!dom.document.body.contains(chip),
 			"the focused chip really unmounted, so this is the swap and not a reuse",
@@ -1505,13 +1516,22 @@ test("the shipped row hands focus back on a same-count swap, driven", async () =
 			"the chip beside the focused one went, and the row still holds focus",
 		);
 
-		// The other control: a settle while the user is writing leaves them writing.
+		/*
+		 * The last control, and round 3's n2 is about what it actually pins: the
+		 * USER IS IN THE COMPOSER. The remembered node is dropped the moment focus
+		 * leaves the row, so a chip unmounting after that pulls nothing — which is the
+		 * half that keeps every settle in a session where someone is typing from
+		 * yanking them into the composer. The wire MOVES under it (one activity chip
+		 * leaves), so the control is about where focus is and not about nothing
+		 * happening.
+		 */
 		active = composerField();
 		await act(async () => void root.render(element(running())));
+		await act(async () => void root.render(element(delegate())));
 		assert.equal(
 			refocuses,
 			1,
-			"a settle under no focused control pulls nothing",
+			"a chip unmounting while the user is in the composer pulls nothing",
 		);
 	} finally {
 		console.error = realError;

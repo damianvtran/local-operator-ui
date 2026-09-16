@@ -1974,9 +1974,20 @@ const main = async () => {
 			 * composer's running-state mark spins (`motion-safe:animate-spin`), and with
 			 * the blanket override above no pair of frames can ever show it - two
 			 * shutters of one story are byte-identical by construction. A tuple that
-			 * asks for live motion therefore gets NO override, and the two tuples that
-			 * take it differ only in WHEN the shutter opened: same story, same theme,
-			 * same rig, a rotation angle apart.
+			 * asks for live motion therefore gets no ANIMATION override, and the two
+			 * tuples that take it differ in the phase the hold pins each mark to: same
+			 * story, same theme, same rig, half a turn apart.
+			 *
+			 * TRANSITIONS ARE STILL FROZEN in that branch, and every OTHER animation
+			 * is finished before the shutter, because dropping the blanket override
+			 * dropped both controls: a transition or an entrance fade still in flight
+			 * in one of the two frames is a second difference that no hold pins and no
+			 * document declares. (Measured afterwards: freezing them changed no pixel
+			 * of the pair, so nothing was in flight - the controls are prophylaxis, and
+			 * the field round 3's M1' found outside the marks turned out to be the
+			 * lossy encoder's response to a differing input: the same two phases
+			 * captured losslessly differ in 220/228 pixels and all of them are in the
+			 * marks.)
 			 *
 			 * It is deliberately not a general option: every other frame here WANTS the
 			 * settled state (a half-faded paragraph reads as a contrast defect, and the
@@ -1984,87 +1995,21 @@ const main = async () => {
 			 * motion is the subject", and its README entry has to say what the pair
 			 * proves and what it does not.
 			 */
-			if (!options?.liveMotion) {
-				await cdp.send("Runtime.evaluate", {
-					expression: `(() => {
-						const s = document.createElement("style");
-						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
-						document.head.appendChild(s);
-					})()`,
-				});
-			} else if (typeof options?.phaseMs === "number") {
-				/*
-				 * ...and `{ phaseMs }` HOLDS that live animation at a chosen point of its
-				 * own timeline, because a phase SAMPLED from a running clock is not
-				 * reproducible evidence: measured, three consecutive live captures of one
-				 * story produced two distinct rotations and one repeat, so a committed
-				 * pair could regenerate identical and quietly turn its own README claim
-				 * false.
-				 *
-				 * The hold is `pause()` plus an explicit `currentTime` on the animation
-				 * the mark actually carries - `getAnimations()` returns the CSSAnimation
-				 * the stylesheet started - and it is MEASURED rather than argued: with it
-				 * in place, three consecutive captures of both frames came back
-				 * byte-identical. A stylesheet RULE cannot do it, and round 2's M1 found
-				 * both halves of that in one line: the rule this option used selected
-				 * `.animate-spin`, a token the mark does not have (`motion-safe:animate-spin`
-				 * is), so it matched nothing; and `animation-play-state: paused` freezes
-				 * wherever the rule happens to land, so even with the selector fixed the
-				 * pair would have stayed sampled.
-				 */
-				/*
-				 * The wait is load-bearing, and it is this option's own cost: with no
-				 * blanket override the row's ENTRANCE fade is still in flight, and a
-				 * shutter inside it renders the text at an alpha the other frame of the
-				 * pair does not share — measured, the two frames then differ across every
-				 * glyph on the row (491 pixels, x48-919) and the pair says nothing about
-				 * the mark. Sleeping past the longest entrance (300ms in this system)
-				 * leaves the ONLY live animation the mark's own spin.
-				 */
-				await sleep(700);
-				await cdp.send("Runtime.evaluate", {
-					expression: `(() => {
-						/*
-						 * HOLD THE SPIN AT A PHASE, through the Web Animations API rather
-						 * than through a stylesheet rule. Both halves of that are round 2's
-						 * M1: the rule this replaced selected ".animate-spin", which is NOT
-						 * the token the mark carries - "motion-safe:animate-spin" is
-						 * (run-detail-row-parts.tsx) - so a class selector matched nothing and
-						 * the option silently did nothing; and a paused RULE is not a hold
-						 * either, because "animation-play-state: paused" freezes at whatever
-						 * moment the rule lands, so the pair stays sampled however the
-						 * selector is spelled. pause() followed by an explicit currentTime says
-						 * the phase outright, and re-running lands on it every time. No
-						 * backticks in here: this comment lives inside a template literal.
-						 */
-						const row = document.querySelector('[data-composer-status-row]');
-						/* EVERY mark in the row, not the first one: a band with two
-						   running chips carries two, and holding one leaves the other
-						   spinning freely - caught by re-running the capture and finding
-						   the un-held mark had moved. */
-						const marks = row
-							? [...row.querySelectorAll('[class~="motion-safe:animate-spin"]')]
-							: [];
-						for (const mark of marks) {
-							for (const animation of mark.getAnimations()) {
-								animation.pause();
-								animation.currentTime = ${options.phaseMs};
-							}
-						}
-						const s = document.createElement("style");
-						s.textContent = "*{caret-color:transparent !important}";
-						document.head.appendChild(s);
-					})()`,
-				});
-				/*
-				 * And the hold is ASSERTED rather than assumed, which is the other half
-				 * of M1: the version this replaces shipped for a whole round matching
-				 * nothing while three documents claimed a held angle, and a silent no-op
-				 * is invisible in the frames it produces. The run fails loudly if there is
-				 * no mark under the row, if the mark has no animation to hold, or if one
-				 * is left running or at another phase.
-				 */
-				const { result: phaseHold } = await cdp.send("Runtime.evaluate", {
+			/*
+			 * The phase hold, READ BACK - and read back AGAIN at the shutter.
+			 *
+			 * The hold is applied through the Web Animations API, and a re-render
+			 * between the injection and the shutter would start a FRESH animation and
+			 * quietly turn the pair back into a sampled one; the first version of this
+			 * check ran once, several DOM reads and a rAF pair before the shutter
+			 * (round 3's M1'). One function with two call sites, so the two checks
+			 * cannot drift, and the failure says which one fired.
+			 */
+			const assertPhaseHeld = async (when) => {
+				if (!options?.liveMotion || typeof options?.phaseMs !== "number") {
+					return;
+				}
+				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					expression: `(() => {
 						const row = document.querySelector('[data-composer-status-row]');
@@ -2080,13 +2025,22 @@ const main = async () => {
 							.join(' , ');
 					})()`,
 				});
-				const held = String(phaseHold.value);
+				const held = String(result.value);
 				const wanted = `paused@${options.phaseMs}`;
 				if (held.split(" , ").some((entry) => entry !== wanted)) {
 					throw new Error(
-						`liveMotion with phaseMs=${options.phaseMs}: the phase hold did not apply (${held}, wanted ${wanted}). The mark is found by the class TOKEN it carries - motion-safe:animate-spin - and held through the Web Animations API, because a hold that quietly matches nothing turns this pair back into a sampled one.`,
+						`${story} @ ${theme}: liveMotion with phaseMs=${options.phaseMs} does not hold ${when} (${held}, wanted ${wanted}). The mark is found by the class TOKEN it carries - motion-safe:animate-spin - and held through the Web Animations API, because a hold that quietly matches nothing turns this pair back into a sampled one.`,
 					);
 				}
+			};
+			if (!options?.liveMotion) {
+				await cdp.send("Runtime.evaluate", {
+					expression: `(() => {
+						const s = document.createElement("style");
+						s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
+						document.head.appendChild(s);
+					})()`,
+				});
 			}
 			await sleep(120);
 			/* Assert the capture is of a rendered story, not Storybook's own
@@ -2426,12 +2380,128 @@ const main = async () => {
 					);
 				}
 			}
+			/*
+			 * THE PHASE HOLD RUNS HERE, at the last moment before the shutter, and
+			 * round 3 is why it moved: it used to run where the story's styles are
+			 * overridden, BEFORE Storybook had mounted anything, and a cold Storybook
+			 * (the first story of a fresh dev server) therefore served an empty
+			 * document - the hold found no row, held nothing and the pair was sampled
+			 * while the check that exists to catch exactly that was reading the same
+			 * empty document. A hold can only mean something once the mark exists, and
+			 * this is the last point at which it does.
+			 */
+			if (options?.liveMotion && typeof options?.phaseMs === "number") {
+				/*
+				 * ...and `{ phaseMs }` HOLDS that live animation at a chosen point of its
+				 * own timeline, because a phase SAMPLED from a running clock is not
+				 * reproducible evidence: measured, three consecutive live captures of one
+				 * story produced two distinct rotations and one repeat, so a committed
+				 * pair could regenerate identical and quietly turn its own README claim
+				 * false.
+				 *
+				 * The hold is `pause()` plus an explicit `currentTime` on the animation
+				 * the mark actually carries - `getAnimations()` returns the CSSAnimation
+				 * the stylesheet started - and it is MEASURED rather than argued: with it
+				 * in place, three consecutive captures of both frames came back
+				 * byte-identical. A stylesheet RULE cannot do it, and round 2's M1 found
+				 * both halves of that in one line: the rule this option used selected
+				 * `.animate-spin`, a token the mark does not have (`motion-safe:animate-spin`
+				 * is), so it matched nothing; and `animation-play-state: paused` freezes
+				 * wherever the rule happens to land, so even with the selector fixed the
+				 * pair would have stayed sampled.
+				 */
+				/*
+				 * The wait is load-bearing, and it is this option's own cost: with no
+				 * blanket override the row's ENTRANCE fade is still in flight, and a
+				 * shutter inside it renders the text at an alpha the other frame of the
+				 * pair does not share — measured, the two frames then differ across every
+				 * glyph on the row (491 pixels, x48-919) and the pair says nothing about
+				 * the mark. Sleeping past the longest entrance (300ms in this system)
+				 * leaves the ONLY live animation the mark's own spin.
+				 */
+				await sleep(700);
+				await cdp.send("Runtime.evaluate", {
+					expression: `(() => {
+						/*
+						 * HOLD THE SPIN AT A PHASE, through the Web Animations API rather
+						 * than through a stylesheet rule. Both halves of that are round 2's
+						 * M1: the rule this replaced selected ".animate-spin", which is NOT
+						 * the token the mark carries - "motion-safe:animate-spin" is
+						 * (run-detail-row-parts.tsx) - so a class selector matched nothing and
+						 * the option silently did nothing; and a paused RULE is not a hold
+						 * either, because "animation-play-state: paused" freezes at whatever
+						 * moment the rule lands, so the pair stays sampled however the
+						 * selector is spelled. pause() followed by an explicit currentTime says
+						 * the phase outright, and re-running lands on it every time. No
+						 * backticks in here: this comment lives inside a template literal.
+						 */
+						const row = document.querySelector('[data-composer-status-row]');
+						/* EVERY mark in the row, not the first one: a band with two
+						   running chips carries two, and holding one leaves the other
+						   spinning freely - caught by re-running the capture and finding
+						   the un-held mark had moved. */
+						const marks = row
+							? [...row.querySelectorAll('[class~="motion-safe:animate-spin"]')]
+							: [];
+						const held = new Set();
+						for (const mark of marks) {
+							for (const animation of mark.getAnimations()) {
+								animation.pause();
+								animation.currentTime = ${options.phaseMs};
+								held.add(animation);
+							}
+						}
+						/*
+						 * ...and EVERY OTHER ANIMATION IS SETTLED, which is the fix
+						 * for round 3's M1' and not a tidy-up: an entrance fade still
+						 * in flight in ONE of the two shutters renders the row's text
+						 * at an alpha the other does not share, and that is a
+						 * sub-perceptual, one-sided, achromatic field across every
+						 * glyph on the row - measured at 7,724 (dark) / 1,682 (light)
+						 * pixels outside the two marks, with only 193/168 of them above
+						 * the 8/255 the README's count used. finish() jumps an
+						 * animation to the state the stylesheet settles on rather than
+						 * removing it; an infinite one that cannot finish is left
+						 * alone, and the marks' own spin is in the held set and is
+						 * never touched here.
+						 */
+						for (const animation of document.getAnimations({ subtree: true })) {
+							if (held.has(animation)) continue;
+							try {
+								animation.finish();
+							} catch {
+								/* an animation that never ends has no settled state */
+							}
+						}
+						/*
+						 * TRANSITIONS FROZEN, animations left live - the split this
+						 * branch needs, and the one the blanket override could not
+						 * express. A transition in flight is a difference between the
+						 * two shutters that the hold does not pin and no document
+						 * declares; the caret is the same argument as above.
+						 */
+						const s = document.createElement("style");
+						s.textContent = "*,*::before,*::after{transition:none !important}*{caret-color:transparent !important}";
+						document.head.appendChild(s);
+					})()`,
+				});
+				await assertPhaseHeld("right after it was applied");
+			}
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
 				expression:
 					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 			});
+			/*
+			 * ...and the hold is read back here, at the last moment before the shutter
+			 * (round 3's M1'). Everything between the injection and this line - the
+			 * settle, the story-ready probe, a scroll pass, a resize, a rAF pair - is
+			 * an opportunity for a re-render to hand the mark a fresh animation, and a
+			 * pair that was held when it was applied and sampled when it was
+			 * photographed is exactly the state three documents claimed was impossible.
+			 */
+			await assertPhaseHeld("at the shutter");
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
 				quality: 88,
