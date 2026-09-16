@@ -91,6 +91,18 @@ const KEY_NAMES: Record<string, string> = {
 const MODIFIER_KEYS = new Set(["Control", "Shift", "Alt", "Meta", "AltGraph"]);
 
 /**
+ * The two keys that END an edit rather than spelling a binding.
+ *
+ * Every key-capture UI in this product's category (VS Code, JetBrains, macOS
+ * shortcuts) treats Escape as cancel, and this field used to BIND it: pressing
+ * the conventional way out of a recorder rewrote the binding to `escape`, dirty,
+ * discoverable only by noticing the field had changed (UX round 1, U7). Enter is
+ * excluded for the same reason `MODIFIER_KEYS` exists — it is a commit, not a
+ * keystroke anybody means to bind while editing this row.
+ */
+const END_EDIT_KEYS = new Set(["Escape", "Esc", "Enter"]);
+
+/**
  * The binding a keystroke spells, in the one order the registry stores.
  *
  * The registry normalizes again at the write boundary (`settings_io.coerce` ->
@@ -119,9 +131,13 @@ export function hotkeyFromEvent(
  * The hotkey field: it captures a keystroke instead of accepting text.
  *
  * `readOnly`, because a hand-typed `ctrl+N` is exactly the value the runtime
- * cannot bind — the field's only writer is a real key press, and the sentence
- * beside it says so. That is also why there is no `placeholder` here: an example
- * in the field would invite typing into a control that does not accept typing.
+ * cannot bind — the field's only writer is a real key press. That is also why
+ * there is no `placeholder` here: an example in the field would invite typing
+ * into a control that does not accept typing.
+ *
+ * The sentence under the field is the other half of that: until it existed, the
+ * only instruction lived in the field's ACCESSIBLE NAME, which a sighted reader
+ * never meets (UX round 1, U7).
  */
 const HotkeyInput = ({
 	value,
@@ -134,22 +150,33 @@ const HotkeyInput = ({
 	disabled: boolean;
 	onChange: (value: string) => void;
 }) => (
-	<Input
-		readOnly
-		value={value}
-		disabled={disabled}
-		aria-label={`${label}: press the key you want`}
-		className="font-mono text-body-sm"
-		onKeyDown={(event) => {
-			const binding = hotkeyFromEvent(event);
-			// An unmodified printable key is a keystroke the reader meant to bind;
-			// a modifier alone is not, and neither is a key the runtime cannot
-			// name — both are left alone rather than bound to something unusable.
-			if (!binding) return;
-			event.preventDefault();
-			onChange(binding);
-		}}
-	/>
+	<span className="flex w-full flex-col gap-0.5">
+		<Input
+			readOnly
+			value={value}
+			disabled={disabled}
+			aria-label={`${label}: press the key you want`}
+			className="font-mono text-body-sm"
+			onKeyDown={(event) => {
+				// Cancel/commit first: a keystroke that ends the edit is not a
+				// binding, so it must not reach `hotkeyFromEvent` at all.
+				if (END_EDIT_KEYS.has(event.key)) {
+					event.currentTarget.blur();
+					return;
+				}
+				const binding = hotkeyFromEvent(event);
+				// An unmodified printable key is a keystroke the reader meant to bind;
+				// a modifier alone is not, and neither is a key the runtime cannot
+				// name — both are left alone rather than bound to something unusable.
+				if (!binding) return;
+				event.preventDefault();
+				onChange(binding);
+			}}
+		/>
+		<span className="text-meta text-ink-dim">
+			Press the keys you want; Esc cancels.
+		</span>
+	</span>
 );
 
 export type SettingControlProps = {
@@ -195,6 +222,18 @@ export const SettingControl = ({
 							<SelectItem
 								key={serialize(choice.value)}
 								value={serialize(choice.value)}
+								/*
+								 * The registry ships a sentence for each choice (`snapcompact for
+								 * vision models, else context-full`) and 43 of the 102 settings
+								 * have one, so the listbox was four opaque words where "what does
+								 * this do" is answerable (UX round 1, U6). The sentence is the
+								 * item's `title` rather than a second line INSIDE the item: an
+								 * open listbox is a portal-rendered popper that no committed frame
+								 * can photograph, so a change to the item's anatomy would be a
+								 * visual change no design round could review. The item's own
+								 * anatomy is therefore untouched and the copy is reachable.
+								 */
+								title={choice.description || undefined}
 							>
 								{choice.label}
 							</SelectItem>

@@ -29,9 +29,12 @@
  * controlled view over it.
  *
  * The row keys on its own COLUMN, not on the window: at a 1000px window the
- * settings column is 888px — 8px narrower than at 1380px — so a window-width
- * breakpoint would never fire where it is needed, and the row stacks (label,
- * then control) only when the column itself is too narrow for both.
+ * settings column is 660px once the page's own rail sits beside it (an earlier
+ * draft of the spec quoted 888px for that window, and the QA round measured the
+ * column instead — the conclusion is unaffected, because the failure mode is a
+ * column measurement and never a window one), so a window-width breakpoint would
+ * never fire where it is needed, and the row stacks (label, then control) only
+ * when the column itself is too narrow for both.
  */
 
 import type { BackendSetting } from "@shared/api/local-operator/desktop-api";
@@ -104,14 +107,27 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	 *
 	 * The warning is HERE rather than inside the disclosed help on purpose: help
 	 * is detail a reader may skip, a warning is a consequence they may not.
+	 *
+	 * It takes its OWN LINE under the label rather than sitting beside it, and
+	 * that is a fix rather than a preference: in one flex row the warning was the
+	 * `shrink-0` member and the label was the `truncate` one, so the label was the
+	 * thing that gave way — the registry's one warning row rendered as `host …`,
+	 * its identity destroyed by its own warning, on the row a reader reached BY
+	 * SEARCHING FOR IT (design round 1, D2; UX round 1, U9). A warning may cost the
+	 * row a line; it may not cost the row its name.
 	 */
 	const marks = (
-		<span className="flex min-w-0 items-center gap-2">
+		<span className="flex min-w-0 flex-col gap-0.5">
 			<span className="truncate text-body-sm text-ink">{setting.label}</span>
+			{setting.kind === "readonly" && (
+				// Why this value has no control, said in the row rather than only
+				// behind its reveal: a value a reader cannot edit and cannot
+				// immediately explain reads as broken (UX round 1, U10). Plain
+				// text, not a badge — a state, like the changed dot beside it.
+				<span className="text-meta text-ink-dim">Read-only</span>
+			)}
 			{setting.warning && (
-				<span className="shrink-0 text-meta text-danger">
-					{setting.warning}
-				</span>
+				<span className="text-meta text-danger">{setting.warning}</span>
 			)}
 		</span>
 	);
@@ -174,6 +190,19 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 						<Disclosure
 							summary={marks}
 							triggerClassName="min-h-5 py-0 px-0 text-body-sm text-ink hover:text-ink"
+							/*
+							 * The caret is the row's ONLY affordance, and the primitive paints the
+							 * chevron slot `ink-disabled` — the role reserved for controls that do
+							 * not respond — which measured 2.70:1 dark / 2.80:1 light against the
+							 * 3:1 non-text floor this repo applies to a mark that carries state
+							 * (design round 1, D1). `ink-dim` is 5.81:1 / 5.31:1 and matches the
+							 * help text it reveals.
+							 *
+							 * `firstLine` because a row's mark belongs on the label's line, and a
+							 * warning now makes that summary two lines tall.
+							 */
+							chevronClassName="text-ink-dim"
+							summaryAlign="firstLine"
 							rowClassName="min-h-5 py-0"
 							className="w-full"
 						>
@@ -202,15 +231,29 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 					)}
 				>
 					{/* Off the default: a dot and the way back. Both are on screen only
-				    while they are true, which is what makes them readable as a state
-				    instead of as chrome. */}
+					    while they are true, which is what makes them readable as a state
+					    instead of as chrome.
+
+					    A `readonly` row is excluded from the RESET, because the request it
+					    would send is one the registry refuses: `settings_io.reset_setting`
+					    raises for `Kind.READONLY` and the route maps that to HTTP 422
+					    ("this setting is retired and cannot be changed"), so the row offered
+					    a control that could only fail and a `Retry` that re-issued the same
+					    doomed request (review round 1, M2). It is reachable: `is_default`
+					    is a value comparison, and the desktop app's own General sliders
+					    write `conversation_length`, `detail_length` and
+					    `max_learnings_history`. The DOT stays — the row genuinely is off
+					    its default. */}
 					{(!setting.is_default || dirty) && <ChangedDot />}
-					{!setting.is_default && (
+					{!setting.is_default && setting.kind !== "readonly" && (
 						<Button
 							variant="ghost"
 							size="sm"
 							disabled={disabled}
 							onClick={onReset}
+							/* Eight of these render identically in one tab order, so each
+							   names the row it belongs to (UX round 1, U8). */
+							aria-label={`Use default for ${setting.label}`}
 						>
 							<Undo2 aria-hidden="true" />
 							Use default
@@ -226,7 +269,14 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 							{saving ? "Saving" : "Save"}
 						</Button>
 					)}
-					<div className={controlSlot(setting.kind)}>
+					{/*
+					 * `data-setting-control` is the seam the section's deep-link reveal focuses
+					 * through. Without it the reveal's selector matched the row's `Use default`
+					 * button first — it precedes the control in document order — so an
+					 * off-default row was focused on its reset button instead of its field
+					 * (review round 1, n4).
+					 */}
+					<div className={controlSlot(setting.kind)} data-setting-control="">
 						{setting.redacted ? (
 							// The value is withheld, not the row: a reader who searched
 							// for this key has to be able to see that it exists and why

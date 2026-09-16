@@ -1,10 +1,12 @@
 /**
  * Which registry keys belong to the everyday list, and which sit one click away.
  *
- * Why this exists. The Backend settings section ships 99 rows in 18 sections,
- * every section open, which measured 10,896.5px of region on a 1380x900 window
- * (12.1 screens) and put 127 focusables into the tab order before a user had
- * done anything. The fix is a two-tier list, and a tier cannot be INFERRED:
+ * Why this exists. The Backend settings section ships 102 rows in 19 sections
+ * (the audit that motivated this work measured the then-shipping 99 in 18, and
+ * the counts moved with the backend rather than with this map), every section
+ * open, which measured 10,896.5px of region on a 1380x900 window (12.1 screens)
+ * and put 127 focusables into the tab order before a user had done anything. The
+ * fix is a two-tier list, and a tier cannot be INFERRED:
  * `kind` is documented as "how a value is EDITED" (`settings_io.py:84-91`), not
  * who should edit it, and `is_default` is a value comparison (`:2215-2219`), so
  * a heuristic would either hide everything on a fresh install or hide nothing on
@@ -51,6 +53,11 @@ export type SettingTier = "core" | "advanced";
  * (step 4) and turns the test red until somebody decides which tier it belongs
  * to. A map that classified only the core keys could never tell "unclassified"
  * from "deliberately advanced", which is the whole detector.
+ *
+ * That detector reads the fixture, so it inherits the fixture's reach: a key the
+ * fixture does not describe is a key no assertion here can see. The registry
+ * itself is what closes that gap, and the same test reads it when one is
+ * reachable (`scripts/backend-settings-registry.mjs`).
  */
 export const KEY_TIER: Record<string, SettingTier> = {
 	// model (3)
@@ -88,7 +95,18 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"retry.usageReservePercent": "advanced",
 	"retry.fallbackChains": "advanced",
 	// appearance (13)
-	"tui.theme": "core",
+	/*
+	 * `tui.theme` is `advanced`, and the reason is the authoring rule above
+	 * rather than taste. Its label is "Theme", which in the DESKTOP surface
+	 * reads as this app's own theme — the page above this one owns that with
+	 * `ThemeSelector` — while the registry's help is the terminal's ("Colour
+	 * ramp. /theme switches it live with an arrow-key preview."). A label that
+	 * needs its help text to say which application it belongs to is not a label
+	 * that states its choice, and §7 of the spec already records these 15 TUI
+	 * rows as terminal-facing and tiered `advanced`; the map said `core`, so
+	 * the code and the record disagreed (review round 1, m2).
+	 */
+	"tui.theme": "advanced",
 	"display.shimmer": "advanced",
 	"display.comfortable_rows": "advanced",
 	"display.nerd_icons": "advanced",
@@ -145,7 +163,7 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"web_search.searxng_endpoint": "advanced",
 	"web_search.deepseek_evidence": "advanced",
 	"web_search.read_enabled": "advanced",
-	// web_fetch (7)
+	// web_fetch (9)
 	"web_fetch.timeout_seconds": "advanced",
 	"web_fetch.max_bytes": "advanced",
 	"web_fetch.max_redirects": "advanced",
@@ -153,6 +171,13 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"web_fetch.allow_private": "advanced",
 	"web_fetch.render_backend": "advanced",
 	"web_fetch.enrich": "advanced",
+	/* Both of these are judgements rather than fall-throughs, which is what the
+	 * drift detector asks for when the registry gains a key: "Attempts per hop"
+	 * is a tuning scalar (1-5, sharing the call's own timeout), and
+	 * "Browser-profile retry" does not state its choice from its label alone —
+	 * a reader cannot tell WHAT is retried until its help says so. */
+	"web_fetch.max_attempts": "advanced",
+	"web_fetch.blocked_retry": "advanced",
 	// tools (1)
 	"bash.shell": "advanced",
 	// local_providers (10)
@@ -170,6 +195,16 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	conversation_length: "advanced",
 	detail_length: "advanced",
 	max_learnings_history: "advanced",
+	/*
+	 * `desktop` (1): "launch command" is a command LINE — a template with a
+	 * `{session}` placeholder — and its label alone cannot say what is being
+	 * launched or when it runs instead of app discovery. It is classified here
+	 * rather than left to the fall-through deliberately: the section arrived with
+	 * the registry three keys ahead of this map, and a key that lands `advanced`
+	 * by accident is indistinguishable from one that lands there by decision
+	 * (QA round 1, Q1 asked for the judgement, this is it).
+	 */
+	"desktop.launch_command": "advanced",
 };
 
 /**
@@ -184,6 +219,14 @@ export const SECTION_TIER: Record<string, SettingTier> = {
 	model: "core",
 	approvals: "core",
 	web_tools: "core",
+	/*
+	 * A single-member section, and the only one here whose membership cannot
+	 * split: everything in it describes how the desktop app is launched, and
+	 * none of those keys will state their own choice from their label either.
+	 * Named so the next key added to `desktop` is a decision rather than a
+	 * fall-through — the same judgement the KEY_TIER line above records.
+	 */
+	desktop: "advanced",
 };
 
 /** The tier of one row: server, then key, then section, then `advanced`. */
@@ -203,10 +246,11 @@ export function tierFor(
  * A section opens iff at least half its rows are `core` — the spec's "each
  * closed except the core-heavy ones". Derived from the tier map rather than
  * listed a second time, so a re-tiered key moves the arrival layout with it
- * instead of leaving a hand-written list behind. On the 99-key registry this
- * opens Model (3/3 core), Approvals (1/1), Fork (1/2) and Web tools (2/2) — four
- * sections and seven rows, whose height plus the 18 headers keeps the arrival
- * region inside its 1,600px budget.
+ * instead of leaving a hand-written list behind. On the shipping 102-key
+ * registry this opens Model (3/3 core), Approvals (1/1), Fork (1/2) and Web tools
+ * (2/2) — four sections and seven rows, whose height plus the 19 headers keeps the
+ * arrival region inside its 1,600px budget. The other fifteen sections are closed
+ * on arrival, including the one-member `desktop` section (0/1 core).
  */
 export function opensOnArrival(
 	rows: readonly Pick<BackendSetting, "key" | "section" | "tier">[],

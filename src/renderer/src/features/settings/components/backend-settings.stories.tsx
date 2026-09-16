@@ -2,8 +2,8 @@
  * The Backend settings section, in the states a first visit, a search and a deep
  * link can put it in.
  *
- * Why this file exists. This is the largest surface in the app - 99 registry
- * rows in 18 sections - and until now it had NO story, NO fixture and NO
+ * Why this file exists. This is the largest surface in the app - 102 registry
+ * rows in 19 sections - and until now it had NO story, NO fixture and NO
  * committed frame anywhere in `docs/evidence/`. Every claim about it was a claim
  * about a surface nobody could look at, and the redesign it accompanies has to
  * be judged against what it was.
@@ -61,6 +61,19 @@ type Setting = BackendSettings["settings"][number];
 type BridgeRequest = { op: string; key?: string; value?: unknown };
 
 /**
+ * How the stubbed transport answers a WRITE.
+ *
+ * `ok` is the shipped behaviour. The other two exist because a write's two
+ * non-success endings are states of this surface and neither can be photographed
+ * through a store that always succeeds: `hang` leaves the request in flight (the
+ * `Saving` state, and the `Saving` label on the row and on `Save all`), and
+ * `fail` answers the server's own refusal (the `role="alert"` and its `Retry`).
+ * Both were unit-test-only until now — the design round's blocking evidence gap
+ * was that 11 stories and 144 frames showed no draft at all (D3).
+ */
+type BridgeMode = "ok" | "hang" | "fail";
+
+/**
  * The desktop transport, stubbed.
  *
  * `desktopRequest` prefers `window.api.desktop.request` and falls back to
@@ -77,7 +90,7 @@ type BridgeRequest = { op: string; key?: string; value?: unknown };
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
 
-const installBridge = (payload: BackendSettings) => {
+const installBridge = (payload: BackendSettings, mode: BridgeMode = "ok") => {
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
 		body: { status: 200, message: "ok", result },
@@ -96,6 +109,18 @@ const installBridge = (payload: BackendSettings) => {
 			case "settings.list":
 				return ok(payload);
 			case "settings.edit": {
+				if (mode === "hang") return new Promise<DesktopResponse>(() => {});
+				if (mode === "fail") {
+					return {
+						status: 422,
+						body: {
+							detail: {
+								code: "write_refused",
+								message: "The server refused the write.",
+							},
+						},
+					};
+				}
 				const target = row(request.key);
 				if (target) {
 					target.value = request.value;
@@ -285,6 +310,15 @@ const setFieldValue = (input: HTMLInputElement, value: string) => {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
+const setTextareaValue = (el: HTMLTextAreaElement, value: string) => {
+	const setter = Object.getOwnPropertyDescriptor(
+		window.HTMLTextAreaElement.prototype,
+		"value",
+	)?.set;
+	setter?.call(el, value);
+	el.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
 const typeSearch = async (text: string) => {
 	const input = document.querySelector<HTMLInputElement>(
 		'input[aria-label="Search settings"]',
@@ -296,6 +330,37 @@ const typeSearch = async (text: string) => {
 
 const rowsOf = (key: string) =>
 	document.querySelector(`[data-setting-key="${key}"]`);
+
+/*
+ * Every regex this file uses is a top-level constant, including the one inside
+ * `unsavedLine` and the row-button matchers below: an inline literal is compiled
+ * on each call, and the four this round added were the only new warnings in the
+ * whole `pnpm lint` run (review round 1, m3 — which fixed the first two and is
+ * why the rule is worth following rather than re-argued).
+ */
+const RESULTS_IN_SECTIONS = /results? in \d+ sections?/;
+const NO_MATCHES = /No settings match this search/;
+const UNSAVED_LINE = /\d+ unsaved changes?/;
+const SAVE_IDLE = /^Save$/;
+const SAVE_BUSY = /^Saving$/;
+const SAVE_OR_BUSY = /^(Save|Saving)$/;
+
+/** One button inside one row, by its visible label. */
+const rowButton = (key: string, label: RegExp) =>
+	Array.from(
+		document.querySelectorAll<HTMLElement>(
+			`[data-setting-key="${key}"] button`,
+		),
+	).find((button) => label.test((button.textContent ?? "").trim()));
+
+/** The row's cascade editor, which is the only `textarea` an advanced row has. */
+const chainField = (key: string) =>
+	document.querySelector<HTMLTextAreaElement>(
+		`[data-setting-key="${key}"] textarea`,
+	);
+
+/** The page-level counter, which is the whole of "saving is no longer silent". */
+const unsavedLine = () => UNSAVED_LINE.test(document.body.textContent ?? "");
 
 const rowsRendered = () =>
 	document.querySelectorAll("[data-setting-key]").length;
@@ -333,16 +398,14 @@ const FILTERED: Script = {
 	run: async () => {
 		await typeSearch("cache");
 	},
-	expect: () =>
-		/results? in \d+ sections?/.test(document.body.textContent ?? ""),
+	expect: () => RESULTS_IN_SECTIONS.test(document.body.textContent ?? ""),
 };
 
 const NO_RESULTS: Script = {
 	run: async () => {
 		await typeSearch("zzzzzz");
 	},
-	expect: () =>
-		/No settings match this search/.test(document.body.textContent ?? ""),
+	expect: () => NO_MATCHES.test(document.body.textContent ?? ""),
 };
 
 const REDACTED: Script = {
@@ -369,6 +432,52 @@ const DEEP_LINK: Script = {
 	// this script exists only to hold the shutter until it has landed.
 	run: async () => {},
 	expect: () => Boolean(rowsOf("web_search.searxng_endpoint")),
+};
+
+/**
+ * The registry's one `cascade` key, which is the row the save model is hardest on.
+ *
+ * It lives in `failover` (advanced, closed on arrival), so the script opens the
+ * tier and the section before it can touch the editor. All three of the states
+ * below drive THIS row deliberately: it is the one whose draft is a set of chains
+ * rather than a value, it is the row whose save used to leave the page saying
+ * "1 unsaved change" about a write that had landed (review round 1, M1; QA round
+ * 1, Q3), and a frame of it dirty / saving / failed is what the design round
+ * asked for instead of a unit test's word for it (D3).
+ */
+const CASCADE_KEY = "retry.fallbackChains";
+
+/** Put the cascade row into a state an unsaved edit describes. */
+const editCascade = async () => {
+	await ensureAdvanced();
+	await openHeader("Failover and retry");
+	await waitFor(() => Boolean(chainField(CASCADE_KEY)));
+	const field = chainField(CASCADE_KEY);
+	if (field) {
+		setTextareaValue(field, `${field.value}\nanthropic/claude-sonnet-4`);
+	}
+	await sleep(50);
+};
+
+const DIRTY: Script = {
+	run: editCascade,
+	expect: () => unsavedLine() && Boolean(rowButton(CASCADE_KEY, SAVE_OR_BUSY)),
+};
+
+const SAVING: Script = {
+	run: async () => {
+		await editCascade();
+		rowButton(CASCADE_KEY, SAVE_IDLE)?.click();
+	},
+	expect: () => Boolean(rowButton(CASCADE_KEY, SAVE_BUSY)),
+};
+
+const SAVE_FAILED: Script = {
+	run: async () => {
+		await editCascade();
+		rowButton(CASCADE_KEY, SAVE_IDLE)?.click();
+	},
+	expect: () => Boolean(document.querySelector('[role="alert"]')),
 };
 
 /** The rows a state is about: the frame is not taken before they exist. */
@@ -416,13 +525,15 @@ const mount = ({
 	initialFilter,
 	focusKey,
 	script,
+	mode,
 }: {
 	state?: string;
 	initialFilter?: string;
 	focusKey?: string | null;
 	script?: Script;
+	mode?: BridgeMode;
 } = {}) => {
-	installBridge(payloadFor(state));
+	installBridge(payloadFor(state), mode);
 	if (script) {
 		return (
 			<Driven
@@ -463,7 +574,7 @@ export const AllExpanded: Story = {
 	render: () => mount({ script: ALL_EXPANDED }),
 };
 
-/** Nothing open: the readable index of 18 section headers. */
+/** Nothing open: the readable index of 19 section headers. */
 export const Collapsed: Story = {
 	render: () => mount({ script: COLLAPSED }),
 };
@@ -563,9 +674,46 @@ export const DeepLink: Story = {
  * by side.
  *
  * The row keys on its COLUMN, not on the window: at a 1000px window the column
- * is 888px, only 8px narrower than at 1380px, so a window-width breakpoint would
+ * is 660px once the page's own rail sits beside it (the QA round measured it;
+ * an earlier draft of the spec said 888px), so a window-width breakpoint would
  * never fire where it is needed.
  */
 export const Narrow: Story = {
 	render: () => mount({ state: "changed", script: ONE_SECTION }),
+};
+
+/* ------------------------------------------------------------------ */
+/* The save model, and its two endings                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A draft: `Save`, the row's changed dot, and the page-level unsaved counter.
+ *
+ * This is the half of this PR's claim — saving "stopped being silent" — that no
+ * frame showed at all until now, and it is also the surface's densest row state
+ * (two extra buttons in an off-default row's cluster).
+ */
+export const Dirty: Story = {
+	render: () => mount({ state: "changed", script: DIRTY }),
+};
+
+/**
+ * A write in flight.
+ *
+ * The transport never answers, so `Saving` is on screen rather than a caption:
+ * the row's own button says it, and the bar's `Save all` would say it too.
+ */
+export const Saving: Story = {
+	render: () => mount({ state: "changed", script: SAVING, mode: "hang" }),
+};
+
+/**
+ * A refused write, with the draft kept.
+ *
+ * The server's own refusal, announced in a `role="alert"` beside the row it is
+ * about, with `Retry` re-submitting what the reader typed rather than re-reading
+ * the field.
+ */
+export const SaveFailed: Story = {
+	render: () => mount({ state: "changed", script: SAVE_FAILED, mode: "fail" }),
 };
