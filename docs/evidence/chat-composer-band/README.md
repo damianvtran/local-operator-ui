@@ -28,9 +28,11 @@ for every frame here.
 ## Which tip the frames show
 
 **`search chats and agents to reopen an earlier session`** — `COMPOSER_TIPS[0]`, the
-pinned opening entry — in all six after frames and in none of the before frames
-(there was no tip row before), and in the `chip-hover` frame beside them. The pin
-is the mechanism
+pinned opening entry — in the FIVE of the six after states that carry the band
+(`empty-chat/`, `column-floor/`, `long-labels/`, `draft-held/`, `reduced-motion/`:
+`small-view/` renders no band at all, so it has neither the tip nor the chips), in
+the `chip-hover/` frame beside them, and in none of the before frames (there was no
+tip row before). The pin is the mechanism
 (`composer-tips.ts`: the ring opens on `pool[0]` and only the frames behind it are
 shuffled), and it is what makes a committed capture of a rotating row reproducible
 at all: every frame here is a fresh page load, and the first tick is 12 s away.
@@ -61,11 +63,17 @@ the branch draws four. Two consequences of that are worth stating rather than
 leaving to be discovered on the frames:
 
 - the before frames show a **random** seven of the eight, because the old sampler
-  was `sort(() => Math.random() - 0.5)`; the `empty-chat` frame shows "Set up the
-  mobile relay and tunnel", "Schedule a task that runs every morning", "Set up the
-  Linear MCP server for me", "Review this repo and open a pull request", "Create a
-  team of agents", "Wake me tomorrow morning with a summary" and "Create a new
-  agent" (the missing one is "Show me what the agent did last turn");
+  was `sort(() => Math.random() - 0.5)`, and each palette drew its own seven: the
+  DARK `empty-chat` frame shows "Set up the mobile relay and tunnel", "Schedule a
+  task that runs every morning", "Set up the Linear MCP server for me", "Review this
+  repo and open a pull request", "Create a team of agents", "Wake me tomorrow
+  morning with a summary" and "Create a new agent" (the missing one is "Show me what
+  the agent did last turn"), while the LIGHT one drew "Create a new agent", "Create a
+  team of agents", "Set up the mobile relay and tunnel", "Show me what the agent did
+  last turn", "Set up the Linear MCP server for me", "Schedule a task that runs every
+  morning" and "Wake me tomorrow morning with a summary" (missing "Review this repo
+  and open a pull request") — which is why the light frame wraps its seven as 4+3
+  where the dark one wraps as 3+3+1;
 - the before frames are not a picture of the pool that shipped before this branch
   (trending stocks, MNIST, space invaders). Those 25 labels are in the
   pre-change app, and the committed sets that photographed them are
@@ -77,9 +85,11 @@ leaving to be discovered on the frames:
 remediation: the pinned head's wording and the tip sentences), and that is a
 disclosure rather than an oversight. They hold the OLD pool's labels — restored to
 `origin/main` with the branch's story file as it stood at that capture — so the pair
-still isolates the treatment (seven centred outlined chips in three rows and no tip
-row, against four borderless left-aligned ones under the tip row) and no longer
-holds the copy constant between the two halves. What the copy half needs is not a
+still isolates the treatment (seven centred outlined chips and no tip row, against
+four borderless left-aligned ones under the tip row) and no longer holds the copy
+constant between the two halves. The before half's row count is the frame's own and
+not the treatment's: the dark `empty-chat/` frame wraps its seven as 3+3+1 and the
+light one as 4+3, because the pre-change sampler shuffled a fresh seven per load. What the copy half needs is not a
 before frame: the remediation's own pinned four and tip sentences are measured on
 the AFTER frames above, which are re-taken at this head.
 
@@ -90,7 +100,7 @@ a sweep of this head's `src`: their provenance is the command above.
 
 | Frame (`<theme>.webp`) | What it shows |
 | --- | --- |
-| `empty-chat/` | The operator's ask: the pinned opening four borderless chips on one row, the tip row under the box, all left-aligned on the composer's own edge. `before/empty-chat/` is the same band with seven centred outlined chips in three rows and no tip row. |
+| `empty-chat/` | The operator's ask: the pinned opening four borderless chips on one row, the tip row under the box, all left-aligned on the composer's own edge. `before/empty-chat/` is the same band with seven centred outlined chips and no tip row — three rows in the dark frame (3+3+1) and two in the light one (4+3), since the pre-change sampler drew a random seven per load. |
 | `column-floor/` | The band at **550px** — 830x572, the narrowest window whose chat column is still 550px (the app's own minimum is 800x600, where the column is 300px and the whole prompt is absent, which `small-view/` is the frame for). The four chips take two rows; the tip sentence still fits untruncated. This is the frame prediction 2 is about. |
 | `small-view/` | One step below that column: greeting, tip row and chips are **all** gone, because the gate is the column and not the tip's own length. A frame showing the tip at a width the app drops it at would be a claim the product does not make. |
 | `long-labels/` | The pool's longest four labels at a 620px column — the worst wrap a later sample can draw. `composer-suggestions.ts` returns a pool no larger than the sample whole and in order, so this is a draw the sampler really can produce rather than strings invented to overflow. |
