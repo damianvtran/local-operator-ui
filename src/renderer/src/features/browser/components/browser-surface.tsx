@@ -24,14 +24,16 @@ import {
 	useBrowserChrome,
 } from "../hooks/use-browser-chrome";
 import {
-	type SurfaceScope,
 	originOfUrl,
 	requestsInScope,
+	useApprovalQueue,
+} from "../model/approval-queue-model";
+import {
+	type SurfaceScope,
 	scopeFromKey,
 	scopeKey,
 	tabsInScope,
-	useApprovalQueue,
-} from "../model/approval-queue-model";
+} from "../model/tab-index-model";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
