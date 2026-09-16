@@ -89,9 +89,10 @@ still isolates the treatment (seven centred outlined chips and no tip row, again
 four borderless left-aligned ones under the tip row) and no longer holds the copy
 constant between the two halves. The before half's row count is the frame's own and
 not the treatment's: the dark `empty-chat/` frame wraps its seven as 3+3+1 and the
-light one as 4+3, because the pre-change sampler shuffled a fresh seven per load. What the copy half needs is not a
-before frame: the remediation's own pinned four and tip sentences are measured on
-the AFTER frames above, which are re-taken at this head.
+light one as 4+3, because the pre-change sampler shuffled a fresh seven per load.
+What the copy half needs is not a before frame: the remediation's own pinned four
+and tip sentences are measured on the AFTER frames above, which are re-taken at
+this head.
 
 These are declared in `manifest.json` as a supplementary set, because they are not
 a sweep of this head's `src`: their provenance is the command above.
