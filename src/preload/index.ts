@@ -1,7 +1,10 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
-import type { BackendUpdateInfo } from "../main/update-service";
+import type {
+	BackendUpdateErrorReport,
+	BackendUpdateInfo,
+} from "../main/update-service";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -331,6 +334,31 @@ const api = {
 			ipcRenderer.on("backend-update-completed", handler);
 			return () => {
 				ipcRenderer.removeListener("backend-update-completed", handler);
+			};
+		},
+		/**
+		 * A server update that failed, with the reason the main process wrote.
+		 *
+		 * The main process has always sent this - it is how a failed pip run, an
+		 * unreadable venv or a server that did not come back up is reported - and
+		 * nothing subscribed to it. The channel was therefore dead, and the panel the
+		 * renderer keeps up while an update is in flight had only the invoke's own
+		 * rejection to leave on: `update-backend` RESOLVES false on failure, so the
+		 * panel stayed on "Updating server" forever while the message that explains
+		 * why was dropped (operator report, 2026-09-15).
+		 *
+		 * The payload carries the phase that wrote it (`check` or `update`), so the
+		 * renderer shows an attempt's reason on the attempt's own panel rather than
+		 * inferring which report this is from whether an attempt happens to be
+		 * running (review R2-1).
+		 */
+		onBackendUpdateError: (
+			callback: (report: BackendUpdateErrorReport) => void,
+		) => {
+			const handler = (_event, report) => callback(report);
+			ipcRenderer.on("backend-update-error", handler);
+			return () => {
+				ipcRenderer.removeListener("backend-update-error", handler);
 			};
 		},
 		/**

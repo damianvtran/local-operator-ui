@@ -44,22 +44,41 @@ const snapshot = (
 	...overrides,
 });
 
+/**
+ * The updater surface the section reaches on mount, at the bridge's own width.
+ *
+ * This is the narrow twin of the `app-updates-and-info` fixture and carries the
+ * same set for the same reason: the preload's updater surface rather than the
+ * methods today's call sites reach, or the next bridge method takes the surface
+ * out at mount (review round 1, R1-1). See that file's note, and `scripts/
+ * preload-updater-surface.test.mjs`, which asserts it on both.
+ */
 const updaterStub = () => ({
-	onUpdateError: () => () => {},
-	onUpdateNotAvailable: () => () => {},
-	onBackendUpdateNotAvailable: () => () => {},
-	onBackendUpdateDevMode: () => () => {},
-	onUpdateInstallFailed: () => () => {},
-	onUpdateAvailable: () => () => {},
-	onDownloadProgress: () => () => {},
-	onUpdateDownloaded: () => () => {},
-	getLastInstallAttempt: async () => null,
+	checkForUpdates: async () => ({ updateInfo: {}, cancellationToken: null }),
+	checkForBackendUpdates: async () => null,
 	checkForAllUpdates: async () => ({}),
-	checkForBackendUpdates: async () => ({}),
+	getLastInstallAttempt: async () => null,
+	updateBackend: async () => ({}),
 	downloadUpdate: async () => ({}),
 	quitAndInstall: async () => ({}),
-	quitForInstall: async () => ({}),
-	updateBackend: async () => ({}),
+	quitForUpdateInstall: async () => ({}),
+	onUpdateAvailable: () => () => {},
+	onUpdateNotAvailable: () => () => {},
+	onUpdateDevMode: () => () => {},
+	onUpdateNpxAvailable: () => () => {},
+	onBackendUpdateAvailable: () => () => {},
+	onBackendUpdateDevMode: () => () => {},
+	onBackendUpdateNotAvailable: () => () => {},
+	onBackendUpdateCompleted: () => () => {},
+	onBackendUpdateError: () => () => {},
+	onBackendUpdateManualRequired: () => () => {},
+	onUpdateDownloaded: () => () => {},
+	onUpdateError: () => () => {},
+	onUpdateInstallBlocked: () => () => {},
+	onUpdateInstallFailed: () => () => {},
+	onUpdateProgress: () => () => {},
+	onUpdateInstallInFlight: () => () => {},
+	onBeforeQuitForUpdate: () => () => {},
 });
 
 const Bridge = ({

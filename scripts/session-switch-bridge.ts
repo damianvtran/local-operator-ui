@@ -341,10 +341,12 @@ function installPreloadStubs() {
 		updateBackend: async () => false,
 		downloadUpdate: async () => [],
 		quitAndInstall: () => {},
+		quitForUpdateInstall: async () => true,
+		getLastInstallAttempt: async () => null,
 		/*
 		 * Every subscription the shell's update banner takes on mount, from the
 		 * call sites in `src/renderer/src` rather than from the story's fixture:
-		 * the fixture predates three of these, and a missing one throws inside
+		 * the fixture predates several of these, and a missing one throws inside
 		 * the mount effect (`window.api.updater.onBackendUpdateManualRequired is
 		 * not a function`), unmounting the tree and leaving a blank page.
 		 */
@@ -357,10 +359,13 @@ function installPreloadStubs() {
 		onUpdateError: unsub,
 		onUpdateInstallBlocked: unsub,
 		onUpdateInstallFailed: unsub,
+		onUpdateInstallInFlight: unsub,
+		onBeforeQuitForUpdate: unsub,
 		onBackendUpdateAvailable: unsub,
 		onBackendUpdateDevMode: unsub,
 		onBackendUpdateNotAvailable: unsub,
 		onBackendUpdateCompleted: unsub,
+		onBackendUpdateError: unsub,
 		onBackendUpdateManualRequired: unsub,
 	};
 	window_.api.showItemInFolder ??= () => {};

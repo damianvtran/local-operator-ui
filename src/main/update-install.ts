@@ -2741,18 +2741,107 @@ export function resolveGlobalInstallPlan(input: {
 }
 
 /**
+ * A version safe to put in a `local-operator==<version>` requirement.
+ *
+ * The target crosses the IPC boundary as an arbitrary string, so it is pinned
+ * only when it actually looks like a release - digits, dots, and the PEP 440
+ * pre-release/dev/local spellings - and never when it carries whitespace, a
+ * shell metacharacter or a flag. Anything that does not match keeps the
+ * unpinned requirement rather than reaching the command line.
+ *
+ * The spellings are PEP 440's, including the two the first version of this
+ * pattern rejected (review R1-3): an optional `N!` epoch, and a pre-release
+ * followed by a post or dev segment, so `1!0.55.10`, `0.55.10a1.post1` and
+ * `0.55.10.post1.dev2` are all pinnable. Those are legitimate publishable
+ * releases, and the cost of refusing them was not cosmetic: an unpinned
+ * requirement against a FRESH index installs the newest release, which can be
+ * newer than the one the app promised and then polls for, so the update would be
+ * reported as failed over a server that had in fact moved.
+ *
+ * The segments are written in the ORDER PEP 440 defines them (release, epoch,
+ * pre, post, dev, local) and each may appear at most once, because that is the
+ * whole of the grammar: the pattern has to be wide enough for every release the
+ * index can publish and narrow enough that a string which is not a version is
+ * never pinned. `0.55.10.dev2.post1` is therefore NOT pinned - the spec has no
+ * such version - while `0.55.10.post1.dev2` is.
+ */
+const PINNABLE_VERSION_REGEX =
+	/^(?:\d+!)?\d+(?:\.\d+)*(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?(?:[-+][0-9A-Za-z.]+)?$/;
+
+/** Whether a target is a release version, and so may be pinned in a requirement. */
+export function isPinnableVersion(
+	target: string | null | undefined,
+): target is string {
+	return (
+		typeof target === "string" && PINNABLE_VERSION_REGEX.test(target.trim())
+	);
+}
+
+/**
  * The pip invocation used for the app's own bundled environment.
  *
  * `--no-input` keeps a prompt from hanging an install with no console attached,
  * and `--disable-pip-version-check` keeps pip's self-update notice out of the
  * output we read the installed version back from.
+ *
+ * TWO THINGS HERE ANSWER THE SAME DEFECT, AND ONLY ONE OF THEM IS ENOUGH.
+ *
+ * The defect (operator report, 2026-09-15): the app's own check read 0.55.10 from
+ * PyPI at 22:08:58, this command was run at 22:09:53 and again at 22:10:50, and
+ * both runs answered `Requirement already satisfied: local-operator ... (0.55.9)`
+ * with exit 0 - `version 0.55.9 -> 0.55.9`, nothing installed. PyPI's own upload
+ * time for 0.55.10 is 2026-09-16T02:05:21Z, so the resolver was answering from a
+ * simple-index page that predated the release by four and a half minutes, inside
+ * the `max-age=600` window such a page carries.
+ *
+ * The PIN is the load-bearing half. `local-operator==<target>` cannot be satisfied
+ * by the version already installed, so a stale or unreachable index turns the
+ * silent no-op into a loud `ERROR: No matching distribution found` and exit 1 -
+ * which is what the app then reports, instead of claiming success. Measured on a
+ * purpose-built stale page (the app's own cached `/simple/local-operator/` with
+ * the 0.55.10 artifacts removed, its ETag kept): the unpinned form answers
+ * "already satisfied", exit 0; the pinned form without `--no-cache-dir` fails
+ * loudly, exit 1; pin plus `--no-cache-dir` installs 0.55.10, exit 0.
+ *
+ * `--no-cache-dir` covers ONE of the two stale sources, and it is worth keeping
+ * anyway: without it, pip answers a `/simple/` request out of its own HTTP cache
+ * while that entry is fresh, so the cache can keep feeding the resolver a page
+ * older than the release. WHICH path that takes depends on the pip, and both were
+ * measured: on the pip this app bundles (26.2.1) it is a plainly FRESH hit - no
+ * request to PyPI at all, `The response is "fresh", returning cached response` -
+ * and on the older pip 25.0.1 the same reconstructed entry is revalidated and its
+ * stale body served on a 304 (`pip/_internal/index/collector.py` sends `max-age=0`
+ * on every `/simple/` request, and `pip/_vendor/cachecontrol/adapter.py` still
+ * revalidates and reuses). Two pips, two paths, one outcome, and the outcome is
+ * what this flag is here for. What it does NOT cover is a stale page served by the
+ * CDN in front of PyPI, which the pin does. It also bypasses the wheel cache, so
+ * the honest price is a fresh index read AND re-downloading the artifact - not the
+ * index alone. A server update is a rare, explicitly requested, network-bound
+ * operation, so that is the intended trade.
+ *
+ * (The command is not merely belt-and-braces: removing the PIN and keeping the flag
+ * still installs whatever the fresh page offers, which may be a release newer than
+ * the one the app promised and is polling for.)
+ *
+ * When the caller knows which release it promised the user, the requirement is
+ * pinned to it (`local-operator==0.55.10`). The unpinned form is kept for callers
+ * that name no target - the compatibility banner asks for "the current server", and
+ * it has no version to pin - and for a target that is not a release version, which
+ * `isPinnableVersion` refuses rather than putting an arbitrary string on the command
+ * line.
  */
-export function buildPipUpgradeCommand(pythonPath: string): {
+export function buildPipUpgradeCommand(
+	pythonPath: string,
+	targetVersion?: string | null,
+): {
 	command: string;
 	args: string[];
 	/** The same thing, for the log line and any message shown to the user. */
 	display: string;
 } {
+	const requirement = isPinnableVersion(targetVersion)
+		? `local-operator==${targetVersion.trim()}`
+		: "local-operator";
 	const args = [
 		"-m",
 		"pip",
@@ -2760,7 +2849,8 @@ export function buildPipUpgradeCommand(pythonPath: string): {
 		"--upgrade",
 		"--no-input",
 		"--disable-pip-version-check",
-		"local-operator",
+		"--no-cache-dir",
+		requirement,
 	];
 	return {
 		command: pythonPath,

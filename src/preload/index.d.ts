@@ -1,6 +1,7 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
+import type { BackendUpdateErrorReport } from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
@@ -197,6 +198,14 @@ declare global {
 					callback: (info: { version: string }) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (callback: () => void) => () => void;
+				/**
+				 * A server update that failed: the reason from the main process, and the
+				 * phase that wrote it (`check` for a version check the user may have
+				 * pressed, `update` for the update attempt itself).
+				 */
+				onBackendUpdateError: (
+					callback: (report: BackendUpdateErrorReport) => void,
+				) => () => void;
 				onBackendUpdateManualRequired: (
 					callback: (info: {
 						message: string;
