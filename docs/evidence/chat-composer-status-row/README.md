@@ -77,6 +77,8 @@ record's arithmetic — and stated because four of them are what the record's
 | First chip's left edge, both states | one edge | **x=34 in both** (`-ml-1.5`) | — (stacked; the goal chip leads) |
 | Row `overflowX` | 0 | **0** | **0** |
 | Row height, four chips (`activity-widths`) | — | **32px** | **106px**, and **106px at the 240px boundary too** (80px in round 1, before the chip group; see that row above) |
+| Row height, FIVE chips (`wake-widths`) | — | **32px**, `overflowX 0`, goal 257px | **132px at 172px**, and **132px at 220px and at the 240px boundary too** — the same arrangement `activity-widths` measured at 106px with four chips, 26px taller because the fourth count adds a line in the stacked state |
+| The wake chip's leading edge (`wake-chip`, band 1) | one edge | **x=40**, where the goal's chevron sits — a fourth chip that is FIRST takes the row's edge like the other three | — (stacked; the goal chip leads when there is one) |
 | Goal item, four chips at 900 (`long-goal`, band 3) | — | **484px**, text **414** client against **1956** scroll | — |
 | Goal snippet, 240 vs 172 (`activity-widths`) | — | `Goal: Reconcile the March i…` | `Goal: Reconcile t…` |
 | Expanded body measure | (see below) | — | **136px** client, **120px** tall (six whole lines) against **300px** of content — the cap and its own scroller |
