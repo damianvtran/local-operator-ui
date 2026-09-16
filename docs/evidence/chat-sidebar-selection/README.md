@@ -14,6 +14,17 @@ targeted draft (whose NAME BUTTON painted the hover ground straight over the
 wrapper's mark, the defect round 1 raised as its MAJOR), and the settings rail's
 current section on a second `surface` panel (round 1, design D2).
 
+> **SUPERSEDED IN PART, 2026-09.** These frames are the record of the round that
+> moved the row off the accent wash, and they are still accurate about those
+> frames — the ground in them is `sunken`. It has since moved once more, to the
+> `highlight` role, because `sunken` is RECESSED and 3.75-14.94 from `surface`:
+> the "visible, not-too-obnoxious highlight" this report asked for was still a
+> dark box. The replacement frames, and the measurement that chose the value, are
+> in `docs/evidence/chat-sidebar-current-row/` (before halves in
+> `docs/evidence/chat-sidebar-current-row-baseline/`). Everything here about WHERE the row's
+> mark lives — the four chat call sites, the entity row's two elements, the
+> settings rail, and the `hover:` override — is unchanged and still pinned.
+
 ## What these frames are, and what they are not
 
 Every frame is the **built app in `headless` window mode**, paired to an isolated

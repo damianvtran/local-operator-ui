@@ -93,10 +93,16 @@ const POPOVER_PROMPT_WIDTH = "w-125";
 const POPOVER_REVIEW_WIDTH = "w-90";
 
 /*
- * The shortcut caps carry their own 10px glyphs; the button's `[&_svg]:size-3.5`
- * would inflate them to icon size, so the caps opt back out.
+ * The shortcut caps carry their own glyph size — `KeyboardShortcut` draws icons at
+ * the 12px its text is set in — and the button's own `[&_svg]:size-3.5` (14px,
+ * from `Button`'s `sm` size) would inflate them to the button's icon slot. The
+ * override is scoped to the caps rather than to the button, so anything else the
+ * button may render later still takes the button's own size; and it matches the
+ * cap's own 12px rather than the 10px this used to force, which is the size the
+ * shared component was raised to (design round 1, D5 — "one cap size" did not
+ * hold on this surface while the selector pinned 10).
  */
-const SHORTCUT_BUTTON = cn("whitespace-nowrap [&_svg]:size-2.5");
+const SHORTCUT_BUTTON = cn("whitespace-nowrap [&_kbd_svg]:size-3");
 
 export const InlineEdit: FC<InlineEditProps> = ({
 	selection,

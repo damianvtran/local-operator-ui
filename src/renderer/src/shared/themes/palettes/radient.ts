@@ -22,6 +22,12 @@ export const radient: ThemeDefinition = {
 		surface: "#1A1F2F",
 		elevated: "#282D47",
 		sunken: "#0A0D12",
+		/*
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.21 from `surface`, 5.05 from `elevated` and 10.06
+		 * from `sunken`.
+		 */
+		highlight: "#212636",
 
 		// Pure white was the one value in this file that belonged to no ramp: at
 		// C0 it reads as a hole punched in the navy rather than as the top of the

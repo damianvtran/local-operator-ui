@@ -22,6 +22,12 @@ export const tokyoNight: ThemeDefinition = {
 		// Upstream bg_dark is 16161E, which measures 1.05:1 against canvas. Two
 		// levels deeper for a little more separation.
 		sunken: "#14141B",
+		/*
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.23 from `surface`, 3.27 from `elevated` and 10.29
+		 * from `sunken`.
+		 */
+		highlight: "#2b2f42",
 
 		ink: "#C0CAF5",
 		inkMuted: "#A9B1D6",
