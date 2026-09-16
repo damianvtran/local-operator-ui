@@ -151,10 +151,21 @@ test("a legacy uv-tool install names `lop update` and does not let the app run i
 	assert.equal(plan.canManageUpdate, false);
 	assert.equal(plan.updateCommand, "lop update");
 	assert.equal(plan.sourceBuild, true);
+	/*
+	 * WHY THE COMMAND IS REFUSED lives in the remedy, which is the sentence above
+	 * the command well, and no longer in the mono Details line (reviews U8, N1):
+	 * "this install's updater rewrites the shared environment in place" is the fact
+	 * the reader is deciding on, and it was trailing a resolved path in the
+	 * copy-for-support blob. Details keeps the classification evidence and the
+	 * provenance, and carries neither the layout reason nor a trailing colon the
+	 * well below already implies (review D5).
+	 */
 	assert.match(plan.remedy, /predates the non-disruptive installer/);
-	assert.match(plan.detail, /classified as uv-tool/);
-	assert.match(plan.detail, /rewrites the shared environment in place/);
+	assert.match(plan.remedy, /rewrites the shared environment in place/);
+	assert.doesNotMatch(plan.remedy, /:$/);
+	assert.match(plan.detail, /classified as uv-tool\./);
 	assert.match(plan.detail, /installs the published release over it/);
+	assert.doesNotMatch(plan.detail, /rewrites the shared environment in place/);
 });
 
 test("a generation install is managed, and the layout is the licence - not the version", () => {
@@ -177,7 +188,18 @@ test("a generation install is managed, and the layout is the licence - not the v
 	assert.equal(plan.updateCommand, "lop update");
 	// A wheel, not a checkout: the provenance is the install's own marker.
 	assert.equal(plan.sourceBuild, false);
-	assert.match(plan.remedy, /managed by lop/);
+	/*
+	 * THE MANAGED ARM STATES WHAT THE CLICK COSTS (review U3), and it reaches a
+	 * surface: the offer renders this sentence above its buttons, which is why the
+	 * string is asserted here rather than the old "update it from your terminal"
+	 * line that told the user to leave the app on the one path where the app runs
+	 * the command itself - and which no renderer branch rendered at all
+	 * (reviews D7, U7).
+	 */
+	assert.match(plan.remedy, /restarts the server it started/);
+	assert.match(plan.remedy, /minute or two/);
+	assert.doesNotMatch(plan.remedy, /your terminal/);
+	assert.doesNotMatch(plan.remedy, /:$/);
 	assert.doesNotMatch(plan.detail, /rewrites the shared environment in place/);
 	assert.doesNotMatch(plan.detail, /installs the published release over it/);
 
@@ -472,6 +494,25 @@ test("`lop update` exiting 0 is not evidence that the install moved", () => {
 	// upgrade (the pip path records the same reasoning).
 	assert.equal(
 		didUpgradeLand({ before: "0.55.10", after: "0.55.10", target: "0.56.0" }),
+		false,
+	);
+	/*
+	 * AND THE OTHER SIDE OF THE SAME RULE (review R1-1): an install that is
+	 * ALREADY AT the target is a success, not a failure. The change test alone
+	 * reported "the update did not take effect" over a machine that was already
+	 * correct, and the panel's own button reaches that state - it appears when the
+	 * install is ahead of the serving daemon, which is what the last successful
+	 * update leaves behind. This is the case that fails against the rule without
+	 * the target arm.
+	 */
+	assert.equal(
+		didUpgradeLand({ before: "0.56.0", after: "0.56.0", target: "0.56.0" }),
+		true,
+	);
+	// A change is still not evidence of the RIGHT change: a run that lands
+	// somewhere other than the version it was asked for has not landed.
+	assert.equal(
+		didUpgradeLand({ before: "0.55.10", after: "0.55.14", target: "0.56.0" }),
 		false,
 	);
 	assert.equal(

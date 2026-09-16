@@ -32,6 +32,18 @@ import {
 } from "./update-manual-state";
 
 /**
+ * The identity of a skew reading, for the "the user has already read this" rule.
+ *
+ * Two readings make the key: announcing the same pair again would re-open a panel
+ * the user dismissed for a fact that has not changed, while a NEW pair (a restart
+ * that moved the daemon, a second install) still speaks.
+ */
+const skewKey = (notice: {
+	installVersion: string | null;
+	runningVersion: string | null;
+}): string => `${notice.installVersion ?? "?"}|${notice.runningVersion ?? "?"}`;
+
+/**
  * What the panel says when the server update failed and named no reason.
  *
  * `update-backend` RESOLVES false rather than rejecting, so an attempt that ends
@@ -51,6 +63,17 @@ import {
  * `updateBackend` writes nothing there. The install-failure panel one screen up
  * says "also recorded in Settings" and is true there; this sentence used to copy
  * that promise, and the copy was false (design D3, D10; UX U5).
+ *
+ * UPDATED for the two surfaces that now exist. The pointer sentence is only as
+ * honest as the affordance under it, so both facts above are now supplied by the
+ * main process rather than assumed away: every failure report carries
+ * `logPath` (the log the failing branch wrote, composed where the path is
+ * actually known), and the failure panel offers a button that hands it to
+ * `showItemInFolder` - while a server update started before a quit now leaves the
+ * marker `pending-server-update.json`, which the next launch reports once. The
+ * backstop below still promises neither, because it is reached exactly when the
+ * main process said NOTHING, and that is the case where the app has nothing to
+ * point at (reviews QA U5, UX U6).
  */
 const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
 	targetVersion
@@ -65,10 +88,24 @@ type BackendUpdateInfo = {
 	startupMode?: string;
 	/** Sentence introducing the manual command, chosen by how the server is installed. */
 	remedy?: string;
-	/** How the install was classified, and where it resolved to. */
+	/**
+	 * How the install was classified, and where it resolved to.
+	 *
+	 * Classification evidence only: the install/running skew that used to be
+	 * appended here is now its own field, because this line renders in the Details
+	 * blob while the skew belongs in the sentence above the buttons (review D3).
+	 */
 	detail?: string;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
+	/**
+	 * The build the server SERVING this app reports, when it was readable.
+	 *
+	 * `currentVersion` is the install on disk - the thing an update moves - so the
+	 * two differ between a landed install and the restart, and on every daemon the
+	 * app did not start. The panel names both when they differ (reviews R1-2, D3).
+	 */
+	runningVersion?: string | null;
 	/**
 	 * True when this event answers a check the user asked for.
 	 *
@@ -160,6 +197,14 @@ type ManualUpdateInfo = {
 	 */
 	latestVersion?: string | null;
 	currentVersion?: string | null;
+	/**
+	 * The version the INSTALL on disk reports, when it is not the running one.
+	 *
+	 * `currentVersion` is the daemon serving the conversation on this payload, so
+	 * when the two differ the panel names both rather than presenting the install's
+	 * version as the one the reader is using (review D3).
+	 */
+	installVersion?: string | null;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
 };
@@ -255,6 +300,65 @@ export const UpdateHeading = ({
 );
 
 /**
+ * The installer's own output, quoted under the sentence that summarises it.
+ *
+ * WHY IT IS NOT ONE PARAGRAPH: the producer hands over the sentence and the tail
+ * separated by a blank line, with the tail's lines holding uv's own two-space
+ * `  Caused by:` nesting - which is the only thing in the block that tells a
+ * reader whether they hit a network problem or a disk problem. Rendered into a
+ * single `<p>` the blank line vanished and the sentence swallowed the machine
+ * voice, so the whole point of carrying the tail was lost (reviews D1, U5).
+ * `whitespace-pre-wrap` preserves both the break and the indentation, which
+ * `pre-line` would keep the first of and drop the second.
+ */
+export const InstallerOutput = ({ output }: { output: string }) => {
+	const [copied, setCopied] = useState(false);
+	return (
+		<div className="mt-2">
+			<div className="flex items-center justify-between gap-2">
+				<span className="text-meta text-ink-dim">Installer output:</span>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => {
+						void navigator.clipboard
+							.writeText(output)
+							.then(() => setCopied(true))
+							.catch(() => undefined);
+					}}
+				>
+					{copied ? <Check /> : <Copy />}
+					{copied ? "Copied" : "Copy output"}
+				</Button>
+			</div>
+			<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken p-2 font-mono text-mono-sm text-ink-dim">
+				{output}
+			</pre>
+		</div>
+	);
+};
+
+/**
+ * Split a failure report into its sentence and the installer's output.
+ *
+ * The producer writes them as `sentence\n\ntail`, and the contract is one blank
+ * line: everything after the first one is machine voice. Absent a blank line the
+ * whole message is the sentence, which is the shape every report without a tail
+ * already has.
+ */
+export const splitInstallerOutput = (
+	message: string,
+): { sentence: string; output: string | null } => {
+	const index = message.indexOf("\n\n");
+	if (index === -1) return { sentence: message, output: null };
+	const output = message.slice(index + 2).trim();
+	return {
+		sentence: message.slice(0, index),
+		output: output.length > 0 ? output : null,
+	};
+};
+
+/**
  * A command the user has to run themselves, with a way to take it with them.
  *
  * The app already had this pattern (MCP setup prompts, provider details), and a
@@ -341,7 +445,18 @@ const ManualRemedyNote = ({
 	return (
 		<p className="mt-2 text-body text-ink">
 			{sourceBuild
-				? "Run this in a terminal. It rebuilds the server from this machine's checkout, so the version it reports afterwards is your checkout's rather than the published release."
+				? /*
+					 * WHAT THE NAMED COMMAND DOES TO THIS INSTALL, which is the one thing this
+					 * note has to get right: the sentence here used to say `lop update`
+					 * "rebuilds the server from this machine's checkout", which was true of the
+					 * remedy the panel then named (`lop-update`, the release owner's script)
+					 * and false of the one it names now. A source-build user following it
+					 * silently lost the checkout they were following, while the same panel's own
+					 * Details line said the opposite (review D2, UX U2). The harness settles it:
+					 * `git_snapshot_notice()` prints "this runtime was built from git; lop update
+					 * will replace it with the PyPI wheel".
+					 */
+					"Run this in a terminal. This install was built from this machine's checkout, so `lop update` installs the published release over it - run `lop-update` afterwards if you want to keep following the checkout."
 				: command
 					? "Run this in a terminal, then check for updates again to pick up the new server version."
 					: "Then check for updates again to pick up the new server version."}
@@ -356,23 +471,90 @@ const ManualRemedyNote = ({
  * version at all, so there was nothing to work towards and - with the clear rule
  * above - nothing to tell them whether they had arrived (review U17).
  */
+/**
+ * A version reading, when it is one a reader can be shown.
+ *
+ * Both version fields arrive from the main process as `string | null`, and the
+ * old-server branch of the `/health` read answers the literal `"Unknown"` - so a
+ * sentence built on either has to refuse that rather than print it. Mirrors
+ * `isReadableVersion` on the main side; the renderer cannot import it (that
+ * module is main-only) and duplicating the GRAMMAR would be a second answer to
+ * "is this a version" - what is duplicated here is only the guard, and it is
+ * deliberately loose: these strings are displayed, never compared.
+ */
+const READABLE_VERSION = /^\d+\.\d+/;
+
+const readableVersion = (value: string | null | undefined): string | null => {
+	if (typeof value !== "string") return null;
+	const trimmed = value.trim();
+	return READABLE_VERSION.test(trimmed) ? trimmed : null;
+};
+
+/**
+ * The version sentence, which names BOTH readings when they disagree.
+ *
+ * `installVersion` is the install on disk - what an update would move - and it
+ * used to be rendered alone as "the version you are currently using"
+ * (`update-service.ts` used to send the install reading as `currentVersion`),
+ * which is false for every state this change creates: an install that has moved
+ * ahead of the daemon still serving the conversation. Settings reads that daemon,
+ * so the sentence the user could check was wrong by exactly the difference the
+ * update path exists to publish, and the correction lived in the mono Details
+ * blob (review D3, UX U1).
+ *
+ * When the two readings agree the sentence does not grow: an ordinary offer reads
+ * exactly as it always did.
+ */
+const backendVersionSentence = ({
+	latestVersion,
+	installVersion,
+	runningVersion,
+}: {
+	latestVersion: string;
+	/** Null when the caller has no install reading. */
+	installVersion?: string | null;
+	/** Null when the daemon could not be read, or does not answer versions. */
+	runningVersion?: string | null;
+}): string => {
+	const install = readableVersion(installVersion);
+	const running = readableVersion(runningVersion);
+	if (install && running && install !== running) {
+		return `Server version ${latestVersion} is available. The install on this machine is at ${install}, and the server you are using is running ${running} until it restarts.`;
+	}
+	/*
+	 * With nothing to distinguish, the sentence names the reading the panel has
+	 * always named - what the reader is using, which is the daemon when both are
+	 * known and either one when only one is. `latestVersion` is not interpolated
+	 * unchecked: it is the published version the offer is built around.
+	 */
+	const shown = running ?? install;
+	return shown
+		? `Server version ${latestVersion} is available. You are currently using version ${shown}.`
+		: `Server version ${latestVersion} is available.`;
+};
+
 const ManualUpdateVersions = ({
 	latestVersion,
-	currentVersion,
+	runningVersion,
+	installVersion,
 	className,
 }: {
 	latestVersion?: string | null;
-	currentVersion?: string | null;
+	/** The build the server serving this app is on, when it is readable. */
+	runningVersion?: string | null;
+	/** The version the INSTALL on disk reports, when the caller knows it. */
+	installVersion?: string | null;
 	/** Spacing the caller owns when this line does not follow its usual sibling. */
 	className?: string;
 }) => {
 	if (!latestVersion) return null;
 	return (
 		<p className={cn("mb-2 text-body text-ink-muted", className)}>
-			{`Server version ${latestVersion} is available.`}
-			{currentVersion
-				? ` You are currently using version ${currentVersion}.`
-				: ""}
+			{backendVersionSentence({
+				latestVersion,
+				installVersion,
+				runningVersion,
+			})}
 		</p>
 	);
 };
@@ -445,13 +627,69 @@ export const UpdateNotification = ({
 	 * above the offer panel, it also took **Update server** off the screen for the
 	 * rest of the session (design D1, UX U1).
 	 */
-	const [backendUpdateFailure, setBackendUpdateFailure] = useState<
-		string | null
-	>(null);
+	const [backendUpdateFailure, setBackendUpdateFailure] = useState<{
+		/** The main process's own sentence. */
+		message: string;
+		/**
+		 * The update service log the failing branch wrote, when it named one.
+		 *
+		 * The panel's sentence points at that log, so the pointer is only honest if
+		 * the surface can open it: the path is composed in the main process (the
+		 * platform's user-data location, or the launch's own override) and a renderer
+		 * that derived it would name the operator's file during a scratch run
+		 * (review U5).
+		 */
+		logPath?: string;
+	} | null>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
 	const [backendUpdateInfo, setBackendUpdateInfo] =
 		useState<BackendUpdateInfo | null>(null);
 	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
+	/**
+	 * The two readings a finished - or refused - update left behind.
+	 *
+	 * Standing state rather than a toast, because both facts it carries are about a
+	 * server that is still SERVING and still OLD: an install that moved onto a daemon
+	 * this app adopted and deliberately did not bounce (`restarted: false`), or an
+	 * attempt that landed after the app was gone (`unattended`). The completion toast
+	 * said "completed successfully" over both, and the install being latest means no
+	 * later check ever re-offers the update, so nothing else on any surface corrects
+	 * it (reviews R1-3, UX U1/U6, QA Q-1/Q-2).
+	 */
+	const [backendSkewNotice, setBackendSkewNotice] = useState<{
+		/** The install on disk, and the build the server is actually on. */
+		installVersion: string | null;
+		runningVersion: string | null;
+		/** The install moved but nothing restarted the daemon serving this app. */
+		notRestarted: boolean;
+		/** The attempt landed while no app was watching it (UX U6). */
+		unattended: boolean;
+		/**
+		 * Whether the app may restart the daemon that is behind.
+		 *
+		 * It decides the "what to do" line, and the two cases are opposite: an owned
+		 * daemon is the app's to bounce (so the reader has an action), while an adopted
+		 * one is not (so the sentence is a fact about what to expect). Defaults to true
+		 * - a producer that does not say is the app's own daemon.
+		 */
+		restartable: boolean;
+		/** Whether the notice is a goodbye to an offer whose version is already had. */
+		kind: "landed" | "up-to-date";
+	} | null>(null);
+	/**
+	 * The skew the user has already waved away, by reading.
+	 *
+	 * A daemon this app did not start keeps trailing the install, so every non-silent
+	 * check re-reports the same pair; without this the panel would re-open on a state
+	 * the user has read and dismissed, which is the nagging shape the offer's own
+	 * defer rule exists to avoid. Keyed by the two readings, so a NEW skew still
+	 * speaks.
+	 */
+	const dismissedSkewRef = useRef<string | null>(null);
+	/** Which phase the running update is in, announced as it changes (UX U4). */
+	const [backendUpdatePhase, setBackendUpdatePhase] = useState<
+		"installing" | "restarting" | null
+	>(null);
 	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
 	const [manualUpdateInfo, setManualUpdateInfo] =
 		useState<ManualUpdateInfo | null>(null);
@@ -737,6 +975,58 @@ export const UpdateNotification = ({
 		return true;
 	}, []);
 
+	/**
+	 * Put an install/running skew on screen, unless the user has already read it.
+	 *
+	 * THE ONE PLACE the skew is rendered, for three arrivals: a landed update onto a
+	 * daemon the app adopted (R1-3, U1), a check whose install is current while its
+	 * daemon is not (Q-1), and an attempt that landed after the app was gone (U6).
+	 * All three are the same fact - the install on disk is not the build serving this
+	 * conversation - and the same consequence: only a restart of that process closes
+	 * the gap, and the app deliberately does not restart a daemon it did not start.
+	 *
+	 * DEDUPED BY READING: a daemon nobody restarts keeps trailing the install, so
+	 * every non-silent check re-reports the identical pair. Re-opening a panel the
+	 * user has dismissed for a fact they have already read is the nagging shape the
+	 * offer's own defer rule exists to avoid, while a NEW reading still speaks.
+	 */
+	const announceBackendSkew = useCallback(
+		(notice: {
+			installVersion: string | null;
+			runningVersion: string | null;
+			notRestarted: boolean;
+			unattended: boolean;
+			restartable: boolean;
+			kind: "landed" | "up-to-date";
+		}) => {
+			const install = readableVersion(notice.installVersion);
+			const running = readableVersion(notice.runningVersion);
+			/*
+			 * SILENT UNLESS THERE ARE TWO READINGS THAT DIFFER, which is the rule the skew
+			 * sentence itself was built on when it lived in the main process: a clause
+			 * about a daemon built on a missing reading invents a disagreement, and one
+			 * built on two EQUAL readings is a false alarm - the panel would head a
+			 * machine where install and daemon are both 0.56.2 with "The server is on an
+			 * older build than the install". This rig produced exactly that (a check that
+			 * follows an already-current install carries `runningVersion` equal to
+			 * `version`), which is why the guard is here rather than at each caller: the
+			 * three arrivals are one sentence, and the sentence is silent unless it has
+			 * something to say.
+			 *
+			 * The unattended case is the exception, and deliberately: the news there is
+			 * that the attempt landed while no app was watching (its running reading is
+			 * null by construction), not that the two differ.
+			 */
+			if (!notice.unattended && (!install || !running || install === running)) {
+				return;
+			}
+			const key = skewKey(notice);
+			if (dismissedSkewRef.current === key) return;
+			setBackendSkewNotice(notice);
+		},
+		[],
+	);
+
 	// Update the backend
 	const updateBackend = useCallback(async () => {
 		backendUpdateAttemptRef.current = { terminal: false, inFlight: true };
@@ -762,11 +1052,13 @@ export const UpdateNotification = ({
 			 * reported the same failure wins, so one failure is one message.
 			 */
 			if (result === false && !backendUpdateAttemptRef.current.terminal) {
-				setBackendUpdateFailure(serverUpdateFailedMessage(targetVersion));
+				setBackendUpdateFailure({
+					message: serverUpdateFailedMessage(targetVersion),
+				});
 			}
 		} catch (err) {
 			if (!backendUpdateAttemptRef.current.terminal) {
-				setBackendUpdateFailure(
+				setBackendUpdateFailure({
 					/*
 					 * The app's own sentence leads and the machine's words are its
 					 * tail: this string is a panel heading, and running the caught
@@ -774,8 +1066,8 @@ export const UpdateNotification = ({
 					 * sentence - about the check - onto a sentence about the update
 					 * that was pressed.
 					 */
-					`The server update could not be started: ${updateMessageOf(err)}`,
-				);
+					message: `The server update could not be started: ${updateMessageOf(err)}`,
+				});
 			}
 		} finally {
 			// Unconditional, and deliberately not per-branch: no path through
@@ -1079,11 +1371,28 @@ export const UpdateNotification = ({
 						sourceBuild: false,
 					};
 				}
+				/*
+				 * QA Q-1: with the install already current there is no offer to carry the
+				 * skew, so this is the ONLY state that can - and it carried nothing, which
+				 * left a user whose runtime lags the install told nothing at all, with no
+				 * later check able to re-offer, because the install itself is up to date.
+				 * The producer now sends the daemon's reading on this event too.
+				 */
+				if (readableVersion(info.runningVersion)) {
+					announceBackendSkew({
+						installVersion: info.version,
+						runningVersion: info.runningVersion ?? null,
+						notRestarted: true,
+						unattended: false,
+						restartable: info.restartable !== false,
+						kind: "up-to-date",
+					});
+				}
 			});
 
 		// Backend update completed
 		const removeBackendUpdateCompletedListener =
-			window.api.updater.onBackendUpdateCompleted(() => {
+			window.api.updater.onBackendUpdateCompleted((completion) => {
 				// The attempt this answers is over, and `terminal` keeps the resolved
 				// `true`/`false` behind this event from reporting it a second time.
 				answerBackendUpdateAttempt();
@@ -1091,12 +1400,51 @@ export const UpdateNotification = ({
 				setBackendUpdateInfo(null);
 				setChecking(false);
 				setUpdatingBackend(false);
+				setBackendUpdatePhase(null);
+
+				/*
+				 * A completion is only good news for the server when the thing serving the
+				 * conversation moved with the install. It does not when the app is attached
+				 * to a daemon it did not start (`restarted: false` - the app deliberately
+				 * leaves it alone), or when the attempt landed after the app was gone
+				 * (`unattended`). Those two say both readings on the standing notice instead
+				 * of the success toast, because the toast is a claim about the server and
+				 * the server is still on the old build - while the install being latest
+				 * means no later check ever offers the update again (reviews R1-3, UX
+				 * U1/U6, QA Q-2).
+				 */
+				if (
+					completion &&
+					(!completion.restarted || completion.unattended === true)
+				) {
+					announceBackendSkew({
+						installVersion: completion.installVersion,
+						runningVersion: completion.runningVersion,
+						notRestarted: !completion.restarted,
+						unattended: completion.unattended === true,
+						restartable: completion.restartable !== false,
+						kind: "landed",
+					});
+					return;
+				}
+
 				setBackendUpdateCompleted(true);
 				setSnackbarOpen(true);
 
 				setTimeout(() => {
 					setBackendUpdateCompleted(false);
 				}, 6000);
+			});
+
+		/**
+		 * Which phase the update is in, announced by the main process as it changes.
+		 *
+		 * The install and the restart are one panel otherwise: ~47 s and ~15 s of it on
+		 * a cold cache, distinguishable only by the bar's motion (UX U4).
+		 */
+		const removeBackendUpdateProgressListener =
+			window.api.updater.onBackendUpdateProgress(({ phase }) => {
+				setBackendUpdatePhase(phase);
 			});
 
 		/**
@@ -1133,7 +1481,11 @@ export const UpdateNotification = ({
 					 * during a check - so it goes through the same copy as the app
 					 * channel rather than being painted as the machine wrote it.
 					 */
-					setBackendUpdateFailure(updateErrorMessage(report.message));
+					setBackendUpdateFailure({
+						message: updateErrorMessage(report.message),
+						logPath: report.logPath,
+					});
+					setBackendUpdatePhase(null);
 					setChecking(false);
 					setUpdatingBackend(false);
 					return;
@@ -1157,6 +1509,7 @@ export const UpdateNotification = ({
 			removeBackendUpdateAvailableListener();
 			removeBackendUpdateNotAvailableListener();
 			removeBackendUpdateCompletedListener();
+			removeBackendUpdateProgressListener();
 			removeBackendUpdateErrorListener();
 			removeBackendManualRequiredListener();
 			removeInstallBlockedListener();
@@ -1164,6 +1517,7 @@ export const UpdateNotification = ({
 			removeInstallInFlightListener();
 		};
 	}, [
+		announceBackendSkew,
 		answerBackendUpdateAttempt,
 		autoCheck,
 		checkForUpdates,
@@ -1357,7 +1711,19 @@ export const UpdateNotification = ({
 				    up is its own change. Without this a mis-press reads as a dead end. */}
 				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
-						? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
+						? backendUpdatePhase === "installing"
+							? /*
+								 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
+								 * ~47 s cold, against ~15 s for the restart - and the old single
+								 * sentence described only the restart, so a user watching the panel
+								 * for a minute could not tell this phase from a hang, nor from the
+								 * phase that had not started. The server really is still serving here:
+								 * under generations nothing running is rewritten.
+								 */
+								"Installing the new server build. The server you are using keeps serving while this runs, and it restarts once the install lands. This can take a minute or two, and the update can't be interrupted once it has started."
+							: backendUpdatePhase === "restarting"
+								? "The new build has landed. The server is restarting onto it now, so it is offline for a few seconds and anything in flight is dropped."
+								: "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
 				<ProgressContainer>
@@ -1430,48 +1796,28 @@ export const UpdateNotification = ({
 				    (review D5). */}
 				<p className="mb-2 text-body text-ink">{manualUpdateInfo.message}</p>
 				{/*
-				 * The offer line follows the caveat that qualifies it. On a source
-				 * build the version sentence cannot name a target the install reaches -
-				 * the closing paragraph of this very panel says the version it reports
-				 * afterwards is the checkout's - so reading "Server version X is
-				 * available" above that paragraph promises an outcome the next line
-				 * withdraws (reviews R16, D15). The qualified branch therefore puts the
-				 * command and its note first and the availability line last; the branch
-				 * whose offer is reachable keeps its shape, and so does the copy.
+				 * ONE ORDER FOR BOTH INSTALL SHAPES, because the reason the source-build
+				 * branch reordered this panel is gone. It used to read "Server version X is
+				 * available" above a closing paragraph that withdrew the outcome ("the
+				 * version it reports afterwards is your checkout's"), so the offer line was
+				 * moved below the caveat (reviews R16, D15). The note no longer withdraws
+				 * anything - `lop update` replaces a checkout install with the published
+				 * release, which is what `git_snapshot_notice()` prints and what the panel's
+				 * own Details line already said - so the version line keeps its usual place
+				 * and both shapes read the same way (review D2).
 				 */}
-				{manualUpdateInfo.sourceBuild === true ? (
-					<>
-						{manualUpdateInfo.command ? (
-							<CommandBlock command={manualUpdateInfo.command} />
-						) : null}
-						<ManualRemedyNote
-							command={Boolean(manualUpdateInfo.command)}
-							sourceBuild
-						/>
-						{/* Its own gap, because it follows the caveat rather than the command
-						    well here: without it, the offer line reads as the last sentence
-						    of the paragraph above. */}
-						<ManualUpdateVersions
-							className="mt-2"
-							latestVersion={manualUpdateInfo.latestVersion}
-							currentVersion={manualUpdateInfo.currentVersion}
-						/>
-					</>
-				) : (
-					<>
-						<ManualUpdateVersions
-							latestVersion={manualUpdateInfo.latestVersion}
-							currentVersion={manualUpdateInfo.currentVersion}
-						/>
-						{manualUpdateInfo.command ? (
-							<CommandBlock command={manualUpdateInfo.command} />
-						) : null}
-						<ManualRemedyNote
-							command={Boolean(manualUpdateInfo.command)}
-							sourceBuild={false}
-						/>
-					</>
-				)}
+				<ManualUpdateVersions
+					latestVersion={manualUpdateInfo.latestVersion}
+					runningVersion={manualUpdateInfo.currentVersion}
+					installVersion={manualUpdateInfo.installVersion}
+				/>
+				{manualUpdateInfo.command ? (
+					<CommandBlock command={manualUpdateInfo.command} />
+				) : null}
+				<ManualRemedyNote
+					command={Boolean(manualUpdateInfo.command)}
+					sourceBuild={manualUpdateInfo.sourceBuild === true}
+				/>
 				<UpdateActions>
 					<Button
 						variant="outline"
@@ -1697,12 +2043,42 @@ export const UpdateNotification = ({
 	 * point at, and that is its own change.
 	 */
 	if (backendUpdateFailure) {
+		const failure = splitInstallerOutput(backendUpdateFailure.message);
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
 					The server update didn't finish
 				</UpdateHeading>
-				<p className="mb-2 text-body text-ink-muted">{backendUpdateFailure}</p>
+				<p className="mb-2 text-body text-ink-muted">{failure.sentence}</p>
+				{/*
+				 * The installer's own words as their own block, not welded onto the
+				 * sentence above: the producer separates them with a blank line and the
+				 * tail carries uv's nested `Caused by:` lines, which is the only part
+				 * that says whether this was the network or the disk (reviews D1, U5).
+				 */}
+				{failure.output && <InstallerOutput output={failure.output} />}
+				{/*
+				 * The sentence above points at the update service log, and this is what
+				 * makes that pointer a next step rather than a dead end: the renderer
+				 * cannot derive the path (it is composed in the main process from the
+				 * platform's user-data location or the launch's own override), so the
+				 * report carries it and this hands it to the shell (review U5).
+				 */}
+				{backendUpdateFailure.logPath && (
+					<div className="mt-2">
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								void window.api.showItemInFolder(
+									backendUpdateFailure.logPath as string,
+								);
+							}}
+						>
+							Show update log
+						</Button>
+					</div>
+				)}
 				<UpdateActions>
 					<Button
 						variant="outline"
@@ -1728,9 +2104,23 @@ export const UpdateNotification = ({
 		return withErrorToast(
 			<UpdateContainer>
 				<h2 className="mb-3 text-heading text-ink">Server update available</h2>
+				{/*
+				 * BOTH READINGS IN THE SENTENCE, when there are two. `currentVersion` is
+				 * the install on disk - the thing the button moves - while the build
+				 * serving this conversation can be an older one (a daemon this app
+				 * adopted, or the restart that has not happened yet). The panel used to
+				 * present the install's version as the one the reader "is currently
+				 * using", which is false in exactly the states this change creates, and
+				 * the correction was buried four mono lines down in Details (review D3,
+				 * UX U1). Settings reads the daemon, so that sentence was the one the user
+				 * could check.
+				 */}
 				<p className="mb-2 text-body text-ink-muted">
-					Server version {backendUpdateInfo.latestVersion} is available. You are
-					currently using version {backendUpdateInfo.currentVersion}.
+					{backendVersionSentence({
+						latestVersion: backendUpdateInfo.latestVersion,
+						installVersion: backendUpdateInfo.currentVersion,
+						runningVersion: backendUpdateInfo.runningVersion,
+					})}
 				</p>
 				<p className="mt-2 text-body-sm text-ink-muted">
 					Updating the server will improve AI functionality, improve security,
@@ -1738,24 +2128,49 @@ export const UpdateNotification = ({
 				</p>
 
 				{backendUpdateInfo.canManageUpdate ? (
-					<UpdateActions>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={handleDeferBackendUpdate}
-							disabled={checking}
-						>
-							Update later
-						</Button>
-						<Button
-							variant="primary"
-							size="sm"
-							onClick={updateBackend}
-							disabled={checking}
-						>
-							{checking ? "Updating..." : "Update server"}
-						</Button>
-					</UpdateActions>
+					<>
+						{/*
+						 * WHAT THE CLICK COSTS, before the click (review U3). This is the one
+						 * update path where the app knows it will restart something, and the
+						 * fact - the app's own daemon is bounced, dropping a turn in flight -
+						 * first appeared AFTER the press, in the in-flight panel. The sentence
+						 * comes from the plan (`remedy`), so it is the same string the
+						 * main process states about itself, and it is why the managed arm is
+						 * rendered rather than left as dead data (reviews D7, U7).
+						 */}
+						<p className="mt-4 text-body text-ink">
+							{backendUpdateInfo.remedy ??
+								"The app updates this install and then restarts the server it started."}
+						</p>
+						<UpdateActions>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleDeferBackendUpdate}
+								disabled={checking}
+							>
+								Update later
+							</Button>
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={updateBackend}
+								disabled={checking}
+							>
+								{checking ? "Updating..." : "Update server"}
+							</Button>
+						</UpdateActions>
+						{/*
+						 * The classification evidence renders on THIS branch too. It used to
+						 * exist only in the by-hand branch, which is where a global install
+						 * always landed before this change made the app-driven arm
+						 * reachable - so the provenance sentence and the classification left
+						 * the screen at the moment the app started acting (review R1-2).
+						 */}
+						{backendUpdateInfo.detail && (
+							<PanelDetails detail={backendUpdateInfo.detail} />
+						)}
+					</>
 				) : (
 					<>
 						{/* The same treatment as the manual-required panel's sentence - one
@@ -1802,24 +2217,13 @@ export const UpdateNotification = ({
 				)}
 			</UpdateContainer>,
 			/*
-			 * The panel IS the notification here, so the toast that used to sit in the
-			 * opposite corner saying the same sentence is gone - and it is gone for the
-			 * state that never raised one, rather than being raised twice or not at
-			 * all depending on the branch (review D8).
-			 *
-			 * It is the wrapper's notice slot rather than a sibling of the error toast,
-			 * because the two share one pinned box (UX U6).
+			 * NO NOTICE ON THIS BRANCH (review D6). The panel top-right already says
+			 * "Server version X is available", so the toast in the opposite corner was
+			 * the same news twice in two spellings - "v0.56.0" and "0.56.0" - and it
+			 * only ever appeared for the arm that manages the update, i.e. the arm whose
+			 * panel the user is looking at. The notice slot stays for the branches whose
+			 * news the panel does NOT carry: the failure toast and the completion.
 			 */
-			backendUpdateInfo.canManageUpdate && (
-				<FloatingAlert
-					open={snackbarOpen}
-					autoHideDuration={6000}
-					onClose={closeSnackbar}
-					variant="info"
-				>
-					A new server update is available: v{backendUpdateInfo.latestVersion}
-				</FloatingAlert>
-			),
 		);
 	}
 
@@ -1840,6 +2244,54 @@ export const UpdateNotification = ({
 			>
 				Server update completed successfully
 			</FloatingAlert>,
+		);
+	}
+
+	/*
+	 * The install on disk and the server SERVING this app are on different builds.
+	 *
+	 * A panel rather than the completion toast, because the toast is a claim about
+	 * the server and the server has not moved: the app is attached to a daemon it did
+	 * not start, or an attempt landed while no app was watching, and in both cases
+	 * the app deliberately does not bounce that process - nor can it. The truth is
+	 * also self-concealing: the install is now latest, so no later check re-offers
+	 * anything and nothing else on any surface says the two readings differ
+	 * (reviews R1-3, D3, UX U1/U6, QA Q-1/Q-2). It renders only when no offer or
+	 * status panel is up, because those already name both readings themselves.
+	 */
+	if (backendSkewNotice) {
+		const { installVersion, runningVersion, unattended, restartable, kind } =
+			backendSkewNotice;
+		return withErrorToast(
+			<UpdateContainer>
+				<UpdateHeading>
+					The server is on an older build than the install
+				</UpdateHeading>
+				<p className="mb-2 text-body text-ink-muted">
+					{kind === "up-to-date"
+						? `This machine's install is up to date${installVersion ? ` (${installVersion})` : ""}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
+						: unattended
+							? `An update you started before quitting finished while Local Operator was closed, so the install is now at ${installVersion ?? "a newer version"}. Nothing restarted the server that was serving you${runningVersion ? `, which still reports ${runningVersion}` : ""}.`
+							: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
+				</p>
+				<p className="mb-2 text-body text-ink-muted">
+					{restartable
+						? "Restart Local Operator and the server comes back on the new build."
+						: "It moves onto the new build when it restarts - Local Operator does not restart a server it did not start."}
+				</p>
+				<UpdateActions>
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => {
+							dismissedSkewRef.current = skewKey(backendSkewNotice);
+							setBackendSkewNotice(null);
+						}}
+					>
+						Understood
+					</Button>
+				</UpdateActions>
+			</UpdateContainer>,
 		);
 	}
 

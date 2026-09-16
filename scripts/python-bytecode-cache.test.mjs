@@ -1395,11 +1395,32 @@ test("every python-running runCommand call site in the update service passes the
 
 	// Asserted rather than assumed, so a reorganisation cannot make this pass by
 	// finding nothing: the probe, the pip upgrade and the global install's update
-	// child are the three that exist.
+	// child are the three that exist, beside `codesign` and the installer list
+	// probe below.
 	assert.equal(
 		calls.length,
-		4,
-		`expected the file's four runCommand call sites, found ${calls.length}`,
+		5,
+		`expected the file's five runCommand call sites, found ${calls.length}`,
+	);
+	/*
+	 * The fifth is `probeInstallerList`, and it runs python too - `uv` and `pipx`
+	 * are python programs - but its command is a PARAMETER, so the text test above
+	 * cannot classify it. It is asserted by name instead, and it carries the same
+	 * guard for the same reason: the bytecode those tools write must not land in
+	 * the installed app.
+	 */
+	const probeCalls = calls.filter(({ text }) =>
+		/timeoutMs:\s*INSTALLER_PROBE_TIMEOUT_MS/.test(text),
+	);
+	assert.equal(
+		probeCalls.length,
+		1,
+		`expected the installer-list probe's one runCommand call site, found ${probeCalls.length}`,
+	);
+	assert.match(
+		probeCalls[0].text,
+		/env:\s*this\.pythonSpawnEnv\(\)/,
+		`the installer list probe must pass the guarded environment: ${probeCalls[0].text.replace(/\s+/g, " ")}`,
 	);
 	assert.equal(
 		pythonCalls.length,
@@ -2081,11 +2102,18 @@ const SPAWN_SITES = [
 	// scanner still walks it, so a new `spawn(pythonPath)` there fails this test
 	// for being unlisted rather than hiding behind a file-level exemption.
 
+	runsCommand(
+		"src/main/update-install.ts",
+		"execFileSync",
+		1,
+		/"where"/,
+		"`resolveGlobalConsoleScript`'s Windows arm: `where` asks for the same console-script names the Unix arm resolves through `resolveCommandPath`, and `where` starts no interpreter",
+	),
 	passThrough(
 		"src/main/update-service.ts",
 		"execFile",
 		1,
-		"the update service's `runCommand`: it runs `codesign` (inherited environment, its own call sites below) and the two python probes, and the python call sites pass `pythonSpawnEnv()` - asserted by the runCommand case above",
+		"the update service's `runCommand`: it runs `codesign` (inherited environment, its own call sites below) and the installer list probes (`uv tool list`, `pipx list`), which pass `pythonSpawnEnv()` - asserted by the runCommand case above",
 	),
 	passThrough(
 		"src/main/update-service.ts",
