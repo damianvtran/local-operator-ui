@@ -31,14 +31,32 @@ export const iceberg: ThemeDefinition = {
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
 		sunken: "#E1E2E7",
 		/*
-		 * The current row's own ground, and the palette where the band is tightest:
-		 * `surface` stepped -10/-10/-11 on R/G/B toward black. ΔE00 2.19 from
-		 * `surface`, but only
-		 * 2.15 from `sunken` — this light ramp has very little room below its page
-		 * ground, so a deeper selection step would have collided with the recessed
-		 * one. 4.21 from `elevated`.
+		 * The current row's own ground: `surface` stepped down its own cool ramp,
+		 * and carried to 3.0x its chroma at the same hue. ΔE00 4.12 from `surface`,
+		 * 5.88 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 2.53 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted. § 3 of `docs/branding.md` names the CHROMA axis as the cheap one
+		 * — a contrast ratio has no chroma term, so separating two grounds by warmth
+		 * at a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them — and this palette is where that
+		 * matters most, because its light ramp has almost no room below a page
+		 * ground: `sunken` is only 3.75 from `surface`, so a pure lightness step
+		 * stops at ΔE00 1.47 before it collides with the recessed ground. The whole
+		 * step is therefore bought on chroma, 3.0x, which is the largest lift of the
+		 * twelve and is stated here rather than hidden behind a round number.
+		 *
+		 * Ink on this ground: `ink` 9.51:1, `ink-muted` 6.64:1, `ink-dim` 5.11:1 —
+		 * every floor in § 3 cleared with headroom above it, because the caps and the
+		 * `· lopdev` binding inside a current row are drawn in `ink-dim` and
+		 * legibility is not what the mark may spend. The structural edge the row now
+		 * carries measures 3.29:1 against it, over the 3:1 that role's floor asks
+		 * for.
 		 */
-		highlight: "#e8e9eb",
+		highlight: "#e5e7f1",
 
 		// Iceberg's own text colour. The old file darkened it to 262A3F for
 		// contrast, which is no longer necessary — this measures 9:1 on the darkest

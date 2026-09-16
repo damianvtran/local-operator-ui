@@ -23,11 +23,28 @@ export const radient: ThemeDefinition = {
 		elevated: "#282D47",
 		sunken: "#0A0D12",
 		/*
-		 * The current row's own ground: `surface` stepped +7 on every channel
-		 * toward white. ΔE00 2.21 from `surface`, 5.05 from `elevated` and 10.06
-		 * from `sunken`.
+		 * The current row's own ground: `surface` stepped up its own blue ramp. ΔE00 4.11 from `surface`,
+		 * 4.09 from `elevated` (the same row's hover step, so the pointer cannot
+		 * erase the selection) and 11.72 from `sunken`.
+		 *
+		 * The step was authored at ΔE00 2.18-2.28 from `surface` for a selection the
+		 * operator first asked to be SUBTLE; he has since seen it rendered and
+		 * reported it as invisible beside a hovered neighbour, so the intent is
+		 * inverted and the role now carries unchanged the surface's chroma at the same
+		 * hue. § 3 of `docs/branding.md` names the chroma axis as the cheap one —
+		 * a contrast ratio has no chroma term, so separating two grounds by warmth at
+		 * a fixed L* spends no ink assertion, while separating them by lightness
+		 * spends every one measured against them. A pure lightness step stops at
+		 * ΔE00 8.04 here because `ink-dim` reaches 4.69:1 there.
+		 *
+		 * Ink on this ground: `ink` 12.87:1, `ink-muted` 8.98:1, `ink-dim`
+		 * 5.61:1 — every floor in § 3 cleared with headroom above it, because the
+		 * caps and the `· lopdev` binding inside a current row are drawn in `ink-dim`
+		 * and legibility is not what the mark may spend. The structural edge the row
+		 * now carries measures 4.03:1 against it, over the 3:1 that role's floor
+		 * asks for. The widest gap between the two marks of any palette here: the hover step is 6.25 from `surface`, far past anything the inks allow the row to take, so the ordering the operator's report is about rests on the structural edge in this theme and not on the ground.
 		 */
-		highlight: "#212636",
+		highlight: "#272c3d",
 
 		// Pure white was the one value in this file that belonged to no ramp: at
 		// C0 it reads as a hole punched in the navy rather than as the top of the
