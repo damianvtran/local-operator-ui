@@ -297,7 +297,15 @@ export const STORIES = [
 	 */
 	["browser-pane--this-conversation", 640, 460],
 	["browser-pane--all-tabs", 640, 460],
-	["browser-pane--scope-empty", 640, 380],
+	/*
+	 * `scope-empty` is at the SAME size as the populated frames rather than tight to
+	 * its own content (design round 2, D9): the finding is a comparison - the strip,
+	 * and therefore the page area below it, stepping as a tab appears - so the pair
+	 * has to be photographed in the same box or the two captions are not comparable.
+	 * It is less empty than it was, so the uniformity ceiling the old height existed
+	 * for is no longer the constraint.
+	 */
+	["browser-pane--scope-empty", 640, 460],
 	["browser-pane--show-all-tabs", 640, 460],
 	["browser-pane--one-tab", 640, 460],
 	["browser-pane--with-approval", 640, 720],
