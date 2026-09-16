@@ -2123,7 +2123,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					caret: at,
 					commandNames: slash.commandNames,
 					promptCommands: slash.promptCommands,
+					// The two halves of "this command's trailing text is its
+					// argument": a free-text prompt, or a value chosen from a list.
+					// Both are registry-derived; the planner takes the union — and
+					// `armedOnlyCommands` narrows it further, from main's own arming
+					// work, which this branch's rule composes with rather than
+					// replaces.
 					armedOnlyCommands: slash.armedOnlyCommands,
+					valueArgumentCommands: slash.valueArgumentCommands,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -2131,6 +2138,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.commandNames,
 				slash.promptCommands,
 				slash.armedOnlyCommands,
+				slash.valueArgumentCommands,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,

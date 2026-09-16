@@ -60,10 +60,19 @@ const COMMAND_NAMES = new Set([
 	"goal",
 	"usage",
 	"model",
-	"clear",
+	"compact",
 ]);
 /** `consumes_prompt: true` in the shared registry. */
 const PROMPT_COMMANDS = new Set(["team", "teams", "agent", "agents", "goal"]);
+/** The inline-argument vocabulary: `inlineArgumentFor` returns a list. */
+const VALUE_ARGUMENT_COMMANDS = new Set([
+	"model",
+	"effort",
+	"approvals",
+	"team",
+	"agent",
+	"theme",
+]);
 /** The name-list commands: `NAME_ARGUMENT_COMMANDS` + aliases. */
 const NAME_LIST_COMMANDS = new Set(["team", "teams", "agent", "agents"]);
 /** The `session.goal` destination's words: armed by a PICK, never by an Enter. */
@@ -83,6 +92,7 @@ const plan = (draft, caret, over = {}) =>
 		commandNames: COMMAND_NAMES,
 		promptCommands: PROMPT_COMMANDS,
 		armedOnlyCommands: ARMED_ONLY_COMMANDS,
+		valueArgumentCommands: VALUE_ARGUMENT_COMMANDS,
 		nameListCommands: NAME_LIST_COMMANDS,
 		enabled: true,
 		...over,
@@ -95,20 +105,78 @@ const ARMS = {
 };
 
 test("the whole-draft command shape is unchanged", () => {
-	// The existing whole-draft path is untouched: all three
-	// `SlashDispatchOutcome` meanings keep their current behaviour, and the
-	// command the dispatcher is handed is the name plus the args of that line.
+	// The whole-draft path is untouched for a command that TAKES an argument:
+	// all three `SlashDispatchOutcome` meanings keep their current behaviour, and
+	// the command the dispatcher is handed is the name plus the args of that line.
 	assert.equal(plan("/usage", 6).kind, "whole");
 	assert.deepEqual(plan("/usage", 6).command, { name: "usage", args: "" });
 	assert.equal(plan("  /usage  ", 10).kind, "whole");
-	// A command with arguments on the SAME line is still a whole-draft command:
-	// the existing shape, kept deliberately so `/model gpt-5` does not become a
-	// splice.
-	assert.equal(plan("/usage more prose", 6).kind, "whole");
+	// A command whose trailing text IS its argument is still a whole-draft
+	// command on the same line, which is what keeps `/model gpt-5` a command
+	// rather than a splice.
 	assert.deepEqual(plan("/model gpt-5", 12).command, {
 		name: "model",
 		args: "gpt-5",
 	});
+	// And a whole-draft command that takes NO argument cannot carry one: the
+	// trailing text is the user's own prose, so the draft goes to the model. This
+	// is the operator's first-hand report — `/compact hello` ran `/compact` and
+	// ate `hello` (see the rule's header for the whole deviation).
+	assert.deepEqual(plan("/compact hello", 14), { kind: "send" });
+	assert.deepEqual(plan("/usage more prose", 6), { kind: "send" });
+});
+
+test("the operator's rule: a command word is prose unless it is the input", () => {
+	/*
+	 * The decision this change implements, in the operator's own words: "if you
+	 * don't actually hit enter on the suggested command or click it, then it
+	 * should be treated as plain text instead of as a command input unless it's
+	 * the only input and/or at the start of the input".
+	 *
+	 * The consequence list is the one the rule is written for, and each pair here
+	 * is the SAME word with the SAME caret: commands on the left, prose on the
+	 * right. Every prose row is `send` — no splice, no note, nothing eaten.
+	 */
+	// Commands: the whole draft, or a draft-opening argument-taking command.
+	assert.equal(plan("/compact", 8).kind, "whole");
+	assert.equal(plan("/usage", 6).kind, "whole");
+	assert.equal(plan("/model gpt-5", 12).kind, "whole");
+	assert.equal(plan("/goal ship it", 12).kind, "whole");
+	const opening = plan("/model gpt-5\nplease check the logs", 12);
+	assert.equal(opening.kind, "splice");
+	assert.deepEqual(opening.command, { name: "model", args: "gpt-5" });
+	assert.equal(opening.text, "please check the logs");
+
+	// Prose: a no-argument command with trailing text, a mid-sentence word, a
+	// later line, and a leading token with text after a no-argument word.
+	for (const [draft, caret] of [
+		["/compact hello", 14],
+		["hello /compact", 14],
+		["fix this /usage", 14],
+		["/compact\nhello", 8],
+		["please /compact this", 19],
+		["/usage more prose", 6],
+	]) {
+		assert.deepEqual(plan(draft, caret), { kind: "send" }, draft);
+	}
+
+	/*
+	 * And the narrowing `armedOnlyCommands` composes as: one more set, applied on
+	 * top of the argument-taking vocabulary, never a name in either module. It is
+	 * the seat peer PR #209 wires for `/goal` — a non-whole `/goal` is prose
+	 * unless the pick armed it — and the whole-draft form is deliberately NOT
+	 * affected by it, which is that PR's own row 1 (`/goal ship the release` runs
+	 * on one Enter).
+	 */
+	const armedOnly = { armedOnlyCommands: new Set(["goal"]) };
+	assert.deepEqual(plan("/goal ship it\nand then tell me", 12, armedOnly), {
+		kind: "send",
+	});
+	assert.equal(plan("/goal ship the release", 21, armedOnly).kind, "whole");
+	// A word not in the set is unaffected, so the input is a narrowing and not a
+	// second switch.
+	const other = { armedOnlyCommands: new Set(["loop"]) };
+	assert.equal(plan("/goal ship it\nand then tell me", 12, other).kind, "reassemble");
 });
 
 test("the plan hands the dispatcher a command, so args cannot cross a line", () => {
@@ -126,12 +194,18 @@ test("the plan hands the dispatcher a command, so args cannot cross a line", () 
 		name: "model",
 		args: "gpt-5",
 	});
-	assert.deepEqual(plan("fix this /model gpt-5", 20).command, {
-		name: "model",
-		args: "gpt-5",
-	});
+	// The same word mid-sentence is now prose rather than a splice, so there is
+	// no command object to hand on at all — the operator's rule, and the reason
+	// this test's original case changed shape rather than caret.
+	assert.deepEqual(plan("fix this /model gpt-5", 20), { kind: "send" });
+	// A draft-OPENING argument-taking command over a second line still splits at
+	// its own line end, which is what keeps a command from claiming line 2.
+	const overLine = plan("/model gpt-5\nplease check the logs", 12);
+	assert.equal(overLine.kind, "splice");
+	assert.deepEqual(overLine.command, { name: "model", args: "gpt-5" });
+	assert.equal(overLine.text, "please check the logs");
 	// A command with no argument hands on an EMPTY args, not the next line.
-	assert.deepEqual(plan("fix this /model", 14).command, {
+	assert.deepEqual(plan("/model", 6).command, {
 		name: "model",
 		args: "",
 	});
@@ -139,12 +213,10 @@ test("the plan hands the dispatcher a command, so args cannot cross a line", () 
 	// line 2, so there is no command at all — and therefore no command object
 	// for any later layer to re-derive. Prose goes to the model.
 	assert.deepEqual(plan("/usage\nhello from line two", 25), { kind: "send" });
-	// And with the caret back on the command's line, the command that IS handed
-	// on owns that line alone: line 2 is the surviving draft, never its argument.
-	const spliced = plan("/usage\nhello from line two", 6);
-	assert.equal(spliced.kind, "splice");
-	assert.deepEqual(spliced.command, { name: "usage", args: "" });
-	assert.equal(spliced.text, "hello from line two");
+	// And with the caret back on the command's line, the token is a no-argument
+	// command with text after it, which the operator's rule makes prose too: line
+	// 2 is neither consumed as its argument nor handed on as a command.
+	assert.deepEqual(plan("/usage\nhello from line two", 6), { kind: "send" });
 });
 
 test("the caret's token decides, not the whole-draft regex (round 1 R2)", () => {
@@ -154,40 +226,40 @@ test("the caret's token decides, not the whole-draft regex (round 1 R2)", () => 
 	 * separator, so line 2 became `/usage`'s argument, the box was cleared on
 	 * `consumed`, and the prose reached the transport as a provider name —
 	 * observed end to end as `422 Invalid desktop operation.` (QA round 1 Q1, UX
-	 * round 1 U1). The reference `_run_command_from_buffer` takes the span on the
-	 * caret's LINE and splices when the remainder is non-empty (`editor.py:
-	 * 8184-8200`), which is what these three cases pin.
+	 * round 1 U1).
+	 *
+	 * The caret rule is unchanged — the span is still taken on the caret's LINE —
+	 * and the operator's rule now answers the remainder differently: a
+	 * no-argument command with text after it is PROSE, so the whole draft reaches
+	 * the model and no dispatch happens at all. That is strictly safer than the
+	 * splice these cases used to pin, and it is asserted rather than left implicit
+	 * because it is the shape of the fix.
 	 */
-	const spliced = plan("/usage\nfix this", 6);
-	assert.equal(spliced.kind, "splice");
-	assert.deepEqual(spliced.command, { name: "usage", args: "" });
-	assert.equal(spliced.text, "fix this");
+	assert.deepEqual(plan("/usage\nfix this", 6), { kind: "send" });
 
 	// Same draft, caret at the END of line 2: the command is above the caret, so
 	// the caret is not on any token and the draft is prose. Nothing is lost
 	// either way — line 2 is never handed over as an argument.
 	assert.deepEqual(plan("/usage\nfix this", 16), { kind: "send" });
 
-	// A command on its own line UNDER a message splices the same way, and the
-	// message survives in the composer.
-	const below = plan("fix this\n/usage", 15);
-	assert.equal(below.kind, "splice");
-	assert.deepEqual(below.command, { name: "usage", args: "" });
-	assert.equal(below.text, "fix this");
+	// A command on its own line UNDER a message is prose for the same reason: a
+	// no-argument word with text after it is not a command, and the message is
+	// never the argument of a command above it.
+	assert.deepEqual(plan("fix this\n/usage", 15), { kind: "send" });
 });
 
 test("a slash-shaped token that names no command is reported, not consumed", () => {
 	// Round 1 UX U8: `fix this /tema` used to splice the misspelling out of the
-	// box, so the user lost the only copy of the word they had to fix. The
-	// planner reports it (the dispatcher owns the "did you mean" note) and the
-	// caller restores the ORIGINAL draft.
-	const result = plan("fix this /tema", 14);
-	assert.equal(result.kind, "unrecognised");
-	assert.deepEqual(result.command, { name: "tema", args: "" });
-	// A whole-draft misspelling keeps the existing shape: the command is handed
-	// on and the dispatcher's own "unknown command" note (with its suggestions)
-	// answers it, exactly as it did before this change.
-	assert.equal(plan("/tema", 5).kind, "whole");
+	// box, so the user lost the only copy of the word they had to fix. The word
+	// now has to BE the draft before it is offered as a command at all — the
+	// operator's rule — and in that one shape the planner reports it (the
+	// dispatcher owns the "did you mean" note) and the caller restores the
+	// ORIGINAL draft, so the misspelling stays to be fixed.
+	assert.equal(plan("/tema", 5).kind, "unrecognised");
+	assert.deepEqual(plan("/tema", 5).command, { name: "tema", args: "" });
+	// Mid-sentence, the same token is the prose it looks like: no note, nothing
+	// spliced, and the word is never offered as a command to correct.
+	assert.deepEqual(plan("fix this /tema", 14), { kind: "send" });
 });
 
 test("a draft with no command token at the caret is prose", () => {
@@ -197,27 +269,34 @@ test("a draft with no command token at the caret is prose", () => {
 	assert.deepEqual(plan("fix this /team ops", 3), { kind: "send" });
 });
 
-test("a command typed into a sentence splices out and runs", () => {
-	// Acceptance criterion 19: the surrounding draft survives.
-	const result = plan("fix this /usage", 14);
-	assert.equal(result.kind, "splice");
-	assert.deepEqual(result.command, { name: "usage", args: "" });
-	assert.equal(result.text, "fix this");
-	assert.equal(result.caret, 8);
+test("a MID-DRAFT command word is prose in every spelling", () => {
+	/*
+	 * The operator's second defect, and the half of it no dialog change touches:
+	 * "typing (slash)compact just compacts and deletes text in the composer".
+	 * `hello /compact` used to remove the token from the sentence and run it; it
+	 * is now sent as written, with the word intact, and the same holds for a
+	 * free-text word the old rule hoisted to the front and staged.
+	 */
+	for (const [draft, caret] of [
+		["hello /compact", 14],
+		["fix this /usage", 14],
+		["ship it /goal", 13],
+		["review this /team ops", 20],
+		["fix this /team", 13],
+	]) {
+		assert.deepEqual(plan(draft, caret), { kind: "send" }, draft);
+	}
 });
 
-test("a free-text command mid-draft reassembles to the front, staged", () => {
-	// Acceptance criterion 20: never auto-submitted, and nothing lost. Moving
-	// the command to the front is what the TUI does rather than guessing which
-	// trailing words are a name and which are the message (D1).
-	const result = plan("ship it /team ops", 17);
-	assert.equal(result.kind, "reassemble");
-	assert.equal(result.text, "/team ops ship it");
-	assert.equal(result.caret, 17);
+test("a draft-OPENING free-text command reassembles to the front, staged", () => {
+	// The sub-rule the rule keeps: when a prompt-consuming command OPENS the
+	// draft, the rest of the text is its argument and the assembled line is
+	// staged for the user to read, never auto-submitted (the TUI's D1 rule).
+	const result = plan("/goal ship it", 12);
+	assert.equal(result.kind, "whole");
+	assert.deepEqual(result.command, { name: "goal", args: "ship it" });
 
-	// Hand-typed argument and draft: the draft is appended AFTER the argument,
-	// which still parses and is staged for the user to read.
-	const withArgument = plan("review this /team ops", 20);
+	const withArgument = plan("/team ops\nreview this", 8);
 	assert.equal(withArgument.kind, "reassemble");
 	assert.equal(withArgument.text, "/team ops review this");
 });
@@ -401,33 +480,40 @@ test("a pick with nothing to arm is the completion it has always been", () => {
 });
 
 test("a name-list command with no name typed keeps its list open", () => {
-	// Acceptance criterion 21: `/team` and `/agent` do NOT reassemble on the word
-	// alone — the name is picked from the list first
-	// (`editor.py:8219-8222`). The plan carries the command so a caller whose
-	// list cannot answer can still say which command is waiting (round 1 UX U5).
-	assert.deepEqual(plan("fix this /team", 13), {
+	// Acceptance criterion 21, narrowed to the shape it still applies to and
+	// asserted a second way here: when a bare `/team` or `/agent` OPENS the draft
+	// over something else, it does NOT reassemble on the word alone — the name is
+	// picked from the list first (`editor.py:8219-8222`). The plan carries the
+	// command so a caller whose list cannot answer can still say which command is
+	// waiting (round 1 UX U5).
+	assert.deepEqual(plan("/team\nreview this", 5), {
 		kind: "list-open",
 		command: { name: "team", args: "" },
 	});
-	assert.deepEqual(plan("fix this /agent", 14), {
+	assert.deepEqual(plan("/agent\nreview this", 6), {
 		kind: "list-open",
 		command: { name: "agent", args: "" },
 	});
-	assert.deepEqual(plan("fix this /teams", 14), {
+	assert.deepEqual(plan("/teams\nreview this", 6), {
 		kind: "list-open",
 		command: { name: "teams", args: "" },
 	});
 	// With a name typed, the exception does not apply and it reassembles.
-	assert.equal(plan("fix this /team ops", 17).kind, "reassemble");
-});
-
-test("a command on its own line below a draft collapses that line", () => {
-	// The draft is the message, the command is what routes it. End-of-line, not
-	// end-of-buffer, is what keeps the two apart.
-	const result = plan("fix this\n/usage", 15);
-	assert.equal(result.kind, "splice");
-	assert.equal(result.text, "fix this");
-	assert.deepEqual(result.command, { name: "usage", args: "" });
+	assert.equal(plan("/team ops\nreview this", 8).kind, "reassemble");
+	// The bare word ALONE is a whole-draft command, which is what it was before
+	// this change: the destination's own picker opens from the dispatch, and the
+	// list-open plan is only ever reached when the word has a draft around it.
+	assert.deepEqual(plan("/team", 5), {
+		kind: "whole",
+		command: { name: "team", args: "" },
+	});
+	assert.deepEqual(plan("/team ", 6), {
+		kind: "whole",
+		command: { name: "team", args: "" },
+	});
+	// And mid-sentence the roster word is prose: the list is a thing the user
+	// opens, not a thing a sentence opens for them.
+	assert.deepEqual(plan("fix this /team", 13), { kind: "send" });
 });
 
 test("the capabilities flag turns the planner off completely", () => {
@@ -447,14 +533,15 @@ test("no branch consumes typed text without an outcome", () => {
 	// nothing.
 	for (const [draft, caret] of [
 		["fix this /usage", 14],
-		["fix this /team", 13],
-		["fix this /goal", 13],
+		["/team", 5],
+		["/goal ship it", 12],
 		["/usage", 6],
+		["/model gpt-5\nplease check the logs", 12],
 		["prose", 5],
 	]) {
 		const result = plan(draft, caret);
 		assert.ok(
-			["send", "whole", "splice", "reassemble", "list-open"].includes(
+			["send", "whole", "splice", "reassemble", "list-open", "unrecognised"].includes(
 				result.kind,
 			),
 			`${draft} produced ${result.kind}`,
