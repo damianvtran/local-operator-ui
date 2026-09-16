@@ -333,6 +333,15 @@ export const STORIES = [
 	["browser-pane--pane-loading", 640, 460],
 	/* The badge at its cap (design round 1, D5). */
 	["browser-pane--trigger-at-cap", 560, 84],
+	/*
+	 * The strip's own arithmetic at the pane's width, and the route's strip at the
+	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
+	 * the claim: four tabs fit a 640 pane whole and six do not, and where they do not
+	 * the pinned control carries the count of what is missing - including on the
+	 * route, where the same six tabs fit and the control is therefore absent.
+	 */
+	["browser-pane--pane-overflow-count", 640, 460],
+	["browser-pane--narrow-overflow-count", 480, 460],
 
 	/* The TUI-parity tool rows. Swept for the states that are slow or awkward
 	   to reach live — an interrupted call needs a turn stopped at the right
