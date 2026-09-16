@@ -230,7 +230,7 @@ export function reportParked(session: string, context: RaiseContext): void {
  * promise can be checked, so every way it can end is a line: `delivered` (it
  * arrived), `left+waiting` (the window that claimed it died first, and it is STILL
  * queued rather than lost — review/QA round 3), `evicted` (the queue is bounded and
- * this one was dropped to hold the bound), `dropped+app-quit` (it died with the
+ * this one was dropped to hold the bound), `dropped+quit` (it died with the
  * process). Without the last two the queue's own limits would be invisible, which
  * is the same silence the park line was added to remove (UX round 3, U2).
  */

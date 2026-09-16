@@ -841,13 +841,24 @@ function describeForwardedLaunch(
 	 * conversation`), because "no id" and "an id this line forgot" must not read
 	 * alike (UX round 3, U3).
 	 */
+	const named = session === null ? null : `the conversation it named (${session})`;
 	const handed =
-		session === null
-			? "it named no conversation"
-			: `the conversation it named (${session}) rides with it`;
+		named === null ? "it named no conversation" : `${named} rides with it`;
+	/*
+	 * THE SESSION-LESS ARM IS NOT THE SAME PROMISE (review round 4, MINOR). The
+	 * documented session-less agent launch (`pnpm app:headless`, and any second
+	 * launch that names nothing) parks no conversation, so a sentence promising to
+	 * open one — and quoting the queue's bound, which nothing is using — described a
+	 * request that was never made. What is true there is that nothing is waiting to
+	 * be opened and the mode's own promise about the window still holds; what is true
+	 * on the named arm is unchanged, bound included, because that is where a
+	 * conversation can be dropped.
+	 */
 	const effect =
 		windowLaunch.show === "never"
-			? `${handed}: the app will open it once a window is open, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
+			? named === null
+				? `${handed}, so nothing is waiting to be opened, and it will not raise a window in the meantime`
+				: `${handed}: the app will open it once a window is open, and it will not raise a window in the meantime (up to ${PARKED_LAUNCH_LIMIT} conversations wait; an older one is dropped and logged)`
 			: windowLaunch.show === "inactive"
 				? `${handed}; the app may order its window forward without activating it`
 				: `${handed}; the app will raise its window`;
@@ -1029,7 +1040,12 @@ function rendererArgumentFlags(
  * lands on, none is dropped, and parking never overrides the creator's intent and
  * never blocks a window some request needs now.
  */
-const parkedLaunches: { session: string; request: RaiseRequest }[] = [];
+export interface ParkedLaunch {
+	session: string;
+	request: RaiseRequest;
+}
+
+const parkedLaunches: ParkedLaunch[] = [];
 
 /**
  * How many conversations may wait for a window at once.
@@ -1087,6 +1103,7 @@ function parkLaunch(session: string, request: RaiseRequest): void {
 function claimParkedFor(
 	window: BrowserWindow,
 	deliver: (session: string, request: RaiseRequest) => void,
+	painted?: ParkedLaunch,
 ): number {
 	const claimed = parkedLaunches.slice(0, parkedLaunches.length);
 	if (claimed.length === 0) return 0;
@@ -1106,20 +1123,30 @@ function claimParkedFor(
 				requester: queued.request.requester,
 				report: reportRaise,
 			});
+			/*
+			 * `painted` is the entry this window was CREATED for, and it is delivered
+			 * like every other one — but not by `send`: the renderer was launched with
+			 * it as its initial session, so this window's first frame IS the delivery,
+			 * and sending it as well would open the conversation twice.
+			 */
+			if (queued === painted) continue;
 			deliver(queued.session, queued.request);
 		}
 	});
 	window.once("closed", () => {
-		const left = claimed.filter((queued) => parkedLaunches.includes(queued));
-		if (left.length === 0) return;
-		reportParkedLeftWaiting(
-			left.map((queued) => queued.session),
-			{
-				trigger: left[0].request.trigger,
-				requester: left[0].request.requester,
+		/*
+		 * PER ENTRY, each with its OWN requester (review round 4, NIT). One line naming
+		 * several conversations could only borrow one requester's trigger, and "who
+		 * asked for this one" is the whole question these lines exist to answer.
+		 */
+		for (const queued of claimed) {
+			if (!parkedLaunches.includes(queued)) continue;
+			reportParkedLeftWaiting([queued.session], {
+				trigger: queued.request.trigger,
+				requester: queued.request.requester,
 				report: reportRaise,
-			},
-		);
+			});
+		}
 	});
 	return claimed.length;
 }
@@ -2277,9 +2304,18 @@ app
 			 * B3 removed. The creator's own intent wins when it named a conversation of
 			 * its own; the parked one is delivered below instead of being dropped.
 			 */
+			/*
+			 * CLAIMED, NOT TAKEN (review round 4, MAJOR-1). This entry used to be
+			 * `shift()`ed out of the queue here, before the window existed — so a window
+			 * that died before its first paint destroyed it: not delivered, not
+			 * re-queued, no state line, and nothing left to report at quit. It stays in
+			 * the queue and leaves it on the rule every other entry follows: when it has
+			 * actually reached a renderer, i.e. on this window's `did-finish-load`, which
+			 * is also where the claim below removes it.
+			 */
 			const parked =
 				initialSession === null && !openCatalogue
-					? parkedLaunches.shift()
+					? parkedLaunches[0]
 					: undefined;
 			mainWindow = createWindow(
 				parked?.session ?? initialSession,
@@ -2303,8 +2339,10 @@ app
 			// The delivery is `openSessionInWindow`, which lives inside `whenReady`:
 			// handed in rather than reached for, so the claim's rules stay testable and
 			// the queue stays where the window lifecycle can see it.
-			claimParkedFor(mainWindow, (session, request) =>
-				openSessionInWindow(session, request),
+			claimParkedFor(
+				mainWindow,
+				(session, request) => openSessionInWindow(session, request),
+				parked,
 			);
 
 			// Add before-input-event listener for zoom control
