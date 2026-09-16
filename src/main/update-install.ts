@@ -440,11 +440,44 @@ const BUNDLED_PYTHON_DIRS = [
 /**
  * Whether a path is bytecode this application itself wrote into its own bundle.
  *
- * All four conditions are required, and the narrowness is the point: the heal
+ * Three conditions, and together they are the whole entitlement: the path is a
+ * `.pyc`, and it is at or under this bundle's own interpreter trees
+ * ({@link BUNDLED_PYTHON_DIRS}, the current seed namespace and the names a
+ * bundle we are *replacing* may still carry). The third - that `codesign`
+ * reported it `added` - is the caller's, in `planPythonBytecodeHeal`. The heal
  * runs against an installed app that is about to be handed to ShipIt, and the
  * only thing it is entitled to delete is a `.pyc` CPython wrote into the
  * interpreter we ship. Anything else - a sealed file, an asset, a file in
  * another application's bundle - must refuse instead.
+ *
+ * Why there is no fourth condition on the *shape* of the path. This predicate
+ * used to require a literal `__pycache__` segment, on the assumption that
+ * CPython only ever writes `source/__pycache__/module.cpython-XY.pyc` beside the
+ * source it imported. That assumption is wrong whenever the writing interpreter
+ * runs under `PYTHONPYCACHEPREFIX`, and that is no hypothetical: the layout it
+ * produces is the prefix directory followed by the *absolute source path minus
+ * its root*, i.e. `<prefix>/<abs/dir>/<module>.pyc`, with no `__pycache__`
+ * anywhere. The field incident of 2026-09-15 is exactly that shape - 19 added
+ * files under
+ * `Contents/Resources/python_aarch64/pycache/var/folders/.../T/lo-guard-real-79tKWP/modules/`
+ * and `.../pycache/opt/homebrew/Cellar/python@3.14/...` - and this predicate
+ * called every one of them "outside the bundled python trees", so a bundle one
+ * file-deletion away from valid was reported unrepairable and the user was sent
+ * to reinstall the app the heal exists to save (the start-up dialog's "it can't
+ * repair itself").
+ *
+ * Widening it this far is not a licence to delete arbitrary files in the tree,
+ * because the two remaining conditions are already sufficient:
+ *
+ * - nothing we ship is a `.pyc` at all, and that is enforced twice at build time
+ *   (`scripts/setup-python-resource.sh`, and the release gate in
+ *   `scripts/verify-macos-artifacts.mjs`), precisely because a *shipped* `.pyc`
+ *   that gets rewritten is the `file modified:` class the heal can never repair.
+ *   So any `.pyc` inside these trees is a cache an interpreter wrote after
+ *   signing, whatever directory name it chose;
+ * - and the caller only offers paths `codesign` itself reported `added` in this
+ *   bundle, so this predicate never has to decide about a file that was there
+ *   when the bundle was signed.
  *
  * The path separator is hardcoded because the caller is macOS-only: the probe
  * it heals from is `codesign`, which does not exist anywhere else.
@@ -460,8 +493,6 @@ export function isPythonBytecodePath(
 	);
 	const separator = "/";
 	if (!path.endsWith(".pyc")) return false;
-	const segments = path.split(separator);
-	if (!segments.includes("__pycache__")) return false;
 	return dirs.some((dir) => path.startsWith(`${dir}${separator}`));
 }
 
@@ -540,18 +571,25 @@ export type BytecodeHealResult = BytecodeHealPlan & { removed: string[] };
 /**
  * Remove the bytecode a bundle's own interpreter wrote into it.
  *
- * Removal is per FILE, never per `__pycache__` directory, and that is a
- * measured constraint rather than a preference: `encodings/__pycache__` is one
- * of the directories that exists in the shipped bundle, and the three `.pyc`
- * it holds are sealed files. Deleting the directory takes a sealed file with
- * it and turns a recoverable bundle into an unhealable one - codesign then
- * reports `file missing:` and the seal does not come back. Deleting exactly the
+ * Removal is per FILE, never per directory, and that is a measured constraint
+ * rather than a preference: `encodings/__pycache__` is one of the directories
+ * that exists in the shipped bundle, and the three `.pyc` it holds are sealed
+ * files. Deleting the directory takes a sealed file with it and turns a
+ * recoverable bundle into an unhealable one - codesign then reports
+ * `file missing:` and the seal does not come back. Deleting exactly the
  * reported added files heals it (`valid on disk`, exit 0).
  *
  * The directories the writes created are deliberately left behind: an added
  * *directory* is not a violation of a bundle's resource envelope (measured -
  * an empty `__pycache__` added after signing still verifies), so removing them
- * would be extra deletion with nothing to gain.
+ * would be extra deletion with nothing to gain. That is the rule for every
+ * shape of write, and the shape matters here: an interpreter under
+ * `PYTHONPYCACHEPREFIX` leaves a whole *mirrored* tree behind
+ * (`<tree>/pycache/opt/homebrew/.../lib/python3.14/json/`, one directory per
+ * path component of every source it cached), which is empty of violations once
+ * the `.pyc` leaves are removed and verifies exactly as the empty `__pycache__`
+ * does. So the leftover directories stay, and a re-probe - not a tidy tree - is
+ * what decides whether the heal worked.
  *
  * A *sealed* tree is healable, and that is a property of the seal rather than of
  * this function: the retired build-time ACL seal withheld `add_file` and
@@ -568,8 +606,18 @@ export type BytecodeHealResult = BytecodeHealPlan & { removed: string[] };
  *
  * `remove` is injectable so the tests can drive every branch without a signed
  * bundle on disk; the default is the real thing. A path is re-checked against
- * `isPythonBytecodePath` immediately before it is removed, so a caller holding
- * a stale plan cannot widen what gets deleted. A removal that throws is
+ * `isPythonBytecodePath` immediately before it is removed, and what that buys is
+ * narrower than "a stale plan is refused" (review round 1, R2): no caller can
+ * supply a plan, and the plan this function computes has already passed the same
+ * predicate, so with an unchanged filesystem the second call is a tautology. What
+ * it is NOT is time-invariant: `isPythonBytecodePath` resolves `realpathSync` on
+ * the path it is given, so the re-check re-resolves whatever the path means *now*
+ * - and a component of it replaced by a symlink out of the bundle between the
+ * plan and the unlink is refused then, which is the class a plan can never know
+ * about. It is cheap (one stat per file, on a pass that removes a handful) and it
+ * is the difference between the entitlement being read once and being read at the
+ * moment of deletion, so it stays; the test "a swap under the tree between the
+ * plan and the unlink refuses" is what makes it bite. A removal that throws is
  * reported as not healed with the path, because the caller's next step is a
  * re-probe and a refusal rather than a half-healed bundle it believes in.
  */

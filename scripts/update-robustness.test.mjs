@@ -7,18 +7,26 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
-	realpathSync,
 	readdirSync,
-	rmdirSync,
+	realpathSync,
 	rmSync,
+	rmdirSync,
 	statSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { after, before, test } from "node:test";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
+import { homedir, tmpdir } from "node:os";
+import {
+	basename,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+} from "node:path";
+import { after, before, test } from "node:test";
 import { build } from "esbuild";
 
 /**
@@ -183,19 +191,16 @@ const notarizeStepBundle = await build({
 					path: "@electron/notarize",
 					namespace: "notarize-fixture",
 				}));
-				builder.onLoad(
-					{ filter: /.*/, namespace: "notarize-fixture" },
-					() => ({
-						loader: "js",
-						contents: `
+				builder.onLoad({ filter: /.*/, namespace: "notarize-fixture" }, () => ({
+					loader: "js",
+					contents: `
 							export const notarize = async (opts) => {
 								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool });
 								const behavior = globalThis.__loNotarizeBehavior;
 								if (behavior) await behavior(opts);
 							};
 						`,
-					}),
-				);
+				}));
 			},
 		},
 	],
@@ -271,9 +276,12 @@ test("a broken seal refuses the install, a sealed bundle proceeds", () => {
 	});
 	assert.equal(damaged.kind, "unsealed");
 
-	assert.deepEqual(evaluateBundleSeal({ exitCode: 0, stdout: "", stderr: "" }), {
-		kind: "sealed",
-	});
+	assert.deepEqual(
+		evaluateBundleSeal({ exitCode: 0, stdout: "", stderr: "" }),
+		{
+			kind: "sealed",
+		},
+	);
 
 	// A probe that never reached a verdict is neither of those: the pre-flight
 	// retries it, and proceeds if it still cannot run. Treating it as a rejection
@@ -454,7 +462,10 @@ function makeBytecodeFixture(dir, { sealedBytecode = true } = {}) {
  * seals nothing is the failure mode that matters here.
  */
 test("the watchdog never depends on post-swap ACL repair", () => {
-	const source = readFileSync(join(process.cwd(), "src/main/update-install.ts"), "utf8");
+	const source = readFileSync(
+		join(process.cwd(), "src/main/update-install.ts"),
+		"utf8",
+	);
 	assert.doesNotMatch(source, /seal_interpreter_trees|chmod \+a/);
 });
 
@@ -464,6 +475,24 @@ function writeAddedPyc(directory, name) {
 	mkdirSync(cacheDir, { recursive: true });
 	const path = join(cacheDir, name);
 	writeFileSync(path, "added bytecode\n", "utf8");
+	return path;
+}
+
+/**
+ * Write a `.pyc` the way an interpreter under `PYTHONPYCACHEPREFIX` does.
+ *
+ * The layout is the prefix directory followed by the *absolute source path*
+ * minus its root, so there is no `__pycache__` segment to recognise: the field
+ * incident of 2026-09-15 was 19 of these under
+ * `Contents/Resources/python_aarch64/pycache/`, and the predicate's old segment
+ * test called every one of them "outside the bundled python trees". Written
+ * under the bundle root given, so a fixture bundle is the only thing this can
+ * touch.
+ */
+function writeMirroredAddedPyc(bundle, relativePath) {
+	const path = join(bundle, relativePath);
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, "added mirrored bytecode\n", "utf8");
 	return path;
 }
 
@@ -528,7 +557,10 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 	// sealed file turns it into `file missing:` and the seal does not come back.
 	const modified = planPythonBytecodeHeal(bundle, [
 		added(pycUnder("__init__.cpython-312.pyc")),
-		{ kind: "modified", path: `${bundle}/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc` },
+		{
+			kind: "modified",
+			path: `${bundle}/Contents/Resources/python_aarch64/lib/python3.12/encodings/__pycache__/utf_8.cpython-312.pyc`,
+		},
 	]);
 	assert.equal(modified.healable, false);
 	assert.match(modified.reason, /modified/);
@@ -538,18 +570,21 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 		{ kind: "missing", path: pycUnder("gone.cpython-312.pyc") },
 		{ kind: "other", path: "resource envelope is obsolete" },
 	]) {
-		const refused = planPythonBytecodeHeal(bundle, [added(pycUnder("a.pyc")), violation]);
+		const refused = planPythonBytecodeHeal(bundle, [
+			added(pycUnder("a.pyc")),
+			violation,
+		]);
 		assert.equal(refused.healable, false);
 	}
 	assert.equal(planPythonBytecodeHeal(bundle, []).healable, false);
 
 	// The path test is what keeps the heal to our own bytecode: an added file
-	// outside the interpreter trees, a non-bytecode file inside them, and a `.pyc`
-	// outside a `__pycache__` directory are each refused.
+	// outside the interpreter trees, and a non-bytecode file inside them, are each
+	// refused.
 	for (const path of [
 		`${bundle}/Contents/Resources/extra.txt`,
 		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/decoder.py`,
-		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/handwritten.pyc`,
+		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/decoder.cpython-312.pyc.txt`,
 		"/Applications/Other.app/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/x.cpython-312.pyc",
 	]) {
 		assert.equal(isPythonBytecodePath(bundle, path), false, path);
@@ -557,6 +592,33 @@ test("the heal's decision table refuses everything but added bytecode", () => {
 		assert.equal(refused.healable, false, path);
 		assert.match(refused.reason, /outside the bundled python trees/);
 	}
+
+	// A `.pyc` directly inside the tree - no `__pycache__` anywhere - is still our
+	// bytecode, and this is the shape a `PYTHONPYCACHEPREFIX` produces: the prefix
+	// directory followed by the absolute source path minus its root. The field
+	// incident of 2026-09-15 was 19 of these under
+	// `Contents/Resources/python_aarch64/pycache/`, and the predicate's old
+	// `__pycache__` segment test called every one of them "outside the bundled
+	// python trees", which is how a bundle one file-deletion away from valid was
+	// reported unrepairable and the user was sent to reinstall.
+	const mirrored = [
+		`${bundle}/Contents/Resources/python_aarch64/pycache/var/folders/qd/xyz/T/lo-guard-real-79tKWP/modules/lo_probe_module.cpython-314.pyc`,
+		`${bundle}/Contents/Resources/python_aarch64/pycache/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.cpython-314.pyc`,
+		`${bundle}/Contents/Resources/python/lib/python3.12/json/__init__.cpython-312.pyc`,
+	];
+	for (const path of mirrored) {
+		assert.equal(isPythonBytecodePath(bundle, path), true, path);
+		const plan = planPythonBytecodeHeal(bundle, [added(path)]);
+		assert.equal(plan.healable, true, plan.reason);
+		assert.deepEqual(plan.paths, [path]);
+	}
+
+	// The whole set the incident reported, in one plan: one removal per reported
+	// file, and the `pycache/` mirror alongside the `__pycache__` writes the field
+	// install also carried.
+	const incident = planPythonBytecodeHeal(bundle, mirrored.map(added));
+	assert.equal(incident.healable, true, incident.reason);
+	assert.deepEqual(incident.paths, mirrored);
 });
 
 test("the heal knows the namespace the interpreter actually ships in", async () => {
@@ -568,7 +630,10 @@ test("the heal knows the namespace the interpreter actually ships in", async () 
 	// asserts the two namespaces AND that the gate's list is that same definition.
 	const bundle = "/Applications/Local Operator.app";
 	const layout = JSON.parse(
-		readFileSync(join(process.cwd(), "src/shared/bundled-python-layout.json"), "utf8"),
+		readFileSync(
+			join(process.cwd(), "src/shared/bundled-python-layout.json"),
+			"utf8",
+		),
 	);
 	for (const name of [
 		"python",
@@ -602,8 +667,7 @@ test("the heal knows the namespace the interpreter actually ships in", async () 
 
 test("the heal removes exactly what was reported, through an injectable remover", () => {
 	const bundle = "/Applications/Local Operator.app";
-	const path =
-		`${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/__init__.cpython-312.pyc`;
+	const path = `${bundle}/Contents/Resources/python_aarch64/lib/python3.12/json/__pycache__/__init__.cpython-312.pyc`;
 	const removed = [];
 	const result = healPythonBytecode(
 		bundle,
@@ -649,6 +713,67 @@ test("the heal removes exactly what was reported, through an injectable remover"
 	assert.deepEqual(deduped, [path]);
 });
 
+test("a swap under the tree between the plan and the unlink refuses", () => {
+	// Why this case exists (review round 1, R2): the per-file re-check is not a
+	// stale-plan guard - no caller can supply a plan, and the plan was produced by
+	// the same predicate - but it is not a tautology either, because
+	// `isPythonBytecodePath` resolves `realpathSync` at the moment it is called. A
+	// path whose directory is replaced, between the plan and the unlink, by a
+	// symlink out of the bundle resolves somewhere else and is refused. This drives
+	// that window and asserts the refusal, so the docstring's claim is bound to a
+	// measurement rather than to prose.
+	const root = tempDir("lo-recheck-");
+	const bundlePath = join(root, "Fixture.app");
+	const cached = join(
+		bundlePath,
+		"Contents",
+		"Resources",
+		"python_aarch64",
+		"lib",
+		"python3.12",
+		"json",
+		"__pycache__",
+	);
+	const elsewhere = join(root, "elsewhere");
+	mkdirSync(cached, { recursive: true });
+	mkdirSync(elsewhere, { recursive: true });
+	const first = join(cached, "a.cpython-312.pyc");
+	const second = join(cached, "b.cpython-312.pyc");
+	writeFileSync(first, "added bytecode\n", "utf8");
+	writeFileSync(second, "added bytecode\n", "utf8");
+	const violations = [
+		{ kind: "added", path: first },
+		{ kind: "added", path: second },
+	];
+	// The plan itself is fine, which is the point: only the filesystem moved.
+	assert.equal(planPythonBytecodeHeal(bundlePath, violations).healable, true);
+
+	const removed = [];
+	const result = healPythonBytecode(bundlePath, violations, (path) => {
+		removed.push(path);
+		if (path !== first) return;
+		// Between the two unlinks: the directory the second path goes through
+		// becomes a symlink out of the bundle, with a file of the same name behind
+		// it, so the plan's path still exists and still resolves - elsewhere.
+		rmSync(cached, { recursive: true, force: true });
+		symlinkSync(elsewhere, cached);
+		writeFileSync(
+			join(elsewhere, "b.cpython-312.pyc"),
+			"added bytecode\n",
+			"utf8",
+		);
+	});
+
+	assert.deepEqual(removed, [first], "nothing is unlinked after the refusal");
+	assert.equal(result.healable, false);
+	assert.match(result.reason, /refused to remove .*b\.cpython-312\.pyc/);
+	assert.deepEqual(result.removed, [first]);
+	assert.ok(
+		existsSync(join(elsewhere, "b.cpython-312.pyc")),
+		"the file the plan named is still there, and the heal did not chase it",
+	);
+});
+
 test("a bytecode-broken bundle really heals, and a tampered one really does not", async (t) => {
 	if (process.platform !== "darwin") {
 		t.skip("macOS only");
@@ -659,6 +784,11 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 	// claim is about what `/usr/bin/codesign` says next: sign clean, let an
 	// interpreter write bytecode into the bundle, watch the real probe fail with
 	// `file added:`, remove exactly those files, and watch the real probe pass.
+	//
+	// The three writes cover the three shapes the field has produced: the ordinary
+	// `__pycache__` write, one inside a directory that already holds a SEALED
+	// `.pyc` (the case a directory-level `rm -rf` gets wrong), and the
+	// `PYTHONPYCACHEPREFIX` mirror that the 2026-09-15 incident was made of.
 	const fixture = makeBytecodeFixture(tempDir("lo-bytecode-"));
 	assert.deepEqual(evaluateBundleSeal(fixture.probe()), { kind: "sealed" });
 
@@ -672,6 +802,27 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 		join(fixture.pythonRoot, "lib", "python3.12", "encodings"),
 		"aliases.cpython-312.pyc",
 	);
+	// And the incident's own shape: a cache the writing interpreter mirrored under
+	// a prefix it was handed, so there is no `__pycache__` segment anywhere in the
+	// path. `codesign` calls it `file added:` exactly like the two above, and the
+	// heal refused it until `isPythonBytecodePath` stopped requiring that segment.
+	const third = writeMirroredAddedPyc(
+		fixture.app,
+		join(
+			"Contents",
+			"Resources",
+			"python_aarch64",
+			"pycache",
+			"var",
+			"folders",
+			"qd",
+			"1q2xkcls0tg60vh97jjngxc40000gn",
+			"T",
+			"lo-guard-real-79tKWP",
+			"modules",
+			"lo_probe_module.cpython-314.pyc",
+		),
+	);
 
 	const brokenProbe = fixture.probe();
 	const broken = evaluateBundleSeal(brokenProbe);
@@ -679,11 +830,11 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 	assert.match(broken.detail, /a sealed resource is missing or invalid/);
 
 	const violations = parseSealViolations(brokenProbe.stdout);
-	// Both added files, and nothing but them: the verdict on stderr is not a
+	// All three added files, and nothing but them: the verdict on stderr is not a
 	// violation, which is why the parse is over stdout.
 	assert.deepEqual(
 		violations.map((violation) => violation.kind),
-		["added", "added"],
+		["added", "added", "added"],
 	);
 	// codesign reports canonical paths (`/private/var/...` for a `/var/...`
 	// temporary directory), so a plain string comparison against the path we
@@ -697,18 +848,24 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 	}
 	assert.deepEqual(
 		[...violations.map((violation) => violation.path)].sort(),
-		[realpathSync(first), realpathSync(second)].sort(),
+		[realpathSync(first), realpathSync(second), realpathSync(third)].sort(),
 	);
 
 	const heal = healPythonBytecode(fixture.app, violations);
 	assert.equal(heal.healable, true, heal.reason);
-	assert.equal(heal.removed.length, 2);
+	assert.equal(heal.removed.length, 3);
 
 	// The seal is back, measured rather than inferred.
 	assert.deepEqual(evaluateBundleSeal(fixture.probe()), { kind: "sealed" });
 	// And the file that was SEALED is still there: the heal removed reported
-	// files, not the directories that held them.
+	// files, not the directories that held them. The mirrored write's empty
+	// directories are still there too, deliberately - an added empty directory is
+	// not a violation, and the seal above is the proof.
 	assert.ok(existsSync(fixture.sealedPyc));
+	assert.ok(
+		existsSync(join(fixture.pythonRoot, "pycache", "var", "folders", "qd")),
+		"the heal leaves the directories the writes created, as its docstring says",
+	);
 
 	// The negative case, on the same bundle: once a sealed resource is modified,
 	// the heal refuses and the bundle stays refused. A heal that "fixed" this by
@@ -719,7 +876,11 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 		join(tampered.pythonRoot, "lib", "python3.12", "json"),
 		"__init__.cpython-312.pyc",
 	);
-	writeFileSync(join(tampered.contents, "Resources", "asset.txt"), "tampered\n", "utf8");
+	writeFileSync(
+		join(tampered.contents, "Resources", "asset.txt"),
+		"tampered\n",
+		"utf8",
+	);
 	const tamperedProbe = tampered.probe();
 	const tamperedViolations = parseSealViolations(tamperedProbe.stdout);
 	assert.ok(
@@ -739,7 +900,10 @@ test("a bytecode-broken bundle really heals, and a tampered one really does not"
 
 test("pending marker survives a write, detects failure or success, and clears", () => {
 	const dir = tempDir("lo-marker-");
-	assert.equal(pendingInstallMarkerPath(dir).endsWith(PENDING_INSTALL_MARKER_FILE), true);
+	assert.equal(
+		pendingInstallMarkerPath(dir).endsWith(PENDING_INSTALL_MARKER_FILE),
+		true,
+	);
 
 	assert.equal(readPendingInstallMarker(dir), null);
 
@@ -760,9 +924,15 @@ test("pending marker survives a write, detects failure or success, and clears", 
 	assert.match(payload.message, /0\.17\.0 is still running/);
 	assert.equal(payload.targetVersion, "0.18.0");
 
-	const succeeded = evaluatePendingInstall({ marker, runningVersion: "0.18.0" });
+	const succeeded = evaluatePendingInstall({
+		marker,
+		runningVersion: "0.18.0",
+	});
 	assert.equal(succeeded.kind, "succeeded");
-	assert.equal(evaluatePendingInstall({ marker: null, runningVersion: "0.18.0" }).kind, "none");
+	assert.equal(
+		evaluatePendingInstall({ marker: null, runningVersion: "0.18.0" }).kind,
+		"none",
+	);
 
 	assert.equal(clearPendingInstallMarker(dir), true);
 	assert.equal(readPendingInstallMarker(dir), null);
@@ -852,15 +1022,21 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	// Every fact is needed, and each one alone is wrong. A job with no marker, a
 	// marker with no job, and a job an old failure left loaded for hours (0.17.0:
 	// runs=3114) are all decided by the version: that is a failure.
-	assert.equal(isInstallInFlight({ marker: null, jobLoaded: true, now }), false);
+	assert.equal(
+		isInstallInFlight({ marker: null, jobLoaded: true, now }),
+		false,
+	);
 	assert.equal(isInstallInFlight({ marker, jobLoaded: false, now }), false);
 	assert.equal(
 		evaluatePendingInstall({ marker, runningVersion: "0.19.4" }).kind,
 		"failed",
 	);
 	assert.equal(
-		evaluatePendingInstall({ marker, runningVersion: "0.19.4", installInFlight: false })
-			.kind,
+		evaluatePendingInstall({
+			marker,
+			runningVersion: "0.19.4",
+			installInFlight: false,
+		}).kind,
 		"failed",
 	);
 	// Recency is the line between a live install and a leftover job, and it must
@@ -906,9 +1082,16 @@ test("an install still in flight is not a failure, and a loaded job alone is not
 	assert.equal(pendingInstallAgeSeconds(marker, now), 280);
 	// A marker whose start time cannot be read cannot claim to be live either: the
 	// failure path reports rather than hides, which is the safe way to be wrong.
-	assert.equal(pendingInstallAgeSeconds({ ...marker, startedAt: "" }, now), null);
 	assert.equal(
-		isInstallInFlight({ marker: { ...marker, startedAt: "" }, jobLoaded: true, now }),
+		pendingInstallAgeSeconds({ ...marker, startedAt: "" }, now),
+		null,
+	);
+	assert.equal(
+		isInstallInFlight({
+			marker: { ...marker, startedAt: "" },
+			jobLoaded: true,
+			now,
+		}),
 		false,
 	);
 
@@ -971,10 +1154,19 @@ test("the install job probe reads launchd's exit status, and cannot run reads as
 	};
 	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", probe), true);
 	assert.deepEqual(asked, ["com.local-operator.ShipIt"]);
-	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", () => 113), false);
-	assert.equal(launchdJobLoaded("com.local-operator.ShipIt", () => null), false);
+	assert.equal(
+		launchdJobLoaded("com.local-operator.ShipIt", () => 113),
+		false,
+	);
+	assert.equal(
+		launchdJobLoaded("com.local-operator.ShipIt", () => null),
+		false,
+	);
 	// No job label means nothing to ask, which is not the same as asking.
-	assert.equal(launchdJobLoaded(null, () => 0), false);
+	assert.equal(
+		launchdJobLoaded(null, () => 0),
+		false,
+	);
 });
 
 test("the failed install is recorded so a dismiss is not the end of the record", () => {
@@ -988,7 +1180,10 @@ test("the failed install is recorded so a dismiss is not the end of the record",
 		watchdogPid: 4242,
 	};
 	const payload = installFailurePayload(marker, "0.17.0");
-	assert.equal(lastInstallAttemptPath(dir).endsWith("last-update-install.json"), true);
+	assert.equal(
+		lastInstallAttemptPath(dir).endsWith("last-update-install.json"),
+		true,
+	);
 
 	const first = recordInstallFailure(dir, {
 		payload,
@@ -1092,13 +1287,19 @@ test("a failure after an install was in flight names the relaunch as the cause",
 		/cancelled because Local Operator was opened while the update was installing/,
 	);
 	assert.match(cancelled.message, /0\.19\.4 is still running/);
-	assert.match(cancelled.detail, /Squirrel cancels an install when an instance/);
+	assert.match(
+		cancelled.detail,
+		/Squirrel cancels an install when an instance/,
+	);
 	assert.doesNotMatch(cancelled.detail, /\d{4}-\d{2}-\d{2}T/);
 	// The remedy is still the download page: a user whose install will not settle
 	// needs a working app, and telling them how to leave it closed is the only
 	// thing that makes the retry different this time.
 	assert.equal(cancelled.remedy.url, "https://local-operator.com/download");
-	assert.match(cancelled.remedy.text, /leave it closed until the update finishes/);
+	assert.match(
+		cancelled.remedy.text,
+		/leave it closed until the update finishes/,
+	);
 	// The generic sentence is what the flag exists to replace, and it stays the
 	// default for a failure nobody watched run.
 	assert.match(generic.message, /didn't finish/);
@@ -1160,10 +1361,7 @@ test("the story fixtures carry the payload strings verbatim", () => {
 		["the start-up refusal heading", startup.heading],
 		["the start-up refusal dismiss label", startup.dismissLabel],
 	]) {
-		assert.ok(
-			text,
-			`${what} is missing from the payload the app sends`,
-		);
+		assert.ok(text, `${what} is missing from the payload the app sends`);
 		assert.ok(
 			stories.includes(text),
 			`${what} is not in the story fixtures verbatim - the fixture has drifted from the payload the app sends:\n  expected: ${text}`,
@@ -1189,11 +1387,15 @@ test("the story fixtures carry the payload strings verbatim", () => {
 	// D2 and D3: the panel does not answer an update question the user never
 	// asked, and does not offer to defer an update that is not coming.
 	assert.doesNotMatch(startup.heading, /update/i);
-	assert.notEqual(startup.heading, installedBundleSealBlock(
-		"/Applications/Local Operator.app",
-		"errSecCSBadBundleFormat",
-		"0.19.5",
-	).heading, "the two contexts must not share a heading");
+	assert.notEqual(
+		startup.heading,
+		installedBundleSealBlock(
+			"/Applications/Local Operator.app",
+			"errSecCSBadBundleFormat",
+			"0.19.5",
+		).heading,
+		"the two contexts must not share a heading",
+	);
 	assert.equal(startup.dismissLabel, "Not now");
 	assert.equal(
 		installedBundleSealBlock(
@@ -1220,8 +1422,7 @@ test("the story fixtures carry the payload strings verbatim", () => {
 test("a details line breaks at segment boundaries, never inside a scheme or the date", async () => {
 	const bundled = await build({
 		stdin: {
-			contents:
-				'export * from "./src/renderer/src/shared/lib/path-breaks";',
+			contents: 'export * from "./src/renderer/src/shared/lib/path-breaks";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -1232,7 +1433,7 @@ test("a details line breaks at segment boundaries, never inside a scheme or the 
 	const { withPathBreaks } = await import(
 		`data:text/javascript;base64,${Buffer.from(
 			bundled.outputFiles[0].text,
-		).toString("base64")}`,
+		).toString("base64")}`
 	);
 	const zwsp = "\u200B";
 
@@ -1257,10 +1458,7 @@ test("a details line breaks at segment boundaries, never inside a scheme or the 
 	);
 	// What the copy button hands to the clipboard is the value untouched: the
 	// inserted characters exist for the render only.
-	assert.equal(
-		withPathBreaks("a/b").replaceAll(zwsp, ""),
-		"a/b",
-	);
+	assert.equal(withPathBreaks("a/b").replaceAll(zwsp, ""), "a/b");
 });
 
 // ---------------------------------------------------------------------------
@@ -1287,7 +1485,10 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// the watchdog itself through the very check that waits for the app to exit.
 	assert.equal(plan.script.includes("/Applications/Local Operator.app"), false);
 	assert.equal(plan.env.LO_UPDATE_WATCHDOG_APP_PID, "4242");
-	assert.equal(plan.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB, "com.local-operator.ShipIt");
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_SHIPIT_JOB,
+		"com.local-operator.ShipIt",
+	);
 
 	// No name probe survives in the executable part of the script (the comments
 	// mention pgrep to explain why it is gone), and both real signals are in it:
@@ -1309,13 +1510,19 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// deadline path falls through to it (review Q1), and the decision it waits on
 	// is made of the job going AND the swap landing on disk (review R11).
 	assert.match(plan.script, /deadline=\$\(\( \$\(now\) \+ 600 \)\)/);
-	assert.match(plan.script, /if app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/);
+	assert.match(
+		plan.script,
+		/if app_running; then exit 0; fi\nif \[ -n "\$NAME" \]/,
+	);
 	assert.match(plan.script, /open -a "\$BUNDLE"/);
 	assert.match(plan.script, new RegExp(WATCHDOG_TOKEN));
 	// The on-disk half of the decision: the version in the target bundle's own
 	// Info.plist, read by the platform's plist reader (`plutil` on macOS) rather
 	// than through a preference domain.
-	assert.match(plan.script, /"\$PLIST_READER" -extract CFBundleShortVersionString raw/);
+	assert.match(
+		plan.script,
+		/"\$PLIST_READER" -extract CFBundleShortVersionString raw/,
+	);
 	assert.match(plan.script, /LO_UPDATE_WATCHDOG_TARGET_VERSION/);
 	/*
 	 * And that read is bounded, because it runs inside the poll loop: an
@@ -1389,7 +1596,10 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		/if \[ "\$job_known" -eq 1 \]; then\n\tappear_deadline=/,
 	);
 
-	assert.equal(shipItJobLabel("com.local-operator"), "com.local-operator.ShipIt");
+	assert.equal(
+		shipItJobLabel("com.local-operator"),
+		"com.local-operator.ShipIt",
+	);
 	assert.equal(
 		shipItCacheDir("/Users/operator/Library/Caches", "com.local-operator"),
 		"/Users/operator/Library/Caches/com.local-operator.ShipIt",
@@ -1413,11 +1623,20 @@ test("a target that is already installed is never handed to the watchdog", () =>
 	);
 	// No nameable target: the job and the bound decide instead.
 	assert.equal(watchdogSwapTarget({ target: null, running: "0.17.0" }), null);
-	assert.equal(watchdogSwapTarget({ target: "0.17.0", running: "0.17.0" }), null);
-	assert.equal(watchdogSwapTarget({ target: "v0.17.0", running: "0.17.0" }), null);
+	assert.equal(
+		watchdogSwapTarget({ target: "0.17.0", running: "0.17.0" }),
+		null,
+	);
+	assert.equal(
+		watchdogSwapTarget({ target: "v0.17.0", running: "0.17.0" }),
+		null,
+	);
 	// Already past it: with the at-or-beyond compare this target would answer yes
 	// before the install begins, so it is dropped for the same reason (Q6).
-	assert.equal(watchdogSwapTarget({ target: "0.16.0", running: "0.17.0" }), null);
+	assert.equal(
+		watchdogSwapTarget({ target: "0.16.0", running: "0.17.0" }),
+		null,
+	);
 	// A target the running version cannot be ordered against is kept: the
 	// script's own compare reads it as "not landed", which waits rather than
 	// guesses.
@@ -1451,7 +1670,7 @@ function runWatchdog({ plan, binDir }) {
  * Whether the watchdog's own process group has been vacated.
  *
  * `runWatchdog` spawns the script detached, so it leads its own group and
- * anything it starts - the relaunch, a backgrounded read - is a member. 
+ * anything it starts - the relaunch, a backgrounded read - is a member.
  * `kill(-pgid, 0)` raises ESRCH on an empty group, which is the check the branch
  * with no signals needs: its only route to a relaunch is the bound, and a bound
  * that leaves a process behind is the one thing that branch could add.
@@ -1752,7 +1971,10 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		fixture.setVersion("0.18.0");
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
-		const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+		const watchdog = runWatchdog({
+			plan: planFor(app.pid),
+			binDir: fixture.binDir,
+		});
 		const started = Date.now();
 		app.kill();
 		const result = await watchdog.exit;
@@ -1818,7 +2040,10 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		writeFileSync(fixture.stateFile, "loaded\n", "utf8");
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
-		const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+		const watchdog = runWatchdog({
+			plan: planFor(app.pid),
+			binDir: fixture.binDir,
+		});
 		const started = Date.now();
 		app.kill();
 		const result = await watchdog.exit;
@@ -1937,7 +2162,9 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 			before,
 			"the soft bound launched into a loaded install job",
 		);
-		holding = fixture.notifications().some((line) => stillInstalling.test(line));
+		holding = fixture
+			.notifications()
+			.some((line) => stillInstalling.test(line));
 		if (holding) break;
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
@@ -1963,7 +2190,9 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 	// The first notification is the one the operator never got: the app has just
 	// vanished, and this is the only warning that reopening it cancels the install.
 	assert.ok(
-		notes.some((line) => /Keep Local Operator closed until it opens again/.test(line)),
+		notes.some((line) =>
+			/Keep Local Operator closed until it opens again/.test(line),
+		),
 		`expected the stay-closed notification, got ${JSON.stringify(notes)}`,
 	);
 	assert.ok(
@@ -1972,10 +2201,7 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 	);
 	// Once each, and named as this app: a banner the user cannot attribute is
 	// worse than no banner.
-	assert.equal(
-		notes.filter((line) => stillInstalling.test(line)).length,
-		1,
-	);
+	assert.equal(notes.filter((line) => stillInstalling.test(line)).length, 1);
 	assert.ok(notes.every((line) => /Local Operator/.test(line)));
 
 	// The plan carries both bounds, so the caller's log can promise both.
@@ -2020,7 +2246,10 @@ test("an unanswerable job probe holds rather than starting the app into the inst
 		appPid: app.pid,
 		shipItJob: "com.local-operator.ShipIt",
 		platform: "darwin",
-		signals: { jobProbe: erroringProbe, plistReader: fixture.probes.plistReader },
+		signals: {
+			jobProbe: erroringProbe,
+			plistReader: fixture.probes.plistReader,
+		},
 		timeoutSeconds: 3,
 		hardTimeoutSeconds: 6,
 		intervalSeconds: 1,
@@ -2148,7 +2377,10 @@ test("without launchd or plutil the bound decides, and nothing is left behind", 
 	writeFileSync(fixture.stateFile, "loaded\n", "utf8");
 	const app = startProcess("/bin/sleep", ["30"]);
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan: planFor(app.pid), binDir: fixture.binDir });
+	const watchdog = runWatchdog({
+		plan: planFor(app.pid),
+		binDir: fixture.binDir,
+	});
 	const started = Date.now();
 	app.kill();
 	const result = await watchdog.exit;
@@ -2184,7 +2416,11 @@ test("a failed install's job and staging tree are reaped, and nothing else", () 
 	const cacheDir = shipItCacheDir(cacheRoot, bundleId);
 	mkdirSync(join(cacheDir, "update.abc"), { recursive: true });
 	mkdirSync(join(cacheDir, "update.def"), { recursive: true });
-	writeFileSync(join(cacheDir, "ShipIt_stderr.log"), "Could not read update request\n", "utf8");
+	writeFileSync(
+		join(cacheDir, "ShipIt_stderr.log"),
+		"Could not read update request\n",
+		"utf8",
+	);
 
 	const removedJobs = [];
 	const logs = [];
@@ -2401,13 +2637,10 @@ const ARTIFACT = {
 
 test("artifact metadata is matched by file name, not by position", () => {
 	assert.deepEqual(
-		matchArtifactMetadata(
-			"/tmp/pending/local-operator-ui-0.18.0-arm64.zip",
-			[
-				{ url: "local-operator-ui-0.18.0-arm64.dmg", size: 1 },
-				ARTIFACT,
-			],
-		),
+		matchArtifactMetadata("/tmp/pending/local-operator-ui-0.18.0-arm64.zip", [
+			{ url: "local-operator-ui-0.18.0-arm64.dmg", size: 1 },
+			ARTIFACT,
+		]),
 		ARTIFACT,
 	);
 	assert.equal(matchArtifactMetadata("/tmp/unknown.zip", [ARTIFACT]), null);
@@ -2451,7 +2684,10 @@ test("size, sha512 and free space are each required before the install is offere
 	 * 0.98 GiB for this zip - and labelled it the install's footprint, below what
 	 * the swap needs.
 	 */
-	assert.equal(needed, ARTIFACT.size + INSTALLED * 2 + INSTALL_DISK_SLACK_BYTES);
+	assert.equal(
+		needed,
+		ARTIFACT.size + INSTALLED * 2 + INSTALL_DISK_SLACK_BYTES,
+	);
 	assert.ok(needed > ARTIFACT.size * 3);
 
 	const full = staged(needed - 1);
@@ -2491,7 +2727,11 @@ test("size, sha512 and free space are each required before the install is offere
 test("the installed app's size is measured from the real tree", () => {
 	const dir = tempDir("lo-measure-");
 	mkdirSync(join(dir, "Contents", "MacOS"), { recursive: true });
-	writeFileSync(join(dir, "Contents", "MacOS", "Fixture"), "x".repeat(4096), "utf8");
+	writeFileSync(
+		join(dir, "Contents", "MacOS", "Fixture"),
+		"x".repeat(4096),
+		"utf8",
+	);
 	writeFileSync(join(dir, "Contents", "Info.plist"), "y".repeat(1024), "utf8");
 	assert.equal(measureDirectoryBytes(dir), 5120);
 	// A path that is not there is "could not measure", never zero: the difference
@@ -2796,14 +3036,23 @@ test("the install resolves without the shell's PATH, and names the same remedy",
 	// The real machine: both environments have to point at the same install, and
 	// that install has to classify as the uv tool install whose remedy is the
 	// source-build instruction rather than a pip or pipx command.
-	const underLaunchd = resolveCommandPath("local-operator", { env: appEnv, home });
-	const underLogin = resolveCommandPath("local-operator", { env: loginEnv, home });
+	const underLaunchd = resolveCommandPath("local-operator", {
+		env: appEnv,
+		home,
+	});
+	const underLogin = resolveCommandPath("local-operator", {
+		env: loginEnv,
+		home,
+	});
 	if (!underLaunchd || !underLogin) {
 		t.skip("no local-operator installed outside this machine's PATH");
 		return;
 	}
 	assert.equal(underLaunchd, underLogin);
-	assert.equal(classifyGlobalInstall(readInstallIdentity(underLogin)), "uv-tool");
+	assert.equal(
+		classifyGlobalInstall(readInstallIdentity(underLogin)),
+		"uv-tool",
+	);
 
 	const lopLaunchd = resolveCommandPath("lop-update", { env: appEnv, home });
 	assert.equal(
@@ -2825,8 +3074,13 @@ test("the install resolves without the shell's PATH, and names the same remedy",
 });
 
 test("the bundled pip invocation is non-interactive and version-verified", () => {
-	const pip = buildPipUpgradeCommand("/Applications/Local Operator.app/venv/bin/python3");
-	assert.equal(pip.command, "/Applications/Local Operator.app/venv/bin/python3");
+	const pip = buildPipUpgradeCommand(
+		"/Applications/Local Operator.app/venv/bin/python3",
+	);
+	assert.equal(
+		pip.command,
+		"/Applications/Local Operator.app/venv/bin/python3",
+	);
 	assert.deepEqual(pip.args, [
 		"-m",
 		"pip",
@@ -2902,7 +3156,16 @@ function pythonTreeVerdict({ arch, trees }) {
 	mkdirSync(dirname(framework), { recursive: true });
 	writeFileSync(framework, "binary fixture", "utf8");
 	for (const tree of trees) {
-		mkdirSync(join(app, "Contents", "Resources", "python-runtime-seed", tree === "python_aarch64" ? "arm64" : "x64"), { recursive: true });
+		mkdirSync(
+			join(
+				app,
+				"Contents",
+				"Resources",
+				"python-runtime-seed",
+				tree === "python_aarch64" ? "arm64" : "x64",
+			),
+			{ recursive: true },
+		);
 	}
 	return bundledPythonCheck(app, {
 		run: () => ({ status: 0, stdout: `${arch}\n`, stderr: "" }),
@@ -2924,7 +3187,10 @@ test("the interpreter gate refuses the other architecture's tree", () => {
 		/the arm64 app ships Contents\/Resources\/python-runtime-seed\/x64, but it resolves Contents\/Resources\/python-runtime-seed\/arm64/,
 	);
 
-	const reversed = pythonTreeVerdict({ arch: "x86_64", trees: ["python_aarch64"] });
+	const reversed = pythonTreeVerdict({
+		arch: "x86_64",
+		trees: ["python_aarch64"],
+	});
 	assert.equal(reversed.passed, false);
 	assert.match(
 		reversed.output,
@@ -2945,12 +3211,18 @@ test("the interpreter gate refuses the other architecture's tree", () => {
 
 	// A fat bundle legitimately needs both, so it fails as its own case rather
 	// than being rounded to one architecture.
-	const fat = pythonTreeVerdict({ arch: "arm64 x86_64", trees: ["python_aarch64"] });
+	const fat = pythonTreeVerdict({
+		arch: "arm64 x86_64",
+		trees: ["python_aarch64"],
+	});
 	assert.equal(fat.passed, false);
 	assert.match(fat.output, /not a single architecture/);
 
 	// An architecture with no mapping is refused, not defaulted to `python`.
-	const unmapped = pythonTreeVerdict({ arch: "arm64e", trees: ["python_aarch64"] });
+	const unmapped = pythonTreeVerdict({
+		arch: "arm64e",
+		trees: ["python_aarch64"],
+	});
 	assert.equal(unmapped.passed, false);
 	assert.match(unmapped.output, /no bundled interpreter matches/);
 
@@ -2958,7 +3230,10 @@ test("the interpreter gate refuses the other architecture's tree", () => {
 	// of the pairing rather than of the check.
 	const right = pythonTreeVerdict({ arch: "arm64", trees: ["python_aarch64"] });
 	assert.equal(right.passed, true);
-	assert.match(right.output, /arm64 app ships only Contents\/Resources\/python-runtime-seed\/arm64/);
+	assert.match(
+		right.output,
+		/arm64 app ships only Contents\/Resources\/python-runtime-seed\/arm64/,
+	);
 });
 
 test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
@@ -2991,7 +3266,10 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 		"context:primary-signature",
 		DMG,
 	]);
-	assert.equal(dmgSpctl.expect({ status: 0, stdout: "rejected", stderr: "" }), false);
+	assert.equal(
+		dmgSpctl.expect({ status: 0, stdout: "rejected", stderr: "" }),
+		false,
+	);
 	assert.equal(
 		dmgSpctl.expect({
 			status: 0,
@@ -3011,10 +3289,18 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 			return { status: 0, stdout: "", stderr: "" };
 		}
 		if (joined.includes("-t exec")) {
-			return { status: 0, stdout: "accepted\nsource=Notarized Developer ID", stderr: "" };
+			return {
+				status: 0,
+				stdout: "accepted\nsource=Notarized Developer ID",
+				stderr: "",
+			};
 		}
 		if (joined.includes("-t open")) {
-			return { status: 0, stdout: "rejected\nsource=no usable signature", stderr: "" };
+			return {
+				status: 0,
+				stdout: "rejected\nsource=no usable signature",
+				stderr: "",
+			};
 		}
 		if (joined.includes("stapler validate")) {
 			return joined.endsWith(".app")
@@ -3047,9 +3333,16 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 		if (command === "/usr/bin/codesign") {
 			return { status: 0, stdout: "", stderr: "" };
 		}
-		return { status: 0, stdout: `accepted\nsource=Notarized Developer ID`, stderr: "" };
+		return {
+			status: 0,
+			stdout: "accepted\nsource=Notarized Developer ID",
+			stderr: "",
+		};
 	};
-	assert.equal(summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok, true);
+	assert.equal(
+		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok,
+		true,
+	);
 });
 
 test("missing artifacts fail rather than passing vacuously", () => {
@@ -3143,7 +3436,12 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 	// These are deliberately fake image bytes. Signing mocks cannot make the
 	// final copied-out app check pass without an application in the container.
 	assert.equal(result.ok, false);
-	assert.equal(result.results.filter((row) => row.id === "final-container-app" && !row.passed).length, 2);
+	assert.equal(
+		result.results.filter(
+			(row) => row.id === "final-container-app" && !row.passed,
+		).length,
+		2,
+	);
 	// Named groups rather than one magic total: a total that silently absorbs a
 	// new check is how a check nobody audited gets counted as covered.
 	for (const appPath of discovered.apps) {
@@ -3181,7 +3479,11 @@ test("every discovered image is checked, and an unreadable entry fails cleanly",
 	// throwing out of discovery.
 	const brokenDir = tempDir("lo-dist-broken-");
 	mkdirSync(join(brokenDir, "mac-arm64"), { recursive: true });
-	spawnSync("/bin/ln", ["-s", "/nonexistent/dist", join(brokenDir, "mac-arm64", "Ghost.app")]);
+	spawnSync("/bin/ln", [
+		"-s",
+		"/nonexistent/dist",
+		join(brokenDir, "mac-arm64", "Ghost.app"),
+	]);
 	const brokenChecks = [];
 	const brokenResult = verifyArtifacts({
 		dist: brokenDir,
@@ -3206,7 +3508,18 @@ test("the real macOS tools reject an unsigned image, on macOS", async (t) => {
 	const dmg = join(dir, "local-operator-ui-0.0.0-arm64.dmg");
 	const created = spawnSync(
 		"/usr/bin/hdiutil",
-		["create", "-quiet", "-volname", "Local Operator Fixture", "-srcfolder", source, "-ov", "-format", "UDZO", dmg],
+		[
+			"create",
+			"-quiet",
+			"-volname",
+			"Local Operator Fixture",
+			"-srcfolder",
+			source,
+			"-ov",
+			"-format",
+			"UDZO",
+			dmg,
+		],
 		{ encoding: "utf8" },
 	);
 	assert.equal(created.status, 0, created.stderr);
@@ -3227,17 +3540,21 @@ test("the real macOS tools reject an unsigned image, on macOS", async (t) => {
 	});
 	const verdict = summarize(checks);
 	assert.equal(verdict.ok, false);
-	assert.deepEqual(
-		verdict.failures.map((result) => result.id).sort(),
-		["dmg-spctl", "dmg-stapler"],
-	);
+	assert.deepEqual(verdict.failures.map((result) => result.id).sort(), [
+		"dmg-spctl",
+		"dmg-stapler",
+	]);
 
 	// The operator's own downloaded 0.17.0 image is the real negative fixture.
 	// It is 366 MB and machine-local, so it is checked only when it is there -
 	// and the synthetic case above is what keeps this runnable in CI.
 	const fixture =
 		process.env.LO_UI_DMG_FIXTURE ??
-		join(process.env.HOME ?? "", "Downloads", "local-operator-ui-0.17.0-universal.dmg");
+		join(
+			process.env.HOME ?? "",
+			"Downloads",
+			"local-operator-ui-0.17.0-universal.dmg",
+		);
 	if (!existsSync(fixture)) {
 		console.log(
 			`Skipped the shipped-artifact fixture: no image at ${fixture} (set LO_UI_DMG_FIXTURE to include it).`,
@@ -3259,10 +3576,10 @@ test("the real macOS tools reject an unsigned image, on macOS", async (t) => {
 		}),
 	);
 	assert.equal(shippedChecks.ok, false);
-	assert.deepEqual(
-		shippedChecks.failures.map((result) => result.id).sort(),
-		["dmg-spctl", "dmg-stapler"],
-	);
+	assert.deepEqual(shippedChecks.failures.map((result) => result.id).sort(), [
+		"dmg-spctl",
+		"dmg-stapler",
+	]);
 });
 
 // ---------------------------------------------------------------------------
@@ -3472,6 +3789,7 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
 		process.env.APPLE_TEAM_ID = "TESTTEAM01";
 		globalThis.__loNotarizeCalls = [];
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeBehavior;
 
 		// The default CI invocation: `--dist` relative to the working directory.
@@ -3485,7 +3803,10 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 			true,
 			`a relative --dist reached the notarizer as ${globalThis.__loNotarizeCalls[0].appPath}`,
 		);
-		assert.equal(globalThis.__loNotarizeCalls[0].appPath, resolve(dist, imageName));
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appPath,
+			resolve(dist, imageName),
+		);
 		// The staple, hash and rewrite all finished on that same file: a wrong path
 		// here would have thrown before the rewrite, leaving the pre-staple hash.
 		assert.match(readFileSync(ymlPath, "utf8"), /sha512: [A-Za-z0-9+/=]{16}/);
@@ -3508,7 +3829,9 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 			if (value === undefined) delete process.env[key];
 			else process.env[key] = value;
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeCalls;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeBehavior;
 	}
 });
@@ -3580,7 +3903,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			if (value === undefined) delete process.env[key];
 			else process.env[key] = value;
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeCalls;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeBehavior;
 	}
 
@@ -3649,7 +3974,11 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			},
 		},
 	);
-	assert.notEqual(result.status, 0, `expected a non-zero exit, got ${result.status}`);
+	assert.notEqual(
+		result.status,
+		0,
+		`expected a non-zero exit, got ${result.status}`,
+	);
 	assert.match(result.stderr, /Disk image notarization failed/);
 	assert.match(result.stderr, /stubbed notarization rejected/);
 	assert.equal(isAbsolute(readFileSync(probeFile, "utf8")), true);
@@ -3800,7 +4129,6 @@ test("the failure detail points at Squirrel's log when the caller has one", () =
 	);
 	assert.match(withLog.detail, /Install started /);
 });
-
 
 // ---------------------------------------------------------------------------
 // The by-hand panel's clear rules
@@ -4010,7 +4338,7 @@ test("a Windows install and an XDG data home are searched by their own rules", (
 		listDir: () => [],
 		exists: (candidate) => candidate.endsWith("uv.EXE"),
 	});
-	assert.ok(found && found.endsWith("uv.EXE"), `expected an .exe, got ${found}`);
+	assert.ok(found?.endsWith("uv.EXE"), `expected an .exe, got ${found}`);
 	// A machine whose environment carries no PATHEXT still resolves: the
 	// documented default is used, because the app is a process that may not have
 	// inherited a shell's environment at all.
@@ -4021,7 +4349,7 @@ test("a Windows install and an XDG data home are searched by their own rules", (
 		listDir: () => [],
 		exists: (candidate) => candidate.endsWith("pipx.EXE"),
 	});
-	assert.ok(noPathext && noPathext.endsWith("pipx.EXE"), `${noPathext}`);
+	assert.ok(noPathext?.endsWith("pipx.EXE"), `${noPathext}`);
 
 	// The tool environment's own scripts: `Scripts` on Windows, `bin` elsewhere.
 	const toolRoot = join(home, "tools");
@@ -4042,7 +4370,11 @@ test("a Windows install and an XDG data home are searched by their own rules", (
 	);
 	const posixTool = [];
 	resolveCommandPath("local-operator", {
-		env: { PATH: "/nonexistent-on-this-host", HOME: home, UV_TOOL_DIR: toolRoot },
+		env: {
+			PATH: "/nonexistent-on-this-host",
+			HOME: home,
+			UV_TOOL_DIR: toolRoot,
+		},
 		home,
 		platform: "darwin",
 		listDir: (dir) => (dir === toolRoot ? ["local-operator"] : []),
@@ -4060,10 +4392,15 @@ test("a Windows install and an XDG data home are searched by their own rules", (
 	const dataHome = join(home, "xdg-data");
 	const xdgTried = [];
 	resolveCommandPath("local-operator", {
-		env: { PATH: "/nonexistent-on-this-host", HOME: home, XDG_DATA_HOME: dataHome },
+		env: {
+			PATH: "/nonexistent-on-this-host",
+			HOME: home,
+			XDG_DATA_HOME: dataHome,
+		},
 		home,
 		platform: "darwin",
-		listDir: (dir) => (dir === join(dataHome, "uv", "tools") ? ["local-operator"] : []),
+		listDir: (dir) =>
+			dir === join(dataHome, "uv", "tools") ? ["local-operator"] : [],
 		exists: (candidate) => {
 			xdgTried.push(candidate);
 			return false;
@@ -4138,13 +4475,19 @@ test("the script's version rule agrees with the renderer's, absent operands asid
 	writeFileSync(
 		ruleFile,
 		`${rule[0]}\n${pairs
-			.map(([installed, target]) => `version_at_least '${installed}' '${target}'; echo $?`)
+			.map(
+				([installed, target]) =>
+					`version_at_least '${installed}' '${target}'; echo $?`,
+			)
 			.join("\n")}\n`,
 	);
 	const output = spawnSync("/bin/sh", [ruleFile], { encoding: "utf8" });
 	rmSync(workDir, { recursive: true, force: true });
 	assert.equal(output.status, 0, output.stderr);
-	const answers = output.stdout.trim().split("\n").map((line) => line.trim() === "0");
+	const answers = output.stdout
+		.trim()
+		.split("\n")
+		.map((line) => line.trim() === "0");
 	assert.equal(answers.length, pairs.length);
 	const byPair = new Map();
 	pairs.forEach(([installed, target], index) => {
@@ -4156,7 +4499,9 @@ test("the script's version rule agrees with the renderer's, absent operands asid
 		const shell = byPair.get(`${installed}->${target}`);
 		const renderer = atLeastVersion(installed, target);
 		if (shell !== renderer) {
-			disagreeing.push(`${installed} vs ${target}: shell=${shell} renderer=${renderer}`);
+			disagreeing.push(
+				`${installed} vs ${target}: shell=${shell} renderer=${renderer}`,
+			);
 		}
 	}
 	assert.deepEqual(disagreeing, []);
@@ -4187,7 +4532,10 @@ test("the script's version rule agrees with the renderer's, absent operands asid
 	const emptyOutput = spawnSync("/bin/sh", [emptyFile], { encoding: "utf8" });
 	rmSync(emptyDir, { recursive: true, force: true });
 	assert.deepEqual(
-		emptyOutput.stdout.trim().split("\n").map((line) => line.trim() === "0"),
+		emptyOutput.stdout
+			.trim()
+			.split("\n")
+			.map((line) => line.trim() === "0"),
 		[false, false],
 	);
 	assert.equal(atLeastVersion("", "0.18.0"), false);
@@ -4447,7 +4795,7 @@ const loadUpdateServiceModule = async () => {
 	const serviceDir = mkdtempSync(join(tmpdir(), "lo-service-bundle-"));
 	const serviceFile = join(serviceDir, "update-service.mjs");
 	writeFileSync(serviceFile, bundle.outputFiles[0].text);
-		return { service: await import(serviceFile), serviceDir };
+	return { service: await import(serviceFile), serviceDir };
 };
 
 /**
@@ -4473,7 +4821,12 @@ const loadUpdateServiceModule = async () => {
 test("the banner's remedy names the release the last check read", async () => {
 	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
 	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
@@ -4518,6 +4871,7 @@ test("the banner's remedy names the release the last check read", async () => {
 		assert.equal(targeted[0].payload.latestVersion, "0.99.0");
 	} finally {
 		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
@@ -4655,6 +5009,7 @@ const loAggregateCheck = async ({
 		 */
 		let verdict;
 		if (ipc) {
+			// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 			delete globalThis.__loIpcHandlers;
 			updateService.setupIpcHandlers();
 			const handler = globalThis.__loIpcHandlers?.["check-for-all-updates"];
@@ -4669,13 +5024,16 @@ const loAggregateCheck = async ({
 		}
 		return { verdict, sent };
 	} finally {
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loIpcHandlers;
 		if (interval) clearInterval(interval);
 		if (health) {
 			health.closeAllConnections();
 			health.close();
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
@@ -4973,7 +5331,10 @@ test("an unreadable server version reading cannot earn the affirmation", async (
 
 		// The npx channel reads the npm registry instead of the updater.
 		const npxUnreadable = await loAggregateCheck({
-			appCheck: () => ({ isUpdateAvailable: false, versionInfo: { version: "0.0.0-test" } }),
+			appCheck: () => ({
+				isUpdateAvailable: false,
+				versionInfo: { version: "0.0.0-test" },
+			}),
 			npxVersion: "invalid",
 			serverVersion: "0.54.44",
 			publishedVersion: "0.54.44",
@@ -4983,7 +5344,10 @@ test("an unreadable server version reading cannot earn the affirmation", async (
 
 		// And the sentence is still reachable where the readings are real.
 		const npxCurrent = await loAggregateCheck({
-			appCheck: () => ({ isUpdateAvailable: false, versionInfo: { version: "0.0.0-test" } }),
+			appCheck: () => ({
+				isUpdateAvailable: false,
+				versionInfo: { version: "0.0.0-test" },
+			}),
 			npxVersion: "0.0.0-test",
 			serverVersion: "0.54.44",
 			publishedVersion: "0.54.44",
@@ -5158,9 +5522,17 @@ test("the readable-version grammar keeps every comparison it always made", async
 			"0.1.0;rm -rf /",
 		];
 		for (const version of readable)
-			assert.equal(rule.isReadableVersion(version), true, `${version} is a published form`);
+			assert.equal(
+				rule.isReadableVersion(version),
+				true,
+				`${version} is a published form`,
+			);
 		for (const version of unreadable)
-			assert.equal(rule.isReadableVersion(version), false, `${version} must not be compared`);
+			assert.equal(
+				rule.isReadableVersion(version),
+				false,
+				`${version} must not be compared`,
+			);
 		assert.equal(rule.isReadableVersion(null), false, "no reading");
 		assert.equal(rule.isReadableVersion(undefined), false, "no reading");
 		assert.equal(
@@ -5737,7 +6109,6 @@ async function loUpdateScenario({ blockmaps = true, patchLength = 4096 } = {}) {
 	return { dir, old, next, previous, current };
 }
 
-
 /**
  * The host probes MacUpdater reads, spelled the way the real ones answer.
  *
@@ -5771,6 +6142,7 @@ async function loAsArch(arch, run) {
 			value: originalArch,
 			configurable: true,
 		});
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		if (originalProbe === undefined) delete globalThis.__loUpdaterProbe;
 		else globalThis.__loUpdaterProbe = originalProbe;
 	}
@@ -5955,7 +6327,11 @@ for (const [arch, own, other] of [
 		"local-operator-ui-0.19.7-arm64.zip",
 		"local-operator-ui-0.19.7-x64.zip",
 	],
-	["x64", "local-operator-ui-0.19.7-x64.zip", "local-operator-ui-0.19.7-arm64.zip"],
+	[
+		"x64",
+		"local-operator-ui-0.19.7-x64.zip",
+		"local-operator-ui-0.19.7-arm64.zip",
+	],
 ]) {
 	test(`an ${arch} Mac downloads its own build, and only the changed blocks`, async (t) => {
 		if (skipUnlessDarwin(t)) return;
@@ -6061,9 +6437,7 @@ test("the first update off a universal build falls back to a full download", asy
 			`the previous release's block map was not even attempted: ${run.state.requests.map((request) => request.name).join(", ")}`,
 		);
 		assert.ok(
-			run.lines.some((line) =>
-				line.includes("Cannot download differentially"),
-			),
+			run.lines.some((line) => line.includes("Cannot download differentially")),
 			`the fallback was not taken: ${run.lines.join(" | ")}`,
 		);
 		assert.equal(run.state.bytesFor(own), entry.size);
@@ -6121,7 +6495,12 @@ test("without the block maps a release offers, the updater transfers the whole f
 test("a re-check failure goes out through the delivery scheduler, not a bare push", async () => {
 	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
 	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	let interval = null;
@@ -6188,6 +6567,7 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), false);
 	} finally {
 		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
@@ -6214,7 +6594,12 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 test("a quit during an in-flight install takes the close over, and only then", async () => {
 	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
 	const { service, serviceDir } = await loadUpdateServiceModule();
 
 	// The window the service is built around is inert here, and that is the point
@@ -6289,6 +6674,7 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		for (const interval of intervals) {
 			if (interval) clearInterval(interval);
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
@@ -6317,7 +6703,12 @@ test("a quit during an in-flight install takes the close over, and only then", a
 test("a quit through the panel's own handler decides once and ensures one watchdog", async () => {
 	const home = mkdtempSync(join(tmpdir(), "lo-service-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-service-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
 	const { service, serviceDir } = await loadUpdateServiceModule();
 	const intervals = [];
 
@@ -6384,7 +6775,11 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		const fromWindowClose = new service.UpdateService(
 			{
 				isDestroyed: () => false,
-				webContents: { send: () => {}, isDestroyed: () => false, once: () => {} },
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					once: () => {},
+				},
 			},
 			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
 		);
@@ -6396,7 +6791,10 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 			windowEnsures.push(targetVersion);
 			return 4243;
 		};
-		assert.equal(fromWindowClose.quitForInFlightInstall("last window closed"), true);
+		assert.equal(
+			fromWindowClose.quitForInFlightInstall("last window closed"),
+			true,
+		);
 		assert.equal(fromWindowClose.quitForInFlightInstall("app quit"), true);
 		assert.equal(windowEnsures.length, 1);
 
@@ -6407,7 +6805,9 @@ test("a quit through the panel's own handler decides once and ensures one watchd
 		for (const interval of intervals) {
 			if (interval) clearInterval(interval);
 		}
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
@@ -6431,12 +6831,19 @@ test("a quit through the panel's own handler decides once and ensures one watchd
  */
 test("the start-up seal pass heals the bundle it runs from, or refuses out loud", async (t) => {
 	if (process.platform !== "darwin") {
-		t.skip("macOS only: the probe, the heal and their fixture all use codesign");
+		t.skip(
+			"macOS only: the probe, the heal and their fixture all use codesign",
+		);
 		return;
 	}
 	const home = mkdtempSync(join(tmpdir(), "lo-startup-seal-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-startup-seal-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
 	const { service, serviceDir } = await loadUpdateServiceModule();
 	const sent = [];
 	const updateService = new service.UpdateService(
@@ -6496,14 +6903,21 @@ test("the start-up seal pass heals the bundle it runs from, or refuses out loud"
 
 		// Scheduled rather than pushed: the window is loading when a start-up pass
 		// runs, and a push no subscriber saw still reports success.
-		assert.deepEqual(sent, [], "the refusal must wait for the delivery scheduler");
+		assert.deepEqual(
+			sent,
+			[],
+			"the refusal must wait for the delivery scheduler",
+		);
 		await new Promise((resolve) => setTimeout(resolve, 5300));
 		const blocks = sent.filter(
 			({ channel }) => channel === "update-install-blocked",
 		);
 		assert.equal(blocks.length, 1, JSON.stringify(sent));
 		assert.equal(blocks[0].payload.code, "installed-bundle-not-sealed");
-		assert.match(blocks[0].payload.detail, /a sealed resource is missing or invalid/);
+		assert.match(
+			blocks[0].payload.detail,
+			/a sealed resource is missing or invalid/,
+		);
 		assert.match(blocks[0].payload.remedy.text, /download a fresh copy/);
 		// And the copy is about THIS moment: no update was attempted here, so the
 		// update's sentence ("the update was stopped before the app quit") would tell
@@ -6513,7 +6927,9 @@ test("the start-up seal pass heals the bundle it runs from, or refuses out loud"
 		assert.doesNotMatch(blocks[0].payload.message, /will refuse/);
 	} finally {
 		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
@@ -6530,7 +6946,8 @@ test("the start-up seal pass heals the bundle it runs from, or refuses out loud"
  * is where the split is pinned (review R2).
  */
 test("the refusal says which it is: an update stopped, or a copy to replace", () => {
-	const detail = "file added: Contents/Resources/python_aarch64/lib/python3.12/x.pyc";
+	const detail =
+		"file added: Contents/Resources/python_aarch64/lib/python3.12/x.pyc";
 	const update = install.installedBundleSealBlock(
 		"/Applications/Local Operator.app",
 		detail,
@@ -6548,7 +6965,10 @@ test("the refusal says which it is: an update stopped, or a copy to replace", ()
 		null,
 	);
 
-	assert.match(update.message, /update to version 0\.22\.3 was stopped before the app quit/);
+	assert.match(
+		update.message,
+		/update to version 0\.22\.3 was stopped before the app quit/,
+	);
 	assert.doesNotMatch(versionless.message, /version/);
 	assert.match(startup.message, /did not pass its integrity check/);
 	assert.doesNotMatch(startup.message, /will refuse/);
@@ -6576,7 +6996,12 @@ test("the refusal says which it is: an update stopped, or a copy to replace", ()
 test("an unpackaged instance leaves the packaged app's install state alone", async () => {
 	const home = mkdtempSync(join(tmpdir(), "lo-dev-home-"));
 	const userData = mkdtempSync(join(tmpdir(), "lo-dev-userdata-"));
-	globalThis.__loTestPaths = { home, userData, appData: userData, temp: tmpdir() };
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
 	const originalPackaged = globalThis.__loTestAppIsPackaged;
 	globalThis.__loTestAppIsPackaged = false;
 	const { service, serviceDir } = await loadUpdateServiceModule();
@@ -6649,9 +7074,12 @@ test("an unpackaged instance leaves the packaged app's install state alone", asy
 		assert.equal(marker.watchdogPid, 77355);
 	} finally {
 		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		if (originalPackaged === undefined) delete globalThis.__loTestAppIsPackaged;
 		else globalThis.__loTestAppIsPackaged = originalPackaged;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loIpcHandlers;
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });

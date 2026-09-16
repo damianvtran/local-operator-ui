@@ -28,11 +28,13 @@ import {
 	readFileSync,
 	rmSync,
 	writeFileSync,
-} from "node:fs";import { createServer } from "node:http";
+} from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const bundle = await build({
 	stdin: {
@@ -221,9 +223,12 @@ async function zombiePid() {
 		"python3",
 		[
 			"-c",
-			'import os, time\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nprint(pid, flush=True)\ntime.sleep(120)\n',
+			"import os, time\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nprint(pid, flush=True)\ntime.sleep(120)\n",
 		],
-		{ stdio: ["ignore", "pipe", "ignore"] },
+		// A real interpreter, so its environment is stated rather than inherited
+		// (scripts/python-child-env.mjs): an ambient `PYTHONPYCACHEPREFIX` pointing
+		// inside an installed `.app` is how a harness wrote a cache into one.
+		{ env: pythonChildEnv(), stdio: ["ignore", "pipe", "ignore"] },
 	);
 	const pid = await new Promise((resolve) => {
 		const timer = setTimeout(() => resolve(null), 10_000);
@@ -450,9 +455,7 @@ test("a WEDGED record (live pid, stopped heartbeat) is reported, not attached to
 	 * remaining way this app told a user their server was offline while a process
 	 * was still there.
 	 */
-	assert.deepEqual(result.wedged, [
-		{ file, pid: process.pid, alive: true },
-	]);
+	assert.deepEqual(result.wedged, [{ file, pid: process.pid, alive: true }]);
 	assert.equal(result.blocksSpawn, true);
 	rmSync(file, { force: true });
 });
@@ -476,9 +479,7 @@ test("a dead pid with a FRESH heartbeat is wedged too, and the report does not c
 	assert.equal(rejection.reason, "wedged");
 	assert.doesNotMatch(rejection.detail, /is alive/);
 	assert.match(rejection.detail, /is gone and its heartbeat is only/);
-	assert.deepEqual(result.wedged, [
-		{ file, pid: gone, alive: false },
-	]);
+	assert.deepEqual(result.wedged, [{ file, pid: gone, alive: false }]);
 	rmSync(file, { force: true });
 });
 

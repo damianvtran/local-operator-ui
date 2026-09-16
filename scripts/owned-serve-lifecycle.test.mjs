@@ -20,25 +20,38 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import vm from "node:vm";
 import { build, transform } from "esbuild";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 // No GUI, user rc files, inherited cmux attachment, or real backend is involved.
 // Only fixture ChildProcess handles may be signalled; detached fixtures shut
 // themselves down over their own HTTP endpoint instead of PID rediscovery.
 const home = mkdtempSync(join(tmpdir(), "owned-serve-"));
-const env = Object.fromEntries(
+/*
+ * The environment every spawn in this file is handed, built through the shared
+ * helper so the python variables are STATED rather than inherited
+ * (scripts/python-child-env.mjs): the ambient `PYTHONPYCACHEPREFIX` of an agent
+ * shell has pointed inside the operator's installed app, which is how a harness
+ * wrote 19 `.pyc` into it. The `CMUX_*` and `LOCAL_OPERATOR_*` scrubs stay - an
+ * inherited `CMUX_WORKSPACE_ID` once let a headless test rename the operator's
+ * real cmux workspaces - and `PYTHONHOME` no longer needs naming here, because
+ * the helper drops every `PYTHON*` variable this file did not set itself.
+ */
+const baseEnv = Object.fromEntries(
 	Object.entries(process.env).filter(
-		([key]) =>
-			!key.startsWith("CMUX_") &&
-			!key.startsWith("LOCAL_OPERATOR_") &&
-			key !== "PYTHONHOME",
+		([key]) => !key.startsWith("CMUX_") && !key.startsWith("LOCAL_OPERATOR_"),
 	),
 );
-Object.assign(env, {
-	HOME: home,
-	XDG_CONFIG_HOME: home,
-	PYTHONPATH: home,
-	PYTHONDONTWRITEBYTECODE: "1",
-	PATH: `${home}/bin:${env.PATH}`,
+const env = pythonChildEnv({
+	base: baseEnv,
+	extra: {
+		HOME: home,
+		XDG_CONFIG_HOME: home,
+		/* The fixture package this suite proves is importable - the one `PYTHON*`
+		 * variable a caller is entitled to set, and the reason the helper drops the
+		 * rest rather than refusing the input. */
+		PYTHONPATH: home,
+		PATH: `${home}/bin:${baseEnv.PATH}`,
+	},
 });
 const python = spawnSync(
 	"python3",
@@ -251,16 +264,16 @@ after(async () => {
 });
 
 test("real owned servers: direct exec PID, external sentinel and durable runtime survive", async () => {
-	const a = await manager(),
-		b = await manager(),
-		external = await sentinel();
+	const a = await manager();
+	const b = await manager();
+	const external = await sentinel();
 	const durable = await freePort();
 	detachedPorts.push(durable);
 	a.shellEnv.DURABLE_PORT = String(durable);
 	assert.equal(await a.start(), true);
 	assert.equal(await b.start(), true);
-	const aChild = a.process,
-		bChild = b.process;
+	const aChild = a.process;
+	const bChild = b.process;
 	assert.equal((await response(a.port)).pid, aChild.pid);
 	assert.equal((await response(b.port)).pid, bChild.pid);
 	const durableIdentity = await ready(durable);
@@ -286,8 +299,8 @@ test("ignored graceful signal escalates only captured serve; normal/restart grac
 	});
 	m.shutdownTimeoutMs = { normal: 40, restart: 60, force: 1000 };
 	assert.equal(await m.start(), true);
-	const child = m.process,
-		exit = once(child, "exit");
+	const child = m.process;
+	const exit = once(child, "exit");
 	await m.stop(false);
 	assert.equal((await exit)[1], "SIGKILL");
 	console.log(
@@ -299,8 +312,8 @@ test("failed startup is stopped even before readiness; stopped start cannot spaw
 	const m = await manager("unready");
 	const starting = m.start();
 	while (!m.process) await new Promise((r) => setTimeout(r, 10));
-	const child = m.process,
-		exit = once(child, "exit");
+	const child = m.process;
+	const exit = once(child, "exit");
 	await m.stop(true);
 	assert.equal(await starting, false);
 	assert.equal((await exit)[1], "SIGTERM");
@@ -341,8 +354,8 @@ test("concurrent restarts share cleanup and replacement; final quit wins", async
 	const m = await manager();
 	assert.equal(await m.start(), true);
 	const old = m.process;
-	const first = m.restart(),
-		second = m.restart();
+	const first = m.restart();
+	const second = m.restart();
 	assert.equal(first, second);
 	assert.equal(await first, true);
 	assert.notEqual(m.process, old);
@@ -454,8 +467,8 @@ test("spawn failure, disabled, external, and never-started managers have zero ki
 		m.emergencyStopOwned();
 		assert.equal(m.process, null);
 	}
-	const m = await manager(),
-		c = fakeChild(undefined);
+	const m = await manager();
+	const c = fakeChild(undefined);
 	c.pid = undefined;
 	m.captureServe(c);
 	c.emit("error", new Error("ENOENT"));
@@ -498,16 +511,18 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		.code;
 	for (const outcome of ["ok", "failed", "stuck"]) {
 		const app = new EventEmitter();
-		let quit = 0,
-			exit = null,
-			resolve,
-			reject,
-			done = false;
+		let quit = 0;
+		let exit = null;
+		let resolve;
+		let reject;
+		let done = false;
 		const hooks = () => {};
 		app.on("before-quit", hooks);
 		app.on("will-quit", hooks);
 		app.quit = () => quit++;
-		app.exit = (c) => (exit = c);
+		app.exit = (c) => {
+			exit = c;
+		};
 		const pending = new Promise((r, j) => {
 			resolve = r;
 			reject = j;
@@ -516,8 +531,18 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		// The window-side teardown this branch adds to the same handler reads these
 		// two module-scope handles, so the sandbox supplies them. They record rather
 		// than assert here: what is asserted is below, beside the handler.
-		const viewerEndpointStub = { closed: 0, close() { this.closed++; } };
-		const viewerRecordStub = { stopped: 0, stop() { this.stopped++; } };
+		const viewerEndpointStub = {
+			closed: 0,
+			close() {
+				this.closed++;
+			},
+		};
+		const viewerRecordStub = {
+			stopped: 0,
+			stop() {
+				this.stopped++;
+			},
+		};
 		const backendService = {
 			isOwnedCleanupComplete: () => done,
 			stop: () => {
@@ -666,7 +691,8 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 		.code;
 	for (const failed of [false, true]) {
 		const actions = [];
-		let resolve, reject;
+		let resolve;
+		let reject;
 		const pending = new Promise((r, j) => {
 			resolve = r;
 			reject = j;
@@ -691,7 +717,11 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			downloadHelper: () => null,
 		};
 		const context = {
-			ipcMain: { handle: (_, f) => (handler = f) },
+			ipcMain: {
+				handle: (_, f) => {
+					handler = f;
+				},
+			},
 			logger: { info() {}, error() {} },
 			LogFileType: { UPDATE_SERVICE: "update" },
 			/*
@@ -766,7 +796,8 @@ function probeChild(outcome) {
 	child.stdout = new EventEmitter();
 	child.stderr = new EventEmitter();
 	child.signals = [];
-	(globalThis.__probeChildren ??= []).push(child);
+	globalThis.__probeChildren ??= [];
+	globalThis.__probeChildren.push(child);
 	child.kill = (signal) => {
 		child.signals.push(signal);
 		if (signal === "SIGKILL")
@@ -932,7 +963,9 @@ test("Windows launch spawns the venv's base interpreter, and refuses one that is
 	const posix = await fixture.ownedServeLaunch(["/python/python"], 12345, env);
 	assert.equal(posix.command, "bash");
 	assert.equal(posix.env, env, "the POSIX plan passes its environment through");
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeResults;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeCalls;
 });
 
@@ -990,8 +1023,11 @@ test("a slow first probe is retried, and a stuck interpreter is killed and repor
 		],
 		"each attempt escalates past a SIGTERM the interpreter ignored",
 	);
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeResults;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeCalls;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeChildren;
 });
 
@@ -1073,6 +1109,7 @@ test("an interpreter that exists but is not the backend is rejected, and the nex
 	// that cannot import the CLI - was carried by a comment and by no test. A path
 	// that exists is not a backend; the probe decides.
 	const probeEnv = { ...env };
+	// biome-ignore lint/performance/noDelete: an ABSENT `PYTHONPATH` is not an empty one here - `PYTHONPATH=""` puts the cwd on `sys.path`, which is exactly the fixture this probe must not be able to import.
 	delete probeEnv.PYTHONPATH;
 	const wrong = [
 		"/usr/bin/python3",
@@ -1166,6 +1203,7 @@ test("a start failure during a shutdown is logged, and raises no modal", async (
 		"no modal while a quit is in flight: it would park the thread the quit needs",
 	);
 	assert.equal(m.isShuttingDown(), true);
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__dialog;
 });
 
@@ -1329,8 +1367,11 @@ test("the probe budget bounds the whole resolution, however many candidates ther
 		globalThis.__probeCalls.length <= 4,
 		"candidates are not probed past the budget",
 	);
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeResults;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeCalls;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeChildren;
 });
 
@@ -1417,10 +1458,15 @@ export function execFileSync() { return "S"; }
 		["SIGTERM", "SIGKILL"],
 		"the failed start cleaned up its own child",
 	);
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__dialog;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__spawned;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeResults;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__probeCalls;
+	// biome-ignore lint/performance/noDelete: this teardown returns the fixture global to ABSENT, which is the state the harness's own `globalThis.__…` checks read; `= undefined` would leave the property present.
 	delete globalThis.__spawnCalls;
 });
 
