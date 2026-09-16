@@ -637,9 +637,29 @@ const main = async () => {
 				)
 				.join("  ")}`,
 		);
-		if (m.focusables > 30) {
+		/*
+		 * The budget this reading is against is the SUM the spec states — every header,
+		 * the five filter-bar controls and the rows the open sections show — so it is
+		 * derived here from the measurement rather than printed as the fixed `30` it
+		 * used to be. The registry grew a nineteenth section, the same sum produced
+		 * 31, and `backend-settings-tiers.test.mjs` asserts that sum against the
+		 * fixture; the old note fired on the arrival state while agreeing with
+		 * neither, which is how an artefact a reader consults came to contradict the
+		 * assertion it exists to justify (review round 2, M2). What it reports now is
+		 * the composition: the count against the areas the budget counts.
+		 */
+		const areas = m.focusablesByArea ?? {};
+		const budgeted = ["section header", "filter bar", "row control"].reduce(
+			(n, area) => n + (areas[area] ?? 0),
+			0,
+		);
+		if (m.focusables !== budgeted) {
 			console.log(
-				`      NOTE: ${m.focusables} focusables is over the closed-default budget of 30`,
+				`      NOTE: ${m.focusables} focusables, ${budgeted} of them inside the areas the budget counts (${Object.entries(
+					areas,
+				)
+					.map(([area, count]) => `${area}:${count}`)
+					.join(", ")})`,
 			);
 		}
 	}

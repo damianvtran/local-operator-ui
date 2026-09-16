@@ -51,7 +51,8 @@ const bundle = await build({
 const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { KEY_TIER, SECTION_TIER, opensOnArrival, tierFor } = module;
+const { KEY_TIER, SECTION_TIER, allOpenTargets, opensOnArrival, tierFor } =
+	module;
 
 /** The two committed states: a fresh install and a configured one. */
 const STATES = [
@@ -241,6 +242,59 @@ test("arrival opens the core-heavy sections and nothing else", () => {
  */
 const FILTER_BAR_CONTROLS = 5;
 const ARRIVAL_FOCUSABLE_BUDGET = 31;
+
+/*
+ * The reader's own sequence: collapse the index, then search it.
+ *
+ * `Collapse all` used to seed the FILTER's collapse set with the sections holding
+ * core rows, on the reading that a press before a query should also shape the
+ * query's view. The filtered view reads that set as "the reader shut this
+ * section", so the press suppressed the force-open a search performs: `Collapse
+ * all` then `provider` reported "35 results in 6 sections" with two matched
+ * sections collapsed and 30 rows rendered, and with the tier shown it rendered no
+ * rows at all under a count of 35. Both reviewers reproduced it, and QA ran the
+ * same command on the pre-remediation tree to prove the line is what introduced
+ * it (UX round 2 U13, QA round 2 Q8). The mirror-image half: a press made WHILE a
+ * query is up must not decide the reader's layout once the query is cleared
+ * (U14).
+ */
+test("Collapse all, then a query: the query still force-opens what it matched", () => {
+	const names = ["model", "approvals", "fork", "web_tools"];
+
+	const beforeQuery = allOpenTargets(false, false, names);
+	assert.deepEqual(
+		beforeQuery.layout?.closed,
+		names,
+		"an unfiltered press is about the whole list",
+	);
+	assert.deepEqual(
+		beforeQuery.filter,
+		[],
+		"an unfiltered press leaves the filter's set EMPTY, so the next search can force-open what it matched",
+	);
+
+	const duringQuery = allOpenTargets(false, true, ["model", "web_search"]);
+	assert.equal(
+		duringQuery.layout,
+		null,
+		"a press made while a query is up must not rewrite the reader's own layout",
+	);
+	assert.deepEqual(
+		duringQuery.filter,
+		["model", "web_search"],
+		"it collapses the list on screen, which the filter's own set records",
+	);
+	assert.deepEqual(
+		allOpenTargets(true, true, ["model", "web_search"]).filter,
+		[],
+		"Expand all clears the filtered collapses",
+	);
+	assert.deepEqual(
+		allOpenTargets(true, false, names).layout?.opened,
+		names,
+		"an unfiltered Expand all opens the list it is about",
+	);
+});
 
 test("the arrival tab order stays inside its budget", () => {
 	const payload = fixtures[1].payload;
