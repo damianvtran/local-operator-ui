@@ -1,18 +1,35 @@
 # Code owners for local-operator-ui.
 #
-# Unlike the backend repository, `main` here has no ruleset requiring a
-# code-owner review at the time of writing. This file is therefore about
-# review ROUTING, not about unblocking merges: GitHub requests these owners
-# automatically on every PR, so the right people see a change without anyone
-# remembering to add them by hand. It also means that if a code-owner rule is
-# ever switched on for this repository, it resolves against a real list from
-# the start rather than matching nobody -- the failure that forced every
-# backend PR through an admin bypass in September 2026.
+# 2026-09-16 -- AUTO-REQUESTS REMOVED (operator decision). The `*` line that
+# used to sit at the bottom of this file (`@damianvtran @bbqben`) existed only to
+# route: GitHub requests every handle on a pattern matching a pull request's
+# changed files, automatically, at the moment the PR opens -- so `bbqben` was
+# notified on every change in this repository, including the ones still churning
+# through review rounds and QA. There is no GitHub setting that keeps the routing
+# list and drops the notification; matching a pattern IS the request. The pattern
+# is gone, and this path is kept, pattern-free, as the record of the change.
 #
-# Keep this list to people who can actually approve. A handle that is not a
-# collaborator with write access is silently ignored by GitHub -- the line
-# looks correct and matches nobody. Verify a new entry against
-# `gh api repos/damianvtran/local-operator-ui/collaborators`.
-
-# Default owners for everything in the repository.
-* @damianvtran @bbqben
+# Nothing else depended on it: this repository has no ruleset requiring an
+# approving or a code-owner review, so no gate lost a participant. Probe that
+# with `gh api repos/<owner>/<repo>/rules/branches/main` (`[]` means nothing is
+# enforced) -- never with the legacy `branches/main/protection` endpoint, which
+# answers `404 Branch not protected` even for a branch a modern ruleset *is*
+# enforcing. A merge here is authorized by the independent agent review round
+# alone, per AGENTS.md, "Who may merge".
+#
+# If a code-owner ruleset is ever enabled here, read the backend's AGENTS.md
+# section "Who may merge" before adding a pattern back: it documents the
+# self-approval limitation that bites the moment such a rule exists, and the
+# notification cost this file just stopped paying.
+#
+# When a human review IS wanted it is a deliberate act rather than a side effect
+# of opening a PR: add the reviewer by hand at the point the PR is ready to be
+# read, `gh pr edit <n> --add-reviewer <handle>`. Who may be asked -- the handles
+# that carry write access and may approve on behalf of the project:
+# `damianvtran` (admin), `bbqben` (write). Verify before relying on either with
+# `gh api repos/damianvtran/local-operator-ui/collaborators`, since a handle
+# without write access is silently ignored by GitHub.
+#
+# Validate any future edit with GitHub's own parser rather than by eye:
+# `gh api repos/damianvtran/local-operator-ui/codeowners/errors` (it validates
+# the default branch; an empty list means the file parsed).
