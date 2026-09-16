@@ -58,6 +58,18 @@ import {
 import { RunDetailsPanel } from "./run-details-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 
+/**
+ * What the pane says when the updater refused and said nothing else.
+ *
+ * The main process names a reason on `backend-update-error` for every failing
+ * branch of `update-backend`, so this is the backstop for a bridge that answered
+ * without one - and it names the next step rather than only the outcome: this row
+ * is where the user's own action lives, and "could not start" on its own told them
+ * nothing they could do (design D4, UX U4).
+ */
+const BACKEND_UPDATE_UNEXPLAINED =
+	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+
 export type RunPanelProps = {
 	details: RunDetails;
 	mcpServers: readonly McpServerRow[];
@@ -174,6 +186,23 @@ export const RunPanel = ({
 	const updateBackend = useCallback(async () => {
 		setUpdatingBackend(true);
 		setUpdateBackendError(null);
+		/*
+		 * The reason the main process writes about THIS attempt.
+		 *
+		 * `update-backend` resolves `false` for a refused or failed update, and the
+		 * sentence that says why goes out on `backend-update-error` before that
+		 * promise settles - so the reader was told "could not start" while the cause
+		 * (pip's exit, the version that did not change) was already in hand (review
+		 * R1-5, U4). The listener is scoped to the attempt rather than mounted with
+		 * the panel: that channel also carries the check's own three failures, and a
+		 * listener that outlived the attempt would show a background check's message
+		 * as this press's outcome.
+		 */
+		let reason: string | null = null;
+		const removeBackendUpdateErrorListener =
+			window.api.updater.onBackendUpdateError((message) => {
+				reason = message;
+			});
 		try {
 			const started = await window.api.updater.updateBackend();
 			// `false` rather than a rejection is how this invoke reports a refused or
@@ -181,13 +210,14 @@ export const RunPanel = ({
 			// run" as "the update ran" and left the reader with a backend that never
 			// changed and nothing to explain it.
 			if (started === false) {
-				setUpdateBackendError("The backend update could not start.");
+				setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
 				return;
 			}
 			retryCapabilities();
 		} catch {
-			setUpdateBackendError("The backend update could not start.");
+			setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
 		} finally {
+			removeBackendUpdateErrorListener();
 			setUpdatingBackend(false);
 		}
 	}, [retryCapabilities]);

@@ -2990,20 +2990,21 @@ test("the bundled pip invocation is non-interactive and version-verified", () =>
 /**
  * The stale-index defect, and the pin that makes it loud instead of silent.
  *
- * The operator's report (2026-09-15): the app offered 0.55.10, the update
- * service ran `pip install --upgrade local-operator`, pip printed "Requirement
- * already satisfied: local-operator ... (0.55.9)", exited 0, and the log
- * recorded `version 0.55.9 -> 0.55.9`. pip's HTTP cache holds the simple-index
- * PAGE for a package, not only its wheels, and the bundled venv's cache was
- * populated while 0.55.9 was the newest release - so the resolution happened
- * against a page that predated 0.55.10. Measured in the bundled environment:
- * `pip index versions local-operator` says LATEST 0.55.9 and the same command
- * with --no-cache-dir says 0.55.10.
+ * The operator's report (2026-09-15): the app's check read 0.55.10 from PyPI at
+ * 22:08:58, the update service ran `pip install --upgrade local-operator` at
+ * 22:09:53 and again at 22:10:50, pip printed "Requirement already satisfied:
+ * local-operator ... (0.55.9)", exited 0, and the log recorded `version 0.55.9 ->
+ * 0.55.9`. PyPI's own upload time for 0.55.10 is 2026-09-16T02:05:21Z, so both
+ * runs resolved against a simple-index page that predated the release by four and
+ * a half minutes - inside the `max-age=600` window such a page carries.
  *
- * Two properties are asserted here, and they are the whole fix for that half:
- * the command never reads pip's index cache, and when the caller named a release
- * the requirement is PINNED to it, so no index page can satisfy the request with
- * the version already installed.
+ * The live pip cache cannot be re-measured: it was refreshed after that window and
+ * now answers 0.55.10 with and without `--no-cache-dir`, so an earlier version of
+ * this note citing `pip index versions` is no longer reproducible and was
+ * corrected (review R1-3 / QA Q1). What the fix rests on is the two properties
+ * asserted below, on a page reconstructed to be stale: the PIN is what turns the
+ * silent no-op into a loud failure, and `--no-cache-dir` removes one of the two
+ * stale sources (pip's own cache, not a CDN's copy).
  */
 test("the bundled pip invocation bypasses pip's index cache and pins the promised release", () => {
 	// The unpinned form is the compatibility banner's: it asks for "the current
@@ -3046,16 +3047,44 @@ test("the bundled pip invocation bypasses pip's index cache and pins the promise
 	}
 
 	// The PEP 440 spellings a real release can carry still pin, because refusing
-	// to pin them would send the pre-release case back to an unpinned resolve.
+	// to pin them would send the pre-release case back to an unpinned resolve - and
+	// an unpinned resolve against a FRESH index installs the newest release, which
+	// can be newer than the one the app promised and then polls for, so the update
+	// is reported as failed over a server that did move (review R1-3).
 	for (const [target, requirement] of [
 		["0.55.10", "local-operator==0.55.10"],
 		[" 0.55.10 ", "local-operator==0.55.10"],
 		["0.56.0b1", "local-operator==0.56.0b1"],
 		["0.55.10.post1", "local-operator==0.55.10.post1"],
+		// An epoch: publishable, and `isPinnableVersion` used to refuse it.
+		["1!0.55.10", "local-operator==1!0.55.10"],
+		// Segments after the release, in the order PEP 440 allows them.
+		["0.55.10a1.post1", "local-operator==0.55.10a1.post1"],
+		["0.55.10.post1.dev2", "local-operator==0.55.10.post1.dev2"],
+		["0.55.10a1.dev2", "local-operator==0.55.10a1.dev2"],
+		["0.55.10+macos.1", "local-operator==0.55.10+macos.1"],
 	]) {
 		assert.equal(
 			buildPipUpgradeCommand("/venv/bin/python3", target).args.at(-1),
 			requirement,
+		);
+	}
+
+	// Widening the pattern did not turn it into a pass-through: a string that only
+	// LOOKS like a version still does not reach the command line.
+	for (const target of [
+		"0.55.10.post1.dev2a1",
+		"1!0.55.10 --extra-index-url http://evil.example",
+		// The same two segments the other way round, which PEP 440 has no version
+		// for - dev comes before post, never after.
+		"0.55.10.dev2.post1",
+		// And a segment repeated.
+		"0.55.10.post1.post2",
+	]) {
+		assert.equal(
+			buildPipUpgradeCommand("/venv/bin/python3", target).args.at(-1),
+			"local-operator",
+			`target ${JSON.stringify(target)} must not be pinned`,
 		);
 	}
 });

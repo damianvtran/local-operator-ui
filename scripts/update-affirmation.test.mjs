@@ -436,6 +436,7 @@ const updater = {
 			updater.checks.push({ options, resolve });
 		});
 	},
+	checkForBackendUpdates: async () => null,
 	checkForUpdates(options) {
 		return new Promise((resolve) => {
 			updater.checks.push({ options, resolve });
@@ -466,6 +467,8 @@ const updater = {
 };
 
 updater.onUpdateError = updater.on("update-error");
+updater.onUpdateDevMode = updater.on("update-dev-mode");
+updater.onBeforeQuitForUpdate = updater.on("before-quit-for-update");
 updater.onBackendUpdateDevMode = updater.on("backend-update-dev-mode");
 updater.onUpdateAvailable = updater.on("update-available");
 updater.onUpdateNotAvailable = updater.on("update-not-available");
@@ -903,19 +906,26 @@ test("R9: an offer before the check does not rob a later check of the sentence",
  *
  * These cases drive the SHIPPED panel through the SHIPPED bridge and assert what
  * the user is looking at: the in-flight panel is gone, and the reason is on the
- * danger toast. What they cannot show is pixels - that is the rendered
- * evidence's job, and QA's browser pass is the independent check of it.
+ * standing failure panel that replaced it - the surface design round 1 asked for
+ * (D1) and UX round 1 reached independently (U1), together with the two
+ * properties those rounds turned on: a later offer supersedes the failure, and a
+ * check's own failure is not read as an update's. What they cannot show is pixels
+ * - that is the rendered evidence's job (`docs/evidence/common-updatenotification`),
+ * and QA's browser pass is the independent check of it.
  */
 
 /**
  * Mount the shipped notification panel, with its start-up check switched off.
  *
  * `autoCheck: false` is deliberate: the panel's mount-time check would put
- * "Checking for updates" up through a promise no case here holds, and the state
- * under test is the server update, which every case below raises by emitting the
- * offer the main process would send.
+ * "Checking for updates" up through a promise no case here holds, it re-runs with
+ * the listener effect, and it re-issues the check behind every assertion - so the
+ * states under test here are the ones an EVENT raises: the offer the main process
+ * sends, a refusal, a failure. The parameter exists so a case that needs the check
+ * in flight can ask for it, and the check-channel case prefers a check the user's
+ * own control started for that same reason.
  */
-function mountNotification() {
+function mountNotification({ autoCheck = false } = {}) {
 	standIn.reset();
 	updater.checks.length = 0;
 	updater.backendUpdates.length = 0;
@@ -924,7 +934,7 @@ function mountNotification() {
 	 * cannot be handled twice - by the panel under test and by an earlier case's.
 	 */
 	updater.handlers.clear();
-	standIn.render = () => UpdateNotification({ autoCheck: false });
+	standIn.render = () => UpdateNotification({ autoCheck });
 	const handle = {
 		runtime: standIn,
 		tree: null,
@@ -1005,10 +1015,9 @@ test("backend-update-error takes the in-flight panel down and says why", () => {
 	assert.ok(showsText(handle, "Updating server"));
 
 	// pip exited 0 having installed nothing, which is the operator's own log line.
-	updater.emit(
-		"backend-update-error",
-		"The server update ran but the installed version did not change (still 0.55.9), so it is reported as failed.",
-	);
+	const reason =
+		"The server update ran but the installed version did not change (still 0.55.9), so it is reported as failed.";
+	updater.emit("backend-update-error", reason);
 	handle.render();
 
 	assert.equal(
@@ -1016,9 +1025,29 @@ test("backend-update-error takes the in-flight panel down and says why", () => {
 		false,
 		"a reported failure must not leave the panel waiting",
 	);
-	const toasts = dangerToasts(handle);
-	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
-	assert.match(toasts[0].text, /did not change/);
+	/*
+	 * The failure is a STANDING panel, not a toast (design D1, UX U1): measured
+	 * against the toast, the same event ended in a 6-second message in the opposite
+	 * corner whose only control was Dismiss, 625px below the panel slot, with the
+	 * offer it replaced suppressed for the rest of the session.
+	 */
+	assert.ok(
+		showsText(handle, "The server update didn't finish"),
+		JSON.stringify(visible(handle)),
+	);
+	assert.ok(
+		showsText(handle, reason),
+		"the panel must carry main's own reason",
+	);
+	assert.equal(
+		dangerToasts(handle).length,
+		0,
+		"one failure is one message, and it is the panel's",
+	);
+	// Both actions the finding asked for: an attempt the user can restart, and a
+	// dismissal that defers the release.
+	control(handle, "Try again");
+	control(handle, "Update later");
 });
 
 test("a resolved false with no event still leaves the panel and says something", async () => {
@@ -1034,12 +1063,139 @@ test("a resolved false with no event still leaves the panel and says something",
 		false,
 		"the invoke settling is an outcome, not a reason to keep waiting",
 	);
+	// The backstop names the release it was updating to, which is the fact the
+	// reader can check - and it does NOT send them to a log this app cannot open
+	// (design D3).
+	assert.ok(
+		showsText(handle, "The server update to 0.55.10 did not complete."),
+		JSON.stringify(visible(handle)),
+	);
+	assert.equal(dangerToasts(handle).length, 0);
+});
+
+/**
+ * The failure is not sticky, and the offer takes the slot back.
+ *
+ * UX U1: after one failed update the offer was suppressed for the rest of the
+ * session - a later check found the release, stored it, and painted nothing,
+ * because only this component's own calls ever cleared the error state. The
+ * designer's round measured the same end state independently (D1).
+ */
+test("a later offer supersedes the failure and repaints the offer panel", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", "The server update failed to install.");
+	handle.render();
+	assert.ok(showsText(handle, "The server update didn't finish"));
+
+	// The 5-minute check finds the release again.
+	updater.emit("backend-update-available", {
+		...SERVER_UPDATE_OFFER,
+		latestVersion: "0.55.11",
+	});
+	handle.render();
+
+	assert.equal(
+		showsText(handle, "The server update didn't finish"),
+		false,
+		"a fresh offer is newer news than the failure it supersedes",
+	);
+	assert.ok(showsText(handle, "Server update available"));
+	control(handle, "Update server");
+});
+
+/**
+ * `Try again` re-runs the attempt, which also clears the notice.
+ *
+ * Nothing about a failed update may be permanently sticky: the panel's own action
+ * has to return the surface to the in-flight state it started in, or the notice
+ * would sit there with a button that appears to do nothing.
+ */
+test("Try again starts a second attempt and clears the failure", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", "The server update failed to install.");
+	handle.render();
+
+	control(handle, "Try again").props.onClick();
+	handle.render();
+
+	assert.equal(showsText(handle, "The server update didn't finish"), false);
+	assert.ok(showsText(handle, "Updating server"));
+	assert.equal(
+		updater.backendUpdates.length,
+		2,
+		"a second attempt was started",
+	);
+	assert.equal(
+		updater.backendUpdates[1].targetVersion,
+		"0.55.10",
+		"the retry asks for the same release",
+	);
+});
+
+/**
+ * The check's own failure is not the update's (review R1-2).
+ *
+ * `backend-update-error` carries two different things: the failing branches of
+ * `UpdateService.updateBackend`, and three branches of `checkForBackendUpdates`
+ * ("Unable to determine backend version.") that fire on a check the user pressed.
+ * Reading the second as an update outcome ended "Checking for updates" early and
+ * marked an idle attempt terminal; the message still has to reach the user, so it
+ * takes the toast.
+ *
+ * The check in flight here is one the user's own button started (the refusal panel's
+ * own `Check for updates`), not the panel's mount check: the mount check re-runs
+ * with the effect and would restart the check behind every assertion, which is a
+ * property of this harness's stand-in React rather than of the component.
+ */
+test("a check-time failure does not end the check or claim an attempt", () => {
+	const handle = mountNotification();
+	// A refusal the user has to act on renders the panel whose own control starts
+	// the check - reachable with `autoCheck` off, unlike the mount-time check.
+	updater.emit("update-install-blocked", {
+		code: "installed-bundle-not-sealed",
+		version: "0.19.5",
+		message: "The downloaded update did not pass its integrity check.",
+		remedy: { text: "Download a fresh copy." },
+	});
+	handle.render();
+	control(handle, "Check for updates").props.onClick();
+	handle.render();
+	assert.ok(showsText(handle, "Checking for updates"));
+
+	updater.emit("backend-update-error", "Unable to determine backend version.");
+	handle.render();
+
+	assert.ok(
+		showsText(handle, "Checking for updates"),
+		"a check's failure is not an update outcome",
+	);
+	assert.equal(showsText(handle, "The server update didn't finish"), false);
 	const toasts = dangerToasts(handle);
 	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
-	assert.ok(
-		toasts[0].text.trim().length > 0,
-		"a failure with no reason still has to say something",
-	);
+	assert.match(toasts[0].text, /Unable to determine backend version/);
+});
+
+test("a message with no panel to sit beside still renders the toast", () => {
+	/*
+	 * The regression this file's fix first introduced: with the toast folded into the
+	 * panel branches, a message that belongs to NO panel state - a failed check, a
+	 * rejected download - had no branch left to render it, and the component fell
+	 * through to nothing at all. The toast is the only surface for those, so the
+	 * fall-through carries it (and this case fails without that call).
+	 *
+	 * No attempt is in flight and nothing is on offer here, which is the state a
+	 * failed background check leaves the panel in.
+	 */
+	const handle = mountNotification();
+	updater.emit("backend-update-error", "Unable to determine backend version.");
+	handle.render();
+
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.match(toasts[0].text, /Unable to determine backend version/);
+	assert.equal(showsText(handle, "The server update didn't finish"), false);
 });
 
 test("the by-hand panel replaces the in-flight one without a second message", async () => {
@@ -1068,6 +1224,7 @@ test("the by-hand panel replaces the in-flight one without a second message", as
 		0,
 		"one failure is one message, and the panel already carries it",
 	);
+	assert.equal(showsText(handle, "The server update didn't finish"), false);
 });
 
 test("a rejected invoke leaves the in-flight panel too", async () => {
@@ -1077,7 +1234,9 @@ test("a rejected invoke leaves the in-flight panel too", async () => {
 	await settleServerUpdate(handle, new Error("channel closed"));
 
 	assert.equal(showsText(handle, "Updating server"), false);
-	const toasts = dangerToasts(handle);
-	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
-	assert.match(toasts[0].text, /channel closed/);
+	assert.ok(
+		showsText(handle, "The server update could not be started: channel closed"),
+		JSON.stringify(visible(handle)),
+	);
+	assert.equal(dangerToasts(handle).length, 0);
 });
