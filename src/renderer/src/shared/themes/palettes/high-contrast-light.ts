@@ -43,6 +43,15 @@ export const highContrastLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#D6D6D6",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.33 from `surface`,
+		 * 4.96 from `elevated` and 3.82 from `sunken`.
+		 */
+		highlight: "#E7E7E7",
+
 		ink: "#0A0A0A",
 
 		// The TUI's muted, lifted 2.7 L*: 8.19:1 on `sunken`, the ground that caps

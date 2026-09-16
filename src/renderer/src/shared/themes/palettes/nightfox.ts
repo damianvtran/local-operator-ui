@@ -34,6 +34,15 @@ export const nightfox: ThemeDefinition = {
 		elevated: "#29394F",
 		sunken: "#131A24",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped +7/+7/+6 on R/G/B toward white — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.33 from `surface`,
+		 * 2.86 from `elevated` and 8.79 from `sunken`.
+		 */
+		highlight: "#283545",
+
 		ink: "#CDCECF",
 		inkMuted: "#AEAFB0",
 		// the scheme's dim rung, relaxed to clear ΔE00 8 from `inkMuted`.

@@ -45,6 +45,15 @@ export const rosePineDawn: ThemeDefinition = {
 		elevated: "#FFFEFB",
 		sunken: "#F8EDE0",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.28 from `surface`,
+		 * 4.01 from `elevated` and 4.20 from `sunken`.
+		 */
+		highlight: "#F1ECE8",
+
 		ink: "#4e4970",
 		inkMuted: "#5B5573",
 		inkDim: "#6C697A",

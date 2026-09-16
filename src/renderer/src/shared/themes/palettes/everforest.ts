@@ -33,6 +33,19 @@ export const everforest: ThemeDefinition = {
 		elevated: "#3D484D",
 		sunken: "#232A2E",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.070, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.58 from `surface`, 4.00 from `elevated` and 7.20 from
+		 * `sunken`.
+		 * This is one of the three casts that overshoot the band's 2.5 top:
+		 * a hex step at this strength is wider than the band, and the step
+		 * below it measures under the rule's own 2.17 floor.
+		 */
+		highlight: "#343F40",
+
 		// fg D3C6AA is 5.57:1 on `elevated`, under the 7:1 floor; lifted.
 		ink: "#E6DECD",
 		// grey2 9DA9A0 is 3.86:1 on `elevated`, and the 4.5 floor leaves it too

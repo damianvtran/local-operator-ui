@@ -41,6 +41,15 @@ export const gruvboxLight: ThemeDefinition = {
 		// Upstream light0_soft, the scheme's own recessed tone.
 		sunken: "#F2E5BC",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.30 from `surface`,
+		 * 4.94 from `elevated` and 3.74 from `sunken`.
+		 */
+		highlight: "#F2EBCD",
+
 		ink: "#3C3836",
 		// Canonical dark3 665C54 is 5.18:1 on `sunken` and only ΔE00 5.6 from dark4, under
 		// the 8 ink step. Seated deeper along the same warm grey so the readout rung below

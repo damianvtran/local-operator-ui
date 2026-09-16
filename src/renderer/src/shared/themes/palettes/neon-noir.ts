@@ -49,6 +49,16 @@ export const neonNoir: ThemeDefinition = {
 		elevated: "#242830",
 		sunken: "#101216",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.050, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.34 from `surface`, 3.38 from `elevated` and 4.99 from
+		 * `sunken`.
+		 */
+		highlight: "#192027",
+
 		ink: "#DCDFE4",
 		inkMuted: "#A6ACB8",
 		// The TUI `dim` 767E8C lifted in L* with hue held: it measured 4.38 on

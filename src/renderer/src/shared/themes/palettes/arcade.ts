@@ -49,6 +49,16 @@ export const arcade: ThemeDefinition = {
 		// contract's 1.03.
 		sunken: "#010102",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.030, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.19 from `surface`, 3.96 from `elevated` and 3.89 from
+		 * `sunken`.
+		 */
+		highlight: "#161414",
+
 		ink: "#E8E8E4",
 		inkMuted: "#B0B0AC",
 		// The TUI `dim` 7C7C7A lifted in L* with hue held: 4.40 on `surface` and 4.02

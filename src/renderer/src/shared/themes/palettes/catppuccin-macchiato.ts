@@ -37,6 +37,16 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		elevated: "#30334A",
 		sunken: "#1E2132",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.080, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.45 from `surface`, 2.77 from `elevated` and 5.43 from
+		 * `sunken`.
+		 */
+		highlight: "#2C2C45",
+
 		ink: "#CAD3F5",
 		inkMuted: "#B8C0E0",
 		// Upstream overlay2 939AB7, lifted a hundredth: the tone sits at 4.55:1 on the binding

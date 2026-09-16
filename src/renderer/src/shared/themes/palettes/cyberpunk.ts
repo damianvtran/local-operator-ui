@@ -45,6 +45,15 @@ export const cyberpunk: ThemeDefinition = {
 		elevated: "#1E172A",
 		sunken: "#080510",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped +7/+8/+7 on R/G/B toward white — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.26 from `surface`,
+		 * 2.73 from `elevated` and 6.85 from `sunken`.
+		 */
+		highlight: "#1D1826",
+
 		ink: "#EAE5F2",
 		inkMuted: "#B3A8C6",
 		// The TUI `dim` 82749C lifted in L* with hue held: 4.37 on `surface` and 4.07

@@ -32,6 +32,16 @@ export const catppuccinFrappe: ThemeDefinition = {
 		elevated: "#3D4255",
 		sunken: "#2A2D3E",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.055, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.30 from `surface`, 3.40 from `elevated` and 4.87 from
+		 * `sunken`.
+		 */
+		highlight: "#383A50",
+
 		// Canonical text C6D0F5 is 6.52:1 on `elevated` — under the 7:1 body floor. Lifted
 		// along the same lavender-white.
 		ink: "#D1D9F8",

@@ -27,6 +27,15 @@ export const kanagawaWave: ThemeDefinition = {
 		elevated: "#363646",
 		sunken: "#16161D",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped +7/+7/+6 on R/G/B toward white — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.31 from `surface`,
+		 * 2.57 from `elevated` and 8.95 from `sunken`.
+		 */
+		highlight: "#31313D",
+
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",
 		// oldWhite.

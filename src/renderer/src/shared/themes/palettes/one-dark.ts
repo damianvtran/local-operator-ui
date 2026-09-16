@@ -40,6 +40,16 @@ export const oneDark: ThemeDefinition = {
 		elevated: "#3A404B",
 		sunken: "#21252B",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.085, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.28 from `surface`, 4.28 from `elevated` and 5.92 from
+		 * `sunken`.
+		 */
+		highlight: "#2B3441",
+
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.
 		ink: "#CED5E1",

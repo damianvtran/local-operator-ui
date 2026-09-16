@@ -26,6 +26,16 @@ export const ayuMirage: ThemeDefinition = {
 		elevated: "#39404F",
 		sunken: "#191D27",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.065, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.19 from `surface`, 4.09 from `elevated` and 8.43 from
+		 * `sunken`.
+		 */
+		highlight: "#2A3646",
+
 		ink: "#D6D5CE",
 		// upstream's blue-tinted muted rung.
 		inkMuted: "#B8CFE6",

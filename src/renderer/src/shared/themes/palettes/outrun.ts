@@ -44,6 +44,16 @@ export const outrun: ThemeDefinition = {
 		elevated: "#1B2040",
 		sunken: "#080A1E",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.030, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.48 from `surface`, 4.12 from `elevated` and 6.90 from
+		 * `sunken`.
+		 */
+		highlight: "#1A1732",
+
 		ink: "#E6E6F2",
 		inkMuted: "#ADAFD0",
 		// The TUI `dim` 7C7FA8 lifted in L* with hue held: 4.11 on `elevated`, under

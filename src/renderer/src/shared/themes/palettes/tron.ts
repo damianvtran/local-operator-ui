@@ -49,6 +49,16 @@ export const tron: ThemeDefinition = {
 		// cast is unchanged, so the Grid still reads blue-black.
 		sunken: "#000207",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.045, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.25 from `surface`, 3.65 from `elevated` and 7.26 from
+		 * `sunken`.
+		 */
+		highlight: "#071521",
+
 		ink: "#D8E6F2",
 		inkMuted: "#9FB8CC",
 		// The TUI `dim` 6A89A3 lifted by ΔE00 0.4 only — it missed 4.5:1 on `elevated`

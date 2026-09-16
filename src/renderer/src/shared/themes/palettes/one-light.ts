@@ -41,6 +41,15 @@ export const oneLight: ThemeDefinition = {
 		elevated: "#FFFFFF",
 		sunken: "#E1E0E0",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11/-10/-10 on R/G/B toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.20 from `surface`,
+		 * 4.39 from `elevated` and 2.33 from `sunken`.
+		 */
+		highlight: "#E9EAEA",
+
 		ink: "#383A42",
 		// Canonical mono-2 696C77 is 3.97:1 on `sunken` (< 4.5) — darkened along the same
 		// neutral, and then seated deeper again so the readout rung below it clears the

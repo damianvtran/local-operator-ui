@@ -46,6 +46,16 @@ export const synthwave: ThemeDefinition = {
 		elevated: "#35314C",
 		sunken: "#1E1B2A",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.050, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.33 from `surface`, 2.96 from `elevated` and 6.86 from
+		 * `sunken`.
+		 */
+		highlight: "#312942",
+
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",
 		// The TUI `dim` 848BBD lifted in L* with hue held: it measured 4.22 on

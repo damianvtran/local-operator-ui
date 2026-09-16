@@ -40,6 +40,16 @@ export const solarizedDark: ThemeDefinition = {
 		elevated: "#0D3C49",
 		sunken: "#00252E",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.135, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.44 from `surface`, 3.55 from `elevated` and 5.06 from
+		 * `sunken`.
+		 */
+		highlight: "#00343D",
+
 		// Upstream base1 93A1A1 — the tone the scheme paints body text with — is 6.13:1 on
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.
 		ink: "#BECACA",

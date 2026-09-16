@@ -34,6 +34,16 @@ export const arctic: ThemeDefinition = {
 		elevated: "#2C3949",
 		sunken: "#121A25",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.030, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.27 from `surface`, 3.76 from `elevated` and 6.82 from
+		 * `sunken`.
+		 */
+		highlight: "#212F3C",
+
 		ink: "#E3ECF4",
 
 		// The TUI's muted, lifted 4.0 L*: 6.75:1 on `elevated`, the ground that caps

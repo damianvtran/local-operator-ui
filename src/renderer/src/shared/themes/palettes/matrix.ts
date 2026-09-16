@@ -47,6 +47,15 @@ export const matrix: ThemeDefinition = {
 		elevated: "#122016",
 		sunken: "#020703",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped +8/+7/+8 on R/G/B toward white — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.30 from `surface`,
+		 * 2.63 from `elevated` and 7.40 from `sunken`.
+		 */
+		highlight: "#131D16",
+
 		ink: "#D4E6D6",
 		inkMuted: "#99BD9F",
 		// The TUI `dim` verbatim: 639C70 clears 4.5:1 on all four grounds, which only

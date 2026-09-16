@@ -34,6 +34,16 @@ export const catppuccinMocha: ThemeDefinition = {
 		elevated: "#2A2A3D",
 		sunken: "#181825",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.075, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.36 from `surface`, 2.18 from `elevated` and 5.32 from
+		 * `sunken`.
+		 */
+		highlight: "#262438",
+
 		ink: "#CDD6F4",
 		inkMuted: "#BAC2DE",
 		// Upstream overlay2, taking the readout rung so the ink step clears (subtext0 is only

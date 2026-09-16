@@ -46,6 +46,15 @@ export const tokyoNightDay: ThemeDefinition = {
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
 
+		/*
+		 * The current row's own ground:
+		 * `surface` stepped -11 on every channel toward black — the neutral step the
+		 * twelve use, and branch L of this port's selection rule; the ramp
+		 * affords it here, so the row takes no cast. ΔE00 2.40 from `surface`,
+		 * 4.39 from `elevated` and 2.35 from `sunken`.
+		 */
+		highlight: "#DFE0E3",
+
 		// Generated foreground 3760BF is 4.19:1 on `sunken` — a syntax blue, not a body ink,
 		// which is what the 7:1 floor is for. Deepened along the same indigo to 7.33:1.
 		ink: "#233E7C",

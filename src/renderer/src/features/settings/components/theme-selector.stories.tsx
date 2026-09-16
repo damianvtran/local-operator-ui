@@ -1,5 +1,5 @@
-import { Contrast } from "lucide-react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { Contrast } from "lucide-react";
 import { SettingsSection } from "./settings-section";
 import { ThemeSelector } from "./theme-selector";
 

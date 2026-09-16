@@ -31,6 +31,16 @@ export const ocean: ThemeDefinition = {
 		elevated: "#1B2E39",
 		sunken: "#081218",
 
+		/*
+		 * The current row's own ground:
+		 * a cast of `surface`'s chroma plane toward `accent` at alpha
+		 * 0.055, L* held — branch H, taken because no step on this
+		 * palette's lightness ladder clears `elevated` inside the band.
+		 * ΔE00 2.30 from `surface`, 3.57 from `elevated` and 7.88 from
+		 * `sunken`.
+		 */
+		highlight: "#10272F",
+
 		ink: "#DCEBEE",
 		inkMuted: "#A4BEC5",
 
