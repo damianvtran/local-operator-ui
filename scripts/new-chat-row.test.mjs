@@ -64,7 +64,8 @@ const ROW_GAP = /\bgap-1\b/;
  * those three from `rowStyle` — that is what "the same alignment" means in the
  * source — so any one of them in the row's own literals is the defect.
  */
-const ROW_BOX_OVERRIDE = /\b(?:p|px|py|pl|pr|pt|pb|h|gap|min-h|space-x)-[^\s"']+/;
+const ROW_BOX_OVERRIDE =
+	/\b(?:p|px|py|pl|pr|pt|pb|h|gap|min-h|space-x)-[^\s"']+/;
 
 /**
  * How a row may legitimately differ from the All chats row: a vertical step and
@@ -114,7 +115,8 @@ const stripComments = (text) => {
 		}
 		if (char === "/" && next === "*") {
 			i += 2;
-			while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i += 1;
+			while (i < text.length && !(text[i] === "*" && text[i + 1] === "/"))
+				i += 1;
 			i += 2;
 			continue;
 		}
@@ -139,9 +141,17 @@ const BORDER_ROLE = /\bborder(-|\b)/;
 /** The 1-step margin that separates the row from the split below it. */
 const MB_1 = /\bmb-1\b/;
 
-/** The row's current-draft predicate, which `aria-current` has to agree with. */
+/**
+ * The row's current-draft predicate, which `aria-current` has to agree with.
+ *
+ * Re-pointed from `"bg-accent-wash"` to `rowCurrent` when the sidebar's
+ * current-row ground moved off the wash: on this `bg-surface` panel the wash is
+ * ΔE00 1.05 from the ground in tokyoNight, so the state it marked was invisible.
+ * The PREDICATE is what this regex is for and it is unchanged — the ground it
+ * paints is now the shared one, pinned in `chat-sidebar-selection.test.mjs`.
+ */
 const CURRENT_DRAFT_PREDICATE =
-	/Boolean\(activeDraftKey\)\s*&&\s*!draft\?\.target\s*&&\s*"bg-accent-wash"/;
+	/Boolean\(activeDraftKey\)\s*&&\s*!draft\?\.target\s*&&\s*rowCurrent/;
 
 const ARIA_CURRENT_PAGE = /aria-current=\{[\s\S]*?"page"[\s\S]*?\}/;
 
@@ -207,7 +217,9 @@ test("the All chats row above it declares none either, so the pair is consistent
 
 test("rowStyle still carries the box the two rows are aligned on", () => {
 	assert.ok(
-		ROW_HEIGHT.test(rowStyle) && ROW_INSET.test(rowStyle) && ROW_GAP.test(rowStyle),
+		ROW_HEIGHT.test(rowStyle) &&
+			ROW_INSET.test(rowStyle) &&
+			ROW_GAP.test(rowStyle),
 		`rowStyle no longer declares the h-8 box, the px-1 inset and the gap-1 the alignment is measured against:\n${rowStyle}`,
 	);
 });

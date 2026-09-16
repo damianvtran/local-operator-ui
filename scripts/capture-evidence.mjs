@@ -727,6 +727,13 @@ export const STORIES = [
 	   `frontend.jobs` still holds the rows and the row says nothing about them.
 	   Sized to content for the reason the four above are. */
 	["chat-composer-status-row--activity-chips", 1000, 1000],
+	/* The MIXED open set, which is the ordinary shape of a large delegation rather
+	   than an edge (`DEFAULT_MAX_RUNNING_JOBS = 15` parks the rows a fan-out cannot
+	   run), and the state no committed frame showed — which is why the sentence that
+	   counted parked rows as running survived four review streams (design review
+	   round 2, D6). Three bands: the fan-out QA measured live, the same rule through
+	   the jobs list, and a uniform set as the control. */
+	["chat-composer-status-row--activity-mixed", 1000, 1000],
 	/* The width story, and the only frame that can carry the numbers: each band
 	   prints its own row height and `overflowX` into the picture, because a reader
 	   of a still cannot measure the boxes in it. 900 is the composer's own column,
@@ -806,6 +813,52 @@ export const STORIES = [
 		1000,
 		220,
 		{ dir: "activity-motion-2", liveMotion: true, phaseMs: 500 },
+	],
+	/* The fold with main's #223 (c17da5d4b): main appended its ACTIVITY entries at
+	   this same point in the list while this branch appended the composer band's,
+	   so the two sides are UNIONED rather than picked - every entry from both sides
+	   present exactly once, in main's order for main's ten entries, with this
+	   branch's six `chat-composer-band` entries appended after them. Nothing is
+	   dropped, reordered within either side, or shadowed. `--long-goal` above keeps
+	   MAIN's geometry (1000x560): #223 changed that band's height and this branch
+	   never touched the entry, so there is no branch intent to preserve it against. */
+	/*
+	 * The composer band's empty-chat state: the suggestion sample, the ambient
+	 * tip row, and the chips' new weight.
+	 *
+	 * `empty-chat` is the app's default layout, where the chat column IS the
+	 * window, so the story's column is the viewport and the shared measure caps
+	 * at 900px - the frame the design record's prediction 1 is about (whether
+	 * the opening four take one row). `column-floor` renders the band at 550px
+	 * inside an 830x572 viewport: the narrowest window whose chat column is still
+	 * 550px, which is NOT the app's own minimum window (800x600, where the column
+	 * is 300px and the whole prompt is absent - that is `small-view`'s case) and
+	 * it is the only frame in which the band's height cap can bind (prediction 2).
+	 * `small-view` is one step below the floor, where the whole prompt - the tip
+	 * row included - is absent by width alone.
+	 *
+	 * `draft-held` and `reduced-motion` are the tip's two clock states: the one
+	 * whose clock is suspended by a draft, and the one that does not rotate at
+	 * all. `draft-held` doubles as the chips' DISABLED frame - a press while the
+	 * box holds a draft would replace the user's sentence - and `long-labels` is
+	 * the pool's longest four, which is the worst wrap a later sample can draw.
+	 *
+	 * `chip-hover` is the state the set's own README used to list as missing: one
+	 * chip under the real pointer, which is the only state where a borderless
+	 * control's control-ness has to hold (design round 1, N3). `dir` keeps it out
+	 * of the width count so `empty-chat` keeps its plain path.
+	 */
+	["chat-composer-band--empty-chat", 1380, 872],
+	["chat-composer-band--column-floor", 830, 572],
+	["chat-composer-band--small-view", 830, 572],
+	["chat-composer-band--long-labels", 900, 572],
+	["chat-composer-band--draft-held", 1380, 872],
+	["chat-composer-band--reduced-motion", 1380, 872, { reducedMotion: true }],
+	[
+		"chat-composer-band--empty-chat",
+		1380,
+		872,
+		{ hover: "[data-lo-suggestion-stack] button", dir: "chip-hover" },
 	],
 	/* The two alignment surfaces. `prose-tool-alignment` is where the operator's
 	   report is judged — agent prose and a ledger row sharing one left rail and
@@ -1177,6 +1230,32 @@ export const STORIES = [
 	   relationship of three states the brand pair already spans, and the palette
 	   floors belong to `check-themes`, not to a twelve-frame sweep of one state. */
 	["chat-reconnect-gap--restored-running", 1024, 620],
+	/* The transcript's ENDING when a finished conversation is read with the
+	   runtime's own stale `live_events` seed folded in — the operator's report:
+	   `wait`/`hub`/`task`/`bash` rows from the previous morning painted UNDER the
+	   final assistant message. Both orders are built by the SHIPPED reducer from
+	   the real journal of session `f91fbda61750`
+	   (`scripts/fixtures/stale-seed-order.json`): `Before` runs the pre-fix fold
+	   (`applyEvent` per seed event at the reader's arrival) and `After` runs
+	   `applyLiveSeed` with the snapshot's own `streaming: false`. They are one
+	   tree's frames rather than a base/head pair, because a pair from two trees
+	   cannot be re-captured once the base moves; `README.md` in the set says so
+	   where the images live.
+
+	   All four declare 800 as a VIEWPORT FLOOR, not as the delivered size: the
+	   story pins the transcript pane to the reader's own 685px and the harness
+	   floors its viewport at the document height, so the committed frames are the
+	   pane plus the caption (the harness delivers them at whatever that measures).
+	   The pin is the point — a transcript story with no fixed height grows its
+	   viewport to its content, and the `Arrival` state then paints the answer 48%
+	   down a 3058px frame instead of out of the pane, which the frame's own caption
+	   would be contradicting. `Arrival` is the unreduced seed; `Seam` narrows it to
+	   the newest twelve unlabelled calls so the answer and what sits under it fit
+	   one frame together. */
+	["chat-stale-seed-order--before-arrival", 1280, 800],
+	["chat-stale-seed-order--after-arrival", 1280, 800],
+	["chat-stale-seed-order--before-seam", 1280, 800],
+	["chat-stale-seed-order--after-seam", 1280, 800],
 	/* `/`-completion: the composer's slash popup, in both of its phases.
 	   Captured from `slash-commands.stories.tsx`, which renders the PRODUCTION
 	   popup from wire-shaped fixtures — the rows the backend's
@@ -1246,6 +1325,40 @@ export const STORIES = [
 	 * can produce the narrow layout. Every other entry is the dialog's own size.
 	 */
 	["panels-analytics--populated", 1140, 980],
+	/*
+	 * The same payload with the pointer ON THE BAR, which is what this change is
+	 * about: recharts' own cursor for a `BarChart` is a full-height rectangle over
+	 * the category band, so before this branch the frame under the pointer showed
+	 * the whole COLUMN highlighted and the bar the question was about unchanged.
+	 * The story adds nothing (`panels-analytics--populated-hover`), because
+	 * `:hover` cannot be a story state; the rig's own CDP input is what puts the
+	 * pointer there. `hoverSettleMs` is the tooltip's 400 ms open delay — without
+	 * it the frame is the resting state under a name that claims a hover.
+	 */
+	[
+		"panels-analytics--populated-hover",
+		1140,
+		980,
+		{
+			hover: ".recharts-bar-rectangle .recharts-rectangle",
+			hoverSettleMs: 900,
+		},
+	],
+	/*
+	 * The same hover on a bar of a few pixels: review round 1 (D7) found every
+	 * hover frame pointing at the shortest NON-zero bar, which is still 834k of a
+	 * 1.9M peak, so "is the step findable on a thin bar" had no frame. The story
+	 * puts a 60k day first and the same selector lands on it.
+	 */
+	[
+		"panels-analytics--populated-hover-shallow",
+		1140,
+		980,
+		{
+			hover: ".recharts-bar-rectangle .recharts-rectangle",
+			hoverSettleMs: 900,
+		},
+	],
 	["panels-analytics--refreshing", 1140, 980],
 	["panels-analytics--thirty-days", 1140, 1020],
 	["panels-analytics--this-session-only", 1140, 980],
@@ -1253,6 +1366,25 @@ export const STORIES = [
 	["panels-analytics--partial-cost", 1140, 980],
 	["panels-analytics--no-daily-rows", 1140, 980],
 	["panels-analytics--unnamed-sessions", 1140, 980],
+	/*
+	 * The same state with the panel body parked at its END, which is the only way
+	 * the By-session table's rows are in the picture at all: review round 1 (D6)
+	 * found this story's frame byte-identical to `populated` in ten of twelve
+	 * themes, because the distinguishing rows (the hex ids) sit below a body fold
+	 * that is capped at `min(76vh, 760px)` — so a taller VIEWPORT does not reach
+	 * them, it only adds margin. The scroll position is browser state no story can
+	 * set, which is what `scrollToEnd` is for; the at-rest frame stays in its own
+	 * directory, as did `chat-tool-rows--expanded-overflow-narrow-end`.
+	 */
+	[
+		"panels-analytics--unnamed-sessions",
+		1140,
+		980,
+		{
+			dir: "unnamed-sessions-end",
+			scrollToEnd: "[data-panel-body]",
+		},
+	],
 	["panels-analytics--empty", 1140, 460],
 	["panels-analytics--loading", 1140, 460],
 	["panels-analytics--unavailable", 1140, 400],

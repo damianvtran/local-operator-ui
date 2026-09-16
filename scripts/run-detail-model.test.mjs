@@ -46,6 +46,7 @@ const {
 	activityTally,
 	acknowledgeMcpWhileShown,
 	acknowledgeWhileOpen,
+	busiestClause,
 	childClause,
 	childStateLabel,
 	deriveMcpServers,
@@ -1576,6 +1577,22 @@ test("the tooltip carries counts, pluralised honestly, and names the ACTION", ()
 		runDetailTriggerLabel(derive([], []), NOTHING_SEEN, { open: true }),
 		"Close run details",
 	);
+	/*
+	 * A SETTLED plan adds nothing to the trigger, and it stays that way now that
+	 * the settled case has its own copy. The trigger answers "is anything asking
+	 * for something right now?" (`hasRunDetails`), and a plan that ended is not;
+	 * the composer chip states the outcome, the trigger states what is
+	 * outstanding. Both settled spellings are pinned so a future reader sees the
+	 * decision rather than having to infer it from a guard.
+	 */
+	assert.equal(
+		runDetailTriggerLabel(derive([], plan(["done", "done"]))),
+		"Open run details",
+	);
+	assert.equal(
+		runDetailTriggerLabel(derive([], plan(["done", "dropped"]))),
+		"Open run details",
+	);
 });
 
 test("the tooltip sheds whole clauses, never half of one, and keeps what the dot means", () => {
@@ -2401,13 +2418,65 @@ test("the sentence and the mark are one derivation, for every open state", () =>
 				: [job(state)];
 		const tally = activityTally(derive(rows).subagents);
 		assert.equal(tally.mark, word);
-		assert.ok(
-			childClause(tally).endsWith(word),
-			`"${childClause(tally)}" must end in the mark's own state`,
-		);
+		/*
+		 * WHICH WORD THE SENTENCE ENDS IN DEPENDS ON WHETHER THE SET IS UNIFORM, and
+		 * that is design review round 2's D6: with a parked row beside a running one,
+		 * the mark's own word beside the OPEN total claimed work that was not
+		 * happening (the chip read `40 subagents running` while the pane read
+		 * `15 running · 25 queued · 17 interrupted · 5 done`). The state word is the
+		 * uniform case's; the family word is the mixed case's, and the busiest state
+		 * moves to the strings with room for it.
+		 */
+		if (tally.markCount === tally.count) {
+			assert.ok(
+				childClause(tally).endsWith(word),
+				`"${childClause(tally)}" must end in the mark's own state`,
+			);
+			assert.equal(
+				busiestClause(tally),
+				"",
+				"a uniform set has no second state",
+			);
+		} else {
+			assert.ok(
+				childClause(tally).endsWith("open"),
+				`"${childClause(tally)}" must be the family's word when the set is mixed`,
+			);
+			assert.ok(
+				busiestClause(tally).endsWith(word),
+				`"${busiestClause(tally)}" must name the busiest state's own word`,
+			);
+		}
 		// The count is the same predicate the gate and `openChildren` use.
 		assert.equal(tally.count, derive(rows).openChildren);
 	}
+	/*
+	 * ...and the shape QA measured live, which is the one that found this: fifteen
+	 * running with the rest parked behind the fifteen-job pool
+	 * (`DEFAULT_MAX_RUNNING_JOBS = 15`). The open total is whole, the WORD is the
+	 * family's, and only the accessible name carries the running count - the numbers
+	 * the pane states in its own tally, spelled the one way that cannot contradict
+	 * it.
+	 */
+	const fanOut = derive([
+		...Array.from({ length: 15 }, (_, i) =>
+			job({ id: `run-${i}`, status: "running" }),
+		),
+		...Array.from({ length: 25 }, (_, i) =>
+			job({ id: `queue-${i}`, status: "running", queued: true }),
+		),
+		...Array.from({ length: 17 }, (_, i) =>
+			job({ id: `stop-${i}`, status: "interrupted" }),
+		),
+		...Array.from({ length: 5 }, (_, i) =>
+			job({ id: `done-${i}`, status: "done" }),
+		),
+	]).subagents;
+	const mixed = activityTally(fanOut);
+	assert.equal(mixed.count, 40, "the count is every open row");
+	assert.equal(mixed.markCount, 15, "and the mark's share is the running few");
+	assert.equal(childClause(mixed), "40 subagents open");
+	assert.equal(busiestClause(mixed), ", 15 running");
 	// The jobs half takes the same shape, so a tool row of any state is spelled as
 	// the mark beside it, and an empty list has no tally at all (the chips' gate).
 	assert.equal(

@@ -148,8 +148,9 @@ export const RunDetailsPanel = ({
 	 * named phase with no items, which is a real state the backend publishes (the
 	 * checkpoint arrives with `todos: [{ name: "Foundation", items: [] }]`).
 	 * The chip is about work: `totalTodos` is the item count, so a plan that
-	 * arrived as an empty phase prints nothing at all rather than `0 to-dos open`,
-	 * which reads as a finished plan.
+	 * arrived as an empty phase prints nothing at all rather than stating a finished
+	 * plan over it (`All to-dos resolved` under the settled clause; `0 to-dos open`
+	 * when this note was written, which read as a finished plan too).
 	 *
 	 * `totalTodos > 0` implies `todos.length > 0`, so the two cannot disagree in a
 	 * reachable state; the note is here because this PR is what made the

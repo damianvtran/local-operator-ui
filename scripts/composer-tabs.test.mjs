@@ -68,6 +68,7 @@ const bundle = await build({
 				activityTally,
 				deriveRunDetails,
 				todoClause,
+				busiestClause,
 				childClause,
 				jobClause,
 				wakeClause,
@@ -80,7 +81,7 @@ const bundle = await build({
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
-			export { ComposerStatusRow, shouldRestoreComposerFocus, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -147,6 +148,7 @@ const {
 	deriveRunDetails,
 	activityTally,
 	todoClause,
+	busiestClause,
 	childClause,
 	jobClause,
 	wakeClause,
@@ -390,8 +392,17 @@ test("the row's copy states the action that a press performs", () => {
 	);
 	// The action leads and the count follows, joined by the model's LABEL_SEAM.
 	assert.equal(
-		planChipLabel(4),
+		planChipLabel({ openTodos: 4, droppedTodos: 0 }),
 		"Open the plan in run details — 4 to-dos open",
+	);
+	// The settled states are the same words the chip body prints (see below).
+	assert.equal(
+		planChipLabel({ openTodos: 0, droppedTodos: 0 }),
+		"Open the plan in run details — All to-dos resolved",
+	);
+	assert.equal(
+		planChipLabel({ openTodos: 0, droppedTodos: 2 }),
+		"Open the plan in run details — All to-dos closed",
 	);
 });
 
@@ -426,23 +437,62 @@ test("the plan chip states the model's own clause, off the model's own counts", 
 
 test("a finished plan still renders, and says so", () => {
 	/*
-	 * `0 to-dos open` rather than the chip vanishing: the row's height must not
-	 * change when the last item closes, and a plan that completed is a fact worth
-	 * keeping on screen.
+	 * A settled plan keeps a clause rather than the chip vanishing: the row's
+	 * height must not change when the last item closes, and a plan that ended is a
+	 * fact worth keeping on screen. Two done, one dropped is the case that decides
+	 * WHICH clause — nothing is open, so the count form cannot state it, and one
+	 * item was abandoned, so `All to-dos resolved` would be a false claim about
+	 * work that did not succeed.
 	 */
 	const details = detailsFor(["done", "done", "dropped"]);
 	assert.equal(details.openTodos, 0);
+	assert.ok(details.droppedTodos > 0);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.match(markup, /All to-dos closed/);
+	assert.doesNotMatch(
+		markup,
+		/All to-dos resolved/,
+		"a dropped item is not work that was resolved",
+	);
 	assert.match(
-		renderRow({ frontend: frontend(""), runDetails: details }),
-		/0 to-dos open/,
+		markup,
+		/aria-label="Open the plan in run details — All to-dos closed"/,
+		"the name states the same settled words as the chip body",
 	);
 });
 
-test("the clause is the model's one spelling, for one, none and many", () => {
-	assert.equal(todoClause(0), "0 to-dos open");
-	assert.equal(todoClause(1), "1 to-do open");
-	assert.equal(todoClause(2), "2 to-dos open");
-	assert.equal(todoClause(14), "14 to-dos open");
+test("a plan with every item done is the one that reads as resolved", () => {
+	const details = detailsFor(["done", "done", "done"]);
+	assert.equal(details.openTodos, 0);
+	assert.equal(details.droppedTodos, 0);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.match(markup, /All to-dos resolved/);
+	assert.match(
+		markup,
+		/aria-label="Open the plan in run details — All to-dos resolved"/,
+	);
+	/*
+	 * The settled case stops spelling a count at all: a chip that said
+	 * `All to-dos resolved` beside a numeral would be two statements of one fact.
+	 */
+	assert.doesNotMatch(markup, /\d+ to-dos? open/);
+});
+
+test("the clause is the model's one spelling, for one, many and both settled states", () => {
+	assert.equal(
+		todoClause({ openTodos: 0, droppedTodos: 0 }),
+		"All to-dos resolved",
+	);
+	assert.equal(
+		todoClause({ openTodos: 0, droppedTodos: 2 }),
+		"All to-dos closed",
+	);
+	assert.equal(todoClause({ openTodos: 1, droppedTodos: 0 }), "1 to-do open");
+	assert.equal(todoClause({ openTodos: 2, droppedTodos: 0 }), "2 to-dos open");
+	assert.equal(
+		todoClause({ openTodos: 14, droppedTodos: 3 }),
+		"14 to-dos open",
+	);
 	/*
 	 * And the chip prints THAT function's output rather than a pluralisation of
 	 * its own — the single-item case is the one a second copy gets wrong.
@@ -581,10 +631,40 @@ test("the activity chips state the model's clause and name the section they open
 	assert.match(markup, />2 subagents running</);
 	assert.match(markup, />1 job running</);
 	assert.equal(
-		childClause({ count: 2, mark: "running" }),
+		childClause({ count: 2, mark: "running", markCount: 2 }),
 		"2 subagents running",
 	);
-	assert.equal(jobClause({ count: 1, mark: "running" }), "1 job running");
+	assert.equal(
+		jobClause({ count: 1, mark: "running", markCount: 1 }),
+		"1 job running",
+	);
+	/*
+	 * ...and the MIXED set, which is the ordinary case rather than an edge
+	 * (`DEFAULT_MAX_RUNNING_JOBS = 15`, so a fan-out above fifteen children is
+	 * parked against a running few): the count stays whole and the WORD becomes the
+	 * family's, because the state word beside an open total would claim work that is
+	 * not happening - design round 2's D6, where the chip read `40 subagents
+	 * running` while the pane read `15 running · 25 queued · 17 interrupted ·
+	 * 5 done` on the same screen.
+	 */
+	assert.equal(
+		childClause({ count: 40, mark: "running", markCount: 15 }),
+		"40 subagents open",
+	);
+	assert.equal(
+		jobClause({ count: 3, mark: "queued", markCount: 1 }),
+		"3 jobs open",
+	);
+	/*
+	 * The narrow string is the SURFACE's; the accessible name and the tooltip have
+	 * room for the busiest state, and the mark is `aria-hidden`, so without it a
+	 * screen reader would hear the family word alone.
+	 */
+	assert.equal(
+		subagentChipLabel({ count: 40, mark: "running", markCount: 15 }),
+		"Open the subagents in run details — 40 subagents open, 15 running",
+	);
+	assert.equal(busiestClause({ count: 2, mark: "running", markCount: 2 }), "");
 	// And the action leads the tooltip and the accessible name, one derived string.
 	assert.match(
 		markup,
@@ -595,11 +675,11 @@ test("the activity chips state the model's clause and name the section they open
 		/aria-label="Open the jobs in run details — 1 job running"/,
 	);
 	assert.equal(
-		subagentChipLabel({ count: 2, mark: "running" }),
+		subagentChipLabel({ count: 2, mark: "running", markCount: 2 }),
 		"Open the subagents in run details — 2 subagents running",
 	);
 	assert.equal(
-		jobChipLabel({ count: 1, mark: "running" }),
+		jobChipLabel({ count: 1, mark: "running", markCount: 1 }),
 		"Open the jobs in run details — 1 job running",
 	);
 	/*
