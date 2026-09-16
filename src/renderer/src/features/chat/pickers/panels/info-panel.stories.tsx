@@ -43,6 +43,7 @@ import "../../../../styles/index.css";
 import type { InfoFrontend } from "./info-model";
 import { InfoPanel } from "./info-panel";
 import { scrollPanelToSection } from "./story-scroll";
+import { desktopRequestDeadlineDetail, desktopRequestDeadlineMs } from "../../../../../../shared/desktop-contract";
 
 const noop = () => {};
 
@@ -661,8 +662,11 @@ export const Unavailable: Story = {
 	args: {
 		...base,
 		data: null,
-		error:
-			"The backend did not answer /v1/desktop/info within 30s. Close and reopen this panel to try again.",
+		/* Built from the shipped functions, not transcribed: see the analytics story. */
+		error: desktopRequestDeadlineDetail(
+			"info.get",
+			desktopRequestDeadlineMs("info.get"),
+		).message,
 		frontend,
 	},
 };

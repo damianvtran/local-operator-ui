@@ -108,6 +108,16 @@ export type AnalyticsPanelProps = {
 	error: string | null;
 	/** The clock the window is derived from. Fixed in stories, so a frame is reproducible. */
 	now: Date;
+	/**
+	 * When the read behind `data` finished, for the Totals line's `as of`.
+	 *
+	 * Taken from the query's own `dataUpdatedAt` rather than a render-time clock:
+	 * the panel states when it READ, not when it drew. Null when nothing has been
+	 * read, and the clause is then absent rather than unknown (design round 1,
+	 * D6 — these panels no longer refresh themselves, so the age of what is on
+	 * screen has to be stated rather than inferred).
+	 */
+	readAt: number | null;
 	onWindowChange: (days: number) => void;
 	onMetricChange: (metric: AnalyticsMetric) => void;
 	onThisSessionChange: (thisSessionOnly: boolean) => void;
@@ -596,6 +606,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	refreshing,
 	error,
 	now,
+	readAt,
 	onWindowChange,
 	onMetricChange,
 	onThisSessionChange,
@@ -679,7 +690,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 					/>
 				) : (
 					<PanelStack>
-						<PanelSection title="Totals" meta={windowMeta(win, scope)}>
+						<PanelSection title="Totals" meta={windowMeta(win, scope, readAt)}>
 							<StatGrid>
 								<StatCard
 									label="Requests"
@@ -815,6 +826,7 @@ export const AnalyticsView: FC<MachinePanelContext> = ({
 			refreshing={query.isFetching && !query.isLoading}
 			error={query.isError ? errorText(query.error) : null}
 			now={now}
+			readAt={query.dataUpdatedAt || null}
 			onWindowChange={setWindowDays}
 			onMetricChange={setMetric}
 			onThisSessionChange={setThisSessionOnly}

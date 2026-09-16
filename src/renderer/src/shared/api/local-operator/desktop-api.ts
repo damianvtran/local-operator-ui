@@ -257,12 +257,19 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
  * out of its own budget for an op, which is the one failure a retry cannot
  * repair: the query behind it is still executing on the backend, so asking
  * again adds a second scan on top of the first. Callers that read the ledger
- * use this to decide against a retry; the status alone would be enough today,
- * and the code is what makes the check survive copy or status changes.
+ * use this to decide against a retry.
+ *
+ * The CODE is the check, and the bare status is not: this app's own 504 always
+ * carries it (`desktop-transport.ts`, the only place one is produced), so a 504
+ * that arrives without it came from something else in the path — a proxy or an
+ * upstream gateway — and is an ordinary failure that keeps its retry rather
+ * than silently losing it (review round 1, N2).
  */
 export function isDeadlineExceeded(error: unknown): boolean {
-	if (!(error instanceof DesktopControlError)) return false;
-	return error.code === DESKTOP_DEADLINE_EXCEEDED_CODE || error.status === 504;
+	return (
+		error instanceof DesktopControlError &&
+		error.code === DESKTOP_DEADLINE_EXCEEDED_CODE
+	);
 }
 
 /**

@@ -1457,10 +1457,11 @@ function SessionPanel({
 	 * - `confirmSessionLive` closes the window on a live frame from the session's
 	 *   own stream. That is the EARLIER bound: it opens the gate on the first
 	 *   proof rather than at the read's own end. The read is bounded too -
-	 *   `desktopResult` runs every desktop control under `withDeadline` at
-	 *   `DESKTOP_REQUEST_TIMEOUT_MS` (30 s), so a read that never answers ends in
-	 *   the rollback rather than in a panel that refuses sends forever - but
-	 *   thirty seconds of a panel that refuses every send is not a bound a user
+	 *   `desktopResult` runs every desktop control under `withDeadline` at the
+	 *   op's own derived deadline (`desktopRequestTimeoutMs` - 25 s for a
+	 *   control, 95 s for a ledger read), so a read that never answers ends in
+	 *   the rollback rather than in a panel that refuses sends forever - but a
+	 *   whole budget of a panel that refuses every send is not a bound a user
 	 *   can use, so the live term is kept for what it adds, not because the
 	 *   alternative is unbounded.
 	 * - the refused send's notice retires on that same observable condition, the
@@ -1498,7 +1499,7 @@ function SessionPanel({
 	//
 	// `!draft.pending` is load-bearing, not defensive. `admissionAttempted` is set
 	// BEFORE the awaited request, so it is true for the whole in-flight window (up
-	// to the 30s request timeout). Without this the notice and its abandon control
+	// to the op's derived request deadline). Without this the notice and its abandon control
 	// were live over a send whose outcome was still unknown, and abandoning there
 	// deleted the row that the settling request then patched - reintroducing the
 	// invisible-claim dead end one layer down. A request that may be executing is

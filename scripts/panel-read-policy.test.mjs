@@ -17,12 +17,13 @@
  *     Every panel is a snapshot the user opened, refreshed by reopening").
  *
  * WHAT THIS ASSERTS. The decisions, on the shipped options objects: which
- * failures earn the one retry, and that no panel row re-reads on focus. It does
- * not assert timings — the deadlines are asserted as relationships in
- * `desktop-renderer-transport.test.mjs` (renderer vs transport) and in
- * `desktop-contract.test.mjs` (the per-op table, plus a real expired request) —
- * and it does not assert freshness, which stays per panel in the same file and
- * is argued one row at a time there.
+ * failures earn the one retry, that no panel row re-reads on focus, that
+ * reopening after an expired read DOES read again (the other half of that
+ * decision, since the copy tells the user to reopen), and the budget table
+ * itself. The transport's real signal for a long read is not assertable from
+ * here — it takes a socket held past the old budget, which is the stall in
+ * `desktop-contract.test.mjs` — and freshness stays per panel in
+ * `panel-queries.ts`, argued one row at a time there.
  */
 
 import assert from "node:assert/strict";
@@ -71,11 +72,13 @@ const {
 	DesktopControlError,
 	desktopRequestTimeoutMs,
 	desktopRequestDeadlineMs,
+	desktopRequestDeadlineDetail,
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
 } = await bundleInto(
 	"panel-queries",
 	`export { analyticsQueryOptions, failoversQueryOptions, infoQueryOptions, sessionReportQueryOptions } from "./${PANELS}";
 	 export { DesktopControlError, desktopRequestTimeoutMs, isDeadlineExceeded } from "./src/renderer/src/shared/api/local-operator/desktop-api";
-	 export { desktopRequestDeadlineMs } from "./src/shared/desktop-contract";`,
+	 export { desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE } from "./src/shared/desktop-contract";`,
 );
 
 /** Every panel read, named the way a failure report would name it. */
@@ -100,9 +103,12 @@ const READS = () => ({
 const expired = () =>
 	new DesktopControlError(
 		504,
-		"The ledger read did not finish within 90 seconds, so the app stopped waiting for it.",
+		desktopRequestDeadlineDetail(
+			"analytics.get",
+			desktopRequestDeadlineMs("analytics.get"),
+		).message,
 		undefined,
-		"deadline_exceeded",
+		DESKTOP_DEADLINE_EXCEEDED_CODE,
 	);
 
 test("every panel read declines to retry a read that ran out of its budget", () => {
@@ -147,30 +153,108 @@ test("no panel read re-reads its snapshot on a focus change", () => {
 	}
 });
 
-test("the renderer's deadline outlives the transport's for the same op", () => {
+test("the two budgets read as one table: three long ops, everything else short", () => {
 	/*
-	 * The invariant the transport documents: the renderer's bound exists only for
-	 * the IPC round trip that never settles, so main - the layer that knows the
-	 * HTTP status - has to be the one that gives up first. Asserted per op
-	 * because both sides are now sized per op: a mirror that moved on one side
-	 * would leave a ledger read rejected by the renderer while main was still
-	 * going to answer it.
+	 * Literals, not a comparison against the other side.
+	 *
+	 * The first version of this test asserted `desktopRequestTimeoutMs(op) >
+	 * desktopRequestDeadlineMs(op)`, which passes for every op by construction —
+	 * one is defined as the other plus `DESKTOP_DEADLINE_MARGIN_MS` — and would
+	 * keep passing at a margin of zero (review round 1, R2). The invariant it was
+	 * trying to protect is real but lives elsewhere: whether the transport hands
+	 * `fetch` the long signal is only observable from a real request, which is the
+	 * 22 s stall in `desktop-contract.test.mjs`. What belongs HERE is the table
+	 * itself, so a change to any of these numbers has to be a deliberate one.
 	 */
-	for (const op of [
-		"analytics.get",
-		"usage.get",
-		"sessions.report",
-		"config.get",
-	]) {
-		assert.ok(
-			desktopRequestTimeoutMs(op) > desktopRequestDeadlineMs(op),
-			`the renderer must wait longer than main for ${op}`,
+	for (const op of ["analytics.get", "usage.get", "sessions.report"]) {
+		assert.equal(desktopRequestDeadlineMs(op), 90_000, op);
+		assert.equal(
+			desktopRequestTimeoutMs(op),
+			95_000,
+			`${op}: the renderer must still be the later of the two`,
 		);
 	}
-	// And the ledger reads are the ones main's budget was moved for, so the
-	// renderer's for them is necessarily the longer one of the two.
-	assert.ok(
-		desktopRequestDeadlineMs("analytics.get") >
-			desktopRequestDeadlineMs("config.get"),
+	for (const op of [
+		"config.get",
+		"capabilities",
+		"info.get",
+		"sessions.failovers",
+		"sessions.message",
+	]) {
+		assert.equal(desktopRequestDeadlineMs(op), 20_000, op);
+		assert.equal(desktopRequestTimeoutMs(op), 25_000, op);
+	}
+});
+
+/**
+ * Reopening a panel is the refresh gesture, so it has to actually read.
+ *
+ * This is the OTHER half of `refetchOnWindowFocus: false` (design round 1, D6):
+ * the copy tells a user whose read expired to reopen the panel, and that advice
+ * is only true if a mount re-reads rather than being served the failure it
+ * already has in the cache. React Query's own mount path is the test here
+ * (`QueryObserver.subscribe`, which is what `useQuery` does on mount), because
+ * `fetchQuery` would fetch whatever the cache said.
+ */
+test("a panel opened after an expired read reads again, and does not wait twice", async () => {
+	const { QueryClient, QueryObserver } = await import("@tanstack/react-query");
+	const { defaultQueryOptions } = await bundleInto(
+		"query-client-defaults",
+		`export { defaultQueryOptions } from "./src/renderer/src/shared/api/query-client";`,
 	);
+	let reads = 0;
+	const options = {
+		...analyticsQueryOptions({ days: 7, sinceMs: 0, untilMs: 1 }),
+		queryFn: async () => {
+			reads += 1;
+			throw expired();
+		},
+	};
+	const client = new QueryClient({ defaultOptions: defaultQueryOptions });
+	/** One open: mount, wait for a settled result, unmount. */
+	const open = () =>
+		new Promise((resolve) => {
+			const observer = new QueryObserver(client, options);
+			const unsubscribe = observer.subscribe(() => {
+				const result = observer.getCurrentResult();
+				if (result.isFetching || result.status === "pending") return;
+				unsubscribe();
+				resolve(result);
+			});
+		});
+	const first = await open();
+	assert.equal(first.isError, true);
+	assert.equal(reads, 1, "the expired read itself: no retry, one attempt");
+	// The advice in the sentence, executed.
+	const second = await open();
+	assert.equal(second.isError, true);
+	assert.equal(
+		reads,
+		2,
+		"reopening after an expired read must read again, not reuse the failure",
+	);
+	/*
+	 * `clear()` before the test ends: the app's defaults carry `gcTime: 10 min`,
+	 * and a cache still holding the failed query keeps a collection timer armed,
+	 * which outlives this file and hangs the runner rather than the test.
+	 */
+	client.clear();
+});
+
+/**
+ * The `/usage` view is the fifth read on the long budget, and it inherited the
+ * one default this change set removed from the other four (review round 1, R1).
+ *
+ * Its `retry: 0` is its own decision and stays; the focus refetch is not, and a
+ * focus change re-probing every signed-in provider is a real cost rather than a
+ * hypothetical one.
+ */
+test("the /usage read does not re-probe providers because the window was focused", async () => {
+	const { usageQueryOptions } = await bundleInto(
+		"usage-view",
+		`export { usageQueryOptions } from "./src/renderer/src/features/chat/pickers/usage-view";`,
+	);
+	const options = usageQueryOptions(undefined, false);
+	assert.equal(options.refetchOnWindowFocus, false);
+	assert.equal(options.retry, 0, "its own decision, unchanged by this change");
 });

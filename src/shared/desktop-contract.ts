@@ -1174,10 +1174,12 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
  *
  * WHY PER OP RATHER THAN ONE LITERAL. Twenty seconds is right for the controls:
  * a write, a settings read or a catalogue call answers in milliseconds, so
- * twenty seconds of silence is a failure rather than a wait. The ledger reads
- * are a different shape, and they are a different shape for a reason the
- * message budgets above already know about — the work is a function of how much
- * a user has USED this machine, not of request size.
+ * twenty seconds of silence is a failure rather than a wait. Two other shapes
+ * need longer, and they are long for DIFFERENT reasons — a local scan against
+ * how much a user has USED this machine (the ledger reads), and a live fan-out
+ * to providers over the network (see `PROVIDER_READ_OPS` below). Both are on
+ * the same number because the number is a bound on how long a user may be made
+ * to wait, not because their costs are alike.
  *
  * Measured against one isolated backend and one copy of the ledger (1,153,206
  * rows, 341 MB), same query, back to back: `analytics.get` for 30 days answered
@@ -1196,7 +1198,7 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
  * ({@link desktopRequestDeadlineDetail}).
  */
 const DESKTOP_CONTROL_DEADLINE_MS = 20_000;
-const DESKTOP_LEDGER_READ_DEADLINE_MS = 90_000;
+const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
 
 /**
  * Ops whose answer is an aggregate over the local usage ledger.
@@ -1205,28 +1207,47 @@ const DESKTOP_LEDGER_READ_DEADLINE_MS = 90_000;
  * reads `<config dir>/analytics.db` on the same machine as the app, so its cost
  * follows the ledger's size and whatever the page cache is holding rather than
  * anything about the request. `analytics.get` is the one measured above;
- * `usage.get` is the same ledger over the same span for the `/usage` panel, and
  * `sessions.report` walks a session's subtree in the same ledger (measured
  * 0.65-2.2 s here, which is inside the control budget today and on this list
  * because the scan behind it is the same one, not because it was seen to
  * exceed 20 s).
- *
- * NOT listed, deliberately: `info.get` (a host snapshot, and the parallel
- * backend change is the one that bounds its `top -l1` child — measured 0.3 s
- * warm here) and `sessions.failovers` (routing state already in memory). An op
- * moves onto the long budget when its shape says the ledger decides its cost,
- * not because its name sounds like a read.
  */
 const LEDGER_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
-	"usage.get",
 	"sessions.report",
+]);
+
+/**
+ * Ops whose answer is a provider-side read: a cache, or a live fan-out.
+ *
+ * A SECOND LONG-BUDGET SHAPE, and the reason it is written down separately is
+ * that the first cut of this table claimed `usage.get` was "the same ledger
+ * over the same span" — which is false, and a table whose rule does not
+ * describe its own membership is one the next author edits by guesswork
+ * (review round 1, R1). `/v1/desktop/usage`
+ * (`local_operator/server/routes/desktop_catalogues.py`) answers from
+ * `controller.cached_usage_reports()` — the provider controller's cache, which
+ * does not cross the network — or, when the panel asks for a refresh, from
+ * `controller.fetch_usage()`, a live fan-out to each provider's own quota
+ * endpoint. The backend's own source draws the same line: the local-cost
+ * question is "`/analytics`' question, answered from recorded token counts".
+ *
+ * So this op is on the long budget because a refresh is bounded by the network
+ * and by the backend's per-account retries, not because anything local decides
+ * its cost. `usageQueryOptions` already refuses to retry it at all.
+ */
+const PROVIDER_READ_OPS: ReadonlySet<string> = new Set(["usage.get"]);
+
+/** Every op on the long budget, whichever of the two shapes put it there. */
+const LONG_READ_OPS: ReadonlySet<string> = new Set([
+	...LEDGER_READ_OPS,
+	...PROVIDER_READ_OPS,
 ]);
 
 /** The deadline one op's request may run for. */
 export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
-	return LEDGER_READ_OPS.has(op)
-		? DESKTOP_LEDGER_READ_DEADLINE_MS
+	return LONG_READ_OPS.has(op)
+		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
 }
 
@@ -1241,37 +1262,121 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
 export const DESKTOP_DEADLINE_EXCEEDED_CODE = "deadline_exceeded";
 
 /**
+ * Ops that change nothing on the server, and so may be told "nothing was read".
+ *
+ * An ALLOWLIST, deliberately, and the direction of the guess is the point: an
+ * op nobody classified here gets the cautious sentence, which says the request
+ * may or may not have reached the server. The other direction tells a user who
+ * just sent a message that nothing happened, and the obvious next act is to
+ * send it again (design round 1, D1). The costs are asymmetric, so the default
+ * is the cheap one — and a new read op that lands on the cautious sentence is a
+ * wording nit rather than a wrong claim about a write.
+ */
+const READ_ONLY_OPS: ReadonlySet<string> = new Set([
+	"capabilities",
+	"accounts.list",
+	"analytics.get",
+	"commands.entities",
+	"commands.list",
+	"config.get",
+	"credentials.list",
+	"info.get",
+	"instructions.get",
+	"legacy.agent.get",
+	"legacy.agent.history",
+	"legacy.agent.schedules.list",
+	"legacy.agents.list",
+	"legacy.job.get",
+	"legacy.jobs.list",
+	"legacy.models",
+	"legacy.models.providers",
+	"legacy.schedule.get",
+	"legacy.schedules.list",
+	"mcp.list",
+	"models.catalogue",
+	"profiles.get",
+	"profiles.list",
+	"providers.list",
+	"sessions.aside.get",
+	"sessions.failovers",
+	"sessions.get",
+	"sessions.history",
+	"sessions.list",
+	"sessions.preview",
+	"sessions.report",
+	"sessions.search",
+	"sessions.variables.list",
+	"skills.list",
+	"subagents.transcript",
+	"teams.get",
+	"teams.list",
+	"usage.get",
+]);
+
+/**
+ * Ops whose answer is a panel the user can open again, for the remedy clause.
+ *
+ * "Reopen the panel" is only advice if there IS one; `capabilities` is asked
+ * for by the app itself and by no surface the user opens, so it gets "ask
+ * again" instead (review round 1, D2 — a remedy clause that does not exist on
+ * the surface reading it is not a remedy).
+ */
+const PANEL_READ_OPS: ReadonlySet<string> = new Set([
+	"analytics.get",
+	"usage.get",
+	"sessions.report",
+	"info.get",
+	"sessions.failovers",
+]);
+
+/**
  * What a request that ran out of its budget says, and which failure it was.
  *
  * The transport had ONE sentence for every failure it could produce: "The
  * backend could not complete this request. Check its connection and try again."
- * For a refused socket that is true. For a ledger read that was still running
- * when the app stopped waiting it is false twice over — the backend WAS
- * completing that request, and "try again" asks the user to start a second
- * multi-second scan against a daemon that is still executing the first one.
+ * For a refused socket that is true. For a read that was still running when the
+ * app stopped waiting it is false twice over — the backend WAS completing that
+ * request, and "try again" asks the user to start a second multi-second scan
+ * against a daemon that is still executing the first one.
  *
  * So the two are separated by both a sentence and a status: this outcome is a
  * 504, which is what a gateway timeout means, and it is deliberately NOT a 503 —
  * `backendErrorKind` reads 503 and `null` as "unreachable" and answers them
- * with a remedy ("Restart the app") that is wrong for a slow read.
+ * with a remedy ("Restart the app") that arrives on the wrong surfaces.
  *
- * Both sentences name what happened, what it means, and what to do, in that
- * order, the order `panel-states.tsx` sets for panel copy.
+ * THREE SENTENCES, because the app knows three different things:
+ *
+ * - a long read (`LONG_READ_OPS`): the wait is the app's own and the read has
+ *   no side effect, so "nothing was read" is knowable;
+ * - any other read (`READ_ONLY_OPS`): same claim, shorter patience;
+ * - everything else, which may be a WRITE: the app stopped waiting, and it does
+ *   not know whether the server applied the request. Saying "nothing was
+ *   changed" there would be a claim the app cannot check, and a user who reads
+ *   it re-sends — which is the one outcome the copy must not invite.
+ *
+ * Each names what happened, what it means, and what to do, in that order, the
+ * order `panel-states.tsx` sets for panel copy. The seconds figure is the APP'S
+ * OWN LIMIT and says so: it is checkable, it explains an otherwise inexplicable
+ * "nothing happened", and it does not read as a measurement of how long the
+ * read needed (design round 1, D5).
  */
 export function desktopRequestDeadlineDetail(
 	op: DesktopRequest["op"],
 	deadlineMs: number,
 ): { code: string; message: string } {
 	const seconds = Math.round(deadlineMs / 1000);
-	if (LEDGER_READ_OPS.has(op)) {
+	const code = DESKTOP_DEADLINE_EXCEEDED_CODE;
+	if (READ_ONLY_OPS.has(op)) {
 		return {
-			code: DESKTOP_DEADLINE_EXCEEDED_CODE,
-			message: `The ledger read did not finish within ${seconds} seconds, so the app stopped waiting for it. Nothing was read; reopen this panel to ask again.`,
+			code,
+			message: PANEL_READ_OPS.has(op)
+				? `The app waits up to ${seconds} seconds for this panel's data, and the read was still running when it stopped waiting. Nothing was read; reopen the panel to ask again.`
+				: `The app waits up to ${seconds} seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again.`,
 		};
 	}
 	return {
-		code: DESKTOP_DEADLINE_EXCEEDED_CODE,
-		message: `This request did not finish within ${seconds} seconds, so the app stopped waiting for it. Nothing was changed or read.`,
+		code,
+		message: `The app waits up to ${seconds} seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it.`,
 	};
 }
 

@@ -2028,16 +2028,22 @@ test("sessions.move reaches the working-directory route with the path, on the co
 // window, 39.6 s cold, 5.6-11.8 s for 7 days. Every read of a cold ledger was
 // therefore abandoned mid-scan, the app's retry put a second scan on the daemon,
 // and the user was told the backend "could not complete this request".
-test("ledger reads get a budget sized for the ledger, and controls keep the short one", () => {
+test("long-budget reads get a budget sized for what makes them slow, and controls keep the short one", () => {
 	// The ledger reads: sized by the worst cold read measured (39.6 s) rather
 	// than by the request.
 	assert.equal(desktopRequestDeadlineMs("analytics.get"), 90000);
-	assert.equal(desktopRequestDeadlineMs("usage.get"), 90000);
 	assert.equal(desktopRequestDeadlineMs("sessions.report"), 90000);
+	// `usage.get` shares the long budget for a DIFFERENT reason, and the comment
+	// here used to state the wrong one: it is not a local scan at all (review
+	// round 1, R1). `/v1/desktop/usage` answers from the provider controller's
+	// cache or from a live fan-out to each provider's quota endpoint, so its cost
+	// is the network's and the backend's per-account retries. What the two shapes
+	// have in common is only that neither is bounded by the request.
+	assert.equal(desktopRequestDeadlineMs("usage.get"), 90000);
 	// Everything else answers from state already in memory, so twenty seconds of
 	// silence is a failure and must stay one. `info.get` and `sessions.failovers`
-	// are deliberately NOT ledger reads: one is a host snapshot whose slow part
-	// is a child process, the other is routing state.
+	// are deliberately NOT on the long budget: one is a host snapshot whose slow
+	// part is a child process, the other is routing state.
 	for (const op of [
 		"config.get",
 		"capabilities",
@@ -2046,17 +2052,31 @@ test("ledger reads get a budget sized for the ledger, and controls keep the shor
 		"sessions.message",
 	])
 		assert.equal(desktopRequestDeadlineMs(op), 20000, op);
-	// The sentence names the budget it ran out of, and says what a ledger read
-	// can be done about; asserting on the number keeps the copy and the constant
-	// from drifting apart, which is the failure mode this whole table exists to
-	// remove.
+	// The sentence names the budget it ran out of, and says what the read can be
+	// done about; asserting on the number keeps the copy and the constant from
+	// drifting apart, which is the failure mode this whole table exists to
+	// remove. The NEGATIVE assertion is the real property (review round 1, N1):
+	// what the old sentence got wrong was inviting a second attempt at work the
+	// daemon was still doing, so a rewording that keeps that out passes and one
+	// that reads it back in fails.
 	const ledger = desktopRequestDeadlineDetail("analytics.get", 90000);
 	assert.equal(ledger.code, DESKTOP_DEADLINE_EXCEEDED_CODE);
 	assert.match(ledger.message, /90 seconds/);
-	assert.match(ledger.message, /reopen this panel/);
+	assert.match(ledger.message, /reopen the panel/);
+	assert.match(ledger.message, /Nothing was read/);
+	assert.doesNotMatch(ledger.message, /try again/);
+	// A WRITE gets no claim about what the server did with the request: the app
+	// aborted a fetch, it did not observe the outcome (design round 1, D1).
+	const write = desktopRequestDeadlineDetail("sessions.message", 20000);
+	assert.equal(write.code, DESKTOP_DEADLINE_EXCEEDED_CODE);
+	assert.match(write.message, /20 seconds/);
+	assert.match(write.message, /may or may not have reached the server/);
+	assert.doesNotMatch(write.message, /Nothing was changed/);
+	// And a control READ keeps the flat assurance, which is knowable for it.
 	const control = desktopRequestDeadlineDetail("config.get", 20000);
 	assert.equal(control.code, DESKTOP_DEADLINE_EXCEEDED_CODE);
 	assert.match(control.message, /20 seconds/);
+	assert.match(control.message, /Nothing was read/);
 });
 
 // The real path, against a real socket that accepts and never answers: what an
@@ -2091,6 +2111,49 @@ test("a request that runs out of its budget answers 504 with its own code, not a
 		assert.ok(
 			elapsed >= 19000 && elapsed < 40000,
 			`the control budget is 20 s; this took ${elapsed}ms`,
+		);
+	} finally {
+		await new Promise((resolve) => stall.close(resolve));
+	}
+});
+
+// The transport's ACTUAL signal for a ledger op, which no assertion on the table
+// can bind (review round 1, R2).
+//
+// The table test above reads `desktopRequestDeadlineMs`, and the renderer test
+// derives its own bound from the same function — so both pass for every op and
+// would keep passing if the transport handed `fetch` a second literal, grew an
+// attempt loop, or sized its signal off the byte budget instead. This one holds
+// a real socket for longer than the OLD control budget and asks for a ledger
+// read: an answered 200 is proof that the signal `fetch` received is the long
+// one, because at 20 s the same request used to come back 504.
+test("a ledger read outlives the old control budget and still answers", async () => {
+	const HOLD_MS = 22_000;
+	const stall = createServer((_req, res) => {
+		setTimeout(() => {
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(JSON.stringify({ result: { data: {} } }));
+		}, HOLD_MS);
+	});
+	await new Promise((resolve) => stall.listen(0, "127.0.0.1", resolve));
+	const url = `http://127.0.0.1:${stall.address().port}`;
+	try {
+		const started = Date.now();
+		const outcome = await requestDesktopOutcome(
+			{ op: "analytics.get", days: 7 },
+			url,
+			token,
+		);
+		const elapsed = Date.now() - started;
+		assert.equal(
+			outcome.response.status,
+			200,
+			`a ledger read was abandoned at the control budget (returned in ${elapsed}ms)`,
+		);
+		assert.equal(outcome.answered, true);
+		assert.ok(
+			elapsed >= HOLD_MS,
+			`the socket held ${HOLD_MS}ms; this returned in ${elapsed}ms`,
 		);
 	} finally {
 		await new Promise((resolve) => stall.close(resolve));
