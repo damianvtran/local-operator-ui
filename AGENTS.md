@@ -1320,12 +1320,13 @@ forge will let through.
 for reviewers on that PR.** The draft flag existed here only to suppress the old
 auto-request; it now only delays the merge, since a draft PR cannot be merged at
 all. A human review is a deliberate act when one is wanted -- `gh pr edit <n>
---add-reviewer @bbqben` -- the handles with write access are `bbqben` and
+--add-reviewer bbqben` (no leading `@`: gh <= 2.100 only strips it for `@me` and
+`@copilot`) -- the handles with write access are `bbqben`, `jcobhams` and
 `damianvtran` (verify with
 `gh api repos/damianvtran/local-operator-ui/collaborators`); tagging a person in
 a *comment* is what says the PR is waiting on them.
 
-When the agent is **acting for a code owner** — running on a code owner's
+When the agent is **acting for the owner** — the operator, running on their
 machine and under their account, which is the normal case here — the standing
 agent review gate is what authorizes the merge. A clean, fresh, independent
 agent review round plus green CI is sufficient; do not wait for a second human
@@ -1356,5 +1357,5 @@ Two things this does not license:
   merge bypassed rather than cleared review. A tag that implies a review it
   never had is the failure this section exists to prevent.
 
-An agent that is **not** acting for a code owner prepares the PR, records the
-review rounds, and hands it to an owner to merge.
+An agent that is **not** acting for the owner prepares the PR, records the
+review rounds, and hands it to the owner to merge.
