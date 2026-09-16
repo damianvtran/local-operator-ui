@@ -418,22 +418,31 @@ export function usePaletteItems({
 	 *
 	 * These are the destinations the composer's slash menu already reaches
 	 * (`/info`, `/usage`, `/analytics`, `/session`), and the palette is a second
-	 * door to the same room: the row names a destination and the chat pane
-	 * presents it (`chat-panel-request-store.ts`), so there is one implementation
-	 * of each panel and one idea of what a destination means.
+	 * door to the same room: the row names a destination and a presenter mounts it
+	 * (`panel-presentation-store.ts`), so there is one implementation of each panel
+	 * and one idea of what a destination means.
 	 *
-	 * The gate is whether the pane can present ANYTHING, which is the rule this
-	 * palette holds every row to, and it is the pane's own state rather than a proxy
-	 * for it: the pane exists when the catalogue capability is live and the route
-	 * resolves to a session or a draft, and with the backend down the chat route
-	 * paints "Connecting to the backend..." where the pane would be. A panel row
-	 * there would close the palette and open nothing - a driver run with no backend
-	 * found exactly that, which is why the gate is here rather than on which panel
-	 * would have something to say.
+	 * The gate differs by what the row NEEDS, and the difference is the whole of
+	 * the operator's first requirement. `/info`, `/usage` and `/analytics` describe
+	 * the machine and read no conversation, so they are gated on liveness alone
+	 * — `canStageDraft`, the same capability bit the chat route and the sidebar
+	 * read. Gating them on a pane, as every row here once was, hid them from the
+	 * palette on exactly the pages they are now readable from, and a driver run
+	 * with no backend found the other half of the same defect: a row that closes
+	 * the palette and opens nothing is a dead control, which is why the liveness
+	 * bit is still required (the chat route paints "Connecting to the backend..."
+	 * where a pane would be, and a machine panel there has nothing to answer it).
 	 *
-	 * Inside that, `Session` and `Analytics` additionally need a real conversation:
-	 * `session.diagnostics` on a draft would report on a session that does not exist
-	 * yet, and Analytics' "this session" scope would have nothing to scope to.
+	 * `Session` and `Analytics`' conversation half additionally need a real
+	 * conversation, which is why `/session` keeps the pane gate: it reports on a
+	 * session, so on a draft pane it would report on one that does not exist.
+	 *
+	 * ARGUED ALTERNATIVE, rejected: gate the three machine rows on `diagnostics`,
+	 * the capability the panels themselves read. That would hide the rows on a
+	 * backend that lacks the routes — and the panels already render their own
+	 * update notice for that case, which is a sentence on screen rather than a row
+	 * that is simply missing. The liveness bit is also the gate this palette holds
+	 * every other row to, so the second opinion would be a new rule for three rows.
 	 */
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
@@ -445,12 +454,15 @@ export function usePaletteItems({
 	 * Whether the chat pane can present a panel AT ALL, which is not the same
 	 * question as whether the panel would have something to say.
 	 *
-	 * Every panel is presented by the pane (`SessionPanel`, which owns the
-	 * presentation slot), and the pane only exists when the catalogue capability is
-	 * live and the route resolves to a session or a draft. With the backend down the
-	 * chat route paints "Connecting to the backend..." instead, so a panel row there
-	 * would close the palette and do nothing - the dead control this palette refuses
-	 * to offer, and the exact defect a driver run with no backend found.
+	 * A session-scoped panel is presented by the pane only (`SessionPanel`, which
+	 * owns the presentation slot), and the pane only exists when the catalogue
+	 * capability is live and the route resolves to a session or a draft. With the
+	 * backend down the chat route paints "Connecting to the backend..." instead, so
+	 * a panel row there would close the palette and do nothing - the dead control
+	 * this palette refuses to offer, and the exact defect a driver run with no
+	 * backend found. The machine panels are the exception, and the only one: they
+	 * have a shell host as well (`panel-outlet.tsx`), so they are gated on the
+	 * liveness bit directly rather than on this.
 	 *
 	 * `canStageDraft` is that same capability, read at the same version the chat
 	 * route and the sidebar read it, rather than a second opinion about it.
@@ -459,13 +471,12 @@ export function usePaletteItems({
 		canStageDraft && Boolean(activeSessionId ?? activeDraftKey);
 	/*
 	 * A conversation reading needs a conversation: `/session` on a draft would
-	 * report on a session that does not exist yet, and Analytics' "this session"
-	 * scope would have nothing to scope to.
+	 * report on a session that does not exist yet.
 	 */
 	const sessionPanelsAvailable = Boolean(activeSessionId);
 
 	const panelItems = useMemo(() => {
-		if (!paneCanPresent) return [];
+		if (!canStageDraft) return [];
 		return buildPanelItems([
 			{
 				id: "info",
@@ -499,7 +510,7 @@ export function usePaletteItems({
 					"quota",
 				],
 			},
-			...(sessionPanelsAvailable
+			...(paneCanPresent && sessionPanelsAvailable
 				? [
 						{
 							id: "session",
@@ -516,26 +527,29 @@ export function usePaletteItems({
 								"tool calls",
 							],
 						},
-						{
-							id: "analytics",
-							destination: "analytics",
-							name: "Analytics",
-							hint: "Usage over time",
-							icon: "analytics" as const,
-							keywords: [
-								"usage",
-								"charts",
-								"trends",
-								"cost",
-								"spend",
-								"tokens",
-								"reports",
-							],
-						},
 					]
 				: []),
+			/* After the pane-only row, so the group keeps the order it had when all
+			 * four were gated together: `Session` only ever appears on a live
+			 * conversation, and `Analytics` is the row that is now always there. */
+			{
+				id: "analytics",
+				destination: "analytics",
+				name: "Analytics",
+				hint: "Usage over time",
+				icon: "analytics" as const,
+				keywords: [
+					"usage",
+					"charts",
+					"trends",
+					"cost",
+					"spend",
+					"tokens",
+					"reports",
+				],
+			},
 		]);
-	}, [paneCanPresent, sessionPanelsAvailable]);
+	}, [canStageDraft, paneCanPresent, sessionPanelsAvailable]);
 
 	/* ------------------------ destinations and actions ---------------------- */
 
