@@ -94,7 +94,7 @@
 
 export const COMPOSER_TIPS: readonly string[] = [
 	"search chats and agents to reopen an earlier session",
-	"ask for a team and several agents run one request",
+	"ask for a team and several agents share one request",
 	"type /approvals to set whether tools ask first",
 	"ask for parallel work and the agent fans out subagents",
 	"open the run panel to see a turn's plan and subagents",
