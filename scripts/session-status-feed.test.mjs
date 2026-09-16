@@ -23,14 +23,21 @@ import { build } from "esbuild";
  *   1. a stale list (same epoch, lower revision) cannot clobber a fresher frame;
  *   2. a list at least as fresh as the frame DOES win — including the boundary,
  *      where equal revisions mean the list is not older and must not be refused;
- *   3. a new epoch retires the old counters, so the guard cannot pin a value
- *      that a restarted feed process has already moved past;
+ *   3. a new epoch retires the old counters, so a row stops advertising a counter
+ *      no live process will ever mint. Stamp HYGIENE, not a pin: the guard needs
+ *      epoch equality before it compares a single number, so a dead epoch's
+ *      counter could never have refused a live list in the first place;
  *   4. an unstamped list still applies its status, because the stamp is
  *      evidence and its absence is not evidence against the row;
  *   5. a frame that carries nothing new returns the SAME state object, which is
  *      how a 500-row sidebar avoids a re-render per heartbeat;
  *   6. a frame for a session the catalogue does not know is dropped, and does
- *      not disturb the array it did not change.
+ *      not disturb the array it did not change;
+ *   7. a stamp is a PAIR, so a merge handed half of one keeps a whole stamp or
+ *      none - never a `(new epoch, old revision)` hybrid no process minted, and
+ *      never a row pinned against the new epoch's own list because of it;
+ *   8. the frame's own arrival path - the HOOK - hands the store the two-key
+ *      pair, which is the part the store cannot check for itself.
  *
  * The tests drive the STORE's own two entry points - `applySessionStatus` for the
  * frame and `fetchSessions` for the list - rather than `replaceSessionRows`
@@ -38,6 +45,14 @@ import { build } from "esbuild";
  * `mtime` -> `session_id`/`title`/`updated_at`) is part of the path the stamps
  * have to survive. A pure-function test of the merge would pass with the stamps
  * dropped on the way in.
+ *
+ * The last test is the deliberate exception: it drives the real HOOK
+ * (`useDesktopFeed`, with `react` and the capability hook replaced) against the
+ * real store, because the store writes whatever `status` argument it is handed
+ * and a caller that passes the whole frame payload through leaves a `revision`
+ * key on the row. A three-key payload is structurally assignable to
+ * `SessionCatalogueStatus`, so no store-level assertion here can catch it: the
+ * shape the app produces only exists at the hook's call site.
  *
  * What this file is NOT: evidence that the sidebar updates. That is a claim
  * about a rendered list, and it is answered by the frames under
@@ -59,7 +74,8 @@ globalThis.__statusRequest = async () => ({});
 const storeBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";' +
+			' export {useDesktopFeed} from "./src/renderer/src/shared/hooks/use-desktop-feed";',
 		resolveDir: process.cwd(),
 	},
 	alias: {
@@ -78,16 +94,40 @@ const storeBundle = await build({
 					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
 					() => ({ path: "transport", namespace: "session-status-fixture" }),
 				);
+				/*
+				 * The hook's other two dependencies, and ONLY where the hook asks for
+				 * them: the filter keys off the importer, because `react` is also what
+				 * `zustand` (inside the store this bundle is about) imports, and handing
+				 * zustand a two-function stub would break the store rather than the hook.
+				 *
+				 * `useEffect` records its effect instead of running it, so the test owns
+				 * the commit - the same seam `completion-view-ack.test.mjs` uses.
+				 */
+				builder.onResolve({ filter: /^react$/ }, (args) =>
+					/shared\/hooks\/use-desktop-feed\.ts$/.test(args.importer)
+						? { path: "react-hooks", namespace: "session-status-fixture" }
+						: undefined,
+				);
+				builder.onResolve(
+					{ filter: /@shared\/api\/local-operator\/desktop-hooks/ },
+					() => ({ path: "capabilities", namespace: "session-status-fixture" }),
+				);
 				// Only `desktopResult` is faked - it is the network. The error
 				// classes are re-exported from the real module, because the store's
 				// error-copy rules depend on their actual behaviour.
 				builder.onLoad(
 					{ filter: /.*/, namespace: "session-status-fixture" },
-					() => ({
-						contents: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
-							`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
-						)}
+					(args) => ({
+						contents: {
+							transport: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+								`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+							)}
 export const desktopResult = request => globalThis.__statusRequest(request);`,
+							capabilities: `export const desktopFeatureEnabled = () => true;
+export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
+							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
+export function useState(initial) { return [typeof initial === "function" ? initial() : initial, () => {}]; }`,
+						}[args.path],
 						loader: "js",
 						resolveDir: process.cwd(),
 					}),
@@ -110,9 +150,15 @@ export const discardPendingEchoes = () => undefined;`,
 		},
 	],
 });
-const { useCanonicalSessionsStore: store } = await import(
+const { useCanonicalSessionsStore: store, useDesktopFeed } = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
 );
+// The hook's recorded effects, and the frame handler its subscription installs.
+// Both are published by the `react`/feed fixtures above.
+globalThis.__effects = [];
+globalThis.__frames = () => {
+	throw new Error("the hook never subscribed");
+};
 
 const EPOCH = "9f2c1a6b7d3e4051";
 const LATER_EPOCH = "1a2b3c4d5e6f7081";
@@ -261,9 +307,15 @@ test("a new epoch retires the old counters", async () => {
 	/*
 	 * And the live epoch's ordering works from the new stamp: a response from the
 	 * process now serving us that stamps the same revision is not older than the
-	 * frame, so it wins. On the RETIRED counter (9) this same response would have
-	 * been refused (9 > 1), pinning the frame's value for as long as the list took
-	 * to carry a higher revision.
+	 * frame, so it wins. This is the stamp being USABLE after the reset, not the
+	 * reset deciding anything: the response carries LATER_EPOCH, so it would have
+	 * won against the retired counter too, because the guard requires epoch
+	 * equality before it compares a single revision. What the reset itself bought
+	 * is the assertion above - the other row's dead counter is gone rather than
+	 * left on screen reading as ordering evidence. The one order it does decide is
+	 * narrow and the opposite way: a list response from the dead process landing
+	 * after a frame from that same dead process is accepted here, where the stamp
+	 * it would have lost against is no longer there.
 	 */
 	await list([
 		wire({
@@ -356,4 +408,114 @@ test("a frame for an unknown session is dropped", async () => {
 		code: "approval",
 		label: "Approval needed",
 	});
+});
+
+test("a half stamp is not a stamp", async () => {
+	seeded();
+	/*
+	 * The merge is handed an epoch and no revision. Neither half orders anything on
+	 * its own, so this row carries no stamp - and the spread that merges it must not
+	 * MINT one out of the two rows, because `(LATER_EPOCH, 5)` is an epoch that has
+	 * never counted to five. The current pair survives instead, under the rule this
+	 * merge already has for every other field: an absent key is not a claim.
+	 */
+	await list([
+		wire({
+			status: { code: "busy", label: "Working" },
+			status_epoch: LATER_EPOCH,
+		}),
+	]);
+	assert.deepEqual(row().status, { code: "busy", label: "Working" });
+	assert.equal(row().status_revision, 5);
+	assert.equal(row().status_epoch, EPOCH);
+});
+
+test("a half stamp cannot pin the new epoch's own list", async () => {
+	seeded();
+	/*
+	 * The consequence, in the sequence the review reproduced. `(LATER_EPOCH, 5)` is
+	 * a stamp no process minted, and the guard cannot tell: the live epoch's list
+	 * arrives carrying its own counter, loses to the fabrication, and the row stays
+	 * on the value the list was trying to correct - pinned on the list path, which
+	 * is the mirror of the flap the guard exists to stop.
+	 */
+	await list([
+		wire({
+			status: { code: "busy", label: "Working" },
+			status_epoch: LATER_EPOCH,
+		}),
+	]);
+	await list([
+		wire({
+			status: { code: "idle", label: "Recent" },
+			status_revision: 3,
+			status_epoch: LATER_EPOCH,
+		}),
+	]);
+	assert.deepEqual(row().status, { code: "idle", label: "Recent" });
+	assert.equal(row().status_revision, 3);
+	assert.equal(row().status_epoch, LATER_EPOCH);
+});
+
+test("a revision with no epoch is not a stamp either", async () => {
+	seeded();
+	/*
+	 * The mirror half, because the rule is about the PAIR rather than about the
+	 * missing revision: a revision with no epoch is equally unusable, and equally
+	 * not a claim about the process that minted it.
+	 */
+	await list([
+		wire({ status: { code: "error", label: "Failed" }, status_revision: 8 }),
+	]);
+	assert.deepEqual(row().status, { code: "error", label: "Failed" });
+	assert.equal(row().status_revision, 5);
+	assert.equal(row().status_epoch, EPOCH);
+});
+
+/*
+ * The arrival path ABOVE the store, which is where the row's shape is decided.
+ * The store writes its `status` argument onto the row verbatim, so a hook that
+ * hands it the frame's whole `payload` leaves a `revision` key on a row whose
+ * status type has no such field - and every test above passes a two-key literal,
+ * so none of them can see it. `react` is stubbed to record the effect rather than
+ * run it (the commit is driven here), the capability hook is stubbed open, and
+ * everything else - the hook, the store, the guard - is the shipped module.
+ */
+test("the hook hands the store the pair, not the frame payload", () => {
+	seeded();
+	globalThis.__effects.length = 0;
+	globalThis.__frames = () => {
+		throw new Error("the hook never subscribed");
+	};
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: (onFrame) => {
+						globalThis.__frames = onFrame;
+						return () => {};
+					},
+					watchState: () => () => {},
+				},
+			},
+		},
+	};
+	const connection = useDesktopFeed();
+	// Without the gate open the effect below never subscribes, and every assertion
+	// after it would pass vacuously against a row nothing had written.
+	assert.equal(connection.available, true);
+	for (const effect of globalThis.__effects) effect();
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 7,
+		type: "session_status",
+		session_id: SESSION,
+		payload: { code: "complete", label: "Complete", revision: 3 },
+	});
+	// `revision` is on the frame and NOT on the row's status: it reaches the row
+	// through the stamp the guard compares, which is the only place it is evidence.
+	assert.deepEqual(Object.keys(row().status), ["code", "label"]);
+	assert.deepEqual(row().status, { code: "complete", label: "Complete" });
+	assert.equal(row().status_revision, 3);
+	assert.equal(row().status_epoch, EPOCH);
 });
