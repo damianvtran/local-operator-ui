@@ -1513,6 +1513,30 @@ export const STORIES = [
 	["panels-info--mcp-settling", 1140, 1040],
 	["panels-info--many-sessions", 1140, 1100],
 	["panels-info--dense", 1140, 1100],
+	/* The fleet answer's honesty states, which is where this section can lie:
+	   the `≥` bound, the `—` refusal, the measured zero with a queue beside it,
+	   the earned `none running`, the wedged split, and the registry that could
+	   not be scanned at all. */
+	["panels-info--fleet-all-reporting", 1140, 1040],
+	["panels-info--fleet-one-does-not-report", 1140, 1040],
+	["panels-info--fleet-nobody-reports", 1140, 1040],
+	["panels-info--fleet-queued-only", 1140, 1040],
+	["panels-info--fleet-all-idle", 1140, 1040],
+	["panels-info--fleet-wedged", 1140, 1040],
+	["panels-info--fleet-unavailable", 1140, 1040],
+	/* The section in SITU, with the sessions section above it: the only frame that
+	   can answer whether it belongs to this panel. */
+	["panels-info--fleet-neighbours", 1140, 1040],
+	/* 720px, and the state whose note carries two clauses - the width and the
+	   wrap the other frames cannot show. */
+	["panels-info--fleet-narrow", 720, 1040],
+	/* The one frame whose note WRAPS at the capture width: what D5's non-breaking
+	   separator is for, photographed rather than only asserted. */
+	["panels-info--fleet-note-wraps", 1140, 1040],
+	/* The sixth refusal: a probe that FAILED is an unknown, never a zero - the
+	   field-level spelling, and beside it the block-level one. */
+	["panels-info--fleet-probes-failed", 1140, 1040],
+	["panels-info--fleet-agents-unread", 1140, 1040],
 	["panels-info--unavailable", 1140, 760],
 	["panels-info--loading", 1140, 460],
 	["panels-info--gated", 1140, 400],

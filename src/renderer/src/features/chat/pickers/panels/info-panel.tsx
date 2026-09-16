@@ -15,8 +15,10 @@ import { formatCount } from "./formatters";
 import {
 	type InfoFrontend,
 	type InfoRow,
+	REGISTRY_UNAVAILABLE_NOTICE,
 	conversationRows,
 	environmentRows,
+	fleetFacts,
 	hostRows,
 	installFacts,
 	installMeta,
@@ -38,8 +40,8 @@ import { StatCard, StatGrid } from "./primitives/stat-card";
  * behaving differently" both start at the version.
  *
  * The panel is split by SOURCE, and that split is the design rather than an
- * implementation detail: sections 1-3 describe the machine the BACKEND runs on
- * (one read, and it can fail on its own), while sections 4 and 5 describe the
+ * implementation detail: sections 1-4 describe the machine the BACKEND runs on
+ * (one read, and it can fail on its own), while sections 5 and 6 describe the
  * window in front of the user, from state the renderer already holds. So a
  * backend that cannot be reached leaves the live half standing — the panel
  * degrades section by section, never to a blank.
@@ -190,6 +192,11 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 }) => {
 	const install = data ? installFacts(data.install) : null;
 	const sessions = data?.sessions;
+	/*
+	 * `null` is the registry that could not be scanned: the fleet section then
+	 * carries no meta and no numbers at all, only the notice section 3 shows.
+	 */
+	const fleet = data ? fleetFacts(data) : null;
 	const mcp = mcpSummary(frontend);
 	const sessionRows = sessions
 		? sessionLineRows(sessions.lines, sessionId)
@@ -234,12 +241,20 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 			),
 		},
 	];
-	/** The host half's own state, which can fail independently of the live half. */
-	const hostBody = () =>
+	/**
+	 * The host half's own state, which can fail independently of the live half.
+	 *
+	 * `shape` is the caller's, because the skeleton exists to stop first paint
+	 * jumping and what is coming differs by section: a table for the facts
+	 * sections, a 4-up grid for the sections that settle into one (design round 1,
+	 * Q1 — the fleet section drew three wide table rows and then became four
+	 * cards, which is the jump the shape is meant to prevent).
+	 */
+	const hostBody = (shape: "table" | "stats" = "table") =>
 		error ? (
 			<PanelNotice kind="unavailable" text={error} />
 		) : loading || !data ? (
-			<PanelSkeleton shape="table" />
+			<PanelSkeleton shape={shape} />
 		) : null;
 	return (
 		<PickerHost
@@ -331,7 +346,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 						<PanelSection
 							title="Sessions on this machine"
 							meta={
-								sessions
+								/*
+								 * No meta when the scan failed: `N live · M total` over a notice saying the
+								 * registry could not be read is a number the same viewport disclaims, and
+								 * the section below it already renders a bare heading in that state
+								 * (design round 1, D4). The meta is a reading of the scan, so it goes with
+								 * the scan.
+								 */
+								sessions?.available
 									? `${formatCount(sessions.live)} live · ${formatCount(sessions.total)} total`
 									: undefined
 							}
@@ -340,7 +362,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 								(sessions && !sessions.available ? (
 									<PanelNotice
 										kind="unavailable"
-										text="Could not scan the session registry. Close and reopen this panel to try again."
+										text={REGISTRY_UNAVAILABLE_NOTICE}
 									/>
 								) : (
 									<>
@@ -399,6 +421,55 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 											</p>
 										) : null}
 									</>
+								))}
+						</PanelSection>
+						<PanelSection title="Agents and subagents" meta={fleet?.meta}>
+							{hostBody("stats") ??
+								(fleet ? (
+									<>
+										{/*
+										 * Four cards rather than a facts table, because each of the first two
+										 * carries a BREAKDOWN beneath its number and that is what a stat card's
+										 * note is for (§ 6.3's convention for this panel's counts, one section
+										 * above). No tone on any of them: the terminal carries no colour here,
+										 * and warning-red on a total that mostly counts healthy runtimes would
+										 * be a judgement rather than the measured condition a tone is for.
+										 */}
+										<StatGrid>
+											{fleet.facts.map((fact) => (
+												<StatCard
+													key={fact.key}
+													label={fact.label}
+													value={fact.value}
+													note={fact.note}
+												/>
+											))}
+										</StatGrid>
+										{/*
+										 * Quiet prose, and only when the state applies: a line that is always
+										 * there is wallpaper and gets read as boilerplate, so the one time it
+										 * matters it is not read either. The same register as the memory line
+										 * under section 3.
+										 */}
+										{fleet.caveats.map((caveat) => (
+											<p
+												key={caveat}
+												className={cn("pt-2 text-body-sm text-ink-muted")}
+											>
+												{caveat}
+											</p>
+										))}
+									</>
+								) : (
+									/*
+									 * The SAME notice section 3 draws, from ONE exported constant: one
+									 * registry serves both sections, and two spellings of one failure read as
+									 * two different problems (review round 1, M2).
+									 */
+									<PanelNotice
+										kind="unavailable"
+										text={REGISTRY_UNAVAILABLE_NOTICE}
+									/>
 								))}
 						</PanelSection>
 						<PanelSection
