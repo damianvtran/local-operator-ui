@@ -46,6 +46,7 @@ import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
@@ -70,6 +71,17 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  * reviewed, which buries the two that changed. `manifest.json`'s
  * `partialCapture` records that this happened so the next reader can tell a
  * narrowed set from a swept one.
+ *
+ * UNDER `--only`, `--themes` MAY NAME ANY PALETTE IN THE REGISTRY, not only the
+ * twelve in the sweep's list below. The list is a bounded representative set
+ * (see its own note for the arithmetic), so a narrowed run is the only way to
+ * photograph one surface in the other forty-seven themes without paying the
+ * sweep's multiplication — which is what `docs/evidence/settings-appearance/`
+ * is, the appearance picker in all fifty-nine. A full sweep still intersects
+ * with the list, because a stray id must not silently widen a run that writes
+ * `manifest.themes`. Ids are checked against the palettes on disk rather than
+ * trusted: a frame named after a theme the app does not have is worse than a
+ * missing one, and `--themes=typo` would otherwise write `typo.webp`.
  */
 const ONLY = flag("only");
 
@@ -81,6 +93,9 @@ const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER);
+
+/** Every palette id the registry has, read the one way the gates read them. */
+const PALETTE_IDS = new Set(loadPalettes().map(({ id }) => id));
 
 /*
  * A backend on the configured port normally fails the run, because a captured
@@ -145,8 +160,9 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  *   - `docs/evidence/settings-appearance/` carries the appearance picker in all
  *     fifty-nine, once, because that is the surface a palette port is judged on;
  *   - any other theme can be captured on demand, with no code change, through
- *     `--themes=<a,b,…>` (a comma-separated `ThemeName` list, intersected with
- *     this literal — the same narrowing a remediation recapture uses).
+ *     `--themes=<a,b,…>` (a comma-separated `ThemeName` list — intersected with
+ *     this literal for a sweep, and free of it under `--only`, which is how a
+ *     single surface is captured in the whole registry).
  *
  * So a frame in `localOperatorDark` is a picture of every surface in the app,
  * and a frame in `catppuccinMocha` is one command away rather than free by
@@ -2933,8 +2949,25 @@ const main = async () => {
 	 */
 	const stories = ONLY ? STORIES.filter(([id]) => id.includes(ONLY)) : STORIES;
 	if (stories.length === 0) throw new Error(`--only=${ONLY} matched no story`);
+	/*
+	 * A narrowed run may reach past the sweep's list (see the flag block at the
+	 * top of this file) — and then the ids have to be real ones, because the id
+	 * becomes both the `args=theme:` the preview reads and the frame's file
+	 * name. A full sweep still intersects with the list, so an id the sweep does
+	 * not carry cannot widen it.
+	 */
+	const unknownPalettes = (THEME_FILTER ?? []).filter(
+		(id) => !PALETTE_IDS.has(id),
+	);
+	if (ONLY && unknownPalettes.length > 0) {
+		throw new Error(
+			`unknown theme id(s): ${unknownPalettes.join(", ")}. The ids are the \`id\` fields in src/renderer/src/shared/themes/palettes/.`,
+		);
+	}
 	const themes = THEME_FILTER
-		? THEMES.filter((t) => THEME_FILTER.includes(t))
+		? ONLY
+			? THEME_FILTER.filter((id) => PALETTE_IDS.has(id))
+			: THEMES.filter((t) => THEME_FILTER.includes(t))
 		: THEMES;
 	if (themes.length === 0) throw new Error("--themes matched no palette");
 
