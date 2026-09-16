@@ -37,6 +37,18 @@ export type CanonicalSessionRow = {
 	pending?: string | null;
 	active?: boolean;
 	status?: SessionCatalogueStatus;
+	/**
+	 * The feed's stamp for `status`, as the catalogue row carried it.
+	 *
+	 * Declared here as well as on the wire row (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts`) because the client's row is what the two
+	 * writers are ordered on, and an index signature alone would make every read of
+	 * them `unknown` at the one place that compares them. Optional on both sides
+	 * and absent together: no stamp means the backend has published none for this
+	 * session, which is not the same as revision 0.
+	 */
+	status_revision?: number;
+	status_epoch?: string;
 	binding?: SessionBinding;
 	[key: string]: unknown;
 };
@@ -994,6 +1006,56 @@ type CanonicalSessionsState = {
 	 * identify.
 	 */
 	applyAttention: (sessionId: string, attention: CompletionAttention) => void;
+	/**
+	 * Apply one `session_status` frame to its row, and retire a dead epoch's stamps.
+	 *
+	 * This is the STATUS's arrival path, the counterpart of `applyAttention`
+	 * above and for the same reason: the row's status used to be delivered only by
+	 * a whole-catalogue read, so an answered gate or a completed turn waited for
+	 * the 30 s safety poll (or a window focus, or the chat page's own marker
+	 * effect on the one row it is showing). The frame carries the backend's
+	 * DERIVED pair, so nothing here derives anything — it writes the value and the
+	 * stamp, and the stamp is what lets a slower list response be ordered against
+	 * it rather than racing it.
+	 *
+	 * THIS ACTION ORDERS NOTHING, deliberately: frames arrive in publication order
+	 * on one socket, which is the transport's guarantee to keep and not a fact
+	 * worth re-deriving here. A frame is therefore trusted as it arrives, and the
+	 * epoch gate below is not an ordering rule but a restart's bookkeeping - the
+	 * only place a restart can make two counters incomparable. Adding a per-row
+	 * revision comparison HERE would be a second implementation of an order the
+	 * client already receives in order, and it would have to invent an answer for
+	 * the gaps a socket does not promise to close.
+	 *
+	 * `epoch` is the emitting feed PROCESS's, and a frame carrying an epoch this
+	 * store has not stamped rows with before means every row's stamp was minted by
+	 * a process that is gone. Their revisions are counters from a dead run, so
+	 * they are retired before the write. What that buys is stamp HYGIENE, and it is
+	 * worth being precise about it, because the obvious justification is wrong: a
+	 * row left holding a dead epoch's counter would NOT have pinned anything,
+	 * since `heldStatusOver` requires epoch equality before it compares a single
+	 * number, and a live response is stamped with the live process's epoch - so
+	 * the response wins with or without this reset. What the reset prevents is a
+	 * row advertising a counter that no live process will ever mint: state that
+	 * reads as ordering evidence and is not, which is what a future reader would
+	 * reason from. It does decide an order in one narrow case, and the decision
+	 * goes the other way: a list response from the dead process that lands AFTER a
+	 * frame from that same dead process is refused without the reset (correctly -
+	 * it is the older of the two) and accepted with it, because the stamp it would
+	 * have been compared against is gone. Taken knowingly: a dead process's answer
+	 * is being superseded by a live one either way, and hygiene is the better trade
+	 * against the alternative of leaving dead counters on screen.
+	 *
+	 * A frame for a session the catalogue does not know is DROPPED, exactly as an
+	 * attention frame is: insertion would make a sidebar row with no title and no
+	 * binding, and membership is the catalogue's question.
+	 */
+	applySessionStatus: (
+		sessionId: string,
+		status: SessionCatalogueStatus,
+		revision: number,
+		epoch: string,
+	) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
@@ -1039,11 +1101,103 @@ function mergeRow(
 	return {
 		...current,
 		...incoming,
+		// Settled as a WHOLE, and before the guard: a spread cannot tell a stamp
+		// from half of one, and `heldStatusOver` overrides this when the row's own
+		// pair is the one that outranks the incoming row.
+		...statusStamp(current, incoming),
+		...heldStatusOver(incoming, current),
 		attention: mergeCompletionAttention(
 			current?.attention,
 			incoming.attention,
 			incoming.session_id,
 		),
+	};
+}
+
+/**
+ * The stamp the merged row carries, as a PAIR or not at all.
+ *
+ * `status_epoch` names the process and `status_revision` is that process's counter
+ * for this session, so half a stamp is not weaker evidence - it is unusable, and
+ * the plain spread above would MINT it: `{...current, ...incoming}` on an
+ * incoming row carrying an epoch and no revision leaves the current row's
+ * revision sitting under the incoming epoch, so the row advertises
+ * `(new epoch, old revision)` - an epoch that never counted that high - and the
+ * guard then refuses that many of the new epoch's own list updates. That is the
+ * mirror of the flap the guard exists to stop, arriving through the one path the
+ * guard cannot see: it compares stamps it can read, and a minted one reads as
+ * perfectly good evidence.
+ *
+ * Latent rather than live in the wire contract's own terms - the backend stamps
+ * both keys or neither, and `SessionCatalogueRow` says they are omitted together -
+ * which is exactly why it is worth holding up on this side. A complete incoming
+ * stamp wins (the row it came from was read later), and a partial one contributes
+ * nothing, which leaves the current row's complete pair in place under the rule
+ * this merge already has for every other field: an absent key is not a claim.
+ */
+function statusStamp(
+	current: CanonicalSessionRow | undefined,
+	incoming: CanonicalSessionRow,
+): Partial<CanonicalSessionRow> {
+	const pair = (
+		row: CanonicalSessionRow | undefined,
+	): Partial<CanonicalSessionRow> | undefined =>
+		typeof row?.status_revision === "number" &&
+		typeof row?.status_epoch === "string"
+			? { status_revision: row.status_revision, status_epoch: row.status_epoch }
+			: undefined;
+	return pair(incoming) ?? pair(current) ?? {};
+}
+
+/**
+ * The three fields a guarded row keeps, or nothing when the incoming row wins.
+ *
+ * THE GUARD EXISTS BECAUSE TWO WRITERS NOW PRODUCE ONE VALUE, and one of them
+ * is slow by construction: `sessions.list` is a whole-catalogue read (measured
+ * at ~120 ms median for 200 rows, and the sidebar asks for 500) while a
+ * `session_status` frame is a few hundred bytes. A list response computes its
+ * rows BEFORE it is serialised, so the normal path is: the frame for a gate
+ * answer lands first, and the list that was already in flight - deliberately
+ * fired by the chat page's own marker effect on the very transition being sped
+ * up - arrives afterwards carrying the PRE-answer status. Without this the
+ * sidebar would show the corrected row and then flick back for one poll cycle,
+ * which reads as the status being unreliable rather than late.
+ *
+ * The comparison only holds a value when the two stamps are COMPARABLE: the
+ * same epoch (one live process's counters) and a strictly greater revision on
+ * the row than on the incoming list. Everything else falls through to the
+ * incoming row, and each of those cases is a real one:
+ *
+ * - `status_revision`/`status_epoch` absent on the incoming row: an older
+ *   backend, or one that has published nothing for this session. There is
+ *   nothing to order against, so the list is the only writer and wins.
+ * - the epochs differ: the response was produced by the process now serving us
+ *   (its epoch is the feed's, and a restart is what changes it), so its stamp
+ *   block is the live one even where its revision reads lower.
+ * - the incoming revision is >= the row's: the list is at least as fresh.
+ * - the row holds a stamp but no status: a stamp with nothing under it cannot be
+ *   the reason the list's status is refused.
+ */
+function heldStatusOver(
+	incoming: CanonicalSessionRow,
+	current: CanonicalSessionRow | undefined,
+): Partial<CanonicalSessionRow> {
+	const sameEpoch =
+		typeof current?.status_epoch === "string" &&
+		current.status_epoch === incoming.status_epoch;
+	const held = current?.status_revision;
+	const arrived = incoming.status_revision;
+	const fresherFrame =
+		current?.status !== undefined &&
+		sameEpoch &&
+		typeof held === "number" &&
+		typeof arrived === "number" &&
+		held > arrived;
+	if (!fresherFrame) return {};
+	return {
+		status: current?.status,
+		status_revision: current?.status_revision,
+		status_epoch: current?.status_epoch,
 	};
 }
 /** Full list responses replace membership; a disappeared row is not immortal.
@@ -1272,6 +1426,56 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (merged === row.attention) return state;
 					const sessions = state.sessions.slice();
 					sessions[index] = { ...row, attention: merged };
+					return { ...state, sessions };
+				});
+			},
+			applySessionStatus: (sessionId, status, revision, epoch) => {
+				set((state) => {
+					const index = state.sessions.findIndex(
+						(row) => row.session_id === sessionId,
+					);
+					/*
+					 * EVERY STAMP FROM ANOTHER EPOCH IS RETIRED, not every stamp when the
+					 * epoch merely moved: a row stamped with THIS epoch (a list response
+					 * produced by the process now serving us, which can land before the
+					 * first frame of its epoch) holds a live counter, and dropping it would
+					 * hand a later, staler list the win it is being denied.
+					 */
+					let retired = false;
+					const sessions = state.sessions.map((row) => {
+						if (
+							(row.status_epoch === undefined &&
+								row.status_revision === undefined) ||
+							row.status_epoch === epoch
+						)
+							return row;
+						retired = true;
+						// Omitted rather than set to `undefined`: "no stamp" is an absent key,
+						// which is what the list merge and the wire both read.
+						const {
+							status_revision: _revision,
+							status_epoch: _epoch,
+							...rest
+						} = row;
+						return rest;
+					});
+					if (index < 0) return retired ? { ...state, sessions } : state;
+					const row = sessions[index];
+					// Identity, not equality: an unchanged frame must not re-render every
+					// row of a 500-row sidebar for a level that carried nothing new.
+					const unchanged =
+						row.status?.code === status.code &&
+						row.status?.label === status.label &&
+						row.status_revision === revision &&
+						row.status_epoch === epoch;
+					if (unchanged && !retired) return state;
+					if (!unchanged)
+						sessions[index] = {
+							...row,
+							status,
+							status_revision: revision,
+							status_epoch: epoch,
+						};
 					return { ...state, sessions };
 				});
 			},
