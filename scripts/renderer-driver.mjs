@@ -1885,9 +1885,17 @@ async function sceneBrowserPane(cdp) {
 		await verb(cdp, "press", {
 			selector: '[data-tour-tag="browser-pane-scope-conversation"]',
 		});
+		/*
+		 * THE WAIT'S PREDICATE IS THE CHECK'S OWN CONDITION, and it has to be: this
+		 * conversation holds TWO live requests, so the settled state after the press is
+		 * two chips. Waiting for one - the state that is briefly true between the two
+		 * projections - returned a one-chip tray from the first read and then failed the
+		 * check below on a race, and on a slower run it could not be satisfied at all
+		 * and burned the whole timeout before asserting anyway (review round 2, MINOR 1).
+		 */
 		const scoped = await readUntil(
 			() => readTray(cdp),
-			(tray) => tray.chips.length === 1,
+			(tray) => tray.chips.length === 2,
 		);
 		note("tray (This conversation)", JSON.stringify(scoped));
 		check(

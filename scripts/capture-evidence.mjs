@@ -327,9 +327,11 @@ export const STORIES = [
 	 */
 	["browser-pane--composed-with-pane", 1380, 900],
 	["browser-pane--composed-trigger-only", 1380, 900],
-	/* The dock, which is the only state that paints the tray's header row - and so the
-	 * only frame in which the pane's own `2 approvals for this conversation` exists
-	 * (review round 1, F2), at the pane's default width and at its 480 floor. */
+	/* The dock - the only state that paints the tray's header row - and so the frames in
+	 * which the pane's own `1 approval for this conversation` exists (review round 1,
+	 * F2). ONE approval, and the count matters: the dock fixtures put a single request
+	 * in the pane's scope, so the header row's sentence counts that one. Photographed at
+	 * the pane's default width and at its 480 floor. */
 	["browser-pane--pane-dock-open", 640, 720],
 	["browser-pane--pane-dock-narrow", 480, 720],
 	/* The floor WITH tabs, which `narrow-minimum` cannot answer because it has none. */
