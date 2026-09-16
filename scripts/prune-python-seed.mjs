@@ -44,14 +44,27 @@
  * assembled keeps the dev seed and the shipped seed identical, so what a
  * developer runs is what a release ships.
  *
- * THE ONE-TIME COST THIS SHIPS. `runtimeManifest` records each entry's mode and
- * `runtimeId` is the sha256 of that manifest, so clearing these bits changes
- * the id: the first launch after this release provisions a fresh runtime
- * generation and rebuilds the backend venv. That is minutes, network-bound, and
- * it happens AFTER the window opens. It is accepted rather than avoided -
- * normalising modes out of the hash would change every id ever published, break
- * every stored `selected-environment.json`, and stop the identity from covering
- * a signed tree's modes.
+ * WHAT THIS COSTS AN EXISTING INSTALL: NOTHING - and the obvious claim here
+ * was wrong before this comment said otherwise. `runtimeManifest` records each
+ * entry's mode and `runtimeId` is the sha256 of that manifest, so clearing
+ * these bits DOES change the identity (measured: the unpruned seed hashes to
+ * 03782941..., the pruned one to 3b120dac..., and between the two trees 0 files
+ * differ in bytes while 23 differ in mode). It does not follow that an update
+ * re-provisions. `prepareManagedPython` returns a published selection whose
+ * `inspectManagedSelection` verdict is `ready` and never compares that runtime
+ * to the CURRENT seed - `publishedRuntimeIsReusable`, the one comparison that
+ * does, is read only on the missing/reap path - and on darwin the installer
+ * never even reaches that call, because `BackendInstaller.isInstalled()` IS
+ * `managedSelectionReady()`. So an install that already provisioned keeps the
+ * runtime copied from the previous seed and pays nothing on first launch; the
+ * pruned seed is what a FRESH provisioning copies (a new machine, or a wiped
+ * `managed-python/`), at the new id.
+ *
+ * The identity still may not be normalised away, which is the decision the id
+ * must carry: a repair after a broken runtime copies the CURRENT seed at its
+ * id, `environments/<id>-<uuid>` names the generation, and the modes are inside
+ * the signed tree the id is meant to describe. Normalising them would change
+ * every id ever published and stop the identity covering what was signed.
  *
  * Usage: `node scripts/prune-python-seed.mjs <seed-root>` (setup-python calls
  * it). The exported functions are what the unit test and the release gate drive.

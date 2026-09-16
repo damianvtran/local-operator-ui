@@ -239,10 +239,6 @@
     "afterSign": "scripts/notarize.js",
     "afterPack": "scripts/after-pack.mjs",
     "mac": {
-      "electronLanguages": [
-        "en",
-        "en-US"
-      ],
       "extraResources": [
         {
           "from": "resources/python",
