@@ -498,6 +498,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				waiting={queue.waiting}
 				onActivate={(tabId) => void chrome.activateTab(tabId)}
 				onClose={(tabId) => void chrome.closeTab(tabId)}
+				onCloseTabs={(intent) => void chrome.closeTabs(intent)}
 				onNewTab={() => void chrome.newTab(hostSessionId)}
 				newTabLabel={newTabLabel}
 				onHandOver={(tab) => setHandOverTab(tab)}

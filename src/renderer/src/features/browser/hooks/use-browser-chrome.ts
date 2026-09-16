@@ -7,6 +7,7 @@ import {
 	refreshBrowserProjection,
 	useBrowserProjectionStore,
 } from "../model/browser-projection-store";
+import type { CloseTabsIntent } from "../model/tab-index-model";
 
 /**
  * The renderer's half of the browser feature: the projection main publishes and
@@ -185,6 +186,17 @@ export interface BrowserChrome {
 	 */
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<void>;
+	/**
+	 * Close several tabs as ONE intent (design R5).
+	 *
+	 * WHY THE INTENT TRAVELS WHOLE rather than as a list of ids: "close all tabs in this
+	 * conversation" has to be resolved in MAIN, at execution time. The band stays open
+	 * while the user reads it, so a list this side computed seconds ago can miss a tab an
+	 * agent opened in that conversation in the meantime — and the user pressed something
+	 * that said all. Main also skips ids that are already gone, so a double press closes
+	 * the rest rather than failing the batch.
+	 */
+	closeTabs: (intent: CloseTabsIntent) => Promise<void>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
 	reload: () => Promise<void>;
@@ -421,6 +433,7 @@ export function useBrowserChrome(): BrowserChrome {
 			refresh,
 			newTab: (sessionId) => run(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
+			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
 			activateTab: (tabId) => run(() => api?.activateTab(tabId)),
 			navigate: (url) => {
 				// Recorded before the intent is sent: the reply may take a while (the tab

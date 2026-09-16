@@ -23,6 +23,10 @@ import {
 } from "react";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
 import {
+	type CloseTabsIntent,
+	closeConversationIntent,
+	closeOthersIntent,
+	closeToTheRightIntent,
 	groupTabsBySession,
 	sessionDisplayName,
 } from "../model/tab-index-model";
@@ -105,6 +109,9 @@ export interface BrowserTabStripProps {
 	waiting: Record<number, number>;
 	onActivate: (tabId: number) => void;
 	onClose: (tabId: number) => void;
+	/** Close several tabs as ONE intent (design R5). The counts in the labels are the
+	 * disclosure, so the strip builds the intent and the host sends it. */
+	onCloseTabs: (intent: CloseTabsIntent) => void;
 	onNewTab: () => void;
 	/** What the `+` calls itself. The host's own sentence, because only the host
 	 * knows whether a tab opened here is attributed to a conversation (design R1):
@@ -238,6 +245,9 @@ export function stateChips(
 	};
 }
 
+/** The schemes a `Copy URL` press may copy: what can be pasted somewhere useful. */
+const HTTP_URL = /^https?:\/\//;
+
 /**
  * A group's name, for the strip's chip and the band list's headings.
  *
@@ -316,6 +326,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	newTabLabel = "New tab",
 	onActivate,
 	onClose,
+	onCloseTabs,
 	onNewTab,
 	onHandOver,
 	onRevokeHandOver,
@@ -385,6 +396,41 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		if (!overflowOpen) return;
 		overflowRowRef.current?.focus();
 	}, [overflowOpen]);
+
+	/**
+	 * Where a BATCH close leaves the caret, and why it needs its own path.
+	 *
+	 * A single close hands focus back to the tab it belonged to (`closeActions`). A batch
+	 * usually closes that tab — `Close all tabs in this conversation` names the menu's own
+	 * tab too — so `menuRefs` has no target and focus would fall to `<body>`, dropping a
+	 * keyboard user out of the strip entirely (the UX round 2 U9 class of defect). So the
+	 * flag is set by the batch paths below and consumed AFTER the projection lands, when
+	 * there is a new active tab to focus: its `[role="tab"]` if the strip holds it, else
+	 * the scroller itself — which is why the scroller is focusable.
+	 */
+	const batchFocusPending = useRef(false);
+	useEffect(() => {
+		if (!batchFocusPending.current || actionsTabId !== null) return;
+		batchFocusPending.current = false;
+		const next =
+			activeTabId === null
+				? null
+				: scrollerRef.current?.querySelector<HTMLElement>(
+						`[data-tab-id="${activeTabId}"] [role="tab"]`,
+					);
+		(next ?? scrollerRef.current)?.focus();
+	}, [actionsTabId, activeTabId]);
+
+	/** One batch close, whatever it closes: drop the row, ask for the intent, and leave
+	 * the caret to the effect above. */
+	const runBatchClose = useCallback(
+		(intent: CloseTabsIntent): void => {
+			batchFocusPending.current = true;
+			setActionsTabId(null);
+			onCloseTabs(intent);
+		},
+		[onCloseTabs],
+	);
 
 	// The activated tab scrolls into view (spec §6's last row). With the width
 	// policy kept, a long strip scrolls, and a tab activated from the dock or by an
@@ -471,6 +517,21 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * labels are the only thing that says which tab is whose.
 	 */
 	const showGroupLabels = groups.length > 1;
+	/**
+	 * The two BULK CLOSES whose labels carry a count, computed from the POOL rather than
+	 * from the host's visible list — `closeOthersIntent` takes the whole list on purpose,
+	 * so in the pane scoped to 2 tabs of 8 the item reads `Close 7 other tabs`, which is
+	 * the truth about what it does. `null` means "do not offer the item", which is the
+	 * design's rule for a press that would close nothing.
+	 */
+	const closeOthers =
+		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
+	const closeRight =
+		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
+	/** How many tabs a conversation holds, for the group item's `>= 2` gate: closing
+	 * "all" of a conversation's single tab is `Close "X"` under a longer label. */
+	const conversationTabCount = (sessionId: string): number =>
+		groups.find((group) => group.sessionId === sessionId)?.tabs.length ?? 0;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: opening or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement has to re-run when the ordered pool changes even though the body never reads it.
 	useEffect(() => {
 		const strip = scrollerRef.current;
@@ -537,6 +598,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			>
 				<div
 					ref={scrollerRef}
+					// Focusable so a batch close has somewhere to leave the caret when the
+					// tab it would have returned to is one of the tabs it closed.
+					tabIndex={-1}
 					// `-mb-px` extends the scroll container's clip box 1px down, over the
 					// strip's bottom rule, so the active tab's notch can paint ON that rule
 					// rather than being clipped by the scroll container one pixel above it.
@@ -1296,6 +1360,79 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					>
 						Close "{tabLabel(actionsTab.title)}"
 					</Button>
+					{/*
+					 * THE FOUR BULK ACTIONS (design R5), and the COUNTS IN THEIR LABELS ARE THE
+					 * DISCLOSURE. Each is destructive with no undo — closing a tab is not
+					 * recoverable, because the session file records the current set rather than a
+					 * history — and two of them reach beyond the list a scoped host is showing:
+					 * in the pane, scoped to 2 tabs of 8, `Close 7 other tabs` is the truth about
+					 * what the press does, and `paneApprovalHeaderLabel`'s sibling rule applies —
+					 * the words have to agree with the scope. No dialog, and that is the design's
+					 * ruling: the count is the disclosure, and a single close has no undo either.
+					 */}
+					{closeOthers !== null && (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => runBatchClose(closeOthers)}
+							data-tour-tag="browser-tab-close-others"
+						>
+							Close {closeOthers.tabIds.length} other
+							{closeOthers.tabIds.length === 1 ? " tab" : " tabs"}
+						</Button>
+					)}
+					{closeRight !== null && (
+						// "To the right" is the RENDERED order — the grouped one — because that is
+						// the only order in which the words are true for a grouped strip. A tab an
+						// agent creates after the press is not to the right of anything the user
+						// saw and survives, which the strip then shows honestly.
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => runBatchClose(closeRight)}
+							data-tour-tag="browser-tab-close-right"
+						>
+							Close {closeRight.tabIds.length} tab
+							{closeRight.tabIds.length === 1 ? "" : "s"} to the right
+						</Button>
+					)}
+					{actionsTab.sessionId !== null &&
+						conversationTabCount(actionsTab.sessionId) >= 2 && (
+							// NO NUMBER ON THIS ONE, and the group chip is why: the strip and the
+							// pinned list both show the group's size, so repeating it here would be
+							// the third copy of a fact already on screen.
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() =>
+									runBatchClose(
+										closeConversationIntent(actionsTab.sessionId as string),
+									)
+								}
+								data-tour-tag="browser-tab-close-conversation"
+							>
+								Close all tabs in this conversation
+							</Button>
+						)}
+					{HTTP_URL.test(actionsTab.url) && (
+						/* COPY URL NEEDS NO INTENT, which is why it is the one action here that
+						   does not go through `useBrowserChrome`: the URL is already in the
+						   projection, the clipboard is the renderer's, and inventing a channel to
+						   main for it would be a round trip to copy a string the user is looking
+						   at. The guard is the scheme — `about:blank`, `file:` and `data:` are not
+						   things to paste into a chat. */
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								closeActions();
+								void navigator.clipboard?.writeText(actionsTab.url);
+							}}
+							data-tour-tag="browser-tab-copy-url"
+						>
+							Copy URL
+						</Button>
+					)}
 					<div className="grow" />
 					<Button
 						variant="ghost"

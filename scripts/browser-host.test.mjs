@@ -262,6 +262,10 @@ class FakeView {
 function makeRegistry() {
 	const views = new Map();
 	const removed = [];
+	/** Every `onChanged` the registry fired, so a test can count NOTIFICATIONS rather than
+	 * infer them from the state they left behind — the only way to tell a batch that
+	 * notified once from one that notified per tab. */
+	const notified = [];
 	let nextWebContentsId = 100;
 	const registry = new TabRegistry(
 		(_options, tabId) => {
@@ -270,9 +274,9 @@ function makeRegistry() {
 			return view;
 		},
 		(tabId, webContentsId) => removed.push({ tabId, webContentsId }),
-		() => {},
+		() => notified.push(Date.now()),
 	);
-	return { registry, views, removed };
+	return { registry, views, removed, notified };
 }
 
 let root = "";
@@ -1796,6 +1800,114 @@ test("a tab the user opens in a conversation belongs to it, and still gives no a
 	);
 });
 
+test("a batch close is ONE change, and releases every webContents exactly once (R5)", () => {
+	const { host, registry, views, removed, notified } = makeHost();
+	const tabIds = ["a", "b", "c"].map(
+		() => registry.create({ owner: "user" }).tabId,
+	);
+	const webContentsIds = tabIds.map(
+		(tabId) => views.get(tabId)?.webContents.id,
+	);
+	const before = notified.length;
+	host.closeTabs({ mode: "ids", tabIds });
+	/*
+	 * THE NOTIFICATION IS COUNTED AT THE REGISTRY, not at the host's own `onChanged`
+	 * option: in the app those are the SAME function (`index.ts:312` hands the registry the
+	 * `notifyChanged` the host also takes), which is exactly why the host must not send a
+	 * second one — and counting at the host's option alone would have made that second send
+	 * look like the first. `browser-chrome-proof.mjs` counts the renderer's own events for
+	 * the same reason, one level up.
+	 */
+	assert.equal(
+		notified.length - before,
+		1,
+		"N closes are ONE notification: one state build, one broadcast, one session write",
+	);
+	assert.equal(registry.count(), 0);
+	assert.deepEqual(
+		removed.map((entry) => entry.tabId).sort(),
+		[...tabIds].sort(),
+		"every tab went through the one removal path",
+	);
+	assert.deepEqual(
+		removed.map((entry) => entry.webContentsId).sort(),
+		webContentsIds.sort(),
+		"and each webContents was released exactly once",
+	);
+	// A second press on a list that is already gone is not an error and changes nothing.
+	const after = notified.length;
+	const refused = host.closeTabs({ mode: "ids", tabIds: [tabIds[0]] });
+	assert.equal(
+		refused.tabs.length,
+		0,
+		"a list of tabs that are all gone closes nothing and is not an error",
+	);
+	assert.equal(
+		notified.length - after,
+		0,
+		"and it notifies nobody: a batch that removed nothing changed nothing",
+	);
+});
+
+test("a conversation close is resolved at EXECUTION time; an ids close is not (R5)", () => {
+	const { host, registry } = makeHost();
+	// The tab that appears BETWEEN the intent and its execution is the race the design
+	// names: the band stays open while the user reads it, so no list the renderer built
+	// can be trusted to be the whole conversation.
+	const inConversation = registry.create({
+		owner: "agent",
+		sessionId: "alice",
+	}).tabId;
+	const intent = { mode: "conversation", sessionId: "alice" };
+	const arrivedLater = registry.create({
+		owner: "agent",
+		sessionId: "alice",
+	}).tabId;
+	const other = registry.create({ owner: "agent", sessionId: "bob" }).tabId;
+	host.closeTabs(intent);
+	assert.equal(
+		registry.get(inConversation),
+		undefined,
+		"the intent names a conversation, so main resolves it when it runs",
+	);
+	assert.equal(
+		registry.get(arrivedLater),
+		undefined,
+		"and a tab that arrived after the intent was built is closed by it",
+	);
+	assert.ok(
+		registry.get(other),
+		"while another conversation's tab is untouched, which is the whole point of the mode",
+	);
+
+	// The positional mode is the opposite bargain, and this is the half that says so.
+	const keep = registry.create({ owner: "user" }).tabId;
+	const positional = { mode: "ids", tabIds: [other] };
+	const alsoLater = registry.create({ owner: "user" }).tabId;
+	host.closeTabs(positional);
+	assert.equal(registry.get(other), undefined);
+	assert.ok(
+		registry.get(alsoLater),
+		"an ids intent closes what it names and nothing else — a tab created after the press survives",
+	);
+	assert.ok(registry.get(keep));
+});
+
+test("an ids intent naming a tab that is already gone closes the rest and does not throw (R5)", () => {
+	const { host, registry } = makeHost();
+	const first = registry.create({ owner: "user" }).tabId;
+	const second = registry.create({ owner: "user" }).tabId;
+	const third = registry.create({ owner: "user" }).tabId;
+	// Closed twice — a second press, or an agent's own close. The user's intent was that
+	// these be closed, and they are; refusing the batch would leave the others open, which
+	// is the one outcome nobody asked for.
+	registry.destroy(first);
+	assert.doesNotThrow(() =>
+		host.closeTabs({ mode: "ids", tabIds: [first, second, third] }),
+	);
+	assert.equal(registry.count(), 0);
+});
+
 test("a conversation id is validated at the IPC boundary rather than trusted (R1)", async () => {
 	const { host } = makeHost();
 	// The window the handlers authorize, with the shape `authorize` compares.
@@ -1810,12 +1922,21 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 		clearData: async () => {},
 		log: () => {},
 	});
-	/** One `ipcRenderer.invoke`, through the shipped handler. */
-	const invoke = (channel, ...args) => {
-		const handler = ipcMain.handlers.get(channel);
-		assert.ok(handler, `${channel} is registered`);
-		return handler({ sender: webContents, senderFrame: frame }, ...args);
-	};
+	/**
+	 * One `ipcRenderer.invoke`, through the shipped handler.
+	 *
+	 * The `Promise.resolve().then(...)` is not decoration: a SYNCHRONOUS throw inside an
+	 * `ipcMain.handle` handler rejects the renderer's `invoke` promise, and Electron is
+	 * what supplies that promise — so a test that called the handler directly would see a
+	 * throw where the renderer sees a rejection, and every `assert.rejects` below would be
+	 * testing a shape the app never sees.
+	 */
+	const invoke = (channel, ...args) =>
+		Promise.resolve().then(() => {
+			const handler = ipcMain.handlers.get(channel);
+			assert.ok(handler, `${channel} is registered`);
+			return handler({ sender: webContents, senderFrame: frame }, ...args);
+		});
 
 	// ABSENT and null are real, common values rather than mistakes: the route and a
 	// draft pane open tabs that belong to no conversation.
@@ -1853,6 +1974,43 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 		host.chromeState().tabs.filter((tab) => tab.sessionId === null).length,
 		2,
 		"and a refused call creates no tab at all",
+	);
+
+	// THE CLOSE-TABS INTENT IS VALIDATED FOR ITS OWN SHAPE, one mode at a time, because
+	// they are two different authorities: `ids` names tabs the user could see, while
+	// `conversation` names a conversation and lets MAIN resolve it against the live
+	// registry. An intent that is neither is refused rather than coerced into the
+	// closer-looking one.
+	const emptyIds = await host.chromeState();
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "ids", tabIds: [] }),
+		/at least one tab id/,
+		"an empty id list is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "ids", tabIds: ["1"] }),
+		/must be an integer/,
+		"a string id is refused rather than coerced",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "conversation", sessionId: "" }),
+		/cannot be empty/,
+		"an empty conversation id is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs", { mode: "everything" }),
+		/Unsupported close request/,
+		"an unknown mode is refused",
+	);
+	await assert.rejects(
+		() => invoke("browser-close-tabs"),
+		/A close request is required/,
+		"and no intent at all is refused",
+	);
+	assert.equal(
+		(await host.chromeState()).tabs.length,
+		emptyIds.tabs.length,
+		"none of the refusals closed anything",
 	);
 });
 
@@ -2034,7 +2192,11 @@ test("retain outlives a finish, and a terminal scope refuses everything but clos
 // ---- the dispatcher, with a fake browser -----------------------------------
 
 function makeHost(overrides = {}) {
-	const { registry, views } = makeRegistry();
+	// `removed` and `notified` travel too: the batch-close tests count the webContents
+	// RELEASES and the registry's own NOTIFICATIONS, which are the two things the design's
+	// §6.1 asks for by name, and reaching for either separately would test a different path
+	// from the one `destroyMany` goes through.
+	const { registry, views, removed, notified } = makeRegistry();
 	const cdp = {
 		attach: async () => {},
 		send: async (_contents, method, params) => {
@@ -2103,7 +2265,7 @@ function makeHost(overrides = {}) {
 		}),
 		...overrides,
 	});
-	return { host, registry, views, approvals, cdp };
+	return { host, registry, views, removed, notified, approvals, cdp };
 }
 
 test("real dispatcher records allocation, fences peers, recovers and finishes exactly its tab", async () => {

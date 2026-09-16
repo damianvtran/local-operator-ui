@@ -505,14 +505,16 @@ export class TabRegistry {
 	// ---- removal -------------------------------------------------------------
 
 	/**
-	 * Drop a tab and hand its webContents id to `onRemove`, which is where the
-	 * debugger session, the log buffer and the child view are released.
+	 * Drop one tab's record WITHOUT notifying: the registry-local half of every removal.
 	 *
-	 * `forget` is the registry-local half, used by the fail-closed handle check
-	 * where the caller has no cleanup work to do (the webContents is already
-	 * destroyed) and by `destroy` below.
+	 * EXTRACTED FROM `forget` FOR `destroyMany` (design R5), and the split is what makes a
+	 * batch one change rather than N: `destroyMany` drops every record first, then runs
+	 * ONE `applyLayout()` and ONE `onChanged()`, and the notify-free half is the only way
+	 * to do that without N full state builds, N IPC broadcasts and N `session.json`
+	 * writes — which is what N sequential closes cost today (`host.closeTab` →
+	 * `registry.destroy` → `onChanged` per tab).
 	 */
-	forget(tabId: number): TabRecord | undefined {
+	private drop(tabId: number): TabRecord | undefined {
 		const record = this.tabs.get(tabId);
 		if (!record) return undefined;
 		this.tabs.delete(tabId);
@@ -531,9 +533,68 @@ export class TabRegistry {
 					.filter((candidate) => candidate.owner === "user")
 					.at(-1)?.tabId ?? null;
 		}
+		return record;
+	}
+
+	/**
+	 * Drop a tab and hand its webContents id to `onRemove`, which is where the
+	 * debugger session, the log buffer and the child view are released.
+	 *
+	 * `forget` is the registry-local half, used by the fail-closed handle check
+	 * where the caller has no cleanup work to do (the webContents is already
+	 * destroyed) and by `destroy` below. `destroyMany` uses `drop` rather than `forget`
+	 * for the same reason one level down: it wants the removal without a per-tab
+	 * notification.
+	 */
+	forget(tabId: number): TabRecord | undefined {
+		const record = this.drop(tabId);
+		if (!record) return undefined;
 		this.applyLayout();
 		this.onChanged();
 		return record;
+	}
+
+	/**
+	 * Close SEVERAL tabs as one change: the registry half of the renderer's bulk closes
+	 * (design R5).
+	 *
+	 * WHY ONE INTENT RATHER THAN N `destroy` CALLS, in the order the design weighs it:
+	 *
+	 * 1. "Close all tabs in this conversation" cannot be expressed as a list without
+	 *    racing. A list computed from a projection the renderer read up to seconds ago
+	 *    misses a tab an agent opened in that conversation in the meantime, and the user
+	 *    pressed something that said ALL. (The renderer resolves that mode HERE, at
+	 *    execution time, for exactly this reason.)
+	 * 2. N round trips are N full `chromeState()` builds, N IPC broadcasts and N
+	 *    `session.json` writes, each of which re-renders the strip. A batch is one of
+	 *    each.
+	 * 3. `destroy` is synchronous and the chrome's closes do not take the per-tab lane
+	 *    (`registry.lane` is the dispatcher's), so there is no interleaving to reason
+	 *    about within one intent — and N separate intents are N separate windows in which
+	 *    an agent can create a tab. One intent, one window, one decision.
+	 *
+	 * IDS THAT ARE ALREADY GONE ARE SKIPPED RATHER THAN REFUSED: the user's intent was
+	 * that they be closed, and they are. Refusing the batch because one tab was closed
+	 * twice — by a second press, or by an agent's own `close` — would leave the other
+	 * tabs open, which is the one outcome nobody asked for.
+	 *
+	 * `onRemove` STILL RUNS PER RECORD and after the single notification, so the
+	 * webContents/debugger/log release path stays the single one it has always been
+	 * (design 11.1: with `WebContentsView`, nothing destroys the webContents for you).
+	 */
+	destroyMany(tabIds: readonly number[]): number {
+		const removed: TabRecord[] = [];
+		for (const tabId of tabIds) {
+			const record = this.drop(tabId);
+			if (record) removed.push(record);
+		}
+		if (removed.length === 0) return 0;
+		this.applyLayout();
+		this.onChanged();
+		for (const record of removed) {
+			this.onRemove(record.tabId, record.view.webContents.id);
+		}
+		return removed.length;
 	}
 
 	/** Destroy a tab: forget it, then release its resources. `onRemove` is

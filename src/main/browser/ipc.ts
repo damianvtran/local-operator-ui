@@ -1,6 +1,6 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "../desktop-transport";
-import type { BrowserHost } from "./host";
+import type { BrowserHost, CloseTabsIntent } from "./host";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
 
@@ -48,6 +48,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
 	"browser-new-tab",
 	"browser-close-tab",
+	"browser-close-tabs",
 	"browser-activate-tab",
 	"browser-navigate",
 	"browser-reload",
@@ -91,6 +92,11 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	ipcMain.handle("browser-close-tab", (event, tabId: unknown) => {
 		const host = authorize(event);
 		return host.closeTab(numberOrThrow(tabId, "tabId"));
+	});
+
+	ipcMain.handle("browser-close-tabs", (event, intent: unknown) => {
+		const host = authorize(event);
+		return host.closeTabs(closeTabsIntentOrThrow(intent));
 	});
 
 	ipcMain.handle("browser-activate-tab", (event, tabId: unknown) => {
@@ -218,6 +224,46 @@ function numberOrThrow(value: unknown, name: string): number {
 		throw new Error(`${name} must be an integer.`);
 	}
 	return value;
+}
+
+/**
+ * A bulk close, validated at the boundary.
+ *
+ * WHY THIS IS NOT A TYPE CHECK OF A SHARED DECLARATION: the renderer's intent is
+ * untrusted input like every other argument on this namespace (rule 1 of the module's
+ * own header), and `ids` and `conversation` are two different authorities — one names
+ * tabs the user could see, the other names a conversation and lets MAIN resolve it
+ * against the live registry. So each mode is checked for its own shape: `ids` needs a
+ * non-empty list of integers, and `conversation` needs a real session id (the same
+ * validator `browser-new-tab` uses), never an empty one. An intent that is neither is
+ * refused rather than coerced into the closer-looking one.
+ */
+function closeTabsIntentOrThrow(value: unknown): CloseTabsIntent {
+	if (!value || typeof value !== "object") {
+		throw new Error("A close request is required.");
+	}
+	const intent = value as {
+		mode?: unknown;
+		tabIds?: unknown;
+		sessionId?: unknown;
+	};
+	if (intent.mode === "ids") {
+		if (!Array.isArray(intent.tabIds) || intent.tabIds.length === 0) {
+			throw new Error("Closing tabs by id needs at least one tab id.");
+		}
+		const tabIds = intent.tabIds.map((tabId) =>
+			numberOrThrow(tabId, "each tab id"),
+		);
+		return { mode: "ids", tabIds };
+	}
+	if (intent.mode === "conversation") {
+		const sessionId = optionalConversationOrThrow(intent.sessionId);
+		if (sessionId === null) {
+			throw new Error("Closing a conversation's tabs needs a conversation id.");
+		}
+		return { mode: "conversation", sessionId };
+	}
+	throw new Error("Unsupported close request.");
 }
 
 /**

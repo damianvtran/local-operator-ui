@@ -615,6 +615,11 @@ export const STORIES = [
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
 	["browser-tab-strip--actions-expanded", 1280, 180],
+	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
+	   R5). `pinned-list` is declared taller by the list's own bounded height
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
+	   height the other expanded band uses. */
+	["browser-tab-strip--actions-expanded-batch", 1280, 180],
 	/* THE GROUPING AND THE CHIP CAP (design R3, R4 - the conversation-browser
 	   change). `grouped` is three conversations plus the unattributed run at the
 	   route's own 1280; `grouped-overflow` is 20 tabs over 6 conversations at

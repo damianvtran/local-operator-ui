@@ -447,6 +447,56 @@ export const Restored: Story = {
  * suppression and no z-index in this design. The `play` function clicks the same
  * trigger a person clicks, so the frame is the product's own state rather than a
  * prop this story could set. */
+/**
+ * THE BAND WITH ITS BULK CLOSES (design R5).
+ *
+ * Four new items in the row's in-band expansion, and the frame is where their copy is
+ * judged: `Close 2 other tabs`, `Close 1 tab to the right`, `Close all tabs in this
+ * conversation` and `Copy URL`. The COUNTS are in the labels because each of these is
+ * destructive with no undo — the session file records the current set, not a history —
+ * and two of them reach beyond the list a scoped host is showing. There is no
+ * confirmation dialog: the count is the disclosure, and a single close has no undo
+ * either (open question 4).
+ *
+ * The conversation item carries NO number, and the strip is why: the group chip above
+ * already shows the group's size, so repeating it here would be the third copy of a
+ * fact that is on screen.
+ *
+ * The second tab's conversation holds two tabs, which is the gate for the group item:
+ * closing "all" of a conversation's single tab is `Close "X"` under a longer label.
+ */
+export const ActionsExpandedBatch: Story = {
+	args: strip(
+		[
+			tab(1, "Dashboard"),
+			tab(2, "Reports home", {
+				sessionId: "session-reports",
+				url: "https://reports.example.com/",
+			}),
+			tab(3, "Reports detail", {
+				sessionId: "session-reports",
+				url: "https://reports.example.com/detail",
+			}),
+			tab(4, "Invoices", { sessionId: "session-invoices" }),
+		],
+		1,
+		{},
+		SESSIONS,
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// The second row: a tab with a conversation AND a tab to its right, so all four
+		// items are reachable from one press.
+		const rows = await canvas.findAllByRole("tab");
+		const row = rows[1]?.parentElement;
+		if (!row)
+			throw new Error("the batch story needs a second tab's row to hover");
+		await userEvent.hover(row);
+		const triggers = await canvas.findAllByLabelText(TAB_ACTIONS_LABEL);
+		await userEvent.click(triggers[1], { pointerEventsCheck: 0 });
+	},
+};
+
 export const ActionsExpanded: Story = {
 	args: strip([tab(1, "Dashboard"), tab(2, "Reports"), tab(3, "Login")], 1),
 	play: async ({ canvasElement }) => {
