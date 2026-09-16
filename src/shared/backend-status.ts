@@ -78,6 +78,21 @@ export interface DaemonStatusSnapshot {
 	failures: number;
 	/** Status of the last CAPABILITY refusal, if any (never a liveness signal). */
 	capabilityStatus: number | null;
+	/**
+	 * Consecutive probes that ran out of budget with no answer at all.
+	 *
+	 * Beside the state rather than folded into it, for the same reason
+	 * `capabilityStatus` is: it is the difference between "the daemon is gone" and
+	 * "the daemon did not answer a 2 s budget", and that difference is the whole
+	 * of the report this field exists to serve.
+	 */
+	unanswered: number;
+	/**
+	 * When one of this app's own requests against the daemon was last answered,
+	 * or null. A recent value is main's proof that the connection is alive
+	 * whatever the probes could not read.
+	 */
+	lastTransportAt: number | null;
 	/** One sentence naming what the app actually observed. */
 	detail: string;
 	updatedAt: number;
@@ -131,11 +146,22 @@ export function serverBannerCopy(
 		return { title: "Not connected to a Local Operator server.", detail: null };
 	}
 	const detail = snapshot.detail?.trim() ? snapshot.detail.trim() : null;
+	/*
+	 * WHAT the title may claim, and what it may not.
+	 *
+	 * The title says which KIND of state this is - the connection fact, true of
+	 * every path into it. The detail says which path was taken. The `wedged`
+	 * title used to assert one path ("has stopped publishing its own
+	 * heartbeat"), which is a false sentence for the other producers: a daemon
+	 * answering the configured address whose key this app may not use is running
+	 * and healthy, and telling its user that it stopped publishing its heartbeat
+	 * is the same class of mistake as calling it offline.
+	 */
 	switch (snapshot.state) {
 		case "wedged":
 			return {
 				title:
-					"A Local Operator server is running but has stopped publishing its own heartbeat, so this app is not attaching to it and is not starting a second one.",
+					"A Local Operator server is running on this machine and this app is not attached to it.",
 				detail,
 			};
 		case "detached":

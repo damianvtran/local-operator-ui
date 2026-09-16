@@ -8,6 +8,37 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 
 /*
+ * The regex literals this module uses, hoisted to the top level: the
+ * `useTopLevelRegex` rule charges a literal constructed inside a function,
+ * and `scripts/` is outside `pnpm lint`'s path list, so this tree's own gate
+ * is the only thing that would have said so.
+ *
+ * The `Reflect.deleteProperty` calls below are the `delete` operator spelled
+ * the way the lint rule allows. It is not a style choice: assigning
+ * `undefined` to a `process.env` key sets the STRING "undefined" instead of
+ * unsetting it, which hands a child a different environment than the test
+ * means to give it (measured: three cases in this tree failed exactly so).
+ */
+const RE = /.*/;
+const RE_401_REFUSED_EVENT_STREAM_I = /401|refused|event stream/i;
+const RE_A_F0_9_64 = /^[a-f0-9]{64}$/;
+const RE_CONFIG = /^\.\/config$/;
+const RE_ELECTRON = /^electron$/;
+const RE_ELECTRON_FIXTURE_CHILD_PRO =
+	/^(electron-fixture|child-process-fixture|backend-logger-fixture|backend-config-fixture)$/;
+const RE_FETCH = /fetch\(/;
+const RE_HTTPS_A_Z0_9_I = /https?:\/\/[a-z0-9.:]+/i;
+const RE_IDENTITY_INSTANCEID_EXPECT =
+	/identity\.instanceId !== expectedInstanceId/;
+const RE_LOCALHOST_1111_ALTURL = /localhost:1111|altUrl/;
+const RE_LOGGER = /^\.\/logger$/;
+const RE_NODE_CHILD_PROCESS = /^node:child_process$/;
+const RE_OWNED_SERVE_LAUNCH = /owned-serve-launch$/;
+const RE_PROBE_DISCOVERDAEMONS = /probe|discoverDaemons/;
+const RE_PROCESS_KILL_PID_0 = /process\.kill\(pid, 0\)/;
+const RE_SERVER_IS_NOT_RUNNING_I = /server is not running/i;
+
+/*
  * The event relay must follow the desktop token, and a watchdog restart must
  * not shoot the machine's other backends.
  *
@@ -72,6 +103,13 @@ process.env.LOCAL_OPERATOR_CONFIG_DIR = HOME;
  * spawn fixture flips it true, so the post-spawn health loop that follows
  * succeeds immediately. That ordering is what a managed start looks like from
  * the manager's side.
+ *
+ * `healthy` is only meaningful while the fixture is LISTENING, which is a
+ * separate fact with its own lifecycle above: a 503 from a bound port now means
+ * "an occupant", so "no backend here yet" has to be modelled as a port with
+ * nothing behind it rather than as an unhealthy answer. Tests that need the
+ * fixture up before any spawn - the two adoption cases and the relay-refusal
+ * case - call `startFixture()` themselves.
  */
 const state = {
 	healthy: false,
@@ -104,12 +142,12 @@ const bundle = await build({
 			setup(builder) {
 				// Launch identity has real-child coverage in owned-serve-lifecycle;
 				// this fixture measures the spawn environment, not installation.
-				builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
+				builder.onResolve({ filter: RE_OWNED_SERVE_LAUNCH }, () => ({
 					path: "launch",
 					namespace: "owned-launch-fixture",
 				}));
 				builder.onLoad(
-					{ filter: /.*/, namespace: "owned-launch-fixture" },
+					{ filter: RE, namespace: "owned-launch-fixture" },
 					() => ({
 						loader: "js",
 						contents: `
@@ -124,8 +162,8 @@ const bundle = await build({
 				/** Every substitution names its original, so a reader can see
 				 * exactly what is not shipping code in this run. */
 				const aliases = new Map([
-					[/^electron$/, "electron-fixture"],
-					[/^node:child_process$/, "child-process-fixture"],
+					[RE_ELECTRON, "electron-fixture"],
+					[RE_NODE_CHILD_PROCESS, "child-process-fixture"],
 				]);
 				for (const [filter, name] of aliases) {
 					builder.onResolve({ filter }, () => ({
@@ -137,8 +175,8 @@ const bundle = await build({
 				// `./config` exist in other directories, and replacing the wrong
 				// one would leave the real logger writing to the operator's log.
 				const backendOnly = [
-					[/^\.\/logger$/, "backend-logger-fixture"],
-					[/^\.\/config$/, "backend-config-fixture"],
+					[RE_LOGGER, "backend-logger-fixture"],
+					[RE_CONFIG, "backend-config-fixture"],
 				];
 				for (const [filter, name] of backendOnly) {
 					builder.onResolve({ filter }, (args) =>
@@ -149,8 +187,7 @@ const bundle = await build({
 				}
 				builder.onLoad(
 					{
-						filter:
-							/^(electron-fixture|child-process-fixture|backend-logger-fixture|backend-config-fixture)$/,
+						filter: RE_ELECTRON_FIXTURE_CHILD_PRO,
 						namespace: "fixture",
 					},
 					(args) => {
@@ -206,6 +243,14 @@ const bundle = await build({
 											kill(signal) {
 												this.signalCode = signal;
 												this.killed.push(signal);
+												/*
+												 * The process is gone, so the port it held is free again - the same
+												 * pairing \`spawn\` makes in the other direction. Without this the
+												 * fixture would keep answering for a dead child, and the
+												 * manager's own restart would be asking to spawn onto a port the
+												 * spawn gate must refuse.
+												 */
+												globalThis.__backendTestGoDown?.();
 												const fire = (map) => {
 													const cbs = map.get("exit") ?? [];
 													map.set("exit", []);
@@ -224,6 +269,10 @@ const bundle = await build({
 											 * reports and the one code that shows no error dialog.
 											 */
 											exitNow(code = null) {
+												// A SIGKILL nobody asked for takes the port with it, exactly as
+												// \`kill\` does: the watchdog's recovery must find a free port to
+												// start the replacement on.
+												globalThis.__backendTestGoDown?.();
 												const cbs = [...(persistent.get("exit") ?? []), ...(onceOnly.get("exit") ?? [])];
  onceOnly.set("exit", []);
  this.exitCode = code;
@@ -239,8 +288,10 @@ const bundle = await build({
 											token: options?.env?.LOCAL_OPERATOR_DESKTOP_TOKEN ?? null,
 											child,
 										});
-										// The backend this stands in for is up the moment it is
-										// "spawned", which is what the health loop waits for.
+										// The backend this stands in for is up the moment it is "spawned", which
+										// is what the health loop waits for - AND what BINDS the port, so the
+										// spawn gate sees a free socket again on a later fresh start.
+										globalThis.__backendTestComeUp?.();
 										globalThis.__backendTestState.healthy = true;
 										return child;
 									}
@@ -337,9 +388,35 @@ const bundle = await build({
 
 const SESSION = "92602660eb9e";
 
-let server;
-let url;
-server = createServer(async (req, res) => {
+/**
+ * The fixture's port, reserved for the whole run and BOUND only while a backend
+ * stands behind it.
+ *
+ * WHY the listener is not simply always up, which is how this file was written
+ * before. The manager's spawn gate asks the configured origin whether the port is
+ * free before it starts a child there, and a port with a listener on it that
+ * answers a status which is not 200 is now read as OCCUPIED - a daemon starting
+ * up, unhealthy or shutting down holds its socket just as firmly as a healthy one
+ * (review round 1, F-2). This fixture used to answer `503 {}` for "no backend
+ * here yet" while `start()` was expected to spawn, which modelled a port that is
+ * bound and free at the same time: with the gate fixed, that is the defect, not
+ * the setup. So the model is now the real one - a port with nothing behind it
+ * refuses the connection, and the fixture is started exactly when the simulated
+ * child is (the spawn stub) and stopped exactly when that child goes away (its
+ * `kill`/`exitNow`).
+ *
+ * The number is learned by binding and releasing, the same idiom the
+ * not-listening case below uses, because the bundled config fixture needs a URL
+ * at import time - before anything is listening.
+ */
+const portReservation = createServer();
+await new Promise((resolve) => portReservation.listen(0, "127.0.0.1", resolve));
+const PORT = portReservation.address().port;
+await new Promise((resolve) => portReservation.close(resolve));
+
+let server = null;
+
+const handleRequest = async (req, res) => {
 	const path = (req.url ?? "").split("?")[0];
 	if (path === "/health") {
 		res.writeHead(state.healthy ? 200 : 503, {
@@ -397,11 +474,44 @@ server = createServer(async (req, res) => {
 	}
 	res.writeHead(404, { "Content-Type": "application/json" });
 	res.end("{}");
-});
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-url = `http://127.0.0.1:${server.address().port}`;
-// Read by the bundled config fixture at import time above, which is why the
-// server is listening before the bundle is imported.
+};
+
+/** A backend is up: bind the port and answer as it. */
+function startFixture() {
+	if (server) return;
+	server = createServer(handleRequest);
+	server.listen(PORT, "127.0.0.1");
+}
+
+/**
+ * The backend went away: RELEASE the port.
+ *
+ * Not awaited, because the two callers are the simulated child's `kill` and
+ * `exitNow`, which are synchronous. Nothing has to wait: `close()` stops
+ * accepting immediately, so the very next probe on this origin is refused, which
+ * is what "the port is free" means to the manager. Measured on this host: the
+ * first `fetch` after `close()` rejects with `ECONNREFUSED`, and the port can be
+ * bound again in the same tick.
+ */
+function stopFixture() {
+	const closing = server;
+	server = null;
+	if (closing) closing.close();
+}
+
+/*
+ * The child fixture drives the listener's lifecycle, because in the app the two
+ * are the same event: the port is bound for exactly as long as a backend process
+ * holds it. `spawn` stands in for a real child starting (so it binds), and
+ * `kill`/`exitNow` for one going away (so it releases).
+ */
+globalThis.__backendTestComeUp = startFixture;
+globalThis.__backendTestGoDown = stopFixture;
+
+const url = `http://127.0.0.1:${PORT}`;
+// Read by the bundled config fixture at import time above, which is why the URL
+// is settled before the bundle is imported. The fixture itself is NOT listening
+// yet: nothing is behind this port until the spawn stub brings it up.
 globalThis.__backendTestUrl = url;
 
 /*
@@ -424,6 +534,7 @@ const {
 );
 
 after(async () => {
+	if (!server) return;
 	await new Promise((resolve, reject) =>
 		server.close((error) => (error ? reject(error) : resolve())),
 	);
@@ -463,7 +574,7 @@ test("the relay authenticates with the token the current backend was started wit
 		const firstToken = state.spawns.at(-1)?.token;
 		assert.match(
 			firstToken ?? "",
-			/^[a-f0-9]{64}$/,
+			RE_A_F0_9_64,
 			"a managed start must mint a desktop token for the spawned backend",
 		);
 
@@ -594,10 +705,13 @@ test("a watchdog timeout never terminates a still-live owned daemon", async () =
  */
 test("an unpaired app does not adopt a healthy backend it can never authenticate to (Q-1)", async () => {
 	const saved = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
-	delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 	try {
 		// Healthy, answering on the CONFIGURED origin: under the old rule this is
-		// exactly the state that was adopted with no credential at all.
+		// exactly the state that was adopted with no credential at all. The
+		// fixture is brought up by hand, because no spawn has happened in this
+		// case and nothing else would bind the port.
+		startFixture();
 		state.healthy = true;
 		state.pairedToken = "a".repeat(64);
 		const manager = new BackendServiceManager();
@@ -621,11 +735,13 @@ test("an unpaired app does not adopt a healthy backend it can never authenticate
 			spawnsBefore + 1,
 			"declining to adopt must fall through to a managed start",
 		);
-		assert.match(state.spawns.at(-1)?.token ?? "", /^[a-f0-9]{64}$/);
+		assert.match(state.spawns.at(-1)?.token ?? "", RE_A_F0_9_64);
 		await manager.stop(true);
 	} finally {
 		state.healthy = false;
-		if (saved === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+		stopFixture();
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 		else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = saved;
 	}
 });
@@ -645,6 +761,9 @@ test("a paired app adopts the configured backend, and only once it accepts the t
 	});
 	process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = pairingToken;
 	try {
+		// Both managers here probe the configured origin directly, so the fixture
+		// has to be the backend on it - nothing has spawned in this case.
+		startFixture();
 		state.healthy = true;
 		// The server accepts the WRONG bearer first: a health 200 alone must not
 		// be enough, which is the half the old code never checked.
@@ -677,7 +796,9 @@ test("a paired app adopts the configured backend, and only once it accepts the t
 	} finally {
 		state.healthy = false;
 		state.pairedToken = null;
-		if (saved === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+		stopFixture();
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 		else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = saved;
 	}
 });
@@ -693,7 +814,7 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.doesNotMatch(
 		source,
-		/localhost:1111|altUrl/,
+		RE_LOCALHOST_1111_ALTURL,
 		"no hardcoded fallback origin: a configured rig must never adopt a server on a different port",
 	);
 	/*
@@ -718,17 +839,17 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.match(
 		adoption,
-		/probe|discoverDaemons/,
+		RE_PROBE_DISCOVERDAEMONS,
 		"the record-backed adoption path must go through discovery, never a fetch of its own",
 	);
 	assert.doesNotMatch(
 		adoption,
-		/fetch\(/,
+		RE_FETCH,
 		"the record-backed adoption path must not fetch an origin directly: identity comes from the record, through the probe",
 	);
 	assert.doesNotMatch(
 		adoption,
-		/https?:\/\/[a-z0-9.:]+/i,
+		RE_HTTPS_A_Z0_9_I,
 		"no literal origin to fall back to",
 	);
 	/*
@@ -744,7 +865,7 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.match(
 		legacyAdoption,
-		/fetch\(/,
+		RE_FETCH,
 		"the deprecated pre-record fallback is where a direct fetch belongs, because it has no record to identify the daemon with",
 	);
 	// The identity half of the rule, from the module that owns it.
@@ -754,12 +875,12 @@ test("adoption never probes an origin other than the one the app was configured 
 	);
 	assert.match(
 		discoverySource,
-		/identity\.instanceId !== expectedInstanceId/,
+		RE_IDENTITY_INSTANCEID_EXPECT,
 		"a 200 is not identification: the answering instance must BE the recorded one",
 	);
 	assert.match(
 		discoverySource,
-		/process\.kill\(pid, 0\)/,
+		RE_PROCESS_KILL_PID_0,
 		"pid liveness is checked before any probe, so a dead daemon is never dialled",
 	);
 });
@@ -832,6 +953,11 @@ test("a backend child that exited is restored by the watchdog (Q-2)", async () =
  * is the only form of that claim that is not an assertion about copy.
  */
 test("the relay's own refusal detail is the shared vocabulary and maps to the shipped sentence (D1)", async () => {
+	// The case is about a 401 from a live backend, so the fixture has to be the
+	// live backend: a port with nothing behind it is the OTHER sentence (asserted
+	// at the end of this file), and the two must not be conflated.
+	startFixture();
+	state.healthy = true;
 	const relay = new DesktopStreamRelay(url, "d".repeat(64));
 	try {
 		const frames = subscribeOnce(relay);
@@ -848,9 +974,10 @@ test("the relay's own refusal detail is the shared vocabulary and maps to the sh
 			streamFailureNotice(DESKTOP_STREAM_DETAIL.ended).statement,
 			"the packaged 401 and the browser proxy's ended must reach the reader as the same sentence",
 		);
-		assert.doesNotMatch(notice.statement, /401|refused|event stream/i);
+		assert.doesNotMatch(notice.statement, RE_401_REFUSED_EVENT_STREAM_I);
 	} finally {
 		relay.dispose();
+		stopFixture();
 	}
 });
 
@@ -923,7 +1050,7 @@ test("a stream against a backend that is not listening reports the server, not t
 		);
 		assert.match(
 			streamFailureNotice(frames[0].detail).statement,
-			/server is not running/i,
+			RE_SERVER_IS_NOT_RUNNING_I,
 		);
 	} finally {
 		relay.dispose();

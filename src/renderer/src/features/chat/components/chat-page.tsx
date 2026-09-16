@@ -2093,15 +2093,37 @@ export function ChatPage() {
 						</p>
 					)}
 					{!enabled ? (
-						<div className={cn("p-6 text-body text-ink-muted")}>
-							{capabilities.isLoading
-								? "Connecting to the backend…"
-								: capabilities.error
-									? capabilities.error.message
-									: "Update the backend to use canonical chats. Your existing histories are unchanged."}
+						/*
+						 * A PANE-level state, presented as one: centred in the column, the shape the
+						 * route's own Suspense fallback already uses, and - the reason it is not a
+						 * bare `p-6` against the top edge - clear of the full-bleed bands.
+						 *
+						 * Both bands are `fixed` at the top of the window, so while one shows it
+						 * covers the first ~30px of EVERY surface. Measured on the withdrawn frame
+						 * (`docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`), this
+						 * sentence's line box was laid out at y=24 with the pane empty below it, so
+						 * the pane read as a single flat colour beside a sidebar that kept its
+						 * rows: the node existed, was 880x70 and `checkVisibility()` was true, and
+						 * the reader could not see it. Centring it in the pane also stops the
+						 * sentence from being the pane's first 30 pixels, whatever the band does
+						 * (design round 1, D2).
+						 */
+						<div
+							className={cn(
+								"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
+								"text-body text-ink-muted",
+							)}
+						>
+							<p className={cn("text-center")}>
+								{capabilities.isLoading
+									? "Connecting to the backend…"
+									: capabilities.error
+										? capabilities.error.message
+										: "Update the backend to use canonical chats. Your existing histories are unchanged."}
+							</p>
 							<button
 								type="button"
-								className={cn("ml-2 underline")}
+								className={cn("underline")}
 								onClick={() => void capabilities.refetch()}
 							>
 								Retry
