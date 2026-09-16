@@ -1,8 +1,8 @@
 import { likeAgent, unlikeAgent } from "@shared/api/radient/agents-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { patchPublicAgentCount } from "./use-public-agent-counts";
 import { patchAgentStatus } from "./use-agent-statuses-query";
+import { patchPublicAgentCount } from "./use-public-agent-counts";
 
 type UseAgentLikeMutationParams = {
 	agentId: string;
@@ -47,9 +47,7 @@ export const useAgentLikeMutation = () => {
 				return { liked: false, changed: true };
 			}
 			const response = await likeAgent(agentId);
-			const result = response.result as
-				| { already_liked?: boolean }
-				| undefined;
+			const result = response.result as { already_liked?: boolean } | undefined;
 			return { liked: true, changed: !result?.already_liked };
 		},
 		onSuccess: ({ liked, changed }, variables) => {

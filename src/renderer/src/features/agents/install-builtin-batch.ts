@@ -122,7 +122,8 @@ export const summarySentence = (summary: InstallSummary): string => {
 	if (summary.installed > 0) parts.push(`${summary.installed} installed`);
 	if (summary.alreadyPresent > 0)
 		parts.push(`${summary.alreadyPresent} already present`);
-	if (summary.skipped.length > 0) parts.push(`${summary.skipped.length} skipped`);
+	if (summary.skipped.length > 0)
+		parts.push(`${summary.skipped.length} skipped`);
 	if (summary.failed.length > 0) parts.push(`${summary.failed.length} failed`);
 	if (parts.length === 0) parts.push("Nothing to install");
 	return `${parts.join(", ")}.`;

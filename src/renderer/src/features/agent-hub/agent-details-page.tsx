@@ -1,3 +1,4 @@
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -15,7 +16,6 @@ import {
 	Skeleton,
 	Tooltip,
 } from "@shared/components/ui";
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
 import { formatCalendarDate } from "@shared/utils/date-utils";
@@ -27,9 +27,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AgentTagsAndCategories } from "./components/agent-tags-and-categories";
 import { CommentsSection } from "./components/comments-section";
 import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
-import { useAgentStatusesQuery } from "./hooks/use-agent-statuses-query";
 import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
 import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
+import { useAgentStatusesQuery } from "./hooks/use-agent-statuses-query";
 import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 
@@ -164,9 +164,9 @@ export const AgentDetailsPage: React.FC = () => {
 				? { error: favouriteMutation.error, retry: handleFavouriteToggle }
 				: failedAction === "download"
 					? { error: downloadMutation.error, retry: handleDownload }
-					// Delisting is confirmed through the dialog, so the failed attempt is
-					// reported and not silently repeated from here.
-					: { error: delistMutation.error, retry: undefined };
+					: // Delisting is confirmed through the dialog, so the failed attempt is
+						// reported and not silently repeated from here.
+						{ error: delistMutation.error, retry: undefined };
 
 	const handleBack = () => {
 		navigate("/agent-hub");

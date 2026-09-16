@@ -1,3 +1,4 @@
+import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	desktopFeatureEnabled,
@@ -8,7 +9,6 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
-import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
@@ -1261,9 +1261,9 @@ export function ChatSidebar({
 										>
 											<p className="text-body-sm text-ink">No agents yet</p>
 											<p className="text-meta text-ink-muted">
-												Built-in agents are ready to install. They give you roles
-												for coding, review, design, research and coordination — you
-												can edit them once installed.
+												Built-in agents are ready to install. They give you
+												roles for coding, review, design, research and
+												coordination — you can edit them once installed.
 											</p>
 											<InstallBuiltinAgents
 												builtins={availableBuiltins}
@@ -1272,7 +1272,9 @@ export function ChatSidebar({
 										</div>
 									) : (
 										<>
-											{ownAgents.map((profile) => entity("agent", profile.name))}
+											{ownAgents.map((profile) =>
+												entity("agent", profile.name),
+											)}
 											{/* Renders nothing once every built-in is installed. */}
 											<InstallBuiltinAgents builtins={availableBuiltins} />
 										</>

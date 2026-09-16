@@ -45,7 +45,10 @@ export const patchPublicAgentCount = (
 					...previous.result,
 					records: records.map((record) =>
 						record.id === agentId
-							? { ...record, [field]: Math.max(0, (record[field] ?? 0) + delta) }
+							? {
+									...record,
+									[field]: Math.max(0, (record[field] ?? 0) + delta),
+								}
 							: record,
 					),
 				},

@@ -104,7 +104,10 @@ const installBridge = ({
 }) => {
 	const { answers = {}, hold = false } = install ?? {};
 	let installed = 0;
-	const ok = <T,>(result: T): DesktopResponse => ({ status: 200, body: { result } });
+	const ok = <T,>(result: T): DesktopResponse => ({
+		status: 200,
+		body: { result },
+	});
 
 	const bridge = async (request: BridgeRequest): Promise<DesktopResponse> => {
 		switch (request.op) {
@@ -136,7 +139,10 @@ const installBridge = ({
 					case "already":
 						// The additive field, and the only thing that distinguishes an
 						// idempotent copy from a first one: both are 200.
-						return ok({ ...profile(name, "role", "installed"), already_installed: true });
+						return ok({
+							...profile(name, "role", "installed"),
+							already_installed: true,
+						});
 					case "collision":
 						// `install_seed` raises `NameTakenError` when the name belongs to
 						// an agent the user already holds; the route answers 409.
@@ -157,7 +163,9 @@ const installBridge = ({
 	};
 
 	const page = window as unknown as {
-		api?: { desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> } };
+		api?: {
+			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+		};
 	};
 	const api = page.api ?? {};
 	page.api = api;
@@ -238,7 +246,9 @@ export const AllInstalled: Story = {
 		installBridge({
 			profiles: [
 				profile("release-captain", "role", "installed"),
-				...BUILTINS.map((builtin) => profile(builtin.name, "role", "installed")),
+				...BUILTINS.map((builtin) =>
+					profile(builtin.name, "role", "installed"),
+				),
 			],
 		});
 		return <Page />;
@@ -258,7 +268,9 @@ export const Installing: Story = {
 		// The empty state mounts the action as its primary button, not as the quiet
 		// row a user who already has agents sees; both are the same component.
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Install all built-in agents" }),
+			await screen.findByRole("button", {
+				name: "Install all built-in agents",
+			}),
 		);
 		await screen.findByTestId("install-builtins-progress");
 	},
@@ -282,7 +294,9 @@ export const InstallSummary: Story = {
 		// The empty state mounts the action as its primary button, not as the quiet
 		// row a user who already has agents sees; both are the same component.
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Install all built-in agents" }),
+			await screen.findByRole("button", {
+				name: "Install all built-in agents",
+			}),
 		);
 		await screen.findByTestId("install-builtins-summary");
 	},

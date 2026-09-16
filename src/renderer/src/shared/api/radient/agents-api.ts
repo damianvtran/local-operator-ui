@@ -255,7 +255,9 @@ export async function getAgentFavourite(
  */
 export async function getAgentStatuses(
 	agentIds: readonly string[],
-): Promise<RadientApiResponse<{ statuses: Record<string, AgentViewerStatus> }>> {
+): Promise<
+	RadientApiResponse<{ statuses: Record<string, AgentViewerStatus> }>
+> {
 	return radientProxyEnvelope<{
 		statuses: Record<string, AgentViewerStatus>;
 	}>({

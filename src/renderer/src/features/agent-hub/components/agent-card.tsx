@@ -284,14 +284,17 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			</div>
 			{actionError && (
 				/*
-				 * `role="status"` rather than `alert`: the failure is already the
-				 * answer to something the user just pressed, so it is read as the
-				 * outcome of that action rather than interrupting with a second
-				 * announcement. Sentence case, and the retry is a control rather
-				 * than a phrase, so the way out is reachable by keyboard.
+				 * `<output>` rather than a `div` with `role="status"`: the element
+				 * carries that role itself (see `transcript-placeholder.tsx` and
+				 * `canonical-transcript.tsx`, which say the same for the trace's own
+				 * live regions), for the same reason the role is `status` rather than
+				 * `alert` — the failure is already the answer to something the user
+				 * just pressed, so it is read as the outcome of that action rather
+				 * than interrupting with a second announcement. Sentence case, and the
+				 * retry is a control rather than a phrase, so the way out is reachable
+				 * by keyboard.
 				 */
-				<div
-					role="status"
+				<output
 					data-testid="agent-card-error"
 					className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-hairline px-3 py-2 text-body-sm text-danger"
 				>
@@ -301,7 +304,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 							Try again
 						</Button>
 					)}
-				</div>
+				</output>
 			)}
 		</div>
 	);
