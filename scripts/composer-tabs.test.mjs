@@ -130,7 +130,10 @@ const frontend = (goal) => ({ goal });
  * than a plausible-looking invention.
  */
 const plan = (statuses) => [
-	{ name: "Plan", items: statuses.map((s, i) => ({ text: `item ${i}`, status: s })) },
+	{
+		name: "Plan",
+		items: statuses.map((s, i) => ({ text: `item ${i}`, status: s })),
+	},
 ];
 
 const detailsFor = (statuses) =>
@@ -174,7 +177,8 @@ const MESSAGE_INPUT = COMPOSER;
 const MEASURE = "src/renderer/src/features/chat/chat-measure.ts";
 const SCROLL_BUTTON =
 	"src/renderer/src/features/chat/components/scroll-to-bottom-button.tsx";
-const PANEL = "src/renderer/src/features/chat/components/run-details/run-panel.tsx";
+const PANEL =
+	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 
 /* ---------------------------------------------------------------- */
 /* The nothing state                                                 */
@@ -228,7 +232,11 @@ test("the goal chip's label, snippet and accessible name", () => {
 		frontend: frontend("Ship the composer status row"),
 		runDetails: null,
 	});
-	assert.match(markup, /Goal:/, "the chip carries the picker's own field label");
+	assert.match(
+		markup,
+		/Goal:/,
+		"the chip carries the picker's own field label",
+	);
 	assert.match(markup, /Ship the composer status row/);
 	assert.doesNotMatch(
 		markup,
@@ -298,8 +306,17 @@ test("the row's copy states the action that a press performs", () => {
 	);
 	// The action leads and the count follows, joined by the model's LABEL_SEAM.
 	assert.equal(
-		planChipLabel(4),
+		planChipLabel({ openTodos: 4, droppedTodos: 0 }),
 		"Open the plan in run details — 4 to-dos open",
+	);
+	// The settled states are the same words the chip body prints (see below).
+	assert.equal(
+		planChipLabel({ openTodos: 0, droppedTodos: 0 }),
+		"Open the plan in run details — All to-dos resolved",
+	);
+	assert.equal(
+		planChipLabel({ openTodos: 0, droppedTodos: 2 }),
+		"Open the plan in run details — All to-dos closed",
 	);
 });
 
@@ -321,29 +338,75 @@ test("the plan chip states the model's own clause, off the model's own counts", 
 	const markup = renderRow({ frontend: frontend(""), runDetails: details });
 	assert.match(markup, /data-status-plan/);
 	assert.match(markup, /3 to-dos open/);
-	assert.match(markup, /aria-label="Open the plan in run details — 3 to-dos open"/);
-	assert.doesNotMatch(markup, /Goal:/, "a session with no goal grows no goal chip");
+	assert.match(
+		markup,
+		/aria-label="Open the plan in run details — 3 to-dos open"/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/Goal:/,
+		"a session with no goal grows no goal chip",
+	);
 });
 
 test("a finished plan still renders, and says so", () => {
 	/*
-	 * `0 to-dos open` rather than the chip vanishing: the row's height must not
-	 * change when the last item closes, and a plan that completed is a fact worth
-	 * keeping on screen.
+	 * A settled plan keeps a clause rather than the chip vanishing: the row's
+	 * height must not change when the last item closes, and a plan that ended is a
+	 * fact worth keeping on screen. Two done, one dropped is the case that decides
+	 * WHICH clause — nothing is open, so the count form cannot state it, and one
+	 * item was abandoned, so `All to-dos resolved` would be a false claim about
+	 * work that did not succeed.
 	 */
 	const details = detailsFor(["done", "done", "dropped"]);
 	assert.equal(details.openTodos, 0);
+	assert.ok(details.droppedTodos > 0);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.match(markup, /All to-dos closed/);
+	assert.doesNotMatch(
+		markup,
+		/All to-dos resolved/,
+		"a dropped item is not work that was resolved",
+	);
 	assert.match(
-		renderRow({ frontend: frontend(""), runDetails: details }),
-		/0 to-dos open/,
+		markup,
+		/aria-label="Open the plan in run details — All to-dos closed"/,
+		"the name states the same settled words as the chip body",
 	);
 });
 
-test("the clause is the model's one spelling, for one, none and many", () => {
-	assert.equal(todoClause(0), "0 to-dos open");
-	assert.equal(todoClause(1), "1 to-do open");
-	assert.equal(todoClause(2), "2 to-dos open");
-	assert.equal(todoClause(14), "14 to-dos open");
+test("a plan with every item done is the one that reads as resolved", () => {
+	const details = detailsFor(["done", "done", "done"]);
+	assert.equal(details.openTodos, 0);
+	assert.equal(details.droppedTodos, 0);
+	const markup = renderRow({ frontend: frontend(""), runDetails: details });
+	assert.match(markup, /All to-dos resolved/);
+	assert.match(
+		markup,
+		/aria-label="Open the plan in run details — All to-dos resolved"/,
+	);
+	/*
+	 * The settled case stops spelling a count at all: a chip that said
+	 * `All to-dos resolved` beside a numeral would be two statements of one fact.
+	 */
+	assert.doesNotMatch(markup, /\d+ to-dos? open/);
+});
+
+test("the clause is the model's one spelling, for one, many and both settled states", () => {
+	assert.equal(
+		todoClause({ openTodos: 0, droppedTodos: 0 }),
+		"All to-dos resolved",
+	);
+	assert.equal(
+		todoClause({ openTodos: 0, droppedTodos: 2 }),
+		"All to-dos closed",
+	);
+	assert.equal(todoClause({ openTodos: 1, droppedTodos: 0 }), "1 to-do open");
+	assert.equal(todoClause({ openTodos: 2, droppedTodos: 0 }), "2 to-dos open");
+	assert.equal(
+		todoClause({ openTodos: 14, droppedTodos: 3 }),
+		"14 to-dos open",
+	);
 	/*
 	 * And the chip prints THAT function's output rather than a pluralisation of
 	 * its own — the single-item case is the one a second copy gets wrong.
@@ -374,7 +437,11 @@ test("both chips, goal first in the DOM so paint order and tab order agree", () 
 
 test("the plan chip files a one-shot request that both opens the pane and clears the canvas", () => {
 	const store = useUiPreferencesStore;
-	store.setState({ runPanelReveal: null, isRunPanelOpen: false, isCanvasOpen: true });
+	store.setState({
+		runPanelReveal: null,
+		isRunPanelOpen: false,
+		isCanvasOpen: true,
+	});
 	store.getState().revealRunPanelSection("todos");
 	const after = store.getState();
 	assert.equal(after.runPanelReveal?.section, "todos");
@@ -424,7 +491,10 @@ test("the row mounts inside the form, ABOVE the alert and therefore above the bo
 	const alert = source.indexOf('role="alert"');
 	const box = source.indexOf("COMPOSER_BOX,");
 	assert.ok(row > -1, "the composer mounts the row");
-	assert.ok(alert > -1 && box > -1, "the alert and the box are where they were");
+	assert.ok(
+		alert > -1 && box > -1,
+		"the alert and the box are where they were",
+	);
 	assert.ok(
 		row < alert && alert < box,
 		"band order is row, alert, box — the persistent context goes outboard of the transient one",
@@ -434,7 +504,10 @@ test("the row mounts inside the form, ABOVE the alert and therefore above the bo
 	 * the composer is not remounted on a session switch, so a goal expanded in one
 	 * conversation would otherwise arrive expanded in the next.
 	 */
-	assert.match(source, /<ComposerStatusRow[\s\S]{0,240}?key=\{conversationId\}/);
+	assert.match(
+		source,
+		/<ComposerStatusRow[\s\S]{0,240}?key=\{conversationId\}/,
+	);
 	/*
 	 * A crash here must not cost the ability to type: the row renders inside an
 	 * error boundary with an empty fallback, the readings strip's own treatment.
@@ -458,7 +531,9 @@ test("the row mounts inside the form, ABOVE the alert and therefore above the bo
 });
 
 test("the composer's run model comes off the page's one derivation", () => {
-	const content = code("src/renderer/src/features/chat/components/chat-content.tsx");
+	const content = code(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
 	assert.match(
 		content,
 		/runDetails=\{runDetails\}/,
@@ -490,7 +565,13 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	// One line above 240px of column, a column at or below it.
 	tokens("@max-[240px]/chatcol:flex-col");
 	// The goal item is the flexible one and can shrink to nothing (`min-w-0`).
-	tokens("min-w-0", "flex-1", "COLUMN_GOAL", "@max-[240px]/chatcol:w-full", "@max-[240px]/chatcol:flex-none");
+	tokens(
+		"min-w-0",
+		"flex-1",
+		"COLUMN_GOAL",
+		"@max-[240px]/chatcol:w-full",
+		"@max-[240px]/chatcol:flex-none",
+	);
 	/*
 	 * The label is VISIBLE in every arrangement (design review round 1, D4): the
 	 * `sr-only` floor rule is gone, and the label's `shrink-0` is what makes the
@@ -597,7 +678,10 @@ test("the hidden scroll-to-bottom control is not hit-testable", () => {
 	 * column floor, where it swallowed real presses on the goal chip and part of the
 	 * expanded body (QA round 1, Q1).
 	 */
-	assert.match(source, /visible \? "pointer-events-auto" : "pointer-events-none"/);
+	assert.match(
+		source,
+		/visible \? "pointer-events-auto" : "pointer-events-none"/,
+	);
 	assert.doesNotMatch(source, /className="pointer-events-auto rounded-full/);
 });
 
