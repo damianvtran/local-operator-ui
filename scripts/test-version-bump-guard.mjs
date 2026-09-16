@@ -660,10 +660,7 @@ test("the workflow refuses a run in which the guard printed no verdict", () => {
 	// wrong reason and would prove nothing about this refusal.
 	const run = runGuardStep({ guardScript: "" });
 	assert.equal(run.status, 1);
-	assert.match(
-		run.stdout,
-		/::error title=Version bump guard produced no verdict::/,
-	);
+	assert.match(run.stdout, /::error title=Version bump guard produced no verdict::/);
 });
 
 test("the workflow passes a verdict through, and keeps the guard's own exit status", () => {
