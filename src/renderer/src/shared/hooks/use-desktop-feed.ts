@@ -89,6 +89,13 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			 * feed process's - passed through untouched because it is the half of the
 			 * stamp that makes a restart's counters distinguishable from a live one's.
 			 *
+			 * The pair is PROJECTED onto its two fields rather than passed through as
+			 * the payload: the store writes its `status` argument onto the row verbatim,
+			 * so handing it the payload stamps a `revision` key onto a row whose status
+			 * type has no such field. That is invisible in TypeScript - the wire payload
+			 * is structurally assignable to `SessionCatalogueStatus` - which is why the
+			 * projection is written out here instead of being left to the types.
+			 *
 			 * Captured from `getState()` once per subscription rather than called
 			 * through the hook, exactly as `applyAttention` above is: the handler is
 			 * not a render, and a zustand action is stable for the store's lifetime.
@@ -96,7 +103,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			if (frame.type === "session_status") {
 				applySessionStatus(
 					frame.session_id,
-					frame.payload,
+					{ code: frame.payload.code, label: frame.payload.label },
 					frame.payload.revision,
 					frame.epoch,
 				);

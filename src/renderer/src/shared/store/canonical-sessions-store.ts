@@ -987,13 +987,33 @@ type CanonicalSessionsState = {
 	 * stamp, and the stamp is what lets a slower list response be ordered against
 	 * it rather than racing it.
 	 *
+	 * THIS ACTION ORDERS NOTHING, deliberately: frames arrive in publication order
+	 * on one socket, which is the transport's guarantee to keep and not a fact
+	 * worth re-deriving here. A frame is therefore trusted as it arrives, and the
+	 * epoch gate below is not an ordering rule but a restart's bookkeeping - the
+	 * only place a restart can make two counters incomparable. Adding a per-row
+	 * revision comparison HERE would be a second implementation of an order the
+	 * client already receives in order, and it would have to invent an answer for
+	 * the gaps a socket does not promise to close.
+	 *
 	 * `epoch` is the emitting feed PROCESS's, and a frame carrying an epoch this
 	 * store has not stamped rows with before means every row's stamp was minted by
 	 * a process that is gone. Their revisions are counters from a dead run, so
-	 * they are retired before the write: without that, a restart would leave every
-	 * row holding a revision from the old run and the guard in
-	 * `replaceSessionRows` would refuse every list until the counters happened to
-	 * catch up.
+	 * they are retired before the write. What that buys is stamp HYGIENE, and it is
+	 * worth being precise about it, because the obvious justification is wrong: a
+	 * row left holding a dead epoch's counter would NOT have pinned anything,
+	 * since `heldStatusOver` requires epoch equality before it compares a single
+	 * number, and a live response is stamped with the live process's epoch - so
+	 * the response wins with or without this reset. What the reset prevents is a
+	 * row advertising a counter that no live process will ever mint: state that
+	 * reads as ordering evidence and is not, which is what a future reader would
+	 * reason from. It does decide an order in one narrow case, and the decision
+	 * goes the other way: a list response from the dead process that lands AFTER a
+	 * frame from that same dead process is refused without the reset (correctly -
+	 * it is the older of the two) and accepted with it, because the stamp it would
+	 * have been compared against is gone. Taken knowingly: a dead process's answer
+	 * is being superseded by a live one either way, and hygiene is the better trade
+	 * against the alternative of leaving dead counters on screen.
 	 *
 	 * A frame for a session the catalogue does not know is DROPPED, exactly as an
 	 * attention frame is: insertion would make a sidebar row with no title and no
@@ -1050,6 +1070,10 @@ function mergeRow(
 	return {
 		...current,
 		...incoming,
+		// Settled as a WHOLE, and before the guard: a spread cannot tell a stamp
+		// from half of one, and `heldStatusOver` overrides this when the row's own
+		// pair is the one that outranks the incoming row.
+		...statusStamp(current, incoming),
 		...heldStatusOver(incoming, current),
 		attention: mergeCompletionAttention(
 			current?.attention,
@@ -1057,6 +1081,41 @@ function mergeRow(
 			incoming.session_id,
 		),
 	};
+}
+
+/**
+ * The stamp the merged row carries, as a PAIR or not at all.
+ *
+ * `status_epoch` names the process and `status_revision` is that process's counter
+ * for this session, so half a stamp is not weaker evidence - it is unusable, and
+ * the plain spread above would MINT it: `{...current, ...incoming}` on an
+ * incoming row carrying an epoch and no revision leaves the current row's
+ * revision sitting under the incoming epoch, so the row advertises
+ * `(new epoch, old revision)` - an epoch that never counted that high - and the
+ * guard then refuses that many of the new epoch's own list updates. That is the
+ * mirror of the flap the guard exists to stop, arriving through the one path the
+ * guard cannot see: it compares stamps it can read, and a minted one reads as
+ * perfectly good evidence.
+ *
+ * Latent rather than live in the wire contract's own terms - the backend stamps
+ * both keys or neither, and `SessionCatalogueRow` says they are omitted together -
+ * which is exactly why it is worth holding up on this side. A complete incoming
+ * stamp wins (the row it came from was read later), and a partial one contributes
+ * nothing, which leaves the current row's complete pair in place under the rule
+ * this merge already has for every other field: an absent key is not a claim.
+ */
+function statusStamp(
+	current: CanonicalSessionRow | undefined,
+	incoming: CanonicalSessionRow,
+): Partial<CanonicalSessionRow> {
+	const pair = (
+		row: CanonicalSessionRow | undefined,
+	): Partial<CanonicalSessionRow> | undefined =>
+		typeof row?.status_revision === "number" &&
+		typeof row?.status_epoch === "string"
+			? { status_revision: row.status_revision, status_epoch: row.status_epoch }
+			: undefined;
+	return pair(incoming) ?? pair(current) ?? {};
 }
 
 /**
