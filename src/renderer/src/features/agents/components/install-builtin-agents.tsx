@@ -2,10 +2,10 @@ import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { Button, Progress } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { Check, Layers } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
 	type InstallSummary,
 	installBuiltins,
@@ -102,36 +102,39 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 
 	return (
 		<div className={cn("flex flex-col gap-2", className)}>
-			{!running && !summary && (
-				<>
-					{presentation === "primary" ? (
-						<Button
-							variant="secondary"
-							className="w-full"
-							onClick={() => void run()}
-						>
-							Install all built-in agents
-						</Button>
-					) : (
-						<button
-							type="button"
-							onClick={() => void run()}
-							className={cn(
-								"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5",
-								"text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
-								"hover:bg-elevated",
-							)}
-							data-testid="install-all-builtins-row"
-						>
-							<Layers className="size-4 shrink-0" aria-hidden="true" />
-							<span className="min-w-0 flex-1">
-								{total} built-in {total === 1 ? "agent" : "agents"} available
-							</span>
-							<span className="shrink-0 font-medium text-accent">Install</span>
-						</button>
-					)}
-				</>
-			)}
+			{/*
+			 * The ternary is the fragment's only child, so the wrapper added an
+			 * indentation level and nothing else (biome's `noUselessFragments` names
+			 * it, and it is right).
+			 */}
+			{!running &&
+				!summary &&
+				(presentation === "primary" ? (
+					<Button
+						variant="secondary"
+						className="w-full"
+						onClick={() => void run()}
+					>
+						Install all built-in agents
+					</Button>
+				) : (
+					<button
+						type="button"
+						onClick={() => void run()}
+						className={cn(
+							"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5",
+							"text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
+							"hover:bg-elevated",
+						)}
+						data-testid="install-all-builtins-row"
+					>
+						<Layers className="size-4 shrink-0" aria-hidden="true" />
+						<span className="min-w-0 flex-1">
+							{total} built-in {total === 1 ? "agent" : "agents"} available
+						</span>
+						<span className="shrink-0 font-medium text-accent">Install</span>
+					</button>
+				))}
 
 			{running && (
 				<div
@@ -162,7 +165,10 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					data-testid="install-builtins-summary"
 				>
 					<p className="flex items-center gap-1.5 text-ink-muted">
-						<Check className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+						<Check
+							className="size-3.5 shrink-0 text-success"
+							aria-hidden="true"
+						/>
 						<span>{summarySentence(summary)}</span>
 					</p>
 					{/* Only the exceptions get a line each: a batch where everything

@@ -1,5 +1,5 @@
-import type { Agent, AgentViewerStatus } from "@shared/api/radient/types";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import type { Agent, AgentViewerStatus } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import type React from "react";
 import { useState } from "react";

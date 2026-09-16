@@ -151,7 +151,10 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 	ledger.length = 0;
 
 	let listCalls = 0;
-	const ok = <T,>(result: T): DesktopResponse => ({ status: 200, body: { result } });
+	const ok = <T,>(result: T): DesktopResponse => ({
+		status: 200,
+		body: { result },
+	});
 	/*
 	 * A Radient answer rides two envelopes, and the story has to reproduce both
 	 * or the page reads `undefined` as the query's data. The route answers
@@ -244,14 +247,18 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 				default:
 					// A story that starts issuing a fourth read fails loudly here
 					// rather than hanging on a promise nothing resolves.
-					throw new Error(`unexpected Radient operation in this story: ${operation}`);
+					throw new Error(
+						`unexpected Radient operation in this story: ${operation}`,
+					);
 			}
 		}
 		throw new Error(`unexpected desktop op in this story: ${request.op}`);
 	};
 
 	const page = window as unknown as {
-		api?: { desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> } };
+		api?: {
+			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
+		};
 	};
 	const api = page.api ?? {};
 	page.api = api;
@@ -369,7 +376,9 @@ export const PageChangeKeepsTheGrid: Story = {
 	},
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByRole("button", { name: "Next page" }));
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Next page" }),
+		);
 		await screen.findByText("Updating…");
 	},
 };

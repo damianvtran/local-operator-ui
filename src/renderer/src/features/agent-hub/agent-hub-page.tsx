@@ -22,8 +22,8 @@ import { useNavigate } from "react-router-dom";
 import { AgentCardContainer } from "./components/agent-card-container";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { categoryEntry } from "./components/agent-tags-and-categories";
-import { useDebouncedValue } from "./hooks/use-debounced-value";
 import { useAgentStatusesQuery } from "./hooks/use-agent-statuses-query";
+import { useDebouncedValue } from "./hooks/use-debounced-value";
 import {
 	type PublicAgentSort,
 	usePublicAgentsQuery,
@@ -50,14 +50,24 @@ const SORT_OPTIONS: {
 		sort: "download_count",
 		order: "desc",
 	},
-	{ value: "like_count:desc", label: "Most liked", sort: "like_count", order: "desc" },
+	{
+		value: "like_count:desc",
+		label: "Most liked",
+		sort: "like_count",
+		order: "desc",
+	},
 	{
 		value: "favourite_count:desc",
 		label: "Most favourited",
 		sort: "favourite_count",
 		order: "desc",
 	},
-	{ value: "created_at:desc", label: "Newest", sort: "created_at", order: "desc" },
+	{
+		value: "created_at:desc",
+		label: "Newest",
+		sort: "created_at",
+		order: "desc",
+	},
 	{
 		value: "updated_at:desc",
 		label: "Recently updated",
@@ -131,7 +141,9 @@ export const AgentHubPage: React.FC = () => {
 	// waits for the caret to settle.
 	const debouncedSearch = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
 
-	const sort = SORT_OPTIONS.find((option) => option.value === sortValue) ?? SORT_OPTIONS[0];
+	const sort =
+		SORT_OPTIONS.find((option) => option.value === sortValue) ??
+		SORT_OPTIONS[0];
 
 	const {
 		data: agentsData,
@@ -175,7 +187,9 @@ export const AgentHubPage: React.FC = () => {
 	const presentCategories = useMemo(
 		() => [
 			...new Set(
-				(agentsData?.records ?? []).flatMap((record) => record.categories ?? []),
+				(agentsData?.records ?? []).flatMap(
+					(record) => record.categories ?? [],
+				),
 			),
 		],
 		[agentsData],
@@ -310,7 +324,7 @@ export const AgentHubPage: React.FC = () => {
 						 * the SPACE is what stops the live region announcing
 						 * "30 agentsUpdating" — the two spans are one sentence.
 						 */}
-						{isRefreshing ? <>{" "}Updating…</> : null}
+						{isRefreshing ? <> Updating…</> : null}
 					</p>
 					{isLoading && (
 						<div
@@ -348,7 +362,11 @@ export const AgentHubPage: React.FC = () => {
 							 * treatments had it.
 							 */}
 							<div className="mt-2">
-								<Button variant="outline" size="sm" onClick={() => void refetch()}>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => void refetch()}
+								>
 									Try again
 								</Button>
 							</div>

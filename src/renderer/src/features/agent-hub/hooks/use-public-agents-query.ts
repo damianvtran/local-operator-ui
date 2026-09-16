@@ -1,9 +1,9 @@
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { listAgents } from "@shared/api/radient/agents-api";
 import type {
 	PaginatedAgentList,
 	RadientApiResponse,
 } from "@shared/api/radient/types";
-import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import {
 	type QueryClient,
 	keepPreviousData,

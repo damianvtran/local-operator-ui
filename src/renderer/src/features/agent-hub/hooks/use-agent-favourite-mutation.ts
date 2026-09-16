@@ -4,8 +4,8 @@ import {
 } from "@shared/api/radient/agents-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { patchPublicAgentCount } from "./use-public-agent-counts";
 import { patchAgentStatus } from "./use-agent-statuses-query";
+import { patchPublicAgentCount } from "./use-public-agent-counts";
 
 type UseAgentFavouriteMutationParams = {
 	agentId: string;
