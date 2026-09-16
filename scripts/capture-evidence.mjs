@@ -85,6 +85,16 @@ const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
 
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
+/**
+ * The line Chrome prints on stderr once its debug port is up.
+ *
+ * Hoisted out of the `stderr.on("data")` handler it is used in, which is the
+ * rule `lint/performance/useTopLevelRegex` states: a literal inside a callback
+ * is re-created on every chunk, and this handler is fed every line Chrome
+ * writes during boot.
+ */
+const DEBUG_PORT_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
+
 /*
  * The backend the app talks to, resolved the way the renderer resolves it:
  * `.env` if present, otherwise the schema's own default. Written out here it
@@ -2426,7 +2436,7 @@ const main = async () => {
 		);
 		chrome.stderr.on("data", (d) => {
 			buf += d.toString();
-			const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+			const m = buf.match(DEBUG_PORT_LINE);
 			if (m) {
 				clearTimeout(t);
 				resolve(m[1]);
