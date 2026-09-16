@@ -2118,6 +2118,36 @@ async function main() {
 						 * about boxes, so it is asserted from boxes: no chip may extend past
 						 * the tab's right edge (or before its left).
 						 */
+						/*
+						 * THE NOTCH, measured because nothing else measures it (review round 6,
+						 * MAJOR 1). It is 1px of 'canvas' at '-bottom-px', and for one round the
+						 * row-level clip removed it entirely on every active tab while every
+						 * check stayed green. A clip is an intersection with the padding boxes of
+						 * the overflow ancestors, so that is what this computes: if the notch's
+						 * box survives the intersection it paints.
+						 */
+						const notchPainted = () => {
+							const notch = box.querySelector('[data-tour-tag="browser-tab-notch"]');
+							if (!notch) return null;
+							const rect = notch.getBoundingClientRect();
+							let top = rect.top;
+							let bottom = rect.bottom;
+							let left = rect.left;
+							let right = rect.right;
+							for (let p = notch.parentElement; p; p = p.parentElement) {
+								if (getComputedStyle(p).overflow === 'visible') continue;
+								const pr = p.getBoundingClientRect();
+								top = Math.max(top, pr.top);
+								bottom = Math.min(bottom, pr.bottom);
+								left = Math.max(left, pr.left);
+								right = Math.min(right, pr.right);
+							}
+							return {
+								height: Math.round(rect.height),
+								width: Math.round(right - left),
+								painted: bottom - top >= 1 && right - left >= 1,
+							};
+						};
 						const tabBox = box.getBoundingClientRect();
 						const chipEls = [
 							...box.querySelectorAll('span'),
@@ -2129,10 +2159,12 @@ async function main() {
 							return rect.right > tabBox.right + 1 || rect.left < tabBox.left - 1;
 						}).length;
 						return {
+							tabId: tab.getAttribute('data-tab-id') ?? box.getAttribute('data-tab-id'),
 							active: tab.getAttribute('aria-selected') === 'true',
 							marked: !!marker,
 							chips,
 							chipsOutside: outside,
+							notch: notchPainted(),
 							markerInk: markerInk(),
 							tabWidth: Math.round(box.getBoundingClientRect().width),
 							titleBox: title ? Math.round(title.getBoundingClientRect().width) : null,
@@ -2202,6 +2234,41 @@ async function main() {
 						titleBox: row.titleBox,
 						active: row.active,
 					})),
+				},
+				null,
+				2,
+			),
+		);
+		/*
+		 * THE NOTCH IS PAINTED ON THE ACTIVE TAB, and only there (review round 6, MAJOR
+		 * 1). It is the 1px of the page's own ground that makes the active tab
+		 * continuous with the content area - design-approved, listed as shipped in this
+		 * PR's body, and measured by nothing until this check existed. A row-level
+		 * `overflow-hidden` removed it on every active tab for one round without a
+		 * single check noticing, which is the whole argument for asserting it here.
+		 */
+		const activeRows = crowded.rows.filter((row) => row.active);
+		check(
+			"the active tab's notch into the page is painted, and no inactive tab carries one",
+			activeRows.length >= 1 &&
+				activeRows.every((row) => row.notch !== null) &&
+				activeRows.every(
+					(row) => row.notch.height === 1 && row.notch.painted,
+				) &&
+				crowded.rows
+					.filter((row) => !row.active)
+					.every((row) => row.notch === null),
+			JSON.stringify(
+				{
+					active: activeRows.map((row) => ({
+						tabId: row.tabId,
+						notch: row.notch,
+						chips: row.chips,
+						tabWidth: row.tabWidth,
+					})),
+					inactiveWithNotch: crowded.rows
+						.filter((row) => !row.active && row.notch !== null)
+						.map((row) => row.tabId),
 				},
 				null,
 				2,

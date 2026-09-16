@@ -211,47 +211,65 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const waitingOrdinal = waiting[tab.tabId];
 						/*
 						 * THE FLOOR IS SIZED FOR THE CHIPS THE ROW ACTUALLY CARRIES, AND FOR THE
-						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW (review round 5, MAJOR and MINOR).
+						 * CLUSTER THE ACTIVE ONE CARRIES IN FLOW (review rounds 5 and 6).
 						 *
-						 * THE COMBINATIONS ARE ENUMERATED FROM THE REGISTRY, NOT FROM THE STORY. Round
-						 * 4 assumed the five markers were mutually exclusive; `Shared` is not exclusive
-						 * with `Agent`, it is IMPLIED by it - `handOver` sets `owner = "agent"` AND
-						 * `handedTo = sessionId` (`registry.ts:369-372`), `host.ts:549` projects
-						 * `handedOver`, and the two chips render on independent conditions, so every
-						 * handed-over tab carries both. `handOver` never clears `restored`, and
-						 * `failed` and a waiting `Request n` stack on top:
+						 * THE COMBINATIONS ARE ENUMERATED FROM THE REGISTRY, NOT FROM THE STORY.
+						 * Round 4 assumed the five markers were mutually exclusive; `Shared` is not
+						 * exclusive with `Agent`, it is IMPLIED by it - `handOver` sets
+						 * `owner = "agent"` AND `handedTo = sessionId` (`registry.ts:369-372`),
+						 * `host.ts:549` projects `handedOver`, and the two chips render on
+						 * independent conditions, so every handed-over tab carries both.
+						 * `revokeHandOver` clears both together; `restored` is set only at creation,
+						 * for a tab that is always user-owned, and is never cleared - so
+						 * `Shared => Agent` and `Agent AND Restored => Shared`, and `failed` and a
+						 * waiting `Request n` stack on either. Reachable, by count:
 						 *
-						 *   1-2 chips  Agent, Shared, Restored, Failed, Request n, in any of the pairs
-						 *              the registry can reach
-						 *   3 chips    Agent + Shared + (Failed | Request n), Restored + Failed +
-						 *              Request n
-						 *   4 chips    Agent + Shared + Failed + Request n   <- reachable
-						 *   5 chips    Restored + Agent + Shared + Failed + Request n   <- reachable
+						 *   1-2 chips  Agent, Shared, Restored, Failed, Request n, and the pairs
+						 *              those implications allow
+						 *   3 chips    Agent + Shared + (Failed | Request n),
+						 *              Agent + Shared + Restored,
+						 *              Agent + Failed + Request n,
+						 *              Restored + Failed + Request n
+						 *   4 chips    Agent + Shared + Failed + Request n,
+						 *              Agent + Shared + Restored + Failed,
+						 *              Agent + Shared + Restored + Request n
+						 *   5 chips    Restored + Agent + Shared + Failed + Request n
 						 *
-						 * MEASURED CHIP WIDTHS (round 4's figures, same `px-1` pill): Agent 43, Shared
-						 * 43, Restored 48, Failed 48, Request n 62. Against them, the four floors
-						 * below keep a >= 85px title - the number this file's own harness asserts - for
-						 * every row up to three chips, inactive or active, using 320px for the
-						 * inactive three-chip case: 320 - 32 (px-2) - 16 (mark) - 148 (chips) - 24 (4
-						 * gaps) = 116px. The ACTIVE row adds the in-flow cluster (two `icon-sm` at 28px
-						 * plus a 6px gap = 68px), which is why it takes one step more at every chip
-						 * count: 320 - 68 - 32 - 16 - 105 - 18 = 81px at two chips, which is why the
-						 * active two-chip row is `min-w-96` rather than `min-w-80`.
+						 * MEASURED CHIP WIDTHS (`px-1` pills): Agent 43, Shared 43, Restored 48,
+						 * Failed 48, Request n 62. The widest set at each count is therefore 62,
+						 * 105, 158, 196, 244. `px-2` is 16px TOTAL, the mark is 16px, and each of
+						 * the chips+1 gaps is 6px, so a row's title is
+						 * `floor - 16 - 16 - chips - 6 x (chips + 1)` and the active row pays a
+						 * further 68px for the cluster in flow plus the gap before it:
 						 *
-						 * THE FOUR- AND FIVE-CHIP ROWS ARE CONTAINED RATHER THAN SIZED, and that is the
-						 * deliberate half of this. `min-w-96` (384px) holds a four-chip row's title at
-						 * 384 - 32 - 16 - 196 - 24 = 116px; at five chips the chips alone are 244px, so
-						 * the title has 62px and the row is at its ceiling. Raising the ceiling further
-						 * would put one pathological state - restored, handed over, failed AND waiting
-						 * at once - ahead of every ordinary tab in the strip's scroll order, and the
-						 * alternative of dropping a chip would hide a state the design round approved.
-						 * So the guarantee for those rows is structural, not numeric: the row clips at
-						 * its own edge (`overflow-hidden` below) and never paints over its neighbour,
-						 * and the strip scrolls. Nothing about that weakens the chips that ARE sized:
-						 * every chip stays whole inside its tab's box.
+						 *   inactive   0:176->144  1:224->118  2:288->133  3:320->106  4:384->126
+						 *   active     0:224->124  1:320->146  2:384->161  3:384->102  4:416->90
+						 *
+						 * Every one of those clears the 85px this file promises, and it is the
+						 * ACTIVE four-chip row that sets the ceiling: `{Agent, Shared, Failed,
+						 * Request n}` is the tab a user clicks precisely BECAUSE it needs approval,
+						 * and at the standard `min-w-96` its title was 58px - under the 60px floor
+						 * the harness itself asserts - so that row takes the one step past the
+						 * spacing scale, `min-w-[26rem]`, and says so here rather than pretending a
+						 * standard step fits. Round 6, MAJOR 2.
+						 *
+						 * FIVE CHIPS ARE CONTAINED RATHER THAN SIZED, on both rows, and that is the
+						 * deliberate half. Fitting 244px of chips plus the mark, the gaps and (when
+						 * active) the cluster at 85px of title needs a 465px floor, and handing one
+						 * pathological state - restored, handed over, failed AND waiting at once -
+						 * that much of the strip's scroll order, ahead of every ordinary tab, is a
+						 * worse trade than the title yielding; dropping a chip would hide a state
+						 * the design round approved. So those rows sit at the ceiling and the
+						 * BUTTON clips at its own edge (above), which is what keeps a chip from
+						 * painting over the neighbouring tab - the `bg-canvas`-over-`bg-canvas`
+						 * defect design round 3 filed as MAJOR. At the widths measured here the
+						 * clip cannot fire: the widest reachable content is the active five-chip
+						 * row at 380px against its 416px floor, so it is a BACKSTOP for a sixth
+						 * marker or a wider chip, not the evidence for the sizes above - the
+						 * sizes are the evidence (review round 6, MINOR 2).
 						 *
 						 * Roles rather than computed pixels: the contract's spacing steps are the
-						 * vocabulary here.
+						 * vocabulary here, and the one arbitrary length is called out above.
 						 */
 						const chips = [
 							tab.owner === "agent",
@@ -261,13 +279,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							waitingOrdinal !== undefined,
 						].filter(Boolean).length;
 						const floor = active
-							? chips >= 3
-								? "min-w-96"
-								: chips === 2
+							? chips >= 4
+								? "min-w-[26rem]"
+								: chips === 3
 									? "min-w-96"
-									: chips === 1
-										? "min-w-80"
-										: "min-w-56"
+									: chips === 2
+										? "min-w-96"
+										: chips === 1
+											? "min-w-80"
+											: "min-w-56"
 							: chips >= 4
 								? "min-w-96"
 								: chips === 3
@@ -305,14 +325,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 * pays for the wider floor.
 										 */
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
-										// THE ROW CLIPS AT ITS OWN EDGE (review round 5, MAJOR). At four and five
-										// chips the floor above is a ceiling too, and the chips are `shrink-0`, so
-										// without this the row's content would paint over the neighbouring tab -
-										// the same `bg-canvas`-over-`bg-canvas` class of defect design round 3
-										// filed as MAJOR, in a state nothing photographs. Clipped rather than
-										// overlapped, and the strip scrolls, so the state is reachable by a user
-										// who scrolls to it.
-										"overflow-hidden",
 										floor,
 										active
 											? "border-control border-x border-t bg-canvas text-ink"
@@ -331,7 +343,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										role="tab"
 										aria-selected={active}
 										onClick={() => onActivate(tab.tabId)}
-										className="flex min-w-0 grow items-center gap-1.5 py-1.5 text-left"
+										/*
+										 * THE CLIP IS ON THE BUTTON, NOT ON THE ROW (review round 6, MAJOR 1). It
+										 * was on the row for one round, and the row is the notch's containing
+										 * block: `overflow: hidden` clips to the padding box, the row has no
+										 * bottom padding or border, and the notch sits at `-bottom-px` - so the
+										 * row-level clip removed it entirely, on every active tab, in every
+										 * theme, and no check noticed. The button holds the overflow-risk
+										 * content (mark, chips, title) and is a SIBLING of the notch, so
+										 * clipping here keeps the guarantee and leaves the notch painting.
+										 */
+										className="flex min-w-0 grow items-center gap-1.5 overflow-hidden py-1.5 text-left"
 										data-tour-tag="browser-tab"
 									>
 										<TabMark tab={tab} />
@@ -529,6 +551,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										// `border-b`: the rule continues everywhere except here.
 										<span
 											aria-hidden
+											data-tour-tag="browser-tab-notch"
 											className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-canvas"
 										/>
 									)}
