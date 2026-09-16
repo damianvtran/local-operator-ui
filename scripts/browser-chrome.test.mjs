@@ -1681,6 +1681,69 @@ test("one event is one state read, however many consumers are mounted", async ()
 	}
 });
 
+test("every in-order read publishes, so a transition detector cannot miss an intermediate state", async () => {
+	/*
+	 * THE DEFECT THIS PINS WAS MEASURED, not imagined: the first version of the store's
+	 * generation guard published only the NEWEST-STARTED read's result, and the built app
+	 * then failed `a withdrawn request is explained LIVE` in
+	 * `scripts/browser-chrome-proof.mjs` while the same check passed on the base commit.
+	 * The badge fell from 2 to 1 and the band explained nothing, because a request raised
+	 * and withdrawn while a read was in flight was never OBSERVED as live: the approval
+	 * memory reports entries that were live and are not (`reconcileResolved`), so an
+	 * intermediate state published away is a departure it cannot see.
+	 *
+	 * So the rule is "newer than the last PUBLISHED", not "the newest started": two reads
+	 * that land in order both publish, and only a result older than the newest published
+	 * one is discarded (which is what stops an older projection overwriting a newer one —
+	 * asserted by the superseded-read case in the earlier test).
+	 */
+	const previousWindow = globalThis.window;
+	let call = 0;
+	let releaseThird = null;
+	const tabs = (count) =>
+		Array.from({ length: count }, (_, index) => ({ tabId: index + 1 }));
+	globalThis.window = {
+		api: {
+			browser: {
+				state: () => {
+					call += 1;
+					// The subscription's own initial read, then the older read, then the
+					// newer one — released by hand, so the two are genuinely in flight
+					// together and the OLDER lands first.
+					if (call === 1) return Promise.resolve({ tabs: tabs(2) });
+					if (call === 2) return Promise.resolve({ tabs: tabs(3) });
+					return new Promise((resolve) => {
+						releaseThird = () => resolve({ tabs: tabs(1) });
+					});
+				},
+				onStateChanged: () => () => {},
+				onConsentChanged: () => () => {},
+			},
+		},
+	};
+	const seen = [];
+	const release = subscribeBrowserProjection(() =>
+		seen.push((readBrowserProjection().state?.tabs ?? []).length),
+	);
+	const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+	await settle();
+	const older = refreshBrowserProjection();
+	const newer = refreshBrowserProjection();
+	await older;
+	await settle();
+	if (!releaseThird) throw new Error("the newer read did not start");
+	releaseThird();
+	await newer;
+	await settle();
+	release();
+	globalThis.window = previousWindow;
+	assert.deepEqual(
+		seen,
+		[2, 3, 1],
+		"each ordered read published: the intermediate three-tab state was observable, so a withdrawal across it is detectable",
+	);
+});
+
 test("a failed state read is the READ slot's, and dismissing it clears only that", async () => {
 	const previousWindow = globalThis.window;
 	globalThis.window = {

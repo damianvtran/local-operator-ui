@@ -108,13 +108,25 @@ let readOnStart = false;
  * THE READ GENERATION, and it is a correctness guard this module owes its shared
  * snapshot rather than a nicety: a read is asynchronous, and two can be in flight
  * (an event arriving while the previous read is still awaiting main). Publishing
- * in completion order rather than start order lets an older projection overwrite
- * a newer one — the strip would then show a state main has already moved past,
- * with nothing to correct it until the next event. Only the newest-started read
- * may publish; a superseded one still RETURNS its value, because a caller's own
- * consequence of a read (the pending-URL note) is about the read it made.
+ * in COMPLETION order rather than in START order lets an older projection overwrite
+ * a newer one — the strip would then show a state main has already moved past, with
+ * nothing to correct it until the next event.
+ *
+ * SO A RESULT IS PUBLISHED IF IT IS NEWER THAN THE LAST ONE PUBLISHED — the highest
+ * generation that has been seen, not the highest that has been started. That
+ * distinction is the whole fix, and getting it wrong is measured rather than
+ * theoretical (QA, this branch): dropping every superseded read loses INTERMEDIATE
+ * states, and intermediate states are load-bearing for a consumer here. The approval
+ * memory is a TRANSITION DETECTOR — it reports an entry that was live and is not
+ * (`reconcileResolved`) — so a request that was raised and withdrawn while a read
+ * was in flight, with both reads coalesced into one publication, never appears to
+ * have existed at all: the badge fell and the band explained nothing, which is
+ * exactly the "why did the count change" feature §3.4 exists for. Every read that
+ * lands in order therefore publishes; only a result older than the newest published
+ * one is discarded, which is the case the guard is actually for.
  */
 let readGeneration = 0;
+let publishedGeneration = 0;
 
 function publish(next: BrowserProjectionSnapshot): void {
 	snapshot = next;
@@ -148,7 +160,8 @@ export async function refreshBrowserProjection(): Promise<BrowserChromeState | n
 	try {
 		const next = (await api.state()) as BrowserChromeState | null;
 		if (!next || !Array.isArray(next.tabs)) return null;
-		if (generation === readGeneration) {
+		if (generation > publishedGeneration) {
+			publishedGeneration = generation;
 			publish({ state: next, readError: null });
 		}
 		return next;
@@ -205,6 +218,9 @@ function stop(): void {
 	// never render a projection nobody is currently being told about.
 	readOnStart = false;
 	if (snapshot !== NO_SNAPSHOT) publish(NO_SNAPSHOT);
+	// The generations go with it: the next read is the first of a new subscription, so
+	// it has nothing to be older than.
+	publishedGeneration = 0;
 }
 
 /** The React binding: one subscription, one snapshot, however many consumers. */
