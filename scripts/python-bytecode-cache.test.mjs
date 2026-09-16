@@ -2311,23 +2311,34 @@ test("the shared child-environment helper states the python variables it wants",
 });
 
 /**
- * Every `.mjs` under `scripts/`, except this file.
+ * Every `.mjs`, `.cjs` or `.js` under `scripts/` and `bin/`, except this file.
  *
- * This file is excluded because its own sites are pinned by the table above,
- * with the fixture arm among them; scanning it here too would need a second,
- * weaker row for the same call site.
+ * The two roots are the whole harness surface: `scripts/` is the proof harnesses,
+ * evidence rigs and release gates, and `bin/` is the CLI shims those gates and the
+ * shipped package run. The extensions are all three because a rig may be written
+ * in any of them - measured at review round 2, 193 `.mjs`/`.cjs`/`.js` files under
+ * `scripts/` and 4 under `bin/`, and the scan covered only the `.mjs` ones under
+ * `scripts/` before that, which is a coverage claim wider than its coverage. There
+ * is no interpreter in any non-`.mjs` file today, so that was a latent gap rather
+ * than a live miss; widening it costs one predicate and closes it.
+ *
+ * This file is excluded because its own sites are pinned by the table above, with
+ * the fixture arm among them; scanning it here too would need a second, weaker row
+ * for the same call site.
  */
-function scriptSources() {
+function harnessSources() {
 	const here = fileURLToPath(import.meta.url);
 	const files = [];
 	const walk = (dir) => {
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			const child = join(dir, entry.name);
 			if (entry.isDirectory()) walk(child);
-			else if (entry.name.endsWith(".mjs") && child !== here) files.push(child);
+			else if (/\.(mjs|cjs|js)$/.test(entry.name) && child !== here) {
+				files.push(child);
+			}
 		}
 	};
-	walk(join(process.cwd(), "scripts"));
+	for (const root of ["scripts", "bin"]) walk(join(process.cwd(), root));
 	return files.sort();
 }
 
@@ -2422,7 +2433,7 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		name: "spawn",
 		index: 1,
 		env: /env:\s*pythonChildEnv\(\{/,
-		why: "the supervisor that spawns the backend and reaps it; its cache lands under the run's config root",
+		why: "the supervisor that spawns the backend and reaps it; its cache goes to this process's own temp scratch and never under the run's config root, which the backend reads for its serve records",
 	},
 ];
 
@@ -2435,27 +2446,49 @@ const HARNESS_PYTHON_SPAWN_SITES = [
  * and the daemon suite's zombie fixture all handed a real interpreter an
  * inherited environment, and under the field's ambient shape that wrote 35 `.pyc`
  * into a fixture `.app` while the suite stayed green. A rule that only one file
- * keeps is a rule the next file does not have, so the check is a scan over the
- * whole tree, and a new python spawn anywhere under `scripts/` fails here until
- * it states its environment.
+ * keeps is a rule the next file does not have, so the check is a scan over both
+ * harness roots, and a new python spawn in either fails here until it states its
+ * environment.
  *
- * The scan is textual and filtered on the command text naming a python, which is
- * what makes it exhaustive over the shape that matters: a site that starts a real
- * interpreter names one of `python3`, the resolved `python`, or a venv's
- * `bin/python`. The one thing it cannot see is a real interpreter whose path
- * contains none of those words, which is why every row also names the reason it is
- * here - and why a row's `why` is read by a human when a new site appears.
+ * WHAT THE SCAN PROVES, EXACTLY (review round 2, R4), because the first version of
+ * this paragraph claimed more than the code below it: it reads every
+ * `.mjs`/`.cjs`/`.js` file under `scripts/` and `bin/` and flags each child-process
+ * call site whose ARGUMENT TEXT names a python - `python3`, the resolved `python`,
+ * a venv's `bin/python`, a fixture's python stub. That is a text scan, so a
+ * command built at runtime (`spawn(resolveInterpreter())`) is invisible to it, and
+ * no text scan can close that. What bounds the gap is stated rather than assumed:
+ * `pythonChildEnv` is the only environment builder in these trees that places a
+ * bytecode cache anywhere, so an invisible site could only break the invariant by
+ * INHERITING an ambient prefix - and that is measured at the suite level rather
+ * than argued, by running the whole suite under an in-bundle ambient
+ * `PYTHONPYCACHEPREFIX` and counting what a sentinel bundle gains (0 on this head;
+ * the commands and output are in PR #244's body). A row that appears here is also
+ * read by a human when a new site shows up, and every row names its reason.
  */
-test("every python a harness in this tree starts states its own environment", () => {
-	const all = findChildProcessSites(scriptSources());
+test("every python a harness names in its spawn states its own environment", () => {
+	const all = findChildProcessSites(harnessSources());
 	assert.ok(
 		all.length > 0,
-		"the scan found no child-process call sites under scripts/ at all, which means the scan is broken rather than that the harnesses start nothing",
+		"the scan found no child-process call sites under scripts/ or bin/ at all, which means the scan is broken rather than that the harnesses start nothing",
 	);
+	// The coverage the name claims is asserted rather than trusted: both roots are
+	// read, and a non-`.mjs` file is among them - the 4 `.cjs`/`.js` files under
+	// `scripts/` and the 4 `.js` shims under `bin/` are exactly what the first
+	// version of this scan could not see (review round 2, R4).
+	const scanned = harnessSources().map((file) => relative(process.cwd(), file));
+	assert.ok(
+		scanned.some((file) => file.startsWith("bin/")),
+		`the scan must read bin/ as well as scripts/; it read ${scanned.length} files, none of them under bin/`,
+	);
+	assert.ok(
+		scanned.some((file) => /\.(cjs|js)$/.test(file)),
+		"the scan must read .cjs/.js files, not only .mjs",
+	);
+
 	const pythonSites = all.filter((site) => /python/i.test(site.text));
 	assert.ok(
 		pythonSites.length > 0,
-		"the scan found no python spawn under scripts/, which means its filter is broken rather than that the harnesses start none",
+		"the scan found no python-named spawn under scripts/ or bin/, which means its filter is broken rather than that the harnesses start none",
 	);
 
 	const key = (site) => `${site.file}#${site.name}#${site.index}`;
@@ -2465,7 +2498,7 @@ test("every python a harness in this tree starts states its own environment", ()
 	for (const site of pythonSites) {
 		assert.ok(
 			rows.has(key(site)),
-			`${site.file}:${site.line} ${site.name} #${site.index} starts a python and is not in HARNESS_PYTHON_SPAWN_SITES: ${site.text.replace(/\s+/g, " ").trim().slice(0, 140)}. Build its environment with pythonChildEnv from scripts/python-child-env.mjs - an inherited PYTHONPYCACHEPREFIX is how a harness wrote 19 .pyc into the operator's installed app.`,
+			`${site.file}:${site.line} ${site.name} #${site.index} names a python in its own argument text and is not in HARNESS_PYTHON_SPAWN_SITES: ${site.text.replace(/\s+/g, " ").trim().slice(0, 140)}. Build its environment with pythonChildEnv from scripts/python-child-env.mjs - an inherited PYTHONPYCACHEPREFIX is how a harness wrote 19 .pyc into the operator's installed app.`,
 		);
 	}
 	assert.deepEqual(
