@@ -527,7 +527,11 @@ const api = {
 	 */
 	browser: {
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
-		newTab: (): Promise<unknown> => ipcRenderer.invoke("browser-new-tab"),
+		/** `sessionId` attributes the tab to the conversation it was opened from
+		 * (design R1); `null` is a tab that belongs to no conversation, which is what
+		 * the route and a draft pane open. Main validates it rather than trusting it. */
+		newTab: (sessionId?: string | null): Promise<unknown> =>
+			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
 		closeTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tab", tabId),
 		activateTab: (tabId: number): Promise<unknown> =>

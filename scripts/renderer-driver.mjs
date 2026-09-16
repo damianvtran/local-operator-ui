@@ -2300,6 +2300,96 @@ async function sceneBrowserPane(cdp) {
 			"no close control on this projection, so the pane was not closed by a press",
 		);
 	}
+
+	/*
+	 * 8. A TAB OPENED FROM THIS CONVERSATION BELONGS TO IT (design R1).
+	 *
+	 * The pane's own `New tab` used to create a tab with `sessionId: null`, and null
+	 * is a tab no conversation's scope will ever show — the field the scope filter
+	 * reads (`tabsInScope`) was the one field the control did not set. All three
+	 * user-facing ways to open a tab did it, so the control that exists INSIDE a
+	 * conversation produced a tab that conversation could not see.
+	 *
+	 * This is the pane's own control, pressed for real, read out of the same
+	 * projection the pane reads. The strip's `+` is the control: the empty state's
+	 * button only renders when the conversation has no tabs, which is not this run's
+	 * state by the time this step is reached.
+	 *
+	 * The step re-opens the pane first: the block above closed it to read the
+	 * caret's return, which is the state a user's last action left behind.
+	 */
+	if (conversation !== null) {
+		const reopen = await verb(cdp, "state");
+		if (reopen.browserPaneOpen !== true) {
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="browser-pane-trigger"]',
+			});
+		}
+		// The pane's own lens, so the tab this opens is one the pane MUST show rather
+		// than one that merely exists in the pool.
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-pane-scope-conversation"]',
+		});
+		const tabsNow = () =>
+			cdp.evaluate(
+				"window.api.browser.state().then((state) => (state?.tabs ?? []).map((tab) => ({ tabId: tab.tabId, sessionId: tab.sessionId ?? null, owner: tab.owner })))",
+			);
+		const before = await tabsNow();
+		/*
+		 * THE LABEL IS THE DISCLOSURE (R1's copy rule, and the reason the two hosts
+		 * differ): a `+` labelled `New tab` in both would leave where the tab lands to
+		 * be discovered by switching the scope and finding it gone. Read off the
+		 * control rather than out of the source, because the claim is about what a
+		 * screen reader announces.
+		 */
+		const newTabLabel = await cdp.evaluate(
+			`document.querySelector('[data-tour-tag="browser-new-tab"]')?.getAttribute('aria-label') ?? null`,
+		);
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="browser-new-tab"]',
+		});
+		const opened = await readUntil(
+			tabsNow,
+			(tabs) => tabs.length === before.length + 1,
+		);
+		const created = opened.find(
+			(tab) => !before.some((was) => was.tabId === tab.tabId),
+		);
+		const strip = await cdp.evaluate(
+			`Array.from(document.querySelectorAll('[data-tab-id]')).map((node) => Number(node.getAttribute('data-tab-id')))`,
+		);
+		const frame = await captureSettled(cdp, "browser-pane-new-tab-attributed");
+		note(
+			"new tab in the pane's conversation scope",
+			JSON.stringify({
+				conversation,
+				newTabLabel,
+				before,
+				opened,
+				created,
+				strip,
+			}),
+		);
+		check(
+			"a tab the user opens in a conversation is attributed to it, and the strip in that scope shows it (R1)",
+			created !== undefined &&
+				created.sessionId === conversation &&
+				created.owner === "user" &&
+				strip.includes(created.tabId),
+			`conversation ${conversation}; created ${JSON.stringify(created)}; strip ${JSON.stringify(strip)}`,
+		);
+		check(
+			"and the control said where the tab would land",
+			newTabLabel === "New tab in this conversation",
+			`aria-label ${JSON.stringify(newTabLabel)}`,
+		);
+		note("frame", JSON.stringify(frame));
+	} else {
+		note(
+			"the attribution check not run",
+			"no conversation is open, so there is nothing for a new tab to be attributed to",
+		);
+	}
 }
 
 async function sceneNewChat(cdp) {

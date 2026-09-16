@@ -253,6 +253,14 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					key={requestScope === "all" ? "all" : requestScope.sessionId}
 					tabScope={scope}
 					requestScope={requestScope}
+					// THE HOST'S OWN CONVERSATION, which is not `scope` (design R1): the scope
+					// is the lens the user chose and this is which conversation the pane is,
+					// so a tab opened while the user is reading All tabs still lands in the
+					// conversation they opened it from. On a draft there is no conversation to
+					// attribute to, so a draft opens an unattributed tab and the control's
+					// label says so (`newTabLabel` in `browser-surface.tsx` reads this same
+					// value).
+					hostSessionId={sessionId}
 					// This host's own evidence tags, so a run can say which host it drove
 					// (spec 9's item 4: the hosts never co-mount, but a test still has to
 					// know which one it is driving).

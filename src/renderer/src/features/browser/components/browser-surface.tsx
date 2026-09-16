@@ -143,6 +143,22 @@ export interface BrowserSurfaceProps {
 	 * other half of `approvalHeaderLabel` (`browser-pane.tsx` states the pair).
 	 */
 	requestScope: SurfaceScope;
+	/**
+	 * The conversation THIS HOST belongs to, or `null` for a host that is not one.
+	 *
+	 * SEPARATE FROM `tabScope`, and the design's R1 is the reason: `tabScope` is a
+	 * LENS over the pool (which tabs are listed) and this is an ORIGIN (which
+	 * conversation the host is). The scope switch changes the first and must never
+	 * change the second — a lens that changed what `New tab` did would mean a tab
+	 * opened while reading All tabs could not be found after switching back to This
+	 * conversation, which is the half-truth class this feature's copy standard
+	 * exists to prevent.
+	 *
+	 * So a tab the user opens here is attributed to this conversation, and the pane
+	 * on a DRAFT (`sessionId === null`) opens an unattributed tab like the route's,
+	 * because a draft is not a conversation to attribute anything to.
+	 */
+	hostSessionId: string | null;
 	/** This host's own evidence tag, so a run can say which host it drove (§9's
 	 * item 4: the hosts never co-mount, but a test has to know which one it is
 	 * driving, and PR 2's pane passes its own). */
@@ -178,12 +194,30 @@ const DEFAULT_APPROVAL_HEADER = defaultApprovalHeaderLabel;
 export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	tabScope,
 	requestScope,
+	hostSessionId,
 	surfaceTag,
 	dockSurfaceTag,
 	approvalHeaderLabel = DEFAULT_APPROVAL_HEADER,
 	onShowAllTabs,
 }) => {
 	const chrome = useBrowserChrome();
+	/**
+	 * What the two `New tab` controls call themselves, from ONE rule.
+	 *
+	 * The label has to name where the tab will land, because that is the only thing
+	 * the user cannot see: in a conversation the tab is attributed to it and will
+	 * appear in This conversation, on the route or a draft it is attributed to
+	 * nothing and will not. A label that said `New tab` in both places would leave
+	 * the difference to be discovered by switching the scope and finding the tab
+	 * gone, which is exactly the surprise R1 exists to remove.
+	 *
+	 * `"New tab in this conversation"` is long for the strip's `+`, and that is
+	 * what `aria-label` is for: the glyph is unchanged and the accessible name is
+	 * the sentence.
+	 */
+	const newTabLabel = hostSessionId
+		? "New tab in this conversation"
+		: "New tab";
 	const suppressed = useBrowserViewSuppressed();
 	const suppressedBy = useSuppressedOverlayIds();
 	const contentRef = useRef<HTMLDivElement | null>(null);
@@ -451,7 +485,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				waiting={queue.waiting}
 				onActivate={(tabId) => void chrome.activateTab(tabId)}
 				onClose={(tabId) => void chrome.closeTab(tabId)}
-				onNewTab={() => void chrome.newTab()}
+				onNewTab={() => void chrome.newTab(hostSessionId)}
+				newTabLabel={newTabLabel}
 				onHandOver={(tab) => setHandOverTab(tab)}
 				onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
 			/>
@@ -514,7 +549,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							const url = blockedPopup.url;
 							setBlockedPopup(null);
 							void runBusy(async () => {
-								await chrome.newTab();
+								await chrome.newTab(hostSessionId);
 								await chrome.navigate(url);
 							});
 						}}
@@ -587,12 +622,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						</div>
 					)}
 					{state && tabs.length === 0 && (
-						// ONE ACTION, ONE LABEL (design round 3, D19). The strip's own `+` is
-						// `aria-label="New tab"`, so that is the label the feature already tells the
-						// user to look for; the EMPHASIS differs between this branch and the next -
-						// primary when there is nothing else to do, outline when the real next move
-						// is to pick a tab above - and that is deliberate rather than an
-						// inconsistency to iron out.
+						// ONE ACTION, ONE LABEL (design round 3, D19), and the label now names WHERE the
+						// tab will land (design R1): the strip's own `+` carries the same
+						// `aria-label`, so the word the user is told to look for is the word they find
+						// in both branches — and in a conversation it says the tab is this
+						// conversation's, which is the one thing about the action they cannot see.
+						// The EMPHASIS differs between this branch and the next - primary when there
+						// is nothing else to do, outline when the real next move is to pick a tab
+						// above - and that is deliberate rather than an inconsistency to iron out.
 						//
 						// TWO ACTIONS IN THE SCOPED BRANCH, and they are two DIFFERENT actions rather
 						// than the same one twice (spec 7.2): `Show all tabs` widens the LIST and
@@ -608,8 +645,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								<p className="text-body text-ink-muted">No tabs are open.</p>
 							) : (
 								<p className="text-body text-ink-muted">
-									No browser tabs in this conversation yet. A tab an agent opens
-									appears here while it works.
+									No browser tabs in this conversation yet. Tabs opened here,
+									and tabs an agent opens while it works, appear here.
 								</p>
 							)}
 							<div className="flex items-center gap-2">
@@ -626,9 +663,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								<Button
 									variant={tabScope === "all" ? "primary" : "outline"}
 									size="sm"
-									onClick={() => void chrome.newTab()}
+									onClick={() => void chrome.newTab(hostSessionId)}
 								>
-									New tab
+									{newTabLabel}
 								</Button>
 							</div>
 						</div>
@@ -646,9 +683,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={() => void chrome.newTab()}
+								onClick={() => void chrome.newTab(hostSessionId)}
 							>
-								New tab
+								{newTabLabel}
 							</Button>
 						</div>
 					)}

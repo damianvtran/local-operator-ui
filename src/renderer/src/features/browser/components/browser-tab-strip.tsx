@@ -92,6 +92,12 @@ export interface BrowserTabStripProps {
 	onActivate: (tabId: number) => void;
 	onClose: (tabId: number) => void;
 	onNewTab: () => void;
+	/** What the `+` calls itself. The host's own sentence, because only the host
+	 * knows whether a tab opened here is attributed to a conversation (design R1):
+	 * a `+` labelled `New tab` in both hosts would leave the difference to be
+	 * discovered by switching the scope and finding the tab gone. Defaulted so a
+	 * story or a test that does not care passes nothing. */
+	newTabLabel?: string;
 	onHandOver: (tab: BrowserTabView) => void;
 	onRevokeHandOver: (tabId: number) => void;
 }
@@ -161,6 +167,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	tabs,
 	activeTabId,
 	waiting,
+	newTabLabel = "New tab",
 	onActivate,
 	onClose,
 	onNewTab,
@@ -835,11 +842,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					   already offers `New tab` under the same label, and two controls 270px
 					   apart that do the same thing is the duplication the empty state's own
 					   comment forbids. */
-					<Tooltip content="New tab">
+					<Tooltip content={newTabLabel}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="New tab"
+							aria-label={newTabLabel}
 							onClick={onNewTab}
 							data-tour-tag="browser-new-tab"
 						>

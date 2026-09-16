@@ -170,7 +170,20 @@ export interface BrowserChrome {
 	dismissError: () => void;
 	available: boolean;
 	refresh: () => Promise<void>;
-	newTab: () => Promise<void>;
+	/**
+	 * Open a tab, attributed to a conversation when the host has one (design R1).
+	 *
+	 * THE ARGUMENT AND NOT HOOK STATE, deliberately: the attribution target is the
+	 * HOST's conversation, so it is the host that knows it and there is one call site
+	 * per control. A hook that read a session id from state would need a second place
+	 * to decide which conversation a tab belongs to, which is the one thing this
+	 * change's design forbids.
+	 *
+	 * `null` is a real and common argument: the route, and the pane on a draft, open
+	 * tabs that belong to no conversation. It means the same thing to main as an
+	 * absent argument — an unattributed, user-owned tab.
+	 */
+	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<void>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
@@ -406,7 +419,7 @@ export function useBrowserChrome(): BrowserChrome {
 			dismissError,
 			available,
 			refresh,
-			newTab: () => run(() => api?.newTab()),
+			newTab: (sessionId) => run(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			activateTab: (tabId) => run(() => api?.activateTab(tabId)),
 			navigate: (url) => {
