@@ -18,13 +18,25 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const guard = fileURLToPath(
 	new URL("./evidence-run-guard.py", import.meta.url),
 );
-const env = Object.fromEntries(
-	Object.entries(process.env).filter(([key]) => !key.startsWith("CMUX_")),
-);
+/*
+ * One environment for every python this file starts, and it states the python
+ * variables rather than inheriting them (scripts/python-child-env.mjs): these
+ * spawns are real interpreters, and the ambient `PYTHONPYCACHEPREFIX` of an
+ * agent shell has pointed inside the operator's installed app, which is how a
+ * harness wrote 19 `.pyc` into it. The `CMUX_*` scrub stays - an inherited
+ * `CMUX_WORKSPACE_ID` once let a headless test rename the operator's real cmux
+ * workspaces - and the guard's own node child inherits both decisions.
+ */
+const env = pythonChildEnv({
+	base: Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("CMUX_")),
+	),
+});
 
 function fixture(t) {
 	const root = realpathSync(
@@ -191,6 +203,14 @@ test(
 			 * stubbed here either, for the same reason as above.
 			 */
 			"entry-point.mjs",
+			/*
+			 * The shared child-environment helper. `check-evidence.mjs` builds the
+			 * environment of the python guard it spawns with it (so the spawn states its
+			 * `PYTHON*` variables instead of inheriting them), which is one more module
+			 * edge in the relocated set - and the same failure without it: the copy does
+			 * not import at all, loudly, before it reads anything.
+			 */
+			"python-child-env.mjs",
 		]) {
 			copyFileSync(join(dirname(guard), name), join(scripts, name));
 		}
@@ -323,7 +343,10 @@ test("an unavailable POSIX locking module names the platform, not a module", (t)
 		{ encoding: "utf8", env, timeout: 5000 },
 	);
 	assert.equal(blocked.status, 1, blocked.stderr);
-	assert.match(blocked.stderr, /BLOCKED: Python 3 with POSIX locking is required/);
+	assert.match(
+		blocked.stderr,
+		/BLOCKED: Python 3 with POSIX locking is required/,
+	);
 	assert.match(blocked.stderr, /No frames checked/);
 	assert.match(
 		blocked.stderr,

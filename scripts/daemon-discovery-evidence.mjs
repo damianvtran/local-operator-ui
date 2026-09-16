@@ -33,6 +33,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = mkdtempSync(join(tmpdir(), "lop-ui-daemon-evidence-"));
@@ -770,7 +771,10 @@ try {
 	const adoptedRoot = mkdtempSync(join(tmpdir(), "lop-ui-daemon-adopted-"));
 	const adoptedRunDir = join(adoptedRoot, "run", "serve");
 	mkdirSync(adoptedRunDir, { recursive: true });
-	const adoptedDaemon = startRealDaemon("daemon 3 (adopted at startup)", adoptedRoot);
+	const adoptedDaemon = startRealDaemon(
+		"daemon 3 (adopted at startup)",
+		adoptedRoot,
+	);
 	const adoptedRecord = await waitForRecord(
 		adoptedDaemon.child,
 		30_000,
@@ -988,7 +992,11 @@ try {
 			"-c",
 			"import os, sys, time\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nprint(pid, flush=True)\ntime.sleep(120)\n",
 		],
-		{ stdio: ["ignore", "pipe", "pipe"] },
+		// A real interpreter, so its environment is stated rather than inherited:
+		// the ambient `PYTHONPYCACHEPREFIX` of an agent shell has pointed inside
+		// the operator's installed app, and a harness that spreads `process.env`
+		// writes a bytecode cache into it (see scripts/python-child-env.mjs).
+		{ env: pythonChildEnv(), stdio: ["ignore", "pipe", "pipe"] },
 	);
 	children.push(zombieParent);
 	let zombiePidRaw = "";
