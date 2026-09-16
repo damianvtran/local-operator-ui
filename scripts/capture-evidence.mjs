@@ -85,6 +85,16 @@ const ALLOW_BACKEND = ARGS.includes("--allow-backend") && PARTIAL;
 
 const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
 
+/**
+ * The line Chrome prints on stderr once its debug port is up.
+ *
+ * Hoisted out of the `stderr.on("data")` handler it is used in, which is the
+ * rule `lint/performance/useTopLevelRegex` states: a literal inside a callback
+ * is re-created on every chunk, and this handler is fed every line Chrome
+ * writes during boot.
+ */
+const DEBUG_PORT_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
+
 /*
  * The backend the app talks to, resolved the way the renderer resolves it:
  * `.env` if present, otherwise the schema's own default. Written out here it
@@ -567,6 +577,22 @@ export const STORIES = [
 	   pixels in the middle are. */
 	["chat-tool-rows--narrow", 560, 276],
 	["chat-tool-rows--working", 1280, 900],
+	/*
+	 * The compaction pass, before and after. The BEFORE frame is the change
+	 * itself: `/compact` used to be answered by a modal dialog, and the pass was
+	 * invisible in the transcript; the rung is now the only liveness statement
+	 * the surface makes about it, and the AFTER frame is what replaces the dialog
+	 * once the pass settles (the reducer's own info line, with the token counts).
+	 * Sized to the two rows and the rung, for the reason `working-labels` is: at
+	 * 900 tall the frame is mostly ground and `check-evidence`'s uniformity
+	 * ceiling rejects it.
+	 */
+	["chat-tool-rows--compacting-rung", 1280, 300],
+	["chat-tool-rows--compacting-settled", 1280, 300],
+	["chat-tool-rows--compacting-settled-unchanged", 1280, 300],
+	/* The third ending, and the one the dialog used to own: a pass that did
+	   NOT run. Added by the round that gave the refusal a row. */
+	["chat-tool-rows--compacting-refused", 1280, 300],
 	["chat-tool-rows--working-labels", 760, 300],
 	/* The `write`/`edit` diff body: the expansion the TUI shows in place of the
 	   arguments. Captured at the height the story declares, because the frame IS
@@ -1803,7 +1829,13 @@ export const STORIES = [
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
 	/* A command typed into a sentence, the list above the prose. */
-	["chat-slash-completion--inline-mid-draft", 768, 340],
+	/* The mid-draft state round-1 D1 judged AND the state the fix puts in its
+	   place, as the two cases of one board — the after-picture is absence, and a
+	   lone composer story counts five elements against this rig's floor of nine,
+	   so a board is the only shape that can carry it (round 2, D5). Then the
+	   `/compact` row a reader meets when they type `/comp`. */
+	["chat-slash-completion--inline-mid-draft-pair", 768, 640],
+	["chat-slash-completion--compact-row", 768, 340],
 	/* The state a name pick produces: list closed, caret after the space. */
 	["chat-slash-completion--name-list-completed", 768, 260],
 	/* A long list: the popup keeps its own scroll at its row cap. */
@@ -2414,7 +2446,7 @@ const main = async () => {
 		);
 		chrome.stderr.on("data", (d) => {
 			buf += d.toString();
-			const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+			const m = buf.match(DEBUG_PORT_LINE);
 			if (m) {
 				clearTimeout(t);
 				resolve(m[1]);

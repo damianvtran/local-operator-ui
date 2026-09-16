@@ -86,27 +86,47 @@ export type WorkingLineProps = {
 	 * one phase however many times its label is re-derived.
 	 */
 	phase: string;
+	/**
+	 * When this phase began, when the caller knows it.
+	 *
+	 * The clock's anchor is the PHASE's start, not this component's mount: a
+	 * re-mount mid-phase would otherwise restart a duration that is the phase's
+	 * own, and a still of the row would be a function of when it was taken
+	 * (design round 2, D3). Absent means "the caller has no better answer than
+	 * now", which is the shape every phase but a compaction has.
+	 */
+	startedAt?: number;
 	className?: string;
 };
 
 export const WorkingLine = ({
 	activity,
 	phase,
+	startedAt,
 	className,
 }: WorkingLineProps) => {
 	const [frame, setFrame] = useState(0);
-	const [elapsed, setElapsed] = useState(0);
+	/*
+	 * Seeded from the phase's own start when the caller knows it, so the FIRST
+	 * frame shows the age the phase actually has: the clock below is an interval,
+	 * so a row captured before its first tick rendered `0s` however long the
+	 * phase had been running — which is why this row's frames were a function of
+	 * the shutter's timing rather than of the state (design round 2, D3).
+	 */
+	const [elapsed, setElapsed] = useState(() =>
+		startedAt === undefined ? 0 : Math.floor((Date.now() - startedAt) / 1000),
+	);
 	// Read in JS because the thing being suppressed is a JS timer. The Tailwind
 	// variant carrying the same query is `motion-reduce:`, and the two have to
 	// move together — but no variant can stop an interval.
 	const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 	// Wall-clock start of the phase, held in a ref so a re-render for a label
 	// change (which happens on every tool settling in a batch) cannot reset it.
-	const started = useRef(Date.now());
+	const started = useRef(startedAt ?? Date.now());
 	const currentPhase = useRef(phase);
 	if (currentPhase.current !== phase) {
 		currentPhase.current = phase;
-		started.current = Date.now();
+		started.current = startedAt ?? Date.now();
 		// Render the new phase at 0s rather than one tick late: the first frame
 		// of a phase is the one a reader is most likely to be looking at.
 		setElapsed(0);

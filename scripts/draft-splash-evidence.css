@@ -47,6 +47,6 @@ body,
 	left: -20000px;
 	width: 600px;
 	margin: 0;
-	font: 11px/1.4 ui-monospace, monospace;
+	font: 11px / 1.4 ui-monospace, monospace;
 	white-space: pre-wrap;
 }

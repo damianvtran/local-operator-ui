@@ -91,6 +91,7 @@ import {
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_STORE_TIMEOUT_MS,
+	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
 	type CancelledToken,
 	type Capture,
@@ -1088,6 +1089,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const cancelledToken = useRef<CancelledToken | null>(null);
 		/*
+		 * The token the PICKER wrote into the box, as the run text a later draft still
+		 * contains, or `null`. The counterpart of `cancelledToken` for the other
+		 * gesture that makes a word the dispatcher's: a pick is a command wherever it
+		 * sits (the operator's own rule), and nothing in the buffer's TEXT distinguishes
+		 * a token the picker inserted from one typed by hand — so the record is the
+		 * distinction, taken where the pick happens.
+		 */
+		const pickedToken = useRef<string | null>(null);
+		/*
 		 * Set when a submit has succeeded, so the payload map is retired with the
 		 * BUFFER rather than ahead of it. Clearing the map first left a window in
 		 * which the raw `[Credential #1, 19 chars]` painted un-pilled and an Enter
@@ -1600,9 +1610,53 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * from a whole-buffer replacement somebody else made.
 				 */
 				captureOwnedBuffer.current = next.buffer;
-				// An armed capture is a NEW gesture: whatever the operator cancelled
-				// before, this is not it any more.
-				if (next.capture.arm) cancelledToken.current = null;
+				/*
+				 * AN ARM DOES NOT RETIRE THE GESTURE RECORD, and this is the difference
+				 * between the app and the harness (QA round 8, Q16). The arm is the
+				 * token's OWN consequence — the pick writes the token and arms it, and a
+				 * keystroke after a cancelled token re-syncs the same arm — so clearing
+				 * the record here meant a real edit that MOVED the token arrived at the
+				 * planner as a word nobody had touched: prose, sent, with the secret in
+				 * it. `#238`'s property is the reason the record must survive instead: a
+				 * token that reaches the dispatcher has its arguments REFUSED, so a
+				 * secret can never land in command text.
+				 *
+				 * What still retires the record: a new Escape (a new cancel writes its
+				 * own), a conversation switch, and a draft that no longer contains the
+				 * run the gesture left — the last two below, because the record describes
+				 * a token that is still in the box.
+				 */
+				/*
+				 * UNPINNED, and stated so rather than left looking pinned (review rounds
+				 * 11/12): this prune and the `lastIndex` reset above are both fixed-but-
+				 * unpinned. Removing the prune leaves the suite green because the harness's
+				 * edit path never produces the buffer state the app reaches (a masked
+				 * citation, or the token with its trailing space consumed), and removing
+				 * the reset leaves it green because the module's own readers reset the same
+				 * shared regex first — the reset is defence in depth. The seam's own rule,
+				 * below, IS pinned (round 12's tail case fails on the untrimmed seam).
+				 *
+				 * The record lives as long as the token it describes is still in the box,
+				 * and the test is on the token's WORD rather than the run it was recorded
+				 * with: the run carries the token's trailing space, so the ordinary buffer
+				 * an operator ends up with — `/credential SECRET`, or the masked citation —
+				 * does not contain it, and testing the run cleared the record at the first
+				 * real edit (QA round 9, Q16: the draft was then prose and the secret went
+				 * out as message text). The ARM is not that event either: it is the token's
+				 * own consequence, which is why it clears its sibling and not this.
+				 */
+				if (
+					pickedToken.current !== null &&
+					!next.buffer.includes(pickedToken.current.trim())
+				) {
+					pickedToken.current = null;
+				}
+				if (
+					cancelledToken.current !== null &&
+					!next.buffer.includes(cancelledToken.current.text.trim())
+				) {
+					cancelledToken.current = null;
+				}
 				setCapture(next.capture);
 				setNewMessage(next.buffer);
 				persistDraft(next.capture, next.buffer);
@@ -1670,7 +1724,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			payloadsRef.current.clear();
 			nextIndexRef.current = 1;
 			retirePayloads.current = false;
+			/*
+			 * BOTH gesture records, together: they are the same kind of fact — which
+			 * tokens THIS box put there — and clearing one without the other left a
+			 * typed draft in the next conversation planned as a pick (review round 10,
+			 * MINOR-1: `please store /credential mysecretname` answered `splice`).
+			 */
 			cancelledToken.current = null;
+			pickedToken.current = null;
 			setDisclosure(null);
 		}, [conversationId, setCapture, setDisclosure]);
 
@@ -2117,13 +2178,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * is ever spliced on a path that could not run it.
 		 */
 		const planFor = useCallback(
-			(draft: string, at: number) =>
+			(draft: string, at: number, gesture: "typed" | "pick" = "typed") =>
 				planSlashSubmission({
+					gesture,
 					draft,
 					caret: at,
 					commandNames: slash.commandNames,
 					promptCommands: slash.promptCommands,
+					// The two halves of "this command's trailing text is its
+					// argument": a free-text prompt, or a value chosen from a list.
+					// Both are registry-derived; the planner takes the union — and
+					// `armedOnlyCommands` narrows it further, from main's own arming
+					// work, which this branch's rule composes with rather than
+					// replaces.
 					armedOnlyCommands: slash.armedOnlyCommands,
+					valueArgumentCommands: slash.valueArgumentCommands,
+					// The registry's own declaration of an argument, which is the
+					// only one of the three vocabularies `/login`, `/logout`,
+					// `/credential`, `/stop`, `/fast` and `/move` appear in.
+					argumentCommands: slash.argumentCommands,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -2131,6 +2204,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.commandNames,
 				slash.promptCommands,
 				slash.armedOnlyCommands,
+				slash.valueArgumentCommands,
+				slash.argumentCommands,
 				slash.nameListCommands,
 				slash.available,
 				onSlashCommand,
@@ -2183,12 +2258,90 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * picker, the door §1 keeps open for the store, the list and the forget
 		 * verbs.
 		 */
-		const planForDraft = useCallback(
-			(draft: string, at: number): SlashSubmissionPlan =>
+		/*
+		 * WHICH GESTURE A DRAFT CARRIES, as a fact this box observed rather than one
+		 * the buffer's text can imply.
+		 *
+		 * A token the operator PICKED is a command wherever it sits, and so is one this
+		 * box CANCELLED and an edit then moved — the half of the operator's own report
+		 * he kept ("if you don't actually hit enter on the suggested command or click
+		 * it"), and the reason #238's property holds: a token that reaches the
+		 * dispatcher has its arguments refused, so a secret can never land in command
+		 * text. A word merely TYPED is prose unless it is the whole draft, or opens one
+		 * for a command that consumes text — the planner's own rule, untouched here.
+		 *
+		 * THE TEST IS ON THE TOKEN'S WORD, not on the run the record was built with:
+		 * `credential-capture.ts` records `buffer.slice(tokenStart, span.start)` — the
+		 * token PLUS its separator, `"/credential "` — so a draft that ends in the bare
+		 * token would fail a run-shaped test, fall through to prose, and send the secret
+		 * as message text (review round 12, MAJOR). The empty-text record is excluded
+		 * deliberately: the same module builds `text: ""` on its other branch, and
+		 * `includes("")` is true for EVERY draft, so an unguarded test would make any
+		 * draft the record's.
+		 */
+		/** The word of the record that owns a token in this draft, or null. */
+		const recordWord = useCallback((draft: string): string | null => {
+			const cancelled = cancelledToken.current;
+			if (
+				cancelled !== null &&
+				cancelled.text.trim().length > 0 &&
+				draft.includes(cancelled.text.trim())
+			) {
+				return cancelled.text.trim();
+			}
+			const pick = pickedToken.current;
+			if (
+				pick !== null &&
+				pick.trim().length > 0 &&
+				draft.includes(pick.trim())
+			) {
+				return pick.trim();
+			}
+			return null;
+		}, []);
+		const gestureFor = useCallback(
+			(draft: string): "send" | "pick" | "typed" =>
 				holdsCancelledToken(draft, cancelledToken.current)
-					? { kind: "send" }
-					: planFor(draft, at),
-			[planFor],
+					? "send"
+					: recordWord(draft) === null
+						? "typed"
+						: "pick",
+			[recordWord],
+		);
+		const planForDraft = useCallback(
+			(draft: string, at: number): SlashSubmissionPlan => {
+				const gesture = gestureFor(draft);
+				if (gesture === "send") return { kind: "send" };
+				const plan =
+					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
+				if (gesture !== "pick" || plan.kind !== "send") return plan;
+				/*
+				 * THE CARET IS NOT THE ONLY KEY TO A TOKEN THE BOX WROTE (QA round 10).
+				 *
+				 * `slashTokenSpan` claims the token at the CARET, and `activeSlash`'s claim
+				 * branch returns the running candidate — `null` — when the caret sits exactly
+				 * AT the claiming token's slash (`column > index` is false at equality). The
+				 * caret is left there by the ordinary gesture of typing a prefix in front of
+				 * the token, and the planner then answered `send` three lines before its own
+				 * gesture, span and pick rules were consulted: prose, sent, secret in the
+				 * transcript. So when the caret-led plan finds nothing AND the box recorded
+				 * the gesture itself, the fallback points the planner at the token's own
+				 * position — a positional fact the box holds, which the caret could not
+				 * supply.
+				 *
+				 * WHAT DECIDES IS THE RECORD, which is why the typed rule is untouched: a
+				 * merely typed word has no record, this branch is unreachable for it, and its
+				 * caret rule stands exactly as it was (a typed mid-draft word stays prose, and
+				 * a whole draft runs from any caret). `holdsCancelledToken` still answers
+				 * `send` first, so M6 is untouched.
+				 */
+				const word = recordWord(draft);
+				if (word === null) return plan;
+				const index = draft.indexOf(word);
+				if (index < 0) return plan;
+				return planFor(draft, index + word.length, "pick");
+			},
+			[gestureFor, planFor, recordWord],
 		);
 
 		/**
@@ -2309,6 +2462,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (!completion) return;
 				slash.close();
+				/*
+				 * The pick's OWN record, taken here rather than beside the run: Tab
+				 * completes the word without running it and Enter/click runs it, and BOTH
+				 * are this box writing the token — which is the fact the planner needs,
+				 * because a buffer's text cannot say whether a token was picked or typed.
+				 * A pick of any other row clears it, since that write is not this token.
+				 *
+				 * The module's own discipline for this global regex: a fresh `lastIndex`
+				 * before every read, because `test`/`exec` carry the previous match's
+				 * position and two identical unreset calls answer `"/credential"` then
+				 * `null` (review round 10, MINOR-2).
+				 */
+				CREDENTIAL_TOKEN.lastIndex = 0;
+				const pickedRun = CREDENTIAL_TOKEN.exec(completion.text);
+				pickedToken.current = pickedRun ? pickedRun[0].trim() : null;
 				/*
 				 * ARMED, when the pick named an armed-only command's own row on the key that
 				 * ACTS — the one gesture that arms it, and the reason Enter needs no
@@ -2432,8 +2600,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// Run through the SAME plan a submit takes, so a command picked
 				// mid-draft splices out and leaves the prose, and a whole-draft
 				// command reports its outcome exactly as typing it would.
-				const plan = planFor(completion.text, completion.caret);
+				/*
+				 * The PICK's gesture, stated: the row was chosen out of the popup, so the
+				 * word is a command wherever it sits. Without this a click on `/loop` in
+				 * the middle of a sentence completed the word and then did nothing —
+				 * the planner read the draft as prose — while the footer promised the
+				 * line would be staged (`Click stages /loop.`).
+				 */
+				const plan = planFor(completion.text, completion.caret, "pick");
 				if (plan.kind === "send") return;
+				/*
+				 * Record the token the picker just wrote, so a LATER Enter still knows
+				 * this word was picked rather than typed even if an edit has moved it:
+				 * a pick is a command wherever it sits (the operator's own rule), and the
+				 * buffer's text cannot say which gesture put the token there.
+				 */
 				await applyPlan(plan, newMessage, caret);
 			},
 			[

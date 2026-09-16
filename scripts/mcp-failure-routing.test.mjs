@@ -208,7 +208,11 @@ test("a server-cause failure offers nothing, whatever the row's own remedy is", 
 	 * the same thing and are classified the same way).
 	 */
 	const serverStates = [
-		["404", new DesktopControlError(404, "Not Found"), /older than this app expects/],
+		[
+			"404",
+			new DesktopControlError(404, "Not Found"),
+			/older than this app expects/,
+		],
 		[
 			"401",
 			new DesktopControlError(401, "Unauthorized"),
@@ -219,7 +223,11 @@ test("a server-cause failure offers nothing, whatever the row's own remedy is", 
 			new DesktopControlError(null, "Failed to fetch"),
 			/is not answering/,
 		],
-		["main's 503", new DesktopControlError(503, TRANSPORT_503), /is not answering/],
+		[
+			"main's 503",
+			new DesktopControlError(503, TRANSPORT_503),
+			/is not answering/,
+		],
 	];
 	const rows = [
 		{ remedy: { kind: "grant" }, keyNames: [] },

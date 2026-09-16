@@ -101,8 +101,7 @@ function frameServer() {
 			seen = {
 				cookieHeader: req.headers.cookie ?? "",
 				frameView:
-					new URL(req.url, "http://127.0.0.1").searchParams.get("seen") ??
-					"",
+					new URL(req.url, "http://127.0.0.1").searchParams.get("seen") ?? "",
 			};
 			res.writeHead(204);
 			res.end();

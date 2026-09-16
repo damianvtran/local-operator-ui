@@ -259,6 +259,27 @@ export type TranscriptRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/**
+			 * The pass's FINGERPRINT: the `tokens_before` the pass reported, which
+			 * both projections of one pass carry — the live id spells it
+			 * (`compaction:<generation>:<before>:<after>`) and the durable entry has
+			 * it in `payload.tokens_before`.
+			 *
+			 * WHY A FINGERPRINT RATHER THAN A CLOCK. The two projections are written
+			 * by different clocks in a fixed order: the backend awaits
+			 * `append_compaction` (ts = `time.time()`) and only then emits the settle
+			 * event, and the renderer stamps the live line with `Date.now()` when it
+			 * processes that frame — so the durable row is ALWAYS the older of the
+			 * two, whichever arrives first (agent review round 4, R4-1: a
+			 * time-ordered relation painted one pass as two rows in production). The
+			 * fingerprint is the identity the pair actually shares, and it is the only
+			 * key that cannot be confused by a second pass nearby.
+			 *
+			 * `undefined` when the pass reported no figure — an older transcript, or a
+			 * row written before `tokens_before` existed. That is what the window
+			 * fallback in `collapseSettledCompactions` is for.
+			 */
+			before?: number;
 	  };
 
 export type TranscriptState = {
@@ -268,6 +289,89 @@ export type TranscriptState = {
 	index: Map<string, number>;
 	/** Backend generation of the turn currently in flight, if any. */
 	generation: number;
+	/**
+	 * A compaction pass is in flight, from `compaction_start` to `compaction_end`.
+	 *
+	 * A BOOLEAN ON THE TRANSCRIPT rather than a latch in app state, because the
+	 * two facts that end it are transcript facts: the settling frame, and the
+	 * replacement of the transcript the claim was made against. It is what the
+	 * working line's `compacting context` rung reads; see `COMPACTING_ACTIVITY`
+	 * in `working-line-model.ts` for what outranks it and why a dead transport
+	 * SUPPRESSES the rung instead of clearing the flag.
+	 *
+	 * EVERY WAY IT IS CLEARED, enumerated because a claim that outlives its pass
+	 * is a claim nobody can vouch for (review round 1, R3 asked for this list to
+	 * be true rather than asserted): `compaction_end` — success, or the same
+	 * frame with `success: false` — applied BEFORE that case's idempotence guard,
+	 * so a replay still retires a claim it has already painted for; the pass's own
+	 * DURABLE row, refused or otherwise, which is projected by `durableRecord`;
+	 * `agent_start`, because a turn cannot begin under a live pass; a replaced
+	 * transcript (`replaceTranscript`/`clearView` keeps it, a rebuild does not);
+	 * `dropLiveRecords`, whose receipt gap is the runtime saying its live window
+	 * is gone; and `applyLiveSeed`, whose clear is the "a reconnect must not
+	 * resurrect a claim" half.
+	 *
+	 * THE ONE SEQUENCE WITH NO EVENT TO KEY ON, stated rather than papered over:
+	 * a pass whose `compaction_end` frame is lost with no observed receipt gap,
+	 * over an idle session that never reconnects, never reads history and sends
+	 * nothing, leaves the rung standing until one of those happens. There is no
+	 * frame to key a retirement on — the backend emits the end once — so the
+	 * honest repair is a timeout this pure reducer cannot own, or a backend
+	 * replay. Neither is in this change; QA round 1 could not reproduce the
+	 * sequence (the mock's pass cannot lose a single frame) and the reviewer's
+	 * mutation runs cover every transition above.
+	 */
+	compacting: boolean;
+	/**
+	 * When the standing claim began, on this reader's clock, or 0 when there is
+	 * none.
+	 *
+	 * WHY IT IS STAMPED RATHER THAN INFERRED. A durable outcome row retires the
+	 * claim, and "has this reader painted the row" is a fact about the INDEX
+	 * rather than about the pass: an older page merged by `load older` carries a
+	 * compaction outcome the reader has never painted, and retired a pass that
+	 * was still running — killing both the rung and the composer's hint mid-pass
+	 * (review round 2, NEW-1). The stamp is the pass's own start, so an outcome
+	 * OLDER than it is somebody else's pass and retires nothing. Both clocks are
+	 * this machine's: the runtime is local, and its `ts` is the same wall clock
+	 * the frame arrived on.
+	 */
+	compactingSince: number;
+	/**
+	 * Bumped by every wholesale view reset — the `/clear` contract, which paints
+	 * an empty view over a session that is still on the backend.
+	 *
+	 * WHY A COUNTER RATHER THAN A FLAG. A scheduled read cannot ask "was the view
+	 * cleared since I was scheduled" of `records.length === 0`: an empty view is
+	 * also a session that has not loaded yet, and a session that was never
+	 * non-empty. Comparing the epoch it captured with the epoch on the view is the
+	 * only honest answer, and `/clear` inside the read's window otherwise put the
+	 * cleared rows back on a screen the user had just emptied (review round 3,
+	 * U11/Q7/R3-7).
+	 */
+	viewEpoch: number;
+	/**
+	 * Wall-clock ms of the last `/clear`, or `undefined` if the view has never
+	 * been cleared.
+	 *
+	 * WHY THIS EXISTS, and it is a MEASUREMENT rather than a theory. A cleared view
+	 * must admit the outcome row of the pass the read exists for and no earlier
+	 * pass's. The first attempt scoped that to the READ's own instant (the command
+	 * receipt), on the reasoning that a pass's row cannot be written before the
+	 * receipt that started it. Measured on a real runtime, that is false for the
+	 * fast path: refusing an empty conversation takes no model call, so
+	 * `_record_compaction_refusal` wrote the row 24 ms BEFORE the client even held
+	 * the HTTP response — and the renderer takes its `since` after receiving it, so
+	 * every such refusal fell outside the scope and the pane stayed silent (QA
+	 * round 7's Q15, reproduced here on a real serve rather than a mock).
+	 *
+	 * The clear instant is the boundary the rule actually needs: a pass whose
+	 * receipt was sent after the clear writes its row after the clear, whatever the
+	 * write-to-receipt gap is, and a pre-clear pass's row is before it by
+	 * construction. It is deliberately NOT a tolerance window — that would be a
+	 * clock guess standing in for a fact the state can hold.
+	 */
+	clearedAt?: number;
 	/** Oldest durable id painted; the cursor for `sessions.history` paging. */
 	oldestId: string | null;
 	hasMore: boolean;
@@ -312,6 +416,9 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	records: [],
 	index: new Map(),
 	generation: 0,
+	compacting: false,
+	compactingSince: 0,
+	viewEpoch: 0,
 	oldestId: null,
 	hasMore: false,
 	argsByCall: new Map(),
@@ -632,11 +739,224 @@ function removeMatching(
 const SILENT_CUSTOM_TYPES = new Set([
 	"frontend_state_checkpoint_v1",
 	"session_state",
-	"compaction_refused",
 	"hub_communication",
 	"wake_schedule",
 	"prune",
 ]);
+
+/**
+ * A compaction that did NOT run: its sentence and the ink it deserves.
+ *
+ * The rule is the BACKEND's, not one invented here —
+ * `local_operator/harness/rows.py::compaction_refused_notice` derives the tier
+ * for every surface (`warning` for a DECLINE, because the context the user
+ * asked to reclaim is still there; `error` for a FAILURE, because "not worth
+ * it" and "I could not" are different things to the person deciding what to do
+ * next), and the phone and the terminal host both render through it. A
+ * renderer that picked its own ink would make one event read two ways.
+ *
+ * WHY THIS EXISTS AT ALL. A refusal emits NO `compaction_start` — the runtime
+ * answers the routed command optimistically and the pass declines before the
+ * start event (`session/runtime/serving.py::_record_compaction_refusal`, whose
+ * docstring says the row "corrects the optimistic receipt") — so the pass has
+ * no rung and no settling frame to paint. The durable row is the only record,
+ * and listing it as bookkeeping left a manual `/compact` on a conversation with
+ * nothing to compact painting NOTHING at all (UX round 1, U1; QA Q2). With the
+ * dialog gone that is the surface the dialog used to occupy.
+ */
+function compactionOutcome(detail: string): {
+	text: string;
+	level: "info" | "warning" | "error";
+} {
+	const sentence = detail.trim() || "compaction did not run";
+	/*
+	 * The separator yields to the backend's own punctuation: its common detail
+	 * already carries a colon ("nothing to compact: the whole conversation is ~8
+	 * tokens …"), and the app opening with one too read as two nested claims
+	 * (design round 2, N1). An em dash is the join, because the sentence after it
+	 * is the runtime's and not this renderer's to rewrite.
+	 */
+	return {
+		text: `Compaction did not run${sentence.includes(":") ? " — " : ": "}${sentence}`,
+		level: sentence.startsWith("compaction failed") ? "error" : "warning",
+	};
+}
+
+/**
+ * The settled line for a pass whose OWN figures this reader still has: the live
+ * `compaction_end` sentence, before and after included.
+ *
+ * WHY THE LIVE SENTENCE IS THE ONE THAT SURVIVES THE PAIRING. A pass is projected
+ * twice — the live event, which knows `tokens_before` and `tokens_after`, and the
+ * DURABLE `compaction` transcript row, which knows only `tokens_before`
+ * (`Transcript.append_compaction`'s payload has no after-figure; read from the
+ * backend, not inferred). The live sentence is strictly the more informative of
+ * the two, so it is the one the pair keeps: the row a reader watched settle is
+ * the row they keep reading, figures and all, until something reloads the view
+ * without it.
+ *
+ * WHICH IS A LIVE-ONLY FACT, and that is parity rather than a defect. The base
+ * app painted this sentence from the event, and the terminal host's own receipt
+ * (`tui/session_presentation.py`) carries the figures too while only its REPLAY
+ * is the bare marker sentence. A cold reload — a fresh reader with no live row to
+ * pair — shows `COMPACTED_LINE`, exactly as the replay does.
+ *
+ * The two figures are printed as the pair when they differ and as one number when
+ * they match, because a pass whose reduction rounds to the same step printing
+ * `52.7k to 52.7k` reads as "compacted and changed nothing" (UX round 1, U4).
+ *
+ * PERSISTING the pair is a one-field backend change — `append_compaction`
+ * carrying the after-figure, or the settled sentence — recorded under "not
+ * addressed" in the round-3/4 remediation rather than papered over here.
+ */
+export function compactionSettledLine(before: number, after: number): string {
+	const from = formatTokens(before);
+	const to = formatTokens(after);
+	return from === to
+		? `Context compacted to ${to} tokens`
+		: `Context compacted, ${from} to ${to} tokens`;
+}
+
+/**
+ * What a pass's row says when this reader has no live sentence for it: the
+ * durable row's own sentence, and the sentence a COLD reload shows.
+ *
+ * It is deliberately not a second opinion about the pass — a reader that never
+ * saw the live line learns that the context was compacted and nothing more,
+ * which is what the transcript can honestly say.
+ */
+export const COMPACTED_LINE = "Context compacted";
+
+/**
+ * One pass, one row: the live settled line and the durable row are two
+ * projections of ONE event, so exactly one of them may be painted.
+ *
+ * WHY THIS SHAPE, and it replaces two rules that were both wrong. The first
+ * matched each incoming durable row against the FIRST painted `compaction:` row
+ * within two minutes (stateful and unordered: one live row could be spent twice).
+ * The second ordered the pair by clock on the stated reasoning that "a durable row
+ * is written when a pass ENDS" — which is backwards, and review round 4 measured
+ * it: the backend awaits `append_compaction` (whose ts is `time.time()` at the
+ * write, `session/transcript.py:809-812`) and only THEN emits the settle event
+ * (`session.py:9851`), while the renderer stamps the live line with `Date.now()`
+ * when it processes that frame, so the durable row is the OLDER of the two in
+ * either arrival order. One pass painted two rows — bare and figured, side by
+ * side, stable for a minute.
+ *
+ * So the pair is matched by IDENTITY first, because both projections already carry
+ * one: the live id spells the pass's `tokens_before` and the durable entry has it
+ * in its payload (the field the bare fallback reads for its sentence). A live line
+ * takes the durable row whose `before` equals its own — one-to-one, oldest live
+ * line first. A SECOND PAIRING INSIDE THE WINDOW remains for the row that carries
+ * no fingerprint (an older transcript): nearest by `|Δts|` in EITHER direction,
+ * claimed once. Distance is a tie-break, never the primary key.
+ *
+ * Still a PURE, TOTAL, IDEMPOTENT function of the record list: computed from the
+ * whole list rather than patched as pages arrive, so applying the same page twice,
+ * re-seeding it with `replace`, or loading it cold all produce the SAME rows, and
+ * the chosen sentence is carried INTO the record so a later read cannot strip it.
+ * Refusals need no rule here: the runtime writes the durable row and emits no
+ * event at all (see `refreshTail`'s note), so there is no live line to collapse.
+ */
+/**
+ * How far apart two projections of one pass may sit when the durable row carries
+ * no fingerprint to match on. Wide enough for a slow disk write plus the frame's
+ * round trip, narrow enough that an unrelated pass minutes later cannot be
+ * claimed by it — and it is only ever a FALLBACK: the fingerprint is the key.
+ */
+const SETTLED_PAIRING_WINDOW_MS = 120_000;
+
+export function collapseSettledCompactions(
+	records: TranscriptRecord[],
+): TranscriptRecord[] {
+	type Settled = Extract<TranscriptRecord, { kind: "compaction" }>;
+	const live: Settled[] = [];
+	const durable: Settled[] = [];
+	for (const record of records) {
+		if (record.kind !== "compaction") continue;
+		// Synthetic ids are the live projections (`compaction:<generation>:…`);
+		// a durable row carries the transcript entry's own id.
+		if (record.id.startsWith("compaction:")) live.push(record);
+		else durable.push(record);
+	}
+	if (live.length === 0 || durable.length === 0) return records;
+	const claimed = new Set<string>();
+	const dropped = new Set<string>();
+	/** The sentence each paired durable row keeps, keyed by its id. */
+	const kept = new Map<string, string>();
+	const pair = (row: Settled, candidate: Settled) => {
+		claimed.add(candidate.id);
+		dropped.add(row.id);
+		kept.set(candidate.id, row.text);
+	};
+	const ordered = [...live].sort((a, b) => a.ts - b.ts);
+	// Identity first: the pass's own figure, which only its durable row carries.
+	for (const row of ordered) {
+		if (row.before === undefined) continue;
+		const match = durable.find(
+			(candidate) =>
+				!claimed.has(candidate.id) && candidate.before === row.before,
+		);
+		if (match) pair(row, match);
+	}
+	/*
+	 * Then the window, and ONLY for a durable row that carries no figure at all.
+	 *
+	 * WHY THE EXCLUSION IS THE FIX, not a refinement (UX round 5, U19 = R5-3). The
+	 * fallback as first written considered every unclaimed row and took the
+	 * nearest, so a live line whose own durable row had not arrived yet could claim
+	 * the PREVIOUS pass's row — 30 s inside the window, and the nearest candidate
+	 * there was. Measured live: durable figures 25 / 3781 / 5301, and the pane read
+	 * `to 3.8k` on pass 1's slot, `to 5.3k` on pass 2's, pass 3 bare — each row
+	 * carrying the NEXT pass's figures, stable and wrong. A row that HAS a
+	 * fingerprint says which pass it belongs to; a live line whose figure differs is
+	 * a different pass, so the row is not a candidate — not a worse one.
+	 *
+	 * What remains is the case this existed for: an older transcript whose rows
+	 * predate the field. There the pair is chosen by DISTANCE — every live/durable
+	 * combination ranked globally, nearest first, each side claimed once — rather
+	 * than oldest-live-first, because oldness was the old rule's reasoning and it
+	 * contradicts the sentence this function states.
+	 */
+	const pairs: { live: Settled; durable: Settled; distance: number }[] = [];
+	for (const row of ordered) {
+		if (dropped.has(row.id)) continue;
+		for (const candidate of durable) {
+			if (candidate.before !== undefined) continue;
+			const distance = Math.abs(candidate.ts - row.ts);
+			if (distance > SETTLED_PAIRING_WINDOW_MS) continue;
+			pairs.push({ live: row, durable: candidate, distance });
+		}
+	}
+	pairs.sort((a, b) => a.distance - b.distance);
+	for (const { live: row, durable: candidate } of pairs) {
+		if (dropped.has(row.id) || claimed.has(candidate.id)) continue;
+		pair(row, candidate);
+	}
+	if (dropped.size === 0) return records;
+	return records
+		.filter((record) => !dropped.has(record.id))
+		.map((record) => {
+			const text = kept.get(record.id);
+			if (text === undefined) return record;
+			if (record.kind !== "compaction" && record.kind !== "notice")
+				return record;
+			return text === record.text ? record : { ...record, text };
+		});
+}
+
+/**
+ * The same collapse, applied to a STATE — so the live path and the page path run
+ * one rule over one list instead of two callers each doing the arithmetic.
+ *
+ * Identity is preserved when nothing is dropped, which is what keeps the row
+ * memo (and therefore the frames) stable through a read that changed nothing.
+ */
+function collapseRecords(state: TranscriptState): TranscriptState {
+	const records = collapseSettledCompactions(state.records);
+	if (records === state.records) return state;
+	return { ...state, records, index: withIndex(records) };
+}
 
 /**
  * The two custom types that are receipts rather than conversation.
@@ -998,17 +1318,62 @@ function bounded(headline: string): string {
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
-	 * The record already painted for this id, if any. Passed only so an
-	 * unchanged `images` array keeps its REFERENCE across a re-read of the same
-	 * history page — `shallowEqual` compares by `!==`, so a freshly built array
-	 * would report every replayed row as changed and re-render it.
+	 * The record already painted for this id, if any. It carries TWO facts, and
+	 * neither is optional:
+	 *
+	 * - an unchanged `images` array keeps its REFERENCE across a re-read of the
+	 *   same history page — `shallowEqual` compares by `!==`, so a freshly built
+	 *   array would report every replayed row as changed and re-render it;
+	 * - a compaction row keeps the SENTENCE it already carries, which is the live
+	 *   line the pairing moved onto it. The durable entry has no sentence of its
+	 *   own to replace it with, and recomputing one would strip the figures on the
+	 *   very next read — that is what makes `collapseSettledCompactions`
+	 *   idempotent.
 	 */
 	previous?: TranscriptRecord,
 ): TranscriptRecord | null {
 	const payload = entry.payload ?? {};
 	const ts = Math.round((entry.ts ?? 0) * 1000);
 	if (entry.type === "compaction") {
-		return { kind: "compaction", id: entry.id, ts, text: "Context compacted" };
+		/*
+		 * The sentence a row already carries is KEPT. The entry has no sentence of
+		 * its own — only counts — so there is nothing here for it to disagree with,
+		 * and recomputing one would strip the figures the pairing put there on the
+		 * very next read (review round 3, R3-1: the second application of a page was
+		 * enough). This is the fact that makes `collapseSettledCompactions`
+		 * idempotent, and it is stated where the recomputation would otherwise live.
+		 */
+		const kept =
+			previous?.kind === "compaction" ? previous.text : COMPACTED_LINE;
+		// The entry's own figure, which is the pass's fingerprint: `append_compaction`
+		// writes `tokens_before` and no after-figure, and that one number is what lets
+		// this row be paired with its live line by identity rather than by clock.
+		const before = payload.tokens_before;
+		return {
+			kind: "compaction",
+			id: entry.id,
+			ts,
+			text: kept,
+			...(typeof before === "number" ? { before } : {}),
+		};
+	}
+	/*
+	 * The refusal's own durable row, painted rather than dropped: see
+	 * `compactionOutcome` for why it is the only surface this pass has.
+	 */
+	if (
+		entry.type === "message" &&
+		payload.custom_type === "compaction_refused"
+	) {
+		const details = (payload.details ?? {}) as Record<string, unknown>;
+		const outcome = compactionOutcome(String(details.detail ?? ""));
+		return {
+			kind: "notice",
+			id: entry.id,
+			ts,
+			text: outcome.text,
+			level: outcome.level,
+		};
 	}
 	if (
 		entry.type === "custom" &&
@@ -1203,10 +1568,34 @@ function durableRecord(
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
-	options: { replace?: boolean } = {},
+	options: { replace?: boolean; keepPaging?: boolean } = {},
 ): TranscriptState {
+	/*
+	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
+	 * and with nothing else. Three facts make that test exact, and each was a defect
+	 * on its own:
+	 *
+	 * - `/clear` is view-only by contract, so a page read afterwards repaints every
+	 *   row it removed (`/compact`, `/clear`, `/compact` put the conversation back —
+	 *   UX round 4's U17);
+	 * - the test is the EPOCH, not "is the view empty": the first read painting the
+	 *   pass's own row made the view non-empty, so the second scheduled read landed
+	 *   whole (round 5's R5-2/U20, bracketed in the backend's request log);
+	 * - and the row set is scoped by the read's OWN instant, because "outcome rows"
+	 *   includes the pre-clear passes' rows, which is what put a bare
+	 *   `Context compacted` per old pass back under the new one (round 6's Q14).
+	 *
+	 * `keepPaging` is set by exactly one caller (the tail read), the epoch and the
+	 * clear instant are written by exactly one function (`clearTranscript`), and the
+	 * instant is the boundary the rule needs rather than the read's own receipt
+	 * (which a fast refusal can precede — see `clearedAt`). A read that is not the
+	 * tail read still repaints, which is parity with `origin/main` and deliberately
+	 * unchanged.
+	 */
+	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
 	const incoming: TranscriptRecord[] = [];
 	for (const entry of page.entries) {
+		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. Handing it to `durableRecord` is what lets an unchanged
 		// `images` array keep its reference through a replayed page.
@@ -1317,7 +1706,35 @@ export function applyHistoryPage(
 			byId.set(record.id, record);
 		}
 	}
-	if (!changed && state.hasMore === page.has_more) return state;
+	/*
+	 * Whether this page carries the pass's OWN outcome — the row that says how
+	 * THIS pass ended. Three conjuncts, and the middle one is the round-2 fix:
+	 *
+	 * - the entry is a compaction outcome at all (the pass's durable row, or the
+	 *   refusal that corrects an optimistic receipt);
+	 * - it is NOT OLDER than the standing claim (`compactingSince`), which is what
+	 *   separates the pass being watched from a previous pass's row arriving on a
+	 *   page this reader had never loaded. "Not yet painted" alone retired a live
+	 *   pass from any `load older` merge, from the mentioned-files scanner's
+	 *   paging, and from a first history read that landed after a live start
+	 *   (NEW-1) — and the cost was both surfaces of the change going quiet
+	 *   mid-pass;
+	 * - it is not already painted, so a refresh replaying the same outcome is not
+	 *   a second event.
+	 */
+	const retiresPass =
+		state.compacting &&
+		page.entries.some((entry) => {
+			if (state.index.has(entry.id)) return false;
+			if (Math.round((entry.ts ?? 0) * 1000) < state.compactingSince)
+				return false;
+			return (
+				entry.type === "compaction" ||
+				(entry.type === "message" &&
+					entry.payload?.custom_type === "compaction_refused")
+			);
+		});
+	if (!changed && state.hasMore === page.has_more && !retiresPass) return state;
 
 	// Durable rows first, then this page's new rows, in TIME order with ties
 	// broken by the position each already had — so a page that lands out of order
@@ -1325,12 +1742,27 @@ export function applyHistoryPage(
 	// longer tie itself ABOVE a painted one (the change `withTimeOrder` documents,
 	// pinned in `transcript-reducer.test.mjs`). It is built from the merged list
 	// and the index is derived from the sorted records, once, here.
-	const records = withTimeOrder([...byId.values()]);
+	/*
+	 * The collapse is applied to the MERGED list, after ordering: it is a pure
+	 * function of that list, so a page applied twice, a `replace` re-seed and a
+	 * cold load all end at the same rows (`collapseSettledCompactions`).
+	 */
+	const records = collapseSettledCompactions(withTimeOrder([...byId.values()]));
 	// The paging cursor is the first entry of the OLDEST page received: a
 	// newer page (the snapshot's tail after a history_delta) must not move it
 	// forward, or the next "load older" request would skip rows.
 	const first = page.entries[0];
 	let oldestId = base.oldestId;
+	if (options.keepPaging) {
+		/*
+		 * A TAIL read answers "what did I miss", never "is there more behind me":
+		 * the page carries no cursor, so its `has_more` describes the session
+		 * rather than this reader's position, and letting it through put the "load
+		 * earlier" affordance back on a transcript that already held everything —
+		 * and resumed the mentioned-files scan's paging (review round 3, R3-5).
+		 */
+		return { ...state, records, index: withIndex(records), argsByCall };
+	}
 	if (first) {
 		const firstTs = Math.round((first.ts ?? 0) * 1000);
 		const currentOldest = oldestId
@@ -1348,6 +1780,16 @@ export function applyHistoryPage(
 		// unlearn which arguments a call was made with, and the reseed is exactly
 		// the path whose own events no longer carry them.
 		argsByCall,
+		/*
+		 * A durable compaction outcome retires the claim its live frames would
+		 * have. A REFUSAL emits no events at all (`serving.py::
+		 * _record_compaction_refusal` writes this row precisely because the
+		 * optimistic receipt has nothing else to correct it), so without this the
+		 * claim the receipt implied would stand beside the row that contradicts
+		 * it.
+		 */
+		compacting: retiresPass ? false : state.compacting,
+		compactingSince: retiresPass ? 0 : state.compactingSince,
 	};
 }
 
@@ -1369,7 +1811,20 @@ export function applyEvent(
 		case "agent_start": {
 			const generation = Number(event.generation ?? state.generation + 1);
 			if (generation === state.generation) return state;
-			return { ...state, generation };
+			/*
+			 * A NEW TURN is one of the ways a compaction claim stops. It cannot
+			 * overlap a pass — a session running a compaction is not starting a turn
+			 * — so a turn starting means any claim still standing was never retired,
+			 * and retiring it here is what keeps a lost `compaction_end` from
+			 * outliving the pass it described.
+			 */
+			return { ...state, generation, compacting: false, compactingSince: 0 };
+		}
+		case "compaction_start": {
+			// The FIRST start of a pass owns the stamp; a replay of it is the same pass
+			// and must not move the boundary forward under a row that is already old.
+			if (state.compacting) return state;
+			return { ...state, compacting: true, compactingSince: now };
 		}
 		case "agent_end": {
 			const generation = Number(event.generation ?? state.generation);
@@ -1735,17 +2190,70 @@ export function applyEvent(
 			});
 		}
 		case "compaction_end": {
+			/*
+			 * A FIGURE IS PRESENT WHEN THE EVENT CARRIES ONE, including a zero: the
+			 * runtime reports both figures as 0 for a pass that failed, and the durable
+			 * row it wrote for that pass carries the same 0 — so the live line must
+			 * carry it too, or the two projections of one pass disagree about whether
+			 * they HAVE a fingerprint and one pass paints two rows (`typeof` rather
+			 * than truthiness, matching `durableRecord`; review round 6, R6-1).
+			 */
 			const before = Number(event.tokens_before ?? 0);
 			const after = Number(event.tokens_after ?? 0);
 			const ok = Boolean(event.success);
-			const text = ok
-				? before && after
-					? `Context compacted, ${formatTokens(before)} to ${formatTokens(after)} tokens`
-					: "Context compacted"
-				: `Compaction did not run${event.detail ? `: ${String(event.detail)}` : ""}`;
+			const failure = ok ? null : compactionOutcome(String(event.detail ?? ""));
+			// The event's own figures, which is the sentence the pairing carries onto
+			// the durable row — see `compactionSettledLine` for why this one wins and
+			// `COMPACTED_LINE` for what a cold reader gets instead.
+			const text = failure
+				? failure.text
+				: before && after
+					? compactionSettledLine(before, after)
+					: COMPACTED_LINE;
+			// Still keyed by the pass, because it is the id a replayed end matches
+			// and the id the collapse below recognises as the live projection.
 			const id = `compaction:${state.generation}:${before}:${after}`;
-			if (state.index.has(id)) return state;
-			return upsert(state, { kind: "compaction", id, ts: now, text });
+			// The pass is over either way — success, refusal or failure — so this is
+			// the clear, applied BEFORE the idempotence guard: a replayed end must
+			// still retire a claim it has already painted a record for.
+			const settled = state.compacting
+				? { ...state, compacting: false, compactingSince: 0 }
+				: state;
+			if (settled.index.has(id)) return settled;
+			/*
+			 * A FAILURE is painted as a notice rather than as the settled line, so
+			 * it can carry the tier the backend derives for it
+			 * (`compactionOutcome`): the compaction record has no ink of its own, so
+			 * a failed pass read in the same tone as a successful one — the one
+			 * state of this feature the design round could not judge and the tone
+			 * the deleted dialog did carry (design round 1, D2).
+			 */
+			if (failure)
+				return upsert(settled, {
+					kind: "notice",
+					id,
+					ts: now,
+					text,
+					level: failure.level,
+				});
+			/*
+			 * The collapse runs BEFORE the state is returned, because the durable
+			 * row may already be painted: a page read while the pass was still
+			 * running carries no settled row, and the row that lands afterwards is
+			 * the same event this line is projecting — so one of the two has to go,
+			 * and it is the live one that goes (`collapseSettledCompactions` states
+			 * the rule; it is idempotent, so running it here and in
+			 * `applyHistoryPage` is the same answer twice).
+			 */
+			return collapseRecords(
+				upsert(settled, {
+					kind: "compaction",
+					id,
+					ts: now,
+					text,
+					before,
+				}),
+			);
 		}
 		case "retry_start": {
 			const text = `Retrying after an error (attempt ${String(event.attempt ?? "?")})${
@@ -1781,10 +2289,6 @@ export function applyEvent(
 		default:
 			return state;
 	}
-}
-
-function formatTokens(count: number) {
-	return count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
 }
 
 /**
@@ -1916,6 +2420,26 @@ export function applyLiveSeed(
 	if (frontend.streaming && frontend.generation > next.generation) {
 		next = { ...next, generation: frontend.generation };
 	}
+	/*
+	 * A compaction claim is not CARRIED across a seed, and this is the "a
+	 * reconnect must not resurrect a claim" half of its reconciliation.
+	 *
+	 * The seed is the authoritative statement of which live facts are still true
+	 * for this viewer, and the claim is a live-only fact like any other, so the
+	 * seed retires it and the loop below re-asserts it only from an event the seed
+	 * actually carries. REVIEW ROUND 1 (R4) asked which that is, and the answer
+	 * is NONE TODAY, checked rather than assumed:
+	 * `frontend_state.py::_fold_live_event` folds exactly the agent/message/tool
+	 * kinds into `live_events` — every other kind leaves the list untouched — so a
+	 * `compaction_start` is not in the seed, and a reconnect during a pass drops
+	 * the rung while the pass keeps running. That is the SAFE direction, and it is
+	 * worth stating rather than implying a replay that does not exist: the rung
+	 * names work nobody can vouch for otherwise, and the pass's own end still
+	 * paints its line when it arrives. Nothing here depends on the replay; the
+	 * loop keeps it so a seed that ever does carry the event lands correctly.
+	 */
+	if (next.compacting)
+		next = { ...next, compacting: false, compactingSince: 0 };
 	const inFlight = frontend.streaming === true;
 	/* A row was placed at a time the seed itself stated, so order by time. */
 	let placed = false;
@@ -2053,7 +2577,10 @@ export function reconcileLimit(missingCalls: number): number {
 }
 
 /** View-only clear: the painted rows go, the backend history is untouched. */
-export function clearTranscript(state: TranscriptState): TranscriptState {
+export function clearTranscript(
+	state: TranscriptState,
+	at: number = Date.now(),
+): TranscriptState {
 	if (state.records.length === 0) return state;
 	// `argsByCall` survives for the same reason it survives a `replace`: the
 	// history this clears is still on the backend, and repainting it must not
@@ -2061,14 +2588,66 @@ export function clearTranscript(state: TranscriptState): TranscriptState {
 	return {
 		...EMPTY_TRANSCRIPT,
 		generation: state.generation,
+		// The in-flight pass is a BACKEND fact, not a painted one: clearing the view
+		// does not stop a compaction, so the claim is carried rather than dropped —
+		// which is also what the empty-transcript early return above already does.
+		compacting: state.compacting,
+		compactingSince: state.compactingSince,
+		// The reset this counter exists for: a read scheduled against the previous
+		// epoch must discard its page rather than repaint what `/clear` removed.
+		viewEpoch: state.viewEpoch + 1,
+		// The instant a cleared view is scoped by (see the field's own note).
+		clearedAt: at,
 		argsByCall: state.argsByCall,
 	};
 }
 
+/**
+ * Whether a durable entry is a compaction pass's own outcome row, optionally
+ * scoped to the pass a read was scheduled for.
+ *
+ * `since` is a pass scope rather than a filter the caller re-derives: it is the
+ * same instant `tailCarriesOutcome` compares against, so the row a cleared view
+ * paints and the row the stop predicate is waiting for are the same pass by
+ * construction. Without it, every pass's outcome row qualifies — which is how a
+ * cleared view re-admitted the pre-clear ones (QA round 6, Q14).
+ */
+function isCompactionOutcome(
+	entry: DesktopHistoryPage["entries"][number],
+	clearedAt?: number,
+): boolean {
+	const outcome =
+		entry.type === "compaction" ||
+		(entry.type === "message" &&
+			entry.payload?.custom_type === "compaction_refused");
+	if (!outcome) return false;
+	if (clearedAt === undefined) return true;
+	return Math.round((entry.ts ?? 0) * 1000) >= clearedAt;
+}
+
+/** A token count as the settled line prints it: `41.0k`, `864`. */
+function formatTokens(count: number): string {
+	if (count < 1_000) return String(count);
+	if (count < 1_000_000) return `${(count / 1_000).toFixed(1)}k`;
+	return `${(count / 1_000_000).toFixed(1)}M`;
+}
+
 /** Remove live-only records (no durable id) — used when a gap invalidates paint. */
 export function dropLiveRecords(state: TranscriptState): TranscriptState {
+	/*
+	 * The in-flight pass claim is LIVE-ONLY for the same reason those records are:
+	 * a receipt gap means the app cannot see whether the pass is still running,
+	 * and a reconnect must not inherit a claim from before the gap. Withheld
+	 * rather than guessed — and NOT restored by the seed, which carries no
+	 * `compaction_start` at all (review round 1, R4: `frontend_state.py::
+	 * _fold_live_event` folds agent/message/tool kinds only), so a gap during a
+	 * pass drops the rung while the pass runs on.
+	 */
+	const base = state.compacting
+		? { ...state, compacting: false, compactingSince: 0 }
+		: state;
 	return removeMatching(
-		state,
+		base,
 		(record) =>
 			(record.kind === "assistant" && record.streaming) ||
 			(record.kind === "tool" && record.phase !== "done"),

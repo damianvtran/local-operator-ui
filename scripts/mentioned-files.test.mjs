@@ -133,7 +133,9 @@ test("1. a file:// URL in assistant prose becomes the path it names", () => {
 
 test("2. a markdown link keeps the path and loses the brackets", () => {
 	assert.deepEqual(
-		paths([assistant(1, "See [the spec](/Users/damian/w/spec.md) for details.")]),
+		paths([
+			assistant(1, "See [the spec](/Users/damian/w/spec.md) for details."),
+		]),
 		["/Users/damian/w/spec.md"],
 	);
 });
@@ -166,7 +168,13 @@ test("5. a relative path key is recorded as the relative candidate it is", () =>
 
 test("6. a path in tool output is found", () => {
 	assert.deepEqual(
-		paths([tool("a", { command: "ls" }, "wrote /Users/damian/Documents/report.pdf (12 KB)")]),
+		paths([
+			tool(
+				"a",
+				{ command: "ls" },
+				"wrote /Users/damian/Documents/report.pdf (12 KB)",
+			),
+		]),
 		["/Users/damian/Documents/report.pdf"],
 	);
 });
@@ -176,12 +184,12 @@ test("7. a diff body yields only the absolute paths in it", () => {
 	// `+++ b/x` are relative and are not mentions; the structured `args.path` is
 	// what names the file the call touched.
 	const records = [
-		tool(
-			"a",
-			{ path: "/Users/damian/local-operator/README.md" },
-			null,
-			["--- a/README.md", "+++ b/README.md", "@@ -1 +1 @@", "+See /Users/damian/docs/notes.md"],
-		),
+		tool("a", { path: "/Users/damian/local-operator/README.md" }, null, [
+			"--- a/README.md",
+			"+++ b/README.md",
+			"@@ -1 +1 @@",
+			"+See /Users/damian/docs/notes.md",
+		]),
 	];
 	assert.deepEqual(paths(records), [
 		"/Users/damian/local-operator/README.md",
@@ -190,7 +198,9 @@ test("7. a diff body yields only the absolute paths in it", () => {
 });
 
 test("8. sentence-final punctuation is trimmed before the extension test", () => {
-	assert.deepEqual(paths([assistant(1, "saved to /tmp/a.pdf.")]), ["/tmp/a.pdf"]);
+	assert.deepEqual(paths([assistant(1, "saved to /tmp/a.pdf.")]), [
+		"/tmp/a.pdf",
+	]);
 	assert.deepEqual(paths([assistant(1, "saved to /tmp/a.pdf, and then")]), [
 		"/tmp/a.pdf",
 	]);
@@ -201,9 +211,10 @@ test("9. a tab-separated or line-adjacent path is still found", () => {
 		"/tmp/one.md",
 		"/tmp/two.md",
 	]);
-	assert.deepEqual(paths([assistant(1, "wrote:\n/Users/x/three.png\nnext line")]), [
-		"/Users/x/three.png",
-	]);
+	assert.deepEqual(
+		paths([assistant(1, "wrote:\n/Users/x/three.png\nnext line")]),
+		["/Users/x/three.png"],
+	);
 });
 
 test("a shell redirect in a non-path argument is a real mention", () => {
@@ -251,7 +262,10 @@ test("13. an API path is not a file", () => {
 });
 
 test("14. a path with no known extension is not a mention", () => {
-	assert.deepEqual(paths([assistant(1, "on /2026/09/13 we ran /usr/bin/python3")]), []);
+	assert.deepEqual(
+		paths([assistant(1, "on /2026/09/13 we ran /usr/bin/python3")]),
+		[],
+	);
 });
 
 test("15. the space-truncated file:// URL is rejected, not guessed", () => {
@@ -279,7 +293,9 @@ test("15. the space-truncated file:// URL is rejected, not guessed", () => {
 test("15b. a file:// URL followed by ordinary prose is still admitted", () => {
 	// The truncation guard must not reject a URL that merely ends a sentence.
 	assert.deepEqual(
-		paths([assistant(1, "written to file:///Users/damian/out/report.pdf and done")]),
+		paths([
+			assistant(1, "written to file:///Users/damian/out/report.pdf and done"),
+		]),
 		["/Users/damian/out/report.pdf"],
 	);
 });
@@ -336,7 +352,9 @@ test("a file:// URL whose name contains a bracket is recorded whole", () => {
 	);
 	// The bracket a SENTENCE closes with is still trimmed.
 	assert.deepEqual(
-		paths([assistant(1, "see [the shot](file:///Users/x/Downloads/screen(1).png)")]),
+		paths([
+			assistant(1, "see [the shot](file:///Users/x/Downloads/screen(1).png)"),
+		]),
 		["/Users/x/Downloads/screen(1).png"],
 	);
 	// And a percent-encoded spelling names the file on disk.
@@ -368,10 +386,10 @@ test("a plain path list keeps its file:// entry (the next line is not a continua
 		],
 	);
 	// A blank line between them is still a new line.
-	assert.deepEqual(
-		paths([assistant(1, "file:///Users/x/a.md\n\n/tmp/b.md")]),
-		["/Users/x/a.md", "/tmp/b.md"],
-	);
+	assert.deepEqual(paths([assistant(1, "file:///Users/x/a.md\n\n/tmp/b.md")]), [
+		"/Users/x/a.md",
+		"/tmp/b.md",
+	]);
 });
 
 test("a metacharacter inside a file:// URL is rejected in that tier too", () => {
@@ -447,11 +465,18 @@ test("16b. the memo is per record object and per cwd", () => {
 	const record = tool("a", { file_path: "src/app.ts" });
 	assert.deepEqual(paths([record]), []);
 	assert.deepEqual(paths([record], "/Users/damian/proj"), ["src/app.ts"]);
-	assert.deepEqual(paths([record]), [], "and the cwd-less answer is still stable");
+	assert.deepEqual(
+		paths([record]),
+		[],
+		"and the cwd-less answer is still stable",
+	);
 });
 
 test("17. order is first mention, and a re-scan never re-sorts", () => {
-	const records = [assistant(1, "wrote /tmp/b.md"), assistant(2, "wrote /tmp/a.md")];
+	const records = [
+		assistant(1, "wrote /tmp/b.md"),
+		assistant(2, "wrote /tmp/a.md"),
+	];
 	assert.deepEqual(paths(records), ["/tmp/b.md", "/tmp/a.md"]);
 
 	// An older page arriving at the FRONT of the record list (the reducer's
@@ -474,10 +499,9 @@ test("a square bracket in a file:// name survives, and a sentence's closing one 
 	// arriving through the OPPOSITE bracket of the case above. What they produced
 	// was `/tmp/x/a[1` — a path no file has, reaching the grid as a permanent
 	// `No longer on disk` tile.
-	assert.deepEqual(
-		paths([assistant(1, "wrote file:///tmp/x/a[1].pdf")]),
-		["/tmp/x/a[1].pdf"],
-	);
+	assert.deepEqual(paths([assistant(1, "wrote file:///tmp/x/a[1].pdf")]), [
+		"/tmp/x/a[1].pdf",
+	]);
 	assert.deepEqual(
 		paths([assistant(1, "wrote file:///tmp/x/report(1)[2].png")]),
 		["/tmp/x/report(1)[2].png"],
@@ -489,10 +513,9 @@ test("a square bracket in a file:// name survives, and a sentence's closing one 
 		paths([assistant(1, "see [the doc](file:///tmp/x/a[1].pdf)")]),
 		["/tmp/x/a[1].pdf"],
 	);
-	assert.deepEqual(
-		paths([assistant(1, "in [file:///tmp/x/a.pdf]")]),
-		["/tmp/x/a.pdf"],
-	);
+	assert.deepEqual(paths([assistant(1, "in [file:///tmp/x/a.pdf]")]), [
+		"/tmp/x/a.pdf",
+	]);
 	// The prose tier keeps its own rule — it stops at both brackets — and that
 	// stays SAFE rather than silently wrong: the truncated token has no known
 	// extension, so nothing is admitted at all. The URL tier is the one that
@@ -524,17 +547,20 @@ test("a `?` in a file:// URL is a query only when it reads as one", () => {
 	assert.deepEqual(paths([assistant(1, "open file:///tmp/a.html?v=2")]), [
 		"/tmp/a.html",
 	]);
-	assert.deepEqual(
-		paths([assistant(1, "wrote file:///tmp/a.pdf?x=1&y=2")]),
-		["/tmp/a.pdf"],
-	);
+	assert.deepEqual(paths([assistant(1, "wrote file:///tmp/a.pdf?x=1&y=2")]), [
+		"/tmp/a.pdf",
+	]);
 	// A fragment is not a path either, and may carry a `?` of its own.
 	for (const text of [
 		"file:///tmp/a.pdf#toolbar=0",
 		"file:///tmp/a.pdf?x=1#frag",
 		"file:///tmp/a.pdf#x?y",
 	])
-		assert.deepEqual(paths([assistant(1, `wrote ${text}`)]), ["/tmp/a.pdf"], text);
+		assert.deepEqual(
+			paths([assistant(1, `wrote ${text}`)]),
+			["/tmp/a.pdf"],
+			text,
+		);
 	// The QUERY is not a path and its content is not a reason to reject one.
 	assert.deepEqual(paths([assistant(1, "file:///tmp/a.pdf?x=*")]), [
 		"/tmp/a.pdf",
@@ -547,7 +573,11 @@ test("a `?` in a file:// URL is a query only when it reads as one", () => {
 	);
 	// A `?` with no query behind it is not a query either — the fail-safe
 	// direction this module trades in (a missing tile, never a wrong one).
-	for (const text of ["file:///tmp/a.pdf?", "file:///tmp/a.pdf?x", "file:///tmp/a.pdf?}"])
+	for (const text of [
+		"file:///tmp/a.pdf?",
+		"file:///tmp/a.pdf?x",
+		"file:///tmp/a.pdf?}",
+	])
 		assert.deepEqual(paths([assistant(1, `wrote ${text}`)]), [], text);
 });
 
@@ -577,11 +607,22 @@ test("the extractor has no output cap: a long conversation yields its tail", () 
 	// delayed. Measured on this machine: 23 of 1,735 real sessions returned exactly
 	// 200 paths, and one lost ~1,700 of them.
 	const records = [
-		assistant(1, Array.from({ length: 300 }, (_, i) => `/tmp/f${i}.md`).join(" ")),
+		assistant(
+			1,
+			Array.from({ length: 300 }, (_, i) => `/tmp/f${i}.md`).join(" "),
+		),
 	];
 	const found = extractMentionedPaths(records);
-	assert.equal(found.length, 300, "every mention is reported, not the first 200");
-	assert.equal(found[299].path, "/tmp/f299.md", "the tail is present, in order");
+	assert.equal(
+		found.length,
+		300,
+		"every mention is reported, not the first 200",
+	);
+	assert.equal(
+		found[299].path,
+		"/tmp/f299.md",
+		"the tail is present, in order",
+	);
 
 	// The same claim in the shape a real session has: the tail lives in the OLDEST
 	// records, which arrive by paging. Nothing about admitting them depends on
@@ -686,7 +727,11 @@ test("a page that failed is re-requested by the resume action", () => {
 		});
 
 	assert.equal(lane(book), "request", "the scan asks for the oldest cursor");
-	assert.equal(book.requestedFor, CURSOR, "the cursor it asked for is recorded");
+	assert.equal(
+		book.requestedFor,
+		CURSOR,
+		"the cursor it asked for is recorded",
+	);
 	assert.equal(book.inFlight, true, "and a request is out");
 
 	// It came back with nothing: the hook clears `inFlight` in its `finally`.
@@ -727,7 +772,11 @@ test("a page that failed is re-requested by the resume action", () => {
 	// `!inFlight`, so it never reaches this arm, which is the guard for a caller
 	// that asks without that gate - and the reader's own older-history page is a
 	// wait rather than a spent budget (round 2, R2-5).
-	assert.equal(lane(book), "idle", "a request is already out, so nothing is asked");
+	assert.equal(
+		lane(book),
+		"idle",
+		"a request is already out, so nothing is asked",
+	);
 	assert.equal(
 		scanLane(book, { canRequest: true, blocked: false, oldestId: CURSOR }),
 		"in-flight",
@@ -801,7 +850,11 @@ test("two files with one basename survive as two tiles with a parent line", () =
 	// it exists for. Abbreviating the home prefix is what makes both fit.
 	assert.equal(tiles[0].parent, "~/work/reports");
 	assert.equal(tiles[1].parent, "~/work/archive");
-	assert.notEqual(tiles[0].parent, tiles[1].parent, "the collision is resolved");
+	assert.notEqual(
+		tiles[0].parent,
+		tiles[1].parent,
+		"the collision is resolved",
+	);
 });
 
 test("displayParent keeps the tail when the path cannot fit", () => {
