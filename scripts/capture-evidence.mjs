@@ -177,6 +177,199 @@ export const STORIES = [
 	   either side of the threshold, and a bulky one. */
 	["chat-canonical-notices--notice-lengths", 1280, 340],
 	/*
+	 * The transcript's own Quote control, which is raised by a HIGHLIGHT of a turn
+	 * rather than by the pointer over it (the operator's report: the button "should
+	 * only show up when highlighting a section, not just on hover", and it should
+	 * sit "above the highlighted frame and not at the edge of the whole message
+	 * block"). The states below are the ones the change is judged on, and every
+	 * one of them needs a GESTURE - the control is absent from the DOM until a
+	 * highlight exists - which is what the rig's `select` option is for: a real
+	 * drag, a real click elsewhere, a real Shift+ArrowLeft walk followed by real
+	 * Tab presses.
+	 *
+	 * `hover-no-highlight` is the FIRST of the asks and the only one that is an
+	 * absence: the pointer is on the same row the resting frame shows, and nothing
+	 * is raised. Its before half (`../chat-canonical-quote-before/`) is the same
+	 * entry on a tree whose control is hover-revealed, so the pair is a difference
+	 * in what the pointer does rather than two descriptions of it.
+	 *
+	 * `highlight-mid-turn`, `highlight-across-turns` (one control, anchored at the
+	 * turn the highlight BEGINS in), `highlight-then-press` (the press stages the
+	 * highlight and answers it: the composer's chip is in the frame, the highlight
+	 * and the control are gone) and `highlight-dismissed` (the same highlight after
+	 * a click into the composer) are the second and third asks.
+	 * `keyboard-highlight-focused` is the pointer-free path: the highlight is a
+	 * caret and a Shift+click extended by N Shift+ArrowLeft presses, and the Tab
+	 * walk that follows lands on the control, which is what a keyboard reader has
+	 * to be able to do. Every one of those is captured in the twelve themes,
+	 * because the control floats over prose in all of them.
+	 *
+	 * `selection-at-pane-top` is the FLIP, on the tall fixture and at the pane's
+	 * own scroll position: the highlight's first line is at the pane's top edge,
+	 * where there is no room above it, so the control goes below the highlight
+	 * instead of hanging over the pane. It is a second story because it needs a
+	 * transcript taller than its pane, and it is sized to that pane rather than to
+	 * the 900 default for the reason `notice-lengths` is.
+	 *
+	 * `selection-at-pane-top-across-turns` is the same flip with the highlight
+	 * LEAVING its turn, which is the configuration the round-1 defect lived in (code
+	 * review M1, UX U9, QA Q27: the control walked 40px down the pane per re-measuring
+	 * event, and in one trace painted over the selection it was quoting). The flip's
+	 * anchor is the highlight's own last line, so the state that proves it is a
+	 * highlight whose last line is NOT in the turn that owns the control - and no
+	 * frame in the set showed one until here.
+	 *
+	 * `highlight-hover` is the control under the pointer, which is design round 1's
+	 * D3: the `accent-wash`/`accent` pair is a colour step that no resting frame can
+	 * show, and neither is the tooltip. The pointer goes ON the control after the
+	 * gesture - see `select.hover` - and the frame carries both.
+	 *
+	 * EVERY ENTRY THAT CAN IS PINNED TO THE STRING IT SELECTS (`expectText`), which
+	 * is design round 1's D4: `fromChar`/`toChar` are offsets into the RENDERED text
+	 * node while a reader counts the markdown source, so the mid-turn entry's band
+	 * begins one character into `tenant_id` rather than at its 't'. The product is
+	 * right - the composer's chip carries exactly what was selected - and the entry
+	 * now says which string that is instead of leaving the frame to be misread. The
+	 * offsets are deliberately left where they are: moving one would re-render every
+	 * after frame in the set and invalidate the before/after pairs' pixel table for a
+	 * nit. An entry with a gesture that changes the selection afterwards
+	 * (`extendArrows`) pins nothing, because the string it ends on is not the one its
+	 * endpoints describe.
+	 */
+	["chat-canonical-quote--sent-turn-quote", 1024, 640],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{ hover: '[data-record-id="a1"]', dir: "hover-no-highlight" },
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="a1"] p',
+				fromChar: 20,
+				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
+			},
+			dir: "highlight-mid-turn",
+		},
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="a1"] p',
+				fromChar: 20,
+				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
+				hover: "[data-lo-quote-toolkit]",
+				hoverSettleMs: 1500,
+				tooltip: true,
+			},
+			dir: "highlight-hover",
+		},
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="u1"] p:last-of-type',
+				fromChar: 4,
+				to: '[data-record-id="a1"] p',
+				toChar: 40,
+				expectText:
+					"did it fail there?\n\nBecause that row's tenant_id was null, a",
+			},
+			dir: "highlight-across-turns",
+		},
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="a1"] p',
+				fromChar: 20,
+				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
+				dismiss: "textarea",
+			},
+			dir: "highlight-dismissed",
+		},
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="a1"] p',
+				fromChar: 20,
+				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
+				press: true,
+			},
+			dir: "highlight-then-press",
+		},
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="a1"] p',
+				fromChar: 40,
+				toChar: 92,
+				keyboard: true,
+				extendArrows: 8,
+			},
+			tabTo: "[data-lo-quote-toolkit] button",
+			dir: "keyboard-highlight-focused",
+		},
+	],
+	["chat-canonical-quote--scrolled-to-oldest-turn", 1024, 540],
+	[
+		"chat-canonical-quote--scrolled-to-oldest-turn",
+		1024,
+		540,
+		{
+			select: {
+				from: '[data-record-id="u1"] p:last-of-type',
+				fromChar: 0,
+				toChar: 40,
+				expectText: "The migration failed on the second row. ",
+				scrollAfter: '[data-record-id="u1"] p:last-of-type',
+			},
+			dir: "selection-at-pane-top",
+		},
+	],
+	[
+		"chat-canonical-quote--scrolled-to-oldest-turn",
+		1024,
+		540,
+		{
+			select: {
+				from: '[data-record-id="u1"] p:last-of-type',
+				fromChar: 0,
+				to: '[data-record-id="a1"] p',
+				toChar: 40,
+				expectText:
+					"The migration failed on the second row. Why?\n\nBecause that row's tenant_id was null, a",
+				scrollAfter: '[data-record-id="u1"] p:last-of-type',
+			},
+			dir: "selection-at-pane-top-across-turns",
+		},
+	],
+	/*
 	 * The three states a notification click can paint before the owner answers:
 	 * a cached paint with its caption, the skeleton for a first-ever open, and
 	 * the named state for a conversation this machine no longer has.
@@ -2827,6 +3020,528 @@ const main = async () => {
 				if (options?.hoverSettleMs) await sleep(options.hoverSettleMs);
 			}
 			/*
+			 * A REAL HIGHLIGHT, for the frames whose claim is a selection-driven
+			 * control.
+			 *
+			 * `select: { from, to?, fromChar?, toChar?, keyboard?, extendArrows?,
+			 * dismiss?, scrollAfter? }` highlights the text of `from` (its whole text by
+			 * default), or the run from `from` to `to` when the highlight spans two
+			 * turns, through the browser's own input pipeline: a real `mouseMoved`, a
+			 * real `mousedown`, real `mouseMoved` steps and a real `mouseup`, between the
+			 * two points the range's own client rects report. Nothing here writes
+			 * `selection.addRange()` - a scripted selection would be evidence about the
+			 * script, which is the reason `:hover` cannot be a story state either - and a
+			 * `play` function cannot dispatch a gesture at all.
+			 *
+			 * `keyboard: true` makes the highlight WITHOUT a drag, which is a different
+			 * path through the same component: a real click puts a caret at the start of
+			 * the run and a real Shift+click extends from it, so the highlight is made by
+			 * a keyboard modifier rather than by a pointer sweep. `extendArrows: N` then
+			 * presses Shift+ArrowLeft N times on top of whichever gesture ran, and
+			 * asserts the highlight grew by exactly N - the arrows extend a highlight
+			 * that exists, and cannot extend a bare caret in a non-editable document
+			 * (that is caret browsing, a browser mode this app cannot turn on).
+			 *
+			 * `scrollAfter: "<selector>"` scrolls that element to the top of its own
+			 * scroller AFTER the highlight exists, for the states that are a POSITION
+			 * rather than a content difference - a highlight on the pane's top edge,
+			 * where the placement this rig is photographing has to flip. It runs after
+			 * the gesture rather than before it for a measured reason: a drag at the
+			 * pane's top edge makes the browser autoscroll the pane under the pointer,
+			 * which moves the text under the release point. The scroll is programmatic
+			 * and the highlight is not: the claim is where the control goes, not the
+			 * wheel that got the reader there.
+			 *
+			 * `dismiss: "<selector>"` clicks that element after the highlight, through
+			 * the same pipeline, for the frames whose claim is that the control GOES
+			 * AWAY. `press: true` is the other exit: a real click ON the control the
+			 * highlight raised, after which the highlight must be answered and the
+			 * control gone - the composer's chip in the same frame is what says a quote
+			 * was staged rather than nothing at all.
+			 *
+			 * Four things THROW, for the hover's reason - a frame filed under a name that
+			 * claims a highlight is indistinguishable in a directory listing from one
+			 * that claims nothing: a selector that matched nothing, a range with no
+			 * client rects, a gesture that produced no highlight (or an arrow walk that
+			 * changed the highlight by some other number of characters than it claims),
+			 * and a dismiss that left a control the reader could still press. What is
+			 * deliberately NOT asserted is that a control IS present: this same entry is
+			 * the before half of a before/after pair, and the tree it was captured from
+			 * reveals its control on hover.
+			 */
+			if (options?.select) {
+				const select = options.select;
+				const spec = {
+					from: select.from,
+					to: select.to ?? select.from,
+					fromChar: select.fromChar ?? null,
+					toChar: select.toChar ?? null,
+				};
+				/*
+				 * The two POINTS the gesture runs between, read from the range's own client
+				 * rects: the first line's start and the last line's end, inset by a pixel so
+				 * each lands on ink rather than on a glyph boundary. Calculated in the page
+				 * rather than guessed from a box, because a highlight's ends are text
+				 * positions and only the DOM knows where those are.
+				 */
+				const readGeometry = async () =>
+					(
+						await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `(() => {
+						const spec = ${JSON.stringify(spec)};
+						const pointAt = (selector, offset) => {
+							const host = document.querySelector(selector);
+							if (!host) return { missing: selector };
+							const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+							const nodes = [];
+							let at = 0;
+							for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+								nodes.push({ node: node, start: at, end: at + node.data.length });
+								at += node.data.length;
+							}
+							if (nodes.length === 0) return { empty: selector };
+							const wanted = offset === null ? at : offset;
+							for (const entry of nodes) {
+								if (wanted <= entry.end) {
+									return { node: entry.node, offset: Math.max(0, wanted - entry.start) };
+								}
+							}
+							const last = nodes[nodes.length - 1];
+							return { node: last.node, offset: last.node.data.length };
+						};
+						const start = pointAt(spec.from, spec.fromChar);
+						const end = pointAt(spec.to, spec.toChar);
+						if (start.missing || end.missing) {
+							return { missing: start.missing || end.missing };
+						}
+						if (start.empty || end.empty) {
+							return { empty: start.empty || end.empty };
+						}
+						const range = document.createRange();
+						range.setStart(start.node, start.offset);
+						range.setEnd(end.node, end.offset);
+						const rects = Array.from(range.getClientRects());
+						if (rects.length === 0) return { rectless: true };
+						const first = rects[0];
+						const last = rects[rects.length - 1];
+						return {
+							start: {
+								x: Math.round(first.left + 1),
+								y: Math.round(first.top + first.height / 2),
+							},
+							end: {
+								x: Math.round(last.right - 1),
+								y: Math.round(last.bottom - last.height / 2),
+							},
+							text: range.toString(),
+						};
+					})()`,
+						})
+					).result.value;
+				/*
+				 * THE PANE HAS TO STOP MOVING BEFORE THE GESTURE, and how long that takes
+				 * is not this rig's to guess: a programmatic scroll is a demand the
+				 * transcript's own paging policy answers, and its answer can move content
+				 * again after it looks settled. Measured: a row scrolled under the pointer
+				 * shifted one slot (45px) after the first read, which put the drag's release
+				 * point on the transcript's "Start of conversation" caption one row above
+				 * the turn the entry names - a highlight that every other check here passed.
+				 * So the point is sampled until two consecutive reads agree, and the
+				 * endpoints are asserted after the gesture as well (see `anchored`).
+				 */
+				let box = await readGeometry();
+				for (let attempt = 0; attempt < 10; attempt++) {
+					await sleep(200);
+					const next = await readGeometry();
+					if (
+						next?.start &&
+						box?.start &&
+						next.start.x === box.start.x &&
+						next.start.y === box.start.y &&
+						next.end.x === box.end.x &&
+						next.end.y === box.end.y
+					) {
+						box = next;
+						break;
+					}
+					box = next;
+				}
+				if (!box?.start || !box?.end) {
+					throw new Error(
+						`${story} @ ${theme}: the select range could not be built - ${JSON.stringify(box)}`,
+					);
+				}
+				const mouse = (type, x, y, buttons) =>
+					cdp.send("Input.dispatchMouseEvent", {
+						type,
+						x,
+						y,
+						button: "left",
+						buttons,
+						clickCount: 1,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				if (select.keyboard) {
+					/*
+					 * THE KEYBOARD'S OWN HIGHLIGHT, which is a caret and a
+					 * MODIFIER-CLICK rather than a drag. A real click puts the caret at the
+					 * start of the run - the click is what makes the caret exist at all, and
+					 * a scripted `setStart` would be this rig selecting rather than the
+					 * browser - and a real Shift+click extends from it to the other end.
+					 *
+					 * WHY NOT Shift+Arrows FROM THE CARET, which is what this branch did
+					 * first. Measured on the running surface: Chromium will not extend a
+					 * BARE caret with Shift+Arrow in a non-editable document - the click
+					 * leaves `ranges: 1` and an empty string, and 26 Shift+ArrowLeft presses
+					 * leave it empty (that is caret browsing, F7, a browser mode this app
+					 * cannot turn on). What the arrows DO do is extend a highlight that
+					 * already exists, which `extendArrows` below drives and asserts.
+					 */
+					await mouse("mousePressed", box.start.x, box.start.y, 1);
+					await mouse("mouseReleased", box.start.x, box.start.y, 0);
+					await sleep(60);
+					for (const type of ["mousePressed", "mouseReleased"]) {
+						await cdp.send("Input.dispatchMouseEvent", {
+							type,
+							x: box.end.x,
+							y: box.end.y,
+							button: "left",
+							buttons: type === "mousePressed" ? 1 : 0,
+							clickCount: 1,
+							// Shift, so the press EXTENDS the caret's selection rather than
+							// dropping a new one.
+							modifiers: 8,
+							pointerType: "mouse",
+						});
+					}
+					await sleep(120);
+				} else {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: box.start.x,
+						y: box.start.y,
+						button: "none",
+						buttons: 0,
+						clickCount: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await mouse("mousePressed", box.start.x, box.start.y, 1);
+					/* Stepped rather than teleported: a selection follows the pointer, and
+					   a single move to the end is a drag that never crossed the text. */
+					const steps = 8;
+					for (let i = 1; i <= steps; i++) {
+						await mouse(
+							"mouseMoved",
+							Math.round(box.start.x + ((box.end.x - box.start.x) * i) / steps),
+							Math.round(box.start.y + ((box.end.y - box.start.y) * i) / steps),
+							1,
+						);
+						await sleep(12);
+					}
+					await mouse("mouseReleased", box.end.x, box.end.y, 0);
+					await sleep(60);
+				}
+				/*
+				 * `extendArrows: N` is the ARROWS half of the same keyboard claim, and it
+				 * is applied on top of whichever gesture made the highlight: N real
+				 * Shift+ArrowLeft presses, and an assertion that the highlight grew by
+				 * exactly N. A highlight that did not move and one that moved are the same
+				 * picture, so the number is the evidence rather than the frame.
+				 */
+				const beforeArrows = select.extendArrows
+					? await cdp
+							.send("Runtime.evaluate", {
+								returnByValue: true,
+								expression: `(() => {
+									const selection = window.getSelection();
+									return selection ? selection.toString().length : 0;
+								})()`,
+							})
+							.then((r) => r.result.value)
+					: 0;
+				for (let i = 0; i < (select.extendArrows ?? 0); i++) {
+					for (const type of ["rawKeyDown", "keyUp"]) {
+						await cdp.send("Input.dispatchKeyEvent", {
+							type,
+							key: "ArrowLeft",
+							code: "ArrowLeft",
+							windowsVirtualKeyCode: 37,
+							nativeVirtualKeyCode: 37,
+							modifiers: 8,
+						});
+					}
+				}
+				if (select.extendArrows) await sleep(120);
+				/*
+				 * `scrollAfter` IS THE SCROLL, AND IT RUNS AFTER THE HIGHLIGHT - the
+				 * order is the whole point. A drag made at the pane's own top edge
+				 * makes the BROWSER autoscroll the pane under the pointer: measured on
+				 * this surface, 73px of autoscroll during a single drag, which moved
+				 * the text under the release point and landed the highlight on the
+				 * transcript's "Start of conversation" caption one row above the turn
+				 * the entry names. So a highlight that has to end up on the pane's top
+				 * edge is made where the pointer is safe and then scrolled there - which
+				 * is also what the frame is about: the control follows the highlight it
+				 * belongs to, and flips below it when the scroll leaves no room above.
+				 */
+				if (select.scrollAfter) {
+					const { result: scrolled } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const host = document.querySelector(${JSON.stringify(select.scrollAfter)});
+							if (!host) return false;
+							host.scrollIntoView({ block: "start" });
+							return true;
+						})()`,
+					});
+					if (!scrolled.value) {
+						throw new Error(
+							`${story} @ ${theme}: the scrollAfter selector \`${select.scrollAfter}\` matched nothing`,
+						);
+					}
+					await sleep(400);
+				}
+				/*
+				 * THE GESTURE IS CHECKED BEFORE THE SHUTTER, because a frame filed under a
+				 * name that claims a highlight is indistinguishable from one that claims
+				 * nothing. Both dispatch paths are asserted against the page's own
+				 * `Selection`, which is what the component reads.
+				 */
+				const { result: held } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const selection = window.getSelection();
+						const host = (selector) => document.querySelector(selector);
+						return {
+							text: selection ? selection.toString() : "",
+							ranges: selection ? selection.rangeCount : 0,
+							/**
+							 * WHERE THE HIGHLIGHT'S OWN ENDPOINTS ARE, which is the
+							 * assertion that makes this a picture of the state it names.
+							 * A gesture is dispatched at coordinates, and a pane that
+							 * moves between the measurement and the press puts those
+							 * coordinates on different TEXT - measured: a row scrolled
+							 * under the pointer landed the drag on the transcript's
+							 * "Start of conversation" caption, one row above the turn the
+							 * entry names, and every other check here passed. Non-empty
+							 * text is not enough; the endpoints have to be in the
+							 * elements the entry asked for.
+							 */
+							anchored: Boolean(
+								selection?.anchorNode &&
+									host(${JSON.stringify(select.from)})?.contains(selection.anchorNode),
+							),
+							ended: Boolean(
+								selection?.focusNode &&
+									host(${JSON.stringify(select.to ?? select.from)})?.contains(
+										selection.focusNode,
+									),
+							),
+						};
+					})()`,
+				});
+				const selected = held.value?.ranges > 0 ? held.value.text : "";
+				if (selected.trim().length === 0) {
+					throw new Error(
+						`${story} @ ${theme}: the ${select.keyboard ? "caret + Shift+click" : "drag"} gesture over \`${select.from}\` produced no highlight`,
+					);
+				}
+				if (!held.value?.anchored || !held.value?.ended) {
+					throw new Error(
+						`${story} @ ${theme}: the highlight is not the run this entry names - anchored in \`${select.from}\`: ${held.value?.anchored}, ended in \`${select.to ?? select.from}\`: ${held.value?.ended}, text "${selected.slice(0, 40)}"`,
+					);
+				}
+				if (
+					select.extendArrows &&
+					selected.length !== beforeArrows + select.extendArrows
+				) {
+					throw new Error(
+						`${story} @ ${theme}: ${select.extendArrows} Shift+ArrowLeft presses took the highlight from ${beforeArrows} to ${selected.length} characters, so the frame is not the walk it claims`,
+					);
+				}
+				/*
+				 * THE STRING, where the entry names one (design round 1, D4).
+				 *
+				 * The endpoint assertions above ask whether the highlight's ends lie in
+				 * the ELEMENTS the entry names; they cannot ask whether the span between
+				 * them is the one the entry is talking about, and the two came apart:
+				 * `fromChar`/`toChar` are offsets into the RENDERED text node, while a
+				 * reader counting characters would count the markdown source - so the
+				 * mid-turn entry named character 20 of "Because that row's `tenant_id`..."
+				 * and the band it photographed began one character in, on the 'e' of
+				 * `tenant_id`, with the 't' left outside it. Nothing is wrong with the
+				 * product; the entry simply did not say that, and a frame is supposed to
+				 * be a claim a reader can check. An entry that names the string cannot be
+				 * misread that way, and this is the assertion that holds it: the reader's
+				 * own range's text, not a copy of it.
+				 */
+				if (select.expectText !== undefined && selected !== select.expectText) {
+					throw new Error(
+						`${story} @ ${theme}: the gesture selected ${JSON.stringify(selected)}, but the entry says it selects ${JSON.stringify(select.expectText)} - the frame would carry a span other than the one it names`,
+					);
+				}
+				/*
+				 * `dismiss` is the OTHER half of the same claim: a click somewhere else,
+				 * through the same input pipeline, and then a check that the control is
+				 * gone. The check is about being OPERABLE rather than about the DOM node,
+				 * so it holds on both halves of a before/after pair - what must not survive
+				 * the click is a control the reader could still press.
+				 */
+				if (select.dismiss) {
+					const { result: target } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(select.dismiss)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (!target.value) {
+						throw new Error(
+							`${story} @ ${theme}: the dismiss selector \`${select.dismiss}\` matched nothing`,
+						);
+					}
+					await mouse("mousePressed", target.value.x, target.value.y, 1);
+					await mouse("mouseReleased", target.value.x, target.value.y, 0);
+					await sleep(120);
+					const { result: survivors } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `Array.from(
+							document.querySelectorAll("[data-lo-quote-toolkit]"),
+					).filter((el) => {
+							const style = getComputedStyle(el);
+							return (
+								style.visibility !== "hidden" &&
+								style.opacity !== "0" &&
+								style.display !== "none" &&
+								el.getClientRects().length > 0
+							);
+						}).length`,
+					});
+					if (survivors.value > 0) {
+						throw new Error(
+							`${story} @ ${theme}: the control is still painted after the dismiss click - the frame would claim a state it is not in`,
+						);
+					}
+				}
+				/*
+				 * `press: true` is the PRESS, and it is the one frame that shows what the
+				 * highlight is FOR: a real click on the control the highlight raised, and
+				 * then a check that the highlight has been answered - the composer's chip
+				 * is in the frame, and the highlight and the control are gone, which is the
+				 * operator's third ask ("when deselecting it also goes away, etc instead of
+				 * sticking around") on the path that stages a quote.
+				 */
+				if (select.press) {
+					const { result: target } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector("[data-lo-quote-toolkit] button");
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (!target.value) {
+						throw new Error(
+							`${story} @ ${theme}: the press asked for the control and no control was on screen`,
+						);
+					}
+					await mouse("mousePressed", target.value.x, target.value.y, 1);
+					await mouse("mouseReleased", target.value.x, target.value.y, 0);
+					await sleep(200);
+					const { result: answered } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const selection = window.getSelection();
+							return {
+								text: selection ? selection.toString() : "",
+								controls: Array.from(
+									document.querySelectorAll("[data-lo-quote-toolkit]"),
+								).filter((el) => {
+									const style = getComputedStyle(el);
+									return (
+										style.visibility !== "hidden" &&
+										style.opacity !== "0" &&
+										style.display !== "none" &&
+										el.getClientRects().length > 0
+									);
+								}).length,
+							};
+						})()`,
+					});
+					if ((answered.value?.text ?? "").length > 0) {
+						throw new Error(
+							`${story} @ ${theme}: the press left the highlight lit - the press must answer the highlight it staged`,
+						);
+					}
+					if (answered.value?.controls > 0) {
+						throw new Error(
+							`${story} @ ${theme}: the control is still painted after the press`,
+						);
+					}
+				}
+				/*
+				 * A POINTER ON THE CONTROL ITSELF, for the frames whose claim is its own
+				 * hover (design round 1, D3: the control's `accent-wash`/`accent` grounds and
+				 * its radius nesting were in no frame in the set, and neither was the
+				 * tooltip as a reader sees it).
+				 *
+				 * IT RUNS AFTER THE GESTURE, which is why it is not the top-level `hover`
+				 * option: that one runs before the select block, and this control does not
+				 * EXIST until a highlight raises it - a selector that matches nothing there
+				 * would throw, correctly, because the state it names is not reachable yet.
+				 *
+				 * `:hover` is browser state like every other hover in this file, so the
+				 * pointer is moved through the input pipeline and left there. The wait is
+				 * the tooltip's own delay (Radix opens after ~700ms), and `tooltip: true`
+				 * makes the frame's claim checkable rather than merely likely: the frame
+				 * that shows a tooltip says so, and a run where it had not opened throws.
+				 */
+				if (select.hover) {
+					const { result: target } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(select.hover)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (!target.value) {
+						throw new Error(
+							`${story} @ ${theme}: the hover selector \`${select.hover}\` matched nothing after the gesture`,
+						);
+					}
+					await mouse("mouseMoved", target.value.x, target.value.y, 0);
+					await sleep(select.hoverSettleMs ?? 900);
+					const { result: hovered } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => ({
+							hover: document.querySelector(${JSON.stringify(select.hover)})?.matches(":hover") === true,
+							tooltip: Array.from(document.querySelectorAll('[role="tooltip"]')).filter((el) => {
+								const style = getComputedStyle(el);
+								return style.visibility !== "hidden" && style.display !== "none" && Number(style.opacity) > 0.5 && el.getClientRects().length > 0;
+							}).length,
+						}))()`,
+					});
+					if (!hovered.value?.hover) {
+						throw new Error(
+							`${story} @ ${theme}: the pointer is on \`${select.hover}\` but the element does not match :hover, so the frame would be a resting control filed under a hover`,
+						);
+					}
+					if (select.tooltip && !(hovered.value?.tooltip > 0)) {
+						throw new Error(
+							`${story} @ ${theme}: the entry claims the tooltip, and none is painted after ${select.hoverSettleMs ?? 900}ms of hover`,
+						);
+					}
+				}
+			}
+			/*
 			 * A SCROLL POSITION, for the frame whose claim is a section's END.
 			 *
 			 * Like `:hover` above, this is browser state rather than story state: no
@@ -3344,7 +4059,32 @@ const main = async () => {
 									? (previous.partialCapture?.refreshedFrames ?? 0)
 									: 0) + captured,
 							refreshedStories: [
-								...new Set([...priorStories, ...stories.map(([id]) => id)]),
+								...new Set([
+									...priorStories,
+									/*
+									 * THE DIRECTORY, not the story id, and the difference is not
+									 * cosmetic. A story captured in a SECOND state names its own `dir`
+									 * (see the STORIES header), so one story can write several
+									 * directories - and `check-evidence.mjs` reads this list as
+									 * DIRECTORIES (`<surface>--<leaf>`), asking of each frame a pass
+									 * rewrote whether some entry names the directory it sits in. One
+									 * bare story id can only name one of them, which is measured:
+									 * the quote set's six `dir` states left five directories
+									 * unclaimed and failed `pnpm test:desktop`'s stamp test.
+									 *
+									 * The `@<width>` suffix is deliberately NOT carried: a story swept
+									 * at several widths writes `leaf@800`, `leaf@1024`, ... and the
+									 * gate normalises the suffix away when it reads a frame's
+									 * directory, so the entry has to be the un-suffixed form for the
+									 * same reason - one entry then names every width's directory.
+									 */
+									...stories.map(([id, , , entryOptions]) => {
+										const cut = id.indexOf("--");
+										const surface = cut === -1 ? id : id.slice(0, cut);
+										const leaf = entryOptions?.dir ?? id.slice(cut + 2);
+										return `${surface}--${leaf}`;
+									}),
+								]),
 							],
 							refreshedThemes: [...new Set([...priorThemes, ...themes])],
 							...totals,
