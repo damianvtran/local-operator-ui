@@ -1,7 +1,17 @@
+import { Button, Input } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { type FC, useState } from "react";
+import { Search, X } from "lucide-react";
+import {
+	type Dispatch,
+	type FC,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+} from "react";
 import { Bar, BarChart } from "recharts";
+import { clearSearch } from "../../clear-search";
 import type { PickerContext } from "../destination-pickers";
 import { PickerCheck, PickerHost, PickerSegment } from "../picker-host";
 import { errorText } from "../use-picker-backend";
@@ -20,20 +30,39 @@ import {
 	dailyMeta,
 	percentageOf,
 	providerRows,
-	sessionRows,
 	spendTick,
 	tokenTick,
 	totalTokens,
 	windowMeta,
 } from "./analytics-model";
+import {
+	INITIAL_SESSION_TABLE_STATE,
+	type SessionTableAction,
+	type SessionTableChange,
+	type SessionTableState,
+	asSessionSortKey,
+	effectiveSortDirection,
+	effectiveSortKey,
+	enrichSessionRows,
+	isNarrowed,
+	narrowSessionIndex,
+	sessionAnnouncement,
+	sessionEmptyText,
+	sessionIndex,
+	sessionMatchLine,
+	sessionPage,
+	sessionTableReducer,
+	sortSessionIndex,
+} from "./analytics-session-state";
 import { formatCount, formatMicroUsd, formatTokens } from "./formatters";
 import { PanelSection, PanelStack } from "./panel-frame";
 import { analyticsQueryOptions } from "./panel-queries";
 import { PanelEmpty, PanelNotice, PanelSkeleton } from "./panel-states";
 import { ChartFrame } from "./primitives/chart-frame";
-import { type Column, DataTable, MoreRowsLine } from "./primitives/data-table";
+import { type Column, DataTable } from "./primitives/data-table";
 import { ProportionBar } from "./primitives/proportion-bar";
 import { StatCard, StatGrid } from "./primitives/stat-card";
+import { TablePager } from "./primitives/table-pager";
 
 /**
  * `/analytics` as a panel: KPIs, one bar chart and two bounded tables.
@@ -154,20 +183,133 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 	);
 };
 
-const SessionTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
-	data,
-	metric,
-}) => {
-	const { rows, hidden } = sessionRows(
-		data.aggregate.by_session,
-		data.session_names,
-		data.session_parents,
-		metric,
+/**
+ * The By-session section: a control strip, one page of rows, and the pager.
+ *
+ * It is the CONTROLLER of this table, and the state it drives is the panel's
+ * (`useSessionTableState`), not its own: the reset rule (§4.3) needs the window,
+ * the metric and the scope, which are `AnalyticsPanel`'s props. Keeping the
+ * state here would force that rule to watch values threaded through two
+ * components; putting it in the adapter would put presentational state where
+ * the query is decided.
+ *
+ * The work is four memos, each keyed on what it actually depends on, so that a
+ * page turn does not re-sort and a refetch does not re-narrow. The failure mode
+ * of a wrong key is SILENT — the table stays correct and merely slower, and no
+ * gate notices — which is why the keys are each named against their inputs in
+ * `analytics-session-state.ts` and why the in-app budget (§9) is measured
+ * rather than inferred from a green suite.
+ */
+const SessionTable: FC<{
+	data: AnalyticsData;
+	metric: AnalyticsMetric;
+	state: SessionTableState;
+	dispatch: Dispatch<SessionTableAction>;
+}> = ({ data, metric, state, dispatch }) => {
+	const names = data.session_names;
+	const parents = data.session_parents;
+	const bySession = data.aggregate.by_session;
+	/*
+	 * `metric` is a dependency of the index even though the design's memo table
+	 * lists only the payload: the index holds each row's `value` for the selected
+	 * metric, so a metric change that did not re-index would rank the new metric
+	 * by the old metric's numbers.
+	 */
+	const index = useMemo(
+		() => sessionIndex(bySession, names, parents, metric),
+		[bySession, names, parents, metric],
 	);
-	const columns: Column<(typeof rows)[number]>[] = [
+	const narrowed = useMemo(
+		() => narrowSessionIndex(index, state.query, state.filters),
+		[index, state.query, state.filters],
+	);
+	const sortKey = effectiveSortKey(state, metric);
+	const sortDirection = effectiveSortDirection(state);
+	const ordered = useMemo(
+		() => sortSessionIndex(narrowed, sortKey, sortDirection),
+		[narrowed, sortKey, sortDirection],
+	);
+	const slice = useMemo(
+		() => sessionPage(ordered, state.page),
+		[ordered, state.page],
+	);
+	const pageRows = useMemo(
+		() => enrichSessionRows(slice.rows, { total: index.total, names, parents }),
+		[slice, index.total, names, parents],
+	);
+	/*
+	 * The pool the search ran over, needed only by the empty state's detail —
+	 * "clear the search to see them" has to be true of what clearing it reveals.
+	 * Computed on demand rather than as a fifth memo, so a keystroke that matched
+	 * something never pays for a second walk.
+	 */
+	const emptyText = sessionEmptyText({
+		total: index.rows.length,
+		filtered:
+			narrowed.length > 0
+				? narrowed.length
+				: narrowSessionIndex(index, "", state.filters).length,
+		matched: narrowed.length,
+		query: state.query,
+		topLevelOnly: state.filters.topLevelOnly,
+	});
+	const matchLine = sessionMatchLine({
+		matched: narrowed.length,
+		total: index.rows.length,
+		query: state.query,
+		topLevelOnly: state.filters.topLevelOnly,
+	});
+	/*
+	 * The last interaction, held so the live region can say WHICH sentence this
+	 * change deserves. Every number in that sentence is read from the state
+	 * below it, not stored here, so the announcement cannot state a page or a
+	 * count that the table is no longer showing.
+	 */
+	/*
+	 * The sort the header renders, and the way back.
+	 *
+	 * `key: null` while the order follows the panel's metric: no column was
+	 * activated, and `aria-sort="none"` on every header is the true statement of
+	 * that. An explicit column takes over until the reader changes it, and a
+	 * metric change then leaves their order alone.
+	 *
+	 * Hoisted out of the JSX rather than written inline: a block comment as the
+	 * FIRST token of a JSX attribute's object literal is mis-lexed by both the
+	 * TypeScript and the Biome parsers — the expression container is closed at the
+	 * comment's end, so everything after it parses as if the attribute were
+	 * finished — and the explanation belongs beside the object either way.
+	 */
+	const sortIntent = {
+		key: state.sort?.key ?? null,
+		direction: sortDirection,
+		onSort: (key: string) => {
+			const nextKey = asSessionSortKey(key);
+			if (nextKey === null) return;
+			setChange("sort");
+			dispatch({ type: "sort", key: nextKey });
+		},
+	};
+
+	const [change, setChange] = useState<SessionTableChange | null>(null);
+	const searchRef = useRef<HTMLInputElement>(null);
+	const announcement = sessionAnnouncement(change, {
+		query: state.query,
+		matched: narrowed.length,
+		page: slice.page,
+		pageCount: slice.pageCount,
+		sortKey,
+		sortDirection,
+		topLevelOnly: state.filters.topLevelOnly,
+	});
+	const onSearch = (query: string) => {
+		setChange("search");
+		dispatch({ type: "search", query });
+	};
+	const columns: Column<(typeof pageRows)[number]>[] = [
 		{
 			key: "session",
 			header: "Session",
+			sortable: true,
 			cell: (row) => (
 				<span
 					style={{ paddingLeft: `${row.depth * 12}px` }}
@@ -184,18 +326,21 @@ const SessionTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			key: "calls",
 			header: "Calls",
 			numeric: true,
+			sortable: true,
 			cell: (row) => formatCount(row.calls),
 		},
 		{
 			key: "tokens",
 			header: "Tokens",
 			numeric: true,
+			sortable: true,
 			cell: (row) => formatTokens(row.tokens),
 		},
 		{
 			key: "cost",
 			header: "Cost",
 			numeric: true,
+			sortable: true,
 			cell: (row) => row.cost,
 		},
 		/* Same column, same rule, one row per session (see `ProviderTable`). */
@@ -203,30 +348,207 @@ const SessionTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			key: "cache",
 			header: CACHE_HIT_LABEL,
 			numeric: true,
+			sortable: true,
 			cell: (row) => percentageOf(row.cacheHit),
 		},
 	];
 	return (
 		<>
-			<DataTable<(typeof rows)[number]>
-				label={`Usage by session in this window. ${CACHE_HIT_MEANING}`}
-				columns={columns}
-				rows={rows}
-				rowKey={(row) => row.id}
-				leading={(row) => (
-					<ProportionBar
-						fraction={row.fraction}
-						className="w-24"
-						srLabel={`${row.label}: ${percentageOf(row.fraction)} of ${METRIC_LABEL[metric].toLowerCase()} in this window`}
+			{/*
+			 * The strip is rendered while there is anything to narrow OR while
+			 * something is already narrowing. The second half of that condition is a
+			 * trap rather than tidiness: the window can empty under a live query or
+			 * filter (Today's window with a query typed in the seven-day one), and a
+			 * strip that vanished then would leave the reader with a narrowed,
+			 * invisible state and no control to clear it.
+			 *
+			 * It lives in the BODY and not in `PanelSection`'s `action` slot: that
+			 * slot has the right scope but the wrong geometry (a text field on a
+			 * heading's baseline), and the host toolbar owns panel-wide controls —
+			 * the By-provider table must not move when this search changes.
+			 */}
+			{index.rows.length > 0 || isNarrowed(state) ? (
+				<div className={cn("flex flex-wrap items-center gap-3 pb-2")}>
+					<div className={cn("relative w-64")}>
+						<Search
+							className={cn(
+								"-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim",
+							)}
+							aria-hidden="true"
+						/>
+						<Input
+							ref={searchRef}
+							aria-label="Search sessions"
+							placeholder="Search sessions"
+							value={state.query}
+							onChange={(event) => onSearch(event.target.value)}
+							className={cn("pl-8", state.query ? "pr-9" : undefined)}
+							autoComplete="off"
+							spellCheck={false}
+						/>
+						{state.query ? (
+							/*
+							 * `clearSearch` rather than two statements, because the pairing is
+							 * the whole contract: this control unmounts in the same commit that
+							 * empties the query, and the browser drops focus to `<body>` when the
+							 * focused element leaves the DOM rather than handing it to a
+							 * sibling. The inset ring is the same one the sidebar's field needed
+							 * for the same reason: `icon-sm`'s own 2px offset needs 3px of
+							 * clearance inside a 1px-bordered field and there is only 2px.
+							 */
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Clear search"
+								className={cn(
+									"-translate-y-1/2 absolute top-1/2 right-1 focus-visible:outline-offset-[-2px]!",
+								)}
+								onClick={() => {
+									setChange("search");
+									clearSearch(searchRef.current, (value) => {
+										dispatch({ type: "search", query: value });
+									});
+								}}
+							>
+								<X aria-hidden="true" />
+							</Button>
+						) : null}
+					</div>
+					{/*
+					 * The one filter, and the reason there is one: the section's own meta
+					 * already says the totals include subagents, and in a seven-day window
+					 * 4,146 of 4,550 rows ARE subagent sessions — 82.8% of the tokens.
+					 * Pressing this turns "where did my spend go" into "how much of this
+					 * was me". It arrives with its ground, disabled treatment and hit
+					 * target already settled, being the control the toolbar already uses.
+					 */}
+					<PickerCheck
+						checked={state.filters.topLevelOnly}
+						onCheckedChange={(next) => {
+							setChange("filter");
+							dispatch({ type: "filter", topLevelOnly: next });
+						}}
+						tone="muted"
+					>
+						Top-level only
+					</PickerCheck>
+					{/*
+					 * A VISIBLE line, not only a live region: the fact has to survive a
+					 * frame, a screenshot, a screen reader and a keyboard, and a tooltip
+					 * survives none of the four. It is `text-meta text-ink-dim` — a
+					 * qualifier under the controls it qualifies, not a claim competing
+					 * with the numbers.
+					 */}
+					{matchLine ? (
+						<p className={cn("text-ink-dim text-meta")}>{matchLine}</p>
+					) : null}
+				</div>
+			) : null}
+			{emptyText ? (
+				/*
+				 * Nothing to show and something to explain. No table, no legend and no
+				 * pager: a pager over an empty set is four disabled controls and a
+				 * `0–0 of 0 sessions` line, which is noise where the notice is the
+				 * answer. The strip stays, so the narrowing can be undone from here.
+				 */
+				<PanelNotice
+					kind="empty"
+					text={emptyText.text}
+					detail={emptyText.detail}
+				/>
+			) : (
+				<>
+					<DataTable<(typeof pageRows)[number]>
+						label={`Usage by session in this window. ${CACHE_HIT_MEANING}`}
+						columns={columns}
+						rows={pageRows}
+						rowKey={(row) => row.id}
+						sort={sortIntent}
+						leading={(row) => (
+							<ProportionBar
+								fraction={row.fraction}
+								className="w-24"
+								srLabel={`${row.label}: ${percentageOf(row.fraction)} of ${METRIC_LABEL[metric].toLowerCase()} in this window`}
+							/>
+						)}
+						empty={<PanelEmpty text="No per-session rows in this window." />}
 					/>
-				)}
-				empty={<PanelEmpty text="No per-session rows in this window." />}
-			/>
-			<CacheHitLegend />
-			{hidden > 0 ? <MoreRowsLine count={hidden} /> : null}
+					<CacheHitLegend />
+					{/*
+					 * The pager replaces the `+N more not shown` line this section used
+					 * to end with. That line was a disclosure that the table was a
+					 * summary; it is gone because the rows behind it are now reachable,
+					 * and `1–20 of 4,550 sessions` beside a working Next is the same fact
+					 * stated as something the reader can act on.
+					 *
+					 * Absent only when the window has no sessions at all, where the
+					 * section's behaviour is what it was before this change: the table's
+					 * own empty state above, and no controls counting nothing.
+					 */}
+					{index.rows.length > 0 ? (
+						<TablePager
+							page={slice.page}
+							pageCount={slice.pageCount}
+							from={slice.from}
+							to={slice.to}
+							total={slice.total}
+							label="session"
+							onPage={(page) => {
+								setChange("page");
+								dispatch({ type: "page", page });
+							}}
+						/>
+					) : null}
+				</>
+			)}
+			{/*
+			 * ONE polite live region for the section, and it is `sr-only` on purpose:
+			 * the visible match line and the pager's counts are the same facts in a
+			 * form a reader can look at, and a live region that repeated them on
+			 * every keystroke would be noise on top of the screen they are already
+			 * on. `<output>` rather than a `div role="status"` because that is the
+			 * element this tree already uses for an announcement.
+			 */}
+			<output className={cn("sr-only")} aria-live="polite">
+				{announcement}
+			</output>
 		</>
 	);
 };
+
+/**
+ * The by-session table's state, owned by the panel and reset when the window
+ * moves under it.
+ *
+ * The reset is a render-phase adjustment rather than an effect, and the reason
+ * is a frame the reader would otherwise see: `useEffect` runs AFTER the commit,
+ * so a `setPage(0)` there paints the new ranking at the old page once — "page 3
+ * of a set that no longer has a page 3" — and pays for a second rank pass on a
+ * frame nobody sees. Dispatching here, before React commits, applies the reset
+ * in the same pass that received the new props.
+ *
+ * The reset is a REDUCER action rather than a `setState` beside it so the
+ * transition table (§4.3) has one definition the node suite can exercise, and
+ * so the three triggers cannot drift apart: a fourth trigger added later is one
+ * more field in this key rather than one more call site to remember.
+ */
+function useSessionTableState(trigger: {
+	metric: AnalyticsMetric;
+	windowDays: number;
+	thisSessionOnly: boolean;
+}): [SessionTableState, Dispatch<SessionTableAction>] {
+	const [state, dispatch] = useReducer(
+		sessionTableReducer,
+		INITIAL_SESSION_TABLE_STATE,
+	);
+	const key = `${trigger.metric}|${trigger.windowDays}|${trigger.thisSessionOnly}`;
+	const [seen, setSeen] = useState(key);
+	if (seen !== key) {
+		setSeen(key);
+		dispatch({ type: "reset" });
+	}
+	return [state, dispatch];
+}
 
 export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	windowDays,
@@ -247,6 +569,11 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	const rows = data ? chartSeries(data.daily, win, metric) : [];
 	const scope = thisSessionOnly ? "this session" : "all sessions";
 	const chartTitle = metric === "spend" ? "Daily spend" : "Daily tokens";
+	const [sessionState, sessionDispatch] = useSessionTableState({
+		metric,
+		windowDays,
+		thisSessionOnly,
+	});
 	return (
 		<PickerHost
 			open
@@ -402,7 +729,12 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 							title="By session"
 							meta="Own figures per session · totals include subagents"
 						>
-							<SessionTable data={data} metric={metric} />
+							<SessionTable
+								data={data}
+								metric={metric}
+								state={sessionState}
+								dispatch={sessionDispatch}
+							/>
 						</PanelSection>
 					</PanelStack>
 				)
