@@ -1,6 +1,6 @@
 # The transcript's quote control, raised by a highlight
 
-Nine surfaces × twelve themes, Storybook, on the production transcript beside
+Eleven surfaces × twelve themes, Storybook, on the production transcript beside
 the production composer, for the operator's three asks in his own words:
 
 > 1. "The quote button should only show up when highlighting a section, not just
@@ -14,24 +14,36 @@ the production composer, for the operator's three asks in his own words:
 ## The frames
 
 ```
-sent-turn-quote/             12   the transcript at rest, one sent quote painted
-hover-no-highlight/          12   the pointer ON the assistant turn, nothing highlighted
-highlight-mid-turn/          12   a sentence highlighted inside the assistant turn
-highlight-across-turns/      12   one highlight from the user turn into the answer
-highlight-then-press/        12   the press: the highlight staged, the control gone
-highlight-dismissed/         12   the highlight, then a click into the composer
-keyboard-highlight-focused/  12   a keyboard-made highlight, the control focused
-scrolled-to-oldest-turn/     12   the tall fixture at rest, for the pair below
-selection-at-pane-top/       12   a highlight ON the pane's top edge: the control flips below it
+sent-turn-quote/                       12   the transcript at rest, one sent quote painted
+hover-no-highlight/                    12   the pointer ON the assistant turn, nothing highlighted
+highlight-mid-turn/                    12   a sentence highlighted inside the assistant turn
+highlight-hover/                       12   the same highlight, the pointer ON the control: its hover ground and tooltip
+highlight-across-turns/                12   one highlight from the user turn into the answer
+highlight-then-press/                  12   the press: the highlight staged, the control gone
+highlight-dismissed/                   12   the highlight, then a click into the composer
+keyboard-highlight-focused/            12   a keyboard-made highlight, the control focused
+scrolled-to-oldest-turn/               12   the tall fixture at rest, for the pair below
+selection-at-pane-top/                 12   a highlight ON the pane's top edge: the control flips below it
+selection-at-pane-top-across-turns/    12   the same flip with the highlight LEAVING its turn
 ```
+
+`highlight-hover/` and `selection-at-pane-top-across-turns/` are round-1
+remediation (design D3, and the fix for review M1 / UX U9 / QA Q27): the
+control's own hover and tooltip were in no frame anywhere in the set, and
+neither was a flip whose anchor has to be the highlight's last line in the NEXT
+turn. Both are measured rather than asserted - see the entry table's
+`expectText`, `select.hover` and `select.tooltip` - and the second is the state
+the defect lived in, so it is the frame the fix has to be judged on.
 
 Each one is a claim about what the reader gets, so each one is checked before
 the shutter. The rig throws - rather than filing a frame under a name that
 claims something else - when the gesture produced no highlight, when the
-highlight's endpoints are not in the elements the entry names, when the arrow
+highlight's endpoints are not in the elements the entry names, when the string
+the gesture selected is not the one the entry names, when the arrow
 walk changed the highlight by some other number of characters than it claims,
-when a press left the highlight lit or the control painted, or when a dismiss
-left a control the reader could still press.
+when a hover is claimed and the pointer is not on the element (or the tooltip
+never opened), when a press left the highlight lit or the control painted, or
+when a dismiss left a control the reader could still press.
 
 ## What moved, in pixels
 
@@ -117,7 +129,17 @@ one-control rule: the highlight runs from the user turn's question into the
 answer, and exactly ONE control is up, anchored at the turn the highlight begins
 in. `selection-at-pane-top/` is the flip: the highlight's first line is at the
 pane's top edge, so there is no room above and the control sits below the
-highlight instead. `highlight-then-press/` and `highlight-dismissed/` are the
+highlight instead. `selection-at-pane-top-across-turns/` is the flip the round-1
+defect lived in, and the reason it exists: the highlight begins in the user turn
+and runs into the answer, so the flip's anchor has to be the highlight's LAST
+line - which is in the next turn - rather than the owner turn's own end. Measured
+before the fix, in that state: 40px of drift per re-measuring event while the
+pointer was down and 43px per 3px of scroll, ending 128-210px below the highlight
+and, in one trace, painted ON it. After: 8px of clearance on every event and 1:1
+tracking with the scroll. `highlight-hover/` is the control under the pointer:
+the colour step its hover takes, and the tooltip, which opens ABOVE the control
+and so covers neither the highlight nor the line the control is anchored to.
+`highlight-then-press/` and `highlight-dismissed/` are the
 third ask on its two exits - a press that stages the highlight (the composer's
 chip in the frame carries the highlighted sentence, not the turn) and a click
 into the composer, after which nothing is left on screen.
@@ -136,6 +158,13 @@ What these frames CANNOT show:
   the twelve palettes. The control's own ground and hairline are the app's, and
   `pnpm check-themes` carries the structural pin on them
   (`STRUCTURAL_CALL_SITES`, "transcript quote toolkit floating shell").
+- **The clamps, at their own edges.** The horizontal clamp cannot be photographed
+  from these fixtures: `quote.stories.tsx`'s `Frame` is a fixed 1024 wide, so a
+  narrower viewport crops the fixture rather than narrowing the pane, and the
+  right wall is never reached (round 1, design D3; UX round 1 measured the same
+  wall from the other side). The vertical clamp IS now reachable and is in
+  `selection-at-pane-top-across-turns/` whenever the highlight's tail runs under
+  the fold. Both are asserted as arithmetic in `scripts/message-quote.test.mjs`.
 - **The pointer.** The rig leaves the pointer where the gesture ended, and
   Chromium does not draw a cursor in a captured frame. Where the control ended up
   relative to the transcript is a measurement (`quote-anchor.ts`, asserted in
@@ -155,3 +184,12 @@ pair measures and why a sweep cannot re-derive it - including why its ninth
 surface, `highlight-then-press`, is deliberately absent there: on that tree the
 strip is still up after the press, and the harness refuses to photograph a state
 it is not in.
+
+`highlight-hover/` and `selection-at-pane-top-across-turns/` have no before
+counterpart either, and the reason is the same shape: on that tree the control is
+revealed by the row's hover rather than by a highlight, so "hovering the control"
+is not a state it has, and a cross-turn highlight is answered by a pill at the
+block's own corner - a different object in a different place, which the five
+paired surfaces already show. A pair is only a claim when the two frames differ
+in the thing under repair, and for these two states the before tree has no
+version of the thing at all.

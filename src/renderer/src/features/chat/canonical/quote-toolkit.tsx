@@ -34,6 +34,15 @@
  * move focus off the reader's highlight before the click lands; a `mousedown`
  * that defaulted would clear the selection in some engines before `click` runs,
  * which is a press that stages nothing.
+ *
+ * WHAT IT IS PLACED AGAINST. `quoteSelectionIn` hands back the reader's own
+ * highlight's lines - the whole highlight, and with no mounted control's box
+ * among them - and `placeQuoteControl` is a pure function of those and the two
+ * boxes they have to fit inside. That purity is the fix for the round-1 defect
+ * (code review M1, UX U9, QA Q27): the placement used to be measured from a
+ * range that had been clipped to the turn and therefore contained this
+ * control's own box, so it read its own output and walked 40px down the pane per
+ * re-measuring event.
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
@@ -89,6 +98,13 @@ type QuoteToolkitProps = {
  * place to keep it correct.
  */
 const SCROLLER_SELECTOR = "[data-lo-canonical-transcript]";
+
+/**
+ * The transcript's content wrapper: the node that GROWS when a row above the
+ * highlight gains height, which is the reflow no event reports. Same marker
+ * `use-scroll-paging.ts` watches for the same reason.
+ */
+const CONTENT_SELECTOR = "[data-lo-transcript-content]";
 
 /** A viewport box, from any element or range rect. No scroll offset is applied. */
 const boxOf = (rect: {
@@ -146,13 +162,15 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			return;
 		}
 		/*
-		 * `getClientRects()` and not `getBoundingClientRect()`: the flip is asked
-		 * about the line the highlight begins on and its `left` is the reader's
-		 * own start point, and the union box answers neither question - see
-		 * `quote-anchor.ts`.
+		 * `getClientRects()` and not `getBoundingClientRect()`, and on the
+		 * HIGHLIGHT rather than on the clipped range: the flip is asked about the
+		 * line the highlight begins on and its `left` is the reader's own start
+		 * point, and the union box answers neither question - see
+		 * `quote-anchor.ts`. `quoteSelectionIn` returns the boxes already, with
+		 * every mounted control's own box removed (round 1: M1, U9, Q27).
 		 */
 		const placed = placeQuoteControl({
-			lines: Array.from(selection.range.getClientRects(), boxOf),
+			lines: selection.lines,
 			container: boxOf(
 				(turn.closest(SCROLLER_SELECTOR) ?? turn).getBoundingClientRect(),
 			),
@@ -214,6 +232,24 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	 * because a second drag inside this turn changes the highlight's geometry
 	 * without changing the gate.
 	 *
+	 * THE EVENTS ARE COALESCED INTO ONE MEASURE PER FRAME (code review round 1,
+	 * m4): every handler here reads layout (`getClientRects`, three
+	 * `getBoundingClientRect` calls and the control's own offset size) on the one
+	 * surface whose own header calls it out as the one that "repaints per token",
+	 * and a trackpad delivers scroll events faster than a frame. Coalescing costs
+	 * nothing visually because `placement` is ROW-relative - a plain scroll moves
+	 * the row and the control together, so the only frames that need a new number
+	 * are the flip and the clamps, where a frame of latency is what React's state
+	 * update already costs.
+	 *
+	 * A REFLOW INSIDE THE VIEWPORT FIRES NO EVENT (code review round 1, m1). A
+	 * row above the highlight that gains height - an attached image finishing its
+	 * load, a streaming answer's markdown settling - moves the highlight with no
+	 * scroll event at all, and the control would keep an offset that no longer
+	 * describes anything. `ResizeObserver` on the content wrapper and on the
+	 * scroller is the general answer, and it is the one `use-scroll-paging.ts`
+	 * already uses for the same class of growth.
+	 *
 	 * ESCAPE DISMISSES, and it CLEARS the highlight rather than hiding the
 	 * control over one: a hidden control above a lit selection is a state the
 	 * reader cannot get out of, since the next scroll or selection event would
@@ -229,7 +265,14 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			return;
 		}
 		measure();
-		const onReflow = () => measure();
+		let frame = 0;
+		const schedule = () => {
+			if (frame) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				measure();
+			});
+		};
 		const onKeyDown = (event: KeyboardEvent) => {
 			/*
 			 * An Escape something else has already answered - a popup closing, the
@@ -247,17 +290,24 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			setOwns(false);
 			setPlacement(null);
 		};
-		document.addEventListener("scroll", onReflow, true);
-		document.addEventListener("selectionchange", onReflow);
-		window.addEventListener("resize", onReflow);
+		document.addEventListener("scroll", schedule, true);
+		document.addEventListener("selectionchange", schedule);
+		window.addEventListener("resize", schedule);
 		document.addEventListener("keydown", onKeyDown);
+		const scroller = turnRef.current?.closest(SCROLLER_SELECTOR);
+		const content = scroller?.querySelector(CONTENT_SELECTOR);
+		const observer = new ResizeObserver(schedule);
+		if (scroller) observer.observe(scroller);
+		if (content) observer.observe(content);
 		return () => {
-			document.removeEventListener("scroll", onReflow, true);
-			document.removeEventListener("selectionchange", onReflow);
-			window.removeEventListener("resize", onReflow);
+			if (frame) cancelAnimationFrame(frame);
+			document.removeEventListener("scroll", schedule, true);
+			document.removeEventListener("selectionchange", schedule);
+			window.removeEventListener("resize", schedule);
 			document.removeEventListener("keydown", onKeyDown);
+			observer.disconnect();
 		};
-	}, [owns, measure]);
+	}, [owns, measure, turnRef]);
 
 	const handleQuote = useCallback(() => {
 		/*
