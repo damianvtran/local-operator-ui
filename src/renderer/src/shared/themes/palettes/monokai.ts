@@ -49,6 +49,8 @@ export const monokai: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 10.65:1 on surface, where the accent
 		// itself is 8.72:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#D0F090",
+		tokenCommand: "#66D9EF",
+		/* The wire's own `info`, so the command word's rendering does not move. */
 		accentWash: "#363E23",
 		onAccent: "#272822",
 

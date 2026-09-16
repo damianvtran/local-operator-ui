@@ -50,6 +50,9 @@ export const dune: ThemeDefinition = {
 		// accent ramp: ΔE00 10.0 from `accent` and 10.12:1 on surface, where the accent
 		// itself is 7.70:1. See `chartBarHover` in the palette contract.
 		chartBarHover: "#FFB27A",
+		tokenCommand: "#E8C15A",
+		/* This palette's second hue: its `info` IS its accent, so the token takes
+		   the hue the same palette's editor already paints string literals in. */
 		accentWash: "#2C1C10",
 		// The old theme paired white with this orange, which measures 2.32:1 — a
 		// primary button nobody could read. Ink on the accent fill is the page

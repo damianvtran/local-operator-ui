@@ -27,7 +27,7 @@ const bundle = await build({
 			 * whose staged line did not run (review F1 / QA Q4).
 			 */
 			'export { completionFor } from "./src/renderer/src/features/chat/components/slash-completion";',
-			'export { argumentShapeVocabulary } from "./src/renderer/src/features/chat/components/slash-submit";',
+			'export { argumentShapeVocabulary, wirelessArgumentShapes } from "./src/renderer/src/features/chat/components/slash-submit";',
 			/*
 			 * The tokenizer's own span, so the case below can assert that the planner and
 			 * the span agree about where a token's WORD ends (review F1 is exactly the
@@ -44,6 +44,7 @@ const bundle = await build({
 });
 const {
 	argumentShapeVocabulary,
+	wirelessArgumentShapes,
 	armedOnlyVocabulary,
 	completionFor,
 	planSlashArming,
@@ -71,6 +72,9 @@ const COMMAND_NAMES = new Set([
 	"clear",
 	"login",
 	"rename",
+	"move",
+	"fast",
+	"fleet",
 ]);
 /** `consumes_prompt: true` in the shared registry. */
 const PROMPT_COMMANDS = new Set([
@@ -1060,6 +1064,104 @@ test("the wire's argument shapes decide what a whole draft is, and the vocabular
 	// And a command that takes nothing keeps eating nothing.
 	assert.deepEqual(plan("/compact hello", 14, shaped), { kind: "send" });
 	assert.equal(plan("/compact", 8, shaped).kind, "whole");
+
+	/*
+	 * THE RELEASED BACKEND'S SPELLING: no `argument_shape` anywhere, the wire's own
+	 * `arguments` mode present. That is the pairing the app installs today
+	 * (`features.commands: 1`), and it is where this planner regressed against
+	 * `main`: with the fallback answering "no text is ever an argument", a typed
+	 * `/mcp logout` was planned `send`, posted to the messages endpoint, refused
+	 * with a leading-slash 422 and undone — while `main` ran it (QA Q1, measured on
+	 * the wire, base vs head in two worktrees).
+	 */
+	const wireless = wirelessArgumentShapes(
+		[
+			{ name: "mcp", aliases: [], arguments: "optional" },
+			{ name: "login", aliases: [], arguments: "required" },
+			{ name: "rename", aliases: [], arguments: "optional" },
+			{ name: "move", aliases: [], arguments: "optional" },
+			{ name: "fast", aliases: [], arguments: "optional" },
+			{ name: "usage", aliases: [], arguments: "none" },
+			{ name: "compact", aliases: [], arguments: "none" },
+			// A row older than `arguments` itself: loose, never a permanent refusal.
+			{ name: "fleet", aliases: [] },
+		],
+		new Set(["fast", "usage"]),
+	);
+	const released = { wirelessShapes: wireless };
+
+	for (const [draft, command] of [
+		["/mcp logout", { name: "mcp", args: "logout" }],
+		["/login openai", { name: "login", args: "openai" }],
+		["/rename my title", { name: "rename", args: "my title" }],
+		["/move ~/x", { name: "move", args: "~/x" }],
+		["/fast on", { name: "fast", args: "on" }],
+		["/fleet check", { name: "fleet", args: "check" }],
+		// One selector token from a list: the command.
+		["/usage on", { name: "usage", args: "on" }],
+	]) {
+		const result = plan(draft, draft.length, released);
+		assert.equal(result.kind, "whole", `${draft} must stay a command`);
+		assert.deepEqual(result.command, command, draft);
+	}
+	// And the two the operator named stay messages, on that same backend.
+	assert.deepEqual(plan("/compact hello", 14, released), { kind: "send" });
+	assert.deepEqual(plan("/usage more prose", 17, released), { kind: "send" });
+
+	/*
+	 * AND THE COARSE SOURCE IS WHOLE-DRAFT ONLY. The wire's `arguments` mode is
+	 * safe exactly there — it reproduces what `main` does with a whole draft — and
+	 * it must never drive the DRAFT-OPENING hoist, or an older backend would hoist
+	 * and stage a multi-line draft that merely opens with a command word, which
+	 * `main` never did and which is the operator's report again. So the hoist asks
+	 * the booleans alone (`prompt ∪ value`), and the row below is the proof: `mcp`
+	 * is `arguments: optional` on this fixture, and the leading-line form is still
+	 * a message.
+	 */
+	assert.deepEqual(
+		plan(
+			"/mcp logout seems to cause a crash on the TUI,\ncan you review and fix it",
+			70,
+			released,
+		),
+		{ kind: "send" },
+		"the coarse source must not hoist an opening line into a command",
+	);
+	// While a START command — carried by the booleans — still stages from its
+	// leading line on that same backend.
+	assert.equal(
+		plan("/team ops fix this\nand then ship it", 35, released).kind,
+		"reassemble",
+	);
+
+	/*
+	 * The shapes are a THIRD source, never the first: a free-text command whose
+	 * row also publishes a shape is still a command with any text, so the §1.3
+	 * repair has to be reachable on the wire spelling this fixture ships.
+	 */
+	for (const caret of [0, 4, 12, 35]) {
+		const planForCarets = plan(
+			"/team ops fix this\nand then ship it",
+			caret,
+			shaped,
+		);
+		assert.equal(
+			planForCarets.kind,
+			"reassemble",
+			`the opening line stages from any caret (caret ${caret})`,
+		);
+	}
+
+	// A row that publishes no shape is LEFT OUT rather than defaulted: absence is
+	// "an older backend", and a defaulted `any` would make every one of its rows
+	// accept arbitrary text.
+	assert.equal(
+		argumentShapeVocabulary([{ name: "unshaped", aliases: [] }]).has(
+			"unshaped",
+		),
+		false,
+		"a row without `argument_shape` must not appear in the wire shapes",
+	);
 
 	/*
 	 * PINNED, because it is the one pairing where this planner and the backend's

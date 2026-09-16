@@ -89,10 +89,13 @@ export const highlightPaints = (runs: readonly SlashHighlightRun[]): boolean =>
  * the theme decides what they are, and the twelve palettes each clear their own
  * contrast floor on the composer's `surface` ground.
  *
- *   - `command` → `text-info` + `font-semibold`. `info` is the ramp's cool
- *     reference hue in the UI, and the precedent is the TUI's own: it maps its
- *     `signal` role to a tool-read token, and `tool-row.tsx` maps `read` to
- *     `text-info`. Bold mirrors the TUI's `text-style: bold`.
+ *   - `command` → `text-token-command` + `font-semibold`. The role is the
+ *     desktop's counterpart of the TUI's `$lo-signal` (a dedicated cool role,
+ *     NOT the accent), added after the design round measured that no shipped text
+ *     role separates from both `ink` and `accent` in all twelve palettes: `info`
+ *     is the accent's twin in dune, neon, radient and obsidian, and the ink's
+ *     twin in obsidian too. Bold mirrors the TUI's `text-style: bold`, and in
+ *     obsidian the weight is the whole channel (the pinned monochrome case).
  *   - `name` → `text-success`. Mirroring the TUI's `$lo-string`, which borrows
  *     its green for exactly this job; the resolved argument must not collapse
  *     into the command word. This is the one borrowed semantic, and it is the
@@ -105,7 +108,7 @@ export const highlightPaints = (runs: readonly SlashHighlightRun[]): boolean =>
  * command word is structure, not activity.
  */
 const RUN_INK: Record<SlashHighlightRun["kind"], string> = {
-	command: "text-info font-semibold",
+	command: "text-token-command font-semibold",
 	name: "text-success",
 	unknown: "text-ink-dim",
 };
@@ -291,7 +294,18 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 							<span
 								key={`${segment.kind}:${segment.start}`}
 								data-slash-run={segment.kind}
-								className={cn(RUN_INK[segment.kind])}
+								/*
+								 * The disabled step reaches the RUNS too: the mirror's container
+								 * already steps to `text-ink-disabled`, but a descendant span wins,
+								 * so a field that cannot accept input was painting an
+								 * enabled-strength command word (design D2 — measured ΔE00 0.8-1.5
+								 * against the enabled frame in five themes, i.e. no step at all).
+								 * Branding's rule is "disabled changes colour, never opacity", so
+								 * the run's colour becomes the disabled ink rather than fading.
+								 */
+								className={cn(
+									disabled ? "text-ink-disabled" : RUN_INK[segment.kind],
+								)}
 							>
 								{segment.text}
 							</span>

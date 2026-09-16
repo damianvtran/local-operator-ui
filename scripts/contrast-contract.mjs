@@ -1561,6 +1561,7 @@ const REQUIRED_ROLES = [
 	"accentWash",
 	"onAccent",
 	"chartBarHover",
+	"tokenCommand",
 	"success",
 	"successWash",
 	"successBorder",
@@ -1645,6 +1646,50 @@ const SEPARABLE = ["success", "warning", "danger", "info"];
  */
 const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info", "ink"];
 const SYNTAX_COMMENT_FLOOR = 8;
+
+/* The composer's structured-token ink: the leading `/word` a user typed.
+ *
+ * Its own constant rather than a member of `SYNTAX_HUE_ROLES`, because the
+ * ADJACENCY differs: a syntax token sits beside `inkDim` (the comment it is
+ * distinguished from), while this run sits inside a sentence the user is typing
+ * — beside prose `ink`, beside `accent` (which the same box already spends three
+ * times: focus ring, send button, popup selection) and beside `success` (the
+ * resolved roster NAME on the same line). The floor is the syntax block's own 8,
+ * for the same reason: a tint the eye cannot separate from the text beside it is
+ * not structure.
+ *
+ * Why a role and not a pair of existing inks — measured, by the design round,
+ * over every ordered pair of the app's text roles: exactly one pair clears 8
+ * from `ink`, 8 from `accent` and 8 from each other in all twelve palettes
+ * (`warning` + `danger`), and painting the composer's two most ordinary tokens
+ * amber and red is a different design rather than a cheaper one. `info` is the
+ * accent's twin in dune, neon and radient (0.0) and the ink's twin in obsidian
+ * (0.0), which is why `tokenCommand` exists.
+ */
+const COMMAND_TOKEN = "tokenCommand";
+/* The syntax block's floor, used here as a ΔE00 separation between two inks. */
+const COMMAND_TOKEN_FLOOR = SYNTAX_COMMENT_FLOOR;
+/* The field it is painted in, and the popup that opens over it. */
+const COMMAND_TOKEN_GROUNDS = ["surface", "elevated"];
+/*
+ * Obsidian is the one pinned exception, and it is the app's recorded monochrome
+ * case rather than a mute button: `info` IS its `ink` IS its `accent`
+ * (`#FAFAFA`), so `code-mirror-theme.ts` already separates tokens there by
+ * WEIGHT ("function and class names cannot be separated by hue there;
+ * `functionName` takes a heavier weight instead"). `tokenCommand` is bound to
+ * `ink` and the run's semibold is the channel. Both numbers are recorded so an
+ * edit to obsidian's `ink` or `accent` re-litigates the pin instead of silently
+ * keeping it. The `success` separation has NO pin, which is what keeps the
+ * command and the resolved name from collapsing into one read anywhere.
+ */
+const COMMAND_TOKEN_PINNED = [
+	{
+		theme: "obsidian",
+		against: ["ink", "accent"],
+		got: 0.0,
+		why: "monochrome: accent = ink = #FAFAFA. The run is separated by the semibold step, exactly as `functionName`/`className` are in code-mirror-theme.ts. Re-measure if ink or accent move.",
+	},
+];
 const SEPARATION_FLOOR = 15;
 /* The ink step's floor is the comment floor: see `INK_STEP_PINNED` for why it is
    the same number and for why five palettes are recorded below it instead of
@@ -2025,6 +2070,56 @@ for (const { id, palette: p } of palettes) {
 			fail(
 				`${id}: syntax \`${role}\` ${p[role]} sits at ΔE00 ${r2(got)} from comment \`${p.inkDim}\` (need ${SYNTAX_COMMENT_FLOOR}) — a token the eye cannot separate from the comment beside it is not highlighted`,
 			);
+		}
+	}
+
+	/*
+	 * The composer's command token. Floors: 4.5:1 as TEXT on the field and on the
+	 * popup's ground, and a ΔE00 separation from the three inks it is read beside
+	 * in one line — prose `ink`, `accent`, and the resolved roster name.
+	 *
+	 * The name's own ratification is asserted here too (`success` vs `ink` only):
+	 * the design round measured that no text role separates from `accent` in all
+	 * twelve palettes, so the name keeps the palette's green — which is what the
+	 * TUI does with `$lo-string` — and the four accent identities are recorded
+	 * below as prose rather than asserted into a false floor.
+	 */
+	if (isHex(p[COMMAND_TOKEN]) && isHex(p.ink)) {
+		const pin = COMMAND_TOKEN_PINNED.find((e) => e.theme === id);
+		for (const ground of COMMAND_TOKEN_GROUNDS) {
+			if (!isHex(p[ground])) continue;
+			assertions++;
+			const got = ratio(p[COMMAND_TOKEN], p[ground]);
+			if (got < 4.5) {
+				fail(
+					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the leading /word is text a user is typing, not decoration`,
+				);
+			}
+		}
+		for (const against of ["ink", "accent", "success"]) {
+			if (!isHex(p[against])) continue;
+			assertions++;
+			const got = deltaE(p[COMMAND_TOKEN], p[against]);
+			const pinned = Boolean(pin?.against.includes(against));
+			if (pinned) {
+				if (Math.abs(pin.got - got) >= 0.01)
+					fail(
+						`${id}: COMMAND_TOKEN_PINNED records ${pin.got} for \`command\`/\`${against}\` but it now measures ${r2(got)} - re-measure and update the pin (${pin.why})`,
+					);
+				continue;
+			}
+			if (got < COMMAND_TOKEN_FLOOR)
+				fail(
+					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} sits at ΔE00 ${r2(got)} from \`${against}\` ${p[against]} (need ${COMMAND_TOKEN_FLOOR}) - the composer paints this run in the same box as that ink, so a reader cannot tell which is which`,
+				);
+		}
+		if (isHex(p.success)) {
+			assertions++;
+			const got = deltaE(p.success, p.ink);
+			if (got < COMMAND_TOKEN_FLOOR)
+				fail(
+					`${id}: the roster NAME's ink \`success\` ${p.success} sits at ΔE00 ${r2(got)} from prose \`ink\` ${p.ink} (need ${COMMAND_TOKEN_FLOOR}) - a resolved name that reads as prose is not a run`,
+				);
 		}
 	}
 

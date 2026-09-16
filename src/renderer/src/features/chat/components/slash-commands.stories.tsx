@@ -343,6 +343,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	// stories reads as the bare form. A story that wants the arming's other
 	// states passes `hoists` and `chosenByHand` with a real `armedOnlyCommands`.
 	hoists: false,
+	opensDraft: false,
 	// A story frame has no dispatcher, so the pane cannot address a session
 	// unless a story says otherwise — the same default the composer takes.
 	paneHasSession: false,
@@ -353,6 +354,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	 * gives a shape to must pass the whole map through `over`.
 	 */
 	argumentShapes: new Map(),
+	wirelessShapes: new Map(),
 	nameListCommands: new Set(),
 	nameChoices: new Set(),
 	argumentWords: [],

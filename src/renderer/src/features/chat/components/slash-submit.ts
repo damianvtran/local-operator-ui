@@ -172,6 +172,15 @@ export type ArgumentShapeCatalogueRow = {
 	aliases: readonly string[];
 	argument_shape?: ArgumentShape;
 	argument_words?: readonly string[];
+	/**
+	 * The wire's own `arguments` mode (`none`/`optional`/`required`), which every
+	 * released backend has sent since long before `argument_shape` existed. It is
+	 * the SECOND source a backend without shapes is read from, because dropping to
+	 * "no text is ever an argument" would stop `/mcp logout`, `/login openai`,
+	 * `/rename <title>` and `/move <path>` from running at all on the backend the
+	 * app installs today — measured, and a regression against `main` (QA Q1).
+	 */
+	arguments?: string;
 };
 
 /**
@@ -197,6 +206,48 @@ export function argumentShapeVocabulary(
 		};
 		shapes.set(command.name.toLowerCase(), row);
 		for (const alias of command.aliases) shapes.set(alias.toLowerCase(), row);
+	}
+	return shapes;
+}
+
+/**
+ * The shapes an older backend's rows imply, from the two sources it DOES send.
+ *
+ * `argument_shape` is absent on every released backend, and treating that absence
+ * as "no text is ever an argument" stopped a typed `/mcp logout` from running:
+ * the planner answered `send`, the messages endpoint refused the leading slash,
+ * and the user's gesture was undone — while `main` ran it. So the fallback reads
+ * the two facts an older row does carry:
+ *
+ * 1. a destination with an inline argument list (`valueWords`, the renderer's own
+ *    `inlineArgumentFor` derivation) takes ONE selector token — `/usage on` runs,
+ *    `/usage more prose` is a message;
+ * 2. otherwise the wire's `arguments` mode: `optional`/`required` means the
+ *    command owns typed text (`/mcp logout`, `/login openai`, `/move ~/x`), and
+ *    `none` means no text is ever its argument (`/compact hello` is a message).
+ *
+ * An ABSENT `arguments` is read as "may own text" rather than as `none`: absence
+ * is a row predating the field, and the loose reading is the one that can only
+ * ever reach a route error, never the permanent refusal this whole change is
+ * about. The single-token test deliberately does not consult the list's values —
+ * a renderer that drops that check is looser, and the endpoint still judges.
+ */
+export function wirelessArgumentShapes(
+	commands: readonly ArgumentShapeCatalogueRow[],
+	valueWords: ReadonlySet<string>,
+): Map<string, ArgumentShapeRow> {
+	const shapes = new Map<string, ArgumentShapeRow>();
+	const EMPTY: ReadonlySet<string> = new Set<string>();
+	for (const command of commands) {
+		const names = [command.name, ...command.aliases].map((name) =>
+			name.toLowerCase(),
+		);
+		const row: ArgumentShapeRow = names.some((name) => valueWords.has(name))
+			? { shape: "word", words: EMPTY }
+			: command.arguments === "none"
+				? { shape: "none", words: EMPTY }
+				: { shape: "any", words: EMPTY };
+		for (const name of names) shapes.set(name, row);
 	}
 	return shapes;
 }
@@ -298,6 +349,12 @@ export type SlashSubmissionArgs = {
 	 * below, which is what an older backend gets for every word.
 	 */
 	argumentShapes?: ReadonlyMap<string, ArgumentShapeRow>;
+	/**
+	 * What an older backend's rows imply for the same question — built by
+	 * `wirelessArgumentShapes` from the wire's `arguments` mode and the inline
+	 * argument lists, and asked only where `argumentShapes` has no answer.
+	 */
+	wirelessShapes?: ReadonlyMap<string, ArgumentShapeRow>;
 	/**
 	 * Names (primaries and aliases) of commands whose arming is EXPLICIT: a
 	 * free-text command this key never hoists, because the only gesture that arms
@@ -420,6 +477,7 @@ type Vocabularies = {
 	nameListCommands: ReadonlySet<string>;
 	armedOnlyCommands: ReadonlySet<string>;
 	argumentShapes: ReadonlyMap<string, ArgumentShapeRow>;
+	wirelessShapes: ReadonlyMap<string, ArgumentShapeRow>;
 };
 
 /**
@@ -438,6 +496,7 @@ function planForSpan(
 		nameListCommands,
 		armedOnlyCommands,
 		argumentShapes,
+		wirelessShapes,
 	}: Vocabularies,
 ): SlashSubmissionPlan {
 	const spliced = replaceSpan(draft, span.start, span.end, "");
@@ -502,14 +561,13 @@ function planForSpan(
 		 * `/team ops fix this`-shaped draft to the endpoint to be refused.
 		 */
 		if (consumesText) return { kind: "whole", command };
-		const shape = argumentShapes.get(word);
+		const shape = argumentShapes.get(word) ?? wirelessShapes.get(word);
 		if (shape) {
 			return argumentFits(shape, command.args)
 				? { kind: "whole", command }
 				: { kind: "send" };
 		}
-		// Neither: an older backend's row the renderer's own derivation does not
-		// know takes text, so the draft is prose.
+		// Neither: a word no source claims takes text, so the draft is prose.
 		return { kind: "send" };
 	}
 
@@ -518,22 +576,6 @@ function planForSpan(
 	// a command. Anything else is the sentence the user is writing, and it is sent
 	// as written.
 	if (!consumesText || armedOnly || !opensDraft) return { kind: "send" };
-	/*
-	 * And the command's own LINE has to be an argument its shape accepts: a
-	 * `/mcp logout` line whose body continues below it is prose, because the body
-	 * is not part of what that command takes and running it would drop the body —
-	 * which is the operator's report in its multi-line form. The empty argument is
-	 * excluded because a word that opens a draft and takes nothing yet is the
-	 * `list-open`/reassembly shape below, not a shape question.
-	 */
-	const openingShape = argumentShapes.get(word);
-	if (
-		openingShape &&
-		command.args !== "" &&
-		!argumentFits(openingShape, command.args)
-	)
-		return { kind: "send" };
-
 	if (promptCommands.has(word)) {
 		// A name-list command with no name typed yet: `_apply_command` has
 		// already completed the word to `/team ` and opened the roster list;
@@ -590,6 +632,7 @@ export function planSlashSubmission({
 	nameListCommands,
 	armedOnlyCommands,
 	argumentShapes,
+	wirelessShapes,
 	enabled,
 }: SlashSubmissionArgs): SlashSubmissionPlan {
 	// The capability flag, first and unconditionally: when `commands` is off,
@@ -605,6 +648,7 @@ export function planSlashSubmission({
 		nameListCommands,
 		armedOnlyCommands,
 		argumentShapes: argumentShapes ?? NO_SHAPES,
+		wirelessShapes: wirelessShapes ?? argumentShapes ?? NO_SHAPES,
 	};
 
 	/*

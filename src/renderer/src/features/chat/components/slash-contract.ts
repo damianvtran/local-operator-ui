@@ -43,8 +43,19 @@ export type SlashKeyIntent =
 	 * a key that asked to move and could not is not the arming gesture (F2).
 	 */
 	| { kind: "move"; index: number; moved: boolean }
-	/** Apply `matches[index]`; `run` is false when Enter may only complete. */
-	| { kind: "apply"; index: number; run: boolean }
+	/**
+	 * Apply `matches[index]`; `run` is false when Enter may only complete.
+	 *
+	 * `chosenByHand` is the marker's own state — false while the highlight sits
+	 * where the matcher first put it. It travels with the intent because it is the
+	 * difference between "the user picked this row" and "this row was the only
+	 * survivor": an ARMED-ONLY command's arming is the former and never the latter
+	 * (`pickArmsCommand`), and the pre-selected row is not a choice (the TUI's
+	 * `_picker_choice_is_unambiguous` reads the same fact, and UX round 1 U2 is what
+	 * a composer does when it conflates the two: a sentence that merely mentions
+	 * `/goal` had its words moved on Enter).
+	 */
+	| { kind: "apply"; index: number; run: boolean; chosenByHand: boolean }
 	/**
 	 * Replace the typed command word with `prefix` and leave the list open.
 	 *
@@ -348,9 +359,23 @@ export function pointerPickRuns(
 export function pickArmsCommand(
 	row: RoutableRow,
 	armedOnlyCommands: ReadonlySet<string>,
+	chosenByHand: boolean,
 ): boolean {
+	/*
+	 * CHOSEN BY HAND, or it does not arm. An armed-only command (`/goal`) is armed
+	 * by an explicit pick and nothing else, and the pick the KEYBOARD delivers is
+	 * not explicit while the marker still sits where the matcher put it — the
+	 * ambiguity gate calls a single survivor unambiguous, so a sentence that merely
+	 * MENTIONS the word ("I approve spend /goal") arranged its own draft into a
+	 * staged `/goal I approve spend` on a plain Enter: words moved, nothing sent,
+	 * which is the operator's reported gesture still costing him a send (UX round 1
+	 * U2, measured in the running app). An arrow key is a choice, a CLICK is a
+	 * choice, and a pre-selected row is neither.
+	 */
 	return (
-		row.kind === "command" && armedOnlyCommands.has(row.label.toLowerCase())
+		row.kind === "command" &&
+		chosenByHand &&
+		armedOnlyCommands.has(row.label.toLowerCase())
 	);
 }
 
@@ -474,7 +499,12 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 				 * (`editor.py:3259`).
 				 */
 				if (input.key === "Tab")
-					return { kind: "apply", index: input.active, run: false };
+					return {
+						kind: "apply",
+						index: input.active,
+						run: false,
+						chosenByHand: input.chosenByHand,
+					};
 				/*
 				 * Enter NAMES a command, so it may also run it — but only when the
 				 * choice is unambiguous (`commandChoiceUnambiguous`). An ambiguous
@@ -513,17 +543,32 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 								: input.commandQuery,
 					};
 				}
-				return { kind: "apply", index: input.active, run: true };
+				return {
+					kind: "apply",
+					index: input.active,
+					run: true,
+					chosenByHand: input.chosenByHand,
+				};
 			}
 			// A NAME+message list (`/team`, `/agent`) fills the name and nothing
 			// else: "a name is chosen" is "ready for the message", not "run it".
 			if (input.nameThenMessage)
-				return { kind: "apply", index: input.active, run: false };
+				return {
+					kind: "apply",
+					index: input.active,
+					run: false,
+					chosenByHand: input.chosenByHand,
+				};
 			// Tab completes the value only, so the matcher keeps matching and the
 			// user can keep typing — the enum-tail commands add no trailing space
 			// for exactly this reason.
 			if (input.key === "Tab")
-				return { kind: "apply", index: input.active, run: false };
+				return {
+					kind: "apply",
+					index: input.active,
+					run: false,
+					chosenByHand: input.chosenByHand,
+				};
 			// `/logout` is destructive IN THE DESKTOP TOO: `session.credential`
 			// resolves to `LogoutPicker`, whose rows revoke stored credentials.
 			// The `alert` arm is defence for a row that paints a destructive
@@ -536,6 +581,7 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 			return {
 				kind: "apply",
 				index: input.active,
+				chosenByHand: input.chosenByHand,
 				run:
 					input.runs &&
 					slashRunAllowed({
@@ -757,6 +803,20 @@ export type EnterFooterInput = {
 	 * would be a lie (UX round 1 U4).
 	 */
 	opensList: boolean;
+	/**
+	 * Whether the word OPENS this draft — the planner's own fact, and the one the
+	 * staging sentence turns on.
+	 *
+	 * A pick of a free-text or armed row STAGES the line only where the word opens
+	 * it; a token INSIDE a sentence is not a command this host will run, so the key
+	 * completes it in place and the next Enter sends the sentence as written. The
+	 * sentence this gates was printed in states where neither clause happened — the
+	 * planner answers `send` for the same draft, and its own suite asserts so
+	 * (design D5, UX U3, QA Q3). Truth here is a function of the DRAFT, not of the
+	 * row's identity, which is why it is carried in rather than derived from
+	 * `runs`/`takesDraft`.
+	 */
+	opening: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
@@ -885,6 +945,7 @@ export function enterFooter(input: EnterFooterInput): string | null {
 			 * a session must not be promised the run the next Enter will refuse.
 			 */
 			if (
+				input.opening &&
 				pickStagesDraft({
 					runs: input.runs,
 					arms: input.arms,
@@ -895,6 +956,15 @@ export function enterFooter(input: EnterFooterInput): string | null {
 				return input.paneHasSession
 					? `Enter stages /${input.label}; the next Enter runs it.`
 					: `Enter stages /${input.label}; this pane needs an open conversation to run it.`;
+			/*
+			 * The token INSIDE a sentence: Enter completes it where it stands and runs
+			 * nothing (measured: `fix this /usage` → Enter completes the word, the next
+			 * Enter posts the sentence to the model). Saying "runs" here was the popup's own
+			 * invariant broken — the line may not promise a gesture the key does not
+			 * perform — and it is the state the narrowed rule created (UX U3 / design D5).
+			 */
+			if (!input.opening)
+				return `Enter completes /${input.label}; the next Enter sends this as written.`;
 			/*
 			 * The four answers this table carried before the arming, kept exactly as
 			 * the router reads them: unambiguous + a running destination RUNS,
@@ -941,6 +1011,12 @@ export type ClickFooterInput = {
 	 * destination table this module deliberately does not import.
 	 */
 	runs: boolean;
+	/**
+	 * Whether the word OPENS this draft (`EnterFooterInput.opening`): a click on a
+	 * row whose word sits inside a sentence COMPLETES it where it stands, which is
+	 * the only thing the pointer does in that state.
+	 */
+	opening: boolean;
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
@@ -981,6 +1057,11 @@ export function clickFooter(input: ClickFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers.
 	if (!input.matched) return null;
 	if (input.phase === "command") {
+		/*
+		 * A token inside a sentence: the pointer COMPLETES it where it stands and runs
+		 * nothing, which is the whole of what it does in that state (design D5 / U3).
+		 */
+		if (!input.opening) return `Click completes /${input.label}.`;
 		if (
 			pickStagesDraft({
 				runs: input.runs,

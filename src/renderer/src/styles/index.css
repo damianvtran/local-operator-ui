@@ -46,6 +46,11 @@
 	   a chart mark is drawn on. See `chartBarHover` in the palette contract. */
 	--color-chart-bar-hover: var(--lo-chart-bar-hover);
 
+	/* The composer's structured-token ink, for the leading `/word` a user typed:
+	   its own role because `info` is the accent's twin in four palettes and the
+	   ink's twin in a fifth. See `tokenCommand` in the palette contract. */
+	--color-token-command: var(--lo-token-command);
+
 	--color-success: var(--lo-success);
 	--color-success-wash: var(--lo-success-wash);
 	--color-success-border: var(--lo-success-border);
@@ -444,4 +449,21 @@ html .Mui-focusVisible {
  */
 [data-radix-popper-content-wrapper]:has(> [data-lo-tooltip-panel]) {
 	pointer-events: none !important;
+}
+
+/*
+ * The composer's caret, while the mirror is painting the draft.
+ *
+ * `caret-color: auto` follows `color`, and the textarea's colour is
+ * `text-transparent` in that state — an invisible caret in the app's primary
+ * input. `caret-ink` was relied on for this and Tailwind does generate it from
+ * `--color-ink`, but generation is on demand and per-utility: the rule landed in
+ * a lazily-loaded chunk in the built app, and a frame capture that measured the
+ * composer before that chunk applied read `rgba(0, 0, 0, 0)` in eight of the
+ * twelve themes (design round 1 D1). Stating it here puts the caret in the
+ * stylesheet every surface already loads, so its visibility cannot depend on
+ * which chunk happened to arrive first.
+ */
+.caret-ink {
+	caret-color: var(--lo-ink);
 }

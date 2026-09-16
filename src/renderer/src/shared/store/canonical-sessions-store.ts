@@ -202,7 +202,7 @@ export const LEADING_SLASH_CODE = "leading_slash_message";
  * it. (User-visible copy: proposed here, ratified by the design round.)
  */
 export const LEADING_SLASH_MESSAGE =
-	"That line is a command, so it was not sent as a message. Send the command on its own, or move it below your text.";
+	"That line starts with a command word, so it was not sent as a message. Send the command on its own, or move it below your text.";
 
 /**
  * The same refusal, on a backend that still applies the OLD blanket policy.
@@ -212,9 +212,14 @@ export const LEADING_SLASH_MESSAGE =
  * begins with a command word. It is a version skew rather than a user error on
  * that pairing, and the app can install its own backend, so the sentence says
  * what the situation is and the alert offers the update beside it.
+ *
+ * What it may NOT say is that updating fixes it: the admission rule's narrowing
+ * is not in a release yet, so a user who pressed the update would meet the same
+ * refusal (UX round 1 U6, measured against the released backend). The sentence
+ * names the route that works TODAY and the one the update removes.
  */
 export const LEADING_SLASH_OLDER_BACKEND_MESSAGE =
-	"This backend is older than this app and still refuses messages that begin with a command word. Updating the backend fixes that.";
+	"This backend is older than this app and still refuses messages that begin with a command word. Move the word below your text to send it now; an updated backend no longer refuses them.";
 
 /**
  * The fallback sentence for a backend update that did not start.
