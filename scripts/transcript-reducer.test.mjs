@@ -3055,18 +3055,90 @@ test("one pass, one row: the collapse is pure, total and idempotent, and the fig
 		"one row per pass, and neither is lost",
 	);
 	/*
-	 * R5-3 / U19's shape, and the case that made the fallback dangerous: the page
-	 * carries only the NEWER pass's durable row, so the older live line has no pair
-	 * on this page. It must NOT take the newer row — a row that carries a
-	 * fingerprint belongs to the pass whose figure it holds, and a live line with a
-	 * different figure is a different pass rather than a worse candidate. Measured
-	 * live before the fix: durable 25 / 3781 / 5301 and the pane reading `to 3.8k`,
-	 * `to 5.3k`, bare — each slot showing the NEXT pass's figures.
+	 * R5-3 / U19's shape: the page carries only the NEWER pass's durable row, so the
+	 * older live line has no pair on this page. Each row keeps its own figures.
+	 *
+	 * WHAT CLOSES IT IS THE IDENTITY PASS, not the fallback's eligibility (review
+	 * round 6, R6-3): the newer live line matches `d2` on its fingerprint and claims
+	 * it before any distance is consulted, so the older line has nothing left to
+	 * take. The eligibility rule is what stops the OTHER shape — a live line with no
+	 * row of its own reaching for a neighbour (see the live-path case below).
 	 */
 	assert.deepEqual(rows(latestOnly), [
 		"compaction:0:41000:9000|Context compacted, 41.0k to 9.0k tokens",
 		"d2|Context compacted, 9.0k to 3.0k tokens",
 	]);
+
+	/*
+	 * R6-1: a pass that reports ZERO tokens — the runtime's own spelling for a pass
+	 * that failed — is a pass WITH a figure, and both projections say so. The live
+	 * path used truthiness (`before ? {before} : {}`) while the durable row used a
+	 * type check, so this pass painted two rows: the live line carried no
+	 * fingerprint and the durable row's `0` could not match it, and the fallback
+	 * would not take it either (it takes only fingerprint-less rows).
+	 */
+	const zeroDurable = {
+		id: "z1",
+		ts: (T0 + 100) / 1000,
+		type: "compaction",
+		payload: { tokens_before: 0 },
+	};
+	const zeroPass = applyEvent(
+		applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T0),
+		{
+			type: "compaction_end",
+			success: true,
+			tokens_before: 0,
+			tokens_after: 0,
+		},
+		T0 + 250,
+	);
+	assert.equal(
+		zeroPass.records.filter((record) => record.kind === "compaction").length,
+		1,
+		"a zero figure is still a figure on the live line",
+	);
+	assert.deepEqual(
+		rows(applyHistoryPage(zeroPass, pageOf([zeroDurable]))),
+		["z1|Context compacted"],
+		"and the durable row of the same pass collapses with it, bare",
+	);
+
+	/*
+	 * R6-2: the fallback's RANKING, pinned by the only input that distinguishes it.
+	 *
+	 * THE DISTINGUISHING INPUT: ONE fingerprint-less durable row inside the window of
+	 * TWO live lines, placed so that the NEWER line is nearer to it than the older
+	 * one is. Global nearest-by-distance gives the row to the newer line; the
+	 * oldest-live-first order (the rule this replaced) gives it to the older one.
+	 * Round 6 measured that reverting the ranking was 67/67 green after round 5's
+	 * fixtures lost this input, so it is stated here explicitly.
+	 */
+	const rankingDurable = {
+		id: "r1",
+		ts: (T0 + 30_200) / 1000,
+		type: "compaction",
+		payload: {},
+	};
+	const twoLives = settle(
+		settle(
+			applyEvent(EMPTY_TRANSCRIPT, { type: "compaction_start" }, T0),
+			41_000,
+			9_000,
+			T0 + 250,
+		),
+		9_000,
+		3_000,
+		T0 + 30_250,
+	);
+	assert.deepEqual(
+		rows(applyHistoryPage(twoLives, pageOf([rankingDurable]))),
+		[
+			"compaction:0:41000:9000|Context compacted, 41.0k to 9.0k tokens",
+			"r1|Context compacted, 9.0k to 3.0k tokens",
+		],
+		"the nearest live line claims a fingerprint-less row, not the oldest one",
+	);
 
 	/*
 	 * The LIVE path, which is where U19 was measured: pass 1's row is already paired
