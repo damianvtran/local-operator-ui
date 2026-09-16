@@ -35,6 +35,15 @@ a merely noisy one. The stamp's own placement is judged on the two deterministic
 and on `chat-tool-rows/turn-timestamps`, whose fixtures are relative to the capture and
 whose ground is a transcript of its own.
 
+## The pair also carries the footer's shape
+
+The before frames show the footer stamp as it was: `2025-10-09` in
+[`../chat-notification-feed-states/cached-paint/`](../chat-notification-feed-states/cached-paint/)
+and `2026-03-14` in the run panel's reader, i.e. the hover row's `yyyy-MM-dd`, while the turn
+stamps this change adds read `Oct 9, 2025, 4:53 AM`. Converging the footer on the turn stamp's
+own component is why 97 frames were re-taken a second time, and it is the same defect class
+`date-utils.ts` documents in `formatCalendarDate`'s comment.
+
 ## Both widths, because the placement claim is about edges
 
 The stamp sits against the **bubble's** right edge rather than the row content box's, and a
