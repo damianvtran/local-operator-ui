@@ -34,13 +34,13 @@ import { peerFields } from "../components/trace/receipt-row-model";
 import { WorkingLine } from "../components/trace/working-line";
 import { CanonicalTranscript } from "./canonical-transcript";
 import {
-	COMPACTED_LINE,
 	EMPTY_TRANSCRIPT,
 	type TranscriptRecord,
 	type TranscriptState,
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
+	compactionSettledLine,
 	dropLiveRecords,
 } from "./transcript-reducer";
 
@@ -549,9 +549,51 @@ export const CompactingSettled: Story = {
 					id: "compaction:1:41000:9000",
 					// ASKED OF THE RULE, not typed by hand: a frame whose sentence is a
 					// literal cannot detect a regression in the copy it claims to show
-					// (design round 2, D4). Same for the sibling below.
+					// (design round 2, D4). The figures are the LIVE sentence, which is
+					// the one the pairing carries onto the durable row (round 4); a cold
+					// reader's bare sentence is the rule's other half and has its own
+					// test rather than a frame.
 					ts: TS,
-					text: COMPACTED_LINE,
+					text: compactionSettledLine(41_000, 9_000),
+				},
+			]}
+		/>
+	),
+};
+
+/**
+ * The other half of the settled copy: a pass whose two figures round to the same
+ * step says the number ONCE (`Context compacted to 52.7k tokens`), which is UX
+ * round 1's U4 and had no frame until design round 2's D4.
+ *
+ * It was deleted for a round while the copy carried no figures at all; the rule
+ * prints the pair again, so the branch is back and so is its frame — a branch of
+ * the copy that only a test can see is the thing D4 was about.
+ */
+export const CompactingSettledUnchanged: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				tool({
+					id: "tool:1",
+					toolName: "read",
+					args: { path: "docs/branding.md" },
+					durationS: 0.04,
+					output: "# Branding",
+				}),
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "Compact the context, then keep going.",
+					images: [],
+				},
+				{
+					kind: "compaction",
+					id: "compaction:1:52700:52700",
+					ts: TS,
+					text: compactionSettledLine(52_700, 52_700),
 				},
 			]}
 		/>
