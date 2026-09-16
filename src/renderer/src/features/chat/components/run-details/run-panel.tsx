@@ -499,6 +499,7 @@ export const RunPanel = ({
 	const todosSectionRef = useRef<HTMLElement | null>(null);
 	const subagentsSectionRef = useRef<HTMLElement | null>(null);
 	const jobsSectionRef = useRef<HTMLElement | null>(null);
+	const wakesSectionRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (!revealRequest) return;
@@ -529,6 +530,7 @@ export const RunPanel = ({
 			todos: todosSectionRef,
 			subagents: subagentsSectionRef,
 			jobs: jobsSectionRef,
+			wakes: wakesSectionRef,
 		};
 		const target = sectionRefs[revealRequest.section].current;
 		const region = bodyRef.current;
@@ -928,6 +930,7 @@ export const RunPanel = ({
 						todosSectionRef={todosSectionRef}
 						subagentsSectionRef={subagentsSectionRef}
 						jobsSectionRef={jobsSectionRef}
+						wakesSectionRef={wakesSectionRef}
 					/>
 				</div>
 			)}

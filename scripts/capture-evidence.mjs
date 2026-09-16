@@ -533,6 +533,20 @@ export const STORIES = [
 	   makes — one section and its rows, or a quiet line. */
 	["chat-run-panel--jobs-in-flight", 1280, 700],
 	["chat-run-panel--jobs-only", 1280, 700],
+	/* The Wakes section (`docs/composer-wakes.md`) — the pane's fifth, and the one
+	   surface that answers "is this session armed, and what will it fire". One band
+	   is a schedule alone (the state nothing in the app could show before), one the
+	   three cadences published OUT of due order (the ordering claim, which a fixture
+	   in due order would hide), one the cap and its marker at a full scheduler's
+	   nine schedules, one a prompt longer than its row, one the pane's 320px floor
+	   where the due label is the longest first line any section draws, and one the
+	   pair with the plan that most real sessions are in. */
+	["chat-run-panel--wakes-only", 1280, 700],
+	["chat-run-panel--wakes-recurring", 1280, 820],
+	["chat-run-panel--wakes-many", 1280, 820],
+	["chat-run-panel--wake-long-message", 1280, 700],
+	["chat-run-panel--wakes-and-plan", 1280, 820],
+	["chat-run-panel--wakes-floor-320", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -637,13 +651,33 @@ export const STORIES = [
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
 	/*
-	 * The sidebar's session-status mark, in the one place it can be photographed:
-	 * the sidebar itself has no story (see the note below), so the read/unread
-	 * specimen matrix is the surface that carries this mark's pixels. Added by
-	 * the receipt round, whose whole visible delta is one glyph's resting state
+	 * The sidebar's session-status mark, in the one place it can be photographed
+	 * as a specimen: the read/unread matrix, every code beside its own name (see
+	 * the note below for why the live sidebar frames are not a substitute). Added
+	 * by the receipt round, whose whole visible delta is one glyph's resting state
 	 * -- without a frame here, that change had no evidence anywhere.
+	 *
+	 * Still the specimen frame now that the sidebar HAS a story: the matrix covers
+	 * every code twice at one size, where `chat-sidebar-status-feed--*` below shows
+	 * three of them in their own rows, which is what a transition needs and not what
+	 * a vocabulary needs.
 	 */
 	["chat-session-status--neighbours", 860, 600],
+	/*
+	 * The conversation sidebar's row status, delivered by the machine-wide feed
+	 * rather than by a catalogue read. THREE frames, and the pair they are half of
+	 * is the claim: `chat-sidebar-status-feed-baseline/` is the same story captured
+	 * from unmodified `origin/main`, where the frame type is unknown to the renderer
+	 * and is ignored - so the branch's frame moves the row and the pre-change tree's
+	 * does not. The width is the sidebar's own 360px column plus the readout that
+	 * names the value under the pixels; the height holds three rows and the caption.
+	 * Before this, the sidebar had no story at all and its frames came from live
+	 * captures (`new-chat-row/`, `sidebar-new-chat/`), which cannot produce a
+	 * before/after pair of one transition on two trees.
+	 */
+	["chat-sidebar-status-feed--gate-answered", 780, 560],
+	["chat-sidebar-status-feed--gate-parked", 780, 560],
+	["chat-sidebar-status-feed--completion-unseen", 780, 560],
 	/* The draft's three readings, which only exist on a session-less pane. Its
 	   frames are declared here rather than left to the live app because the
 	   preview op they need ships on a different branch: what a story can judge is
@@ -726,6 +760,16 @@ export const STORIES = [
 	   240 is `CHAT_CHIP_ICON_ONLY_PX`, and 172 is the floor QA measured on the built
 	   app — the three widths at which the row behaves differently. */
 	["chat-composer-status-row--activity-widths", 1000, 1000],
+	/* The wake chip (`docs/composer-wakes.md`): one band per claim, with the count
+	   GATE's own control as the fourth — the same plan and activity with no wakes,
+	   where the chip's absence has to be legible as an absence. The fifth band is
+	   the row at its widest, all five chips on one line. */
+	["chat-composer-status-row--wake-chip", 1000, 1000],
+	/* The width story with the FOURTH count chip, whose numbers are printed into the
+	   frames because a reader of a still cannot measure the boxes in it. It carries
+	   the same three widths as `activity-widths` plus 220, the column floor the wake
+	   change was specified against. */
+	["chat-composer-status-row--wake-widths", 1000, 1200],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
@@ -1516,9 +1560,11 @@ export const STORIES = [
  * Why this is not a plain `rmSync(OUT)`: not every frame in the tree comes
  * from this script. A surface whose claim is a click that changes STORE state,
  * or a flow against a live backend, cannot be photographed from Storybook, and
- * some of them - the chat sidebar among them - have no story at all, so a
- * blanket wipe destroys frames this script cannot re-derive. (A pointer HOVER
- * used to belong on that list and no longer does: the tuple's `hover` option
+ * several of them - the sidebar's own live frames (`new-chat-row/`,
+ * `sidebar-new-chat/`, `session-status-live/`) among them - are captures of the
+ * RUNNING app rather than of a story, so a blanket wipe destroys frames this
+ * script cannot re-derive. (A pointer HOVER used to belong on that list and no
+ * longer does: the tuple's `hover` option
  * moves a real pointer through the input pipeline, so the trigger's hover
  * grounds are swept frames now rather than a bolted-on set.) It used to destroy
  * their manifest entry in the same pass, which was the dangerous part: the

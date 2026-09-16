@@ -403,6 +403,14 @@ function SessionPanel({
 				? deriveRunDetails({
 						jobs: canonical.frontend.jobs,
 						todos: canonical.frontend.todos,
+						/*
+						 * The armed wake schedules ride the same derivation, which is what puts the
+						 * composer's wake chip, the pane's Wakes section and the section's tally on
+						 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
+						 * renders those same rows, so a second read of the wire here would be a
+						 * second source of truth for a count the user can see twice on one screen.
+						 */
+						wakes: canonical.frontend.wakes,
 					})
 				: null,
 		[canonical.frontend],
