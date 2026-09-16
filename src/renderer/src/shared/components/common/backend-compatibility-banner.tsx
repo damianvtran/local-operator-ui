@@ -74,14 +74,15 @@ export const BackendCompatibilityBanner = () => {
 		 * explains it is sent on `backend-update-error` before that promise settles -
 		 * so "the update could not start" was shown while the cause was already in
 		 * hand on the channel (design D4, review R1-5). The listener is scoped to the
-		 * attempt rather than mounted with the banner: the same channel carries the
-		 * check's own three failures, and a listener that outlived the press would
-		 * report a background check's message as this one's outcome.
+		 * attempt rather than mounted with the banner, and it takes only the `update`
+		 * phase: the same channel also carries a CHECK's own failures ("Unable to
+		 * determine backend version."), which are not this press's outcome and must
+		 * never become its sentence (review R2-1).
 		 */
 		let reason: string | null = null;
 		const removeBackendUpdateErrorListener =
-			window.api.updater.onBackendUpdateError((message) => {
-				reason = message;
+			window.api.updater.onBackendUpdateError((report) => {
+				if (report.phase === "update") reason = report.message;
 			});
 		try {
 			const started = await window.api.updater.updateBackend();

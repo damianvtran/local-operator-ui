@@ -197,14 +197,15 @@ export const RunPanel = ({
 		 * promise settles - so the reader was told "could not start" while the cause
 		 * (pip's exit, the version that did not change) was already in hand (review
 		 * R1-5, U4). The listener is scoped to the attempt rather than mounted with
-		 * the panel: that channel also carries the check's own three failures, and a
-		 * listener that outlived the attempt would show a background check's message
-		 * as this press's outcome.
+		 * the panel, and it takes only the `update` phase: the same channel also
+		 * carries a CHECK's own failures ("Unable to determine backend version."),
+		 * which are not this press's outcome and must never become its sentence
+		 * (review R2-1).
 		 */
 		let reason: string | null = null;
 		const removeBackendUpdateErrorListener =
-			window.api.updater.onBackendUpdateError((message) => {
-				reason = message;
+			window.api.updater.onBackendUpdateError((report) => {
+				if (report.phase === "update") reason = report.message;
 			});
 		try {
 			const started = await window.api.updater.updateBackend();

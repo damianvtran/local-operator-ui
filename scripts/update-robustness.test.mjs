@@ -4909,8 +4909,13 @@ test("a failed update-backend reports on backend-update-error and resolves false
 					({ channel }) => channel === "backend-update-error",
 				);
 				assert.equal(errors.length, 1, `${name}: ${JSON.stringify(sent)}`);
-				assert.equal(typeof errors[0].payload, "string", name);
-				assert.ok(errors[0].payload.trim().length > 0, name);
+				assert.equal(
+					errors[0].payload.phase,
+					"update",
+					`${name}: a report from the attempt itself must say so`,
+				);
+				assert.equal(typeof errors[0].payload.message, "string", name);
+				assert.ok(errors[0].payload.message.trim().length > 0, name);
 				// A failure is not a completion: the renderer's "up to date" path must
 				// not be reachable from it.
 				assert.ok(
@@ -5441,12 +5446,24 @@ test("an absent server reading keeps its own message, and an unparseable one tak
 	assert.equal(unparseable.verdict.server, "unavailable");
 	assert.equal(unparseable.verdict.affirmation, null);
 
+	/*
+	 * These reports come from `checkForBackendUpdates`, and the phase they carry is
+	 * asserted rather than left to the reader: it is what keeps a check's sentence
+	 * off the update attempt's failure panel when the check fails inside a running
+	 * server update (review R2-1, QA Q2).
+	 */
+	const errorReports = (result) =>
+		result.sent.filter(({ channel }) => channel === "backend-update-error");
 	const errorMessages = (result) =>
-		result.sent
-			.filter(({ channel }) => channel === "backend-update-error")
-			.map(({ payload }) => payload);
+		errorReports(result).map(({ payload }) => payload.message);
 	const unknownMessage = errorMessages(unknown);
 	const gateMessage = errorMessages(unparseable);
+	for (const { payload } of [
+		...errorReports(unknown),
+		...errorReports(unparseable),
+	]) {
+		assert.equal(payload.phase, "check", JSON.stringify(payload));
+	}
 	assert.equal(
 		unknownMessage.length,
 		1,
