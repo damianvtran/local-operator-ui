@@ -41,9 +41,13 @@ const RELEASE_ARTIFACT_ERROR_REGEX =
  * reader can check against what is running, and it deliberately does NOT send
  * them to "the update service log": the renderer has no affordance that opens it
  * (the only `showItemInFolder` call site is the attachment menu, and nothing here
- * names `LogFileType.UPDATE_SERVICE`), so naming it is not a next step. The panel
- * that carries this sentence says where the record does live - in Settings, the
- * same idiom the install-failure panel one screen up uses (design D3).
+ * names `LogFileType.UPDATE_SERVICE`), so naming it is not a next step. And the
+ * panel that carries this sentence points at NO durable record, because for a
+ * server update there is none to point at: the Settings card's only failure
+ * record is written by the APP-install paths (`writePendingInstallMarker`), and
+ * `updateBackend` writes nothing there. The install-failure panel one screen up
+ * says "also recorded in Settings" and is true there; this sentence used to copy
+ * that promise, and the copy was false (design D3, D10; UX U5).
  */
 const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
 	targetVersion
@@ -751,15 +755,45 @@ export const UpdateNotification = ({
 		}
 	}, []);
 
+	/**
+	 * Close the pinned box, and forget whatever it was carrying.
+	 *
+	 * Closing has to clear the error as well as hide it, because the error is the
+	 * half that WINS that box (see `withErrorToast`): an error left set after its
+	 * message was closed would paint again the next time this component said
+	 * anything, so a reader would be shown something they had already read instead
+	 * of the news they had not.
+	 *
+	 * ONE closer for every path that closes the box, not one per path (review
+	 * R3-1). The defer controls below close it as part of leaving their panel, and
+	 * the first version of this cleared the error only on the toast's own
+	 * dismissal - so "Update later" left a set-but-invisible error behind a closed
+	 * box, with `FloatingAlert`'s auto-hide timer already cancelled alongside it.
+	 * Nothing else was going to clear that state, so the next notice to raise the
+	 * box (the update-completed sentence, whose toast is its only carrier) painted
+	 * the superseded error in its place. An invariant enforced at one of three
+	 * closers is not an invariant, so all of them go through here.
+	 */
+	const closeSnackbar = useCallback(() => {
+		setSnackbarOpen(false);
+		setError(null);
+	}, []);
+
 	// Handle deferring a backend update
 	const handleDeferBackendUpdate = useCallback(() => {
 		if (backendUpdateInfo) {
 			deferUpdate(UpdateType.BACKEND, backendUpdateInfo.latestVersion);
-			setSnackbarOpen(false);
 			setBackendUpdateAvailable(false);
 			setBackendUpdateInfo(null);
 		}
-	}, [deferUpdate, backendUpdateInfo]);
+		/*
+		 * The box goes with the panel, and the error goes with the box - through the
+		 * same closer the toast's own dismissal uses. Unconditional rather than inside
+		 * the guard: the failure panel's "Update later" reaches here with no offer
+		 * details set, and it is still a dismissal (review R3-1).
+		 */
+		closeSnackbar();
+	}, [closeSnackbar, deferUpdate, backendUpdateInfo]);
 
 	/**
 	 * Dismiss a failed server update.
@@ -778,11 +812,13 @@ export const UpdateNotification = ({
 	const handleDeferUpdate = useCallback(() => {
 		if (updateInfo) {
 			deferUpdate(UpdateType.UI, updateInfo.version);
-			setSnackbarOpen(false);
 			setUpdateAvailable(false);
 			setUpdateDownloaded(false);
 		}
-	}, [deferUpdate, updateInfo]);
+		// Same reason as the backend deferral above: the box closes with the panel,
+		// and an error cannot outlive it (review R3-1).
+		closeSnackbar();
+	}, [closeSnackbar, deferUpdate, updateInfo]);
 
 	// Set up event listeners for update events
 	useEffect(() => {
@@ -1104,20 +1140,6 @@ export const UpdateNotification = ({
 	]);
 
 	/**
-	 * Close the toast in the pinned box, and forget its message.
-	 *
-	 * Closing has to clear the error as well as hide it, because the error is the
-	 * half that WINS that box (see `withErrorToast`): an error left set after its
-	 * toast was dismissed would paint again the next time this component raised a
-	 * message, so a reader would be shown something they had already read instead
-	 * of the news they had not.
-	 */
-	const handleSnackbarClose = () => {
-		setSnackbarOpen(false);
-		setError(null);
-	};
-
-	/**
 	 * The state's panel, with this component's error toast beside it.
 	 *
 	 * The toast used to BE the branch for `error`: an early return in a component
@@ -1140,7 +1162,7 @@ export const UpdateNotification = ({
 	 * (UX U6). The notice is the half that yields because it is the half the panel
 	 * already says - and because the thing that must never be hidden is the
 	 * failure, which is why every panel branch was routed through here in the first
-	 * place. `handleSnackbarClose` clears the error, so the box is free again the
+	 * place. `closeSnackbar` clears the error, so the box is free again the
 	 * moment the reader has dismissed it.
 	 */
 	const withErrorToast = (panel: ReactNode, notice?: ReactNode) => (
@@ -1150,7 +1172,7 @@ export const UpdateNotification = ({
 				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
+					onClose={closeSnackbar}
 					variant="danger"
 				>
 					{error}
@@ -1536,7 +1558,7 @@ export const UpdateNotification = ({
 			<FloatingAlert
 				open={snackbarOpen}
 				autoHideDuration={6000}
-				onClose={handleSnackbarClose}
+				onClose={closeSnackbar}
 				variant="info"
 			>
 				A new update is available: v{updateInfo.version}
@@ -1594,7 +1616,7 @@ export const UpdateNotification = ({
 			<FloatingAlert
 				open={snackbarOpen}
 				autoHideDuration={6000}
-				onClose={handleSnackbarClose}
+				onClose={closeSnackbar}
 				variant="success"
 			>
 				Update downloaded and ready to install
@@ -1748,7 +1770,7 @@ export const UpdateNotification = ({
 				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
+					onClose={closeSnackbar}
 					variant="info"
 				>
 					A new server update is available: v{backendUpdateInfo.latestVersion}
