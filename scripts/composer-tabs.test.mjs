@@ -1047,7 +1047,10 @@ test("the section's tally is the chip's own clause, and its cap is a statement",
 			),
 		),
 	});
-	assert.match(over, /1 more wakes/);
+	// The marker's noun inflects (UX round 2's U7): one hidden row reads `1 more wake`,
+	// and the plural is pinned absent so the pair cannot drift back.
+	assert.match(over, /1 more wake/);
+	assert.doesNotMatch(over, /1 more wakes/);
 	assert.match(over, /data-run-panel-row="o16"/);
 	assert.doesNotMatch(over, /data-run-panel-row="o17"/, "the cap holds");
 	assert.match(
