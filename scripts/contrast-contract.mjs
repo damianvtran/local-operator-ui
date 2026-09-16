@@ -670,6 +670,51 @@ const PERCEPTIBLE = [
 		maxWeightChange: 2.0,
 		against: "surface",
 	},
+	{
+		/*
+		 * The empty-chat suggestion chip's hover ground step.
+		 *
+		 * Nothing else in this file measures this pair, and that is the whole
+		 * reason the row exists: the chip becomes borderless, so every assertion
+		 * the chip used to be adjacent to (a control's edge against its ground)
+		 * stops applying — and what is left of the chip's appearance in the hover
+		 * state is whether one ground is perceivably above the other at all.
+		 *
+		 * `elevated` on `canvas` is measured worst-case at ΔE00 4.21 (iceberg),
+		 * clear of § 3's aim of 2. The floor is set at 2 rather than at the
+		 * measured 4.21 because the assertion is "a human can tell these apart",
+		 * not "this palette is the one we shipped" — a re-authored palette that
+		 * collapsed the step toward 2 would still be a hover state, and one that
+		 * collapsed it to 0 would be the picker-host D1 defect (a fill on its own
+		 * ground) reproduced on the composer.
+		 *
+		 * `pairedWith: "canvas"` is the chip's OTHER state stated as a role rather
+		 * than as an absence: at rest the chip draws no fill at all, so the colour
+		 * behind it IS the ground it sits on.
+		 *
+		 * THE WEIGHT HALF IS A RATIO CEILING HERE, NOT A PROOF ABOUT THIS CHIP, and
+		 * it is recorded rather than removed because the shape is right for a
+		 * same-role ground pair and because deleting half an assertion to fix its
+		 * prose hides the next reader from the mechanism. What it actually asserts:
+		 * the loop computes `Math.max(a / b, b / a)` with `b = ratio(canvas,
+		 * canvas) = 1.0`, so it collapses to `ratio(elevated, canvas) <= 2.0`. A
+		 * ground step measures ~1.05-1.3 in every palette, so the ceiling is
+		 * structurally satisfied and a `hover:bg-elevated` -> `hover:bg-surface`
+		 * swap does not move it either. That swap is caught, but by the
+		 * `STRUCTURAL_CALL_SITES` pin below - whose `must` spans `variant="ghost"`
+		 * plus the class list - not by this half. Read the row as: the ΔE00 half is
+		 * the guarantee (it is the only thing in this file measuring
+		 * `canvas` <-> `elevated`), and the weight half is a ceiling that says the
+		 * hover step must not stop being a step.
+		 */
+		name: "suggestion chip hover ground step",
+		role: "elevated",
+		on: ["canvas"],
+		minDeltaE: 2.0,
+		pairedWith: "canvas",
+		maxWeightChange: 2.0,
+		against: "canvas",
+	},
 ];
 
 /**
@@ -974,6 +1019,41 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
 		must: "z-10 flex h-8 items-center rounded-md border border-hairline bg-elevated px-1",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
+	},
+	{
+		/*
+		 * The empty-chat suggestion chip.
+		 *
+		 * This control deliberately has NO row in `CONTROLS`, and the reason is
+		 * worth writing down so the next reader does not add one and conclude the
+		 * wrong thing from its failure. The assertion loop computes
+		 * `fill ? p[c.fill] : ground` and requires `max(fillEdge, borderEdge) >= 3:1`.
+		 * At rest the chip has no fill and no border, so the fill collapses to the
+		 * ground and the edge ratio to 1:1; hovered, the fill is `elevated`, whose
+		 * ratio to `canvas` is ~1.1:1 — a ground step, deliberately far below the
+		 * 3:1 that belongs to a BOUNDARY. Every existing hovered row that uses
+		 * `elevated` carries `borderControl` at the same time (`ask option button
+		 * (hover)`); this control has no border, and that is the point rather than
+		 * the omission.
+		 *
+		 * So the gate this control needs is a call-site pin plus a perceivability
+		 * row (`suggestion chip hover ground step` above), which is what this file
+		 * provides for exactly this class of edit.
+		 *
+		 * The pin spans the variant AND the class list on purpose, because the
+		 * class list alone would stay green through the edit that undoes the
+		 * change: restoring `variant="outline"` puts `border border-control` back
+		 * (`button.tsx`) without touching one character of the className. The cost
+		 * of spanning the whole list is that every legitimate edit to it fails this
+		 * gate once and has to visit this entry - which is what happened when the
+		 * chip gained its disabled state (`disabled:text-ink-disabled
+		 * disabled:hover:bg-transparent`, round 1 remediation); that is the pin
+		 * working, so the answer is to update the literal, never to loosen it.
+		 */
+		what: "the empty-chat suggestion chip is borderless",
+		file: "src/renderer/src/features/chat/components/measured-suggestion-stack.tsx",
+		must: 'variant="ghost"\n\t\t\t\t\t\tsize="sm"\n\t\t\t\t\t\tclassName="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"',
+		why: 'reverting to `variant="outline"` re-introduces seven 3:1 boundaries as the loudest thing on a screen with nothing to compete with them, and `hairline` is the tempting wrong answer here: it is the decorative role and measures 1.25:1 at its worst, which is a boundary nobody can see rather than a quiet one',
 	},
 ];
 

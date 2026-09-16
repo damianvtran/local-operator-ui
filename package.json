@@ -1,403 +1,372 @@
 {
-  "name": "local-operator-ui",
-  "version": "0.25.6",
-  "productName": "Local Operator",
-  "description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
-  "main": "./out/main/index.js",
-  "bin": {
-    "local-operator-ui": "./bin/local-operator-ui.js"
-  },
-  "license": "MIT",
-  "author": {
-    "name": "Radient Inc.",
-    "email": "contact@radienthq.com",
-    "url": "https://github.com/radient-ml"
-  },
-  "contributors": [
-    {
-      "name": "Damian Tran",
-      "email": "damian@radienthq.com",
-      "url": "https://github.com/damianvtran"
-    }
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/damianvtran/local-operator-ui.git"
-  },
-  "homepage": "https://github.com/damianvtran/local-operator-ui#readme",
-  "bugs": {
-    "url": "https://github.com/damianvtran/local-operator-ui/issues"
-  },
-  "keywords": [
-    "local-operator",
-    "radient",
-    "agent",
-    "ai",
-    "python",
-    "tool use",
-    "ui",
-    "electron",
-    "react"
-  ],
-  "files": [
-    "out",
-    "bin",
-    "LICENSE",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "start": "electron-vite preview",
-    "app:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_WINDOW_MODE=headless electron . --window-mode=headless",
-    "//app:headless": "The agent-driven launch, so it carries the notification kill switch (scripts/notifications-off.mjs). `headless` silences this app's OWN banner and cannot reach the backend's: the app spawns a backend, and that backend's parked-gate announcement ends at `osascript` on macOS, whose banner lands in the operator's real Notification Center attributed to Script Editor. `pnpm start` and `pnpm dev` are a person's own app at their own screen and keep their banners.",
-    "dev": "npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'",
-    "//dev:headless": "The env var is the only channel this launch can carry a mode on. electron-vite dev spawns Electron itself from its OWN option parser and forwards nothing extra: measured, neither an appended argument nor its shipped ELECTRON_CLI_ARGS passthrough reaches the app's argv (the run reported the default 1380x900 when the passthrough asked for 1024x768). It does not need the flag: a second launch forwards the mode it resolved to the instance holding the lock (src/main/window-raise.ts), which is the channel this env var already feeds.",
-    "dev:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_WINDOW_MODE=headless pnpm dev",
-    "build": "electron-vite build",
-    "//prebuild": "The build compiles main/preload to V8 bytecode for the pinned Electron, so it needs a real node_modules/electron/dist before electron-vite runs. Since Electron 42 nothing fetches that during an install except our own postinstall, so this hook covers the trees that hook cannot reach (--ignore-scripts, or a dist/ removed by hand) and fails the build by name instead of letting it die inside the bytecode step with an ENOENT. build:npm needs no runtime: it deliberately emits plain JS (LOCAL_OPERATOR_UI_NO_BYTECODE=true).",
-    "prebuild": "node ./bin/ensure-electron.js",
-    "prebuild:npm": "rm -rf out/main out/preload",
-    "build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
-    "postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
-    "postbuild": "chmod +x ./bin/local-operator-ui.js",
-    "postinstall": "node ./bin/postinstall.js",
-    "lint": "pnpm biome check src bin scripts/linux-sandbox.test.mjs",
-    "lint:fix": "pnpm biome check --write src bin scripts/linux-sandbox.test.mjs",
-    "//lint:scripts": "`pnpm lint` names the paths it checks by hand, so the whole of `scripts/` - the proof harnesses, evidence rigs and release gates - sat outside the lint and formatter contracts, and a formatter error rode into a merged pull request green. This gate runs the same `biome check` over the `scripts/` files a change touches against a base ref (`origin/main` locally, the merge commit's first parent in CI), so a violation cannot ride in with the diff that introduces it, while the tree's 106 pre-existing offenders are burnt down file by file rather than turned red at once. Widening `pnpm lint` to name `scripts/` outright is the follow-up once that backlog is gone; scripts/check-scripts-lint.mjs holds the measurements and the full rationale.",
-    "lint:scripts": "node scripts/check-scripts-lint.mjs",
-    "format": "pnpm biome format src",
-    "format:fix": "pnpm biome format --write src",
-    "prepack": "pnpm run build:npm",
-    "check-types:main": "tsc --noEmit -p tsconfig.node.json",
-    "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
-    "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
-    "test:session-cookies": "node scripts/session-cookie-electron.test.mjs",
+	"name": "local-operator-ui",
+	"version": "0.25.7",
+	"productName": "Local Operator",
+	"description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
+	"main": "./out/main/index.js",
+	"bin": {
+		"local-operator-ui": "./bin/local-operator-ui.js"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "Radient Inc.",
+		"email": "contact@radienthq.com",
+		"url": "https://github.com/radient-ml"
+	},
+	"contributors": [
+		{
+			"name": "Damian Tran",
+			"email": "damian@radienthq.com",
+			"url": "https://github.com/damianvtran"
+		}
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianvtran/local-operator-ui.git"
+	},
+	"homepage": "https://github.com/damianvtran/local-operator-ui#readme",
+	"bugs": {
+		"url": "https://github.com/damianvtran/local-operator-ui/issues"
+	},
+	"keywords": [
+		"local-operator",
+		"radient",
+		"agent",
+		"ai",
+		"python",
+		"tool use",
+		"ui",
+		"electron",
+		"react"
+	],
+	"files": ["out", "bin", "LICENSE", "README.md"],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"start": "electron-vite preview",
+		"app:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_WINDOW_MODE=headless electron . --window-mode=headless",
+		"//app:headless": "The agent-driven launch, so it carries the notification kill switch (scripts/notifications-off.mjs). `headless` silences this app's OWN banner and cannot reach the backend's: the app spawns a backend, and that backend's parked-gate announcement ends at `osascript` on macOS, whose banner lands in the operator's real Notification Center attributed to Script Editor. `pnpm start` and `pnpm dev` are a person's own app at their own screen and keep their banners.",
+		"dev": "npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'",
+		"//dev:headless": "The env var is the only channel this launch can carry a mode on. electron-vite dev spawns Electron itself from its OWN option parser and forwards nothing extra: measured, neither an appended argument nor its shipped ELECTRON_CLI_ARGS passthrough reaches the app's argv (the run reported the default 1380x900 when the passthrough asked for 1024x768). It does not need the flag: a second launch forwards the mode it resolved to the instance holding the lock (src/main/window-raise.ts), which is the channel this env var already feeds.",
+		"dev:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_WINDOW_MODE=headless pnpm dev",
+		"build": "electron-vite build",
+		"//prebuild": "The build compiles main/preload to V8 bytecode for the pinned Electron, so it needs a real node_modules/electron/dist before electron-vite runs. Since Electron 42 nothing fetches that during an install except our own postinstall, so this hook covers the trees that hook cannot reach (--ignore-scripts, or a dist/ removed by hand) and fails the build by name instead of letting it die inside the bytecode step with an ENOENT. build:npm needs no runtime: it deliberately emits plain JS (LOCAL_OPERATOR_UI_NO_BYTECODE=true).",
+		"prebuild": "node ./bin/ensure-electron.js",
+		"prebuild:npm": "rm -rf out/main out/preload",
+		"build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
+		"postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
+		"postbuild": "chmod +x ./bin/local-operator-ui.js",
+		"postinstall": "node ./bin/postinstall.js",
+		"lint": "pnpm biome check src bin scripts/linux-sandbox.test.mjs",
+		"lint:fix": "pnpm biome check --write src bin scripts/linux-sandbox.test.mjs",
+		"//lint:scripts": "`pnpm lint` names the paths it checks by hand, so the whole of `scripts/` - the proof harnesses, evidence rigs and release gates - sat outside the lint and formatter contracts, and a formatter error rode into a merged pull request green. This gate runs the same `biome check` over the `scripts/` files a change touches against a base ref (`origin/main` locally, the merge commit's first parent in CI), so a violation cannot ride in with the diff that introduces it, while the tree's 106 pre-existing offenders are burnt down file by file rather than turned red at once. Widening `pnpm lint` to name `scripts/` outright is the follow-up once that backlog is gone; scripts/check-scripts-lint.mjs holds the measurements and the full rationale.",
+		"lint:scripts": "node scripts/check-scripts-lint.mjs",
+		"format": "pnpm biome format src",
+		"format:fix": "pnpm biome format --write src",
+		"prepack": "pnpm run build:npm",
+		"check-types:main": "tsc --noEmit -p tsconfig.node.json",
+		"check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
+		"check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
+		"test:session-cookies": "node scripts/session-cookie-electron.test.mjs",
 
-    "test:desktop": "node scripts/run-desktop-tests.mjs scripts/slash-token.test.mjs scripts/slash-rank.test.mjs scripts/slash-submit.test.mjs scripts/slash-contract.test.mjs scripts/slash-row-format.test.mjs scripts/owned-serve-lifecycle.test.mjs scripts/launcher-watch.test.mjs scripts/linux-sandbox.test.mjs scripts/capture-evidence.test.mjs scripts/desktop-contract.test.mjs scripts/transcript-reducer.test.mjs scripts/transcript-paging.test.mjs scripts/seed-placement.test.mjs scripts/provider-state.test.mjs scripts/stale-agent.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/desktop-proxy.test.mjs scripts/session-stream-token.test.mjs scripts/session-load-recovery.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/settings-time-to-error.test.mjs scripts/backend-error-surfaces.test.mjs scripts/canonical-chat.test.mjs scripts/stale-caption.test.mjs scripts/desktop-watch-lease.test.mjs scripts/session-switch.test.mjs scripts/chat-search.test.mjs scripts/palette-search.test.mjs scripts/palette-shortcut.test.mjs scripts/palette-contract.test.mjs scripts/palette-panel-request.test.mjs scripts/run-detail-model.test.mjs scripts/subagent-pulse.test.mjs scripts/chat-title.test.mjs scripts/clear-search.test.mjs scripts/tool-row.test.mjs scripts/attachment-url.test.mjs scripts/desktop-notifier.test.mjs scripts/launch-session.test.mjs scripts/desktop-feed.test.mjs scripts/viewer-record.test.mjs scripts/desktop-stream.test.mjs scripts/python-bytecode-cache.test.mjs scripts/update-affirmation.test.mjs scripts/update-robustness.test.mjs scripts/prune-python-resource.test.mjs scripts/managed-python.test.mjs scripts/usage-view.test.mjs scripts/usage-container.test.mjs scripts/session-status.test.mjs scripts/composer-readings.test.mjs scripts/composer-tabs.test.mjs scripts/ask-options.test.mjs scripts/window-mode.test.mjs scripts/evidence-manifest.test.mjs scripts/canonical-notice.test.mjs scripts/evidence-run-guard.test.mjs scripts/desktop-test-concurrency.test.mjs scripts/run-desktop-tests.test.mjs scripts/mcp-foreign-config-origin.test.mjs scripts/mentioned-files.test.mjs scripts/picker-feedback.test.mjs scripts/panel-chart-motion.test.mjs scripts/panel-info-credentials.test.mjs scripts/warm-session.test.mjs scripts/submit-latency.test.mjs scripts/completion-view-ack.test.mjs scripts/echo-delivery.test.mjs scripts/check-runtime-deps.test.mjs scripts/new-chat-row.test.mjs scripts/new-chat-row-evidence.test.mjs scripts/reconnect-page-gap.test.mjs scripts/browser-host.test.mjs scripts/check-vendored.test.mjs scripts/credential-capture.test.mjs scripts/credential-composer.test.mjs scripts/chat-session-status.test.mjs scripts/draft-selection.test.mjs scripts/toast-lifetime.test.mjs scripts/storybook-query-fixture.test.mjs scripts/mcp-list-query.test.mjs scripts/mcp-target-resolution.test.mjs scripts/mcp-auth-surface.test.mjs scripts/mcp-failure-routing.test.mjs scripts/daemon-discovery.test.mjs scripts/daemon-health-state.test.mjs scripts/daemon-observation.test.mjs scripts/session-cookies.test.mjs scripts/move-session.test.mjs scripts/frontend-replace.test.mjs scripts/browser-chrome.test.mjs scripts/dev-driver-gate.test.mjs scripts/logger-log-dir.test.mjs scripts/draft-splash.test.mjs scripts/suggestion-stack.test.mjs scripts/suggestion-stack-react.test.mjs scripts/notifications-off.test.mjs scripts/notification-launch.test.mjs scripts/notification-spawn-sites.test.mjs scripts/chrome-keychain.test.mjs scripts/interrupt-control.test.mjs scripts/chat-sidebar-selection.test.mjs scripts/message-quote.test.mjs scripts/panel-chart-hover.test.mjs",
-    "check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs",
-    "check-vendored": "node scripts/check-vendored.mjs",
-    "check-evidence": "node scripts/check-evidence.mjs",
-    "check-edit-diffs": "node scripts/check-edit-diffs.mjs",
-    "check-runtime-deps": "node scripts/check-runtime-deps.mjs",
-    "gen-themes": "node scripts/generate-theme-css.mjs",
-    "bundle-size": "node scripts/bundle-size.mjs",
-    "startup-closure": "node scripts/startup-closure.mjs",
-    "pack": "pnpm run build && electron-builder --dir",
-    "dist": "pnpm run build && electron-builder",
-    "dist:mac": "pnpm run build && electron-builder --mac --publish never",
-    "dist:win": "pnpm run build && electron-builder --win --publish never",
-    "dist:linux": "pnpm run build && electron-builder --linux --publish never",
-    "dist:all": "pnpm run build && electron-builder -mwl --publish never",
-    "release": "pnpm run build && electron-builder --publish always",
-    "generate-icons": "node scripts/generate-icons.js",
-    "notarize-dmg": "node scripts/notarize-artifacts.mjs",
-    "verify-macos-artifacts": "node scripts/verify-macos-artifacts.mjs",
-    "setup-python": "./scripts/setup-python-resource.sh",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "app:driver": "node scripts/renderer-driver.mjs",
-    "app:driver:gate-check": "node scripts/renderer-driver.mjs --gate-check"
-  },
-  "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0",
-    "dotenv": "^16.5.0",
-    "electron-log": "^4.4.8",
-    "electron-updater": "^6.8.9",
-    "posthog-node": "^4.11.3",
-    "zod": "^3.24.2"
-  },
-  "//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
-  "//packaged-node-modules-exclusions": "The list above excludes Electron's own dependency tree from the packaged app, which electron-builder copies because `electron` is in optionalDependencies (the npm/npx channel needs it at install time). `@electron/get`, `@electron-internal/extract-zip` and their deps exist to download and unpack the Electron runtime during an INSTALL; a packaged app never runs them. Measured on a --dir artifact of 0.19.7: 8 packages outside the production closure, 7.0 MB of them unpacked into app.asar.unpacked and the rest inside a 26 MB app.asar (@types/node alone 2.4 MB). None is a module request anywhere in out/**, and the closure scripts/check-packaged-closure.mjs computes over the six declared runtime dependencies contains none of them. They are named rather than pattern-matched because electron-builder has no 'skip this dependency's tree' switch: a future Electron bump that adds a dependency needs this list re-derived from the same diff.",
-  "//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails. dmg-builder and electron-builder-squirrel-windows are app-builder-lib's peers and the builder refuses to resolve when they disagree with it, so all three move as one version.",
-  "optionalDependencies": {
-    "electron": "44.3.0"
-  },
-  "devDependencies": {
-    "@babel/helpers": "^7.26.10",
-    "@babel/runtime": "^7.26.10",
-    "@biomejs/biome": "^1.9.4",
-    "@chromatic-com/storybook": "^3.2.5",
-    "@codemirror/language": "^6.11.1",
-    "@codemirror/search": "^6.5.6",
-    "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.37.1",
-    "@electron-toolkit/preload": "^3.0.1",
-    "@electron-toolkit/tsconfig": "^1.0.1",
-    "@electron/notarize": "^2.5.0",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@lezer/highlight": "^1.2.1",
-    "@mui/material": "^6.4.2",
-    "@mui/x-date-pickers": "^8.3.1",
-    "@storybook/addon-essentials": "^8.6.4",
-    "@storybook/addon-interactions": "^8.6.4",
-    "@storybook/blocks": "^8.6.4",
-    "@storybook/react": "^8.6.4",
-    "@storybook/react-vite": "^8.6.4",
-    "@storybook/test": "^8.6.4",
-    "@tailwindcss/vite": "4.3.3",
-    "@tanstack/react-query": "^5.67.1",
-    "@tanstack/react-query-devtools": "^5.67.1",
-    "@types/hast": "^3.0.4",
-    "@types/node": "22.14.1",
-    "@types/react": "18.3.18",
-    "@types/react-dom": "18.3.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "@types/xlsx": "^0.0.36",
-    "@uiw/codemirror-extensions-langs": "^4.23.10",
-    "@uiw/react-codemirror": "^4.23.10",
-    "@vitejs/plugin-react": "^4.3.4",
-    "ag-grid-community": "^33.3.2",
-    "ag-grid-react": "^33.3.2",
-    "class-variance-authority": "0.7.1",
-    "clsx": "2.1.1",
-    "date-fns": "^4.1.0",
-    "dmg-builder": "26.16.1",
-    "dotenv-cli": "^8.0.0",
-    "electron-builder": "^26.16.1",
-    "electron-builder-squirrel-windows": "26.16.1",
-    "electron-vite": "^3.0.0",
-    "esbuild": "^0.25.1",
-    "html-react-parser": "^5.2.2",
-    "icns-lib": "^1.0.1",
-    "jest": "^29.7.0",
-    "jsdom": "26.1.0",
-    "katex": "^0.16.21",
-    "lucide-react": "^0.507.0",
-    "mermaid": "^11.6.0",
-    "posthog-js": "^1.235.0",
-    "radix-ui": "1.6.7",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-error-boundary": "^5.0.0",
-    "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.16.0",
-    "react-shepherd": "^6.1.8",
-    "react-syntax-highlighter": "^15.6.1",
-    "recharts": "^2.15.3",
-    "rehype-katex": "^7.0.1",
-    "rehype-parse": "^9.0.1",
-    "rehype-remark": "^10.0.1",
-    "rehype-source-map": "^1.0.1",
-    "rehype-stringify": "^10.0.1",
-    "remark": "^15.0.1",
-    "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0",
-    "remark-parse": "^11.0.0",
-    "remark-rehype": "^11.1.2",
-    "remark-stringify": "^11.0.0",
-    "sharp": "^0.33.2",
-    "shepherd.js": "^14.5.0",
-    "sonner": "^2.0.3",
-    "storybook": "^8.6.4",
-    "tailwind-merge": "3.6.0",
-    "tailwindcss": "4.3.3",
-    "tw-animate-css": "1.4.0",
-    "typescript": "^7.0.2",
-    "unified": "^11.0.5",
-    "unist-util-visit": "^5.0.0",
-    "uuid": "^11.1.0",
-    "vite": "^6.2.0",
-    "vite-tsconfig-paths": "^5.1.4",
-    "xlsx": "^0.18.5",
-    "yaml": "^2.7.0",
-    "zustand": "^5.0.3"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "engines": {
-    "node": ">=22.13.1"
-  },
-  "build": {
-    "appId": "com.local-operator",
-    "electronVersion": "44.3.0",
-    "productName": "Local Operator",
-    "copyright": "Copyright © 2025 Radient Inc.",
-    "asar": true,
-    "files": [
-      "out/**/*",
-      "bin/**/*",
-      "LICENSE",
-      "README.md",
-      "!node_modules/electron/**/*",
-      "!node_modules/@electron/get/**/*",
-      "!node_modules/@electron-internal/**/*",
-      "!node_modules/env-paths/**/*",
-      "!node_modules/progress/**/*",
-      "!node_modules/sumchecker/**/*",
-      "!node_modules/undici/**/*",
-      "!node_modules/undici-types/**/*",
-      "!node_modules/@types/node/**/*"
-    ],
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "afterSign": "scripts/notarize.js",
-    "afterPack": "scripts/after-pack.mjs",
-    "mac": {
-      "extraResources": [
-        {
-          "from": "resources/python",
-          "to": "python-runtime-seed/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/python_aarch64",
-          "to": "python-runtime-seed/arm64",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ],
-      "notarize": false,
-      "category": "public.app-category.developer-tools",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "${name}-${version}-${arch}.${ext}"
-    },
-    "dmg": {
-      "sign": true,
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ],
-      "window": {
-        "width": 540,
-        "height": 380
-      }
-    },
-    "win": {
-      "extraResources": [
-        {
-          "from": "resources/python",
-          "to": "python",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/python_aarch64",
-          "to": "python_aarch64",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ],
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "artifactName": "${name}-setup-${version}-${arch}.${ext}",
-      "verifyUpdateCodeSignature": false
-    },
-    "nsis": {
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": true,
-      "displayLanguageSelector": true,
-      "multiLanguageInstaller": true
-    },
-    "linux": {
-      "extraResources": [
-        {
-          "from": "resources/python",
-          "to": "python",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/python_aarch64",
-          "to": "python_aarch64",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ],
-      "category": "ArtificialIntelligence",
-      "icon": "build/",
-      "target": [
-        {
-          "target": "deb",
-          "arch": "x64"
-        },
-        {
-          "target": "AppImage",
-          "arch": "x64"
-        },
-        {
-          "target": "rpm",
-          "arch": "x64"
-        }
-      ],
-      "artifactName": "${name}-${version}-${arch}.${ext}",
-      "desktop": {
-        "entry": {
-          "Name": "Local Operator",
-          "Comment": "AI Agent Assistants On Your Device",
-          "Categories": "ArtificialIntelligence"
-        }
-      }
-    },
-    "deb": {
-      "depends": [
-        "python3.12-full",
-        "python3.12-venv"
-      ]
-    },
-    "rpm": {
-      "depends": [
-        "python3.12-full",
-        "python3.12-venv"
-      ]
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "damianvtran",
-        "repo": "local-operator-ui",
-        "private": false,
-        "releaseType": "release"
-      }
-    ],
-    "generateUpdatesFilesForAllChannels": true
-  }
+		"test:desktop": "node scripts/run-desktop-tests.mjs scripts/slash-token.test.mjs scripts/slash-rank.test.mjs scripts/slash-submit.test.mjs scripts/slash-contract.test.mjs scripts/slash-row-format.test.mjs scripts/owned-serve-lifecycle.test.mjs scripts/launcher-watch.test.mjs scripts/linux-sandbox.test.mjs scripts/capture-evidence.test.mjs scripts/desktop-contract.test.mjs scripts/transcript-reducer.test.mjs scripts/transcript-paging.test.mjs scripts/seed-placement.test.mjs scripts/provider-state.test.mjs scripts/stale-agent.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/desktop-proxy.test.mjs scripts/session-stream-token.test.mjs scripts/session-load-recovery.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/settings-time-to-error.test.mjs scripts/backend-error-surfaces.test.mjs scripts/canonical-chat.test.mjs scripts/stale-caption.test.mjs scripts/desktop-watch-lease.test.mjs scripts/session-switch.test.mjs scripts/chat-search.test.mjs scripts/palette-search.test.mjs scripts/palette-shortcut.test.mjs scripts/palette-contract.test.mjs scripts/palette-panel-request.test.mjs scripts/run-detail-model.test.mjs scripts/subagent-pulse.test.mjs scripts/chat-title.test.mjs scripts/clear-search.test.mjs scripts/tool-row.test.mjs scripts/attachment-url.test.mjs scripts/desktop-notifier.test.mjs scripts/launch-session.test.mjs scripts/desktop-feed.test.mjs scripts/viewer-record.test.mjs scripts/desktop-stream.test.mjs scripts/python-bytecode-cache.test.mjs scripts/update-affirmation.test.mjs scripts/update-robustness.test.mjs scripts/prune-python-resource.test.mjs scripts/managed-python.test.mjs scripts/usage-view.test.mjs scripts/usage-container.test.mjs scripts/session-status.test.mjs scripts/composer-readings.test.mjs scripts/composer-tabs.test.mjs scripts/ask-options.test.mjs scripts/window-mode.test.mjs scripts/evidence-manifest.test.mjs scripts/canonical-notice.test.mjs scripts/evidence-run-guard.test.mjs scripts/desktop-test-concurrency.test.mjs scripts/run-desktop-tests.test.mjs scripts/mcp-foreign-config-origin.test.mjs scripts/mentioned-files.test.mjs scripts/picker-feedback.test.mjs scripts/panel-chart-motion.test.mjs scripts/panel-info-credentials.test.mjs scripts/warm-session.test.mjs scripts/submit-latency.test.mjs scripts/completion-view-ack.test.mjs scripts/echo-delivery.test.mjs scripts/check-runtime-deps.test.mjs scripts/new-chat-row.test.mjs scripts/new-chat-row-evidence.test.mjs scripts/reconnect-page-gap.test.mjs scripts/browser-host.test.mjs scripts/check-vendored.test.mjs scripts/credential-capture.test.mjs scripts/credential-composer.test.mjs scripts/chat-session-status.test.mjs scripts/draft-selection.test.mjs scripts/toast-lifetime.test.mjs scripts/storybook-query-fixture.test.mjs scripts/mcp-list-query.test.mjs scripts/mcp-target-resolution.test.mjs scripts/mcp-auth-surface.test.mjs scripts/mcp-failure-routing.test.mjs scripts/daemon-discovery.test.mjs scripts/daemon-health-state.test.mjs scripts/daemon-observation.test.mjs scripts/session-cookies.test.mjs scripts/move-session.test.mjs scripts/frontend-replace.test.mjs scripts/browser-chrome.test.mjs scripts/dev-driver-gate.test.mjs scripts/logger-log-dir.test.mjs scripts/draft-splash.test.mjs scripts/suggestion-stack.test.mjs scripts/suggestion-stack-react.test.mjs scripts/notifications-off.test.mjs scripts/notification-launch.test.mjs scripts/notification-spawn-sites.test.mjs scripts/chrome-keychain.test.mjs scripts/interrupt-control.test.mjs scripts/chat-sidebar-selection.test.mjs scripts/message-quote.test.mjs scripts/panel-chart-hover.test.mjs scripts/composer-suggestions.test.mjs scripts/composer-tip-react.test.mjs",
+
+		"check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs",
+		"check-vendored": "node scripts/check-vendored.mjs",
+		"check-evidence": "node scripts/check-evidence.mjs",
+		"check-edit-diffs": "node scripts/check-edit-diffs.mjs",
+		"check-runtime-deps": "node scripts/check-runtime-deps.mjs",
+		"gen-themes": "node scripts/generate-theme-css.mjs",
+		"bundle-size": "node scripts/bundle-size.mjs",
+		"startup-closure": "node scripts/startup-closure.mjs",
+		"pack": "pnpm run build && electron-builder --dir",
+		"dist": "pnpm run build && electron-builder",
+		"dist:mac": "pnpm run build && electron-builder --mac --publish never",
+		"dist:win": "pnpm run build && electron-builder --win --publish never",
+		"dist:linux": "pnpm run build && electron-builder --linux --publish never",
+		"dist:all": "pnpm run build && electron-builder -mwl --publish never",
+		"release": "pnpm run build && electron-builder --publish always",
+		"generate-icons": "node scripts/generate-icons.js",
+		"notarize-dmg": "node scripts/notarize-artifacts.mjs",
+		"verify-macos-artifacts": "node scripts/verify-macos-artifacts.mjs",
+		"setup-python": "./scripts/setup-python-resource.sh",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build",
+		"app:driver": "node scripts/renderer-driver.mjs",
+		"app:driver:gate-check": "node scripts/renderer-driver.mjs --gate-check"
+	},
+	"dependencies": {
+		"@electron-toolkit/utils": "^4.0.0",
+		"dotenv": "^16.5.0",
+		"electron-log": "^4.4.8",
+		"electron-updater": "^6.8.9",
+		"posthog-node": "^4.11.3",
+		"zod": "^3.24.2"
+	},
+	"//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
+	"//packaged-node-modules-exclusions": "The list above excludes Electron's own dependency tree from the packaged app, which electron-builder copies because `electron` is in optionalDependencies (the npm/npx channel needs it at install time). `@electron/get`, `@electron-internal/extract-zip` and their deps exist to download and unpack the Electron runtime during an INSTALL; a packaged app never runs them. Measured on a --dir artifact of 0.19.7: 8 packages outside the production closure, 7.0 MB of them unpacked into app.asar.unpacked and the rest inside a 26 MB app.asar (@types/node alone 2.4 MB). None is a module request anywhere in out/**, and the closure scripts/check-packaged-closure.mjs computes over the six declared runtime dependencies contains none of them. They are named rather than pattern-matched because electron-builder has no 'skip this dependency's tree' switch: a future Electron bump that adds a dependency needs this list re-derived from the same diff.",
+	"//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails. dmg-builder and electron-builder-squirrel-windows are app-builder-lib's peers and the builder refuses to resolve when they disagree with it, so all three move as one version.",
+	"optionalDependencies": {
+		"electron": "44.3.0"
+	},
+	"devDependencies": {
+		"@babel/helpers": "^7.26.10",
+		"@babel/runtime": "^7.26.10",
+		"@biomejs/biome": "^1.9.4",
+		"@chromatic-com/storybook": "^3.2.5",
+		"@codemirror/language": "^6.11.1",
+		"@codemirror/search": "^6.5.6",
+		"@codemirror/state": "^6.5.2",
+		"@codemirror/view": "^6.37.1",
+		"@electron-toolkit/preload": "^3.0.1",
+		"@electron-toolkit/tsconfig": "^1.0.1",
+		"@electron/notarize": "^2.5.0",
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.0",
+		"@lezer/highlight": "^1.2.1",
+		"@mui/material": "^6.4.2",
+		"@mui/x-date-pickers": "^8.3.1",
+		"@storybook/addon-essentials": "^8.6.4",
+		"@storybook/addon-interactions": "^8.6.4",
+		"@storybook/blocks": "^8.6.4",
+		"@storybook/react": "^8.6.4",
+		"@storybook/react-vite": "^8.6.4",
+		"@storybook/test": "^8.6.4",
+		"@tailwindcss/vite": "4.3.3",
+		"@tanstack/react-query": "^5.67.1",
+		"@tanstack/react-query-devtools": "^5.67.1",
+		"@types/hast": "^3.0.4",
+		"@types/node": "22.14.1",
+		"@types/react": "18.3.18",
+		"@types/react-dom": "18.3.5",
+		"@types/react-syntax-highlighter": "^15.5.13",
+		"@types/xlsx": "^0.0.36",
+		"@uiw/codemirror-extensions-langs": "^4.23.10",
+		"@uiw/react-codemirror": "^4.23.10",
+		"@vitejs/plugin-react": "^4.3.4",
+		"ag-grid-community": "^33.3.2",
+		"ag-grid-react": "^33.3.2",
+		"class-variance-authority": "0.7.1",
+		"clsx": "2.1.1",
+		"date-fns": "^4.1.0",
+		"dmg-builder": "26.16.1",
+		"dotenv-cli": "^8.0.0",
+		"electron-builder": "^26.16.1",
+		"electron-builder-squirrel-windows": "26.16.1",
+		"electron-vite": "^3.0.0",
+		"esbuild": "^0.25.1",
+		"html-react-parser": "^5.2.2",
+		"icns-lib": "^1.0.1",
+		"jest": "^29.7.0",
+		"jsdom": "26.1.0",
+		"katex": "^0.16.21",
+		"lucide-react": "^0.507.0",
+		"mermaid": "^11.6.0",
+		"posthog-js": "^1.235.0",
+		"radix-ui": "1.6.7",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"react-error-boundary": "^5.0.0",
+		"react-markdown": "^10.1.0",
+		"react-router-dom": "^6.16.0",
+		"react-shepherd": "^6.1.8",
+		"react-syntax-highlighter": "^15.6.1",
+		"recharts": "^2.15.3",
+		"rehype-katex": "^7.0.1",
+		"rehype-parse": "^9.0.1",
+		"rehype-remark": "^10.0.1",
+		"rehype-source-map": "^1.0.1",
+		"rehype-stringify": "^10.0.1",
+		"remark": "^15.0.1",
+		"remark-gfm": "^4.0.1",
+		"remark-math": "^6.0.0",
+		"remark-parse": "^11.0.0",
+		"remark-rehype": "^11.1.2",
+		"remark-stringify": "^11.0.0",
+		"sharp": "^0.33.2",
+		"shepherd.js": "^14.5.0",
+		"sonner": "^2.0.3",
+		"storybook": "^8.6.4",
+		"tailwind-merge": "3.6.0",
+		"tailwindcss": "4.3.3",
+		"tw-animate-css": "1.4.0",
+		"typescript": "^7.0.2",
+		"unified": "^11.0.5",
+		"unist-util-visit": "^5.0.0",
+		"uuid": "^11.1.0",
+		"vite": "^6.2.0",
+		"vite-tsconfig-paths": "^5.1.4",
+		"xlsx": "^0.18.5",
+		"yaml": "^2.7.0",
+		"zustand": "^5.0.3"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0",
+		"react-dom": ">=18.0.0"
+	},
+	"engines": {
+		"node": ">=22.13.1"
+	},
+	"build": {
+		"appId": "com.local-operator",
+		"electronVersion": "44.3.0",
+		"productName": "Local Operator",
+		"copyright": "Copyright © 2025 Radient Inc.",
+		"asar": true,
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md",
+			"!node_modules/electron/**/*",
+			"!node_modules/@electron/get/**/*",
+			"!node_modules/@electron-internal/**/*",
+			"!node_modules/env-paths/**/*",
+			"!node_modules/progress/**/*",
+			"!node_modules/sumchecker/**/*",
+			"!node_modules/undici/**/*",
+			"!node_modules/undici-types/**/*",
+			"!node_modules/@types/node/**/*"
+		],
+		"directories": {
+			"output": "dist",
+			"buildResources": "build"
+		},
+		"afterSign": "scripts/notarize.js",
+		"afterPack": "scripts/after-pack.mjs",
+		"mac": {
+			"extraResources": [
+				{
+					"from": "resources/python",
+					"to": "python-runtime-seed/x64",
+					"filter": ["**/*"]
+				},
+				{
+					"from": "resources/python_aarch64",
+					"to": "python-runtime-seed/arm64",
+					"filter": ["**/*"]
+				}
+			],
+			"notarize": false,
+			"category": "public.app-category.developer-tools",
+			"hardenedRuntime": true,
+			"gatekeeperAssess": false,
+			"entitlements": "build/entitlements.mac.plist",
+			"entitlementsInherit": "build/entitlements.mac.plist",
+			"target": [
+				{
+					"target": "dmg",
+					"arch": ["arm64", "x64"]
+				},
+				{
+					"target": "zip",
+					"arch": ["arm64", "x64"]
+				}
+			],
+			"artifactName": "${name}-${version}-${arch}.${ext}"
+		},
+		"dmg": {
+			"sign": true,
+			"contents": [
+				{
+					"x": 130,
+					"y": 220
+				},
+				{
+					"x": 410,
+					"y": 220,
+					"type": "link",
+					"path": "/Applications"
+				}
+			],
+			"window": {
+				"width": 540,
+				"height": 380
+			}
+		},
+		"win": {
+			"extraResources": [
+				{
+					"from": "resources/python",
+					"to": "python",
+					"filter": ["**/*"]
+				},
+				{
+					"from": "resources/python_aarch64",
+					"to": "python_aarch64",
+					"filter": ["**/*"]
+				}
+			],
+			"target": [
+				{
+					"target": "nsis",
+					"arch": ["x64", "arm64"]
+				}
+			],
+			"artifactName": "${name}-setup-${version}-${arch}.${ext}",
+			"verifyUpdateCodeSignature": false
+		},
+		"nsis": {
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"deleteAppDataOnUninstall": true,
+			"displayLanguageSelector": true,
+			"multiLanguageInstaller": true
+		},
+		"linux": {
+			"extraResources": [
+				{
+					"from": "resources/python",
+					"to": "python",
+					"filter": ["**/*"]
+				},
+				{
+					"from": "resources/python_aarch64",
+					"to": "python_aarch64",
+					"filter": ["**/*"]
+				}
+			],
+			"category": "ArtificialIntelligence",
+			"icon": "build/",
+			"target": [
+				{
+					"target": "deb",
+					"arch": "x64"
+				},
+				{
+					"target": "AppImage",
+					"arch": "x64"
+				},
+				{
+					"target": "rpm",
+					"arch": "x64"
+				}
+			],
+			"artifactName": "${name}-${version}-${arch}.${ext}",
+			"desktop": {
+				"entry": {
+					"Name": "Local Operator",
+					"Comment": "AI Agent Assistants On Your Device",
+					"Categories": "ArtificialIntelligence"
+				}
+			}
+		},
+		"deb": {
+			"depends": ["python3.12-full", "python3.12-venv"]
+		},
+		"rpm": {
+			"depends": ["python3.12-full", "python3.12-venv"]
+		},
+		"publish": [
+			{
+				"provider": "github",
+				"owner": "damianvtran",
+				"repo": "local-operator-ui",
+				"private": false,
+				"releaseType": "release"
+			}
+		],
+		"generateUpdatesFilesForAllChannels": true
+	}
 }
