@@ -57,6 +57,7 @@ const {
 	completionFor,
 	clickFooter,
 	enterFooter,
+	extensionFor,
 	matchChoices,
 	NO_CONVERSATION_CLAUSE,
 	phaseLabel,
@@ -68,6 +69,7 @@ const {
 	reassembledNote,
 	rowId,
 	rowTakesDraft,
+	sharedCommandPrefix,
 	slashArgumentContext,
 	slashKeyIntent,
 	stagedNote,
@@ -186,16 +188,17 @@ const route = (over = {}) =>
 		active: 0,
 		matches: [commandRow],
 		argumentQuery: "",
+		commandQuery: "",
 		argumentCommand: "model",
 		nameThenMessage: false,
 		runs: true,
 		chosenByHand: false,
-		// No armed words and no draft to hoist: `slash-commands.stories.tsx`'s own
-		// neutral state, so every existing case below keeps the routing it had.
-		armedOnlyCommands: new Set(),
-		hoists: false,
 		...over,
 	});
+
+/** A command-phase list, in the order the popup would show it. */
+const commandRows = (...labels) =>
+	labels.map((label) => ({ kind: "command", label }));
 
 test("keys are only routed while the list is up and not composing", () => {
 	assert.deepEqual(route({ open: false }), { kind: "pass" });
@@ -233,50 +236,205 @@ test("the arrows move the marker and clamp at both ends", () => {
  * why the popup opens on a row and an Up on the first row changed nothing.
  */
 test("an arrow that does not move the marker is not a hand-made choice", () => {
-	const armed = {
-		matches: [armedRow("goal")],
-		armedOnlyCommands: ARMED_ONLY,
-		hoists: true,
-	};
-
-	// Up on the pre-selected row: the marker stays, so the gate stays shut and the
-	// next Enter still sends the draft as prose — the outcome the whole change is
-	// about, reached two keys later than the report it answers.
-	const clamped = route({ ...armed, key: "ArrowUp", active: 0 });
+	/*
+	 * The two events the router distinguishes: a key that asked to move and could
+	 * not (the marker CLAMPS at both ends, and the popup opens with a row already
+	 * active) and a key that moved it. Only the second is a choice the user made,
+	 * and it is the only thing that turns an AMBIGUOUS Enter into an acting one —
+	 * `commandChoiceUnambiguous`'s third arm, read through `chosenByHand`. Latching
+	 * it on a clamped key handed the pre-selected row an action on a press that had
+	 * changed nothing on screen (review F2).
+	 */
+	const list = [armedRow("login"), armedRow("logout"), armedRow("loop")];
+	const clamped = route({
+		key: "ArrowUp",
+		active: 0,
+		matches: list,
+		commandQuery: "",
+	});
 	assert.equal(clamped.moved, false);
-	assert.deepEqual(route({ ...armed }), { kind: "pass" });
+	assert.deepEqual(
+		route({
+			key: "Enter",
+			active: 0,
+			matches: list,
+			commandQuery: "",
+			chosenByHand: false,
+		}),
+		{ kind: "extend", prefix: "lo" },
+		"the pre-selected row is not acted on: the word grows instead",
+	);
 
-	// The same key on a row the marker had to reach: the choice is real, and the
-	// Enter after it stages.
+	// The same list once the marker moved: now the choice is the user's, and Enter
+	// acts on the row the marker reached.
 	const moved = route({
-		...armed,
 		key: "ArrowDown",
 		active: 0,
-		matches: [armedRow("model"), armedRow("goal")],
+		matches: list,
+		commandQuery: "",
 	});
 	assert.equal(moved.moved, true);
 	assert.deepEqual(
 		route({
-			...armed,
-			active: moved.index,
-			matches: [armedRow("model"), armedRow("goal")],
+			key: "Enter",
+			active: 1,
+			matches: list,
+			commandQuery: "",
 			chosenByHand: true,
 		}),
-		{ kind: "apply", index: 1, run: false },
+		{ kind: "apply", index: 1, run: true },
 	);
 });
 
-test("a command row completes and never runs", () => {
-	// Criterion: Enter on a half-typed command word opens its argument list; a
-	// run here would submit a command the user has not finished naming.
-	assert.deepEqual(route({ matches: [commandRow, commandRow], active: 1 }), {
-		kind: "apply",
-		index: 1,
-		run: false,
-	});
+test("Enter runs a command row when the choice is unambiguous", () => {
+	/*
+	 * The reported defect: `/analytics` + Enter completed the word and needed a
+	 * second Enter before the panel opened. The rule is the terminal's own
+	 * (`_picker_choice_is_unambiguous`, `editor.py:7731-7765`), read through the
+	 * desktop's existing `isUnambiguous`.
+	 */
+	// Typed in full: the user NAMED the command rather than accepting a guess.
+	assert.deepEqual(
+		route({ matches: commandRows("analytics"), commandQuery: "analytics" }),
+		{ kind: "apply", index: 0, run: true },
+	);
+	// The single survivor of a short word is unambiguous too, which is the arm
+	// that makes `/ana` behave the way the terminal does.
+	assert.deepEqual(
+		route({ matches: commandRows("analytics"), commandQuery: "an" }),
+		{ kind: "apply", index: 0, run: true },
+	);
+	// An arrow press is the explicit choice, whatever the query left.
+	assert.deepEqual(
+		route({
+			matches: commandRows("analytics", "agents"),
+			commandQuery: "a",
+			active: 1,
+			chosenByHand: true,
+		}),
+		{ kind: "apply", index: 1, run: true },
+	);
 	// A list with no row at the marker completes nothing and is not a key the
 	// popup consumed.
 	assert.deepEqual(route({ matches: [] }), { kind: "pass" });
+});
+
+test("an ambiguous Enter grows the word to the common prefix and runs nothing", () => {
+	/*
+	 * `/cm` fuzzy-matches `commands` and `compact`, so nothing is applied: the word
+	 * grows to what every candidate agrees on and the list stays up
+	 * (`_extend_to_common_prefix`, `editor.py:8326-8345`). Completing to the
+	 * HIGHLIGHTED row instead put the highest-blast-radius candidate in the buffer
+	 * ready to run.
+	 */
+	assert.deepEqual(
+		route({
+			matches: commandRows("commands", "compact"),
+			commandQuery: "cm",
+		}),
+		{ kind: "extend", prefix: "com" },
+	);
+	// The word is never SHORTER than what is typed: when the query already IS the
+	// shared prefix the terminal returns having changed nothing, and this key is
+	// consumed either way rather than falling through to a submit.
+	assert.deepEqual(
+		route({
+			matches: commandRows("commands", "compact"),
+			commandQuery: "com",
+		}),
+		{ kind: "extend", prefix: "com" },
+	);
+	// Nothing shared at all — a bare `/` shows the whole registry — so the word
+	// does not move and the list stays open.
+	assert.deepEqual(
+		route({ matches: commandRows("usage", "team"), commandQuery: "" }),
+		{ kind: "extend", prefix: "" },
+	);
+});
+
+/*
+ * The ambiguous Enter's SPLICE, executed on the shipped function.
+ *
+ * Review round 1 (F1) found that `extensionFor` had no assertion of any kind, and
+ * that every gesture in `scripts/slash-enter-proof.mjs` types into a CLEARED
+ * draft — so the one shape the frames never exercised was a command word with a
+ * written message after it, which is the shape the function's own caller names as
+ * its design case. Three facts are pinned here: the separator after the word
+ * survives, a newline survives, and a word that cannot GROW is not touched at
+ * all.
+ */
+test("an extension splices the word and leaves the text after it alone", () => {
+	const commands = new Set([
+		"analytics",
+		"log",
+		"login",
+		"logout",
+		"loop",
+		"model",
+	]);
+	// The frames' own shape: nothing but the word, so nothing to preserve.
+	assert.deepEqual(extensionFor("/lo", 3, "log", commands), {
+		text: "/log",
+		caret: 4,
+	});
+	// The defect: `replaceSpan`'s separator rule absorbed the space, and the
+	// newline with it, welding the written message onto the command word.
+	assert.deepEqual(extensionFor("/lo hello", 3, "log", commands), {
+		text: "/log hello",
+		caret: 4,
+	});
+	assert.deepEqual(extensionFor("/lo\nwrite a poem", 3, "log", commands), {
+		text: "/log\nwrite a poem",
+		caret: 4,
+	});
+	// A word that cannot GROW is a NO-OP rather than a rewrite: the reference
+	// returns before writing, and `null` is this side's no-op. The second case is
+	// the one review round 1 measured deleting the separator: the typed word IS
+	// already the shared prefix (`/lo` over login/logout/loop), so the keystroke
+	// must leave the buffer exactly as it found it.
+	assert.equal(extensionFor("/log hello", 4, "log", commands), null);
+	assert.equal(extensionFor("/lo hello", 3, "lo", commands), null);
+	assert.equal(extensionFor("/log", 4, "log", commands), null);
+	// The caret lands at the new end of the WORD, not at the end of the draft, so
+	// typing continues where it was.
+	assert.deepEqual(extensionFor("/lo hello", 3, "login", commands), {
+		text: "/login hello",
+		caret: 6,
+	});
+});
+
+test("the common prefix keeps the registry's own casing", () => {
+	// Case-insensitive matching, the FIRST label's spelling inserted — the
+	// terminal's own rule, so a user typing `/MOD` gets `/model` rather than
+	// `/MODel`.
+	assert.equal(sharedCommandPrefix(["Model", "model"]), "Model");
+	assert.equal(sharedCommandPrefix(["Commands", "compact"]), "Com");
+	assert.equal(sharedCommandPrefix(["usage"]), "usage");
+	// Nothing to grow to is a real answer: `co` keeps only what every candidate
+	// agrees on, and a list with nothing in common at all holds the word still.
+	assert.equal(sharedCommandPrefix(["usage", "team"]), "");
+	assert.equal(sharedCommandPrefix([]), "");
+});
+
+test("Tab completes a command row and never runs it, ambiguous or not", () => {
+	// Tab is the completion key: it takes the highlighted row whatever the query
+	// says, which is what makes it the safe key while a list is narrowed.
+	assert.deepEqual(
+		route({
+			key: "Tab",
+			matches: commandRows("analytics"),
+			commandQuery: "analytics",
+		}),
+		{ kind: "apply", index: 0, run: false },
+	);
+	assert.deepEqual(
+		route({
+			key: "Tab",
+			matches: commandRows("commands", "compact"),
+			commandQuery: "cm",
+		}),
+		{ kind: "apply", index: 0, run: false },
+	);
 });
 
 test("a name-list row fills the name and never runs", () => {
@@ -455,16 +613,80 @@ test("the footer says what Enter will do, in each state", () => {
 	const base = {
 		phase: "argument",
 		command: "model",
+		label: "model",
 		nameThenMessage: false,
 		runs: true,
 		value: "openai/gpt-5",
 		matched: true,
 		unambiguous: true,
+		/* The ambiguous arm's own two inputs: the typed word and the prefix the
+		   candidates share. `lo` -> `log` is the growth case (login, logout). */
+		query: "lo",
+		prefix: "log",
+		/* Whether this row's completion opens a list; the caller reads it off the
+		   registry with `inlineArgumentFor`, and it is the one input that separates
+		   `/model` from `/clear` below. */
+		opensList: false,
 	};
+	/*
+	 * The command phase has FOUR answers now, and they are read off the same inputs
+	 * the router decides from: unambiguous + a running destination RUNS,
+	 * unambiguous + a list-bearing destination completes (the word opens the list),
+	 * unambiguous + a destination that neither runs nor opens a list completes and
+	 * is RUN BY THE NEXT ENTER, and an ambiguous query grows the word instead.
+	 */
 	assert.equal(
-		enterFooter({ ...base, phase: "command" }),
-		"Enter completes the command.",
+		enterFooter({ ...base, phase: "command", label: "usage" }),
+		"Enter runs /usage.",
 	);
+	assert.equal(
+		enterFooter({ ...base, phase: "command", runs: false, opensList: true }),
+		"Enter completes /model.",
+	);
+	/*
+	 * The second completion state, and the reason `opensList` exists (UX round 1,
+	 * U4): `/clear` is `runs: false` like `/model` because the POINTER may not run
+	 * either, but its completion closes the list, so the next Enter runs it. The
+	 * sentence names that rather than leaving the user to discover it.
+	 */
+	assert.equal(
+		enterFooter({ ...base, phase: "command", label: "clear", runs: false }),
+		"Enter completes /clear; Enter again runs it.",
+	);
+	assert.equal(
+		enterFooter({ ...base, phase: "command", unambiguous: false }),
+		"Enter completes to log.",
+	);
+	/*
+	 * The two states where Enter cannot narrow at all, and the key is deliberately
+	 * inert (review round 1 N2 kept it so; UX round 1 U1-U3 fixed what it SAYS): the
+	 * word already IS the shared prefix, or the candidates share nothing. Both get
+	 * the same line, because both need the same answer — what to press — and neither
+	 * may promise a change the key will not make.
+	 */
+	for (const [query, prefix] of [
+		["log", "log"],
+		["", ""],
+	]) {
+		const line = enterFooter({
+			...base,
+			phase: "command",
+			unambiguous: false,
+			query,
+			prefix,
+		});
+		assert.equal(
+			line,
+			"Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+			`the ${query === "" ? "no-shared-prefix" : "already-at-prefix"} state speaks with one voice`,
+		);
+		// A line that promised a gesture would be worse than the silence it replaced:
+		// in this state Enter neither runs nor completes.
+		assert.doesNotMatch(line, /^Enter (runs|completes)/, line);
+		// The two gestures it names are the two that act, and both are on the strip.
+		assert.match(line, /↓/);
+		assert.match(line, /Tab completes/);
+	}
 	assert.equal(
 		enterFooter({ ...base, nameThenMessage: true, runs: false }),
 		"Enter chooses this name.",
@@ -482,6 +704,196 @@ test("the footer says what Enter will do, in each state", () => {
 	);
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
+});
+
+/*
+ * The line and the KEY, driven together (UX round 1, U1-U4).
+ *
+ * The cases above assert the copy; this one asserts it is TRUE. Each state below
+ * feeds the SAME inputs to `slashKeyIntent` and to `enterFooter`, and then checks
+ * the sentence against what the intent and the destination table say the key does
+ * — which is the property the UX walk went looking for and did not find, first in
+ * the bare-`/` state (three Enters, byte-identical screen, under a footer
+ * advertising the pointer) and then after `/l` grew to `/lo`.
+ *
+ * The destination answers come from `picker-registry.tsx` through the same
+ * `pickRuns`/`registryEntry` helpers the pick cases use, so a table edit that
+ * made `/analytics` list-bearing or `/model` runnable turns this red rather than
+ * leaving the copy describing a table that moved.
+ */
+test("the Enter line names what the key actually does, in every state", () => {
+	/* Real command/destination pairs, read off `slash-dispatch.ts`'s own map
+	   (`analytics: "analytics"`, `model: "model"`). */
+	const CASES = [
+		{ labels: ["analytics"], query: "", destination: "analytics" },
+		{ labels: ["model"], query: "model", destination: "model" },
+		{ labels: ["login", "logout", "loop"], query: "", destination: "login" },
+		{ labels: ["login", "logout", "loop"], query: "lo", destination: "login" },
+	];
+	/* The bare-`/` case is the one that produced the popup's first-ever sentence,
+	   so the row set is the real 13-command list rather than one row: nothing in
+	   it shares a prefix, which is why the key cannot narrow there. */
+	CASES[2].labels = [
+		"analytics",
+		"agent",
+		"approvals",
+		"clear",
+		"compact",
+		"effort",
+		"info",
+		"login",
+		"logout",
+		"loop",
+		"model",
+		"session",
+		"team",
+	];
+	const rows = CASES.map((c) => ({
+		...c,
+		matches: commandRows(...c.labels),
+		prefix: sharedCommandPrefix(c.labels),
+	}));
+	for (const c of rows) {
+		const chosenByHand = false;
+		const intent = route({
+			key: "Enter",
+			active: 0,
+			matches: c.matches,
+			commandQuery: c.query,
+			chosenByHand,
+		});
+		const runs = pickRuns(c.destination);
+		const opensList = Boolean(registryEntry(c.destination)?.inline);
+		const line = enterFooter({
+			phase: "command",
+			command: null,
+			label: c.labels[0],
+			nameThenMessage: false,
+			runs,
+			opensList,
+			value: "",
+			matched: true,
+			unambiguous: intent.kind === "apply",
+			query: c.query,
+			prefix: c.prefix,
+		});
+		const where = `/${c.query} over ${c.labels.join(", ")}`;
+
+		if (intent.kind === "extend" && intent.prefix === c.query) {
+			// The key is inert: the line may not promise a run or a completion, and
+			// it must name the gestures that do act.
+			assert.equal(
+				line,
+				"Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+				where,
+			);
+			continue;
+		}
+		if (intent.kind === "extend") {
+			// The word grows, so the line reports the growth and no run.
+			assert.equal(line, `Enter completes to ${intent.prefix}.`, where);
+			assert.doesNotMatch(line, /runs/, where);
+			continue;
+		}
+		assert.equal(intent.kind, "apply", where);
+		if (intent.run && runs) {
+			assert.equal(line, `Enter runs /${c.labels[0]}.`, where);
+			continue;
+		}
+		// Unambiguous, but the destination declines to run on a pick: the line says
+		// complete, and adds the second-Enter clause only where there IS one.
+		assert.match(
+			line,
+			new RegExp(`^Enter completes /${c.labels[0]}[.;]`),
+			where,
+		);
+		assert.equal(
+			line,
+			opensList
+				? `Enter completes /${c.labels[0]}.`
+				: `Enter completes /${c.labels[0]}; Enter again runs it.`,
+			where,
+		);
+	}
+
+	/*
+	 * Tab, in every one of those states: it applies the HIGHLIGHTED row and never
+	 * runs, so no state's Tab press can be described by a line that promises a run.
+	 */
+	for (const c of rows) {
+		assert.equal(
+			route({
+				key: "Tab",
+				active: 0,
+				matches: c.matches,
+				commandQuery: c.query,
+				chosenByHand: false,
+			}).run,
+			false,
+			`Tab never runs (/${c.query})`,
+		);
+	}
+});
+
+/*
+ * The composition the two halves above live in, pinned as SOURCE because that is
+ * where it is written: the intent says "the keyboard named this command", and the
+ * one adapter both pick paths share then asks the destination. A reviewer reading
+ * these cases should be able to see the `&&` they mirror rather than take a
+ * restatement of it on trust.
+ */
+const MESSAGE_INPUT = readFileSync(
+	"src/renderer/src/features/chat/components/message-input.tsx",
+	"utf8",
+);
+
+test("an unambiguous Enter still asks the destination before it runs", () => {
+	assert.match(
+		MESSAGE_INPUT,
+		/disposition\.run\s*&&\s*\(\s*row\.kind === "command"\s*\?\s*pointerPickRuns\(/,
+		"the pick path no longer gates a command row's run on its destination",
+	);
+	/*
+	 * What the two rules compose to, for the ids the REAL registry carries: the
+	 * panels and the navigate destinations run on the first Enter, and every
+	 * destination whose pick opens an inline list completes and opens it.
+	 */
+	const enterRuns = (id, label) => {
+		const intent = route({ matches: commandRows(label), commandQuery: label });
+		return intent.kind === "apply" && intent.run && pickRuns(id);
+	};
+	for (const [id, label] of [
+		["analytics", "analytics"],
+		["info", "info"],
+		["session.diagnostics", "session"],
+		["settings", "settings"],
+	]) {
+		assert.equal(enterRuns(id, label), true, id);
+	}
+	for (const [id, label] of [
+		["session.model", "model"],
+		["session.effort", "effort"],
+		["session.approvals", "approvals"],
+		["appearance", "theme"],
+		["session.team", "team"],
+		["session.agent", "agent"],
+	]) {
+		assert.equal(enterRuns(id, label), false, `${id} opens a list`);
+	}
+	/*
+	 * The three ids a POINTER pick must never run keep their TWO-Enter path: the
+	 * predicate that protects them is the one both paths read, so a single Enter
+	 * neither detaches the app nor clears the transcript view — the behaviour
+	 * `/exit`, `/clear` and `/compact` already had, and Enter's second press is
+	 * still what runs them.
+	 */
+	for (const [id, label] of [
+		["window.close", "exit"],
+		["transcript.clear", "clear"],
+		["session.compact", "compact"],
+	]) {
+		assert.equal(enterRuns(id, label), false, id);
+	}
 });
 
 /*
@@ -590,8 +1002,20 @@ test("the click footer never claims a run the pick does not perform", () => {
  */
 test("the two footer lines cannot disagree about the active row", () => {
 	const rows = [
-		{ phase: "command", command: null, label: "usage", runs: true },
-		{ phase: "command", command: null, label: "model", runs: false },
+		{
+			phase: "command",
+			command: null,
+			label: "usage",
+			runs: true,
+			opensList: false,
+		},
+		{
+			phase: "command",
+			command: null,
+			label: "model",
+			runs: false,
+			opensList: true,
+		},
 		{ phase: "argument", command: "model", label: "model", runs: true },
 		{ phase: "argument", command: "theme", label: "theme", runs: false },
 	];
@@ -604,22 +1028,56 @@ test("the two footer lines cannot disagree about the active row", () => {
 		});
 		assert.ok(click, `${row.label} has a pointer line`);
 		// "Acting" is the word `runs`: it appears in the pointer line exactly when
-		// the pick runs, and the Enter line never claims a run in the command
-		// phase, where Enter only ever completes.
+		// the pick runs.
 		assert.equal(click.includes("runs"), row.runs, `${row.label}: ${click}`);
 		if (row.phase === "command") {
+			/*
+			 * Enter's own line claims a run exactly when BOTH halves hold — the choice
+			 * is unambiguous and the destination runs — which is the pair the router
+			 * computes (`commandChoiceUnambiguous` and `pickRuns`).
+			 */
+			const enter = enterFooter({
+				phase: "command",
+				command: null,
+				label: row.label,
+				nameThenMessage: false,
+				opensList: row.opensList,
+				runs: row.runs,
+				value: "",
+				matched: true,
+				unambiguous: true,
+				/* Both inputs belong to the AMBIGUOUS arm; the unambiguous one ignores
+				   them, and they are carried so this call is the same shape the popup
+				   makes rather than a partial literal. */
+				query: "lo",
+				prefix: "log",
+			});
+			/*
+			 * Anchored, not a substring search: the U4 clause ("Enter completes
+			 * /clear; Enter again runs it.") contains the word `runs` while THIS press
+			 * does not run, and the property being pinned is what the sentence
+			 * promises about the key the user is about to press.
+			 */
+			assert.equal(
+				/^Enter runs /.test(enter),
+				row.runs,
+				`${row.label}: an unambiguous Enter follows its destination — ${enter}`,
+			);
 			assert.equal(
 				enterFooter({
 					phase: "command",
 					command: null,
+					label: row.label,
 					nameThenMessage: false,
-					runs: true,
+					runs: row.runs,
 					value: "",
 					matched: true,
-					unambiguous: true,
+					unambiguous: false,
+					query: "lo",
+					prefix: "log",
 				}).includes("runs"),
 				false,
-				"Enter never runs a command row, so it cannot say it does",
+				"an ambiguous Enter runs nothing, so it cannot say it does",
 			);
 		}
 	}
@@ -897,62 +1355,54 @@ test("a pick of the armed row hoists and stages; other rows are unchanged", () =
  * Enter is the SUBMIT key, not the arming gesture — the draft goes as prose. The
  * arming is a choice the user makes: an arrow key on the row, or the pointer.
  */
-test("a plain Enter on the armed row falls through, and only a choice stages it", () => {
-	const armed = {
-		matches: [armedRow("goal")],
-		armedOnlyCommands: ARMED_ONLY,
-		hoists: true,
-	};
-
-	// The plain press: back to the composer, which submits the draft as prose.
-	// Enter and Tab both, because Tab is the accept-and-keep-typing key and a
-	// stray press must not rewrite a sentence either (UX U1, U3).
-	assert.deepEqual(route({ ...armed }), { kind: "pass" });
-	assert.deepEqual(route({ ...armed, key: "Tab" }), { kind: "pass" });
-
-	// The same press once an arrow key has put the marker on the row by hand.
-	assert.deepEqual(route({ ...armed, chosenByHand: true }), {
+test("the keyboard rule is the popup's own, and the arm belongs to the pick", () => {
+	/*
+	 * The composed contract, in one test: #221's rule decides the KEY — an
+	 * unambiguous Enter applies AND acts, an ambiguous one grows the word, Tab
+	 * completes and never acts — and what that apply DOES is the pick's
+	 * (`handleSlashPick`): a pick of an armed-only row whose draft survives arming
+	 * hoists the command and stages the line instead of running the destination.
+	 *
+	 * So no `armedOnlyCommands` vocabulary and no `hoists` flag are needed here any
+	 * more: the row and the draft are both in hand at the pick, which is where the
+	 * arm is decided, and the composer's own Enter over a draft that merely
+	 * CONTAINS the word never reaches an armed row at all — the planner answers
+	 * `send` (`scripts/slash-submit.test.mjs` pins that). What the key owes the
+	 * user is that it does not act on a row nobody chose.
+	 */
+	const list = [armedRow("goal")];
+	// Unambiguous: the query IS the label (and a one-row list is unambiguous
+	// whatever is typed), so this is the acting apply the pick then stages.
+	assert.deepEqual(route({ matches: list, commandQuery: "goal" }), {
+		kind: "apply",
+		index: 0,
+		run: true,
+	});
+	// Tab is the completing key: it applies and never acts, which is what makes it
+	// the safe key while a list is narrowed (#221's rule, kept exactly).
+	assert.deepEqual(route({ matches: list, commandQuery: "goal", key: "Tab" }), {
 		kind: "apply",
 		index: 0,
 		run: false,
 	});
-	assert.deepEqual(route({ ...armed, key: "Tab", chosenByHand: true }), {
-		kind: "apply",
-		index: 0,
-		run: false,
-	});
-
-	// Nothing survives the word — a bare `/goal`, or a half-typed `/goa` — so the
-	// token IS the line and this key completes it, exactly as it does for every
-	// other command row.
-	assert.deepEqual(route({ ...armed, hoists: false }), {
-		kind: "apply",
-		index: 0,
-		run: false,
-	});
-	assert.deepEqual(route({ matches: [{ kind: "command", label: "goa" }] }), {
-		kind: "apply",
-		index: 0,
-		run: false,
-	});
-
-	// A row the vocabulary does not call armed-only is untouched: `/loop` keeps
-	// the completion it has always had on this key.
+	// Ambiguous: the row is not acted on. This is the state a bare `/` over the
+	// whole catalogue is in, and the reason nothing arms from a stray press.
 	assert.deepEqual(
-		route({ matches: [{ kind: "command", label: "loop" }], hoists: true }),
+		route({
+			matches: [armedRow("goal"), armedRow("goals")],
+			commandQuery: "go",
+		}),
+		{ kind: "extend", prefix: "goal" },
+	);
+	// A name-list row fills the name and never runs, as it always has.
+	assert.deepEqual(
+		route({
+			matches: [{ kind: "argument", row: { value: "alpha" } }],
+			argumentQuery: "al",
+			nameThenMessage: true,
+		}),
 		{ kind: "apply", index: 0, run: false },
 	);
-
-	// And with no vocabulary at all — a catalogue that does not advertise the
-	// armed destination — the row stops arming (review F4 / QA Q3): the pick
-	// completes instead, which is the safe direction for a key press, and the
-	// planner's implicit hoist is what
-	// `scripts/slash-submit.test.mjs` pins as the hazard.
-	assert.deepEqual(route({ ...armed, armedOnlyCommands: new Set() }), {
-		kind: "apply",
-		index: 0,
-		run: false,
-	});
 });
 
 /*
@@ -977,9 +1427,9 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 	const arms = pickArmsCommand(armedRow("goal"), ARMED_ONLY);
 	assert.equal(arms, true, "a pick of the goal row arms it");
 
-	// The click half. `pointerPickRuns` still answers TRUE for this destination
-	// (a picker with no inline list), which is exactly why the footer cannot be
-	// read off it alone: the click STAGES this draft and runs nothing.
+	// `pointerPickRuns` still answers TRUE for this destination (a picker with no
+	// inline list), which is exactly why neither line may be read off it alone:
+	// the gesture STAGES this draft and runs nothing.
 	assert.equal(pickRuns("session.goal"), true);
 	const picked = completionFor(
 		"I approve spend /goal",
@@ -997,124 +1447,56 @@ test("the goal row's footer lines describe the gestures the route performs", () 
 	});
 	assert.equal(drafted.kind, "armed");
 
-	const clickLine = clickFooter({
+	/*
+	 * Both lines, on the pane the operator's own report was taken on. The arm is
+	 * the row's own outcome on the ACTING key — #221's unambiguous apply, which is
+	 * what `handleSlashPick` answers by staging the hoisted line — so there is ONE
+	 * sentence here rather than a by-hand and a typed variant. It says what the
+	 * pick does: not "runs", which the destination's `pointerPickRuns` alone would
+	 * have claimed, and not "completes", which the completion alone would.
+	 */
+	const composed = {
 		phase: "command",
 		command: null,
 		label: "goal",
 		nameThenMessage: false,
 		runs: pickRuns("session.goal"),
 		arms,
-		hoists: true,
-		value: "",
-		matched: true,
-	});
-	assert.equal(clickLine, "Click stages /goal.");
-	assert.equal(clickLine.includes("runs"), false);
-
-	// The Enter half, for the two states a user is actually in, on the pane the
-	// operator's own report was taken on: one that can address a session, so both
-	// lines are about the draft rather than about the pane.
-	const enterPlain = enterFooter({
-		phase: "command",
-		command: null,
-		label: "goal",
-		nameThenMessage: false,
-		runs: false,
-		arms,
 		takesDraft: false,
 		destination: "session.goal",
 		paneHasSession: true,
 		hoists: true,
-		chosenByHand: false,
 		value: "",
 		matched: true,
 		unambiguous: true,
-	});
-	assert.equal(enterPlain, "Enter sends this draft as prose.");
-	assert.equal(enterPlain.includes("runs"), false);
-	// No key is named for the staging in this state, and that is F2's consequence
-	// measured: the armed row is the active row only where its query matched it
-	// ALONE (`/goal` and `/go` match only `goal` in the real catalogue), the marker
-	// clamps on a one-row list, and a clamped arrow is not a move — so a sentence
-	// naming ↓ here would name a key that cannot act. The line below names the
-	// gesture that can.
-	assert.deepEqual(
-		route({
-			key: "ArrowDown",
-			matches: [armedRow("goal")],
-			armedOnlyCommands: ARMED_ONLY,
-			hoists: true,
-		}),
-		{ kind: "move", index: 0, moved: false },
-		"the arrow cannot move a one-row marker",
-	);
-	// ...and the routing that line describes is the routing the composer takes.
-	assert.deepEqual(
-		route({
-			matches: [armedRow("goal")],
-			armedOnlyCommands: ARMED_ONLY,
-			hoists: true,
-		}),
-		{ kind: "pass" },
+	};
+	const enterLine = enterFooter(composed);
+	assert.equal(enterLine, "Enter stages /goal; the next Enter runs it.");
+	assert.equal(enterLine.includes("completes"), false);
+	assert.equal(clickFooter(composed), "Click stages /goal.");
+	assert.equal(clickFooter(composed).includes("runs"), false);
+
+	// Nothing survives the word — a bare `/goal` — so the pick completes it and the
+	// bare form is run by the next Enter. That is #221's own answer and it stays.
+	assert.equal(
+		enterFooter({ ...composed, hoists: false }),
+		"Enter runs /goal.",
 	);
 
-	const enterByHand = enterFooter({
-		phase: "command",
-		command: null,
-		label: "goal",
-		nameThenMessage: false,
-		runs: false,
-		arms,
-		takesDraft: false,
-		destination: "session.goal",
-		paneHasSession: true,
-		hoists: true,
-		chosenByHand: true,
-		value: "",
-		matched: true,
-		unambiguous: true,
-	});
-	/*
-	 * The chosen state names BOTH keys it answers to (Tab shares this gate — UX U5
-	 * / QA Q2-1) and makes the promise about the next Enter in the note's own
-	 * sentence rather than in a second, vaguer one for the same key (design D4).
-	 */
-	assert.equal(
-		enterByHand,
-		"Enter or Tab stages /goal; the next Enter sets the goal and sends the text.",
-	);
-	assert.equal(
-		enterByHand.includes(stagedPromiseVerb("session.goal")),
-		true,
-		"the footer's promise about the next Enter is the note's own sentence",
-	);
+	// The KEY those lines describe: #221's rule, with the staging decided by the
+	// pick. An unambiguous Enter is the acting apply...
 	assert.deepEqual(
-		route({
-			matches: [armedRow("goal")],
-			armedOnlyCommands: ARMED_ONLY,
-			hoists: true,
-			chosenByHand: true,
-		}),
+		route({ matches: [armedRow("goal")], commandQuery: "goal" }),
+		{
+			kind: "apply",
+			index: 0,
+			run: true,
+		},
+	);
+	// ...while Tab completes and never acts, so it never arms either.
+	assert.deepEqual(
+		route({ matches: [armedRow("goal")], commandQuery: "goal", key: "Tab" }),
 		{ kind: "apply", index: 0, run: false },
-	);
-
-	// The BARE form is the state where the click really does run (the read
-	// opens), and the two lines still agree with the route: the key completes,
-	// the click runs.
-	assert.equal(
-		clickFooter({
-			phase: "command",
-			command: null,
-			label: "goal",
-			nameThenMessage: false,
-			runs: pickRuns("session.goal"),
-			arms,
-			takesDraft: false,
-			hoists: false,
-			value: "",
-			matched: true,
-		}),
-		"Click runs /goal.",
 	);
 });
 
@@ -1304,14 +1686,14 @@ test("the free-text row names the key that moves the draft", () => {
 		arms: false,
 		takesDraft: true,
 		hoists: true,
-		chosenByHand: false,
+		paneHasSession: true,
 		value: "",
 		matched: true,
 		unambiguous: true,
 	};
 	assert.equal(
 		enterFooter({ ...hoisting, label: "loop" }),
-		"Enter completes /loop; the next Enter stages this draft behind it.",
+		"Enter stages /loop; the next Enter runs it.",
 	);
 	assert.equal(
 		submissionFor("please run /loop on 3 tasks", 16).kind,
@@ -1323,7 +1705,7 @@ test("the free-text row names the key that moves the draft", () => {
 	// row says the thing it has always said.
 	assert.equal(
 		enterFooter({ ...hoisting, label: "loop", hoists: false }),
-		"Enter completes the command.",
+		"Enter runs /loop.",
 	);
 	// A list-bearing prompt row is not this row: `/team`'s pick opens the roster,
 	// and the key after the completion belongs to that list rather than to a
@@ -1335,15 +1717,29 @@ test("the free-text row names the key that moves the draft", () => {
 		inlineRuns: false,
 	});
 	assert.equal(teamRuns, false, "`/team` opens its roster instead");
+	// Its destination DOES declare an inline list, which is the second half of
+	// #221's table for a `runs: false` row: the completion opens the roster, so
+	// there is no second-Enter clause to promise. Read off the registry, the way
+	// the popup's own call site reads it (`inlineArgumentFor`).
 	assert.equal(
-		enterFooter({ ...hoisting, label: "team", runs: teamRuns }),
-		"Enter completes the command.",
+		Boolean(registryEntry("session.team")?.inline),
+		true,
+		"`/team`'s destination declares an inline list",
+	);
+	assert.equal(
+		enterFooter({
+			...hoisting,
+			label: "team",
+			runs: teamRuns,
+			opensList: Boolean(registryEntry("session.team")?.inline),
+		}),
+		"Enter completes /team.",
 	);
 	// And a row with no draft to take keeps the plain sentence whatever its pick
 	// does with one.
 	assert.equal(
 		enterFooter({ ...hoisting, label: "usage", takesDraft: false }),
-		"Enter completes the command.",
+		"Enter runs /usage.",
 	);
 	// The ARGUMENT phase's half of the same derivation, unchanged: there the
 	// active row is not a command row and its list answers for itself.
@@ -1386,8 +1782,8 @@ test("the free-text row names the key that moves the draft", () => {
 /** The refusal clause `stagedNote` and the arming lines both carry. */
 const NEEDS_CONVERSATION = /Needs an open conversation/;
 
-test("the arming lines decline to promise a run on a pane with no session", () => {
-	const armed = {
+test("the staging lines decline to promise a run on a pane with no session", () => {
+	const composed = {
 		phase: "command",
 		command: null,
 		label: "goal",
@@ -1401,34 +1797,39 @@ test("the arming lines decline to promise a run on a pane with no session", () =
 		matched: true,
 		unambiguous: true,
 	};
-	// The prose line promises nothing a session-less pane cannot do, so it is the
-	// same sentence there; the by-hand line is the one that must drop the promise,
-	// because it is the one that makes one.
+	/*
+	 * A pane that cannot address a session gets the staging sentence with the
+	 * refusal's own clause where the promise would be — on BOTH rows that stage,
+	 * because both of them promise "the next Enter runs it". The promise is the
+	 * half that goes false on this pane (design D3 / UX U1), and the note carries
+	 * the same clause for the same reason.
+	 */
 	assert.equal(
-		enterFooter({ ...armed, chosenByHand: false, paneHasSession: false }),
-		"Enter sends this draft as prose.",
+		enterFooter({ ...composed, paneHasSession: false }),
+		"Enter stages /goal; this pane needs an open conversation to run it.",
 	);
 	assert.equal(
-		enterFooter({ ...armed, chosenByHand: true, paneHasSession: false }),
-		"Enter or Tab stages /goal; this pane needs an open conversation to run it.",
+		enterFooter({ ...composed, paneHasSession: true }),
+		"Enter stages /goal; the next Enter runs it.",
 	);
 	assert.equal(
-		enterFooter({
-			...armed,
-			chosenByHand: true,
-			paneHasSession: false,
-		}).includes("the next Enter"),
+		enterFooter({ ...composed, paneHasSession: false }).includes(
+			"the next Enter",
+		),
 		false,
-		"the run promise is the line that goes false on this pane",
+		"the run promise is the half that goes false on this pane",
 	);
-	// ...and with a session, the by-hand line makes it.
+	// The free-text row's line, on the same pane and for the same reason.
+	const hoisting = {
+		...composed,
+		label: "loop",
+		runs: true,
+		arms: false,
+		takesDraft: true,
+	};
 	assert.equal(
-		enterFooter({ ...armed, chosenByHand: false, paneHasSession: true }),
-		"Enter sends this draft as prose.",
-	);
-	assert.equal(
-		enterFooter({ ...armed, chosenByHand: true, paneHasSession: true }),
-		"Enter or Tab stages /goal; the next Enter sets the goal and sends the text.",
+		enterFooter({ ...hoisting, paneHasSession: false }),
+		"Enter stages /loop; this pane needs an open conversation to run it.",
 	);
 	// The note and the line now say the same thing about the same pane, which is
 	// the pair U1 was raised on: a promise in the popup, a refusal in the stream.
@@ -1436,6 +1837,7 @@ test("the arming lines decline to promise a run on a pane with no session", () =
 		stagedNote("/goal I approve spend", "session.goal", false),
 		NEEDS_CONVERSATION,
 	);
+	assert.match(reassembledNote("/loop please run", false), NEEDS_CONVERSATION);
 });
 
 /*
@@ -1447,6 +1849,14 @@ test("the staged note's promise is the destination's, and the pane's", () => {
 	assert.equal(
 		stagedNote("/goal I approve spend", "session.goal", true),
 		"Staged /goal I approve spend. Enter sets the goal and sends the text.",
+	);
+	// The promise is the DESTINATION's own sentence rather than a second, vaguer
+	// one for the same key (design D4): the footer names the effect generically
+	// ("the next Enter runs it") and the note the user is left looking at names it
+	// exactly, from the one table, so the two cannot drift.
+	assert.equal(
+		stagedNote("/goal I approve spend", "session.goal", true),
+		`Staged /goal I approve spend. Enter ${stagedPromiseVerb("session.goal")}.`,
 	);
 	// A pane with no conversation: the dispatcher refuses `/goal` there, so the
 	// note says what it can do instead of promising the goal will be set. The

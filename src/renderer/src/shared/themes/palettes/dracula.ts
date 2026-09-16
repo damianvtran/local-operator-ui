@@ -44,6 +44,10 @@ export const dracula: ThemeDefinition = {
 		accent: "#BD93F9",
 		accentHover: "#D1AEFF",
 		accentActive: "#A884DE",
+		// The chart's hover mark, a step AWAY from the plot ground rather than along the
+		// accent ramp: ΔE00 10.2 from `accent` and 7.29:1 on surface, where the accent
+		// itself is 5.28:1. See `chartBarHover` in the palette contract.
+		chartBarHover: "#D3B8FB",
 		accentWash: "#3A374D",
 		onAccent: "#282A36",
 

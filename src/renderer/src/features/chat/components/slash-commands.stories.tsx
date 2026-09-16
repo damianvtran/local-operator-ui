@@ -327,6 +327,7 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	argumentCommand: null,
 	inline: undefined,
 	argumentQuery: "",
+	commandQuery: "",
 	argumentList: { rows: [], loading: false, error: null, needsSession: false },
 	close: noop,
 	setActive: noopIndex,
@@ -458,7 +459,7 @@ export const CommandPhaseNarrowed: Story = {
 	render: () => (
 		<Box width={720} draft="/tea">
 			<SlashSuggestionsPopup
-				state={state({ matches: commandRows("tea") })}
+				state={state({ commandQuery: "tea", matches: commandRows("tea") })}
 				onPick={noop}
 			/>
 		</Box>
@@ -475,7 +476,7 @@ export const CommandPhaseFuzzy: Story = {
 		<Board caption="/lgt — no command starts with those letters; the row is a subsequence match on `logout`.">
 			<Box width={720} draft="/lgt">
 				<SlashSuggestionsPopup
-					state={state({ matches: commandRows("lgt") })}
+					state={state({ commandQuery: "lgt", matches: commandRows("lgt") })}
 					onPick={noop}
 				/>
 			</Box>

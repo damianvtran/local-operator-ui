@@ -18,6 +18,22 @@ painted as gone). The frames in `*/<theme>.webp` are what the surfaces render
 after those remediations, and `round1/` keeps the frames the four rounds produced
 so a reader can see the defect rather than take this file's word for it.
 
+**Round 4 is the convergence with `main`'s #221** (`feat/panels-cache-picker-hover`,
+merge `4d2b3f0a6`), which landed its own command-row Enter contract while this PR
+was in review — an unambiguous Enter applies AND acts, an ambiguous one grows the
+word to the shared prefix — with a footer table pinned by its own tests. The two
+contracts compose rather than replace each other, and the composition is what
+these frames now show: #221's rule decides the KEY, the pick (`handleSlashPick`)
+decides what that apply DOES, and the two frozen sentences this PR owns — the
+ARMED row and the free-text row — both read `Enter stages /X; the next Enter runs
+it.`, because both end with a line staged rather than run (the arm hoists and
+stages; the planned reassembly hoists and stages). Seven frames are re-taken for
+it — `popup-goal`, `popup-goal-by-hand`, `popup-loop`, `popup-goal-nosession`,
+`plain-enter-prose`, its light twin and `tab-no-arm` — and one is added,
+`enter-loop-staged`: the Enter half of the pair `pick-loop-click-staged` already
+carries for the pointer, because the sentence above a row is only as good as the
+state the key lands in.
+
 ## `*/<theme>.webp` — the fixed surfaces, at the remediation head
 
 Every frame is the real `MessageInput`, its real slash popup, the real planner
@@ -39,23 +55,27 @@ round 3, Q3-2 — before that fix, the two `plain-enter-prose` frames did exactl
 that).
 
 `popup-loop`, `plain-enter-prose` and `plain-enter-prose-light` were re-taken in
-round 3; the rest are the round-2 pass's, and the entry in
+round 3; round 4 re-took those three plus `popup-goal`, `popup-goal-by-hand`,
+`popup-goal-nosession` and `tab-no-arm`, and added `enter-loop-staged`. The
+composer pair is unchanged: it is a crop of two frames whose pixels this round
+did not move, and the entry in
 `docs/evidence/manifest.json` states, string by string, why nothing they render
 moved.
 
 | frame | state | what it settles |
 | --- | --- | --- |
-| `popup-goal/localOperatorDark.webp` | popup open on the `/goal` row over `I approve spend /goal`, no arrow pressed | review F2 / QA Q5 / UX U2 / design D1-D2: the row's own two lines read `Enter sends this draft as prose.` / `Click stages /goal.` — Enter's line is the whole of what Enter does here, and the line below it names the gesture that stages, where the pair used to read `Enter completes the command.` / `Click runs /goal.` |
-| `popup-goal-by-hand/localOperatorDark.webp` | the same intent after a bare `/` and arrows onto the `/goal` row | the chosen state: `Enter or Tab stages /goal; the next Enter sets the goal and sends the text.` — the promise is the note's own sentence (design D4), Tab is named because it shares the gate (UX U5 / QA Q2-1), and this is the ONE way the app reaches a hand-made choice, since a query of `/goal` matches a single row and a clamped arrow is not a move (review F2) |
-| `popup-loop/localOperatorDark.webp` (re-taken, round 3) | the popup on the `/loop` row (control, caret on the word), draft `please run /loop` | UX U2/U3: the free-text row says `Enter completes /loop; the next Enter stages this draft behind it.` and `Click stages /loop.` The pointer line no longer claims the run the click does not perform (U2), and the Enter line is REACHABLE: round 2 bound it to the pick's predicate but handed the footer a `runs` the command phase cannot produce, so the app printed `Enter completes the command.` and this frame was the evidence cited for a sentence it did not show (review F2 / QA Q3-1). Round 2's claim to have closed U3 was wrong; this frame is what closes it |
-| `plain-enter-prose/localOperatorDark.webp` (re-taken, round 3) | `I approve spend /goal`, Enter with the popup OPEN | UX U1 / design D2, the operator's report: `sent` is the draft, verbatim and in its own order, no note, nothing staged — the arming is not a key that happened to be pressed. Its `box` row reads `""` beside the empty box the frame paints, which is the same state read after the send settled (QA round 3, Q3-2) |
-| `plain-enter-prose-light/localOperatorLight.webp` (re-taken, round 3) | the same state, light theme | the same claim on the second palette |
-| `tab-no-arm/localOperatorDark.webp` | the same draft, Tab with the popup open | UX U3: Tab does not arm and does not rewrite the sentence — the box still holds exactly what was typed |
+| `popup-goal/localOperatorDark.webp` (re-taken, round 4) | popup open on the `/goal` row over `I approve spend /goal`, no arrow pressed | review F2 / QA Q5 / UX U2 / design D1-D2, in the composed contract: the row's two lines read `Enter stages /goal; the next Enter runs it.` / `Click stages /goal.` — Enter's line is what the key does on the row the popup is showing, and the line below it names the pointer's own path. Round 3's `Enter sends this draft as prose.` described a rule #221 replaced: an unambiguous Enter ACTS on the row, and on this row the act is the arm |
+| `popup-goal-by-hand/localOperatorDark.webp` (re-taken, round 4) | the same intent after a bare `/` and arrows onto the `/goal` row | the hand-made state reads the SAME sentence as the typed one — `Enter stages /goal; the next Enter runs it.` — because the round-4 composition dropped the gate that made the two states differ: the popup's own visible line names the effect now, so a choice by hand and a typed word both arm. What the frame still pins is that this state is REACHED the way the app offers it: a bare `/` lists the whole catalogue and arrowing to `/goal` is a move, while a query of `/goal` matches a single row and a clamped arrow is not a choice (review F2) |
+| `popup-loop/localOperatorDark.webp` (re-taken, round 4) | the popup on the `/loop` row (control, caret on the word), draft `please run /loop` | UX U2/U3, in the composed contract: the free-text row says `Enter stages /loop; the next Enter runs it.` and `Click stages /loop.` — the same two sentences the armed row gets, because the pick does the same thing to a draft that survives (hoist it, stage it, run nothing). Round 3's `Enter completes /loop; the next Enter stages this draft behind it.` was true of the keyboard rule it was written under; #221's rule makes the FIRST Enter the staging one, and `enter-loop-staged` is the frame that shows it |
+| `enter-loop-staged/localOperatorDark.webp` (new, round 4) | `please run /loop`, then Enter on the `/loop` row | the sentence above that row, measured: the box becomes `/loop please run`, the note reads `Staged /loop please run. Enter again runs it.`, and `sent` and `dispatched` are both EMPTY. The Enter half of the pair `pick-loop-click-staged` carries for the pointer — a row whose line claims a staging owes the reader the state it lands in, which is the gap QA round 3 filed against the other half |
+| `plain-enter-prose/localOperatorDark.webp` (re-taken, round 4) | `I approve spend /goal`, then Escape (the list closed), then Enter | UX U1 / design D2, the half of the operator's report that survives the round-4 composition: with no row to act on, `sent` is the draft, verbatim and in its own order, no note, nothing staged — nothing arms from a draft ALONE. Round 4 moved the recipe by one key rather than rewording the claim: with the popup OPEN the composed rule arms this draft deliberately (that is the operator's own gesture, and `popup-goal` is the frame for it), so the frame carrying the no-inference half has the list closed. Its `box` row reads `""` beside the empty box the frame paints, which is the same state read after the send settled (QA round 3, Q3-2) |
+| `plain-enter-prose-light/localOperatorLight.webp` (re-taken, round 4) | the same state, light theme | the same claim on the second palette |
+| `tab-no-arm/localOperatorDark.webp` (re-taken, round 4) | the same draft, Tab with the popup open | UX U3 with #221's own Tab rule: Tab COMPLETES the word and closes the list — its `box` row reads `I approve spend /goal ` with the completion's own trailing space, which the pixels cannot show — and it does not arm: `note`, `sent` and `dispatched` are all empty. The arm rides the ACTING key (`disposition.run`, which Tab never carries), so the accept-and-keep-typing key cannot turn a sentence into a staged line |
 | `pick-arms-click/localOperatorDark.webp` | the goal row CLICKED | the pointer gesture: the line is hoisted to the front, staged, and the note says what the next Enter will do |
 | `pick-arms-hand/localOperatorDark.webp` | the by-hand state above, then Enter | the keyboard gesture the gate admits: the same staged line, reached by a choice the user made |
 | `pick-arms-multiline/localOperatorDark.webp` | review F1 / QA Q4's draft (`Please fix the flaky test and` / `then run the release.` / `/goal`) clicked | the staged line is ONE line, so the next Enter is the whole-draft form that runs: the goal is set and the text sent, rather than the literal `/goal …` reaching the model |
 | `pick-arms-nosession/localOperatorDark.webp` | the same pick on a pane whose props are a real New chat pane (`sessionStatus` from the preview with `draft: true`, `conversationId` the pane's identity, `paneHasSession=false`) | UX U1: the note says what the pane can do (`Needs an open conversation; start one first.`) instead of promising a goal it will refuse one keystroke later — in a state the SHIPPING page produces, which is the half round 1 could only reach by forcing `sessionStatus={undefined}` |
-| `popup-goal-nosession/localOperatorDark.webp` | the by-hand state on that same draft pane | design D3: the popup stops promising the run on the pane that will refuse it — `Enter or Tab stages /goal; this pane needs an open conversation to run it.` — with `Click stages /goal.` beneath it |
+| `popup-goal-nosession/localOperatorDark.webp` (re-taken, round 4) | the by-hand state on that same draft pane | design D3 / UX U1, in the composed sentence: `Enter stages /goal; this pane needs an open conversation to run it.` The staging is real on this pane — it is local — and the RUN the next Enter would take is what the dispatcher refuses, so the clause that says so replaces the promise rather than sitting beside it |
 | `pick-loop-click-staged/localOperatorDark.webp` | the `/loop` row CLICKED, draft `please run /loop` | UX U2, measured off the pick: the box becomes `/loop please run`, the note says it staged, and `sent` and `dispatched` are both EMPTY — the wire call the old `Click runs /loop.` promised does not happen |
 | `composer-armed/localOperatorDark.webp` | the composer box after a pick | design N1: compared against… |
 | `composer-hand-typed/localOperatorDark.webp` | the composer box holding `/goal I approve spend` typed by hand | …this one: `magick compare -metric AE` over the box's own rect reports **0 of 530,944 pixels** different (1952x272 at `24,346,976,136@2`), so the armed state stays indistinguishable from the whole-draft form it lands the user in — no badge, no restyle |
@@ -122,7 +142,12 @@ with `node_modules` from a checkout of the same tree):
 3. drive the labelled controls (`data-ev-action`) and screenshot after each, **after
    the witness rows have stopped changing** — the harness writes them when the
    gesture settles, and a screenshot taken first shows a frame whose own `box`
-   row describes another state (QA round 3, Q3-2; a settle is ~200 ms):
+   row describes another state (QA round 3, Q3-2; a settle is ~200 ms). The last
+   two controls before the screenshot are always `scroll to the top` and `read`:
+   `rect` is a READING of where the composer sits, the preview's own scroll can
+   drift between the gesture and the capture, and a reading taken at one scroll
+   beside pixels at another is a row that disagrees with its frame (round 4 found
+   it: the reading said `-23,202` while the box's pixels sat at `24,346`). Then:
    `type-sentence` → `popup-goal`; `choose-goal-by-hand` (a bare `/` lists the
    whole catalogue and the arrows walk the marker onto `/goal`, which is what
    makes it a choice — a query of `/goal` matches one row, and one press per
@@ -130,14 +155,16 @@ with `node_modules` from a checkout of the same tree):
    paused) → `popup-goal-by-hand`; `enter` → `pick-arms-hand`; `escape`,
    `type-sentence`, `click-goal` → `pick-arms-click`; `escape`, `type-multiline`,
    `click-goal` → `pick-arms-multiline`; `escape`, `type-loop-token` →
-   `popup-loop`; `click-loop` → `pick-loop-click-staged`; `escape`,
-   `type-sentence`, `enter` → `plain-enter-prose`; `escape`, `type-sentence`,
-   `tab` → `tab-no-arm`; `escape`, `type-whole` → `composer-hand-typed`;
-   `escape`, `type-sentence`, `click-goal` → `composer-armed`; `toggle-session`,
-   `escape`, `type-sentence`, `click-goal` → `pick-arms-nosession`;
-   `toggle-session`, `choose-goal-by-hand` → `popup-goal-nosession`;
-   `&args=theme:localOperatorLight`, `type-sentence`, `enter` →
-   `plain-enter-prose-light`;
+   `popup-loop`; `escape`, `type-loop-token`, `enter` → `enter-loop-staged`;
+   `click-loop` → `pick-loop-click-staged`; `escape`, `type-sentence`, `escape`,
+   `enter` → `plain-enter-prose` (the SECOND `escape` is round 4's: with the list
+   open, the composed rule arms this draft deliberately); `escape`,
+   `type-sentence`, `tab` → `tab-no-arm`; `escape`, `type-whole` →
+   `composer-hand-typed`; `escape`, `type-sentence`, `click-goal` →
+   `composer-armed`; `toggle-session`, `escape`, `type-sentence`, `click-goal` →
+   `pick-arms-nosession`; `toggle-session`, `choose-goal-by-hand` →
+   `popup-goal-nosession`; `&args=theme:localOperatorLight`, `type-sentence`,
+   `escape`, `enter` → `plain-enter-prose-light`;
 4. crop the two composer frames to the `rect` the page reports times
    `window.devicePixelRatio` (the harness viewport is 1280x720 at DPR 2, so the
    frames are 2560x1440 and the crop is `rect × 2` — `+48+692`), and write every
@@ -148,8 +175,13 @@ with `node_modules` from a checkout of the same tree):
 Round 3 re-took three of the frames — `popup-loop`, `plain-enter-prose` and
 `plain-enter-prose-light` — because the code that renders them changed; it did
 **not** re-take the composer pair, whose claims were corrected instead (see
-above). A test that changes what a frame shows owes that frame a re-take in the
-same commit; a claim that outlives its bytes owes the reader the correction.
+above). Round 4 re-took those three plus four more (`popup-goal`,
+`popup-goal-by-hand`, `popup-goal-nosession`, `tab-no-arm`) and added
+`enter-loop-staged`, all because the composition with #221 changed what the keys
+do and therefore what the copy may say; it too left the composer pair alone, and
+their claims stand because their pixels did not move. A test that changes what a
+frame shows owes that frame a re-take in the same commit; a claim that outlives
+its bytes owes the reader the correction.
 
 `round1/` is not regenerable: those rigs are scratch and the copy they render no
 longer exists in the tree. The design round's own rig recipe is in its round-1
