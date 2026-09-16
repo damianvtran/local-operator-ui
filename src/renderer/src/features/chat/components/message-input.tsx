@@ -1738,7 +1738,32 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const handleSuggestionClick = (suggestion: string) => {
 			if (isInputDisabled) return;
+			/*
+			 * THE FILL TAKES THE TYPED PATH, in the textarea's own order, because a
+			 * filled label has to behave exactly like the same sentence typed by hand
+			 * and a separate shortcut here would be a second path that can drift from
+			 * that one (review round 2, M3). Each step is the typed path's own:
+			 *
+			 * - `setNewMessage` IS `useMessageInput`'s `handleChange` (the hook returns
+			 *   it under the `setInputValue` key), which is the one steady-state writer
+			 *   of the persisted per-conversation draft. So a filled label reaches the
+			 *   draft store and survives a composer remount on the same terms a
+			 *   keystroke does; `scripts/suggestion-stack-react.test.mjs` runs it.
+			 * - `onComposerInput?.()` is the empty -> non-empty edge the textarea's own
+			 *   `onChange` fires (see its comment), and a chip press into an empty box is
+			 *   that same edge - `suggestionsDisabled` guarantees the box is empty here.
+			 *   Without it the press would skip the speculative session warm, so the send
+			 *   that follows would pay the cold runtime spawn a typed sentence does not.
+			 * - `pendingCaret`/`setCaret` is this file's convention for a programmatic
+			 *   edit (`applyPlan` above): the value and the selection are written
+			 *   together, so the caret is not left to whatever the browser does when the
+			 *   DOM value is replaced. It lands at the END of the label, which is the
+			 *   position "now edit what you just chose" means.
+			 */
+			if (!newMessage) onComposerInput?.();
+			pendingCaret.current = suggestion.length;
 			setNewMessage(suggestion);
+			setCaret(suggestion.length);
 			/*
 			 * The press lands on the chip, so the chip holds focus. Handing it back to
 			 * the box is what makes the interaction "complete this, then edit it"
