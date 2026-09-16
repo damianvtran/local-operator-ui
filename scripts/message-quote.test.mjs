@@ -11,13 +11,21 @@ import { build } from "esbuild";
  * 1. WHICH ROWS OFFER QUOTE (`isQuotable`) - prose only, nothing streaming,
  *    nothing empty. A frame shows the toolkit on one row; it cannot show its
  *    absence on the twenty kinds of row that must not have it.
- * 2. WHAT TEXT IT CARRIES (`quoteText`) - the reader's selection when they made
- *    one, otherwise the turn's own words, and never the `<reply-to>` transport
- *    markup.
- * 3. THE SELECTION RULE (`selectionTextIn`, `selectionClippedTo`) - which DOM
- *    selections count as a quote of THIS turn, and what happens to one that only
- *    partly lies in it. faked here rather than driven in a browser because the
- *    question is a comparison of node identities, not a paint.
+ * 2. WHICH HIGHLIGHT IS A QUOTE OF WHICH TURN, AND WHAT IT CARRIES
+ *    (`quoteSelectionIn`) - the part of the reader's highlight that lies in this
+ *    turn, only when the highlight BEGINS in it, and never the `<reply-to>`
+ *    transport markup. faked here rather than driven in a browser because the
+ *    question is a comparison of node identities, not a paint. The one rule
+ *    replaces the three this file used to assert (`selectionTextIn`,
+ *    `selectionClippedTo`, `quoteText`): nothing raises the control without a
+ *    highlight now, so the whole-turn fallback those three existed to bound has
+ *    no caller left, and the empty case they argued about is answered by there
+ *    being no control at all.
+ * 3. WHERE THAT CONTROL FLOATS (`placeQuoteControl`) - the flip when the
+ *    highlight's own first line is at the pane's top edge, the clamps that keep
+ *    it inside the scroller and the window, and the hide when that line is off
+ *    screen. Pure boxes, so the cases a frame cannot reach - the row just above
+ *    the fold - are asserted here instead.
  * 4. THE ROUND TRIP through the shipped send path - `buildSendPayload` prefixes
  *    the markup and `parseReplies` takes it back out, so a staged quote really
  *    is what the next send carries and the sent turn really does render a quote
@@ -48,6 +56,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/quote-model";',
+			'export * from "./src/renderer/src/features/chat/canonical/quote-anchor";',
 			'export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";',
 			'export { buildSendPayload } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 		].join("\n"),
@@ -90,10 +99,11 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 });
 const {
 	isQuotable,
-	quoteText,
-	selectionTextIn,
-	selectionClippedTo,
+	quoteSelectionIn,
 	QUOTE_TOOLKIT_ATTR,
+	placeQuoteControl,
+	overlap,
+	QUOTE_CONTROL_GAP,
 	parseReplies,
 	buildSendPayload,
 } = await import(
@@ -125,7 +135,7 @@ const assistantRow = (text, extra = {}) => ({
 /* ---- which rows offer Quote -------------------------------------------- */
 
 /**
- * `isQuotable` as the rows call it: the record, and the BODY it would stage.
+ * `isQuotable` as the rows call it: the record, and the BODY it would offer.
  *
  * The body is the row's text with the reply markup taken out, which is the same
  * string for every row that does not carry a reply - so it defaults to the text
@@ -156,7 +166,8 @@ test("a row with no text at all does not, on either kind", () => {
 test("a turn whose whole text is reply markup offers nothing to quote", () => {
 	// A user who types the tag literally. Its RAW text is non-empty, so a rule
 	// that read `record.text` mounted a control whose press was a silent no-op -
-	// `quoteText` answers null for an empty body. The rule reads the body.
+	// An empty body has no ink to highlight, so there is nothing to mount. The
+	// rule reads the body for exactly that reason.
 	const row = userRow("<reply-to>x</reply-to>");
 	const { remainingContent } = parseReplies(row.text);
 	assert.equal(row.text.trim().length > 0, true);
@@ -164,10 +175,9 @@ test("a turn whose whole text is reply markup offers nothing to quote", () => {
 	// The same record read the way the call site used to read it: the raw text
 	// still says "there are words here", which is why the control mounted.
 	assert.equal(isQuotable(row, row.text), true);
-	// Read the body the toolkit would actually stage, the control is gone -
-	// and pressing it would have done nothing anyway.
+	// Read the body the row actually offers, there is nothing to mount - and
+	// there would be no ink to highlight under the pointer either.
 	assert.equal(isQuotable(row, remainingContent), false);
-	assert.equal(quoteText(remainingContent, null), null);
 });
 
 test("ledger and receipt rows do not, whatever they carry", () => {
@@ -184,31 +194,9 @@ test("ledger and receipt rows do not, whatever they carry", () => {
 	}
 });
 
-/* ---- what text a quote carries ----------------------------------------- */
+/* ---- which highlight is a quote of this turn --------------------------- */
 
-test("the reader's selection wins over the turn's whole text", () => {
-	assert.equal(
-		quoteText("the whole answer", "the second clause"),
-		"the second clause",
-	);
-});
-
-test("with no selection the turn's own words are quoted", () => {
-	assert.equal(quoteText("the whole answer", null), "the whole answer");
-});
-
-test("a selection that is only whitespace falls back to the turn", () => {
-	assert.equal(quoteText("the whole answer", "   \n "), "the whole answer");
-});
-
-test("a quote is trimmed at both ends and never empty", () => {
-	assert.equal(quoteText("  padded  ", null), "padded");
-	assert.equal(quoteText("   ", null), null);
-});
-
-/* ---- which selections count as a quote of this turn -------------------- */
-
-/** The smallest tree `selectionTextIn` reads: identity, containment, ancestry. */
+/** The smallest tree `quoteSelectionIn` reads: identity, containment, ancestry. */
 const node = (tag, parent = null) => {
 	const self = {
 		nodeType: 1,
@@ -229,6 +217,8 @@ const node = (tag, parent = null) => {
 	};
 	return self;
 };
+
+/** The reader's highlight, as the model reads it. */
 const select = (range) => {
 	globalThis.window = {
 		getSelection: () => ({
@@ -241,166 +231,72 @@ const select = (range) => {
 };
 
 /**
- * A range whose text is modelled as the three parts a clip has to choose between:
- * what lies BEFORE this turn, what lies INSIDE it, and what lies AFTER it.
+ * A range over the fake tree, whose clone reports what it holds once a boundary
+ * has been clamped to this turn's own end.
  *
- * The existing fixtures hand `select` a plain `text` string because
- * `selectionTextIn` never asks which boundary a range has - it answers null and
- * is done. Clipping does ask, so the fake has to be able to say what was cut:
- * `toString()` on the clone returns `before + inside` once the end was clamped
- * to the turn, `inside + after` once the start was, and the whole thing when
- * neither was touched. That makes each assertion a statement about WHICH part
- * the returned quote contains - the turn's own words, never the neighbours'.
+ * The three functions this file used to assert needed three different fakes;
+ * one rule needs one. A range has a start container, an end container, and the
+ * text between them - and because the start endpoint is what decides whether
+ * the highlight belongs to this turn at all, the only boundary the rule can
+ * move is the END. `after` is therefore the text on the far side of this turn's
+ * end: it is what a caller would quote if the clip did not happen, so each
+ * assertion is a statement about WHICH text comes back, the turn's own words
+ * and never the neighbour's.
  *
- * This is the same faking the file already does for node identity, and it proves
- * the same class of thing: which boundaries the rule moved, not what Chromium
+ * This is the same faking the file already did for node identity, and it proves
+ * the same class of thing: which boundary the rule moved, not what Chromium
  * paints. The text a real `Range.toString()` yields after a real clamp is the
- * browser's, and that is measured on the running surface.
+ * browser's job, and that is measured on the running surface.
  */
-const clippableRange = ({ before = "", inside = "", after = "", ...rest }) => {
+const clippableRange = ({
+	turn,
+	startContainer,
+	endContainer,
+	inside = "",
+	after = "",
+	...rest
+}) => {
 	let clamped = null;
+	const clone = {
+		setEnd: (element, offset) => {
+			// The clip is only ever to THIS turn's own edge; a call with another
+			// node would be clipping to something the reader did not highlight.
+			assert.equal(element, turn);
+			assert.equal(offset, turn.childNodes.length);
+			clamped = "end";
+		},
+		toString: () => (clamped === "end" ? inside : inside + after),
+	};
 	return {
 		...rest,
-		text: before + inside + after,
+		startContainer,
+		endContainer,
+		text: inside + after,
+		cloneRange: () => clone,
+		clone,
 		clamped: () => clamped,
-		cloneRange: () => ({
-			setStart: (element, offset) => {
-				// The clip is only ever to THIS turn's own edge; a call with another
-				// node would be clipping to something the reader did not select.
-				assert.equal(element, rest.turn);
-				assert.equal(offset, 0);
-				clamped = "start";
-			},
-			setEnd: (element, offset) => {
-				assert.equal(element, rest.turn);
-				assert.equal(offset, rest.turn.childNodes.length);
-				clamped = "end";
-			},
-			toString: () =>
-				clamped === "start"
-					? inside + after
-					: clamped === "end"
-						? before + inside
-						: before + inside + after,
-		}),
 	};
 };
 
-test("a selection inside the turn is the quote", () => {
+test("a highlight inside the turn is the quote, trimmed", () => {
 	const turn = node("div");
 	const prose = node("p", turn);
-	select({
+	const range = clippableRange({
+		turn,
 		startContainer: prose,
 		endContainer: prose,
-		commonAncestorContainer: prose,
-		text: "  the second clause  ",
+		inside: "  the second clause  ",
 	});
-	assert.equal(selectionTextIn(turn), "the second clause");
+	select(range);
+	assert.equal(quoteSelectionIn(turn).text, "the second clause");
+	assert.equal(range.clamped(), null);
 });
 
-test("a collapsed caret is not a selection", () => {
-	const turn = node("div");
-	const prose = node("p", turn);
-	select({
-		startContainer: prose,
-		endContainer: prose,
-		commonAncestorContainer: prose,
-		text: "",
-		collapsed: true,
-	});
-	assert.equal(selectionTextIn(turn), null);
-});
-
-test("a selection reaching into another turn is not this turn's quote", () => {
-	const turn = node("div");
-	const prose = node("p", turn);
-	const otherTurn = node("div");
-	const otherProse = node("p", otherTurn);
-	select({
-		startContainer: prose,
-		endContainer: otherProse,
-		commonAncestorContainer: node("body"),
-		text: "across two turns",
-	});
-	assert.equal(selectionTextIn(turn), null);
-});
-
-test("a selection of the toolkit's own label is not a quote", () => {
-	const turn = node("div");
-	const toolkit = node("div", turn);
-	toolkit.attr = true;
-	const button = node("button", toolkit);
-	select({
-		startContainer: button,
-		endContainer: button,
-		commonAncestorContainer: button,
-		text: "Quote",
-	});
-	assert.equal(selectionTextIn(turn), null);
-});
-
-test("a drag that starts in the prose and ends on the strip is not this turn's quote", () => {
-	// The case the attribute exists for: the reader drags over the whole row.
-	// The TURN is the common ancestor of that range, so a test of the common
-	// ancestor asks the one node that cannot be inside the toolkit and lets the
-	// strip's text through as this turn's words - which is what the shipped
-	// implementation did until the endpoints were tested.
-	const turn = node("div");
-	const prose = node("p", turn);
-	const toolkit = node("div", turn);
-	toolkit.attr = true;
-	const button = node("button", toolkit);
-	select({
-		startContainer: prose,
-		endContainer: button,
-		commonAncestorContainer: turn,
-		text: "the second clause Quote",
-	});
-	assert.equal(selectionTextIn(turn), null);
-});
-
-test("the same drag from the strip back into the prose is excluded too", () => {
-	const turn = node("div");
-	const prose = node("p", turn);
-	const toolkit = node("div", turn);
-	toolkit.attr = true;
-	const button = node("button", toolkit);
-	select({
-		startContainer: button,
-		endContainer: prose,
-		commonAncestorContainer: turn,
-		text: "Quote the second clause",
-	});
-	assert.equal(selectionTextIn(turn), null);
-});
-
-test("no turn element and no selection both answer null", () => {
-	const prose = node("p");
-	select({
-		startContainer: prose,
-		endContainer: prose,
-		commonAncestorContainer: prose,
-		text: "orphan",
-	});
-	assert.equal(selectionTextIn(null), null);
-	globalThis.window = { getSelection: () => null };
-	assert.equal(selectionTextIn(prose), null);
-});
-
-/* ---- a selection that only partly lies in the turn --------------------- */
-
-/*
- * `selectionClippedTo` is the half of the selection rule that keeps a press from
- * WIDENING the quote. These four tests are the four ways a range can relate to a
- * turn: overshooting past its end, starting before its start, never reaching it,
- * and lying wholly inside it - which is `selectionTextIn`'s answer and must not
- * be answered twice.
- */
-
-test("a drag that overshoots the turn is clipped to it, not widened", () => {
-	// The measured case (UX round 1, U3; QA round 1, Q3): a drag released below
-	// the turn highlighted 132 characters and staged the WHOLE turn, because the
-	// selection failed containment and the whole-turn fallback took over.
+test("the range it comes back with is the CLIPPED one", () => {
+	// The control is placed against the range, not against the text, so the
+	// geometry has to be the in-turn part of the highlight as well - a highlight
+	// that overshoots into the next turn is quoted from, and floats above, only
+	// the lines that are this turn's.
 	const turn = node("div");
 	const prose = node("p", turn);
 	const beyond = node("p", node("div"));
@@ -408,102 +304,53 @@ test("a drag that overshoots the turn is clipped to it, not widened", () => {
 		turn,
 		startContainer: prose,
 		endContainer: beyond,
-		commonAncestorContainer: node("body"),
-		before: "",
 		inside: "was null, and the new column is not null.",
 		after: "\nThe next turn's words",
 	});
 	select(range);
-	assert.equal(
-		selectionClippedTo(turn),
-		"was null, and the new column is not null.",
-	);
-	// And it got there by moving the ONE boundary that pointed outside the turn.
+	const quoted = quoteSelectionIn(turn);
+	assert.equal(quoted.text, "was null, and the new column is not null.");
+	assert.equal(quoted.range, range.clone);
 	assert.equal(range.clamped(), "end");
 });
 
-test("a drag that starts before the turn is clipped to the turn's start", () => {
+test("a highlight that BEGINS in another turn is that turn's quote", () => {
+	// The rule that makes one highlight raise exactly one control. The start
+	// endpoint decides the owner and a range has exactly one of them, so this
+	// turn - which the highlight passes through - answers null, and the turn it
+	// begins in answers with the text.
 	const turn = node("div");
 	const prose = node("p", turn);
-	const before = node("p", node("div"));
+	const otherTurn = node("div");
+	const otherProse = node("p", otherTurn);
 	const range = clippableRange({
 		turn,
-		startContainer: before,
+		startContainer: otherProse,
 		endContainer: prose,
-		commonAncestorContainer: node("body"),
-		before: "the previous turn's tail",
-		inside: "The other four hundred rows were fine.",
-		after: "",
+		inside: "the next turn's opening words",
 	});
 	select(range);
-	assert.equal(
-		selectionClippedTo(turn),
-		"The other four hundred rows were fine.",
-	);
-	assert.equal(range.clamped(), "start");
+	assert.equal(quoteSelectionIn(turn), null);
+	// And it said so without moving a boundary: a refusal is not a clip.
+	assert.equal(range.clamped(), null);
 });
 
-test("a selection that never reaches the turn is not clipped into it", () => {
-	// Neither endpoint inside: clipping would have to invent a boundary, and the
-	// caller's whole-turn fallback is right for a selection somewhere else.
+test("a highlight that never reaches the turn answers null", () => {
 	const turn = node("div");
 	node("p", turn);
 	const elsewhere = node("p", node("div"));
-	const range = clippableRange({
-		turn,
-		startContainer: elsewhere,
-		endContainer: elsewhere,
-		commonAncestorContainer: elsewhere,
-		before: "",
-		inside: "",
-		after: "somewhere else entirely",
-	});
-	select(range);
-	assert.equal(selectionClippedTo(turn), null);
-	assert.equal(range.clamped(), null);
+	select(
+		clippableRange({
+			turn,
+			startContainer: elsewhere,
+			endContainer: elsewhere,
+			inside: "somewhere else entirely",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
 });
 
-test("a selection wholly inside the turn is not clipped twice", () => {
-	const turn = node("div");
-	const prose = node("p", turn);
-	const range = clippableRange({
-		turn,
-		startContainer: prose,
-		endContainer: prose,
-		commonAncestorContainer: prose,
-		before: "",
-		inside: "the second clause",
-		after: "",
-	});
-	select(range);
-	assert.equal(selectionClippedTo(turn), null);
-	assert.equal(range.clamped(), null);
-});
-
-test("a clip never reaches into the toolkit", () => {
-	// Refused rather than clamped: clamping this end to the turn's own end would
-	// turn a drag to the strip into a quote of the prose the reader dragged away
-	// from - the same widening, arrived at from the other side.
-	const turn = node("div");
-	const prose = node("p", turn);
-	const toolkit = node("div", turn);
-	toolkit.attr = true;
-	const button = node("button", toolkit);
-	const range = clippableRange({
-		turn,
-		startContainer: prose,
-		endContainer: button,
-		commonAncestorContainer: turn,
-		before: "",
-		inside: "the second clause ",
-		after: "Quote",
-	});
-	select(range);
-	assert.equal(selectionClippedTo(turn), null);
-	assert.equal(range.clamped(), null);
-});
-
-test("a caret and a missing turn clip nothing", () => {
+test("a collapsed caret is not a highlight", () => {
 	const turn = node("div");
 	const prose = node("p", turn);
 	select(
@@ -515,10 +362,188 @@ test("a caret and a missing turn clip nothing", () => {
 			collapsed: true,
 		}),
 	);
-	assert.equal(selectionClippedTo(turn), null);
+	assert.equal(quoteSelectionIn(turn), null);
+});
+
+test("a highlight that trims to nothing raises nothing", () => {
+	// THE EMPTY BOUNDARY, and the case three streams read differently (code
+	// review round 2, MINOR 2; UX round 2, U8; QA round 2, Q8). An in-turn clip
+	// holding no character used to fall through the `??` chain to the turn's
+	// WHOLE body - a longer quote than the reader highlighted. There is no
+	// fallback to fall through to now: whitespace is not a highlight, so no
+	// control is raised, and the press that widened the quote cannot happen.
+	const turn = node("div");
+	const prose = node("p", turn);
+	select(
+		clippableRange({
+			turn,
+			startContainer: prose,
+			endContainer: prose,
+			inside: "   \n ",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+});
+
+test("a highlight with an endpoint on the control is refused", () => {
+	// The case `QUOTE_TOOLKIT_ATTR` exists for: a drag over the whole row would
+	// otherwise hand the control's own label in as this turn's words. It is
+	// defence in depth rather than a live path - the control only exists while a
+	// highlight does - and both endpoints are tested, because whichever end is
+	// asked, a drag that reached the control did not select prose.
+	const turn = node("div");
+	const prose = node("p", turn);
+	const toolkit = node("div", turn);
+	toolkit.attr = true;
+	const button = node("button", toolkit);
+	select(
+		clippableRange({
+			turn,
+			startContainer: prose,
+			endContainer: button,
+			inside: "the second clause ",
+			after: "Quote",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+	select(
+		clippableRange({
+			turn,
+			startContainer: button,
+			endContainer: prose,
+			inside: "Quote the second clause",
+		}),
+	);
+	assert.equal(quoteSelectionIn(turn), null);
+});
+
+test("no turn element and no selection both answer null", () => {
+	const prose = node("p");
+	select(
+		clippableRange({
+			turn: prose,
+			startContainer: prose,
+			endContainer: prose,
+			inside: "orphan",
+		}),
+	);
+	assert.equal(quoteSelectionIn(null), null);
 	globalThis.window = { getSelection: () => null };
-	assert.equal(selectionClippedTo(prose), null);
-	assert.equal(selectionClippedTo(null), null);
+	assert.equal(quoteSelectionIn(prose), null);
+});
+
+/* ---- where that control floats ----------------------------------------- */
+
+/*
+ * `placeQuoteControl` is the other half of the same rule, and it is asserted
+ * here rather than judged from a frame for the reason the frame cannot reach:
+ * the interesting cases are the row at the pane's own top edge and the clamp at
+ * its own right edge, and a story can only photograph the states its fixture
+ * happens to produce. All four numbers are viewport coordinates, so these are
+ * plain arithmetic.
+ */
+
+const box = (top, left, right, bottom) => ({ top, left, right, bottom });
+const VIEWPORT = box(0, 0, 1024, 800);
+/** A transcript pane: below the header, above the composer, inset from the edges. */
+const PANE = box(100, 40, 984, 700);
+const CONTROL = { width: 38, height: 32 };
+const place = (lines, over = {}) =>
+	placeQuoteControl({
+		lines,
+		container: PANE,
+		viewport: VIEWPORT,
+		size: CONTROL,
+		...over,
+	});
+
+test("a highlight with room above puts the control over its first line", () => {
+	assert.deepEqual(place([box(300, 200, 500, 320)]), {
+		top: 300 - QUOTE_CONTROL_GAP - CONTROL.height,
+		left: 200,
+		placement: "above",
+	});
+});
+
+test("it aligns to where the highlight BEGINS, not to the line's own left edge", () => {
+	// A wrapped highlight: the second line starts at the pane's left edge, so a
+	// union box would put the control at 40 - pointing at a line the reader did
+	// not begin on.
+	const placed = place([box(300, 200, 900, 320), box(320, 40, 500, 340)]);
+	assert.equal(placed.left, 200);
+	assert.equal(placed.placement, "above");
+});
+
+test("the first row of a scrolled transcript flips the control below it", () => {
+	// The case the operator's ask names: the highlight's own first line sits at
+	// the pane's top edge, so there is no room above it - the control goes below
+	// rather than hanging over the pane's header.
+	assert.deepEqual(place([box(100, 200, 500, 120)]), {
+		top: 120 + QUOTE_CONTROL_GAP,
+		left: 200,
+		placement: "below",
+	});
+});
+
+test("a flip clears the highlight's LAST line, so it never lands on the text", () => {
+	const placed = place([box(100, 200, 500, 120), box(120, 40, 900, 140)]);
+	assert.equal(placed.placement, "below");
+	assert.equal(placed.top, 140 + QUOTE_CONTROL_GAP);
+});
+
+test("a highlight scrolled above the pane hides", () => {
+	// Anchored to a line the reader can no longer see: there is nothing left for
+	// the control to be about, so it reports null rather than pinning itself to
+	// the pane's edge (the operator's third ask: it must not stick around).
+	assert.equal(place([box(40, 200, 500, 60)]), null);
+});
+
+test("a highlight scrolled below the pane hides too", () => {
+	assert.equal(place([box(720, 200, 500, 748)]), null);
+});
+
+test("the control is clamped inside the pane's own edges", () => {
+	assert.equal(place([box(300, 970, 1000, 320)]).left, 984 - CONTROL.width);
+	assert.equal(place([box(300, 10, 200, 320)]).left, 40);
+});
+
+test("the bounds are the pane AND the window, whichever is smaller", () => {
+	// A short window: the pane reaches past it, and a flip measured from the
+	// highlight's last line would put the control under the visible box. The
+	// vertical clamp is what keeps the press reachable there.
+	const placed = place([box(110, 200, 500, 130), box(380, 40, 900, 480)], {
+		viewport: box(0, 0, 1024, 400),
+	});
+	assert.equal(placed.placement, "below");
+	assert.equal(placed.top, 400 - CONTROL.height);
+});
+
+test("a pane shorter than the control pins it to the visible top", () => {
+	// A degenerate clamp range - the control is taller than the space it is
+	// clamped into - must not produce a negative offset that would put it under
+	// the pane's own header.
+	const placed = place([box(100, 200, 500, 118)], {
+		container: box(100, 40, 984, 120),
+	});
+	assert.equal(placed.top, 100);
+});
+
+test("no line rects, and a pane the window does not touch, both answer null", () => {
+	assert.equal(place([]), null);
+	assert.equal(
+		place([box(900, 200, 500, 920)], { container: box(900, 40, 984, 1000) }),
+		null,
+	);
+});
+
+test("touching boxes do not overlap", () => {
+	// The hide's own boundary: a highlight whose bottom sits exactly on the
+	// pane's top edge has no pixel of itself on screen.
+	assert.equal(overlap(box(0, 0, 10, 10), box(10, 0, 20, 10)), null);
+	assert.deepEqual(
+		overlap(box(0, 0, 10, 10), box(5, 5, 20, 20)),
+		box(5, 5, 10, 10),
+	);
 });
 
 /* ---- the round trip through the shipped send path ---------------------- */
@@ -540,8 +565,9 @@ test("a staged quote survives buildSendPayload and comes back out of parseReplie
 /*
  * THE CASE THE SINGLE-LINE ROUND TRIP ABOVE CANNOT SEE.
  *
- * `quoteText` does not truncate, so a quote is normally several paragraphs and
- * the scan has to cross a newline to find the closing tag. Every quote in this
+ * The quote path does not truncate - the staged text is the reader's highlight,
+ * verbatim - so a quote is normally several paragraphs and the scan has to cross
+ * a newline to find the closing tag. Every quote in this
  * file used to be one line, which is the one shape that worked while the scan
  * was not dotall - so the suite was green on a path that failed for the common
  * case. Each test below is a shape that goes through the shipped functions.
@@ -551,8 +577,10 @@ const PARAGRAPH =
 	"Because that row's `tenant_id` was null, and the new column is `not null`.\n\nThe other four hundred rows were fine.";
 
 test("a multi-paragraph quote survives the round trip", () => {
-	const staged = quoteText(PARAGRAPH, null);
-	assert.equal(staged, PARAGRAPH);
+	// What the control stages for a highlight over that answer: the highlight
+	// itself, unaltered. `quoteSelectionIn`'s own tests above pin that; these are
+	// about what the SEND carries once it is staged.
+	const staged = PARAGRAPH;
 	const payload = buildSendPayload("Why did it fail there?", [
 		{ text: staged },
 	]);
@@ -569,17 +597,15 @@ test("a multi-paragraph quote survives the round trip", () => {
 });
 
 test("a selection dragged across two visual lines survives the same way", () => {
-	// `selection.toString()` carries the newline between the lines, so the
-	// second route into the same broken scan is a plain drag across a line break.
-	const selected = "the second row was null\nand the new column is not null";
-	const staged = quoteText("the whole answer\nover two paragraphs", selected);
-	assert.equal(staged, selected);
+	// `selection.toString()` carries the newline between the lines, so a plain
+	// drag across a line break stages exactly this.
+	const staged = "the second row was null\nand the new column is not null";
 	const { replies, remainingContent } = parseReplies(
 		buildSendPayload("and then?", [{ text: staged }]),
 	);
 	assert.deepEqual(
 		replies.map((reply) => reply.text),
-		[selected],
+		[staged],
 	);
 	assert.equal(remainingContent, "and then?");
 });
@@ -598,11 +624,8 @@ test("stacked multi-line quotes each come back whole, in order", () => {
 });
 
 test("whitespace and blank lines around the join belong to neither side", () => {
-	const staged = quoteText(
-		"  a quoted line\n\nand its second paragraph  ",
-		null,
-	);
-	assert.equal(staged, "a quoted line\n\nand its second paragraph");
+	// A highlight whose own ends are whitespace, trimmed by the rule that reads it.
+	const staged = "a quoted line\n\nand its second paragraph";
 	const { replies, remainingContent } = parseReplies(
 		buildSendPayload("  spaced words  ", [{ text: staged }]),
 	);
@@ -691,8 +714,9 @@ test("quoting a turn that was itself a reply does not nest the markup", () => {
 		{ text: "the failure" },
 	]);
 	const { remainingContent } = parseReplies(payload);
-	// What the toolkit stages for that turn: its BODY, not its raw text.
-	const restaged = quoteText(remainingContent, null);
+	// What the control stages for a highlight in that turn: its BODY, not its raw
+	// text - a highlight can only be made over ink, and the markup is not ink.
+	const restaged = remainingContent;
 	assert.equal(restaged, "Why did it fail?");
 	const second = buildSendPayload("Noted.", [{ text: restaged }]);
 	assert.equal(second, "<reply-to>Why did it fail?</reply-to>\nNoted.");
