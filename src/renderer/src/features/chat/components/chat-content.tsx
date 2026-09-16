@@ -44,6 +44,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
@@ -56,34 +57,6 @@ import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
-
-const DEFAULT_MESSAGE_SUGGESTIONS = [
-	"Go to my documents folder",
-	"What's the latest news?",
-	"Make me a research report on the latest trends in AI",
-	"Make me a space invaders game",
-	"Organize my desktop",
-	"Create a presentation outline on climate change",
-	"Train a classifier on the MPG dataset",
-	"Search for quantum computing papers and download interesting ones to read later",
-	"Download some recent papers on fusion energy",
-	"Download some recent papers on cancer research",
-	"Make me a brick breaker game",
-	"Remove downloads that are more than a year old",
-	"Put together a competitive analysis report on the agentic AI space",
-	"Find me a royalty free gif of a cute cat",
-	"Go to my downloads folder",
-	"Organize my documents folder",
-	"Make me a GDPR compliant privacy policy",
-	"Look up trending stocks and put together an investment report",
-	"Fetch the MNIST dataset and train a good classifier",
-	"Look up interest rate trends and make a projection for the next 5 years",
-	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
-	"Do a buy/hold/sell and fundamentals analysis of Apple",
-	"Do a technical analysis on NVDA over the last year",
-	"What are the trending stocks on WallStreetBets?",
-	"What stocks are trending right now?",
-];
 
 /**
  * Props for the ChatContent component
