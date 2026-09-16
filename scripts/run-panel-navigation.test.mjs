@@ -36,12 +36,34 @@
  * (`rosterExpanded`) is hoisted to the pane so it survives a drill-in, and a
  * Back that returns to the roster is now a second way to check that it does.
  *
+ * And the two readings that are about a CALLBACK rather than a mount, because
+ * § 5.5's landing is not "the roster is rendered" but "focus is where it belongs,
+ * and is never `<body>`" - the round-2 Q2-1/U2-1 defect, in which the walk found
+ * nothing to focus and every later key was refused:
+ *
+ *   5. Back at the first level -> `document.activeElement` IS the roster row the
+ *      reader was opened from;
+ *   6. a page the roster's cap hides, reached by the peer stepper -> there is no
+ *      row of its own to land on, so focus is the header's trigger.
+ *
+ * Without 5 and 6 this file was green while the landing had never once run: the
+ * walk reaches for `CSS.escape` as a bare global, jsdom ships no `CSS`, and the
+ * `ReferenceError` thrown inside the walk's own `requestAnimationFrame` callback
+ * is swallowed because nothing reads its effect (review R1-1, QA Q1 - found
+ * independently, which is the reason both readings exist as assertions now).
+ *
  * HOW IT STANDS IN FOR A BROWSER. jsdom, with React's own scheduler: this repo
  * ships jsdom (the same rig `suggestion-stack-react.test.mjs` uses) and the
- * assertions are structural - which components are mounted, and what the
- * current breadcrumb crumb says - not geometric, so a DOM without a layout
- * engine is the honest instrument. What this cannot show is PIXELS: it is not
- * visual evidence, and the frames committed under `docs/evidence/` are.
+ * assertions are structural - which components are mounted, what the current
+ * breadcrumb crumb says, and where the DOM says focus is - not geometric, so a
+ * DOM without a layout engine is the honest instrument. What this cannot show is
+ * PIXELS: it is not visual evidence, and the frames committed under
+ * `docs/evidence/` are.
+ *
+ * Focus is asserted from `document.activeElement`, one real animation frame after
+ * the press (the landing is deferred by one rAF by design), against the shipped
+ * selectors: the walk focuses a roster row's own button, so the element the
+ * assertion names is the element a user presses.
  */
 
 import assert from "node:assert/strict";
@@ -109,6 +131,13 @@ const bundle = await build({
 		contents: `
 			export { InteractivePane } from "./${SOURCE}/run-details.stories";
 			export { RunPanel } from "./${SOURCE}/run-panel";
+			/*
+			 * The production header, because the focus rule's FALLBACK lands on its
+			 * trigger (section 5.5 of docs/run-sidebar.md) and a harness without one
+			 * could only assert the happy path. It is the same composition the stories
+			 * use, so the element the assertion names is the element a user presses.
+			 */
+			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
 			export { deriveRunDetails } from "./${SOURCE}/run-detail-model";
 			export * as fixtures from "./${SOURCE}/run-details.fixtures";
 		`,
@@ -169,9 +198,8 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "pane.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { InteractivePane, RunPanel, deriveRunDetails, fixtures } = await import(
-	pathToFileURL(bundlePath).href
-);
+const { InteractivePane, RunPanel, ChatHeader, deriveRunDetails, fixtures } =
+	await import(pathToFileURL(bundlePath).href);
 const { QueryClient, QueryClientProvider } = await import(
 	"@tanstack/react-query"
 );
@@ -191,6 +219,15 @@ const BACK = 'button[aria-label="Back"]';
 const CLOSE = 'button[aria-label="Close run details"]';
 const DESCEND = 'button[aria-label="Open 1 child subagent"]';
 const DISCLOSURE = "[data-run-panel-disclosure]";
+/*
+ * The peer stepper, which is the ONLY way to reach a member the roster's cap
+ * hides: a hidden member has no row to press (`§ 4`), and the stepper walks the
+ * authoritative sibling order rather than the capped slice (`siblingsOf`).
+ */
+const NEXT = 'button[aria-label="Next subagent"]';
+const PREVIOUS = 'button[aria-label="Previous subagent"]';
+/** The header's trigger: `leaveReader`'s own fallback target (`§ 5.5`). */
+const TRIGGER = "[data-run-panel-trigger]";
 /** `job-audit` is a top-level member; `job-verify` is a child of it (§ 4). */
 const MEMBER = "job-audit";
 /** The grandchild's own label, which is what its crumb says once it is open. */
@@ -199,6 +236,57 @@ const GRANDCHILD_LABEL = "Verify the totals";
 const currentCrumb = (window) =>
 	window.document.querySelector(`${CRUMB_NAV} [aria-current="page"]`)
 		?.textContent ?? null;
+
+/**
+ * `CSS.escape`, which nothing in this environment provides.
+ *
+ * jsdom 26 ships no `CSS` object at all (`window.CSS` and `globalThis.CSS` are
+ * both `undefined`), and `leaveReader` reaches for the global BARE - so before
+ * this existed the focus walk threw `ReferenceError: CSS is not defined` inside
+ * its own `requestAnimationFrame` callback, where jsdom swallows it: every case
+ * in this file was green while the landing it asserts had never once run (review
+ * R1-1, QA Q1). The algorithm is the CSSOM one rather than "these fixture ids
+ * happen to be simple", because the row selector is built from an arbitrary id -
+ * a leading digit, a colon or a control character must still produce a selector
+ * that matches the row it names.
+ */
+const escapeCssIdent = (value) => {
+	const string = String(value);
+	let result = "";
+	for (let index = 0; index < string.length; index += 1) {
+		const code = string.charCodeAt(index);
+		if (code === 0x00) {
+			result += "\uFFFD";
+			continue;
+		}
+		if (
+			(code >= 0x01 && code <= 0x1f) ||
+			code === 0x7f ||
+			(index === 0 && code >= 0x30 && code <= 0x39) ||
+			(index === 1 &&
+				code >= 0x30 &&
+				code <= 0x39 &&
+				string.charCodeAt(0) === 0x2d)
+		) {
+			result += `\\${code.toString(16)} `;
+			continue;
+		}
+		if (
+			(index === 0 && code === 0x2d && string.length === 1) ||
+			code >= 0x80 ||
+			code === 0x2d ||
+			code === 0x5f ||
+			(code >= 0x30 && code <= 0x39) ||
+			(code >= 0x41 && code <= 0x5a) ||
+			(code >= 0x61 && code <= 0x7a)
+		) {
+			result += string.charAt(index);
+			continue;
+		}
+		result += `\\${string.charAt(index)}`;
+	}
+	return result;
+};
 
 /* ------------------------------------------------------------------ harness */
 
@@ -229,6 +317,15 @@ async function mount(render) {
 		// is not enough.
 		requestAnimationFrame: window.requestAnimationFrame.bind(window),
 		cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+		/*
+		 * `leaveReader` builds its row selector with `CSS.escape`, BARE, and jsdom
+		 * provides no `CSS` at all. It is listed here because the focus cases below
+		 * FAIL without it - and the reason they did not before is worth keeping: a
+		 * missing global reached from inside a rAF callback produces an uncaught
+		 * error jsdom swallows, so this map's "fails loudly" promise needs an
+		 * assertion that actually reads the effect, not just the list (R1-1, Q1).
+		 */
+		CSS: { escape: escapeCssIdent },
 		// Radix reads a node's computed style to tell a real `<button>` from a
 		// non-element child; it reaches for the BARE global, like the two above.
 		getComputedStyle: window.getComputedStyle.bind(window),
@@ -376,6 +473,67 @@ const openMember = async (api, id = MEMBER) => {
 };
 
 /**
+ * One real animation frame, which is what `leaveReader`'s landing waits for.
+ *
+ * The focus walk is deferred by ONE rAF - the roster has to paint before its
+ * button can take focus - and jsdom's rAF is a real timer rather than a
+ * synchronous flush, so reading `activeElement` straight after the press reads the
+ * state BEFORE the landing rather than the landing itself.
+ */
+const nextFrame = (window) =>
+	new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+
+/**
+ * Let the landing settle: the walk's own frame, then one more.
+ *
+ * This promise is registered after the press, so within a frame it runs behind
+ * the pane's own callback; the second frame is what separates "it landed" from
+ * "it landed and stayed" - the difference a landing undone by its own re-render
+ * would otherwise hide.
+ */
+const settleFocus = async (window) => {
+	await nextFrame(window);
+	await nextFrame(window);
+};
+
+/**
+ * Where focus actually is, as one short string.
+ *
+ * The assertions compare THIS rather than the node, and that is a correctness
+ * point rather than a taste one: `assert.equal` on two jsdom elements makes
+ * node build a structural diff of two whole DOM trees, and on a failure that
+ * cost measured minutes before the process was killed for memory - a failing
+ * case would have reported an out-of-memory kill instead of the landing it
+ * found. This string can only be one of a few things, so the same failure
+ * reports as `body` and reads at a glance.
+ */
+const focused = (api) => {
+	const element = api.document.activeElement;
+	if (!element || element === api.document.body) return "body";
+	if (element.closest(TRIGGER)) return "trigger";
+	const row = element.closest("[data-run-panel-row]")?.dataset.runPanelRow;
+	return row
+		? `${element.tagName.toLowerCase()} in row ${row}`
+		: `${element.tagName.toLowerCase()}[aria-label="${element.getAttribute("aria-label") ?? ""}"]`;
+};
+
+/**
+ * Step the peer stepper until its page is `label`, in ONE direction.
+ *
+ * Bounded by the sibling count rather than by a timeout, and it stops when the
+ * control is disabled rather than pressing a button that refuses.
+ */
+const stepUntil = async (api, selector, label, limit) => {
+	for (let step = 0; step < limit; step += 1) {
+		if (api.crumb() === label) return true;
+		const control = api.document.querySelector(selector);
+		if (!control || control.disabled) return false;
+		await api.click(selector);
+	}
+	return api.crumb() === label;
+};
+
+/**
  * A harness for the one claim the story's fixture cannot carry: `crowded()` has
  * more members than the roster's cap, so it is the fixture with a disclosure to
  * lose. Otherwise it is the story's harness, one prop apart.
@@ -385,7 +543,26 @@ const crowdedHarness = () => {
 	const [readerChildId, setReaderChildId] = React.useState(null);
 	return React.createElement(
 		"div",
-		{ className: "flex h-screen" },
+		{ className: "flex h-screen overflow-hidden" },
+		/*
+		 * The same composition as the story's own ground - the production header
+		 * above the pane, not a pane on its own - because `leaveReader`'s FALLBACK
+		 * target is the header's trigger (`§ 5.5`), and a harness without one could
+		 * only ever assert the case where a row is waiting to be focused.
+		 */
+		React.createElement(
+			"div",
+			{ className: "flex min-w-0 flex-1 flex-col" },
+			React.createElement(ChatHeader, {
+				agentName: "Core",
+				description: "Invoices workspace · on this machine",
+				onOpenOptions: () => undefined,
+				runDetails: details,
+				mcpServers: [],
+				listOnScreen: readerChildId === null,
+				readerChildId,
+			}),
+		),
 		React.createElement(RunPanel, {
 			details,
 			mcpServers: [],
@@ -517,5 +694,74 @@ test("the roster's disclosure survives leaving the reader", async () => {
 			expanded,
 			"the disclosure is hoisted to the pane, so a drill-in and back cannot collapse the roster under the reader (§ 4)",
 		);
+	});
+});
+
+test("Back at the first level lands focus on the row the reader came from", async () => {
+	await mount(async (api) => {
+		await api.render(interactivePane());
+		const row = openableRow(api);
+		assert.ok(row, "the walk needs a row to open");
+		const id = row.dataset.runPanelRow;
+		await api.click(`[data-run-panel-row="${id}"] button`);
+		assert.ok(api.reader(), "the reader is open");
+		await api.click(BACK);
+		assert.equal(api.reader(), null, "the reader is left");
+		await settleFocus(api.window);
+		assert.equal(
+			focused(api),
+			`button in row ${id}`,
+			"focus lands on the row's own button - the row the reader was opened from (§ 5.5)",
+		);
+		assert.notEqual(
+			focused(api),
+			"body",
+			"and never on <body> - the round-2 Q2-1/U2-1 state, in which every later key was refused",
+		);
+	});
+});
+
+test("a member the roster's cap hides lands focus on the trigger", async () => {
+	await mount(async (api) => {
+		await api.render(React.createElement(crowdedHarness));
+		const rendered = new Set(
+			api.rows().map((entry) => entry.dataset.runPanelRow),
+		);
+		const members = deriveRunDetails(fixtures.crowded()).subagents;
+		const hidden = members.find((member) => !rendered.has(member.id));
+		assert.ok(
+			hidden,
+			`the fixture is over the cap (${rendered.size} rows of ${members.length} members)`,
+		);
+		const row = openableRow(api);
+		assert.ok(row, "the walk needs a row to open");
+		await api.click(`[data-run-panel-row="${row.dataset.runPanelRow}"] button`);
+		assert.ok(api.reader(), "the reader is open");
+		/*
+		 * The ONLY route to this page: a hidden member has no row to press, and the
+		 * stepper walks the authoritative sibling order rather than the capped slice,
+		 * so it can name a member the roster is not showing.
+		 */
+		const reached =
+			(await stepUntil(api, NEXT, hidden.label, members.length)) ||
+			(await stepUntil(api, PREVIOUS, hidden.label, members.length));
+		assert.ok(
+			reached,
+			`the stepper reaches ${hidden.label}, which has no row of its own`,
+		);
+		await api.click(BACK);
+		assert.equal(api.reader(), null, "the reader is left");
+		await settleFocus(api.window);
+		assert.equal(
+			api.document.querySelector(`[data-run-panel-row="${hidden.id}"]`),
+			null,
+			"the landing page has no row of its own once the roster is capped again",
+		);
+		assert.equal(
+			focused(api),
+			"trigger",
+			"so the fallback lands on the trigger (§ 5.5)",
+		);
+		assert.notEqual(focused(api), "body", "and never on <body>");
 	});
 });
