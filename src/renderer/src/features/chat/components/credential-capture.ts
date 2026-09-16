@@ -303,22 +303,27 @@ export function unbackedMarkers(
 /**
  * One run of the buffer the overlay paints, and how it paints it.
  *
- * `"pill"` is a marker the buffer cites, `"mask"` is the masked span while it is
- * open, `"armed"` is the token the capture is latched to, and `"plain"` is
- * everything else — the text the textarea paints and the overlay must not.
+ * `"pill"` is a marker a payload backs, `"unbacked"` is a marker the buffer cites
+ * that NO payload backs (a restored draft — see {@link markerSpans}), `"mask"` is
+ * the masked span while it is open, `"armed"` is the token the capture is latched
+ * to, and `"plain"` is everything else — the text the textarea paints and the
+ * overlay must not.
  */
 export type PaintSegment = {
-	kind: "plain" | "pill" | "mask" | "armed";
+	kind: "plain" | "pill" | "unbacked" | "mask" | "armed";
 	text: string;
 };
 
 /**
  * What the composer's overlay paints, in order, covering the whole buffer.
  *
- * The markers are located by {@link citationSpan}, which is the same predicate the
- * submit path stores by — so what the operator sees chipped and what reaches the
- * model cannot disagree. A marker NO payload backs is painted by the same rule,
- * because the submit rewrites it by the same rule (see the walk below).
+ * The markers are located by the MARKER GRAMMAR ({@link markerSpans}), which is the
+ * same predicate {@link citationSpan} resolves a payload's citation through and the
+ * same one the submit rewrites by - so what the operator sees chipped and what
+ * reaches the model cannot disagree, and a marker that NO payload backs is in the
+ * same set on both sides (see the walk below). The earlier wording said the
+ * markers were located by `citationSpan` and only described the half that has a
+ * payload (code review round 3, NIT 2).
  *
  * The masked span is painted too, with the pill's own treatment: the bullets are
  * already painted by the textarea, and the wash behind them is what makes "these
@@ -349,7 +354,8 @@ export function paintPlan(
 	payloads: Iterable<CredentialPayload>,
 	capture: Capture = IDLE_CAPTURE,
 ): PaintSegment[] {
-	const ranges: { span: Span; kind: "pill" | "mask" | "armed" }[] = [];
+	const ranges: { span: Span; kind: "pill" | "unbacked" | "mask" | "armed" }[] =
+		[];
 	const backed = new Set<number>();
 	for (const payload of payloads) {
 		const span = citationSpan(buffer, payload);
@@ -359,25 +365,35 @@ export function paintPlan(
 		}
 	}
 	/*
-	 * AN UNBACKED MARKER IS PAINTED AS A PILL TOO, and this is the half of the fix
-	 * that is about the OPERATOR rather than the model (design round 2, D2; UX
-	 * round 2, U11). A restored draft's marker has no payload, and every
-	 * payload-driven painter skipped it, so the receipt the app itself wrote showed
-	 * up as literal text — the one state in which the app's own citation reads as
-	 * something the operator typed. `substituteCredentials` now rewrites that run
-	 * at submit, and the pill is the box's own statement of the same fact: what the
-	 * overlay paints and what the submit rewrites are ONE set.
+	 * AN UNBACKED MARKER IS PAINTED TOO, and this is the half of the fix that is
+	 * about the OPERATOR rather than the model (design round 2, D2; UX round 2,
+	 * U11). A restored draft's marker has no payload, and every payload-driven
+	 * painter skipped it, so the receipt the app itself wrote showed up as literal
+	 * text — the one state in which the app's own citation reads as something the
+	 * operator typed. `substituteCredentials` now rewrites that run at submit, and
+	 * the chip is the box's own statement of the same fact: what the overlay paints
+	 * and what the submit rewrites are ONE set.
+	 *
+	 * IT IS A DIFFERENT TREATMENT, NOT THE SAME ONE (UX round 3, U13): the pill's
+	 * own wash said "a credential is referenced here" about a value nothing holds,
+	 * and it was pixel-identical to a live pill, so the operator learned the value
+	 * was gone only AFTER pressing Enter, from the citation in the transcript. The
+	 * `unbacked` kind takes the design's existing NOT-STORED register instead — the
+	 * warning role the unredacted sentence already uses (`bg-warning-wash` with a
+	 * `warning-border` edge) — so the box says "this one did not survive" before the
+	 * send. The two kinds still come from the SAME location rule, which is what
+	 * keeps the paint and the submit rewrite in step: only the colour differs.
 	 *
 	 * It costs the "a hand-typed lookalike is painted as the prose it is" property
 	 * this function's docstring used to claim, and that trade is the point rather
 	 * than a casualty of it: the submit rewrite cannot tell a typed lookalike from
 	 * a restored marker either, so painting the one and rewriting the other would
-	 * be a SECOND disagreement — the exact class of defect the pill exists to
+	 * be a SECOND disagreement — the exact class of defect the chip exists to
 	 * prevent.
 	 */
 	for (const span of markerSpans(buffer)) {
 		if (backed.has(span.start)) continue;
-		ranges.push({ span, kind: "pill" });
+		ranges.push({ span, kind: "unbacked" });
 	}
 	if (capture.arm && capture.arm.end > capture.arm.start)
 		ranges.push({ span: capture.arm, kind: "armed" });
@@ -1669,12 +1685,23 @@ export const CREDENTIAL_EMPTY_SPAN_NOTICE =
 
 /**
  * The empty-span form for a pane with no session yet; see
- * {@link CREDENTIAL_EMPTY_SPAN_NOTICE}. The second clause mirrors the
- * dispatcher's own sentence so the notice and the line that follows it agree
- * word for word about the cause.
+ * {@link CREDENTIAL_EMPTY_SPAN_NOTICE}.
+ *
+ * IT NAMES WHAT ENTER ACTUALLY DOES, which is not what the round-2 wording said
+ * (UX round 3, U15). That sentence - "a new chat has no open conversation yet,
+ * so Enter cannot store a credential" - was written when U8 was still open, and
+ * U8's repair made it false about the PANE: typing a secret into this span and
+ * sending now stores it (`POST /v1/desktop/sessions` -> `…/credentials` ->
+ * `…/messages`, the path QA round 3 re-walked with a real `bash` child on the
+ * first turn). What is still true is narrower and about the SPAN: with nothing
+ * typed, Enter falls through to the dispatcher, which runs `/credential` and
+ * answers "needs an open conversation. Start one first." So the sentence says
+ * that, in the second clause's usual place, and says what to do instead - the
+ * action the live-session variant already carries. It keeps the dispatcher's own
+ * cause, so the notice and the line that follows it still agree word for word.
  */
 export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
-	"masked — a new chat has no open conversation yet, so Enter cannot store a credential";
+	"masked — Enter runs /credential, which needs an open conversation; type or paste the secret into this span";
 
 /**
  * Said after Esc unredacts a typed secret back into the composer as plaintext

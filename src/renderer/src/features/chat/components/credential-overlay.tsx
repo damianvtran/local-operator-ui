@@ -84,6 +84,28 @@ export const CREDENTIAL_PILL_ROLE = cn(
 export const CREDENTIAL_ARMED_ROLE = cn("rounded-xs bg-warning-wash");
 
 /**
+ * The NOT-STORED treatment: the pill's shape, in the warning role.
+ *
+ * A marker the draft cites that NO payload backs (a restored draft) is a chip the
+ * app itself wrote for a value nothing holds any more. Round 2 painted it with
+ * the live pill's own wash and edge, so the two were pixel-identical and the
+ * operator found out only after pressing Enter, from the citation the model
+ * received (UX round 3, U13). The register that already means "this is not a
+ * usable credential" in this app is the warning one the unredacted sentence
+ * uses — the same `warningWash` / `warningBorder` pair the armed token's wash
+ * comes from — so the chip says it in the box, before the send.
+ *
+ * The edge is an OUTLINE for the same pixel reason the pill's is: this element's
+ * glyphs are the textarea's, and a border would add 2px to every line box and
+ * walk the treatment off the characters it is under.
+ */
+export const CREDENTIAL_NOT_STORED_ROLE = cn(
+	"rounded-xs bg-warning-wash",
+	"outline-1 outline-solid outline-warning-border",
+	"box-decoration-clone",
+);
+
+/**
  * The composer's text box model, shared by the textarea and the mirror.
  *
  * ONE definition because the two MUST agree: the pill is painted at the offsets
@@ -116,6 +138,8 @@ type CredentialOverlayProps = {
 const pillClassName = (kind: PaintSegment["kind"]) => {
 	if (kind === "plain") return "text-transparent";
 	if (kind === "armed") return cn("text-transparent", CREDENTIAL_ARMED_ROLE);
+	if (kind === "unbacked")
+		return cn("text-transparent", CREDENTIAL_NOT_STORED_ROLE);
 	return cn("text-transparent", CREDENTIAL_PILL_ROLE);
 };
 

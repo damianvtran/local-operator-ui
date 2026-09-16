@@ -249,6 +249,16 @@ export const refusedSplitNotice = (
 };
 
 /**
+ * The disclosure a caller with no capture to report hands over: nothing.
+ *
+ * A named function rather than an inline `() => 0` default, so the identity is
+ * stable across renders — the hook carries `draftUnredacted` in a `useCallback`
+ * dependency list, and a fresh closure per render would rebuild the keystroke
+ * handler on every keystroke.
+ */
+const noDisclosure = () => 0;
+
+/**
  * Options for the useMessageInput hook
  */
 type UseMessageInputOptions = {
@@ -282,8 +292,18 @@ type UseMessageInputOptions = {
 	 * cancel's own answer), and it rides here rather than being written by the
 	 * composer separately so the two halves cannot be written apart — the same
 	 * reason `draftHeld` gates the write in this hook instead of at each caller.
+	 *
+	 * A FUNCTION OF THE VALUE BEING WRITTEN, not a number (UX round 3, U12). The
+	 * write happens inside the keystroke's own handler, so a number captured at
+	 * render time still describes the text BEFORE that keystroke: that is how four
+	 * backspaces left `unredactedChars: 11` persisted beside a seven-character
+	 * remnant, and how typing ordinary prose re-persisted a stale count that a
+	 * reload then rendered as a sentence about nothing. Asking with the value is
+	 * what lets the composer answer "this text discloses nothing" for the text the
+	 * operator just produced, and it keeps that answer in one place
+	 * (`disclosureOver`) instead of in a second reader of the same fact.
 	 */
-	draftUnredacted?: number;
+	draftUnredacted?: (value: string) => number;
 	/**
 	 * Submits the message.
 	 *
@@ -308,7 +328,7 @@ export const useMessageInput = ({
 	onSubmit,
 	scrollToBottom,
 	draftHeld = false,
-	draftUnredacted = 0,
+	draftUnredacted = noDisclosure,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -446,7 +466,7 @@ export const useMessageInput = ({
 				// cannot mistake it for a restore somebody else made.
 				if (draftHeld) return;
 				lastPushedRef.current = value;
-				setCurrentInput(conversationId, value, draftUnredacted);
+				setCurrentInput(conversationId, value, draftUnredacted(value));
 				resetCurrentHistoryIndex(conversationId);
 			}
 		},

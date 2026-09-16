@@ -1013,9 +1013,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const payloadsRef = useRef(new Map<number, CredentialPayload>());
 		const nextIndexRef = useRef(1);
 		/*
-		 * §5's disclosure, held as the COUNT of characters it is about rather than
-		 * as the sentence, so the same number can be persisted with the draft and the
-		 * sentence itself stays one authority (`unredactedNotice`).
+		 * §5's disclosure, held as the COUNT of characters it is about AND the buffer
+		 * those characters are in, rather than as the sentence or as a bare number.
+		 * The sentence itself stays one authority (`unredactedNotice`).
+		 *
+		 * THE TEXT IS THE OTHER HALF, and round 3 is why (UX round 3, U12; code review
+		 * round 3, MINOR 1). A count on its own is a claim somebody else can invalidate:
+		 * the sentence says "N characters are now PLAIN TEXT in the composer", and after
+		 * the operator's very next Backspace the box holds fewer than N — while the
+		 * number was still written to the draft WITH the new text on every keystroke, so
+		 * a reload brought the false sentence back (measured: four backspaces left the
+		 * notice claiming 11 characters over a 7-character remnant, and a cleared box
+		 * re-persisted the stale 7 under nine characters of ordinary prose). Pairing the
+		 * count with the text it describes makes "does this draft disclose anything" a
+		 * DERIVATION rather than a second fact to keep in step: the disclosure stands
+		 * only while the box still holds that text, so ANY edit retires it and the
+		 * rendered sentence and the persisted count fall together, in one rule, instead
+		 * of one of them going stale in one direction (`setCurrentInput` zeroes it for an
+		 * EMPTY value; this is the half that covers every other edit).
 		 *
 		 * A ref beside the state for the same reason `captureRef` exists: the
 		 * CANCEL that produces this number writes it in the same tick as the buffer
@@ -1023,11 +1038,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * it was built in would persist the previous count — or none — which is
 		 * exactly the class of defect design round 2's D2 filed.
 		 */
-		const [unredactedChars, setUnredactedChars] = useState<number | null>(null);
-		const unredactedCharsRef = useRef<number | null>(null);
-		const setUnredacted = useCallback((chars: number | null) => {
-			unredactedCharsRef.current = chars;
-			setUnredactedChars(chars);
+		type UnredactedDisclosure = { chars: number; over: string };
+		const [disclosure, setDisclosureState] =
+			useState<UnredactedDisclosure | null>(null);
+		const disclosureRef = useRef<UnredactedDisclosure | null>(null);
+		const setDisclosure = useCallback((next: UnredactedDisclosure | null) => {
+			disclosureRef.current = next;
+			setDisclosureState(next);
+		}, []);
+		/*
+		 * The disclosure AS IT APPLIES TO ONE BUFFER: 0 unless this is the text the
+		 * count describes. Every writer of the draft asks THIS — including the
+		 * keystroke path inside `useMessageInput`, which asks it about the value it is
+		 * about to persist — so a count can never be written with text it does not
+		 * describe (UX round 3, U12's repro B, which persisted `unredactedChars: 7`
+		 * beside `just some prose`).
+		 */
+		const disclosureOver = useCallback((buffer: string) => {
+			const held = disclosureRef.current;
+			return held && held.over === buffer ? held.chars : 0;
 		}, []);
 		/*
 		 * The buffer the CAPTURE itself last wrote, so a whole-buffer replacement can
@@ -1317,7 +1346,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * until that resolves.
 				 */
 				retirePayloads.current = true;
-				setUnredacted(null);
+				setDisclosure(null);
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
@@ -1337,7 +1366,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				credentialSessionId,
 				// The disclosure is retired by the same submit that sends the text it
 				// warns about (design round 2, D2's re-raise has this as its other half).
-				setUnredacted,
+				setDisclosure,
 			],
 		);
 
@@ -1360,9 +1389,28 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * capture path alone. Design round 2's D2 was the missing half of §6's
 			 * deliberate decision to persist the Esc-restored characters: the
 			 * characters came back and the sentence that makes them legible did not.
+			 *
+			 * A FUNCTION OF THE VALUE rather than a number, because the write happens
+			 * inside the keystroke's own handler: a number captured at render time still
+			 * describes the text BEFORE that keystroke, which is exactly how the stale
+			 * count reached the draft with text it did not describe (UX round 3, U12).
+			 * The hook asks with the value it is about to write, and the one answer for
+			 * "does this text disclose anything" is `disclosureOver`.
 			 */
-			draftUnredacted: unredactedChars ?? 0,
+			draftUnredacted: disclosureOver,
 		});
+
+		/*
+		 * What the sentence is about, AS OF THIS RENDER: the count when the box still
+		 * holds the text the Esc produced, and `null` otherwise.
+		 *
+		 * The derivation is what makes the notice able to come DOWN (UX round 3, U12):
+		 * the retirement effect below clears the state on the edit, and this hides the
+		 * sentence in the same commit even before that state change lands — one rule
+		 * for the rendered half and the persisted half (see `disclosureOver`).
+		 */
+		const unredactedChars =
+			disclosure && disclosure.over === newMessage ? disclosure.chars : null;
 
 		// Slash completion reads the caret position, so it lives above the
 		// textarea's own onChange rather than deriving position from the value.
@@ -1422,7 +1470,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!field || at === null) return;
 			pendingCaret.current = null;
 			field.setSelectionRange(at, at);
-		}, [newMessage, textareaRef, setUnredacted]);
+		}, [newMessage, textareaRef, setDisclosure]);
 
 		/*
 		 * ---------------------------------------------------------------------
@@ -1478,15 +1526,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			(capture: Capture, buffer: string) => {
 				if (!conversationId) return;
 				if (isTyping(capture)) return;
-				useConversationInputStore
-					.getState()
-					.setCurrentInput(
-						conversationId,
-						buffer,
-						unredactedCharsRef.current ?? 0,
-					);
+				useConversationInputStore.getState().setCurrentInput(
+					conversationId,
+					buffer,
+					// The capture's own writes go through the same one answer as the
+					// keystroke path, so a cancel that restores nothing (or a mint, which
+					// ends the disclosure) writes a draft that discloses nothing.
+					disclosureOver(buffer),
+				);
 			},
-			[conversationId],
+			[conversationId, disclosureOver],
 		);
 
 		/**
@@ -1581,14 +1630,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * commit as the text: no frame exists in which the buffer says one thing and
 		 * the capture another, and no keystroke can arrive in between.
 		 */
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the TEXT is the event; the capture is read through a ref so the effect cannot be rebuilt mid-gesture
 		useLayoutEffect(() => {
 			if (captureOwnedBuffer.current === newMessage) return;
 			captureOwnedBuffer.current = newMessage;
 			if (!isArmed(captureRef.current)) return;
 			setCapture(IDLE_CAPTURE);
-			setUnredacted(null);
-		}, [newMessage, setCapture]);
+			setDisclosure(null);
+		}, [newMessage, setCapture, setDisclosure]);
 
 		/*
 		 * A CONVERSATION SWITCH RETIRES BOTH HALVES, the payload map included.
@@ -1608,8 +1656,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			nextIndexRef.current = 1;
 			retirePayloads.current = false;
 			cancelledToken.current = null;
-			setUnredacted(null);
-		}, [conversationId, setCapture]);
+			setDisclosure(null);
+		}, [conversationId, setCapture, setDisclosure]);
 
 		/*
 		 * WHAT THE DRAFT SAYS ABOUT ITSELF, re-raised on arrival (design round 2,
@@ -1628,6 +1676,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * two are one fact (see `draftUnredacted`), and reading the store is what
 		 * makes the disclosure survive a write it did not itself make.
 		 *
+		 * ROUND 3 STEPPED ON TWO THINGS HERE (UX round 3, U12; code review round 3,
+		 * MINOR 3), and both come from the disclosure now being a count AND the text
+		 * it describes:
+		 *
+		 *  - the raise is over the TEXT THE STORE ITSELF NAMES as the draft, and only
+		 *    when the box actually holds it. Raising the bare number over whatever text
+		 *    happened to be in the box is how a restored count ended up describing
+		 *    characters the operator had already deleted.
+		 *  - the question "does this draft disclose anything" is asked of the store's
+		 *    own `getUnredactedChars`, which is the ONE owner of "0 when there is no
+		 *    draft, or one that discloses nothing" — a second reader of the raw field
+		 *    is a second rule, and the raw field is subscribed here only so that the
+		 *    raise is reactive.
+		 *
 		 * Ordering is deliberate — this effect is declared AFTER the two that clear
 		 * the state, so within the commit that switches conversation the clear runs
 		 * first and this re-raises the incoming draft's own disclosure over it. A
@@ -1635,14 +1697,38 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * is the common case and does nothing at all.
 		 */
 		const storedUnredactedChars = useConversationInputStore((s) =>
-			conversationId
-				? (s.inputByConversation[conversationId]?.unredactedChars ?? 0)
-				: 0,
+			conversationId ? s.getUnredactedChars(conversationId) : 0,
+		);
+		const storedDraftText = useConversationInputStore((s) =>
+			conversationId ? s.getCurrentInput(conversationId) : "",
 		);
 		useEffect(() => {
 			if (storedUnredactedChars <= 0) return;
-			setUnredacted(storedUnredactedChars);
-		}, [storedUnredactedChars, setUnredacted]);
+			if (!storedDraftText || newMessage !== storedDraftText) return;
+			if (disclosureRef.current?.over === storedDraftText) return;
+			setDisclosure({ chars: storedUnredactedChars, over: storedDraftText });
+		}, [storedUnredactedChars, storedDraftText, newMessage, setDisclosure]);
+
+		/*
+		 * ANY EDIT RETIRES THE DISCLOSURE (UX round 3, U12; code review round 3,
+		 * MINOR 1). This is the half that was missing: the sentence described the text
+		 * the Esc produced, and an edit produces different text — one Backspace left it
+		 * claiming eleven characters over seven, and clearing the box left the rendered
+		 * sentence up, because the old effect only ever RAISED (`if (stored <= 0)
+		 * return`, and nothing else could lower it) while the next keystroke re-persisted
+		 * the stale count beside the new prose. Retiring on the edit itself is what makes
+		 * the rendered sentence and the persisted count agree: the derivation guards the
+		 * render in this same commit, and this clears the state so the write that follows
+		 * cannot carry it either.
+		 *
+		 * A layout effect, so the retirement lands before the browser paints the edited
+		 * buffer, and declared after the restore effect so a restored draft is not
+		 * retired by the adoption of its own text.
+		 */
+		useLayoutEffect(() => {
+			const held = disclosureRef.current;
+			if (held && held.over !== newMessage) setDisclosure(null);
+		}, [newMessage, setDisclosure]);
 
 		/*
 		 * The map is retired with the BUFFER, never ahead of it (code review round
@@ -1733,9 +1819,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			// submit is the ordinary one (§4).
 			if (!minted.minted) return false;
 			applyCapture(minted);
-			setUnredacted(null);
+			setDisclosure(null);
 			return true;
-		}, [applyCapture, newMessage, takenCredentialNames, setUnredacted]);
+		}, [applyCapture, newMessage, takenCredentialNames, setDisclosure]);
 
 		/*
 		 * `true` when this keypress belonged to the capture.
@@ -1787,8 +1873,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * submit is told.
 					 */
 					cancelledToken.current = cancelled.token;
-					setUnredacted(cancelled.restored > 0 ? cancelled.restored : null);
-					applyCapture(cancelled);
 					/*
 					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
 					 * say it on its own: after the unredact the composer looks entirely
@@ -1799,12 +1883,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * the same sentence comes back on a reload (design round 2, D2).
 					 *
 					 * SET BEFORE `applyCapture`, deliberately, because that call is what
-					 * PERSISTS the draft: it reads this count off the ref, and a cancel
-					 * that wrote the characters first and the count second would put a
-					 * disclosure-free plaintext draft on disk — silently, and only
-					 * after a reload, which is exactly the shape D2 filed.
+					 * PERSISTS the draft: it asks `disclosureOver` for this buffer, and a
+					 * cancel that wrote the characters first and the disclosure second would
+					 * put a disclosure-free plaintext draft on disk — silently, and only
+					 * after a reload, which is exactly the shape D2 filed. There is ONE such
+					 * pair here: the remediation briefly had two, and the duplicate made the
+					 * ordering invisible to the pin (code review round 3, MINOR 2).
 					 */
-					setUnredacted(cancelled.restored > 0 ? cancelled.restored : null);
+					setDisclosure(
+						cancelled.restored > 0
+							? { chars: cancelled.restored, over: cancelled.buffer }
+							: null,
+					);
 					applyCapture(cancelled);
 					return true;
 				}
@@ -1858,7 +1948,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// `takenCredentialNames` itself, which is why that is no longer a
 				// dependency here.
 				submitCapture,
-				setUnredacted,
+				setDisclosure,
 			],
 		);
 
@@ -2808,7 +2898,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// secret must not exist in the document for even one frame.
 					event.preventDefault();
 					applyCapture(captured);
-					setUnredacted(null);
+					setDisclosure(null);
 					return;
 				}
 			}
@@ -3488,20 +3578,32 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{interruptNotice}
 					</output>
 				)}
-				<div
-					className={cn(
-						COMPOSER_BOX,
-						isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
-						CHAT_MEASURE,
-						// The slash popup anchors above this box without shifting it.
-						"relative",
-					)}
-					data-tour-tag="chat-input-textarea"
-				>
+				{/*
+				 * THE SENTENCE AND THE BOX SHARE ONE ANCHORING ELEMENT, and that is the round-3
+				 * fix for the composer's own layout around the capture (design round 3, D1; UX
+				 * round 3, U14; code review round 3, MAJOR 1; QA round 3, Q1/Q2).
+				 *
+				 * Why the notice is not inside the box, in one measured paragraph: the composer
+				 * is pinned by its BOTTOM edge, so anything added UNDER the box pushes the text
+				 * up. Measured on a populated pane at 1380 with the same rig, a 20px line
+				 * injected below the box moves `textarea.y` 751.30 -> 731.30 (a full 20px),
+				 * while the same line above the box moves it 751.30 -> 751.30 (0.00px): the
+				 * transcript above yields instead. That is what makes "the text the operator is
+				 * typing does not move when the capture arms" hold, and it is why the manager's
+				 * own candidate - the sentence below the box - was measured and rejected: it is
+				 * the one position that costs the typed line the sentence's full height.
+				 *
+				 * The wrapper is also the slash popup's anchor. The list renders `absolute
+				 * bottom-full`, so anchoring it HERE - above the sentence - is what keeps the
+				 * armed state's completion list from painting over the armed state's sentence;
+				 * anchored to the box instead, the two occupy the same strip and the popup (a
+				 * later sibling) wins.
+				 */}
+				<div className="relative w-full">
 					{/*
-					 * The popup is a CHILD of this box and renders `absolute
-					 * bottom-full`, i.e. deliberately outside the box's content area,
-					 * above it. It is NOT portaled, unlike the Radix menus and
+					 * The popup is a CHILD of this anchoring wrapper and renders `absolute
+					 * bottom-full`, i.e. deliberately outside the box's content area, above it.
+					 * It is NOT portaled, unlike the Radix menus and
 					 * tooltips: those get their portal AND their positioning from
 					 * Popper, whereas this list is anchored to one element that never
 					 * moves relative to its own containing block, so `bottom-full` on a
@@ -3519,673 +3621,703 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * and the band on the popup's SIBLINGS, never on its ancestors.
 					 */}
 					<SlashSuggestionsPopup state={slash} onPick={handleSlashPick} />
-					{(replies.length > 0 || attachments.length > 0) && (
-						/*
-						 * The previews carry their own bound, on a SIBLING of the popup
-						 * rather than on an ancestor of it.
-						 *
-						 * These two are the composer's only unbounded content: attachment
-						 * tiles are 100px each and wrap, and replies stack, so a dozen
-						 * attachments grew the band past the window and took the send
-						 * controls off the bottom with nothing left to scroll them back
-						 * (measured: 40 tiles + 10 replies made the band 1126px in an
-						 * 872px viewport, send button off screen). Bounding them HERE
-						 * bounds the band as a consequence -- 377px at every load -- so
-						 * the band needs no max-height of its own and therefore no
-						 * scroller, which is what keeps the slash popup above it
-						 * reachable.
-						 *
-						 * This is the pattern the textarea below already uses
-						 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
-						 * of the composer caps itself and scrolls internally, so no
-						 * wrapper has to clip on behalf of its children. ~240px shows two
-						 * full rows of tiles before scrolling.
-						 */
-						<div className="max-h-[240px] shrink-0 overflow-y-auto">
-							{replies.length > 0 && (
-								<ReplyPreview
-									replies={replies}
-									onRemoveReply={handleRemoveReply}
-								/>
-							)}
-							{attachments.length > 0 && (
-								<AttachmentsPreview
-									attachments={attachments.map((a) => a.path)}
-									onRemoveAttachment={(index) =>
-										handleRemoveAttachment(attachments[index].id)
-									}
-									disabled={isInputDisabled || isRecording || isTranscribing}
-								/>
-							)}
-						</div>
-					)}
-
-					{isRecording ? (
-						<AudioRecordingIndicator isRecording={isRecording} />
-					) : isTranscribing ? (
-						<div className="flex flex-1 items-center justify-center gap-2 rounded-sm px-4 py-2 [min-height:50px]">
-							<span className="mr-1 font-medium text-body-sm text-ink-muted">
-								Processing audio
-							</span>
-							<WaveformAnimation />
-						</div>
-					) : (
-						/*
-						 * The textarea and its MIRROR, in one isolated wrapper.
-						 *
-						 * `isolate` is load-bearing rather than tidy: the overlay paints at
-						 * `-z-10` so the pill sits UNDER the glyphs the textarea paints, and
-						 * without a stacking context here a negative index paints behind the
-						 * composer box's own `bg-surface` — i.e. no pill at all, with nothing
-						 * on screen to say why (CSS 2.1 appendix E: negative-z children come
-						 * before in-flow block backgrounds).
-						 */
-						<div className="relative isolate w-full">
-							<CredentialOverlay
-								text={newMessage}
-								payloads={payloadsRef.current}
-								capture={capture}
-								fieldRef={textareaRef}
-								isSmallView={isSmallView}
-							/>
-							<textarea
-								ref={textareaRef}
-								className={cn(
-									// The box model comes from ONE place, shared with the mirror:
-									// any drift between these two moves the pill off the characters
-									// it sits under.
-									composerTextBox(isSmallView),
-									isSmallView ? "max-h-24" : "max-h-28",
-									"resize-none overflow-y-auto bg-transparent",
-									"text-ink outline-none placeholder:text-ink-dim",
-									// The disabled state STEPS COLOUR rather than fading
-									// (branding: disabled changes colour, never opacity), and
-									// without this the only signal was `cursor: not-allowed`
-									// after the user had already typed into a field that will
-									// not accept anything.
-									"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
-								)}
-								placeholder={
-									/*
-									 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-									 * that order is the whole point: `isInputDisabled` is true for a missing
-									 * conversation too, so a reader of a conversation this machine does not have
-									 * would be told "Agent is busy" about a turn nobody is running (design
-									 * round 2, D3). The remaining terms are the U8 pair, unchanged.
-									 */
-									unavailable
-										? "This conversation is gone"
-										: isInputDisabled
-											? "Agent is busy"
-											: awaitingAnswer
-												? // Names the thing the box is now for, without restating
-													// the question card or the waiting line (§ 7 keeps one
-													// liveness statement per turn, and the card owns it).
-													"Answer the question above"
-												: awaitingReply
-													? "Waiting for the agent"
-													: "Ask me for help"
-								}
-								value={newMessage}
-								onChange={(e) => {
-									/*
-									 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
-									 * intercepted keystroke arrives here — Backspace, Delete, a
-									 * selection, a drop, an IME commit, and any paste that fell through
-									 * — and `applyDomEdit` maps the edit onto the held value at the
-									 * index the operator sees. The first door is the printable-key
-									 * branch of `handleCredentialKeyDown`, which never lets the
-									 * character reach the DOM at all; this one is the belt for the
-									 * routes a keyboard gate cannot see.
-									 *
-									 * `origin` is "typing" because a change IS a keystroke-shaped
-									 * event on this control — an arrival (a restored draft, a seed) is
-									 * written through `setNewMessage` by its own caller, never through
-									 * the DOM's change event for a textarea the user is in.
-									 */
-									const next = e.target.value;
-									const at = e.target.selectionStart ?? next.length;
-									const applied = applyDomEdit(
-										captureRef.current,
-										newMessage,
-										next,
-										at,
-										"typing",
-									);
-									if (applied.buffer !== next) {
-										// A real character reached the span through a route the
-										// keyboard gate could not see, and it is already replaced by
-										// its mask cell here.
-										pendingCaret.current = applied.caret;
-										setCaret(applied.caret);
-									} else {
-										setCaret(at);
-									}
-									if (applied.capture !== captureRef.current)
-										setCapture(applied.capture);
-									// Only the empty -> non-empty edge: the whole point is one
-									// statement of intent per composed message, and the
-									// consumer's latch should not be asked to absorb a
-									// per-character call it can only discard.
-									if (!newMessage && applied.buffer) onComposerInput?.();
-									/*
-									 * The capture's own write, stamped so the whole-buffer teardown can
-									 * tell it from a replacement some other writer made. A DOM change
-									 * reaches here without passing `applyCapture`, which is exactly why
-									 * the stamp is not optional: without it, the operator's own
-									 * keystroke would read as an external write and end the gesture it
-									 * is in the middle of.
-									 */
-									captureOwnedBuffer.current = applied.buffer;
-									// An abandoned capture (the drop and IME routes) settles the box
-									// here rather than through `applyCapture`, so the §6 write has to
-									// be asked for here too.
-									persistDraft(applied.capture, applied.buffer);
-									setNewMessage(applied.buffer);
-									// Editing the text answers the alert. Leaving it up over a
-									// draft the user has since changed is the defect this whole
-									// change replaces, and moving the banner to the composer
-									// would only have moved that defect closer to the eye.
-									//
-									// After a dwell, though: the message is two sentences plus up
-									// to three controls, and a user who reaches straight for the
-									// keyboard lost all of it before finishing the first word -
-									// including the remedy buttons. The alert still goes on the
-									// edit, just not before it can be read.
-									if (Date.now() - alertShownAt.current >= ALERT_READ_DWELL_MS)
-										sendError?.onDismiss?.();
-								}}
-								onSelect={(e) => {
-									const field = e.target as HTMLTextAreaElement;
-									/*
-									 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
-									 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
-									 *
-									 * `applyCapture` parks the caret it is about to set in
-									 * `pendingCaret` and the layout effect applies it with the
-									 * buffer. A `select`/`selectionchange` still in flight from the
-									 * PREVIOUS edit therefore reaches this handler between the state
-									 * write and its commit, carrying the older buffer (the render
-									 * closure has not moved yet) and the older offset — a pair that
-									 * is internally consistent and describes a state the composer
-									 * has already left. Re-syncing on it is how accepting the
-									 * `/credential` row closed the span that completion had just
-									 * opened: the report said "the caret is at 5, inside the token"
-									 * while the capture was already open at 6, so `syncCapture` read
-									 * a caret move out of the span.
-									 *
-									 * Skipping it is not a caret move being ignored: the offset that
-									 * arrives is the one this write is replacing, and the pending
-									 * value is applied by the layout effect either way. If the DOM
-									 * already agrees — a report about the caret we just set — the
-									 * marker is retired here so the guard cannot outlive its write.
-									 */
-									const pending = pendingCaret.current;
-									if (pending !== null) {
-										if (field.selectionStart === pending)
-											pendingCaret.current = null;
-										return;
-									}
-									setCaret(field.selectionStart);
-									/*
-									 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
-									 * caret move may do: it may keep a latched arm, re-anchor it, and
-									 * RE-OPEN a span the caret has returned to — but it may never ARM
-									 * by itself. The TUI asks both questions at the same reactive
-									 * (`watch_selection`), because a mouse click, an app-set
-									 * selection and a completion's caret all move the caret with no
-									 * caret key pressed: without the re-open, leaving and coming back
-									 * left an armed token whose next typed character landed in
-									 * PLAINTEXT; without the "may not arm" half, a click at the end of
-									 * a restored draft would swallow the next paste.
-									 */
-									setCapture(
-										syncCapture(
-											captureRef.current,
-											newMessage,
-											field.selectionStart,
-											"caret",
-										),
-									);
-								}}
-								onKeyDown={handleComposerKeyDown}
-								onPointerDown={() => {
-									/*
-									 * "I am about to type here." An ask gate can advance while the
-									 * user is on their way into this box, and the restore must not
-									 * move them off it: the characters they type would reach
-									 * nothing and the next `Space` would answer the next question
-									 * (UX round 4, U13).
-									 */
-									composerPointerTouched = true;
-								}}
-								onPaste={handlePaste}
-								rows={1}
-								disabled={isInputDisabled}
-								aria-label="Message"
-								role="combobox"
-								aria-describedby={
-									credentialNotice ? CREDENTIAL_NOTICE_ID : undefined
-								}
-								aria-expanded={slash.open}
-								aria-controls={slash.open ? slash.listId : undefined}
-								aria-activedescendant={slash.activeDescendantId ?? undefined}
-							/>
-						</div>
-					)}
-
 					{/*
-					 * The composer's controls and the session's readings, on ONE row.
+					 * The capture's own sentence, in the `<output>` register the interrupt notice
+					 * above the composer already uses: the result of a user action, said politely.
 					 *
-					 * The readings used to have a row of their own above this one. They are
-					 * inside it now, which is why this row wraps: above 750px of COLUMN the
-					 * cluster sits inline, immediately after the working-directory chip, with
-					 * the row's free space falling before the controls; below it the cluster
-					 * takes the FIRST line in full (`basis-full`) and the controls keep the
-					 * second. `justify-between` cannot express either — with three children it
-					 * centres the middle one, which is the opposite of what the row needs — so
-					 * the row uses `ml-auto` instead, on the controls group, which is the one
-					 * child that always renders.
+					 * IT SITS ABOVE THE BOX, IN FLOW, AND COSTS THE TYPED LINE NOTHING. Both
+					 * earlier rounds kept it INSIDE the composer and paid in the same currency -
+					 * the composer's own height changed when the sentence arrived, so the line
+					 * under the caret moved: round 1 reserved a 19.5px band above the textarea and
+					 * still grew 4px on arming, round 2 moved it onto the 32px control row, where
+					 * a 353.86px sentence in 296.55px of free row wrapped to two lines and grew the
+					 * row 32 -> 39px at 1380, became a 168x78 block (and took the cwd chip's label
+					 * from 236px to 96px) at 950, and a 76.7px-wide, 175.5px-tall ribbon with the
+					 * row tripled at 800 - this app's own `WINDOW_MIN_WIDTH`.
 					 *
-					 * That "always renders" is not a nicety, it is the round-1 blocker. The
-					 * readings cluster returns `null` in three ordinary states (no `frontend`
-					 * yet, nothing known at all, the error boundary's empty fallback), and
-					 * while the margin lived on the cluster those states had NO live auto
-					 * margin at all — the controls sat flush against the chip, mid-row, in
-					 * this PR's own draft frame (design round 1.5, D7).
+					 * Here it takes the composer's whole width instead of the row's leftovers, so
+					 * the wrapping is the sentence's own measure and not a ribbon, no control can
+					 * be landed on, and the working-directory chip and the readings strip - the two
+					 * neighbours whose widths used to decide the sentence's fate - are out of the
+					 * argument entirely.
 					 *
-					 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
-					 * the within-component step, tighter than the 12px this composer used
-					 * when the readings were a separate row (§ 5).
+					 * WHAT IT COSTS, because the numbers above are a decision and not a claim of
+					 * perfection: on an EMPTY chat the band centres the composer (`grow` +
+					 * `justify-center`), so a line added above it moves the group by half its
+					 * height - 10.00px for a 20px injected line, ~9.75px for a one-line sentence.
+					 * No in-flow placement avoids that there, and an out-of-flow one would paint
+					 * over the transcript's own last line, which is why it is disclosed rather
+					 * than engineered around.
 					 *
-					 * `flex-nowrap` above the threshold is NOT decoration. Wrapping happens
-					 * on the items' CONTENT sizes, before any shrinking: a long model name (an
-					 * aggregator slug is ~48 characters) makes the cluster wider than its
-					 * share, so a still-wrapping row moves the microphone and send to a
-					 * second line instead of truncating the name — the exact inversion of the
-					 * yield order, where the name truncates first and the controls never
-					 * move. Measured on the live composer at a 750px box: with the row free
-					 * to wrap, the controls sat 24px below the readings; with `flex-nowrap`
-					 * they stay on one line and the name gives up the width.
+					 * AN EMPTY SENTENCE RENDERS NO BOX AT ALL, so the idle composer reserves
+					 * nothing and is geometrically the composer that was there before the gesture
+					 * existed; `aria-describedby` is still set only while there is a sentence, so
+					 * an idle composer is not described by an empty element (UX round 1, U7).
 					 */}
-					<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap">
-						{/*
-						 * The session's readings, inside the row rather than on a row of their
-						 * own above it (R1).
-						 *
-						 * The DOM slot is FIRST, before the left group, so that the wrapped
-						 * state's tab order matches its painted order: below 750 the cluster is
-						 * the row's first line, and `order-first` only ever reordered the paint,
-						 * leaving a keyboard user to walk down to attach and the chip and back
-						 * UP to the readings (UX round 1, U4). Above 750 the strip's own
-						 * `order-2` puts it back between the chip and the controls, and the
-						 * controls' `order-3` keeps mic and send last.
-						 *
-						 * The two widths want OPPOSITE DOM orders and there is one DOM:
-						 * wrapped, the cluster paints first and must be tabbed first;
-						 * inline, it paints third and UX round 2 (U8) measured it still
-						 * being tabbed first. One node cannot satisfy both, and a second
-						 * render to fix the inline order would be a second layout to keep
-						 * in step - the thing this row is built to avoid, and what the
-						 * composer test pins. The wrapped width keeps the guarantee
-						 * because that is where the mismatch is a visible jump back UP
-						 * the row; inline the readings sit between the chip and the
-						 * controls, so the tab lands one stop early rather than out of
-						 * sequence. Recorded rather than silently chosen.
-						 *
-						 * A crash in the strip must not take the composer down with it — the
-						 * readings are metadata and the ability to type is not — so it renders
-						 * inside an error boundary with an empty fallback: a missing strip is a
-						 * degradation a user can work through, and a fallback panel here would
-						 * be a bigger interruption than the thing it reports. The row's other
-						 * groups survive the same fallback untouched.
-						 */}
-						{sessionStatus && (
-							<ErrorBoundary fallback={null}>
-								<SessionStatusStrip
-									frontend={sessionStatus.frontend}
-									onCommand={sessionStatus.onCommand}
-									effortEntities={sessionStatus.effortEntities}
-									draft={sessionStatus.draft}
-									onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
-									draftResolution={sessionStatus.draftResolution}
-									pendingModel={sessionStatus.pendingModel}
-								/>
-							</ErrorBoundary>
+					<output
+						id={CREDENTIAL_NOTICE_ID}
+						className={cn(
+							CHAT_MEASURE,
+							credentialNotice ? "block text-body-sm" : "hidden",
+							// The same padding step the interrupt notice beside the composer uses, so
+							// the two sentences share one text edge with the box's own contents.
+							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
+							// The unredact is the one state where the next Enter discloses a
+							// secret, so it takes the warning role rather than muted ink.
+							unredactedChars !== null ? "text-warning" : "text-ink-muted",
 						)}
-
-						{/*
-						 * The BUTTON LINE, as one flex item.
-						 *
-						 * Below 750px of column the readings take the row's first line
-						 * and this is the second - and this wrapper is what makes "the
-						 * second" mean one line rather than however many the items
-						 * need. Without it the row's own `flex-wrap` broke the line on
-						 * the items' CONTENT sizes: the chip's path is 202px at full
-						 * length, so at a 240-336px column the chip did not get the
-						 * chance to shrink and the microphone and send fell to a THIRD
-						 * line (the composer grew 143.5 -> 179.5px at the floor, design
-						 * round 1, D1 and code review round 1, MAJOR 2). A wrapping row
-						 * cannot express "one line, and everything on it yields".
-						 *
-						 * Above the threshold it dissolves: `contents` hands its
-						 * children back to the row, so the cluster's `order-2` puts the
-						 * readings between the chip and the controls and the controls'
-						 * `ml-auto` takes the free space - the same single auto margin
-						 * as below, now between the cluster and mic/send (D7).
-						 *
-						 * `min-w-0` is what lets the chip inside actually shrink rather
-						 * than pushing the group past the row: a flex item's automatic
-						 * floor is its content.
-						 */}
-						<div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 @min-[750px]/chatcol:contents">
-							{/*
-							 * Left side: attachment button and the working-directory chip.
+					>
+						{credentialNotice}
+					</output>
+					<div
+						className={cn(
+							COMPOSER_BOX,
+							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
+							CHAT_MEASURE,
+						)}
+						data-tour-tag="chat-input-textarea"
+					>
+						{(replies.length > 0 || attachments.length > 0) && (
+							/*
+							 * The previews carry their own bound, on a SIBLING of the popup
+							 * rather than on an ancestor of it.
 							 *
-							 * `min-w-0` on this group AND on the row above it: a flex item's
-							 * automatic minimum size is its CONTENT, so an intermediate
-							 * wrapper that does not opt out of it refuses to shrink and the
-							 * `min-w-0` further down never gets the chance to apply. With the
-							 * canvas panel open the chat column collapses to its 220px floor
-							 * and the chip's 260px cap alone drove the row 97px past the
-							 * column's right edge (design round 2, D11); the chip carries the
-							 * shrink, but only these two ancestors can let it happen.
+							 * These two are the composer's only unbounded content: attachment
+							 * tiles are 100px each and wrap, and replies stack, so a dozen
+							 * attachments grew the band past the window and took the send
+							 * controls off the bottom with nothing left to scroll them back
+							 * (measured: 40 tiles + 10 replies made the band 1126px in an
+							 * 872px viewport, send button off screen). Bounding them HERE
+							 * bounds the band as a consequence -- 377px at every load -- so
+							 * the band needs no max-height of its own and therefore no
+							 * scroller, which is what keeps the slash popup above it
+							 * reachable.
 							 *
-							 * ABOVE the threshold this group does not shrink at all, and that is
-							 * not a preference: the chip's own root is `shrink-0` there so a long
-							 * model name truncates before the path yields (D9). With the chip
-							 * refusing to shrink while its parent still could, the group shrank to
-							 * 145.6px around a 260px chip and the path painted straight over the
-							 * readings - visible in the 750px long-name frame, and invisible to
-							 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
-							 * order needs both halves stated.
-							 */}
-							<div className="flex min-w-0 items-center gap-1 @min-[750px]/chatcol:shrink-0">
-								<Tooltip content="Attach file">
-									<span>
-										<Button
-											variant="ghost"
-											size={isSmallView ? "icon-sm" : "icon"}
-											className="text-ink-dim hover:bg-elevated hover:text-ink"
-											onClick={handleAttachFile}
-											aria-label="Attach file"
-											data-tour-tag="chat-input-attach-file-button"
-											disabled={
-												isInputDisabled || isRecording || isTranscribing
-											}
-										>
-											<Paperclip aria-hidden="true" />
-										</Button>
-									</span>
-								</Tooltip>
-								{/*
-								 * Gated on whether a directory is KNOWN, not on whether it is
-								 * truthy, and not on the session being idle.
-								 *
-								 * Two unsatisfiable-condition bugs in the same three lines,
-								 * one after the other. The original `!canonicalStop` gate
-								 * could never be true in the canonical chat - the stop
-								 * control is passed unconditionally - so the chip was
-								 * unreachable from v0.16.0 even though it was still mounted
-								 * here. Replacing it with `{cwdToShow && ...}` then made the
-								 * chip able to DELETE ITSELF: `""` is a legal value of the
-								 * staged cwd, it is falsy, and this chip is the only writer
-								 * of `state.cwd` now the full-width bar is gone. So clearing
-								 * the field unmounted the one control that could set it
-								 * again, and `cwd` is persisted, so the app came back from a
-								 * restart still with no chip - unrecoverable without
-								 * devtools.
-								 *
-								 * `!== undefined` is the honest question: undefined means "no
-								 * directory is known for this conversation", which is the one
-								 * case with nothing to render. An empty string means "known,
-								 * and empty" - a state the chip has an affordance for, and
-								 * the reason its `unset` branch is reachable again.
-								 */}
-								{cwdToShow !== undefined && (
-									<DirectoryIndicator
-										ref={cwdChipRef}
-										currentWorkingDirectory={cwdToShow}
-										writePath={cwdWritePath}
-										pending={cwdPending}
-										pendingAccepted={cwdPendingAccepted}
-										readOnlyReason={
-											cwdWritePath
-												? undefined
-												: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
+							 * This is the pattern the textarea below already uses
+							 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
+							 * of the composer caps itself and scrolls internally, so no
+							 * wrapper has to clip on behalf of its children. ~240px shows two
+							 * full rows of tiles before scrolling.
+							 */
+							<div className="max-h-[240px] shrink-0 overflow-y-auto">
+								{replies.length > 0 && (
+									<ReplyPreview
+										replies={replies}
+										onRemoveReply={handleRemoveReply}
+									/>
+								)}
+								{attachments.length > 0 && (
+									<AttachmentsPreview
+										attachments={attachments.map((a) => a.path)}
+										onRemoveAttachment={(index) =>
+											handleRemoveAttachment(attachments[index].id)
 										}
+										disabled={isInputDisabled || isRecording || isTranscribing}
 									/>
 								)}
 							</div>
+						)}
+
+						{isRecording ? (
+							<AudioRecordingIndicator isRecording={isRecording} />
+						) : isTranscribing ? (
+							<div className="flex flex-1 items-center justify-center gap-2 rounded-sm px-4 py-2 [min-height:50px]">
+								<span className="mr-1 font-medium text-body-sm text-ink-muted">
+									Processing audio
+								</span>
+								<WaveformAnimation />
+							</div>
+						) : (
+							/*
+							 * The textarea and its MIRROR, in one isolated wrapper.
+							 *
+							 * `isolate` is load-bearing rather than tidy: the overlay paints at
+							 * `-z-10` so the pill sits UNDER the glyphs the textarea paints, and
+							 * without a stacking context here a negative index paints behind the
+							 * composer box's own `bg-surface` — i.e. no pill at all, with nothing
+							 * on screen to say why (CSS 2.1 appendix E: negative-z children come
+							 * before in-flow block backgrounds).
+							 */
+							<div className="relative isolate w-full">
+								<CredentialOverlay
+									text={newMessage}
+									payloads={payloadsRef.current}
+									capture={capture}
+									fieldRef={textareaRef}
+									isSmallView={isSmallView}
+								/>
+								<textarea
+									ref={textareaRef}
+									className={cn(
+										// The box model comes from ONE place, shared with the mirror:
+										// any drift between these two moves the pill off the characters
+										// it sits under.
+										composerTextBox(isSmallView),
+										// `block`, and it is a fix rather than a style choice (design round 3,
+										// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
+										// wrapper above is a block container, and a textarea left at its
+										// default `inline-block` sits in a LINE BOX there — so the wrapper
+										// measured 39.7px around a 34px field (the strut's descender space)
+										// and the composer box came out 5.7px taller than `origin/main`'
+										// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
+										// moving the control row, the ring and the box's bottom edge.
+										// On main the field is a direct child of the box's flex column and
+										// is blockified by it, which is why there was nothing to see there;
+										// the overlay's wrapper is what introduced the line box, so the
+										// field states its own display rather than depending on a parent's
+										// formatting context to do it.
+										"block",
+										isSmallView ? "max-h-24" : "max-h-28",
+										"resize-none overflow-y-auto bg-transparent",
+										"text-ink outline-none placeholder:text-ink-dim",
+										// The disabled state STEPS COLOUR rather than fading
+										// (branding: disabled changes colour, never opacity), and
+										// without this the only signal was `cursor: not-allowed`
+										// after the user had already typed into a field that will
+										// not accept anything.
+										"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+									)}
+									placeholder={
+										/*
+										 * The gone-state sentence is checked FIRST, ahead of the busy one, and
+										 * that order is the whole point: `isInputDisabled` is true for a missing
+										 * conversation too, so a reader of a conversation this machine does not have
+										 * would be told "Agent is busy" about a turn nobody is running (design
+										 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+										 */
+										unavailable
+											? "This conversation is gone"
+											: isInputDisabled
+												? "Agent is busy"
+												: awaitingAnswer
+													? // Names the thing the box is now for, without restating
+														// the question card or the waiting line (§ 7 keeps one
+														// liveness statement per turn, and the card owns it).
+														"Answer the question above"
+													: awaitingReply
+														? "Waiting for the agent"
+														: "Ask me for help"
+									}
+									value={newMessage}
+									onChange={(e) => {
+										/*
+										 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
+										 * intercepted keystroke arrives here — Backspace, Delete, a
+										 * selection, a drop, an IME commit, and any paste that fell through
+										 * — and `applyDomEdit` maps the edit onto the held value at the
+										 * index the operator sees. The first door is the printable-key
+										 * branch of `handleCredentialKeyDown`, which never lets the
+										 * character reach the DOM at all; this one is the belt for the
+										 * routes a keyboard gate cannot see.
+										 *
+										 * `origin` is "typing" because a change IS a keystroke-shaped
+										 * event on this control — an arrival (a restored draft, a seed) is
+										 * written through `setNewMessage` by its own caller, never through
+										 * the DOM's change event for a textarea the user is in.
+										 */
+										const next = e.target.value;
+										const at = e.target.selectionStart ?? next.length;
+										const applied = applyDomEdit(
+											captureRef.current,
+											newMessage,
+											next,
+											at,
+											"typing",
+										);
+										if (applied.buffer !== next) {
+											// A real character reached the span through a route the
+											// keyboard gate could not see, and it is already replaced by
+											// its mask cell here.
+											pendingCaret.current = applied.caret;
+											setCaret(applied.caret);
+										} else {
+											setCaret(at);
+										}
+										if (applied.capture !== captureRef.current)
+											setCapture(applied.capture);
+										// Only the empty -> non-empty edge: the whole point is one
+										// statement of intent per composed message, and the
+										// consumer's latch should not be asked to absorb a
+										// per-character call it can only discard.
+										if (!newMessage && applied.buffer) onComposerInput?.();
+										/*
+										 * The capture's own write, stamped so the whole-buffer teardown can
+										 * tell it from a replacement some other writer made. A DOM change
+										 * reaches here without passing `applyCapture`, which is exactly why
+										 * the stamp is not optional: without it, the operator's own
+										 * keystroke would read as an external write and end the gesture it
+										 * is in the middle of.
+										 */
+										captureOwnedBuffer.current = applied.buffer;
+										// An abandoned capture (the drop and IME routes) settles the box
+										// here rather than through `applyCapture`, so the §6 write has to
+										// be asked for here too.
+										persistDraft(applied.capture, applied.buffer);
+										setNewMessage(applied.buffer);
+										// Editing the text answers the alert. Leaving it up over a
+										// draft the user has since changed is the defect this whole
+										// change replaces, and moving the banner to the composer
+										// would only have moved that defect closer to the eye.
+										//
+										// After a dwell, though: the message is two sentences plus up
+										// to three controls, and a user who reaches straight for the
+										// keyboard lost all of it before finishing the first word -
+										// including the remedy buttons. The alert still goes on the
+										// edit, just not before it can be read.
+										if (
+											Date.now() - alertShownAt.current >=
+											ALERT_READ_DWELL_MS
+										)
+											sendError?.onDismiss?.();
+									}}
+									onSelect={(e) => {
+										const field = e.target as HTMLTextAreaElement;
+										/*
+										 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
+										 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
+										 *
+										 * `applyCapture` parks the caret it is about to set in
+										 * `pendingCaret` and the layout effect applies it with the
+										 * buffer. A `select`/`selectionchange` still in flight from the
+										 * PREVIOUS edit therefore reaches this handler between the state
+										 * write and its commit, carrying the older buffer (the render
+										 * closure has not moved yet) and the older offset — a pair that
+										 * is internally consistent and describes a state the composer
+										 * has already left. Re-syncing on it is how accepting the
+										 * `/credential` row closed the span that completion had just
+										 * opened: the report said "the caret is at 5, inside the token"
+										 * while the capture was already open at 6, so `syncCapture` read
+										 * a caret move out of the span.
+										 *
+										 * Skipping it is not a caret move being ignored: the offset that
+										 * arrives is the one this write is replacing, and the pending
+										 * value is applied by the layout effect either way. If the DOM
+										 * already agrees — a report about the caret we just set — the
+										 * marker is retired here so the guard cannot outlive its write.
+										 */
+										const pending = pendingCaret.current;
+										if (pending !== null) {
+											if (field.selectionStart === pending)
+												pendingCaret.current = null;
+											return;
+										}
+										setCaret(field.selectionStart);
+										/*
+										 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
+										 * caret move may do: it may keep a latched arm, re-anchor it, and
+										 * RE-OPEN a span the caret has returned to — but it may never ARM
+										 * by itself. The TUI asks both questions at the same reactive
+										 * (`watch_selection`), because a mouse click, an app-set
+										 * selection and a completion's caret all move the caret with no
+										 * caret key pressed: without the re-open, leaving and coming back
+										 * left an armed token whose next typed character landed in
+										 * PLAINTEXT; without the "may not arm" half, a click at the end of
+										 * a restored draft would swallow the next paste.
+										 */
+										setCapture(
+											syncCapture(
+												captureRef.current,
+												newMessage,
+												field.selectionStart,
+												"caret",
+											),
+										);
+									}}
+									onKeyDown={handleComposerKeyDown}
+									onPointerDown={() => {
+										/*
+										 * "I am about to type here." An ask gate can advance while the
+										 * user is on their way into this box, and the restore must not
+										 * move them off it: the characters they type would reach
+										 * nothing and the next `Space` would answer the next question
+										 * (UX round 4, U13).
+										 */
+										composerPointerTouched = true;
+									}}
+									onPaste={handlePaste}
+									rows={1}
+									disabled={isInputDisabled}
+									aria-label="Message"
+									role="combobox"
+									aria-describedby={
+										credentialNotice ? CREDENTIAL_NOTICE_ID : undefined
+									}
+									aria-expanded={slash.open}
+									aria-controls={slash.open ? slash.listId : undefined}
+									aria-activedescendant={slash.activeDescendantId ?? undefined}
+								/>
+							</div>
+						)}
+
+						{/*
+						 * The composer's controls and the session's readings, on ONE row.
+						 *
+						 * The readings used to have a row of their own above this one. They are
+						 * inside it now, which is why this row wraps: above 750px of COLUMN the
+						 * cluster sits inline, immediately after the working-directory chip, with
+						 * the row's free space falling before the controls; below it the cluster
+						 * takes the FIRST line in full (`basis-full`) and the controls keep the
+						 * second. `justify-between` cannot express either — with three children it
+						 * centres the middle one, which is the opposite of what the row needs — so
+						 * the row uses `ml-auto` instead, on the controls group, which is the one
+						 * child that always renders.
+						 *
+						 * That "always renders" is not a nicety, it is the round-1 blocker. The
+						 * readings cluster returns `null` in three ordinary states (no `frontend`
+						 * yet, nothing known at all, the error boundary's empty fallback), and
+						 * while the margin lived on the cluster those states had NO live auto
+						 * margin at all — the controls sat flush against the chip, mid-row, in
+						 * this PR's own draft frame (design round 1.5, D7).
+						 *
+						 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
+						 * the within-component step, tighter than the 12px this composer used
+						 * when the readings were a separate row (§ 5).
+						 *
+						 * `flex-nowrap` above the threshold is NOT decoration. Wrapping happens
+						 * on the items' CONTENT sizes, before any shrinking: a long model name (an
+						 * aggregator slug is ~48 characters) makes the cluster wider than its
+						 * share, so a still-wrapping row moves the microphone and send to a
+						 * second line instead of truncating the name — the exact inversion of the
+						 * yield order, where the name truncates first and the controls never
+						 * move. Measured on the live composer at a 750px box: with the row free
+						 * to wrap, the controls sat 24px below the readings; with `flex-nowrap`
+						 * they stay on one line and the name gives up the width.
+						 */}
+						<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap">
+							{/*
+							 * The session's readings, inside the row rather than on a row of their
+							 * own above it (R1).
+							 *
+							 * The DOM slot is FIRST, before the left group, so that the wrapped
+							 * state's tab order matches its painted order: below 750 the cluster is
+							 * the row's first line, and `order-first` only ever reordered the paint,
+							 * leaving a keyboard user to walk down to attach and the chip and back
+							 * UP to the readings (UX round 1, U4). Above 750 the strip's own
+							 * `order-2` puts it back between the chip and the controls, and the
+							 * controls' `order-3` keeps mic and send last.
+							 *
+							 * The two widths want OPPOSITE DOM orders and there is one DOM:
+							 * wrapped, the cluster paints first and must be tabbed first;
+							 * inline, it paints third and UX round 2 (U8) measured it still
+							 * being tabbed first. One node cannot satisfy both, and a second
+							 * render to fix the inline order would be a second layout to keep
+							 * in step - the thing this row is built to avoid, and what the
+							 * composer test pins. The wrapped width keeps the guarantee
+							 * because that is where the mismatch is a visible jump back UP
+							 * the row; inline the readings sit between the chip and the
+							 * controls, so the tab lands one stop early rather than out of
+							 * sequence. Recorded rather than silently chosen.
+							 *
+							 * A crash in the strip must not take the composer down with it — the
+							 * readings are metadata and the ability to type is not — so it renders
+							 * inside an error boundary with an empty fallback: a missing strip is a
+							 * degradation a user can work through, and a fallback panel here would
+							 * be a bigger interruption than the thing it reports. The row's other
+							 * groups survive the same fallback untouched.
+							 */}
+							{sessionStatus && (
+								<ErrorBoundary fallback={null}>
+									<SessionStatusStrip
+										frontend={sessionStatus.frontend}
+										onCommand={sessionStatus.onCommand}
+										effortEntities={sessionStatus.effortEntities}
+										draft={sessionStatus.draft}
+										onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
+										draftResolution={sessionStatus.draftResolution}
+										pendingModel={sessionStatus.pendingModel}
+									/>
+								</ErrorBoundary>
+							)}
 
 							{/*
-							 * The capture's own notice, in the `<output>` register the interrupt
-							 * sentence already uses: the result of a user action, said politely.
+							 * The BUTTON LINE, as one flex item.
 							 *
-							 * IT LIVES ON A ROW THE COMPOSER ALREADY HAS, AND COSTS NO HEIGHT
-							 * (design round 2, D3 + D4). Round 1 reserved a line ABOVE the textarea,
-							 * and round 2 measured what that cost from both ends: the reservation
-							 * was 19.5px while a populated notice is 23.5px, because
-							 * `min-h-[19.5px]` (border-box) did not include the sentence's own
-							 * `pb-1`, so arming still moved the typed line, the caret and the whole
-							 * attach/send row by 4px at the two keystrokes round 1 named — and the
-							 * reserved band was then the composer's standing shape in EVERY state,
-							 * idle included, which puts the idle composer's ring 38px below the
-							 * composer it replaced.
+							 * Below 750px of column the readings take the row's first line
+							 * and this is the second - and this wrapper is what makes "the
+							 * second" mean one line rather than however many the items
+							 * need. Without it the row's own `flex-wrap` broke the line on
+							 * the items' CONTENT sizes: the chip's path is 202px at full
+							 * length, so at a 240-336px column the chip did not get the
+							 * chance to shrink and the microphone and send fell to a THIRD
+							 * line (the composer grew 143.5 -> 179.5px at the floor, design
+							 * round 1, D1 and code review round 1, MAJOR 2). A wrapping row
+							 * cannot express "one line, and everything on it yields".
 							 *
-							 * Both are gone by construction here. This row is 32px tall at every
-							 * width in every state — it is sized by its icon buttons — so a single
-							 * 19.5px line inside it adds NOTHING in any of the four states: the
-							 * textarea's `y` is the pre-change value in all four, measured rather
-							 * than asserted. An empty notice (the idle composer) generates no line
-							 * box at all, so nothing is reserved and the idle composer IS the
-							 * composer that was there before this feature. Nothing moves: not the
-							 * typed line, not the caret, not the row.
+							 * Above the threshold it dissolves: `contents` hands its
+							 * children back to the row, so the cluster's `order-2` puts the
+							 * readings between the chip and the controls and the controls'
+							 * `ml-auto` takes the free space - the same single auto margin
+							 * as below, now between the cluster and mic/send (D7).
 							 *
-							 * WHERE IN THE ROW, and why not the free space at the far end. The cell
-							 * sits between the attach/chip group and the controls, with `order-2`
-							 * above the column threshold: the strip's DOM slot is first and the
-							 * controls are `order-3`, so the paint stays
-							 * [attach][chip][readings][notice][mic][send] — D7's "the readings sit
-							 * immediately after the chip" is preserved, and the sentence lands in the
-							 * row's own free space rather than in a band of its own.
-							 *
-							 * IT WRAPS RATHER THAN TRUNCATING, deliberately, and that is the one
-							 * residual, stated plainly: at a column wide enough to hold the sentence
-							 * on the row's own line (measured: 750px of free row at the composer's
-							 * 900px measure, against a 353.86px sentence) the row never grows at
-							 * all, while a column narrow enough that the sentence cannot fit lets it
-							 * take a second line — 19.5px against the row's 32px, so the row grows by
-							 * at most 7.5px there, against the 23.5px a band of its own would have
-							 * cost at every width. Truncating instead would hold that at zero by
-							 * promising less than it says: the whole argument for this sentence is
-							 * that it is the ONE channel that survives `NO_COLOR` (§7.1), so a
-							 * clipped "…Esc cancels" is the sentence failing at its only job.
-							 *
-							 * AND IT IS DESCRIBED TO THE FIELD (UX round 1, U7). `role="status"`
-							 * announces every CHANGE, which serves an operator who types through
-							 * the state and does nothing for one who arrives at an already-masked
-							 * composer: the field's value reads out as bullets and nothing says
-							 * why. `aria-describedby` is set only while there is a sentence, so an
-							 * idle composer is not described by an empty element.
-							 *
-							 * It is no longer padded to share a text edge with the textarea: it is
-							 * no longer a second line of the composer's text, and the row's own
-							 * `gap-x-2` is what separates it from the chip and the controls.
+							 * `min-w-0` is what lets the chip inside actually shrink rather
+							 * than pushing the group past the row: a flex item's automatic
+							 * floor is its content.
 							 */}
-							<output
-								id={CREDENTIAL_NOTICE_ID}
-								className={cn(
-									"min-w-0 text-body-sm @min-[750px]/chatcol:order-2",
-									// The unredact is the one state where the next Enter discloses a
-									// secret, so it takes the warning role rather than muted ink.
-									unredactedChars !== null ? "text-warning" : "text-ink-muted",
-								)}
-							>
-								{credentialNotice}
-							</output>
-
-							{/* Right side: microphone, send or stop button.
-							 *
-							 * `ml-auto` is the row's ONE live auto margin, at EVERY width, and it is
-							 * here rather than on the readings on purpose (design round 1.5, D7):
-							 * this group cannot return `null`, so the row's right-justification
-							 * does not depend on whether a cluster that can vanish happens to be
-							 * rendering. Below 750px of column it separates this group from the
-							 * attached line above it; above, it holds the free space between the
-							 * cluster and these controls, which is what leaves the readings
-							 * immediately after the working-directory chip. A second live auto
-							 * margin would share that space evenly and float the controls mid-row.
-							 *
-							 * `order-3` above the threshold is only needed because the strip's DOM
-							 * slot is first (see above); it makes the paint [attach][chip]
-							 * [readings][mic][send] out of a DOM whose first child is the cluster.
-							 */}
-							<div className="ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3">
-								{!isRecording &&
-									!isTranscribing &&
-									!(isLoading && currentJobId) && (
-										<Tooltip
-											content={
-												!canEnableRecordingFeature
-													? recordingUnavailableReason
-													: `Start recording (${shortcutText} or hold Space)`
-											}
-										>
-											<span>
-												<Button
-													variant="ghost"
-													size={isSmallView ? "icon-sm" : "icon"}
-													className="text-ink-dim hover:bg-elevated hover:text-ink"
-													onClick={handleStartRecording}
-													aria-label="Start recording"
-													disabled={isLoading || !canEnableRecordingFeature}
-												>
-													<Mic aria-hidden="true" />
-												</Button>
-											</span>
-										</Tooltip>
-									)}
-								{isRecording && (
-									<>
-										<Tooltip content="Confirm recording (Enter)">
-											<span>
-												<Button
-													variant="ghost"
-													size={isSmallView ? "icon-sm" : "icon"}
-													className="text-success hover:bg-success-wash hover:text-success"
-													onClick={handleConfirmRecording}
-													aria-label="Confirm recording"
-													disabled={isLoading}
-												>
-													<Check aria-hidden="true" />
-												</Button>
-											</span>
-										</Tooltip>
-										<Tooltip content="Cancel recording (Esc)">
-											<span>
-												<Button
-													variant="ghost"
-													size={isSmallView ? "icon-sm" : "icon"}
-													className="text-danger hover:bg-danger-wash hover:text-danger"
-													onClick={handleCancelRecording}
-													aria-label="Cancel recording"
-													disabled={isLoading}
-												>
-													<X aria-hidden="true" />
-												</Button>
-											</span>
-										</Tooltip>
-									</>
-								)}
+							<div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 @min-[750px]/chatcol:contents">
 								{/*
-								 * THE SLOT IS RESERVED, not merely vacated.
+								 * Left side: attachment button and the working-directory chip.
 								 *
-								 * Without this, pressing Stop slides the dictation control 36px
-								 * right - 32px of control plus the row's 4px gap - into the exact
-								 * centre of the box the press just landed in, so a reflex second
-								 * press starts a MICROPHONE RECORDING. Measured independently by
-								 * UX round 1 (U1) and QA (Q1): the element at the Stop's own
-								 * centre is `button[aria-label="Start recording"]` once the turn
-								 * settles, and pressing there reports `recording_started: true`.
-								 * A 120ms double press still hits Stop twice, which is what made
-								 * it a trap rather than something a user notices.
+								 * `min-w-0` on this group AND on the row above it: a flex item's
+								 * automatic minimum size is its CONTENT, so an intermediate
+								 * wrapper that does not opt out of it refuses to shrink and the
+								 * `min-w-0` further down never gets the chance to apply. With the
+								 * canvas panel open the chat column collapses to its 220px floor
+								 * and the chip's 260px cap alone drove the row 97px past the
+								 * column's right edge (design round 2, D11); the chip carries the
+								 * shrink, but only these two ancestors can let it happen.
 								 *
-								 * So an invisible, non-interactive box holds the position for as
-								 * long as the backend negotiates `session_interrupt`, and the mic
-								 * never occupies the Stop's centre. `aria-hidden`, no focus and no
-								 * pointer events: this is geometry, not a control - nothing may be
-								 * reachable, announced or pressed there. The cost, stated rather
-								 * than hidden: the idle composer carries a one-control gap between
-								 * the dictation control and Send.
-								 *
-								 * Gated on the same legacy condition the mic is (`isLoading &&
-								 * currentJobId`), because that path hides the mic and renders its
-								 * own `Stop agent` in this cluster; reserving a slot nothing will
-								 * fill would move a control for no reason.
+								 * ABOVE the threshold this group does not shrink at all, and that is
+								 * not a preference: the chip's own root is `shrink-0` there so a long
+								 * model name truncates before the path yields (D9). With the chip
+								 * refusing to shrink while its parent still could, the group shrank to
+								 * 145.6px around a 260px chip and the path painted straight over the
+								 * readings - visible in the 750px long-name frame, and invisible to
+								 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
+								 * order needs both halves stated.
 								 */}
-								{canonicalStopAvailable &&
-									!canonicalStop?.active &&
-									!(isLoading && currentJobId) && (
-										<span
-											aria-hidden="true"
-											data-interrupt-slot=""
-											className={cn(
-												"pointer-events-none",
-												isSmallView ? "size-7" : "size-8",
-											)}
+								<div className="flex min-w-0 items-center gap-1 @min-[750px]/chatcol:shrink-0">
+									<Tooltip content="Attach file">
+										<span>
+											<Button
+												variant="ghost"
+												size={isSmallView ? "icon-sm" : "icon"}
+												className="text-ink-dim hover:bg-elevated hover:text-ink"
+												onClick={handleAttachFile}
+												aria-label="Attach file"
+												data-tour-tag="chat-input-attach-file-button"
+												disabled={
+													isInputDisabled || isRecording || isTranscribing
+												}
+											>
+												<Paperclip aria-hidden="true" />
+											</Button>
+										</span>
+									</Tooltip>
+									{/*
+									 * Gated on whether a directory is KNOWN, not on whether it is
+									 * truthy, and not on the session being idle.
+									 *
+									 * Two unsatisfiable-condition bugs in the same three lines,
+									 * one after the other. The original `!canonicalStop` gate
+									 * could never be true in the canonical chat - the stop
+									 * control is passed unconditionally - so the chip was
+									 * unreachable from v0.16.0 even though it was still mounted
+									 * here. Replacing it with `{cwdToShow && ...}` then made the
+									 * chip able to DELETE ITSELF: `""` is a legal value of the
+									 * staged cwd, it is falsy, and this chip is the only writer
+									 * of `state.cwd` now the full-width bar is gone. So clearing
+									 * the field unmounted the one control that could set it
+									 * again, and `cwd` is persisted, so the app came back from a
+									 * restart still with no chip - unrecoverable without
+									 * devtools.
+									 *
+									 * `!== undefined` is the honest question: undefined means "no
+									 * directory is known for this conversation", which is the one
+									 * case with nothing to render. An empty string means "known,
+									 * and empty" - a state the chip has an affordance for, and
+									 * the reason its `unset` branch is reachable again.
+									 */}
+									{cwdToShow !== undefined && (
+										<DirectoryIndicator
+											ref={cwdChipRef}
+											currentWorkingDirectory={cwdToShow}
+											writePath={cwdWritePath}
+											pending={cwdPending}
+											pendingAccepted={cwdPendingAccepted}
+											readOnlyReason={
+												cwdWritePath
+													? undefined
+													: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
+											}
 										/>
 									)}
-								{canonicalStop?.active && (
-									<Tooltip content="Stop this session's current work">
-										<span>
-											<Button
-												variant="danger"
-												size={isSmallView ? "icon-sm" : "icon"}
-												type="button"
-												onClick={canonicalStop.onStop}
-												aria-label="Stop"
+								</div>
+
+								{/*
+								 * THE CAPTURE'S SENTENCE IS NOT IN THIS ROW ANY MORE (design round 3,
+								 * D1; UX round 3, U14; code review round 3, MAJOR 1; QA round 3,
+								 * Q1/Q2).
+								 *
+								 * Both earlier rounds kept it inside the composer, and both paid the
+								 * same price: the composer's own height changed when the sentence
+								 * arrived, so the line the operator was typing moved under their caret.
+								 * Round 3 measured where that ends - 296.55px of free row against a
+								 * ~353.86px sentence at 1380 (two lines, the row 32 -> 39px), a 168x78
+								 * block and a 236 -> 96px cwd chip at 950, and at 800 a 76.7px ribbon
+								 * 175.5px tall with the row tripled - and those are the numbers that say
+								 * the row cannot hold a sentence of this length beside a chip, a
+								 * readings strip and three controls.
+								 *
+								 * It now lives ABOVE the box, in the form's own flow, where the
+								 * composer's pinned bottom edge cannot be pushed by it: the notice's own
+								 * comment above the box carries the measurement that decides the
+								 * placement. This slot stays as the pointer, because the obvious repair
+								 * for a crowded row is to put the sentence back into it, and that repair
+								 * has now been tried twice.
+								 */}
+
+								{/* Right side: microphone, send or stop button.
+								 *
+								 * `ml-auto` is the row's ONE live auto margin, at EVERY width, and it is
+								 * here rather than on the readings on purpose (design round 1.5, D7):
+								 * this group cannot return `null`, so the row's right-justification
+								 * does not depend on whether a cluster that can vanish happens to be
+								 * rendering. Below 750px of column it separates this group from the
+								 * attached line above it; above, it holds the free space between the
+								 * cluster and these controls, which is what leaves the readings
+								 * immediately after the working-directory chip. A second live auto
+								 * margin would share that space evenly and float the controls mid-row.
+								 *
+								 * `order-3` above the threshold is only needed because the strip's DOM
+								 * slot is first (see above); it makes the paint [attach][chip]
+								 * [readings][mic][send] out of a DOM whose first child is the cluster.
+								 */}
+								<div className="ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3">
+									{!isRecording &&
+										!isTranscribing &&
+										!(isLoading && currentJobId) && (
+											<Tooltip
+												content={
+													!canEnableRecordingFeature
+														? recordingUnavailableReason
+														: `Start recording (${shortcutText} or hold Space)`
+												}
 											>
-												<Square aria-hidden="true" />
-											</Button>
-										</span>
-									</Tooltip>
-								)}
-								{isLoading && currentJobId ? (
-									<Tooltip content="Stop agent">
-										<span>
-											<Button
-												variant="danger"
-												size={isSmallView ? "icon-sm" : "icon"}
-												type="button"
-												onClick={() => onCancelJob?.(currentJobId)}
-												aria-label="Stop agent"
-											>
-												<Square aria-hidden="true" />
-											</Button>
-										</span>
-									</Tooltip>
-								) : (
-									!isRecording &&
-									!isTranscribing && (
-										<Tooltip content="Send message">
+												<span>
+													<Button
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-ink-dim hover:bg-elevated hover:text-ink"
+														onClick={handleStartRecording}
+														aria-label="Start recording"
+														disabled={isLoading || !canEnableRecordingFeature}
+													>
+														<Mic aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										)}
+									{isRecording && (
+										<>
+											<Tooltip content="Confirm recording (Enter)">
+												<span>
+													<Button
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-success hover:bg-success-wash hover:text-success"
+														onClick={handleConfirmRecording}
+														aria-label="Confirm recording"
+														disabled={isLoading}
+													>
+														<Check aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+											<Tooltip content="Cancel recording (Esc)">
+												<span>
+													<Button
+														variant="ghost"
+														size={isSmallView ? "icon-sm" : "icon"}
+														className="text-danger hover:bg-danger-wash hover:text-danger"
+														onClick={handleCancelRecording}
+														aria-label="Cancel recording"
+														disabled={isLoading}
+													>
+														<X aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										</>
+									)}
+									{/*
+									 * THE SLOT IS RESERVED, not merely vacated.
+									 *
+									 * Without this, pressing Stop slides the dictation control 36px
+									 * right - 32px of control plus the row's 4px gap - into the exact
+									 * centre of the box the press just landed in, so a reflex second
+									 * press starts a MICROPHONE RECORDING. Measured independently by
+									 * UX round 1 (U1) and QA (Q1): the element at the Stop's own
+									 * centre is `button[aria-label="Start recording"]` once the turn
+									 * settles, and pressing there reports `recording_started: true`.
+									 * A 120ms double press still hits Stop twice, which is what made
+									 * it a trap rather than something a user notices.
+									 *
+									 * So an invisible, non-interactive box holds the position for as
+									 * long as the backend negotiates `session_interrupt`, and the mic
+									 * never occupies the Stop's centre. `aria-hidden`, no focus and no
+									 * pointer events: this is geometry, not a control - nothing may be
+									 * reachable, announced or pressed there. The cost, stated rather
+									 * than hidden: the idle composer carries a one-control gap between
+									 * the dictation control and Send.
+									 *
+									 * Gated on the same legacy condition the mic is (`isLoading &&
+									 * currentJobId`), because that path hides the mic and renders its
+									 * own `Stop agent` in this cluster; reserving a slot nothing will
+									 * fill would move a control for no reason.
+									 */}
+									{canonicalStopAvailable &&
+										!canonicalStop?.active &&
+										!(isLoading && currentJobId) && (
+											<span
+												aria-hidden="true"
+												data-interrupt-slot=""
+												className={cn(
+													"pointer-events-none",
+													isSmallView ? "size-7" : "size-8",
+												)}
+											/>
+										)}
+									{canonicalStop?.active && (
+										<Tooltip content="Stop this session's current work">
 											<span>
 												<Button
-													variant="primary"
+													variant="danger"
 													size={isSmallView ? "icon-sm" : "icon"}
-													type="submit"
-													disabled={
-														isLoading ||
-														(!newMessage.trim() && attachments.length === 0)
-													}
-													aria-label="Send message"
+													type="button"
+													onClick={canonicalStop.onStop}
+													aria-label="Stop"
 												>
-													<Send aria-hidden="true" />
+													<Square aria-hidden="true" />
 												</Button>
 											</span>
 										</Tooltip>
-									)
-								)}
+									)}
+									{isLoading && currentJobId ? (
+										<Tooltip content="Stop agent">
+											<span>
+												<Button
+													variant="danger"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													onClick={() => onCancelJob?.(currentJobId)}
+													aria-label="Stop agent"
+												>
+													<Square aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									) : (
+										!isRecording &&
+										!isTranscribing && (
+											<Tooltip content="Send message">
+												<span>
+													<Button
+														variant="primary"
+														size={isSmallView ? "icon-sm" : "icon"}
+														type="submit"
+														disabled={
+															isLoading ||
+															(!newMessage.trim() && attachments.length === 0)
+														}
+														aria-label="Send message"
+													>
+														<Send aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										)
+									)}
+								</div>
 							</div>
 						</div>
 					</div>
