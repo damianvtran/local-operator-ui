@@ -1298,18 +1298,32 @@ derivation to guard. What remains:
 - If there are unrelated uncommitted changes, do not discard them; proceed
   carefully and scope your commit.
 
-## Who may merge: agent review is sufficient for a code owner
+## Who may merge: the agent review round
 
-Code owners are listed in `.github/CODEOWNERS`. **This repository has no
+Code owners: none are declared. `.github/CODEOWNERS` carried a `*` line until
+2026-09-16 that routed an automatic review request to `bbqben` on every PR the
+moment it opened -- including the ones still churning through review rounds --
+and a matching pattern is the only thing that creates that request (GitHub has no
+setting that keeps the map and drops the notification). It is now pattern-free.
+**This repository has no
 ruleset requiring an approving review**, so there is no approval gate to clear
-here — `CODEOWNERS` routes review requests, it does not block merges. Confirm
-that with `gh api repos/damianvtran/local-operator-ui/rules/branches/main` (`[]`
+here -- with no owners declared, nothing is requested and nothing blocks merges.
+Confirm that with `gh api repos/damianvtran/local-operator-ui/rules/branches/main` (`[]`
 means nothing is enforced), never with the legacy
 `branches/main/protection` endpoint: that one answers `404 Branch not protected`
 even for a branch a modern ruleset *is* enforcing, so it is the wrong question.
 The rule
 below is therefore about what makes a merge *legitimate*, not about what the
 forge will let through.
+
+**PRs are opened non-draft, and no reviewer is added unless the operator asks
+for reviewers on that PR.** The draft flag existed here only to suppress the old
+auto-request; it now only delays the merge, since a draft PR cannot be merged at
+all. A human review is a deliberate act when one is wanted -- `gh pr edit <n>
+--add-reviewer @bbqben` -- the handles with write access are `bbqben` and
+`damianvtran` (verify with
+`gh api repos/damianvtran/local-operator-ui/collaborators`); tagging a person in
+a *comment* is what says the PR is waiting on them.
 
 When the agent is **acting for a code owner** — running on a code owner's
 machine and under their account, which is the normal case here — the standing
