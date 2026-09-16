@@ -6,7 +6,11 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
-import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
+import {
+	ATTACHMENT_UNAVAILABLE_COPY,
+	AttachmentFrame,
+	BrokenAttachment,
+} from "./attachment-frame";
 
 /**
  * Props for the ImageAttachment component (base)
@@ -55,7 +59,21 @@ const getFileName = (path: string): string => {
  * clicking a tool row's screenshot did nothing at all — the operator's report.
  * Expansion is now the click's one meaning here, and the old action did not go
  * away with it: the frame's hover actions (`FileActionsMenu`, rendered for any
- * on-disk path) carry it, in the same place as every other action on the file.
+ * on-disk path) carry it, in the same place as every other action on the file,
+ * and that menu is reachable by KEYBOARD as well as by pointer (see the wrapper
+ * below) — which is the bar the round-1 review held this change to.
+ *
+ * ## The resting affordance, decided rather than left to omission
+ *
+ * There is no badge, glyph, border or shadow on a picture at rest, and that is a
+ * decision with a reason (UX round 1, U1-1, asked for it to be stated). A
+ * canonical row can carry a dozen screenshots and § 7 asks agent output to read
+ * as rows rather than as a decorated scrapbook; the same reasoning is why the
+ * composer's staging preview and the canvas viewer carry no mark either. What
+ * says "this expands" is therefore the pointer cursor, the `title` tooltip, an
+ * accessible name that states the ACTION ("Expand Screenshot"), and Enter/Space
+ * on a real button — four cues that cost the composition nothing, rather than a
+ * fifth that would sit on every picture in every transcript.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 	({ file, src, conversationId, label }) => {
@@ -258,13 +276,42 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					type="button"
 					className={cn("block max-w-full cursor-pointer")}
 					onClick={() => setExpanded(true)}
+					/*
+					 * `aria-label` rather than the picture's own `alt` as the name. The
+					 * alt names the THING ("Attached image") and the action used to reach
+					 * a screen reader only as the accessible DESCRIPTION, off the title —
+					 * which is the fallback some readers skip, so the action was there
+					 * for a mouse and effectively absent for a reader (UX round 1, U1-1).
+					 * The name now states what pressing it does.
+					 */
+					aria-label={`Expand ${name}`}
 					title={`Click to expand ${name}`}
 				>
 					{picture}
 				</button>
 				{isLocalFile && (
+					/*
+					 * Pointer-only REVEAL, keyboard-reachable CONTROL. `invisible` is
+					 * `visibility: hidden`, which takes the trigger out of the tab order
+					 * outright — so a keyboard reader could reach none of "open file",
+					 * "open folder", "copy path" or "show in canvas" here, and the
+					 * actions that used to be reachable through the picture's own click
+					 * (it called `onClick`, i.e. `openFile`) became pointer-only when
+					 * that click became the expansion (review round 1, R1-1).
+					 *
+					 * This is the reveal the repo already uses for a hovering toolbar —
+					 * `quote-toolkit.tsx`, `message-controls.tsx`,
+					 * `browser-tab-strip.tsx`, `agents-sidebar.tsx`,
+					 * `schedule-list-item.tsx` and three canvas views — where the
+					 * control is hidden with `pointer-events-none opacity-0` (paint and
+					 * pointer only) and both `group-hover` and `group-focus-within`
+					 * bring it back, so being hidden and being unreachable stopped being
+					 * the same thing. `group` is this component's own wrapper, so
+					 * focusing the picture reveals the menu the same way hovering it
+					 * does, and Tab walks picture -> menu.
+					 */
 					<div
-						className="file-actions-menu invisible absolute top-1 right-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
+						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
@@ -284,6 +331,20 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					open={expanded}
 					onOpenChange={setExpanded}
 					restoreFocusTo={pictureRef}
+					/*
+					 * The transcript's own failure treatment, and the sentence follows the
+					 * SOURCE: a `file` on disk can honestly have been moved, renamed or
+					 * deleted (`BrokenAttachment`'s default), while a `blob:`/`data:`
+					 * handle is a digest in the app's own store and cannot have been any
+					 * of those — the same split, with the same reason, that
+					 * `canonical-image.tsx` makes for its unavailable state.
+					 */
+					fallback={
+						<BrokenAttachment
+							name={name}
+							detail={isLocalFile ? undefined : ATTACHMENT_UNAVAILABLE_COPY}
+						/>
+					}
 				/>
 			</div>
 		);

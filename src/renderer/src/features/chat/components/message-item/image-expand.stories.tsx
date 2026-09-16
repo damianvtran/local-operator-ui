@@ -16,6 +16,30 @@
  *   24x18 PNG stays 24x18 rather than being blown up 40x into a blur, and this is
  *   the frame that says so; the design round owns the call, not this file.
  *
+ * FOUR MORE STATES, added for the round-1 review rather than for the operator's
+ * report, each naming the frame that closes a finding:
+ *
+ * - `expanded-near-viewport` is a picture at the VIEWPORT'S OWN aspect (1.42),
+ *   which is the one band where the close button's focus ring and the picture's
+ *   corner can collide: the ring reaches 48px from the top and right edges and a
+ *   picture fitted to a bare 90vh leaves 45px. Design round 1 filed it as D1-3
+ *   from arithmetic and QA round 1 as Q-5, both asking for the frame.
+ * - `expanded-portrait` is the phone-aspect capture (828x1792) that
+ *   `image-attachment.tsx` already names as a real input, so the height-capped
+ *   composition is photographed rather than implied.
+ * - `expanded-failed` is the overlay's failure state (review R1-4, QA Q-1): a
+ *   picture that will not decode draws the transcript's own `BrokenAttachment`
+ *   inside a reserved box instead of collapsing the layer to a strip of label
+ *   text. Its latch waits for that copy to appear, so the capture FAILS rather
+ *   than photographing the wrong state — this is the assertion for that state,
+ *   because jsdom cannot dispatch an image error without leaving a failing task
+ *   behind (the note in `scripts/chat-image-expand.test.mjs` has the measurement).
+ * - `legacy` is the surface the file-actions menu lives on, and the rig drives it
+ *   four ways: at rest, under a real pointer (`legacy-hovered`), focused by real
+ *   Tab presses (`legacy-tabbed`), and ACTIVATED by Enter (`legacy-tabbed-open`,
+ *   whose capture fails if the menu's items never appear) — the keyboard half of
+ *   review R1-1.
+ *
  * WHAT IS REAL HERE. The picture is the production `ImageAttachment`, mounted the
  * way `message-item/index.tsx` mounts it (the same `flex flex-col gap-2` wrapper,
  * the same props), and `expanded` gets there by PRESSING the picture's own button
@@ -34,9 +58,14 @@
  * comes from; the expansion lives inside `ImageAttachment`, which both call.
  */
 
+import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect } from "react";
 import "../../../../styles/index.css";
+import {
+	ATTACHMENT_UNAVAILABLE_COPY,
+	BrokenAttachment,
+} from "./attachment-frame";
 import { ImageAttachment } from "./image-attachment";
 
 /**
@@ -159,6 +188,124 @@ const PressedThread = ({ src }: { src: string }) => {
 	return <Thread src={src} />;
 };
 
+/**
+ * 1440x1014 — the viewport's own aspect to within 0.2% (1280x900 is 1.4222), so
+ * the picture is fitted on BOTH axes at once and its top-right corner lands as
+ * close to the close button as the geometry allows. Twelve flat bands rather than
+ * a photograph for two reasons: the picture must not become the frame's dominant
+ * colour (`check-evidence` reads that as "the story did not paint" — the same
+ * constraint the wide fixture above is shaped by), and equal bands are what keeps
+ * any single one of them under the scrim's own share of the frame. Real pixels,
+ * no anti-aliasing, 3.9 KB.
+ */
+const NEAR_VIEWPORT_PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAABaAAAAP2BAMAAADjiScrAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAnUExURZ48PJ5tPJ48np48bZ6ePG2ePDyePDyebTyenjxtnjw8nm08nv7+/gsvuucAAAABYktHRAyBs1FjAAAAB3RJTUUH6gkQExEMYg3VuAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0wOS0xNlQxOToxNzoxMSswMDowMCcMJwUAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMDktMTZUMTk6MTc6MTErMDA6MDBWUZ+5AAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTA5LTE2VDE5OjE3OjExKzAwOjAwAUS+ZgAAABBjYU52AAAAeAAAA/YAAAAAAAAAAL0aiVYAAA4OSURBVHja7dLREIBAAEDBU0ghhRRSSCGFU0ghhRSSC+J9NbPLsGMES7AGW7AHR3AGM7iCO3iCNyifhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUWWmihhRZaaKGFFlpooYUW+lehPzDW11BDlY6mAAAAAElFTkSuQmCC";
+
+/**
+ * 828x1792 — a phone capture, the aspect `image-attachment.tsx`'s own sizing note
+ * names as a real input. It exercises the other end of the fit: the height binds,
+ * the picture is 368 wide in a 1280x900 viewport, and its corners are nowhere
+ * near the button — the frame that says so, beside the near-viewport one that
+ * says the opposite. 3.7 KB.
+ */
+const PORTRAIT_PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAzwAAAcABAMAAADnL1sYAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAnUExURZ48PJ5tPJ48np48bZ6ePG2ePDyePDyebTyenjxtnjw8nm08nv7+/gsvuucAAAABYktHRAyBs1FjAAAAB3RJTUUH6gkQExEMYg3VuAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0wOS0xNlQxOToxNzoxMiswMDowMBbkPZgAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMDktMTZUMTk6MTc6MTIrMDA6MDBnuYUkAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTA5LTE2VDE5OjE3OjEyKzAwOjAwMKyk+wAAABBjYU52AAAARQAABwAAAAAAAAAAABFIHm0AAAzrSURBVHja7dFREUBAAAXAE0EFIqjgIqhwF0EFIqhABOVEeN9mditsKdEwRlM0L9Ea1S1qUd+jIzqv6I6eN8o7evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49evTo0aNHjx49P+/5AESMdfA2y7LtAAAAAElFTkSuQmCC";
+
+/**
+ * A source no engine can decode: the base64 of the bytes "not-a-png".
+ *
+ * Deliberately not a path that 404s, because the failure this frame is about is
+ * the decoder's, and a `data:` URI is the shape every canonical picture takes.
+ * The browser raises `error` on it by itself — nothing in the story dispatches
+ * anything, which is what makes this frame evidence rather than a re-render.
+ */
+const UNDECODABLE = "data:image/png;base64,bm90LWEtcG5n";
+
+const nearViewport = `data:image/png;base64,${NEAR_VIEWPORT_PNG_BASE64}`;
+const portrait = `data:image/png;base64,${PORTRAIT_PNG_BASE64}`;
+
+/**
+ * The legacy shape: a picture that names a PATH, so its file actions render
+ * beside it, while painting from a `data:` URI the way this checkout's fixtures
+ * do. `ImageAttachment` takes the two as separate props for exactly this reason,
+ * and the file-actions wrapper's reveal is the one review R1-1 is about.
+ */
+const LEGACY_FILE = "/Users/damian/invoices/march-preview.png";
+
+/**
+ * Hold the shutter until the failure copy is on screen.
+ *
+ * `data-capture-pending` is the rig's own latch convention (see the header): the
+ * capture waits on it and THROWS if it never clears, so this story asserts the
+ * failure state rather than posing for it — a frame of the same overlay with a
+ * picture that merely had not decoded yet would leave the attribute set and fail
+ * the run.
+ */
+const useFailureLatch = () => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let frame = 0;
+		let cancelled = false;
+		const tick = () => {
+			if (cancelled) return;
+			const text = document.querySelector('[role="dialog"]')?.textContent ?? "";
+			if (text.includes("could not be displayed")) {
+				document.documentElement.removeAttribute("data-capture-pending");
+				return;
+			}
+			if (frame++ < 600) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+		return () => {
+			cancelled = true;
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+};
+
+/**
+ * The overlay's failure state, mounted the way its own frame needs it.
+ *
+ * The other overlay stories arrive by PRESSING a picture, because the question
+ * there is whether anything reaches the overlay. Here the question is what the
+ * overlay draws when its picture cannot arrive, and no press can stage that on
+ * purpose: the transcript's copy of a picture that failed is not a button at all
+ * (it draws `BrokenAttachment` and nothing to press), so the state is reached by
+ * a press that landed before the picture decoded, or by a source that died between
+ * the press and the paint. Mounting `ImageLightbox` directly, with `open` and the
+ * caller's own fallback, is that state with the noise removed.
+ */
+const FailedOverlay = () => {
+	useFailureLatch();
+	return (
+		<div className="min-h-screen bg-canvas p-8">
+			<ImageLightbox
+				src={UNDECODABLE}
+				label="Screenshot"
+				open={true}
+				onOpenChange={() => {}}
+				fallback={
+					<BrokenAttachment
+						name="Screenshot"
+						detail={ATTACHMENT_UNAVAILABLE_COPY}
+					/>
+				}
+			/>
+		</div>
+	);
+};
+
+/** The legacy surface: the picture in the column, with its file actions hidden. */
+const LegacyThread = () => (
+	<Column>
+		<ImageAttachment
+			file={LEGACY_FILE}
+			src={screenshot}
+			conversationId="image-expand"
+		/>
+	</Column>
+);
+
 const meta: Meta = {
 	title: "Chat/Image expand",
 	parameters: { layout: "fullscreen" },
@@ -180,4 +327,30 @@ export const Expanded: Story = {
 /** The size rule, on the smallest picture that can carry it. */
 export const ExpandedSmallImage: Story = {
 	render: () => <PressedThread src={smallImage} />,
+};
+
+/** The aspect band the close button's clearance depends on (design D1-3). */
+export const ExpandedNearViewport: Story = {
+	render: () => <PressedThread src={nearViewport} />,
+};
+
+/** The other end of the fit: a phone-aspect capture (QA Q-5). */
+export const ExpandedPortrait: Story = {
+	render: () => <PressedThread src={portrait} />,
+};
+
+/** The picture that never arrives, and what the overlay says instead. */
+export const ExpandedFailed: Story = {
+	render: () => <FailedOverlay />,
+};
+
+/**
+ * A path-named picture at rest, with its file actions hidden.
+ *
+ * The rig drives this one story four ways (rest, pointer hover, keyboard focus,
+ * keyboard activation) because the four frames are one surface in four states
+ * rather than four surfaces — see the tuples in `scripts/capture-evidence.mjs`.
+ */
+export const Legacy: Story = {
+	render: () => <LegacyThread />,
 };
