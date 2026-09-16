@@ -28,9 +28,10 @@
  * of the addition instead of starting at column 0 in body ink, in the same
  * column as the markers.
  *
- * What this costs is measured rather than argued. The tightest pairs across the
- * twelve palettes are `success` on `sunken` at 4.58:1 and `danger` on `sunken`
- * at 4.73:1 (both sage, which is the tightest palette in the set), inside the
+ * What this costs is measured rather than argued. The tightest pairs across
+ * every palette are `success` on `sunken` at 4.58:1 (sage) and `danger` on
+ * `sunken` at 4.57:1 (everforestLight, with sage's
+ * 4.73:1 next), inside the
  * 4.5 floor and already asserted as TEXT pairs by `scripts/contrast-contract.mjs`
  * (`AS_TEXT` against `canvas`/`surface`/`sunken`), so a wholly green line is a
  * pair the repo already re-proves on every run — not a new token. The
@@ -69,7 +70,7 @@ export type DiffBlockProps = {
  * Roles only, per `docs/branding.md` § 1: `success`/`danger` are the same two
  * roles the row's counters use, `ink-muted` is the TUI's `tool.diff.hunk` and
  * `ink-dim` its `tool.diff.context`. `success` and `danger` as text on a
- * `sunken` ground are asserted on all twelve themes by
+ * `sunken` ground are asserted on every theme by
  * `scripts/contrast-contract.mjs` (`AS_TEXT` against `canvas`/`surface`/
  * `sunken`), so the pairs this block introduces — coloured text in a sunken
  * well — are measured pairs rather than a new token. The two tightest are

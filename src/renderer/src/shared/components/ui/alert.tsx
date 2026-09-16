@@ -23,20 +23,26 @@ import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
  * colour — a short label, at 12px, on its own tint. An Alert body is a
  * sentence or two of prose, rendered at 18 call sites across 15 components,
  * two of which (`FloatingAlert`, the connectivity banner) are themselves
- * shared. Measured on `bg-*-wash` across all twelve palettes, the semantic
- * inks floor at 4.54:1 (`success`, localOperatorLight) while `ink` on the
- * same washes floors at 8.15:1 (`info`, tokyoNight) — per semantic, 8.33 vs
- * 4.54 for success, 8.39 vs 4.65 for warning, 8.62 vs 4.62 for danger, and
- * 8.15 vs 4.64 for info. Rendering the message in the semantic colour made
- * the sentence the user is meant to read the faintest text in the box, and it
- * did so at every call site at once. "A callout reads better as a
- * single-colour block" was the justification for that, and it is not worth
- * halving the legibility of the only part of a callout that says anything.
+ * shared. Measured on `bg-*-wash` across every palette, the semantic inks
+ * floor at
+ * 4.50:1 (`warning`, rosePineDawn) while `ink` on the same washes floors at
+ * 4.78:1 (`success`, everforestLight) — per semantic, 4.78 vs 4.53 for
+ * success, 5.42 vs 4.50 for warning, 7.02 vs 4.52 for danger, and 6.99 vs 4.55
+ * for info. Those are the all-fifty-nine figures: over the twelve palettes the
+ * port started from the same measurement read 8.15-8.62 against 4.62-4.66, so
+ * widening the set lowers every low and takes none of them below the floor.
+ * (The 4.54 this paragraph used to quote for success does not reproduce from
+ * the palettes on disk at either set size; the other three did.) Rendering the
+ * message in the semantic colour made the sentence the user is meant to read
+ * the faintest text in the box, and it did so at every call site at once. "A
+ * callout reads better as a single-colour block" was the justification for
+ * that, and it is not worth halving the legibility of the only part of a
+ * callout that says anything.
  *
  * Identity comes instead from the icon, the border and the title, which is
  * what the semantic colour is good at. Those keep it via `data-alert-mark`,
  * and they keep their own floor: the title is exactly the badge-sized use the
- * contract measures, so it clears 4.5:1 on its wash in all twelve palettes.
+ * contract measures, so it holds its 4.5:1 floor on its wash in every palette.
  * `neutral` follows the same rule with no hue to spend — `ink` mark over an
  * `ink-muted` body, which floors at 6.33:1 on `sunken`.
  *

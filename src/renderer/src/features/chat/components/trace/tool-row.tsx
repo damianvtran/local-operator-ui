@@ -126,8 +126,9 @@ export type ToolRowOutcome =
  * paragraph above exists to prevent.
  *
  * 20px with no padding: `min-h-5` clears the 17.4px text box by 2.6px, so the
- * line still has air around it and nothing clips at any of the twelve themes'
- * type scales. Scoped to this row type through `rowClassName` — `min-h-6`
+ * line still has air around it and nothing clips at any theme's type scale —
+ * the scales are identical across the set, since colour is the only thing a
+ * palette supplies. Scoped to this row type through `rowClassName` — `min-h-6`
  * remains the app-wide idiom and other disclosure consumers keep it.
  */
 const ROW_HEIGHT = "min-h-5 py-0";
@@ -201,11 +202,11 @@ export type ToolRowProps = {
  *
  * Liveness outranks identity: a running row never shows a category hue, which
  * is why this map is consulted only in the settled branch. The mapping is
- * intent-preserving rather than hex-preserving — the TUI's `signal` blue is the
- * app's `info`, its `label` violet is the accent, and its two `muted`
- * categories are `ink-muted` — because the app has twelve palettes and the TUI
- * has one, so what ports is which categories are SEPARATE, not what colour each
- * one was in the dark theme.
+ * intent-preserving rather than hex-preserving — the TUI's `signal` blue is
+ * the app's `info`, its `label` violet is the accent, and its two `muted`
+ * categories are `ink-muted` — because this app's palette set is the user's to
+ * choose and the TUI ships one ramp, so what ports is which categories are
+ * SEPARATE, not what colour each one was in the dark theme.
  */
 const CATEGORY_INK: Record<ToolCategory, string> = {
 	read: "text-info",

@@ -1223,7 +1223,7 @@ Degrades:
    never offered. In a table, the bar column is a fixed `w-24` and the value
    column is right-aligned mono with `tabular-nums`, so bars align down the
    table and the numbers form one right edge.
-6. **Twelve themes.** Nothing may be carried by colour alone: the series is
+6. **The theme set.** Nothing may be carried by colour alone: the series is
    named in the section title, and every bar has its number in the row. Because
    the only chart role is `accent`, a chart cannot be legible in one theme and
    invisible in another — and the two frames per theme that evidence this

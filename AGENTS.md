@@ -33,7 +33,7 @@ output. The short version of the parts most often got wrong:
   `border-control` — never a hex, never `theme.palette.*` in ported files. If a
   value maps to no role, the system is missing one; add it to the contract
   rather than working around it.
-- **Twelve themes are user-selectable.** A "Dracula" theme is a promise to a
+- **Fifty-nine themes are user-selectable.** A "Dracula" theme is a promise to a
   user, so the brand ports as roles with contrast floors, not as brand green
   applied everywhere. Only the two `localOperator*` palettes are the brand.
 - **`hairline` vs `border-control`.** Decorative rules vs the sole boundary of
@@ -52,8 +52,8 @@ output. The short version of the parts most often got wrong:
 
 ### Where colour comes from
 
-One source, two consumers. `shared/themes/palettes/*.ts` holds twelve
-`ThemePalette` objects; MUI consumes them as hex (≈299 `alpha()` call sites
+One source, two consumers. `shared/themes/palettes/*.ts` holds one `ThemePalette` object per selectable
+theme — fifty-nine of them today; MUI consumes them as hex (≈299 `alpha()` call sites
 cannot take a `var()`), and Tailwind consumes CSS variables generated from the
 same objects. After editing any palette run `pnpm gen-themes`, and never
 hand-edit `styles/themes.generated.css`.

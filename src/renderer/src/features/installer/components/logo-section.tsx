@@ -18,8 +18,8 @@ import type React from "react";
  * `icon.png` is the app's own icon: a dark figure on its own light disc, so it
  * reads on every ground the way it reads in Finder or the taskbar. Showing the
  * application icon is also what an installer is expected to show, and it is
- * the one image on this screen that is the same in all twelve themes because
- * it brings its own background.
+ * the one image on this screen that is the same in every theme because it
+ * brings its own background.
  */
 export const LogoSection: React.FC = () => {
 	return (

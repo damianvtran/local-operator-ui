@@ -427,7 +427,7 @@ is the reasoning that produced the defect.
 
 ---
 
-## 6. Twelve themes and the contrast floors
+## 6. The theme set and the contrast floors
 
 Computed from the twelve palettes in `src/renderer/src/styles/themes.generated.css`.
 Worst case across the twelve, for every pairing the direction introduces:
