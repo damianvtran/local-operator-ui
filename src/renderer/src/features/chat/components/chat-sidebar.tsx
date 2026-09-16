@@ -476,6 +476,12 @@ export function ChatSidebar({
 				key={row.session_id}
 				type="button"
 				data-chat-row
+				/* Named for the driver, which has to OPEN a conversation before the chat
+				   header - and so the right slot's three triggers - exists at all
+				   (`renderer-driver.mjs`'s `browser-pane` scene). A tour tag rather than a
+				   class: it is the same hook every other drivable control in this app
+				   carries, and it is inert outside a driver run. */
+				data-tour-tag="chat-session-row"
 				data-child={nested || undefined}
 				className={cn(
 					rowStyle,
@@ -1079,6 +1085,10 @@ export function ChatSidebar({
 						<button
 							type="button"
 							data-chat-row
+							/* The driver's way into the list (see `chat-session-row`): the
+							   sections above it are entity lists, and this is the control that
+							   widens the list to every conversation. */
+							data-tour-tag="chat-all-chats"
 							className={cn(rowStyle, "w-full", all && rowCurrent)}
 							aria-pressed={all}
 							onClick={() => setAll((value) => !value)}
