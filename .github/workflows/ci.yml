@@ -27,6 +27,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        # Two commits rather than the default one: the scripts-scope step below
+        # diffs this change against the FIRST PARENT of the merge commit that
+        # `pull_request` checks out - the base branch as of this run - so depth 2 is
+        # what puts that parent, and the merge base with it, in the clone. The
+        # alternative - unshallowing - pulls this repository's whole pack, measured
+        # at ~835 MB in this clone.
+        with:
+          fetch-depth: 2
 
       # pnpm is pinned here, and the pin is load-bearing rather than a preference:
       # pnpm 10.29.3 through at least 10.34.x drops dependency edges from
@@ -58,6 +66,51 @@ jobs:
 
       - name: Run Biome lint
         run: pnpm lint
+
+      # `pnpm lint` names the paths it checks by hand, and `scripts/` - where this
+      # repository keeps its proof harnesses, evidence rigs and release gates - was
+      # not among them, so a formatter error introduced by a merged pull request
+      # rode through this job green. This step checks the files THIS change touches
+      # under `scripts/`, against the base commit it was built on.
+      #
+      # It runs through `pnpm lint:scripts` rather than spelling `biome check
+      # scripts/` here so the scope lives in one place: the same command is what a
+      # developer runs before pushing, and the base ref is the only thing CI adds.
+      # It checks the files a change touches rather than the whole tree because
+      # `scripts/` carries 245 pre-existing errors across 106 files (88 formatter,
+      # 18 organizeImports, 139 lint rules, measured on main) - a burn-down of its
+      # own, and one that would red this job for files the change never opened.
+      # Widening `pnpm lint` to name `scripts/` outright is the follow-up once that
+      # backlog is gone; `scripts/check-scripts-lint.mjs` documents the whole shape.
+      #
+      # `pull_request` only, deliberately: the gate compares against a base commit,
+      # which a push does not carry (`github.event.before` is the zero SHA on a new
+      # branch and can be unreachable after a force push), and every change on
+      # `main` arrives through a pull request that already ran this. A base the gate
+      # cannot resolve is FAILED, never "nothing changed".
+      #
+      # THAT BASE IS `HEAD^1`, NOT `github.event.pull_request.base.sha`. Actions
+      # checks out the RECOMPUTED `refs/pull/N/merge`, whose first parent is the base
+      # branch as of this run, while the payload's `base.sha` is frozen when the
+      # event fires. Once the base branch moves - which is what the release window
+      # this repository works in does continuously - that frozen commit is a strict
+      # ancestor of `HEAD^1`, `merge-base` returns it unchanged, and the diff from it
+      # charges this change for commits the base itself landed: rehearsed against
+      # this pull request's own head with `--since <base>~15`, 122 files, more than
+      # 20 of them carrying dirt the change never opened. `git rev-parse HEAD^1`
+      # cannot silently degrade either: an empty `LINT_SINCE` is a refusal in
+      # `scripts/check-scripts-lint.mjs`, not a fall back to `origin/main`.
+      # `scripts/version-bump-guard.mjs` reads its diff the same way, for the same
+      # event shape and the same reason.
+      - name: Check the scripts tree's lint scope over this change
+        if: github.event_name == 'pull_request'
+        run: LINT_SINCE="$(git rev-parse HEAD^1)" pnpm lint:scripts
+
+      # A gate whose contract is asserted nowhere is how this one's hole appeared in
+      # the first place, so the cases that decide its verdict are driven here too,
+      # against real scratch repositories and the same biome.
+      - name: Check the scripts scope gate's own cases
+        run: node --test scripts/check-scripts-lint.test.mjs
 
   runtime-deps:
     # What the packaged app ships as node_modules is decided entirely by
