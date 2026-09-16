@@ -146,13 +146,43 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					    the pane's own contents name it, and this step leaves the switch the
 					    bar's one assertion. */}
 					<span className={cn("shrink-0 text-meta text-ink-dim")}>Browser</span>
-					<Tabs
-						value={switchValue}
-						onValueChange={(value) => setChoice(value as PaneScopeChoice)}
+					{/* THE RING IS THE WRAPPER'S, NOT THE LIST'S, AND THAT IS THE FIX RATHER
+					    THAN A PREFERENCE (design round 2; QA round 2 found the inline
+					    declaration and the primitive that writes it).
+
+					    `TabsList` is Radix's `Tabs.List`, which renders its list through a
+					    `RovingFocusGroup.Root` - and that root puts
+					    `style: { outline: "none", ...props.style }` on the element it renders
+					    (`@radix-ui/react-roving-focus/dist/index.mjs`, the `RovingFocusGroup`
+					    div). With `asChild` the group's element IS the list, so an INLINE
+					    `outline: none` was landing on this element, and an inline declaration
+					    beats every class: the row's `outline-solid outline-1 outline-control`
+					    was in the DOM, in the stylesheet, and in the computed style's
+					    overridden layer while the painted outline-style stayed `none`. Zero
+					    pixels of the ring existed in the frames, which is what design round 1
+					    (D3) measured as "the track has no visible extent" and what the
+					    class-presence check could not see.
+
+					    The suppression inside a tablist is deliberate on Radix's side - the
+					    ITEMS carry the focus ring and the container is not a focus stop - so
+					    the fix is not to fight it but to draw the track's edge on an element
+					    Radix does not own: this wrapper hugs the same box (`w-fit`, same
+					    radius) and its ring is the same `outline-control` the contract's rows
+					    already cover. `-outline-offset-1` draws it inside the box exactly as
+					    before, so the geometry the track's 32px depends on is unchanged. */}
+					<div
+						className={cn(
+							"w-fit rounded-md outline-solid outline-1 -outline-offset-1 outline-control",
+						)}
+						data-tour-tag="browser-pane-scope-track"
 					>
-						<TabsList
-							aria-label="Which tabs to show"
-							/* THE TRACK NEEDS A DRAWN EDGE HERE, and only here (design round 1,
+						<Tabs
+							value={switchValue}
+							onValueChange={(value) => setChoice(value as PaneScopeChoice)}
+						>
+							<TabsList
+								aria-label="Which tabs to show"
+								/* THE TRACK NEEDS A DRAWN EDGE HERE, and only here (design round 1,
 							   D3). The primitive's track is `sunken` and this header is `sunken`
 							   too - the pane's header must stay `sunken` because the slot's other
 							   two panes state that ground for their own bar - so the track's own
@@ -165,30 +195,28 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 							   the 32px track and squeeze the 24px pill out of it, while an
 							   `-outline-offset-1` ring is drawn inside the box and changes no
 							   layout at all - the same idiom the picker row's pointer mark uses. */
-							className={cn(
-								"outline-solid outline-1 -outline-offset-1 outline-control",
-							)}
-						>
-							<TabsTrigger
-								value="conversation"
-								disabled={sessionId === null}
-								// Both sides steer the SAME region — the surface below — so both
-								// carry the reference, unlike the chat view's tabs where only the
-								// mounted panel may be named (`chat-tabs.tsx` states that rule).
-								aria-controls={PANE_SURFACE_ID}
-								data-tour-tag="browser-pane-scope-conversation"
 							>
-								This conversation
-							</TabsTrigger>
-							<TabsTrigger
-								value="all"
-								aria-controls={PANE_SURFACE_ID}
-								data-tour-tag="browser-pane-scope-all"
-							>
-								All tabs
-							</TabsTrigger>
-						</TabsList>
-					</Tabs>
+								<TabsTrigger
+									value="conversation"
+									disabled={sessionId === null}
+									// Both sides steer the SAME region — the surface below — so both
+									// carry the reference, unlike the chat view's tabs where only the
+									// mounted panel may be named (`chat-tabs.tsx` states that rule).
+									aria-controls={PANE_SURFACE_ID}
+									data-tour-tag="browser-pane-scope-conversation"
+								>
+									This conversation
+								</TabsTrigger>
+								<TabsTrigger
+									value="all"
+									aria-controls={PANE_SURFACE_ID}
+									data-tour-tag="browser-pane-scope-all"
+								>
+									All tabs
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
+					</div>
 				</div>
 				{/* THE SAME EXIT AS THE SLOT'S OTHER TWO PANES (design round 1, D2). Both
 				    siblings paint `PanelRightClose` in the same corner, at the same size,
