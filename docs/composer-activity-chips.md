@@ -350,11 +350,13 @@ left edges, and that is intended** (design review round 2, N1 — recorded with 
 numbers rather than fixed). Measured in the frames at 240px: the goal's wash spans
 x25→249 (224px, the goal item's own width) and the jobs chip's x32→138 (106px), the
 two box edges **7px apart**; the DOM says the same from the other side, the goal's
-item box at x=2 against the count chips' at x=8 in the same column (the story's
-frame carries a 10px column inset, which is why the pixels read 25/32 rather than
-2/8). The 6-7px is the `FIRST_CHIP` `-ml-1.5` cancelling padding on the FIRST chip,
-which is the goal — the INK columns agree (goal chevron 38, chips' marks 36/39),
-which is the doctrine that flag exists for. Two object kinds, two ground shapes: a
+item box at x=2 against the count chips' at x=8 in the same column, a **+23/+24**
+offset between the story's own frame and that DOM rather than a third measurement
+(the pixels read 25 and 32 for those two edges; the frames carry the story's inset,
+the DOM does not). The 7px of the frames, 6px of the DOM, is the `FIRST_CHIP`
+`-ml-1.5` cancelling padding on the FIRST chip, which is the goal — the INK columns
+agree (goal chevron 36, count marks 38/39), which is the doctrine that flag exists
+for. Two object kinds, two ground shapes: a
 full-width row wash on an item that yields, content-sized control pills beside it.
 A reader hovering down the stacked column sees the row's leading edge move by those
 6-7px, and only in that arrangement.

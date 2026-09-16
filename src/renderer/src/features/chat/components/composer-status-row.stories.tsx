@@ -716,21 +716,28 @@ export const ActivityMarkMotion: Story = {
  * line.
  *
  * `docs/composer-status-tabs.md` § 5.4 budgets ~168px of a 204px content box for
- * ONE count chip; this row now holds a goal and three of them. The three widths are
- * the ones the record and the frames argue about:
+ * ONE count chip; this row now holds a goal and three of them. The FIVE widths are
+ * the ones the record and the frames argue about, and the two in the middle exist
+ * because the wrap regime has three heights rather than one (design review round
+ * 2, N2):
  *
- * - 900, the composer's own column width, where all four share a line;
+ * - 900, the composer's own column width, where all four share a line (row 32px);
+ * - 460, where the goal takes its own line and all three counts still share the
+ *   next (row 54px);
+ * - 300, where the plan and subagents chips share a line and the jobs chip drops
+ *   below them (row 80px);
  * - 240, `CHAT_CHIP_ICON_ONLY_PX`, the boundary where the composer's chrome stops
  *   sharing one line — and where the row is still a line, so the chips must WRAP
- *   rather than paint past the column;
+ *   rather than paint past the column (row 106px);
  * - 172, the app's real floor with the canvas open (QA round 1, measured), where
  *   the row stacks: the goal takes the row's width, the chips follow it, and there
- *   is no wrap to do because there is no line to wrap out of.
+ *   is no wrap to do because there is no line to wrap out of (row 106px).
  *
  * Every band prints its own numbers (`RowFacts`), and the one that matters is
- * `overflowX 0` at all three. The heights are the other half: the row's height
- * changes when a chip appears, when a chip wraps, and when it stacks — which is
- * the cost this design accepts rather than hides.
+ * `overflowX 0` at all five. The heights are the other half — 32 / 54 / 80 / 106 /
+ * 106px band by band: the row's height changes when a chip appears, when a chip
+ * wraps among its siblings, and when the row stacks, which is the cost this design
+ * accepts rather than hides.
  */
 export const ActivityWidths: Story = {
 	render: () => (

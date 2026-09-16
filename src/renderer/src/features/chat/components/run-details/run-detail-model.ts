@@ -2680,17 +2680,6 @@ const plural = (count: number, noun: string): string =>
 const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
 
 /**
- * The subagent clause: `1 subagent running`, `2 subagents queued`.
- *
- * EXPORTED for the same reason as `todoClause` below, and by the same precedent:
- * the composer's subagents chip states the fact the trigger's tooltip states, one
- * above the other in the same column, and a second pluralisation is how the two
- * come to disagree about one number.
- *
- * It takes the TALLY and not a count (see `activityTally`): the state in the
- * sentence IS the state of the mark, because there is no other way to call it.
- */
-/**
  * The word a clause uses for the set: the STATE's word when every open row is in
  * that state, the FAMILY's word when they are not.
  *
@@ -2719,6 +2708,22 @@ export const busiestClause = (tally: ActivityTally): string =>
 		? ""
 		: `, ${tally.markCount} ${stateWord(tally.mark)}`;
 
+/**
+ * The subagent clause: `1 subagent running`, `2 subagents queued` when the open set
+ * is uniform, `40 subagents open` when it is not.
+ *
+ * EXPORTED for the same reason as `todoClause` below, and by the same precedent:
+ * the composer's subagents chip states the fact the trigger's tooltip states, one
+ * above the other in the same column, and a second pluralisation is how the two
+ * come to disagree about one number.
+ *
+ * It takes the TALLY and not a count (see `activityTally`), and it takes the WORD
+ * from `tallyWord` rather than from the mark directly: the count is every OPEN row
+ * and the mark is the busiest one, so the mark's own word beside the open total
+ * would claim work that is not happening whenever rows are parked behind a running
+ * few (design round 2, D6). Uniform, the state's word; mixed, the family's — and
+ * the busiest state then travels in `busiestClause`, on the accessible name.
+ */
 export const childClause = (tally: ActivityTally): string =>
 	`${plural(tally.count, "subagent")} ${tallyWord(tally)}`;
 
@@ -2731,12 +2736,18 @@ export const childClause = (tally: ActivityTally): string =>
  * headed `Jobs` for the same reason, and these two are the pair that has to
  * agree — the chip names the count and the section names the rows.
  *
- * The clause carries the MARK's word rather than a hardcoded `running`, and the
+ * The clause carries the LADDER's word rather than a hardcoded `running`, and the
  * docblock that used to argue `running` was "safe here" because a tool row is
  * running-or-queued is gone with the argument: the ladder is shared, the wire's
  * `queued` flag is minted only for `task` rows today, and a sentence that is true
  * because of a claim about the backend is the kind of thing this file exists to
  * avoid. If a future `JobType` can be parked, the clause already says so.
+ *
+ * Since design round 2's D6 the word comes from `tallyWord`, so what the clause
+ * says is the state's word when every open tool row shares it and the family's
+ * (`3 jobs open`) when they do not — the same rule as the subagent clause, one
+ * surface over, and the busiest state reaches the chip's accessible name through
+ * `busiestClause`.
  */
 export const jobClause = (tally: ActivityTally): string =>
 	`${plural(tally.count, "job")} ${tallyWord(tally)}`;
