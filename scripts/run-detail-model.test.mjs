@@ -3189,13 +3189,24 @@ test("the bounded clause comes off the scheduler's own arithmetic, not a field i
 	assert.equal(bounded.remaining, 2, "limit - fired_count");
 	assert.equal(bounded.cadence, "every 6h · 2 left");
 
-	/* An exhausted budget is 0 rather than negative. */
+	/*
+	 * An exhausted budget is 0 rather than negative, and the row says so in words
+	 * and drops the instant it can no longer fire at (QA round 1's Q1): between a
+	 * bounded schedule's last delivery and its retirement the wire still carries it,
+	 * and `every 6h · 0 left` beside a next-fire label promises a delivery that has
+	 * no budget behind it.
+	 */
 	const spent = deriveWakes(
 		[wake({ every_ms: 6 * WAKE_HOUR, limit: 3, fired_count: 5 })],
 		WAKE_NOW,
 	)[0];
 	assert.equal(spent.remaining, 0);
-	assert.equal(spent.cadence, "every 6h · 0 left");
+	assert.equal(spent.cadence, "every 6h · no deliveries left");
+	assert.equal(
+		spent.dueLabel,
+		"",
+		"a schedule with no budget promises no fire",
+	);
 
 	/* `remaining` itself still wins, so a runtime that starts sending it is read. */
 	const explicit = deriveWakes(
@@ -3302,7 +3313,7 @@ test("a malformed or partial wake row degrades rather than blanking the list", (
 	);
 });
 
-test("the Wakes section's slice caps its rows, under the wire's own ceiling", () => {
+test("the Wakes section renders every schedule the wire can carry, and caps past it", () => {
 	const rows = deriveWakes(
 		Array.from({ length: 9 }, (_, index) =>
 			wake({
@@ -3313,23 +3324,44 @@ test("the Wakes section's slice caps its rows, under the wire's own ceiling", ()
 		),
 		WAKE_NOW,
 	);
-	const slice = visibleWakes(rows);
-	assert.equal(slice.rows.length, WAKE_ROW_CAP);
-	assert.equal(slice.hidden, 9 - WAKE_ROW_CAP);
+	/*
+	 * Nine is UNDER the wire's ceiling, so all nine render (UX round 1's U1). The
+	 * six-row cap this replaced told a reader that more existed and could not show
+	 * which, and the operator's own ask was "in there, we can see all the armed
+	 * wakes".
+	 */
+	const full = visibleWakes(rows);
+	assert.equal(full.rows.length, 9);
+	assert.equal(full.hidden, 0);
 	assert.deepEqual(
-		slice.rows.map((row) => row.id),
-		["w1", "w2", "w3", "w4", "w5", "w6"],
-		"the cap keeps the rows that fire first",
+		full.rows.map((row) => row.id),
+		["w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9"],
 	);
 	/*
-	 * The cap binds, and it is under the backend's ceiling rather than a guess at
-	 * one: `MAX_WAKE_SCHEDULES = 16` is the most the wire can carry, so a full
-	 * scheduler is nine rows past a six-row budget and the marker has something to
-	 * count on every over-cap list.
+	 * The cap is the WIRE'S OWN BOUND and not a house guess: `MAX_WAKE_SCHEDULES =
+	 * 16` is the most a session can hold, so the slice binds only above the payload
+	 * a backend can legitimately send — a hand-edited index, or a future runtime
+	 * that raises the limit — and the marker it leaves is that payload's footer.
 	 */
-	assert.ok(
-		WAKE_ROW_CAP < 16,
-		"the cap is below MAX_WAKE_SCHEDULES, so it can actually fire",
+	assert.equal(WAKE_ROW_CAP, 16, "the cap is MAX_WAKE_SCHEDULES");
+	const over = visibleWakes(
+		deriveWakes(
+			Array.from({ length: 20 }, (_, index) =>
+				wake({
+					id: `x${index + 1}`,
+					message: `wake ${index + 1}`,
+					next_due_at: WAKE_NOW + (index + 1) * WAKE_HOUR,
+				}),
+			),
+			WAKE_NOW,
+		),
+	);
+	assert.equal(over.rows.length, 16);
+	assert.equal(over.hidden, 4);
+	assert.equal(
+		over.rows.at(-1).id,
+		"x16",
+		"the cap keeps the rows that fire first",
 	);
 	/* Under the cap nothing is hidden, and the slice is not the caller's list. */
 	const three = visibleWakes(rows.slice(0, 3));

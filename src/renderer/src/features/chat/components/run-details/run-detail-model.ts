@@ -181,19 +181,24 @@ export const TODO_ITEM_CAP = 10;
 /**
  * Wake rows the Wakes section shows before its overflow marker.
  *
- * The number is the ROSTER's budget (`SUBAGENT_ROW_CAP`) rather than the TUI
- * band's three (`wake_panel.MAX_WAKE_ROWS`), and the difference is the medium:
- * the band is a handful of rows in a dock that shares one column with the plan
- * and the roster and has to keep a transcript floor, while this section is one
- * list inside a pane that scrolls. Six is what the pane already spends on the
- * one other list a session can fill on its own.
+ * The number is **the wire's own limit**, `MAX_WAKE_SCHEDULES = 16`
+ * (`local_operator/harness/wake.py:47`), and it is deliberately not a smaller
+ * house number (UX round 1's U1). The first version capped at six, borrowed from
+ * the roster (`SUBAGENT_ROW_CAP`), on the argument that "this section is one list
+ * inside a pane that scrolls" — and the review measured that argument false in
+ * every state it could reach: with a 24-item plan the WHOLE pane region had 9px
+ * of scroll, because the plan sheds per phase instead of scrolling, so the six
+ * did not buy the space they claimed. What they did buy was the operator's own
+ * ask, unkept: they asked to "see all the armed wakes", and above six the section
+ * told the reader more existed and could not show which.
  *
- * The wire cannot exceed `MAX_WAKE_SCHEDULES = 16`
- * (`local_operator/harness/wake.py:47`), so the cap binds — a full scheduler is
- * sixteen rows, and without a cap the Wakes section would push the plan and the
- * roster off the pane for the sake of a readout nobody is acting on.
+ * Sixteen is the honest number because it is the one the scheduler cannot exceed:
+ * a full session is sixteen rows, about 600-850px, which this region holds by
+ * scrolling. The marker below the list stays as the footer for a payload that
+ * exceeds the DECLARED bound — a hand-edited index, or a future backend that
+ * raises the limit — rather than as a routine truncation of the shipping wire.
  */
-export const WAKE_ROW_CAP = 6;
+export const WAKE_ROW_CAP = 16;
 
 /**
  * The seam between two facts on one line. The same ` · ` the TUI's row and the
@@ -1205,7 +1210,19 @@ const wakeZone = (due: Date): string => {
  * - a date when the due instant is not on today's local date, and a year when it
  *   is not this year;
  * - an explicit `AM`/`PM`, never the locale's `%p` (which can be empty);
- * - the zone, always, named where the platform gives a name.
+ * - the zone, always, as the platform's SHORT zone name.
+ *
+ * The last rule is the one this label does not take verbatim, and the difference
+ * is stated rather than glossed (agent review round 1's minor 3): the Python
+ * prints `due.tzname()`, the tz database's abbreviation (`AEST`, `CET`), while
+ * this formats through `Intl.DateTimeFormat(undefined, { timeZoneName: "short" })`,
+ * whose answer is the NAVIGATOR'S LOCALE's name for the zone and is frequently an
+ * offset — measured: `en-US`/Sydney gives `GMT+11` where Python gives `AEST`, and
+ * `de-DE`/Berlin gives `MEZ` where Python gives `CET`. An offset is still a zone
+ * token and it is the same fallback the Python keeps for a nameless zone, so the
+ * label stays unambiguous and the divergence is one of SPELLING; a table of
+ * abbreviations would be a second tz database in the renderer, which is not a
+ * price this label is worth paying.
  *
  * `24h` is the TUI's `display.time_format` setting and this app has no such
  * setting, so the TUI's own default — 12-hour — is what ships. Stated because a
@@ -1257,6 +1274,17 @@ export const formatWakeDue = (epochMs: number, nowMs: number): string => {
  * envelope is MODEL-FACING markup (`receipt-row-model.ts`'s `wakeReceiptHeadline`
  * strips it off the delivery row for exactly that reason), so it is not a shape
  * a user-facing label should copy.
+ *
+ * **A spent budget is named as spent** (QA round 1's Q1). `remaining` is derived
+ * as `max(limit - fired_count, 0)`, and zero is a reachable state: a bounded
+ * schedule fires its last delivery at `next_due_at`, the supervisor retires it on
+ * the next pass, and in that window the wire carries the schedule with no budget
+ * left. Printing `every 1h · 0 left` there would be arithmetic for a fire that is
+ * NOT coming, so zero takes its own word — the reader is told the schedule is
+ * finished rather than promised one more delivery. A NEGATIVE count cannot reach
+ * this function (the clamp is one line up) and is not defended against here: the
+ * wire's own bound is the reader's trust boundary, and a payload below it is a
+ * backend defect rather than a label this function should spell.
  */
 export const formatWakeCadence = (
 	everyMs: number | null,
@@ -1265,6 +1293,7 @@ export const formatWakeCadence = (
 	if (everyMs === null) return "once";
 	const cadence = `every ${formatWakeDuration(everyMs)}`;
 	if (remaining === null) return cadence;
+	if (remaining === 0) return `${cadence} · no deliveries left`;
 	return `${cadence} · ${remaining} left`;
 };
 
@@ -1363,7 +1392,21 @@ const deriveWake = (
 		id: wireText(record.id) || `wake-${index}`,
 		message,
 		nextDueAt,
-		dueLabel: nextDueAt === null ? "" : formatWakeDue(nextDueAt, nowMs),
+		/*
+		 * A schedule with no budget left carries NO due label (QA round 1's Q1).
+		 *
+		 * `remaining === 0` is reachable: the last bounded delivery fires at
+		 * `next_due_at` and the supervisor retires the schedule on its next pass, so
+		 * the wire carries it for a while with nothing left to fire. Printing the
+		 * instant there would promise a delivery the schedule has no budget for — the
+		 * row's cadence ("no deliveries left") is the honest statement, and this is
+		 * the same rule the section already follows for a row whose instant is not
+		 * readable: the label is what is TRUE, not what the payload happens to hold.
+		 */
+		dueLabel:
+			nextDueAt === null || remaining === 0
+				? ""
+				: formatWakeDue(nextDueAt, nowMs),
 		everyMs,
 		remaining,
 		cadence: formatWakeCadence(everyMs, remaining),
