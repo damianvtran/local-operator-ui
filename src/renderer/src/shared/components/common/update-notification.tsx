@@ -7,6 +7,11 @@ import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
+import {
+	updateErrorMessage,
+	updateMessageFate,
+} from "@shared/utils/update-error-copy";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy } from "lucide-react";
@@ -18,15 +23,14 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { stripErrorPrefixes } from "../../../../../shared/transport-failure";
+import { UpdateErrorAlert } from "./update-error-alert";
 import {
 	type ManualUpdateExpectation,
 	atLeastVersion,
 	manualPanelClearedByAvailable,
 	manualPanelClearedByCheck,
 } from "./update-manual-state";
-
-const RELEASE_ARTIFACT_ERROR_REGEX =
-	/cannot find .* in the latest release artifacts/i;
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -567,6 +571,57 @@ export const UpdateNotification = ({
 	}, []);
 
 	/**
+	 * One verdict for one update-path message, on whichever channel it arrived.
+	 *
+	 * WHY ONE FUNCTION. The same failure reaches this component twice - as the
+	 * `update-error` event and as the rejection of the invoke the check was made
+	 * through, because electron-updater emits on the updater AND rethrows - and
+	 * the two producers used to decide its fate with DIFFERENT rules in the same
+	 * state slot: the event path routed the legacy "manually" wording to the
+	 * by-hand panel and showed everything else, while the invoke path silenced a
+	 * missing release artifact and prefixed everything else with its own spelling
+	 * of the failure. Which text the reader got was therefore a race between two
+	 * channels carrying one failure, and a failure silenced on one channel could
+	 * be painted by the other. Both callers ask this function now, so a message
+	 * has ONE fate (`updateMessageFate`) and one spelling.
+	 *
+	 * Returns true when the message was SHOWN, so a caller can clear the flags
+	 * that describe a check it was waiting on.
+	 */
+	const reportUpdateMessage = useCallback((message: string): boolean => {
+		switch (updateMessageFate(message)) {
+			case "by-hand":
+				// Legacy wording from a main process that named pip for every
+				// unmanaged server. No command is offered here any more: the app
+				// cannot tell which installer owns an environment from a string it
+				// was handed, and naming the wrong one is the defect this whole change
+				// exists to fix (reviews U4, D4).
+				setManualUpdateRequired(true);
+				setManualUpdateInfo({
+					message:
+						"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
+					command: "",
+				});
+				setSnackbarOpen(true);
+				return false;
+			case "muted":
+				/*
+				 * A release with no artifact for this build is a known non-failure, so
+				 * it is logged rather than painted - the same silence on both channels
+				 * now, instead of on whichever one the renderer happened to observe.
+				 */
+				console.warn(
+					`Update check reported no artifact for this build: ${message}`,
+				);
+				return false;
+			default:
+				setError(message);
+				setSnackbarOpen(true);
+				return true;
+		}
+	}, []);
+
+	/**
 	 * Check for updates.
 	 *
 	 * `manual` marks a check the user asked for. It travels to the main process so
@@ -582,22 +637,31 @@ export const UpdateNotification = ({
 				setError(null);
 				await window.api.updater.checkForUpdates(options);
 			} catch (err) {
-				const errorMessage = err instanceof Error ? err.message : String(err);
-				// If the error is because the release artifact is not found, don't show an error
-				if (RELEASE_ARTIFACT_ERROR_REGEX.test(errorMessage)) {
+				/*
+				 * The SAME verdict as the `update-error` event path above, on the same
+				 * string: this rejection and that event are two reports of one failure
+				 * (electron-updater emits and rethrows), so the rules that decide
+				 * whether the reader is told - and what they are told - are one rule.
+				 * The artifact wording used to be silenced here ALONE, while the same
+				 * failure arriving as an event painted the alert, which is the race
+				 * this closes.
+				 *
+				 * The invoke envelope is unwrapped first: Electron wraps a rejection as
+				 * `Error invoking remote method '<channel>': <error>`, which is wire
+				 * framing rather than a message, and it used to reach the reader with
+				 * its `Error: ` inside it.
+				 */
+				const errorMessage = stripErrorPrefixes(unwrapIpcErrorMessage(err));
+				if (updateMessageFate(errorMessage) === "muted") {
 					setUpdateAvailable(false);
 					setUpdateInfo(null);
-					console.warn(`Error checking for updates: ${errorMessage}`);
-					return;
 				}
-
-				setError(`Error checking for updates: ${errorMessage}`);
-				setSnackbarOpen(true);
+				reportUpdateMessage(errorMessage);
 			} finally {
 				setChecking(false);
 			}
 		},
-		[],
+		[reportUpdateMessage],
 	);
 
 	/**
@@ -613,14 +677,13 @@ export const UpdateNotification = ({
 			setError(null);
 			await window.api.updater.checkForAllUpdates({ manual: true });
 		} catch (err) {
-			setError(
-				`Error checking for updates: ${err instanceof Error ? err.message : String(err)}`,
-			);
-			setSnackbarOpen(true);
+			// The same verdict as every other check producer (see
+			// `reportUpdateMessage`), on the unwrapped invoke message.
+			reportUpdateMessage(stripErrorPrefixes(unwrapIpcErrorMessage(err)));
 		} finally {
 			setChecking(false);
 		}
-	}, []);
+	}, [reportUpdateMessage]);
 
 	// Download the update
 	const downloadUpdate = useCallback(async () => {
@@ -630,7 +693,7 @@ export const UpdateNotification = ({
 			await window.api.updater.downloadUpdate();
 		} catch (err) {
 			setError(
-				`Error downloading update: ${err instanceof Error ? err.message : String(err)}`,
+				`Error downloading update: ${stripErrorPrefixes(unwrapIpcErrorMessage(err))}`,
 			);
 			setDownloading(false);
 			setSnackbarOpen(true);
@@ -660,7 +723,7 @@ export const UpdateNotification = ({
 		} catch (err) {
 			setInstalling(false);
 			setError(
-				`Error starting the update: ${err instanceof Error ? err.message : String(err)}`,
+				`Error starting the update: ${stripErrorPrefixes(unwrapIpcErrorMessage(err))}`,
 			);
 			setSnackbarOpen(true);
 		}
@@ -680,7 +743,7 @@ export const UpdateNotification = ({
 			await window.api.updater.quitForUpdateInstall();
 		} catch (err) {
 			setError(
-				`Error quitting for the update: ${err instanceof Error ? err.message : String(err)}`,
+				`Error quitting for the update: ${stripErrorPrefixes(unwrapIpcErrorMessage(err))}`,
 			);
 			setSnackbarOpen(true);
 		}
@@ -739,9 +802,9 @@ export const UpdateNotification = ({
 		} catch (err) {
 			if (!backendUpdateAttemptRef.current.terminal) {
 				setBackendUpdateFailure(
-					`The server update could not be started: ${
-						err instanceof Error ? err.message : String(err)
-					}`,
+					`The server update could not be started: ${updateErrorMessage(
+						unwrapIpcErrorMessage(err),
+					)}`,
 				);
 			}
 		} finally {
@@ -859,24 +922,16 @@ export const UpdateNotification = ({
 		// Frontend update error - also handle manual update requirements
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
-				if (errorMessage.includes("manually")) {
-					// Legacy wording from a main process that named pip for every
-					// unmanaged server. No command is offered here any more: the app
-					// cannot tell which installer owns an environment from a string it
-					// was handed, and naming the wrong one is the defect this whole change
-					// exists to fix (reviews U4, D4).
-					setManualUpdateRequired(true);
-					setManualUpdateInfo({
-						message:
-							"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
-						command: "",
-					});
-					setSnackbarOpen(true);
-				} else {
-					setError(errorMessage);
+				/*
+				 * `stripErrorPrefixes` at the boundary as well as at the paint: the state
+				 * is also read by paths that do not go through `UpdateErrorAlert`, and a
+				 * failure should not change its text depending on which surface it
+				 * reached.
+				 */
+				const message = stripErrorPrefixes(errorMessage);
+				if (reportUpdateMessage(message)) {
 					setChecking(false);
 					setDownloading(false);
-					setSnackbarOpen(true);
 				}
 			},
 		);
@@ -1102,12 +1157,18 @@ export const UpdateNotification = ({
 		const removeBackendUpdateErrorListener =
 			window.api.updater.onBackendUpdateError((report) => {
 				if (report.phase === "update" && answerBackendUpdateAttempt()) {
-					setBackendUpdateFailure(report.message);
+					/*
+					 * This channel's real strings are Node errno forms - the operator's
+					 * log shows `getaddrinfo ENOTFOUND pypi.org` on the version read
+					 * during a check - so it goes through the same copy as the app
+					 * channel rather than being painted as the machine wrote it.
+					 */
+					setBackendUpdateFailure(updateErrorMessage(report.message));
 					setChecking(false);
 					setUpdatingBackend(false);
 					return;
 				}
-				setError(report.message);
+				setError(stripErrorPrefixes(report.message));
 				setSnackbarOpen(true);
 			});
 
@@ -1136,6 +1197,7 @@ export const UpdateNotification = ({
 		answerBackendUpdateAttempt,
 		autoCheck,
 		checkForUpdates,
+		reportUpdateMessage,
 		shouldShowUpdate,
 	]);
 
@@ -1169,14 +1231,12 @@ export const UpdateNotification = ({
 		<>
 			{panel}
 			{error !== null ? (
-				<FloatingAlert
+				<UpdateErrorAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
+					message={error}
 					onClose={closeSnackbar}
-					variant="danger"
-				>
-					{error}
-				</FloatingAlert>
+				/>
 			) : (
 				notice
 			)}
