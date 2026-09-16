@@ -147,10 +147,34 @@ const meta: Meta<typeof ConnectivityBanner> = {
 export default meta;
 type Story = StoryObj<typeof ConnectivityBanner>;
 
-/** No desktop bridge at all: the weaker answer a browser host gets. */
+/**
+ * No desktop bridge at all: the weaker answer a browser host gets.
+ *
+ * Measured, and asserted as measured (design round 2, D12): this state renders
+ * NO BANNER. `useConnectivityStatus` reads `serverHealth?.online ?? true`, and an
+ * absent bridge leaves the health query with no answer, so the fallback is
+ * "online" and `hasConnectivityIssue` is false.
+ *
+ * The play used to wait for "Not connected to a Local Operator server." - the
+ * sentence the contract carries for exactly this state (`serverBannerCopy(null)`)
+ * and which no surface can reach while the gate above reads an absent bridge as
+ * online - so the play failed and the pair captured as the no-banner ground,
+ * byte-identical to `attached`. Asserting the absence is what the state actually
+ * supports today; whether a browser-hosted app should announce the absent bridge
+ * is a product question for the design round.
+ */
 export const NoBridge: Story = {
 	decorators: [withBridge(null)],
-	play: waitForCopy("Not connected to a Local Operator server."),
+	play: async () => {
+		await waitFor(() => {
+			expect(document.body.textContent ?? "").not.toContain(
+				"reconnects to it on its own",
+			);
+			expect(document.body.textContent ?? "").not.toContain(
+				"The Local Operator server stopped",
+			);
+		});
+	},
 };
 
 /** Attached: no banner. The empty frame IS the claim. */

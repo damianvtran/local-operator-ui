@@ -1,6 +1,6 @@
 # The attach work, in the app the operator actually runs
 
-Five frames of the BUILT app, driven by this PR's own rig
+Six frames of the BUILT app, driven by this PR's own rig
 (`scripts/attach-frame-evidence.mjs`): `headless` window mode, its own
 `--user-data-dir`, an isolated HOME and config dir, no window ever shown, and
 the operator's focus never taken. Nothing here is a Storybook still, because the
@@ -16,6 +16,7 @@ status, the catalogue store - and a story can stub only one side of that.
 | `after-gate-open.png` | this branch | the catalogue gate OPEN against the rig's stub backend: agents, teams and the seeded conversation all listed. It is also the flap scene's BEFORE frame - the same state is the starting point of both cells |
 | `after-gate-withdrawn.png` | this branch | **the cell the operator reported**: the backend's answer stops opening the desktop plane while the app is running, and NOBODY touches anything. The rows are still there, at full ink, and the condition is stated once - by the full-bleed band - rather than by the sidebar as well |
 | `after-flap-during.png` | this branch | the list holding through a probe-budget flap: every probe expires inside its 2 s budget while every read still answers |
+| `after-flap-before.png` | this branch | the same scene before the flap: the list with the daemon's `degraded` marker already answered, so the Active section carries its own sentence instead of claiming an idle machine (design round 2, D11) |
 
 ## What is NOT in this directory, and why
 
