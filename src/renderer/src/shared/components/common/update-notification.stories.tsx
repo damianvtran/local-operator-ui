@@ -5,7 +5,10 @@ import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { updateCheckVerdict } from "../../../../../main/update-check-verdict";
-import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
+import type {
+	BackendUpdateCompletion,
+	BackendUpdateErrorReport,
+} from "../../../../../main/update-service";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
 	ProgressContainer,
@@ -58,6 +61,7 @@ const createEmptyUpdaterMethods = () => {
 			onBackendUpdateDevMode: () => () => {},
 			onBackendUpdateNotAvailable: () => () => {},
 			onBackendUpdateCompleted: () => () => {},
+			onBackendUpdateProgress: () => () => {},
 			/*
 			 * A failed server update, which the panel now leaves its in-flight state on.
 			 * The stub has to exist or the panel's own subscription throws before the
@@ -231,11 +235,14 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
-		onBackendUpdateCompleted: (callback: () => void) => {
+		onBackendUpdateCompleted: (
+			callback: (completion: BackendUpdateCompletion | null) => void,
+		) => {
 			// For stories that need to trigger this callback
 			if (window.triggerBackendUpdateCompleted) {
-				// Immediately trigger the callback
-				callback();
+				// Immediately trigger the callback. Null is the plain success payload;
+				// the shaped ones are what the skew stories drive.
+				callback(null);
 			}
 			return () => {};
 		},
@@ -493,6 +500,7 @@ const mockUpdaterApi = () => {
 			}
 			return () => {};
 		},
+		onBackendUpdateProgress: () => () => {},
 		onBeforeQuitForUpdate: () => {
 			return () => {};
 		},

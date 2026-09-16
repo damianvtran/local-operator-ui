@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
 	existsSync,
 	lstatSync,
@@ -969,6 +970,112 @@ export function readPendingInstallMarker(
 
 export function clearPendingInstallMarker(dir: string): boolean {
 	const path = pendingInstallMarkerPath(dir);
+	if (!existsSync(path)) return false;
+	rmSync(path, { force: true });
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Pending SERVER-update marker
+// ---------------------------------------------------------------------------
+
+/**
+ * What an app-driven SERVER update leaves on disk while it runs.
+ *
+ * WHY A SECOND MARKER, next to the app-install one above: the two answer
+ * different questions and have different owners. The app-install marker is
+ * written by the quit-and-install path and consumed by the watchdog, which owns
+ * swapping the bundle. This one is written by `UpdateService.updateGlobalInstall`
+ * before it runs the install's own `lop update`, and its job is the state UX U6
+ * found unaccounted for: the installer is a CHILD that outlives the app when the
+ * user quits mid-update (measured: the app was killed 10 s in, the child kept
+ * running, and a new generation was created and flipped with no app alive). The
+ * next launch then reads the end state as if it had always been that way - "the
+ * install reports X, no panel" - and the user is told nothing about the update
+ * THEY started, because the successful path cleared every trace of it.
+ *
+ * It is deliberately NOT a failure record (`recordInstallFailure` is for the
+ * app's own install, whose failure leaves the app on the old build and needs a
+ * remedy). A server update that lands unattended needs one sentence, not a
+ * remedy, so this file is cleared by the reporting path and by every finished
+ * attempt in-process.
+ */
+export const PENDING_SERVER_UPDATE_MARKER_FILE = "pending-server-update.json";
+
+export type PendingServerUpdateMarker = {
+	/** The install version read immediately before the installer ran. */
+	before: string | null;
+	/** The version the update was asked for, when the caller knew one. */
+	target: string | null;
+	/** ISO timestamp of the attempt. */
+	startedAt: string;
+};
+
+export function pendingServerUpdateMarkerPath(dir: string): string {
+	return join(dir, PENDING_SERVER_UPDATE_MARKER_FILE);
+}
+
+/**
+ * Write the marker before the installer is spawned.
+ *
+ * Same temp-then-rename discipline as the app-install marker, and for the same
+ * reason: a crash mid-write must not leave a half-parsed file that reads as "no
+ * update was in flight".
+ */
+export function writePendingServerUpdateMarker(
+	dir: string,
+	marker: PendingServerUpdateMarker,
+): PendingServerUpdateMarker {
+	mkdirSync(dir, { recursive: true });
+	const target = pendingServerUpdateMarkerPath(dir);
+	const temp = `${target}.tmp`;
+	writeFileSync(temp, `${JSON.stringify(marker, null, 2)}\n`, "utf8");
+	renameSync(temp, target);
+	return marker;
+}
+
+export function parsePendingServerUpdateMarker(
+	raw: string,
+): PendingServerUpdateMarker | null {
+	try {
+		const parsed = JSON.parse(raw) as Partial<PendingServerUpdateMarker>;
+		/*
+		 * `before` is the one field the reader acts on, and it is allowed to be
+		 * null (an unreadable starting reading is a real state). So the marker is
+		 * judged by the TIMESTAMP instead: a file whose attempt cannot be dated is
+		 * not evidence that anything was in flight, and reporting it would be
+		 * inventing an update the user never started.
+		 */
+		if (
+			typeof parsed?.startedAt !== "string" ||
+			parsed.startedAt.length === 0
+		) {
+			return null;
+		}
+		return {
+			before: typeof parsed.before === "string" ? parsed.before : null,
+			target: typeof parsed.target === "string" ? parsed.target : null,
+			startedAt: parsed.startedAt,
+		};
+	} catch {
+		return null;
+	}
+}
+
+export function readPendingServerUpdateMarker(
+	dir: string,
+): PendingServerUpdateMarker | null {
+	const path = pendingServerUpdateMarkerPath(dir);
+	if (!existsSync(path)) return null;
+	try {
+		return parsePendingServerUpdateMarker(readFileSync(path, "utf8"));
+	} catch {
+		return null;
+	}
+}
+
+export function clearPendingServerUpdateMarker(dir: string): boolean {
+	const path = pendingServerUpdateMarkerPath(dir);
 	if (!existsSync(path)) return false;
 	rmSync(path, { force: true });
 	return true;
@@ -2510,6 +2617,17 @@ function commandSearchDirs(env: NodeJS.ProcessEnv, home: string): string[] {
 	add(join(home, ".local", "bin"));
 	add("/opt/homebrew/bin");
 	add("/usr/local/bin");
+	/*
+	 * The OS's own directories LAST, and named explicitly rather than left to the
+	 * inherited PATH. They are already in a shell's PATH, so on a normal launch
+	 * these two lines are duplicates the de-duplicator drops - but with an empty
+	 * or absent PATH they are the only thing that searches the directories a
+	 * system interpreter or a distro package installs into, and the shell probe
+	 * this list replaced would have found those entries. Never fewer places than
+	 * the probe searched (review R1-5).
+	 */
+	add("/usr/bin");
+	add("/bin");
 	return dirs;
 }
 
@@ -2701,6 +2819,52 @@ export function resolveCommandPath(
 }
 
 /**
+ * The console script that fronts the operator's global install, or null.
+ *
+ * ONE helper for both callers - `BackendServiceManager.globalConsoleScript`,
+ * which decides and spawns, and the update service's plan/identity reads - because
+ * they have to agree. They used to differ: the decision tried `local-operator`
+ * and then `lop`, while the plan resolved `local-operator` only, so an install
+ * whose older console script is gone started the app as `GLOBAL_INSTALL` on `lop`
+ * and was then classified `global-unknown` with no remedy at all (review R1-6).
+ * `local-operator` first: it is the name this app has always spawned, and the
+ * spawn validates the resolved script's shebang
+ * (`consoleInterpreter`), while `lop` covers an install whose older console
+ * script is gone.
+ */
+export function resolveGlobalConsoleScript(
+	options: Parameters<typeof resolveCommandPath>[1] = {},
+): string | null {
+	if ((options.platform ?? process.platform) === "win32") {
+		/*
+		 * Windows keeps `where`, whose semantics differ enough (the machine's and
+		 * the user's own install locations, `PATHEXT`) that a second resolution
+		 * rule is the honest thing rather than a re-implementation. Both names,
+		 * in the same order as the Unix arm. A failed probe is not an answer, and
+		 * the timeout is the one the probes elsewhere in this app use.
+		 */
+		const first = (name: string): string | null => {
+			try {
+				const resolved = execFileSync("where", [name], {
+					encoding: "utf8",
+					timeout: 5000,
+				})
+					.split("\n")[0]
+					?.trim();
+				return resolved && resolved.length > 0 ? resolved : null;
+			} catch {
+				return null;
+			}
+		};
+		return first("local-operator") ?? first("lop");
+	}
+	return (
+		resolveCommandPath("local-operator", options) ??
+		resolveCommandPath("lop", options)
+	);
+}
+
+/**
  * Everything `classifyGlobalInstall` needs to tell a uv tool install from a
  * pipx one from an ordinary pip venv from the checkout a developer runs.
  *
@@ -2887,12 +3051,12 @@ export function resolveGlobalInstallPlan(input: {
 				input.identity.realPath !== input.identity.path
 					? ` (${input.identity.realPath})`
 					: ""
-			}, classified as ${kind}${
+			}, classified as ${kind}.${
 				kind === "editable"
-					? ", built from source on this machine, so it follows the checkout rather than the published release"
+					? " Built from source on this machine, so it follows the checkout rather than the published release."
 					: ""
 			}`
-		: "local-operator was not found on PATH";
+		: "local-operator was not found on PATH.";
 
 	if (kind === "editable") {
 		// The Python side refuses this case by name (`editable_refusal()`), and the
@@ -2933,18 +3097,35 @@ export function resolveGlobalInstallPlan(input: {
 		 */
 		const managed = generationInstallRoot(input.identity) !== null;
 		const provenance = sourceBuild
-			? ", built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice"
+			? " Built from source on this machine, so `lop update` installs the published release over it - the harness prints the same notice."
 			: "";
-		const layout = managed
-			? ""
-			: "; this install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn";
 		return {
 			canManageUpdate: managed,
 			updateCommand: "lop update",
+			/*
+			 * The remedy is the sentence above the command well in the by-hand panel
+			 * and the consequence line in the managed offer, and each arm says the
+			 * thing that decides the reader's next move:
+			 *
+			 * Managed - what the app is about to do TO THEM. This arm used to tell the
+			 * user to go to a terminal on the one path where the app runs the command
+			 * itself, which no surface rendered (reviews D7, U7), and the offer named
+			 * no cost at all before the click (review U3). The restart is the one
+			 * destructive thing this path does, so it is stated here rather than in
+			 * the in-flight panel the user reaches only after pressing.
+			 *
+			 * Legacy - WHY the app will not press the button, which is what the user
+			 * is choosing between (reviews U8, N1). It lived only in the mono Details
+			 * line, trailing a resolved path and a classification.
+			 *
+			 * NEITHER ENDS IN A COLON: the well below is visually distinct in both
+			 * panels, and in the by-hand panel the next line was the version sentence,
+			 * so the promise landed on the wrong line (review D5).
+			 */
 			remedy: managed
-				? "The server is a uv tool install managed by lop, so update it from your terminal:"
-				: "This install predates the non-disruptive installer, so update it once from your terminal; the app manages updates after that:",
-			detail: `${detail}${provenance}${layout}`,
+				? "The app updates this install and then restarts the server it started, so a turn that is in flight is dropped while the server comes back. This can take a minute or two."
+				: "This install predates the non-disruptive installer, so update it once from your terminal. This install's updater rewrites the shared environment in place, which can interrupt sessions mid-turn; the app manages updates after that.",
+			detail: `${detail}${provenance}`,
 			sourceBuild,
 		};
 	}
@@ -2952,7 +3133,7 @@ export function resolveGlobalInstallPlan(input: {
 		return {
 			canManageUpdate: false,
 			updateCommand: "pipx upgrade local-operator",
-			remedy: "The server is a pipx install, so update it from your terminal:",
+			remedy: "The server is a pipx install, so update it from your terminal",
 			detail,
 			sourceBuild: false,
 		};
@@ -2961,7 +3142,7 @@ export function resolveGlobalInstallPlan(input: {
 		return {
 			canManageUpdate: false,
 			updateCommand: "pip install --upgrade local-operator",
-			remedy: "The server is a pip install, so update it from your terminal:",
+			remedy: "The server is a pip install, so update it from your terminal",
 			detail,
 			sourceBuild: false,
 		};
@@ -2970,7 +3151,7 @@ export function resolveGlobalInstallPlan(input: {
 		canManageUpdate: false,
 		updateCommand: "",
 		remedy:
-			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip:",
+			"The app could not tell how this server was installed, so update it with the tool you installed it with - uv, pipx or pip",
 		detail,
 		sourceBuild: false,
 	};
@@ -3116,6 +3297,18 @@ export function parsePipShowVersion(stdout: string): string | null {
  * failed before the upgrade, and the old code read that as "changed" - an
  * unreadable starting point cannot prove an upgrade landed, so the target
  * version is what the after-reading is held to instead (review R6).
+ *
+ * A KNOWN TARGET REFRAMES SUCCESS, and this is the R1-1 fix. When the caller
+ * knows the version it asked for, "the install is at the target" IS the verdict,
+ * and a CHANGE is not required - both installers exit 0 and print
+ * "already latest" over an install that is already there (`lop update`
+ * unconditionally, `pip install --upgrade` whenever the requirement is
+ * satisfied). The change test alone therefore reported a machine that was
+ * already correct as "the update did not take effect", and the panel's own
+ * button reaches that state: it appears exactly when the INSTALL is ahead of the
+ * serving daemon (design note §5), which is the state left behind by the last
+ * successful update. The change test remains the fallback for the one caller
+ * that names no target.
  */
 export function didUpgradeLand(input: {
 	before: string | null;
@@ -3125,8 +3318,7 @@ export function didUpgradeLand(input: {
 }): boolean {
 	const { before, after, target } = input;
 	if (after == null) return false;
-	if (before == null) {
-		return target != null && after.trim() === target.trim();
-	}
+	if (target != null) return after.trim() === target.trim();
+	if (before == null) return false;
 	return before.trim() !== after.trim();
 }

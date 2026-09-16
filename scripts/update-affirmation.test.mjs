@@ -496,6 +496,12 @@ updater.onBackendUpdateNotAvailable = updater.on(
 );
 updater.onBackendUpdateCompleted = updater.on("backend-update-completed");
 /*
+ * Which phase a running update is in, announced as it changes: the in-flight panel
+ * is one unchanging rectangle for a ~47 s install and a ~15 s restart without it
+ * (UX U4).
+ */
+updater.onBackendUpdateProgress = updater.on("backend-update-progress");
+/*
  * The channel the main process has always sent a failed server update on, and
  * which nothing subscribed to until the reported hang - so a case that does not
  * wire it would be modelling a renderer that cannot be fixed.
@@ -1341,14 +1347,74 @@ test("a message with no panel to sit beside still renders the toast", () => {
  * with, so this case is the driven one: it mounts the shipped panel and counts
  * what is pinned in that corner.
  */
+/**
+ * The skew notice speaks only when there IS a skew.
+ *
+ * The rig's own false alarm, caught end to end: the check that follows an
+ * install which is already current carries `runningVersion` equal to `version`,
+ * and the panel headed that machine "The server is on an older build than the
+ * install" while both readings were 0.56.2 - and its remedy line said restart a
+ * server that was already up to date. A notice built on two equal readings is not
+ * a smaller version of the truth, it is a different statement.
+ */
+test("readings that agree raise no skew notice, and readings that differ do", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.2",
+		restartable: true,
+	});
+	handle.render();
+	assert.equal(
+		allCopy(handle).some((text) => /older build than the install/.test(text)),
+		false,
+		JSON.stringify(allCopy(handle)),
+	);
+
+	// The mirror, so the guard cannot pass by never rendering the notice at all.
+	updater.emit("backend-update-not-available", {
+		version: "0.56.2",
+		runningVersion: "0.56.0",
+		restartable: true,
+	});
+	handle.render();
+	const copy = allCopy(handle);
+	assert.ok(
+		copy.some((text) => /older build than the install/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.ok(
+		copy.some((text) => /install is up to date \(0\.56\.2\)/.test(text)),
+		JSON.stringify(copy),
+	);
+	assert.ok(
+		copy.some((text) => /is still running 0\.56\.0/.test(text)),
+		JSON.stringify(copy),
+	);
+	// And it tells the reader what to do about it, for a daemon the app owns.
+	assert.ok(
+		copy.some((text) => /Restart Local Operator/.test(text)),
+		JSON.stringify(copy),
+	);
+});
+
 test("the pinned box holds one message, and the error takes it", () => {
 	const handle = mountNotification();
 	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
 	handle.render();
-	const offered = visible(handle);
-	assert.equal(offered.length, 1, JSON.stringify(offered));
-	assert.equal(offered[0].variant, "info");
-	assert.match(offered[0].text, /A new server update is available/);
+	/*
+	 * D6: this offer raises NO notice of its own. The panel already reads "Server
+	 * version X is available", so the toast in the opposite corner was the same
+	 * news twice in two spellings ("v0.55.10" against "0.55.10") - and it only ever
+	 * appeared for the arm that manages the update, which is the arm whose panel the
+	 * reader is looking at. The box therefore starts empty on this path.
+	 */
+	assert.equal(
+		visible(handle).length,
+		0,
+		`the offer must not raise a notice of its own: ${JSON.stringify(visible(handle))}`,
+	);
+	assert.ok(showsText(handle, "Server update available"));
 
 	// UX U6's own repro: a check the user pressed fails while the offer stands.
 	updater.emit(
@@ -1394,15 +1460,25 @@ test("the pinned box holds one message, and the error takes it", () => {
 	handle.render();
 	assert.equal(visible(handle).length, 0, "closing must free the box");
 
+	// And the next offer raises nothing either, so the box STAYS empty while the
+	// panel moves: there is no notice left on this branch to repaint.
 	updater.emit("backend-update-available", {
 		...SERVER_UPDATE_OFFER,
 		latestVersion: "0.55.11",
 	});
 	handle.render();
-	const again = visible(handle);
-	assert.equal(again.length, 1, JSON.stringify(again));
-	assert.equal(again[0].variant, "info");
-	assert.match(again[0].text, /0.55.11/);
+	assert.equal(visible(handle).length, 0, JSON.stringify(visible(handle)));
+	/*
+	 * The panel is the carrier, and it is the thing that moved - matched by
+	 * CONTAINMENT, because the sentence is now built from two readings in one `<p>`
+	 * rather than being a lone text child (`showsText` matches exactly).
+	 */
+	assert.ok(
+		allCopy(handle).some((text) =>
+			/Server version 0\.55\.11 is available/.test(text),
+		),
+		`the panel is the carrier: ${JSON.stringify(allCopy(handle))}`,
+	);
 });
 
 /**

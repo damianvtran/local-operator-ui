@@ -2890,6 +2890,21 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * The address this app is talking to RIGHT NOW.
+	 *
+	 * Not the configured target: `attachTo` rotates `backendUrl` onto the daemon
+	 * discovery adopted, and everything that queries the backend resolves against
+	 * it at call time. A consumer that instead read the configured URL described a
+	 * daemon the app is not talking to - the update service's `/health` read did
+	 * exactly that, so for an adopted daemon every version read failed and the
+	 * panel could neither name the build being served nor report the skew after an
+	 * install moved (QA Q-2, UX U1).
+	 */
+	getBackendUrl(): string {
+		return this.backendUrl;
+	}
+
+	/**
 	 * Check if the backend service is using an external backend
 	 * @returns True if using an external backend, false if we started our own
 	 */

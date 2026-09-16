@@ -174,6 +174,7 @@ const scriptedUpdater = (verdict: UpdateCheckVerdict) => {
 		onBackendUpdateDevMode: noop,
 		onBackendUpdateNotAvailable: noop,
 		onBackendUpdateCompleted: noop,
+		onBackendUpdateProgress: noop,
 		/*
 		 * The surface this check's failure lands on now that the panel subscribes to
 		 * it: a stub missing it throws inside the panel's mount effect, and Storybook

@@ -227,6 +227,7 @@ const UPDATER_STUB = {
 	onBackendUpdateDevMode: noopUnsubscribe,
 	onBackendUpdateNotAvailable: noopUnsubscribe,
 	onBackendUpdateCompleted: noopUnsubscribe,
+	onBackendUpdateProgress: noopUnsubscribe,
 	onBackendUpdateError: noopUnsubscribe,
 	onBackendUpdateManualRequired: noopUnsubscribe,
 	onUpdateDownloaded: noopUnsubscribe,
