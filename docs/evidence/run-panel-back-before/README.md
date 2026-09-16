@@ -33,13 +33,26 @@ the control the pane's exit belongs to.
 ## How it was taken
 
 1. The stories and the fix were committed first, so the rig and the story file
-   are the tree under review (`68946d867`, on `origin/main` `96502d5cb`); only
+   are the tree under review (`dd5f20e0d`, on `origin/main` `647396910`); only
    the component under repair differs between the two runs.
 2. In that checkout, `run-panel.tsx` was replaced with
    `git show origin/main:src/renderer/src/features/chat/components/run-details/run-panel.tsx`
    — a working-tree edit that was never committed, and that was restored before
    the frames were committed. `origin/main` still carries the defect: its `back`
    calls `onClose()` at the first level and its root crumb is `onClick={onClose}`.
+
+   **This set was re-taken once, and the reason is the whole point of the
+   `head` stamp.** The first pass photographed at `68946d867`, before this branch
+   merged `origin/main` (`647396910`) — a merge that moved `chat-header.tsx`
+   (+173), `ui-preferences-store.ts` (+129) and `chat-content.tsx` (+102), three
+   modules every one of these stories mounts. A frame taken at the older tree is
+   a picture of a header nobody is reviewing, so both halves were re-captured at
+   the reviewed head: the twelve frames came back **byte-identical** to their
+   pre-merge selves (`shasum -a 256`, both themes), which says the new controls
+   do not enter this story's frame — and says why a pixel diff between captures
+   is not how a set's currency is judged (the designer's independent re-shoot at
+   `b872ba01f` found 27 unrelated paths differing by glyph rasterisation alone,
+   one reader frame by 175 px at max 4/255).
 3. Storybook from this worktree, on a port no other tree held, then one narrowed
    run per story — the same command the after frames used:
 
