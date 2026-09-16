@@ -30,6 +30,15 @@ export const iceberg: ThemeDefinition = {
 		// a mid-light grey, and every step down costs tertiary-ink headroom. This
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
 		sunken: "#E1E2E7",
+		/*
+		 * The current row's own ground, and the palette where the band is tightest:
+		 * `surface` stepped -10/-10/-11 on R/G/B toward black. ΔE00 2.19 from
+		 * `surface`, but only
+		 * 2.15 from `sunken` — this light ramp has very little room below its page
+		 * ground, so a deeper selection step would have collided with the recessed
+		 * one. 4.21 from `elevated`.
+		 */
+		highlight: "#e8e9eb",
 
 		// Iceberg's own text colour. The old file darkened it to 262A3F for
 		// contrast, which is no longer necessary — this measures 9:1 on the darkest

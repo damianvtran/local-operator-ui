@@ -184,21 +184,29 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					"transition-colors duration-fast ease-out-quart",
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
 					/*
-					 * The current destination's ground, and it is `sunken` rather than the
-					 * accent wash for the measurement the chat sidebar records: this rail's
-					 * root is `bg-surface`, and `accentWash` on `surface` is ΔE00 **1.05**
-					 * in tokyoNight (`#262B3F` on `#24283B`, the pair the app computes and
-					 * the pair every citation of it here uses) — a row with no ground at
-					 * all, marked only by its accent glyph and weight. The app rail paints
-					 * the SAME wash on `sunken`, where it measures 9.6 and does read, so the
-					 * role is fine and the panel under it was the problem. `hover:` states
-					 * the ground again because a hover variant outranks a bare background,
-					 * so without it the pointer would replace the mark on the row the user
-					 * is already on. Same decision as `rowCurrent` in
-					 * `features/chat/components/chat-sidebar.tsx`.
+					 * The current destination's ground: `highlight`, the role authored for a
+					 * current row, a shallow step off the panel's `surface` in the direction
+					 * the mode runs (ΔE00 2.18-2.28 across the twelve palettes).
+					 *
+					 * It was `accentWash` before that role existed, which is ΔE00 **1.05** on
+					 * this ground in tokyoNight (`#262B3F` on `#24283B`, the pair the app
+					 * computes and the pair every citation of it here uses) — a row with no
+					 * ground at all, marked only by its accent glyph and weight. The wash is
+					 * not invisible everywhere: the app rail paints the SAME wash on
+					 * `sunken`, where it measures 9.6 and does read, so the role was fine and
+					 * the panel under it was the problem — which is why this is a role of its
+					 * own rather than a change to the wash.
+					 *
+					 * It then spent a round on `sunken`, and that is what the operator
+					 * reported: `sunken` is RECESSED, always a well rather than a mark, and
+					 * 3.75-14.94 from `surface` — a dark box rather than a highlight.
+					 * `hover:` states the ground again because a hover variant outranks a
+					 * bare background, so without it the pointer would replace the mark on
+					 * the row the user is already on. Same decision as `rowCurrent` in
+					 * `features/chat/components/chat-sidebar.tsx`, and the same role.
 					 */
 					isActive
-						? "bg-sunken font-medium text-ink hover:bg-sunken"
+						? "bg-highlight font-medium text-ink hover:bg-highlight"
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>
