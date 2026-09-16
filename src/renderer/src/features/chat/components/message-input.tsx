@@ -3939,222 +3939,225 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									fieldClassName={composerField}
 									disabled={isInputDisabled}
 								>
-								<textarea
-									ref={textareaRef}
-									className={cn(
-										// The box model comes from ONE place, shared with the mirror:
-										// any drift between these two moves the pill off the characters
-										// it sits under.
-										composerTextBox(isSmallView),
-										// `block`, and it is a fix rather than a style choice (design round 3,
-										// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
-										// wrapper above is a block container, and a textarea left at its
-										// default `inline-block` sits in a LINE BOX there — so the wrapper
-										// measured 39.7px around a 34px field (the strut's descender space)
-										// and the composer box came out 5.7px taller than `origin/main`'
-										// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
-										// moving the control row, the ring and the box's bottom edge.
-										// On main the field is a direct child of the box's flex column and
-										// is blockified by it, which is why there was nothing to see there;
-										// the overlay's wrapper is what introduced the line box, so the
-										// field states its own display rather than depending on a parent's
-										// formatting context to do it.
-										"block",
-										isSmallView ? "max-h-24" : "max-h-28",
-										"resize-none overflow-y-auto bg-transparent",
-										/*
-										 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit
-										 * because `caret-color: auto` follows `color`, which is
-										 * transparent here — an invisible caret in the app's primary
-										 * input (design round 3 D1).
-										 */
-										highlighting ? "text-transparent caret-ink" : "text-ink",
-										"outline-none placeholder:text-ink-dim",
-										// The disabled state STEPS COLOUR rather than fading
-										// (branding: disabled changes colour, never opacity), and
-										// without this the only signal was `cursor: not-allowed`
-										// after the user had already typed into a field that will
-										// not accept anything.
-										"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
-									)}
-									placeholder={
-										/*
-										 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-										 * that order is the whole point: `isInputDisabled` is true for a missing
-										 * conversation too, so a reader of a conversation this machine does not have
-										 * would be told "Agent is busy" about a turn nobody is running (design
-										 * round 2, D3). The remaining terms are the U8 pair, unchanged.
-										 */
-										unavailable
-											? "This conversation is gone"
-											: isInputDisabled
-												? "Agent is busy"
-												: awaitingAnswer
-													? // Names the thing the box is now for, without restating
-														// the question card or the waiting line (§ 7 keeps one
-														// liveness statement per turn, and the card owns it).
-														"Answer the question above"
-													: awaitingReply
-														? "Waiting for the agent"
-														: "Ask me for help"
-									}
-									value={newMessage}
-									/*
-									 * The IME half of the highlight: the composition string is
-									 * drawn by the BROWSER, is not in the mirror, and would be
-									 * invisible under `text-transparent`, so `composing` turns
-									 * both the runs and the transparency off while it is typed.
-									 */
-									onCompositionStart={() => setComposing(true)}
-									onCompositionEnd={() => setComposing(false)}
-									onChange={(e) => {
-										/*
-										 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
-										 * intercepted keystroke arrives here — Backspace, Delete, a
-										 * selection, a drop, an IME commit, and any paste that fell through
-										 * — and `applyDomEdit` maps the edit onto the held value at the
-										 * index the operator sees. The first door is the printable-key
-										 * branch of `handleCredentialKeyDown`, which never lets the
-										 * character reach the DOM at all; this one is the belt for the
-										 * routes a keyboard gate cannot see.
-										 *
-										 * `origin` is "typing" because a change IS a keystroke-shaped
-										 * event on this control — an arrival (a restored draft, a seed) is
-										 * written through `setNewMessage` by its own caller, never through
-										 * the DOM's change event for a textarea the user is in.
-										 */
-										const next = e.target.value;
-										const at = e.target.selectionStart ?? next.length;
-										const applied = applyDomEdit(
-											captureRef.current,
-											newMessage,
-											next,
-											at,
-											"typing",
-										);
-										if (applied.buffer !== next) {
-											// A real character reached the span through a route the
-											// keyboard gate could not see, and it is already replaced by
-											// its mask cell here.
-											pendingCaret.current = applied.caret;
-											setCaret(applied.caret);
-										} else {
-											setCaret(at);
+									<textarea
+										ref={textareaRef}
+										className={cn(
+											// The box model comes from ONE place, shared with the mirror:
+											// any drift between these two moves the pill off the characters
+											// it sits under.
+											composerTextBox(isSmallView),
+											// `block`, and it is a fix rather than a style choice (design round 3,
+											// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
+											// wrapper above is a block container, and a textarea left at its
+											// default `inline-block` sits in a LINE BOX there — so the wrapper
+											// measured 39.7px around a 34px field (the strut's descender space)
+											// and the composer box came out 5.7px taller than `origin/main`'
+											// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
+											// moving the control row, the ring and the box's bottom edge.
+											// On main the field is a direct child of the box's flex column and
+											// is blockified by it, which is why there was nothing to see there;
+											// the overlay's wrapper is what introduced the line box, so the
+											// field states its own display rather than depending on a parent's
+											// formatting context to do it.
+											"block",
+											isSmallView ? "max-h-24" : "max-h-28",
+											"resize-none overflow-y-auto bg-transparent",
+											/*
+											 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit
+											 * because `caret-color: auto` follows `color`, which is
+											 * transparent here — an invisible caret in the app's primary
+											 * input (design round 3 D1).
+											 */
+											highlighting ? "text-transparent caret-ink" : "text-ink",
+											"outline-none placeholder:text-ink-dim",
+											// The disabled state STEPS COLOUR rather than fading
+											// (branding: disabled changes colour, never opacity), and
+											// without this the only signal was `cursor: not-allowed`
+											// after the user had already typed into a field that will
+											// not accept anything.
+											"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										)}
+										placeholder={
+											/*
+											 * The gone-state sentence is checked FIRST, ahead of the busy one, and
+											 * that order is the whole point: `isInputDisabled` is true for a missing
+											 * conversation too, so a reader of a conversation this machine does not have
+											 * would be told "Agent is busy" about a turn nobody is running (design
+											 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+											 */
+											unavailable
+												? "This conversation is gone"
+												: isInputDisabled
+													? "Agent is busy"
+													: awaitingAnswer
+														? // Names the thing the box is now for, without restating
+															// the question card or the waiting line (§ 7 keeps one
+															// liveness statement per turn, and the card owns it).
+															"Answer the question above"
+														: awaitingReply
+															? "Waiting for the agent"
+															: "Ask me for help"
 										}
-										if (applied.capture !== captureRef.current)
-											setCapture(applied.capture);
-										// Only the empty -> non-empty edge: the whole point is one
-										// statement of intent per composed message, and the
-										// consumer's latch should not be asked to absorb a
-										// per-character call it can only discard.
-										if (!newMessage && applied.buffer) onComposerInput?.();
+										value={newMessage}
 										/*
-										 * The capture's own write, stamped so the whole-buffer teardown can
-										 * tell it from a replacement some other writer made. A DOM change
-										 * reaches here without passing `applyCapture`, which is exactly why
-										 * the stamp is not optional: without it, the operator's own
-										 * keystroke would read as an external write and end the gesture it
-										 * is in the middle of.
+										 * The IME half of the highlight: the composition string is
+										 * drawn by the BROWSER, is not in the mirror, and would be
+										 * invisible under `text-transparent`, so `composing` turns
+										 * both the runs and the transparency off while it is typed.
 										 */
-										captureOwnedBuffer.current = applied.buffer;
-										// An abandoned capture (the drop and IME routes) settles the box
-										// here rather than through `applyCapture`, so the §6 write has to
-										// be asked for here too.
-										persistDraft(applied.capture, applied.buffer);
-										setNewMessage(applied.buffer);
-										// Editing the text answers the alert. Leaving it up over a
-										// draft the user has since changed is the defect this whole
-										// change replaces, and moving the banner to the composer
-										// would only have moved that defect closer to the eye.
-										//
-										// After a dwell, though: the message is two sentences plus up
-										// to three controls, and a user who reaches straight for the
-										// keyboard lost all of it before finishing the first word -
-										// including the remedy buttons. The alert still goes on the
-										// edit, just not before it can be read.
-										if (
-											Date.now() - alertShownAt.current >=
-											ALERT_READ_DWELL_MS
-										)
-											sendError?.onDismiss?.();
-									}}
-									onSelect={(e) => {
-										const field = e.target as HTMLTextAreaElement;
-										/*
-										 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
-										 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
-										 *
-										 * `applyCapture` parks the caret it is about to set in
-										 * `pendingCaret` and the layout effect applies it with the
-										 * buffer. A `select`/`selectionchange` still in flight from the
-										 * PREVIOUS edit therefore reaches this handler between the state
-										 * write and its commit, carrying the older buffer (the render
-										 * closure has not moved yet) and the older offset — a pair that
-										 * is internally consistent and describes a state the composer
-										 * has already left. Re-syncing on it is how accepting the
-										 * `/credential` row closed the span that completion had just
-										 * opened: the report said "the caret is at 5, inside the token"
-										 * while the capture was already open at 6, so `syncCapture` read
-										 * a caret move out of the span.
-										 *
-										 * Skipping it is not a caret move being ignored: the offset that
-										 * arrives is the one this write is replacing, and the pending
-										 * value is applied by the layout effect either way. If the DOM
-										 * already agrees — a report about the caret we just set — the
-										 * marker is retired here so the guard cannot outlive its write.
-										 */
-										const pending = pendingCaret.current;
-										if (pending !== null) {
-											if (field.selectionStart === pending)
-												pendingCaret.current = null;
-											return;
-										}
-										setCaret(field.selectionStart);
-										/*
-										 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
-										 * caret move may do: it may keep a latched arm, re-anchor it, and
-										 * RE-OPEN a span the caret has returned to — but it may never ARM
-										 * by itself. The TUI asks both questions at the same reactive
-										 * (`watch_selection`), because a mouse click, an app-set
-										 * selection and a completion's caret all move the caret with no
-										 * caret key pressed: without the re-open, leaving and coming back
-										 * left an armed token whose next typed character landed in
-										 * PLAINTEXT; without the "may not arm" half, a click at the end of
-										 * a restored draft would swallow the next paste.
-										 */
-										setCapture(
-											syncCapture(
+										onCompositionStart={() => setComposing(true)}
+										onCompositionEnd={() => setComposing(false)}
+										onChange={(e) => {
+											/*
+											 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
+											 * intercepted keystroke arrives here — Backspace, Delete, a
+											 * selection, a drop, an IME commit, and any paste that fell through
+											 * — and `applyDomEdit` maps the edit onto the held value at the
+											 * index the operator sees. The first door is the printable-key
+											 * branch of `handleCredentialKeyDown`, which never lets the
+											 * character reach the DOM at all; this one is the belt for the
+											 * routes a keyboard gate cannot see.
+											 *
+											 * `origin` is "typing" because a change IS a keystroke-shaped
+											 * event on this control — an arrival (a restored draft, a seed) is
+											 * written through `setNewMessage` by its own caller, never through
+											 * the DOM's change event for a textarea the user is in.
+											 */
+											const next = e.target.value;
+											const at = e.target.selectionStart ?? next.length;
+											const applied = applyDomEdit(
 												captureRef.current,
 												newMessage,
-												field.selectionStart,
-												"caret",
-											),
-										);
-									}}
-									onKeyDown={handleComposerKeyDown}
-									onPointerDown={() => {
-										/*
-										 * "I am about to type here." An ask gate can advance while the
-										 * user is on their way into this box, and the restore must not
-										 * move them off it: the characters they type would reach
-										 * nothing and the next `Space` would answer the next question
-										 * (UX round 4, U13).
-										 */
-										composerPointerTouched = true;
-									}}
-									onPaste={handlePaste}
-									rows={1}
-									disabled={isInputDisabled}
-									aria-label="Message"
-									role="combobox"
-									aria-describedby={
-										credentialNotice ? CREDENTIAL_NOTICE_ID : undefined
-									}
-									aria-expanded={slash.open}
-									aria-controls={slash.open ? slash.listId : undefined}
-									aria-activedescendant={slash.activeDescendantId ?? undefined}
-								/>
-								</ComposerHighlight>							</div>
+												next,
+												at,
+												"typing",
+											);
+											if (applied.buffer !== next) {
+												// A real character reached the span through a route the
+												// keyboard gate could not see, and it is already replaced by
+												// its mask cell here.
+												pendingCaret.current = applied.caret;
+												setCaret(applied.caret);
+											} else {
+												setCaret(at);
+											}
+											if (applied.capture !== captureRef.current)
+												setCapture(applied.capture);
+											// Only the empty -> non-empty edge: the whole point is one
+											// statement of intent per composed message, and the
+											// consumer's latch should not be asked to absorb a
+											// per-character call it can only discard.
+											if (!newMessage && applied.buffer) onComposerInput?.();
+											/*
+											 * The capture's own write, stamped so the whole-buffer teardown can
+											 * tell it from a replacement some other writer made. A DOM change
+											 * reaches here without passing `applyCapture`, which is exactly why
+											 * the stamp is not optional: without it, the operator's own
+											 * keystroke would read as an external write and end the gesture it
+											 * is in the middle of.
+											 */
+											captureOwnedBuffer.current = applied.buffer;
+											// An abandoned capture (the drop and IME routes) settles the box
+											// here rather than through `applyCapture`, so the §6 write has to
+											// be asked for here too.
+											persistDraft(applied.capture, applied.buffer);
+											setNewMessage(applied.buffer);
+											// Editing the text answers the alert. Leaving it up over a
+											// draft the user has since changed is the defect this whole
+											// change replaces, and moving the banner to the composer
+											// would only have moved that defect closer to the eye.
+											//
+											// After a dwell, though: the message is two sentences plus up
+											// to three controls, and a user who reaches straight for the
+											// keyboard lost all of it before finishing the first word -
+											// including the remedy buttons. The alert still goes on the
+											// edit, just not before it can be read.
+											if (
+												Date.now() - alertShownAt.current >=
+												ALERT_READ_DWELL_MS
+											)
+												sendError?.onDismiss?.();
+										}}
+										onSelect={(e) => {
+											const field = e.target as HTMLTextAreaElement;
+											/*
+											 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
+											 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
+											 *
+											 * `applyCapture` parks the caret it is about to set in
+											 * `pendingCaret` and the layout effect applies it with the
+											 * buffer. A `select`/`selectionchange` still in flight from the
+											 * PREVIOUS edit therefore reaches this handler between the state
+											 * write and its commit, carrying the older buffer (the render
+											 * closure has not moved yet) and the older offset — a pair that
+											 * is internally consistent and describes a state the composer
+											 * has already left. Re-syncing on it is how accepting the
+											 * `/credential` row closed the span that completion had just
+											 * opened: the report said "the caret is at 5, inside the token"
+											 * while the capture was already open at 6, so `syncCapture` read
+											 * a caret move out of the span.
+											 *
+											 * Skipping it is not a caret move being ignored: the offset that
+											 * arrives is the one this write is replacing, and the pending
+											 * value is applied by the layout effect either way. If the DOM
+											 * already agrees — a report about the caret we just set — the
+											 * marker is retired here so the guard cannot outlive its write.
+											 */
+											const pending = pendingCaret.current;
+											if (pending !== null) {
+												if (field.selectionStart === pending)
+													pendingCaret.current = null;
+												return;
+											}
+											setCaret(field.selectionStart);
+											/*
+											 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
+											 * caret move may do: it may keep a latched arm, re-anchor it, and
+											 * RE-OPEN a span the caret has returned to — but it may never ARM
+											 * by itself. The TUI asks both questions at the same reactive
+											 * (`watch_selection`), because a mouse click, an app-set
+											 * selection and a completion's caret all move the caret with no
+											 * caret key pressed: without the re-open, leaving and coming back
+											 * left an armed token whose next typed character landed in
+											 * PLAINTEXT; without the "may not arm" half, a click at the end of
+											 * a restored draft would swallow the next paste.
+											 */
+											setCapture(
+												syncCapture(
+													captureRef.current,
+													newMessage,
+													field.selectionStart,
+													"caret",
+												),
+											);
+										}}
+										onKeyDown={handleComposerKeyDown}
+										onPointerDown={() => {
+											/*
+											 * "I am about to type here." An ask gate can advance while the
+											 * user is on their way into this box, and the restore must not
+											 * move them off it: the characters they type would reach
+											 * nothing and the next `Space` would answer the next question
+											 * (UX round 4, U13).
+											 */
+											composerPointerTouched = true;
+										}}
+										onPaste={handlePaste}
+										rows={1}
+										disabled={isInputDisabled}
+										aria-label="Message"
+										role="combobox"
+										aria-describedby={
+											credentialNotice ? CREDENTIAL_NOTICE_ID : undefined
+										}
+										aria-expanded={slash.open}
+										aria-controls={slash.open ? slash.listId : undefined}
+										aria-activedescendant={
+											slash.activeDescendantId ?? undefined
+										}
+									/>
+								</ComposerHighlight>{" "}
+							</div>
 						)}
 
 						{/*

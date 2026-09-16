@@ -516,6 +516,14 @@ window.electron = {
  * component was updated while another rendered). The ids are stable strings so a
  * re-render re-seeds the same key.
  */
+/**
+ * How many times the settled pass may be re-taken when it reads a transparent
+ * caret under a rendered mirror (see the guard in `GeometryProbe`). Three attempts
+ * over ~450ms is far longer than the theme-CSS race that produces the reading, and
+ * short enough that a genuine defect fails the capture instead of hanging it.
+ */
+const MAX_SETTLE_RETRIES = 3;
+
 const conversationIdFor = (label: string) => `slash-highlight-${label}`;
 
 const NONEMPTY: Message[] = [
@@ -776,6 +784,8 @@ const GeometryProbe = ({
 		if (!box) return;
 		/** The first pass's readback, so a later pass can be compared to it. */
 		let settled = "";
+		/** Bounded re-tries of the settled pass, for the caret race above. */
+		let settleRetries = 0;
 		/*
 		 * THE GUTTER IS FORCED BEFORE THE FIRST MEASURE, and the ordering is the point:
 		 * the injection used to run in the same tick as the measurement, so the settled
@@ -908,6 +918,34 @@ const GeometryProbe = ({
 			 * painted a green name. Nothing here can make that visible; the warning
 			 * can.
 			 */
+			/*
+			 * A TRANSPARENT CARET UNDER A RENDERED MIRROR IS NOT A STATE THE APP RESTS
+			 * IN, and a frame frozen on it describes a moment nothing on screen shows.
+			 * Design round 4 (`D14`) found exactly that in `geometry/radient.webp`: the
+			 * settled readback reported `textarea caret rgba(0, 0, 0, 0)` beside
+			 * `mirror rendered true` while the frame's own pixels were radient's, i.e.
+			 * the theme had landed and the caret had not — and the designer could not
+			 * reproduce it live (16/16 fresh readbacks, plus a poll over four seconds).
+			 * A warning cannot catch that; the frame is already written by then. So the
+			 * settled pass RE-TRIES a bounded number of times and then THROWS, which
+			 * fails the capture rather than shipping the reading.
+			 */
+			const caret = entry["textarea caret"] ?? "";
+			if (
+				pass === "settled" &&
+				entry["mirror rendered"] === "true" &&
+				/^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)$/.test(caret)
+			) {
+				if (settleRetries < MAX_SETTLE_RETRIES) {
+					settleRetries += 1;
+					setTimeout(() => measure("settled"), 150);
+					return;
+				}
+				throw new Error(
+					`geometry readback: the caret is transparent (${caret}) while the mirror rendered "${draft}" - a state the composer never rests in, so the frame would describe a moment nothing on screen shows (design round 4 D14)`,
+				);
+			}
+
 			if (pass === "settled") {
 				settled = JSON.stringify({ ...entry, pass: undefined });
 				setRows(entry);
