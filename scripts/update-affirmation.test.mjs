@@ -963,6 +963,19 @@ function showsText(handle, text) {
 	return walk(handle.tree).some((node) => node.props?.children === text);
 }
 
+/**
+ * Every string of copy in the rendered tree, at any depth.
+ *
+ * `showsText` matches a line EXACTLY, which is right for copy the component owns
+ * outright. It cannot express "no sentence here says Settings" or "this clause is
+ * part of a longer paragraph", which is what the R3-2 assertions need.
+ */
+function allCopy(handle) {
+	return walk(handle.tree)
+		.filter((node) => typeof node.props?.children === "string")
+		.map((node) => node.props.children);
+}
+
 /** Every danger toast on screen right now, by the props the panel hands it. */
 function dangerToasts(handle) {
 	return visible(handle).filter((alert) => alert.variant === "danger");
@@ -984,6 +997,25 @@ function failurePanelReason(handle) {
 		(node) => node.type === "p" && typeof node.props?.children === "string",
 	);
 	return paragraph?.props.children ?? null;
+}
+
+/**
+ * Every string of copy inside the panel's `failed` container, joined.
+ *
+ * Wider than `failurePanelReason` on purpose: the round-3 findings pinned here are
+ * about what a failed panel does NOT say (the server panel names no durable
+ * record) as much as what it does, and "this sentence appears nowhere in this
+ * panel" is only checkable against all of it.
+ */
+function failedPanelCopy(handle) {
+	const failed = walk(handle.tree).find(
+		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
+	);
+	if (!failed) return null;
+	return walk(failed.props.children)
+		.filter((node) => typeof node.props?.children === "string")
+		.map((node) => node.props.children)
+		.join(" ");
 }
 
 /** The toast the pinned box is showing right now, if any. */
@@ -1280,6 +1312,85 @@ test("a check's failure during an attempt cannot own the failure panel", () => {
 	assert.notEqual(failurePanelReason(handle), checkFailure);
 });
 
+/*
+ * ------------------------------------------- the copy the panels claim (R3-2)
+ *
+ * Round 3 removed the server failure panel's "This is also recorded in Settings,
+ * under Application updates." and added the in-flight panel's "The update can't be
+ * interrupted." Neither was asserted anywhere - `grep` found only the two literals
+ * - and `pnpm check-evidence` is DEFERRED on this machine (the sweep lease is
+ * peer-held), so the re-captured frames are derived rather than sweep-certified
+ * and are the only record of what the copy said. The same mis-copy could arrive
+ * again with a green suite. These two cases pin the copy in code instead.
+ */
+
+test("the server failure panel names no record, while the install panel still does", () => {
+	/*
+	 * Both halves, because the defect was a sentence COPIED between the two panels:
+	 * "recorded in Settings" is true on the install failure - `writePendingInstallMarker`
+	 * writes it in the `quit-and-install` handler and the marker-recovery path, and
+	 * `get-last-install-attempt` reads it back - and false on the server failure, where
+	 * `updateBackend` writes nothing and the Settings card has no other failure source
+	 * (UX U5). Asserting only the absence would let the sentence vanish from both.
+	 */
+	const install = mountNotification();
+	updater.emit("update-install-failed", {
+		targetVersion: "0.25.9",
+		message: "The last update to version 0.25.9 didn't finish.",
+		remedy: { text: "Download a fresh copy of the application." },
+		attempts: 1,
+	});
+	install.render();
+	assert.match(
+		String(failedPanelCopy(install)),
+		/This is also recorded in Settings, under Application updates\./,
+	);
+
+	const server = mountNotification();
+	startServerUpdate(server);
+	updater.emit(
+		"backend-update-error",
+		updateReport(
+			"The server update to 0.55.10 did not take effect: the server is still on 0.55.9.",
+		),
+	);
+	server.render();
+	const copy = failedPanelCopy(server);
+	assert.ok(copy, "the server failure panel must be up");
+	assert.match(copy, /The server update didn't finish/);
+	assert.doesNotMatch(copy, /Settings/);
+});
+
+test("the in-flight panel says the update cannot be interrupted", () => {
+	/*
+	 * The copy half of UX U2, and it is the whole of that half: there is no cancel
+	 * control, so this sentence is what keeps a mis-press from reading as a dead end.
+	 */
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	assert.ok(
+		allCopy(handle).some((text) =>
+			text.includes("The update can't be interrupted"),
+		),
+		JSON.stringify(allCopy(handle)),
+	);
+
+	/*
+	 * And it is the UPDATE's clause, not a property of any wait panel: the check's
+	 * own in-flight state must not carry it (QA R3-F10b).
+	 */
+	const checking = mountNotification({ autoCheck: true });
+	checking.render();
+	assert.ok(
+		allCopy(checking).some((text) => text.includes("Checking for updates")),
+		JSON.stringify(allCopy(checking)),
+	);
+	assert.equal(
+		allCopy(checking).some((text) => text.includes("can't be interrupted")),
+		false,
+	);
+});
+
 test("a message with no panel to sit beside still renders the toast", () => {
 	/*
 	 * The regression this file's fix first introduced: with the toast folded into the
@@ -1363,6 +1474,73 @@ test("the pinned box holds one message, and the error takes it", () => {
 	assert.equal(again.length, 1, JSON.stringify(again));
 	assert.equal(again[0].variant, "info");
 	assert.match(again[0].text, /0.55.11/);
+});
+
+/**
+ * The defer controls are closers too, and they have to clear the error (R3-1).
+ *
+ * The UX U6 case above drives the toast's own dismissal. The other two ways out
+ * of the box are the panels' "Update later" controls, which closed it with a bare
+ * `setSnackbarOpen(false)` - so the error stayed SET behind a closed box, and
+ * `FloatingAlert` had already cancelled its auto-hide timer, so nothing would ever
+ * clear it. The next message to raise the box then repainted the superseded error
+ * in its place. The completion notice is the sharp end of that: it is the one
+ * branch whose toast is its only carrier, so the stale error replaces the news
+ * rather than joining it. This case is the reviewer's own repro, driven through
+ * the shipped offer panel's control instead of the alert's `onClose`.
+ */
+test("the offer's defer control closes the box, so a stale error cannot repaint", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-available", SERVER_UPDATE_OFFER);
+	handle.render();
+
+	// A check the user pressed fails while the offer stands: the error takes the box.
+	updater.emit(
+		"backend-update-error",
+		checkReport("Unable to determine backend version."),
+	);
+	handle.render();
+	assert.equal(visible(handle)[0].variant, "danger");
+
+	control(handle, "Update later").props.onClick();
+	handle.render();
+	assert.equal(visible(handle).length, 0, "deferring must close the box");
+
+	updater.emit("backend-update-completed", undefined);
+	handle.render();
+	const shown = visible(handle);
+	assert.equal(shown.length, 1, JSON.stringify(shown));
+	assert.equal(shown[0].variant, "success");
+	assert.match(shown[0].text, /Server update completed successfully/);
+});
+
+/**
+ * The same invariant on the OTHER defer control (review R3-1).
+ *
+ * The UI offer's "Update later" has its own handler, so it had its own bare
+ * `setSnackbarOpen(false)` and its own way to leave the error set. The next offer
+ * is what surfaces it: with the error still set the box shows the superseded
+ * failure message and the offer's own notice never renders.
+ */
+test("the UI offer's defer control closes the box too", () => {
+	const handle = mountNotification();
+	updater.emit("update-available", { version: "0.25.9" });
+	handle.render();
+
+	updater.emit("update-error", "Error checking for updates: boom");
+	handle.render();
+	assert.equal(visible(handle)[0].variant, "danger");
+
+	control(handle, "Update later").props.onClick();
+	handle.render();
+	assert.equal(visible(handle).length, 0, "deferring must close the box");
+
+	updater.emit("update-available", { version: "0.25.10" });
+	handle.render();
+	const shown = visible(handle);
+	assert.equal(shown.length, 1, JSON.stringify(shown));
+	assert.equal(shown[0].variant, "info");
+	assert.match(shown[0].text, /0\.25\.10/);
 });
 
 test("the by-hand panel replaces the in-flight one without a second message", async () => {
