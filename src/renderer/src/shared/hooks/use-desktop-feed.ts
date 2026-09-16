@@ -1,7 +1,8 @@
 /**
  * The renderer's end of the machine-wide desktop feed.
  *
- * Two jobs, and both are about REPLACING A TIMER rather than adding one:
+ * Three jobs, and every one of them is about REPLACING A TIMER rather than
+ * adding one:
  *
  * 1. **The unseen mark arrives on the event.** Each `attention` frame is merged
  *    into its catalogue row through the store's revision-guarded merge, so the
@@ -12,6 +13,12 @@
  *    that grows with the store. The revision is EXPOSED rather than acted on
  *    here, because the sidebar owns `fetchSessions` and the 30 s safety poll that
  *    backs the event up.
+ * 3. **The row's status arrives on the event.** Each `session_status` frame
+ *    carries the backend's derived `{code, label}` and the revision it was
+ *    published under, so a gate answer or a completed turn paints its row
+ *    instead of waiting up to the safety poll for a whole catalogue read. The
+ *    frame is applied IN PLACE and leaves one value for two writers to disagree
+ *    about, which is what the guard in the store's list merge settles.
  *
  * CAPABILITY-GATED BOTH WAYS, and the gate is deliberately about what this app
  * can DO, not only what the backend advertises: `features.desktop_feed` absent
@@ -66,6 +73,8 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			return;
 		}
 		const applyAttention = useCanonicalSessionsStore.getState().applyAttention;
+		const applySessionStatus =
+			useCanonicalSessionsStore.getState().applySessionStatus;
 		const offState = native.watchState((state) =>
 			setConnected(state.connected),
 		);
@@ -74,13 +83,34 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				applyAttention(frame.session_id, frame.payload);
 				return;
 			}
+			/*
+			 * The row's status, pushed instead of re-read. `payload` is the backend's
+			 * DERIVED pair plus the revision it was published under, and `epoch` is the
+			 * feed process's - passed through untouched because it is the half of the
+			 * stamp that makes a restart's counters distinguishable from a live one's.
+			 *
+			 * Captured from `getState()` once per subscription rather than called
+			 * through the hook, exactly as `applyAttention` above is: the handler is
+			 * not a render, and a zustand action is stable for the store's lifetime.
+			 */
+			if (frame.type === "session_status") {
+				applySessionStatus(
+					frame.session_id,
+					frame.payload,
+					frame.payload.revision,
+					frame.epoch,
+				);
+				return;
+			}
 			if (frame.type === "catalogue") {
 				setCatalogueRevision(frame.payload.revision);
 			}
 			// `open`, `heartbeat` and `gap` carry transport state and nothing the
 			// renderer renders: the snapshot IS the first catalogue revision, and a
 			// reconnect is main's watchdog's job. Ignored deliberately rather than
-			// routed into a state store nothing reads.
+			// routed into a state store nothing reads — and a type this build does not
+			// know (a newer backend's frame) is ignored by the same missing branch,
+			// which is what makes the addition of one a no-op for older renderers.
 		});
 		return () => {
 			offFrames();
