@@ -6,8 +6,12 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import {
+	type BrowserPaneScope,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
-import { type FC, useMemo, useState } from "react";
+import { type FC, useMemo } from "react";
 import type { SurfaceScope } from "../model/approval-queue-model";
 import { paneApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserSurface } from "./browser-surface";
@@ -34,12 +38,30 @@ import { BrowserSurface } from "./browser-surface";
  * `sunken` and the selected pill is `surface`, which is the same lightness step
  * the rest of the system uses for selection (`shared/components/ui/tabs.tsx`).
  *
- * THE SWITCH IS STATE, THE SCOPE IS DERIVED. The user's choice survives a
- * conversation switch — the pane persists while the content follows the
- * conversation (7.3) — so what is stored is "which list did they ask for" and
- * what is passed down is the scope that choice resolves to for THIS conversation.
- * Choosing a tab that no longer exists is impossible by construction: the scope
- * object is rebuilt from the current session id on every render.
+ * THE SWITCH IS STATE, THE SCOPE IS DERIVED. What is stored is "which list did
+ * they ask for" and what is passed down is the scope that choice resolves to for
+ * THIS conversation. Choosing a tab that no longer exists is impossible by
+ * construction: the scope object is rebuilt from the current session id on every
+ * render.
+ *
+ * THE CHOICE LIVES IN THE STORE, NOT HERE (UX round 1, U3), and this file said
+ * otherwise for one round: the pane is remounted when the conversation changes, so
+ * a `useState` here reverted the lens to "This conversation" on every switch while
+ * the pane itself stayed open at the width the user had dragged. The slot belongs
+ * to the window, so its lens is the slot's state (`browserPaneScope`, beside
+ * `isBrowserPaneOpen` and `browserPanelWidth`) and only the content follows the
+ * conversation.
+ *
+ * TWO SCOPES GO DOWN, AND THE SWITCH MOVES ONLY ONE (spec 7.2; QA round 1's Q1 and
+ * UX round 1's U1 are the same defect seen from two sides). The switch is about
+ * TABS, so it joins `tabScope`. Requests are scoped by REQUESTER - the agent that
+ * asked - so `requestScope` is the conversation and nothing the user presses
+ * changes it. Feeding the switch into the requests as well widened this
+ * conversation's tray to other conversations' approvals under a sentence that
+ * denied it, and, worse, narrowing the switch took an entry out of the queue
+ * model's input while it was still pending in main, which the model resolves as
+ * `Withdrawn by the agent`: the surface attributing an action to an agent that had
+ * not taken one, from one press of a switch, live.
  *
  * NO SESSION, NO CONVERSATION SCOPE. On a chat with no session yet (a draft) the
  * "This conversation" side is disabled rather than silently meaning "All tabs" —
@@ -47,8 +69,13 @@ import { BrowserSurface } from "./browser-surface";
  * sides show the same list is precisely the half-truth this feature's copy
  * standard forbids. The pane itself still opens, in the all-tabs scope, because
  * "what is the browser doing" is a question a draft can answer.
+ *
+ * AND THE REQUEST SCOPE ON A DRAFT IS `"all"` TOO, which is the half UX round 1's
+ * U4 found still wrong one layer down: with no conversation there is no "this
+ * one", so the tray must not claim there is, and the sentence that says whose
+ * requests these are is passed down only when there is a conversation to name.
  */
-export type PaneScopeChoice = "conversation" | "all";
+export type PaneScopeChoice = BrowserPaneScope;
 
 export interface BrowserPaneProps {
 	/** The conversation this pane is scoped to, or `null` on a draft. */
@@ -58,8 +85,9 @@ export interface BrowserPaneProps {
 
 export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 	/** Which list the user asked for. See the header comment for why this is a
-	 * choice rather than the scope itself. */
-	const [choice, setChoice] = useState<PaneScopeChoice>("conversation");
+	 * choice rather than the scope itself, and why it outlives this component. */
+	const choice = useUiPreferencesStore((s) => s.browserPaneScope);
+	const setChoice = useUiPreferencesStore((s) => s.setBrowserPaneScope);
 	const scoped = choice === "conversation" && sessionId !== null;
 	/** Memoised on the session id rather than rebuilt per render: the surface keys on
 	 * the scope's value either way (`scopeKey`), and a caller that hands down a stable
@@ -67,6 +95,13 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 	const scope = useMemo<SurfaceScope>(
 		() => (scoped && sessionId !== null ? { sessionId } : "all"),
 		[scoped, sessionId],
+	);
+	/** Whose approvals this pane shows: this conversation's, always, whether the user
+	 * is looking at its tabs or at every tab - and every request, on a draft, because
+	 * a draft has no conversation to own one (see the header comment). */
+	const requestScope = useMemo<SurfaceScope>(
+		() => (sessionId !== null ? { sessionId } : "all"),
+		[sessionId],
 	);
 	/** What the switch SHOWS, which is the effective scope rather than the stored
 	 * choice: a choice of "conversation" on a session-less chat is not what the
@@ -176,18 +211,35 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 				</Tooltip>
 			</div>
 			<div id={PANE_SURFACE_ID} className="flex min-h-0 grow flex-col">
+				{/* `key` ON THE SESSION, and it is not cosmetic: the queue model resolves
+				    an entry that leaves ITS INPUT while still pending in main as
+				    `Withdrawn by the agent` (spec 3.4's memory). A conversation switch
+				    changes the request scope, so without a fresh model the pane would read
+				    the other conversation's live request leaving as the agent's own
+				    cancellation - the same false line QA round 1 (Q1) and UX round 1 (U1)
+				    caught from the switch, one layer out. Keyed here, each conversation
+				    gets its own queue; the host handover is unchanged, because one surface
+				    unmounts and the next mounts in the same commit and the rect reporter's
+				    null always precedes the new report. */}
 				<BrowserSurface
-					scope={scope}
+					key={requestScope === "all" ? "all" : requestScope.sessionId}
+					tabScope={scope}
+					requestScope={requestScope}
 					// This host's own evidence tags, so a run can say which host it drove
 					// (spec 9's item 4: the hosts never co-mount, but a test still has to
 					// know which one it is driving).
 					surfaceTag="browser-pane-surface"
 					dockSurfaceTag="browser-pane-dock"
-					// The tray's sentence is a fact about the scope (spec 7.2): this pane's
-					// tray keeps showing THIS conversation's requests while its strip shows
-					// All tabs — the switch chooses tabs, not demands — so the wording has
-					// to say which of the two lists the count is about.
-					approvalHeaderLabel={paneApprovalHeaderLabel}
+					// The tray's sentence is a fact about the REQUEST scope (spec 7.2): this
+					// pane's tray keeps showing THIS conversation's requests while its strip
+					// shows All tabs — the switch chooses tabs, not demands — so the wording
+					// names which of the two lists the count is about. It is passed ONLY when
+					// there is a conversation to name: on a draft the request scope is every
+					// request and the sentence would claim a conversation that does not exist
+					// (UX round 1, U4), so the surface's own wording is used instead.
+					approvalHeaderLabel={
+						sessionId !== null ? paneApprovalHeaderLabel : undefined
+					}
 					// The way out of a scope that is hiding tabs that are open, offered only
 					// by the host that has a wider scope to widen to (spec 7.2).
 					onShowAllTabs={() => setChoice("all")}
