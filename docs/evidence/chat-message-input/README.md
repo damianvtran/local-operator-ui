@@ -26,11 +26,14 @@ recovery and before/after failure) is in
 That separate evidence, rather than these legacy images, carries the new live
 validation claim. D3's previously missing committed state pictures are now here.
 
-## The inline credential capture's five states
+## The inline credential capture's seven states
 
-Sixty frames the eight above do not account for: five states of the composer's
-inline `/credential` gesture (`docs/design/composer-credential-capture.md`), each
-in all twelve themes, at the same 1024 width.
+Eighty-four frames the eight above do not account for: seven states of the
+composer's inline `/credential` gesture (`docs/design/composer-credential-capture.md`), each
+in all twelve themes, at the same 1024 width — the five gesture states round 1
+took, plus the two round 3 added (a capture beside a live working-directory chip
+and the session's readings, and the shipped small-view rung with the capture
+open).
 
 The exact command that wrote them, from the tree this branch commits:
 
@@ -72,6 +75,31 @@ independent reasons, and which frames changed for WHICH reason matters:
 The last six are the ones the round-2 review could not sign off, and the fix that
 removed the leak is the capture's own (the draft store is cleared per frame), not
 a change to any story.
+
+### Round 3: the sentence leaves the composer, and the composer returns to `main`
+
+Round 3's four streams converged on one area — the notice's placement inside the
+composer and the geometry the capture's own wrapper had introduced — so the
+remediation is one change to that area and the surface was re-taken once more:
+all NINETEEN states, twelve themes, 228 frames.
+
+```
+npx storybook dev -p 6188 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=chat-message-input \
+  --allow-backend http://127.0.0.1:6188
+```
+
+| Frames | Why they were re-taken |
+| --- | --- |
+| `credential-armed`, `credential-masked`, `credential-escaped` | The sentence left the control row and the box entirely: it is now a full-width line **above** the composer box (§7.5), so the composer's own ring sits at rows **85..204** in these frames, one sentence's height below the idle frame's, where round 2 had the sentence inside the row at the composer's own position. The box's height is unchanged (the ring rows are 119 apart in both the idle and the armed frame), and the sentence's line is the composer's width — never the ribbon design round 3 measured at 1380/950/800. |
+| `idle`, `credential-pill-mid-prose`, `credential-pill-at-line-start`, `awaiting-*`, `stop-*`, `interrupt-*` | Nothing at all, and that is the point: the field now declares `block`, so the line box the overlay's wrapper had introduced is gone and the composer is `origin/main`'s again. Measured on the committed pixels — accent ring rows, counted as rows with more than 200 accent pixels — the `idle` frame is **57/58..175/176**, which is exactly the pre-wrapper frame's (`a8b056aa7`: 57/58..175/176); the round-3 head's idle frame was 57/58..**181/182**, the 6px the extra line box cost. Across the twelve non-credential states **all 144 frames** are identical to their pre-wrapper copies above a WebP-loss threshold (142 bit-exact, two single-pixel `neon` differences), and the live app agrees: the composer box measures **112.00px** on this head and on `origin/main` at 1380, and 124.00px on both at 950, 800 and 440, with the field's `y` and height equal. |
+| `credential-masked-session-pane`, `credential-masked-small-view` | **New stories**, both asked for by round 3 (D3, D4). The first photographs the sentence with the two neighbours that used to decide its wrapping — a live working-directory chip and the session's readings — sharing the row (1024px). The second photographs the shipped small-view rung (a 440px column with `isSmallView`) with the capture open, in which round 2's "at most 7.5px" bound had measured 11px. |
+
+What this round does NOT change, and a reader should not look for here: the
+masked cells, the pill's wash and edge, the minted marker text, the Esc restore
+and the notice's own sentences are round 1's and round 2's, and their frames
+agree with the ones those rounds committed wherever the sentence's position is
+not in the picture.
 
 ### Round 1: the WHOLE surface, re-taken
 
