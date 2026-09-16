@@ -105,8 +105,7 @@ function makeRuntime() {
 			return [
 				cell.state,
 				(value) => {
-					const next =
-						typeof value === "function" ? value(cell.state) : value;
+					const next = typeof value === "function" ? value(cell.state) : value;
 					if (Object.is(next, cell.state)) return;
 					cell.state = next;
 					if (!runtime.unmounted) rerender();
@@ -164,11 +163,19 @@ function makeRuntime() {
 		 */
 		forwardRef: (render) => render,
 		memo: (component) => component,
-		createContext: (value) => ({ Provider: null, Consumer: null, _currentValue: value }),
+		createContext: (value) => ({
+			Provider: null,
+			Consumer: null,
+			_currentValue: value,
+		}),
 		useContext: (context) => context?._currentValue,
 		createRef: () => ({ current: null }),
-		cloneElement: (element, props) => ({ ...element, props: { ...element.props, ...props } }),
-		isValidElement: (value) => Boolean(value && typeof value === "object" && "type" in value),
+		cloneElement: (element, props) => ({
+			...element,
+			props: { ...element.props, ...props },
+		}),
+		isValidElement: (value) =>
+			Boolean(value && typeof value === "object" && "type" in value),
 		Children: { map: (children, fn) => [children].flat().map(fn) },
 		useId: () => "affirmation-test-id",
 		useImperativeHandle: () => {},
@@ -303,13 +310,10 @@ const bundle = await build({
 					path: "env-utils",
 					namespace: "affirmation-env",
 				}));
-				builder.onLoad(
-					{ filter: /.*/, namespace: "affirmation-env" },
-					() => ({
-						contents: "export const isDevelopmentMode = () => false;",
-						loader: "js",
-					}),
-				);
+				builder.onLoad({ filter: /.*/, namespace: "affirmation-env" }, () => ({
+					contents: "export const isDevelopmentMode = () => false;",
+					loader: "js",
+				}));
 				/*
 				 * The primitive barrel only. `Button` is what the control is made of and
 				 * `Alert` is what the message is made of, and nothing about Q1 is decided
@@ -414,7 +418,9 @@ updater.onUpdateAvailable = updater.on("update-available");
 updater.onUpdateNotAvailable = updater.on("update-not-available");
 updater.onUpdateNpxAvailable = updater.on("update-npx-available");
 updater.onBackendUpdateAvailable = updater.on("backend-update-available");
-updater.onBackendUpdateNotAvailable = updater.on("backend-update-not-available");
+updater.onBackendUpdateNotAvailable = updater.on(
+	"backend-update-not-available",
+);
 updater.onUpdateInstallFailed = updater.on("update-install-failed");
 
 globalThis.window = { api: { updater } };
@@ -446,7 +452,11 @@ const CURRENT = {
 };
 
 const SERVER_OFFER = { app: "current", server: "available", affirmation: null };
-const INCONCLUSIVE = { app: "current", server: "unavailable", affirmation: null };
+const INCONCLUSIVE = {
+	app: "current",
+	server: "unavailable",
+	affirmation: null,
+};
 
 /**
  * Mount the shipped button and return a handle that renders on demand.
@@ -511,7 +521,9 @@ function affirmationOnScreen(handle) {
 	const success = visible(handle).filter(
 		(alert) => alert.variant === "success",
 	);
-	return success.length > 0 ? success.map((alert) => alert.text).join(" | ") : null;
+	return success.length > 0
+		? success.map((alert) => alert.text).join(" | ")
+		: null;
 }
 
 /** Resolve the pending check the button started, and let its `await` land. */
@@ -548,7 +560,11 @@ function press(handle) {
 
 test("a check that proved both channels current shows the sentence", async () => {
 	const handle = mount();
-	assert.equal(affirmationOnScreen(handle), null, "nothing is claimed before a check");
+	assert.equal(
+		affirmationOnScreen(handle),
+		null,
+		"nothing is claimed before a check",
+	);
 	press(handle);
 	handle.render();
 	await answer(handle, CURRENT);
@@ -575,7 +591,11 @@ test("Q1: the next check retires the sentence before it resolves", async () => {
 	// reported pair - offer panel plus "you are up to date" - one check later.
 	await answer(handle, SERVER_OFFER);
 	assert.equal(affirmationOnScreen(handle), null);
-	assert.deepEqual(visible(handle), [], "a null affirmation shows no button message");
+	assert.deepEqual(
+		visible(handle),
+		[],
+		"a null affirmation shows no button message",
+	);
 });
 
 test("Q1: a background offer retires the sentence with no press at all", async () => {
@@ -602,8 +622,14 @@ test("Q1: a background offer retires the sentence with no press at all", async (
 test("Q1: every offer channel retires the sentence, not just the server's", async () => {
 	for (const [event, payload] of [
 		["update-available", { version: "0.22.4" }],
-		["update-npx-available", { currentVersion: "0.22.3", latestVersion: "0.22.4" }],
-		["backend-update-available", { currentVersion: "0.54.43", latestVersion: "0.54.44" }],
+		[
+			"update-npx-available",
+			{ currentVersion: "0.22.3", latestVersion: "0.22.4" },
+		],
+		[
+			"backend-update-available",
+			{ currentVersion: "0.54.43", latestVersion: "0.54.44" },
+		],
 	]) {
 		const handle = mount();
 		press(handle);
@@ -616,7 +642,11 @@ test("Q1: every offer channel retires the sentence, not just the server's", asyn
 });
 
 test("Q1: an inconclusive or offered verdict leaves no sentence behind", async () => {
-	for (const verdict of [SERVER_OFFER, INCONCLUSIVE, { app: "available", server: "current", affirmation: null }]) {
+	for (const verdict of [
+		SERVER_OFFER,
+		INCONCLUSIVE,
+		{ app: "available", server: "current", affirmation: null },
+	]) {
 		const handle = mount();
 		press(handle);
 		await answer(handle, CURRENT);
@@ -679,7 +709,10 @@ test("Q1: an offer does not dismiss a message that is not the affirmation", asyn
 		visible(handle).map((alert) => alert.variant),
 		["danger"],
 	);
-	updater.emit("backend-update-available", { currentVersion: "0.54.43", latestVersion: "0.54.44" });
+	updater.emit("backend-update-available", {
+		currentVersion: "0.54.43",
+		latestVersion: "0.54.44",
+	});
 	handle.render();
 	assert.deepEqual(
 		visible(handle).map((alert) => alert.variant),
@@ -693,7 +726,10 @@ test("Q1: the sentence can be earned again after being taken back", async () => 
 	press(handle);
 	await answer(handle, CURRENT);
 	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
-	updater.emit("backend-update-available", { currentVersion: "0.54.43", latestVersion: "0.54.44" });
+	updater.emit("backend-update-available", {
+		currentVersion: "0.54.43",
+		latestVersion: "0.54.44",
+	});
 	handle.render();
 	assert.equal(affirmationOnScreen(handle), null);
 	// The user updates, checks again, and both channels are current: the
@@ -777,5 +813,3 @@ test("R9: an offer before the check does not rob a later check of the sentence",
 	await answer(handle, CURRENT);
 	assert.equal(affirmationOnScreen(handle), CURRENT.affirmation);
 });
-
-
