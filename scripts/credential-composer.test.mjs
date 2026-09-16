@@ -2223,5 +2223,9 @@ test("the caret immediately before a moved token does not make it prose (QA roun
 	await enter(frame);
 	await settle();
 	assert.equal(ran.length, 1, "a gesture-owned token dispatches, caret or not");
-	assert.equal(frame.sent.length, 0, "so the secret is never sent as message text");
+	assert.equal(
+		frame.sent.length,
+		0,
+		"so the secret is never sent as message text",
+	);
 });
