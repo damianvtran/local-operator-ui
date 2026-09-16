@@ -324,8 +324,23 @@ is **deleted**, not ported. What replaces it:
   design's own standard — § 7.2 takes the consequence by fixing the section order
   rather than reordering sections by state.
 - **The dot survives** for the case that matters: the panel is closed and
-  something failed. It stays a single 8px `danger` dot at the button's top-right
+  something failed. It stays a single 8px dot at the button's top-right
   (`run-details-trigger.tsx:339-353`), still not a count.
+- **One mark, TWO INKS (added by `docs/composer-activity-chips.md` § 5).** The dot
+  now also carries live activity — a child running while the pane is closed or
+  showing a reader — and the two facts are told apart by ink rather than by shape:
+  `bg-danger` for the two ledgers above, `bg-info` for activity. The activity term
+  is **not a third ledger**: it holds no `seen`-set and no state at all, because
+  it is `!listOnScreen && details.openChildren > 0` — the same `listOnScreen` term
+  this section already reads — so it clears the moment the pane paints the list.
+  What it deliberately excludes is the tool jobs: a background `eval` may run for
+  hours, and a dot that means "a long job exists" is a dot nobody reads. The
+  shape stays one dot for the reason the two ledgers are merged: two marks on one
+  32px control is a decoration nobody can read, and both facts answer one
+  question — is there something in the pane I should look at. The accessible name
+  gains no clause for it: the label already carries `1 subagent running`
+  (`runDetailTriggerLabel`), where the failure case has no clause and the dot is
+  the only statement it makes.
 - **ONE DOT, TWO LEDGERS — merged, never ranked.** A failed child and a broken
   MCP server are different facts with the same claim ("something needs your
   attention and you have not looked"), and one 8px dot cannot say which. It does
@@ -489,6 +504,17 @@ the dot. The full `task` set rides beside it as `RunDetails.lineage`, which is
 what the READER walks: the breadcrumb's ancestors, the peer stepper and the
 `N children` control are all questions about the lineage, and a walk that could
 only see members would stop at the first level (§ 5.5).
+
+**And the rows this section EXCLUDES are a section of their own, not a discard**
+(`docs/composer-activity-chips.md` § 4). The `bash` rows are the session's own
+activity — a backgrounded shell, a background `eval` — and the composer's jobs
+chip counts them while the pane's **Jobs** section draws them, which is what makes
+membership a PARTITION in `deriveRunDetails` (`:931-960`) rather than the filter
+it was: a row lands in the roster, in `RunDetails.jobs`, or in neither, and never
+in both. They are drawn with the roster's own row body and no second line
+(`run-detail-jobs.tsx`), they are never interactive — a tool row has no
+`session_id`, so `childOpenable` is false for every one of them — and the section
+shows the open rows only, which is the same slice `openJobs` counts.
 
 The reader's needs add **three fields to `SubagentRow`**, all read off the job row
 that already arrives (no wire change): `childSessionId` (from `session_id` — the
@@ -951,8 +977,12 @@ the read returned at least one server. Same rule as its two neighbours in
 and an empty heading is not a state anything renders. No servers configured is
 therefore absence, not a line saying there are none.
 
-**Order: last, after the roster and the plan.** The panel's subject is the run in
-flight; a server's configuration is the least transient fact on the surface. The
+**Order: last, after the roster, the plan and the jobs.** The panel's subject is
+the run in flight; a server's configuration is the least transient fact on the
+surface. (The jobs section is `docs/composer-activity-chips.md` § 4: it was added
+BEHIND the plan, so the two sections that existed before it keep their positions
+and this one stays last — the rule below is the reason, and it is also why the
+new section did not try to sit beside the roster it is derived from.) The
 alternative — moving the section up, or reordering sections when one has a
 problem — is refused for the reason § 6.2 refuses reflow under a reader: a
 section that moves because its state changed makes the reader re-find the thing
