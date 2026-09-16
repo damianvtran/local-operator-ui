@@ -73,7 +73,10 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import { MOVE_UNAVAILABLE_REASON } from "../move-session";
-import { DESTINATIONS } from "../pickers/picker-registry";
+import {
+	DESTINATIONS,
+	destinationNeedsSession,
+} from "../pickers/picker-registry";
 import { SessionStatusStrip } from "../session-status/session-status-strip";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
@@ -2516,11 +2519,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					if (armed.kind === "armed") {
 						/*
 						 * The RECEIPT, and the one thing it may not guess at: the dispatcher
-						 * refuses `/goal` on a pane with no conversation and the staged line goes
-						 * with the refusal, so on a draft pane the note says what the pane can
-						 * actually do instead of promising the goal will be set (UX U5 / design
-						 * D5). `stagedNote` owns the sentence, keyed by the destination the row
-						 * carries, so a second armed destination cannot inherit a false one.
+						 * refuses a destination that addresses no conversation, and the staged
+						 * line goes with the refusal, so on a draft pane the note says what the
+						 * pane can actually do instead of promising an action that will not run
+						 * (UX U5 / design D5). `stagedNote` owns the sentence, keyed by the
+						 * destination the row carries, so a second armed destination cannot
+						 * inherit a false one.
+						 *
+						 * The pane's state is folded in through `destinationNeedsSession`
+						 * rather than passed raw: a MACHINE panel (`/info`, `/usage`,
+						 * `/analytics`) runs on a sessionless pane, so for those the clause is
+						 * never printed whatever the pane's state — and with the raw bit the
+						 * composer would promise a refusal the dispatcher no longer gives.
 						 */
 						stage(
 							armed.text,
@@ -2528,7 +2538,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							stagedNote(
 								armed.text.trim(),
 								row.command.destination,
-								paneHasSession,
+								destinationNeedsSession(row.command.destination)
+									? paneHasSession
+									: true,
 							),
 						);
 						return;

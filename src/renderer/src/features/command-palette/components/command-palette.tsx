@@ -1,4 +1,5 @@
 import { openConversation } from "@features/chat/open-conversation";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
@@ -27,7 +28,6 @@ import {
 	useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
 	PALETTE_GROUP_TITLES,
