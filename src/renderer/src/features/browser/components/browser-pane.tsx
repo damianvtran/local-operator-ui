@@ -1,7 +1,7 @@
 import { Button, Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { X } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, useMemo, useState } from "react";
 import type { SurfaceScope } from "../model/approval-queue-model";
 import { paneApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserSurface } from "./browser-surface";
@@ -55,9 +55,13 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 	 * choice rather than the scope itself. */
 	const [choice, setChoice] = useState<PaneScopeChoice>("conversation");
 	const scoped = choice === "conversation" && sessionId !== null;
-	const scope: SurfaceScope = scoped
-		? { sessionId: sessionId as string }
-		: "all";
+	/** Memoised on the session id rather than rebuilt per render: the surface keys on
+	 * the scope's value either way (`scopeKey`), and a caller that hands down a stable
+	 * object is the cheaper half of the same rule. */
+	const scope = useMemo<SurfaceScope>(
+		() => (scoped && sessionId !== null ? { sessionId } : "all"),
+		[scoped, sessionId],
+	);
 	/** What the switch SHOWS, which is the effective scope rather than the stored
 	 * choice: a choice of "conversation" on a session-less chat is not what the
 	 * list below is showing, and a control that claims otherwise is lying about

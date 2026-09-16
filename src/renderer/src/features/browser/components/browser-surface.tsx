@@ -27,6 +27,7 @@ import {
 	type SurfaceScope,
 	originOfUrl,
 	requestsInScope,
+	scopeKey,
 	tabsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
@@ -114,7 +115,9 @@ function measure(element: HTMLElement): {
 }
 
 export interface BrowserSurfaceProps {
-	/** Which tabs this host shows. See the header comment. */
+	/** Which tabs this host shows. See the header comment. A host may pass a fresh
+	 * object on every render: the surface keys its filters on the scope's VALUE (see
+	 * `scopeKey` for the loop that naivety caused), so identity is free here. */
 	scope: SurfaceScope;
 	/** This host's own evidence tag, so a run can say which host it drove (§9's
 	 * item 4: the hosts never co-mount, but a test has to know which one it is
@@ -165,14 +168,37 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		url: string;
 	} | null>(null);
 
+	/**
+	 * The scope, held by IDENTITY as well as by value.
+	 *
+	 * WHY THIS ONE LINE MATTERS, and it is a real defect rather than tidiness: every
+	 * memo and every effect below keys on `scope`'s identity — the tab memo, the
+	 * request memo, and the queue model's own effects — and the queue model's clock
+	 * tick re-renders this component. A host that rebuilds its scope object per render
+	 * (the pane does: `{ sessionId }` in its own render body) therefore produced a new
+	 * filtered ARRAY per render, which re-ran the model's effect, which published the
+	 * clock, which re-rendered — a render loop whose period is the microsecond it
+	 * takes to run it, on a surface that still paints and so looks fine in a frame.
+	 *
+	 * The fix belongs HERE rather than only in the caller, because this component owns
+	 * the model and the model's contracts are its to keep: it derives its own stable
+	 * scope from the scope's VALUE (the route's `"all"`, or the session id, both
+	 * primitives) and hands that to everything downstream, so no host can trip it.
+	 */
+	const scopeField = scopeKey(scope);
+	const stableScope = useMemo<SurfaceScope>(
+		() => (scopeField === "all" ? "all" : { sessionId: scopeField }),
+		[scopeField],
+	);
+
 	const state = chrome.state;
 	// The scope filter, applied to the projection the strip, the URL bar and the
 	// waiting chips all read. `state?.tabs` is a fresh array per projection, so the
 	// filter is memoised on it rather than on `state`.
 	const allTabs = state?.tabs;
 	const tabs = useMemo(
-		() => tabsInScope(allTabs ?? [], scope),
-		[allTabs, scope],
+		() => tabsInScope(allTabs ?? [], stableScope),
+		[allTabs, stableScope],
 	);
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
@@ -190,8 +216,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// nothing here branches on which host it is.
 	const requests = state?.pendingConsent;
 	const pendingRequests = useMemo(
-		() => requestsInScope(requests ?? [], scope),
-		[requests, scope],
+		() => requestsInScope(requests ?? [], stableScope),
+		[requests, stableScope],
 	);
 	const queue = useApprovalQueue(pendingRequests, tabs);
 
