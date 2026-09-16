@@ -952,6 +952,122 @@ export const JobsOnly: Story = {
 	decorators: [withCanvasClosed],
 };
 
+/* ------------------------------------------------------------------ */
+/* Wakes (`docs/composer-wakes.md`)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The Wakes section with one schedule: a session armed and nothing else.
+ *
+ * The state the feature exists for, and the one with no comparable frame before
+ * it: a session whose only pending thing is a FUTURE event. The pane draws one
+ * section, the composer's row above it draws one chip, and the pair is what the
+ * operator's report was about — "wakes don't show anywhere".
+ */
+export const WakesOnly: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesOnly())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Three cadences on ONE list, published out of due order.
+ *
+ * The section's ordering claim, which a fixture in due order would hide: the wire
+ * arrives `w2`, `w1`, `w4`, `w3` (the backend's creation order) and the rows must
+ * read `w3`, `w2`, `w4`, `w1`. The cadence claim is the other half — `once`, an
+ * unbounded `every 1h30m`, and the limit-bounded `every 6h · 3 left` — which is
+ * the shape a reader has to be able to tell apart to know which wake is which.
+ */
+export const WakesRecurring: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesRecurring())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Nine schedules: the cap and its overflow marker.
+ *
+ * `MAX_WAKE_SCHEDULES = 16` is what the wire can carry, so nine is an ordinary
+ * full scheduler rather than an extreme, and without a cap the section would push
+ * the plan and the roster off the pane for a readout nobody is acting on. The
+ * marker is a STATEMENT, not a control — nothing in this pane can put a shed wake
+ * back — which is why it wears the disabled disclosure the plan's shed count
+ * wears rather than the roster's `Show N more`.
+ */
+export const WakesMany: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesMany())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * One wake whose prompt is longer than the row can show.
+ *
+ * The truncation claim: the message is the one unbounded, authored string on a
+ * wake row, so it clamps at two lines while the whole text stays readable on
+ * hover and in the accessible name. The pair is `wakes-only` above, whose prompt
+ * fits — an ellipsis with nothing beside it is not a comparison.
+ */
+export const WakeLongMessage: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakeLongMessage())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A plan and an armed wake together, which is what most real sessions look like.
+ *
+ * Two sections in one scroll region and two count chips on the row above them,
+ * with the goal absent — the `FIRST_CHIP` rule's two-leading-chips case, where the
+ * plan takes the row's content edge and the wake chip follows it in the same
+ * 8px gutter rather than in a second one.
+ */
+export const WakesAndPlan: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesAndPlan())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The same section at the pane's 320px floor.
+ *
+ * The width the design record's own risk section names: a due label carrying a
+ * date, a zone and a cadence is the longest first line any section draws, so this
+ * is where the label has to yield rather than the cadence, and where a long prompt
+ * clamps in the narrowest column the pane can be dragged to.
+ */
+export const WakesFloor320: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesRecurring())}
+			width={320}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
 /**
  * The trigger's activity blip: the pane is CLOSED and a child is running, so the
  * dot is drawn in `info` (`docs/composer-activity-chips.md` § 5).

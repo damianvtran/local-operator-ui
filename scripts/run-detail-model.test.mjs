@@ -65,6 +65,13 @@ const {
 	onScreenFailures,
 	briefIsInTranscript,
 	childOpenable,
+	deriveWakes,
+	formatWakeCadence,
+	formatWakeDue,
+	formatWakeDuration,
+	wakeClause,
+	visibleWakes,
+	WAKE_ROW_CAP,
 	reconcileLaunchTurns,
 	retimeChildRow,
 	retimeRunDetails,
@@ -3033,5 +3040,283 @@ test("a headerless group that does not lead the plan is given a boundary", () =>
 		todos,
 		/phase\.name === null && !leadsThePlan && <Separator \/>/,
 		"and a non-leading group states the boundary it has no name for",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* Wakes                                                              */
+/* ------------------------------------------------------------------ */
+
+/** An hour, so the schedules below read as arithmetic rather than as literals. */
+const WAKE_HOUR = 3_600_000;
+
+/** The instant the wake fixtures are measured against. */
+const WAKE_NOW = Date.parse("2026-03-14T14:26:00Z");
+
+/**
+ * One wire schedule, in `WakeState`'s own shape.
+ *
+ * `next_due_at` is epoch MILLISECONDS, which is the trap beside the job rows:
+ * those carry epoch SECONDS and the model divides them by 1000 on the way in.
+ */
+const wake = (over) => ({
+	id: "w1",
+	message: "Check the deploy",
+	next_due_at: WAKE_NOW + WAKE_HOUR,
+	created_at: WAKE_NOW - 60_000,
+	every_ms: null,
+	remaining: null,
+	...over,
+});
+
+test("the wakes come off the wire soonest-first, whatever order they arrived in", () => {
+	const wakes = [
+		wake({ id: "w3", message: "third", next_due_at: WAKE_NOW + 3 * WAKE_HOUR }),
+		wake({ id: "w1", message: "first", next_due_at: WAKE_NOW + WAKE_HOUR }),
+		wake({
+			id: "w2",
+			message: "second",
+			next_due_at: WAKE_NOW + 2 * WAKE_HOUR,
+		}),
+	];
+	assert.deepEqual(
+		deriveWakes(wakes, WAKE_NOW).map((row) => row.id),
+		["w1", "w2", "w3"],
+	);
+	/*
+	 * ...and through the REAL entry point, which is where the renderer actually
+	 * reads it: the page hands the canonical list to `deriveRunDetails` and the chip
+	 * and the section both read the field it produces.
+	 */
+	const details = deriveRunDetails({
+		jobs: [],
+		todos: [],
+		wakes,
+		nowMs: WAKE_NOW,
+	});
+	assert.deepEqual(
+		details.wakes.map((row) => row.id),
+		["w1", "w2", "w3"],
+		"one list, ordered once",
+	);
+});
+
+test("a row with no readable instant sorts last and keeps the wire's own order", () => {
+	const rows = deriveWakes(
+		[
+			wake({ id: "a", message: "undated A", next_due_at: "soon" }),
+			wake({ id: "b", message: "dated B", next_due_at: WAKE_NOW + WAKE_HOUR }),
+			wake({ id: "c", message: "undated C", next_due_at: undefined }),
+		],
+		WAKE_NOW,
+	);
+	assert.deepEqual(
+		rows.map((row) => row.id),
+		["b", "a", "c"],
+		"the dated row leads, and the undated ones hold their relative order",
+	);
+	assert.equal(
+		rows[0].dueLabel !== "",
+		true,
+		"a readable instant gets a label",
+	);
+	assert.equal(
+		rows[1].dueLabel,
+		"",
+		"and an unreadable one gets none, not a placeholder",
+	);
+});
+
+test("the count clause is ONE spelling, and the singular is right", () => {
+	assert.equal(wakeClause(1), "1 wake armed");
+	assert.equal(wakeClause(2), "2 wakes armed");
+	assert.equal(wakeClause(16), "16 wakes armed");
+	/* The defect the shared function exists to make unreachable. */
+	assert.equal(
+		wakeClause(1).includes("wakes"),
+		false,
+		"the singular never wears the plural",
+	);
+	for (const count of [2, 3, 16]) {
+		assert.ok(wakeClause(count).includes("wakes armed"));
+	}
+});
+
+test("the cadence is the TUI's duration spelling, not the app's other one", () => {
+	/*
+	 * The port of `harness/wake.py::format_duration`, and the two cases that
+	 * separate it from `session-duration.ts`'s `formatDuration` — which is a port of
+	 * `tool_card.py`, takes SECONDS and stops at days. A weekly wake is the one that
+	 * would visibly disagree with the TUI band beside it.
+	 */
+	assert.equal(formatWakeDuration(45_000), "45s");
+	assert.equal(formatWakeDuration(30 * 60_000), "30m");
+	assert.equal(formatWakeDuration(6 * WAKE_HOUR), "6h");
+	assert.equal(formatWakeDuration(90 * 60_000), "1h30m");
+	assert.equal(formatWakeDuration(7 * 86_400_000), "1w");
+	assert.equal(formatWakeDuration(9 * 86_400_000), "1w2d");
+
+	assert.equal(formatWakeCadence(null, null), "once");
+	assert.equal(formatWakeCadence(6 * WAKE_HOUR, null), "every 6h");
+	assert.equal(formatWakeCadence(6 * WAKE_HOUR, 3), "every 6h · 3 left");
+	assert.equal(formatWakeCadence(6 * WAKE_HOUR, 1), "every 6h · 1 left");
+	/*
+	 * A single shot's `remaining` restates what `once` has already said, so the
+	 * bounded clause is appended to a RECURRENCE only. The wire can carry the pair
+	 * (`--limit` beside no `--every` is a legal create), and `once · 1 left` would be
+	 * one row saying one thing twice.
+	 */
+	assert.equal(formatWakeCadence(null, 1), "once");
+});
+
+test("epoch milliseconds become the TUI's local due label", () => {
+	/*
+	 * Built from LOCAL components rather than from a literal string, so the
+	 * assertions hold in whatever zone the machine runs in — the label is the local
+	 * clock by design, and a test pinned to one zone would pass in that zone only.
+	 * The zone token is read off the platform for the same reason.
+	 */
+	const due = new Date(2026, 2, 14, 9, 30);
+	const zone = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+		.formatToParts(due)
+		.find((part) => part.type === "timeZoneName")?.value;
+	const sameDay = new Date(2026, 2, 14, 20, 0).getTime();
+	const laterDay = new Date(2026, 2, 20, 8, 0).getTime();
+	const laterYear = new Date(2027, 2, 20, 8, 0).getTime();
+
+	assert.equal(formatWakeDue(due.getTime(), sameDay), `9:30 AM ${zone}`);
+	assert.equal(
+		formatWakeDue(due.getTime(), laterDay),
+		`Mar 14 9:30 AM ${zone}`,
+		"a date off today's local date",
+	);
+	assert.equal(
+		formatWakeDue(due.getTime(), laterYear),
+		`Mar 14 2026 9:30 AM ${zone}`,
+		"and a year when the instant is not this year",
+	);
+	/*
+	 * The explicit 12-hour clock, which is the rule `%p` cannot carry: it is built
+	 * from the hour rather than from a locale, so the two boundaries a locale drops
+	 * are the two asserted here.
+	 */
+	const midnight = new Date(2026, 2, 14, 0, 5);
+	const noon = new Date(2026, 2, 14, 12, 0);
+	assert.match(formatWakeDue(midnight.getTime(), sameDay), /^12:05 AM /);
+	assert.match(formatWakeDue(noon.getTime(), sameDay), /^12:00 PM /);
+	/* The zone is always visible, so UTC is never implied. */
+	assert.ok(formatWakeDue(due.getTime(), sameDay).endsWith(zone));
+});
+
+test("a malformed or partial wake row degrades rather than blanking the list", () => {
+	/*
+	 * The failure paths, which this file exists for: `deriveRunDetails` reads
+	 * `Array<Record<string, unknown>>`, so a runtime older or newer than this
+	 * renderer is normal. The survival rule is the message OR a readable instant,
+	 * and the two ways to get it wrong are both silent — dropping a row hides a wake
+	 * that WILL fire, and keeping an empty one draws a row with no content under a
+	 * heading that counts it.
+	 */
+	const rows = deriveWakes(
+		[
+			{},
+			{ id: "w1" },
+			wake({ id: "w2", message: "a prompt and no time", next_due_at: "soon" }),
+			wake({ id: "w3", message: "", next_due_at: WAKE_NOW }),
+			{ id: 42, message: "odd id", next_due_at: "soon" },
+			wake({ id: "w5", message: "zero interval", every_ms: 0 }),
+		],
+		WAKE_NOW,
+	);
+	assert.deepEqual(
+		rows.map((row) => row.id),
+		["w3", "w5", "w2", "wake-4"],
+		"the two empty records are dropped; the rest survive, position-keyed where nameless",
+	);
+	assert.equal(
+		rows[0].message,
+		"",
+		"a schedule with no prompt is a real state",
+	);
+	assert.equal(
+		rows[2].dueLabel,
+		"",
+		"and one with no instant leads with its cadence",
+	);
+	assert.equal(
+		rows[1].everyMs,
+		null,
+		"a non-positive interval is not a recurrence",
+	);
+	assert.equal(rows[1].cadence, "once");
+
+	/* Non-records in the list are the wire's business, not the row's. */
+	assert.deepEqual(
+		deriveRunDetails({ jobs: [], todos: [], wakes: [{}, null, "x", 7] }).wakes,
+		[],
+	);
+});
+
+test("the Wakes section's slice caps its rows, under the wire's own ceiling", () => {
+	const rows = deriveWakes(
+		Array.from({ length: 9 }, (_, index) =>
+			wake({
+				id: `w${index + 1}`,
+				message: `wake ${index + 1}`,
+				next_due_at: WAKE_NOW + (index + 1) * WAKE_HOUR,
+			}),
+		),
+		WAKE_NOW,
+	);
+	const slice = visibleWakes(rows);
+	assert.equal(slice.rows.length, WAKE_ROW_CAP);
+	assert.equal(slice.hidden, 9 - WAKE_ROW_CAP);
+	assert.deepEqual(
+		slice.rows.map((row) => row.id),
+		["w1", "w2", "w3", "w4", "w5", "w6"],
+		"the cap keeps the rows that fire first",
+	);
+	/*
+	 * The cap binds, and it is under the backend's ceiling rather than a guess at
+	 * one: `MAX_WAKE_SCHEDULES = 16` is the most the wire can carry, so a full
+	 * scheduler is nine rows past a six-row budget and the marker has something to
+	 * count on every over-cap list.
+	 */
+	assert.ok(
+		WAKE_ROW_CAP < 16,
+		"the cap is below MAX_WAKE_SCHEDULES, so it can actually fire",
+	);
+	/* Under the cap nothing is hidden, and the slice is not the caller's list. */
+	const three = visibleWakes(rows.slice(0, 3));
+	assert.equal(three.hidden, 0);
+	assert.equal(three.rows.length, 3);
+});
+
+test("no wakes is absence, and absence is not a state either surface renders", () => {
+	assert.deepEqual(deriveWakes([], WAKE_NOW), []);
+	assert.deepEqual(deriveRunDetails({ jobs: [], todos: [] }).wakes, []);
+	assert.deepEqual(
+		deriveRunDetails({ jobs: [], todos: [], wakes: [] }).wakes,
+		[],
+	);
+	/*
+	 * ...and `hasRunDetails` is deliberately NOT widened to cover them, which is the
+	 * decision `docs/composer-wakes.md` records. Its meaning is "is anything asking
+	 * for something right now" (`run-detail-model.ts`), and an armed wake is a FUTURE
+	 * event that has asked for nothing yet — so a wakes-only session answers false
+	 * here, and the pane still shows something because the SECTION renders. Widening
+	 * this would answer a different question under the same name.
+	 */
+	const wakesOnly = deriveRunDetails({
+		jobs: [],
+		todos: [],
+		wakes: [wake({ id: "w1" })],
+		nowMs: WAKE_NOW,
+	});
+	assert.equal(wakesOnly.wakes.length, 1);
+	assert.equal(
+		hasRunDetails(wakesOnly),
+		false,
+		"an armed wake is not 'something asking for something right now'",
 	);
 });
