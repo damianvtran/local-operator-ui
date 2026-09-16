@@ -22,6 +22,12 @@ export const neon: ThemeDefinition = {
 		surface: "#0F1524",
 		elevated: "#182036",
 		sunken: "#03040A",
+		/*
+		 * The current row's own ground: `surface` stepped +8/+7/+7 on R/G/B
+		 * toward white. ΔE00 2.24 from `surface`, 3.37 from `elevated` and 8.83
+		 * from `sunken`.
+		 */
+		highlight: "#171c2b",
 
 		ink: "#E0E0E0",
 		inkMuted: "#A0A0B0",

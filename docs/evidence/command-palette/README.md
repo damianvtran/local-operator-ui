@@ -58,10 +58,15 @@ A driver run reaches no backend by construction (its scratch `.env` points at a
 port the script verified dead), so these frames are the offline palette in the
 real Electron app — the same state the Storybook set depicts, through the app's
 own window rather than through a preview. The rail is captured in TWO themes
-(`localOperatorDark` and `localOperatorLight`) because the rail's chord is plain
+(`localOperatorDark` and `localOperatorLight`) because the rail's chord was plain
 monospace on a `sunken` ground rather than the panel's key caps, and that is the
 one treatment in this change whose contrast could not otherwise be judged outside
-the default theme (design round 1, D4).
+the default theme (design round 1, D4). **The rail no longer draws it that way:**
+both surfaces print the same cap now, which carries no fill and no border, so the
+reason this pair existed has gone with the box. The frames here are still what the
+palette's own surface looked like when this change landed; the cap treatment
+itself is re-shot in `docs/evidence/command-palette-commandpalette/` (with the
+before halves in `docs/evidence/command-palette-commandpalette-baseline/`).
 
 The conversation and registry groups, which need a live backend, are not in
 either set. They are covered by the unit tests over the ranking and the join,

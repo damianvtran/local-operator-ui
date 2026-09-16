@@ -22,6 +22,12 @@ export const dune: ThemeDefinition = {
 		// to stay distinguishable — at this darkness a step of one or two levels
 		// measures under the 1.03:1 separation floor.
 		sunken: "#050403",
+		/*
+		 * The current row's own ground: `surface` stepped +7 on every channel
+		 * toward white. ΔE00 2.20 from `surface`, 3.72 from `elevated` and 6.63
+		 * from `sunken`.
+		 */
+		highlight: "#211e1b",
 
 		// The old primary text was F9FAFB, a blue-white. Every other neutral here
 		// holds R greater than G greater than B, and one cool value in an otherwise

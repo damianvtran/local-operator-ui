@@ -38,11 +38,12 @@
  *      rail's row are one fact.
  *
  * WHAT IT CANNOT PROVE: that the ground is *visible*. That is a property of the
- * role pair across twelve palettes, and it is `scripts/contrast-contract.mjs`'s
- * job — `["surface", "sunken"]` and `["elevated", "sunken"]` are asserted there
- * at the field floor of ΔE00 2.0 (both pairs pre-date this change; only the
- * call-site pins are new), with `sunken`'s worst case at 3.75. It also cannot
- * prove the row reads as the current one on screen; that is the frames in
+ * role against its neighbours across twelve palettes, and it is
+ * `scripts/contrast-contract.mjs`'s job — it asserts `highlight` against
+ * `surface`, `elevated` and `sunken` at the field floor of ΔE00 2.0, with the
+ * authored values measuring 2.18-2.28 from `surface`, 2.52-5.05 from `elevated`
+ * (the row's hover step, the binding pair) and 2.15-15.43 from `sunken`. It also
+ * cannot prove the row reads as the current one on screen; that is the frames in
  * `docs/evidence/chat-sidebar-selection/`.
  *
  * PROCEDURE NOTE. The sidebar cannot be rendered in isolation — it reads the
@@ -312,8 +313,8 @@ const CURRENT = [
 
 test("the current row's ground is a step off its panel, not a wash", () => {
 	assert.ok(
-		rowCurrent.includes("bg-sunken"),
-		`the current row's ground must be a step of its own; \`sunken\` is ΔE00 3.75 from \`surface\` at its worst (iceberg) against the 2.0 field floor. Got:\n${rowCurrent}`,
+		rowCurrent.includes("bg-highlight"),
+		`the current row's ground must be the role authored for it — \`highlight\`, a shallow step off \`surface\` in the direction the mode runs (ΔE00 2.18-2.28): above the perceptual threshold, and under the \`sunken\` well it replaced (3.75-14.94, the operator's dark box). Got:\n${rowCurrent}`,
 	);
 	assert.ok(
 		!rowCurrent.includes("bg-accent-wash"),
@@ -321,7 +322,44 @@ test("the current row's ground is a step off its panel, not a wash", () => {
 	);
 	assert.ok(
 		rowCurrent.includes("text-ink"),
-		`the ground is a ground for text, and \`ink\` is the role whose 7:1 floor \`sunken\` is asserted on. Got:\n${rowCurrent}`,
+		`the ground is a ground for text, and \`ink\` is the role whose 7:1 floor \`highlight\` is asserted on. Got:\n${rowCurrent}`,
+	);
+});
+
+/*
+ * THE SECOND SIGNAL, and why one ground is not enough.
+ *
+ * A ground alone has to outrank the step the rows AROUND it take under the
+ * pointer, and after the selection was quietened it stopped doing so: measured in
+ * the shipped frames, a hovered neighbour paints `elevated` at ΔE00 2.20-4.58 from
+ * the panel while the current row paints `highlight` at 2.18-2.35, so on the dark
+ * palettes the pointer's transient mark became the louder of the two (selection
+ * over hover was 0.93 / 0.97 / 1.89 before this change and 0.48 / 0.52 / 0.49
+ * after — design round 1, D1). The answer is not a louder ground: the operator
+ * asked for a SUBTLE selection, and raising `highlight` would trade that away.
+ * It is the second, non-colour step the settings rail's active row has always
+ * carried — `font-medium` — which is now on both rails rather than one.
+ */
+test("a current row carries a non-colour step, and a row that is not current does not", () => {
+	assert.ok(
+		rowCurrent.includes("font-medium"),
+		`the current row must carry a second signal beside its ground: with the selection quietened, a hovered neighbour's \`elevated\` step outranks \`highlight\` on the dark palettes, so colour alone makes the pointer the louder mark. Got:\n${rowCurrent}`,
+	);
+	const rail = CURRENT.find((site) => site.file === SETTINGS_RAIL);
+	assert.notEqual(
+		rail,
+		undefined,
+		"the settings rail is no longer in `CURRENT`",
+	);
+	const active = merged(rail.file, rail.expression(), rail.stubs);
+	assert.ok(
+		active.includes("font-medium"),
+		`the settings rail's current row no longer carries the step the chat sidebar was moved onto, so the two rails disagree about how a current row is marked:\n${active}`,
+	);
+	const inactive = merged(rail.file, rail.expression(), rail.notCurrent);
+	assert.ok(
+		!inactive.includes("font-medium"),
+		`a row that is NOT current must not be heavier than the one that is:\n${inactive}`,
 	);
 });
 
@@ -330,7 +368,7 @@ test("every current-row element keeps the ground under the pointer", () => {
 		const classes = merged(site.file, site.expression(), site.stubs);
 		if (site.ground) {
 			assert.ok(
-				classes.includes("bg-sunken"),
+				classes.includes("bg-highlight"),
 				`${site.what} paints no ground of its own while it is the current row:\n${classes}`,
 			);
 		}
@@ -367,7 +405,7 @@ test("a row that is NOT current still gets the pointer's step", () => {
 			`${site.what} must keep the pointer's step while its row is NOT current:\n${classes}`,
 		);
 		assert.ok(
-			!classes.includes("bg-sunken"),
+			!classes.includes("bg-highlight"),
 			`${site.what} must not carry the current-row ground while it is not current:\n${classes}`,
 		);
 	}
@@ -396,13 +434,13 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// marks the row the reader is IN, not the heading above it.
 				"hover:bg-elevated": 4,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
-				"hover:bg-sunken": 1,
+				"hover:bg-highlight": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it.
 				"hover:bg-transparent": 1,
 			},
 		],
-		[SETTINGS_RAIL, { "hover:bg-elevated": 1, "hover:bg-sunken": 1 }],
+		[SETTINGS_RAIL, { "hover:bg-elevated": 1, "hover:bg-highlight": 1 }],
 	]);
 	for (const [file, expected] of declared) {
 		const found = {};
@@ -452,7 +490,7 @@ test("the entity row's current-row predicate is the draft's own target", () => {
 
 test("the merge is load-bearing rather than incidental", () => {
 	/*
-	 * Stated so a later reader cannot "fix" this by deleting `hover:bg-sunken`:
+	 * Stated so a later reader cannot "fix" this by deleting `hover:bg-highlight`:
 	 * the raw concatenation the browser would see WITHOUT `cn` carries both
 	 * rules, and `hover:bg-elevated` wins on cascade order.
 	 */
