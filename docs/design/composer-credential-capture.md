@@ -67,20 +67,44 @@ CREDENTIAL_ARM = re.compile(r"(?:^|(?<=\s))/(?:credential|cred)[ \t]*$", re.IGNO
 - Leading **or** mid-prose; the token must start at line start or after
   whitespace, and must be the last thing on the caret's **own line** up to the
   caret. Trailing spaces and tabs are part of the match; a newline is not.
-- **Only typing arms.** Text that arrives some other way — a restored draft, a
-  history recall, a completion, seeded content, a programmatic `setValue` —
-  never arms. The TUI enforces this by being the only arming route
-  (`_sync_credential_arm`, "This is the ONLY way to arm"), and it is pinned
-  there by `test_a_mention_of_the_command_in_text_never_typed_through_the_arm_does_not_arm`.
+- **Only a typed arrival arms — plus the one completion that IS a typed
+  arrival.** Text that arrives some other way — a restored draft, a history
+  recall, seeded content, a programmatic `setValue` — never arms. The TUI
+  enforces this by being the only arming route (`_sync_credential_arm`, "This is
+  the ONLY way to arm"), and it is pinned there by
+  `test_a_mention_of_the_command_in_text_never_typed_through_the_arm_does_not_arm`.
   This matters: `docs/design/...` prose that mentions the command, and a draft
   restored from a previous session, must not silently capture the next paste.
+  The picker-accepted token (§1) is the second door and it is not an exception:
+  accepting the row writes the token's own trailing space, and the TUI gets it
+  from `_apply_command`, so a hand-typed space and a picker-accepted space are
+  one rule. This port had the door described and not built, which meant the paste
+  that followed the accepted row landed verbatim in the document (code round 1,
+  MAJOR 2); the completion now syncs through the module's `"completion"` origin,
+  which carries the arming power and nothing else.
 - The arm is **latched**, not re-derived per paste, and survives a newline, a
   typed word, a caret move, and an Esc that closes the popup. It ends only when
-  the token is gone, the capture is taken, the span is cancelled, or a
-  flag-shaped tail makes the tail an argument rather than a secret (`--…`: the
-  first character typed into the span being `-` abandons the capture and leaves
-  that `-` as plain text, which is how `/credential --forget-all` stays
-  reachable in the TUI — `editor.py:2960-2983`).
+  the token is gone, the capture is taken, the span is cancelled, a flag-shaped
+  tail makes the tail an argument rather than a secret (`--…`: the first
+  character typed into the span being `-` abandons the capture and leaves that
+  `-` as plain text, which is how `/credential --forget-all` stays reachable in
+  the TUI — `editor.py:2960-2983`), or the buffer is replaced wholesale (§3).
+- **Re-anchoring has a typed-through rule** (`_token_being_typed_at`,
+  `editor.py:6013-6045`), and the port needed it for the same measured reason
+  the TUI did: while the operator re-types the token over the latched one —
+  `/cred` → `/crede` → … → `/credential` — the middle spellings match neither
+  the token regex nor the arm regex, so a nearest-match tie-break hands the arm
+  to a DIFFERENT token earlier in the line. That migration is one-way: the
+  anchor travels with it, the opener space then never opens a span, and the next
+  secret is typed into the document in plaintext. So before either tie-break,
+  ask whether the word at the latched offset is this token mid-typing (the
+  word's own `/cred`-floor prefix match), and keep the arm there if it is
+  (code round 1, MAJOR 1).
+- **The disarm flag is anchored** (`/^[ \t]+-/` against the token's tail), not a
+  `.test` against the whole tail: the flag has to be the FIRST thing after the
+  token's blanks to be a command, and an unanchored search disarmed the gesture
+  on a `-` anywhere later in the line — the operator's next paste then landed in
+  the document (code round 1, MINOR-2).
 
 ## 3. Masking while typing
 
@@ -108,6 +132,32 @@ CREDENTIAL_ARM = re.compile(r"(?:^|(?<=\s))/(?:credential|cred)[ \t]*$", re.IGNO
 - The caret leaving the span ends the *typing* state without disclosing
   anything; returning to the token re-opens it (`test_the_caret_leaving_the_span_ends_the_capture_without_disclosing`,
   `test_the_caret_returning_to_the_token_re_opens_the_capture`).
+- **A whole-buffer replacement ends a live capture, both halves of it**
+  (`Editor.load_text`, `editor.py:7033-7099`: `_abandon_credential_typing("gone")`
+  **and** `_disarm_credential("gone")`, named against "a history recall, a
+  restored draft, a `/reload` hand-back, a sidebar session switch"). The port
+  reaches the same states through a conversation switch, a recalled prompt, an
+  adopted draft, a transcription, a slash plan and a submit's own clear, and
+  without the teardown the buffer, the mask and the value stop describing the
+  same thing silently: the capture keeps reporting TYPING, the operator's next
+  characters are masked into the STALE value, and Enter mints a pill over a
+  prompt they still had on screen — deleting it — with the stale secret then
+  stored into whichever conversation is current (code round 1, BLOCKER 1).
+  **Dropped, never re-synced onto the arriving text**: routing it through an
+  arrival re-anchors the arm onto whatever `/credential` the new buffer happens
+  to mention, which is the migration the TUI's own R6b/R6c removed because a
+  recalled prompt that merely mentioned the command swallowed the next ordinary
+  paste, unrecoverably. The payload map is retired with the capture, and a
+  conversation switch retires it too — a marker minted in conversation A must
+  not be substituted against conversation B.
+- **Text that arrives INTO an open span is refused, not mirrored**
+  (`editor.py:6312-6323`: "leave the value untouched rather than silently
+  corrupting it"). A drop, an IME commit or a paste that fell through the gate
+  used to be appended to the held value while the cells stayed where they were,
+  so the secret silently gained characters the operator never saw masked. The
+  port's order is the reference's plus one step: end the typing state (keeping
+  the arm — the gesture is one space away again) with the value dropped, and let
+  the arriving text land where the browser put it (code round 1, MINOR-3).
 
 ## 4. Enter mints the pill
 
@@ -130,12 +180,28 @@ Read the TUI's `_mint_typed_credential` (`editor.py:6365-6417`) and mirror it:
   count is the weakest form of it exactly where truncation hides, as in a PEM
   block);
 - an **empty** span mints nothing and the capture stays open;
+- **the Send button takes the same answer Enter does**, because a masked capture
+  is a mode and a mode cannot mean one thing to the keyboard and another to the
+  pointer. Clicking Send with a masked span open used to submit the MASK CELLS as
+  the message — the secret unreachable, the model handed a citation nothing
+  backed, the notice still claiming to mask a box that was now empty — and with
+  an EMPTY span it reached the dispatcher, which refused `/credential` and left
+  the screen exactly as it was, a silent no-op on the app's primary control
+  (design round 1, D1; QA round 1, Q4). Both gestures now read ONE function: a
+  non-empty span mints and does not send; an empty span falls through to the
+  planner, so `/credential ` + Send reaches the picker, which is the door §1
+  keeps open for the list, the store and the forget verbs; nothing open is an
+  ordinary send. Never: mask cells, a half-captured secret, or silence;
 - the marker is *not* distinguishable from a plain paste/image marker by its
   grammar alone, which is deliberate: `Marked = Attachment | PastedText | PastedCredential`
   in the TUI, and a citation counts as the app's own only when the marker text
   matches the payload's own recorded marker **and** the index matches. A
   hand-typed lookalike is prose and must never be stored, substituted or
-  stripped.
+  stripped. **The index half has to be reachable** (code round 1, MINOR-1): every
+  payload the app builds carries the two in agreement, so the index only ever
+  says no about a marker whose tail was edited by hand — which is the case that
+  matters, and which is why it is pinned with a mismatched pair rather than
+  dismissed as decoration.
 
 ## 5. Paste, and Esc
 
@@ -165,6 +231,25 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   token is left behind as inert literal text. With no characters to restore the
   cancel still ends the mode (the TUI's R1/U2 regression: it used to re-arm
   itself and capture the prose that followed).
+- **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
+  `editor.py:6452`), and the port needs the equivalent for the EMPTY sub-state: a
+  cancel that restores nothing produces no buffer change, so an edit the cancel
+  posts cannot be seen by the change handler that would re-arm from it. Two round
+  trips through this: the empty-span cancel left the caret one position behind
+  its own buffer, and every following character was inserted BEFORE the previous
+  one — measured as `/credential ` + Esc + `hello there` → `/credential ello
+  thereh`, in prose as well as at the start (UX round 1, U1; the reference lost
+  the same round twice).
+- **After a cancel, the token is inert to SUBMIT as well.** The notice promises
+  "Enter will expose them", and Enter used to do the opposite: it reached the
+  dispatcher, which read the leading `/credential` as the COMMAND, opened the
+  picker and — mid-prose — stripped the restored characters out of the
+  operator's sentence. The composer therefore remembers the token it just
+  cancelled (its exact run and arrival offset) and submits prose while that run
+  is still there; any edit that moves the token ends the exception, and the case
+  the dispatcher exists for is untouched — `/credential <args>` submitted with no
+  capture still strips its arguments, so a secret can never land in command text
+  (QA round 1, Q2).
 - **armed, no space yet** → Esc does **not** disarm. With the popup open it
   closes the popup; otherwise it keeps its existing meaning. The arm survives.
 - The Escape restore must not re-arm: the TUI nests the restore in
@@ -181,7 +266,17 @@ gate is the *first* branch, ahead of every size and whitespace rule:
 - **The draft is not written while a masked capture is open.** The persisted
   draft keeps the last non-capturing value; a half-typed secret is in-flight
   state, and persisting `••••` with no value behind it would restore dead text
-  the operator cannot use. Document this rule in the code, with this reason.
+  the operator cannot use. This is a rule about the MASKED window only, and it
+  is enforced at the capture's own writes as well as at `handleChange`: a write
+  gated on the render-time `draftHeld` flag alone missed the mint, which lands
+  in the same tick while the mask is still open (QA round 1, Q1).
+- **What IS persisted, in every state the capture ends in.** The marker text
+  (it holds no secret), and — deliberately — the **Esc-restored plaintext**. The
+  unredact turns the characters back into the operator's prose, and prose is
+  what a draft keeps; leaving it out kept a secret off disk but made a crash or
+  a quit come back holding the inert `/credential ` the operator had just
+  cancelled, with their line gone (UX round 1, U4). §5's own words for that
+  state are the answer: after the unredact it is not a credential.
 - The marker text **is** persisted (it holds no secret) and a restored draft
   therefore repaints its pill. A restored payload starts with an empty value —
   the TUI's encoder deliberately does not write the value
@@ -191,32 +286,75 @@ gate is the *first* branch, ahead of every size and whitespace rule:
 - Clearing the composer, submitting successfully, and disarming all clear or
   drop the map; a **failed send keeps it**, because the operator's unsent draft
   must not lose the value behind a pill they can see.
+- **The map is retired WITH the buffer, never ahead of it.** The submit requests
+  the retirement and a commit performs it, once nothing left in the box cites a
+  payload. Clearing the map first left a window in which the raw
+  `[Credential #1, 19 chars]` painted without its pill and an Enter inside that
+  window sent a citation no map entry backed (code round 1, MINOR-5).
+- **A conversation switch retires both halves**, the map included: a payload
+  minted in conversation A must not be cited by conversation B's restored draft
+  because the two happen to contain the same marker text.
 
-## 7. The three deliberate divergences from the TUI
+## 7. The deliberate divergences from the TUI
 
-1. **Pill rendering.** The composer is a plain `<textarea>` over a plain string
-   draft, so there are no styled nodes to hang a chip on. The pill is drawn by a
-   **background-only overlay**: a mirror element behind the textarea, with the
-   same box model and typography (`whitespace-pre-wrap`, same font, size,
-   line-height, letter-spacing, padding, border-box width), that paints a pill
-   background under each marker span and **no text at all**. The textarea keeps
-   painting every glyph, so a failure of the overlay can never make the user's
-   text invisible, and the marker text and the pill can never disagree. The
-   overlay is mounted **only while the buffer cites at least one marker**, so
-   the ordinary composer keeps exactly today's render path. Scroll offset is
+THIS LIST IS THE WHOLE OF THEM, and it is kept true to the code: each entry is a
+thing this port does differently on purpose, with the reason, and anything not
+here is intended to be the TUI's behaviour rather than an accident of the port.
+
+1. **Pill rendering, and the two cues the port cannot have.** The composer is a
+   plain `<textarea>` over a plain string draft, so there are no styled nodes to
+   hang a chip on. The pill is drawn by a **background-only overlay**: a mirror
+   element behind the textarea, with the same box model and typography
+   (`whitespace-pre-wrap`, same font, size, line-height, letter-spacing,
+   padding, border-box width), that paints a pill background under each marker
+   span and **no text at all**. The textarea keeps painting every glyph, so a
+   failure of the overlay can never make the user's text invisible, and the
+   marker text and the pill can never disagree. The overlay is mounted whenever
+   the buffer has anything to paint — a marker, a mask run, or the armed token —
+   so the ordinary composer keeps exactly today's render path. Scroll offset is
    synchronised when the textarea scrolls internally (it only does so past
    `max-h`).
+   **Channels actually available here, stated because the TUI has two and this
+   has one.** The TUI marks the armed token on two independent channels: an
+   amber token run and a glyph swap, of which the glyph is the one that survives
+   `NO_COLOR` and a monochrome terminal (`local_operator.tcss:624`). A
+   `<textarea>` carries no per-run colour and has no glyph to swap, so the port
+   has exactly one channel — a background wash — and it spends that channel on
+   the armed token (`bg-warning-wash`, the role the TUI's amber names) and on
+   the pill (the `info` wash plus its 1px outline). Nothing in this port
+   survives `NO_COLOR`; the notice sentence is the half that does, which is why
+   it is not optional.
 2. **Key minting reads names asynchronously.** TUI mints synchronously from
    `session_credential_names()`. Here the taken names come from the desktop
-   contract's `sessions.credential` / `list` call, so the names are fetched when
-   the capture **arms** and cached; minting then stays synchronous at Enter. A
-   failed or still-running fetch must not block minting — mint against what is
-   cached, always including this composer's own in-flight keys.
-3. **Draft persistence while typing**, as §6 states.
+   contract's `sessions.credential` / `list` call (which answers objects, not
+   strings — one shared reader turns one into the other), so the names are
+   fetched when the capture **arms** and cached; minting then stays synchronous
+   at Enter. A failed or still-running fetch must not block minting — mint
+   against what is cached, always including this composer's own in-flight keys.
+   On a NEW-CHAT pane there is no session to ask, so the guard is weaker there
+   by construction: it sees this composer's in-flight keys and knows of no
+   session names at all (§9).
+3. **Draft persistence while typing**, as §6 states: the masked window is not
+   written, and every state the capture ENDS in is — the marker text and the
+   Esc-restored plaintext included.
+4. **The submit seam for a first message (added in round 1).** The TUI's session
+   always exists, so storing a cited credential before the send is always
+   possible. Here a draft pane has no session until the send creates one, so
+   sending calls back into the host (`beforeAdmission`) once the id exists and
+   before the message is admitted, and what leaves is what that callback
+   returns. Without it the most likely first use — a brand-new chat whose first
+   message hands over an API key — silently degraded to the not-stored citation
+   (UX round 1, U2).
+5. **The notice reserves its line.** The masked sentence is not mounted
+   conditionally: its slot is always in the layout, one line box tall, because
+   mounting it pushed the typed line down 35.5px mid-word and the mint moved it
+   back (design round 1, D3). A terminal redraws a row; a textarea over a real
+   layout cannot, so the space is reserved rather than re-flowed.
 
 Everything else — the regex, the mask cell, the marker format, the citation
-phrases, the naming convention, the disarm rules — is ported exactly, because
-those are the parts whose behaviour the model and the session store depend on.
+phrases, the naming convention, the disarm rules, the whole-buffer teardown
+(§3), the typed-through re-anchor (§2) — is ported exactly, because those are
+the parts whose behaviour the model and the session store depend on.
 
 ## 8. Naming the credential
 
@@ -224,7 +362,15 @@ Ported exactly (`editor.py:680-722`), because the name is the env var the model
 must use and the store must not be silently clobbered:
 
 - prefix `LOP_SECRET_`, then 8 symbols from `ABCDEFGHJKMNPQRSTVWXYZ23456789`
-  (31 symbols, no lookalikes) — 39.3 bits;
+  (**30** symbols, no lookalikes) — 39.3 bits;
+  **The alphabet is 30, not 31, and this document said the wrong number until
+  round 1** (code review round 1). The string is twenty-two letters — no `I`,
+  `L` or `O` — plus the eight digits `2`-`9`: 22 + 8 = 30, and 8 characters over
+  30 symbols is 39.26 bits, which is the figure this document's own reasoning
+  already gave. The TUI's docstring repeats the same miscount over the same
+  string (`local_operator/tui/widgets/editor.py:680-722` says 31), so the error
+  was inherited rather than invented here: correcting it in the port without
+  naming the source would leave the next reader filing the same bug twice.
 - drawn from a **cryptographic** source (`crypto.getRandomValues`), never
   `Math.random`: a predictable name lets anything that can read the model's
   context guess the env var to look for;
@@ -266,7 +412,29 @@ At submit, with the TUI's `_capture_inline_credentials` as the reference:
    that actually works ("Paste the value again after `/credential`"), because
    there is no other gesture that retries a store. The existing toast helpers
    (`@shared/utils/toast-manager`) are the surface.
-5. clear the map once the store holds the values.
+5. clear the map once the store holds the values, and **only once the buffer
+   stops citing them**: the retirement is requested by the submit and performed
+   by a commit, so the pill and the value behind it disappear together (§6).
+6. **a cited credential in a conversation's FIRST message has to be storable**,
+   and this is the one place the port cannot copy the TUI. The TUI's session
+   always exists; here a new-chat pane has an id only after `sessions.create`,
+   and the create happens INSIDE the send — after the composer has decided what
+   to send and before the transport leaves. So the send carries a seam
+   (`beforeAdmission`) that the host calls with the id it resolved and before the
+   message is admitted, and stores there: the composer hands it the payload with
+   its markers, and the text that leaves is what the seam returns. Without it the
+   operator's most likely first use — a brand-new chat whose first message hands
+   over an API key — silently degraded to the not-stored citation, which is the
+   inversion of §9's whole point (UX round 1, U2). **No backend change and no
+   desktop-contract change**: the seam is a callback the composer already had a
+   place for (the send's own optimistic echo sits in the same window), and a host
+   that cannot offer the window simply ignores it.
+7. **The list answer is read in ONE place.** The runtime answers
+   `[{"key", "source"}]`, not `string[]`; the collision guard and the credential
+   picker both need the names, so one reader (`credentialNamesFrom`) turns that
+   payload into them. Read as strings the guard's `taken` set was always empty —
+   the collision rule was inert — and the picker crashed the renderer on its
+   first successful list, React error #31 (QA round 1, Q3).
 
 The `/credential` argument must stay stripped from any command dispatch
 (`slash-dispatch.ts`: `/credential` is refused so a secret can never land in

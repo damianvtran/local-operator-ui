@@ -44,11 +44,13 @@ const realSetInterval = globalThis.setInterval;
  * never exits. Every timer created below is recorded and cleared on the way
  * out, which is the fixture's business rather than the component's.
  */
-const tracked = (real) => (...args) => {
-	const id = real(...args);
-	liveTimers.push(id);
-	return id;
-};
+const tracked =
+	(real) =>
+	(...args) => {
+		const id = real(...args);
+		liveTimers.push(id);
+		return id;
+	};
 globalThis.setTimeout = tracked(realSetTimeout);
 globalThis.setInterval = tracked(realSetInterval);
 
@@ -122,8 +124,8 @@ window.electron = {
  * REQUEST for a session id the composer was never given (UX round 1, U2).
  */
 const calls = [];
-let credentialStoreReply = { ok: true };
-let credentialList = [{ key: "LOP_SECRET_ABCDEFGH", source: "command" }];
+const credentialStoreReply = { ok: true };
+const credentialList = [{ key: "LOP_SECRET_ABCDEFGH", source: "command" }];
 
 const COMMANDS = [
 	{
@@ -229,8 +231,12 @@ const bundle = await build({
 });
 const bundlePath = new URL(`./_composer-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { MessageInput, QueryClient, QueryClientProvider, useConversationInputStore } =
-	await import(bundlePath.href);
+const {
+	MessageInput,
+	QueryClient,
+	QueryClientProvider,
+	useConversationInputStore,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const React = await import("react");
@@ -365,12 +371,23 @@ async function mount({
  * nothing new and `onChange` never runs. This is the same bypass
  * `fireEvent.change` uses, and it is what makes the DOM edit route real.
  */
-const writeValue = (field, next) => {
+const writeValue = (field, next, caret) => {
 	const setter = Object.getOwnPropertyDescriptor(
 		window.HTMLTextAreaElement.prototype,
 		"value",
 	)?.set;
+	/*
+	 * THE ORDER IS THE BROWSER'S, and it is not cosmetic: the caret moves WITH
+	 * the insertion and the `input` event follows it. Dispatching first and
+	 * setting the selection afterwards lets this rig overwrite whatever the
+	 * component did to the caret inside its own commit — which is not what a
+	 * browser does, and it hid the empty-span Escape's stale caret: the
+	 * component's own `setSelectionRange` ran during the flush and the rig's
+	 * later write silently repaired it. A rig that repairs the defect it is
+	 * asked to pin is worse than no rig.
+	 */
 	setter.call(field, next);
+	if (caret !== undefined) field.setSelectionRange(caret, caret);
 	field.dispatchEvent(new window.Event("input", { bubbles: true }));
 };
 
@@ -404,12 +421,13 @@ const key = async (frame, keys) => {
 	if (text === undefined) {
 		if (name === "Backspace" || name === "Delete") {
 			if (start === end && name === "Backspace" && start === 0) return;
-			const from = start === end ? (name === "Backspace" ? start - 1 : start) : start;
-			const to = start === end ? (name === "Backspace" ? start : start + 1) : end;
+			const from =
+				start === end ? (name === "Backspace" ? start - 1 : start) : start;
+			const to =
+				start === end ? (name === "Backspace" ? start : start + 1) : end;
 			const next = field.value.slice(0, from) + field.value.slice(to);
 			await act(async () => {
-				writeValue(field, next);
-				field.setSelectionRange(from, from);
+				writeValue(field, next, from);
 			});
 			await settle();
 		}
@@ -418,8 +436,7 @@ const key = async (frame, keys) => {
 	const next = field.value.slice(0, start) + text + field.value.slice(end);
 	const caret = start + text.length;
 	await act(async () => {
-		writeValue(field, next);
-		field.setSelectionRange(caret, caret);
+		writeValue(field, next, caret);
 	});
 	await settle();
 };
@@ -496,7 +513,11 @@ test("the Send button and Enter take the same answer to an open masked span", as
 
 	// The button MINTS, exactly as Enter does, and does not submit: the mask
 	// cells are gone from the box and a pill stands in their place.
-	assert.equal(frame.sent.length, 0, "the button did not submit the mask cells");
+	assert.equal(
+		frame.sent.length,
+		0,
+		"the button did not submit the mask cells",
+	);
 	assert.equal(frame.value(), "deploy with [Credential #1, 19 chars] ");
 	assert.equal(frame.notice(), "", "the capture is over, so the notice is not");
 
@@ -580,7 +601,10 @@ test("a history recall ends a live capture instead of masking into it", async ()
 	const frame = await mount();
 	useConversationInputStore
 		.getState()
-		.addSubmittedMessage(frame.conversationId, "run the migration again please");
+		.addSubmittedMessage(
+			frame.conversationId,
+			"run the migration again please",
+		);
 	await settle();
 	await type(frame, "/credential ");
 	await type(frame, "hunter2");
@@ -777,7 +801,21 @@ test("a minted pill is persisted, and the value behind it never is", async () =>
 /* ------------------------------------------------------------------ */
 
 test("after an empty-span Escape the leading token is prose, not the command", async () => {
-	const frame = await mount({ conversationId: "conv-6" });
+	/*
+	 * A DISPATCHER IS MOUNTED, and the test is empty without it: `planFor`
+	 * answers "send" whenever `onSlashCommand` is absent, so a composer with no
+	 * dispatcher would send this draft as prose whether or not the cancelled
+	 * token is excluded — the assertion below would pass on the broken code too
+	 * (code review round 1's lesson about vacuous pins, applied to this one).
+	 */
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-6",
+		onSlashCommand: async (invocation) => {
+			ran.push(invocation);
+			return "consumed";
+		},
+	});
 	await type(frame, "/credential ");
 	await type(frame, "sk-live-CANARY-4417");
 	await esc(frame);
@@ -785,6 +823,7 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 	assert.match(frame.notice(), /PLAIN TEXT/);
 
 	await clickSend(frame);
+	assert.equal(ran.length, 0, "the cancelled token did not dispatch as a command");
 	assert.equal(frame.sent.length, 1, "the restored text was sent");
 	assert.equal(
 		frame.sent[0][0],
@@ -794,7 +833,14 @@ test("after an empty-span Escape the leading token is prose, not the command", a
 });
 
 test("after an Escape the token stops suppressing once an edit moves it", async () => {
-	const frame = await mount({ conversationId: "conv-6b" });
+	const ran = [];
+	const frame = await mount({
+		conversationId: "conv-6b",
+		onSlashCommand: async (invocation) => {
+			ran.push(invocation);
+			return "consumed";
+		},
+	});
 	await type(frame, "/credential ");
 	await type(frame, "SECRET");
 	await esc(frame);
@@ -802,13 +848,24 @@ test("after an Escape the token stops suppressing once an edit moves it", async 
 	// is the "cleared by any edit that moves it" half of the rule.
 	await act(async () => {
 		const field = frame.textarea();
-		writeValue(field, `please ${field.value}`);
-		field.setSelectionRange(field.value.length, field.value.length);
+		const next = `please ${field.value}`;
+		writeValue(field, next, next.length);
 	});
 	await settle();
 	await clickSend(frame);
-	assert.equal(frame.sent.length, 1);
-	assert.equal(frame.sent[0][0], "please /credential SECRET");
+	/*
+	 * The OTHER direction, and the reason the exception is scoped to the
+	 * cancelled run: once an edit has moved the token, it is the dispatcher's
+	 * again and `/credential <args>` keeps the behaviour it exists for — the
+	 * arguments are stripped so a secret can never land in command text, and no
+	 * message carries the token.
+	 */
+	assert.equal(ran.length, 1, "the moved token dispatched as the command again");
+	assert.equal(frame.sent.length, 0, "the command consumed the draft");
+	assert.ok(
+		!frame.value().includes("SECRET"),
+		`the command text carried no secret: ${frame.value()}`,
+	);
 });
 
 /* ------------------------------------------------------------------ */

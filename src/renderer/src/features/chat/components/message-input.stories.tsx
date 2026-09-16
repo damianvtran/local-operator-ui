@@ -1,7 +1,7 @@
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
 import { screen, userEvent } from "@storybook/test";
+import { useState } from "react";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
 import type { DirectoryWritePath } from "./directory-indicator";

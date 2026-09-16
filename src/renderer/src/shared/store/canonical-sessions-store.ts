@@ -735,7 +735,9 @@ export async function admitChatDraft(
 		// `text` stays the payload IDENTITY for the guard below (it is the string
 		// the composer will send again on a retry, markers and all), while
 		// `rendered` is what the operator sees echoed and what the owner receives.
-		const rendered = beforeAdmission ? ((await beforeAdmission(id)) ?? text) : text;
+		const rendered = beforeAdmission
+			? ((await beforeAdmission(id)) ?? text)
+			: text;
 		store.updateDraft(key, { admissionAttempted: true });
 		/*
 		 * Paint the message BEFORE the await, not after it.
