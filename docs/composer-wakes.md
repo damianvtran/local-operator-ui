@@ -412,6 +412,18 @@ retained rather than consumed.
    chip clears while the reader watches" nor "the receipt row arrives" can be
    produced here. QA round 1's U2 is the nearest state a live pass reaches, and it
    is recorded as such rather than dressed as a retirement.
+6. **The chip and the tally are a READING of the last canonical state, not a live
+   watch of the wake index.** QA round 1's U2 measured the gap on a COLD session:
+   with the pane open, emptying the session's schedule in an isolated index produced
+   no update across 45 samples over 132s (`1 wake armed` throughout), and re-entering
+   the conversation cleared both surfaces cleanly — no stranded heading, the pane
+   still open. The reviewer's own caveat is part of the finding and is carried here:
+   a `headless` window never receives the app's focus/visibility refresh, so a
+   focused window may well refresh on its own, and a cold session has no runtime
+   publishing anything in the first place — which is also the operator's own reading
+   state for an old conversation. What is NOT claimed: that a wake index is watched.
+   Nothing in this change subscribes to it, and closing that gap means a new
+   subscription rather than a rendering fix.
 6. **The wire's `remaining` is dead, and this change reads around it rather than
    repairing it** (§ 2). The consequence for a reader of these frames: every
    limit-bounded row in them renders its bound from `limit - fired_count`, which is
