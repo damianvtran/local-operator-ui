@@ -246,7 +246,18 @@ export class DaemonStateMachine {
 					this.enterDetached(observation.detail);
 				} else {
 					this.state = "degraded";
-					this.detail = `${observation.detail} (probe ${this.failures} of ${DEGRADED_AFTER_FAILURES})`;
+					/*
+					 * The evidence clause belongs here too, and it is not cosmetic: this arm
+					 * is reached on a refusal BELOW the detach threshold, so without it a
+					 * surface shows `degraded` (usable, "the daemon is serving") beside a
+					 * sentence that says only "refused the connection" - the app's own
+					 * answered request, which is the reason it is not reporting the daemon
+					 * gone, goes unnamed. Measured on CI, on the answering arm of
+					 * `scripts/daemon-observation.test.mjs`'s F-1 pair: state `degraded`,
+					 * detail `http://127.0.0.1:34753 refused the connection (fetch failed)
+					 * (probe 2 of 3)`.
+					 */
+					this.detail = `${observation.detail} (probe ${this.failures} of ${DEGRADED_AFTER_FAILURES}).${this.transportEvidenceSuffix("so it is serving")}`;
 				}
 				break;
 			case "unanswered":
@@ -303,10 +314,7 @@ export class DaemonStateMachine {
 	private observeUnanswered(detail: string): void {
 		this.unanswered += 1;
 		if (this.transportEvidenceFresh()) {
-			const silentFor = Math.round(
-				(this.now() - (this.lastTransportAt as number)) / 1000,
-			);
-			this.detail = `${detail} The daemon answered a request ${silentFor}s ago, so it is serving and the probe's budget is what expired (no answer to probe ${this.unanswered}).`;
+			this.detail = `${detail}${this.transportEvidenceSuffix("so it is serving and the probe's budget is what expired")} (no answer to probe ${this.unanswered}).`;
 			return;
 		}
 		if (this.unanswered >= UNANSWERED_BEFORE_DETACHED) {
@@ -358,6 +366,25 @@ export class DaemonStateMachine {
 		);
 	}
 
+	/**
+	 * The clause a sentence owes when THIS app's own request is the evidence
+	 * behind a connection the app has not detached from, or the empty string when
+	 * there is no such evidence.
+	 *
+	 * Shared rather than copied: three arms carry it (a probe budget that expired,
+	 * a refusal past the detach threshold, and a refusal short of it), and a third
+	 * copy is how one of them came to say "refused the connection" while the app
+	 * was still holding the connection open on the strength of its own answered
+	 * request.
+	 */
+	private transportEvidenceSuffix(tail: string): string {
+		if (!this.transportEvidenceFresh()) return "";
+		const silentFor = Math.round(
+			(this.now() - (this.lastTransportAt as number)) / 1000,
+		);
+		return ` The daemon answered a request ${silentFor}s ago, ${tail}.`;
+	}
+
 	private enterDetached(detail: string, corroborated = false): void {
 		/*
 		 * The last gate before a surface is allowed to say "offline". A daemon that
@@ -373,7 +400,7 @@ export class DaemonStateMachine {
 		if (!corroborated && this.transportEvidenceFresh()) {
 			this.failures = 0;
 			this.state = "degraded";
-			this.detail = `${detail} The daemon answered a request ${Math.round((this.now() - (this.lastTransportAt as number)) / 1000)}s ago, so this app is not reporting it as gone.`;
+			this.detail = `${detail}${this.transportEvidenceSuffix("so this app is not reporting it as gone")}`;
 			return;
 		}
 		this.failures = DEGRADED_AFTER_FAILURES;
