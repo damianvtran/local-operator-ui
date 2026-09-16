@@ -27,6 +27,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        # Two commits rather than the default one: the scripts-scope step below
+        # diffs this change against the FIRST PARENT of the merge commit that
+        # `pull_request` checks out - the base branch as of this run - so depth 2 is
+        # what puts that parent, and the merge base with it, in the clone. The
+        # alternative - unshallowing - pulls this repository's whole pack, measured
+        # at ~835 MB in this clone.
+        with:
+          fetch-depth: 2
 
       # pnpm is pinned here, and the pin is load-bearing rather than a preference:
       # pnpm 10.29.3 through at least 10.34.x drops dependency edges from
@@ -58,6 +66,51 @@ jobs:
 
       - name: Run Biome lint
         run: pnpm lint
+
+      # `pnpm lint` names the paths it checks by hand, and `scripts/` - where this
+      # repository keeps its proof harnesses, evidence rigs and release gates - was
+      # not among them, so a formatter error introduced by a merged pull request
+      # rode through this job green. This step checks the files THIS change touches
+      # under `scripts/`, against the base commit it was built on.
+      #
+      # It runs through `pnpm lint:scripts` rather than spelling `biome check
+      # scripts/` here so the scope lives in one place: the same command is what a
+      # developer runs before pushing, and the base ref is the only thing CI adds.
+      # It checks the files a change touches rather than the whole tree because
+      # `scripts/` carries 245 pre-existing errors across 106 files (88 formatter,
+      # 18 organizeImports, 139 lint rules, measured on main) - a burn-down of its
+      # own, and one that would red this job for files the change never opened.
+      # Widening `pnpm lint` to name `scripts/` outright is the follow-up once that
+      # backlog is gone; `scripts/check-scripts-lint.mjs` documents the whole shape.
+      #
+      # `pull_request` only, deliberately: the gate compares against a base commit,
+      # which a push does not carry (`github.event.before` is the zero SHA on a new
+      # branch and can be unreachable after a force push), and every change on
+      # `main` arrives through a pull request that already ran this. A base the gate
+      # cannot resolve is FAILED, never "nothing changed".
+      #
+      # THAT BASE IS `HEAD^1`, NOT `github.event.pull_request.base.sha`. Actions
+      # checks out the RECOMPUTED `refs/pull/N/merge`, whose first parent is the base
+      # branch as of this run, while the payload's `base.sha` is frozen when the
+      # event fires. Once the base branch moves - which is what the release window
+      # this repository works in does continuously - that frozen commit is a strict
+      # ancestor of `HEAD^1`, `merge-base` returns it unchanged, and the diff from it
+      # charges this change for commits the base itself landed: rehearsed against
+      # this pull request's own head with `--since <base>~15`, 122 files, more than
+      # 20 of them carrying dirt the change never opened. `git rev-parse HEAD^1`
+      # cannot silently degrade either: an empty `LINT_SINCE` is a refusal in
+      # `scripts/check-scripts-lint.mjs`, not a fall back to `origin/main`.
+      # `scripts/version-bump-guard.mjs` reads its diff the same way, for the same
+      # event shape and the same reason.
+      - name: Check the scripts tree's lint scope over this change
+        if: github.event_name == 'pull_request'
+        run: LINT_SINCE="$(git rev-parse HEAD^1)" pnpm lint:scripts
+
+      # A gate whose contract is asserted nowhere is how this one's hole appeared in
+      # the first place, so the cases that decide its verdict are driven here too,
+      # against real scratch repositories and the same biome.
+      - name: Check the scripts scope gate's own cases
+        run: node --test scripts/check-scripts-lint.test.mjs
 
   runtime-deps:
     # What the packaged app ships as node_modules is decided entirely by
@@ -119,23 +172,23 @@ jobs:
         run: pnpm check-edit-diffs
 
       # The release-contract scripts: the immutable-recovery pair, the publish
-      # workflow's graph and inline gates, and the version-bump guard that keeps
-      # a feature PR from consuming a version number nobody released. A guard
-      # nothing runs is indistinguishable from no guard, which is why the last of
-      # those is executed here as well as in its own PR-triggered workflow.
+      # workflow's trigger set, graph and inline gates, the pre-release window's
+      # writeup gate, and the version-bump guard that keeps a feature PR from
+      # consuming a version number nobody released. A guard nothing runs is
+      # indistinguishable from no guard, which is why the last of those is
+      # executed here as well as in its own PR-triggered workflow. The automatic
+      # release's own contracts went with the workflow: a derivation and a push
+      # guard existed because nobody chose the bump.
       #
-      # `release-push-guard.test.mjs` is the loop guard's contract, and it belongs
-      # in this list for the same reason: the guard that stops the release workflow
-      # from releasing its own bump was asserted TEXTUALLY for one round and was
-      # wrong for every release this repository ever cut (its bumps land as merge
-      # commits). It is executed over each of those shapes here.
-      #
-      # The second line is the automatic release: the derivation the workflow
-      # applies (a pure function, driven by fixtures and by a real scratch
-      # repository), the anchors it derives a version and an incumbent from, and
-      # the shape of the two workflows that carry it. A release nobody decides by
-      # hand is exactly the one whose rules have to be executable, so these run
-      # with the rest of the contracts rather than only when someone remembers.
+      # The window's own tools are here for the same reason. Releasing is a
+      # decision a person makes now: the owner derives the release from the
+      # window's commits, tags it and publishes a Release, and that Release is the
+      # only trigger the pipeline has. The events a release can arrive by are
+      # asserted rather than described, and the anchors that decision rests on
+      # (`release-baseline.mjs`), the incumbent a signed update upgrades from
+      # (`release-candidate.mjs`) and the writeup the Release is announced with
+      # are rules rather than habits, so these run with the rest of the contracts
+      # rather than only when somebody remembers them.
       #
       # `entry-point.test.mjs` and `require-report.test.mjs` are the two halves of the
       # same guarantee, listed on the third line of the step below: every gate script
@@ -149,7 +202,21 @@ jobs:
         run: |
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs
-          node --test scripts/derive-release.test.mjs scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/test-auto-release-workflow.mjs scripts/release-push-guard.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+          # A build step that omits one of the variables the build's vite plugins
+          # (`scripts/vite-plugins/`, as `electron.vite.config.js` wires them) refuse
+          # to build without fails with nothing but "VITE_GOOGLE_CLIENT_ID is not set"
+          # in its log, so nobody notices until somebody reads one - which is how
+          # `signed-update-candidate.yml`'s build job failed on EVERY one of the
+          # dispatches it has ever had, seven at the time of writing and all of them
+          # on `main`, leaving the `exact-update` job it exists to feed unexercised
+          # for the workflow's whole life. The check derives the variable
+          # names from those plugins rather than holding its own copy, fails a binding
+          # whose `secrets.*` name disagrees with the rest of the tree, and fails an
+          # invocation it cannot resolve rather than dropping it; this step is where
+          # it runs: through `require-report.sh`, because the step below reads
+          # its exit status and nothing else.
+          bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,

@@ -105,6 +105,7 @@ export const canvasShortcutAction = (event: {
 	if (!(event.metaKey || event.ctrlKey)) return null;
 	const key = event.key.toLowerCase();
 	if (key === "o") return "open-file";
-	if (key === "n") return pressBelongsToCanvas(event.target) ? "new-file" : null;
+	if (key === "n")
+		return pressBelongsToCanvas(event.target) ? "new-file" : null;
 	return null;
 };

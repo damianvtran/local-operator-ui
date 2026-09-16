@@ -129,9 +129,17 @@ export const goalDisclosureLabel = (goal: string, expanded: boolean): string =>
  * The count is `todoClause`'s spelling, from the same function the header
  * trigger's tooltip uses, so the two surfaces a user reads in one glance cannot
  * state the number two ways.
+ *
+ * It takes the COUNTS rather than the numeral for the reason that function's own
+ * docblock records: the settled copy is not a function of the open count alone,
+ * and a chip reading `All to-dos resolved` while its accessible name announced
+ * `0 to-dos open` is exactly the drift this pattern exists to make
+ * unrepresentable — the label cannot be built from a number this component was
+ * never told whether anything was dropped beside.
  */
-export const planChipLabel = (openTodos: number): string =>
-	`${PLAN_ACTION}${LABEL_SEAM}${todoClause(openTodos)}`;
+export const planChipLabel = (
+	details: Pick<RunDetails, "openTodos" | "droppedTodos">,
+): string => `${PLAN_ACTION}${LABEL_SEAM}${todoClause(details)}`;
 
 export type ComposerStatusRowProps = {
 	/**
@@ -185,18 +193,21 @@ export const ComposerStatusRow = ({
 	const goal = frontend?.goal?.trim() ?? "";
 	const showGoal = goal.length > 0;
 	/*
-	 * A FINISHED plan still shows: `0 to-dos open` is the honest reading of a
-	 * complete plan, and it keeps the row's height from changing when the last
-	 * item closes.
+	 * A FINISHED plan still shows, in the model's settled spelling
+	 * (`All to-dos resolved`, or `All to-dos closed` where anything was dropped):
+	 * the row's height must not change when the last item closes, and a plan that
+	 * ended is a fact worth keeping on screen. See `todoClause` for why the two
+	 * settled states are two words rather than one.
 	 *
 	 * The gate is the ITEM count and not the phase count, and the difference is a
 	 * real state rather than a hypothetical. `RunDetails.todos` is the PHASE list,
 	 * and the model decodes a phase record with no items to a phase with no items —
 	 * so `todos.length > 0` calls a plan that arrived as one empty named phase a
-	 * plan, and the chip would print `0 to-dos open` for a session that has no
-	 * to-dos at all, which reads as a finished plan. `totalTodos` is the item count
-	 * over the whole wire list: it is zero only when there is genuinely nothing to
-	 * be in the middle of.
+	 * plan, and the chip would state a FINISHED plan over a plan that has no items at
+	 * all (`All to-dos resolved`, `todoClause`'s settled clause, since this follow-up;
+	 * `0 to-dos open` when this gate was first argued, which read as a finished plan
+	 * too). `totalTodos` is the item count over the whole wire list: it is zero only
+	 * when there is genuinely nothing to be in the middle of.
 	 */
 	const showPlan = Boolean(runDetails && runDetails.totalTodos > 0);
 
@@ -229,7 +240,7 @@ export const ComposerStatusRow = ({
 	if (!showGoal && !showPlan) return null;
 
 	const goalLabel = goalDisclosureLabel(goal, goalOpen);
-	const planLabel = runDetails ? planChipLabel(runDetails.openTodos) : "";
+	const planLabel = runDetails ? planChipLabel(runDetails) : "";
 
 	return (
 		<div
@@ -420,7 +431,7 @@ export const ComposerStatusRow = ({
 						 * `aria-hidden` — a decorative repetition, not a second label.
 						 */}
 						<Info aria-hidden={true} className={cn("size-3.5 shrink-0")} />
-						{todoClause(runDetails.openTodos)}
+						{todoClause(runDetails)}
 					</button>
 				</Tooltip>
 			)}

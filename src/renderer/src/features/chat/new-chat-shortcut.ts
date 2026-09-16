@@ -27,10 +27,7 @@
  *     does not is stated on `pressLandsOnOverlay`, which is the same predicate
  *     the canvas's Escape branch asks.
  */
-import {
-	pressBelongsToCanvas,
-	pressLandsOnOverlay,
-} from "./keyboard-scopes";
+import { pressBelongsToCanvas, pressLandsOnOverlay } from "./keyboard-scopes";
 
 /**
  * The key the chord is built on.

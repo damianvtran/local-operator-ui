@@ -31,7 +31,14 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
 import {
@@ -56,6 +63,13 @@ import {
 	type DraftSelectionTarget,
 	draftPreviewQuery,
 } from "../draft-selection";
+import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
+import {
+	interruptNotice,
+	interruptTurn,
+	interruptUnavailableNotice,
+	sessionInterruptEnabled,
+} from "../interrupt-turn";
 import {
 	MOVE_NOT_READY_REASON,
 	MOVE_UNAVAILABLE_REASON,
@@ -257,6 +271,23 @@ function SessionPanel({
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [sendErrorCode, setSendErrorCode] = useState<string | undefined>();
+	/**
+	 * What the last interrupt left running, for the composer's own notice.
+	 *
+	 * Held here rather than in the composer because this is where the request and
+	 * its receipt are: `message-input.tsx` renders the sentence and decides
+	 * nothing about it, which is the split the send error already uses.
+	 */
+	const [stopNotice, setStopNotice] = useState<string | null>(null);
+	/*
+	 * Whether this backend can stop a TURN, as opposed to a session.
+	 *
+	 * Read once and used for both the control's presence and the Escape
+	 * accelerator's predicate, so the key and the button cannot be enabled by two
+	 * different readings of the same capability. `useDesktopCapabilities` is
+	 * cached by react-query, so this shares the page's one request.
+	 */
+	const interruptAvailable = sessionInterruptEnabled(panelCapabilities.data);
 	const [options, setOptions] = useState(false);
 	const [tab, setTab] = useState<"chat" | "raw">("chat");
 	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
@@ -1226,19 +1257,53 @@ function SessionPanel({
 		if (next) next.focus();
 		else input.current?.focusInput();
 	}, [gateKey]);
-	const stop = () => {
-		if (sessionId)
-			void desktopResult({
-				op: "sessions.command",
-				sessionId,
-				requestId: crypto.randomUUID(),
-				command: "stop",
-			}).catch((error) =>
+	/*
+	 * `useCallback` rather than a fresh closure per render (reviewer round 1, NIT
+	 * 2): this identity is an effect DEPENDENCY of the Escape hook, and the panel
+	 * re-renders on every streaming delta - so an unstable `stop` unsubscribed and
+	 * re-subscribed the window keydown listener several times a second for no
+	 * reason. Both orders were measured safe, which is why this is churn rather
+	 * than a defect: the predicate is unchanged, and the setter pair is stable.
+	 */
+	const stop = useCallback(() => {
+		if (!sessionId || !interruptAvailable) return;
+		/*
+		 * A NEW press retires the previous notice before it can be overtaken by a
+		 * new receipt: the sentence is a snapshot of one interrupt, and the second
+		 * press's own outcome is the only current one.
+		 */
+		setStopNotice(null);
+		void interruptTurn(sessionId, crypto.randomUUID())
+			.then((receipt) => setStopNotice(interruptNotice(receipt)))
+			.catch((error) =>
 				// Renders in the same composer alert as a failed send, so it takes the
-				// same authored-copy rule.
+				// same authored-copy rule. A receipt that never arrives is the one case
+				// this control cannot report as a stop, so it does not: the turn is
+				// still on screen and `busy` is still true, which is the honest state.
 				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
 			);
-	};
+	}, [sessionId, interruptAvailable]);
+	/*
+	 * The notice describes the LAST interrupt, so a turn that starts afterwards
+	 * retires it: the sentence says a turn was stopped, and the next turn is not
+	 * that turn. Cleared on `busy` becoming true rather than on a send, because a
+	 * turn can also be started by an approval or a resume. While the interrupt is
+	 * still settling `busy` is still true and this correctly does nothing.
+	 */
+	useEffect(() => {
+		if (busy) setStopNotice(null);
+	}, [busy]);
+	/*
+	 * Escape is the control's accelerator, attached HERE because this component
+	 * owns both halves the predicate reads - `busy` and `stop` - and the ladder it
+	 * defers to is documented in the hook.
+	 */
+	useInterruptOnEscape({
+		sessionId,
+		busy,
+		available: interruptAvailable,
+		onInterrupt: stop,
+	});
 	const loadedTarget =
 		canonical.frontend?.active_team ||
 		canonical.frontend?.active_agent ||
@@ -1847,6 +1912,20 @@ function SessionPanel({
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,
 						onStop: stop,
+						stopAvailable: interruptAvailable,
+						/*
+						 * The band carries ONE sentence, and which one is a fact about
+						 * this build's pairing: a press that happened
+						 * (`interruptNotice(receipt)`), or a turn that cannot be pressed
+						 * at all because the paired backend predates the control
+						 * (`interruptUnavailableNotice(busy, interruptAvailable)` - UX
+						 * round 1's U4). They cannot both apply: no press is possible
+						 * without the capability, so there is never a receipt to report
+						 * beside a skew line.
+						 */
+						stopNotice:
+							stopNotice ??
+							interruptUnavailableNotice(busy, interruptAvailable),
 						onAnswer: (label: string) => void answerWithOption(label),
 						answer: answerForThisGate,
 					}}

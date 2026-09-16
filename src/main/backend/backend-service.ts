@@ -67,8 +67,10 @@ import {
 	recordAddress,
 	serveRunDir,
 } from "./discovery";
+import { launchEnv } from "./launch-env";
 import { LogFileType, logger } from "./logger";
 import { isLegacyManagedCommand } from "./managed-python";
+import { resolveNotificationLaunch } from "./notification-launch";
 import { managedVenvPath } from "./venv-paths";
 
 import {
@@ -611,6 +613,12 @@ export class BackendServiceManager {
 	 * CPython writes `__pycache__/*.pyc` beside the sources it imports, those
 	 * sources are inside the code-sealed `.app`, and every such write breaks the
 	 * signature ShipIt validates before an in-place update.
+	 *
+	 * The notification kill switch joins it here for the same reason, one level
+	 * further out: the environment this returns is also where a `.env` folded
+	 * over the launch, or a shell rc merged over that, would otherwise be the
+	 * one that decides whether the backend this app spawns can banner the
+	 * operator (see the comment on that entry, and `./notification-launch`).
 	 */
 	private backendSpawnEnv(): Record<string, string | undefined> {
 		return {
@@ -620,6 +628,22 @@ export class BackendServiceManager {
 			// mints it before it can reach a spawn site, so the `??` only satisfies
 			// the field's nullable seed from `process.env`.
 			LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken ?? undefined,
+			/*
+			 * LAST, and from `launchEnv` rather than from `this.shellEnv`: the
+			 * notification kill switch is a fact about the LAUNCH, and `shellEnv`
+			 * is where that fact can be lost twice over. `backend/config.ts` folds
+			 * a `.env` from the working directory with dotenv `override: true`
+			 * AFTER the launch, and `loadMacOSEnvironment` merges the operator's
+			 * own shell rc on top of that - so a file or an rc can replace the
+			 * value `pnpm app:headless` set, and the empty shape it leaves behind
+			 * reads as ENABLED in the backend, which is the incident back.
+			 * Applying it here, at the point the environment is handed to the
+			 * spawn, is what the python bytecode prefix above already does for the
+			 * same reason: structural, so no spawn path and no fold order can miss
+			 * it. See `./notification-launch` for the three cases and why an
+			 * unstated key is left alone.
+			 */
+			...resolveNotificationLaunch(launchEnv),
 		};
 	}
 
