@@ -49,8 +49,10 @@ const strip = (
 	tabs: BrowserTabView[],
 	activeTabId: number | null,
 	waiting: Record<number, number> = {},
+	sessions: Array<{ session_id: string; title?: string | null }> = [],
 ) => ({
 	tabs,
+	sessions,
 	activeTabId,
 	waiting,
 	onActivate: () => {},
@@ -59,6 +61,20 @@ const strip = (
 	onHandOver: () => {},
 	onRevokeHandOver: () => {},
 });
+
+/**
+ * The conversations the grouping stories group by.
+ *
+ * ONE OF THEM HAS NO TITLE, deliberately: `sessionDisplayName`'s fallback is the
+ * session id, and a specimen where every conversation is named would leave the rule
+ * this feature added - a blank or missing title is not a name - unjudged. It is also
+ * the shape the hand-over dialog already renders for an unnamed conversation.
+ */
+const SESSIONS = [
+	{ session_id: "session-reports", title: "Reports" },
+	{ session_id: "session-invoices", title: "Invoices" },
+	{ session_id: "session-onboarding", title: null },
+];
 
 /** A ground under the strip, so the active tab's notch — the 1px of `canvas` that
  * makes the tab continuous with the page — is a thing the frame can show. Without
@@ -162,6 +178,91 @@ export const AgentAndWaiting: Story = {
 		1,
 		{ 4: 1 },
 	),
+};
+
+/**
+ * THE POOLED STRIP, GROUPED BY CONVERSATION (design R3).
+ *
+ * The route shows every tab in the app, so the strip is where "which of these is
+ * that conversation's" has to be answerable by looking: three conversations, each a
+ * block in first-tab order, and the unattributed run LAST under `No conversation` -
+ * those are the user's own tabs rather than any conversation's, and the
+ * miscellaneous set belongs at the tail.
+ *
+ * The unattributed block is also the one that proves the chip is a LABEL and not a
+ * decoration: a pool of one conversation renders no labels at all, which is why the
+ * pane's own scope is unchanged by this feature.
+ *
+ * The third conversation has no title, so the frame shows the name rule's fallback
+ * (`sessionDisplayName`: a blank title is not a name) rather than a blank chip.
+ */
+export const Grouped: Story = {
+	args: strip(
+		[
+			tab(1, "Reports home", {
+				sessionId: "session-reports",
+				url: "https://reports.example.com/",
+			}),
+			tab(2, "Invoices due", {
+				sessionId: "session-invoices",
+				url: "https://invoices.example.com/due",
+			}),
+			// The unattributed run: a restored tab, and a user tab never handed over.
+			tab(3, "Dashboard", { restored: true }),
+			tab(4, "Reports detail", {
+				owner: "agent",
+				sessionId: "session-reports",
+			}),
+			tab(5, "Sign in", {
+				sessionId: "session-onboarding",
+				url: "https://app.example.com/sign-in",
+			}),
+			tab(6, "Docs"),
+		],
+		1,
+		{},
+		SESSIONS,
+	),
+};
+
+/**
+ * TWENTY TABS ACROSS SIX CONVERSATIONS AT THE STRIP'S OWN 1160px (design R3's
+ * arithmetic, made visible).
+ *
+ * This is the state the design's numbers are about, and the honest answer at this
+ * scale: the pool needs roughly four times the scroller it has, so the strip
+ * scrolls, four or five tabs are visible at once, and the pinned control reads
+ * `+15` or thereabouts. Six labels of ~150px are ~900px of the ~1050px scroller -
+ * measured in this frame rather than asserted here - which is exactly the crowding
+ * open question 3 says to revisit if the labels start displacing the tabs.
+ *
+ * The conversation count is the input to `showGroupLabels`, so a story with fewer
+ * groups would be a different state: this one is the pool WITH labels, which is the
+ * one worth judging.
+ */
+export const GroupedOverflow: Story = {
+	args: strip(
+		Array.from({ length: 20 }, (_, index) =>
+			tab(
+				index + 1,
+				`${["Spring", "Summer", "Autumn", "Winter", "Budget", "Roadmap"][index % 6]} release notes`,
+				{
+					sessionId: SESSIONS[index % 6]?.session_id ?? null,
+					url: `https://${["spring", "summer", "autumn", "winter", "budget", "roadmap"][index % 6]}.example.com/notes`,
+				},
+			),
+		),
+		8,
+		{},
+		SESSIONS,
+	),
+	decorators: [
+		(Story) => (
+			<div className="w-[1160px] max-w-full">
+				<Story />
+			</div>
+		),
+	],
 };
 
 /*
