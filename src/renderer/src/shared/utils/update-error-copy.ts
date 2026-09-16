@@ -181,6 +181,16 @@ function updateStageOf(message: string): UpdateStage | null {
  * The whole set of labels THIS APP writes in front of an update failure, and why it
  * is a closed set rather than a length.
  *
+ * IT IS EMPTY TODAY, and that is the honest state rather than an oversight. Every label
+ * this app writes into a MESSAGE is one of the three stage labels
+ * (`UPDATE_STAGE_LABEL`), and those are mapped to their own sentence before this set is
+ * consulted - so a surviving prefix has no live producer. The two entries that used to
+ * be here named the CHECK stage, which main writes into its LOG ("Error checking for
+ * updates:", `update-service.ts`) and not into the payload it sends: the sent message is
+ * the bare error, and a rule that kept that prefix alive was keeping a string the app
+ * never emits. A new non-stage app label has to be named here to survive, which is one
+ * line.
+ *
  * A surviving prefix is only worth keeping when the app wrote it: it says which
  * stage of the app was talking, which is context the sentence cannot invent. A
  * prefix a LIBRARY wrote - `Cannot parse releases feed:`, `Request timed out after
@@ -194,10 +204,7 @@ function updateStageOf(message: string): UpdateStage | null {
  * right way round: a missing label drops context into the machine line, while a
  * wrong one puts a stranger's prose at reading weight.
  */
-const APP_AUTHORED_LABELS = [
-	"error checking for updates",
-	"error checking for update",
-];
+const APP_AUTHORED_LABELS: string[] = [];
 
 /*
  * The two shapes `isAuthoredLabel`/`isAuthoredSentence` work with, hoisted: a
