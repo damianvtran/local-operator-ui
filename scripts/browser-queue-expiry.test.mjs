@@ -179,6 +179,48 @@ test("the reconcile's rule is unchanged for a departure: withdrawal stays a with
 });
 
 /*
+ * THE UNION IS LOAD-BEARING, SO IT IS PINNED (review round 5, MINOR). The recording
+ * effect runs after the commit, so within one commit `reported` can still be EMPTY
+ * while the rows it is about are already in hand - the two-call window the hook's
+ * `known` closes by unioning the ref with the keys of the rows it is handed. Feeding
+ * a first call's output straight back in as `resolved`, with no reported key and no
+ * new projection, is that window exactly: without the union half the same entry
+ * resolves a second time and the surface gets two rows for one expiry.
+ */
+test("a row the surface already holds is not resolved a second time while the memory catches up", () => {
+	const now = Date.now();
+	const expiring = request({ expiresAt: now - 1 });
+	const first = reconcileResolved(
+		[],
+		[expiring],
+		[],
+		new Set(),
+		new Set(),
+		now,
+	);
+	assert.deepEqual(
+		first.map((row) => row.key),
+		["entry-1"],
+		"the entry is resolved once",
+	);
+	// The same projection, one tick later, with the memory still empty: the rows in
+	// hand are the only thing that stops the second row.
+	const second = reconcileResolved(
+		[],
+		[expiring],
+		first,
+		new Set(),
+		new Set(),
+		now + 1000,
+	);
+	assert.deepEqual(
+		second.map((row) => row.key),
+		["entry-1"],
+		"and not a second time: the union of the memory with the rows in hand de-dupes it",
+	);
+});
+
+/*
  * THE ROW IS EXPLAINED ONCE, NOT ONCE PER RETENTION WINDOW (review round 3, MAJOR).
  *
  * Main keeps a dead entry in the projection until some unrelated change arrives, and

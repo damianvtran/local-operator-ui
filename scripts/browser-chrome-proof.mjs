@@ -2083,13 +2083,20 @@ async function main() {
 						const markerInk = () => {
 							if (!marker) return null;
 							const box = marker.getBoundingClientRect();
-							const hit = document.elementFromPoint(
-								Math.round(box.left + box.width / 2),
-								Math.round(box.top + box.height / 2),
-							);
+							const cx = Math.round(box.left + box.width / 2);
+							const cy = Math.round(box.top + box.height / 2);
+							// A row scrolled out of the strip's own viewport has its centre outside
+							// the window, where 'elementFromPoint' answers null - a chip that is
+							// simply not on screen at this moment, which is not the invisibility
+							// this check exists to catch. Off-screen rows are reported as such and
+							// not held to a hit test; the rows that ARE on screen are.
+							const inView =
+								cx >= 0 && cx <= window.innerWidth && cy >= 0 && cy <= window.innerHeight;
+							const hit = inView ? document.elementFromPoint(cx, cy) : null;
 							return {
 								opacity: getComputedStyle(marker).opacity,
-								hit: hit === marker || (hit !== null && marker.contains(hit)),
+								inView,
+								hit: !inView || hit === marker || (hit !== null && marker.contains(hit)),
 							};
 						};
 						// How many state chips the row carries: the floor is sized for it (see
@@ -2103,10 +2110,29 @@ async function main() {
 							[...box.querySelectorAll('span')].filter((el) =>
 								/^(Shared|Restored)$/.test(el.textContent?.trim() ?? '')
 							).length;
+						/*
+						 * CONTAINMENT, measured on the row itself (review round 5, MAJOR). The
+						 * floor is a ceiling at four and five chips and the chips are
+						 * 'shrink-0', so what keeps a pathological row from painting over its
+						 * neighbour is the row's own 'overflow-hidden' - and that is a claim
+						 * about boxes, so it is asserted from boxes: no chip may extend past
+						 * the tab's right edge (or before its left).
+						 */
+						const tabBox = box.getBoundingClientRect();
+						const chipEls = [
+							...box.querySelectorAll('span'),
+						].filter((el) => /^(Agent|Shared|Restored|Failed)$/.test(el.textContent?.trim() ?? ''));
+						const waitingEl = box.querySelector('[data-tour-tag="browser-tab-waiting"]');
+						if (waitingEl) chipEls.push(waitingEl);
+						const outside = chipEls.filter((el) => {
+							const rect = el.getBoundingClientRect();
+							return rect.right > tabBox.right + 1 || rect.left < tabBox.left - 1;
+						}).length;
 						return {
 							active: tab.getAttribute('aria-selected') === 'true',
 							marked: !!marker,
 							chips,
+							chipsOutside: outside,
 							markerInk: markerInk(),
 							tabWidth: Math.round(box.getBoundingClientRect().width),
 							titleBox: title ? Math.round(title.getBoundingClientRect().width) : null,
@@ -2145,14 +2171,41 @@ async function main() {
 		const marked = crowded.rows.filter((row) => row.marked);
 		const unmarked = crowded.rows.filter((row) => !row.marked);
 		const narrowest = Math.min(...crowded.rows.map((row) => row.titleBox ?? 0));
+		/*
+		 * THE TITLE THRESHOLD IS CLAIMED FOR THE ROWS IT IS SIZED FOR (review round 5,
+		 * MAJOR): the floors keep >= 85px up to four chips, and at five the row is at
+		 * its ceiling deliberately - containing the pathological state rather than
+		 * letting one rare row outgrow every ordinary tab in the strip's scroll order -
+		 * so a five-chip row is held to containment, not to a number the floor does not
+		 * promise. The run's own specimen is named in the detail either way.
+		 */
 		check(
 			"at the width floor a MARKED tab still names its site: the chrome cluster is overlaid, not reserved",
 			crowded.rows.length >= 10 &&
 				marked.length >= 1 &&
 				unmarked.every((row) => (row.titleBox ?? 0) >= 60) &&
-				marked.every((row) => (row.titleBox ?? 0) >= 85) &&
+				marked.every((row) =>
+					row.chips >= 5 ? true : (row.titleBox ?? 0) >= 85,
+				) &&
 				narrowest >= 60,
 			JSON.stringify({ two: beforeWide.rows, crowded, narrowest }, null, 2),
+		);
+		check(
+			"no chip crosses its tab's own edge, at any chip count the registry can reach",
+			crowded.rows.every((row) => row.chipsOutside === 0),
+			JSON.stringify(
+				{
+					outside: crowded.rows.filter((row) => row.chipsOutside !== 0),
+					specimen: crowded.rows.map((row) => ({
+						chips: row.chips,
+						chipsOutside: row.chipsOutside,
+						titleBox: row.titleBox,
+						active: row.active,
+					})),
+				},
+				null,
+				2,
+			),
 		);
 		/*
 		 * THE MARKER MUST BE PAINTED, on every marked row, in the state the run is in -
@@ -2184,7 +2237,12 @@ async function main() {
 					specimen: marked.map((row) => ({
 						chips: row.chips,
 						titleBox: row.titleBox,
+						inView: row.markerInk?.inView ?? null,
 					})),
+					// Named rather than silent: how many marked rows were scrolled out of the
+					// strip's viewport, and so were not hit-tested at all.
+					outOfView: marked.filter((row) => row.markerInk?.inView === false)
+						.length,
 				},
 				null,
 				2,
