@@ -403,8 +403,10 @@ always on screen.
     `app.py:2885` for the binding and `:24174` for the action it calls);
   - at the roster → close the panel and return focus to the trigger.
   **`⌘[`/`Ctrl+[` is the platform's back gesture and takes the BACK rule**, not
-  this one: it pops one level while the reader is deeper than one, and leaves the
-  pane at the first level (see § 5.5). Bound on the container it could never see
+  this one: it pops one level while the reader is deeper than one, and at the
+  first level it returns to the roster rather than closing the pane — the same
+  landing `Escape` reaches, because there is nowhere else for "up" to go (see
+  § 5.5). Bound on the container it could never see
   a key pressed on the trigger, because the trigger lives in the header —
   outside the pane's subtree — so the state the trigger's own click produces
   could not be left with `Escape` at all, and `⌘[` was equally dead from there.
@@ -718,22 +720,41 @@ nothing"*).
 |---|---|---|
 | click a roster row | open that child | `subagent_panel.py:1509` |
 | `Enter` / `Space` on a focused row | open that child | `:1374` |
-| click the back control, or `⌘[` / `Ctrl+[` | pop one level while the reader is deeper than one; at the first level, leave the pane (the same exit as the ✕ and the breadcrumb's root crumb) | `p` = parent (`app.py:2885`, action at `:24174`); `r` = root (`:2889`, action at `:24183`) at the top |
+| click the back control, or `⌘[` / `Ctrl+[` | pop one level while the reader is deeper than one; **at the first level, return to the roster** (`leaveReader`'s landing and focus rule), with the pane open | `p` = parent (`app.py:2885`, action at `:24174`); `r` = root (`:2889`, action at `:24183`) at the top |
 | `Escape` | leave the reader for the roster from any depth, returning focus to the nearest ancestor that IS a row, else the trigger; at the roster, close the pane and focus the trigger | `esc` = `_leave` (`subagent_view.py:3423-3424`, handled by `_close_subagent_view`, `app.py:24335`) |
-| click a breadcrumb crumb | jump to that level | the breadcrumb itself |
+| click a breadcrumb crumb | jump to that level; the ROOT crumb is the pane's own root, so it lands on the roster, exactly as one back from the first level does | the breadcrumb itself |
 | click a peer step (◀ / ▶) | previous / next sibling, in the authoritative sibling order | `[` / `]` = `subagent_peer(∓1)` (`app.py:2886-2887`) |
 | a "N children" control in the header, when the child has children | descend to the first child | `c` = `subagent_child` (`:2888`) |
-| clicking the trigger, the `PanelRightClose` button, or the breadcrumb's root crumb | close the pane | `r` = `subagent_root` (`:2889`), `esc` at the root |
+| clicking the trigger, or the `PanelRightClose` button | close the pane | `esc` at the root |
 
-**Back and `Escape` are deliberately two rules, not one spelling of the same
-thing.** The TUI separates "up one level" (`p`) from "leave the mode" (`esc`),
-and round 1's U1-3 correction is what settled it here: the reader's back control
-pops one level while there is a level to pop and leaves the PANE at the first one,
-while `Escape` is the way out of the reader at any depth and closes the pane from
-the roster. The breadcrumb pop and the back control therefore still agree at every
-depth above the first — which is what the original finding measured — and the odd
-state, a first-level child's page, is left by the same two controls: back (out of
-the pane) and `Escape` (back to the roster).
+**Back and `Escape` are two rules, and at the first level the second one now
+agrees with them.** The TUI separates "up one level" (`p`) from "leave the mode"
+(`esc`), and that separation is what survives: back steps up ONE page at a time
+and `Escape` leaves the reader from ANY depth, which is a different move at depth
+2 and the whole reason both keys exist.
+
+**Round 1's U1-3 rationale is superseded, and the reason matters.** That round
+settled the first-level exit on the reasoning that the reader is the pane, so
+back had nothing left to go back TO and left the pane instead — which made back,
+the `✕` and the breadcrumb's root crumb three controls taking one exit. The
+operator reported the consequence from use: a first-level child's page had no way
+back up to the roster, and the pane already carries a close control of its own in
+the same bar (`PanelRightClose`, "Close run details"). Two controls closing the
+pane, one of them labelled "Back", is the defect.
+
+What round 1 settled and still holds:
+
+- back pops one level while there is a level to pop;
+- the breadcrumb's crumb and the back control agree at EVERY depth — which is what
+  the original finding measured, and is now true of the root crumb too, where
+  both land on the roster.
+
+What changed, exactly one thing: the first-level exit is the roster
+(`leaveReader`), not the pane. So a first-level reader and `Escape` land in the
+same place, deliberately — they are two spellings of "up out of the reader" at
+the one depth where there is no deeper page to step to, and the focus rule is
+`leaveReader`'s in both cases rather than a second implementation of it. The
+close control is the one that closes the pane, from every depth.
 
 **Where focus lands when a reader is left** (round 2, Q2-1/U2-1). The row the
 reader was opened from is not always a row: a grandchild, and every page reached
