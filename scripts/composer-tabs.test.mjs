@@ -67,6 +67,7 @@ const bundle = await build({
 				activityTally,
 				deriveRunDetails,
 				todoClause,
+				busiestClause,
 				childClause,
 				jobClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
@@ -75,7 +76,7 @@ const bundle = await build({
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
-			export { ComposerStatusRow, shouldRestoreComposerFocus, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -140,6 +141,7 @@ const {
 	deriveRunDetails,
 	activityTally,
 	todoClause,
+	busiestClause,
 	childClause,
 	jobClause,
 	scrollRegionToTop,
@@ -587,10 +589,40 @@ test("the activity chips state the model's clause and name the section they open
 	assert.match(markup, />2 subagents running</);
 	assert.match(markup, />1 job running</);
 	assert.equal(
-		childClause({ count: 2, mark: "running" }),
+		childClause({ count: 2, mark: "running", markCount: 2 }),
 		"2 subagents running",
 	);
-	assert.equal(jobClause({ count: 1, mark: "running" }), "1 job running");
+	assert.equal(
+		jobClause({ count: 1, mark: "running", markCount: 1 }),
+		"1 job running",
+	);
+	/*
+	 * ...and the MIXED set, which is the ordinary case rather than an edge
+	 * (`DEFAULT_MAX_RUNNING_JOBS = 15`, so a fan-out above fifteen children is
+	 * parked against a running few): the count stays whole and the WORD becomes the
+	 * family's, because the state word beside an open total would claim work that is
+	 * not happening - design round 2's D6, where the chip read `40 subagents
+	 * running` while the pane read `15 running · 25 queued · 17 interrupted ·
+	 * 5 done` on the same screen.
+	 */
+	assert.equal(
+		childClause({ count: 40, mark: "running", markCount: 15 }),
+		"40 subagents open",
+	);
+	assert.equal(
+		jobClause({ count: 3, mark: "queued", markCount: 1 }),
+		"3 jobs open",
+	);
+	/*
+	 * The narrow string is the SURFACE's; the accessible name and the tooltip have
+	 * room for the busiest state, and the mark is `aria-hidden`, so without it a
+	 * screen reader would hear the family word alone.
+	 */
+	assert.equal(
+		subagentChipLabel({ count: 40, mark: "running", markCount: 15 }),
+		"Open the subagents in run details — 40 subagents open, 15 running",
+	);
+	assert.equal(busiestClause({ count: 2, mark: "running", markCount: 2 }), "");
 	// And the action leads the tooltip and the accessible name, one derived string.
 	assert.match(
 		markup,
@@ -601,11 +633,11 @@ test("the activity chips state the model's clause and name the section they open
 		/aria-label="Open the jobs in run details — 1 job running"/,
 	);
 	assert.equal(
-		subagentChipLabel({ count: 2, mark: "running" }),
+		subagentChipLabel({ count: 2, mark: "running", markCount: 2 }),
 		"Open the subagents in run details — 2 subagents running",
 	);
 	assert.equal(
-		jobChipLabel({ count: 1, mark: "running" }),
+		jobChipLabel({ count: 1, mark: "running", markCount: 1 }),
 		"Open the jobs in run details — 1 job running",
 	);
 	/*

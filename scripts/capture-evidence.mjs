@@ -713,6 +713,13 @@ export const STORIES = [
 	   `frontend.jobs` still holds the rows and the row says nothing about them.
 	   Sized to content for the reason the four above are. */
 	["chat-composer-status-row--activity-chips", 1000, 1000],
+	/* The MIXED open set, which is the ordinary shape of a large delegation rather
+	   than an edge (`DEFAULT_MAX_RUNNING_JOBS = 15` parks the rows a fan-out cannot
+	   run), and the state no committed frame showed — which is why the sentence that
+	   counted parked rows as running survived four review streams (design review
+	   round 2, D6). Three bands: the fan-out QA measured live, the same rule through
+	   the jobs list, and a uniform set as the control. */
+	["chat-composer-status-row--activity-mixed", 1000, 1000],
 	/* The width story, and the only frame that can carry the numbers: each band
 	   prints its own row height and `overflowX` into the picture, because a reader
 	   of a still cannot measure the boxes in it. 900 is the composer's own column,
