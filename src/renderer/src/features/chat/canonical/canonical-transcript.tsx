@@ -305,10 +305,15 @@ const UserRow = memo(function UserRow({
 	conversationId?: string;
 }) {
 	/*
-	 * The element a selection has to lie inside to count as a quote of THIS
-	 * turn. The `group` wrapper rather than the bubble's inner box: the bubble
-	 * is the whole of a user turn, so a selection anywhere in it is a selection
-	 * of this turn's words.
+	 * The element a highlight has to BEGIN inside to count as a quote of THIS
+	 * turn. The wrapper rather than the bubble's inner box: the bubble is the
+	 * whole of a user turn, so a highlight anywhere in it is a highlight of this
+	 * turn's words - and it is where the highlight begins that decides which turn
+	 * owns it, so that decision is made against the widest box that is still this
+	 * turn.
+	 *
+	 * No `group` class: it existed only for the toolkit's hover reveal, and the
+	 * affordance is raised by a highlight now (`quote-toolkit.tsx`).
 	 */
 	const turnRef = useRef<HTMLDivElement>(null);
 	/*
@@ -332,7 +337,7 @@ const UserRow = memo(function UserRow({
 	);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
-			<div ref={turnRef} className="group relative flex w-full justify-end">
+			<div ref={turnRef} className="relative flex w-full justify-end">
 				<div
 					className={cn(
 						// `border-control`, not `hairline`. The bubble keeps its own
@@ -374,11 +379,7 @@ const UserRow = memo(function UserRow({
 					</div>
 				</div>
 				{conversationId && isQuotable(record, remainingContent) && (
-					<QuoteToolkit
-						conversationId={conversationId}
-						bodyText={remainingContent}
-						turnRef={turnRef}
-					/>
+					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
 				)}
 			</div>
 		</MessageContainer>
@@ -433,7 +434,7 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			<div
 				ref={turnRef}
-				className={cn("group relative w-full break-words text-ink")}
+				className={cn("relative w-full break-words text-ink")}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
 			>
@@ -452,11 +453,7 @@ const AssistantRow = memo(function AssistantRow({
 					</p>
 				)}
 				{conversationId && isQuotable(record, remainingContent) && (
-					<QuoteToolkit
-						conversationId={conversationId}
-						bodyText={remainingContent}
-						turnRef={turnRef}
-					/>
+					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
 				)}
 			</div>
 		</MessageContainer>
@@ -1440,23 +1437,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * its own paints that instead of the placeholder. The proxy stopped
 				 * agreeing with the property it stood for, so the property is read directly.
 				 *
-				 * THE TURN ORDER OF THOSE STOPS IS DOM ORDER, OLDEST FIRST, AND IT IS
-				 * ACCEPTED (UX round 1, U4; QA round 1, Q5). Each quotable turn contributes
-				 * exactly one stop, so a full window of mounted rows costs up to one press
-				 * per row to reach the newest answer - the turn a reader most often wants to
-				 * quote is the farthest away, and the reader walks past every turn they are
-				 * not quoting.
+				 * THE TURN ORDER OF THOSE STOPS USED TO COST ONE PRESS PER ROW, AND IT NO
+				 * LONGER DOES (UX round 1, U4; QA round 1, Q5). While the control was
+				 * revealed by the row's hover it was permanently mounted, and `opacity-0`
+				 * kept its place in the tab order by design - so a window of mounted rows
+				 * charged the keyboard reader one press per quotable turn, oldest first,
+				 * and the newest answer was the farthest away. The trigger is a highlight
+				 * now, and with no highlight of this turn's the control is absent from the
+				 * DOM rather than hidden, so it contributes no stop at all. The keyboard
+				 * path is the one the operator's own ask implies: make a highlight
+				 * (shift+arrows, shift+click), Tab to the control that appears, press it.
 				 *
-				 * Recorded rather than changed, and the reasons are structural. The stops
-				 * cannot be removed, only reordered: `visibility: hidden` would take Quote
-				 * off the keyboard altogether, and a scrollable, quotable region has to stay
-				 * operable (WCAG 2.1.1) - so "reachability costs a stop per row" is a floor,
-				 * not an oversight. Reordering them would mean painting the rows in reverse
-				 * DOM order, and this scroller is `column-reverse` with the overflow anchor
-				 * for the newest content: inverting the row order inverts the anchoring the
-				 * whole pane's scroll behaviour rests on. And a shortcut key - the third
-				 * option - is a NEW interaction rather than a fix to this one; it belongs to
-				 * a change that argues for it, not to the change that introduced the toolkit.
+				 * The alternative recorded at the time - a shortcut key - stays a new
+				 * interaction rather than a fix to this one, and nothing here needs it:
+				 * the walk it was proposed to remove is gone.
 				 */
 				tabIndex={transcript.records.length === 0 ? -1 : 0}
 				role="log"
