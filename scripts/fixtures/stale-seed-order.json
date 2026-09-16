@@ -2024,7 +2024,7 @@
 					"tool_call_id": "call_00_HdlPJ6h4uyhuh2jvnopA2211",
 					"tool_name": "todo",
 					"provider_payload": {
-						"duration_s": 5.787500413134694e-05
+						"duration_s": 5.787500413134694e-5
 					}
 				}
 			},
@@ -2323,11 +2323,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Waiting on design, UX and QA r4",
-								"job_id": [
-									"6959d0c38bb7",
-									"10ff56e13105",
-									"8b31385398f3"
-								],
+								"job_id": ["6959d0c38bb7", "10ff56e13105", "8b31385398f3"],
 								"wait_ms": 3600000
 							}
 						}
@@ -2411,10 +2407,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Waiting on UX and QA r4",
-								"job_id": [
-									"10ff56e13105",
-									"8b31385398f3"
-								],
+								"job_id": ["10ff56e13105", "8b31385398f3"],
 								"wait_ms": 3600000
 							}
 						}
@@ -2906,11 +2899,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Waiting on design, UX and QA r5",
-								"job_id": [
-									"085cbef4f696",
-									"4bf523ca7809",
-									"fc87ea758639"
-								],
+								"job_id": ["085cbef4f696", "4bf523ca7809", "fc87ea758639"],
 								"wait_ms": 3600000
 							}
 						}
@@ -2977,10 +2966,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Waiting on UX and QA r5",
-								"job_id": [
-									"4bf523ca7809",
-									"fc87ea758639"
-								],
+								"job_id": ["4bf523ca7809", "fc87ea758639"],
 								"wait_ms": 3600000
 							}
 						}
@@ -3822,11 +3808,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Waiting on reviewer, UX and QA r6",
-								"job_id": [
-									"0ea0db092027",
-									"5310cf225f62",
-									"19eaca0d7439"
-								],
+								"job_id": ["0ea0db092027", "5310cf225f62", "19eaca0d7439"],
 								"wait_ms": 3600000
 							}
 						}
@@ -3893,10 +3875,7 @@
 							"name": "wait",
 							"arguments": {
 								"i": "Waiting on UX and QA r6",
-								"job_id": [
-									"5310cf225f62",
-									"19eaca0d7439"
-								],
+								"job_id": ["5310cf225f62", "19eaca0d7439"],
 								"wait_ms": 3600000
 							}
 						}
@@ -6672,7 +6651,7 @@
 					],
 					"details": {}
 				},
-				"duration_s": 5.787500413134694e-05,
+				"duration_s": 5.787500413134694e-5,
 				"is_error": false
 			},
 			{

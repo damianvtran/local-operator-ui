@@ -2070,9 +2070,7 @@ const main = async () => {
 			}
 			if (!prepared) {
 				throw new Error(
-					`${story} @ ${theme}: Storybook never finished preparing the story (60s). ` +
-						`Last probe: ${JSON.stringify(probe)}. ` +
-						"`counted` is the story's own elements with the decorator's two excluded, and `drawn` false with `loading`/`pending`/`fonts` clear means the element floor in `storyDrew` rejected it",
+					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
 				);
 			}
 			/*
@@ -2211,7 +2209,8 @@ const main = async () => {
 			/* Two frames: one for the resize to lay out, one for it to paint. */
 			await cdp.send("Runtime.evaluate", {
 				awaitPromise: true,
-				expression: `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`,
+				expression:
+					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 			});
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
