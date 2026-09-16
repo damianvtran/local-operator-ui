@@ -210,6 +210,31 @@ export const STORIES = [
 	 * instead of hanging over the pane. It is a second story because it needs a
 	 * transcript taller than its pane, and it is sized to that pane rather than to
 	 * the 900 default for the reason `notice-lengths` is.
+	 *
+	 * `selection-at-pane-top-across-turns` is the same flip with the highlight
+	 * LEAVING its turn, which is the configuration the round-1 defect lived in (code
+	 * review M1, UX U9, QA Q27: the control walked 40px down the pane per re-measuring
+	 * event, and in one trace painted over the selection it was quoting). The flip's
+	 * anchor is the highlight's own last line, so the state that proves it is a
+	 * highlight whose last line is NOT in the turn that owns the control - and no
+	 * frame in the set showed one until here.
+	 *
+	 * `highlight-hover` is the control under the pointer, which is design round 1's
+	 * D3: the `accent-wash`/`accent` pair is a colour step that no resting frame can
+	 * show, and neither is the tooltip. The pointer goes ON the control after the
+	 * gesture - see `select.hover` - and the frame carries both.
+	 *
+	 * EVERY ENTRY THAT CAN IS PINNED TO THE STRING IT SELECTS (`expectText`), which
+	 * is design round 1's D4: `fromChar`/`toChar` are offsets into the RENDERED text
+	 * node while a reader counts the markdown source, so the mid-turn entry's band
+	 * begins one character into `tenant_id` rather than at its 't'. The product is
+	 * right - the composer's chip carries exactly what was selected - and the entry
+	 * now says which string that is instead of leaving the frame to be misread. The
+	 * offsets are deliberately left where they are: moving one would re-render every
+	 * after frame in the set and invalidate the before/after pairs' pixel table for a
+	 * nit. An entry with a gesture that changes the selection afterwards
+	 * (`extendArrows`) pins nothing, because the string it ends on is not the one its
+	 * endpoints describe.
 	 */
 	["chat-canonical-quote--sent-turn-quote", 1024, 640],
 	[
@@ -227,8 +252,26 @@ export const STORIES = [
 				from: '[data-record-id="a1"] p',
 				fromChar: 20,
 				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
 			},
 			dir: "highlight-mid-turn",
+		},
+	],
+	[
+		"chat-canonical-quote--sent-turn-quote",
+		1024,
+		640,
+		{
+			select: {
+				from: '[data-record-id="a1"] p',
+				fromChar: 20,
+				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
+				hover: "[data-lo-quote-toolkit]",
+				hoverSettleMs: 1500,
+				tooltip: true,
+			},
+			dir: "highlight-hover",
 		},
 	],
 	[
@@ -241,6 +284,8 @@ export const STORIES = [
 				fromChar: 4,
 				to: '[data-record-id="a1"] p',
 				toChar: 40,
+				expectText:
+					"did it fail there?\n\nBecause that row's tenant_id was null, a",
 			},
 			dir: "highlight-across-turns",
 		},
@@ -254,6 +299,7 @@ export const STORIES = [
 				from: '[data-record-id="a1"] p',
 				fromChar: 20,
 				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
 				dismiss: "textarea",
 			},
 			dir: "highlight-dismissed",
@@ -268,6 +314,7 @@ export const STORIES = [
 				from: '[data-record-id="a1"] p',
 				fromChar: 20,
 				toChar: 72,
+				expectText: "enant_id was null, and the new column is not null.",
 				press: true,
 			},
 			dir: "highlight-then-press",
@@ -299,9 +346,27 @@ export const STORIES = [
 				from: '[data-record-id="u1"] p:last-of-type',
 				fromChar: 0,
 				toChar: 40,
+				expectText: "The migration failed on the second row. ",
 				scrollAfter: '[data-record-id="u1"] p:last-of-type',
 			},
 			dir: "selection-at-pane-top",
+		},
+	],
+	[
+		"chat-canonical-quote--scrolled-to-oldest-turn",
+		1024,
+		540,
+		{
+			select: {
+				from: '[data-record-id="u1"] p:last-of-type',
+				fromChar: 0,
+				to: '[data-record-id="a1"] p',
+				toChar: 40,
+				expectText:
+					"The migration failed on the second row. Why?\n\nBecause that row's tenant_id was null, a",
+				scrollAfter: '[data-record-id="u1"] p:last-of-type',
+			},
+			dir: "selection-at-pane-top-across-turns",
 		},
 	],
 	/*
@@ -3298,6 +3363,27 @@ const main = async () => {
 					);
 				}
 				/*
+				 * THE STRING, where the entry names one (design round 1, D4).
+				 *
+				 * The endpoint assertions above ask whether the highlight's ends lie in
+				 * the ELEMENTS the entry names; they cannot ask whether the span between
+				 * them is the one the entry is talking about, and the two came apart:
+				 * `fromChar`/`toChar` are offsets into the RENDERED text node, while a
+				 * reader counting characters would count the markdown source - so the
+				 * mid-turn entry named character 20 of "Because that row's `tenant_id`..."
+				 * and the band it photographed began one character in, on the 'e' of
+				 * `tenant_id`, with the 't' left outside it. Nothing is wrong with the
+				 * product; the entry simply did not say that, and a frame is supposed to
+				 * be a claim a reader can check. An entry that names the string cannot be
+				 * misread that way, and this is the assertion that holds it: the reader's
+				 * own range's text, not a copy of it.
+				 */
+				if (select.expectText !== undefined && selected !== select.expectText) {
+					throw new Error(
+						`${story} @ ${theme}: the gesture selected ${JSON.stringify(selected)}, but the entry says it selects ${JSON.stringify(select.expectText)} - the frame would carry a span other than the one it names`,
+					);
+				}
+				/*
 				 * `dismiss` is the OTHER half of the same claim: a click somewhere else,
 				 * through the same input pipeline, and then a check that the control is
 				 * gone. The check is about being OPERABLE rather than about the DOM node,
@@ -3396,6 +3482,61 @@ const main = async () => {
 					if (answered.value?.controls > 0) {
 						throw new Error(
 							`${story} @ ${theme}: the control is still painted after the press`,
+						);
+					}
+				}
+				/*
+				 * A POINTER ON THE CONTROL ITSELF, for the frames whose claim is its own
+				 * hover (design round 1, D3: the control's `accent-wash`/`accent` grounds and
+				 * its radius nesting were in no frame in the set, and neither was the
+				 * tooltip as a reader sees it).
+				 *
+				 * IT RUNS AFTER THE GESTURE, which is why it is not the top-level `hover`
+				 * option: that one runs before the select block, and this control does not
+				 * EXIST until a highlight raises it - a selector that matches nothing there
+				 * would throw, correctly, because the state it names is not reachable yet.
+				 *
+				 * `:hover` is browser state like every other hover in this file, so the
+				 * pointer is moved through the input pipeline and left there. The wait is
+				 * the tooltip's own delay (Radix opens after ~700ms), and `tooltip: true`
+				 * makes the frame's claim checkable rather than merely likely: the frame
+				 * that shows a tooltip says so, and a run where it had not opened throws.
+				 */
+				if (select.hover) {
+					const { result: target } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(select.hover)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (!target.value) {
+						throw new Error(
+							`${story} @ ${theme}: the hover selector \`${select.hover}\` matched nothing after the gesture`,
+						);
+					}
+					await mouse("mouseMoved", target.value.x, target.value.y, 0);
+					await sleep(select.hoverSettleMs ?? 900);
+					const { result: hovered } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => ({
+							hover: document.querySelector(${JSON.stringify(select.hover)})?.matches(":hover") === true,
+							tooltip: Array.from(document.querySelectorAll('[role="tooltip"]')).filter((el) => {
+								const style = getComputedStyle(el);
+								return style.visibility !== "hidden" && style.display !== "none" && Number(style.opacity) > 0.5 && el.getClientRects().length > 0;
+							}).length,
+						}))()`,
+					});
+					if (!hovered.value?.hover) {
+						throw new Error(
+							`${story} @ ${theme}: the pointer is on \`${select.hover}\` but the element does not match :hover, so the frame would be a resting control filed under a hover`,
+						);
+					}
+					if (select.tooltip && !(hovered.value?.tooltip > 0)) {
+						throw new Error(
+							`${story} @ ${theme}: the entry claims the tooltip, and none is painted after ${select.hoverSettleMs ?? 900}ms of hover`,
 						);
 					}
 				}

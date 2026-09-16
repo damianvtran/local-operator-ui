@@ -9,6 +9,7 @@
  * it off a row that has nothing honest to quote.
  */
 
+import type { Box } from "./quote-anchor";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 /**
@@ -82,10 +83,107 @@ const toolkitAncestor = (node: Node): Element | null => {
 	return host?.closest(`[${QUOTE_TOOLKIT_ATTR}]`) ?? null;
 };
 
+const isElement = (node: Node): node is Element =>
+	node.nodeType === Node.ELEMENT_NODE;
+
+/**
+ * Where this turn's own words end, as a `Range.setEnd` offset.
+ *
+ * NOT `childNodes.length`, and the difference is the whole of M1 (code review),
+ * U9 (UX) and Q27 (QA) from round 1: the control is rendered inside the turn it
+ * belongs to, so a clip to the turn's own end EXTENDS the range over the
+ * control's box - the range then measures its own output, and the second
+ * consumer of that range was the placement, which read it back as the last line
+ * of the highlight. Ending at the control's own child keeps the range over the
+ * turn's words and nothing else.
+ *
+ * The words are unaffected: the control renders an icon and no text node, so a
+ * clip that stops short of it quotes exactly what a clip to the turn's end did.
+ * This is the tripwire the `QUOTE_TOOLKIT_ATTR` comment above names, removed
+ * rather than documented - a control that grows a label or a timestamp would
+ * have joined the quote through this clip otherwise.
+ */
+const contentEnd = (element: HTMLElement): number => {
+	const children = Array.from(element.childNodes);
+	const control = children.findIndex(
+		(child) => isElement(child) && child.hasAttribute(QUOTE_TOOLKIT_ATTR),
+	);
+	return control === -1 ? children.length : control;
+};
+
+/**
+ * Whether two boxes are the same box, allowing for sub-pixel rounding.
+ *
+ * A range's box for an element IS that element's border box, and the two are
+ * read through different APIs (`Range.getClientRects` against
+ * `Element.getBoundingClientRect`), so exact equality would be a coin toss on a
+ * fractional layout. The tolerance is under the smallest difference that can
+ * mean anything here: a line is 14-17px tall and the control is 32, so no two
+ * distinct boxes are within 0.5px of each other in every coordinate at once.
+ */
+const sameBox = (a: Box, b: Box): boolean =>
+	Math.abs(a.top - b.top) < 0.5 &&
+	Math.abs(a.left - b.left) < 0.5 &&
+	Math.abs(a.right - b.right) < 0.5 &&
+	Math.abs(a.bottom - b.bottom) < 0.5;
+
+/**
+ * The lines the control is placed against: the reader's highlight, and NOT the
+ * control.
+ *
+ * Two rules, both learned the hard way, and they are one rule stated twice: the
+ * placement must be a pure function of the highlight, so nothing it produces may
+ * appear in its own input.
+ *
+ * 1. THE HIGHLIGHT'S OWN RANGE, not the clipped one. `quoteSelectionIn` returns
+ *    a clipped range for the TEXT, because only this turn's words are quoted -
+ *    but a drag that leaves this turn and ends in the next one has highlighted
+ *    the next turn too, and the flip has to clear that part as well. Measured in
+ *    round 1 (QA Q27): with the clipped range the control was placed below this
+ *    turn's own last line, which is where the highlighted continuation
+ *    begins - the control painted on the reader's own selection, the state
+ *    `quote-anchor.ts` claimed was impossible.
+ * 2. NO MOUNTED CONTROL'S BOX IS A LINE, which is what `QUOTE_TOOLKIT_ATTR` is
+ *    for. An element inside the range contributes its own border box, so our
+ *    shell - rendered inside the turn we are measuring - arrives as one of the
+ *    highlight's boxes. It was last, so it became `lines[lines.length - 1]` and
+ *    the flip placed the control below its OWN previous position: 40px down the
+ *    pane per re-measuring event while the pointer was still down (QA measured
+ *    `440 → 480 → 520 → 560 → 600 → 640`, UX `95.7 → 135.7 → 175.7`).
+ *
+ * The boxes are the range's own `getClientRects()` - one per line, in document
+ * order - with the controls filtered out by geometry, because a `DOMRect` does
+ * not say which node it came from. Filtering by BOX rather than by node is safe
+ * in the direction that matters: it can only ever drop a box that is exactly a
+ * mounted control's, and a control that exactly covers one of the highlight's
+ * own lines is the failure this filters, not a line to keep.
+ */
+export const highlightLines = (range: Range): Box[] => {
+	const controls = Array.from(
+		document.querySelectorAll(`[${QUOTE_TOOLKIT_ATTR}]`),
+		(node) => node.getBoundingClientRect(),
+	);
+	return Array.from(range.getClientRects())
+		.filter((rect) => !controls.some((control) => sameBox(control, rect)))
+		.map((rect) => ({
+			top: rect.top,
+			left: rect.left,
+			right: rect.right,
+			bottom: rect.bottom,
+		}));
+};
+
 /**
  * The reader's highlight, as a quote of THIS turn: the part of the highlight
- * that lies in `element`, the RANGE it was read from, and nothing at all when
- * this turn is not where the highlight begins.
+ * that lies in `element`, the LINES the control is placed against, and nothing
+ * at all when this turn is not where the highlight begins.
+ *
+ * The two halves come from two different ranges on purpose, and the reason is
+ * the round-1 defect (review M1, UX U9, QA Q27): the TEXT is this turn's part of
+ * the highlight, because only this turn's words are quoted, while the GEOMETRY
+ * has to describe the WHOLE highlight, because the control is placed against it
+ * and a flip that clears only this turn's last line lands on the highlighted
+ * continuation in the next turn. See `highlightLines`.
  *
  * ONE RULE WHERE THERE WERE THREE, and the reason is the affordance's own
  * trigger. It used to be raised by the row's hover, so a press had to answer
@@ -115,11 +213,21 @@ const toolkitAncestor = (node: Node): Element | null => {
  * OUTSIDE is the opposite case and answers `null` - that is the next turn's
  * control, or a row that has none.
  *
+ * A ROW THAT HAS NONE IS A DELIBERATE NARROWING (code review round 1, m3). A
+ * drag that BEGINS in a tool or ledger row - or in an answer that is still
+ * streaming - and runs down into a settled answer highlights quotable prose and
+ * raises nothing, because the owner is the turn the highlight begins in and a
+ * ledger row mounts no control. The hover press this replaces used to answer
+ * that case with the whole turn body, so this is a narrowing rather than a
+ * regression, and it is recorded here rather than only in the PR thread: the
+ * alternative is a fallback to "the first quotable turn the highlight reaches",
+ * which would put a control on a turn the reader did not begin in and break the
+ * one-control rule that the paragraph above exists for.
+ *
  * Both endpoints are tested against the toolkit, for the reason the
  * `QUOTE_TOOLKIT_ATTR` comment above gives. It is defence in depth rather than
  * a live path today: a drag can only reach the control by starting on it, and a
- * start inside the toolkit is refused by the same guard.
- *
+ * start inside the toolkit is refused by the same guard. *
  * The text is trimmed and never truncated. The trim is not truncation - a
  * highlight's leading and trailing whitespace is not what the reader pointed at
  * - and the text is free of `<reply-to>` markup because it was read from the
@@ -132,9 +240,17 @@ const toolkitAncestor = (node: Node): Element | null => {
  * `window` is read lazily rather than at module load so this file stays
  * importable by a node test, which is where its rules are asserted.
  */
+/** What a highlight of this turn gives the control: the words, and the lines. */
+export type QuoteHighlight = {
+	/** This turn's part of the highlight, trimmed: what a press stages. */
+	text: string;
+	/** The whole highlight's own line boxes. See `highlightLines`. */
+	lines: Box[];
+};
+
 export function quoteSelectionIn(
 	element: HTMLElement | null,
-): { text: string; range: Range } | null {
+): QuoteHighlight | null {
 	if (!element) return null;
 	const selection = window.getSelection();
 	if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
@@ -161,8 +277,14 @@ export function quoteSelectionIn(
 	if (!element.contains(range.startContainer)) return null;
 	const clipped = range.cloneRange();
 	if (!element.contains(range.endContainer)) {
-		clipped.setEnd(element, element.childNodes.length);
+		clipped.setEnd(element, contentEnd(element));
 	}
 	const text = clipped.toString().trim();
-	return text.length > 0 ? { text, range: clipped } : null;
+	if (text.length === 0) return null;
+	/*
+	 * The GEOMETRY is taken from the reader's own range rather than from
+	 * `clipped`, for the reason `highlightLines` gives: the clip narrows the
+	 * TEXT to this turn, and the reader's highlight does not stop there.
+	 */
+	return { text, lines: highlightLines(range) };
 }

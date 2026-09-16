@@ -11,11 +11,14 @@ import { build } from "esbuild";
  * 1. WHICH ROWS OFFER QUOTE (`isQuotable`) - prose only, nothing streaming,
  *    nothing empty. A frame shows the toolkit on one row; it cannot show its
  *    absence on the twenty kinds of row that must not have it.
- * 2. WHICH HIGHLIGHT IS A QUOTE OF WHICH TURN, AND WHAT IT CARRIES
- *    (`quoteSelectionIn`) - the part of the reader's highlight that lies in this
- *    turn, only when the highlight BEGINS in it, and never the `<reply-to>`
- *    transport markup. faked here rather than driven in a browser because the
- *    question is a comparison of node identities, not a paint. The one rule
+ * 2. WHICH HIGHLIGHT IS A QUOTE OF WHICH TURN, WHAT IT CARRIES AND WHAT IT IS
+ *    PLACED AGAINST (`quoteSelectionIn`) - the part of the reader's highlight
+ *    that lies in this turn, only when the highlight BEGINS in it, never the
+ *    `<reply-to>` transport markup, and the LINES the control is measured
+ *    against, which are the whole highlight's and never this control's own box
+ *    (round 1: M1, U9, Q27 - see the idempotence test below). faked here rather
+ *    than driven in a browser because the question is a comparison of node
+ *    identities and boxes, not a paint. The one rule
  *    replaces the three this file used to assert (`selectionTextIn`,
  *    `selectionClippedTo`, `quoteText`): nothing raises the control without a
  *    highlight now, so the whole-turn fallback those three existed to bound has
@@ -49,7 +52,8 @@ globalThis.localStorage = {
 };
 globalThis.__canonicalRequest = async () => ({});
 globalThis.__canonicalEcho = () => undefined;
-/* `selectionTextIn` compares against `Node.ELEMENT_NODE`; node has no DOM. */
+/* `toolkitAncestor` inside `quoteSelectionIn` tests `nodeType` against
+ * `Node.ELEMENT_NODE`; node has no DOM. */
 globalThis.Node = { ELEMENT_NODE: 1 };
 
 const bundle = await build({
@@ -214,12 +218,36 @@ const node = (tag, parent = null) => {
 			}
 			return false;
 		},
+		/*
+		 * `contentEnd` reads the marker off the turn's CHILDREN rather than through
+		 * `closest`, because it is looking for the control's own slot among them -
+		 * the clip has to stop before it, and an ancestor search cannot answer
+		 * "which child is it".
+		 */
+		hasAttribute: (name) => name === QUOTE_TOOLKIT_ATTR && Boolean(self.attr),
 	};
+	if (parent) {
+		parent.children.push(self);
+		parent.childNodes.push(self);
+	}
 	return self;
 };
 
+/**
+ * The offset the clip is expected to stop at: the turn's own words, which end
+ * at the control's own child slot when one is mounted and at the turn's end when
+ * none is. The control is the turn's LAST child in the shipped rows, so this is
+ * "one short of the end" on every path the app has.
+ */
+const contentEndOf = (turn) => {
+	const at = turn.childNodes.findIndex((child) =>
+		child.hasAttribute(QUOTE_TOOLKIT_ATTR),
+	);
+	return at === -1 ? turn.childNodes.length : at;
+};
+
 /** The reader's highlight, as the model reads it. */
-const select = (range) => {
+const select = (range, controls = []) => {
 	globalThis.window = {
 		getSelection: () => ({
 			rangeCount: range ? 1 : 0,
@@ -228,6 +256,12 @@ const select = (range) => {
 			toString: () => range?.text ?? "",
 		}),
 	};
+	/*
+	 * The mounted controls, for `highlightLines`' filter: a box and the marker
+	 * that makes it the control's, which is what the DOM query answers on the
+	 * running surface.
+	 */
+	globalThis.document = { querySelectorAll: () => controls };
 };
 
 /**
@@ -247,6 +281,11 @@ const select = (range) => {
  * the same class of thing: which boundary the rule moved, not what Chromium
  * paints. The text a real `Range.toString()` yields after a real clamp is the
  * browser's job, and that is measured on the running surface.
+ *
+ * `rects` are the boxes the reader's own range reports, one per visual line in
+ * document order - including the control's own, when the highlight spans its
+ * slot, which is the leak the filter in `highlightLines` exists for and which
+ * the browser really does report (QA measured it to the pixel).
  */
 const clippableRange = ({
 	turn,
@@ -254,15 +293,16 @@ const clippableRange = ({
 	endContainer,
 	inside = "",
 	after = "",
+	rects = [],
 	...rest
 }) => {
 	let clamped = null;
 	const clone = {
 		setEnd: (element, offset) => {
-			// The clip is only ever to THIS turn's own edge; a call with another
+			// The clip is only ever to THIS turn's own words; a call with another
 			// node would be clipping to something the reader did not highlight.
 			assert.equal(element, turn);
-			assert.equal(offset, turn.childNodes.length);
+			assert.equal(offset, contentEndOf(turn));
 			clamped = "end";
 		},
 		toString: () => (clamped === "end" ? inside : inside + after),
@@ -275,6 +315,7 @@ const clippableRange = ({
 		cloneRange: () => clone,
 		clone,
 		clamped: () => clamped,
+		getClientRects: () => rects,
 	};
 };
 
@@ -292,26 +333,184 @@ test("a highlight inside the turn is the quote, trimmed", () => {
 	assert.equal(range.clamped(), null);
 });
 
-test("the range it comes back with is the CLIPPED one", () => {
-	// The control is placed against the range, not against the text, so the
-	// geometry has to be the in-turn part of the highlight as well - a highlight
-	// that overshoots into the next turn is quoted from, and floats above, only
-	// the lines that are this turn's.
+/* The boxes these cases measure against. A local helper so the cases read as
+   geometry; the anchor section below has its own for the same reason. */
+const hbox = (top, left, right, bottom) => ({ top, left, right, bottom });
+
+test("the TEXT is this turn's, and the LINES are the whole highlight's", () => {
+	// Two questions, two ranges, and the difference is the round-1 defect
+	// (review M1, UX U9, QA Q27). The TEXT is clipped to this turn, because only
+	// this turn's words are quoted - but the LINES are the reader's own
+	// highlight's, because the control is placed against what the reader
+	// actually selected, and a drag that runs on into the next turn has
+	// highlighted that turn too. Measured, not argued: taking the flip's anchor
+	// from the clipped range put the control ON the highlighted continuation.
 	const turn = node("div");
 	const prose = node("p", turn);
 	const beyond = node("p", node("div"));
+	const first = hbox(310, 236, 500, 341);
+	const continuation = hbox(370, 200, 900, 390);
 	const range = clippableRange({
 		turn,
 		startContainer: prose,
 		endContainer: beyond,
 		inside: "was null, and the new column is not null.",
 		after: "\nThe next turn's words",
+		rects: [first, continuation],
 	});
 	select(range);
 	const quoted = quoteSelectionIn(turn);
 	assert.equal(quoted.text, "was null, and the new column is not null.");
-	assert.equal(quoted.range, range.clone);
+	assert.deepEqual(quoted.lines, [first, continuation]);
 	assert.equal(range.clamped(), "end");
+});
+
+/*
+ * M1 (code review) / U9 (UX) / Q27 (QA) as an INSTRUMENT, because the round-1
+ * suite is what let this through: every case above asserts which TEXT a
+ * highlight yields, and not one of them asked where the control ends up.
+ *
+ * The defect, in one sentence: the control is a CHILD of the turn it belongs to,
+ * so a range that reached the turn's own end also covered the control's box - and
+ * the placement then read that box back as the highlight's last line. Measured on
+ * the running surface by two independent instruments in round 1: the control
+ * stepped exactly 40px (`gap + height`) down the pane per re-measuring event
+ * while the pointer was still down (`440 → 480 → 520 → 560 → 600 → 640` in the
+ * reviewer's arithmetic, `95.7 → 135.7 → 175.7` in the UX trace, `0,0,0,0,0,0,40,
+ * 0,0,40,40,40` in QA's per-event deltas), walked 43px per 3px of scroll, and in
+ * one trace painted ON the highlighted line it was quoting.
+ *
+ * Both halves of the fix are asserted here, and neither is a clamp: the control's
+ * own box is dropped from the boxes (the `QUOTE_TOOLKIT_ATTR` filter), and the
+ * flip's anchor is the highlight's own last line (the reader's range, not the
+ * clipped one). What makes this an instrument rather than a note is the SECOND
+ * pass: the control is re-measured with its box where the first pass put it,
+ * which is exactly what a scroll or a `selectionchange` does, and the placement
+ * has to be unchanged.
+ */
+/*
+ * The pane and the control, stated here rather than imported from the anchor
+ * section below: these cases are about the MEASUREMENT, and the numbers are the
+ * ones round 1 measured on the running surface (a 540-high viewport, the tall
+ * fixture's pane, a 38x32 shell).
+ */
+const HIGHLIGHT_PANE = hbox(16, 60, 962, 368);
+const HIGHLIGHT_VIEWPORT = hbox(0, 0, 1024, 540);
+const CONTROL_SIZE = { width: 38, height: 32 };
+
+/** A mounted control, as `highlightLines` sees it: a box under the marker. */
+const mounted = (at) => ({ getBoundingClientRect: () => at });
+
+/** The control's own box, from a placement - what the next measure would read. */
+const boxOfPlacement = (placed, size = CONTROL_SIZE) =>
+	hbox(
+		placed.top,
+		placed.left,
+		placed.left + size.width,
+		placed.top + size.height,
+	);
+
+/**
+ * One pass of the component's own measure: the reader's highlight in, a
+ * viewport position out - the same two calls `quote-toolkit.tsx` makes.
+ */
+const measureControl = ({ turn, rects, controlAt }) => {
+	const beyond = node("p", node("div"));
+	const range = clippableRange({
+		turn,
+		startContainer: turn.childNodes[0],
+		endContainer: beyond,
+		inside: "the first clause, and the second",
+		after: " and the next turn's opening words",
+		rects,
+	});
+	select(range, controlAt ? [mounted(controlAt)] : []);
+	const quoted = quoteSelectionIn(turn);
+	assert.ok(quoted, "the fixture is a highlight of this turn");
+	return placeQuoteControl({
+		lines: quoted.lines,
+		container: HIGHLIGHT_PANE,
+		viewport: HIGHLIGHT_VIEWPORT,
+		size: CONTROL_SIZE,
+	});
+};
+
+/** The turn a control is a child of: prose first, the control's slot second. */
+const quotableTurn = () => {
+	const turn = node("div");
+	const prose = node("p", turn);
+	const toolkit = node("div", turn);
+	toolkit.attr = true;
+	return { turn, prose, toolkit };
+};
+
+test("the control's own box is not one of the lines it is placed against", () => {
+	const { turn } = quotableTurn();
+	const first = hbox(20, 236, 500, 37);
+	const controlBox = hbox(52, 236, 274, 84);
+	const continuation = hbox(96, 200, 900, 116);
+	// The range's boxes as the browser reports them for the reader's own
+	// highlight: the line the drag began on, this control's own box (it sits
+	// inside the turn, in document order, between that line and the next turn),
+	// and the highlighted continuation in the next turn.
+	const placed = measureControl({
+		turn,
+		rects: [first, controlBox, continuation],
+		controlAt: controlBox,
+	});
+	// Only one measurement is between the reader's highlight and this number, and
+	// it is the LAST box of the highlight - not the last LINE of the turn, and not
+	// the control's own previous position.
+	assert.deepEqual(placed, {
+		top: continuation.bottom + QUOTE_CONTROL_GAP,
+		left: first.left,
+		placement: "below",
+	});
+});
+
+test("re-measuring with nothing changed does not move the control", () => {
+	const { turn } = quotableTurn();
+	const first = hbox(20, 236, 500, 37);
+	const continuation = hbox(96, 200, 900, 116);
+	const at = (control) => [first, control, continuation];
+	const start = hbox(52, 236, 274, 84);
+	const one = measureControl({ turn, rects: at(start), controlAt: start });
+	const two = measureControl({
+		turn,
+		rects: at(boxOfPlacement(one)),
+		controlAt: boxOfPlacement(one),
+	});
+	const three = measureControl({
+		turn,
+		rects: at(boxOfPlacement(two)),
+		controlAt: boxOfPlacement(two),
+	});
+	assert.deepEqual(two, one);
+	assert.deepEqual(three, one);
+});
+
+test("a clamp on a placement that reads its own box would still walk", () => {
+	// The arithmetic of the defect, pinned so the fix cannot be mistaken for a
+	// clamp: fed the leaked box set, the flip anchors to the control's own bottom,
+	// so each pass adds `gap + height` and the clamp only stops the walk at the
+	// pane's floor. This is the input `highlightLines` now refuses to produce.
+	const at = (control) => [hbox(20, 236, 500, 37), control];
+	const step = (control) =>
+		placeQuoteControl({
+			lines: at(control),
+			container: HIGHLIGHT_PANE,
+			viewport: HIGHLIGHT_VIEWPORT,
+			size: CONTROL_SIZE,
+		});
+	const one = step(hbox(52, 236, 274, 84));
+	const two = step(boxOfPlacement(one));
+	assert.equal(two.top - one.top, QUOTE_CONTROL_GAP + CONTROL_SIZE.height);
+	// And it stops only when the clamp pins it: 40px per event until the pane's
+	// own floor, which is what round 1 measured as a 210px displacement from the
+	// highlight it was quoting.
+	let at2 = one;
+	for (let i = 0; i < 20; i += 1) at2 = step(boxOfPlacement(at2));
+	assert.equal(at2.top, HIGHLIGHT_PANE.bottom - CONTROL_SIZE.height);
 });
 
 test("a highlight that BEGINS in another turn is that turn's quote", () => {
