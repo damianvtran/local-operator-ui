@@ -78,6 +78,26 @@ const RESOLVED_COPY: Record<ResolvedRow["kind"], string> = {
 export const defaultApprovalHeaderLabel = (count: number): string =>
 	count === 1 ? "1 approval waiting" : `${count} approvals waiting`;
 
+/**
+ * The header's wording for a CONVERSATION's scope, which the pane passes when it
+ * is scoped to one session (spec 7.2).
+ *
+ * The pane's tray carries a second fact the route's does not have to state, and it
+ * is why the sentence is not just a smaller number: the scope switch chooses which
+ * TABS are listed and never which demands are, so this count is this
+ * conversation's requests even while the strip is showing All tabs — and a bare
+ * "2 approvals waiting" beside a strip full of other conversations' tabs would
+ * read as a count of everything on screen.
+ *
+ * It is exported beside the default so the two sentences are written in one place
+ * and can be asserted together: a reviewer reading only the pane would have no way
+ * to tell that the route's copy is deliberately the shorter one.
+ */
+export const paneApprovalHeaderLabel = (count: number): string =>
+	count === 1
+		? "1 approval for this conversation"
+		: `${count} approvals for this conversation`;
+
 export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 	rows,
 	resolved,

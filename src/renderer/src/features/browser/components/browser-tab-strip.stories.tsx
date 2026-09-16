@@ -37,6 +37,12 @@ const tab = (
 	failed: false,
 	loading: false,
 	...overrides,
+	// `sessionId` LAST, and normalised, because the projection always sends one of
+	// `string | null` while `Partial` would let `undefined` through: a specimen is
+	// nobody's tab unless the story says otherwise, which is the common case in the
+	// live projection too (a restored tab and a user tab never handed over both
+	// carry `null`).
+	sessionId: overrides.sessionId ?? null,
 });
 
 const strip = (
