@@ -251,7 +251,25 @@ export const ActionsExpanded: Story = {
 	args: strip([tab(1, "Dashboard"), tab(2, "Reports"), tab(3, "Login")], 1),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
+		/*
+		 * THE TRIGGER IS REVEALED AND THEN CLICKED, WITH THE POINTER-EVENTS CHECK OFF
+		 * (design round 3, D20). An inactive row's controls are `pointer-events-none`
+		 * while the row is not hovered or focused (D13), so this story's bare
+		 * `userEvent.click` was a click on nothing: the frame it produced showed a
+		 * CLOSED row - the band's ink at that spot collapsed from 3,831px of strip rule
+		 * to 849px - and the capture's exit code could not say so. The hover is the
+		 * path a user takes; `pointerEventsCheck: 0` is here because the element is
+		 * invisible to the hit test until that hover has applied, which is exactly the
+		 * state this story documents. The harness opens the row with a programmatic
+		 * `.click()`, which is why its composition frame showed the row while this
+		 * story's frame did not.
+		 */
+		const rows = await canvas.findAllByRole("tab");
+		const row = rows[1]?.parentElement;
+		if (!row)
+			throw new Error("the actions story needs a second tab's row to hover");
+		await userEvent.hover(row);
 		const triggers = await canvas.findAllByLabelText(TAB_ACTIONS_LABEL);
-		await userEvent.click(triggers[1]);
+		await userEvent.click(triggers[1], { pointerEventsCheck: 0 });
 	},
 };
