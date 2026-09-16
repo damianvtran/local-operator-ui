@@ -1329,3 +1329,192 @@ export const mcpConnecting = (): McpWireRow[] => [
 	{ name: "files", status: "connected", tool_count: 12, owned_scope: "global" },
 	{ name: "notion", status: "connecting", owned_scope: "project" },
 ];
+
+/* ------------------------------------------------------------------ */
+/* Wakes (`docs/composer-wakes.md`)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One armed wake schedule in `WakeState`'s own shape.
+ *
+ * `next_due_at` is epoch MILLISECONDS — deliberately NOT `at()` above it, which
+ * mints epoch SECONDS for the job rows. Getting this wrong is a factor of 1000
+ * with nothing on screen to say so: the label would simply print a 1970 date, so
+ * the two helpers are kept apart rather than sharing one `toWireInstant`.
+ */
+const wakeSchedule = (spec: {
+	id: string;
+	message: string;
+	/** Minutes from the fixture's now, so a frame's labels are reproducible. */
+	dueInMinutes: number;
+	/** `every_ms`: the recurrence interval, in MINUTES for legibility. */
+	everyMinutes?: number;
+	/**
+	 * `limit`: how many deliveries the schedule was created to make.
+	 *
+	 * The bounded clause is rendered from `limit - fired_count`, NOT from a
+	 * `remaining` written here, because that is what the wire carries: `remaining`
+	 * is declared on `WakeState` and unpopulated by both publishing paths, which was
+	 * measured against a live backend and is why `run-detail-model.ts` falls back to
+	 * the scheduler's own arithmetic. A fixture that filled `remaining` would render
+	 * the bounded clause off a field the product never sends.
+	 */
+	limit?: number;
+	firedCount?: number;
+}): Record<string, unknown> => ({
+	id: spec.id,
+	message: spec.message,
+	next_due_at: FIXTURE_NOW_MS + spec.dueInMinutes * 60_000,
+	created_at: FIXTURE_NOW_MS - 3_600_000,
+	every_ms: spec.everyMinutes === undefined ? null : spec.everyMinutes * 60_000,
+	remaining: null,
+	limit: spec.limit ?? null,
+	fired_count: spec.firedCount ?? 0,
+});
+
+/** The long prompt, for the row that has to clamp one and keep the whole text. */
+const LONG_WAKE_MESSAGE =
+	"Reconcile the March invoices against the payments ledger, group the unpaid rows by customer, confirm what 'pending' means with finance (two rows need a decision), then write reports/unpaid-march.md from the reconciled totals before the month closes";
+
+/**
+ * One single-shot wake and nothing else: the wake chip alone, at the row's start.
+ *
+ * The state the chip's COUNT gate exists for is the one with no wakes at all
+ * (`idle`), and this is its opposite: a session whose only pending thing is a
+ * schedule, which is exactly what nothing in this app could show before.
+ */
+export const wakesOnly = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: [
+		wakeSchedule({
+			id: "w1",
+			message: "Check the 09:00 deploy finished",
+			dueInMinutes: 34,
+		}),
+	],
+});
+
+/**
+ * The three cadences on one list, and published OUT of due order.
+ *
+ * `frontend.wakes` is the backend's own schedule order — `w1`..`w16`, which is
+ * creation order — so a fixture in due order would hide the sort the section
+ * does. Here `w3` fires first, then the unbounded `every 1h30m` `w2`, then the
+ * off-day `once` `w1`, and the limit-bounded `w4` last: four DATED rows, in the
+ * order the committed frame prints. (An earlier version of this sentence claimed
+ * the fourth row was undated and skipped `w1`; agent review round 1's nit 4 is
+ * right that this fixture has four dated rows and no undated one. The undated
+ * case is real and is covered where it belongs — `run-detail-model.test.mjs`'s
+ * "a row with no readable instant sorts last" — rather than by a claim about a
+ * fixture that does not contain it.)
+ */
+export const wakesRecurring = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: [
+		wakeSchedule({
+			id: "w2",
+			message: "Sweep the ingest queue for stuck rows",
+			dueInMinutes: 90,
+			everyMinutes: 90,
+		}),
+		wakeSchedule({
+			id: "w1",
+			message: "One-shot: ping the staging cluster",
+			dueInMinutes: 240,
+		}),
+		wakeSchedule({
+			id: "w4",
+			message: "Summarise the day's failed jobs",
+			dueInMinutes: 1_500,
+			everyMinutes: 360,
+			limit: 3,
+		}),
+		wakeSchedule({
+			id: "w3",
+			message: "Stand-up reminder",
+			dueInMinutes: 12,
+		}),
+	],
+});
+
+/**
+ * Nine schedules — all nine drawn, because the cap IS the wire's own ceiling.
+ *
+ * `WAKE_ROW_CAP` is `MAX_WAKE_SCHEDULES = 16`, so nine is an ordinary full
+ * scheduler and this fixture renders nine rows with no overflow marker. (It said
+ * "six rows and its marker" until round 2: that was written against the six-row
+ * cap and was falsified by the frame it feeds the moment UX round 1's U1 moved
+ * the number. A payload past 16 — which no fixture here can produce, and which
+ * `run-detail-model.test.mjs` builds by hand for the marker's own case — is what
+ * the marker is for.)
+ */
+export const wakesMany = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: Array.from({ length: 9 }, (_, index) =>
+		wakeSchedule({
+			id: `w${index + 1}`,
+			message: `Wake ${index + 1}: ${WAKE_MANY_MESSAGES[index]}`,
+			dueInMinutes: (index + 1) * 45,
+			everyMinutes: index % 3 === 0 ? 1_440 : undefined,
+		}),
+	),
+});
+
+/** Nine distinct prompts, so no two rows in that frame read alike. */
+const WAKE_MANY_MESSAGES = [
+	"poll the build queue",
+	"check the nightly import",
+	"re-read the ledger",
+	"ping the staging cluster",
+	"sweep the ingest queue",
+	"verify the backups",
+	"refresh the exchange rates",
+	"reconcile the card statement",
+	"summarise the failed jobs",
+];
+
+/** The long prompt, and its single-shot cadence beside the truncation claim. */
+export const wakeLongMessage = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: [
+		wakeSchedule({
+			id: "w1",
+			message: LONG_WAKE_MESSAGE,
+			dueInMinutes: 45,
+		}),
+	],
+});
+
+/**
+ * A plan and an armed wake together.
+ *
+ * The pair the composer's row has to hold: the plan chip and the wake chip on
+ * one line (the FIRST_CHIP rule's two-leading-chips case, with the goal absent),
+ * and the pane's To-dos and Wakes sections in one scroll region.
+ */
+export const wakesAndPlan = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: longPlan(),
+	wakes: [
+		wakeSchedule({
+			id: "w1",
+			message: "Stand-up reminder",
+			dueInMinutes: 12,
+		}),
+		wakeSchedule({
+			id: "w2",
+			message: "Sweep the ingest queue for stuck rows",
+			dueInMinutes: 90,
+			everyMinutes: 90,
+		}),
+	],
+});

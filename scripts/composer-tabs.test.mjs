@@ -62,6 +62,7 @@ const bundle = await build({
 				planChipLabel,
 				subagentChipLabel,
 				jobChipLabel,
+				wakeChipLabel,
 			} from "./src/renderer/src/features/chat/components/composer-status-row";
 			import {
 				activityTally,
@@ -70,13 +71,17 @@ const bundle = await build({
 				busiestClause,
 				childClause,
 				jobClause,
+				wakeClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
+			import { RunDetailWakes } from "./src/renderer/src/features/chat/components/run-details/run-detail-wakes";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
-			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, scrollRegionToTop, useUiPreferencesStore };
+			export const renderWakes = (props) =>
+				renderToStaticMarkup(createElement(RunDetailWakes, props));
+			export { ComposerStatusRow, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -134,16 +139,19 @@ const {
 	renderRow,
 	ComposerStatusRow,
 	shouldRestoreComposerFocus,
+	renderWakes,
 	goalDisclosureLabel,
 	planChipLabel,
 	subagentChipLabel,
 	jobChipLabel,
+	wakeChipLabel,
 	deriveRunDetails,
 	activityTally,
 	todoClause,
 	busiestClause,
 	childClause,
 	jobClause,
+	wakeClause,
 	scrollRegionToTop,
 	useUiPreferencesStore,
 } = await import(bundlePath.href);
@@ -190,6 +198,32 @@ const wireJob = (id, type, status, label, queued = false) => ({
 /** The model over a plan and a job list, so the chips' gates can be driven. */
 const detailsWith = (jobs, statuses = []) =>
 	deriveRunDetails({ jobs, todos: statuses.length > 0 ? plan(statuses) : [] });
+
+/**
+ * One ARMED wake schedule in the wire's own shape (`WakeState`).
+ *
+ * Epoch MILLISECONDS for `next_due_at`, which is the trap the contract names: the
+ * job rows beside it carry epoch SECONDS. Built off a fixed base instant rather
+ * than `Date.now()` so a clause's due label is reproducible.
+ */
+const WAKE_NOW_MS = Date.parse("2026-03-14T14:26:00Z");
+
+const wireWake = (id, message, dueInMs, everyMs = null, limit = null) => ({
+	id,
+	message,
+	next_due_at: WAKE_NOW_MS + dueInMs,
+	created_at: WAKE_NOW_MS - 60_000,
+	every_ms: everyMs,
+	remaining: null,
+	limit,
+	fired_count: 0,
+});
+
+const HOUR_MS = 3_600_000;
+
+/** The model over a wake list, so the chip's gate can be driven. */
+const wakesOf = (wakes) =>
+	deriveRunDetails({ jobs: [], todos: [], wakes, nowMs: WAKE_NOW_MS });
 
 const LONG_GOAL =
 	"Reconcile the March invoices against the payments ledger, group the unpaid rows by customer, confirm what 'pending' means with finance, then write reports/unpaid-march.md and publish the summary";
@@ -483,33 +517,41 @@ test("both chips, goal first in the DOM so paint order and tab order agree", () 
 	);
 });
 
-test("the row's chips are ordered goal, plan, subagents, jobs, in paint and tab order alike", () => {
+test("the row's chips are ordered goal, plan, wakes, subagents, jobs, in paint and tab order alike", () => {
 	/*
-	 * Four chips on one row and one DOM order, which the stacked arrangement at the
+	 * Five chips on one row and one DOM order, which the stacked arrangement at the
 	 * column floor inherits: the row is a `flex-col` there, so the vertical order IS
-	 * the DOM order. Both activity chips sit AFTER the plan chip, which is the
+	 * the DOM order. The two activity chips sit AFTER the plan chip, which is the
 	 * operator's placement ("in the same row as the todos") and the reason their
-	 * sections are `subagents` and `jobs` rather than a single activity control.
+	 * sections are `subagents` and `jobs` rather than a single activity control —
+	 * and the WAKE chip sits between them and the plan, because the goal, the plan
+	 * and the wakes are the session's standing facts while the subagents and jobs
+	 * are what is moving now (`composer-status-row.tsx`'s `wakesFirst`).
 	 */
 	const markup = renderRow({
 		frontend: frontend("Ship it"),
-		runDetails: detailsWith(
-			[
+		runDetails: deriveRunDetails({
+			jobs: [
 				wireJob("c1", "task", "running", "Audit the invoices"),
 				wireJob("s1", "bash", "running", "bash: sleep 150"),
 			],
-			["pending", "done"],
-		),
+			todos: plan(["pending", "done"]),
+			wakes: [
+				wireWake("w1", "Check the deploy", HOUR_MS),
+				wireWake("w2", "Re-read the ledger", 2 * HOUR_MS, HOUR_MS, 3),
+			],
+		}),
 	});
 	const order = [
 		markup.indexOf("Goal:"),
 		markup.indexOf("data-status-plan"),
+		markup.indexOf("data-status-wakes"),
 		markup.indexOf("data-status-subagents"),
 		markup.indexOf("data-status-jobs"),
 	];
 	assert.ok(
 		order.every((at) => at > -1),
-		"all four chips render",
+		"all five chips render",
 	);
 	assert.deepEqual(
 		order,
@@ -727,8 +769,8 @@ test("a running activity chip carries the roster's spin, and only the running st
 
 test("the first chip cancels its own padding, whichever chip is first", () => {
 	/*
-	 * The row's alignment device, now ORDINAL: with four possible chips there are
-	 * four states of "which one is first", and a rule written as a single boolean
+	 * The row's alignment device, now ORDINAL: with five possible chips there are
+	 * five states of "which one is first", and a rule written as a single boolean
 	 * would put two chips' ink in the same 6px column the moment a session had an
 	 * activity chip and no goal. The assertion is over the rendered class string, so
 	 * it is the behaviour and not this file's belief about it.
@@ -747,7 +789,18 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 		"the padding is cancelled on the chip that renders first",
 	);
 
-	// No goal and no plan: the subagents chip leads.
+	// No goal and no plan, but armed wakes: the wake chip leads.
+	const wakesFirst = renderRow({
+		frontend: frontend(""),
+		runDetails: wakesOf([wireWake("w1", "Check the deploy", HOUR_MS)]),
+	});
+	assert.equal(count(wakesFirst), 1);
+	assert.ok(
+		wakesFirst.indexOf("data-status-wakes") < wakesFirst.indexOf(firstClass),
+		"the wake chip renders before its own padding cancellation",
+	);
+
+	// No goal, no plan and no wakes: the subagents chip leads.
 	const subagentsFirst = renderRow({
 		frontend: frontend(""),
 		runDetails: detailsWith([wireJob("c1", "task", "running", "Audit")]),
@@ -771,19 +824,20 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 		jobsFirst.indexOf("data-status-jobs") < jobsFirst.indexOf(firstClass),
 	);
 
-	// All four: exactly one cancellation, on the goal.
-	const allFour = renderRow({
+	// All five: exactly one cancellation, on the goal.
+	const allFive = renderRow({
 		frontend: frontend("Ship it"),
-		runDetails: detailsWith(
-			[
+		runDetails: deriveRunDetails({
+			jobs: [
 				wireJob("c1", "task", "running", "Audit"),
 				wireJob("s1", "bash", "running", "bash: sleep"),
 			],
-			["pending"],
-		),
+			todos: plan(["pending"]),
+			wakes: [wireWake("w1", "Check the deploy", HOUR_MS)],
+		}),
 	});
-	assert.equal(count(allFour), 1);
-	assert.ok(allFour.indexOf(firstClass) < allFour.indexOf("data-status-plan"));
+	assert.equal(count(allFive), 1);
+	assert.ok(allFive.indexOf(firstClass) < allFive.indexOf("data-status-plan"));
 
 	// And the values are in the accessible names, never in a visible label.
 	assert.ok(
@@ -793,9 +847,9 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 	);
 });
 
-test("the activity chips file their own section, and the store carries all three", () => {
+test("each chip files its own section, and the store carries all four", () => {
 	const store = useUiPreferencesStore;
-	for (const section of ["subagents", "jobs"]) {
+	for (const section of ["subagents", "jobs", "wakes"]) {
 		store.setState({
 			runPanelReveal: null,
 			isRunPanelOpen: false,
@@ -808,6 +862,296 @@ test("the activity chips file their own section, and the store carries all three
 		assert.equal(after.isCanvasOpen, false);
 	}
 	store.setState({ runPanelReveal: null });
+});
+
+/* ---------------------------------------------------------------- */
+/* The wake chip and the Wakes section (`docs/composer-wakes.md`)     */
+/* ---------------------------------------------------------------- */
+
+/** The section's own file, and the panel that owns its place in the list. */
+const WAKES =
+	"src/renderer/src/features/chat/components/run-details/run-detail-wakes.tsx";
+const SECTION_LIST =
+	"src/renderer/src/features/chat/components/run-details/run-details-panel.tsx";
+const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
+
+test("a session with no wakes renders no wake chip at all", () => {
+	/*
+	 * The gate, and it is the point rather than an optimisation: `frontend.wakes`
+	 * is empty on every session that has never armed one, which is nearly all of
+	 * them, so `0 wakes armed` would be a line of chrome above nearly every composer
+	 * in the app. The assertion is over the shipped component's markup.
+	 */
+	const noWakes = renderRow({
+		frontend: frontend("Ship it"),
+		runDetails: detailsWith([], ["pending"]),
+	});
+	assert.doesNotMatch(noWakes, /data-status-wakes/);
+	/*
+	 * ...and the same session WITH the goal and the plan still renders, so the
+	 * absence above is the wake chip's and not the whole row's.
+	 */
+	assert.match(noWakes, /data-status-plan/);
+	assert.equal(
+		renderRow({
+			frontend: frontend(""),
+			runDetails: deriveRunDetails({ jobs: [], todos: [] }),
+		}),
+		"",
+		"no goal, no plan and no wakes is still the nothing state",
+	);
+});
+
+test("the wake chip states the model's clause, off the model's own list", () => {
+	const one = renderRow({
+		frontend: frontend(""),
+		runDetails: wakesOf([wireWake("w1", "Check the deploy", HOUR_MS)]),
+	});
+	assert.match(one, /data-status-wakes/);
+	assert.match(one, /1 wake armed/, "the singular, spelled by the model");
+	assert.doesNotMatch(one, /1 wakes armed/);
+
+	const two = renderRow({
+		frontend: frontend(""),
+		runDetails: wakesOf([
+			wireWake("w1", "Check the deploy", HOUR_MS),
+			wireWake("w2", "Re-read the ledger", 2 * HOUR_MS, HOUR_MS, 3),
+		]),
+	});
+	assert.match(two, /2 wakes armed/);
+	/*
+	 * The count is the MODEL's, so the clause the chip prints and the clause the
+	 * section's tally prints are one string. Asserted as an identity rather than as
+	 * two literals that happen to agree today.
+	 */
+	assert.equal(wakeClause(1), "1 wake armed");
+	assert.equal(wakeClause(2), "2 wakes armed");
+	assert.ok(one.includes(wakeClause(1)));
+	/*
+	 * LEADING with the wake's own mark, and not with the plan chip's `Info`: one
+	 * glyph in this row means one thing. `AlarmClock` is lucide's alarm glyph; the
+	 * assertion is over the rendered class, which is what the glyph arrives with.
+	 */
+	assert.match(one, /lucide-alarm-clock/);
+	assert.doesNotMatch(one, /lucide-info/, "Info stays the plan chip's mark");
+});
+
+test("the wake chip names the section its press opens, and never toggles", () => {
+	const markup = renderRow({
+		frontend: frontend(""),
+		runDetails: wakesOf([wireWake("w1", "Check the deploy", HOUR_MS)]),
+	});
+	assert.match(
+		markup,
+		/aria-label="Open the wakes in run details — 1 wake armed"/,
+	);
+	assert.equal(
+		wakeChipLabel(1),
+		"Open the wakes in run details — 1 wake armed",
+		"ONE derived string, so the name and the tooltip cannot disagree",
+	);
+	/*
+	 * It REVEALS, never toggles — `docs/composer-status-tabs.md` § 3.1 and the plan
+	 * chip's own recorded reason: a control that closed the pane when pressed while
+	 * looking for the wakes is one control with two meanings.
+	 */
+	assert.doesNotMatch(markup, /data-status-wakes[^>]*aria-pressed/);
+	/*
+	 * No `data-state` assertion: the button sits inside the shared `Tooltip`'s own
+	 * trigger, which stamps its open/closed state on the element it wraps — so the
+	 * plan chip carries it too, and it is the tooltip's fact rather than a control's
+	 * press state. What must not be here is a PRESSED state, which is what
+	 * `aria-pressed` would be.
+	 */
+});
+
+test("the section renders one row per armed schedule, soonest first", () => {
+	const late = wireWake("w2", "Re-read the ledger", 3 * HOUR_MS, HOUR_MS, 3);
+	const soon = wireWake("w1", "Check the deploy", HOUR_MS);
+	/*
+	 * The wire order is the BACKEND's (creation order, `w1`..`w16`), and the row's
+	 * order is the due instant's. Handed them reversed, so the assertion is about
+	 * the sort and not about the input.
+	 */
+	const markup = renderWakes({ details: wakesOf([late, soon]) });
+	assert.match(markup, />Wakes</);
+	assert.ok(
+		markup.indexOf('data-run-panel-row="w1"') <
+			markup.indexOf('data-run-panel-row="w2"'),
+		"the soonest fire leads, whatever order the wire published",
+	);
+	/*
+	 * Each row states what a reader needs to decide whether the wake is what they
+	 * intended: when it next fires, how often, and what it will say.
+	 */
+	assert.match(markup, /Check the deploy/);
+	assert.match(
+		markup,
+		/once/,
+		"a schedule with no `every_ms` is a single shot",
+	);
+	assert.match(markup, /every 1h/);
+	assert.match(markup, /· 3 left/, "the limit-bounded form");
+});
+
+test("the section's tally is the chip's own clause, and its cap is a statement", () => {
+	const two = renderWakes({
+		details: wakesOf([
+			wireWake("w1", "Check the deploy", HOUR_MS),
+			wireWake("w2", "Re-read the ledger", 2 * HOUR_MS, HOUR_MS, 3),
+		]),
+	});
+	assert.ok(
+		two.includes(wakeClause(2)),
+		"the heading's trailing tally is the same string the chip carries",
+	);
+
+	/*
+	 * EVERY armed schedule renders, because the wire's own ceiling IS the cap (UX
+	 * round 1's U1): at nine the section draws nine rows and no marker, so the
+	 * operator's ask — "in there, we can see all the armed wakes" — holds for any
+	 * payload a scheduler can actually hold. The marker survives as the footer for a
+	 * payload PAST that ceiling, which is why the case below counts seventeen.
+	 */
+	const many = renderWakes({
+		details: wakesOf(
+			Array.from({ length: 9 }, (_, index) =>
+				wireWake(
+					`w${index + 1}`,
+					`Wake ${index + 1}`,
+					(index + 1) * HOUR_MS,
+					HOUR_MS,
+				),
+			),
+		),
+	});
+	assert.doesNotMatch(many, /more wakes/, "nothing is hidden at nine");
+	assert.match(many, /data-run-panel-row="w9"/, "the last of nine renders");
+	assert.match(many, /9 wakes armed/, "the tally counts the WHOLE list");
+	/*
+	 * One row past the wire's ceiling. The marker is a STATEMENT rather than a
+	 * control — nothing in this pane can put a shed wake back — so it wears the
+	 * shared `Disclosure` primitive's DISABLED branch, which is the plan's own
+	 * treatment for its shed rows and not the roster's `Show N more`; and the
+	 * section now names who CAN act on the list it just drew (UX round 1's U3).
+	 */
+	const over = renderWakes({
+		details: wakesOf(
+			Array.from({ length: 17 }, (_, index) =>
+				wireWake(
+					`o${index + 1}`,
+					`Wake ${index + 1}`,
+					(index + 1) * HOUR_MS,
+					HOUR_MS,
+				),
+			),
+		),
+	});
+	// The marker's noun inflects (UX round 2's U7): one hidden row reads `1 more wake`,
+	// and the plural is pinned absent so the pair cannot drift back.
+	assert.match(over, /1 more wake/);
+	assert.doesNotMatch(over, /1 more wakes/);
+	assert.match(over, /data-run-panel-row="o16"/);
+	assert.doesNotMatch(over, /data-run-panel-row="o17"/, "the cap holds");
+	assert.match(
+		over,
+		/ask the agent to cancel it/i,
+		"the list names who can act on it",
+	);
+});
+
+test("wakes are absent rather than empty: no section without armed wakes", () => {
+	/*
+	 * A source pin, and the only instrument that can see it: the panel decides
+	 * whether the section exists at all, and an empty section is what a `>= 0` gate
+	 * would ship — a `Wakes` heading with nothing under it on every session in the
+	 * app. The rule is the panel's for every section ("an empty section is not a
+	 * state anything renders").
+	 */
+	const panel = code(SECTION_LIST);
+	assert.match(panel, /if \(details\.wakes\.length > 0\) \{/);
+	assert.match(
+		panel,
+		/<RunDetailWakes details=\{details\} sectionRef=\{wakesSectionRef\} \/>/,
+	);
+	/*
+	 * ...and the section is in the panel's fixed order: after the tool jobs and
+	 * before the MCP servers, which `docs/run-sidebar.md` § 7.2 fixes as LAST.
+	 *
+	 * Two comparisons rather than one `||` (agent review round 1's nit 5): the
+	 * first version compared against a literal that occurs nowhere in the panel
+	 * (`{mcpServers.length > 0 &&`, where the file spells `if (...)`), so that arm
+	 * was always false and the assertion passed on its second arm alone. The jobs
+	 * half is checked now, which is what the comment beside it always claimed.
+	 */
+	assert.ok(
+		panel.indexOf('key: "jobs"') < panel.indexOf('key: "wakes"'),
+		"the wake section comes after the tool jobs",
+	);
+	assert.ok(
+		panel.indexOf('key: "wakes"') < panel.indexOf("if (mcpServers.length > 0)"),
+		"the MCP section is still last",
+	);
+});
+
+test("the wake chip, the pane and the page are ONE derivation", () => {
+	/*
+	 * The chip counts `runDetails.wakes`, the section renders the same list, and the
+	 * page reads the wire ONCE — so a wake armed in the app cannot be a chip on one
+	 * surface and not a row in the other. Source pins, because what is being asserted
+	 * is that there is no second read of `frontend.wakes` anywhere.
+	 */
+	const row = code(ROW);
+	assert.match(row, /const wakes = runDetails\?\.wakes \?\? \[\];/);
+	assert.match(row, /const showWakes = wakes\.length > 0;/);
+	assert.match(row, /\{wakeClause\(wakes\.length\)\}/);
+
+	const page = code(CHAT_PAGE);
+	assert.match(page, /wakes: canonical\.frontend\.wakes,/);
+	/*
+	 * The page is the ONLY reader of the wire's field: a second `.wakes` read
+	 * anywhere in the renderer is the second source of truth this pins against.
+	 */
+	assert.equal(
+		(page.match(/canonical\.frontend\.wakes/g) ?? []).length,
+		1,
+		"one read of the wire, threaded into the one derivation",
+	);
+
+	/*
+	 * And the pane threads a ref for it, in the `Record` whose whole point is that a
+	 * fourth `RunPanelSection` member is a TYPE ERROR rather than a silently
+	 * mis-scrolled pane (see `run-panel.tsx`).
+	 */
+	const panelSource = code(PANEL);
+	assert.match(
+		panelSource,
+		/const wakesSectionRef = useRef<HTMLElement \| null>\(null\);/,
+	);
+	assert.match(panelSource, /wakes: wakesSectionRef,/);
+	assert.match(panelSource, /wakesSectionRef=\{wakesSectionRef\}/);
+});
+
+test("nothing about the wakes ticks: no clock and no relative time", () => {
+	/*
+	 * The rule the design record states as a requirement: a wake carries an absolute
+	 * local instant and a cadence, and neither is a function of when it is read, so
+	 * the section takes the UNTIMED model and there is deliberately no "in 42m"
+	 * form — a relative label would have to be repainted to stay true, which is the
+	 * 1 Hz reflow `run-details-clock.ts` exists to keep off surfaces that do not
+	 * need it.
+	 */
+	const source = code(WAKES);
+	assert.doesNotMatch(
+		source,
+		/useEffect\(|setInterval|requestAnimationFrame|Date\.now\(\)/,
+	);
+	assert.doesNotMatch(source, /\bin \$?\{|minutes? from now|in \d+m/);
+	/*
+	 * ...and the panel hands it the untimed model, beside the plan, rather than the
+	 * re-measured one the roster and the jobs list take.
+	 */
+	assert.match(code(SECTION_LIST), /<RunDetailWakes details=\{details\}/);
 });
 
 test("the plan chip files a one-shot request that both opens the pane and clears the canvas", () => {
@@ -973,7 +1317,9 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * of a 204px content box for one chip, so three of them cannot share a line, and
 	 * the chips are `shrink-0`. The stacked arrangement turns wrap OFF in its own
 	 * query, because in a COLUMN container `wrap` would wrap items into extra
-	 * COLUMNS — horizontal overflow, the defect the wrap exists to remove.
+	 * COLUMNS — horizontal overflow, the defect the wrap exists to remove. Five chips
+	 * (the wake chip joined them) make the wrap do the same job one chip earlier; no
+	 * geometry here changed with it.
 	 */
 	tokens("@max-[240px]/chatcol:flex-col");
 	tokens("@max-[240px]/chatcol:flex-nowrap");
@@ -1006,14 +1352,15 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	/*
 	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
 	 * first item whenever it renders, and the cancellation it wears is the same
-	 * constant applied under that name. The three count chips ask inside the group
+	 * constant applied under that name. The four count chips ask inside the group
 	 * (below), where "first" is a question about the group's own leading edge.
 	 */
 	assert.match(source, /groupIsFirst \? FIRST_CHIP : undefined/);
+	assert.match(source, /wakesFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /subagentsFirst \? FIRST_CHIP : undefined/);
 	assert.match(source, /jobsFirst \? FIRST_CHIP : undefined/);
 	/*
-	 * THE GROUP, which is design review round 1's D2: with the three count chips as
+	 * THE GROUP, which is design review round 1's D2: with the count chips as
 	 * siblings of the goal, the row's wrap regime tore them — the goal's `flex-1`
 	 * box stretched the line it shared and pushed one chip to the right margin while
 	 * its siblings started a left column below, and the 172px floor read better than
@@ -1038,7 +1385,8 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 */
 	assert.match(source, /min-w-\[140px\] flex-1/);
 	assert.doesNotMatch(source, /cn\("min-w-0 flex-1", COLUMN_GOAL\)/);
-	assert.match(source, /const subagentsFirst = !showGoal && !showPlan;/);
+	assert.match(source, /const subagentsFirst = wakesFirst && !showWakes;/);
+	assert.match(source, /const wakesFirst = !showGoal && !showPlan;/);
 	assert.match(source, /const jobsFirst = subagentsFirst && !children;/);
 
 	/*
@@ -1069,7 +1417,18 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * pane's own glyph, leading the count, decorative to assistive tech because the
 	 * accessible name already states the action.
 	 */
-	tokens("import { Info } from", "<Info aria-hidden={true}", "size-3.5");
+	tokens(
+		"import { AlarmClock, Info } from",
+		"<Info aria-hidden={true}",
+		"size-3.5",
+	);
+	/*
+	 * ...and the wake chip leads with `AlarmClock` in the same call, from the same
+	 * import: a mark on the third count chip that is a WAKE's rather than the plan's,
+	 * because `Info` means "this opens the run pane" on one chip and one glyph in this
+	 * row means one thing.
+	 */
+	tokens("<AlarmClock", "size-3.5 shrink-0");
 	/*
 	 * The two ACTIVITY chips lead with the roster's state mark instead, taken from
 	 * the component that already owns the nine states' glyphs, inks and motion —
@@ -1135,6 +1494,19 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	 */
 	assert.doesNotMatch(source, /aria-pressed/);
 	assert.match(source, /onClick=\{\(\) => revealPlan\("todos"\)\}/);
+});
+
+/*
+ * The wake chip files the WAKES request, and the store test above cannot see it
+ * (agent review round 1's minor 2): driving `revealRunPanelSection` proves the
+ * STORE can hold "wakes", not that the chip asks for it, so a chip wired to
+ * `revealPlan("jobs")` — the one mistake this chip can make that a user notices
+ * immediately — would pass the whole suite. This is the plan chip's own pin, one
+ * chip over, and it is the assertion the PR's coverage claim rests on.
+ */
+test("the wake chip files the wakes section, not its nearest neighbour", () => {
+	const source = code(ROW);
+	assert.match(source, /onClick=\{\(\) => revealPlan\("wakes"\)\}/);
 });
 
 test("the composer's two capped blocks share one whole-line cap", () => {
