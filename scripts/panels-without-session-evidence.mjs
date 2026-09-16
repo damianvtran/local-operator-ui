@@ -41,10 +41,11 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	unlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
@@ -74,7 +75,13 @@ const API_URL = `http://127.0.0.1:${BACKEND_PORT}`;
  */
 const TOKEN = "c".repeat(64);
 
-const ROOT = mkdtempSync(join(tmpdir(), "lop-ui-panels-evidence-"));
+/*
+ * The scratch root's prefix, named once because two things read it: this file
+ * when it creates the root, and `reapStaleRuns` when it looks for the roots an
+ * earlier run left behind.
+ */
+const SCRATCH_PREFIX = "lop-ui-panels-evidence-";
+const ROOT = mkdtempSync(join(tmpdir(), SCRATCH_PREFIX));
 const CONFIG_DIR = join(ROOT, "config");
 const HOME = join(ROOT, "home");
 mkdirSync(CONFIG_DIR, { recursive: true });
@@ -155,6 +162,124 @@ async function stop(entry) {
 }
 
 /* ------------------------------- the backend ------------------------------- */
+
+/**
+ * This run's scratch marker, and the file `reapStaleRuns` reads on the next one.
+ *
+ * `mkdtempSync` appends six random characters to the prefix, so the prefix itself
+ * is only a marker - the pid a later run has to compare is not in the name. That
+ * is what `owner.pid` is for, written when the run starts.
+ */
+/** Where this run records the backend process group it started. */
+const BACKEND_PID_FILE = join(ROOT, "backend.pid");
+
+/**
+ * Reap the backend an EARLIER run of this rig left serving the port.
+ *
+ * `stop()` covers a clean exit and the signals we trap, but not a SIGKILL of this
+ * process - and that is the ordinary way a rig run ends, because whatever invoked
+ * it kills the tree when its own time budget runs out. Every child here is
+ * `detached`, i.e. its own PROCESS GROUP (the electron shim needs that), so a
+ * killed parent leaves the daemon serving 8080 with nobody left to stop it.
+ * Measured on this repository: a daemon from a finished evidence pass held 8080
+ * for hours, and the next run's backend could not bind to it.
+ *
+ * Two facts identify a stale root, and both are needed: `owner.pid` having no live
+ * owner says the run that made it is gone, and `backend.pid` names the process
+ * group to signal. A pid alone would be enough only until the OS reused it, which
+ * is why the record lives INSIDE the scratch root the pid was taken for. Roots
+ * whose owner is still alive are skipped, so two concurrent runs never reap each
+ * other.
+ *
+ * WHAT THIS CANNOT DO, stated because it is what actually happened: a daemon
+ * started OUTSIDE this rig's scratch discipline - a peer harness that started its
+ * own `serve` on 8080 - carries no record here and is not this rig's to kill.
+ * `assertPortAvailable` is what makes that case loud instead of silent.
+ */
+function reapStaleRuns() {
+	for (const name of readdirSync(tmpdir())) {
+		if (!name.startsWith(SCRATCH_PREFIX) || name === basename(ROOT)) continue;
+		const root = join(tmpdir(), name);
+		let owner = null;
+		try {
+			owner = Number(readFileSync(join(root, "owner.pid"), "utf8").trim());
+		} catch {
+			/* an older root, written before this file existed */
+		}
+		if (Number.isInteger(owner) && owner > 0) {
+			try {
+				process.kill(owner, 0);
+				continue; // the run that owns this root is still going
+			} catch {
+				/* no such process, so the root is abandoned */
+			}
+		}
+		let recorded = null;
+		try {
+			recorded = Number(readFileSync(join(root, "backend.pid"), "utf8").trim());
+		} catch {
+			continue; // nothing to reap: this root never got as far as a backend
+		}
+		if (!Number.isInteger(recorded) || recorded <= 0) continue;
+		try {
+			process.kill(-recorded, "SIGTERM");
+			console.log(
+				`reaped a backend left by an earlier run of this rig (process group ${recorded})`,
+			);
+		} catch {
+			/* already gone, which is the common case */
+		}
+	}
+}
+
+/**
+ * Who is listening on the port this run needs, by pid.
+ *
+ * `lsof` rather than `fetch`: a listener that does not answer HTTP still owns the
+ * port and still stops this run's backend binding to it. An exit status of 1 is
+ * `lsof`'s "nothing matched", which is the answer we want; a missing binary is
+ * not, and it is said out loud rather than folded into "free".
+ */
+function portHolders() {
+	try {
+		const out = spawnSync(
+			"/usr/sbin/lsof",
+			["-nP", `-iTCP:${BACKEND_PORT}`, "-sTCP:LISTEN", "-t"],
+			{ encoding: "utf8" },
+		);
+		if (out.error) throw out.error;
+		if (out.status === 1) return [];
+		if (out.status !== 0) throw new Error(`lsof exited ${out.status}`);
+		return out.stdout
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean);
+	} catch (error) {
+		console.warn(
+			`panels-without-session-evidence: could not ask \`lsof\` who holds ${API_URL} (${error}); if a foreign daemon is there, these frames would depict it.`,
+		);
+		return [];
+	}
+}
+
+/**
+ * Refuse to run while something else serves the port, rather than attaching.
+ *
+ * The ADDRESS is not a preference: the renderer inlines it at build time
+ * (`assertBuiltForThisBackend`) and the CSP allows only 1111 and 8080, so a run
+ * cannot move. What it can do is notice. With a foreign listener on 8080 the app
+ * talks to THAT daemon and every frame depicts a machine this run never
+ * configured - silently, because the run would otherwise succeed and the record
+ * it writes would be honest about everything except the backend behind the
+ * pixels.
+ */
+function assertPortAvailable() {
+	const holders = portHolders();
+	if (holders.length === 0) return;
+	throw new Error(
+		`${API_URL} is already in use by pid ${holders.join(", ")}. This rig cannot move the address (the renderer's CSP allows only 1111 and 8080), and running against another daemon would put its replies in every frame. Stop that process, or wait for the session that owns it - \`lsof -nP -iTCP:${BACKEND_PORT} -sTCP:LISTEN\` names it and \`ps -o command= -p <pid>\` says what it is.`,
+	);
+}
 
 async function startBackend() {
 	const backend = launch(
@@ -644,7 +769,16 @@ const NAMES = Object.keys(SCENES);
 
 async function main() {
 	assertBuiltForThisBackend();
+	reapStaleRuns();
+	assertPortAvailable();
+	writeFileSync(join(ROOT, "owner.pid"), String(process.pid));
 	const backend = await startBackend();
+	/*
+	 * The record `reapStaleRuns` reads on the next run. Written from the CHILD's
+	 * pid because `launch` spawns detached, so that pid is the group leader - the
+	 * same handle `stop` kills.
+	 */
+	writeFileSync(BACKEND_PID_FILE, String(backend.child.pid));
 	const records = [];
 	for (const name of NAMES) {
 		if (ONLY !== "all" && ONLY !== name) continue;
@@ -671,6 +805,11 @@ async function main() {
 		console.log(JSON.stringify(record, null, 2));
 	}
 	await stop(backend);
+	try {
+		unlinkSync(BACKEND_PID_FILE);
+	} catch {
+		/* best effort: a missing record is what `reapStaleRuns` already tolerates */
+	}
 	/*
 	 * The rig's own hash, in the run record.
 	 *
