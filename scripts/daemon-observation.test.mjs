@@ -65,6 +65,7 @@ import { build } from "esbuild";
  * means to give it (measured: three cases in this tree failed exactly so).
  */
 const RE_ANSWERED_A_REQUEST = /answered a request/;
+const RE_NO_ANSWER_TO_PROBE = /no answer to probe/;
 const RE_ANSWERED_WITHOUT_PROVING_I =
 	/answered without proving it is a Local Operator daemon/;
 const RE_CONFIG = /^\.\/config$/;
@@ -735,14 +736,42 @@ test("an unanswered desktop call is not evidence the daemon answered (F-1)", asy
 		for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
 			await first.manager.checkBackendHealth();
 		}
-		const detached = first.manager.getStatusSnapshot();
+		const settled = first.manager.getStatusSnapshot();
+		/*
+		 * The finding's own property, asserted where it is decidable: a request that
+		 * never reached the daemon leaves NO transport evidence, which is what
+		 * `lastTransportAt` records.
+		 *
+		 * The STATE is a different question, and it is not wall-clock stable: a probe
+		 * that expires its 2s budget is the `unanswered` class by design (`nine`
+		 * consecutive misses before it may detach, because a daemon in the middle of
+		 * a long turn answers nothing for seconds at a time). Measured on a loaded CI
+		 * runner, three probes each expired their budget and left the state at
+		 * `degraded` - legitimately, for the budget's own reason - while the same
+		 * three were refused on a quiet one and detached. So the state is allowed to
+		 * be either here and the SENTENCE has to name which, while the evidence that
+		 * outranks both may not move at all.
+		 */
 		assert.equal(
-			detached.state,
-			"detached",
-			"a request that was never sent may not hold the connection open against three refused probes",
+			settled.lastTransportAt,
+			null,
+			"a request that was never sent is not an answer, so no transport evidence may be stamped from it",
 		);
+		if (settled.state === "degraded") {
+			assert.match(
+				settled.detail,
+				RE_NO_ANSWER_TO_PROBE,
+				"if the probes expired their budget instead of being refused, the copy has to say so rather than name an answer",
+			);
+		} else {
+			assert.equal(
+				settled.state,
+				"detached",
+				"a request that was never sent may not hold the connection open against three refused probes",
+			);
+		}
 		assert.doesNotMatch(
-			detached.detail,
+			settled.detail,
 			RE_ANSWERED_A_REQUEST,
 			"and the sentence must not claim a daemon answered a request it never saw",
 		);
